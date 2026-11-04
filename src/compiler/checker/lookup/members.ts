@@ -40,6 +40,7 @@ import {
 } from '../resolution/candidates.ts';
 import { signatureOf } from '../resolution/choice.ts';
 import { meets } from '../resolution/conformance.ts';
+import { metThroughTraits } from '../resolution/trait-calls.ts';
 import {
   fieldOf,
   knownConstraints,
@@ -120,7 +121,7 @@ function methodsOf(
 ): readonly FunctionDeclaration[] {
   const found = new Set<FunctionDeclaration>();
   for (const name of methodNames(checker, module, type)) {
-    const candidates = topLevelCandidates(checker, module, name, [type]);
+    const candidates = metThroughTraits(checker, topLevelCandidates(checker, module, name, [type]));
     const callable =
       access === undefined ? candidates : callableThrough(checker, access, candidates);
     for (const candidate of callable) {

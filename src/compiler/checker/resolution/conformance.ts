@@ -12,7 +12,8 @@
  * - A required field is met by a struct field of the same name and type, or by a constraint on a
  *   type parameter requiring it too.
  * - A trait the compiler derives (derived-traits.ts) asks what its rule asks of every type first,
- *   and a required function no function is declared for is met by the witness it derives.
+ *   and a required function no function is declared for is met by the witness it derives. On a
+ *   union, any other trait's is met through its members (union-traits.ts, §6).
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
  * - The required result is what the call is expected to give, so a type parameter no argument
@@ -25,7 +26,6 @@
  */
 
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
-import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type Completion, completeInference } from '../inference/complete.ts';
 import type { ResolvedCall, Witnesses } from '../resolved-call.ts';
@@ -41,11 +41,12 @@ import { sameType } from '../types/identity.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import { type Constraint, errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import type { UseSite } from '../use-site.ts';
+import { silent, type UseSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
-import { type Application, signatureOf } from './choice.ts';
-import { chooseWitness } from './declared-witness.ts';
+import { type Application, type Choice, type Signature, signatureOf } from './choice.ts';
+import { chooseWitness, chooseWitnessAmong } from './declared-witness.ts';
 import { type Derivation, derivationOf } from './derived-traits.ts';
+import { type MembersMeeting, membersCall, membersShortfall, traitAsAny } from './union-traits.ts';
 
 /** A chosen function, complete: its type arguments, and the witnesses of its constraints. */
 export interface Instantiation {
@@ -192,7 +193,7 @@ function conform(
   if (missing !== undefined) {
     return lacks(meeting, missing);
   }
-  return functionWitnesses(meeting, depth, unmet ?? derivedOrMissing(meeting, derivation));
+  return functionWitnesses(meeting, depth, unmet ?? undeclaredWitness(meeting, derivation, depth));
 }
 
 /** A constraint being met by a type at a use site, for reporting why it isn't. */
@@ -213,7 +214,8 @@ function lacks({ site, type, constraint }: Meeting, missing: string): Failure {
 function missingField({ site, type, constraint }: Meeting): string | undefined {
   for (const field of requiredFields(constraint.trait)) {
     const fieldType = requiredFieldType(site.checker, constraint, field, type);
-    if (!hasField(site.checker, type, field.name.text, fieldType)) {
+    const found = fieldOf(site.checker, type, field.name.text);
+    if (found === undefined || !sameType(found.member.type, fieldType)) {
       return `a field '${field.name.text}: ${typeText(fieldType)}'`;
     }
   }
@@ -222,15 +224,21 @@ function missingField({ site, type, constraint }: Meeting): string | undefined {
 
 /**
  * What meets a required function no function is declared for: the witness `derivation` derives
- * for the type, or else nothing, reported as what the type lacks to have one, by default the
- * function itself.
+ * for the type; on a union, where no rule derives the trait, the function of whichever member a
+ * value is; or else nothing, reported as what the type lacks to have one, by default the function
+ * itself.
  */
-function derivedOrMissing(
+function undeclaredWitness(
   meeting: Meeting,
   derivation: Derivation | undefined,
+  depth: number,
 ): (declaration: FunctionDeclaration) => ResolvedCall | Failure {
   const { site, type, constraint } = meeting;
   return (declaration) => {
+    if (type.kind === 'union' && derivation?.derive === undefined) {
+      const through = traitAsAny(constraint, type);
+      return throughMembers(meeting, { union: type, through, declaration }, depth);
+    }
     const derived = derivation?.derive?.(site, type);
     if (derived?.kind === 'derived') {
       return derived.call;
@@ -238,6 +246,32 @@ function derivedOrMissing(
     const required = `'${declaration.name.text}' as ${constraint.trait.name.text} declares it`;
     return lacks(meeting, derived?.missing ?? required);
   };
+}
+
+/**
+ * The witness of a required function a union meets through its members: the function itself,
+ * called on whichever member a value is; reported as what the union lacks when it can't.
+ */
+function throughMembers(
+  meeting: Meeting,
+  members: MembersMeeting,
+  depth: number,
+): ResolvedCall | Failure {
+  const { site, type, constraint } = meeting;
+  const { checker } = site;
+  const memberMeets = (member: Type, met: Constraint) =>
+    !isFailure(conform({ site: silent(site), type: member, constraint: met }, depth + 1));
+  const shortfall = membersShortfall(checker, members, memberMeets);
+  if (shortfall !== undefined) {
+    return lacks(meeting, shortfall);
+  }
+  const { union, through, declaration } = members;
+  const index = requiredFunctions(constraint.trait).indexOf(declaration);
+  const signature = signatureOf(checker, declaration, constraintSubstitution(constraint, type));
+  const candidate = membersCall(union, through, { declaration, member: index });
+  const choice = chooseWitnessAmong(checker, [candidate], signature);
+  const witness = witnessChosen(site, choice, signature, depth);
+  return witness.kind === 'call' ? witness.call : 'failed';
 }
 
 /**
@@ -325,9 +359,20 @@ function witnessOf(
   required: RequiredFunction,
   depth: number,
 ): WitnessOutcome {
-  const { checker } = site;
-  const signature = signatureOf(checker, required.declaration, required.substitution);
-  const choice = chooseWitness(checker, type, signature);
+  const signature = signatureOf(site.checker, required.declaration, required.substitution);
+  return witnessChosen(site, chooseWitness(site.checker, type, signature), signature, depth);
+}
+
+/**
+ * The witness `choice` found for the required function `signature`, instantiated, or why there is
+ * none.
+ */
+function witnessChosen(
+  site: UseSite,
+  choice: Choice,
+  signature: Signature,
+  depth: number,
+): WitnessOutcome {
   if (choice.kind === 'none') {
     return { kind: 'none' };
   }
@@ -344,9 +389,4 @@ function witnessOf(
     return { kind: 'wrongResult', required: signature.result(), given: result };
   }
   return { kind: 'call', call: callMade(application, instantiation) };
-}
-
-function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {
-  const field = fieldOf(checker, type, name);
-  return field !== undefined && sameType(field.member.type, fieldType);
 }

@@ -17,7 +17,7 @@ export const collectionTemplates = {
   notIterable: {
     code: 5302,
     message: (type: string) =>
-      `${type} isn't iterable: no 'iterate' takes it and returns a cursor, fn() -> T? (§3.10).`,
+      `${type} isn't iterable: no 'iterate' takes it and returns a cursor, fn() -> Step<T> (§3.10).`,
   },
   notIndexAssignable: {
     code: 5303,

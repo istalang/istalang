@@ -26,7 +26,7 @@ import { type CheckedBody, checkProgram } from '../check.ts';
 import { namesBound } from '../checked-pattern.ts';
 import { instantiatedBody } from './instantiation.ts';
 import { substitutionFor } from './substitution.ts';
-import { intType } from './type.ts';
+import { intType, stringType } from './type.ts';
 import { parametersIn } from './type-parts.ts';
 import { typeText } from './type-text.ts';
 
@@ -73,6 +73,44 @@ describe('an instantiated body', () => {
         alternatives.pattern,
       );
     expect(checked && namesBound(checked).map(({ type }) => typeText(type))).toEqual(['Int']);
+  });
+
+  it("reads a member's value as the part itself where its union collapses", () => {
+    const text = [
+      'struct Box<V> { value: V }',
+      'fn boxed<T>(x: Box<T> | Box<Int>) -> Int:',
+      '  match x:',
+      '    case Box<Int>{value} as b: value',
+      '    case _: 0',
+      '',
+    ].join('\n');
+    const program = stdProgramOf({ 'main.ista': text });
+    const checker = checkProgram(program);
+    const { tree } = programModule(program, idOf('main.ista'));
+    const boxed = tree.root.items[1] as FunctionDeclaration;
+    const statement = bodyOf(tree, boxed)?.statements[0];
+    const match = (
+      statement?.kind === 'ExpressionStatement' ? statement.expression : statement
+    ) as Match;
+    const [taken] = casesOf(match);
+    const body = checker.bodyOf(boxed);
+    const read = (typeArgument: typeof intType) =>
+      taken &&
+      body &&
+      instantiatedBody(body, substitutionFor(boxed.typeParameters, [typeArgument]), checker)
+        .patternOf(taken.pattern)
+        ?.bindings.map(({ path, narrowedFrom }) => ({
+          path,
+          narrowed: narrowedFrom !== undefined,
+        }));
+    expect(read(stringType)).toEqual([
+      { path: [0, 0], narrowed: false },
+      { path: [0], narrowed: false },
+    ]);
+    expect(read(intType)).toEqual([
+      { path: [0], narrowed: false },
+      { path: [], narrowed: false },
+    ]);
   });
 
   it('resolves a field read through a type parameter for the type standing for it', () => {

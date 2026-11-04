@@ -294,7 +294,7 @@ What an item carries beyond its label: insert text, detail, kind, sort order, pr
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** Locals and parameters, then module-level names, then imported namespaces, then the prelude, then keywords (`sortText` buckets).
 - **Not:** Keywords above names; prelude noise above the file's own names.
-- **Order:** `loc`, `xs` … before `plus`, `Pair` … before `Array`, `Some` … before `fn`, `while`.
+- **Order:** `loc`, `xs` … before `plus`, `Pair` … before `Array`, `Result` … before `fn`, `while`.
 - **Basis:** VS Code sorts by `sortText`, then label; TS (location priority), RA (relevance).
 
 ### OR-02 · Members rank fields first, then methods · P3 · ✅ pass

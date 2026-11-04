@@ -1,10 +1,9 @@
-# error: 5400 at 19:9
-# error: 5109 at 25:10
-# error: 5001 at 30:10
-# error: 5001 at 35:10
-# error: 5001 at 40:10
-# error: 5001 at 49:10
-# error: 5001 at 56:10
+# error: 5400 at 18:9
+# error: 5109 at 24:10
+# error: 5001 at 29:10
+# error: 5001 at 39:10
+# error: 5001 at 48:10
+# error: 5001 at 55:10
 # A `match` must cover every value of its subject's type (§3.11, §4): a missing variant is
 # reported at the subject. A pattern mirrors construction, so a variant with fields takes braces;
 # a referring name is a variant, the part's own type or a constant; a literal has the part's

@@ -24,10 +24,9 @@ import type { ChainLink } from '../check.ts';
 import type { BodyContext, Chains } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { preludeCall } from '../resolution/implicit.ts';
-import { optionalInner } from '../types/fit.ts';
-import { isAssignable } from '../types/identity.ts';
 import { errorType, stringType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { optionalInner, optionalOf } from '../types/unions.ts';
 
 /**
  * The links of optional chains in one body: what each one's step works on, the value it carries
@@ -67,17 +66,15 @@ export class OptionalChains implements Chains {
    * The type of `node`, whose handler gave `value`: for a link of a chain, the chain's value so
    * far, wrapped into `T?` unless already optional; `value` itself for any other expression.
    */
-  linked(context: BodyContext, node: Expression, value: Type): Type {
+  linked(_context: BodyContext, node: Expression, value: Type): Type {
     const base = this.#bases.get(node);
     if (base === undefined) {
       return value;
     }
-    const { checker } = context;
-    const wraps =
-      value.kind !== 'error' && optionalInner(value, checker.optionalEntity) === undefined;
+    const wraps = value.kind !== 'error' && optionalInner(value) === undefined;
     this.#carried.set(node, value);
     this.#links.set(node, { base, wraps });
-    return wraps ? checker.optionalOf(value) : value;
+    return wraps ? optionalOf(value) : value;
   }
 
   chainOf(link: Expression): ChainLink | undefined {
@@ -89,7 +86,7 @@ export class OptionalChains implements Chains {
     if (!isOptionalStep(step) || carried.kind === 'error') {
       return carried;
     }
-    const inner = optionalInner(carried, context.checker.optionalEntity);
+    const inner = optionalInner(carried);
     if (inner === undefined) {
       context.report(
         checkerDiagnostics.needsOptional(step.target.span, step.operator, typeText(carried)),
@@ -102,13 +99,12 @@ export class OptionalChains implements Chains {
 
 /** `a!`: the value inside `a`, which must be an optional. */
 export function checkUnwrap(context: BodyContext, node: Unwrap, expected: Type | undefined): Type {
-  const { checker } = context;
   const operand = context.expression(
     node.operand,
-    expected === undefined ? undefined : checker.optionalOf(expected),
+    expected === undefined ? undefined : optionalOf(expected),
   );
   context.report(checkerDiagnostics.forceUnwrap(node.span));
-  const inner = optionalInner(operand, checker.optionalEntity);
+  const inner = optionalInner(operand);
   if (inner === undefined) {
     if (operand.kind !== 'error') {
       context.report(checkerDiagnostics.needsOptional(node.operand.span, '!', typeText(operand)));
@@ -129,9 +125,9 @@ export function checkNullish(context: BodyContext, node: Binary, expected: Type 
   const { checker } = context;
   const left = context.expression(
     node.left,
-    expected === undefined ? undefined : checker.optionalOf(expected),
+    expected === undefined ? undefined : optionalOf(expected),
   );
-  const inner = optionalInner(left, checker.optionalEntity);
+  const inner = optionalInner(left);
   if (inner === undefined) {
     if (left.kind !== 'error') {
       context.report(checkerDiagnostics.needsOptional(node.left.span, '??', typeText(left)));
@@ -140,7 +136,8 @@ export function checkNullish(context: BodyContext, node: Binary, expected: Type 
     return errorType;
   }
   const right = context.expression(node.right, expected ?? inner);
-  if (checker.fitOf(right, inner) === undefined && isAssignable(right, left)) {
+  if (checker.fitOf(right, inner) === undefined && checker.fitOf(right, left) !== undefined) {
+    context.fit(right, left, node.right);
     return left;
   }
   context.fit(right, inner, node.right);

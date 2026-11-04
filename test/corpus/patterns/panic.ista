@@ -6,8 +6,8 @@ enum Verdict { Approved; Rejected }
 
 fn decided(id: String, verdict: Verdict?) -> String:
   match verdict:
-    case Some{value is Approved}: "approved"
-    case Some{value is Rejected}: "rejected"
+    case Approved: "approved"
+    case Rejected: "rejected"
     case None: panic("no verdict for " + id)
 
 async fn main() -> Future<String>:

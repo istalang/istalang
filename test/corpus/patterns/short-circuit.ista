@@ -32,7 +32,7 @@ fn three() -> Int?:
 fn countdown() -> Int:
   let i: Int? = 3
   let total = 0
-  while i is Some{value as k} and k > 0:
+  while i is Int as k and k > 0:
     total += k
     i = if k > 1: k - 1 else: none
   total

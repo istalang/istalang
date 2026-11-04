@@ -111,3 +111,36 @@ describe('a parameter only never gives', () => {
     expect(reportedErrors(main)).toEqual([]);
   });
 });
+
+describe('member parameters (§3.5)', () => {
+  const declarations = [
+    'type Status = "draft" | "sent" | "failed"',
+    'fn describe<S in Status>(s: S) -> S: s',
+    'fn either<T in Int | String>(x: T) -> T: x',
+  ];
+
+  it.each([
+    ['a literal of a literal member', 'describe("draft")', []],
+    ['a value of one member', 'describe(sent)', []],
+    ['a literal outside the union', 'describe("other")', [checkerDiagnostics.typeMismatch.code]],
+    [
+      'a value of several members',
+      'describe(status)',
+      [checkerDiagnostics.severalMembersArgument.code],
+    ],
+    ['a literal of a member base', 'either(1)', []],
+    ['a literal type of a member base', 'either(one)', []],
+    [
+      'a value of several base members',
+      'either(both)',
+      [checkerDiagnostics.severalMembersArgument.code],
+    ],
+  ])('are filled by %s: %s', (_case, call, codes) => {
+    const main = [
+      ...declarations,
+      'fn main(status: Status, sent: "sent", one: 1, both: Int | String):',
+      `  _ = ${call}`,
+    ].join('\n');
+    expect(reportedErrors(main)).toEqual(codes);
+  });
+});

@@ -363,7 +363,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`p2-structural`): see Ranked Summary item 5 (`preparedCall`).
 - **Repeated `Result` / `Optional` variant branch-and-unwrap boilerplate (`src/compiler/lowering/expressions/propagate.ts`, `unwrap.ts`, `nullish.ts`, `optional-chains.ts`, `iteration.ts`, `synthesized-code.ts`):**
   - `lowerPropagate` (`expressions/propagate.ts`) is an open-coded copy of `SynthesizedCode.ok` (`synthesized-code.ts`), and `lowerUnwrap`, `lowerNullish`, `OptionalChains.target`, and `emitLoop` each repeat the `newLabel` + `variantTestOf` + `branchOnVariant` + `place` + `payloadOf` sequence for `Optional.Some`.
-  - **Done** (`p3-unions`): `payloadOr` and `payloadOrJump` (`lowering/expressions/variants.ts`) are the one test-and-unwrap of a variant, which `lowerPropagate` and `SynthesizedCode.ok` share; `lowering/optionals.ts` is the one home of how a `T?` is laid out (`noneOf`, `someOf`, `presentOr`, `presentOrJump`), which `none`, the wrap, `!`, `??`, optional chains, a range's left-out end and cursor loops all go through.
+  - **Done** (`p3-unions`): `payloadOr` (`lowering/expressions/variants.ts`) is the one test-and-unwrap of a variant, which `lowerPropagate` and `SynthesizedCode.ok` share; `lowering/optionals.ts` is the one home of how a `T?` is read and built (`noneOf`, `someOf`, `presentOr`, `presentOrJump`), which `none`, the conversion into `T?`, `!`, `??`, optional chains, a range's left-out end and cursor loops all go through, over the union layout of `lowering/unions.ts` once proposal 3 made `T?` the union `T | None`.
 
 ### 24. `src/compiler/compile.ts`
 

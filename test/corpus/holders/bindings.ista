@@ -18,16 +18,16 @@ fn maybe(id: Int, log: Shared<Array<String>>) -> Future<Unit>?:
 
 async fn bindings(log: Shared<Array<String>>):
   match maybe(1, log):
-    case Some{value}:
+    case Future as value:
       note(log, "in case")
     case None:
       note(log, "none")
   note(log, "after match")
-  if maybe(2, log) is Some{value}:
+  if maybe(2, log) is Future as value:
     note(log, "in if")
   note(log, "after if")
   let id = 3
-  while id < 5 and maybe(id, log) is Some{value}:
+  while id < 5 and maybe(id, log) is Future as value:
     note(log, "pass")
     id += 1
   note(log, "after while")

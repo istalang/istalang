@@ -10,6 +10,7 @@
 
 import { isInlineWhitespace } from '../../compiler/scanner/characters.ts';
 import { isKeyword, type Token } from '../../compiler/syntax/tokens.ts';
+import type { SyntaxTree } from '../../compiler/syntax/tree.ts';
 import type { CheckedModule } from '../checked-module.ts';
 import { codeTokensOf } from '../tokens.ts';
 
@@ -62,7 +63,12 @@ export function touchingBefore({ name, before, offset }: Cursor): Token | undefi
  * are no tokens of their own.
  */
 export function adjoinsBefore({ tree, name, before, offset }: Cursor): Token | undefined {
-  const between =
-    before === undefined ? '' : tree.source.text.slice(before.span.end, name?.span.start ?? offset);
-  return [...between].every(isInlineWhitespace) ? before : undefined;
+  return before === undefined || adjoins(tree, before, name?.span.start ?? offset)
+    ? before
+    : undefined;
+}
+
+/** Whether only spaces and tabs part `token` from `offset` of `tree`'s text (`adjoinsBefore`). */
+export function adjoins(tree: SyntaxTree, token: Token, offset: number): boolean {
+  return [...tree.source.text.slice(token.span.end, offset)].every(isInlineWhitespace);
 }

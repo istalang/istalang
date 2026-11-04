@@ -8,10 +8,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { reported } from '../check.test-kit.ts';
-import { checkProgram } from '../check.ts';
-import { fitOf, optionalInner } from './fit.ts';
+import { type Fit, fitOf } from './fit.ts';
 import {
   boolType,
   errorType,
@@ -21,21 +19,38 @@ import {
   type Type,
   unitType,
 } from './type.ts';
-
-const checker = checkProgram(stdProgramOf({ main: '' }));
-const optional = checker.optionalOf(unitType).entity;
+import { optionalInner, optionalOf, unionOf } from './unions.ts';
 
 /** Fitting in a program no `any` type is met in. */
-const fitting = { optional, meetsAny: () => false, shapeOf: () => undefined };
+const fitting = { meetsAny: () => false, shapeOf: () => undefined, memberUnionOf: () => undefined };
 
-/** How many wraps make `found` fit `expected`; undefined when nothing does. */
-function wrapsToFit(found: Type, expected: Type): number | undefined {
-  return fitOf(found, expected, fitting)?.wraps;
+/** How a value of `found` fits `expected`: as it is (0), put into a union (1), or not (undefined). */
+function levelsInto(found: Type, expected: Type): number | undefined {
+  const fit = fitOf(found, expected, fitting);
+  return fit === undefined ? undefined : Number(fit.into !== undefined);
 }
 
-/** `type` wrapped into an optional `levels` times. */
+/** A fit as these tests compare it: its conversion, and whether it puts the value into a union. */
+function fitShape(fit: Fit | undefined) {
+  return fit === undefined
+    ? undefined
+    : { conversion: fit.conversion, into: fit.into !== undefined };
+}
+
+/**
+ * How a value made optional `found` times fits one made optional `expected` times: as it is when
+ * both are optional or neither is, into the union when only the expected one is, else not at all.
+ */
+function levelsBetween(found: number, expected: number): number | undefined {
+  if (found === 0) {
+    return Math.min(expected, 1);
+  }
+  return expected === 0 ? undefined : 0;
+}
+
+/** `type` made optional `levels` times, which is once for any `levels` above none (§2). */
 function wrapped(type: Type, levels: number): Type {
-  return levels === 0 ? type : checker.optionalOf(wrapped(type, levels - 1));
+  return levels === 0 ? type : optionalOf(wrapped(type, levels - 1));
 }
 
 const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
@@ -59,29 +74,29 @@ const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
 
 const levelCounts = fc.nat(3);
 
-describe('fitting by the implicit wrap', () => {
-  it('takes one wrap per optional level', () => {
+describe('fitting into an optional, a union holding None', () => {
+  it('puts a value into an optional of its type once, however often it was made optional', () => {
     fc.assert(
       fc.property(types, levelCounts, (type, count) => {
-        expect(wrapsToFit(type, wrapped(type, count))).toBe(count);
+        expect(levelsInto(type, wrapped(type, count))).toBe(Math.min(count, 1));
       }),
     );
   });
 
-  it('never unwraps: a more optional type fits no less optional one', () => {
+  it('never unwraps: an optional fits none of its members, and nested optionals are one', () => {
     fc.assert(
       fc.property(types, levelCounts, levelCounts, (type, found, expected) => {
-        const wraps = wrapsToFit(wrapped(type, found), wrapped(type, expected));
-        expect(wraps).toBe(found <= expected ? expected - found : undefined);
+        const levels = levelsInto(wrapped(type, found), wrapped(type, expected));
+        expect(levels).toBe(levelsBetween(found, expected));
       }),
     );
   });
 
-  it('wraps only into optionals of the same type', () => {
+  it('puts a value only into an optional of its own type', () => {
     fc.assert(
       fc.property(types, types, levelCounts, (found, inner, count) => {
-        fc.pre(wrapsToFit(found, inner) === undefined);
-        expect(wrapsToFit(found, wrapped(inner, count))).toBeUndefined();
+        fc.pre(levelsInto(found, inner) === undefined);
+        expect(levelsInto(found, wrapped(inner, count))).toBeUndefined();
       }),
     );
   });
@@ -91,14 +106,14 @@ describe('fitting by the implicit wrap', () => {
     ['the error type fits any type', errorType, stringType],
     ['any type fits the error type', wrapped(boolType, 1), errorType],
   ])('%s as it is', (_, found, expected) => {
-    expect(wrapsToFit(found, expected)).toBe(0);
+    expect(levelsInto(found, expected)).toBe(0);
   });
 
   it('reads the inner type of an optional, and of nothing else', () => {
     fc.assert(
       fc.property(types, (type) => {
-        expect(optionalInner(wrapped(type, 1), optional)).toEqual(type);
-        expect(optionalInner(type, optional)).toBeUndefined();
+        expect(optionalInner(wrapped(type, 1))).toEqual(type);
+        expect(optionalInner(type)).toBeUndefined();
       }),
     );
   });
@@ -137,11 +152,11 @@ describe('fitting a plain function where an async one is expected', () => {
         const expected = wrapped(functionOf(parameter, result, wanted), count);
         const sendableFits = given.isSendable || !wanted.isSendable;
         const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
-        expect(fitOf(found, expected, fitting)).toEqual(
+        expect(fitShape(fitOf(found, expected, fitting))).toEqual(
           fits
             ? {
                 conversion: { kind: !given.isAsync && wanted.isAsync ? 'async' : 'none' },
-                wraps: count,
+                into: count > 0,
               }
             : undefined,
         );
@@ -163,11 +178,11 @@ describe('fitting a plain function where an async one is expected', () => {
         const expected = wrapped(functionOf(parameter, result, wanted), count);
         const sendableFits = given.isSendable || !wanted.isSendable;
         const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
-        expect(fitOf(found, expected, fitting)).toEqual(
+        expect(fitShape(fitOf(found, expected, fitting))).toEqual(
           fits
             ? {
                 conversion: { kind: !given.isAsync && wanted.isAsync ? 'async' : 'none' },
-                wraps: count,
+                into: count > 0,
               }
             : undefined,
         );
@@ -182,16 +197,16 @@ function single(type: Type): Type {
 }
 
 describe('fitting between a one-element tuple and its element', () => {
-  it('converts each into the other before any wrap', () => {
+  it('converts each into the other before putting it into an optional', () => {
     fc.assert(
       fc.property(types, levelCounts, (type, count) => {
-        expect(fitOf(type, wrapped(single(type), count), fitting)).toEqual({
+        expect(fitShape(fitOf(type, wrapped(single(type), count), fitting))).toEqual({
           conversion: { kind: 'tupled' },
-          wraps: count,
+          into: count > 0,
         });
-        expect(fitOf(single(type), wrapped(type, count), fitting)).toEqual({
+        expect(fitShape(fitOf(single(type), wrapped(type, count), fitting))).toEqual({
           conversion: { kind: 'untupled' },
-          wraps: count,
+          into: count > 0,
         });
       }),
     );
@@ -260,5 +275,18 @@ describe("a struct's value where its shape is expected (§3.1)", () => {
         expect(reported(text).codes).toEqual([5001, 5001, 5001]);
       }),
     );
+  });
+});
+
+describe('a union where a union holding an `any` type is expected (§6)', () => {
+  it('converts whole into the one any member each of its members meets, then goes into it', () => {
+    const any: Type = { kind: 'any', constraints: [] };
+    const union = unionOf([intType, stringType]);
+    const meeting = { ...fitting, meetsAny: () => true };
+    expect(fitShape(fitOf(union, optionalOf(any), meeting))).toEqual({
+      conversion: { kind: 'any', to: any },
+      into: true,
+    });
+    expect(fitOf(union, optionalOf(any), fitting)).toBeUndefined();
   });
 });

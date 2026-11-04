@@ -6,12 +6,7 @@
  * end (§9). `Result`'s `Ok` and `Err(Error)` are built here once for both (§3.12).
  */
 
-import {
-  optionalValueField,
-  optionalVariants,
-  resultFields,
-  resultVariants,
-} from '../language/well-known.ts';
+import { resultFields, resultVariants, unionLayout } from '../language/well-known.ts';
 import { unreachable } from '../structures/unreachable.ts';
 import type { TypeId } from './operands.ts';
 import type { TypeDefinition, TypeReference } from './types.ts';
@@ -131,18 +126,36 @@ export function variantShape(types: readonly TypeDefinition[], type: TypeId, nam
   return { variant, fields: shape.fields };
 }
 
-/** An optional of type entry `type`: `Some` of `value`, or `None` without one. */
+/**
+ * A value of the optional entry `type`, a union holding `None` (§2): `none` for no value, else
+ * `value` as the member it is. A value of the union already passes as it is; a value of a union
+ * of several members goes into the variant of its member's name, holding what it held.
+ */
 export function optionalOf(
   types: readonly TypeDefinition[],
   type: TypeId,
   value: Value | undefined,
 ): Value {
-  return value === undefined
-    ? variantOf(types, type, optionalVariants.none, {})
-    : variantOf(types, type, optionalVariants.some, { [optionalValueField]: value });
+  if (value === undefined) {
+    return variantOf(types, type, unionLayout.noneVariant, {});
+  }
+  if (isComposite(value) && value.kind === 'variant' && value.type === type) {
+    return value;
+  }
+  const others = enumVariants(types, type).filter(({ name }) => name !== unionLayout.noneVariant);
+  const [only] = others;
+  if (others.length === 1 && only !== undefined) {
+    return variantOf(types, type, only.name, { [unionLayout.valueField]: value });
+  }
+  if (!isComposite(value) || value.kind !== 'variant') {
+    unreachable(`A value of several members isn't one of type ${type}.`);
+  }
+  const memberName = enumVariants(types, value.type)[value.variant]?.name;
+  const { variant } = variantShape(types, type, memberName ?? unreachable('A variant has a name.'));
+  return { ...value, type, variant };
 }
 
-/** The value optional `optional` holds, read by its declared variant; undefined for `None`. */
+/** The value optional `optional` holds, read by its declared variant; undefined for `none`. */
 export function optionalValueOf(
   types: readonly TypeDefinition[],
   optional: Value | undefined,
@@ -150,10 +163,16 @@ export function optionalValueOf(
   if (optional === undefined || !isComposite(optional) || optional.kind !== 'variant') {
     unreachable('Expected an optional.');
   }
-  const { variant } = variantShape(types, optional.type, optionalVariants.some);
+  const { variant } = variantShape(types, optional.type, unionLayout.noneVariant);
   return optional.variant === variant
-    ? variantFieldOf(types, optional, optionalValueField)
-    : undefined;
+    ? undefined
+    : variantFieldOf(types, optional, unionLayout.valueField);
+}
+
+/** The variants of enum entry `type`. */
+function enumVariants(types: readonly TypeDefinition[], type: TypeId) {
+  const declared = types[type];
+  return declared?.kind === 'enum' ? declared.variants : unreachable(`Type ${type} isn't an enum.`);
 }
 
 /** Field `name` of variant value `value`, found by the name its variant declares. */

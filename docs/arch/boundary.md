@@ -28,8 +28,10 @@ path):
   (`checker/resolution/candidates.ts`), which is how the `json` module's codecs are found from
   every module without an import. `encode`, `decode`, `stringify` and `parse` are generic code
   over the traits.
-- A struct, an enum, a tuple or a host type declaring neither codec, beside it or in the `json`
-  module, has both derived. The checker decides its derived form once (`checker/rules/json-forms/`,
+- A struct, an enum, a tuple, a host type, a literal type or a union of literals of one base
+  declaring neither codec, beside it or in the `json` module, has both derived. A union crosses
+  only so or as `T | None`, through the `json` module's codecs of `T?`: any other union's member
+  would need a tag JSON doesn't carry, so it has neither (spec §9). The checker decides its derived form once (`checker/rules/json-forms/`,
   memoized per type key; the model is `checker/json-form.ts`, which later phases read through
   `Checker.json`): field names after `@JsonName`, `@JsonBigInt` fields, what a `@JsonSkip` field
   reads back as (its type's `Default` witness). Its parts cross through their own codecs, and
@@ -46,8 +48,9 @@ path):
   sendable, crosses to its own host alone or inside other values.
 - Lowering writes each derived codec's body from its form, which carries the type it takes apart
   and builds (`lowering/boundary/encoder.ts`, `decoder.ts`, one per direction in `codecs.ts`):
-  structs, enums and tuples part by part, each part through its own type's codec, and a host type
-  through `_encodeHandle` and `_decodeHandle`. A recursive type's codecs call themselves. Code with no syntax behind it calls a codec as the checker finds it where the code
+  structs, enums and tuples part by part, each part through its own type's codec, a host type
+  through `_encodeHandle` and `_decodeHandle`, and a literal type or union of literals through its
+  base's codec, read back only as one of its literals (`_notAmong` names them otherwise). A recursive type's codecs call themselves. Code with no syntax behind it calls a codec as the checker finds it where the code
   stands (`lowering/boundary/codec-calls.ts`); a generic extern's wrapper finds its declared types'
   codecs and closes them within its instance, so a type parameter's codec is the witness its caller
   gave.

@@ -1,8 +1,9 @@
 /**
  * Which types cross as JSON (§3.10, §9): those with codecs, declared or derived. A struct, an enum,
- * a tuple and a recursive type derive theirs from what they hold; a type declaring one codec has
- * the other neither derived nor otherwise; a function, a handle, a nested optional and a map whose
- * keys aren't Stringable have none.
+ * a tuple and a recursive type derive theirs from what they hold, and a literal type or a union of
+ * literals of one base its literals; a type declaring one codec has the other neither derived nor
+ * otherwise; a function, a handle, a map whose keys aren't Stringable and a union that is neither
+ * optional nor of literals have none.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -53,10 +54,20 @@ describe('a type crossing as JSON', () => {
     ['Label', true, false],
     ['Tagged', true, false],
     ['Array<Label>', true, false],
-    ['Int??', false, false],
+    ['Int??', true, true],
     ['fn() -> Int', false, false],
     ['Map<Point, Int>', false, false],
     ['Slot<Int>', false, false],
+    ['"draft"', true, true],
+    ['true', true, true],
+    ['"draft" | "sent"', true, true],
+    ['1 | -1 | 42', true, true],
+    ['("draft" | "sent")?', true, true],
+    ['Point | None', true, true],
+    ['"a" | 1', false, false],
+    ['Int | String', false, false],
+    ['Point | Shape', false, false],
+    ['Int | String | None', false, false],
   ])('%s writes: %s, reads: %s', (type, writes, reads) => {
     expect(crossing(type)).toEqual({ writes, reads });
   });
@@ -96,5 +107,19 @@ describe('a codec declared with another result', () => {
     ).diagnostics;
     expect([unmet?.code, rest]).toEqual([checkerDiagnostics.notConforming.code, []]);
     expect(unmet?.message).toContain("'toJson' giving Json, where the one declared gives String");
+  });
+});
+
+describe('a union crossing as JSON', () => {
+  it('says which unions cross', () => {
+    const main = [
+      "import Encodable from 'json'",
+      'fn writes<T is Encodable>() -> Int: 1',
+      'fn main() -> Int: writes<Int | String>()',
+    ].join('\n');
+    const [unmet] = diagnosedAt(stdProgramOf({ 'main.ista': main }), 'main.ista').diagnostics;
+    expect(unmet?.message).toBe(
+      "Int | String doesn't satisfy Encodable: it needs a JSON form, which a union has only as an optional or as literals of one type.",
+    );
   });
 });

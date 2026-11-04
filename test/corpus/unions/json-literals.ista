@@ -1,0 +1,30 @@
+# outcome: "sent|none|2|$.flag: expected true, found false|$.level: expected 1 or 2, found 3|$.mode: expected \"draft\", \"sent\" or \"failed\", found \"archived\"|{\"flag\":true,\"level\":1,\"mode\":\"failed\",\"tag\":\"draft\"}"
+# A literal type and a union of literals cross as JSON as their literals (§6, §9): written as their
+# base writes it, read back only as one of the literals, a field of `Status?` missing read as none.
+
+import * as json from 'json'
+
+type Status = "draft" | "sent" | "failed"
+
+struct Config:
+  mode: Status
+  tag: Status?
+  flag: true
+  level: 1 | 2
+
+fn described(text: String) -> String:
+  match json.parse<Config>(text):
+    case Ok{value}:
+      const tag: String = match value.tag:
+        case None: "none"
+        case found: found
+      `${value.mode}|${tag}|${value.level}`
+    case Err{error}: error.message
+
+async fn main() -> Future<String>:
+  const read = described("{\"mode\":\"sent\",\"flag\":true,\"level\":2}")
+  const wrongFlag = described("{\"mode\":\"sent\",\"flag\":false,\"level\":2}")
+  const wrongLevel = described("{\"mode\":\"sent\",\"flag\":true,\"level\":3}")
+  const wrongMode = described("{\"mode\":\"archived\",\"flag\":true,\"level\":1}")
+  const written = json.stringify(Config{mode: "failed", tag: "draft", flag: true, level: 1})
+  `${read}|${wrongFlag}|${wrongLevel}|${wrongMode}|${written}`

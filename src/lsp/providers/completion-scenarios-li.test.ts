@@ -141,8 +141,8 @@ const scenarios: readonly Scenario[] = [
   {
     id: 'LI-14',
     place: 'literalField',
-    title: 'Optional and Result',
-    src: ['  const e: Optional<Int> = Some{‸}', '  const e: Result<Int> = Err{‸}'],
+    title: 'Result, alone and in an optional',
+    src: ['  const e: Result<Int>? = Ok{‸}', '  const e: Result<Int> = Err{‸}'],
     trigger: '{',
     expect: { anyOf: ['value', 'error'] },
   },

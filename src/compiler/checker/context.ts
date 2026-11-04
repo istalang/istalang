@@ -73,7 +73,7 @@ import type { FieldRead } from './checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { JsonCodecs } from './json-form.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
-import type { Fit, Fitting, OptionalEntity } from './types/fit.ts';
+import type { Fit, Fitting } from './types/fit.ts';
 import type { StaticOwner } from './types/named-types.ts';
 import type { Substitution } from './types/substitution.ts';
 import type { Constraint, FieldMember, FunctionType, Type } from './types/type.ts';
@@ -156,14 +156,17 @@ export interface CheckerContext extends Checker {
   readonly declaredVariantsOf: (declaration: EnumDeclaration) => readonly VariantMember[];
   /** How types cross as JSON, with what meeting `Encodable` and `Decodable` asks (§9). */
   readonly json: JsonCodecs;
-  /** The prelude's `Optional`, which the implicit wrap fills (§2); undefined without a prelude. */
-  readonly optionalEntity: OptionalEntity;
   /** What fitting a value where a type is expected asks of the program (§2). */
   readonly fitting: Fitting;
   /** How `found` fits `expected`, by implicit conversions; undefined when nothing makes it (§2, §3.14). */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
   /** The constraints after `is` on a type parameter, resolved where it is declared (§3.5). */
   readonly constraintsOf: (parameter: TypeParameter) => readonly Constraint[];
+  /**
+   * The union after `in` on a member parameter, which it stands for one member of, resolved where
+   * it is declared (§3.5); undefined for any other parameter.
+   */
+  readonly memberUnionOf: (parameter: TypeParameter) => Type | undefined;
   /** The static functions declared on `owner` in `module` (§3.7). */
   readonly staticFunctionsIn: (
     module: ModuleId,

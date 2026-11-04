@@ -1,7 +1,9 @@
 /**
  * How a value becomes an `any` type's (§3.10): a type converts into `any A & B` when it meets each
  * constraint, its own type standing for the constraint's `Self`, and an `any` type converts into
- * another whose constraints are among its own.
+ * another whose constraints are among its own. A union converts when each of its members does
+ * (§6), since a value inside an `any` type is a value of its own type, never of a union: one
+ * converts as whichever member it is.
  *
  * Meeting is decided once per type and constraint, wherever it is asked (coherence, §3.10), so a
  * conversion records no witnesses: lowering finds them again for each type a value converts from.
@@ -19,6 +21,9 @@ import { meets, witnessesFor } from './conformance.ts';
 
 /** Whether a value of `found` converts into `target` (§3.10). */
 export function meetsAny(checker: CheckerContext, found: Type, target: AnyType): boolean {
+  if (found.kind === 'union') {
+    return found.members.every((member) => meetsAny(checker, member, target));
+  }
   if (found.kind === 'any') {
     return target.constraints.every((constraint) =>
       found.constraints.some((own) => sameConstraint(own, constraint)),
@@ -31,10 +36,13 @@ export function meetsAny(checker: CheckerContext, found: Type, target: AnyType):
 }
 
 /**
- * Reports at `site` the first constraint of `target` that `found`, not an `any` type, doesn't meet;
- * whether there was one.
+ * Reports at `site` the first constraint of `target` that `found`, or a member of it, not an `any`
+ * type, doesn't meet; whether there was one.
  */
 export function reportUnmet(site: UseSite, found: Type, target: AnyType): boolean {
+  if (found.kind === 'union') {
+    return found.members.some((member) => reportUnmet(site, member, target));
+  }
   if (found.kind === 'any') {
     return false;
   }

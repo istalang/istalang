@@ -18,7 +18,6 @@ import { type Block, type Return, tailExpressionOf, tailNodeOf } from '../../syn
 import type { BodyContext, Returns } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { agreedType, fitProduced, type Produced } from '../rules/agreement.ts';
-import { sameType } from '../types/identity.ts';
 import { type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
@@ -102,7 +101,7 @@ export function blockTail(body: Block, type: Type): Produced {
   return { type, span: tailNodeOf(body).span, site: tailExpressionOf(body) ?? body };
 }
 
-/** Reports a `?` whose `Err` doesn't fit a function producing `result`. */
+/** Reports a `?` whose `Err`'s error doesn't convert into the error of the `result` produced (§3.12). */
 function checkPropagation(context: BodyContext, result: Type, { error, span }: Propagation): void {
   if (result.kind === 'error') {
     return;
@@ -110,7 +109,7 @@ function checkPropagation(context: BodyContext, result: Type, { error, span }: P
   const [, returned] = wellKnownArguments(context.checker, wellKnown.result, result) ?? [];
   if (returned === undefined) {
     context.report(checkerDiagnostics.propagateOutsideResult(span, typeText(result)));
-  } else if (!sameType(returned, error) && returned.kind !== 'error' && error.kind !== 'error') {
+  } else if (context.checker.fitOf(error, returned) === undefined) {
     context.report(
       checkerDiagnostics.propagateErrorType(span, typeText(returned), typeText(error)),
     );

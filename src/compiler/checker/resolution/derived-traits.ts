@@ -8,8 +8,7 @@
  * - `Sendable` requires no function, so its rule is all there is to meeting it.
  * - `Encodable` and `Decodable` each imply Sendable, since JSON written and read back is a copy
  *   sent, except where values cross to the host, which a disposable host type does unsendable
- *   (use-site.ts). A nested optional has neither, declared or derived, since JSON has one null for
- *   both its nones. A type declaring no codec of its own is met by the one the compiler derives
+ *   (use-site.ts). A type declaring no codec of its own is met by the one the compiler derives
  *   from its JSON form.
  */
 
@@ -44,8 +43,7 @@ function unsendable(site: UseSite, type: Type): string | undefined {
 /** The derivation of the trait a value crosses as JSON by in `direction`. */
 function codecDerivation(direction: JsonDirection): Derivation {
   return {
-    lacking: (site, type) =>
-      (site.toHost ? undefined : unsendable(site, type)) ?? site.checker.json.refusalOf(type),
+    lacking: (site, type) => (site.toHost ? undefined : unsendable(site, type)),
     derive: (site, type) => site.checker.json.derivedOf(site, type, direction),
   };
 }

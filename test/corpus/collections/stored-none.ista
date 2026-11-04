@@ -1,0 +1,47 @@
+# outcome: "1,none,3|a=1;b=none;c=3;|1,none,3|1,none,3|1,none,3|3"
+# Items that are themselves `none` (§3.10): a cursor gives a `Step`, never `T?`, so a stored `none`
+# is an item like any other, not the end. An array's in a `for`, a map's values, a comprehension's
+# and a spread's items, and those of a program's own cursor, which gives `Done` once there are no
+# more, also through the `Iterable` constraint of generic code.
+
+struct Holes { items: Array<Int?> }
+
+fn iterate(self: Holes) -> fn() -> Step<Int?>:
+  let position = 0
+  fn next() -> Step<Int?>:
+    if position == self.items.length(): return Done
+    position += 1
+    Next{(self.items[position - 1])}
+  next
+
+fn shown(x: Int?) -> String:
+  match x:
+    case None: "none"
+    case Int as n: String(n)
+
+fn counted<C is Iterable<Int?>>(collection: C) -> Int:
+  let count = 0
+  for _ in collection:
+    count += 1
+  count
+
+async fn main() -> Future<String>:
+  const xs: Array<Int?> = [1, none, 3]
+  let looped: Array<String> = []
+  for x in xs:
+    looped.push(shown(x))
+  const m: Map<String, Int?> = ["a": 1, "b": none, "c": 3]
+  let text = ""
+  for key, value in m:
+    text = text + key + "=" + shown(value) + ";"
+  const holes = Holes{items: xs}
+  const spread: Array<Int?> = [...holes]
+  const parts = [
+    looped.join(","),
+    text,
+    [for x in xs: shown(x)].join(","),
+    [for x in spread: shown(x)].join(","),
+    [for x in holes: shown(x)].join(","),
+    String(counted(holes)),
+  ]
+  parts.join("|")

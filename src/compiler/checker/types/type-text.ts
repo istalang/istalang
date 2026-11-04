@@ -1,20 +1,22 @@
 /**
  * How a type reads in messages (and M7's hovers): the way a programmer would write it,
- * `Pair<Int, String>`, `Int?`, `fn(Int) -> Bool`.
+ * `Pair<Int, String>`, `Int?`, `fn(Int) -> Bool`, `"draft" | "sent"`.
  *
  * Nominal types print their declared name without a module: inside a message the source location
  * already says where. A type written through an alias reads as the alias, with its arguments
  * (§3.17), as the programmer wrote it; any other shape reads as its fields, never as a key.
  */
 
-import { selfType, wellKnown } from '../../../language/well-known.ts';
-import type {
-  AnonymousStructType,
-  Constraint,
-  FunctionType,
-  NominalType,
-  ParameterSlot,
-  Type,
+import { selfType } from '../../../language/well-known.ts';
+import {
+  type AnonymousStructType,
+  type Constraint,
+  type FunctionType,
+  isPrimitive,
+  type NominalType,
+  type ParameterSlot,
+  type Type,
+  type UnionType,
 } from './type.ts';
 
 /**
@@ -42,6 +44,10 @@ export function typeText(type: Type): string {
       return type.declaration.kind === 'TraitDeclaration' ? selfType : type.declaration.name.text;
     case 'any':
       return `any ${type.constraints.map(constraintText).join(' & ')}`;
+    case 'literal':
+      return typeof type.value === 'string' ? JSON.stringify(type.value) : String(type.value);
+    case 'union':
+      return unionText(type);
     case 'error':
       return '?';
     default: {
@@ -90,23 +96,22 @@ function constraintText({ trait, arguments: typeArguments }: Constraint): string
   return parameterizedText(trait.name.text, typeArguments.slice(0, written));
 }
 
-/**
- * `Optional<T>` reads as `T?` (§2), a function type in parentheses, since its result would take
- * the `?`; anything else as `Name<Arguments>`.
- */
 function nominalTypeText(type: NominalType): string {
-  const { declaration } = type.entity;
-  const [only] = type.arguments;
-  if (
-    declaration.kind === 'EnumDeclaration' &&
-    declaration.name.text === wellKnown.optional.name &&
-    type.arguments.length === 1 &&
-    only !== undefined
-  ) {
-    const needsParentheses = only.kind === 'function' && only.alias === undefined;
-    return needsParentheses ? `(${typeText(only)})?` : `${typeText(only)}?`;
-  }
-  return parameterizedText(declaration.name.text, type.arguments);
+  return parameterizedText(type.entity.declaration.name.text, type.arguments);
+}
+
+/**
+ * A union as written, its members in the order first written (§2): `T?` for `T | None`, and a
+ * function type member in parentheses, since its result would take what follows it.
+ */
+function unionText(type: UnionType): string {
+  const member = (each: Type) =>
+    each.kind === 'function' && each.alias === undefined ? `(${typeText(each)})` : typeText(each);
+  const others = type.members.filter((each) => !isPrimitive(each, 'None'));
+  const [only] = others;
+  return others.length === 1 && only !== undefined
+    ? `${member(only)}?`
+    : type.members.map(member).join(' | ');
 }
 
 /** A shape as written, its fields in the name order it keeps them in (§3.1). */

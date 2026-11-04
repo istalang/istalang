@@ -2,7 +2,8 @@
  * Writing `json._toJson<T>` (codecs.ts): its one parameter is the value, and it returns the `Json`.
  * A struct is an object of its fields, `@JsonSkip` ones left out, whose keys are sorted when it is
  * written; an enum the same, with its variant's tag; a tuple an array; a host type the JSON its host
- * gave, through the json module's helper. Each part is written by its own type's codec.
+ * gave, through the json module's helper; a literal its base's value, a union of literals' the tag's
+ * literal (§2). Each part is written by its own type's codec, and a literal by its base's.
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -12,6 +13,7 @@ import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/j
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import { closeCall } from '../instances.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
+import { asBase } from '../unions.ts';
 import { codecCall } from './codec-calls.ts';
 
 /** The body of `_toJson<T>`, written into `code`. */
@@ -49,6 +51,11 @@ export class Encoder {
       case 'enum':
         this.#enum(form, value);
         return;
+      case 'literals': {
+        const base = asBase(code, { register: value, type: form.type }, code.span);
+        code.return(code.call(this.#codec(form.base), [base]));
+        return;
+      }
       default: {
         const unhandled: never = form;
         unreachable(`No encoder for ${JSON.stringify(unhandled)}.`);

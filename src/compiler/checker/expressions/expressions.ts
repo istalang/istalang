@@ -31,6 +31,7 @@ import {
   type Type,
   unitType,
 } from '../types/type.ts';
+import { literalOrBase } from '../types/unions.ts';
 import { wellKnownOf } from '../types/well-known.ts';
 import { checkAwait } from './await.ts';
 import { checkCall } from './calls.ts';
@@ -79,10 +80,10 @@ const misplacedReference = (context: BodyContext, node: Reference): Type => {
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undefined], Type> = {
   Identifier: checkName,
-  IntegerLiteral: () => intType,
+  IntegerLiteral: (_context, node, expected) => literalOrBase(node.value, expected),
   FloatLiteral: () => floatType,
-  StringLiteral: () => stringType,
-  BooleanLiteral: () => boolType,
+  StringLiteral: (_context, node, expected) => literalOrBase(node.value, expected),
+  BooleanLiteral: (_context, node, expected) => literalOrBase(node.value, expected),
   Parenthesized: (context, node, expected) => context.expression(node.expression, expected),
   Binary: checkBinary,
   Unary: checkUnary,

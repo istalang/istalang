@@ -21,7 +21,7 @@ fn classify(r: Result<Int>) -> String:
 fn countdown(start: Int) -> Int:
   let current: Int? = start
   let steps = 0
-  while current is Some{value} and value > 0:
+  while current is Int as value and value > 0:
     steps += 1
     current = if value > 1: value - 1 else: none
   steps

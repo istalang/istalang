@@ -269,6 +269,18 @@ it("completion offers an operand after a comprehension's `in` inside a template'
   expect(offers).not.toContain('in');
 });
 
+it.each([
+  ["another template's value", ['fn f(b: Bool):', '  const s = `${b}:${not ‸}`', '  1']],
+  ['a line', ['fn f(b: Bool):', '  const t = b', '  const s = `${not ‸}`', '  1']],
+])(
+  "completion offers an operand after `not` opening a template's value, past %s",
+  (_title, lines) => {
+    const offers = names(...lines);
+    expect(offers).toEqual(expect.arrayContaining(['b', 'not']));
+    expect(offers).not.toContain('in');
+  },
+);
+
 describe('completion offers `elif` and `else` after an `if` chain still open', () => {
   it.each([
     ['a declared value', ['fn f(n: Bool) -> Int:', '  const x = if n:', '    1', '  ‸', '  0']],

@@ -3,11 +3,12 @@
  * targets (walk.ts); this module checks what only these patterns have, and keeps what lowering
  * reads of them.
  *
- * - A literal is compared with `==`, so it has the part's own type: no `T` stands in for a `T?`,
- *   since a pattern never wraps (`case Some{value == 1}` matches an optional holding 1). `none`
- *   is `Optional`'s `None`.
+ * - A literal is compared with `==`, so it has the part's own type. On a union's value it first
+ *   selects its member (members.ts), so `case 1` against an `Int?` compares the `Int` held, and
+ *   `case none` selects `None`.
  * - A field compared with `==` or `!=` follows `==`'s rule (types/equality.ts); any other
- *   comparison calls `compare`.
+ *   comparison calls `compare`. Compared with `==` with a value fitting the field's type, it
+ *   counts as a pattern for exhaustiveness (`opt == none` takes an optional's `None`).
  * - A name that refers is a variant without fields, tested like one; a type, a struct without
  *   fields among them, which matches every value of the part's own type with no test, as `_`
  *   does (named-types.ts); or a top-level constant (named qualified, since a bare camelCase name
@@ -21,7 +22,7 @@
  *   bound, and acts as a guard for exhaustiveness.
  */
 
-import { arrayPatternFunctions, optionalVariants } from '../../../language/well-known.ts';
+import { arrayPatternFunctions } from '../../../language/well-known.ts';
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
@@ -49,15 +50,18 @@ import {
   intType,
   isPrimitive,
   type NominalDeclaration,
+  noneType,
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { optionalInner } from '../types/unions.ts';
 import { arrayElement } from '../types/well-known.ts';
 import { downcastOf } from './downcasts.ts';
 import { anyShape } from './exhaustiveness.ts';
 import { bodyScope, otherTypeNamed, type ValuePart } from './parts.ts';
 import type { ArrayPart, Leaf, PatternTests, VariantPart } from './pattern-tests.ts';
-import { literalShape, nullaryShape } from './shapes.ts';
+import { subjectPart } from './remaining.ts';
+import { literalShape, memberShape, nullaryShape } from './shapes.ts';
 import { type WalkedPattern, walkPattern } from './walk.ts';
 
 /** The patterns of one body as checked, for lowering. */
@@ -74,11 +78,17 @@ export class CheckedPatterns implements PatternRecord {
 }
 
 /**
- * Checks `pattern` against a value of `subject`, declaring the names it binds; its shape is
- * undefined when it acts as a guard for exhaustiveness.
+ * Checks `pattern` against a value of `subject`, declaring the names it binds, which a `match`
+ * case binds of what earlier cases left of it (`remaining`, remaining.ts); its shape is undefined
+ * when it acts as a guard for exhaustiveness.
  */
-export function checkPattern(context: BodyContext, pattern: Pattern, subject: Type): WalkedPattern {
-  const whole = { type: subject, path: [] };
+export function checkPattern(
+  context: BodyContext,
+  pattern: Pattern,
+  subject: Type,
+  remaining: Type = subject,
+): WalkedPattern {
+  const whole = subjectPart(subject, remaining);
   const walked = walkPattern(bodyScope(context), testsIn(context), pattern, whole);
   for (const { name, type } of namesBound(walked)) {
     context.variables.declare(name, type);
@@ -194,14 +204,13 @@ function literal(context: BodyContext, node: LiteralPattern, part: ValuePart): L
   const { value } = node;
   if (value.kind === 'NoneLiteral') {
     context.expect(value, part.type);
-    const none = variantOf(context, part, optionalVariants.none);
-    return none === undefined ? failed : { tests: [none.test], shape: valueShape(context, value) };
+    return isPrimitive(part.type, 'None') ? { tests: [], shape: anyShape } : failed;
   }
   const type = context.expression(value, part.type);
   if (!comparable(type, part.type)) {
     context.report(checkerDiagnostics.typeMismatch(node.span, typeText(part.type), typeText(type)));
   }
-  return { tests: [equalTest(part, value, false)], shape: valueShape(context, value) };
+  return { tests: [equalTest(part, value, false)], shape: valueShape(context, value, part) };
 }
 
 function comparison(context: BodyContext, item: CompareFieldPattern, part: ValuePart): Leaf {
@@ -231,21 +240,21 @@ function comparison(context: BodyContext, item: CompareFieldPattern, part: Value
   const { negated } = binaryOperators[operator].meaning;
   const type = context.expression(value, part.type);
   checkEqualSides(context, { type: part.type, node: undefined }, { type, node: value }, item);
-  const counts = !negated && comparable(type, part.type);
+  const counts = !negated && context.checker.fitOf(type, part.type) !== undefined;
   return {
     tests: [equalTest(part, value, negated)],
-    shape: counts ? valueShape(context, value) : undefined,
+    shape: counts ? valueShape(context, value, part) : undefined,
   };
 }
 
 /**
- * The shape of a value a part is compared with, by `==` or as a literal pattern: `none` is
- * `None`, a variant without fields is that variant, and a literal is itself (§3.11). Any other
- * value acts as a guard.
+ * The shape of a value a part is compared with, by `==` or as a literal pattern: a variant
+ * without fields is that variant, a literal is itself, and `none` an optional's `None` member
+ * (§3.11). Any other value acts as a guard.
  */
-function valueShape(context: BodyContext, value: Expression) {
+function valueShape(context: BodyContext, value: Expression, part: ValuePart) {
   if (value.kind === 'NoneLiteral') {
-    return nullaryShape(optionalVariants.none);
+    return optionalInner(part.type) === undefined ? undefined : memberShape(noneType, anyShape);
   }
   const named = nameNodeOf(value);
   const entity = named === undefined ? undefined : context.entityOf(named);

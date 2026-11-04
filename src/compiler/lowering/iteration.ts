@@ -2,18 +2,19 @@
  * The loop every iterating construct runs (§3.10, §4; docs/arch/definition.md, "How each
  * construct lowers"): a `for`, a comprehension, and a spread its literal doesn't copy whole. Each
  * calls `iterate` on what it runs over, which gives a cursor, then calls the cursor until it gives
- * `none`, running the body with the item each `Some` holds. `iterate` is the call the checker made
+ * `Done`, running the body with the item each `Next` holds. `iterate` is the call the checker made
  * for the construct (checker rules/iteration.ts), so there is one loop for all.
  */
 
 import type { Register } from '../../definition/operands.ts';
+import { stepVariants, wellKnown } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Iteration } from '../checker/check.ts';
 import type { Comprehension, Expression } from '../syntax/expressions/index.ts';
 import type { For } from '../syntax/statements.ts';
 import type { FunctionContext } from './context.ts';
 import { emitCall, emitImplicitCall } from './emit-call.ts';
-import { presentOrJump } from './optionals.ts';
+import { payloadOr } from './expressions/variants.ts';
 import type { LoopTargets } from './statements/loops.ts';
 import { endScope } from './statements/scopes.ts';
 import { bindTargets } from './statements/variables.ts';
@@ -40,7 +41,6 @@ export function emitLoop(
   const { code, checker } = context;
   const { span } = node;
   const next = code.newLabel();
-  const _element = code.newLabel();
   const exit = code.newLabel();
   code.place(next);
   const given = emitCall(context, {
@@ -52,8 +52,11 @@ export function emitLoop(
   if (form.kind !== 'cursor') {
     unreachable('A loop runs over a spread its literal copies whole.');
   }
-  const read = { register: given, type: checker.optionalOf(form.item), to: form.item };
-  const item = presentOrJump(context, read, exit, span);
+  const step =
+    checker.wellKnownType(wellKnown.step, [form.item]) ??
+    unreachable('A cursor gives a Step, which only a program with a prelude has.');
+  const tested = { register: given, type: step, name: stepVariants.next };
+  const item = payloadOr(context, tested, () => code.jump(exit, span), span);
   const { depth } = context.variables;
   body(item, { exit, next, depth });
   code.jump(next, span);

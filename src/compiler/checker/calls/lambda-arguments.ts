@@ -57,7 +57,7 @@ function inferLambdaAt(
   expected: Type,
   inference: Inference,
 ): void {
-  const partial = expectedFunction(context.checker, expected);
+  const partial = expectedFunction(expected);
   if (
     partial === undefined ||
     partial.parameters.some((parameter) => isOpen(parameter.type, inference)) ||
@@ -115,7 +115,7 @@ function guidedParts(
   const { checker } = context;
   switch (node.kind) {
     case 'Tuple': {
-      const elements = expectedTuple(checker, expected, node.elements.length) ?? [];
+      const elements = expectedTuple(expected, node.elements.length) ?? [];
       return node.elements.flatMap((element, index) => guided(element, elements[index]));
     }
     case 'ArrayLiteral': {

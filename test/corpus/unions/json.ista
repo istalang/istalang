@@ -1,0 +1,35 @@
+# outcome: "\"sent\"|draft|err|-1|42|0|null|7|{\"flag\":true,\"mode\":\"draft\",\"tag\":null}"
+# JSON codecs for T | None, collapsed T??, and literal unions (§6, §9): T | None crosses as null or
+# T, T?? collapses to T? and crosses cleanly, and literal unions derive Encodable and Decodable.
+
+import * as json from 'json'
+
+type Status = "draft" | "sent" | "failed"
+type Sign = -1 | 0 | 1 | 42
+
+struct Config:
+  mode: Status
+  tag: Status?
+  flag: true
+
+async fn main() -> Future<String>:
+  const s1: Status = "sent"
+  const j1 = json.stringify(s1)
+  const p1 = match json.parse<Status>("\"draft\""):
+    case Ok{value}: value
+    case Err{error}: "err"
+  const pBad = match json.parse<Status>("\"archived\""):
+    case Ok{value}: value
+    case Err{error}: "err"
+  const n1: Sign = -1
+  const j2 = json.stringify(n1)
+  const p2 = match json.parse<Sign>("42"):
+    case Ok{value}: value
+    case Err{error}: 0
+  const p2Bad = match json.parse<Sign>("99"):
+    case Ok{value}: value
+    case Err{error}: 0
+  const optLit: Status? = none
+  const nestedOpt: Int?? = 7
+  const cfg = Config{mode: "draft", tag: none, flag: true}
+  `${j1}|${p1}|${pBad}|${j2}|${p2}|${p2Bad}|${json.stringify(optLit)}|${json.stringify(nestedOpt)}|${json.stringify(cfg)}`

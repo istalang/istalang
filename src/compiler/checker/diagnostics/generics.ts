@@ -130,4 +130,14 @@ export const genericTemplates = {
     message: (form: string) =>
       `A function value takes its arguments by position, so it takes no ${form}.`,
   },
+  severalTraits: {
+    code: 5127,
+    message: (name: string, union: string, traits: readonly string[]) =>
+      `'${name}' on ${union} could be what any of ${traits.join(', ')} requires, each a trait it meets; convert the value into the 'any' type of the one meant, then call it (§3.10).`,
+  },
+  severalMembersArgument: {
+    code: 5130,
+    message: (parameter: string, union: string, found: string) =>
+      `'${parameter}' stands for one member of ${union}, and a value of ${found} may be several; narrow it first, with a literal or a pattern (§3.5).`,
+  },
 } as const;

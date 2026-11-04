@@ -87,9 +87,9 @@ const scenarios: readonly Scenario[] = [
     src: [
       '  match d:\n    case Approved{by}: ‸',
       '  match d:\n    case Rejected{reason as why}: ‸',
-      '  match o:\n    case Some{value}: ‸',
+      '  match o:\n    case Int as count: ‸',
     ],
-    expect: { anyOf: ['by', 'why', 'value'] },
+    expect: { anyOf: ['by', 'why', 'count'] },
   },
   {
     id: 'SC-09b',
@@ -184,7 +184,7 @@ const scenarios: readonly Scenario[] = [
     src: ['  ‸'],
     expect: {
       has: ['panic', 'Array', 'Optional', 'Result', 'time'],
-      lacks: ['Some', 'None', 'Ok', 'Err'],
+      lacks: ['Ok', 'Err'],
     },
   },
   {

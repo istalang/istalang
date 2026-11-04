@@ -256,12 +256,15 @@ export interface ClosedFunctionCall {
 }
 
 /**
- * A call dispatched on an `any` value's own type: the `member`-th function of the trait of the
- * `constraint`-th constraint of `on`, with its own type arguments and the witnesses of their
- * constraints, every type concrete.
+ * A call dispatched on a value's own type: the `member`-th function of the trait of the
+ * `constraint`-th constraint of the `any` type `through`, with its own type arguments and the
+ * witnesses of their constraints, every type concrete. The value is of `on`: `through` itself for
+ * an `any` value; for a call through a union's trait (§6), the union, or the one type an
+ * instantiation collapsed it into, each member called as a value of `through` would be.
  */
 export interface Dispatch {
-  readonly on: AnyType;
+  readonly on: Type;
+  readonly through: AnyType;
   readonly constraint: number;
   readonly member: number;
   readonly required: FunctionDeclaration;
@@ -281,14 +284,24 @@ export function closeCall(resolved: ResolvedCall, within: Closing | undefined): 
   if (closed.kind === 'function') {
     return { kind: 'function', instance: instanceOf(closed), binding: closed.binding };
   }
-  const { on, constraint, member } = closed.requirement;
+  const { function: required, typeArguments, witnesses, binding } = closed;
+  const called = { required, typeArguments, witnesses };
+  const origin = closed.requirement;
+  if (origin.kind === 'members') {
+    const { on, through, member } = origin;
+    return {
+      kind: 'dispatch',
+      dispatch: { on, through, constraint: 0, member, ...called },
+      binding,
+    };
+  }
+  const { on, constraint, member } = origin;
   if (on.kind !== 'any') {
     unreachable(`No witness for '${on.name.text}'; checking should have found one.`);
   }
-  const { function: required, typeArguments, witnesses, binding } = closed;
   return {
     kind: 'dispatch',
-    dispatch: { on, constraint, member, required, typeArguments, witnesses },
+    dispatch: { on, through: on, constraint, member, ...called },
     binding,
   };
 }
@@ -336,9 +349,15 @@ function closedInside(resolved: ResolvedCall, within: Closing | undefined): Reso
   }
   const typeArguments = resolved.typeArguments.map((type) => substitute(type, substitution));
   const witnesses = closeWitnesses(resolved.witnesses, within);
-  const { on, constraint, member } = resolved.requirement;
+  const origin = resolved.requirement;
+  if (origin.kind === 'members') {
+    const through = substituteAny(origin.through, substitution);
+    const closed = { ...origin, on: substitute(origin.on, substitution), through };
+    return { ...resolved, requirement: closed, typeArguments, witnesses };
+  }
+  const { on, constraint, member } = origin;
   if (on.kind === 'any') {
-    const closed = { on: substituteAny(on, substitution), constraint, member };
+    const closed = { ...origin, on: substituteAny(on, substitution) };
     return { ...resolved, requirement: closed, typeArguments, witnesses };
   }
   const witness = within?.witnesses.get(on)?.[constraint]?.[member];

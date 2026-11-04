@@ -13,28 +13,30 @@
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
 import type { EnumDeclaration } from '../../syntax/declarations.ts';
-import type { FieldsLiteral, MemberAccess, NoneLiteral } from '../../syntax/expressions/index.ts';
+import type { FieldsLiteral, MemberAccess } from '../../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { chooseVariant } from '../resolution/named.ts';
 import { enumsExpected, expectedNominal, sameNominal } from '../types/expected.ts';
-import { optionalInner } from '../types/fit.ts';
 import {
   errorType,
-  expectsError,
   isNominalEntity,
   type NominalEntity,
   type NominalType,
   nominalType,
+  noneType,
   type Type,
 } from '../types/type.ts';
 import { checkLiteralFields, knownArguments } from './literal-fields.ts';
 
-/** The types `none` can take, as an argument a call's chosen function decides: any optional. */
+/**
+ * The types `none` can take, as an argument a call's chosen function decides: any it fits, a
+ * union holding `None`, so a literal holding it, such as `(none, 1)`, is built from the parameter.
+ */
 export function noneAccepted(context: BodyContext): Accepts {
-  return (expected) => optionalInner(expected, context.checker.optionalEntity) !== undefined;
+  return (expected) => context.checker.fitOf(noneType, expected) !== undefined;
 }
 
 /** For a bare variant's name, the enum types that have a variant of that name. */
@@ -47,23 +49,12 @@ export function variantsAccepted(
   }
   const { checker } = context;
   return (expected) =>
-    checker.inputs.variantNamed(naming.name, enumsExpected(checker, expected)) !== undefined;
+    checker.inputs.variantNamed(naming.name, enumsExpected(expected)) !== undefined;
 }
 
-export function checkNone(
-  context: BodyContext,
-  node: NoneLiteral,
-  expected: Type | undefined,
-): Type {
-  const { optionalEntity } = context.checker;
-  if (expected !== undefined && optionalInner(expected, optionalEntity) !== undefined) {
-    return expected;
-  }
-  if (expectsError(expected)) {
-    return errorType;
-  }
-  context.report(checkerDiagnostics.noneNeedsType(node.span));
-  return errorType;
+/** `none`, the one value of `None` (§2), whatever is expected: it goes into a union as its member. */
+export function checkNone(): Type {
+  return noneType;
 }
 
 /** The type of a variant named without fields, bare or qualified. */
@@ -102,7 +93,7 @@ export function checkVariantLiteral(
     return errorType;
   }
   const { checker } = context;
-  const target = sameNominal(checker, expected, chosen.enum);
+  const target = sameNominal(expected, chosen.enum);
   const fields = checker
     .declaredVariantsOf(chosen.enum)
     .find((candidate) => candidate.name === chosen.variant.name.text)?.fields;

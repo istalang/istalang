@@ -5,12 +5,12 @@
 trait Runs:
   run: fn(Int) -> Int
 
-struct Step { run: fn(Int) -> Int }
+struct Adder { run: fn(Int) -> Int }
 
 fn apply<T is Runs>(value: T, n: Int) -> Int:
   value.run(n)
 
 async fn main():
-  const one = Step{run: fn(n: Int): n + 1}
-  const two: any Runs = Step{run: fn(n: Int): n + 2}
+  const one = Adder{run: fn(n: Int): n + 1}
+  const two: any Runs = Adder{run: fn(n: Int): n + 2}
   (apply(one, 2), two.run(3), apply(two, 5))

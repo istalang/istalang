@@ -49,6 +49,8 @@ function holds(
       return fields.some((field) => holds(checker, field.type, target, seen));
     }
     case 'primitive':
+    case 'literal':
+    case 'union':
     case 'function':
     case 'parameter':
     case 'any':

@@ -37,7 +37,6 @@ describe('typeText', () => {
     'Array<Int?>',
     'fn(Int) -> Int?',
     '(fn(Int) -> Int)?',
-    '(fn() -> Int)??',
     'Array<(sendable fn() -> Int)?>',
     'fn() -> (fn() -> Int)?',
   ])('spells %s as written', (written) => {

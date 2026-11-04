@@ -9,6 +9,10 @@
  *   (checker/rules/disposal.ts).
  * - A shape is a struct entry without a name, one per shape: every place writing equal fields
  *   shares it (§3.1), its fields in the name order the shape keeps.
+ * - A union (§2) is an enum, one variant per member, in the order of their spelled names, which
+ *   no numbering of identities changes: a member's value is the variant's one field, and a member
+ *   with one value only, a literal type or `None`, is a variant without fields, its tag. A literal
+ *   type on its own is its base: its one value needs no tag.
  * - An `any` type (§3.10) is an enum the program closes: one variant per type a value of it is
  *   converted from, each holding that value as its one field. A variant is added the first time
  *   lowering converts from its type, so a variant's index never changes once code names it;
@@ -26,7 +30,8 @@ import type {
   TypeReference,
 } from '../../definition/types.ts';
 import type { Value } from '../../definition/values.ts';
-import { type WellKnownDeclaration, wellKnown } from '../../language/well-known.ts';
+import { compareOrdered } from '../../language/order.ts';
+import { unionLayout, type WellKnownDeclaration, wellKnown } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker, Disposal } from '../checker/check.ts';
 import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
@@ -38,10 +43,12 @@ import type {
   FieldMember,
   NominalType,
   Type,
+  UnionType,
 } from '../checker/types/type.ts';
+import { baseOf, hasOneValue } from '../checker/types/unions.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { closeFunctionCall, type FunctionInstance } from './instances.ts';
-import { qualifiedNameOf, spelledType } from './names.ts';
+import { qualifiedNameOf, spelledType, unionName } from './names.ts';
 
 /** What a type entry refers to outside the type table. */
 export interface TypeTableSeams {
@@ -53,8 +60,11 @@ export interface TypeTableSeams {
   readonly annotationValues: (annotations: readonly CheckedAnnotation[]) => Value[];
 }
 
-/** A type with an entry of its own: a declared struct, enum or extern type, or an anonymous struct. */
-type EntryType = NominalType | AnonymousStructType;
+/** A type with an entry of its own: a declared struct, enum or extern type, a shape or a union. */
+type EntryType = NominalType | AnonymousStructType | UnionType;
+
+/** The name of the one field of an `any` type's or a union's variant: the member's value. */
+const memberValueField = unionLayout.valueField;
 
 /**
  * An `any` type's entry while lowering runs: the types converted into it so far, each with its
@@ -70,14 +80,11 @@ interface AnyEntry {
   }[];
 }
 
-/** The name of the one field of an `any` type's variant: the value converted into it. */
-const anyValueField = 'value';
-
 /** The enum entry `entry` stands for: one variant per member, holding its value. */
 function anyEnum(entry: AnyEntry): TypeDefinition {
   const variants = entry.members.map(({ name, reference }) => ({
     name,
-    fields: [{ name: anyValueField, type: reference, annotations: [] }],
+    fields: [{ name: memberValueField, type: reference, annotations: [] }],
   }));
   return { kind: 'enum', name: entry.name, arguments: [], variants };
 }
@@ -139,6 +146,10 @@ export class TypeTable {
         return unreachable(`A ${type.kind} type can't reach lowering.`);
       case 'any':
         return { kind: 'named', type: this.anyIndex(type) };
+      case 'union':
+        return { kind: 'named', type: this.#typeEntry(type) };
+      case 'literal':
+        return this.reference(baseOf(type));
       default: {
         const unhandled: never = type;
         return unhandled;
@@ -149,6 +160,21 @@ export class TypeTable {
   /** The index of the type entry for `type`. */
   index(type: EntryType): TypeId {
     return this.#typeEntry(type);
+  }
+
+  /** The members of the union `type` in the order of its enum's variants. */
+  unionMembers(type: UnionType): readonly Type[] {
+    const spelled = type.members.map((member) => ({
+      member,
+      name: spelledType(this.#checker, member),
+    }));
+    return spelled.sort((a, b) => compareOrdered(a.name, b.name)).map(({ member }) => member);
+  }
+
+  /** The variant of the union `type`'s enum holding a value of `member`, one of its members. */
+  unionVariant(type: UnionType, member: Type): number {
+    const index = this.unionMembers(type).findIndex((each) => sameType(each, member));
+    return index >= 0 ? index : unreachable(`${spelledType(this.#checker, member)} is no member.`);
   }
 
   /** The index of the enum standing for the `any` type `type`, with the variants it has so far. */
@@ -209,6 +235,9 @@ export class TypeTable {
     if (type.kind === 'anonymous') {
       return { kind: 'struct', name: '', arguments: [], fields: this.#fields(type.fields) };
     }
+    if (type.kind === 'union') {
+      return this.#unionLayout(type);
+    }
     const { declaration } = type.entity;
     const name = qualifiedNameOf(this.#checker, declaration);
     const typeArguments = type.arguments.map((argument) => this.reference(argument));
@@ -258,6 +287,19 @@ export class TypeTable {
         return unhandled;
       }
     }
+  }
+
+  /** A union's enum: a variant per member, its value in the one field, a one-value member none. */
+  #unionLayout(type: UnionType): TypeDefinition {
+    const variants = this.unionMembers(type).map((member) => ({
+      name: spelledType(this.#checker, member),
+      fields: hasOneValue(member)
+        ? []
+        : [{ name: memberValueField, type: this.reference(member), annotations: [] }],
+    }));
+    const named = unionName(this.#checker, type);
+    const typeArguments = named.arguments.map((argument) => this.reference(argument));
+    return { kind: 'enum', name: named.name, arguments: typeArguments, variants };
   }
 
   /** Which of `roles` the type `entity` declares has: what the runtime makes of its values. */

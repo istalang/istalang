@@ -70,7 +70,7 @@ import { disposalOf } from './rules/disposal.ts';
 import { Expansion } from './rules/expansion.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
 import { resolveAnyType } from './traits/any-types.ts';
-import { type Fit, type Fitting, fitOf, type OptionalEntity } from './types/fit.ts';
+import { type Fit, type Fitting, fitOf } from './types/fit.ts';
 import type { StaticOwner } from './types/named-types.ts';
 import { resolveTypeNode } from './types/resolve-type.ts';
 import type { Substitution } from './types/substitution.ts';
@@ -117,7 +117,6 @@ export class ProgramChecker implements CheckerContext {
   readonly #resolvedTypes: EntryTable<CheckerNote, TypeNode, Type, ModuleId>;
   /** Each type's disposal, by its key: finding a declared `dispose` chooses among candidates. */
   readonly #disposals: EntryTable<CheckerNote, string, Disposal, NominalType>;
-  readonly #optional: EntryTable<CheckerNote, 'optional', OptionalEntity>;
   readonly #functions: FunctionChecks;
   readonly #constants: ConstantChecks;
   readonly #layouts: Layouts;
@@ -154,10 +153,6 @@ export class ProgramChecker implements CheckerContext {
       compute: (_key, type) => disposalOf(this, unaliased(type)),
       equal: (first, second) =>
         first === second || (first.kind !== 'function' && first.kind === second.kind),
-    });
-    this.#optional = entries.table({
-      name: 'optional entity',
-      compute: () => this.wellKnownType(wellKnown.optional)?.entity,
     });
     this.#functions = new FunctionChecks({
       checker: this,
@@ -253,18 +248,6 @@ export class ProgramChecker implements CheckerContext {
     return this.#parameters.defaultsOf(declaration);
   }
 
-  get optionalEntity(): OptionalEntity {
-    return this.#optional.get('optional');
-  }
-
-  optionalOf(type: Type): NominalType {
-    const optional = this.wellKnownType(wellKnown.optional, [type]);
-    if (optional === undefined) {
-      unreachable('A value was wrapped into an optional in a program without a prelude.');
-    }
-    return optional;
-  }
-
   cellOf(type: Type): NominalType {
     const cell = this.wellKnownType(wellKnown.cell, [type]);
     if (cell === undefined) {
@@ -281,14 +264,22 @@ export class ProgramChecker implements CheckerContext {
 
   get fitting(): Fitting {
     return {
-      optional: this.optionalEntity,
       meetsAny: (type, target) => meetsAny(this, type, target),
       shapeOf: (type) => this.#layouts.nominalShapeOf(type),
+      memberUnionOf: (parameter) =>
+        parameter.kind === 'TypeParameter' ? this.memberUnionOf(parameter) : undefined,
     };
   }
 
   constraintsOf(parameter: TypeParameter): readonly Constraint[] {
     return this.#typeParameters.constraintsOf(parameter);
+  }
+
+  memberUnionOf(parameter: TypeParameter): Type | undefined {
+    const module = this.#itemModuleOf(parameter);
+    return parameter.memberOf === undefined || module === undefined
+      ? undefined
+      : this.resolveType(module, parameter.memberOf);
   }
 
   constrainLater(

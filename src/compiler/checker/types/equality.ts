@@ -1,8 +1,11 @@
 /**
- * `==` and `!=` (§3.9): built in for every type, they compare values of one type. The implicit
- * wrap (§2) may make a side an optional where the other is one, as in `x == none` or
- * `maybe == 5`; the wrap is recorded on that side's expression. A side with no expression of its
- * own, such as the field a pattern compares (§3.11), is never wrapped.
+ * `==` and `!=` (§3.9): built in for every type, they take two values when either fits the
+ * other's type (§2), and compare them as values of that type. So a side may go into a union the
+ * other is, as in `x == none` or `maybe == 5`, or a literal's value be taken as its base, as in
+ * `status == name`; the conversion is recorded on that side's expression. A union's values compare
+ * their members' types, then the values, as an enum's variants do, so a union may be a map key. A
+ * side with no expression of its own, such as the field a pattern compares (§3.11), is never
+ * converted.
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';
@@ -14,9 +17,9 @@ import { isPrimitive, type Type } from './type.ts';
 import { typeText } from './type-text.ts';
 
 /**
- * Whether `==` and `!=` may compare values of these types (§3.9): one type on both sides. The
- * error type compares with anything, so one mistake is reported once, and so does `Never`, which a
- * side that doesn't produce a value has.
+ * Whether `==` and `!=` compare values of these types as they are (§3.9): one type on both sides.
+ * The error type compares with anything, so one mistake is reported once, and so does `Never`,
+ * which a side that doesn't produce a value has.
  */
 export function comparable(first: Type, second: Type): boolean {
   const unchecked = (type: Type) => type.kind === 'error' || isPrimitive(type, 'Never');

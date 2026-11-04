@@ -16,7 +16,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - make a handle to a heap object → `handleTo` (`src/definition/values.ts`)
 - read or replace a composite's children or depth, or get the maximum persisted value depth → `childValues`, `withChildValues`, `handlesIn`, `depthOf`, `maximumDepth`, `samePayload` (`src/definition/values.ts`)
 - read or build a struct or variant `Value` by declared name → `fieldValueOf`, `structOf`, `variantOf`, `variantShape` (`src/definition/declared-values.ts`)
-- build an `Optional`, `Result` (`Ok`, `Err`) or `Error` `Value` → `optionalOf`, `okOf`, `errOf`, `errorOf`, `okTypeOf` (`src/definition/declared-values.ts`)
+- build an optional (a union holding `None`, laid out as `unionLayout` says), a `Result` (`Ok`, `Err`) or `Error` `Value` → `optionalOf`, `okOf`, `errOf`, `errorOf`, `okTypeOf` (`src/definition/declared-values.ts`)
 - look up a field's `TypeReference`, a type argument, or a named `TypeId` → `fieldTypeOf`, `typeArgumentOf`, `namedType`, `namedTypeOf` (`src/definition/declared-values.ts`)
 - read primitive, tuple or extern native arguments → `given`, `int`, `float`, `text`, `elementOf`, `externPayloadOf`, `textPayloadOf` (`src/stdlib/native-values.ts`)
 - read an optional by its declared variant → `optionalValueOf` (`src/definition/declared-values.ts`); an optional `Int` native argument → `optionalInt`, or map an enum argument by variant name → `variantEntry` (`src/stdlib/native-values.ts`)

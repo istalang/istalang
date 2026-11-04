@@ -27,9 +27,9 @@ fn describe(decision: Decision) -> String:
 
 fn approver(verdict: Decision?) -> String:
   match verdict:
-    case Some{value is Approved{by as who}} if who == "cfo":
+    case Approved{by as who} if who == "cfo":
       who
-    case Some{value is Approved{by}}:
+    case Approved{by}:
       "someone"
     case _:
       "nobody"

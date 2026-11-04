@@ -14,7 +14,9 @@
  * - Tests come out in the order lowering runs them: a variant is tested before its fields are read.
  * - An or-pattern walks each alternative on its own, into one `or` test. Its alternatives bind the
  *   first's variables (binder), so a binding is named by its variable's declaring name, and the
- *   alternatives must agree on the names and their types.
+ *   alternatives must agree on the names and their types (alternatives.ts).
+ * - What a pattern selects of its part comes first (selections.ts): a downcast of an `any` value,
+ *   or the members of a union's. Type arguments are written only there, on a union's members.
  * - A shape is undefined when the pattern acts as a guard for exhaustiveness: it compares by more
  *   than `==` against a literal or variant, tests one field twice, or is a range (§3.11).
  */
@@ -23,7 +25,6 @@ import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type Identifier, isMissingName, lastName } from '../../syntax/node.ts';
 import type {
-  ArrayPattern,
   NamePattern,
   OrPattern,
   Pattern,
@@ -35,11 +36,15 @@ import { type AnchoredSpan, spanAcross } from '../../syntax/positions.ts';
 import type { PartBinding, PatternTest, TargetBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { sameType } from '../types/identity.ts';
-import { namesOwnType } from '../types/named-types.ts';
-import { type AnyType, errorType, type Type } from '../types/type.ts';
+import { errorType, type Type } from '../types/type.ts';
+import { baseOf } from '../types/unions.ts';
+import { partSelected, sameNames } from './alternatives.ts';
+import { takeArray } from './arrays.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
+import { literalTypeOf } from './members.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import type { Leaf, PatternTests } from './pattern-tests.ts';
+import { selectionOf } from './selections.ts';
 import { constructed, type Taking, takeApart, takeFields, takeTargets } from './taking.ts';
 
 /** A pattern as walked. */
@@ -88,10 +93,14 @@ interface Walk extends Taking<Pattern | PatternPart> {
   readonly bindings: PartBinding[];
 }
 
-/** A pattern or part as walked: its shape for exhaustiveness, and the part it matched at. */
+/**
+ * A pattern or part as walked: its shape for exhaustiveness, the part it matched at, and the test
+ * selecting it, if it selected what its part is.
+ */
 interface Matched {
   readonly shape: Shape | undefined;
   readonly part: ValuePart;
+  readonly selected?: PatternTest | undefined;
 }
 
 function newWalk(scope: PatternScope, tests: PatternTests | undefined): Walk {
@@ -110,8 +119,9 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
   WildcardPattern: () => anyShape,
   Missing: () => anyShape,
   Invalid: () => anyShape,
-  OrPattern: (walk, node, part) => takeAlternatives(walk, node, part),
-  ArrayPattern: (walk, node, part) => takeArray(walk, node, part),
+  OrPattern: (walk, node, part) => takeAlternatives(walk, node, part).shape,
+  ArrayPattern: (walk, node, part) =>
+    walk.tests === undefined ? refused(walk, node, part) : takeArray(walk, walk.tests, node, part),
   RangePattern: (walk, node, part) =>
     refutable(walk, node, part, (tests) => tests.range(node, part)),
   RestPattern: (walk, node, part) => {
@@ -153,37 +163,75 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
-/** A part already in error was reported where it arose; it takes anything, for exhaustiveness. */
+/**
+ * `node` matched at `part`, what it selects of the part first (selections.ts). A part already in
+ * error, or a selection refused, was reported where it arose; it takes anything, for exhaustiveness.
+ */
 function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart): Matched {
   const node =
     written.kind === 'ParenthesizedPattern' ? unparenthesizedPattern(written.pattern) : written;
-  if (part.type.kind === 'any' && isDowncasting(walk, node, part.type)) {
-    return takeDowncast(walk, node, { ...part, type: part.type });
+  if (node.kind === 'OrPattern') {
+    return takeAlternatives(walk, node, part);
   }
-  const shape = handlerOf(patternHandlers, node)(walk, node, part);
-  return { shape: part.type.kind === 'error' ? anyShape : shape, part };
+  const isBinding = node.kind === 'NamePattern' && binds(walk, node);
+  const selection =
+    walk.tests === undefined || isBinding
+      ? undefined
+      : selectionOf(walk.scope, walk.tests, node, part);
+  if (selection === 'refused') {
+    // A downcast is a guard however it goes, the types inside an `any` type being an open set.
+    const shape = part.type.kind === 'any' ? undefined : anyShape;
+    return { shape, part: { type: errorType, path: part.path } };
+  }
+  if (selection === undefined) {
+    refuseTypeArguments(walk, node);
+    const shape = handlerOf(patternHandlers, node)(walk, node, part);
+    return { shape: part.type.kind === 'error' ? anyShape : shape, part: literalPart(node, part) };
+  }
+  if (selection.test.kind !== 'member') {
+    refuseTypeArguments(walk, node);
+  }
+  walk.found.push(selection.test);
+  const inside = selection.decided
+    ? anyShape
+    : handlerOf(patternHandlers, node)(walk, node, selection.part);
+  return {
+    shape: selection.shapeOf(inside),
+    part: literalPart(node, selection.part),
+    selected: selection.test,
+  };
 }
 
 /**
- * Whether `node`, against a part of the `any` type `type`, names a type to downcast to
- * (downcasts.ts): not a name naming `type` itself, which matches every value of it.
+ * The part a literal pattern leaves to what binds it: its literal type, where the part is of its
+ * base (`case "draft" as d` against a `String`), as only that value matched.
  */
-function isDowncasting(
-  walk: Walk,
-  node: Pattern | PatternPart,
-  type: AnyType,
-): node is StructPattern | NamePattern {
-  if (walk.tests === undefined) {
-    return false;
+function literalPart(node: Pattern | PatternPart, part: ValuePart): ValuePart {
+  const literal = node.kind === 'LiteralPattern' ? literalTypeOf(node.value) : undefined;
+  return literal?.kind === 'literal' && sameType(baseOf(literal), part.type)
+    ? { ...part, type: literal }
+    : part;
+}
+
+/**
+ * Reports type arguments written in a pattern that selects no member of a union: only that one
+ * gives them, to tell apart the members instantiating one generic type (§3.11).
+ */
+function refuseTypeArguments(walk: Walk, node: Pattern | PatternPart): void {
+  const named = node.kind === 'StructPattern' ? node.type : node;
+  if (named?.kind !== 'NamePattern' && named?.kind !== 'NamedType') {
+    return;
   }
-  if (node.kind !== 'NamePattern') {
-    return node.kind === 'StructPattern';
+  const [first] = named.typeArguments;
+  const last = named.typeArguments.at(-1);
+  if (first !== undefined && last !== undefined) {
+    walk.scope.report(
+      checkerDiagnostics.typeArgumentsOutsideUnion(
+        spanAcross(first.span, last.span),
+        lastName(named.path).text,
+      ),
+    );
   }
-  if (binds(walk, node)) {
-    return false;
-  }
-  const entity = walk.scope.entityOf(lastName(node.path));
-  return entity === undefined || !namesOwnType(walk.scope, entity, type);
 }
 
 /**
@@ -199,37 +247,23 @@ function binds(walk: Walk, node: NamePattern): boolean {
 }
 
 /**
- * A downcast, then the rest of the pattern against the value of the type it names. The types
- * inside an `any` type are an open set, so it acts as a guard for exhaustiveness.
+ * `A | B`: each alternative walked on its own, as one alternative of an `or` test. Where each
+ * selects members of the part's union, what binds the whole has the union of those (`case Int |
+ * String as v`); else the part's own type.
  */
-function takeDowncast(
-  walk: Walk,
-  node: StructPattern | NamePattern,
-  part: ValuePart & { readonly type: AnyType },
-): Matched {
-  const downcast = walk.tests?.downcast(node, part);
-  if (downcast === undefined) {
-    return { shape: undefined, part };
-  }
-  walk.found.push(downcast.test);
-  handlerOf(patternHandlers, node)(walk, node, downcast.part);
-  return { shape: undefined, part: downcast.part };
-}
-
-/** `A | B`: each alternative walked on its own, as one alternative of an `or` test. */
-function takeAlternatives(walk: Walk, node: OrPattern, part: ValuePart): Shape | undefined {
+function takeAlternatives(walk: Walk, node: OrPattern, part: ValuePart): Matched {
   if (walk.tests === undefined) {
-    return refused(walk, node, part);
+    return { shape: refused(walk, node, part), part };
   }
   const { tests } = walk;
   const alternatives = node.alternatives.map((alternative) => {
     const own = newWalk(walk.scope, tests);
-    const shape = own.take(alternative, part);
+    const { shape, selected } = takeMatched(own, alternative, part);
     const bindings = own.bindings.map((binding) => ({
       ...binding,
       name: declaringName(walk, binding.name),
     }));
-    return { span: alternative.span, shape, tests: own.found, bindings };
+    return { span: alternative.span, shape, selected, tests: own.found, bindings };
   });
   const [first, ...others] = alternatives;
   for (const other of others) {
@@ -242,81 +276,19 @@ function takeAlternatives(walk: Walk, node: OrPattern, part: ValuePart): Shape |
     alternatives: alternatives.map(({ tests: own, bindings }) => ({ tests: own, bindings })),
   });
   const shapes = alternatives.flatMap(({ shape }) => (shape === undefined ? [] : [shape]));
-  return shapes.length === alternatives.length ? { kind: 'or', alternatives: shapes } : undefined;
+  return {
+    shape: shapes.length === alternatives.length ? { kind: 'or', alternatives: shapes } : undefined,
+    part: partSelected(
+      part,
+      alternatives.map(({ selected }) => selected),
+    ),
+  };
 }
 
 /** The name declaring the variable `name` binds: the first alternative's, for a later one's. */
 function declaringName(walk: Walk, name: Identifier): Identifier {
   const entity = walk.scope.entityOf(name);
   return entity?.kind === 'variable' ? entity.name : name;
-}
-
-/**
- * Whether two alternatives bind the same names, each with the same type. A name bound at the error
- * type was reported where its type went wrong, so it agrees with any.
- */
-function sameNames(first: readonly PartBinding[], other: readonly PartBinding[]): boolean {
-  const agree = (one: Type, another: Type) =>
-    one.kind === 'error' || another.kind === 'error' || sameType(one, another);
-  return (
-    first.length === other.length &&
-    first.every((binding) =>
-      other.some((each) => each.name === binding.name && agree(each.type, binding.type)),
-    )
-  );
-}
-
-/**
- * `[first, ...rest, last]`: its length tested first, then each item against the item it names,
- * counted from the start before the rest and from the end after it; the rest is the items between.
- * A target refuses it, since the length can fail.
- */
-function takeArray(walk: Walk, node: ArrayPattern, part: ValuePart): Shape | undefined {
-  if (walk.tests === undefined) {
-    return refused(walk, node, part);
-  }
-  const array = walk.tests.array(node, part);
-  const restAt = node.elements.findIndex((element) => element.kind === 'RestPattern');
-  const prefix = restAt < 0 ? node.elements : node.elements.slice(0, restAt);
-  const suffix = restAt < 0 ? [] : node.elements.slice(restAt + 1);
-  const item = (offset: number): ValuePart => ({
-    type: array?.items ?? errorType,
-    path: [...part.path, { kind: 'item', site: node, offset }],
-  });
-  if (array !== undefined) {
-    walk.found.push(array.test);
-  }
-  const shapes = {
-    prefix: prefix.map((element, index) => walk.take(element, item(index))),
-    suffix: suffix.map((element, index) => walk.take(element, item(index - suffix.length))),
-  };
-  const rest = node.elements[restAt];
-  if (rest !== undefined) {
-    const between = {
-      kind: 'rest',
-      site: node,
-      before: prefix.length,
-      after: suffix.length,
-    } as const;
-    walk.take(rest, {
-      type: array === undefined ? errorType : part.type,
-      path: [...part.path, between],
-    });
-  }
-  const known = [...shapes.prefix, ...shapes.suffix];
-  if (array === undefined || known.some((shape) => shape === undefined)) {
-    return array === undefined ? anyShape : undefined;
-  }
-  return {
-    kind: 'array',
-    prefix: shapes.prefix.filter(isShape),
-    suffix: shapes.suffix.filter(isShape),
-    hasRest: restAt >= 0,
-  };
-}
-
-function isShape(shape: Shape | undefined): shape is Shape {
-  return shape !== undefined;
 }
 
 /**

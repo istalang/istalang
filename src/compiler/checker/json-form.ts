@@ -12,7 +12,7 @@ import {
   wellKnown,
 } from '../../language/well-known.ts';
 import type { FunctionCall, ResolvedCall } from './resolved-call.ts';
-import type { NominalType, StructValueType, TupleType, Type } from './types/type.ts';
+import type { LiteralType, NominalType, StructValueType, TupleType, Type } from './types/type.ts';
 import type { UseSite } from './use-site.ts';
 
 /** Which way a value crosses as JSON (§9): written to it, or read from it. */
@@ -65,6 +65,16 @@ export type DerivedForm =
     }
   | { readonly kind: 'enum'; readonly type: NominalType; readonly variants: readonly JsonVariant[] }
   | { readonly kind: 'tuple'; readonly type: TupleType }
+  /**
+   * A literal type, or a union of literals of one base (§2): written as its base, through the
+   * base's codec, and read back only as one of its `literals`.
+   */
+  | {
+      readonly kind: 'literals';
+      readonly type: Type;
+      readonly base: Type;
+      readonly literals: readonly LiteralType[];
+    }
   /** A host type: whatever JSON its host gave it, handed back unchanged (§9). */
   | { readonly kind: 'host'; readonly type: NominalType };
 
@@ -92,8 +102,6 @@ export type DerivedCodec =
 
 /** What meeting `Encodable` and `Decodable` asks, beside what later phases do. */
 export interface JsonCodecs extends JsonFormQueries {
-  /** Why `type` has no codec at all: a nested optional, whose two nones JSON can't tell apart. */
-  readonly refusalOf: (type: Type) => string | undefined;
   /** The codec derived for `type` where `site` meets the trait, found for no declared one. */
   readonly derivedOf: (site: UseSite, type: Type, direction: JsonDirection) => DerivedCodec;
   /**

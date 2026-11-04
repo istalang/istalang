@@ -80,7 +80,8 @@ export type PendingEntry =
  * An entry switching over every variant of an `any` type's enum (§3.10): a dispatch on a value's
  * own type, a conversion into another `any` type, or the read of a field a trait requires. It is
  * written once the worklist is empty, when lowering has reached every type converted into its
- * `any` type so far, and written again whenever a later entry converts another.
+ * `any` type so far, and written again whenever a later entry converts another. A dispatch on a
+ * union's members (§6) switches over a union's enum, whose variants are known, so it is written once.
  */
 export type ClosingEntry =
   | { readonly kind: 'dispatch'; readonly dispatch: Dispatch }
@@ -227,7 +228,9 @@ export class DefinitionTables {
   dispatchIndex(dispatch: Dispatch): FunctionId {
     const { typeKeys } = this.#checker;
     const typeArguments = dispatch.typeArguments.map((type) => typeKeys.typeKey(type));
-    const key = `dispatch:${typeKeys.typeKey(dispatch.on)}.${dispatch.constraint}.${dispatch.member}<${typeArguments.join(',')}>`;
+    const { on, through, constraint, member } = dispatch;
+    const target = `${typeKeys.typeKey(on)}:${typeKeys.typeKey(through)}.${constraint}.${member}`;
+    const key = `dispatch:${target}<${typeArguments.join(',')}>`;
     return this.#closingIndex(key, { kind: 'dispatch', dispatch });
   }
 
@@ -306,13 +309,21 @@ export class DefinitionTables {
 
   #nextStale(): (ClosingEntry & { readonly index: FunctionId }) | undefined {
     for (const entry of this.#closing) {
-      const variants = this.types.anyMembers(closedOver(entry)).length;
+      const variants = this.#variantsOf(closedOver(entry));
       if (this.#writtenFor.get(entry.index) !== variants) {
         this.#writtenFor.set(entry.index, variants);
         return entry;
       }
     }
     return undefined;
+  }
+
+  /** How many types a closing entry switches over: an `any` type's so far, a union's members. */
+  #variantsOf(type: Type): number {
+    if (type.kind === 'any') {
+      return this.types.anyMembers(type).length;
+    }
+    return type.kind === 'union' ? this.types.unionMembers(type).length : 1;
   }
 
   #entryIndex(key: string, entry: PendingEntry): FunctionId {
@@ -356,8 +367,8 @@ export class DefinitionTables {
   }
 }
 
-/** The `any` type whose variants a closing entry switches over. */
-function closedOver(entry: ClosingEntry): AnyType {
+/** The type whose variants a closing entry switches over: an `any` type, or a dispatch's union. */
+function closedOver(entry: ClosingEntry): Type {
   switch (entry.kind) {
     case 'dispatch':
       return entry.dispatch.on;

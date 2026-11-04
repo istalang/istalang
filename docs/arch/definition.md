@@ -203,7 +203,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | `x[k] = v`, `a[k].b = v`, `x[k] += 1` (§3.9) | a `setIndex` call taking the container by `&`; a deeper write reads each element with `index` when it writes and writes it back with `setIndex` (Places); compound forms call `index` and the operator first |
 | `T(x)` (§3.10) | a call to `T.from` |
 | Trait-constrained calls, `T.zero()` (§3.10) | resolved per instantiation; plain calls |
-| `for x in c` (§3.10, §4) | a call to `iterate`, then a loop calling the cursor it gives, a function value, until a `switch` on what it gives finds `None`; each `Some`'s value is the item |
+| `for x in c` (§3.10, §4) | a call to `iterate`, then a loop calling the cursor it gives, a function value, until a `switch` on the `Step` it gives finds `Done`; each `Next`'s value is the item |
 | `if`, `elif`, `else`, `while` (§4) | `branch` and `jump`; a branching expression writes a result register |
 | Block expression (§4) | its statements, then `release` |
 | Comprehension (§4) | the loop `for` runs, appending each kept value with `array`, the last array spread first |

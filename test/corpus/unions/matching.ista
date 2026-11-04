@@ -1,0 +1,117 @@
+# outcome: "nothing|number 42|ok|Draft|Done|mail:cfo|int:5:none:one:other:2|sent:7|legal:exp:9|f-shared:s-shared|3:int:4:str:hi|5:ok:3|ab:true|matched:7:first:7"
+# Matching on unions and literal types (§3, §5): None, type patterns (including case Int on Int? and
+# base-type patterns selecting all literal members of that base), literal patterns (case 1 on Int?),
+# bare and qualified enum variants, generic members with type arguments, shape members by field or
+# alias, remaining binder types, alternatives binding a union, exhaustiveness without case _, and
+# collapse after substitution keeping the first matching arm.
+
+type Status = "draft" | "sent" | "failed"
+type Point = { x: Int; y: Int }
+struct Email { to: String }
+struct Sms { number: String }
+type Contact = Email | Sms
+
+enum Decision:
+  Approved { by: String }
+  Expired
+
+enum First { Shared; OnlyFirst }
+enum Second { Shared; OnlySecond }
+
+struct Box<T> { value: T }
+
+fn describe(x: Int | String | None) -> String:
+  match x:
+    case None: "nothing"
+    case Int as n: `number ${n}`
+    case s: s
+
+fn label(s: Status) -> String:
+  match s:
+    case "draft": "Draft"
+    case "sent" | "failed": "Done"
+
+fn contactTo(c: Contact) -> String:
+  match c:
+    case Email{to}: "mail:" + to
+    case Sms{number}: "sms:" + number
+
+fn checkIntOpt(x: Int?) -> String:
+  match x:
+    case Int as n: `int:${n}`
+    case None: "none"
+
+fn checkLitOpt(x: Int?) -> String:
+  match x:
+    case 1: "one"
+    case None: "none"
+    case n: `other:${n}`
+
+fn splitLiterals(x: Status | Int) -> String:
+  match x:
+    case String as s: s
+    case Int as n: String(n)
+
+fn showDecision(x: Decision | Int) -> String:
+  match x:
+    case Approved{by}: by
+    case Expired: "exp"
+    case Int as n: String(n)
+
+fn pickEnum(x: First | Second) -> String:
+  match x:
+    case First.Shared: "f-shared"
+    case OnlyFirst: "f-only"
+    case Second.Shared: "s-shared"
+    case OnlySecond: "s-only"
+
+fn oneGeneric(x: Box<Int> | String) -> String:
+  match x:
+    case Box{value}: String(value)
+    case String as s: s
+
+fn twoGenerics(x: Box<Int> | Box<String>) -> String:
+  match x:
+    case Box<Int>{value}: `int:${value}`
+    case Box<String>{value}: `str:${value}`
+
+fn byField(x: { a: Int } | { b: String }) -> String:
+  match x:
+    case struct{a}: String(a)
+    case struct{b}: b
+
+fn byAlias(x: Point | Int) -> String:
+  match x:
+    case Point as p: String(p.x + p.y)
+    case Int as n: String(n)
+
+fn altUnion(x: "a" | "b" | Int) -> String:
+  match x:
+    case "a" | "b" as ab: ab
+    case Int as n: String(n)
+
+fn collapsed<T>(x: T | Int) -> String:
+  match x:
+    case Int as n: `matched:${n}`
+    case _: "fallback"
+
+fn collapsedBox<T is Stringable>(x: Box<T> | Box<Int>) -> String:
+  match x:
+    case Box<T>{value}: `first:${value}`
+    case Box<Int>{value}: `second:${value}`
+
+async fn main() -> Future<String>:
+  const p1 = `${describe(none)}|${describe(42)}|${describe("ok")}|${label("draft")}|${label("failed")}|${contactTo(Email{to: "cfo"})}`
+  const p2 = `${checkIntOpt(5)}:${checkIntOpt(none)}:${checkLitOpt(1)}:${checkLitOpt(2)}`
+  const p3 = `${splitLiterals("sent")}:${splitLiterals(7)}`
+  const p4 = `${showDecision(Approved{by: "legal"})}:${showDecision(Expired)}:${showDecision(9)}`
+  const p5 = `${pickEnum(First.Shared)}:${pickEnum(Second.Shared)}`
+  const p6 = `${oneGeneric(Box{value: 3})}:${twoGenerics(Box{value: 4})}:${twoGenerics(Box{value: "hi"})}`
+  const p7 = `${byField(struct{a: 5})}:${byField(struct{b: "ok"})}:${byAlias(struct{x: 1, y: 2})}`
+  const b: Bool = true
+  const bMatch = match b:
+    case true: "true"
+    case false: "false"
+  const p8 = `${altUnion("a") + altUnion("b")}:${bMatch}`
+  const p9 = `${collapsed<Int>(7)}:${collapsedBox<Int>(Box{value: 7})}`
+  `${p1}|${p2}|${p3}|${p4}|${p5}|${p6}|${p7}|${p8}|${p9}`

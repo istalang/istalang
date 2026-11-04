@@ -4,20 +4,33 @@
  * whole; a struct pattern's item, the field it names, among those of the variant or struct the
  * pattern names (against an `any` value, the type it downcasts to); a nested field pattern, that
  * field's type; a tuple's element, its element's; an array's item, its item's, and its rest the
- * whole array.
+ * whole array. Against a union, a struct, tuple or array pattern first selects the one member it
+ * takes apart, by the checker's rule (types/named-types.ts).
  *
  * The patterns are read from the placeholder parse, which holds the one being written whole; the
  * subject and a struct pattern's name end before the cursor, so the checked tree types the one and
  * tells what the other denotes (checked-twin.ts).
  */
 
+import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { Denotation } from '../../../compiler/checker/denotation.ts';
-import { downcastTargetOf, namesOwnType } from '../../../compiler/checker/types/named-types.ts';
+import {
+  downcastTargetOf,
+  instancesWith,
+  kindMembers,
+  membersNamed,
+  namesOwnType,
+} from '../../../compiler/checker/types/named-types.ts';
 import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type.ts';
 import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
 import { type Identifier, lastName } from '../../../compiler/syntax/node.ts';
-import type { NamePattern, StructPattern } from '../../../compiler/syntax/patterns.ts';
+import type {
+  ArrayPattern,
+  NamePattern,
+  StructPattern,
+} from '../../../compiler/syntax/patterns.ts';
 import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
+import type { NamedType } from '../../../compiler/syntax/types.ts';
 import { checkedTwinOf } from '../checked-twin.ts';
 import type { Cursor } from '../cursor.ts';
 import { holderIn } from '../grammar/chain.ts';
@@ -72,7 +85,8 @@ export function fieldsMatchedBy(
  * checked: a variant of `type`'s enum, which a bare name chooses by its name even before checking
  * resolved it, or `type`'s own struct, a shape an alias names among them (§3.17); against an `any`
  * type, the type it downcasts to, a struct, a shape or a qualified variant's enum, none generic
- * (§3.10). `struct{…}` names `type`'s own fields. A trait's required fields are no pattern's (patterns/parts.ts).
+ * (§3.10); against a union, the member it selects. `struct{…}` names that type's own fields. A
+ * trait's required fields are no pattern's (patterns/parts.ts).
  */
 function fieldsOf(
   cursor: Cursor,
@@ -81,20 +95,93 @@ function fieldsOf(
   type: Type,
 ): readonly FieldMember[] {
   const { checker } = cursor;
-  if (pattern.type === undefined) {
-    return type.kind === 'any' ? [] : (checker.fieldsOf(type) ?? []);
-  }
-  const name = lastName(pattern.type.path);
-  const declared = denotationOf(cursor, parsed, name)?.declared;
-  const own = type.kind === 'any' ? downcastOf(cursor, parsed, name, type) : type;
+  const own =
+    type.kind === 'any'
+      ? downcastOf(cursor, parsed, pattern, type)
+      : memberSelected(cursor, parsed, pattern, type);
   if (own === undefined) {
     return [];
   }
+  if (pattern.type === undefined) {
+    return checker.fieldsOf(own) ?? [];
+  }
+  const name = lastName(pattern.type.path);
+  const declared = denotationOf(cursor, parsed, name)?.declared;
   if (declared?.kind === 'type') {
     return namesOwnType(checker, declared.entity, own) ? (checker.fieldsOf(own) ?? []) : [];
   }
   const choosesByName = pattern.type.path.length === 1 && type.kind !== 'any';
   return variantFieldsOf(checker, own, { name, declared, choosesByName });
+}
+
+/** A pattern that takes a value apart, and so selects one member of a union first. */
+type TakingPattern = StructPattern | ArrayPattern | Extract<SyntaxNode, { kind: 'TuplePattern' }>;
+
+/**
+ * The member of `type` that `pattern` selects (§3.11), `type` itself where it is no union;
+ * undefined where it selects none, or several.
+ */
+function memberSelected(
+  cursor: Cursor,
+  parsed: Parsed,
+  pattern: TakingPattern,
+  type: Type | undefined,
+): Type | undefined {
+  if (type?.kind !== 'union') {
+    return type;
+  }
+  const [only, ...others] = membersSelected(cursor, parsed, pattern, type.members);
+  return others.length === 0 ? only : undefined;
+}
+
+/**
+ * The members `pattern` selects (named-types.ts): those its type's name names, the instance its
+ * type arguments give, or those of its kind, a `struct{…}` pattern's the shapes having the fields
+ * its items other than the one being written name.
+ */
+function membersSelected(
+  cursor: Cursor,
+  parsed: Parsed,
+  pattern: TakingPattern,
+  members: readonly Type[],
+): readonly Type[] {
+  const { checker } = cursor;
+  switch (pattern.kind) {
+    case 'TuplePattern':
+      return kindMembers(checker, { kind: 'tuple', count: pattern.elements.length }, members);
+    case 'ArrayPattern':
+      return kindMembers(checker, { kind: 'array' }, members);
+    default: {
+      if (pattern.type !== undefined) {
+        return membersNamedBy(cursor, parsed, pattern.type, members);
+      }
+      const written = parsed.chain.at(-1);
+      const fields = pattern.fields.flatMap((item) =>
+        item.kind === 'Invalid' || item.field === written ? [] : [item.field.text],
+      );
+      return kindMembers(checker, { kind: 'shape', fields }, members);
+    }
+  }
+}
+
+/** The members `named`, written before the cursor, names, the instance its type arguments give. */
+function membersNamedBy(
+  cursor: Cursor,
+  parsed: Parsed,
+  named: NamedType,
+  members: readonly Type[],
+): readonly Type[] {
+  const entity = entityNamed(cursor, parsed, lastName(named.path));
+  const selected = entity === undefined ? [] : membersNamed(cursor.checker, entity, members);
+  if (named.typeArguments.length === 0) {
+    return selected;
+  }
+  const given = named.typeArguments.flatMap((argument) => {
+    const checked = checkedTwinOf(cursor, parsed.tree, argument);
+    const type = checked && cursor.checker.lookup.typeOfNode(cursor.module, checked);
+    return type === undefined ? [] : [type];
+  });
+  return given.length === named.typeArguments.length ? instancesWith(selected, given) : [];
 }
 
 /**
@@ -131,19 +218,25 @@ function denotationOf(cursor: Cursor, parsed: Parsed, name: Identifier): Denotat
     : cursor.checker.lookup.denotationsOf(cursor.module, checked)[0];
 }
 
+/** The entity `name`, written before the cursor, names as bound. */
+function entityNamed(cursor: Cursor, parsed: Parsed, name: Identifier): Entity | undefined {
+  const checked = checkedTwinOf(cursor, parsed.tree, name);
+  return checked === undefined
+    ? undefined
+    : cursor.checker.bindings.entityOf(cursor.module, checked);
+}
+
 /**
- * The type a downcast of a value of `from` to `name`, written before the cursor, tests for
- * (named-types.ts).
+ * The type a downcast of a value of `from` to the type `pattern` names tests for (named-types.ts);
+ * `struct{…}` names none.
  */
 function downcastOf(
   cursor: Cursor,
   parsed: Parsed,
-  name: Identifier,
+  pattern: StructPattern,
   from: AnyType,
 ): Type | undefined {
-  const checked = checkedTwinOf(cursor, parsed.tree, name);
-  const entity =
-    checked === undefined ? undefined : cursor.checker.bindings.entityOf(cursor.module, checked);
+  const entity = pattern.type && entityNamed(cursor, parsed, lastName(pattern.type.path));
   const target = entity === undefined ? undefined : downcastTargetOf(cursor.checker, entity, from);
   return target?.kind === 'type' ? target.type : undefined;
 }
@@ -186,15 +279,17 @@ const steps: { readonly [Kind in SyntaxNode['kind']]?: Step<Extract<SyntaxNode, 
     OrPattern: whole,
     ParenthesizedPattern: whole,
     AsPattern: (link) => (link.child === link.node.pattern ? link.type : undefined),
-    TuplePattern: ({ node, child, type }) => {
+    TuplePattern: ({ cursor, parsed, node, child, type }) => {
       const elements: readonly SyntaxNode[] = node.elements;
-      return type?.kind === 'tuple' ? type.elements[elements.indexOf(child)] : undefined;
+      const own = memberSelected(cursor, parsed, node, type);
+      return own?.kind === 'tuple' ? own.elements[elements.indexOf(child)] : undefined;
     },
-    ArrayPattern: ({ cursor, child, type }) => {
-      if (type === undefined || child.kind === 'RestPattern') {
-        return type;
+    ArrayPattern: ({ cursor, parsed, node, child, type }) => {
+      const own = memberSelected(cursor, parsed, node, type);
+      if (own === undefined || child.kind === 'RestPattern') {
+        return own;
       }
-      return arrayElement(cursor.checker, type);
+      return arrayElement(cursor.checker, own);
     },
     StructPattern: (link) => {
       const { cursor, node, child, type } = link;

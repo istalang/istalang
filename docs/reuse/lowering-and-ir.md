@@ -22,7 +22,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - close a `FunctionCall` or a trait witness call → `closeFunctionCall`, `closeWitness` (`src/compiler/lowering/instances.ts`)
 - build root, filling or default `FunctionInstance`s → `rootInstance`, `takingPassed`, `defaultEntryOf`, `substitutionOf` (`src/compiler/lowering/instances.ts`)
 - allocate registers, place labels, and emit jumps, branches or instructions → `CodeWriter` (`src/compiler/lowering/code-writer.ts`), via `context.code`
-- write code with no syntax behind it (codecs, host wrappers, `any` dispatch, async fits) → `SynthesizedCode` (`src/compiler/lowering/synthesized-code.ts`); pass its parameters on, those it takes by `&` by `&` (into a part too) → `SynthesizedCode.passedOn`
+- write code with no syntax behind it (codecs, host wrappers, `any` dispatch, async fits) → `SynthesizedCode` (`src/compiler/lowering/synthesized-code.ts`); pass its parameters on, those it takes by `&` by `&` (into a part too) → `SynthesizedCode.passedOn`; pass by `&` a value it has no place for → `SynthesizedCode.inCell`
 - build a struct, a tuple or `==` from registers, with a body or without → `construct`, `tupleOf`, `equal` (`src/compiler/lowering/expressions/structs.ts`, `tuples.ts`, `operators.ts`, all on `CodeContext`); a struct's value rebuilt as another struct type, its fields by name (a nominal value as its shape, §3.1) → `rebuiltAs` (`src/compiler/lowering/expressions/structs.ts`)
 - emit a direct or closed `call` instruction → `emitCall`, `emitFunctionCall`, `referenceTo` (`src/compiler/lowering/emit-call.ts`)
 - emit a call recorded at a call site or implicit construct → `emitCallAt`, `emitImplicitCall` (`src/compiler/lowering/emit-call.ts`)
@@ -33,9 +33,10 @@ tags: [reuse, lowering, definition, ir, instructions]
 - read how a field access reaches its field → `CheckedBody.fieldReadOf` (`src/compiler/checker/check.ts`)
 - lower pattern tests and bindings jumping to a failure label → `lowerMatching` (`src/compiler/lowering/patterns.ts`)
 - build an enum variant by its declared name → `buildVariant`, `isEnum` (`src/compiler/lowering/expressions/variants.ts`); in synthesized code, `SynthesizedCode.variant`
-- branch on an enum variant, or read variant field 0 → `branchOnVariant`, `payloadOf` (`src/compiler/lowering/expressions/variants.ts`); carry on with a variant's one field where a value holds it, else jump or run what leaves → `payloadOrJump`, `payloadOr`
-- build `none` or wrap into `T?`, or read a `T?` where it isn't `none` → `noneOf`, `someOf`, `presentOrJump`, `presentOr` (`src/compiler/lowering/optionals.ts`); never name `Optional`'s variants elsewhere in lowering
-- convert a value into an `any` variant → `convertedIntoAny` (`src/compiler/lowering/trait-objects/trait-objects.ts`)
+- branch on an enum variant, or read variant field 0 → `branchOnVariant`, `payloadOf` (`src/compiler/lowering/expressions/variants.ts`); carry on with a variant's one field where a value holds it, else run what leaves → `payloadOr`
+- build `none` or put a value into `T?`, or read a `T?` where it isn't `none` → `noneOf`, `someOf`, `presentOrJump`, `presentOr` (`src/compiler/lowering/optionals.ts`)
+- put a value into a union, take one out as a member or a narrower union, write a union of literals as its base, test its members, write something per member's value → `intoUnion`, `outOfUnion`, `asBase`, `branchOnMembers`, `jumpIfMember`, `oneValueIn`, `eachMember` (`src/compiler/lowering/unions.ts`); a union's variants in order and the one holding a member → `TypeTable.unionMembers`, `unionVariant`; never build a union's variant by hand
+- convert a value, a union's member by member, into an `any` variant → `convertedIntoAny`; dispatch a required function over an `any` value's or a union's members → `dispatchEntry`, keyed by its `Dispatch` (`src/compiler/lowering/trait-objects/trait-objects.ts`)
 - wrap a plain function value as an `async` closure → `madeAsync` (`src/compiler/lowering/async-fits.ts`)
 - call the codec writing or reading a type, closed within an instance → `codecCall` (`src/compiler/lowering/boundary/codec-calls.ts`)
 - read JSON crossing in from the host, a mismatch handled as its source says (a host's `result` panics the instance, an `input` fails the host's call) → `inboundOf`, `emitInbound` (`src/compiler/lowering/boundary/inbound.ts`)

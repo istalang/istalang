@@ -37,7 +37,6 @@ import { inferLambda } from './closures/lambdas.ts';
 import { declareOwnCall } from './closures/own-calls.ts';
 import { blockTail, ReturnScope } from './closures/returns.ts';
 import type { Accepts, BodyContext, CheckerContext, Enclosing, Returns } from './context.ts';
-import { checkerDiagnostics } from './diagnostics/index.ts';
 import { CollectionForms } from './expressions/collections.ts';
 import { acceptedPartOf, acceptsOf, expressionHandlers } from './expressions/expressions.ts';
 import { StructLiterals } from './expressions/literal-sources.ts';
@@ -55,7 +54,9 @@ import { checkTestingCalls } from './rules/testing-calls.ts';
 import { LabelTargets } from './statements/loops.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
+import { memberBuilt } from './types/expected.ts';
 import { exactFit, type Fit, isExact } from './types/fit.ts';
+import { misfitOf } from './types/misfit.ts';
 import {
   errorType,
   type FieldMember,
@@ -63,7 +64,6 @@ import {
   type Type,
   unitType,
 } from './types/type.ts';
-import { typeText } from './types/type-text.ts';
 import { useSite } from './use-site.ts';
 
 /**
@@ -171,7 +171,9 @@ export class BodyChecker implements BodyContext {
     if (expected !== undefined) {
       this.#expected.set(node, expected);
     }
-    return this.#record(node, handlerOf(expressionHandlers, node)(this, node, expected));
+    const guide =
+      expected === undefined ? undefined : memberBuilt(expected, node, () => this.accepts(node));
+    return this.#record(node, handlerOf(expressionHandlers, node)(this, node, guide));
   }
 
   accepts(node: Expression): Accepts | undefined {
@@ -242,7 +244,10 @@ export class BodyChecker implements BodyContext {
     }
   }
 
-  /** Reports why `found` doesn't fit: a trait it doesn't meet, when an `any` type is expected. */
+  /**
+   * Reports why `found` doesn't fit: a trait it doesn't meet, when an `any` type is expected, or
+   * that it converts into several members of the union expected (§2).
+   */
   #mismatch(found: Type, expected: Type, at: AnchoredSpan): void {
     if (
       expected.kind === 'any' &&
@@ -250,7 +255,7 @@ export class BodyChecker implements BodyContext {
     ) {
       return;
     }
-    this.report(checkerDiagnostics.typeMismatch(at, typeText(expected), typeText(found)));
+    this.report(misfitOf(this.checker.fitting, at, found, expected));
   }
 
   block(node: Block, expected?: Type): Type {

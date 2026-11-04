@@ -241,11 +241,6 @@ describe('a derived trait', () => {
       'every value inside it to be sendable',
     ],
     [
-      'Encodable, of a nested optional',
-      'fn f(x: Int??) -> String: json.stringify(x)',
-      'no optional directly inside it, since JSON has one null for both its nones',
-    ],
-    [
       'Encodable, of a sendable function',
       'fn f(x: sendable fn() -> Int) -> String: json.stringify(x)',
       'a JSON form, which no function has',

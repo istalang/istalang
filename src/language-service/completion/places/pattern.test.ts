@@ -196,11 +196,26 @@ describe('a pattern place', () => {
   });
 
   it("reads the type a tuple's element, an array's item or a nested field matches", () => {
+    const held = 'struct Held { decision: Decision? }';
     const nested = (subject: string, pattern: string) =>
-      labelsAt(...decision, `fn f(x: ${subject}) -> Int:`, '  match x:', `    case ${pattern}`);
+      labelsAt(
+        ...decision,
+        held,
+        `fn f(x: ${subject}) -> Int:`,
+        '  match x:',
+        `    case ${pattern}`,
+      );
     expect(nested('(Int, Decision)', '(_, ‸')).toContain('Approved');
     expect(nested('Array<Decision>', '[‸')).toContain('Approved');
-    expect(nested('Decision?', 'Some{value is ‸')).toContain('Approved');
+    expect(nested('Held', 'Held{decision is ‸')).toEqual(
+      expect.arrayContaining(['Approved', 'none']),
+    );
+  });
+
+  it('reads the member a struct or tuple pattern selects of a union', () => {
+    const optionals = [...decision, 'fn f(x: (Int, Decision)?, d: Decision?) -> Int:'];
+    expect(labelsAt(...optionals, '  match x:', '    case (_, ‸')).toContain('Approved');
+    expect(labelsAt(...optionals, '  if d is Rejected{‸')).toEqual(['by', 'reason']);
   });
 
   it('marks the variants unguarded cases take whole as covered', () => {
@@ -287,7 +302,7 @@ describe('a pattern place', () => {
     ];
     const cases = [...struct, ...decision, 'fn f(p: Pair, d: Decision) -> Int:'];
     expect(labelsAt(...cases, '  match p:', '    case Wrong{‸')).toEqual([]);
-    expect(labelsAt(...cases, '  match p:', '    case Some{‸')).toEqual([]);
+    expect(labelsAt(...cases, '  match p:', '    case Approved{‸')).toEqual([]);
     expect(labelsAt(...cases, '  match d:', '    case Color.Rejected{‸')).toEqual([]);
     expect(labelsAt(...cases, '  match d:', '    case Decision.Rejected{‸')).toEqual([
       'by',

@@ -40,12 +40,14 @@ export function isSendable(checker: CheckerContext, type: Type): boolean {
 function sendable(checker: CheckerContext, type: Type, deciding: TypeCycle): boolean {
   switch (type.kind) {
     case 'primitive':
+    case 'literal':
     case 'error':
       return true;
     case 'function':
       return type.isSendable;
     case 'tuple':
     case 'anonymous':
+    case 'union':
       return heldParts(checker, type).every((child) => sendable(checker, child, deciding));
     case 'parameter':
     case 'any':

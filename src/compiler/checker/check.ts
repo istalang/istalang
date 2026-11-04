@@ -57,7 +57,7 @@ import type {
   ResolvedCall,
   ResolvedSite,
 } from './resolved-call.ts';
-import type { Fit, OptionalEntity } from './types/fit.ts';
+import type { Fit } from './types/fit.ts';
 import type {
   AnonymousStructType,
   AnyType,
@@ -306,10 +306,6 @@ export interface Checker {
     constraint: number,
     member: Type,
   ) => readonly ResolvedCall[];
-  /** `T?` for `type`, the type a value of `type` is wrapped into (§2). */
-  readonly optionalOf: (type: Type) => NominalType;
-  /** The prelude's `Optional`, whose `T?` wraps a `T` (§2); undefined without a prelude. */
-  readonly optionalEntity: OptionalEntity;
   /** `_Cell<T>` for `type`, what a variable passed by `&` or captured lives in (§3.7, §3.14). */
   readonly cellOf: (type: Type) => NominalType;
   /** What a well-known name (language/well-known.ts) denotes; undefined without its module. */

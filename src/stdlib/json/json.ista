@@ -100,8 +100,8 @@ fn toJson<T is Encodable>(self: Array<T>) -> Json: List{items: [for each in self
 
 fn toJson<T is Encodable>(self: T?) -> Json:
   match self:
-    case Some{value}: value.toJson()
     case None: Null
+    case value: value.toJson()
 
 fn toJson<K is Stringable, V is Encodable>(self: Map<K, V>) -> Json:
   _object([for key, each in self: (key.toString(), each.toJson())])
@@ -172,7 +172,7 @@ fn _decodeBigInt(json: Json, path: String) -> Result<Int>:
 
 extern fn _decodeHandle<T>(json: Json, path: String) -> Result<T>
 
-# The parts derived codecs of structs, enums and tuples are made of.
+# The parts derived codecs of structs, enums, tuples and literals are made of.
 fn _fields(json: Json, path: String) -> Result<Map<String, Json>>:
   match json:
     case Object{fields}: Ok{(fields)}
@@ -180,8 +180,8 @@ fn _fields(json: Json, path: String) -> Result<Map<String, Json>>:
 
 fn _field(fields: Map<String, Json>, name: String, path: String) -> Result<Json>:
   match fields.get(name):
-    case Some{value}: Ok{(value)}
     case None: _failure(_fieldPath(path, name), "missing")
+    case value: Ok{(value)}
 
 fn _optionalField(fields: Map<String, Json>, name: String) -> Json: fields.get(name) ?? Null
 
@@ -190,6 +190,10 @@ fn _tag(fields: Map<String, Json>, key: String, path: String) -> Result<String>:
 
 fn _unknownVariant<T>(tag: String, key: String, path: String) -> Result<T>:
   _failure(_fieldPath(path, key), "names no variant '" + tag + "'")
+
+# A literal type's, or a union of literals', JSON holding none of its `literals`, spelled as types.
+fn _notAmong<T>(json: Json, path: String, literals: String) -> Result<T>:
+  _failure(path, "expected " + literals + ", found " + _write(json))
 
 fn _elements(json: Json, path: String, count: Int) -> Result<Array<Json>>:
   match json:

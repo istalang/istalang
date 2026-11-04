@@ -3,8 +3,10 @@
  *
  * - An untagged template is a `String`. Each value is written as text by its `toString`, found as
  *   an operator's function is (resolution/implicit.ts), so a program's types, a type parameter's
- *   requirement and an `any Stringable` all take part; its texts and values are then joined by the
- *   prelude's `join`. A template without values is its text.
+ *   requirement, an `any Stringable` and a union's trait (§6) all take part; its texts and values
+ *   are then joined by the prelude's `join`. A template without values is its text.
+ * - A value converts to what its `toString` takes, as an argument does, so a union of literals is
+ *   written by its base's (§2).
  * - A tagged template is the call it stands for (syntax/expressions/templates.ts), checked as any
  *   written call is, so the tag's parameters decide what its values must be.
  */
@@ -58,7 +60,7 @@ function interpolate(context: BodyContext, value: Expression): void {
     candidates: topLevelCandidates(context.checker, context.module, templateFunctions.toString, [
       type,
     ]),
-    arguments: [{ type, passing: 'value' }],
+    arguments: [{ type, passing: 'value', node: value }],
     expected: stringType,
     failure,
   });

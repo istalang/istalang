@@ -92,7 +92,7 @@ const a, b = (1, "x")          # destructuring
 | --- | --- |
 | `Int` `Float` `Bool` `String` | `Int` never overflows; `String` counts Unicode code points |
 | `Unit`, `Never` | `Unit` is `()`, the type of statements; `Never` is the type of `return` and `panic` |
-| `T?` | optional; empty is `none`; a `T` is wrapped into a `T?` automatically |
+| `T?` | optional: `T \| None`, empty is `none`; a `T` goes into a `T?` automatically |
 | `(A, B)` | tuple: `t.0`, `t.1` |
 | `Array<T>`, `Map<K, V>`, `Range` | values, copied like structs |
 | `fn(A) -> R`, `async fn(A) -> R` | function values |
@@ -122,7 +122,7 @@ enum Decision:
     Expired
 ```
 
-- **Optional** `T?` is the enum `Some{value}` or `None`. Read through it with `user?.name`, and supply a fallback with `name ?? "anon"`.
+- **Unions** `A | B` hold a value of one member; `"draft" | "sent"` is a union of literal types. **Optional** `T?` is `T | None`: match it with `case None:` then `case v:`, read through it with `user?.name`, and supply a fallback with `name ?? "anon"`.
 - **Result** `Result<T>` is the enum `Ok{value}` or `Err{error}`, where `error` is an `Error{message, code, trace}`.
 - **Collections** use JavaScript's method names: `length()`, `push`, `pop`, `map`, `filter`, `indexOf`, `slice`. `xs[i]` panics when out of range, and `xs.at(i)` returns a `T?` and accepts negative indexes. On maps, `m[k]` panics for a missing key and `m.get(k)` returns a `V?`.
 
@@ -346,7 +346,7 @@ fn suite() -> Array<Test>: [
 - A bare variant needs an expected enum type. Otherwise qualify it: `Decision.Expired`.
 - An empty `[]` or `[:]` needs an expected type: `let xs: Array<Int> = []`.
 - In a pattern, a bare camelCase name **binds** a new variable, and a PascalCase one refers to a variant or a type. To compare against a constant, use a guard (`case n if n == limit`).
-- A literal pattern isn't wrapped into an optional. Against an `Int?`, write `case Some{value == 1}`.
+- A union is never inferred: `if c: 1 else: "a"` is an error unless an `Int | String` is expected. Take a union apart with `match` or `is` (`case Int as n`), or call through a trait its members meet.
 
 **Numbers**
 - `/` always yields a `Float`; `//` is integer floor division. `x // 0` and `x % 0` panic, while `x / 0` gives an infinity.

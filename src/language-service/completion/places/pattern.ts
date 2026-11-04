@@ -2,13 +2,15 @@
  * What a `pattern` place offers: where a pattern a `case` or an `is` tests is written (§3.11),
  * read from the placeholder parse, which holds the pattern being written whole.
  *
- * - Where a pattern starts, or a struct pattern's name is written, what it may refer to, never a variable, since a bare camelCase name
- *   binds one: the variants of the type it matches, bare; that type's own name and the namespaces,
- *   which qualify a variant, a struct or a constant, and against an `any` type the types a downcast
- *   may name; `_`; and the literal keywords a value of the type may equal (`true` and `false` a
- *   `Bool`, `none` an optional), all of them where the type isn't known, as a literal pattern has
- *   the matched value's own type. A variant another case of the `match` already takes whole is
- *   marked covered, for ranking.
+ * - Where a pattern starts, or a struct pattern's name is written, what it may refer to, never a
+ *   variable, since a bare camelCase name binds one: the variants of the type it matches, bare, of
+ *   a union's members those whose name selects one member; the names of that type and of what a
+ *   pattern on a union selects (§3.11, named-types.ts), and the namespaces, which qualify a
+ *   variant, a struct or a constant; against an `any` type the types a downcast may name; `_`; and
+ *   the literal keywords whose literal selects a member (`true` and `false` a `Bool`, `none` an
+ *   optional), all of them where the type isn't known, as a literal pattern has the matched value's
+ *   own type. A variant another case of the `match` already takes whole is marked covered, for
+ *   ranking.
  * - After a struct pattern item's field name, `as` or `is`; a comparison is an operator.
  * - After a case's whole pattern, once a space parts them, `if` for a guard and `as` for the whole.
  * - Anywhere else, as a rest's name or a range's end, nothing.
@@ -16,10 +18,15 @@
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../compiler/checker/check.ts';
-import { optionalInner } from '../../../compiler/checker/types/fit.ts';
-import { sameType } from '../../../compiler/checker/types/identity.ts';
-import { downcastTargetOf, namesOwnType } from '../../../compiler/checker/types/named-types.ts';
-import { boolType, type Type } from '../../../compiler/checker/types/type.ts';
+import {
+  downcastTargetOf,
+  literalMembers,
+  membersNamed,
+  namesOwnType,
+  variantOwners,
+} from '../../../compiler/checker/types/named-types.ts';
+import { noneType, type Type } from '../../../compiler/checker/types/type.ts';
+import { literalType, membersOf } from '../../../compiler/checker/types/unions.ts';
 import { casesOf } from '../../../compiler/syntax/expressions/index.ts';
 import type { PatternWord } from '../../../compiler/syntax/grammar-words.ts';
 import { lastName } from '../../../compiler/syntax/node.ts';
@@ -60,39 +67,38 @@ function patternStarts(
   const { checker, module } = cursor;
   const type = expectedTypeAt(cursor, place);
   const known = type !== undefined && type.kind !== 'error';
+  const members = known ? membersOf(type) : [];
   const covered = variantsCovered(place.parsed, pattern);
-  const variants = known
-    ? checker.lookup.membersOf(module, type).variants.map(
+  const variants = members.flatMap((member) =>
+    checker.lookup
+      .membersOf(module, member)
+      .variants.filter(({ name }) => variantOwners(checker, members, name).length === 1)
+      .map(
         (variant): Candidate => ({
           name: variant.name,
-          subject: { kind: 'variant', variant, enum: type },
+          subject: { kind: 'variant', variant, enum: member },
           ...(covered.has(variant.name) ? { covered: true } : {}),
         }),
-      )
-    : [];
-  return [
-    ...variants,
-    ...referringNames(cursor, type),
-    ...wordCandidates(
-      Object.entries(startWordFits).flatMap(([name, fits]) =>
-        !known || fits(checker, type) ? [name] : [],
       ),
-    ),
-  ];
+  );
+  const words = Object.entries(startWordLiterals).flatMap(([name, literal]) =>
+    !known || literal === undefined || literalMembers(members, literal).length > 0 ? [name] : [],
+  );
+  return [...variants, ...referringNames(cursor, type), ...wordCandidates(words)];
 }
 
 /**
  * The words a pattern starts with (`PatternWord`, syntax/grammar-words.ts, which the parser's
- * pattern table is keyed by) and `_`, each with whether a value of a type may match it. A struct's
- * value is matched through its type's name, offered where it fits, so `struct{…}` is offered
- * nowhere.
+ * pattern table is keyed by) and `_`, each with the literal it writes, `_` none, as it matches any
+ * value. A struct's value is matched through its type's name, offered where it fits, so
+ * `struct{…}` is offered nowhere.
  */
-const startWordFits = {
-  _: () => true,
-  true: (_checker, type) => sameType(type, boolType),
-  false: (_checker, type) => sameType(type, boolType),
-  none: (checker, type) => optionalInner(type, checker.optionalEntity) !== undefined,
-} satisfies Record<Exclude<PatternWord, 'struct'> | '_', (checker: Checker, type: Type) => boolean>;
+const startWordLiterals = {
+  _: undefined,
+  true: literalType(true),
+  false: literalType(false),
+  none: noneType,
+} satisfies Record<Exclude<PatternWord, 'struct'> | '_', Type | undefined>;
 
 /** The visible names a pattern matching `type` may start with to refer. */
 function referringNames(cursor: Cursor, type: Type | undefined): readonly Candidate[] {
@@ -100,9 +106,9 @@ function referringNames(cursor: Cursor, type: Type | undefined): readonly Candid
 }
 
 /**
- * A namespace, which qualifies what it exports; a name of `type` itself, which matches every value
- * of it; and against an `any` type, a type a downcast may name, one it may hold, as only such a
- * type is ever inside it (§3.10; named-types.ts).
+ * A namespace, which qualifies what it exports; a name of `type` itself, or, against a union, one a
+ * pattern selects members by (named-types.ts), but a variant's, offered by its owner above; and
+ * against an `any` type, a type a downcast may name, one it may hold (§3.10).
  */
 function mayRefer(checker: Checker, entity: Entity, type: Type | undefined): boolean {
   if (entity.kind === 'namespace') {
@@ -113,6 +119,10 @@ function mayRefer(checker: Checker, entity: Entity, type: Type | undefined): boo
   }
   if (namesOwnType(checker, entity, type)) {
     return true;
+  }
+  if (type.kind === 'union') {
+    const isVariant = entity.kind === 'variant' || entity.kind === 'variants';
+    return !isVariant && membersNamed(checker, entity, type.members).length > 0;
   }
   return type.kind === 'any' && downcastTargetOf(checker, entity, type).kind === 'type';
 }

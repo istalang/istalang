@@ -1,0 +1,57 @@
+# error: 5106 at 22:6
+# error: 5105 at 29:4
+# error: 5105 at 32:4
+# error: 5105 at 35:4
+# error: 5013 at 47:9
+# error: 5016 at 48:7
+# error: 5002 at 49:7
+# error: 5101 at 50:7
+# error: 5101 at 51:7
+# error: 5101 at 52:3
+# error: 5025 at 53:3
+# error: 5101 at 54:7
+# error: 5101 at 55:7
+# error: 5101 at 56:7
+# error: 5130 at 57:22
+# Using unions, JSON codecs, and member type parameters (§1, §6, §7): no direct member access,
+# overload clashes between a type and a union holding it (or a literal and its base), non-object-
+# safe traits and non-literal JSON codecs refused, Sendable/must-use enforced, and T in U checks.
+import * as json from 'json'
+
+type Status = "draft" | "sent" | "failed"
+type Endless = Int | Endless
+
+struct Email { to: String }
+struct Sms { number: String }
+type Contact = Email | Sms
+
+fn clashUnion(x: Int) -> Int: x
+fn clashUnion(x: Int | String) -> Int: 0
+
+fn clashLitBase(x: "a") -> Int: 1
+fn clashLitBase(x: String) -> Int: 2
+
+fn clashLitUnion(x: "a") -> Int: 1
+fn clashLitUnion(x: "a" | "b") -> Int: 2
+
+fn over(x: Int) -> Int: x
+fn over(x: String) -> Int: x.length()
+
+fn needDefault<T is Default>() -> T: T.default()
+fn needComparable<T is Comparable>(a: T, b: T) -> Int: compare(a, b)
+fn needSendable<T is Sendable>(x: T): ()
+fn makeMustUse(x: Result<Int> | Int) -> Result<Int> | Int: x
+fn describeStatus<S in Status>(s: S) -> String: s
+
+fn badUses(c: Contact, u: Int | String, s: Status, nonSend: Int | Slot<Int>, must: Result<Int> | Int):
+  _ = c.to
+  _ = u + 1
+  _ = over(u)
+  _ = needDefault<Int | String>()
+  _ = needComparable(u, u)
+  needSendable(nonSend)
+  makeMustUse(must)
+  _ = json.stringify(u)
+  _ = json.stringify(c)
+  _ = json.parse<Int | String>("1")
+  _ = describeStatus(s)

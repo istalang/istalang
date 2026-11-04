@@ -1,0 +1,39 @@
+# outcome: "int:7|first:77|fallback|second|Aa:other|A:I:O|both:5:other"
+# A pattern on a union an instantiation collapses (§3.5, §3.11): the first case that matches wins,
+# a member that is the one type left takes every value, a literal merged into its base compares,
+# and a union collapsing partly keeps the members left apart.
+
+struct Box<V> { value: V }
+
+fn collapsed<T>(x: T | Int) -> String:
+  match x:
+    case Int as n: `int:${n}`
+    case _: "fallback"
+
+fn boxed<T>(x: Box<T> | Box<Int>) -> String:
+  match x:
+    case Box<Int>{value} as b: `first:${value}${b.value}`
+    case Box<T>: "second"
+
+fn lit<T>(x: T | "a") -> String:
+  match x:
+    case "a" as a: `A${a}`
+    case _: "other"
+
+fn litPart<T>(x: T | "a" | Int) -> String:
+  match x:
+    case "a": "A"
+    case Int: "I"
+    case _: "O"
+
+fn partly<T>(x: T | Int | String) -> String:
+  match x:
+    case Int | String as v: `both:${v}`
+    case _: "other"
+
+async fn main() -> Future<String>:
+  const p1 = `${collapsed<Int>(7)}|${boxed<Int>(Box{value: 7})}`
+  const p2 = `${collapsed<String>("a")}|${boxed<String>(Box{value: "s"})}`
+  const p3 = `${lit<String>("a")}:${lit<String>("b")}|${litPart<String>("a")}:${litPart<String>(3)}:${litPart<String>("z")}`
+  const p4 = `${partly<Int>(5)}:${partly<Bool>(true)}`
+  `${p1}|${p2}|${p3}|${p4}`

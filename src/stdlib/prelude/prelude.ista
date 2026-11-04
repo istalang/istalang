@@ -44,9 +44,8 @@ extern struct _Cell<T>
 extern fn dispose<T>(self: Future<T>)
 extern fn dispose<T>(self: Slot<T>)
 
-enum Optional<T>:
-  Some { value: T }
-  None
+# `T?` is `T | None` (§2); this alias names it, so the statics declared on it are `T?`'s (§3.17).
+type Optional<T> = T?
 
 # Default, as an Array and a Map are: what a skipped JSON field reads back as (§9).
 fn Optional.default<T>() -> T?: none
@@ -54,6 +53,13 @@ fn Optional.default<T>() -> T?: none
 enum Result<T, E = Error>:
   Ok { value: T }
   Err { error: E }
+
+# What a cursor gives each time it is called (§3.10): the next item, or that there are no more. An
+# enum of its own, never `T?`, since an item may itself be `none` and `T??` is `T?`, so a stored
+# `none` would read as the end.
+enum Step<T>:
+  Next { value: T }
+  Done
 
 struct Error:
   message: String
@@ -188,15 +194,16 @@ fn _merged<T>(left: Array<T>, right: Array<T>, order: fn(T, T) -> Int) -> Array<
   [...merged, ...left[fromLeft..], ...right[fromRight..]]
 
 # Iteration (§3.10): `iterate` gives a cursor, which gives the next item each time it is called and
-# `none` once there are no more. A cursor holds what it runs over as `iterate` was given it, so
+# `Done` once there are no more. A cursor holds what it runs over as `iterate` was given it, so
 # changing the original meanwhile changes nothing, and it persists as any closure does: a range's
 # holds two ints, never its items.
-fn iterate<T>(self: Array<T>) -> fn() -> T?: _cursor(self.length(), fn(position): self[position])
+fn iterate<T>(self: Array<T>) -> fn() -> Step<T>:
+  _cursor(self.length(), fn(position): self[position])
 
-fn iterate<K, V>(self: Map<K, V>) -> fn() -> (K, V)?:
+fn iterate<K, V>(self: Map<K, V>) -> fn() -> Step<(K, V)>:
   _cursor(self.size(), fn(position): self._entryAt(position))
 
-fn iterate(self: Range) -> fn() -> Int?:
+fn iterate(self: Range) -> fn() -> Step<Int>:
   const start, step, count = self._steps()
   _cursor(count, fn(position): start + position * step)
 
@@ -205,22 +212,22 @@ extern fn _steps(self: Range) -> (Int, Int, Int)
 
 # A string's cursor steps over its code points by where each starts in its UTF-16 text, so reading
 # the next one never counts from the start.
-fn iterate(self: String) -> fn() -> String?:
+fn iterate(self: String) -> fn() -> Step<String>:
   let offset = 0
-  fn next() -> String?:
-    if self._characterAt(offset) is Some{value is (character, after)}:
+  fn next() -> Step<String>:
+    if self._characterAt(offset) is (character, after):
       offset = after
-      return character
-    none
+      return Next{(character)}
+    Done
   next
 
 # The cursor of `count` items, the item at each position read by `item`.
-fn _cursor<T>(count: Int, item: fn(Int) -> T) -> fn() -> T?:
+fn _cursor<T>(count: Int, item: fn(Int) -> T) -> fn() -> Step<T>:
   let position = 0
-  fn next() -> T?:
-    if position == count: return none
+  fn next() -> Step<T>:
+    if position == count: return Done
     position += 1
-    item(position - 1)
+    Next{(item(position - 1))}
   next
 
 # The entry at `position` in a map's own order.
@@ -310,7 +317,7 @@ trait Disposable:
   fn dispose(self: Self)
 
 trait Iterable<T, C = Self>:
-  fn iterate(self: C) -> fn() -> T?
+  fn iterate(self: C) -> fn() -> Step<T>
 
 # What `item in c` asks (§3.9).
 trait Container<T, C = Self>:

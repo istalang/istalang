@@ -2,8 +2,10 @@
  * Patterns' shapes over the checker's types (§3.11): the constructors each type is made of, the
  * shape a literal gives, and how a shape no case matches is written back as a pattern.
  *
- * - An enum is made of its variants, `Bool` of `true` and `false`, and a tuple, a struct and
- *   `Unit` of one constructor each; an array of its lengths (exhaustiveness.ts). Any other type
+ * - A union is made of its members (§3.11), each holding its value, and a literal member or `None`
+ *   nothing beside its tag.
+ * - An enum is made of its variants, `Bool` of `true` and `false`, and a tuple, a struct, `Unit`
+ *   and a literal type of one constructor each, the literal's being its value; an array of its lengths (exhaustiveness.ts). Any other type
  *   (`Int`, `String`, a handle, a type parameter) has no finite set, so only a pattern taking
  *   anything covers it.
  * - `==` against a literal counts as a pattern, but only a literal of `Bool`, `Int`, `Float` or
@@ -16,8 +18,16 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import type { Checker } from '../check.ts';
-import { type FieldMember, isPrimitive, type Type } from '../types/type.ts';
+import {
+  type FieldMember,
+  isPrimitive,
+  type LiteralValue,
+  type Type,
+  type UnionType,
+} from '../types/type.ts';
+import { typeKeys } from '../types/type-keys.ts';
 import { typeText } from '../types/type-text.ts';
+import { hasOneValue } from '../types/unions.ts';
 import { arrayElement } from '../types/well-known.ts';
 import type { ConstructorOf, Shape, Signature, WitnessShape } from './exhaustiveness.ts';
 
@@ -32,32 +42,65 @@ export const tupleKey = 'tuple';
 export function signatureOf(checker: ShapeChecker): Signature<Type> {
   return (type) => {
     const items = arrayElement(checker, type);
-    if (items !== undefined) {
-      return { items };
-    }
-    if (isPrimitive(type, 'Bool')) {
-      return [
-        { key: 'true', arguments: [] },
-        { key: 'false', arguments: [] },
-      ];
-    }
-    if (isPrimitive(type, 'Unit')) {
-      return [{ key: tupleKey, arguments: [] }];
-    }
-    if (type.kind === 'tuple') {
+    return items === undefined
+      ? (ownConstructors(type) ?? declaredConstructors(checker, type))
+      : { items };
+  };
+}
+
+/**
+ * The constructors a type's own kind makes it of: `Bool`'s two values, the one tuple of `Unit` or a
+ * tuple type, a union's members, or a literal type's one value.
+ */
+function ownConstructors(type: Type): readonly ConstructorOf<Type>[] | undefined {
+  if (isPrimitive(type, 'Bool')) {
+    return [
+      { key: 'true', arguments: [] },
+      { key: 'false', arguments: [] },
+    ];
+  }
+  if (isPrimitive(type, 'Unit')) {
+    return [{ key: tupleKey, arguments: [] }];
+  }
+  switch (type.kind) {
+    case 'tuple':
       return [{ key: tupleKey, arguments: type.elements }];
-    }
-    const variants = type.kind === 'nominal' ? checker.variantsOf(type) : undefined;
-    if (variants !== undefined) {
-      return variants.map(
-        (variant): ConstructorOf<Type> => ({
-          key: variant.name,
-          arguments: typesOf(variant.fields),
-        }),
-      );
-    }
-    const fields = checker.fieldsOf(type);
-    return fields === undefined ? undefined : [{ key: structKey, arguments: typesOf(fields) }];
+    case 'union':
+      return type.members.map((member) => ({
+        key: memberKey(member),
+        arguments: hasOneValue(member) ? [] : [member],
+      }));
+    case 'literal':
+      return [{ key: literalValueKey(type.value), arguments: [] }];
+    default:
+      return undefined;
+  }
+}
+
+/** The constructors a declaration makes a type of: an enum's variants, or a struct's one. */
+function declaredConstructors(
+  checker: ShapeChecker,
+  type: Type,
+): readonly ConstructorOf<Type>[] | undefined {
+  const variants = type.kind === 'nominal' ? checker.variantsOf(type) : undefined;
+  if (variants !== undefined) {
+    return variants.map((variant) => ({ key: variant.name, arguments: typesOf(variant.fields) }));
+  }
+  const fields = checker.fieldsOf(type);
+  return fields === undefined ? undefined : [{ key: structKey, arguments: typesOf(fields) }];
+}
+
+/** The key of a union's member among its constructors. */
+function memberKey(member: Type): string {
+  return `member:${typeKeys.typeKey(member)}`;
+}
+
+/** The shape of a value of a union's `member`, the member's own value taking `inside`. */
+export function memberShape(member: Type, inside: Shape): Shape {
+  return {
+    kind: 'constructor',
+    key: memberKey(member),
+    arguments: hasOneValue(member) ? [] : [inside],
   };
 }
 
@@ -75,13 +118,29 @@ export function literalShape(node: Expression): Shape | undefined {
 function literalKey(node: Expression): string | undefined {
   switch (node.kind) {
     case 'BooleanLiteral':
-      return String(node.value);
     case 'StringLiteral':
-      return `${node.kind}:${node.value}`;
+      return literalValueKey(node.value);
     default: {
       const number = signedNumberOf(node);
-      return number === undefined ? undefined : `${number.kind}:${number.value}`;
+      if (number === undefined) {
+        return undefined;
+      }
+      return number.kind === 'IntegerLiteral'
+        ? literalValueKey(number.value)
+        : `${number.kind}:${number.value}`;
     }
+  }
+}
+
+/** The key of a literal's value, which a literal type's one constructor has too. */
+function literalValueKey(value: LiteralValue): string {
+  switch (typeof value) {
+    case 'boolean':
+      return String(value);
+    case 'string':
+      return `StringLiteral:${value}`;
+    default:
+      return `IntegerLiteral:${value}`;
   }
 }
 
@@ -92,14 +151,15 @@ export function witnessText(checker: ShapeChecker, shape: WitnessShape, type: Ty
   }
   const signed = signatureOf(checker)(type);
   if (signed !== undefined && 'items' in signed) {
-    const orMore = typeof shape.key !== 'string' && shape.key.orMore;
-    const items = shape.arguments.map((argument) => witnessText(checker, argument, signed.items));
-    return `[${[...items, ...(orMore ? ['..._'] : [])].join(', ')}]`;
+    return arrayWitness(checker, shape, signed.items);
   }
   if (typeof shape.key !== 'string') {
     unreachable('An array length constructor was produced for a non-array type.');
   }
   const { key } = shape;
+  if (type.kind === 'union') {
+    return memberWitness(checker, shape, type);
+  }
   const made = signed?.find((option) => option.key === key);
   const parts = shape.arguments.map((argument, index) =>
     witnessText(checker, argument, made?.arguments[index] ?? type),
@@ -116,6 +176,29 @@ export function witnessText(checker: ShapeChecker, shape: WitnessShape, type: Ty
     return name;
   }
   return looked.length === 0 ? `${name}{…}` : `${name}{${looked.join(', ')}}`;
+}
+
+/** An array's shape, of `items`, as its pattern: `[_, _]`, or `[_, ..._]` for that many or more. */
+function arrayWitness(
+  checker: ShapeChecker,
+  shape: Exclude<WitnessShape, { kind: 'any' }>,
+  items: Type,
+): string {
+  const orMore = typeof shape.key !== 'string' && shape.key.orMore;
+  const written = shape.arguments.map((argument) => witnessText(checker, argument, items));
+  return `[${[...written, ...(orMore ? ['..._'] : [])].join(', ')}]`;
+}
+
+/** A union's member as a pattern: what it holds, or the member's type when it holds anything. */
+function memberWitness(
+  checker: ShapeChecker,
+  shape: Exclude<WitnessShape, { kind: 'any' }>,
+  union: UnionType,
+): string {
+  const member = union.members.find((each) => memberKey(each) === shape.key) ?? union;
+  const [inside] = shape.arguments;
+  const text = inside === undefined ? '_' : witnessText(checker, inside, member);
+  return text === '_' ? typeText(member) : text;
 }
 
 function fieldsOfConstructor(

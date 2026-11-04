@@ -1,0 +1,51 @@
+# outcome: "mail(cfo):hi|sms(555):yo|42|Email(ops)|42|Email(ops)|-1|true:false:num:str|spawned:9"
+# Using a union (§6): trait conformance through functions declared for the union (Optional.default)
+# or through every member meeting an object-safe trait, trait calls through visible traits, == and
+# != comparing member type then value, unions as Map keys, and Sendable unions across spawn.
+
+struct Email { to: String }
+struct Sms { number: String }
+type Contact = Email | Sms
+
+trait Notifier:
+  fn send(self: Self, text: String) -> String
+
+fn send(self: Email, text: String) -> String:
+  `mail(${self.to}):${text}`
+
+fn send(self: Sms, text: String) -> String:
+  `sms(${self.number}):${text}`
+
+fn toString(self: Email) -> String:
+  `Email(${self.to})`
+
+fn toString(self: Sms) -> String:
+  `Sms(${self.number})`
+
+fn showGen<T is Stringable>(v: T) -> String:
+  v.toString()
+
+fn optDefault<T is Default>() -> T:
+  T.default()
+
+async fn worker(v: Int | String) -> Future<String>:
+  match v:
+    case Int as n: `spawned:${n}`
+    case String as s: `spawned:${s}`
+
+async fn main() -> Future<String>:
+  const c1: Contact = Email{to: "cfo"}
+  const c2: Contact = Sms{number: "555"}
+  const x: Int | Email = 42
+  const y: Int | Email = Email{to: "ops"}
+  const anyStr: any Stringable = y
+  const d: Int? = optDefault<Int?>()
+  const a: Int | String = 1
+  const b: Int | String = "1"
+  const c: Int | String = 1
+  const m: Map<Int | String, String> = [a: "num", b: "str"]
+  const inst = spawn worker(9)
+  const sp = match await inst.result():
+    case Ok{value}: value
+    case Err{error}: error.message
+  `${c1.send("hi")}|${c2.send("yo")}|${x.toString()}|${y}|${showGen(x)}|${String(anyStr)}|${d ?? -1}|${a == c}:${a == b}:${m[1]}:${m["1"]}|${sp}`

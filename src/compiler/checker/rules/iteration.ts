@@ -1,10 +1,11 @@
 /**
  * Iteration (§3.10, §4): what a `for`, a comprehension and a spread run over.
  *
- * - Every iterable goes through `iterate`, which gives a cursor, `fn() -> T?`: each call gives the
- *   next item, and `none` once there are no more. Any type with an `iterate` is iterable;
- *   `iterate` is found like an operator's function, so a program's types join in
- *   (resolution/implicit.ts). Lowering calls the cursor until it gives `none`, so the loop makes
+ * - Every iterable goes through `iterate`, which gives a cursor, `fn() -> Step<T>`: each call gives
+ *   `Next` of the next item, and `Done` once there are no more. A `Step`, never `T?`, since `T??`
+ *   is `T?`: an item that is itself `none` would read as the end. Any type with an `iterate` is
+ *   iterable; `iterate` is found like an operator's function, so a program's types join in
+ *   (resolution/implicit.ts). Lowering calls the cursor until it gives `Done`, so the loop makes
  *   no call of the language's own. Whatever its call reports, an ambiguity or an unmet constraint
  *   among them, falls on the iterable, not the whole loop.
  * - How each iteration runs is recorded (`IterationForm`): through its cursor, of its items' type,
@@ -14,19 +15,19 @@
  *   `(key, value)`, so `for key, value in m:` works directly.
  */
 
-import { collectionFunctions } from '../../../language/well-known.ts';
+import { collectionFunctions, wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Comprehension, Expression } from '../../syntax/expressions/index.ts';
 import type { For } from '../../syntax/statements.ts';
-import type { Iteration, IterationForm } from '../check.ts';
-import type { BodyContext, CheckerContext, IterationRecord } from '../context.ts';
+import type { Checker, Iteration, IterationForm } from '../check.ts';
+import type { BodyContext, IterationRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { declareTargets } from '../patterns/targets.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { implicitCall } from '../resolution/implicit.ts';
-import { optionalInner } from '../types/fit.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { wellKnownArguments } from '../types/well-known.ts';
 
 /** How each iteration in one body runs. */
 export class Iterations implements IterationRecord {
@@ -96,9 +97,9 @@ export function checkLoopOver(context: BodyContext, node: For | Comprehension): 
   declareTargets(context, node, checkIterated(context, node, node.iterable) ?? errorType);
 }
 
-/** The item a cursor of `type` gives: `T` of `fn() -> T?`; undefined for any other type. */
-function cursorItem(checker: CheckerContext, type: Type): Type | undefined {
+/** The item a cursor of `type` gives: `T` of `fn() -> Step<T>`; undefined for any other type. */
+function cursorItem(checker: Pick<Checker, 'wellKnownType'>, type: Type): Type | undefined {
   return type.kind === 'function' && type.parameters.length === 0 && !type.isAsync
-    ? optionalInner(type.result, checker.optionalEntity)
+    ? wellKnownArguments(checker, wellKnown.step, type.result)?.[0]
     : undefined;
 }

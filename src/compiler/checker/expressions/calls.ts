@@ -31,11 +31,12 @@ import { conversionFunction } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod } from '../../syntax/declarations.ts';
 import { misplacedArgument } from '../../syntax/expressions/arguments.ts';
-import type {
-  Call,
-  CallArgument,
-  Expression,
-  MemberAccess,
+import {
+  type Call,
+  type CallArgument,
+  type Expression,
+  type MemberAccess,
+  unparenthesized,
 } from '../../syntax/expressions/index.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
@@ -54,6 +55,7 @@ import { fieldOf } from '../traits/constraints.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { writtenLiteral } from '../types/unions.ts';
 import { spreadArgumentType } from './collections.ts';
 import { readsNothing, recordFieldRead } from './structs.ts';
 
@@ -100,8 +102,9 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
 /**
  * An argument as written: `&x` passes the place `x`, checked as a place that may change; a spread,
  * its items, as an array literal's spread gives them (§2), or a pack's value, as it is (§3.5); any
- * other is a value, checked now unless the chosen function decides its type. A named argument is
- * its value, named.
+ * other is a value, checked now unless the chosen function decides its type, a literal with its
+ * literal type beside, which it has where its parameter expects one (§2). A named argument is its
+ * value, named.
  */
 function writtenArgument(context: BodyContext, argument: CallArgument): WrittenArgument {
   switch (argument.kind) {
@@ -129,6 +132,7 @@ function valueArgument(context: BodyContext, argument: Expression): WrittenArgum
     node: argument,
     passing: 'value',
     type: accepts === undefined ? context.expression(argument) : undefined,
+    literal: writtenLiteral(unparenthesized(argument)),
     accepts,
   };
 }
@@ -182,7 +186,7 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
     expected: call.expected,
     form: 'call',
     receiver,
-    hint: () => insideOptional(checker, receiver.span, receiverType, '.'),
+    hint: () => insideOptional(receiver.span, receiverType, '.'),
   });
 }
 

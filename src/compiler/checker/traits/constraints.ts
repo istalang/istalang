@@ -147,7 +147,13 @@ export function requirementsNamed(
     const substitution = constraintSubstitution(constraint, type);
     return requiredFunctions(constraint.trait).flatMap((declaration, member) =>
       declaration.name.text === name
-        ? [{ declaration, substitution, origin: { on, constraint: constraintIndex, member } }]
+        ? [
+            {
+              declaration,
+              substitution,
+              origin: { kind: 'constraint', on, constraint: constraintIndex, member },
+            },
+          ]
         : [],
     );
   });

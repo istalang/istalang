@@ -1,0 +1,55 @@
+# error: 5400 at 18:9
+# error: 5400 at 23:9
+# error: 5417 at 29:10
+# error: 5016 at 35:13
+# error: 4000 at 39:10
+# error: 5418 at 44:10
+# error: 5418 at 49:10
+# error: 5418 at 54:10
+# Pattern matching on unions (§3, §5): matches must cover every union member or literal,
+# Some is no longer a variant of T?, a pattern can't name a type outside the union, a guarded
+# case leaves its member in the remaining type, and ambiguous variant/generic/shape patterns fail.
+type Status = "draft" | "sent" | "failed"
+enum First { Shared; OnlyFirst }
+enum Second { Shared; OnlySecond }
+struct Box<T> { value: T }
+
+fn nonExhaustiveUnion(x: Int | String | Bool) -> Int:
+  match x:
+    case Int: 1
+    case String: 2
+
+fn nonExhaustiveLiterals(s: Status) -> Int:
+  match s:
+    case "draft": 1
+    case "sent": 2
+
+fn outsideUnion(x: Int | String) -> Int:
+  match x:
+    case Bool: 0
+    case _: 1
+
+fn guardedNotNarrowed(x: Int?, flag: Bool) -> Int:
+  match x:
+    case None if flag: 0
+    case v: v + 1
+
+fn removedSome(x: Int?) -> Int:
+  match x:
+    case Some{value}: value
+    case None: 0
+
+fn sharedVariant(x: First | Second) -> Int:
+  match x:
+    case Shared: 1
+    case _: 0
+
+fn unannotatedGeneric(x: Box<Int> | Box<String>) -> Int:
+  match x:
+    case Box{value}: value
+    case _: 0
+
+fn ambiguousShape(x: { id: Int; a: Int } | { id: Int; b: String }) -> Int:
+  match x:
+    case struct{id}: id
+    case _: 0

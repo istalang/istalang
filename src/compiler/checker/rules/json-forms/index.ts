@@ -5,7 +5,11 @@
  * its form, decided here once per type, which lowering writes the derived codecs from.
  *
  * - A struct is an object of its fields, an enum the same with a tag naming the variant
- *   (`variantTagKey`), a tuple an array, a host type whatever JSON its host gave it.
+ *   (`variantTagKey`), a tuple an array, a host type whatever JSON its host gave it, and a literal
+ *   type or a union of literals of one base its literal, as its base writes it.
+ * - A union crosses only as `T | None`, through the json module's codecs of `T?`, or as literals of
+ *   one base: which member a value of any other union is would need a tag of its own, and how codecs
+ *   read an untagged member is left open until codecs move into the language (§14).
  * - What a struct, an enum or a tuple holds crosses through its own codecs, which are coherent
  *   witnesses (§3.10), so a derived codec is the same wherever its type is used.
  * - A codec declared for a type is a witness found as any is: beside the type, or in the json
@@ -13,9 +17,8 @@
  *   either leaves nothing derived, so no type is written one way and read another.
  * - A derived codec exists when everything it holds meets the trait. A
  *   recursive type counts as meeting it while its own parts are decided, as Sendable does.
- * - What has no codec says why, in words a diagnostic finishes ("it needs …"): a nested optional,
- *   whose two nones JSON can't tell apart; an enum with a field named as the tag; a function; a
- *   handle. A type with nothing more to say lacks the codec itself, as conformance says.
+ * - What has no codec says why, in words a diagnostic finishes ("it needs …"): an enum with a field
+ *   named as the tag; a function; a handle. A type with nothing more to say lacks the codec itself, as conformance says.
  * - What the json module's field annotations mean is decided here: a field's key after its
  *   `@JsonName`, an `@JsonBigInt` field's own codecs, and what an `@JsonSkip` field reads back as,
  *   which annotations.ts also asks to tell where the annotation may stand.
@@ -46,11 +49,18 @@ import { defaultWitness } from '../../resolution/default-witness.ts';
 import { callWithTypes } from '../../resolution/silent-choice.ts';
 import type { FunctionCall, ResolvedCall } from '../../resolved-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
-import { optionalInner } from '../../types/fit.ts';
-import type { FieldMember, NominalType, StructValueType, Type } from '../../types/type.ts';
+import { sameType } from '../../types/identity.ts';
+import type {
+  FieldMember,
+  NominalType,
+  StructValueType,
+  Type,
+  UnionType,
+} from '../../types/type.ts';
 import { TypeCycle } from '../../types/type-cycle.ts';
 import { unaliased } from '../../types/type-parts.ts';
 import { typeText } from '../../types/type-text.ts';
+import { baseOf, optionalInner } from '../../types/unions.ts';
 import { hostSite, searchSite, silent, type UseSite } from '../../use-site.ts';
 import type { Annotations } from '../annotations.ts';
 
@@ -59,6 +69,10 @@ import type { Annotations } from '../annotations.ts';
  * identity of their own (§3.1, §3.18).
  */
 const handleHasNoForm = 'a JSON form, which no handle has: it stays in its instance';
+
+/** Why a union other than an optional or a union of literals has no codec (§9). */
+const unionHasNoForm =
+  'a JSON form, which a union has only as an optional or as literals of one type';
 
 /** What the unit needs beside the checker: field annotations. */
 export interface JsonFormSeams {
@@ -105,14 +119,6 @@ export class JsonForms implements JsonCodecs {
 
   #formOf(type: Type): FormOrNone {
     return this.#forms.get(this.#seams.checker.typeKeys.typeKey(type), type);
-  }
-
-  refusalOf(type: Type): string | undefined {
-    const { optionalEntity } = this.#seams.checker;
-    const inner = optionalInner(type, optionalEntity);
-    return inner !== undefined && optionalInner(inner, optionalEntity) !== undefined
-      ? 'no optional directly inside it, since JSON has one null for both its nones'
-      : undefined;
   }
 
   derivedOf(site: UseSite, type: Type, direction: JsonDirection): DerivedCodec {
@@ -173,6 +179,10 @@ export class JsonForms implements JsonCodecs {
         return { kind: 'none', reason: 'a JSON form, which no function has' };
       case 'any':
         return { kind: 'none', reason: "a JSON form, which no 'any' type has" };
+      case 'literal':
+        return { kind: 'literals', type, base: baseOf(type), literals: [type] };
+      case 'union':
+        return literalsForm(type) ?? { kind: 'none', reason: unionHasNoForm };
       case 'primitive':
       case 'parameter':
       case 'error':
@@ -252,7 +262,7 @@ export class JsonForms implements JsonCodecs {
   }
 
   #field(field: FieldMember): JsonField {
-    const { checker, annotations } = this.#seams;
+    const { annotations } = this.#seams;
     return {
       name: field.name,
       key: annotations.jsonNameOf(field),
@@ -260,7 +270,7 @@ export class JsonForms implements JsonCodecs {
       skipped: annotations.fieldHas(field, 'jsonSkip')
         ? this.skippedDefaultOf(field.type)
         : undefined,
-      optional: optionalInner(field.type, checker.optionalEntity) !== undefined,
+      optional: optionalInner(field.type) !== undefined,
       codec: annotations.fieldHas(field, 'jsonBigInt')
         ? {
             write: this.callOf(codecHelpers.encodeBigInt, []),
@@ -287,6 +297,19 @@ export class JsonForms implements JsonCodecs {
   }
 }
 
+/** The form of `union` when its members are literals of one base; undefined otherwise. */
+function literalsForm(union: UnionType): DerivedForm | undefined {
+  const literals = union.members.filter((member) => member.kind === 'literal');
+  const [first] = literals;
+  if (first === undefined || literals.length < union.members.length) {
+    return undefined;
+  }
+  const base = baseOf(first);
+  return literals.every((literal) => sameType(baseOf(literal), base))
+    ? { kind: 'literals', type: union, base, literals }
+    : undefined;
+}
+
 /** The parts a derived codec writes and reads through their own types' codecs. */
 function partsOf(form: Exclude<DerivedForm, { kind: 'host' }>): readonly Part[] {
   const crossing = (fields: readonly JsonField[]): readonly Part[] =>
@@ -300,6 +323,8 @@ function partsOf(form: Exclude<DerivedForm, { kind: 'host' }>): readonly Part[] 
       return form.variants.flatMap((variant) => crossing(variant.fields));
     case 'tuple':
       return form.type.elements.map((type, index) => ({ name: `element ${index}`, type }));
+    case 'literals':
+      return [{ name: 'base', type: form.base }];
     default: {
       const unhandled: never = form;
       return unhandled;

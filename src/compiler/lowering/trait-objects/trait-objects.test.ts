@@ -1,7 +1,9 @@
 /**
  * Lowering trait objects (§3.10): an `any` type is an enum closed over the program, one variant
  * per type converted into it, however late lowering reaches the conversion, and its values are
- * data, so they cross a snapshot like any other value.
+ * data, so they cross a snapshot like any other value. A call on a union through a trait its
+ * members meet (§6) dispatches over the union's own variants, and a union converted into an `any`
+ * type adds its members, not itself.
  */
 
 import { readFileSync } from 'node:fs';
@@ -50,6 +52,17 @@ describe('lowering trait objects', () => {
     ]);
     expect(variantsOf(definition, 'any main.Named')).toEqual(['main.Email', 'main.Sms']);
     expect(switchTargets(definition, 'any main.Named.name')).toBe(2);
+  });
+
+  it("dispatches a call on a union over the union's members, and converts it member by member", () => {
+    const definition = compiled([
+      'async fn main():',
+      '  const contact: Email | Sms = Sms{number: "1"}',
+      '  const named: any Named = contact',
+      '  (contact.name(), named.name())',
+    ]);
+    expect(switchTargets(definition, 'main.Email | main.Sms.name')).toBe(2);
+    expect(variantsOf(definition, 'any main.Named')).toEqual(['main.Email', 'main.Sms']);
   });
 
   it('runs a mixed Array<any T> the same with every segment re-run from its snapshot', () => {

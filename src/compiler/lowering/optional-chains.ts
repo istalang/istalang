@@ -16,6 +16,7 @@
 import type { Register } from '../../definition/operands.ts';
 import { withPushed } from '../../structures/stack.ts';
 import { unreachable } from '../../structures/unreachable.ts';
+import { optionalInner, optionalOf } from '../checker/types/unions.ts';
 import { chainStepOf, isOptionalStep } from '../syntax/expressions/chains.ts';
 import type { Expression } from '../syntax/expressions/index.ts';
 import type { Label } from './code-writer.ts';
@@ -41,7 +42,9 @@ export class OptionalChains {
     const end = code.newLabel();
     const value = withPushed(this.#ends, none, () => this.#link(link));
     const wrapped =
-      context.body.chainOf(link)?.wraps === true ? someOf(context, type, value, link.span) : value;
+      context.body.chainOf(link)?.wraps === true
+        ? someOf(context, type, { register: value, type: optionalInner(type) ?? type }, link.span)
+        : value;
     code.emit({ kind: 'move', span: link.span, dst: result, src: wrapped });
     code.jump(end, link.span);
     code.place(none);
@@ -72,7 +75,7 @@ export class OptionalChains {
     if (base === undefined || none === undefined) {
       unreachable(`A '?.' at ${link.span.from} is outside a chain; lowering lost track of it.`);
     }
-    const read = { register: value, type: context.checker.optionalOf(base), to: base };
+    const read = { register: value, type: optionalOf(base), to: base };
     const inside = presentOrJump(context, read, none, link.span);
     return context.fitted(inside, base, fit, step.target);
   }

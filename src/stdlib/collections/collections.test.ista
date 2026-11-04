@@ -14,7 +14,7 @@ struct Watched:
 
 # Sets an entry of `map` for the key `holder` holds, to a value only the map holds.
 fn entryOf(map: Boxes, holder: Shared<Inbox<Int>?>) -> Watched:
-  if holder->value is Some{value as key}:
+  if holder->value is Inbox as key:
     const value = Inbox.create<Int>()
     map.set(key, value)
     return Watched{key: WeakRef(key), value: WeakRef(value)}
@@ -25,7 +25,7 @@ async fn evictedAcrossSnapshots() -> Future<String>:
   const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
   const watched = entryOf(map, holder)
   await runtime.commit()
-  assert(watched.value.deref() is Some{})
+  assert(watched.value.deref() is Inbox)
   holder->value = none
   await watched.value.disposed()
   "evicted"
@@ -62,7 +62,7 @@ fn weakMap() -> Array<Test>: [
     const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
     const watched = entryOf(map, holder)
     await runtime.commit()
-    assert(watched.value.deref() is Some{})
+    assert(watched.value.deref() is Inbox)
   }),
   test("holds no key", fn(): {
     const map: Boxes = WeakMap.create()
@@ -83,7 +83,7 @@ fn weakMap() -> Array<Test>: [
     const map: Boxes = WeakMap.create()
     const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
     const watched = entryOf(map, holder)
-    if holder->value is Some{value as key}: assert(map.delete(key))
+    if holder->value is Inbox as key: assert(map.delete(key))
     await watched.value.disposed()
   }),
   test("lets go of an entry whose key is disposed after a snapshot", async fn(): {

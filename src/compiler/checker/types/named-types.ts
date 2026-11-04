@@ -19,17 +19,30 @@
  *   rule, so what a pattern may name there and what may be converted in agree.
  * - Against an `any` value, a variant qualified by its enum names the enum, whose value is then
  *   tested for the variant; a bare variant name is chosen by the expected enum, so it names none.
+ * - Against a union's value, a pattern selects members (§3.11, patterns/members.ts): a name the
+ *   members it names (`membersNamed`), a generic type's instances or the one its type arguments
+ *   give (`instancesWith`), a literal its own member or its base's (`literalMembers`), and a
+ *   tuple, array or `struct{…}` pattern the members of its kind (`kindMembers`).
  */
 
 import type { PrimitiveName } from '../../../language/primitives.ts';
+import { sameItems } from '../../../structures/equality.ts';
 import { type Entity, typeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration, TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { Checker } from '../check.ts';
 import { sameType } from './identity.ts';
 import { typeOfEntity } from './resolve-type.ts';
-import { type AnyType, isPrimitive, type NominalDeclaration, type Type } from './type.ts';
+import {
+  type AnyType,
+  isPrimitive,
+  type NominalDeclaration,
+  type Type,
+  tupleElements,
+} from './type.ts';
 import { type ShapeKey, typeKeys } from './type-keys.ts';
+import { baseOf, optionalInner } from './unions.ts';
+import { arrayElement } from './well-known.ts';
 
 type Aliases = Pick<Checker, 'aliasedType'>;
 
@@ -42,10 +55,16 @@ export function entityType(checker: Aliases, entity: Entity | undefined): Type |
 }
 
 /**
- * What static functions are declared on (§3.7, §3.17): a nominal type's declaration, a primitive's
- * name, or a shape's key, which no primitive's name is.
+ * What `T?`'s static functions are declared on (§3.8, §3.17): every optional, whatever its `T`, as
+ * an alias of `T | None` declares them, such as the prelude's `Optional`.
  */
-export type StaticOwner = NominalDeclaration | PrimitiveName | ShapeKey;
+const optionalOwner = 'T?';
+
+/**
+ * What static functions are declared on (§3.7, §3.17): a nominal type's declaration, a primitive's
+ * name, a shape's key, which no primitive's name is, or every optional.
+ */
+export type StaticOwner = NominalDeclaration | PrimitiveName | ShapeKey | typeof optionalOwner;
 
 /** What static functions on `type` are declared on; undefined for a type that has none. */
 export function staticOwnerOf(type: Type | undefined): StaticOwner | undefined {
@@ -56,6 +75,8 @@ export function staticOwnerOf(type: Type | undefined): StaticOwner | undefined {
       return type.entity.declaration;
     case 'anonymous':
       return typeKeys.shapeKey(type);
+    case 'union':
+      return optionalInner(type) === undefined ? undefined : optionalOwner;
     default:
       return undefined;
   }
@@ -154,5 +175,114 @@ export function namesOwnType(checker: Aliases, entity: Entity, type: Type): bool
       const unhandled: never = named;
       return unhandled;
     }
+  }
+}
+
+/** What a pattern naming a type selects of a union's members reads of the program. */
+type MemberNaming = Pick<Checker, 'aliasedType' | 'variantsOf'>;
+
+/**
+ * The members of a union a pattern naming `entity` selects (§3.11): the enums declaring a variant
+ * it names, bare or qualified; the member of a type it names, else every literal member of that
+ * base (`case String as s` against `Status | Int`); every member instantiating a generic type it
+ * names. Anything else, a constant's name among them, selects none here.
+ */
+export function membersNamed(
+  checker: MemberNaming,
+  entity: Entity,
+  members: readonly Type[],
+): readonly Type[] {
+  switch (entity.kind) {
+    case 'variants':
+      return variantOwners(checker, members, entity.name);
+    case 'variant':
+      return members.filter(
+        (member) => member.kind === 'nominal' && member.entity.declaration === entity.enum,
+      );
+    default:
+      return typeMembers(checker, entity, members);
+  }
+}
+
+/** The enum members declaring a variant named `name`. */
+export function variantOwners(
+  checker: Pick<Checker, 'variantsOf'>,
+  members: readonly Type[],
+  name: string,
+): readonly Type[] {
+  return members.filter(
+    (member) =>
+      member.kind === 'nominal' &&
+      (checker.variantsOf(member) ?? []).some((variant) => variant.name === name),
+  );
+}
+
+function typeMembers(checker: Aliases, entity: Entity, members: readonly Type[]): readonly Type[] {
+  const named = patternTypeOf(checker, entity);
+  switch (named.kind) {
+    case 'type': {
+      const own = members.filter((member) => sameType(member, named.type));
+      return own.length > 0
+        ? own
+        : members.filter(
+            (member) => member.kind === 'literal' && sameType(baseOf(member), named.type),
+          );
+    }
+    case 'generic':
+      return members.filter(
+        (member) => member.kind === 'nominal' && member.entity.declaration === named.declaration,
+      );
+    default:
+      return [];
+  }
+}
+
+/** Of a generic type's instances among `members`, the one instantiating it with `typeArguments`. */
+export function instancesWith(
+  members: readonly Type[],
+  typeArguments: readonly Type[],
+): readonly Type[] {
+  return members.filter(
+    (member) => member.kind === 'nominal' && sameItems(sameType)(member.arguments, typeArguments),
+  );
+}
+
+/** The members a literal of type `literal` selects: its own literal type's, else its base's. */
+export function literalMembers(members: readonly Type[], literal: Type): readonly Type[] {
+  const own = members.find((member) => sameType(member, literal));
+  if (own !== undefined) {
+    return [own];
+  }
+  const base = baseOf(literal);
+  return members.filter((member) => sameType(member, base));
+}
+
+/**
+ * What a pattern of a kind holding no name selects: a tuple pattern of `count` elements the tuple
+ * members of that many, an array pattern the `Array` members, a `struct{…}` pattern the shape
+ * members having each of its `fields`.
+ */
+export type PatternKind =
+  | { readonly kind: 'tuple'; readonly count: number }
+  | { readonly kind: 'array' }
+  | { readonly kind: 'shape'; readonly fields: readonly string[] };
+
+/** The members a pattern of `pattern`'s kind selects, as `PatternKind` says. */
+export function kindMembers(
+  checker: Pick<Checker, 'wellKnownType'>,
+  pattern: PatternKind,
+  members: readonly Type[],
+): readonly Type[] {
+  switch (pattern.kind) {
+    case 'tuple':
+      return members.filter((member) => tupleElements(member)?.length === pattern.count);
+    case 'array':
+      return members.filter((member) => arrayElement(checker, member) !== undefined);
+    default:
+      return members.filter(
+        (member) =>
+          member.kind === 'anonymous' &&
+          pattern.fields.every((name) => member.fields.some((field) => field.name === name)),
+      );
   }
 }

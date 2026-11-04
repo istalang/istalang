@@ -47,10 +47,7 @@ export function chooseVariant(
   if (naming.kind === 'variant') {
     return { enum: naming.enum, variant: naming.variant };
   }
-  const chosen = context.checker.inputs.variantNamed(
-    naming.name,
-    enumsExpected(context.checker, expected),
-  );
+  const chosen = context.checker.inputs.variantNamed(naming.name, enumsExpected(expected));
   if (chosen === undefined) {
     if (!expectsError(expected)) {
       context.report(checkerDiagnostics.bareVariant(at.span, at.name.text));

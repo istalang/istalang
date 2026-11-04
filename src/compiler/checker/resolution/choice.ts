@@ -3,7 +3,8 @@
  * arguments alone, never from the result.
  *
  * - A candidate applies when it can take the arguments (applicability.ts).
- * - When concrete candidates apply, only they are chosen among: a concrete function beats a
+ * - A function taking a union whole beats a call on it through a trait (§6); among the rest, when
+ *   concrete candidates apply, only they are chosen among: a concrete function beats a
  *   generic one (§3.7); then a function without a rest parameter beats one with (§3.3); then one
  *   taking every argument as it is beats one making a plain function async (§3.14) or converting
  *   between a one-element tuple and its element (§3.15), so a pair taking `fn(A)` and
@@ -29,6 +30,7 @@ import { type Given, takenBy } from './applicability.ts';
 import { bindArguments, bindValue } from './binding.ts';
 import type { CallArgument, Inapplicability, SignatureSlot } from './call-arguments.ts';
 import type { Candidate } from './candidates.ts';
+import { membersRequirementOf } from './union-traits.ts';
 
 /**
  * What a candidate takes and gives, with a requirement's trait mapped (traits/constraints.ts).
@@ -58,10 +60,11 @@ export interface Application {
   readonly reshapes: boolean;
 }
 
+/** What choosing found: one application, none with each candidate's reason, or several tied. */
 export type Choice =
   | { readonly kind: 'chosen'; readonly application: Application }
   | { readonly kind: 'none'; readonly reasons: readonly Inapplicability[] }
-  | { readonly kind: 'several' };
+  | { readonly kind: 'several'; readonly tied: readonly Application[] };
 
 /** The signature of `declaration`, with a requirement's trait mapped by `substitution`. */
 export function signatureOf(
@@ -126,6 +129,7 @@ function chosenAmong(
     }
   }
   const preferred = [
+    ({ candidate }: Application) => membersRequirementOf(candidate) === undefined,
     ({ signature }: Application) => signature.typeParameters.length === 0,
     ({ signature }: Application) => !signature.parameters.some((slot) => slot.rest !== undefined),
     ({ reshapes: reshaped }: Application) => !reshaped,
@@ -137,7 +141,7 @@ function chosenAmong(
   if (preferred.length === 1 && only !== undefined) {
     return { kind: 'chosen', application: only };
   }
-  return preferred.length === 0 ? { kind: 'none', reasons } : { kind: 'several' };
+  return preferred.length === 0 ? { kind: 'none', reasons } : { kind: 'several', tied: preferred };
 }
 
 /** Why `candidate` can't take the arguments `given`, or how it takes them. */

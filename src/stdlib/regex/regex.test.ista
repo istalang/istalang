@@ -63,8 +63,8 @@ fn suite() -> Array<Test>: [
     }),
     test("find gives the first match, where it starts and its groups", fn(): {
       const found = date().find("😀 on 2026-10")
-      assert(found is Some{value is Match{text is "2026-10", index is 5}})
-      if found is Some{value as m}:
+      assert(found is Match{text is "2026-10", index is 5})
+      if found is Match as m:
         const captures: Array<String?> = ["2026", "10", none, none]
         assertEq(m.captures, captures)
         assertEq(m.named, ["year": "2026", "month": "10"])

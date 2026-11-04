@@ -14,7 +14,7 @@ fn size(n: Int) -> String:
 
 fn kind(value: Int?) -> String:
   match value:
-    case none | Some{value == 0}: "nothing"
+    case none | 0: "nothing"
     case _: "some"
 
 fn measure(shape: Shape) -> Int:
@@ -34,5 +34,5 @@ fn flagged(pair: (Int, Bool)) -> Int:
 
 async fn main() -> Future<(String, String, String, String, Int, Int, Int, Int, Int, Bool)>:
   const square: Shape = Square{4}
-  (size(2), size(3), kind(Some{0}), kind(Some{1}), measure(Circle{3}), measure(Triangle{3}),
+  (size(2), size(3), kind(0), kind(1), measure(Circle{3}), measure(Triangle{3}),
     other((5, 0)), other((0, 7)), flagged((1, true)), square is Circle{radius as n} | Square{side as n} and n == 4)

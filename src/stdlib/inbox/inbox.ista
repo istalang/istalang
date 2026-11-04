@@ -89,7 +89,7 @@ fn _fill<T>(self: Inbox<T>):
 
 # Removes message `number` from the inbox, if the inbox is still there and the message unread.
 fn _retract<T>(inbox: WeakRef<Inbox<T>>, number: Int):
-  if inbox.deref() is Some{value as box}:
+  if inbox.deref() is Inbox as box:
     box->backlog = [for queued in box->backlog if queued.number != number: queued]
     if box->slotted == number and _settles(box->slot.take()):
       box->slotted = none

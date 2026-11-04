@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { idOf } from '../../compiler/program/program.test-kit.ts';
-import type { ModuleId } from '../../compiler/program/program.ts';
+import { type ModuleId, programModule } from '../../compiler/program/program.ts';
+import { parentOf } from '../../compiler/syntax/tree.ts';
 import { type DeclaredAt, type NamePlace, nameAt, spanOfUse } from './declarations.ts';
 import { navigable, placeOf } from './navigation.test-kit.ts';
 
@@ -66,18 +67,35 @@ describe('the declarations a name denotes', () => {
   });
 
   it('are in std for what std declares', () => {
-    const { program, named } = navigable({ main: 'fn f() -> Int?: Some{value: 1}\n' });
+    const { program, named } = navigable({ main: 'fn f() -> Result<Int>: Ok{value: 1}\n' });
     const [declared] = declaredAround(
       program,
       idOf('main'),
-      spanOfUse(program, named('main', 'Some')).start,
+      spanOfUse(program, named('main', 'Ok')).start,
     );
     expect(declared?.at.module).toBe('std:prelude');
   });
 
-  it('are none for a primitive type, and where no name stands', () => {
-    const { program, named } = navigable({ main: 'fn f(x: Int) -> Int: x\n' });
+  it("are the prelude's alias for `Optional`, whose static functions are on it", () => {
+    const { program, named } = navigable({
+      main: 'fn f(x: Optional<Int>) -> Int?: Optional.default()\n',
+    });
+    for (const nth of [0, 1]) {
+      const [declared] = declaredAround(
+        program,
+        idOf('main'),
+        spanOfUse(program, named('main', 'Optional', nth)).start,
+      );
+      const at = declared?.at;
+      const holder = at && parentOf(programModule(program, at.module).tree, at.name);
+      expect([at?.module, holder?.kind]).toEqual(['std:prelude', 'TypeAliasDeclaration']);
+    }
+  });
+
+  it('are none for a primitive type, `None` among them, and where no name stands', () => {
+    const { program, named } = navigable({ main: 'fn f(x: Int, n: None) -> Int: x\n' });
     expect(declaredAt(program, named('main', 'Int'))).toEqual([]);
+    expect(declaredAt(program, named('main', 'None'))).toEqual([]);
     expect(declaredAround(program, idOf('main'), 'fn'.length)).toEqual([]);
   });
 

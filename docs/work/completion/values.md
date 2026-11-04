@@ -371,17 +371,17 @@ fn g(c: Color = ‸
 - **Accept:** `by: `.
 - **Basis:** spec §3.11.
 
-### LI-14 · Optional and Result · P2 · ✅ pass
+### LI-14 · An optional Result, and Result · P2 · ✅ pass
 
 ```
-  const e: Optional<int> = Some{‸}
+  const e: Result<Int>? = Ok{‸}
 ---
-  const e: Result<int> = Err{‸}
+  const e: Result<Int> = Err{‸}
 ```
 - **Where / trigger:** in `fn t`; typing `{`
 - **Offer:** `value: ` (`error: `).
 - **Not:** Scope names.
-- **Basis:** spec §3.11, §3.12.
+- **Basis:** spec §2 (built from the one member it fits), §3.11, §3.12.
 
 ### LI-15 · Shared struct · P1 · ✅ pass
 

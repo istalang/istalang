@@ -34,7 +34,7 @@ import {
   type SyntaxTree,
 } from '../../../compiler/syntax/tree.ts';
 import { codeTokensOf } from '../../tokens.ts';
-import { adjoinsBefore, type Cursor, touchingBefore } from '../cursor.ts';
+import { adjoins, adjoinsBefore, type Cursor, touchingBefore } from '../cursor.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 import { holderIn } from './chain.ts';
 import { type Surroundings, surroundingsOf } from './surroundings.ts';
@@ -240,14 +240,18 @@ function isModifier(text: string): text is Modifier {
 
 /**
  * Where each modifier is one: `async` anywhere; `shared` starting a module's item; `hold` starting
- * a block's item; `sendable` read as a type; `not` after an operand, starting `not in`.
+ * a block's item; `sendable` read as a type; `not` after an operand, only spaces and tabs between,
+ * starting `not in`: a line break or a template's `${` between starts an operand instead.
  */
 const standsAsModifier: Readonly<Record<Modifier, (tree: SyntaxTree, word: Token) => boolean>> = {
   async: () => true,
   shared: (tree, word) => startsItemOf('Module', tree, word),
   hold: (tree, word) => startsItemOf('Block', tree, word),
   sendable: (tree, word) => nodesAt(tree, word.span.start).some(({ kind }) => kind === 'NamedType'),
-  not: (tree, word) => !word.firstOnLine && endsOperand(tokenBefore(tree, word)),
+  not: (tree, word) => {
+    const operand = tokenBefore(tree, word);
+    return endsOperand(operand) && adjoins(tree, operand, word.span.start);
+  },
 };
 
 /**
@@ -294,7 +298,7 @@ function tokenBefore(tree: SyntaxTree, token: Token): Token | undefined {
 }
 
 /** Whether `token` is an operand's last: a name, a literal, a closing bracket, `?` or `!`. */
-function endsOperand(token: Token | undefined): boolean {
+function endsOperand(token: Token | undefined): token is Token {
   return token !== undefined && operandEnds.has(token.kind);
 }
 

@@ -5,9 +5,10 @@
  * the helpers both share build its variants and calls, and every instruction carries the span of
  * the declaration it stands for, which is where a trace through it points.
  *
- * Its registers are its parameters, in order, then its captures, then temporaries; it holds no
- * cells. A parameter it takes by `&`, as a dispatch does for a method's `&self` (§3.10), holds a
- * reference already, which it passes on by `&` as it is or into a part of it (`passedOn`). It
+ * Its registers are its parameters, in order, then its captures, then temporaries. A parameter it
+ * takes by `&`, as a dispatch does for a method's `&self` (§3.10), holds a reference already, which
+ * it passes on by `&` as it is or into a part of it (`passedOn`); a value it has no place for, a
+ * union member's one value (§6), it passes by `&` from a cell of its own (`inCell`). It
  * builds structs, tuples and `==` with the helpers code with a body uses, so each instruction has
  * one writer.
  */
@@ -19,7 +20,7 @@ import type { Value } from '../../definition/values.ts';
 import { resultVariants } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
-import type { AnonymousStructType, NominalType } from '../checker/types/type.ts';
+import type { AnonymousStructType, NominalType, Type } from '../checker/types/type.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import { CodeWriter } from './code-writer.ts';
 import { emitConstant } from './constants.ts';
@@ -30,6 +31,7 @@ import { construct } from './expressions/structs.ts';
 import { tupleOf } from './expressions/tuples.ts';
 import { buildVariant, payloadOf, payloadOr } from './expressions/variants.ts';
 import type { ClosedCall } from './instances.ts';
+import type { CellRegister } from './statements/variables.ts';
 import type { DefinitionTables, EntryHeader } from './tables.ts';
 
 /** What a call names: an entry already numbered, or a closed call to number. */
@@ -41,6 +43,7 @@ export class SynthesizedCode implements CodeContext {
   readonly code = new CodeWriter();
   readonly parameters: readonly Register[];
   readonly captures: readonly Register[];
+  readonly #cells: CellRegister[] = [];
   /** Where every instruction points: the declaration the code stands for. */
   readonly span: AnchoredSpan;
 
@@ -112,6 +115,14 @@ export class SynthesizedCode implements CodeContext {
       : { kind: 'value', register };
   }
 
+  /** `value`, of `type`, moved into a cell of its own, which it is passed by `&` from. */
+  inCell(value: Register, type: Type): Argument {
+    const register = this.code.allocate();
+    this.#cells.push({ register, type: this.tables.types.index(this.checker.cellOf(type)) });
+    this.code.emit({ kind: 'move', span: this.span, dst: register, src: value });
+    return { kind: 'reference', place: { register, path: [] } };
+  }
+
   /** Field `index` of the struct, variant or tuple in `value`. */
   field(value: Register, index: number): Register {
     return this.code.field(value, index, this.span);
@@ -147,7 +158,7 @@ export class SynthesizedCode implements CodeContext {
       parameters: this.parameters.map((_, index) => ({ reference: references[index] === true })),
       captures: this.captures.length,
       registers,
-      cells: [],
+      cells: [...this.#cells],
       instructions,
     };
   }

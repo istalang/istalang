@@ -43,6 +43,7 @@ import { type ImplicitOperand, implicitOperatorCall } from '../resolution/implic
 import { checkEqualSides } from '../types/equality.ts';
 import { boolType, isPrimitive, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { literalOrBase, writtenLiteral } from '../types/unions.ts';
 import { checkNullish } from './optionals.ts';
 
 export function checkBinary(context: BodyContext, node: Binary, expected: Type | undefined): Type {
@@ -66,14 +67,16 @@ export function checkBinary(context: BodyContext, node: Binary, expected: Type |
   return resolveOperator(context, node, applied(operator, meaning), operandsOf(context, node));
 }
 
-export function checkUnary(context: BodyContext, node: Unary): Type {
+export function checkUnary(context: BodyContext, node: Unary, expected?: Type): Type {
   if (node.operator === 'not') {
     context.expect(node.operand, boolType);
     return boolType;
   }
-  return resolveOperator(context, node, unaryApplied(node.operator), [
+  const type = resolveOperator(context, node, unaryApplied(node.operator), [
     { node: node.operand, type: context.expression(node.operand) },
   ]);
+  const written = writtenLiteral(node);
+  return written === undefined ? type : literalOrBase(written.value, expected);
 }
 
 /** `a < b <= c`: each operand compared with the next (§3.9). */

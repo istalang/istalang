@@ -39,6 +39,18 @@ export interface VariantPart {
   readonly fields: readonly FieldMember[];
 }
 
+/**
+ * What a pattern selects of its part before taking it apart (selections.ts): its test, the part the
+ * rest of the pattern takes, whether the selection says all there is to match, and the pattern's
+ * shape given the rest's.
+ */
+export interface Selection {
+  readonly test: PatternTest;
+  readonly part: ValuePart;
+  readonly decided: boolean;
+  readonly shapeOf: (inside: Shape | undefined) => Shape | undefined;
+}
+
 /** How the constructs that could fail to match are checked, where a pattern may fail. */
 export interface PatternTests {
   /** `case 0:`, `case "cfo":`, `case none:`. */

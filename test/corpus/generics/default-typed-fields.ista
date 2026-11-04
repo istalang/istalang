@@ -5,10 +5,10 @@
 
 enum Opt<T>:
   Some { value: T }
-  None
+  Empty
 
 struct A<T>:
-  b = B<T>{x: 1, a: Opt.None}
+  b = B<T>{x: 1, a: Opt.Empty}
 
 struct B<U>:
   x: Int

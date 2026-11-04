@@ -17,6 +17,7 @@ import type { Instruction } from '../../../definition/instructions/instruction.t
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { intType } from '../../checker/types/type.ts';
+import { optionalOf } from '../../checker/types/unions.ts';
 import type {
   ArrayLiteral,
   Expression,
@@ -254,6 +255,8 @@ function optionalInt(
   span: AnchoredSpan,
   value: Register | undefined,
 ): Register {
-  const type = context.checker.optionalOf(intType);
-  return value === undefined ? noneOf(context, type, span) : someOf(context, type, value, span);
+  const type = optionalOf(intType);
+  return value === undefined
+    ? noneOf(context, type, span)
+    : someOf(context, type, { register: value, type: intType }, span);
 }

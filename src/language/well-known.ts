@@ -46,6 +46,8 @@ export const wellKnown = {
   cell: { module: 'prelude', name: '_Cell' },
   /** What a function that can fail returns, and what `?` takes apart (§3.12). */
   result: { module: 'prelude', name: 'Result' },
+  /** What a cursor gives each call: the next item, or the end (§3.10). */
+  step: { module: 'prelude', name: 'Step' },
   /** What a duration literal is (§2). */
   duration: { module: 'time', name: 'Duration' },
   /** A point in time, which the host boundary writes as ISO 8601 (§9). */
@@ -131,6 +133,7 @@ export const codecHelpers = {
   fieldPath: '_fieldPath',
   tag: '_tag',
   unknownVariant: '_unknownVariant',
+  notAmong: '_notAmong',
   elements: '_elements',
   element: '_element',
   elementPath: '_elementPath',
@@ -157,11 +160,11 @@ export function qualifiedName({
 /** The function `Disposable` requires (§3.10, §7). */
 export const disposeFunction = 'dispose';
 
-/** The variants of `Optional` (§3.11): what a value is wrapped in, and what `none` is. */
-export const optionalVariants = { some: 'Some', none: 'None' } as const;
-
-/** The one field of `Optional`'s `Some`: the value it holds. */
-export const optionalValueField = 'value';
+/**
+ * How a union's enum lays out its values (§2, lowering/type-table.ts): a variant per member, named
+ * as the member is spelled, so `none`'s is `None`, holding a member's value in its one field.
+ */
+export const unionLayout = { noneVariant: 'None', valueField: 'value' } as const;
 
 /** The variants of `json.Json` (§9): JSON held as a value, by its kind. */
 export const jsonVariants = {
@@ -179,6 +182,9 @@ export const resultVariants = { ok: 'Ok', err: 'Err' } as const;
 
 /** The one field of each of `Result`'s variants (§3.12): `Ok`'s value and `Err`'s error. */
 export const resultFields = { ok: 'value', err: 'error' } as const;
+
+/** The variants of `Step` (§3.10): a loop runs its body on a `Next`'s one field, and ends on `Done`. */
+export const stepVariants = { next: 'Next', done: 'Done' } as const;
 
 /** The static function a conversion `T(x)` calls (§3.10). */
 export const conversionFunction = 'from';

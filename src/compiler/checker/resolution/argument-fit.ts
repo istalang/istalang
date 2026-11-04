@@ -11,7 +11,7 @@
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { substitute } from '../types/substitution.ts';
-import type { Type } from '../types/type.ts';
+import type { LiteralType, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { argumentSlotsOf } from './binding.ts';
 import type { CallArgument } from './call-arguments.ts';
@@ -22,6 +22,7 @@ import type { Instantiation } from './conformance.ts';
 export interface FittedArgument {
   readonly node?: Expression | undefined;
   readonly type: Type | undefined;
+  readonly literal?: LiteralType | undefined;
   readonly isSpread?: boolean | undefined;
 }
 
@@ -40,17 +41,19 @@ export function filledTypes(
 
 /**
  * Fits each argument to the type it fills, `expected` by argument number, checking first one the
- * chosen function decides.
+ * chosen function decides, and checking a literal again, which has its literal type where the type
+ * it fills expects one (§2).
  */
 export function fitArguments(
   context: BodyContext,
   argumentList: readonly FittedArgument[],
   expected: readonly (Type | undefined)[],
 ): void {
-  argumentList.forEach(({ node, type, isSpread }, index) => {
+  argumentList.forEach(({ node, type, literal, isSpread }, index) => {
     const parameter = expected[index];
     if (node !== undefined && parameter !== undefined && isSpread !== true) {
-      context.fit(type ?? context.expression(node, parameter), parameter, node);
+      const checked = type === undefined || literal !== undefined;
+      context.fit(checked ? context.expression(node, parameter) : type, parameter, node);
     }
   });
 }

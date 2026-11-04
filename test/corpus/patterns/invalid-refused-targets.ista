@@ -13,6 +13,6 @@ const everything = [a, b, c]
 
 fn body(xs: Array<Int>, pair: (Int, Int), maybe: Int?) -> Int:
   const [first, ...rest] = xs
-  const Some{value} = maybe
+  const none = maybe
   let (x, 1..=5) = pair
-  first + rest.length() + value + x
+  first + rest.length() + x

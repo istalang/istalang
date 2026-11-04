@@ -75,8 +75,8 @@ describe('renaming', () => {
   });
 
   it('refuses what std declares', () => {
-    const { program, named } = navigable({ main: 'fn f() -> Int?: Some{value: 1}\n' });
-    expect(refusalOf(program, named('main', 'Some'))).toContain('std:prelude');
+    const { program, named } = navigable({ main: 'fn f() -> Result<Int>: Ok{value: 1}\n' });
+    expect(refusalOf(program, named('main', 'Ok'))).toContain('std:prelude');
   });
 
   it('refuses a name a type may meet a trait by, or the language calls', () => {

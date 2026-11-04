@@ -76,6 +76,20 @@ export const patternTemplates = {
     message: (name: string) =>
       `'${name}' is a generic alias, which stands for no one type without its type arguments, and a pattern gives none; name the type it stands for.`,
   },
+  noMemberMatched: {
+    code: 5417,
+    message: (union: string) => `This pattern matches no member of ${union} (§3.11).`,
+  },
+  severalMembers: {
+    code: 5418,
+    message: (union: string, members: readonly string[], telling: string) =>
+      `This pattern matches the members ${members.join(', ')} of ${union}; ${telling} (§3.11).`,
+  },
+  typeArgumentsOutsideUnion: {
+    code: 5419,
+    message: (name: string) =>
+      `Only a pattern on a union gives type arguments, to tell apart its members instantiating '${name}'; here the value's type gives them (§3.11).`,
+  },
   insideOptional: {
     code: 5409,
     message: (found: string, operator: string) =>

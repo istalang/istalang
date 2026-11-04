@@ -58,6 +58,11 @@ export const valueTemplates = {
     code: 5213,
     message: () => "A 'struct{…}' with no type to take names every field.",
   },
+  severalConversions: {
+    code: 5222,
+    message: (found: string, expected: string) =>
+      `${found} converts into more than one member of ${expected}; convert it explicitly into the one meant (§2).`,
+  },
   noMember: {
     code: 5214,
     message: (type: string, name: string) => `${type} has no field or method '${name}'.`,

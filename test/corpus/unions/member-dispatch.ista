@@ -1,0 +1,59 @@
+# outcome: "nobody|p|#3|same|9|email:x|other:y|maybe:1|3|-1"
+# A call on a union through a trait its members meet (§6) runs the function of whichever member the
+# value is: a member with one value gets that value, `&self` changes the member in place, a union
+# an instantiation collapses into one type calls that type's function, and a union converted into
+# an `any` type, alone or as a member of a union, is the member it holds, which a type pattern finds.
+
+trait Named:
+  fn name(self: Self) -> String
+
+trait Bumpable:
+  fn bump(self: &Self)
+
+struct Email { to: String }
+struct Sms { number: String }
+struct Counter { n: Int }
+
+fn name(self: Email) -> String: self.to
+fn name(self: Sms) -> String: self.number
+fn name(self: None) -> String: "nobody"
+fn name(self: Int) -> String: `#${self}`
+
+fn bump(self: &Counter):
+  self.n = self.n + 1
+
+fn bump(self: &None):
+  ()
+
+fn show<T is Named>(x: T | Email) -> String: x.name()
+
+fn viaAny(x: Email | Sms) -> String:
+  const a: any Named = x
+  match a:
+    case Email as e: `email:${e.to}`
+    case _: `other:${a.name()}`
+
+fn maybe(x: (any Named)?) -> String:
+  match x:
+    case None: "none"
+    case named: `maybe:${named.name()}`
+
+fn count(x: Counter?) -> Int:
+  match x:
+    case Counter as c: c.n
+    case None: -1
+
+async fn main() -> Future<String>:
+  const nobody: Email? = none
+  const somebody: Email? = Email{to: "p"}
+  const number: Int | Sms = 3
+  let counter: Counter? = Counter{n: 1}
+  counter.bump()
+  counter.bump()
+  let empty: Counter? = none
+  empty.bump()
+  const names = `${nobody.name()}|${somebody.name()}|${number.name()}`
+  const shown = `${show<Email>(Email{to: "same"})}|${show<Sms>(Sms{number: "9"})}`
+  const contact: Email | Sms = Sms{number: "1"}
+  const converted = `${viaAny(Email{to: "x"})}|${viaAny(Sms{number: "y"})}|${maybe(contact)}`
+  `${names}|${shown}|${converted}|${count(counter)}|${count(empty)}`

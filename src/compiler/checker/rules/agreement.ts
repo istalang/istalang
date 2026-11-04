@@ -15,7 +15,8 @@ import type { ValueSite } from '../check.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../context.ts';
 import { type Fit, isExact } from '../types/fit.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
-import { widened } from '../types/widening.ts';
+import { literalsBase } from '../types/unions.ts';
+import { sendableWidened, widened } from '../types/widening.ts';
 
 /**
  * A type some part of a construct produced, where, and the node giving it: an expression, a bare
@@ -46,7 +47,8 @@ export function agreedType(
 ): Agreement {
   const first = produced.find(({ type }) => !isPrimitive(type, 'Never'))?.type;
   const target = expected ?? first;
-  const decided = target === undefined ? undefined : firstOrWidened(target, produced, fits);
+  const widen = expected === undefined ? agreeingWidened : sendableWidened;
+  const decided = target === undefined ? undefined : firstOrWidened(target, produced, fits, widen);
   return {
     decided,
     disagreeing:
@@ -59,18 +61,34 @@ export function agreedType(
   };
 }
 
-/** `first`, the first producer's type, or its widening when only that fits every producer. */
+/**
+ * What producers agreeing with no expected type widen the first one's type to (§2): a literal
+ * type, or a union of literals of one base, to that base, which each such producer is then
+ * converted to, and a sendable function type to a plain one.
+ */
+function agreeingWidened(type: Type): Type {
+  return literalsBase(type) ?? widened(type);
+}
+
+/**
+ * `first`, the first producer's type or the type expected, or its widening by `widen` when only
+ * that fits every producer. An expected union of literals stays itself: it is what the producers'
+ * literals must be.
+ */
 function firstOrWidened(
   first: Type,
   produced: readonly Produced[],
   fits: (found: Type, decided: Type) => Fit | undefined,
+  widen: (type: Type) => Type,
 ): Type {
   const fitsAll = (decided: Type, widenProducer = false) =>
-    produced.every(({ type }) => fitsExactly(fits(widenProducer ? widened(type) : type, decided)));
+    produced.every(({ type }) =>
+      fitsExactly(fits(widenProducer ? (literalsBase(type) ?? widened(type)) : type, decided)),
+    );
   if (fitsAll(first)) {
     return first;
   }
-  const wide = widened(first);
+  const wide = widen(first);
   return fitsAll(wide, true) ? wide : first;
 }
 

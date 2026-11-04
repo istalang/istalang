@@ -26,7 +26,6 @@
  * - A trait names no type of its own; after `any` it names the traits of one (§3.10).
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
@@ -42,7 +41,6 @@ import { type Invalid, lastName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import {
   type FunctionType as FunctionTypeNode,
-  type LiteralType,
   type NamedType,
   type RestType,
   type TypeNode,
@@ -69,6 +67,7 @@ import {
   withPack,
 } from './type.ts';
 import { typeText } from './type-text.ts';
+import { absorbedInto, optionalOf, unionOf, writtenLiteral } from './unions.ts';
 
 interface Resolution {
   readonly checker: CheckerContext;
@@ -85,9 +84,7 @@ export type GenericDeclaration =
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
   NamedType: (resolution, node) => namedType(resolution, node),
-  OptionalType: (resolution, node) =>
-    resolution.checker.wellKnownType(wellKnown.optional, [resolve(resolution, node.inner)]) ??
-    errorType,
+  OptionalType: (resolution, node) => optionalOf(resolve(resolution, node.inner)),
   ParenthesizedType: (resolution, node) => resolve(resolution, node.inner),
   ReferenceType: (resolution, node) => resolve(resolution, node.referent),
   TupleType: (resolution, node) =>
@@ -103,7 +100,7 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
   },
   AnyType: ({ checker, module }, node) => checker.anyTypeOf(module, node.traits),
   UnionType: (resolution, node) => unionTypeOf(resolution, node),
-  LiteralType: (resolution, node) => literalTypeOf(resolution, node),
+  LiteralType: (_resolution, node) => writtenLiteral(node.value) ?? errorType,
   Missing: () => errorType,
   Invalid: () => errorType,
 };
@@ -351,12 +348,17 @@ function defaultedType(
   );
 }
 
-/** The union `node` writes (§2). */
-function unionTypeOf(_resolution: Resolution, _node: UnionType): Type {
-  return errorType;
-}
-
-/** The literal type `node` writes (§2). */
-function literalTypeOf(_resolution: Resolution, _node: LiteralType): Type {
-  return errorType;
+/**
+ * The union `node` writes (§2), normalized: a member another one holds whole merges into it, an
+ * `any` member taking every type meeting its traits.
+ */
+function unionTypeOf(resolution: Resolution, node: UnionType): Type {
+  const members = node.members.map((member) => resolve(resolution, member));
+  const { checker } = resolution;
+  return unionOf(
+    absorbedInto(
+      members,
+      (member, target) => checker.fitOf(member, target)?.conversion.kind === 'any',
+    ),
+  );
 }

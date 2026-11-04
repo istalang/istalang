@@ -54,8 +54,8 @@ export function expectedVariants(cursor: Cursor, place: Place): readonly Candida
   if (expected?.kind === 'error') {
     return visibleNames(cursor, isVariantEntity);
   }
-  const candidates = enumsExpected(checker, expected).flatMap((declaration) => {
-    const enumType = sameNominal(checker, expected, declaration);
+  const candidates = enumsExpected(expected).flatMap((declaration) => {
+    const enumType = sameNominal(expected, declaration);
     return enumType === undefined
       ? []
       : (checker.variantsOf(enumType) ?? []).map(

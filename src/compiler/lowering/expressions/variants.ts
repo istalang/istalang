@@ -79,20 +79,6 @@ export interface VariantCase {
   readonly name: string;
 }
 
-/** Where `tested` holds its variant, continues with that variant's one field; else jumps to `otherwise`. */
-export function payloadOrJump(
-  context: CodeContext,
-  tested: VariantCase,
-  otherwise: Label,
-  span: AnchoredSpan,
-): Register {
-  const matched = context.code.newLabel();
-  const test = variantTestOf(context.checker, tested.register, tested.type, tested.name);
-  branchOnVariant(context, test, { matched, otherwise }, span);
-  context.code.place(matched);
-  return payloadOf(context, tested.register, span);
-}
-
 /**
  * Where `tested` holds its variant, continues with that variant's one field; else runs `otherwise`,
  * which writes what happens then and must leave the code: return, jump or panic.

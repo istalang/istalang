@@ -39,9 +39,12 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - guard a recursive walk over a type's parts (`Sendable`, JSON codecs, `heldType`) against cycles → `TypeCycle` (`src/compiler/checker/types/type-cycle.ts`); never a visited set of your own
 - build or apply a type substitution → `substitutionFor`, `substitute`, `substituteAny`, `substituteFunction` (`src/compiler/checker/types/substitution.ts`)
 - view a `CheckedBody` with all recorded types substituted for one instantiation → `instantiatedBody` (`src/compiler/checker/types/instantiation.ts`)
-- build or unwrap `Future<T>` or `Array<T>`, → `futureOf`, `futureArgument`, `arrayOf`, `arrayElement` (`src/compiler/checker/types/well-known.ts`); unwrap `T?` → `optionalInner` (`fit.ts`)
+- build or unwrap `Future<T>` or `Array<T>`, → `futureOf`, `futureArgument`, `arrayOf`, `arrayElement` (`src/compiler/checker/types/well-known.ts`)
 - build or unwrap any well-known type (`src/language/well-known.ts`) → `wellKnownOf`, `wellKnownArguments` (`src/compiler/checker/types/well-known.ts`)
-- unwrap `T?` once or through nested optionals → `optionalInner`, `withoutOptionals` (`src/compiler/checker/types/fit.ts`)
+- build a union normalized (flattened, duplicates, `Never`, literals into bases, `true | false` as `Bool`), `T?`, or a literal type → `unionOf`, `optionalOf`, `literalType`, `literalOrBase` (`src/compiler/checker/types/unions.ts`); never write `{ kind: 'union', … }` by hand
+- take a union apart: its members, `T` of `T?`, what remains without some members, a member it holds, a literal's base, whether a member has one value only, members an `any` member takes → `membersOf`, `optionalInner`, `hasMember`, `baseOf`, `hasOneValue`, `absorbedInto` (`src/compiler/checker/types/unions.ts`)
+- tell a value converting into several members of a union apart from a mismatch → `intoSeveral` (`src/compiler/checker/types/fit.ts`)
+- narrow an expected union to the member a directly built value takes → `memberBuilt` (`src/compiler/checker/types/expected.ts`), which `BodyContext.expression` runs for every expression
 - take an expected type apart for a value built from it (a struct, tuple, array or map literal, a lambda, a function value, a bare variant or fieldless generic struct, lambdas inferred inside an argument) → `builtFrom`, `expectedTuple`, `collectionTarget`, `expectedFunction`, `sameNominal`, `enumsExpected`, `expectedNominal` (`src/compiler/checker/types/expected.ts`); never strip the expected optionals in a construct
 - build a parameter `Type`, fill default type arguments, check type argument constraints, or resolve declared fields → `parameterType`, `typeArgumentsFor`, `defaultArgument`, `constrainArguments`, `declaredFields` (`src/compiler/checker/types/resolve-type.ts`)
 - compute how a value fits an expected type → `fitOf`, `matchConversion`, `isExact`, `exactFit` (`src/compiler/checker/types/fit.ts`)
@@ -51,7 +54,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - agree on one type across producers → `agreedType`, `settleAgreement`, `decidedSoFar`, `fitProduced` (`src/compiler/checker/rules/agreement.ts`)
 - combine `Accepts` predicates across composite parts or producers → `partsAccept`, `agreedAccepts` (`src/compiler/checker/rules/agreement.ts`)
 - collect and agree on branch bodies (`if`, `match`, `select`) → `Branches`, `branchesAccepts`, `blockAccepts` (`src/compiler/checker/rules/branches.ts`)
-- check `==` / `!=` operands with optional wrapping on either side → `comparable`, `checkEqualSides` (`src/compiler/checker/types/equality.ts`)
+- check `==` / `!=` operands, either fitting the other's type → `comparable`, `checkEqualSides` (`src/compiler/checker/types/equality.ts`)
 - hint `?.`, `?.[`, `?.(` or `?->` when a step of a link's form fails on `T?` → `insideOptional` (`src/compiler/checker/types/inside-optional.ts`)
 - search whether a type holds a matching part at any depth (`Future`, `Result`, disposable) → `heldType`, `heldParts` (`src/compiler/checker/types/held.ts`)
 - check whether a declaration or type is host-provided (non-std `extern`) → `isHostExtern`, `isHostType` (`src/compiler/checker/host-externs.ts`)
@@ -65,18 +68,23 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - read a written type's type without resolving (or reporting) anything → `CheckerContext.resolvedTypeOf` (`src/compiler/checker/context.ts`)
 - map or list constraints on a parameter or `any` → `constraintSubstitution`, `substituteConstraint`, `knownConstraints`, `constraintOn` (`src/compiler/checker/traits/constraints.ts`)
 - look up required functions or field types on a constrained type → `requirementsNamed`, `requiredFieldType` (`src/compiler/checker/traits/constraints.ts`)
-- check or resolve `any` conformance and witnesses → `meetsAny`, `reportUnmet`, `memberWitnesses` (`src/compiler/checker/resolution/trait-objects.ts`)
+- check or resolve `any` conformance and witnesses, a union's member by member → `meetsAny`, `reportUnmet`, `memberWitnesses` (`src/compiler/checker/resolution/trait-objects.ts`)
 - decide whether a trait can be met through values whose type is known only when they run (object safety, §3.10) → `objectUnsafety` (`src/compiler/checker/traits/object-safety.ts`)
 - walk patterns or destructuring targets → `walkPattern`, `walkTargets` (`src/compiler/checker/patterns/walk.ts`); declare a declaration's, `for`'s or comprehension's targets in a body → `declareTargets` (`src/compiler/checker/patterns/targets.ts`)
 - find a struct item's field index → `itemField` (`src/compiler/checker/struct-items.ts`)
 - take a tuple or struct target apart into its element or field parts → `takeTargets`, `takeApart`, `takeFields` (`src/compiler/checker/patterns/taking.ts`)
-- analyze `match` exhaustiveness → `analyze` (`src/compiler/checker/patterns/exhaustiveness.ts`)
+- analyze `match` exhaustiveness → `analyze` (`src/compiler/checker/patterns/exhaustiveness.ts`); a union's members as its constructors → `memberShape` (`patterns/shapes.ts`)
+- what a pattern selects of its part before taking it apart (a downcast of an `any` value, members of a union's) → `selectionOf` (`src/compiler/checker/patterns/selections.ts`); a union's members, as a pattern names them → `memberTaken`, `unionPart` (`patterns/members.ts`); what a case's binder has left of a union → `remainingType` (`patterns/remaining.ts`), `leftOf` (`patterns/members.ts`)
+- which members of a union a name, type arguments, a literal or a tuple, array or `struct{…}` pattern selects (the checker's and completion's one rule) → `membersNamed`, `variantOwners`, `instancesWith`, `literalMembers`, `kindMembers` (`src/compiler/checker/types/named-types.ts`)
+- what an or-pattern's alternatives bind and select between them → `sameNames`, `partSelected` (`src/compiler/checker/patterns/alternatives.ts`); an array pattern's items → `takeArray` (`patterns/arrays.ts`)
+- the literal type a literal written in place has (a string, a Bool, a maybe negated integer) → `writtenLiteral` (`src/compiler/checker/types/unions.ts`); the type it has where a type is expected → `literalOrBase`, or against a parameter still inferred → `Inference.literalType`
+- the union a member parameter (`T in U`) stands for one member of → `CheckerContext.memberUnionOf` (`src/compiler/checker/context.ts`), `Fitting.memberUnionOf` where fitting reads it
 - list names bound by a checked pattern → `namesBound` (`src/compiler/checker/checked-pattern.ts`)
 - run forward data-flow analysis over a body → `flowThrough`, `FlowRule` (`src/compiler/checker/flow/forward.ts`)
 
 ## One-way rules
 
 - Fit every value through `BodyContext.expect` / `fit` (`fitWritten` for assignments, `fitUnwrapped` for spreads) so conversions are recorded once.
-- Recognize well-known types by binder entity via `src/compiler/checker/types/well-known.ts` or `optionalInner` (`fit.ts`), never by declaration name string.
+- Recognize well-known types by binder entity via `src/compiler/checker/types/well-known.ts`, never by declaration name string; an optional is a union holding `None` (`optionalInner`, `unions.ts`).
 - Key types and identities through `checker.typeKeys` (`src/compiler/checker/types/type-keys.ts`), whose numbers are the module's, alike in every checker; never write those numbers into lowering's output.
 - Every pattern goes through `src/compiler/checker/patterns/walk.ts`, and every body flow rule goes through `flowThrough` (`flow/forward.ts`).

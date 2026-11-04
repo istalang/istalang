@@ -18,6 +18,7 @@ import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { analyze, anyShape, type CaseShape } from '../patterns/exhaustiveness.ts';
 import { checkPattern } from '../patterns/matching.ts';
+import { remainingType } from '../patterns/remaining.ts';
 import { signatureOf, witnessText } from '../patterns/shapes.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { boolType, type Type } from '../types/type.ts';
@@ -27,7 +28,8 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
   const branches = new Branches(context, expected);
   const cases: CoveringCase[] = [];
   for (const matchCase of casesOf(node)) {
-    const { shape } = checkPattern(context, matchCase.pattern, subject);
+    const remaining = remainingType(context.checker, subject, cases);
+    const { shape } = checkPattern(context, matchCase.pattern, subject, remaining);
     if (matchCase.guard !== undefined) {
       context.expect(matchCase.guard, boolType);
     }

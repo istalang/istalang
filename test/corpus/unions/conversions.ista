@@ -1,0 +1,104 @@
+# outcome: "pixel:3:point:1|mail:cfo:7:11:9:4:draft|sent|7:0:0:12:r:draft|30:nf:p1:to:500|30"
+# Conversions into a union (§2): exact member first, else the one member reached by a §2 conversion
+# (any, nominal-to-shape, plain-to-async fn, 1-tuple, literal-to-base), union into wider union,
+# building literals/lambdas/variants from the one member they fit, ? propagating an error into an
+# error union, and type-parameter inference against a union.
+
+type Status = "draft" | "sent" | "failed"
+type Point = { x: Int; y: Int }
+struct Pixel { x: Int; y: Int }
+struct Email { to: String }
+enum Color { Red; Green }
+struct NotFound { id: String }
+struct Timeout { ms: Int }
+
+fn toString(self: Email) -> String:
+  "mail:" + self.to
+
+fn which(v: Pixel | Point) -> String:
+  match v:
+    case Pixel{x}: "pixel:" + String(x)
+    case Point{x}: "point:" + String(x)
+
+fn find(ok: Bool) -> Result<Int, NotFound>:
+  if ok: Ok{10} else: Err{NotFound{id: "p1"}}
+
+fn wait(ok: Bool) -> Result<Int, Timeout>:
+  if ok: Ok{20} else: Err{Timeout{ms: 500}}
+
+fn both(a: Bool, b: Bool) -> Result<Int, NotFound | Timeout>:
+  const x = find(a)?
+  const y = wait(b)?
+  Ok{x + y}
+
+fn showResult(r: Result<Int, NotFound | Timeout>) -> String:
+  match r:
+    case Ok{value}: String(value)
+    case Err{error}:
+      match error:
+        case NotFound{id}: "nf:" + id
+        case Timeout{ms}: "to:" + String(ms)
+
+fn unwrapOr<T>(x: T?, fallback: T) -> T:
+  x ?? fallback
+
+fn fromUnion<T>(x: T | String) -> T:
+  match x:
+    case String: panic("unexpected string")
+    case v: v
+
+async fn main() -> Future<String>:
+  const exactVsShape = which(Pixel{x: 3, y: 4}) + ":" + which(struct{x: 1, y: 2})
+  const a: (any Stringable) | Bool = Email{to: "cfo"}
+  const b: Point | String = Pixel{x: 2, y: 5}
+  const c: (async fn(Int) -> Int) | String = fn(n: Int) -> Int: n + 1
+  const d: Int | String = (9,)
+  const e: (Int,) | String = 4
+  const f: "draft" = "draft"
+  const g: String | Bool = f
+  const aText = match a:
+    case Bool: "bool"
+    case s: String(s)
+  const bText = match b:
+    case Point{x, y}: String(x + y)
+    case s: s
+  const cVal = match c:
+    case String: 0
+    case fnVal: await fnVal(10)
+  const dVal = match d:
+    case Int as n: n
+    case _: 0
+  const eVal = match e:
+    case String: 0
+    case tup: tup.0
+  const gText = match g:
+    case Bool: "b"
+    case s: s
+  const convs = `${aText}:${bText}:${cVal}:${dVal}:${eVal}:${gText}`
+  const small: "draft" | "sent" = "sent"
+  const wide: Status = small
+  const wider: String | Int = wide
+  const wideText = match wider:
+    case Int as n: String(n)
+    case s: s
+  const pt: Point | String = struct{x: 3, y: 4}
+  const arr: Array<Int>? = []
+  const mp: Map<String, Int>? = [:]
+  const fnU: (fn(Int) -> Int) | String = fn(x): x * 3
+  const col: Color | Int = Red
+  const lit: "draft" | Int = "draft"
+  const pSum = match pt:
+    case Point{x, y}: x + y
+    case _: 0
+  const fRes = match fnU:
+    case String: 0
+    case fnItem: fnItem(4)
+  const cRes = match col:
+    case Red: "r"
+    case Green: "g"
+    case Int: "i"
+  const built = `${pSum}:${arr?.length() ?? -1}:${mp?.size() ?? -1}:${fRes}:${cRes}:${lit}`
+  const prop = `${showResult(both(true, true))}:${showResult(both(false, true))}:${showResult(both(true, false))}`
+  const cOpt: Int? = 12
+  const inferred = unwrapOr(5, 0) + unwrapOr(none, 9) + unwrapOr(cOpt, 0) + fromUnion(4)
+  `${exactVsShape}|${convs}|${wideText}|${built}|${prop}|${inferred}`

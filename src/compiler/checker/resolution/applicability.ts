@@ -11,6 +11,8 @@
  * - A rest parameter's items, and a spread's items, are matched against its array's element type.
  *   A pack's (§3.5) are matched together against the pack: single values as the tuple of their
  *   types, or one spread of a value of a pack as that pack, exactly.
+ * - A literal written in place has its literal type where its parameter expects one (§2), so it
+ *   fits a parameter of a union of literals, and fills a member parameter (§3.5).
  * - An argument whose type the chosen function decides (`none`, a bare variant, a literal holding
  *   one) takes part with no type: it fits a parameter of a type it can take (an optional, an enum
  *   with that variant), any part of which may be a type parameter still to be inferred.
@@ -178,6 +180,7 @@ function judgedArgument(
     return { kind: 'reference', index, reference: slot.reference };
   }
   const conflicts = inference.conflicts.size;
+  const severalMembers = inference.severalMembers.size;
   const fits =
     argument.type === undefined
       ? acceptsDecided(argument, slot.type, inference)
@@ -185,6 +188,10 @@ function judgedArgument(
   const [conflict] = [...inference.conflicts].slice(conflicts);
   if (conflict?.kind === 'TypeParameter') {
     return { kind: 'conflict', parameter: conflict };
+  }
+  const [several] = [...inference.severalMembers].slice(severalMembers);
+  if (several !== undefined && several[0].kind === 'TypeParameter') {
+    return { kind: 'severalMembers', index, parameter: several[0], found: several[1] };
   }
   return fits ? 'fits' : { index, expected: substitute(slot.type, inference.substitution()) };
 }
@@ -198,9 +205,12 @@ function typedFits(
   argument: CallArgument & { readonly type: Type },
   inference: Inference,
 ): boolean {
+  const { literal } = argument;
+  const given =
+    literal === undefined ? argument.type : inference.literalType(literal.value, slot.type);
   return argument.exact === true || isByReference(slot, argument)
-    ? inference.matchExactly(slot.type, argument.type)
-    : inference.match(slot.type, argument.type);
+    ? inference.matchExactly(slot.type, given)
+    : inference.match(slot.type, given);
 }
 
 /** Whether `argument` reaches `slot` by reference: written `&`, or a receiver `&self` takes (§3.7). */

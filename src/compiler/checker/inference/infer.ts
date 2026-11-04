@@ -17,6 +17,11 @@
  *   type exactly (a reference, a spread's items, a witness), the type found is the parameter's
  *   own: a bound type there must be the same, and once found there it never widens, so
  *   `set(o, &n)` and `set(&n, o)` conflict for `n: Int`, as a wrapped `n` couldn't be its place.
+ * - A member parameter (`T in U`, §3.5) is filled only by a type that is one member of `U`, after
+ *   the parameters `U` mentions are found: a literal argument gives its literal type where `U`
+ *   holds literals of its base (`literalType`), a literal type of a member's base gives that base,
+ *   and a value of several members fills nothing, which is noted (`severalMembers`): the caller
+ *   narrows it first. A union is never found otherwise than from what is given.
  * - The error type fits anything and binds nothing, so one mistake is reported once. `Never` fits
  *   anything too and binds nothing while matching; a parameter it alone met where a value must
  *   have its type exactly is `Never` only once the expected result and defaults have had their say
@@ -35,11 +40,14 @@ import {
   functionFits,
   isPack,
   isPrimitive,
+  type LiteralValue,
   neverType,
   type ParameterKey,
   type Type,
+  type UnionType,
 } from '../types/type.ts';
 import { parametersIn, typeChildren } from '../types/type-parts.ts';
+import { baseOf, hasMember, literalOrBase, membersOf, unionOf } from '../types/unions.ts';
 
 export class Inference {
   readonly #unknowns: ReadonlySet<ParameterKey>;
@@ -50,6 +58,7 @@ export class Inference {
   readonly #conflicts = new Set<ParameterKey>();
   /** The parameters `Never` met where a value must have its type exactly. */
   readonly #metNever = new Set<ParameterKey>();
+  readonly #severalMembers = new Map<ParameterKey, Type>();
 
   constructor(unknowns: Iterable<ParameterKey>, fitting: Fitting, known?: Substitution) {
     this.#unknowns = new Set(unknowns);
@@ -63,8 +72,8 @@ export class Inference {
   match(declared: Type, given: Type): boolean {
     return (
       matchConversion(given, declared, {
-        optional: this.#fitting.optional,
         shapeOf: this.#fitting.shapeOf,
+        memberUnionOf: this.#fitting.memberUnionOf,
         exact: (target, source) => this.#matchAtTop(target, source),
         meetsAny: (source, target) => this.#convertsInto(target, source),
       }) !== undefined
@@ -117,6 +126,25 @@ export class Inference {
     return this.#conflicts;
   }
 
+  /** The member parameters given a value of several members of their union, by what was given. */
+  get severalMembers(): ReadonlyMap<ParameterKey, Type> {
+    return this.#severalMembers;
+  }
+
+  /**
+   * The type a literal of `value` has where `declared` is expected (§2, §3.5): its literal type
+   * where a literal type of its base is expected, or a union holding one, or a member parameter
+   * whose union holds one; its base otherwise.
+   */
+  literalType(value: LiteralValue, declared: Type): Type {
+    const expected = substitute(declared, this.#bound);
+    const taking = membersOf(expected).flatMap((member) => {
+      const union = this.#memberUnionOf(member);
+      return union === undefined ? [member] : membersOf(union);
+    });
+    return literalOrBase(value, unionOf(taking));
+  }
+
   /** What has been found so far, as a substitution. */
   substitution(): Substitution {
     return this.#bound;
@@ -158,7 +186,10 @@ export class Inference {
         return given.kind === 'function' && this.#matchFunction(declared, given);
       case 'any':
         return given.kind === 'any' && this.#matchConstraints(declared, given);
+      case 'union':
+        return this.#matchUnion(declared, given);
       case 'primitive':
+      case 'literal':
       case 'error':
         return sameType(declared, given) || declared.kind === 'error';
       default: {
@@ -166,6 +197,38 @@ export class Inference {
         return unhandled;
       }
     }
+  }
+
+  /**
+   * Matches a union against a type it must equal (§3.5): the members it writes without a type
+   * parameter take theirs among `given`'s, and its one member with type parameters takes what is
+   * left, `Never` when nothing is, which binds nothing. A union whose members with type parameters
+   * are several takes what is left only member by member, in the order written.
+   */
+  #matchUnion(declared: UnionType, given: Type): boolean {
+    const open = declared.members.filter((member) => this.#mentionsUnknown(member));
+    const fixed = declared.members.filter((member) => !this.#mentionsUnknown(member));
+    const givenMembers = membersOf(given);
+    if (!fixed.every((member) => givenMembers.some((each) => sameType(each, member)))) {
+      return false;
+    }
+    const left = givenMembers.filter((each) => !fixed.some((member) => sameType(each, member)));
+    const [only] = open;
+    if (open.length <= 1) {
+      return only === undefined ? left.length === 0 : this.#matchExact(only, unionOf(left));
+    }
+    return (
+      open.length === left.length &&
+      open.every((member, index) => {
+        const other = left[index];
+        return other !== undefined && this.#matchExact(member, other);
+      })
+    );
+  }
+
+  /** Whether `type` mentions a type parameter this inference is finding. */
+  #mentionsUnknown(type: Type): boolean {
+    return parametersIn(type).some((parameter) => this.#unknowns.has(parameter));
   }
 
   #matchFunction(declared: FunctionType, given: FunctionType): boolean {
@@ -203,11 +266,46 @@ export class Inference {
 
   /** Binds `parameter` where `given` converts into it: it fits the type bound, a conversion included. */
   #bindLoosely(parameter: ParameterKey, given: Type): boolean {
-    return this.#bind(
-      parameter,
-      given,
-      (bound) => fitOf(given, bound, this.#fitting) !== undefined,
+    const filling = this.#filling(parameter, given);
+    return (
+      filling !== undefined &&
+      this.#bind(parameter, filling, (bound) => fitOf(filling, bound, this.#fitting) !== undefined)
     );
+  }
+
+  /**
+   * What `given` fills `parameter` with: itself, unless `parameter` is a member parameter (§3.5),
+   * which only one member of its union fills: `given`, a literal of a member's base as that base,
+   * or another member parameter whose members are all its. Undefined when nothing fills it, `given`
+   * holding several members noted as such.
+   */
+  #filling(parameter: ParameterKey, given: Type): Type | undefined {
+    const declared = this.#fitting.memberUnionOf(parameter);
+    if (declared === undefined || given.kind === 'error' || isPrimitive(given, 'Never')) {
+      return given;
+    }
+    const union = substitute(declared, this.#bound);
+    const memberOf = (type: Type) =>
+      [type, baseOf(type)].find((each) => hasMember(union, each)) ??
+      (this.#memberUnionOf(type) === undefined ? undefined : type);
+    const own = this.#memberUnionOf(given);
+    if (own !== undefined) {
+      return membersOf(own).every((member) => memberOf(member) !== undefined) ? given : undefined;
+    }
+    const members = membersOf(given).map(memberOf);
+    const [only] = members;
+    if (members.length === 1 || only === undefined) {
+      return only;
+    }
+    if (members.every((member) => member !== undefined)) {
+      this.#severalMembers.set(parameter, given);
+    }
+    return undefined;
+  }
+
+  /** The union `type` stands for one member of, when it is a member parameter. */
+  #memberUnionOf(type: Type): Type | undefined {
+    return type.kind === 'parameter' ? this.#fitting.memberUnionOf(type.declaration) : undefined;
   }
 
   /**
@@ -219,7 +317,11 @@ export class Inference {
       this.#metNever.add(parameter);
       return true;
     }
-    const isBound = this.#bind(parameter, given, (bound) => sameType(given, bound));
+    const filling = this.#filling(parameter, given);
+    if (filling === undefined) {
+      return false;
+    }
+    const isBound = this.#bind(parameter, filling, (bound) => sameType(filling, bound));
     if (isBound) {
       this.#pinned.add(parameter);
     }

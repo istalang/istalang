@@ -65,10 +65,9 @@ describe("an enum's variants", () => {
     expect(
       namesAmong(['Ok', 'Err'], 'fn t(r: Result<Int, String>) -> Int:', '  if r is ‸', '  0'),
     ).toEqual(['Ok', 'Err']);
-    expect(namesAmong(['Some', 'None'], 'fn t(o: Int?) -> Int:', '  if o is ‸', '  0')).toEqual([
-      'Some',
-      'None',
-    ]);
+    expect(
+      namesAmong(['Red', 'Green', 'Blue'], 'fn t(c: Color?) -> Int:', '  if c is ‸', '  0'),
+    ).toEqual(['Red', 'Green', 'Blue']);
   });
 
   it("come before the enum's statics after its name", () => {

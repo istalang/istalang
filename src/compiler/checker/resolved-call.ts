@@ -18,9 +18,11 @@ import type { AnyType, Type } from './types/type.ts';
  *   its type parameters' constraints calls (`witnesses`), and where each of its parameters takes
  *   its value from at the call (`binding`, §3.3).
  * - `requirement`: a function a constraint requires, on one of the calling function's own type
- *   parameters, such as `add` under `T is Addable`, or on an `any` type. Which function it is
- *   depends, for a type parameter, on the caller's instantiation: the `witnesses` of the call that
- *   made it; for an `any` type, on the type of the value it is called with (§3.10).
+ *   parameters, such as `add` under `T is Addable`, on an `any` type, or on a union through a trait
+ *   it meets (§6). Which function it is depends, for a type parameter, on the caller's
+ *   instantiation: the `witnesses` of the call that made it; for an `any` type, on the type of the
+ *   value it is called with (§3.10); for a union, on how the union meets the trait: a function
+ *   declared for it, or else the function of whichever member the value is.
  */
 export type ResolvedCall = FunctionCall | RequirementCall;
 
@@ -93,12 +95,32 @@ interface RequirementCall extends WrittenAs {
 }
 
 /**
- * Which required function: the `member`-th function of the trait of the `constraint`-th constraint
- * on `on`, a type parameter or an `any` type.
+ * Which required function a requirement call calls: one a constraint requires, or one a trait
+ * requires that a union meets through its members.
  */
-export interface RequirementOrigin {
+export type RequirementOrigin = ConstraintRequirement | MembersRequirement;
+
+/**
+ * The `member`-th function of the trait of the `constraint`-th constraint on `on`, a type parameter
+ * or an `any` type.
+ */
+interface ConstraintRequirement {
+  readonly kind: 'constraint';
   readonly on: TypeParameter | AnyType;
   readonly constraint: number;
+  readonly member: number;
+}
+
+/**
+ * The `member`-th function of the trait of `through`, called on a value of `on`, a union whose
+ * members each meet it, as a value of `through` would be (§6): the function of whichever member
+ * the value is. `through` is the trait as `any` takes it, `any Stringable`, so each member reads
+ * it alike; `on` is the union, or the one type an instantiation's substitution collapsed it into.
+ */
+export interface MembersRequirement {
+  readonly kind: 'members';
+  readonly on: Type;
+  readonly through: AnyType;
   readonly member: number;
 }
 

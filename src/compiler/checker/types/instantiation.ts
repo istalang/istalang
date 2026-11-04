@@ -9,10 +9,11 @@
 
 import type { CheckedBody, Checker } from '../check.ts';
 import { type FieldRead, requiredFieldRead } from '../checked-field.ts';
-import type { CheckedPattern, PatternTest } from '../checked-pattern.ts';
+import type { CheckedPattern, PartStep, PatternTest } from '../checked-pattern.ts';
 import type { Fit } from './fit.ts';
 import { type Substitution, substitute, substituteAny, substituteKept } from './substitution.ts';
 import type { FieldMember, Type } from './type.ts';
+import { membersOf } from './unions.ts';
 
 /**
  * `body` as one instantiation sees it: every type it records substituted by `substitution`, and
@@ -87,21 +88,40 @@ function mapDefined<T, R>(value: T | undefined, f: (defined: T) => R): R | undef
 /**
  * `checked` with every type it records substituted, in its or-patterns' alternatives too. Each test
  * kind is listed, so a kind that comes to carry a type can't pass through unsubstituted.
+ *
+ * A union a member test tests may collapse (§3.5): `T | Int` with `T = Int` is `Int`. Its value is
+ * then the member's own value, with no variant around it, so every path into the member's value
+ * at the test's part loses the step into the variant (`collapsedSteps`), and a name narrowed from
+ * it reads the value as it is.
  */
 function instantiatedPattern(checked: CheckedPattern, substitution: Substitution): CheckedPattern {
+  const substituted = substitutedPattern(checked, substitution);
+  const collapsed = collapsedParts(substituted);
+  return collapsed.length === 0 ? substituted : withoutVariantSteps(substituted, collapsed);
+}
+
+/** `checked` with its types substituted, as `instantiatedPattern` says. */
+function substitutedPattern(checked: CheckedPattern, substitution: Substitution): CheckedPattern {
+  const concrete = (type: Type) => substitute(type, substitution);
   const instantiatedTest = (patternTest: PatternTest): PatternTest => {
     switch (patternTest.kind) {
       case 'downcast':
         return {
           ...patternTest,
           from: substituteAny(patternTest.from, substitution),
-          to: substitute(patternTest.to, substitution),
+          to: concrete(patternTest.to),
+        };
+      case 'member':
+        return {
+          ...patternTest,
+          union: concrete(patternTest.union),
+          members: patternTest.members.flatMap((member) => membersOf(concrete(member))),
         };
       case 'or':
         return {
           ...patternTest,
           alternatives: patternTest.alternatives.map((each) =>
-            instantiatedPattern(each, substitution),
+            substitutedPattern(each, substitution),
           ),
         };
       case 'variant':
@@ -116,24 +136,86 @@ function instantiatedPattern(checked: CheckedPattern, substitution: Substitution
   };
   return {
     tests: checked.tests.map(instantiatedTest),
-    bindings: checked.bindings.map((binding) => ({
-      ...binding,
-      type: substitute(binding.type, substitution),
-    })),
+    bindings: checked.bindings.map(({ narrowedFrom, ...binding }) => {
+      const union = narrowedFrom === undefined ? undefined : concrete(narrowedFrom);
+      return {
+        ...binding,
+        type: concrete(binding.type),
+        narrowedFrom: union?.kind === 'union' ? union : undefined,
+      };
+    }),
   };
 }
 
+/** The paths of the parts whose union a member test tests collapsed into one type. */
+function collapsedParts(checked: CheckedPattern): readonly (readonly PartStep[])[] {
+  return checked.tests.flatMap((patternTest) => {
+    if (patternTest.kind === 'or') {
+      return patternTest.alternatives.flatMap(collapsedParts);
+    }
+    return patternTest.kind === 'member' && patternTest.union.kind !== 'union'
+      ? [patternTest.path]
+      : [];
+  });
+}
+
+/** `checked` with each path into a member's value at a `collapsed` part reading the part itself. */
+function withoutVariantSteps(
+  checked: CheckedPattern,
+  collapsed: readonly (readonly PartStep[])[],
+): CheckedPattern {
+  const path = (steps: readonly PartStep[]) => collapsedSteps(steps, collapsed);
+  return {
+    tests: checked.tests.map((patternTest) =>
+      patternTest.kind === 'or'
+        ? {
+            ...patternTest,
+            alternatives: patternTest.alternatives.map((each) =>
+              withoutVariantSteps(each, collapsed),
+            ),
+          }
+        : { ...patternTest, path: path(patternTest.path) },
+    ),
+    bindings: checked.bindings.map((binding) => ({ ...binding, path: path(binding.path) })),
+  };
+}
+
+/**
+ * `steps` without each step into a variant's value (field 0) taken at one of the `collapsed`
+ * parts. Both are paths from the whole value as checked, so a part nested in a collapsed one is
+ * found before either loses a step; a path below a part is built from the part's own, so its steps
+ * are the very ones the part's path holds.
+ */
+function collapsedSteps(
+  steps: readonly PartStep[],
+  collapsed: readonly (readonly PartStep[])[],
+): readonly PartStep[] {
+  return steps.filter(
+    (step, index) =>
+      step !== 0 ||
+      !collapsed.some(
+        (part) => part.length === index && part.every((each, at) => each === steps[at]),
+      ),
+  );
+}
+
 /** `fit` as one instantiation makes it: the type a conversion converts into, substituted. */
-function substitutedFit({ conversion, wraps }: Fit, substitution: Substitution): Fit {
+function substitutedFit({ conversion, into }: Fit, substitution: Substitution): Fit {
+  const union = into === undefined ? undefined : substitute(into.union, substitution);
+  const member = into?.member === undefined ? undefined : substitute(into.member, substitution);
+  return {
+    conversion: substitutedConversion(conversion, substitution),
+    into: union?.kind === 'union' ? { union, member } : undefined,
+  };
+}
+
+function substitutedConversion(conversion: Fit['conversion'], substitution: Substitution) {
   switch (conversion.kind) {
     case 'any':
-      return { wraps, conversion: { kind: 'any', to: substituteAny(conversion.to, substitution) } };
+      return { kind: 'any', to: substituteAny(conversion.to, substitution) } as const;
     case 'shape':
-      return {
-        wraps,
-        conversion: { kind: 'shape', to: substituteKept(conversion.to, substitution) },
-      };
+      return { kind: 'shape', to: substituteKept(conversion.to, substitution) } as const;
     default:
-      return { wraps, conversion };
+      return conversion;
   }
 }

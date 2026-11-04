@@ -29,13 +29,19 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { applyCall } from '../resolution/applied-call.ts';
 import { argumentListText } from '../resolution/argument-fit.ts';
 import { argumentSlotsOf, type BindingFailure } from '../resolution/binding.ts';
-import type { CallArgument, Inapplicability, Passing } from '../resolution/call-arguments.ts';
+import type {
+  CallArgument,
+  Inapplicability,
+  Misfit,
+  Passing,
+} from '../resolution/call-arguments.ts';
 import { callMade } from '../resolution/calls-made.ts';
 import type { Candidate } from '../resolution/candidates.ts';
 import type { Application } from '../resolution/choice.ts';
 import type { Instantiation } from '../resolution/conformance.ts';
 import type { ResolvedSite } from '../resolved-call.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { misfitOf } from '../types/misfit.ts';
+import { errorType, type LiteralType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { checkDecidedLambdas } from './lambda-arguments.ts';
 import { changeReceiver, checkReferencedPlaces } from './places.ts';
@@ -50,6 +56,7 @@ export interface WrittenArgument {
   readonly node: Expression;
   readonly passing: Passing;
   readonly type: Type | undefined;
+  readonly literal?: LiteralType | undefined;
   readonly accepts?: Accepts | undefined;
   readonly name?: Identifier | undefined;
   readonly isSpread?: boolean | undefined;
@@ -117,8 +124,8 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
 
 /** A written argument as choosing sees it. */
 export function callArgumentOf(argument: WrittenArgument): CallArgument {
-  const { type, passing, accepts, name, isSpread } = argument;
-  return { type, passing, accepts, name: name?.text, isSpread, exact: isSpread === true };
+  const { type, literal, passing, accepts, name, isSpread } = argument;
+  return { type, literal, passing, accepts, name: name?.text, isSpread, exact: isSpread === true };
 }
 
 /** A chosen function, instantiated, at the site calling it or naming it as a value. */
@@ -216,10 +223,53 @@ function explainNone(
       ),
     );
   } else {
-    context.report(
-      checkerDiagnostics.noMatchingOverload(site.span, name, argumentListText(request.arguments)),
-    );
+    const list = argumentListText(request.arguments);
+    const [first] = request.arguments;
+    const onUnion = first?.type?.kind === 'union';
+    context.report(checkerDiagnostics.noMatchingOverload(site.span, name, list, onUnion));
   }
+}
+
+/**
+ * Each argument that doesn't fit its parameter, reported as a mismatch; an argument the chosen
+ * function would have decided is checked against the type it didn't take, which says why. With
+ * nothing reported that way, no function of the name takes the arguments.
+ */
+function explainMisfits(
+  context: BodyContext,
+  request: ExplainedCall,
+  misfits: readonly Misfit[],
+): void {
+  const before = context.checker.reportCount();
+  for (const { index, expected } of misfits) {
+    const argument = request.arguments[index];
+    if (argument?.type !== undefined) {
+      const { node, type } = argument;
+      context.report(misfitOf(context.checker.fitting, node.span, type, expected));
+    } else if (argument !== undefined) {
+      context.expect(argument.node, expected);
+    }
+  }
+  if (context.checker.reportCount() === before) {
+    const list = argumentListText(request.arguments);
+    context.report(checkerDiagnostics.noMatchingOverload(request.site.span, request.name, list));
+  }
+}
+
+/** The report that an argument gave a member parameter several members of its union (§3.5). */
+function severalMembersReport(
+  context: BodyContext,
+  request: ExplainedCall,
+  { index, parameter, found }: Extract<Inapplicability, { kind: 'severalMembers' }>,
+): Diagnostic<AnchoredSpan> {
+  const at = request.arguments[index]?.node.span ?? request.site.span;
+  const union = context.checker.memberUnionOf(parameter);
+  return checkerDiagnostics.severalMembersArgument(
+    at,
+    parameter.name.text,
+    union === undefined ? '_' : typeText(union),
+    typeText(found),
+  );
 }
 
 /** A call as a report about it reads it: where, of what name, with what written. */
@@ -227,8 +277,6 @@ export type ExplainedCall = Pick<CallRequest, 'site' | 'name' | 'arguments' | 't
 
 /**
  * With one function, the report says what exactly doesn't fit: the `reason` it was refused for.
- * An argument the chosen function would have decided is checked against the type it didn't take,
- * which says why.
  */
 export function explain(
   context: BodyContext,
@@ -263,30 +311,12 @@ export function explain(
     case 'conflict':
       context.report(checkerDiagnostics.cannotInfer(site.span, name, reason.parameter.name.text));
       return;
-    case 'arguments': {
-      const before = context.checker.reportCount();
-      for (const { index, expected } of reason.misfits) {
-        const argument = request.arguments[index];
-        if (argument?.type !== undefined) {
-          const { node, type } = argument;
-          context.report(
-            checkerDiagnostics.typeMismatch(node.span, typeText(expected), typeText(type)),
-          );
-        } else if (argument !== undefined) {
-          context.expect(argument.node, expected);
-        }
-      }
-      if (context.checker.reportCount() === before) {
-        context.report(
-          checkerDiagnostics.noMatchingOverload(
-            site.span,
-            name,
-            argumentListText(request.arguments),
-          ),
-        );
-      }
+    case 'severalMembers':
+      context.report(severalMembersReport(context, request, reason));
       return;
-    }
+    case 'arguments':
+      explainMisfits(context, request, reason.misfits);
+      return;
     default: {
       const unexplained: never = reason;
       unreachable(`No explanation for ${JSON.stringify(unexplained)}.`);

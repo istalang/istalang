@@ -2,7 +2,8 @@
  * Writing `json._fromJson<T>` (codecs.ts): its parameters are the `Json` and its path, and it
  * returns a `Result<T>`. It reads the way the encoder writes, stopping at the first part that
  * doesn't fit: each part's codec and each helper returns a `Result`, and an `Err` is passed on as
- * this codec's own, with the path it names. A field the JSON lacks is `none` when its type is
+ * this codec's own, with the path it names. A literal type, or a union of literals, reads its base
+ * and accepts only a value equal to one of its literals. A field the JSON lacks is `none` when its type is
  * optional, and an `Err` otherwise; a `@JsonSkip` field is never read and gets its type's
  * `default()`.
  */
@@ -11,9 +12,11 @@ import type { Register } from '../../../definition/operands.ts';
 import { type CodecHelper, codecHelpers, resultVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
-import type { NominalType, Type } from '../../checker/types/type.ts';
+import type { LiteralType, NominalType, Type } from '../../checker/types/type.ts';
+import { typeText } from '../../checker/types/type-text.ts';
 import { type ClosedCall, closeCall } from '../instances.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
+import { literalValue, oneValueIn } from '../unions.ts';
 import { codecCall } from './codec-calls.ts';
 
 /** The body of `_fromJson<T>`, written into `code`. */
@@ -62,6 +65,9 @@ export class Decoder {
       case 'enum':
         this.#enum(form, json, path);
         return;
+      case 'literals':
+        this.#literals(form, json, path);
+        return;
       default: {
         const unhandled: never = form;
         unreachable(`No decoder for ${JSON.stringify(unhandled)}.`);
@@ -94,6 +100,33 @@ export class Decoder {
       code.code.place(next);
     }
     code.return(code.call(this.#helper(codecHelpers.unknownVariant, [type]), [tag, key, path]));
+  }
+
+  /**
+   * The literal the base's value read is, each compared in order, else an `Err` naming them: a
+   * union of literals' member holds nothing, and a lone literal type is its base's value (§2).
+   */
+  #literals(
+    form: Extract<DerivedForm, { kind: 'literals' }>,
+    json: Register,
+    path: Register,
+  ): void {
+    const code = this.#code;
+    const { type, literals } = form;
+    const value = this.#passed(code.call(this.#codec(form.base), [json, path]));
+    for (const literal of literals) {
+      const matched = code.code.newLabel();
+      const next = code.code.newLabel();
+      const equal = code.equal(value, code.constant(literalValue(literal)));
+      code.code.branch(equal, matched, next, code.span);
+      code.code.place(matched);
+      code.return(
+        this.#ok(type.kind === 'union' ? oneValueIn(code, type, literal, code.span) : value),
+      );
+      code.code.place(next);
+    }
+    const spelled = code.constant(literalsText(literals));
+    code.return(code.call(this.#helper(codecHelpers.notAmong, [type]), [json, path, spelled]));
   }
 
   /**
@@ -137,4 +170,11 @@ export class Decoder {
   #helper(name: CodecHelper, typeArguments: readonly Type[] = []): ClosedCall {
     return closeCall(this.#code.checker.json.callOf(name, typeArguments), undefined);
   }
+}
+
+/** `literals` as a failure names what it expected: `"draft", "sent" or "failed"`. */
+function literalsText(literals: readonly LiteralType[]): string {
+  const spelled = literals.map((literal) => typeText(literal));
+  const last = spelled.pop();
+  return spelled.length === 0 ? (last ?? '') : `${spelled.join(', ')} or ${last}`;
 }

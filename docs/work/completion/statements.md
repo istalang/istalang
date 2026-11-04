@@ -520,10 +520,10 @@ Which names are visible at the cursor (§3.4, §3.6, §3.13).
     case Rejected{reason as why}: ‸
 ---
   match o:
-    case Some{value}: ‸
+    case Int as count: ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** The arm's bindings: `by`, `why` (not `reason`), `value`.
+- **Offer:** The arm's bindings: `by`, `why` (not `reason`), `count`.
 - **Not:** Bindings of other arms; the renamed field's own name.
 - **Basis:** spec §3.11.
 
@@ -645,7 +645,7 @@ struct Late { a: int }
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** `panic Array Optional Result time` (the prelude needs no import).
-- **Not:** The prelude's variants bare (`Some None Ok Err`): no enum type is expected (§3.11).
+- **Not:** The prelude's variants bare (`Ok Err`): no enum type is expected (§3.11).
 - **Basis:** spec §3.8.
 
 ### SC-16 · One entry per name · P1 · ✅ pass
@@ -1081,19 +1081,30 @@ fn g():
   const k = o is ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** `o` is an `int?`: `Some`, `None`, `_`.
+- **Offer:** `o` is an `Int?`: `_`, `Int`, `None`, `none` (a pattern on a union selects a member, §3.11).
 - **Not:** Variables, statement keywords.
 - **Basis:** spec §3.11.
 
-### PA-08 · Fields of `Ok`/`Some` in `is` · P1 · ✅ pass
+### PA-08 · Fields of `Ok` in `is` · P1 · ✅ pass
 
 ```
   if r is Ok{‸
----
-  if o is Some{‸
 ```
 - **Where / trigger:** in `fn t`; typing `{`
 - **Offer:** `value`.
+- **Not:** Scope.
+- **Basis:** spec §3.11.
+
+### PA-08b · Fields of an optional's member in `is` · P1 · ✅ pass
+
+```
+  if po is Pair{‸
+---
+  match po:
+    case Pair{‸
+```
+- **Where / trigger:** in `fn t`, `po: Pair?`; typing `{`
+- **Offer:** `first`, `second`: a struct pattern on a union takes the member it names apart (§3.11).
 - **Not:** Scope.
 - **Basis:** spec §3.11.
 
@@ -1103,8 +1114,8 @@ fn g():
   match d:
     case Approved{by} | ‸
 ---
-  match o:
-    case Some{value is ‸
+  const c: Cfg = Cfg{note: none}
+  if c is Cfg{note is ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** PA-01.

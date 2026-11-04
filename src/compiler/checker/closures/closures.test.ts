@@ -123,11 +123,11 @@ describe('closures accept', () => {
     ],
     [
       'a lambda typed by the optional function type it is wrapped into',
-      'fn f() -> Int:\n  const g: (fn(Int) -> Int)?? = fn(n): n * 2\n  if g is Some{value is Some{value as h}}: h(1) else: 0',
+      'fn f() -> Int:\n  const g: (fn(Int) -> Int)?? = fn(n): n * 2\n  (g ?? fn(n): n)(1)',
     ],
     [
       'a lambda passed for an optional function parameter',
-      'fn maybe(g: (fn(Int) -> Int)?, x: Int) -> Int: if g is Some{value as h}: h(x) else: x\nfn f() -> Int: maybe(fn(n): n + 1, 1)',
+      'fn maybe(g: (fn(Int) -> Int)?, x: Int) -> Int: (g ?? fn(n): n)(x)\nfn f() -> Int: maybe(fn(n): n + 1, 1)',
     ],
     [
       'a let shared with a closure and changed on both sides',

@@ -232,9 +232,9 @@ describe('what a name denotes', () => {
     ],
     [
       'a PascalCase name in a pattern',
-      'fn f(o: Int?) -> Int:\n  match o:\n    case None: 0\n    case _: 1',
-      'None',
-      'variants',
+      'enum E { None2 }\nfn f(o: E) -> Int:\n  match o:\n    case None2: 0\n    case _: 1',
+      'None2',
+      'variant',
     ],
     [
       'a PascalCase declaration target, which binds',

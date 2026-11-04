@@ -126,7 +126,7 @@ const scenarios: readonly Scenario[] = [
         ['loc', 'plus'],
         ['xs', 'plus'],
         ['plus', 'Array'],
-        ['Pair', 'Some'],
+        ['Pair', 'Result'],
         ['plus', 'fn'],
         ['Array', 'while'],
       ],

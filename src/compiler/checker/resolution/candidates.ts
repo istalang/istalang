@@ -6,7 +6,10 @@
  *   arguments' own types, not their type arguments' (a primitive's is the prelude);
  * - the functions the constraints on a type parameter require, for every type parameter the
  *   arguments mention, so generic code calls `add(x, y)` on `T is Addable` like any other; and so
- *   for every `any` type they mention, whose value's own type decides the function (§3.10).
+ *   for every `any` type they mention, whose value's own type decides the function (§3.10);
+ * - for a call written in a module on a union, the functions of its name that the traits visible
+ *   there require (union-traits.ts), which choosing tries only where no function takes the union
+ *   whole (§6): a union has no module, so argument-dependent lookup finds nothing for it.
  *
  * A static function (`Duration.zero()`, `T.zero()`) is chosen among those declared on its type
  * and visible where it is called: in the calling module, the type's module, the prelude, or a
@@ -22,7 +25,11 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import type {
+  FunctionDeclaration,
+  TraitDeclaration,
+  TypeParameter,
+} from '../../syntax/declarations.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import { isPlace } from '../../syntax/expressions/places.ts';
 import type { CheckerContext } from '../context.ts';
@@ -30,6 +37,7 @@ import { type Requirement, requirementsNamed } from '../traits/constraints.ts';
 import { type StaticOwner, staticOwnerOf } from '../types/named-types.ts';
 import type { Type } from '../types/type.ts';
 import { anyTypesIn, parametersIn } from '../types/type-parts.ts';
+import { traitCallsOn } from './union-traits.ts';
 
 /** A function a call may mean; a requirement is one a constraint provides. */
 export interface Candidate {
@@ -59,7 +67,44 @@ export function topLevelCandidates(
   name: string,
   argumentTypes: readonly (Type | undefined)[],
 ): readonly Candidate[] {
-  return callCandidates(checker, namedInModule(checker, module, name), name, argumentTypes);
+  return [
+    ...callCandidates(checker, namedInModule(checker, module, name), name, argumentTypes),
+    ...traitCallCandidates(checker, module, name, argumentTypes),
+  ];
+}
+
+/**
+ * The calls of `name` on a union, the first of `argumentTypes`, through the traits visible in
+ * `module`; none for a call on anything else.
+ */
+function traitCallCandidates(
+  checker: CheckerContext,
+  module: ModuleId,
+  name: string,
+  argumentTypes: readonly (Type | undefined)[],
+): readonly Candidate[] {
+  const [receiver] = argumentTypes;
+  return receiver?.kind === 'union'
+    ? visibleTraits(checker, module).flatMap((trait) =>
+        traitCallsOn(checker, receiver, trait, name),
+      )
+    : [];
+}
+
+/** The traits visible in `module`: its own, and those the modules it sees export. */
+function visibleTraits(checker: CheckerContext, module: ModuleId): readonly TraitDeclaration[] {
+  const { inputs, bindings } = checker;
+  const own = inputs.itemsOf(module).filter((item) => item.kind === 'TraitDeclaration');
+  const exported = modulesSeenFrom(checker, module)
+    .filter((each) => each !== module)
+    .flatMap((each) =>
+      [...bindings.exportsOf(each).values()].flatMap((entity) =>
+        entity.kind === 'type' && entity.declaration.kind === 'TraitDeclaration'
+          ? [entity.declaration]
+          : [],
+      ),
+    );
+  return [...new Set([...own, ...exported])];
 }
 
 /** The candidates of a call of `name`: `named` in scope, then those its arguments bring. */

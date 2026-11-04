@@ -45,6 +45,7 @@ export function heldParts(
   switch (type.kind) {
     case 'tuple':
     case 'anonymous':
+    case 'union':
       return typeChildren(type);
     case 'nominal':
       switch (type.entity.declaration.kind) {
@@ -64,6 +65,7 @@ export function heldParts(
         }
       }
     case 'primitive':
+    case 'literal':
     case 'function':
     case 'parameter':
     case 'any':

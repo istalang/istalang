@@ -105,25 +105,25 @@ const spots: readonly (readonly [string, string, readonly string[], readonly str
   ['a trait with no member yet', 'trait Boxed<T>:\n  ‸', ['Self', 'T'], []],
   [
     "a blank line before an `if` body's first statement",
-    'fn f(o: Int?) -> Int:\n  if o is Some{value}:\n    ‸\n    value\n  else:\n    0\n',
+    'fn f(o: Int?) -> Int:\n  if o is Int as value:\n    ‸\n    value\n  else:\n    0\n',
     ['o', 'value'],
     [],
   ],
   [
     'an `else` body, which no `is` binding reaches',
-    'fn f(o: Int?) -> Int:\n  if o is Some{value}:\n    value\n  else:\n    ‸\n    0\n',
+    'fn f(o: Int?) -> Int:\n  if o is Int as value:\n    value\n  else:\n    ‸\n    0\n',
     ['o'],
     ['value'],
   ],
   [
     'a missing right side of `and`',
-    'fn f(o: Int?) -> Bool: o is Some{value} and ‸\n',
+    'fn f(o: Int?) -> Bool: o is Int as value and ‸\n',
     ['value'],
     [],
   ],
   [
     'a missing guard',
-    'fn f(o: Int?) -> Int:\n  match o:\n    case Some{value} if ‸:\n      value\n    case _: 0\n',
+    'fn f(o: Int?) -> Int:\n  match o:\n    case Int as value if ‸:\n      value\n    case _: 0\n',
     ['value'],
     [],
   ],
@@ -135,7 +135,7 @@ const spots: readonly (readonly [string, string, readonly string[], readonly str
   ],
   [
     "a blank line before a `while` body's first statement",
-    'fn f(o: Int?) -> Int:\n  while o is Some{value}:\n    ‸\n    value\n  0\n',
+    'fn f(o: Int?) -> Int:\n  while o is Int as value:\n    ‸\n    value\n  0\n',
     ['value'],
     [],
   ],
@@ -153,7 +153,7 @@ const spots: readonly (readonly [string, string, readonly string[], readonly str
   ],
   [
     'an `if` body not written yet, on the line below its header',
-    'fn f(o: Int?) -> Int:\n  if o is Some{value}:\n    ‸\n  0\n',
+    'fn f(o: Int?) -> Int:\n  if o is Int as value:\n    ‸\n  0\n',
     ['o', 'value'],
     [],
   ],
@@ -223,7 +223,7 @@ describe('visibleAt', () => {
   it('holds an `is` binding where the match is known to hold, and not past it', () => {
     const main = [
       'fn pick(o: Int?) -> Int:',
-      '  if o is Some{value} and value > 0:',
+      '  if o is Int as value and value > 0:',
       '    value + 1',
       '  else:',
       '    0 + 2',

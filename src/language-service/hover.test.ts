@@ -127,6 +127,23 @@ describe('hover', () => {
     ).toEqual(['(variant) Some: Opt<T>']);
   });
 
+  it('shows unions, literal types and `None` as written, and the type a case leaves', () => {
+    const status = ['type Status = "draft" | "sent"', ''];
+    expect(hover(...status, 'fn f(x: Int?, s: Status) -> Int?: x‸')?.code).toEqual([
+      '(variable) x: Int?',
+    ]);
+    expect(hover(...status, 'fn f(x: Int?, s: Status) -> Status: s‸')?.code).toEqual([
+      '(variable) s: Status',
+    ]);
+    expect(hover('fn f(x: "a" | 1 | true) -> Int:', '  const y‸ = x', '  0')?.code).toEqual([
+      '(variable) y: "a" | 1 | true',
+    ]);
+    expect(hover('fn f(x: ‸None) -> Int: 0')?.code).toEqual(['(type) None']);
+    expect(hover('fn f() -> Int?: ‸none')?.code).toEqual(['None']);
+    const cases = ['fn f(x: Int | String | None) -> Int:', '  match x:', '    case None: 0'];
+    expect(hover(...cases, '    case ‸s: 1')?.code).toEqual(['(variable) s: Int | String']);
+  });
+
   it('shows nothing where nothing has a type', () => {
     expect(hover('fn f() -> Int:', '  le‸t x = 1', '  x')).toBeUndefined();
   });

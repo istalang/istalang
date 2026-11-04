@@ -99,7 +99,7 @@ describe('binding reports, once and at the name', () => {
     ['a prelude type redeclared', 'struct Result { value: Int }', d.preludeClash, 'Result'],
     [
       'a variant an enum lacks, in a pattern',
-      'fn f(o: Int?) -> Int:\n  match o:\n    case Optional.Nothing: 0\n    case _: 1',
+      'enum E { A }\nfn f(o: E) -> Int:\n  match o:\n    case E.Nothing: 0\n    case _: 1',
       d.missingVariant,
       'Nothing',
     ],

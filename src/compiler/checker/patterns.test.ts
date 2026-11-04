@@ -31,7 +31,7 @@ describe('exhaustiveness', () => {
     ['every variant', 'Color', 'case Red: "r"\ncase Green: "g"\ncase Blue: "b"'],
     ['a wildcard', 'Color', 'case Red: "r"\ncase _: "other"'],
     ['true and false', 'Bool', 'case true: "t"\ncase false: "f"'],
-    ['Some and none', 'Int?', 'case Some{value}: "some"\ncase none: "none"'],
+    ['a member and none', 'Int?', 'case Int as n: String(n)\ncase none: "none"'],
     ['a binding name', 'Int', 'case n: String(n)'],
     [
       'a tuple of enums, by product',
@@ -44,13 +44,13 @@ describe('exhaustiveness', () => {
       '== against a variant',
       'Shape?',
       [
-        'case Some{value is Circle{radius == 1}}: "unit"',
-        'case Some{value is Circle{}}: "circle"',
-        'case Some{value is Square{}}: "square"',
+        'case Circle{radius == 1}: "unit"',
+        'case Circle{}: "circle"',
+        'case Square{}: "square"',
         'case none: "none"',
       ].join('\n'),
     ],
-    ['== against none', 'Box', 'case Box{opt == none}: "none"\ncase Box{opt is Some{}}: "some"'],
+    ['== against none', 'Box', 'case Box{opt == none}: "none"\ncase Box{opt is Int}: "some"'],
     ['alternatives', 'Color', 'case Red | Green: "warm"\ncase Blue: "cold"'],
     [
       'alternatives nested in a tuple',

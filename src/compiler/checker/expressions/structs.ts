@@ -46,7 +46,6 @@ import { topLevelCandidates } from '../resolution/candidates.ts';
 import { namedType, nameNodeOf } from '../resolution/named.ts';
 import { fieldOf } from '../traits/constraints.ts';
 import { builtFrom } from '../types/expected.ts';
-import { optionalInner } from '../types/fit.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import {
   byFieldName,
@@ -58,6 +57,7 @@ import {
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { optionalInner } from '../types/unions.ts';
 import { checkLiteralFields, type LiteralShape, type LiteralSpread } from './literal-fields.ts';
 import { builtThrough } from './literal-types.ts';
 import { entityValueType } from './names.ts';
@@ -146,7 +146,7 @@ function checkAnonymousLiteral(
   expected: Type | undefined,
   spread: LiteralSpread | undefined,
 ): Type {
-  const target = builtFrom(context.checker, expected);
+  const target = builtFrom(expected);
   const fromExpected = target === undefined ? undefined : shapeOf(context, target);
   if (fromExpected !== undefined) {
     return checkLiteralFields(context, node, fromExpected, spread);
@@ -369,9 +369,9 @@ function noField(context: BodyContext, node: MemberAccess, type: Type): Diagnost
     const operator = linkOperator('->', node.isOptional);
     return checkerDiagnostics.fieldBehindShared(span, typeText(type), name, operator);
   }
-  const inner = optionalInner(type, checker.optionalEntity);
+  const inner = optionalInner(type);
   const reach = inner !== undefined && checker.sharedValueOf(inner) !== undefined ? '->' : '.';
-  const inside = insideOptional(checker, span, type, reach);
+  const inside = insideOptional(span, type, reach);
   if (inside !== undefined) {
     return inside;
   }

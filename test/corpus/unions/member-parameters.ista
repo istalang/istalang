@@ -1,0 +1,30 @@
+# outcome: "status:draft|status:sent|d:10|s:ok"
+# Member type parameters T in U (§7): inference from a single member or a literal argument (giving
+# the literal its literal type), instantiation per member, and building a generic struct with a
+# member parameter from an expected union of its instantiations.
+
+type Status = "draft" | "sent" | "failed"
+
+fn describe<S in Status>(s: S) -> String:
+  `status:${s}`
+
+struct Entry<V, K in Status>:
+  key: K
+  value: V
+
+type AnyEntry = Entry<Int, "draft"> | Entry<String, "sent">
+
+fn showEntry(e: AnyEntry) -> String:
+  match e:
+    case Entry<Int, "draft">{value}: `d:${value}`
+    case Entry<String, "sent">{value}: `s:${value}`
+
+async fn main() -> Future<String>:
+  const d1 = describe("draft")
+  const status: Status = "sent"
+  const d2 = match status:
+    case "sent" as d: describe(d)
+    case _: "other"
+  const e1: AnyEntry = Entry{key: "draft", value: 10}
+  const e2: AnyEntry = Entry{key: "sent", value: "ok"}
+  `${d1}|${d2}|${showEntry(e1)}|${showEntry(e2)}`

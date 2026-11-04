@@ -1,0 +1,32 @@
+# error: 5130 at 15:48
+# error: 5001 at 17:34
+# error: 2027 at 19:28
+# error: 5419 at 23:14
+# error: 5419 at 26:13
+# error: 5020 at 31:10
+# Member parameters (§3.5) take one member of their union, and type arguments in a pattern pick a
+# member of a union only (§3.11).
+
+type Status = "draft" | "sent" | "failed"
+struct Box<T> { value: T }
+
+fn describe<S in Status>(s: S) -> String: s
+
+fn several(status: Status) -> String: describe(status)
+
+fn outside() -> String: describe("archived")
+
+fn constrained<S in Status is Sendable>(s: S) -> String: s
+
+fn notUnion(b: Box<Int>) -> Int:
+  match b:
+    case Box<Int>{value}: value
+
+fn target(b: Box<Int>) -> Int:
+  const Box<Int>{value} = b
+  value
+
+fn arity(x: Box<Int> | Box<String>) -> Int:
+  match x:
+    case Box<Int, Int>{value}: 1
+    case _: 0

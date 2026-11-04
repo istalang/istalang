@@ -1,9 +1,8 @@
-# error: 5100 at 14:13
-# error: 5108 at 15:13
-# error: 5107 at 16:13
-# error: 5100 at 17:13
-# A type argument nothing decides can't be inferred (§3.5), and `none` and a bare variant need a
-# type to be expected (§3.11).
+# error: 5100 at 13:13
+# error: 5107 at 14:13
+# error: 5104 at 15:22
+# A type argument nothing decides can't be inferred (§3.5), a bare variant needs a type to be
+# expected (§3.11), and an alias of a union has no variants to qualify.
 
 enum Color { Red; Green }
 
@@ -12,6 +11,5 @@ fn empty<T>() -> T?:
 
 async fn main():
   const a = empty()
-  const b = none
   const c = Red
   const d = Optional.None

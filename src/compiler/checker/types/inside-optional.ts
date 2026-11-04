@@ -9,23 +9,21 @@
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { type LinkForm, optionalOperatorOf } from '../../syntax/expressions/chains.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { optionalInner } from './fit.ts';
 import type { Type } from './type.ts';
 import { typeText } from './type-text.ts';
+import { optionalInner } from './unions.ts';
 
 /**
  * The diagnostic pointing a step of `form` that failed on `type` at the operator taking it inside
  * the optional; undefined when `type` isn't optional, so the step's own failure stands.
  */
 export function insideOptional(
-  checker: Pick<CheckerContext, 'optionalEntity'>,
   at: AnchoredSpan,
   type: Type,
   form: LinkForm,
 ): Diagnostic<AnchoredSpan> | undefined {
-  return optionalInner(type, checker.optionalEntity) === undefined
+  return optionalInner(type) === undefined
     ? undefined
     : checkerDiagnostics.insideOptional(at, typeText(type), optionalOperatorOf(form));
 }

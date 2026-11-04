@@ -23,7 +23,7 @@ fn subject(n: Int, o: Int?):
   const Pair{first} = Point{x: 1, y: 2}
   const struct{second} = n
   const Pair{third} = Pair{first: 1, second: 2}
-  const Some{value} = o
+  const none = o
   let u = 0
   u, u = (1, 2)
   let w = Pair{first: 1, second: 2}

@@ -1,0 +1,58 @@
+# outcome: "42|hi|none|true|11|5:true:true:true|7"
+# Union normalization (§1, §3, §4): order-free, flattened, duplicates and Never dropped, literals
+# absorbed into their base type ("a" | String is String, true | false is Bool), a type meeting an
+# any member absorbed into it, nominal and shape kept apart, T? as T | None, T?? as T?, and collapse
+# after generic substitution.
+
+type Point = { x: Int; y: Int }
+struct Pixel { x: Int; y: Int }
+struct Chain { value: Int; rest: Chain | Int }
+
+fn asIntOrString(x: String | Int | Never | Int) -> Int | String:
+  x
+
+fn asString(x: "draft" | "sent" | String) -> String:
+  x
+
+fn asInt(x: 42 | -1 | 0 | Int) -> Int:
+  x
+
+fn asBool(x: true | false) -> Bool:
+  x
+
+fn asAnyStringable(x: Int | "a" | any Stringable) -> any Stringable:
+  x
+
+fn collapseGeneric<T>(x: T | Int) -> T | Int:
+  x
+
+fn collapseOpt<T>(x: T?) -> T?:
+  x
+
+fn doubleOpt(x: Int??) -> Int?:
+  x
+
+fn chainSum(c: Chain) -> Int:
+  match c.rest:
+    case Chain as next: c.value + next.value
+    case Int as tail: c.value + tail
+
+async fn main() -> Future<String>:
+  const u1 = asIntOrString(42)
+  const u2 = asString("hi")
+  const u3 = doubleOpt(none)
+  const u4 = asBool(true)
+  const cSum = collapseGeneric<Int>(8) + (collapseOpt<Int?>(3) ?? 0) + (asInt(-1) + 1)
+  const m: Map<String, Int?> = ["present": 5, "empty": none]
+  const a: Int? = m.get("present")
+  const b: Int? = m.get("empty")
+  const c: Int? = m.get("missing")
+  const mapCheck = `${a ?? -1}:${b == none}:${c == none}:${b == c}`
+  const ch = Chain{value: 3, rest: Chain{value: 4, rest: 0}}
+  const u1Text = match u1:
+    case Int as n: String(n)
+    case String as s: s
+  const u3Text = match u3:
+    case None: "none"
+    case Int as n: String(n)
+  `${u1Text}|${u2}|${u3Text}|${u4}|${cSum}|${mapCheck}|${chainSum(ch)}`

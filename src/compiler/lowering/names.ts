@@ -19,10 +19,12 @@ import {
   keyTypeText,
 } from '../../definition/extern-key.ts';
 import { staticName } from '../../language/static-names.ts';
-import { qualifiedName, selfType } from '../../language/well-known.ts';
+import { qualifiedName, selfType, wellKnown } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
-import type { NominalDeclaration, Type } from '../checker/types/type.ts';
+import type { NominalDeclaration, Type, UnionType } from '../checker/types/type.ts';
+import { typeText } from '../checker/types/type-text.ts';
+import { optionalInner } from '../checker/types/unions.ts';
 import { type ModuleId, programModule } from '../program/program.ts';
 import type {
   ExternConstantDeclaration,
@@ -124,6 +126,38 @@ export function spelledType(checker: Checker, type: Type): string {
   return keyTypeText(keyType(checker, type));
 }
 
+/**
+ * How a union is named, in keys and in the type table: `T | None` as `prelude.Optional` of `T`, as
+ * it was named before unions, so no key or host table changes; any other by its members.
+ */
+export function unionName(
+  checker: Checker,
+  type: UnionType,
+): { readonly name: string; readonly arguments: readonly Type[] } {
+  const inner = optionalOfOne(type);
+  return inner === undefined
+    ? { name: keyTypeText(unionKey(checker, type)), arguments: [] }
+    : { name: qualifiedName(wellKnown.optional), arguments: [inner] };
+}
+
+/** A union as keys spell it (`unionName`). */
+function unionKey(checker: Checker, type: UnionType): KeyType {
+  const inner = optionalOfOne(type);
+  return inner === undefined
+    ? { kind: 'union', members: type.members.map((member) => keyType(checker, member)) }
+    : {
+        kind: 'named',
+        name: qualifiedName(wellKnown.optional),
+        arguments: [keyType(checker, inner)],
+      };
+}
+
+/** `T` of a union `T | None` whose `T` is one member; undefined for any other union. */
+function optionalOfOne(type: UnionType): Type | undefined {
+  const inner = optionalInner(type);
+  return inner?.kind === 'union' ? undefined : inner;
+}
+
 function keyType(checker: Checker, type: Type): KeyType {
   switch (type.kind) {
     case 'primitive':
@@ -167,6 +201,10 @@ function keyType(checker: Checker, type: Type): KeyType {
         parameters: type.parameters.map((parameter) => keyType(checker, parameter.type)),
         result: keyType(checker, type.result),
       };
+    case 'literal':
+      return { kind: 'literal', text: typeText(type) };
+    case 'union':
+      return unionKey(checker, type);
     case 'error':
       return unreachable('An extern with an unresolved type reached lowering.');
     default: {

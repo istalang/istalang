@@ -5,7 +5,16 @@
  */
 
 import { sameType } from './identity.ts';
-import { type AnyType, type NominalType, type ParameterKey, type Type, withPack } from './type.ts';
+import {
+  type AnyType,
+  aliasedAs,
+  type NominalType,
+  type ParameterKey,
+  type Type,
+  type UnionType,
+  withPack,
+} from './type.ts';
+import { unionOf } from './unions.ts';
 
 /** The types `type` is built from, one level down. */
 export function typeChildren(type: Type): readonly Type[] {
@@ -24,6 +33,9 @@ export function typeChildren(type: Type): readonly Type[] {
       ];
     case 'any':
       return type.constraints.flatMap((constraint) => constraint.arguments);
+    case 'union':
+      return type.members;
+    case 'literal':
     case 'primitive':
     case 'parameter':
     case 'error':
@@ -90,7 +102,9 @@ function sameOrigin(one: Type, other: Type): boolean {
  * kept by a type's key is computed from it, so it never depends on how the type was spelled where
  * it was first asked for.
  */
-export function unaliased<Written extends Type>(type: Written): Written {
+export function unaliased<Written extends Exclude<Type, UnionType>>(type: Written): Written;
+export function unaliased(type: Type): Type;
+export function unaliased(type: Type): Type {
   return mapChildren(type.alias === undefined ? type : { ...type, alias: undefined }, unaliased);
 }
 
@@ -127,11 +141,21 @@ export function mentionsError(type: Type): boolean {
 
 /**
  * `type` with each type it is built from, one level down, replaced by what `map` gives. The alias
- * `type` was written through comes along: a caller changing what it wrote drops it (type.ts).
+ * `type` was written through comes along: a caller changing what it wrote drops it (type.ts). A
+ * union is built again (unions.ts), so its members may merge into fewer, or into one.
  */
-export function mapChildren<Mapped extends Type>(type: Mapped, map: (child: Type) => Type): Mapped;
+export function mapChildren<Mapped extends Exclude<Type, UnionType>>(
+  type: Mapped,
+  map: (child: Type) => Type,
+): Mapped;
+export function mapChildren(type: Type, map: (child: Type) => Type): Type;
 export function mapChildren(type: Type, map: (child: Type) => Type): Type {
   switch (type.kind) {
+    case 'union': {
+      const rebuilt = unionOf(type.members.map(map));
+      return type.alias === undefined ? rebuilt : aliasedAs(rebuilt, type.alias);
+    }
+    case 'literal':
     case 'primitive':
     case 'parameter':
     case 'error':

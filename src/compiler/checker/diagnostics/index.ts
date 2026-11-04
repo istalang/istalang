@@ -30,7 +30,10 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   },
   noMatchingOverload: {
     code: 5002,
-    message: (name: string, argumentTypes: string) => `No '${name}' takes (${argumentTypes}).`,
+    message: (name: string, argumentTypes: string, givenUnion = false) =>
+      givenUnion
+        ? `No '${name}' takes (${argumentTypes}), and no trait visible here that the union meets requires it; take the union apart with 'match' to call its members' own (§3.10).`
+        : `No '${name}' takes (${argumentTypes}).`,
   },
   ambiguousCall: {
     code: 5003,

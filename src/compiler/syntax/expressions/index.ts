@@ -46,7 +46,7 @@ interface BooleanLiteral extends NodeOf<'BooleanLiteral'> {
   readonly value: boolean;
 }
 
-export type NoneLiteral = NodeOf<'NoneLiteral'>;
+type NoneLiteral = NodeOf<'NoneLiteral'>;
 
 export type Literal =
   | IntegerLiteral

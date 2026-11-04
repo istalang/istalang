@@ -65,8 +65,8 @@ describe('iterate', () => {
   const unmetConstraint = [
     'struct P { x: Int }',
     'struct Wrap<T> { inner: T }',
-    'fn iterate<T is Comparable>(self: Wrap<T>) -> fn() -> Int?:',
-    '  fn next() -> Int?: none',
+    'fn iterate<T is Comparable>(self: Wrap<T>) -> fn() -> Step<Int>:',
+    '  fn next() -> Step<Int>: Done',
     '  next',
     'fn subject(w: Wrap<P>):',
   ];
@@ -79,5 +79,15 @@ describe('iterate', () => {
     expect(reported([...unmetConstraint, line].join('\n'))).toEqual(
       reportedOnce(reports.notConforming.code, 'w'),
     );
+  });
+
+  it('reports a cursor giving an optional, whose stored none would read as the end', () => {
+    const text = [
+      'struct Holes { items: Array<Int?> }',
+      'fn iterate(self: Holes) -> fn() -> Int?: fn(): none',
+      'fn subject(holes: Holes):',
+      '  for x in holes: x',
+    ].join('\n');
+    expect(reported(text)).toEqual(reportedOnce(reports.notIterable.code, 'holes'));
   });
 });

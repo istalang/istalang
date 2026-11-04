@@ -3,13 +3,18 @@
  * witness candidates (candidates.ts) by the required parameter types, taken exactly, so a function
  * taking the type only once wrapped into an optional is one for the optional. Conformance builds
  * on it (conformance.ts); a derived codec or default may stand only where none is declared.
+ *
+ * A lone literal type's value is its base's (§2), so a parameter of a literal type is taken as its
+ * base: `"draft"` meets `Stringable` with `String`'s `toString`. A requirement giving `Self` still
+ * gives the base, which is no literal, so it isn't met that way.
  */
 
 import type { CheckerContext } from '../context.ts';
 import { constraintSubstitution, requiredFunctions } from '../traits/constraints.ts';
 import type { Constraint, Type } from '../types/type.ts';
+import { baseOf } from '../types/unions.ts';
 import type { CallArgument } from './call-arguments.ts';
-import { witnessCandidates } from './candidates.ts';
+import { type Candidate, witnessCandidates } from './candidates.ts';
 import { type Choice, chooseAsValue, type Signature, signatureOf } from './choice.ts';
 
 /**
@@ -39,9 +44,18 @@ export function chooseWitness(checker: CheckerContext, type: Type, required: Sig
     required: required.declaration,
     parameterTypes,
   });
+  return chooseWitnessAmong(checker, candidates, required);
+}
+
+/** `chooseWitness` among `candidates`, as a witness is chosen wherever they come from. */
+export function chooseWitnessAmong(
+  checker: CheckerContext,
+  candidates: readonly Candidate[],
+  required: Signature,
+): Choice {
   const callArguments = required.parameters.map(
     ({ type: each, reference }): CallArgument => ({
-      type: each,
+      type: each.kind === 'literal' ? baseOf(each) : each,
       passing: reference ? 'reference' : 'value',
       exact: true,
     }),

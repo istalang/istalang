@@ -1,0 +1,33 @@
+# outcome: "draft|SENT|failed:failed:failed|1:one"
+# A member parameter's values (§3.5) fit where its union's do: into the union as the member each
+# instantiation stands for, into a wider union through a literal's base, into its base, and into
+# an optional of either. A literal argument fills it with its literal type, or its base's member.
+
+type Status = "draft" | "sent" | "failed"
+
+fn wide<S in Status>(s: S) -> String:
+  const w: String | Int = s
+  match w:
+    case String as t: t
+    case Int: "int"
+
+fn back<S in Status>(s: S) -> String:
+  const st: Status = s
+  match st:
+    case "sent": "SENT"
+    case _: "other"
+
+fn opt<S in Status>(s: S) -> String:
+  const o: S? = s
+  const p: Status? = s
+  const q: String = s
+  `${o ?? s}:${p ?? "draft"}:${q}`
+
+fn either<T in Int | String>(x: T) -> String:
+  const both: Int | String = x
+  match both:
+    case Int as n: `${n}`
+    case String as t: t
+
+async fn main() -> Future<String>:
+  `${wide("draft")}|${back("sent")}|${opt("failed")}|${either(1)}:${either("one")}`

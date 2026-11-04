@@ -5,8 +5,9 @@
  *
  * - each parameter is by value or by `&` alike, except a method's `self`, since method notation
  *   passes it either way (§3.7);
- * - a parameter's `T` and `T?` count as the same, since the implicit wrap (§2) would make every
- *   call to the pair ambiguous;
+ * - a parameter's type counts as the same as a union holding it, since the conversion into a union
+ *   (§2) would make every call taking the narrower ambiguous: `T` and `T?`, `A` and `A | B`, and
+ *   a literal type and its base, which a union holding both is (`"a" | String` is `String`);
  * - generic functions compare up to the names of their type parameters, so two with different
  *   numbers of them never clash: written type arguments tell them apart (§3.7);
  * - a function with defaults is compared for every number of arguments a call by position may give
@@ -37,10 +38,10 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { positionalCounts } from '../resolution/binding.ts';
 import { signatureOf } from '../resolution/choice.ts';
-import { withoutOptionals } from '../types/fit.ts';
 import { declaredOwnerOf, type StaticOwner } from '../types/named-types.ts';
 import type { ParameterKey, RestSlot, Type } from '../types/type.ts';
 import { mentionsError } from '../types/type-parts.ts';
+import { baseOf, membersOf } from '../types/unions.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {
@@ -77,11 +78,22 @@ function preludeOverloads(
 
 /**
  * A parameter position as overload clash checking sees it: a pack's items taking any type by
- * value (§3.5), or a parameter's type key with whether a call must pass it by `&`.
+ * value (§3.5), or the keys of a parameter's type's members, a literal member's with its base's,
+ * with whether a call must pass it by `&`.
  */
 type SlotKey =
   | { readonly kind: 'any' }
-  | { readonly kind: 'type'; readonly key: string; readonly reference: boolean };
+  | {
+      readonly kind: 'type';
+      readonly members: readonly MemberKey[];
+      readonly reference: boolean;
+    };
+
+/** A member of a parameter's type by its key, and a literal member's base's key. */
+interface MemberKey {
+  readonly key: string;
+  readonly base: string | undefined;
+}
 
 /**
  * What a call by position meets in a function: how many type parameters it has, the key of each
@@ -121,11 +133,22 @@ const packItemKey: SlotKey = { kind: 'any' };
 /** Whether a call's argument fits parameters of both keys alike. */
 function sameKey(first: SlotKey, second: SlotKey): boolean {
   if (first.kind === 'type' && second.kind === 'type') {
-    return first.key === second.key && first.reference === second.reference;
+    return first.reference === second.reference && (holds(first, second) || holds(second, first));
   }
   const takesAny = (key: SlotKey, other: SlotKey) =>
     key.kind === 'any' && (other.kind === 'any' || !other.reference);
   return takesAny(first, second) || takesAny(second, first);
+}
+
+/** Whether a value of each member of `narrow` is a value of `wide`: a member, or its literal's base. */
+function holds(
+  wide: Extract<SlotKey, { kind: 'type' }>,
+  narrow: Extract<SlotKey, { kind: 'type' }>,
+): boolean {
+  const keys = new Set(wide.members.map(({ key }) => key));
+  return narrow.members.every(
+    ({ key, base }) => keys.has(key) || (base !== undefined && keys.has(base)),
+  );
 }
 
 /**
@@ -140,9 +163,13 @@ function shapeOf(checker: CheckerContext, declaration: FunctionDeclaration): Sha
   const positions = new Map<ParameterKey, number>(
     typeParametersOf(declaration.typeParameters).map((parameter, index) => [parameter, index]),
   );
+  const key = (type: Type) => checker.typeKeys.typeKey(type, positions);
   const keyOf = (type: Type, reference: boolean): SlotKey => ({
     kind: 'type',
-    key: checker.typeKeys.typeKey(withoutOptionals(type, checker.optionalEntity), positions),
+    members: membersOf(type).map((member) => ({
+      key: key(member),
+      base: member.kind === 'literal' ? key(baseOf(member)) : undefined,
+    })),
     reference,
   });
   const slots = signatureOf(checker, declaration).parameters;

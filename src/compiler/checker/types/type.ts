@@ -13,6 +13,12 @@
  *   order a shape has. Where it was written (`origin`) is only its spelling, for tools to locate it:
  *   the value behind a shared struct (§3.18) is the shape of the shared struct's fields, written at
  *   its declaration.
+ * - A literal type (§2) is the one value of a `String`, `Int` or `Bool` literal: `"draft"`, `-1`,
+ *   `true`. Its base is derived from its value, never stored beside it.
+ * - `A | B` (§2) is a value of one of its members, a set: unions.ts normalizes it, so no value sits
+ *   in two members and no union holds another. Its members keep the order they were first written
+ *   in, which only its text reads; identity sorts them (type-keys.ts). `T?` is `T | None`, `None`
+ *   being the primitive whose one value is `none`.
  * - `error` stands for a type a diagnostic has already explained. It is compatible with everything,
  *   so one mistake is reported once instead of at every use that follows.
  * - `Never` (§2) is the type of expressions that don't produce a value, and fits wherever any type
@@ -197,6 +203,21 @@ export interface ErrorType extends WrittenThrough {
   readonly kind: 'error';
 }
 
+/** The value of a literal type: an `Int`'s, a `String`'s or a `Bool`'s. */
+export type LiteralValue = bigint | string | boolean;
+
+/** A literal type (§2): the one value of a `String`, `Int` or `Bool` literal. */
+export interface LiteralType extends WrittenThrough {
+  readonly kind: 'literal';
+  readonly value: LiteralValue;
+}
+
+/** `A | B` (§2): a value of one of its members, two or more, normalized (unions.ts). */
+export interface UnionType extends WrittenThrough {
+  readonly kind: 'union';
+  readonly members: readonly Type[];
+}
+
 /** A type a struct value can have: a declared struct or an anonymous one. */
 export type StructValueType = NominalType | AnonymousStructType;
 
@@ -208,6 +229,8 @@ export type Type =
   | FunctionType
   | TypeParameterType
   | AnyType
+  | LiteralType
+  | UnionType
   | ErrorType;
 
 /** `type` as written through `alias`; the error type stays itself, as a diagnostic explained it. */
@@ -226,6 +249,7 @@ export const boolType = primitiveType('Bool');
 export const stringType = primitiveType('String');
 export const unitType = primitiveType('Unit');
 export const neverType = primitiveType('Never');
+export const noneType = primitiveType('None');
 export const errorType: ErrorType = { kind: 'error' };
 
 /**

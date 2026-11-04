@@ -8,7 +8,7 @@
 
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { Accepts } from '../context.ts';
-import type { ParameterSlot, RestSlot, Type } from '../types/type.ts';
+import type { LiteralType, ParameterSlot, RestSlot, Type } from '../types/type.ts';
 import type { BindingFailure } from './binding.ts';
 
 /**
@@ -37,11 +37,13 @@ export type Passing = 'value' | 'reference' | 'receiver';
 
 /**
  * An argument as choosing sees it: its type, or, when the chosen function decides it, which
- * parameter types it can take; how it is passed; its name when named; and for a spread, the type
- * of its items.
+ * parameter types it can take; how it is passed; its name when named; for a spread, the type of
+ * its items; and for a literal written in place, its literal type, which it has where a parameter
+ * expects one (§2, inference/infer.ts `literalType`), its type being its base's.
  */
 export interface CallArgument {
   readonly type: Type | undefined;
+  readonly literal?: LiteralType | undefined;
   readonly passing: Passing;
   readonly accepts?: Accepts | undefined;
   /**
@@ -67,6 +69,16 @@ export type Inapplicability =
   | { readonly kind: 'reference'; readonly index: number; readonly reference: boolean }
   /** Two arguments gave one type parameter types that don't agree (§3.5). */
   | { readonly kind: 'conflict'; readonly parameter: TypeParameter }
+  /**
+   * The argument at `index` gave a member parameter (`T in U`) a value of `found`, several members
+   * of its union where it takes one (§3.5).
+   */
+  | {
+      readonly kind: 'severalMembers';
+      readonly index: number;
+      readonly parameter: TypeParameter;
+      readonly found: Type;
+    }
   /**
    * The arguments a pack's rest parameter collects don't fill it (§3.5): `index` is the first, and
    * `found` the tuple of their types when they are single values, which fill no pack of `expected`.

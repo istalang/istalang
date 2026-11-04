@@ -51,7 +51,7 @@ fn _list(suite: fn() -> Array<Test>, title: String) -> Array<Listed>: [
 # Runs test `position` of `suite`, once sure its listing still puts `expected` there (§10).
 async fn _run(suite: fn() -> Array<Test>, title: String, position: Int, expected: String):
   const entry = _entries(title, suite(), false, false).at(position)
-  if entry is Some{value as found} and found.listed.title == expected: await found.body()
+  if entry is _Entry as found and found.listed.title == expected: await found.body()
   else:
     panic(
       "The suite listed other tests when it was called again, so test '" +

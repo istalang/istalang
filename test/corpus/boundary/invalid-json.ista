@@ -1,11 +1,10 @@
+# error: 5101 at 27:7
 # error: 5101 at 28:7
-# error: 5101 at 29:7
-# error: 5101 at 31:7
-# error: 5101 at 33:7
-# error: 5101 at 35:8
-# error: 5101 at 37:20
+# error: 5101 at 30:7
+# error: 5101 at 32:8
+# error: 5101 at 34:20
 # json writes and reads only what is Encodable, or Decodable (§9): not a function, not a map whose
-# keys aren't Stringable, not a nested optional, not an enum with a variant field named type,
+# keys aren't Stringable, not an enum with a variant field named type,
 # which the tag uses; and a type that declares a toJson but no fromJson can be written but not
 # read, since nothing is derived for it. main's outcome is written as JSON for its host.
 
@@ -27,8 +26,6 @@ fn uses():
   const add = fn(n: Int): n + 1
   _ = json.stringify(add)
   _ = json.stringify([Point{x: 1}: 1])
-  const nested: Int?? = none
-  _ = json.stringify(nested)
   const event: Event = Typed{type: "t"}
   _ = json.stringify(event)
   _ = json.stringify(Label{text: "ok"})

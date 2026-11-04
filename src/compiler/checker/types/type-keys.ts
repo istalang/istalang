@@ -11,6 +11,8 @@
  * - A shape (§3.1) is its field names and their keys, in name order, as the type keeps its fields:
  *   `{x:Int,y:Int}` however it was written. The key is the canonical text itself, never a digest,
  *   since a collision would make two types one without any error.
+ * - A literal type is its value, a string's quoted as JSON, so no text it holds can end it early.
+ * - A union is its members' keys, sorted, since its members are a set.
  * - An alias names no type of its own (§3.17), so no key mentions one.
  * - A type's own key is memoized per type object, which is immutable. Comparing generic signatures
  *   up to the names of their type parameters (rules/clashes.ts) keys each of those parameters by
@@ -88,6 +90,10 @@ function keyOf(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefi
       );
       return `any{${constraints.sort().join('&')}}`;
     }
+    case 'literal':
+      return `=${typeof type.value === 'string' ? JSON.stringify(type.value) : String(type.value)}`;
+    case 'union':
+      return `|<${type.members.map(key).sort().join(',')}>`;
     default: {
       const unhandled: never = type;
       return unhandled;

@@ -63,6 +63,17 @@ describe('a cursor', () => {
     ]);
   });
 
+  it('gives every item of an array of optionals, a stored none never ending it', () => {
+    fc.assert(
+      fc.property(fc.array(fc.option(ends, { nil: null }), { maxLength: 4 }), (items) => {
+        const literal = items.map((item) => item ?? 'none').join(', ');
+        const body = `const xs: Array<Int?> = [${literal}]\n  [for x in xs: x]`;
+        expect(mainGives('Array<Int?>', body)).toEqual(items);
+      }),
+      { numRuns: 10 },
+    );
+  });
+
   it('runs over what it was given, whatever the loop changes meanwhile', () => {
     const body = [
       'let xs = [1, 2]',

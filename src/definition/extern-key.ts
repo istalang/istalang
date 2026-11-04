@@ -39,7 +39,14 @@ export type KeyType =
       readonly result: KeyType;
     }
   /** `any A & B` (§3.10), spelled by its traits, sorted, since they are a set. */
-  | { readonly kind: 'any'; readonly traits: readonly KeyType[] };
+  | { readonly kind: 'any'; readonly traits: readonly KeyType[] }
+  /** A literal type (§2), spelled as its literal: `"draft"`, `-1`, `true`. */
+  | { readonly kind: 'literal'; readonly text: string }
+  /**
+   * `A | B` (§2), spelled by its members, sorted, since they are a set; `T | None` is spelled
+   * `prelude.Optional<T>` instead, as keys spelled it before unions, so no host table changes.
+   */
+  | { readonly kind: 'union'; readonly members: readonly KeyType[] };
 
 export interface ExternSignature {
   /** The declaring module's canonical name, such as `prelude` or `purchase/approve`. */
@@ -186,6 +193,10 @@ export function keyTypeText(type: KeyType): string {
       return `${type.async ? 'async ' : ''}fn(${type.parameters.map(keyTypeText).join(', ')}) -> ${keyTypeText(type.result)}`;
     case 'any':
       return `any ${type.traits.map(keyTypeText).sort().join(' & ')}`;
+    case 'literal':
+      return type.text;
+    case 'union':
+      return type.members.map(keyTypeText).sort().join(' | ');
     default: {
       const unhandled: never = type;
       return unhandled;

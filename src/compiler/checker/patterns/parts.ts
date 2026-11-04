@@ -11,22 +11,29 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Entity } from '../../binder/entities.ts';
+import type { ModuleId } from '../../program/program.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { NamedType } from '../../syntax/types.ts';
+import type { NamedType, TypeNode } from '../../syntax/types.ts';
 import type { Checker } from '../check.ts';
 import type { PartStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { itemField } from '../struct-items.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
-import { errorType, type FieldMember, type Type } from '../types/type.ts';
+import { errorType, type FieldMember, type Type, type UnionType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 /** What a pattern reads and where it reports, in a body or in a top-level constant. */
 export interface PatternScope {
   readonly fieldsOf: Checker['fieldsOf'];
   readonly aliasedType: Checker['aliasedType'];
+  readonly variantsOf: Checker['variantsOf'];
   readonly entityOf: (name: Identifier) => Entity | undefined;
+  /** The type a type argument written in a pattern names (§3.11). */
+  readonly resolveType: (node: TypeNode) => Type;
+  readonly wellKnownType: Checker['wellKnownType'];
+  /** The type of the top-level constant `name` names, which a pattern compares with. */
+  readonly constantType: (name: Identifier) => Type | undefined;
   readonly report: (diagnostic: Diagnostic<AnchoredSpan>) => void;
   /** Records the field an item's name names. */
   readonly recordField: (name: Identifier, field: FieldMember) => void;
@@ -34,14 +41,24 @@ export interface PatternScope {
 
 /** The body as a pattern reads it. */
 export function bodyScope(
-  context: Pick<PatternScope, 'entityOf' | 'report' | 'recordField'> & {
-    readonly checker: Pick<Checker, 'fieldsOf' | 'aliasedType'>;
+  context: Pick<PatternScope, 'entityOf' | 'resolveType' | 'report' | 'recordField'> & {
+    readonly checker: Pick<
+      Checker,
+      'fieldsOf' | 'aliasedType' | 'variantsOf' | 'wellKnownType' | 'constantNamed'
+    >;
+    readonly module: ModuleId;
   },
 ): PatternScope {
+  const { checker } = context;
   return {
-    fieldsOf: (type) => context.checker.fieldsOf(type),
-    aliasedType: (alias) => context.checker.aliasedType(alias),
+    fieldsOf: (type) => checker.fieldsOf(type),
+    aliasedType: (alias) => checker.aliasedType(alias),
+    variantsOf: (type) => checker.variantsOf(type),
+    wellKnownType: (declaration, typeArguments) =>
+      checker.wellKnownType(declaration, typeArguments),
+    constantType: (name) => checker.constantNamed(context.module, name)?.type,
     entityOf: (name) => context.entityOf(name),
+    resolveType: (node) => context.resolveType(node),
     report: (diagnostic) => context.report(diagnostic),
     recordField: (name, field) => context.recordField(name, field),
   };
@@ -54,6 +71,11 @@ export function bodyScope(
 export interface ValuePart<Step extends PartStep = PartStep> {
   readonly type: Type;
   readonly path: readonly Step[];
+  /**
+   * The union the value at `path` is of, when `type` is only some of its members, which earlier
+   * cases or a pattern left (§3.11): what tests a member and what a name binds read the union.
+   */
+  readonly narrowedFrom?: UnionType | undefined;
 }
 
 /**

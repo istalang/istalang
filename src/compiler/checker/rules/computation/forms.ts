@@ -31,14 +31,15 @@ export function refused(part: NodeOf<string>): Outcome {
 /** `form` made to fit as `fit` says; undefined for a fit only the runtime makes. */
 export function fittedForm(
   form: ConstantForm,
-  { conversion, wraps }: Fit,
+  { conversion, into }: Fit,
   checker: Pick<CheckerContext, 'fieldsOf'>,
 ): ConstantForm | undefined {
-  if (wraps > 0) {
+  if (into !== undefined) {
     return undefined;
   }
   switch (conversion.kind) {
     case 'none':
+    case 'base':
       return form;
     case 'tupled':
       return { kind: 'tuple', elements: [form] };

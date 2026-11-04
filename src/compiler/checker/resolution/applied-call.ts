@@ -7,21 +7,28 @@
  * happen in one place for every call.
  *
  * - An argument of the error type was reported already, so the call reports nothing more.
- * - A call several candidates take alike is ambiguous, named as `name` says.
+ * - A call through a union's trait is a candidate only where the union meets the trait (§6,
+ *   trait-calls.ts).
+ * - A call several candidates take alike is ambiguous, named as `name` says; several traits a
+ *   union meets requiring the function called on it are reported as such.
  */
 
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
+import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
 import { argumentListText, filledTypes, fitArguments } from './argument-fit.ts';
 import type { CallArgument, Inapplicability } from './call-arguments.ts';
 import type { Candidate } from './candidates.ts';
 import { type Application, choose } from './choice.ts';
 import { type Instantiation, instantiate } from './conformance.ts';
+import { metThroughTraits } from './trait-calls.ts';
+import { membersRequirementOf, traitMetBy } from './union-traits.ts';
 
 /** A call to apply: where it stands, how reports name it, what it may call and is given. */
 export interface CallApplication {
@@ -51,15 +58,11 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
   if (request.arguments.some(({ type }) => type?.kind === 'error')) {
     return undefined;
   }
-  const choice = choose(
-    context.checker,
-    request.candidates,
-    request.arguments,
-    request.typeArguments,
-  );
+  const { checker } = context;
+  const candidates = metThroughTraits(checker, request.candidates);
+  const choice = choose(checker, candidates, request.arguments, request.typeArguments);
   if (choice.kind === 'several') {
-    const list = argumentListText(request.arguments);
-    context.report(checkerDiagnostics.ambiguousCall(request.span, request.name, list));
+    context.report(ambiguity(request, choice.tied));
     return undefined;
   }
   if (choice.kind === 'none') {
@@ -68,7 +71,7 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
   }
   const { application } = choice;
   request.chosen?.(application);
-  const site = useSite(context.checker, context.module, request.span);
+  const site = useSite(checker, context.module, request.span);
   const instantiation = instantiate(site, application, request.expected);
   if (instantiation === undefined) {
     return undefined;
@@ -80,4 +83,19 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
     instantiation,
     result: substitute(application.signature.result(), instantiation.substitution),
   };
+}
+
+/** What a call several candidates take alike reports: several traits of a union, or ambiguity. */
+function ambiguity(
+  request: CallApplication,
+  tied: readonly Application[],
+): Diagnostic<AnchoredSpan> {
+  const origins = tied.flatMap(({ candidate }) => membersRequirementOf(candidate) ?? []);
+  const [first] = origins;
+  if (first === undefined || origins.length < tied.length) {
+    const list = argumentListText(request.arguments);
+    return checkerDiagnostics.ambiguousCall(request.span, request.name, list);
+  }
+  const traits = origins.map(({ through, on }) => traitMetBy(through, on).trait.name.text);
+  return checkerDiagnostics.severalTraits(request.span, request.name, typeText(first.on), traits);
 }

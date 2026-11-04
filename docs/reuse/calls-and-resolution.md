@@ -14,7 +14,8 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 
 - build a `UseSite` (reporting, silent, or host-crossing) → `useSite`, `searchSite`, `hostSite`, `silent` (`src/compiler/checker/use-site.ts`)
 - look up top-level functions in a module (prelude joined) → `namedInModule` (`src/compiler/checker/resolution/candidates.ts`)
-- look up call candidates with ADL and type-parameter requirements → `topLevelCandidates`, `callCandidates` (`src/compiler/checker/resolution/candidates.ts`)
+- look up call candidates with ADL and type-parameter requirements → `topLevelCandidates`, `callCandidates` (`src/compiler/checker/resolution/candidates.ts`); `topLevelCandidates` adds a call on a union through the visible traits requiring its name (§6)
+- a union's trait met through its members: the trait as `any` takes it, the call dispatching over members, why members fall short, a candidate's union requirement → `traitAsAny`, `traitMetBy`, `membersCall`, `membersShortfall`, `membersRequirementOf`, `traitCallsOn` (`src/compiler/checker/resolution/union-traits.ts`); keep only the trait calls a union meets, or the function declared for it in their place → `metThroughTraits` (`src/compiler/checker/resolution/trait-calls.ts`), which choosing and member lookup both read
 - keep the methods a call through a member access may mean, `&self` ones only through a place → `callableThrough` (`src/compiler/checker/resolution/candidates.ts`)
 - apply a call: choose among candidates, report ambiguity or a caller's `none`, instantiate, fit the arguments (conversions and wraps), give the result → `applyCall` (`src/compiler/checker/resolution/applied-call.ts`); written calls (`resolveCall`) and implicit ones (`implicitCall`) both go through it, and add only what they record
 - look up static or trait witness candidates → `staticCandidates`, `staticTargetOf`, `witnessCandidates` (`src/compiler/checker/resolution/candidates.ts`)
@@ -28,7 +29,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - choose the best candidate among overloads → `choose`, `chooseAsValue`, `signatureOf` (`src/compiler/checker/resolution/choice.ts`)
 - instantiate a chosen candidate and resolve its witnesses → `instantiate` (`src/compiler/checker/resolution/conformance.ts`)
 - check trait conformance or find constraint witnesses → `meets`, `witnessesFor`, `conformWitnesses` (`src/compiler/checker/resolution/conformance.ts`)
-- check for or choose a declared witness for a trait requirement → `declaresWitness`, `chooseWitness` (`src/compiler/checker/resolution/declared-witness.ts`)
+- check for or choose a declared witness for a trait requirement → `declaresWitness`, `chooseWitness`, `chooseWitnessAmong` for given candidates (`src/compiler/checker/resolution/declared-witness.ts`)
 - derive a trait by a rule over a type's form where no witness is declared (`Sendable`, `Encodable`, `Decodable`) → one `Derivation` in the table `derivationOf` reads (`src/compiler/checker/resolution/derived-traits.ts`), never a branch in `conform`; a new kind of type is a case in each derivation's rule
 - resolve a type's `Default` witness (`default()`) → `defaultWitness`, `resolveDefault` (`src/compiler/checker/resolution/default-witness.ts`); what an `@JsonSkip` field reads back as, for its form and for where the annotation may stand alike → `CheckerContext.json.skippedDefaultOf` (`src/compiler/checker/json-form.ts`, decided in `rules/json-forms/`)
 - build a `ResolvedCall` (`function` or `requirement`) from an `Application` and `Instantiation` → `callMade` (`src/compiler/checker/resolution/calls-made.ts`)

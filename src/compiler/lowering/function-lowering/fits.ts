@@ -1,8 +1,8 @@
 /**
  * A value made to fit where the checker found it fits (§2, checker/types/fit.ts): converted once,
  * into an `any` type, a struct's value rebuilt as its shape (§3.1), a plain function made async, or
- * between a one-element tuple and its element,
- * then wrapped into as many optionals as the fit says. The checker records the fit per value, so
+ * between a one-element tuple and its element, or a literal taken as its base, then put into a
+ * union where the fit says. The checker records the fit per value, so
  * this is the one place lowering acts on it, and no handler needs to know about conversions.
  */
 
@@ -11,13 +11,14 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { ValueSite } from '../../checker/check.ts';
 import { type Fit, singleElement } from '../../checker/types/fit.ts';
 import type { FunctionType, NominalType, Type } from '../../checker/types/type.ts';
+import { baseOf, membersOf } from '../../checker/types/unions.ts';
 import { madeAsync } from '../async-fits.ts';
 import type { FunctionContext } from '../context.ts';
 import { rebuiltAs } from '../expressions/structs.ts';
 import { tupleOf } from '../expressions/tuples.ts';
 import type { BodyOwner } from '../instances.ts';
-import { someOf } from '../optionals.ts';
 import { convertedIntoAny } from '../trait-objects/trait-objects.ts';
+import { asBase, intoUnion } from '../unions.ts';
 
 /** A register and the type of the value it holds. */
 interface TypedRegister {
@@ -31,7 +32,7 @@ interface FittingSite {
   readonly site: ValueSite;
 }
 
-/** `typed`, as the checker fitted it at `where`: converted, then wrapped. */
+/** `typed`, as the checker fitted it at `where`: converted, then put into a union. */
 export function fittedValue(
   context: FunctionContext,
   typed: TypedRegister,
@@ -39,14 +40,14 @@ export function fittedValue(
   where: FittingSite,
 ): Register {
   const converted = convertedValue(context, typed, fit.conversion, where);
-  let register = converted.value;
-  let current = converted.type;
-  for (let left = fit.wraps; left > 0; left -= 1) {
-    const optional = context.checker.optionalOf(current);
-    register = someOf(context, optional, register, where.site.span);
-    current = optional;
-  }
-  return register;
+  return fit.into === undefined
+    ? converted.value
+    : intoUnion(
+        context,
+        { register: converted.value, type: fit.into.member ?? converted.type },
+        fit.into.union,
+        where.site.span,
+      );
 }
 
 function convertedValue(
@@ -83,6 +84,10 @@ function convertedValue(
         value: tupleOf(context, [typed.value], site.span),
         type: { kind: 'tuple', elements: [typed.type] },
       };
+    case 'base': {
+      const value = asBase(context, { register: typed.value, type: typed.type }, site.span);
+      return { value, type: baseOfAll(typed.type) };
+    }
     case 'untupled': {
       const element = singleElement(typed.type);
       if (element === undefined) {
@@ -111,4 +116,10 @@ function functionTypeOf(type: Type): FunctionType {
     unreachable(`Only a function is made async, not a ${type.kind} type.`);
   }
   return type;
+}
+
+/** The base a literal type, or a union of literals of one base, is taken as. */
+function baseOfAll(type: Type): Type {
+  const [first] = membersOf(type);
+  return first === undefined ? unreachable('A union has members.') : baseOf(first);
 }

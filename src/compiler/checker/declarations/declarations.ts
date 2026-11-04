@@ -40,8 +40,8 @@ import { futureArgument } from '../types/well-known.ts';
 import { checkFiniteFields } from './struct-rules.ts';
 
 /**
- * Resolves the constraints and defaults of `declaration`'s type parameters where they are written,
- * so what they misname, and what their defaults' arguments fail to meet, is reported there.
+ * Resolves the constraints, unions and defaults of `declaration`'s type parameters where they are
+ * written, so what they misname, and what their defaults' arguments fail to meet, is reported there.
  */
 function checkTypeParameters(checker: CheckerContext, declaration: GenericDeclaration): void {
   for (const parameter of typeParametersOf(declaration.typeParameters)) {
@@ -49,6 +49,7 @@ function checkTypeParameters(checker: CheckerContext, declaration: GenericDeclar
       checkPack(checker, declaration, parameter);
     }
     checker.constraintsOf(parameter);
+    checker.memberUnionOf(parameter);
     if (parameter.defaultType !== undefined) {
       checker.resolveType(checker.moduleOf(declaration), parameter.defaultType);
     }

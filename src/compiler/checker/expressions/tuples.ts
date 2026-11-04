@@ -22,7 +22,7 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
   if (node.elements.length === 0) {
     return unitType;
   }
-  const guides = expectedTuple(context.checker, expected, node.elements.length);
+  const guides = expectedTuple(expected, node.elements.length);
   return {
     kind: 'tuple',
     elements: node.elements.map((element, index) => {
@@ -44,7 +44,7 @@ export function checkTupleElement(context: BodyContext, node: TupleElement): Typ
   }
   if (type.kind !== 'tuple') {
     context.report(
-      insideOptional(context.checker, node.target.span, type, '.') ??
+      insideOptional(node.target.span, type, '.') ??
         checkerDiagnostics.notTuple(node.target.span, typeText(type)),
     );
     return errorType;
@@ -67,7 +67,7 @@ export function tupleAccepts(context: BodyContext, node: Tuple): Accepts | undef
     return undefined;
   }
   return (expected, isOpen) =>
-    expectedTuple(context.checker, expected, elements.length)?.every(
+    expectedTuple(expected, elements.length)?.every(
       (type, index) => elements[index]?.(type, isOpen) ?? true,
     ) === true;
 }

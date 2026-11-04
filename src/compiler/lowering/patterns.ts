@@ -6,7 +6,8 @@
  *   read, and an array's length before its items. Each reads its part of the subject along its
  *   path: fields and tuple elements as places, an array's items and rest through the prelude calls
  *   the checker made at the array pattern.
- * - A variant test is a `switch` whose targets are the failure label but for the variant tested.
+ * - A variant test is a `switch` whose targets are the failure label but for the variant tested;
+ *   a member test too, on a union's variants, unless an instantiation collapsed its union (§3.5).
  *   `==` is the built-in `equal`; any other comparison calls the `compare` the checker resolved
  *   at the pattern's comparison, then turns it into the relation with `order`, as `<` does. A
  *   length test compares the array's `length` with its fixed count, by `equal`, or with a rest by
@@ -26,15 +27,18 @@ import {
   type PatternTest,
   type PatternValue,
 } from '../checker/checked-pattern.ts';
+import type { LiteralType, Type } from '../checker/types/type.ts';
+import { baseOf, hasMember } from '../checker/types/unions.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Label } from './code-writer.ts';
-import { constantValue } from './constants.ts';
+import { constantValue, emitConstant } from './constants.ts';
 import type { FunctionContext } from './context.ts';
 import { emitImplicitCall } from './emit-call.ts';
 import { equal, ordered } from './expressions/operators.ts';
 import { branchOnVariant } from './expressions/variants.ts';
 import { declareVariable } from './statements/variables.ts';
+import { branchOnMembers, outOfUnion, type TypedValue } from './unions.ts';
 
 /** A value being matched, in a register, and the pattern it is matched against. */
 export interface Matching {
@@ -117,6 +121,10 @@ function lowerTest(
   part: Register,
   { matched, otherwise, span }: Branch,
 ): void {
+  if (test.kind === 'member') {
+    lowerMemberTest(context, test, part, { matched, otherwise, span });
+    return;
+  }
   if (test.kind === 'variant' || test.kind === 'downcast') {
     const variant =
       test.kind === 'variant' ? test.variant : context.tables.types.anyVariant(test.from, test.to);
@@ -126,10 +134,67 @@ function lowerTest(
   context.code.branch(passed(context, test, part, span), matched, otherwise, span);
 }
 
+/**
+ * A member test: a `switch` on the union's variants. An instantiation may have collapsed the union
+ * (§3.5): into one type, whose value the part then is, which a member of that type passes and no
+ * other; or a literal member into its base, whose value is then compared with the literal.
+ */
+function lowerMemberTest(
+  context: FunctionContext,
+  { union, members }: Extract<PatternTest, { kind: 'member' }>,
+  part: Register,
+  { matched, otherwise, span }: Branch,
+): void {
+  const { code } = context;
+  const kept = members.filter((member) => hasMember(union, member));
+  const merged = members.filter(
+    (member): member is LiteralType => member.kind === 'literal' && !hasMember(union, member),
+  );
+  let next = merged.length === 0 ? otherwise : code.newLabel();
+  if (union.kind === 'union') {
+    branchOnMembers(
+      context,
+      { value: { register: part, type: union }, members: kept },
+      { matched, otherwise: next },
+      span,
+    );
+  } else {
+    code.jump(kept.length > 0 ? matched : next, span);
+  }
+  for (const [index, literal] of merged.entries()) {
+    code.place(next);
+    next = index === merged.length - 1 ? otherwise : code.newLabel();
+    const value = { register: part, type: union };
+    const base = baseValue(context, value, baseOf(literal), { otherwise: next, span });
+    const constant = emitConstant(context, literal.value, span);
+    code.branch(equal(context, span, [base, constant]), matched, next, span);
+  }
+}
+
+/**
+ * The value of `base`, a member of `value`'s union or the one type it collapsed into, jumping to
+ * `otherwise` when the union holds another member.
+ */
+function baseValue(
+  context: FunctionContext,
+  value: TypedValue,
+  base: Type,
+  { otherwise, span }: Omit<Branch, 'matched'>,
+): Register {
+  if (value.type.kind !== 'union') {
+    return value.register;
+  }
+  const inBase = context.code.newLabel();
+  const union = { register: value.register, type: value.type };
+  branchOnMembers(context, { value: union, members: [base] }, { matched: inBase, otherwise }, span);
+  context.code.place(inBase);
+  return context.code.field(value.register, 0, span);
+}
+
 /** A register holding whether `part` passes a comparing test. */
 function passed(
   context: FunctionContext,
-  test: Exclude<PatternTest, { kind: 'variant' | 'downcast' | 'or' }>,
+  test: Exclude<PatternTest, { kind: 'variant' | 'downcast' | 'member' | 'or' }>,
   part: Register,
   span: AnchoredSpan,
 ): Register {
@@ -152,7 +217,12 @@ function bind(
   variables: ReadonlyMap<Identifier, Register>,
 ): void {
   for (const binding of pattern.bindings) {
-    const part = readPartAlong(context, run.subject, binding.path, run.span);
+    const read = readPartAlong(context, run.subject, binding.path, run.span);
+    const { narrowedFrom } = binding;
+    const part =
+      narrowedFrom === undefined
+        ? read
+        : outOfUnion(context, { register: read, type: narrowedFrom }, binding.type, run.span);
     const variable = variables.get(binding.name);
     if (variable === undefined) {
       unreachable(`'${binding.name.text}' binds nothing; the checker should have declared it.`);

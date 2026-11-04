@@ -3,7 +3,7 @@
  * spelled the same way by the compiler, by the Definition it produces and by extern keys.
  */
 
-export const primitiveNames = ['Int', 'Float', 'Bool', 'String', 'Unit', 'Never'] as const;
+export const primitiveNames = ['Int', 'Float', 'Bool', 'String', 'Unit', 'Never', 'None'] as const;
 
 export type PrimitiveName = (typeof primitiveNames)[number];
 

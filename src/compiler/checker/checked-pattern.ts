@@ -9,7 +9,7 @@ import type { Identifier } from '../syntax/node.ts';
 import type { Relation } from '../syntax/operators.ts';
 import type { ArrayPattern, CompareFieldPattern, LiteralPattern } from '../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../syntax/statements.ts';
-import type { AnyType, Type } from './types/type.ts';
+import type { AnyType, Type, UnionType } from './types/type.ts';
 
 /**
  * What binds targets (§3.15): a declaration, a `for` or comprehension for each item, or a select
@@ -49,6 +49,8 @@ export interface PartBinding {
   readonly type: Type;
   /** The steps from the whole value to the part, outermost first. */
   readonly path: readonly PartStep[];
+  /** The union the part's value is of, when `type` holds only some of its members (§3.11). */
+  readonly narrowedFrom?: UnionType | undefined;
 }
 
 /**
@@ -59,6 +61,11 @@ export interface PartBinding {
  * - `variant`: the part is its enum's `variant`-th variant.
  * - `downcast`: the part, of the `any` type `from`, holds a value of the type `to` (§3.10), which
  *   the tests after it reach at the part's field 0.
+ * - `member`: the part, of the union `union`, holds a value of one of `members` (§3.11); the tests
+ *   after it reach the value of the one member with a value at the part's field 0. An
+ *   instantiation may collapse the union into one type (§3.5, types/instantiation.ts): the part is
+ *   then that type's value itself, which the test passes when a member is that type, compares with
+ *   when a member is a literal of it, and fails otherwise.
  * - `equal`: the part `==` a value: a literal or comparison's expression, a top-level constant's
  *   name, or an array pattern's fixed item count; `negated` for `!=`.
  * - `compare`: `compare(part, value)`, the implicit call recorded at `site`, is in `relation`: a
@@ -76,6 +83,12 @@ export type PatternTest =
       readonly path: readonly PartStep[];
       readonly from: AnyType;
       readonly to: Type;
+    }
+  | {
+      readonly kind: 'member';
+      readonly path: readonly PartStep[];
+      readonly union: Type;
+      readonly members: readonly Type[];
     }
   | {
       readonly kind: 'equal';

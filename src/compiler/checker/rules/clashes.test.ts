@@ -1,6 +1,7 @@
 /**
  * Overload clashes (§3.3, §3.7): whether two functions of one name clash doesn't depend on which
- * is declared first, and the rules for what counts as the same parameters hold pair by pair.
+ * is declared first, and the rules for what counts as the same parameters hold pair by pair: a
+ * type and a union holding it, a literal type and its base, among them.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -22,6 +23,10 @@ const signatures = [
   '(a: Int, b: String)',
   '(self: Point)',
   '(self: &Point)',
+  '(a: Int | String)',
+  '(a: String | Bool)',
+  '(a: "a")',
+  '(a: "a" | "b")',
 ] as const;
 
 type Signature = (typeof signatures)[number];
@@ -53,6 +58,13 @@ describe('overload clashes', () => {
     ['(a: Int, b: Int = 1)', '(a: Int)', true],
     ['(a: Int, b: Int = 1)', '(a: Int, b: String)', false],
     ['(self: Point)', '(self: &Point)', true],
+    ['(a: Int)', '(a: Int | String)', true],
+    ['(a: Int?)', '(a: Int | String)', false],
+    ['(a: Int | String)', '(a: String | Bool)', false],
+    ['(a: "a")', '(a: String)', true],
+    ['(a: "a")', '(a: "a" | "b")', true],
+    ['(a: "a" | "b")', '(a: String | Bool)', true],
+    ['(a: "a" | "b")', '(a: Int)', false],
   ])('%s and %s clash: %s', (first, second, clash) => {
     expect(clashes(first, second)).toBe(clash);
   });

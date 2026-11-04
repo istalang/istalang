@@ -91,7 +91,7 @@ function topLevelFunctions(
     site,
     name: name.text,
     candidates: (expected) => {
-      const shape = expectedFunction(context.checker, expected);
+      const shape = expectedFunction(expected);
       return shape === undefined
         ? named.map((declaration) => ({ declaration }))
         : callCandidates(
@@ -112,7 +112,7 @@ export function checkFunctionValue(
 ): Type {
   const { site, name } = named;
   const candidates = named.candidates(expected);
-  const shape = expectedFunction(context.checker, expected);
+  const shape = expectedFunction(expected);
   const application =
     shape === undefined ? loneFunction(context, candidates) : chosenFor(context, candidates, shape);
   if (application === undefined) {
@@ -167,7 +167,7 @@ export function functionsAccepted(
     return undefined;
   }
   return (expected) => {
-    const shape = expectedFunction(context.checker, expected);
+    const shape = expectedFunction(expected);
     return shape !== undefined && chosenFor(context, named.candidates(shape), shape) !== undefined;
   };
 }

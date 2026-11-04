@@ -14,6 +14,7 @@ import {
   type ParameterKey,
   type Type,
   type TypeParameterType,
+  type UnionType,
 } from './type.ts';
 import { mapChildren } from './type-parts.ts';
 
@@ -67,7 +68,7 @@ export function substituteAny(type: AnyType, substitution: Substitution): AnyTyp
 }
 
 /** A type that is no type parameter with `substitution` applied, still of its kind. */
-export function substituteKept<Kept extends Exclude<Type, TypeParameterType>>(
+export function substituteKept<Kept extends Exclude<Type, TypeParameterType | UnionType>>(
   type: Kept,
   substitution: Substitution,
 ): Kept {

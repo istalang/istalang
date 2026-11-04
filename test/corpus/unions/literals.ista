@@ -1,0 +1,36 @@
+# outcome: "DRAFT!:9:false|a:b:a:2|true:true:true:true|1:called:true"
+# Literal types (§4): String, Int (including negative -1) and Bool (true | false) literals as types,
+# fitting their base type, agreeing on their base type when no expected type is given, comparing
+# with == and != when either side fits the other's type, and parsing a < 1 > (b) and a < A | B > (b)
+# as generic calls while (a < 1) > b is a comparison.
+
+import toUpperCase from 'strings'
+
+type Status = "draft" | "sent" | "failed"
+
+fn pick<T in 1 | 2>(x: T) -> Int:
+  x
+
+fn either<T>(x: T) -> String:
+  "called"
+
+async fn main() -> Future<String>:
+  const s: Status = "draft"
+  const n: -1 | 42 = -1
+  const b: true = true
+  const baseOps = `${s.toUpperCase() + "!"}:${n + 10}:${not b}`
+  const k1: "a" = "a"
+  const k2: "b" = "b"
+  const xs = [k1, k2]
+  const branch = if true: k1 else: k2
+  const comp = [for x in xs: k1]
+  const agreed = `${xs[0]}:${xs[1]}:${branch}:${comp.length()}`
+  const name: String = "draft"
+  const other: String = "archived"
+  const one: 1 = 1
+  const num: Int = 1
+  const eqs = `${s == name}:${s != other}:${name == s}:${one == num}`
+  const a = 0
+  const cmp = (a < 1) == true
+  const calls = `${pick<1>(1)}:${either<Int | String>("ok")}:${cmp}`
+  `${baseOps}|${agreed}|${eqs}|${calls}`

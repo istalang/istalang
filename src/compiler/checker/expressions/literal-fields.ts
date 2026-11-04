@@ -38,6 +38,7 @@ import {
   itemName,
   itemValue,
   type Spread,
+  unparenthesized,
 } from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
@@ -53,6 +54,7 @@ import { type Substitution, substitute } from '../types/substitution.ts';
 import { errorType, type FieldMember, type ParameterKey, type Type } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
+import { writtenLiteral } from '../types/unions.ts';
 import { type LiteralGiven, sourcesOf } from './literal-sources.ts';
 
 /**
@@ -240,7 +242,8 @@ interface LiteralItems {
 
 /**
  * Checks one item of a literal: its value against its field's type when that is already known,
- * else on its own, matched for inference.
+ * else on its own, matched for inference, a literal with its literal type where the field expects
+ * one, as a member parameter's does (§2, §3.5).
  */
 function checkItem(
   context: BodyContext,
@@ -277,7 +280,10 @@ function checkItem(
   }
   const declared = substitute(field.type, inference.substitution());
   const isKnown = parametersIn(declared).every((parameter) => !inference.isUnknown(parameter));
-  const type = context.expression(value, isKnown ? declared : undefined);
+  const literal = writtenLiteral(unparenthesized(value));
+  const literalType =
+    literal === undefined ? undefined : inference.literalType(literal.value, field.type);
+  const type = context.expression(value, isKnown ? declared : literalType);
   if (!isKnown) {
     inference.match(field.type, type);
   }

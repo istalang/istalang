@@ -20,7 +20,12 @@
 
 import { isUnnamed } from '../../language/naming.ts';
 import type { PatternWord } from '../syntax/grammar-words.ts';
-import { isComparisonOperator, operatorLevels, tighterLevel } from '../syntax/operators.ts';
+import {
+  binaryOperators,
+  isComparisonOperator,
+  operatorLevels,
+  tighterLevel,
+} from '../syntax/operators.ts';
 import type {
   LiteralPattern,
   Pattern,
@@ -200,12 +205,28 @@ function parseNamedPattern(parser: Parser): Pattern {
 }
 
 /**
- * `<A, B>` after a pattern's name, when its contents parse as types; otherwise none, and the `<`
- * is left to what holds the pattern, as `x is P < y` compares.
+ * `<A, B>` after a pattern's name, when its contents parse as types and no operator follows them;
+ * otherwise none, and the `<` is left to what holds the pattern, as `x is P < y` and
+ * `x is P < a >> b` compare.
  */
 function parsePatternTypeArguments(parser: Parser): readonly TypeNode[] {
-  return parser.cursor.at('<') ? (parser.speculate(() => parser.typeArguments()) ?? []) : [];
+  if (!parser.cursor.at('<')) {
+    return [];
+  }
+  const typeArguments = parser.speculate(() => {
+    const written = parser.typeArguments();
+    return continuingOperators.has(parser.cursor.kind) ? undefined : written;
+  });
+  return typeArguments ?? [];
 }
+
+/**
+ * The operators that, after what would be a pattern's type arguments, go on with the expression
+ * holding the pattern instead; `and`, `or` and `|` join patterns and conditions.
+ */
+const continuingOperators: ReadonlySet<string> = new Set(
+  Object.keys(binaryOperators).filter((operator) => !['and', 'or', '|'].includes(operator)),
+);
 
 /** `struct{…}`, matching an anonymous struct. */
 function parseAnonymousStructPattern(parser: Parser): Pattern {

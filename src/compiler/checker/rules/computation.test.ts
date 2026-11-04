@@ -137,7 +137,7 @@ describe('computed constants', () => {
 
   it.each([
     ['an optional wrap', 'const x: Int? = 1', '1'],
-    ['an enum variant literal', 'const x: Int? = Some{1}', 'Some{1}'],
+    ['an enum variant literal', 'const x: Result<Int> = Ok{value: 1}', 'Ok{value: 1}'],
     ['a plain function made async', 'const f: async fn() -> Int = fn(): 1', 'fn(): 1'],
     ['a value converted into an any type', 'trait Named {}\nconst a: any Named = 1', '1'],
     [
