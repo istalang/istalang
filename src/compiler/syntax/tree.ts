@@ -21,7 +21,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { memo } from '../../structures/memo.ts';
+import { memo, SequenceMemo } from '../../structures/memo.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import type { Span } from '../../text/span.ts';
 import type { Annotation } from './annotations.ts';
@@ -158,24 +158,29 @@ export function nodesAt(tree: SyntaxTree, offset: number): readonly SyntaxNode[]
   return path;
 }
 
+/** Each node's extent in each tree that holds it: a node reused across edits sits at other offsets. */
+const extents = new SequenceMemo<TreePlaces | SyntaxNode, Span>();
+
 /**
  * The text `node` and every node under it cover in `tree`'s text, through its body, members and
  * items, which its own span may leave out. Children come in source order, so the first and last
  * child decide it, level by level down to the leaves.
  */
 export function extentIn(tree: TreePlaces, node: SyntaxNode): Span {
-  let { start, end } = spanIn(tree, node.span);
-  for (
-    let [first] = childrenOf(tree, node);
-    first !== undefined;
-    [first] = childrenOf(tree, first)
-  ) {
-    start = Math.min(start, spanIn(tree, first.span).start);
-  }
-  for (let last = lastChildOf(tree, node); last !== undefined; last = lastChildOf(tree, last)) {
-    end = Math.max(end, spanIn(tree, last.span).end);
-  }
-  return { start, end };
+  return extents.get([tree, node], () => {
+    let { start, end } = spanIn(tree, node.span);
+    for (
+      let [first] = childrenOf(tree, node);
+      first !== undefined;
+      [first] = childrenOf(tree, first)
+    ) {
+      start = Math.min(start, spanIn(tree, first.span).start);
+    }
+    for (let last = lastChildOf(tree, node); last !== undefined; last = lastChildOf(tree, last)) {
+      end = Math.max(end, spanIn(tree, last.span).end);
+    }
+    return { start, end };
+  });
 }
 
 function lastChildOf(tree: TreeBodies, node: SyntaxNode): SyntaxNode | undefined {
