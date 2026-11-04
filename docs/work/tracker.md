@@ -23,7 +23,7 @@ tags: [tracker]
 | M6 Formatter | done |
 | M7 Language service and LSP | done (the human's VS Code install check pending) |
 | Completion (`docs/work/completion/plan.md`) | done (264 of 266 scenarios; CO-02, EX-04 in F14) |
-| Proposals 1–4 (`docs/work/proposals/plan.md`) | in progress: P1 done, P2 in progress |
+| Proposals 1–4 (`docs/work/proposals/plan.md`) | in progress: P1 and P2 done |
 | M8 Packages | planned |
 
 ## Filed

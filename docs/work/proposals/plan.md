@@ -22,7 +22,7 @@ Specs: `docs/proposals/1-type-names.md` to `4-computed-types.md`, implemented in
 | Proposal | Status |
 | --- | --- |
 | 1 Type names | done, `43d9b81` |
-| 2 Structural types | in progress, branch `p2-structural`, with its debt items |
+| 2 Structural types | done, branch `p2-structural`, with its debt items (Q30 left open) |
 | 3 Union types | waiting on 2 |
 | 4 Computed types | waiting on 3 |
 
@@ -32,7 +32,7 @@ Specs: `docs/proposals/1-type-names.md` to `4-computed-types.md`, implemented in
 - **P1, `json.Json`'s `Bool` variant** became `Boolean`, since a bare `Bool` names the primitive.
 - **P1, built-in type names are reserved** (4019): no type, alias, type parameter, trait or variant may be named `Int` … `Never` or `Self`.
 - **Fast wins, item 4:** `T is (Comparable)` is legal; `unparenthesizedType` sees through parentheses.
-- **B25** (does an alias of an enum qualify its variants, `E.Red`): asked during P2; recommended yes.
+- **B25** (does an alias of an enum qualify its variants, `E.Red`): yes, decided during P2. Only an alias naming an enum plainly qualifies, with no type parameters of its own and no type arguments given, which a variant would drop (§3.17).
 
 ## Debt before each proposal
 
@@ -44,7 +44,7 @@ Specs: `docs/proposals/1-type-names.md` to `4-computed-types.md`, implemented in
 | The `any` downcast rule in three copies | unit 32 | P1: `checker/types/named-types.ts` |
 | Spec: reserved names split between §2 and §3.10 | unit 35 | P1's spec edit |
 
-**Before P2** (in the P2 branch)
+**Before P2** (done in the P2 branch, but `DeclaringModules`: Q30 stays open, see the audit's item 8)
 
 | Item | Audit | Why P2 needs it |
 | --- | --- | --- |
