@@ -39,7 +39,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - guard a recursive walk over a type's parts (`Sendable`, JSON codecs, `heldType`) against cycles → `TypeCycle` (`src/compiler/checker/types/type-cycle.ts`); never a visited set of your own
 - build or apply a type substitution → `substitutionFor`, `substitute`, `substituteAny`, `substituteFunction` (`src/compiler/checker/types/substitution.ts`)
 - view a `CheckedBody` with all recorded types substituted for one instantiation → `instantiatedBody` (`src/compiler/checker/types/instantiation.ts`)
-- build or unwrap `Future<T>` or `Array<T>`, or unwrap `T?` through the public `Checker` → `futureOf`, `futureArgument`, `arrayOf`, `arrayElement`, `optionalArgument` (`src/compiler/checker/types/well-known.ts`)
+- build or unwrap `Future<T>` or `Array<T>`, → `futureOf`, `futureArgument`, `arrayOf`, `arrayElement` (`src/compiler/checker/types/well-known.ts`); unwrap `T?` → `optionalInner` (`fit.ts`)
 - build or unwrap any well-known type (`src/language/well-known.ts`) → `wellKnownOf`, `wellKnownArguments` (`src/compiler/checker/types/well-known.ts`)
 - unwrap `T?` once or through nested optionals → `optionalInner`, `withoutOptionals` (`src/compiler/checker/types/fit.ts`)
 - take an expected type apart for a value built from it (a struct, tuple, array or map literal, a lambda, a function value, a bare variant or fieldless generic struct, lambdas inferred inside an argument) → `builtFrom`, `expectedTuple`, `collectionTarget`, `expectedFunction`, `sameNominal`, `enumsExpected`, `expectedNominal` (`src/compiler/checker/types/expected.ts`); never strip the expected optionals in a construct

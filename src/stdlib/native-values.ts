@@ -15,6 +15,7 @@ import {
   okOf,
   okTypeOf,
   optionalOf,
+  optionalValueOf,
   structOf,
   typeArgumentOf,
   variantOf,
@@ -114,12 +115,13 @@ function variantName(context: NativeContext, value: Value | undefined): string {
   return variant?.name ?? unreachable(`Type ${value.type} has no variant ${value.variant}.`);
 }
 
-/** The value inside an optional argument, or undefined for `none`. */
-export function optionalValue(value: Value | undefined): Value | undefined {
-  if (value === undefined || !isComposite(value) || value.kind !== 'variant') {
-    unreachable('Expected an optional.');
-  }
-  return value.fields[0];
+/** The `Int` inside an optional argument, such as a slice's `end`, or undefined for `none`. */
+export function optionalInt(
+  context: Pick<NativeContext, 'types'>,
+  value: Value | undefined,
+): bigint | undefined {
+  const inside = optionalValueOf(context.types, value);
+  return inside === undefined ? undefined : int(inside);
 }
 
 /** An optional of the extern's declared result type: `Some` of `value`, or `None` without one. */

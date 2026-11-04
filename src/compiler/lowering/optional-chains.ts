@@ -14,20 +14,13 @@
  */
 
 import type { Register } from '../../definition/operands.ts';
-import { optionalVariants } from '../../language/well-known.ts';
 import { withPushed } from '../../structures/stack.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { chainStepOf, isOptionalStep } from '../syntax/expressions/chains.ts';
 import type { Expression } from '../syntax/expressions/index.ts';
 import type { Label } from './code-writer.ts';
 import type { FunctionContext } from './context.ts';
-import {
-  branchOnVariant,
-  buildVariant,
-  isEnum,
-  payloadOf,
-  variantTestOf,
-} from './expressions/variants.ts';
+import { noneOf, presentOrJump, someOf } from './optionals.ts';
 
 export class OptionalChains {
   readonly #link: (node: Expression) => Register;
@@ -43,21 +36,16 @@ export class OptionalChains {
   lower(context: FunctionContext, link: Expression): Register {
     const { code } = context;
     const type = context.typeOf(link);
-    if (!isEnum(type)) {
-      unreachable(`A chain at ${link.span.from} isn't optional; the checker should have said so.`);
-    }
     const result = code.allocate();
     const none = code.newLabel();
     const end = code.newLabel();
     const value = withPushed(this.#ends, none, () => this.#link(link));
     const wrapped =
-      context.body.chainOf(link)?.wraps === true
-        ? buildVariant(context, { type, name: optionalVariants.some }, [value], link.span)
-        : value;
+      context.body.chainOf(link)?.wraps === true ? someOf(context, type, value, link.span) : value;
     code.emit({ kind: 'move', span: link.span, dst: result, src: wrapped });
     code.jump(end, link.span);
     code.place(none);
-    const nothing = buildVariant(context, { type, name: optionalVariants.none }, [], link.span);
+    const nothing = noneOf(context, type, link.span);
     code.emit({ kind: 'move', span: link.span, dst: result, src: nothing });
     code.place(end);
     return result;
@@ -84,11 +72,8 @@ export class OptionalChains {
     if (base === undefined || none === undefined) {
       unreachable(`A '?.' at ${link.span.from} is outside a chain; lowering lost track of it.`);
     }
-    const some = context.code.newLabel();
-    const optional = context.checker.optionalOf(base);
-    const isSome = variantTestOf(context.checker, value, optional, optionalVariants.some);
-    branchOnVariant(context, isSome, { matched: some, otherwise: none }, link.span);
-    context.code.place(some);
-    return context.fitted(payloadOf(context, value, link.span), base, fit, step.target);
+    const read = { register: value, type: context.checker.optionalOf(base), to: base };
+    const inside = presentOrJump(context, read, none, link.span);
+    return context.fitted(inside, base, fit, step.target);
   }
 }

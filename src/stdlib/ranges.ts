@@ -14,7 +14,7 @@
 import { fieldValueOf } from '../definition/declared-values.ts';
 import type { Value } from '../definition/values.ts';
 import { type NativeContext, Panic } from '../runtime/natives.ts';
-import { int, optionalValue } from './native-values.ts';
+import { int, optionalInt } from './native-values.ts';
 
 /** A range as natives read it: its ends, each undefined when open, and its step, never 0. */
 export interface RangeValue {
@@ -28,10 +28,7 @@ export function rangeOf(
   context: Pick<NativeContext, 'types'>,
   range: Value | undefined,
 ): RangeValue {
-  const end = (name: string) => {
-    const value = optionalValue(fieldValueOf(context.types, range, name));
-    return value === undefined ? undefined : int(value);
-  };
+  const end = (name: string) => optionalInt(context, fieldValueOf(context.types, range, name));
   const read = {
     start: end('start'),
     end: end('end'),

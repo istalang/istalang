@@ -9,6 +9,7 @@ import type { Handlers } from '../../../structures/kind-table.ts';
 import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { neverLowered } from '../never-lowered.ts';
+import { noneOf } from '../optionals.ts';
 import { lowerDereference } from '../places.ts';
 import { lowerAwait } from './await.ts';
 import { lowerCall, lowerSpawn } from './calls.ts';
@@ -31,7 +32,7 @@ import {
 import { lowerTemplate } from './templates.ts';
 import { lowerTuple, lowerTupleElement } from './tuples.ts';
 import { lowerUnwrap } from './unwrap.ts';
-import { isEnum, lowerNone, lowerVariantLiteral } from './variants.ts';
+import { isEnum, lowerVariantLiteral } from './variants.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionHandlers: Handlers<FunctionContext, Expression, [], Register> = {
@@ -54,7 +55,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   TupleElement: lowerTupleElement,
   If: lowerIf,
   DurationLiteral: lowerDurationLiteral,
-  NoneLiteral: lowerNone,
+  NoneLiteral: (context, node) => noneOf(context, context.typeOf(node), node.span),
   ArrayLiteral: lowerArrayLiteral,
   MapLiteral: lowerMapLiteral,
   Comprehension: lowerComprehension,

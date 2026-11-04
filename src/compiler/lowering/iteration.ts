@@ -7,14 +7,13 @@
  */
 
 import type { Register } from '../../definition/operands.ts';
-import { optionalVariants } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Iteration } from '../checker/check.ts';
 import type { Comprehension, Expression } from '../syntax/expressions/index.ts';
 import type { For } from '../syntax/statements.ts';
 import type { FunctionContext } from './context.ts';
 import { emitCall, emitImplicitCall } from './emit-call.ts';
-import { branchOnVariant, payloadOf, variantTestOf } from './expressions/variants.ts';
+import { presentOrJump } from './optionals.ts';
 import type { LoopTargets } from './statements/loops.ts';
 import { endScope } from './statements/scopes.ts';
 import { bindTargets } from './statements/variables.ts';
@@ -41,7 +40,7 @@ export function emitLoop(
   const { code, checker } = context;
   const { span } = node;
   const next = code.newLabel();
-  const element = code.newLabel();
+  const _element = code.newLabel();
   const exit = code.newLabel();
   code.place(next);
   const given = emitCall(context, {
@@ -53,12 +52,10 @@ export function emitLoop(
   if (form.kind !== 'cursor') {
     unreachable('A loop runs over a spread its literal copies whole.');
   }
-  const optional = checker.optionalOf(form.item);
-  const isSome = variantTestOf(checker, given, optional, optionalVariants.some);
-  branchOnVariant(context, isSome, { matched: element, otherwise: exit }, span);
-  code.place(element);
+  const read = { register: given, type: checker.optionalOf(form.item), to: form.item };
+  const item = presentOrJump(context, read, exit, span);
   const { depth } = context.variables;
-  body(payloadOf(context, given, span), { exit, next, depth });
+  body(item, { exit, next, depth });
   code.jump(next, span);
   code.place(exit);
 }

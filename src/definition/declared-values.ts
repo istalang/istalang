@@ -6,7 +6,12 @@
  * end (§9). `Result`'s `Ok` and `Err(Error)` are built here once for both (§3.12).
  */
 
-import { optionalVariants, resultVariants } from '../language/well-known.ts';
+import {
+  optionalValueField,
+  optionalVariants,
+  resultFields,
+  resultVariants,
+} from '../language/well-known.ts';
 import { unreachable } from '../structures/unreachable.ts';
 import type { TypeId } from './operands.ts';
 import type { TypeDefinition, TypeReference } from './types.ts';
@@ -134,7 +139,33 @@ export function optionalOf(
 ): Value {
   return value === undefined
     ? variantOf(types, type, optionalVariants.none, {})
-    : variantOf(types, type, optionalVariants.some, { value });
+    : variantOf(types, type, optionalVariants.some, { [optionalValueField]: value });
+}
+
+/** The value optional `optional` holds, read by its declared variant; undefined for `None`. */
+export function optionalValueOf(
+  types: readonly TypeDefinition[],
+  optional: Value | undefined,
+): Value | undefined {
+  if (optional === undefined || !isComposite(optional) || optional.kind !== 'variant') {
+    unreachable('Expected an optional.');
+  }
+  const { variant } = variantShape(types, optional.type, optionalVariants.some);
+  return optional.variant === variant
+    ? variantFieldOf(types, optional, optionalValueField)
+    : undefined;
+}
+
+/** Field `name` of variant value `value`, found by the name its variant declares. */
+function variantFieldOf(
+  types: readonly TypeDefinition[],
+  value: Extract<Value, { readonly kind: 'variant' }>,
+  name: string,
+): Value {
+  const declared = types[value.type];
+  const shape = declared?.kind === 'enum' ? declared.variants[value.variant] : undefined;
+  const position = shape?.fields.findIndex((field) => field.name === name) ?? -1;
+  return value.fields[position] ?? unreachable(`Variant ${value.variant} has no field '${name}'.`);
 }
 
 /** What an `Error` says (§3.12). */
@@ -146,17 +177,17 @@ export interface ErrorFields {
 
 /** The type `Result` entry `result` holds when `Ok`. */
 export function okTypeOf(types: readonly TypeDefinition[], result: TypeId): TypeId {
-  return namedType(variantFieldType(types, result, resultVariants.ok, 'value'));
+  return namedType(variantFieldType(types, result, resultVariants.ok, resultFields.ok));
 }
 
 /** `Ok` of `value`, of `Result` entry `result` (§3.12). */
 export function okOf(types: readonly TypeDefinition[], result: TypeId, value: Value): Value {
-  return variantOf(types, result, resultVariants.ok, { value });
+  return variantOf(types, result, resultVariants.ok, { [resultFields.ok]: value });
 }
 
 /** `Err` of `error`, of `Result` entry `result` (§3.12). */
 export function errOf(types: readonly TypeDefinition[], result: TypeId, error: Value): Value {
-  return variantOf(types, result, resultVariants.err, { error });
+  return variantOf(types, result, resultVariants.err, { [resultFields.err]: error });
 }
 
 /** `Err` of an `Error` saying `fields`, of `Result` entry `result` (§3.12). */
@@ -165,6 +196,6 @@ export function errorOf(
   result: TypeId,
   fields: ErrorFields,
 ): Value {
-  const error = namedType(variantFieldType(types, result, resultVariants.err, 'error'));
+  const error = namedType(variantFieldType(types, result, resultVariants.err, resultFields.err));
   return errOf(types, result, structOf(types, error, { ...fields }));
 }

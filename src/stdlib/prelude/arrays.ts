@@ -12,7 +12,7 @@ import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
 import { elementsOf } from '../../definition/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
-import { arrayOf, int, optionalValue, resultOptional, text } from '../native-values.ts';
+import { arrayOf, int, optionalInt, resultOptional, text } from '../native-values.ts';
 import { atPosition, checkedIndex, replaced, selected, selectionOf, sliced } from '../positions.ts';
 import { rangeOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
@@ -38,10 +38,10 @@ export const arrayNatives = (keys: NativeKeys): Natives<NativeContext> => ({
     context.write(0, arrayOf(elements.slice(0, -1)));
     return resultOptional(context, elements.at(-1));
   },
-  [keys.of('slice', array, 'Int', knownTypeKey(wellKnown.optional, 'Int'))]: ([xs, start, end]) => {
-    const last = optionalValue(end);
-    return arrayOf(sliced(elementsOf(xs), int(start), last === undefined ? undefined : int(last)));
-  },
+  [keys.of('slice', array, 'Int', knownTypeKey(wellKnown.optional, 'Int'))]: (
+    [xs, start, end],
+    context,
+  ) => arrayOf(sliced(elementsOf(xs), int(start), optionalInt(context, end))),
   [keys.of('indexOf', array, item)]: ([xs, element]) =>
     BigInt(elementsOf(xs).findIndex((each) => valuesEqual(each, element ?? null))),
   [keys.of('lastIndexOf', array, item)]: ([xs, element]) =>

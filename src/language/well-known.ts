@@ -160,6 +160,9 @@ export const disposeFunction = 'dispose';
 /** The variants of `Optional` (§3.11): what a value is wrapped in, and what `none` is. */
 export const optionalVariants = { some: 'Some', none: 'None' } as const;
 
+/** The one field of `Optional`'s `Some`: the value it holds. */
+export const optionalValueField = 'value';
+
 /** The variants of `json.Json` (§9): JSON held as a value, by its kind. */
 export const jsonVariants = {
   null: 'Null',
@@ -173,6 +176,9 @@ export const jsonVariants = {
 
 /** The variants of `Result` (§3.12): `?` passes on an `Err` and takes the `Ok` value. */
 export const resultVariants = { ok: 'Ok', err: 'Err' } as const;
+
+/** The one field of each of `Result`'s variants (§3.12): `Ok`'s value and `Err`'s error. */
+export const resultFields = { ok: 'value', err: 'error' } as const;
 
 /** The static function a conversion `T(x)` calls (§3.10). */
 export const conversionFunction = 'from';

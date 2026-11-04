@@ -44,6 +44,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 6. **`[medium]` Double standards in well-known type recognition and bare generic nominal values (`src/compiler/checker/types/type-text.ts:61`, `src/compiler/checker/types/well-known.ts:74`, `src/compiler/checker/expressions/names.ts:91`, `src/compiler/checker/expressions/variants.ts:61`)**
    - `nominalTypeText` (`types/type-text.ts:61`) checks `declaration.name.text === wellKnown.optional.name` by string instead of comparing `type.entity === checker.optionalEntity`, formatting any user-declared `enum Optional<T>` as `T?`. Meanwhile `optionalInner` (`types/fit.ts:57`) and `optionalArgument` (`types/well-known.ts:74`) provide two different functions to unwrap `T?`.
+   - **Done** (`p3-unions`), the unwrapping: `optionalArgument` is gone, and every reader of `T?` asks `optionalInner` (`types/fit.ts`). `nominalTypeText`'s name check goes with `Optional` itself, which proposal 3 makes the alias `T | None`, printed structurally.
    - `enumTypeFor` (`expressions/variants.ts:61–85`) unwraps optionals on `expected` (`sameEnum`) and fills default type arguments for bare generic enum variants, whereas `bareStructValue` (`expressions/names.ts:91–116`) neither unwraps optionals on `expected` nor fills default type arguments for bare fieldless generic structs.
    - **Fix:** Route `nominalTypeText` and all `Optional<T>` unwrapping through `optionalInner` (`types/fit.ts`), and share the expected-nominal/default-type-argument resolution between `bareStructValue` and `enumTypeFor`.
 
@@ -164,6 +165,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `hasRole(types, type, role)` only accepts `ExternRole` (`'shared' | 'cell' | 'future' | 'instance'`) and checks `entry?.kind === 'extern'`, forcing `findJsonType` (`src/definition/json-values.ts`) to hand-write `candidate.kind === 'enum' && candidate.role === 'json'` instead of calling `hasRole(types, index, 'json')`.
 - **Hard-coded variant/struct field names in `declared-values.ts` (`src/definition/declared-values.ts`, `src/language/well-known.ts`):**
   - `optionalOf`, `okTypeOf`, `okOf`, `errOf`, and `errorOf` import `optionalVariants` and `resultVariants` from `src/language/well-known.ts`, but hard-code the field names `'value'` and `'error'` as string literals.
+  - **Done** (`p3-unions`): `resultFields` and `optionalValueField` (`language/well-known.ts`) name the fields once; `optionalValueOf` (`declared-values.ts`) reads an optional by its declared variant and field.
 
 ### 6. `src/compiler/syntax/` (including `expressions/`)
 
@@ -356,6 +358,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`p2-structural`): see Ranked Summary item 5 (`preparedCall`).
 - **Repeated `Result` / `Optional` variant branch-and-unwrap boilerplate (`src/compiler/lowering/expressions/propagate.ts`, `unwrap.ts`, `nullish.ts`, `optional-chains.ts`, `iteration.ts`, `synthesized-code.ts`):**
   - `lowerPropagate` (`expressions/propagate.ts`) is an open-coded copy of `SynthesizedCode.ok` (`synthesized-code.ts`), and `lowerUnwrap`, `lowerNullish`, `OptionalChains.target`, and `emitLoop` each repeat the `newLabel` + `variantTestOf` + `branchOnVariant` + `place` + `payloadOf` sequence for `Optional.Some`.
+  - **Done** (`p3-unions`): `payloadOr` and `payloadOrJump` (`lowering/expressions/variants.ts`) are the one test-and-unwrap of a variant, which `lowerPropagate` and `SynthesizedCode.ok` share; `lowering/optionals.ts` is the one home of how a `T?` is laid out (`noneOf`, `someOf`, `presentOr`, `presentOrJump`), which `none`, the wrap, `!`, `??`, optional chains, a range's left-out end and cursor loops all go through.
 
 ### 24. `src/compiler/compile.ts`
 
@@ -387,8 +390,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **`optionalValue` reads `Optional` by positional field index `0` (`src/stdlib/native-values.ts`, `src/definition/declared-values.ts`):**
   - `optionalValue` returns `value.fields[0]` directly without checking the variant (`Some` vs. `None`) or field name, relying on `None` having no fields and `Some` having 1 field.
+  - **Done** (`p3-unions`): it reads through `optionalValueOf` (`definition/declared-values.ts`), by the declared variant and field.
 - **Repeated optional `end` unwrapping in `arrayNatives.slice` and `stringsNatives.slice` (`src/stdlib/prelude/arrays.ts`, `src/stdlib/strings/natives.ts`, `src/stdlib/positions.ts`):**
   - Both natives unwrap `const last = optionalValue(end); ... last === undefined ? undefined : int(last)` before calling `sliced` / `sliceBounds`.
+  - **Done** (`p3-unions`): `optionalInt` (`stdlib/native-values.ts`) reads an optional `Int` argument, for both slices and a range's ends.
 
 ### 28. `src/stdlib/` — standard library modules
 

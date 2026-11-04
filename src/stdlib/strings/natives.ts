@@ -24,12 +24,12 @@ import {
   codePoints,
   utf16Offset,
 } from '../../text/code-points.ts';
-import { arrayOf, int, optionalValue, text } from '../native-values.ts';
+import { arrayOf, int, optionalInt, text } from '../native-values.ts';
 import { sliceBounds } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { formatted } from './format.ts';
 
-const optionalInt = knownTypeKey(wellKnown.optional, 'Int');
+const optionalIntKey = knownTypeKey(wellKnown.optional, 'Int');
 const strings = knownTypeKey(wellKnown.array, 'String');
 
 const graphemeSegmenter = new Intl.Segmenter('und', { granularity: 'grapheme' });
@@ -55,14 +55,9 @@ const reading = (keys: NativeKeys): Natives<NativeContext> => ({
 });
 
 const splitting = (keys: NativeKeys): Natives<NativeContext> => ({
-  [keys.of('slice', 'String', 'Int', optionalInt)]: ([s, start, end]) => {
+  [keys.of('slice', 'String', 'Int', optionalIntKey)]: ([s, start, end], context) => {
     const whole = text(s);
-    const last = optionalValue(end);
-    const bounds = sliceBounds(
-      codePointCount(whole),
-      int(start),
-      last === undefined ? undefined : int(last),
-    );
+    const bounds = sliceBounds(codePointCount(whole), int(start), optionalInt(context, end));
     return codePointSlice(whole, bounds.start, bounds.end);
   },
   [keys.of('split', 'String', 'String')]: ([s, separator]) => {

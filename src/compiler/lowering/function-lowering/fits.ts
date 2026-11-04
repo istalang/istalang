@@ -7,7 +7,6 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import { optionalVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { ValueSite } from '../../checker/check.ts';
 import { type Fit, singleElement } from '../../checker/types/fit.ts';
@@ -16,8 +15,8 @@ import { madeAsync } from '../async-fits.ts';
 import type { FunctionContext } from '../context.ts';
 import { rebuiltAs } from '../expressions/structs.ts';
 import { tupleOf } from '../expressions/tuples.ts';
-import { buildVariant } from '../expressions/variants.ts';
 import type { BodyOwner } from '../instances.ts';
+import { someOf } from '../optionals.ts';
 import { convertedIntoAny } from '../trait-objects/trait-objects.ts';
 
 /** A register and the type of the value it holds. */
@@ -44,8 +43,7 @@ export function fittedValue(
   let current = converted.type;
   for (let left = fit.wraps; left > 0; left -= 1) {
     const optional = context.checker.optionalOf(current);
-    const some = { type: optional, name: optionalVariants.some };
-    register = buildVariant(context, some, [register], where.site.span);
+    register = someOf(context, optional, register, where.site.span);
     current = optional;
   }
   return register;

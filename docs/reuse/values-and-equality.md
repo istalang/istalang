@@ -19,7 +19,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - build an `Optional`, `Result` (`Ok`, `Err`) or `Error` `Value` → `optionalOf`, `okOf`, `errOf`, `errorOf`, `okTypeOf` (`src/definition/declared-values.ts`)
 - look up a field's `TypeReference`, a type argument, or a named `TypeId` → `fieldTypeOf`, `typeArgumentOf`, `namedType`, `namedTypeOf` (`src/definition/declared-values.ts`)
 - read primitive, tuple or extern native arguments → `given`, `int`, `float`, `text`, `elementOf`, `externPayloadOf`, `textPayloadOf` (`src/stdlib/native-values.ts`)
-- read an optional native argument or map an enum argument by variant name → `optionalValue`, `variantEntry` (`src/stdlib/native-values.ts`)
+- read an optional by its declared variant → `optionalValueOf` (`src/definition/declared-values.ts`); an optional `Int` native argument → `optionalInt`, or map an enum argument by variant name → `variantEntry` (`src/stdlib/native-values.ts`)
 - build array, struct, variant or extern results → `arrayOf`, `resultStruct`, `resultVariant`, `resultExtern`, `resultOptional` (`src/stdlib/native-values.ts`)
 - the type entry a native's declared result names → `declaredResult` (`src/stdlib/native-values.ts`)
 - make or read an `Instance<T>` handle (the instance's name) → `instanceHandle`, `instanceNameOf` (`src/definition/instance-handles.ts`)

@@ -12,8 +12,8 @@
 
 import type { CheckedBody, Checker } from '../compiler/checker/check.ts';
 import { parameterOfArgument, type ResolvedCall } from '../compiler/checker/resolved-call.ts';
+import { optionalInner } from '../compiler/checker/types/fit.ts';
 import type { FunctionType } from '../compiler/checker/types/type.ts';
-import { optionalArgument } from '../compiler/checker/types/well-known.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import type { Call } from '../compiler/syntax/expressions/index.ts';
 import { callAt, calleesOf, writtenParameter } from './call-at.ts';
@@ -55,7 +55,7 @@ function valueCallHelp(
   argument: number,
 ): SignatureHelp | undefined {
   const callee = body.typeOf(call.callee);
-  const type = call.isOptional && callee ? optionalArgument(checker, callee) : callee;
+  const type = call.isOptional && callee ? optionalInner(callee, checker.optionalEntity) : callee;
   if (type?.kind !== 'function') {
     return undefined;
   }

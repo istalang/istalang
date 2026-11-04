@@ -16,10 +16,10 @@
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../compiler/checker/check.ts';
+import { optionalInner } from '../../../compiler/checker/types/fit.ts';
 import { sameType } from '../../../compiler/checker/types/identity.ts';
 import { downcastTargetOf, namesOwnType } from '../../../compiler/checker/types/named-types.ts';
 import { boolType, type Type } from '../../../compiler/checker/types/type.ts';
-import { optionalArgument } from '../../../compiler/checker/types/well-known.ts';
 import { casesOf } from '../../../compiler/syntax/expressions/index.ts';
 import { lastName } from '../../../compiler/syntax/node.ts';
 import type { NamePattern, Pattern, StructPattern } from '../../../compiler/syntax/patterns.ts';
@@ -83,7 +83,7 @@ const literalKeywords: readonly (readonly [string, (checker: Checker, type: Type
   ['_', () => true],
   ['true', (_checker, type) => sameType(type, boolType)],
   ['false', (_checker, type) => sameType(type, boolType)],
-  ['none', (checker, type) => optionalArgument(checker, type) !== undefined],
+  ['none', (checker, type) => optionalInner(type, checker.optionalEntity) !== undefined],
 ];
 
 /** The visible names a pattern matching `type` may start with to refer. */

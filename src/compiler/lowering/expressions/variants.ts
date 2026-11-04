@@ -1,10 +1,9 @@
 /**
  * Enum variants as values (§3.11): `variant` of the enum type the checker gave the expression,
- * by the variant's index, fields in declaration order. `none` is `Optional`'s `None`.
+ * by the variant's index, fields in declaration order.
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import { optionalVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
@@ -33,10 +32,6 @@ export function lowerFieldlessVariant(
   return emitVariant(context, node, name, []);
 }
 
-export function lowerNone(context: FunctionContext, node: Expression): Register {
-  return lowerFieldlessVariant(context, node, optionalVariants.none);
-}
-
 /** `Rejected{by: "legal"}`: built from the same fields as a struct literal (structs.ts). */
 export function lowerVariantLiteral(context: FunctionContext, node: StructLiteral): Register {
   const name = node.type === undefined ? '' : lastName(node.type.path).text;
@@ -50,7 +45,7 @@ export interface VariantTest {
 }
 
 /** The value of the enum `type` in `register`, tested for its variant `name`. */
-export function variantTestOf(
+function variantTestOf(
   checker: Checker,
   register: Register,
   type: NominalType,
@@ -75,6 +70,48 @@ export function branchOnVariant(
 /** The value a `Some`, `Ok` or `Err` in `register` holds: its one field (§3.11, §3.12). */
 export function payloadOf(context: CodeContext, register: Register, span: AnchoredSpan): Register {
   return context.code.field(register, 0, span);
+}
+
+/** A value of the enum `type` in `register`, tested for its variant `name`, which has one field. */
+export interface VariantCase {
+  readonly register: Register;
+  readonly type: NominalType;
+  readonly name: string;
+}
+
+/** Where `tested` holds its variant, continues with that variant's one field; else jumps to `otherwise`. */
+export function payloadOrJump(
+  context: CodeContext,
+  tested: VariantCase,
+  otherwise: Label,
+  span: AnchoredSpan,
+): Register {
+  const matched = context.code.newLabel();
+  const test = variantTestOf(context.checker, tested.register, tested.type, tested.name);
+  branchOnVariant(context, test, { matched, otherwise }, span);
+  context.code.place(matched);
+  return payloadOf(context, tested.register, span);
+}
+
+/**
+ * Where `tested` holds its variant, continues with that variant's one field; else runs `otherwise`,
+ * which writes what happens then and must leave the code: return, jump or panic.
+ */
+export function payloadOr(
+  context: CodeContext,
+  tested: VariantCase,
+  otherwise: () => void,
+  span: AnchoredSpan,
+): Register {
+  const { code } = context;
+  const matched = code.newLabel();
+  const unmatched = code.newLabel();
+  const test = variantTestOf(context.checker, tested.register, tested.type, tested.name);
+  branchOnVariant(context, test, { matched, otherwise: unmatched }, span);
+  code.place(unmatched);
+  otherwise();
+  code.place(matched);
+  return payloadOf(context, tested.register, span);
 }
 
 /** Whether `type` is an enum's, whose literals are its variants'. */

@@ -28,7 +28,7 @@ import { emitCall, emitFunctionCall } from './emit-call.ts';
 import { equal } from './expressions/operators.ts';
 import { construct } from './expressions/structs.ts';
 import { tupleOf } from './expressions/tuples.ts';
-import { branchOnVariant, buildVariant, payloadOf, variantTestOf } from './expressions/variants.ts';
+import { buildVariant, payloadOf, payloadOr } from './expressions/variants.ts';
 import type { ClosedCall } from './instances.ts';
 import type { DefinitionTables, EntryHeader } from './tables.ts';
 
@@ -122,18 +122,8 @@ export class SynthesizedCode implements CodeContext {
    * writes what happens to its `Error`, and must leave the code.
    */
   ok(result: Register, type: NominalType, failed: (error: Register) => void): Register {
-    const ok = this.code.newLabel();
-    const err = this.code.newLabel();
-    branchOnVariant(
-      this,
-      variantTestOf(this.checker, result, type, resultVariants.ok),
-      { matched: ok, otherwise: err },
-      this.span,
-    );
-    this.code.place(err);
-    failed(payloadOf(this, result, this.span));
-    this.code.place(ok);
-    return payloadOf(this, result, this.span);
+    const tested = { register: result, type, name: resultVariants.ok };
+    return payloadOr(this, tested, () => failed(payloadOf(this, result, this.span)), this.span);
   }
 
   await(future: Register): Register {

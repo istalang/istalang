@@ -54,14 +54,6 @@ export function arrayOf(checker: CheckerContext, element: Type): Type {
   return wellKnownOf(checker, wellKnown.array, [element]);
 }
 
-/** `T` when `type` is `T?`; undefined for any other type. */
-export function optionalArgument(
-  checker: Pick<Checker, 'wellKnownType'>,
-  type: Type,
-): Type | undefined {
-  return wellKnownArguments(checker, wellKnown.optional, type)?.[0];
-}
-
 /** `T` when `type` is `Array<T>`; undefined for any other type. */
 export function arrayElement(
   checker: Pick<Checker, 'wellKnownType'>,

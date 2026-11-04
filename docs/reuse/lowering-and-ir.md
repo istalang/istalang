@@ -33,7 +33,8 @@ tags: [reuse, lowering, definition, ir, instructions]
 - read how a field access reaches its field → `CheckedBody.fieldReadOf` (`src/compiler/checker/check.ts`)
 - lower pattern tests and bindings jumping to a failure label → `lowerMatching` (`src/compiler/lowering/patterns.ts`)
 - build an enum variant by its declared name → `buildVariant`, `isEnum` (`src/compiler/lowering/expressions/variants.ts`); in synthesized code, `SynthesizedCode.variant`
-- test or branch on an enum variant or read variant field 0 → `variantTestOf`, `branchOnVariant`, `payloadOf` (`src/compiler/lowering/expressions/variants.ts`)
+- branch on an enum variant, or read variant field 0 → `branchOnVariant`, `payloadOf` (`src/compiler/lowering/expressions/variants.ts`); carry on with a variant's one field where a value holds it, else jump or run what leaves → `payloadOrJump`, `payloadOr`
+- build `none` or wrap into `T?`, or read a `T?` where it isn't `none` → `noneOf`, `someOf`, `presentOrJump`, `presentOr` (`src/compiler/lowering/optionals.ts`); never name `Optional`'s variants elsewhere in lowering
 - convert a value into an `any` variant → `convertedIntoAny` (`src/compiler/lowering/trait-objects/trait-objects.ts`)
 - wrap a plain function value as an `async` closure → `madeAsync` (`src/compiler/lowering/async-fits.ts`)
 - call the codec writing or reading a type, closed within an instance → `codecCall` (`src/compiler/lowering/boundary/codec-calls.ts`)

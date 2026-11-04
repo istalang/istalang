@@ -15,7 +15,6 @@
 
 import type { Instruction } from '../../../definition/instructions/instruction.ts';
 import type { Register } from '../../../definition/operands.ts';
-import { optionalVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { intType } from '../../checker/types/type.ts';
 import type {
@@ -32,9 +31,9 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitCallAt, emitImplicitCall, referenceTo } from '../emit-call.ts';
 import { cursorOf, emitLoop } from '../iteration.ts';
+import { noneOf, someOf } from '../optionals.ts';
 import { cellRegister } from '../places.ts';
 import { construct } from './structs.ts';
-import { buildVariant } from './variants.ts';
 
 /** An element of an `array` instruction. */
 type ArrayItem = Extract<Instruction, { kind: 'array' }>['elements'][number];
@@ -256,6 +255,5 @@ function optionalInt(
   value: Register | undefined,
 ): Register {
   const type = context.checker.optionalOf(intType);
-  const name = value === undefined ? optionalVariants.none : optionalVariants.some;
-  return buildVariant(context, { type, name }, value === undefined ? [] : [value], span);
+  return value === undefined ? noneOf(context, type, span) : someOf(context, type, value, span);
 }
