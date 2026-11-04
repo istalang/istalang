@@ -90,7 +90,7 @@ export function memberTaken(
     test,
     part: hasOneValue(only)
       ? { type: only, path: part.path, narrowedFrom: union }
-      : { type: only, path: [...part.path, 0] },
+      : { type: only, path: [...part.path, { kind: 'member', union }] },
     decided: isTypePattern || hasOneValue(only),
     shapeOf: (inside) => (inside === undefined ? undefined : memberShape(only, inside)),
   };

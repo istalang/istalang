@@ -23,7 +23,7 @@ import type { Pattern } from '../../syntax/patterns.ts';
 import { type For, tailExpressionOf } from '../../syntax/statements.ts';
 import { bodyOf, nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
 import { type CheckedBody, checkProgram } from '../check.ts';
-import { namesBound } from '../checked-pattern.ts';
+import { namesBound, type PartStep } from '../checked-pattern.ts';
 import { instantiatedBody } from './instantiation.ts';
 import { substitutionFor } from './substitution.ts';
 import { intType, stringType } from './type.ts';
@@ -76,6 +76,12 @@ describe('an instantiated body', () => {
   });
 
   it("reads a member's value as the part itself where its union collapses", () => {
+    const stepRead = (step: PartStep) => {
+      if (typeof step === 'number' || step.kind !== 'member') {
+        return step;
+      }
+      return step.union.kind === 'union' ? 'into its member' : 'the part itself';
+    };
     const text = [
       'struct Box<V> { value: V }',
       'fn boxed<T>(x: Box<T> | Box<Int>) -> Int:',
@@ -100,16 +106,16 @@ describe('an instantiated body', () => {
       instantiatedBody(body, substitutionFor(boxed.typeParameters, [typeArgument]), checker)
         .patternOf(taken.pattern)
         ?.bindings.map(({ path, narrowedFrom }) => ({
-          path,
+          path: path.map(stepRead),
           narrowed: narrowedFrom !== undefined,
         }));
     expect(read(stringType)).toEqual([
-      { path: [0, 0], narrowed: false },
-      { path: [0], narrowed: false },
+      { path: ['into its member', 0], narrowed: false },
+      { path: ['into its member'], narrowed: false },
     ]);
     expect(read(intType)).toEqual([
-      { path: [0], narrowed: false },
-      { path: [], narrowed: false },
+      { path: ['the part itself', 0], narrowed: false },
+      { path: ['the part itself'], narrowed: false },
     ]);
   });
 

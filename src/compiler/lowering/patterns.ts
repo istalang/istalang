@@ -21,6 +21,7 @@
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import {
+  type ArrayStep,
   type CheckedPattern,
   namesBound,
   type PartStep,
@@ -262,8 +263,9 @@ function bindChosen(
 }
 
 /**
- * The part of `subject` along `path`: fields and tuple elements read as a place, and an array's
- * item or rest through the call the checker made at its pattern.
+ * The part of `subject` along `path`: fields, tuple elements and what a union's or an `any`'s
+ * variant holds read as a place, and an array's item or rest through the call the checker made at
+ * its pattern.
  */
 function readPartAlong(
   context: FunctionContext,
@@ -274,19 +276,35 @@ function readPartAlong(
   let value = subject;
   let positions: number[] = [];
   for (const step of path) {
-    if (typeof step === 'number') {
-      positions.push(step);
-    } else {
+    if (isArrayStep(step)) {
       const array = context.code.readPath(value, positions, span);
       const constants = stepOffsets(step).map((offset) => context.constant(BigInt(offset), span));
       value = emitImplicitCall(context, step.site, step.kind, [array, ...constants]);
       positions = [];
+    } else {
+      positions.push(...positionsOf(step));
     }
   }
   return context.code.readPath(value, positions, span);
 }
 
-function stepOffsets(step: Exclude<PartStep, number>): readonly number[] {
+function isArrayStep(step: PartStep): step is ArrayStep {
+  return typeof step !== 'number' && step.kind !== 'member' && step.kind !== 'downcast';
+}
+
+/**
+ * The positions `step` reads as a place: a field's or element's own, or the one field of the
+ * variant a union's member or an `any`'s value is held in; none where an instantiation collapsed
+ * the union into one type (§3.5), whose value the part already is.
+ */
+function positionsOf(step: Exclude<PartStep, ArrayStep>): readonly number[] {
+  if (typeof step === 'number') {
+    return [step];
+  }
+  return step.kind === 'downcast' || step.union.kind === 'union' ? [0] : [];
+}
+
+function stepOffsets(step: ArrayStep): readonly number[] {
   if (step.kind === 'length') {
     return [];
   }

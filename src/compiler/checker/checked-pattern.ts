@@ -18,14 +18,23 @@ import type { AnyType, Type } from './types/type.ts';
 export type TargetOwner = VariableDeclaration | For | Comprehension | SelectCase;
 
 /**
- * A step from a value to one of its parts (§3.11, §3.15): a field or tuple element by position, or
- * what an array pattern reads of an array, through the prelude calls the checker made at `site`:
- * its length, the item `offset` from its start, or from its end when negative, and the items
- * between the first `before` and the last `after`. A target never reads an array, since its length
- * can fail, so its parts are positions (`TargetBinding`).
+ * A step from a value to one of its parts (§3.11, §3.15): a field or tuple element by position;
+ * the value of the member a part of `union` holds, past a member test, which is the part itself
+ * where an instantiation collapsed the union into one type (§3.5); the value a part of an `any`
+ * type holds, past a downcast (§3.10); or what an array pattern reads of an array, through the
+ * prelude calls the checker made at `site`: its length, the item `offset` from its start, or from
+ * its end when negative, and the items between the first `before` and the last `after`. A target
+ * never reads an array, since its length can fail, nor tests a member, so its parts are positions
+ * (`TargetBinding`).
  */
 export type PartStep =
   | number
+  | { readonly kind: 'member'; readonly union: Type }
+  | { readonly kind: 'downcast' }
+  | ArrayStep;
+
+/** A step an array pattern takes through a prelude call (`PartStep`). */
+export type ArrayStep =
   | { readonly kind: 'length'; readonly site: ArrayPattern }
   | { readonly kind: 'item'; readonly site: ArrayPattern; readonly offset: number }
   | {
@@ -63,12 +72,12 @@ export interface PartBinding {
  *
  * - `variant`: the part is its enum's `variant`-th variant.
  * - `downcast`: the part, of the `any` type `from`, holds a value of the type `to` (§3.10), which
- *   the tests after it reach at the part's field 0.
+ *   the tests after it reach through a `downcast` step.
  * - `member`: the part, of the union `union`, holds a value of one of `members` (§3.11); the tests
- *   after it reach the value of the one member with a value at the part's field 0. An
- *   instantiation may collapse the union into one type (§3.5, types/instantiation.ts): the part is
- *   then that type's value itself, which the test passes when a member is that type, compares with
- *   when a member is a literal of it, and fails otherwise.
+ *   after it reach the value of the one member through a `member` step. An instantiation may
+ *   collapse the union into one type (§3.5, types/instantiation.ts): the part is then that type's
+ *   value itself, which the test passes when a member is that type, compares with when a member is
+ *   a literal of it, and fails otherwise.
  * - `equal`: the part `==` a value: a literal or comparison's expression, a top-level constant's
  *   name, or an array pattern's fixed item count; `negated` for `!=`.
  * - `compare`: `compare(part, value)`, the implicit call recorded at `site`, is in `relation`: a

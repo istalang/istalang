@@ -91,32 +91,30 @@ function mapDefined<T, R>(value: T | undefined, f: (defined: T) => R): R | undef
 
 /**
  * `checked` with every type it records substituted, in its or-patterns' alternatives too. Each test
- * kind is listed, so a kind that comes to carry a type can't pass through unsubstituted.
+ * and step kind is listed, so a kind that comes to carry a type can't pass through unsubstituted.
  *
  * A union a member test tests may collapse (§3.5): `T | Int` with `T = Int` is `Int`. Its value is
- * then the member's own value, with no variant around it, so every path into the member's value
- * at the test's part loses the step into the variant (`collapsedSteps`), and a name narrowed from
- * it reads the value as it is. A test in one alternative of an `or` reads only that alternative's
- * parts, so its collapse shortens paths there alone.
+ * then the member's own value, with no variant around it: the `member` step into it carries the
+ * union, substituted here, so whoever reads the path sees the collapse, and a name narrowed from
+ * it reads the value as it is.
  */
 function instantiatedPattern(checked: CheckedPattern, substitution: Substitution): CheckedPattern {
-  return withoutVariantSteps(substitutedPattern(checked, substitution), []);
-}
-
-/** `checked` with its types substituted, as `instantiatedPattern` says. */
-function substitutedPattern(checked: CheckedPattern, substitution: Substitution): CheckedPattern {
   const concrete = (type: Type) => substitute(type, substitution);
+  const path = (steps: readonly PartStep[]) =>
+    steps.map((step) => instantiatedStep(step, substitution));
   const instantiatedTest = (patternTest: PatternTest): PatternTest => {
     switch (patternTest.kind) {
       case 'downcast':
         return {
           ...patternTest,
+          path: path(patternTest.path),
           from: substituteAny(patternTest.from, substitution),
           to: concrete(patternTest.to),
         };
       case 'member':
         return {
           ...patternTest,
+          path: path(patternTest.path),
           union: concrete(patternTest.union),
           members: patternTest.members.flatMap((member) => membersOf(concrete(member))),
         };
@@ -124,13 +122,13 @@ function substitutedPattern(checked: CheckedPattern, substitution: Substitution)
         return {
           ...patternTest,
           alternatives: patternTest.alternatives.map((each) =>
-            substitutedPattern(each, substitution),
+            instantiatedPattern(each, substitution),
           ),
         };
       case 'variant':
       case 'equal':
       case 'compare':
-        return patternTest;
+        return { ...patternTest, path: path(patternTest.path) };
       default: {
         const unhandled: never = patternTest;
         return unhandled;
@@ -144,6 +142,7 @@ function substitutedPattern(checked: CheckedPattern, substitution: Substitution)
       const from = narrowedFrom === undefined ? undefined : concrete(narrowedFrom);
       return {
         ...binding,
+        path: path(binding.path),
         type,
         narrowedFrom: from === undefined || sameType(from, type) ? undefined : from,
       };
@@ -151,56 +150,24 @@ function substitutedPattern(checked: CheckedPattern, substitution: Substitution)
   };
 }
 
-/**
- * `checked` with each path into a member's value at a collapsed part reading the part itself: the
- * parts `outer` collapsed, and those its own member tests did, which an alternative of its `or`
- * tests sees beside its own.
- */
-function withoutVariantSteps(
-  checked: CheckedPattern,
-  outer: readonly (readonly PartStep[])[],
-): CheckedPattern {
-  const collapsed = [...outer, ...collapsedParts(checked)];
-  const path = (steps: readonly PartStep[]) => collapsedSteps(steps, collapsed);
-  return {
-    tests: checked.tests.map((patternTest) =>
-      patternTest.kind === 'or'
-        ? {
-            ...patternTest,
-            alternatives: patternTest.alternatives.map((each) =>
-              withoutVariantSteps(each, collapsed),
-            ),
-          }
-        : { ...patternTest, path: path(patternTest.path) },
-    ),
-    bindings: checked.bindings.map((binding) => ({ ...binding, path: path(binding.path) })),
-  };
-}
-
-/** The paths of the parts whose union one of `checked`'s own member tests collapsed into one type. */
-function collapsedParts(checked: CheckedPattern): readonly (readonly PartStep[])[] {
-  return checked.tests.flatMap((patternTest) =>
-    patternTest.kind === 'member' && patternTest.union.kind !== 'union' ? [patternTest.path] : [],
-  );
-}
-
-/**
- * `steps` without each step into a variant's value (field 0) taken at one of the `collapsed`
- * parts. Both are paths from the whole value as checked, so a part nested in a collapsed one is
- * found before either loses a step; a path below a part is built from the part's own, so its steps
- * are the very ones the part's path holds.
- */
-function collapsedSteps(
-  steps: readonly PartStep[],
-  collapsed: readonly (readonly PartStep[])[],
-): readonly PartStep[] {
-  return steps.filter(
-    (step, index) =>
-      step !== 0 ||
-      !collapsed.some(
-        (part) => part.length === index && part.every((each, at) => each === steps[at]),
-      ),
-  );
+/** `step` with the type it carries substituted. */
+function instantiatedStep(step: PartStep, substitution: Substitution): PartStep {
+  if (typeof step === 'number') {
+    return step;
+  }
+  switch (step.kind) {
+    case 'member':
+      return { ...step, union: substitute(step.union, substitution) };
+    case 'downcast':
+    case 'length':
+    case 'item':
+    case 'rest':
+      return step;
+    default: {
+      const unhandled: never = step;
+      return unhandled;
+    }
+  }
 }
 
 /**

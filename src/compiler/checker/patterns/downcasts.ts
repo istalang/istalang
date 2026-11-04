@@ -38,7 +38,10 @@ export function downcastOf(
   const to = namedTypeOf(context, node, from);
   return to === undefined
     ? undefined
-    : { test: { kind: 'downcast', path, from, to }, part: { type: to, path: [...path, 0] } };
+    : {
+        test: { kind: 'downcast', path, from, to },
+        part: { type: to, path: [...path, { kind: 'downcast' }] },
+      };
 }
 
 /**

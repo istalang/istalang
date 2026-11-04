@@ -80,6 +80,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - the literal type a literal written in place has (a string, a Bool, a maybe negated integer) → `writtenLiteral` (`src/compiler/checker/types/unions.ts`); the type it has where a type is expected → `literalOrBase`, or against a parameter still inferred → `Inference.literalType`
 - the union a member parameter (`T in U`) stands for one member of → `CheckerContext.memberUnionOf` (`src/compiler/checker/context.ts`), `Fitting.memberUnionOf` where fitting reads it; whether a type, one naming type parameters included, may stand for one, inferred or written → `isOneMember`, and checked with a report → `standsForMember` (`src/compiler/checker/types/member-arguments.ts`)
 - list names bound by a checked pattern → `namesBound` (`src/compiler/checker/checked-pattern.ts`)
+- step from a pattern's part to a part of it → `PartStep` (`src/compiler/checker/checked-pattern.ts`): a field or element by position, a union member's value (`member`, carrying its union, which an instantiation may collapse so the step reads the part itself), an `any`'s held value (`downcast`), or an array's length, item or rest; never a position standing for a member's or `any`'s value
 - run forward data-flow analysis over a body → `flowThrough`, `FlowRule` (`src/compiler/checker/flow/forward.ts`)
 
 ## One-way rules
