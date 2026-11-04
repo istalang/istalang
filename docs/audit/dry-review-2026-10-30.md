@@ -59,6 +59,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - `callArguments` (`src/formatter/expressions.ts:198–221`) prints every argument in `bracketed(...)` and then, when the last argument is huggable, prints `front` and `last` a second time ($O(2^d)$ work on nested huggable calls).
    - `LineMap` (`src/text/line-map.ts:27`) duplicates `splitLines` (`line-map.ts:92`) and hides `#lineEnds`, forcing both `renderDiagnostic` (`src/diagnostics/render.ts:77`) and `linesOf` (`src/lsp/providers/semantic-tokens.ts:53`) to pass `column: Number.MAX_SAFE_INTEGER` to `lines.offsetAt`.
    - **Fix:** Reuse the already-printed argument `Doc`s in `callArguments`, and expose `lineSpan(line)` on `LineMap`.
+   - **Done** (`fast-wins`): Formatter part: `TreePrinter.print` keeps each node's doc, so `callArguments` (and `body`, which printed a hugged block twice too) reuse what they printed. `formatter/format.bench.ts`, calls hugging their last argument 16 deep: 458 ms → 0.39 ms mean. The `LineMap` part is unit 3's.
 
 10. **`[medium]` Spec (`docs/spec.md`) internal contradictions and table/syntax drift (`docs/spec.md:178`, `docs/spec.md:457`, `docs/spec.md:616`, `docs/spec.md:694`, `docs/spec.md:752`, `docs/spec.md:919`, `docs/spec.md:1293`)**
     - **§3.3 vs. §3.7 (`docs/spec.md:360`, `docs/spec.md:457`):** §3.3 states *"a by-value parameter can't be ... passed by `&`"*, while §3.7 says *"What can be referenced. A `let` variable or a parameter..."* where it means *"a `&` parameter"*.
@@ -378,6 +379,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - Violating the one-way rule in `docs/reuse/syntax-and-trees.md` (*"its operator is spelled by `linkOperator`/`optionalOperatorOf` (`chains.ts`), never as a literal"*), `link(...)` and the `Dereference` printer in `formatter/expressions.ts` spell `'?.` and `node.isOptional ? '?->' : '->'` as string literals.
 - **Double printing of call arguments in `callArguments` (`src/formatter/expressions.ts`):**
   - `callArguments` first builds `const expanded = bracketed(printer, node, ['(', ')'], node.arguments)` (which calls `printer.print` on every argument) and then, when the last argument is huggable, calls `front.map((argument) => printer.print(argument))` and `printer.print(last)` a second time ($O(2^d)$ work on nested huggable calls).
+  - **Done** (`fast-wins`): See ranked summary #9: `TreePrinter.print` keeps each node's doc.
 - **Duplicate tree-descent loop in `surroundingsOf` (`src/formatter/comment-placement.ts`) vs. `nodesAt` (`src/compiler/syntax/tree.ts`):**
   - `surroundingsOf` descends `childrenOf(tree, ...).find(encloserOf(tree, comment))` from `tree.root`, duplicating `nodesAt(tree, comment.span.start)`.
 
