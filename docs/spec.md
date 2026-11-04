@@ -1615,4 +1615,3 @@ No open questions remain for v0.1. New ones go here as they come up.
 Features deliberately left out of v0.1:
 
 - **Narrowing from function results.** Type predicates, as in TypeScript, so that `fn isOk(x): x is Ok` can narrow a value's type for later code, for example a `map` after a `filter`. Inside one function, `x is Pattern` in an `if` or `and` already narrows.
-- **Force-unwrapping optionals.** A postfix `!`, as in Swift, yielding the value inside a `T?` and panicking on `none`.

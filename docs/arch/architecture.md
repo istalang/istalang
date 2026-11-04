@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-10-30
+last_updated: 2026-11-04
 tags: [architecture, compiler, runtime, tooling]
 ---
 
@@ -91,7 +91,7 @@ src/
                                                                  codecs, host extern wrappers, start entries, reading inbound JSON
       trait-objects/                                             `any` values: conversions, and the entries switching over every type
                                                                  one holds (dispatch, conversion, field read), written once the program is reached
-      expressions/ statements/ not-lowered.ts                    per-construct handlers, as in the checker
+      expressions/ statements/ never-lowered.ts                  per-construct handlers, as in the checker
     compile.ts          pipeline coordinator and public compiler API
   definition/           contract: the compiled program (docs/arch/definition.md): canonical JSON codec,
                         versioned formats, values and their `==` and map keys, types, instruction set
