@@ -14,7 +14,7 @@ import {
   functionsAccepted,
   namedFunctions,
 } from '../closures/function-values.ts';
-import type { Accepts, BodyContext } from '../context.ts';
+import type { Accepts, BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { fieldlessStructOf } from '../resolution/named.ts';
 import { errorType, expectsError, nominalType, type Type } from '../types/type.ts';
@@ -51,7 +51,7 @@ export function entityValueType(
       return errorType;
     case 'variable':
       return localFunctionOf(entity) === undefined
-        ? variableType(context, node, entity)
+        ? variableType(context, entity)
         : context.functions.typeOfFunction(context, node, entity);
     case 'functions': {
       const functions = namedFunctions(context, node);
@@ -71,24 +71,29 @@ export function entityValueType(
   }
 }
 
-/** The type of `variable`, which isn't a local function, where `node` names it. */
-export function variableType(
-  context: BodyContext,
-  node: Identifier,
+/** The type of `variable`, which isn't a local function, where a body reads it. */
+export function variableType(context: BodyContext, variable: VariableEntity): Type {
+  return declaredOutsideBodies(context.checker, variable) ?? context.variables.typeOf(variable);
+}
+
+/**
+ * The type `variable`'s declaration gives it outside every body (§3, §3.6): an extern constant's
+ * written type, or a top-level constant's computed one; undefined for a variable a body or a
+ * signature declares, whose type is that body's to say. The one rule for both, whether a body
+ * reads the variable or a tool asks for it (lookup/denotations.ts).
+ */
+export function declaredOutsideBodies(
+  checker: CheckerContext,
   variable: VariableEntity,
-): Type {
+): Type | undefined {
   const { owner } = variable;
-  switch (owner.kind) {
-    case 'ExternConstantDeclaration':
-      return context.checker.resolveType(context.checker.moduleOf(owner), owner.type);
-    case 'VariableDeclaration':
-      return (
-        context.checker.constantNamed(context.module, node)?.type ??
-        context.variables.typeOf(variable)
-      );
-    default:
-      return context.variables.typeOf(variable);
+  if (owner.kind === 'ExternConstantDeclaration') {
+    return checker.resolveType(checker.moduleOf(owner), owner.type);
   }
+  const module = checker.bindings.moduleOf(variable);
+  return owner.kind === 'VariableDeclaration' && module !== undefined
+    ? checker.constantNamed(module, variable.name)?.type
+    : undefined;
 }
 
 /**

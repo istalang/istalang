@@ -8,7 +8,8 @@
  * - An annotation is checked as a value of its own in its module, and computed as a top-level
  *   constant is (computation.ts), so the two can't disagree on what compile time
  *   computes. A value that isn't a struct is no annotation.
- * - What an annotation means decides where it may stand: the json module's on fields
+ * - What an annotation means decides where it may stand, and none on a shape's field, which has no
+ *   declaration to carry one (§3.16): the json module's on fields
  *   (`@JsonSkip` only on a field whose type is `Default`, which it reads back as, as found where
  *   the field is declared; `@JsonBigInt` only on an `Int`),
  *   `@Waypoint` on a statement that waits, `@Suite` on a function (rules/suites.ts says which),
@@ -23,12 +24,11 @@ import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
-import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { Declaration, Field, FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Invalid, NodeOf } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Statement } from '../../syntax/statements.ts';
-import type { FieldDeclaration } from '../../syntax/types.ts';
 import type { CheckedBody } from '../check.ts';
 import {
   type AnnotationPlace,
@@ -40,6 +40,7 @@ import { sameForm } from '../constant-form.ts';
 import type { AnnotationChecks, CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { defaultWitness } from '../resolution/default-witness.ts';
+import { declaredFieldOf, type FieldOwner } from '../types/declared-fields.ts';
 import { errorType, type FieldMember, type Type } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
@@ -174,8 +175,10 @@ export class Annotations implements AnnotationChecks {
     place: AnnotationPlace,
   ): readonly CheckedAnnotation[] {
     const found: CheckedAnnotation[] = [];
-    const placed: Placed =
-      place.kind === 'field' ? { kind: 'field', type: this.#fieldType(module, item) } : place;
+    const placed = place.kind === 'field' ? this.#fieldPlace(module, item) : place;
+    if (placed === undefined) {
+      return found;
+    }
     for (const node of item.annotations ?? []) {
       const annotation = this.#value(module, node);
       const problem =
@@ -190,32 +193,20 @@ export class Annotations implements AnnotationChecks {
   }
 
   /**
-   * The type the field `node` of `module` is declared with, read where checking decided it: its
-   * struct's or variant's layout, or its trait's written type. It is read here, in the entry of its
-   * annotations, rather than given by whoever asks, so the entry depends on it.
+   * Where the field `node` of `module` stands: in a struct, a variant or a trait, with the type it
+   * is declared with there; undefined in a shape, whose field takes no annotation, as resolving
+   * its type reported (§3.16). Its owner is found among the module's items, which checking reads,
+   * not by walking its tree, and its type is read here, in the entry of its annotations, so the
+   * entry depends on both.
    */
-  #fieldType(module: ModuleId, node: NodeOf<string>): Type {
-    const { checker } = this.#seams;
-    if (node.kind === 'FieldDeclaration') {
-      return checker.resolveType(module, (node as FieldDeclaration).type);
-    }
-    const fields = this.#siblingsOf(module, node);
-    return fields.find((field) => field.declared?.node === node)?.declared?.type ?? errorType;
-  }
-
-  /**
-   * The fields declared beside the field `node` of `module`: its struct's, or its enum's. The item
-   * declaring it is found among the module's items, which checking reads, not by walking its tree.
-   */
-  #siblingsOf(module: ModuleId, node: NodeOf<string>): readonly FieldMember[] {
+  #fieldPlace(module: ModuleId, node: NodeOf<string>): Placed | undefined {
     const { checker } = this.#seams;
     const owner = checker.inputs.itemsOf(module).find((item) => declaresField(item, node));
-    if (owner?.kind === 'StructDeclaration' || owner?.kind === 'SharedStructDeclaration') {
-      return checker.declaredFieldsOf(owner);
+    if (owner === undefined) {
+      return undefined;
     }
-    return owner?.kind === 'EnumDeclaration'
-      ? checker.declaredVariantsOf(owner).flatMap((variant) => variant.fields)
-      : [];
+    const field = declaredFieldOf(checker, module, owner, node as Field);
+    return { kind: 'field', type: field?.declared?.type ?? errorType };
   }
 
   /** Why `annotation` doesn't belong at `place` after those `found` there already. */
@@ -329,8 +320,14 @@ function placeText(place: Placed): string {
   }
 }
 
-/** Whether `item` declares the field `node`: a struct's own, or one of its variants'. */
-function declaresField(item: Declaration | Invalid, node: NodeOf<string>): boolean {
+/**
+ * Whether `item` declares the field `node`: a struct's own, one of its variants', or a trait's;
+ * a shape's fields are no item's.
+ */
+function declaresField(
+  item: Declaration | Invalid,
+  node: NodeOf<string>,
+): item is Extract<FieldOwner, Declaration> {
   switch (item.kind) {
     case 'StructDeclaration':
     case 'SharedStructDeclaration':
@@ -339,6 +336,8 @@ function declaresField(item: Declaration | Invalid, node: NodeOf<string>): boole
       return item.variants.some(
         (variant) => variant.kind === 'Variant' && variant.fields.some((field) => field === node),
       );
+    case 'TraitDeclaration':
+      return item.members.some((member) => member === node);
     default:
       return false;
   }

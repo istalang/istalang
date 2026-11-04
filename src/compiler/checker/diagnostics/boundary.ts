@@ -56,4 +56,9 @@ export const boundaryTemplates = {
     message: (type: string) =>
       `An extern constant is read once and the same value given to every read, so it can't hold ${type}, whose values each have an identity of their own.`,
   },
+  shapeFieldAnnotation: {
+    code: 5912,
+    message: () =>
+      "A shape's field takes no annotation, since no declaration carries it; a field that needs one belongs to a struct.",
+  },
 } as const;

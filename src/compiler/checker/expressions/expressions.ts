@@ -244,7 +244,7 @@ function identifierKnownType(context: BodyContext, node: Identifier): Type | und
   if (entity?.kind !== 'variable' || localFunctionOf(entity) !== undefined) {
     return undefined;
   }
-  const type = variableType(context, node, entity);
+  const type = variableType(context, entity);
   return type.kind === 'error' ? undefined : type;
 }
 

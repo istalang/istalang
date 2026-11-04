@@ -18,6 +18,8 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - build or inspect tuple types → `tupleType`, `tupleElements` (`src/compiler/checker/types/type.ts`)
 - build or inspect nominal types → `nominalType`, `isNominalEntity` (`src/compiler/checker/types/type.ts`)
 - build a shape (an anonymous struct type, the value behind a shared struct included), its fields in name order → `shapeType`, `byFieldName` (`src/compiler/checker/types/type.ts`); never write `{ kind: 'anonymous', … }` by hand
+- the field a field's declaring node declares, given its owner (a struct, an enum, a shape's `{…}` type, a trait) → `declaredFieldOf` (`src/compiler/checker/types/declared-fields.ts`)
+- the type an extern or top-level constant's declaration gives it, outside any body → `declaredOutsideBodies` (`src/compiler/checker/expressions/names.ts`)
 - inspect or attach variadic type packs on function types → `isPack`, `fillsPack`, `withPack`, `packRestSlot` (`src/compiler/checker/types/type.ts`)
 - compare two types or constraints for equality or fit → `sameType` (key equality, the one definition of identity), `sameConstraint`, `isAssignable` (`src/compiler/checker/types/identity.ts`); two function types' parameters and results, or a function fitting another's header → `sameShape`, `functionFits` (`src/compiler/checker/types/type.ts`)
 - inspect or map a type's direct child types → `typeChildren`, `mapChildren` (`src/compiler/checker/types/type-parts.ts`)

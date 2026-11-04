@@ -30,6 +30,8 @@ import type { NamedType } from '../../syntax/types.ts';
 import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation } from '../denotation.ts';
+import { declaredOutsideBodies } from '../expressions/names.ts';
+import { declaredFieldOf } from '../types/declared-fields.ts';
 import { entityType } from '../types/named-types.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import { type FieldMember, nominalType, type Type } from '../types/type.ts';
@@ -223,50 +225,20 @@ function parameterNamed(site: NameSite, call: SyntaxNode | undefined): readonly 
 function declaredField(site: NameSite): readonly Denotation[] {
   const { checker, module, holders } = site;
   const [field, owner, enumeration] = holders;
-  const declaredBy = (fields: readonly FieldMember[] | undefined) =>
-    fields?.find(({ declared }) => declared?.node === field);
-  switch (owner?.kind) {
+  if (field?.kind !== 'DeclaredField' && field?.kind !== 'FieldDeclaration') {
+    return [];
+  }
+  const declaring = owner?.kind === 'Variant' ? enumeration : owner;
+  switch (declaring?.kind) {
     case 'StructDeclaration':
     case 'SharedStructDeclaration':
-      return fieldDenotation(declaredBy(checker.declaredFieldsOf(owner)));
-    case 'Variant':
-      return enumeration?.kind === 'EnumDeclaration'
-        ? fieldDenotation(
-            declaredBy(
-              checker
-                .declaredVariantsOf(enumeration)
-                .find((variant) => variant.name === owner.name.text)?.fields,
-            ),
-          )
-        : [];
+    case 'EnumDeclaration':
     case 'StructType':
-      return fieldDenotation(declaredBy(fieldsOfResolved(checker, owner)));
     case 'TraitDeclaration':
-      return field?.kind === 'FieldDeclaration' ? requiredField(checker, module, field) : [];
+      return fieldDenotation(declaredFieldOf(checker, module, declaring, field));
     default:
       return [];
   }
-}
-
-/** The fields of the anonymous struct type `node`, as checking resolved it. */
-function fieldsOfResolved(
-  checker: CheckerContext,
-  node: Extract<SyntaxNode, { readonly kind: 'StructType' }>,
-): readonly FieldMember[] | undefined {
-  const type = checker.resolvedTypeOf(node);
-  return type === undefined ? undefined : checker.fieldsOf(type);
-}
-
-/** A field a trait requires, by its declaring name, with the type checking resolved for it. */
-function requiredField(
-  checker: CheckerContext,
-  module: ModuleId,
-  field: Extract<SyntaxNode, { readonly kind: 'FieldDeclaration' }>,
-): readonly Denotation[] {
-  const type = checker.resolvedTypeOf(field.type);
-  return type === undefined
-    ? []
-    : fieldDenotation({ name: field.name.text, type, declared: { node: field, module, type } });
 }
 
 /**
@@ -349,8 +321,9 @@ function declaredVariableType(site: NameSite, entity: VariableEntity): Type | un
   const { checker } = site;
   const { owner, name } = entity;
   const module = checker.bindings.moduleOf(entity) ?? site.module;
-  if (owner.kind === 'ExternConstantDeclaration') {
-    return checker.resolveType(module, owner.type);
+  const outside = declaredOutsideBodies(checker, entity);
+  if (outside !== undefined) {
+    return outside;
   }
   const inBody = bodyHolding(checker, module, name)?.declaredTypeOf(name);
   if (inBody !== undefined || owner.kind !== 'Parameter') {
