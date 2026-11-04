@@ -1,6 +1,4 @@
 {
   "ista.server.path": "./dist/cli/main.js",
-  "i18n-ally.localesPaths": [
-    "src/language"
-  ]
+  "i18n-ally.localesPaths": ["src/language"]
 }
