@@ -15,7 +15,10 @@
  *   recursive type counts as meeting it while its own parts are decided, as Sendable does.
  * - What has no codec says why, in words a diagnostic finishes ("it needs …"): a nested optional,
  *   whose two nones JSON can't tell apart; an enum with a field named as the tag; a function; a
- *   handle.
+ *   handle. A type with nothing more to say lacks the codec itself, as conformance says.
+ * - What the json module's field annotations mean is decided here: a field's key after its
+ *   `@JsonName`, an `@JsonBigInt` field's own codecs, and what an `@JsonSkip` field reads back as,
+ *   which annotations.ts also asks to tell where the annotation may stand.
  */
 
 import {
@@ -44,9 +47,10 @@ import { callWithTypes } from '../../resolution/silent-choice.ts';
 import type { FunctionCall, ResolvedCall } from '../../resolved-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
 import { optionalInner } from '../../types/fit.ts';
-import type { FieldMember, NominalType, Type } from '../../types/type.ts';
+import type { FieldMember, NominalType, StructValueType, Type } from '../../types/type.ts';
 import { TypeCycle } from '../../types/type-cycle.ts';
 import { unaliased } from '../../types/type-parts.ts';
+import { typeText } from '../../types/type-text.ts';
 import { hostSite, searchSite, silent, type UseSite } from '../../use-site.ts';
 import type { Annotations } from '../annotations.ts';
 
@@ -68,10 +72,16 @@ interface Part {
   readonly type: Type;
 }
 
+/**
+ * A type's form, or nothing to derive its codecs from, which no derived codec is written from:
+ * `reason` finishes "it needs …" when there is more to say than the codec itself.
+ */
+type FormOrNone = DerivedForm | { readonly kind: 'none'; readonly reason: string | undefined };
+
 export class JsonForms implements JsonCodecs {
   readonly #seams: JsonFormSeams;
   /** Each type's form, by its key. */
-  readonly #forms: EntryTable<CheckerNote, string, DerivedForm, Type>;
+  readonly #forms: EntryTable<CheckerNote, string, FormOrNone, Type>;
   /** The derived codecs being decided, by direction, which count as found meanwhile. */
   readonly #deciding: Readonly<Record<JsonDirection, TypeCycle>>;
 
@@ -86,6 +96,14 @@ export class JsonForms implements JsonCodecs {
   }
 
   formOf(type: Type): DerivedForm {
+    const form = this.#formOf(type);
+    if (form.kind === 'none') {
+      unreachable(`${typeText(type)} has no JSON form, so no derived codec to write.`);
+    }
+    return form;
+  }
+
+  #formOf(type: Type): FormOrNone {
     return this.#forms.get(this.#seams.checker.typeKeys.typeKey(type), type);
   }
 
@@ -98,7 +116,7 @@ export class JsonForms implements JsonCodecs {
   }
 
   derivedOf(site: UseSite, type: Type, direction: JsonDirection): DerivedCodec {
-    const form = this.formOf(type);
+    const form = this.#formOf(type);
     if (form.kind === 'none') {
       return { kind: 'lacking', missing: form.reason };
     }
@@ -111,12 +129,12 @@ export class JsonForms implements JsonCodecs {
     return { kind: 'derived', call: this.#jsonCall(derivedCodecs[direction], [type]) };
   }
 
+  skippedDefaultOf(type: Type): ResolvedCall | undefined {
+    return defaultWitness(searchSite(this.#seams.checker), type);
+  }
+
   /** The first part of `form` that doesn't meet the trait of `direction`, said as it lacks. */
-  #partMissing(
-    site: UseSite,
-    form: Exclude<DerivedForm, { kind: 'none' }>,
-    direction: JsonDirection,
-  ): string | undefined {
+  #partMissing(site: UseSite, form: DerivedForm, direction: JsonDirection): string | undefined {
     if (form.kind === 'host') {
       return undefined;
     }
@@ -143,12 +161,12 @@ export class JsonForms implements JsonCodecs {
     return this.#jsonCall(name, typeArguments);
   }
 
-  #form(type: Type): DerivedForm {
+  #form(type: Type): FormOrNone {
     switch (type.kind) {
       case 'tuple':
-        return { kind: 'tuple', elements: type.elements };
+        return { kind: 'tuple', type };
       case 'anonymous':
-        return this.#record(type.fields);
+        return this.#record(type, type.fields);
       case 'nominal':
         return this.#nominal(type);
       case 'function':
@@ -166,7 +184,7 @@ export class JsonForms implements JsonCodecs {
     }
   }
 
-  #nominal(type: NominalType): DerivedForm {
+  #nominal(type: NominalType): FormOrNone {
     const { checker } = this.#seams;
     const { declaration } = type.entity;
     if (this.#declaresCodecs(type)) {
@@ -179,7 +197,7 @@ export class JsonForms implements JsonCodecs {
       return { kind: 'none', reason: handleHasNoForm };
     }
     if (declaration.kind === 'StructDeclaration') {
-      return this.#record(checker.fieldsOf(type) ?? []);
+      return this.#record(type, checker.fieldsOf(type) ?? []);
     }
     if (declaration.kind === 'EnumDeclaration') {
       return this.#enum(type);
@@ -191,11 +209,11 @@ export class JsonForms implements JsonCodecs {
    * An extern type: a host type is its host's JSON when it is declared sendable, or kept in a
    * resource when a `dispose` makes it disposable (§7); anything else has nothing to derive from.
    */
-  #extern(type: NominalType, isSendable: boolean): DerivedForm {
+  #extern(type: NominalType, isSendable: boolean): FormOrNone {
     const { checker } = this.#seams;
     const isHost = isHostType(checker, type);
     if (isHost && (isSendable || checker.disposalOf(type).kind === 'function')) {
-      return { kind: 'host' };
+      return { kind: 'host', type };
     }
     return {
       kind: 'none',
@@ -213,11 +231,11 @@ export class JsonForms implements JsonCodecs {
     );
   }
 
-  #record(fields: readonly FieldMember[]): DerivedForm {
-    return { kind: 'record', fields: fields.map((field) => this.#field(field)) };
+  #record(type: StructValueType, fields: readonly FieldMember[]): FormOrNone {
+    return { kind: 'record', type, fields: fields.map((field) => this.#field(field)) };
   }
 
-  #enum(type: NominalType): DerivedForm {
+  #enum(type: NominalType): FormOrNone {
     const variants = (this.#seams.checker.variantsOf(type) ?? []).map((variant) => ({
       name: variant.name,
       fields: variant.fields.map((field) => this.#field(field)),
@@ -226,7 +244,7 @@ export class JsonForms implements JsonCodecs {
       variant.fields.some((field) => field.key === variantTagKey),
     );
     return colliding === undefined
-      ? { kind: 'enum', variants }
+      ? { kind: 'enum', type, variants }
       : {
           kind: 'none',
           reason: `no field named '${variantTagKey}' in JSON, which names the variant, as '${colliding.name}' has`,
@@ -235,15 +253,13 @@ export class JsonForms implements JsonCodecs {
 
   #field(field: FieldMember): JsonField {
     const { checker, annotations } = this.#seams;
-    const skipped =
-      field.declared !== undefined && annotations.fieldHas(field, 'jsonSkip')
-        ? defaultWitness(searchSite(checker), field.type)
-        : undefined;
     return {
       name: field.name,
       key: annotations.jsonNameOf(field),
       type: field.type,
-      skipped,
+      skipped: annotations.fieldHas(field, 'jsonSkip')
+        ? this.skippedDefaultOf(field.type)
+        : undefined,
       optional: optionalInner(field.type, checker.optionalEntity) !== undefined,
       codec: annotations.fieldHas(field, 'jsonBigInt')
         ? {
@@ -272,7 +288,7 @@ export class JsonForms implements JsonCodecs {
 }
 
 /** The parts a derived codec writes and reads through their own types' codecs. */
-function partsOf(form: Exclude<DerivedForm, { kind: 'host' | 'none' }>): readonly Part[] {
+function partsOf(form: Exclude<DerivedForm, { kind: 'host' }>): readonly Part[] {
   const crossing = (fields: readonly JsonField[]): readonly Part[] =>
     fields
       .filter((field) => field.skipped === undefined && field.codec === undefined)
@@ -283,7 +299,7 @@ function partsOf(form: Exclude<DerivedForm, { kind: 'host' | 'none' }>): readonl
     case 'enum':
       return form.variants.flatMap((variant) => crossing(variant.fields));
     case 'tuple':
-      return form.elements.map((type, index) => ({ name: `element ${index}`, type }));
+      return form.type.elements.map((type, index) => ({ name: `element ${index}`, type }));
     default: {
       const unhandled: never = form;
       return unhandled;

@@ -24,36 +24,30 @@ export class Encoder {
     this.#json = json;
   }
 
-  write(form: DerivedForm, type: Type): void {
+  write(form: DerivedForm): void {
     const code = this.#code;
     const [value] = code.parameters;
     if (value === undefined) {
       unreachable('An encoder takes the value it writes.');
     }
     switch (form.kind) {
-      case 'host':
-        code.return(
-          code.call(
-            closeCall(code.checker.json.callOf(codecHelpers.encodeHandle, [type]), undefined),
-            [value],
-          ),
-        );
+      case 'host': {
+        const encode = code.checker.json.callOf(codecHelpers.encodeHandle, [form.type]);
+        code.return(code.call(closeCall(encode, undefined), [value]));
         return;
+      }
       case 'record':
         code.return(this.#object(form.fields, (index) => code.field(value, index), []));
         return;
       case 'tuple': {
-        const items = form.elements.map((element, index) =>
+        const items = form.type.elements.map((element, index) =>
           code.call(this.#codec(element), [code.field(value, index)]),
         );
         code.return(this.#variant(jsonVariants.list, [code.array(items)]));
         return;
       }
       case 'enum':
-        this.#enum(form, value, type);
-        return;
-      case 'none':
-        unreachable('A type with nothing to derive from has a derived codec.');
+        this.#enum(form, value);
         return;
       default: {
         const unhandled: never = form;
@@ -68,11 +62,8 @@ export class Encoder {
   }
 
   /** One branch per variant, each writing its tag and fields. */
-  #enum(form: Extract<DerivedForm, { kind: 'enum' }>, value: Register, type: Type): void {
+  #enum(form: Extract<DerivedForm, { kind: 'enum' }>, value: Register): void {
     const code = this.#code;
-    if (type.kind !== 'nominal') {
-      unreachable('An enum form is of a nominal type.');
-    }
     const labels = form.variants.map(() => code.code.newLabel());
     code.code.switch(value, labels, code.span);
     for (const [index, variant] of form.variants.entries()) {

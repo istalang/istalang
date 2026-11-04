@@ -44,10 +44,10 @@ path):
   (`checker/use-site.ts`, `toHost`): an extern's parameters and results, an extern constant,
   `main`'s outcome, a start entry. There only codecs count, so a disposable host type, which isn't
   sendable, crosses to its own host alone or inside other values.
-- Lowering writes each derived codec's body from its form (`lowering/boundary/encoder.ts`,
-  `decoder.ts`): structs, enums and tuples part by part, each part through its own type's codec,
-  and a host type through `_encodeHandle` and `_decodeHandle`. A recursive type's codecs call
-  themselves. Code with no syntax behind it calls a codec as the checker finds it where the code
+- Lowering writes each derived codec's body from its form, which carries the type it takes apart
+  and builds (`lowering/boundary/encoder.ts`, `decoder.ts`, one per direction in `codecs.ts`):
+  structs, enums and tuples part by part, each part through its own type's codec, and a host type
+  through `_encodeHandle` and `_decodeHandle`. A recursive type's codecs call themselves. Code with no syntax behind it calls a codec as the checker finds it where the code
   stands (`lowering/boundary/codec-calls.ts`); a generic extern's wrapper finds its declared types'
   codecs and closes them within its instance, so a type parameter's codec is the witness its caller
   gave.

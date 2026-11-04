@@ -26,28 +26,31 @@ export class Decoder {
     this.#result = result;
   }
 
-  read(form: DerivedForm, type: Type): void {
+  read(form: DerivedForm): void {
     const code = this.#code;
     const [json, path] = code.parameters;
     if (json === undefined || path === undefined) {
       unreachable('A decoder takes the Json it reads and its path.');
     }
     switch (form.kind) {
-      case 'host':
-        code.return(code.call(this.#helper(codecHelpers.decodeHandle, [type]), [json, path]));
+      case 'host': {
+        const decode = this.#helper(codecHelpers.decodeHandle, [form.type]);
+        code.return(code.call(decode, [json, path]));
         return;
+      }
       case 'record': {
         const fields = this.#passed(code.call(this.#helper(codecHelpers.fields), [json, path]));
         const values = this.#fields(form.fields, { object: fields, path });
-        code.return(this.#ok(this.#struct(type, values)));
+        code.return(this.#ok(code.struct(form.type, values)));
         return;
       }
       case 'tuple': {
-        const count = code.constant(BigInt(form.elements.length));
+        const { elements } = form.type;
+        const count = code.constant(BigInt(elements.length));
         const items = this.#passed(
           code.call(this.#helper(codecHelpers.elements), [json, path, count]),
         );
-        const values = form.elements.map((element, index) => {
+        const values = elements.map((element, index) => {
           const position = code.constant(BigInt(index));
           const item = code.call(this.#helper(codecHelpers.element), [items, position]);
           const at = code.call(this.#helper(codecHelpers.elementPath), [path, position]);
@@ -57,10 +60,7 @@ export class Decoder {
         return;
       }
       case 'enum':
-        this.#enum(form, type, json, path);
-        return;
-      case 'none':
-        unreachable('A type with nothing to derive from has a derived codec.');
+        this.#enum(form, json, path);
         return;
       default: {
         const unhandled: never = form;
@@ -75,16 +75,9 @@ export class Decoder {
   }
 
   /** The variant its tag names, each variant tried in order, else an `Err`. */
-  #enum(
-    form: Extract<DerivedForm, { kind: 'enum' }>,
-    type: Type,
-    json: Register,
-    path: Register,
-  ): void {
+  #enum(form: Extract<DerivedForm, { kind: 'enum' }>, json: Register, path: Register): void {
     const code = this.#code;
-    if (type.kind !== 'nominal') {
-      unreachable('An enum form is of a nominal type.');
-    }
+    const { type } = form;
     const fields = this.#passed(code.call(this.#helper(codecHelpers.fields), [json, path]));
     const key = code.constant(variantTagKey);
     const tag = this.#passed(code.call(this.#helper(codecHelpers.tag), [fields, key, path]));
@@ -127,13 +120,6 @@ export class Decoder {
           : closeCall(field.codec.read, undefined);
       return this.#passed(code.call(decode, [json, at]));
     });
-  }
-
-  #struct(type: Type, values: readonly Register[]): Register {
-    if (type.kind !== 'nominal' && type.kind !== 'anonymous') {
-      unreachable('A record form is of a struct type.');
-    }
-    return this.#code.struct(type, values);
   }
 
   /** The value an `Ok` in `result` holds; an `Err` is returned as this codec's own. */

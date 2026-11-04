@@ -30,7 +30,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - check trait conformance or find constraint witnesses → `meets`, `witnessesFor`, `conformWitnesses` (`src/compiler/checker/resolution/conformance.ts`)
 - check for or choose a declared witness for a trait requirement → `declaresWitness`, `chooseWitness` (`src/compiler/checker/resolution/declared-witness.ts`)
 - derive a trait by a rule over a type's form where no witness is declared (`Sendable`, `Encodable`, `Decodable`) → one `Derivation` in the table `derivationOf` reads (`src/compiler/checker/resolution/derived-traits.ts`), never a branch in `conform`; a new kind of type is a case in each derivation's rule
-- resolve a type's `Default` witness (`default()`) → `defaultWitness`, `resolveDefault` (`src/compiler/checker/resolution/default-witness.ts`)
+- resolve a type's `Default` witness (`default()`) → `defaultWitness`, `resolveDefault` (`src/compiler/checker/resolution/default-witness.ts`); what an `@JsonSkip` field reads back as, for its form and for where the annotation may stand alike → `CheckerContext.json.skippedDefaultOf` (`src/compiler/checker/json-form.ts`, decided in `rules/json-forms/`)
 - build a `ResolvedCall` (`function` or `requirement`) from an `Application` and `Instantiation` → `callMade` (`src/compiler/checker/resolution/calls-made.ts`)
 - make a call the toolchain makes on its own to a plain function (no written call site), by its arguments or by explicit `typeArguments` → `silentCall`, `callWithTypes` (`src/compiler/checker/resolution/silent-choice.ts`)
 - resolve and record an implicit construct call → `implicitCall` (`src/compiler/checker/resolution/implicit.ts`)

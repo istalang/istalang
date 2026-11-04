@@ -4,14 +4,17 @@
  *
  * Writing (encoder.ts) and reading (decoder.ts) take a form apart the same way: a struct, an enum
  * and a tuple part by part, each through its own type's codec, and a host type through the json
- * module's helper. A recursive type's derived codecs call themselves.
+ * module's helper. A recursive type's derived codecs call themselves. Which way an instance goes
+ * is which function it is (`derivedCodecs`); what it takes and gives are that function's own.
  */
 
 import type { CodeFunction } from '../../../definition/functions.ts';
 import { derivedCodecs } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
+import type { DerivedForm, JsonDirection } from '../../checker/json-form.ts';
 import { substitute } from '../../checker/types/substitution.ts';
+import type { NominalType } from '../../checker/types/type.ts';
 import { type FunctionInstance, substitutionOf } from '../instances.ts';
 import { SynthesizedCode } from '../synthesized-code.ts';
 import type { DefinitionTables } from '../tables.ts';
@@ -25,36 +28,47 @@ export interface CodecLowering {
   readonly instance: FunctionInstance;
 }
 
-/** Whether `instance` is a derived codec, whose body the compiler writes. */
-export function isDerivedCodec(checker: Checker, instance: FunctionInstance): boolean {
+/** How each way's body is written from a form, into `code` giving `result`: a Json, or a Result. */
+const bodyWriters = {
+  write: (code, result, form) => new Encoder(code, result).write(form),
+  read: (code, result, form) => new Decoder(code, result).read(form),
+} as const satisfies Record<
+  JsonDirection,
+  (code: SynthesizedCode, result: NominalType, form: DerivedForm) => void
+>;
+
+/**
+ * Which way `instance` crosses as JSON when it is a derived codec, whose body the compiler
+ * writes: `write` for `_toJson<T>`, `read` for `_fromJson<T>`; undefined for any other function.
+ */
+export function derivedCodecDirection(
+  checker: Checker,
+  instance: FunctionInstance,
+): JsonDirection | undefined {
   const { declaration } = instance;
   const { json } = checker.program.roles;
-  return (
-    json !== undefined &&
-    checker.moduleOf(declaration) === json &&
-    Object.values(derivedCodecs).some((name) => name === declaration.name.text)
+  if (json === undefined || checker.moduleOf(declaration) !== json) {
+    return undefined;
+  }
+  return (Object.keys(derivedCodecs) as JsonDirection[]).find(
+    (direction) => derivedCodecs[direction] === declaration.name.text,
   );
 }
 
-/** The entry of a derived codec instance: `_toJson<T>` or `_fromJson<T>`. */
-export function derivedCodecEntry(lowering: CodecLowering): CodeFunction {
+/** The entry of a derived codec instance, which crosses `direction`. */
+export function derivedCodecEntry(lowering: CodecLowering, direction: JsonDirection): CodeFunction {
   const { checker, tables, instance } = lowering;
   const [type] = instance.typeArguments;
   if (type === undefined) {
     unreachable('A derived codec instance has no type argument.');
   }
   const { declaration } = instance;
-  const isEncoder = declaration.name.text === derivedCodecs.write;
-  const code = new SynthesizedCode(lowering, declaration.name.span, isEncoder ? 1 : 2);
+  const parameters = checker.parametersOf(declaration).length;
+  const code = new SynthesizedCode(lowering, declaration.name.span, parameters);
   const result = substitute(checker.resultOf(declaration), substitutionOf(instance));
   if (result.kind !== 'nominal') {
     unreachable('A codec returns a Json or a Result.');
   }
-  const form = checker.json.formOf(type);
-  if (isEncoder) {
-    new Encoder(code, result).write(form, type);
-  } else {
-    new Decoder(code, result).read(form, type);
-  }
+  bodyWriters[direction](code, result, checker.json.formOf(type));
   return code.entry(tables.entryHeader(instance), false);
 }

@@ -38,6 +38,8 @@ tags: [reuse, lowering, definition, ir, instructions]
 - convert a value into an `any` variant → `convertedIntoAny` (`src/compiler/lowering/trait-objects/trait-objects.ts`)
 - wrap a plain function value as an `async` closure → `madeAsync` (`src/compiler/lowering/async-fits.ts`)
 - call the codec writing or reading a type, closed within an instance → `codecCall` (`src/compiler/lowering/boundary/codec-calls.ts`)
+- read JSON crossing in from the host, a mismatch handled as its source says (a host's `result` panics the instance, an `input` fails the host's call) → `inboundOf`, `emitInbound` (`src/compiler/lowering/boundary/inbound.ts`)
+- write a derived codec's body from its type's form, one writer per direction → `derivedCodecDirection`, `derivedCodecEntry` (`src/compiler/lowering/boundary/codecs.ts`); a new form kind is a case in `Encoder.write` and `Decoder.read`
 - apply a checker-recorded `Fit` (conversion plus optional wraps) to a register → `fittedValue` (`src/compiler/lowering/function-lowering/fits.ts`)
 - emit a constant or convert a `ConstantForm` / `CheckedAnnotation` → `emitConstant`, `constantValue`, `annotationValues` (`src/compiler/lowering/constants.ts`)
 - release block variables or statement temporaries → `endScope`, `headerTemporaries`, `lowerGuarded`, `release` (`src/compiler/lowering/statements/scopes.ts`)

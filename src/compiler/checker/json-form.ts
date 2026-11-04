@@ -12,7 +12,7 @@ import {
   wellKnown,
 } from '../../language/well-known.ts';
 import type { FunctionCall, ResolvedCall } from './resolved-call.ts';
-import type { Type } from './types/type.ts';
+import type { NominalType, StructValueType, TupleType, Type } from './types/type.ts';
 import type { UseSite } from './use-site.ts';
 
 /** Which way a value crosses as JSON (§9): written to it, or read from it. */
@@ -53,20 +53,24 @@ interface JsonVariant {
 }
 
 /**
- * What the compiler derives a type's codecs from. What a struct, an enum or a tuple holds crosses
- * through its own codecs, found as every witness is (§3.10).
+ * What the compiler derives a type's codecs from, with the type, whose values the codecs take
+ * apart and build. What a struct, an enum or a tuple holds crosses through its own codecs, found
+ * as every witness is (§3.10).
  */
 export type DerivedForm =
-  | { readonly kind: 'record'; readonly fields: readonly JsonField[] }
-  | { readonly kind: 'enum'; readonly variants: readonly JsonVariant[] }
-  | { readonly kind: 'tuple'; readonly elements: readonly Type[] }
+  | {
+      readonly kind: 'record';
+      readonly type: StructValueType;
+      readonly fields: readonly JsonField[];
+    }
+  | { readonly kind: 'enum'; readonly type: NominalType; readonly variants: readonly JsonVariant[] }
+  | { readonly kind: 'tuple'; readonly type: TupleType }
   /** A host type: whatever JSON its host gave it, handed back unchanged (§9). */
-  | { readonly kind: 'host' }
-  /** Nothing to derive from; `reason` finishes "it needs …" when there is more to say. */
-  | { readonly kind: 'none'; readonly reason: string | undefined };
+  | { readonly kind: 'host'; readonly type: NominalType };
 
 /** What later phases ask of codecs: a derived form, a type's codec, a json-module helper call. */
 export interface JsonFormQueries {
+  /** The form `type`'s derived codecs are written from, asked only of a type that has them. */
   readonly formOf: (type: Type) => DerivedForm;
   /**
    * The codec writing or reading `type`, which may name type parameters, then met by their
@@ -92,4 +96,9 @@ export interface JsonCodecs extends JsonFormQueries {
   readonly refusalOf: (type: Type) => string | undefined;
   /** The codec derived for `type` where `site` meets the trait, found for no declared one. */
   readonly derivedOf: (site: UseSite, type: Type, direction: JsonDirection) => DerivedCodec;
+  /**
+   * What a `@JsonSkip` field of `type` reads back as, never written (§9): its type's `default()`;
+   * undefined when it has none, where the annotation may not stand.
+   */
+  readonly skippedDefaultOf: (type: Type) => ResolvedCall | undefined;
 }

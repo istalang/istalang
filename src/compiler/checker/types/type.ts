@@ -114,7 +114,7 @@ export function nominalType(entity: TypeEntity, typeArguments: readonly Type[]):
   return { kind: 'nominal', entity, arguments: typeArguments };
 }
 
-interface TupleType extends WrittenThrough {
+export interface TupleType extends WrittenThrough {
   readonly kind: 'tuple';
   readonly elements: readonly Type[];
 }

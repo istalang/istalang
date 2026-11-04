@@ -15,7 +15,6 @@
 
 import type { CodeFunction } from '../../../definition/functions.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
-import { codecHelpers } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { FunctionType, Type } from '../../checker/types/type.ts';
@@ -151,7 +150,7 @@ export function startEntry(
   const edges: StartEdges = {
     parameters: parameters.map((type, index) => {
       const inbound = inboundOf(checker, undefined, type, {
-        accept: codecHelpers.hostInput,
+        from: 'input',
         path: `${key} argument ${index + 1}`,
       });
       return (context, json, span) => emitInbound(context, json, inbound, span);

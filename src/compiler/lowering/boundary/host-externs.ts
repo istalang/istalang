@@ -16,7 +16,7 @@
 
 import type { CodeFunction, FunctionDefinition } from '../../../definition/functions.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
-import { codecHelpers, wellKnown } from '../../../language/well-known.ts';
+import { wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type.ts';
@@ -77,7 +77,7 @@ export function hostConstantEntry(
   const native = code.call(tables.constantNativeIndex(declaration, type), []);
   const header = tables.declarationHeader(declaration);
   const inbound = inboundOf(checker, undefined, type, {
-    accept: codecHelpers.hostResult,
+    from: 'result',
     path: header.name,
   });
   code.return(received(code, native, inbound));
@@ -154,15 +154,11 @@ function wrapped(code: SynthesizedCode, header: EntryHeader, call: HostCall): Co
   const native = code.call(call.native, encoded(code, within, call.parameters));
   code.return(
     filled === undefined
-      ? received(
-          code,
-          native,
-          inboundOf(checker, within, call.result, { accept: codecHelpers.hostResult, path }),
-        )
+      ? received(code, native, inboundOf(checker, within, call.result, { from: 'result', path }))
       : received(
           code,
           code.await(native),
-          inboundOf(checker, within, filled, { accept: codecHelpers.hostInput, path }),
+          inboundOf(checker, within, filled, { from: 'input', path }),
         ),
   );
   return code.entry(header, filled !== undefined);

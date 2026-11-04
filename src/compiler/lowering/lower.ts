@@ -19,7 +19,7 @@ import { substitute } from '../checker/types/substitution.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { asyncFitEntry } from './async-fits.ts';
 import { writtenBodyOf } from './bodies.ts';
-import { derivedCodecEntry, isDerivedCodec } from './boundary/codecs.ts';
+import { derivedCodecDirection, derivedCodecEntry } from './boundary/codecs.ts';
 import {
   constantNativeEntry,
   hostConstantEntry,
@@ -148,8 +148,9 @@ function entryOf(
   if (entry.kind === 'default') {
     return defaultEntry(checker, tables, instance);
   }
-  if (isDerivedCodec(checker, instance)) {
-    return derivedCodecEntry({ checker, tables, instance });
+  const codecDirection = derivedCodecDirection(checker, instance);
+  if (codecDirection !== undefined) {
+    return derivedCodecEntry({ checker, tables, instance }, codecDirection);
   }
   if (isHostExtern(checker, declaration)) {
     return hostFunctionEntry({ checker, tables }, instance);

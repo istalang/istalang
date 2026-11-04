@@ -10,8 +10,8 @@
  *   computes. A value that isn't a struct is no annotation.
  * - What an annotation means decides where it may stand, and none on a shape's field, which has no
  *   declaration to carry one (§3.16): the json module's on fields
- *   (`@JsonSkip` only on a field whose type is `Default`, which it reads back as, as found where
- *   the field is declared; `@JsonBigInt` only on an `Int`),
+ *   (`@JsonSkip` only on a field whose type, as declared, has a default to read back as, which
+ *   JSON forms decide, rules/json-forms/; `@JsonBigInt` only on an `Int`),
  *   `@Waypoint` on a statement that waits, `@Suite` on a function (rules/suites.ts says which),
  *   and any other struct on fields and functions, kept for tools. The same annotation twice on one item says nothing new, so it is an error.
  * - Fields of one struct or variant that end up with the same JSON name are reported where they
@@ -39,12 +39,10 @@ import {
 import { sameForm } from '../constant-form.ts';
 import type { AnnotationChecks, CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { defaultWitness } from '../resolution/default-witness.ts';
 import { declaredFieldOf, type FieldOwner } from '../types/declared-fields.ts';
 import { errorType, type FieldMember, type Type } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
-import { searchSite } from '../use-site.ts';
 import { computeConstant, refusalOf } from './computation/index.ts';
 
 /** The annotations the toolchain itself reads. */
@@ -221,11 +219,10 @@ export class Annotations implements AnnotationChecks {
       return checkerDiagnostics.repeatedAnnotation(node.span, name);
     }
     const means = placements[this.knownOf(annotation) ?? 'any'];
+    const { json } = this.#seams.checker;
     const misplaced = means(
       place,
-      (held) =>
-        held.kind === 'error' ||
-        defaultWitness(searchSite(this.#seams.checker), held) !== undefined,
+      (held) => held.kind === 'error' || json.skippedDefaultOf(held) !== undefined,
     );
     if (misplaced === 'elsewhere') {
       return checkerDiagnostics.misplacedAnnotation(node.span, name, placeText(place));

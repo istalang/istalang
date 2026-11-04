@@ -307,6 +307,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`fast-wins`): `jsonNameOf` reads through `#textOf`.
 - **Double `defaultWitness` resolution for `@JsonSkip` fields (`src/compiler/checker/rules/annotations.ts`, `src/compiler/checker/rules/json-forms/index.ts`; widens `Q9`):**
   - `Annotations.#problem` resolves `defaultWitness(searchSite(this.#seams.checker), held)` to validate `@JsonSkip` on a field, and `JsonForms.#field` resolves `defaultWitness(searchSite(checker), field.type)` a second time to populate `JsonField.skipped`.
+  - **Done** (`p3-unions`): what a skipped field reads back as has one home, `JsonForms.skippedDefaultOf` (`JsonCodecs.skippedDefaultOf`, `json-form.ts`): the form asks it of the field's type in each instance, and annotations ask it, through the checker's `json`, of the type the field is declared with to tell whether `@JsonSkip` may stand there. The two ask of different types, so both stay; the rule is written once.
 
 ### 19. `src/compiler/checker/declarations/` & `src/compiler/checker/closures/`
 
@@ -353,6 +354,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - Violating the one-way rule in `docs/reuse/values-and-equality.md` (build variants by declared name, never by positional index), `Encoder.#text` constructs `{ kind: 'variant', type: tables.types.index(this.#json), variant: variantIndexOf(checker, this.#json, jsonVariants.text), fields: [name] }` directly.
   - **Done** (`p2-structural`): the tag is built by name, through the encoder's `#variant` (`SynthesizedCode.variant`); `#text` is gone.
 - **`DerivedForm` lacks its `Type`, and `derivedCodecEntry` dispatches on function name (`src/compiler/lowering/boundary/codecs.ts`, `encoder.ts`, `decoder.ts`; tracked as `Q9`).**
+  - **Done** (`p3-unions`): each `DerivedForm` carries its type, of the kind it is (a record's a struct type, an enum's and a host type's nominal, a tuple's a tuple type, whose elements it no longer copies), and a type with nothing to derive from is the checker's alone (`FormOrNone`, `rules/json-forms/`), so `JsonFormQueries.formOf` guards it once and `Encoder.write` and `Decoder.read` take only the form, with no `unreachable` left in their cases. `derivedCodecDirection` (`codecs.ts`) tells an instance's direction by `derivedCodecs`, a typed table (`bodyWriters`) picks its writer, and its parameter count is its declaration's. `inboundOf` (`inbound.ts`) takes where JSON comes from (`result` or `input`), not a helper name.
 
 ### 23. `src/compiler/lowering/expressions/` & `src/compiler/lowering/statements/`
 
