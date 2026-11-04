@@ -42,6 +42,9 @@ const patternHandlers: Handlers<LocalBinder, Pattern, [Binding], void> = {
     } else {
       binder.path(node.path, binding.scope, 'value');
     }
+    for (const argument of node.typeArguments) {
+      binder.walk.type(binder, argument, binding.scope);
+    }
   },
   TuplePattern: (binder, node, binding) => {
     for (const element of node.elements) {

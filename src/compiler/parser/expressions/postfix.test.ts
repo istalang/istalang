@@ -65,6 +65,13 @@ describe('type arguments (§3.5)', () => {
     ['a < b > (c)', `(Call a [${named('b')}] [c])`],
     ['a + f<T>(x)', `(Binary a + (Call f [${named('T')}] [x]))`],
     ['xs.map<Int>(f)', `(Call (MemberAccess xs map) [${named('Int')}] [f])`],
+    ['a < 1 > (b)', '(Call a [(LiteralType 1)] [b])'],
+    ['a < -1 > (b)', '(Call a [(LiteralType (Unary - 1))] [b])'],
+    ['a < b | c > (d)', `(Call a [(UnionType [${named('b')} ${named('c')}])] [d])`],
+    [
+      'get<S, "region">{}',
+      `(StructLiteral (NamedType [get] [${named('S')} (LiteralType "region")]) [])`,
+    ],
   ])('reads %s as type arguments', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
@@ -73,7 +80,8 @@ describe('type arguments (§3.5)', () => {
     ['a < b', '(Binary a < b)'],
     ['a < b > c', '(ChainedComparison [a b c] [< >])'],
     ['(a < b) > (c)', '(Binary (Parenthesized (Binary a < b)) > (Parenthesized c))'],
-    ['a < 1 > (c)', '(ChainedComparison [a 1 (Parenthesized c)] [< >])'],
+    ['(a < 1) > (c)', '(Binary (Parenthesized (Binary a < 1)) > (Parenthesized c))'],
+    ['a < 1.5 > (c)', '(ChainedComparison [a 1.5 (Parenthesized c)] [< >])'],
     ['a < b + c > (d)', '(ChainedComparison [a (Binary b + c) (Parenthesized d)] [< >])'],
     ['f() < b > (c)', '(ChainedComparison [(Call f [] []) b (Parenthesized c)] [< >])'],
   ])('reads %s as comparisons, reporting nothing', (text, tree) => {

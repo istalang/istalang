@@ -94,7 +94,7 @@ describe('if chains (§4)', () => {
   it('continues a multi-line if used as a value at the column its line starts', () => {
     const text = lines('const x = if a:', '    1', 'else:', '    2');
     expect(dumpClean('statement', text)).toBe(
-      `(VariableDeclaration _ [(NamePattern [x])] _ ${ifThen('a', bodyOf('1'), bodyOf('2'))})`,
+      `(VariableDeclaration _ [(NamePattern [x] [])] _ ${ifThen('a', bodyOf('1'), bodyOf('2'))})`,
     );
   });
 
@@ -156,7 +156,7 @@ describe('block expressions', () => {
     expect(dumpClean('statement', text)).toBe(
       statement(
         `(BlockExpression ${block(
-          `(VariableDeclaration _ [(NamePattern [f])] _ (Lambda _ [] _ (BlockExpression ${block(
+          `(VariableDeclaration _ [(NamePattern [f] [])] _ (Lambda _ [] _ (BlockExpression ${block(
             statement('(Call a [] [])'),
             statement('(Call b [] [])'),
           )})))`,

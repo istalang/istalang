@@ -127,6 +127,11 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2026,
     message: () => "A range pattern's bounds are literals.",
   },
+  memberParameterAlone: {
+    code: 2027,
+    message: () =>
+      "A member parameter ('S in Status') stands for one member of its union, so it takes no constraint or default (§3.5).",
+  },
   positionalAfterNamed: {
     code: 2050,
     message: () => 'Named arguments come after the positional ones and spreads (§3.3).',

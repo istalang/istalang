@@ -5,7 +5,7 @@
 
 import { builders } from 'prettier/doc';
 import type { Pattern, PatternPart } from '../compiler/syntax/patterns.ts';
-import { bracketed, enclosed, tupleList } from './lists.ts';
+import { angled, bracketed, enclosed, tupleList } from './lists.ts';
 import type { Printers } from './printer.ts';
 
 const { join } = builders;
@@ -15,11 +15,13 @@ type PatternKind = Exclude<Pattern | PatternPart, { kind: 'Missing' | 'Invalid' 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const patternPrinters: Printers<PatternKind> = {
   WildcardPattern: () => '_',
-  NamePattern: (printer, node) =>
+  NamePattern: (printer, node) => [
     join(
       '.',
       node.path.map((name) => printer.print(name)),
     ),
+    angled(printer, node.typeArguments),
+  ],
   LiteralPattern: (printer, node) => printer.print(node.value),
   TuplePattern: (printer, node) => tupleList(printer, node, node.elements),
   ParenthesizedPattern: (printer, node) => enclosed(printer, node, ['(', ')'], node.pattern),

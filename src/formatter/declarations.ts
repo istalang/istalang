@@ -140,6 +140,7 @@ export const declarationPrinters: Printers<DeclarationKind> = {
   TypeParameter: (printer, node) => [
     node.isPack ? '...' : '',
     printer.print(node.name),
+    node.memberOf === undefined ? '' : [' in ', printer.print(node.memberOf)],
     node.constraints.length === 0
       ? ''
       : [

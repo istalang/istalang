@@ -62,6 +62,30 @@ describe('highlighting', () => {
     ]);
   });
 
+  it('shows a union, its literal members and a generic pattern as types, their angles as brackets', () => {
+    expect(highlighted('fn f<S in "a" | -1>(x: S): match x:', '  case m.Box<S> as b: b')).toEqual([
+      ['fn', 'keyword'],
+      ['f', 'function'],
+      ['S', 'typeParameter'],
+      ['in', 'keyword'],
+      ['"a"', 'string'],
+      ['|', 'operator'],
+      ['-', 'operator'],
+      ['1', 'number'],
+      ['x', 'parameter'],
+      ['S', 'type'],
+      ['match', 'keyword'],
+      ['x', 'variable'],
+      ['case', 'keyword'],
+      ['m', 'namespace'],
+      ['Box', 'type'],
+      ['S', 'type'],
+      ['as', 'keyword'],
+      ['b', 'variable'],
+      ['b', 'variable'],
+    ]);
+  });
+
   it("shows a template's quotes and text as a string, and its values as code", () => {
     expect(highlighted('const s = `a ${x + 1} b` # done')).toEqual([
       ['const', 'keyword'],

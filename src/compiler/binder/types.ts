@@ -35,6 +35,8 @@ const typeHandlers: Handlers<LocalBinder, TypeNode, [Scope], void> = {
   },
   StructType: (binder, node, scope) => bindFields(binder, node.fields, scope),
   AnyType: (binder, node, scope) => bindTypes(binder, node.traits, scope),
+  UnionType: (binder, node, scope) => bindTypes(binder, node.members, scope),
+  LiteralType: holdsNoNames,
   Missing: holdsNoNames,
   Invalid: holdsNoNames,
 };

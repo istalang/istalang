@@ -36,10 +36,15 @@ export interface Documented {
   readonly doc?: Docstring;
 }
 
-/** `T`, `T is Sendable & Comparable`, `E = Error`, and `...A`, a pack of types (§3.5). */
+/**
+ * `T`, `T is Sendable & Comparable`, `E = Error`, `...A`, a pack of types, and `S in Status`, a
+ * member parameter standing for one member of the union it is `memberOf` (§3.5), which takes no
+ * constraint or default beside it (the parser reports one).
+ */
 export interface TypeParameter extends NodeOf<'TypeParameter'> {
   readonly isPack: boolean;
   readonly name: Identifier;
+  readonly memberOf: TypeNode | undefined;
   readonly constraints: readonly TypeNode[];
   readonly defaultType: TypeNode | undefined;
 }

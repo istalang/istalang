@@ -214,11 +214,11 @@ function defineTypeParameters(binder: LocalBinder, parameters: TypeParameters, s
     binder.declare(scope, parameter.name, typeEntity(parameter), { convention: 'type' });
   }
   for (const parameter of declared) {
-    for (const constraint of parameter.constraints) {
-      binder.walk.type(binder, constraint, scope);
-    }
-    if (parameter.defaultType !== undefined) {
-      binder.walk.type(binder, parameter.defaultType, scope);
+    const { memberOf, constraints, defaultType } = parameter;
+    for (const type of [memberOf, ...constraints, defaultType]) {
+      if (type !== undefined) {
+        binder.walk.type(binder, type, scope);
+      }
     }
   }
 }

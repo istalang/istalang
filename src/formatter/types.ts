@@ -45,5 +45,11 @@ export const typePrinters: Printers<TypeKind> = {
   FieldDeclaration: (printer, node) =>
     annotated(printer, node, [printer.print(node.name), ': ', printer.print(node.type)]),
   ReferenceType: (printer, node) => ['&', printer.print(node.referent)],
+  UnionType: (printer, node) =>
+    join(
+      ' | ',
+      node.members.map((member) => printer.print(member)),
+    ),
+  LiteralType: (printer, node) => printer.print(node.value),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

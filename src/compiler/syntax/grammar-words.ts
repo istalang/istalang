@@ -109,13 +109,18 @@ export const infixWords = [...binaryWords, 'is'] as const satisfies readonly Wor
 
 export type InfixWord = (typeof infixWords)[number];
 
-/** What starts a type (§2, §3.10, §3.14): function types, anonymous structs, `any`'s values. */
+/**
+ * What starts a type (§2, §3.10, §3.14): function types, anonymous structs, `any`'s values, and the
+ * literal types spelled as words.
+ */
 export const typeWords = [
   'fn',
   'async',
   'struct',
   'sendable',
   'any',
+  'true',
+  'false',
 ] as const satisfies readonly Word[];
 
 export type TypeWord = (typeof typeWords)[number];

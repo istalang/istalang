@@ -6,8 +6,9 @@
  * name directly followed by `:` names one, since nothing else in an argument list starts so.
  *
  * `name<…>` is ambiguous with a comparison. Following C#, it is read as type arguments only when
- * the bracket contents parse as types and a `(` or `{` follows (§3.5). Otherwise it is a
- * comparison, and `(a < b) > c` needs its parentheses. Only the type arguments are parsed
+ * the bracket contents parse as types and a `(` or `{` follows (§3.5). Literal types and unions
+ * are types, so `a < 1 > (b)` and `a < b | c > (d)` are calls. Otherwise it is a comparison, and
+ * `(a < b) > c` needs its parentheses. Only the type arguments are parsed
  * speculatively. The call or literal after them is parsed for real, so errors inside the
  * arguments are reported rather than turning the whole thing back into a comparison.
  *

@@ -29,6 +29,7 @@ const packDeclaration: TypeParameter = {
   span,
   isPack: true,
   name: { kind: 'Identifier', span, text: 'A' },
+  memberOf: undefined,
   constraints: [],
   defaultType: undefined,
 };

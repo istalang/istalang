@@ -147,6 +147,24 @@ const cases: Readonly<Record<string, Case>> = {
     use: 1,
     declaredAt: 0,
   },
+  "a union's member": {
+    source: 'struct Email { to: String }\nfn f(c: Int | Email?): c',
+    name: 'Email',
+    use: 1,
+    declaredAt: 0,
+  },
+  "a member parameter's union, an earlier parameter in it": {
+    source: 'fn f<S, K in S | "a">(k: K): k',
+    name: 'S',
+    use: 1,
+    declaredAt: 0,
+  },
+  "a pattern's type argument": {
+    source: 'struct Box<T> { value: T }\nfn f(x: Int):\n  match x:\n    case Box<Box<Int>> as b: 1',
+    name: 'Box',
+    use: 2,
+    declaredAt: 0,
+  },
   'Self inside a trait': {
     source: 'trait Zero:\n  fn Self.zero() -> Self',
     name: 'Zero',

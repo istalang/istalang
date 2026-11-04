@@ -23,6 +23,7 @@ import { scan } from '../../compiler/scanner/scan.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
 import type { TokenKind } from '../../compiler/syntax/tokens.ts';
 import { extentIn, nodesAt, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { isWrittenType } from '../../compiler/syntax/types.ts';
 import { createSourceText } from '../../text/source-text.ts';
 import { codeTokensOf } from '../tokens.ts';
 import type { Cursor } from './cursor.ts';
@@ -185,7 +186,7 @@ function roleIn(link: Link<SyntaxNode>): ParsedPlaceKind | undefined {
   if (child !== undefined && declaresName(node, child)) {
     return 'declaredName';
   }
-  if (typeNodeKinds.has(node.kind)) {
+  if (isWrittenType(node)) {
     return builtNameRole(link) ?? 'type';
   }
   const role = roles[node.kind] as Role<SyntaxNode> | undefined;
@@ -330,15 +331,3 @@ function declaresName(node: SyntaxNode, child: SyntaxNode): boolean {
   }
   return declaringKinds.has(node.kind) && 'name' in node && node.name === child;
 }
-
-const typeNodeKinds: ReadonlySet<string> = new Set([
-  'NamedType',
-  'OptionalType',
-  'TupleType',
-  'ParenthesizedType',
-  'FunctionType',
-  'RestType',
-  'AnyType',
-  'StructType',
-  'ReferenceType',
-]);

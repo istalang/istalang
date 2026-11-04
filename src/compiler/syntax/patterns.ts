@@ -12,12 +12,17 @@ import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { Expression, Literal, Unary } from './expressions/index.ts';
 import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './node.ts';
 import type { ComparisonOperator } from './operators.ts';
-import type { NamedType } from './types.ts';
+import type { NamedType, TypeNode } from './types.ts';
 
 export type WildcardPattern = NodeOf<'WildcardPattern'>;
 
+/**
+ * `Expired`, `Decision.Expired`, `n`, or a generic type with its type arguments, which only a
+ * pattern on a union may give (§3.11): `Entry<Settings, "region">`.
+ */
 export interface NamePattern extends NodeOf<'NamePattern'> {
   readonly path: QualifiedName;
+  readonly typeArguments: readonly TypeNode[];
 }
 
 /** A literal, or a negative number written as `-` and a numeric literal. */

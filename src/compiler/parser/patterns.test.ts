@@ -6,7 +6,7 @@
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
-import { dumpClean, named, reported } from './parse.test-kit.ts';
+import { dumpClean, named, parseAs, reported } from './parse.test-kit.ts';
 
 const { expected, unclosedBracket } = parserDiagnostics;
 
@@ -20,13 +20,13 @@ describe('pattern forms', () => {
     ['none', '(LiteralPattern none)'],
     ['5d', '(LiteralPattern 432000000ms)'],
     ['_', '(WildcardPattern)'],
-    ['Expired', '(NamePattern [Expired])'],
-    ['Decision.Expired', '(NamePattern [Decision Expired])'],
-    ['(a, _)', '(TuplePattern [(NamePattern [a]) (WildcardPattern)])'],
-    ['(a, _,)', '(TuplePattern [(NamePattern [a]) (WildcardPattern)])'],
+    ['Expired', '(NamePattern [Expired] [])'],
+    ['Decision.Expired', '(NamePattern [Decision Expired] [])'],
+    ['(a, _)', '(TuplePattern [(NamePattern [a] []) (WildcardPattern)])'],
+    ['(a, _,)', '(TuplePattern [(NamePattern [a] []) (WildcardPattern)])'],
     ['()', '(TuplePattern [])'],
-    ['(a)', '(ParenthesizedPattern (NamePattern [a]))'],
-    ['Expired as e', '(AsPattern (NamePattern [Expired]) e)'],
+    ['(a)', '(ParenthesizedPattern (NamePattern [a] []))'],
+    ['Expired as e', '(AsPattern (NamePattern [Expired] []) e)'],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('pattern', text)).toBe(tree);
   });
@@ -71,6 +71,30 @@ describe('struct patterns', () => {
   });
 });
 
+describe('patterns naming a generic type with its type arguments (§3.11)', () => {
+  const settingsRegion = `[${named('Settings')} (LiteralType "region")]`;
+
+  it.each([
+    [
+      'Entry<Settings, "region">{value}',
+      `(StructPattern (NamedType [Entry] ${settingsRegion}) [(BindFieldPattern value _)])`,
+    ],
+    ['Entry<Settings, "region"> as e', `(AsPattern (NamePattern [Entry] ${settingsRegion}) e)`],
+    ['m.Box<Int | None>', `(NamePattern [m Box] [(UnionType [${named('Int')} ${named('None')}])])`],
+    [
+      'Box<Int> | Box<String>',
+      `(OrPattern [(NamePattern [Box] [${named('Int')}]) (NamePattern [Box] [${named('String')}])])`,
+    ],
+  ])('parses %j', (text, tree) => {
+    expect(dumpClean('pattern', text)).toBe(tree);
+  });
+
+  it('leaves a `<` whose contents are no types to what holds the pattern', () => {
+    expect(dumpClean('expression', 'x is P < y')).toBe('(Binary (Is x (NamePattern [P] [])) < y)');
+    expect(parseAs('pattern', 'P < 1.5').rest).toBe(2);
+  });
+});
+
 describe('malformed patterns', () => {
   it.each([
     ['+', '+'],
@@ -91,10 +115,10 @@ describe('malformed patterns', () => {
 
 describe('or, array and range patterns', () => {
   it.each([
-    ['A | B as x', '(AsPattern (OrPattern [(NamePattern [A]) (NamePattern [B])]) x)'],
+    ['A | B as x', '(AsPattern (OrPattern [(NamePattern [A] []) (NamePattern [B] [])]) x)'],
     [
       '[first, ...rest, last]',
-      '(ArrayPattern [(NamePattern [first]) (RestPattern rest) (NamePattern [last])])',
+      '(ArrayPattern [(NamePattern [first] []) (RestPattern rest) (NamePattern [last] [])])',
     ],
     ['[..._]', '(ArrayPattern [(RestPattern (WildcardPattern))])'],
     ['1..=5', '(RangePattern (LiteralPattern 1) isInclusive (LiteralPattern 5))'],

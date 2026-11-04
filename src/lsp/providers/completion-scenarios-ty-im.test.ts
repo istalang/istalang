@@ -26,8 +26,10 @@ const scenarios: readonly Scenario[] = [
         'time',
         'fn',
         'async',
+        'true',
+        'false',
       ],
-      lacks: ['plus', 'paint', 'Red', 'Approved', 'let', 'if', 'true', 'none', 'while'],
+      lacks: ['plus', 'paint', 'Red', 'Approved', 'let', 'if', 'none', 'while'],
     },
   },
   {

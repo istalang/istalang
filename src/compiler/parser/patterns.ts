@@ -4,7 +4,9 @@
  * Patterns parse as expressions do, through tables: a prefix parselet per token that starts one,
  * and the operators that extend one, at their levels: `|` between alternatives, then `..` and
  * `..=` between a range's literals. `as name` binds the whole pattern, alternatives included, so
- * `A | B as x` binds what either matched.
+ * `A | B as x` binds what either matched. A name may take type arguments, `Entry<S, "a">{value}`
+ * or `Box<Int> as b`, which select a generic member of a union (§3.11); a pattern holds no
+ * comparison, but an `is` expression around it may, so they are only read when they parse.
  *
  * Inside a struct pattern's braces, the token after the field name picks the test:
  * - `as` renames the binding
@@ -26,7 +28,7 @@ import type {
   StructPattern,
   WildcardPattern,
 } from '../syntax/patterns.ts';
-import type { NamedType } from '../syntax/types.ts';
+import type { NamedType, TypeNode } from '../syntax/types.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
@@ -191,9 +193,18 @@ function parseNamedPattern(parser: Parser): Pattern {
   }
   const path = parseQualifiedName(parser);
   const start = parser.startOf(path[0]);
+  const typeArguments = parsePatternTypeArguments(parser);
   return cursor.at('{')
-    ? parseStructPattern(parser, namedTypeFrom(parser, path, []), start)
-    : { kind: 'NamePattern', span: parser.spanFrom(start), path };
+    ? parseStructPattern(parser, namedTypeFrom(parser, path, typeArguments), start)
+    : { kind: 'NamePattern', span: parser.spanFrom(start), path, typeArguments };
+}
+
+/**
+ * `<A, B>` after a pattern's name, when its contents parse as types; otherwise none, and the `<`
+ * is left to what holds the pattern, as `x is P < y` compares.
+ */
+function parsePatternTypeArguments(parser: Parser): readonly TypeNode[] {
+  return parser.cursor.at('<') ? (parser.speculate(() => parser.typeArguments()) ?? []) : [];
 }
 
 /** `struct{…}`, matching an anonymous struct. */

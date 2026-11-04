@@ -42,9 +42,11 @@ import { type Invalid, lastName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import {
   type FunctionType as FunctionTypeNode,
+  type LiteralType,
   type NamedType,
   type RestType,
   type TypeNode,
+  type UnionType,
   unparenthesizedType,
 } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
@@ -100,6 +102,8 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
     return shapeType(node, declaredFields(checker, module, node.fields));
   },
   AnyType: ({ checker, module }, node) => checker.anyTypeOf(module, node.traits),
+  UnionType: (resolution, node) => unionTypeOf(resolution, node),
+  LiteralType: (resolution, node) => literalTypeOf(resolution, node),
   Missing: () => errorType,
   Invalid: () => errorType,
 };
@@ -345,4 +349,14 @@ function defaultedType(
   return (
     (defaults === undefined ? undefined : checker.parametersOf(defaults)[index]?.type) ?? errorType
   );
+}
+
+/** The union `node` writes (§2). */
+function unionTypeOf(_resolution: Resolution, _node: UnionType): Type {
+  return errorType;
+}
+
+/** The literal type `node` writes (§2). */
+function literalTypeOf(_resolution: Resolution, _node: LiteralType): Type {
+  return errorType;
 }

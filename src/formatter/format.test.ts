@@ -5,6 +5,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { printType, typeTree } from '../compiler/parser/type-precedence.test-kit.ts';
 import { dump } from '../compiler/syntax/tree.test-kit.ts';
 import {
   commentTexts,
@@ -80,6 +81,31 @@ describe('a body whose one statement is a braced block', () => {
           expect(actual).toEqual(expected);
         },
       ),
+    );
+  });
+});
+
+describe('unions, literal types, member parameters and generic patterns (§2, §3.5, §3.11)', () => {
+  it('prints each as written', () => {
+    const text = lines(
+      'type Status = "draft" | "sent" | -1 | true',
+      'fn describe<S in Status, T>(s: S, f: (fn() -> T) | None) -> fn() -> Int | String?:',
+      '  match s:',
+      '    case Entry<Settings, "region">{value}: value',
+      '    case Box<Int | None> as b: b',
+      '    case _: f(a<1>(b), a<b | c>(d))',
+    );
+    expect(formatText(text)).toBe(text);
+    const { actual, expected } = acceptanceOf(text);
+    expect(actual).toEqual(expected);
+  });
+
+  it('keeps Acceptance 1–3 for any type made of unions, literals, optionals and function types', () => {
+    fc.assert(
+      fc.property(typeTree, (tree) => {
+        const { actual, expected } = acceptanceOf(lines(`type T = ${printType(tree)}`));
+        expect(actual).toEqual(expected);
+      }),
     );
   });
 });

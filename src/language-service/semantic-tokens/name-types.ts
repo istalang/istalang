@@ -68,7 +68,13 @@ const rolesOf: RolesOf = {
   FieldInitializer: named('property'),
   NamespaceImport: (node) => [[node.alias, 'namespace']],
   NamedType: (node) => qualified(node.path, 'type'),
-  NamePattern: (node) => (node.path.length > 1 ? qualified(node.path, 'enumMember') : []),
+  NamePattern: (node) => {
+    // Type arguments follow only a type's name (§3.11).
+    if (node.typeArguments.length > 0) {
+      return qualified(node.path, 'type');
+    }
+    return node.path.length > 1 ? qualified(node.path, 'enumMember') : [];
+  },
   BindFieldPattern: (node) => [[node.field, 'property']],
   CompareFieldPattern: (node) => [[node.field, 'property']],
   NestedFieldPattern: (node) => [[node.field, 'property']],

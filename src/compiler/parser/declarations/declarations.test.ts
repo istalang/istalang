@@ -23,7 +23,7 @@ import {
 
 const { expected, topLevelStatement, externWithBody } = parserDiagnostics;
 
-const typeParameter = (name: string): string => `(TypeParameter ${name} [] _)`;
+const typeParameter = (name: string): string => `(TypeParameter ${name} _ [] _)`;
 const string = named('String');
 
 describe('imports', () => {
@@ -75,7 +75,7 @@ describe('type declarations', () => {
     ],
     [
       'struct Node<T is Sendable & Comparable = Int> { value: T }',
-      `(StructDeclaration Node [(TypeParameter T [${named('Sendable')} ${named('Comparable')}] ${int})] [${declaredField('value', named('T'))}])`,
+      `(StructDeclaration Node [(TypeParameter T _ [${named('Sendable')} ${named('Comparable')}] ${int})] [${declaredField('value', named('T'))}])`,
     ],
     [
       lines('enum Decision:', '    Approved { by: String }', '    Expired'),
@@ -130,7 +130,7 @@ describe('type declarations', () => {
 
   it('reads `shared` as a name where no `struct` follows it', () => {
     expect(dumpClean('module', 'const shared = 1')).toBe(
-      moduleOf('(VariableDeclaration _ [(NamePattern [shared])] _ 1)'),
+      moduleOf('(VariableDeclaration _ [(NamePattern [shared] [])] _ 1)'),
     );
   });
 });
@@ -147,14 +147,17 @@ describe('externs and functions', () => {
     ],
     [
       'extern sendable struct Queue<T is Sendable>',
-      `(ExternStructDeclaration isSendable Queue [(TypeParameter T [${named('Sendable')}] _)])`,
+      `(ExternStructDeclaration isSendable Queue [(TypeParameter T _ [${named('Sendable')}] _)])`,
     ],
     ['extern struct Slot<T>', `(ExternStructDeclaration Slot [${typeParameter('T')}])`],
     [
       'fn Duration.zero() -> Duration: Duration{value: 0}',
       `(FunctionDeclaration Duration zero [] [] ${named('Duration')} ${bodyOf(`(StructLiteral ${named('Duration')} [(FieldInitializer value 0)])`)})`,
     ],
-    ['const limit: Int = 50_000', `(VariableDeclaration _ [(NamePattern [limit])] ${int} 50000)`],
+    [
+      'const limit: Int = 50_000',
+      `(VariableDeclaration _ [(NamePattern [limit] [])] ${int} 50000)`,
+    ],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('module', text)).toBe(moduleOf(tree));
   });
@@ -169,10 +172,32 @@ describe('externs and functions', () => {
   });
 });
 
+describe('member type parameters (§3.5)', () => {
+  it.each([
+    ['fn describe<S in Status>(s: S): s', `[(TypeParameter S ${named('Status')} [] _)]`],
+    [
+      'struct Entry<S, K in "a" | "b">:\n  key: K',
+      `[${typeParameter('S')} (TypeParameter K (UnionType [(LiteralType "a") (LiteralType "b")]) [] _)]`,
+    ],
+  ])('reads `name in Type` in %j', (text, parameters) => {
+    expect(dumpClean('module', text)).toContain(parameters);
+  });
+
+  it.each([
+    ['fn f<S in Status is Stringable>(): 1', 'is Stringable'],
+    ['fn f<S in Status = "draft">(): 1', '= "draft"'],
+    ['fn f<S in Status is A & B = C>(): 1', 'is A & B = C'],
+  ])('reports a constraint or default beside the membership in %j once', (text, spanText) => {
+    expect(reported('module', text)).toEqual(
+      reportedOnce(parserDiagnostics.memberParameterAlone.code, spanText),
+    );
+  });
+});
+
 describe('type parameter packs', () => {
   it('reads `...A` as a pack, beside plain type parameters', () => {
     expect(dumpClean('module', 'fn logged<...A, R>(f: fn(...A) -> R): f')).toContain(
-      `[(TypeParameter isPack A [] _) ${typeParameter('R')}]`,
+      `[(TypeParameter isPack A _ [] _) ${typeParameter('R')}]`,
     );
   });
 });

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-30
-last_updated: 2026-10-30
+last_updated: 2026-11-04
 tags: [plan, completion, lsp]
 ---
 
@@ -203,8 +203,8 @@ fn g(a: ‸
 fn g(a: int, b: ‸
 ```
 - **Where / trigger:** top level; invoked, or typing on
-- **Offer:** Types: `int float bool string unit never Range`, the prelude's (`Array Map Optional Result Future Slot Shared WeakRef`), the module's structs, enums and aliases, imported namespaces (`time`), and the function-type keywords `fn`, `async`, `sendable`, plus `any`.
-- **Not:** Values, functions, variants, statement/clause keywords, `true false none`.
+- **Offer:** Types: `int float bool string unit never Range`, the prelude's (`Array Map Optional Result Future Slot Shared WeakRef`), the module's structs, enums and aliases, imported namespaces (`time`), and the function-type keywords `fn`, `async`, `sendable`, plus `any`, and the literal types spelled as words, `true` and `false`.
+- **Not:** Values, functions, variants, statement/clause keywords, `none`.
 - **Accept:** The type name; a generic type does not add `<`.
 - **Basis:** spec §2, §3.5; TS offers only types in type position, RA only types and traits.
 
