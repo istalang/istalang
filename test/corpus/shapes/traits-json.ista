@@ -1,0 +1,32 @@
+# outcome: "{\"a\":[{\"x\":2,\"y\":1}],\"b\":1} 6 9 | {\"x\":2,\"y\":3} 5 | 1 q"
+# A shape meets a trait through the trait's module or another type's, never its own (§3.10): a
+# function over a shape written through one alias serves every spelling of it, a struct's value
+# converted into it included. Shapes are Encodable and Decodable as structs are, keys sorted (§9),
+# and a generic alias is a family: a struct with its arguments substituted fits one member.
+
+import * as json from 'json'
+
+type Point = { x: Int; y: Int }
+type Spot = Point
+type Pair<A, B> = { first: A; second: B }
+
+struct Pixel { y: Int; x: Int }
+struct Duo<T> { second: T; first: Int }
+
+trait Area:
+  fn area(self: Self) -> Int
+
+fn area(self: Point) -> Int: self.x * self.y
+
+fn show<T is Area>(v: T) -> Int: v.area()
+
+fn second(p: Pair<Int, String>) -> String: p.second
+
+async fn main():
+  const shape: Spot = Pixel{x: 2, y: 3}
+  const back = json.parse<Point>("{\"y\": 4, \"x\": 5}")
+  const text = json.stringify(struct{b: 1, a: [struct{x: 2, y: 1}]})
+  const x = match back:
+    case Ok{value}: value.x
+    case Err{error}: 0
+  text + " " + show(shape) + " " + show(struct{x: 3, y: 3}) + " | " + json.stringify(shape) + " " + x + " | " + Duo<String>{second: "q", first: 1}.first + " " + second(Duo<String>{second: "q", first: 1})
