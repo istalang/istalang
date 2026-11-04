@@ -48,19 +48,14 @@ import { checkDereference } from './dereference.ts';
 import { checkIndex } from './indexing.ts';
 import { checkDurationLiteral } from './literals.ts';
 import { checkIs, checkMatch, matchAccepts } from './match.ts';
+import { checkMemberAccess, memberAccepts } from './member-access.ts';
 import { checkName, nameAccepts, variableType } from './names.ts';
 import { checkBinary, checkChainedComparison, checkUnary } from './operators.ts';
 import { checkUnwrap } from './optionals.ts';
 import { checkPropagate } from './propagate.ts';
 import { checkSelect, selectAccepts } from './select.ts';
 import { checkSpawn } from './spawn.ts';
-import {
-  checkMemberAccess,
-  checkNamedLiteral,
-  checkStructLiteral,
-  memberAccepts,
-  structLiteralAccepts,
-} from './structs.ts';
+import { checkNamedLiteral, checkStructLiteral, structLiteralAccepts } from './structs.ts';
 import { checkTemplate } from './templates.ts';
 import { checkTuple, checkTupleElement, tupleAccepts } from './tuples.ts';
 import { checkNone, noneAccepted } from './variants.ts';

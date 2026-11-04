@@ -57,7 +57,7 @@ import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { writtenLiteral } from '../types/unions.ts';
 import { spreadArgumentType } from './collections.ts';
-import { readsNothing, recordFieldRead } from './structs.ts';
+import { readsNothing, recordFieldRead } from './member-access.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const misplaced = misplacedArgument(node.arguments);
