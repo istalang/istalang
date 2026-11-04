@@ -172,6 +172,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`fast-wins`): `isUnnamedTarget` calls `isUnnamed`.
 - **Missing `unparenthesizedType` helper for `TypeNode` (`src/compiler/syntax/types.ts`):**
   - `syntax/expressions/index.ts` exports `unparenthesized(node: Expression)` and `syntax/patterns.ts` exports `unparenthesizedPattern(node: Pattern)`, but `syntax/types.ts` keeps `ParenthesizedType` private and provides no `unparenthesizedType(node: TypeNode)` helper for callers inspecting type nodes.
+  - **Done** (`fast-wins`): `unparenthesizedType` sits in `syntax/types.ts`, as the human decided (2026-11-04): `resolveConstraint` sees through it, so `T is (Comparable)` is legal, and `writtenByReference` and a function type's parameters read `(&T)` as a reference, though the parser still refuses the `&` there. `any (T)` and `new (T){…}` stay refused: `any` and `new` are keywords only before a name (§2).
 
 ### 7. `src/compiler/scanner/`
 

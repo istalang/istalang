@@ -34,6 +34,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - compute precedence levels for operator parsing and printing → `tighterLevel`, `rightOperandLevel`, `bindingPower` (`src/compiler/syntax/operators.ts`)
 - strip outer parentheses from an `Expression` → `unparenthesized` (`src/compiler/syntax/expressions/index.ts`)
 - strip outer parentheses from a `Pattern` → `unparenthesizedPattern` (`src/compiler/syntax/patterns.ts`)
+- strip outer parentheses from a `TypeNode` before asking its kind → `unparenthesizedType` (`src/compiler/syntax/types.ts`)
 - read a `QualifiedName` from an `Identifier` or non-optional `MemberAccess` chain → `qualifiedPath` (`src/compiler/syntax/expressions/index.ts`)
 - read the value or field name of a struct literal's `FieldItem` → `itemValue`, `itemName` (`src/compiler/syntax/expressions/index.ts`)
 - read the number a literal writes, negated or not (`-5`, `-(5)`), as one signed value → `signedNumberOf` (`src/compiler/syntax/expressions/numbers.ts`)

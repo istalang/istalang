@@ -18,6 +18,7 @@ import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Parameter } from '../../syntax/expressions/index.ts';
 import { isFieldsFunction } from '../../syntax/field-defaults.ts';
+import { unparenthesizedType } from '../../syntax/types.ts';
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -131,9 +132,9 @@ function checkRest(
   }
 }
 
-/** Whether `node` is written as taking a reference, `&T` (§3.7). */
+/** Whether `node` is written as taking a reference, `&T` (§3.7), parentheses aside. */
 export function writtenByReference(node: Parameter): boolean {
-  return node.type?.kind === 'ReferenceType';
+  return node.type !== undefined && unparenthesizedType(node.type).kind === 'ReferenceType';
 }
 
 /**

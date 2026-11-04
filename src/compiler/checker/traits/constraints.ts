@@ -22,7 +22,7 @@ import type {
   TypeParameter,
 } from '../../syntax/declarations.ts';
 import { lastName } from '../../syntax/node.ts';
-import type { FieldDeclaration, TypeNode } from '../../syntax/types.ts';
+import { type FieldDeclaration, type TypeNode, unparenthesizedType } from '../../syntax/types.ts';
 import { type FoundField, requiredFieldRead, structFieldOf } from '../checked-field.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -83,13 +83,14 @@ interface ConstraintSite {
   readonly selfOf: (trait: TraitDeclaration) => Type;
 }
 
-/** The trait `node` names, with its arguments for `Self`; undefined after a report. */
+/** The trait `constraint` names, parentheses aside, with its arguments for `Self`; undefined after a report. */
 function resolveConstraint(
   checker: CheckerContext,
   module: ModuleId,
-  node: TypeNode,
+  constraint: TypeNode,
   { keyword, selfOf }: ConstraintSite,
 ): Constraint | undefined {
+  const node = unparenthesizedType(constraint);
   if (node.kind !== 'NamedType') {
     checker.report(module, checkerDiagnostics.notTrait(node.span, keyword));
     return undefined;

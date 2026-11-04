@@ -38,11 +38,12 @@ import {
 } from '../../syntax/declarations.ts';
 import { type Invalid, lastName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type {
-  FunctionType as FunctionTypeNode,
-  NamedType,
-  RestType,
-  TypeNode,
+import {
+  type FunctionType as FunctionTypeNode,
+  type NamedType,
+  type RestType,
+  type TypeNode,
+  unparenthesizedType,
 } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -188,7 +189,7 @@ function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
       isAsync: node.isAsync,
       parameters: fixed.map((parameter) => ({
         type: resolve(resolution, parameter),
-        reference: parameter.kind === 'ReferenceType',
+        reference: unparenthesizedType(parameter).kind === 'ReferenceType',
       })),
       result: node.returnType === undefined ? unitType : resolve(resolution, node.returnType),
     },
