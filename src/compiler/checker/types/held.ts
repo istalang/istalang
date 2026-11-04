@@ -2,11 +2,13 @@
  * What a value of a type holds at any depth, for rules about values held inside others: a future
  * that must be awaited (§3.3), a `Result` that must be used (§3.12). A type holds itself and what
  * its parts hold: a tuple's elements, a struct's fields, an enum's variants' fields, the value
- * behind a shared struct, and an extern type's type arguments (`heldParts`). A recursive type is walked once.
+ * behind a shared struct, and an extern type's type arguments (`heldParts`). A recursive type holds
+ * nothing more where it recurs (type-cycle.ts).
  */
 
 import type { CheckerContext } from '../context.ts';
 import type { Type } from './type.ts';
+import { TypeCycle } from './type-cycle.ts';
 import { typeChildren } from './type-parts.ts';
 
 /** The first type `type` holds, itself first, that `picks` picks; undefined when none is. */
@@ -15,26 +17,19 @@ export function heldType(
   type: Type,
   picks: (type: Type) => boolean,
 ): Type | undefined {
-  const walked = new Set<string>();
-  const held = (part: Type): Type | undefined => {
-    if (picks(part)) {
-      return part;
-    }
-    if (part.kind === 'nominal') {
-      const key = checker.typeKeys.typeKey(part);
-      if (walked.has(key)) {
-        return undefined;
-      }
-      walked.add(key);
-    }
-    for (const inner of heldParts(checker, part)) {
-      const found = held(inner);
-      if (found !== undefined) {
-        return found;
-      }
-    }
-    return undefined;
-  };
+  const cycle = new TypeCycle(checker.typeKeys);
+  const held = (part: Type): Type | undefined =>
+    picks(part)
+      ? part
+      : cycle.enter(part, undefined, (): Type | undefined => {
+          for (const inner of heldParts(checker, part)) {
+            const found = held(inner);
+            if (found !== undefined) {
+              return found;
+            }
+          }
+          return undefined;
+        });
   return held(type);
 }
 

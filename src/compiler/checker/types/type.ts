@@ -34,6 +34,7 @@
  */
 
 import type { PrimitiveName } from '../../../language/primitives.ts';
+import { type Equality, sameItems } from '../../../structures/equality.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { TypeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
@@ -397,15 +398,7 @@ function restOf(type: FunctionType, start: number): Type | undefined {
   return rest.some((slot) => slot.reference) ? undefined : tupleType(rest.map((slot) => slot.type));
 }
 
-function sameTypes(first: readonly Type[], second: readonly Type[]): boolean {
-  return (
-    first.length === second.length &&
-    first.every((type, index) => {
-      const other = second[index];
-      return other !== undefined && sameType(type, other);
-    })
-  );
-}
+const sameTypes: Equality<readonly Type[]> = sameItems(sameType);
 
 /**
  * Whether a value of type `source` fits where `target` is expected: the same type, or a function

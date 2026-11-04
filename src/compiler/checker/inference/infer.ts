@@ -22,11 +22,13 @@
  */
 
 import { type Fitting, fitOf, matchConversion } from '../types/fit.ts';
+import { parameterType } from '../types/resolve-type.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import {
   type AnyType,
   type FunctionType,
   fillsPack,
+  isPack,
   isPrimitive,
   neverType,
   type ParameterKey,
@@ -213,7 +215,7 @@ export class Inference {
    * `never` fits whatever is bound, so it binds nothing, but is noted for completion.
    */
   #bindExactly(parameter: ParameterKey, given: Type): boolean {
-    if (isPrimitive(given, 'never') && !isPack(parameter)) {
+    if (isPrimitive(given, 'never') && !isPack(parameterType(parameter))) {
       this.#metNever.add(parameter);
       return true;
     }
@@ -229,7 +231,7 @@ export class Inference {
    * a bound type `given` widens takes its place unless pinned. Two types neither takes conflict.
    */
   #bind(parameter: ParameterKey, given: Type, agrees: (bound: Type) => boolean): boolean {
-    if (isPack(parameter) && !fillsPack(given)) {
+    if (isPack(parameterType(parameter)) && !fillsPack(given)) {
       return false;
     }
     const bound = this.#bound.get(parameter);
@@ -248,8 +250,4 @@ export class Inference {
     this.#conflicts.add(parameter);
     return false;
   }
-}
-
-function isPack(parameter: ParameterKey): boolean {
-  return parameter.kind === 'TypeParameter' && parameter.isPack;
 }
