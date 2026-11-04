@@ -3,8 +3,8 @@ description: plan for implementing docs/proposals 1–4 in order — each propos
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-04
-last_updated: 2026-11-04
+last_verified: 2026-11-05
+last_updated: 2026-11-05
 tags: [plan, proposals, audit, debt]
 ---
 
@@ -23,8 +23,8 @@ Specs: `docs/proposals/1-type-names.md` to `4-computed-types.md`, implemented in
 | --- | --- |
 | 1 Type names | done, `43d9b81` |
 | 2 Structural types | done, `b6de118`, with its debt items (Q30 left open) |
-| 3 Union types | waiting on 2 |
-| 4 Computed types | waiting on 3 |
+| 3 Union types | done, `5bbe9d3` and its fixes, with its debt items (tracker F17–F21, Q39–Q41, B27, B29) |
+| 4 Computed types | ready; its Before P4 items open |
 
 ## Decisions so far (the human's)
 
@@ -58,16 +58,16 @@ Specs: `docs/proposals/1-type-names.md` to `4-computed-types.md`, implemented in
 
 | Item | Audit | Why P3 needs it | Status |
 | --- | --- | --- | --- |
-| `Optional` handling scattered: `optionalInner` vs. `optionalArgument`, recognition by name string, five `Some` test-and-unwrap copies in lowering, `'value'`/`'error'` literals, `optionalValue` reading `fields[0]`, slice `end` unwrapping | #6, units 5, 23, 27 | `T?` becomes `T \| None` | open |
-| Expected-type decomposition: `enumTypeFor` vs. `bareStructValue`; `inferNestedLambdas` re-walking composites | #6, unit 16 | literals, lambdas and bare variants built from one member of the expected union | open |
+| `Optional` handling scattered: `optionalInner` vs. `optionalArgument`, recognition by name string, five `Some` test-and-unwrap copies in lowering, `'value'`/`'error'` literals, `optionalValue` reading `fields[0]`, slice `end` unwrapping | #6, units 5, 23, 27 | `T?` becomes `T \| None` | done, `2a53aab` |
+| Expected-type decomposition: `enumTypeFor` vs. `bareStructValue`; `inferNestedLambdas` re-walking composites | #6, unit 16 | literals, lambdas and bare variants built from one member of the expected union | done, `c6e8c0e` |
 | Negative numeric literal read three ways, `-0` key | unit 17 | literal types and patterns | done, fast wins |
-| Object safety and derived traits: `unsafetyOf` by hand, Q7, Q9 | units 14, 18, 22 | unions meet traits through members; literal-union codecs | open |
-| Completion restates the parser's keyword tables (Q35); `unparenthesizedType` | units 6, 9 | `\|`, literal types, `in`, later `infer`, `keyof` | helper done; Q35 open |
-| Spec: refutable patterns split between §3.11 and §3.15; must-use rules stated four times; text codecs listed twice (§3.8, §9) | units 36–38 | P3 edits these lists | open; the refutability split was deferred by the fast wins |
+| Object safety and derived traits: `unsafetyOf` by hand, Q7, Q9 | units 14, 18, 22 | unions meet traits through members; literal-union codecs | done, `c38d7db`, `d630ae7`, `554d9f9`; Q9 keeps `@JsonBigInt` |
+| Completion restates the parser's keyword tables (Q35); `unparenthesizedType` | units 6, 9 | `\|`, literal types, `in`, later `infer`, `keyof` | done, `9ec6f96` |
+| Spec: refutable patterns split between §3.11 and §3.15; must-use rules stated four times; text codecs listed twice (§3.8, §9) | units 36–38 | P3 edits these lists | done, `62d7cbd` |
 
-P1's report adds: `None` goes into `primitiveNames`, and generic patterns on unions extend `PatternType`'s `generic` case.
+P1's report adds: `None` goes into `primitiveNames`, and generic patterns on unions extend `PatternType`'s `generic` case. Both done in `5bbe9d3`.
 
-P2's report adds: a generic alias's static owners are keyed by the alias's own parameters, so a family is reached only through that alias. `Optional` as an alias owning `T?`'s statics needs a family matched against concrete types, an addition with nothing blocking it.
+P2's report adds: a generic alias's static owners are keyed by the alias's own parameters, so a family is reached only through that alias. `Optional` as an alias owning `T?`'s statics needs a family matched against concrete types, an addition with nothing blocking it. Done in `5bbe9d3`: a union holding `None` keys its statics as `T?`'s.
 
 **Before P4**
 
@@ -77,6 +77,8 @@ P2's report adds: a generic alias's static owners are keyed by the alias's own p
 | `Expansion` and `TypeExpansion` run the same graph walk | unit 19 | type `match` recursion | open |
 | The formatter lists bracketed children twice (`bodies.ts`, `brackets.ts`) | unit 29 | mapped types, struct comprehensions | open |
 | Nominal structs keep declaration-order layout; only shapes are in name order (P2's deviation, unobservable today) | P2 report | field loops, comprehensions and rest patterns must visit name order (P2's field-order rule) | open |
+
+P3's report adds: computed types substitute into unions, where an `any` member absorbs nothing after substitution (tracker F21); and struct rest patterns extend a pattern part's path, which writes a union member's unwrap as field `0` (Q41).
 
 ## Fast wins (done, `60f153f`)
 
