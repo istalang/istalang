@@ -18,6 +18,7 @@ import type { Docstring } from '../compiler/syntax/declarations.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
 import type { Block } from '../compiler/syntax/statements.ts';
 import { extentIn, fieldChildrenOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
+import { standingIn } from './brackets.ts';
 import { blankBetween, hasComments, hugging, itemLines } from './lists.ts';
 import type { Printer } from './printer.ts';
 
@@ -34,37 +35,21 @@ const bodyOpeners: ReadonlySet<SyntaxNode['kind']> = new Set([
   'FunctionDeclaration',
 ]);
 
-/** Kinds whose children all stand in brackets, where a body can't be continued from outside. */
-const bracketKinds: ReadonlySet<SyntaxNode['kind']> = new Set([
-  'ArrayLiteral',
-  'MapLiteral',
-  'Comprehension',
-  'Tuple',
-  'Parenthesized',
-  'StructLiteral',
-  'NewStructLiteral',
-  'BlockExpression',
-  'TemplateLiteral',
-]);
-
 /**
- * The children of `node` that stand outside its brackets. A function opens a body itself, so the
- * body its tree holds apart is never asked for.
+ * The children of `node` that stand outside every delimiter of its own (brackets.ts), where an
+ * `else` after it could continue a body they open. A function opens a body itself, so the body its
+ * tree holds apart is never asked for.
  */
-function unbracketedChildren(node: SyntaxNode): readonly SyntaxNode[] {
-  switch (node.kind) {
-    case 'Call':
-      return [node.callee];
-    case 'Index':
-      return [node.target];
-    default:
-      return bracketKinds.has(node.kind) ? [] : fieldChildrenOf(node);
-  }
+function undelimitedChildren(node: SyntaxNode): readonly SyntaxNode[] {
+  return fieldChildrenOf(node).filter((child) => {
+    const standing = standingIn(node, child);
+    return standing === 'outside' || standing === 'lines';
+  });
 }
 
 /** Whether `node` opens a body outside brackets, itself or through a part. */
 export function opensBody(node: SyntaxNode): boolean {
-  return bodyOpeners.has(node.kind) || unbracketedChildren(node).some(opensBody);
+  return bodyOpeners.has(node.kind) || undelimitedChildren(node).some(opensBody);
 }
 
 /**
