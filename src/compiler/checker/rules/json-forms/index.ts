@@ -21,7 +21,6 @@
 import {
   type CodecHelper,
   type CodecName,
-  codecFunctions,
   codecHelpers,
   derivedCodecs,
 } from '../../../../language/well-known.ts';
@@ -101,9 +100,7 @@ export class JsonForms implements JsonCodecs {
   derivedOf(site: UseSite, type: Type, direction: JsonDirection): DerivedCodec {
     const form = this.formOf(type);
     if (form.kind === 'none') {
-      const trait = wellKnownConstraint(this.#seams.checker, jsonTraits[direction]).trait.name.text;
-      const required = `'${codecFunctions[direction]}' as ${trait}`;
-      return { kind: 'lacking', missing: form.reason ?? `${required} declares it` };
+      return { kind: 'lacking', missing: form.reason };
     }
     const missing = this.#deciding[direction].enter(type, undefined, () =>
       this.#partMissing(site, form, direction),

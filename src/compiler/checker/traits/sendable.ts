@@ -3,9 +3,11 @@
  *
  * Primitives are; a struct, an enum or a tuple is when everything in it is; an extern type is when
  * it is declared `sendable` and its type arguments are; a shared struct never is, since its values
- * have an identity (§3.18); a function type is when it is declared `sendable` (§3.14); a type parameter is when constrained `is Sendable`, or by a trait that implies
- * it (`Encodable`, `Decodable`). A recursive type is sendable unless something in its cycle isn't,
- * so a type being decided counts as sendable while its own fields are.
+ * have an identity (§3.18); a function type is when it is declared `sendable` (§3.14); a type
+ * parameter is when constrained `is Sendable`, or by a trait that implies it (`Encodable`,
+ * `Decodable`). A recursive type is sendable unless something in its cycle isn't, so a type being
+ * decided counts as sendable while its own fields are. Conformance meets Sendable by this rule
+ * (resolution/derived-traits.ts).
  *
  * Code is sendable only to another instance of the same program; whether a value can go to the
  * host is whether it has a codec (rules/json-forms/), which no function type has. A host type a
@@ -13,19 +15,21 @@
  */
 
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
-import type { TraitDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import { jsonTraits } from '../json-form.ts';
 import { heldParts } from '../types/held.ts';
 import type { NominalType, Type } from '../types/type.ts';
 import { TypeCycle } from '../types/type-cycle.ts';
 import { isWellKnownTrait } from '../types/well-known.ts';
 import { knownConstraints } from './constraints.ts';
 
-/** The traits a type parameter may be constrained by to be sendable. */
+/**
+ * The traits a type parameter may be constrained by to be sendable: Sendable, and those that
+ * imply it, which require it of every type meeting them (resolution/derived-traits.ts).
+ */
 const sendableTraits: readonly WellKnownDeclaration[] = [
   wellKnown.sendable,
-  ...Object.values(jsonTraits),
+  wellKnown.encodable,
+  wellKnown.decodable,
 ];
 
 /** Whether values of `type` may leave an instance for another. */
@@ -67,9 +71,4 @@ function nominalSendable(checker: CheckerContext, type: NominalType, deciding: T
     return false;
   }
   return deciding.enter(type, true, parts);
-}
-
-/** Whether `trait` is the prelude's Sendable. */
-export function isSendableTrait(checker: CheckerContext, trait: TraitDeclaration): boolean {
-  return isWellKnownTrait(checker, trait, wellKnown.sendable);
 }

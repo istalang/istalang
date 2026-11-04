@@ -34,8 +34,9 @@ path):
   `Checker.json`): field names after `@JsonName`, `@JsonBigInt` fields, what a `@JsonSkip` field
   reads back as (its type's `Default` witness). Its parts cross through their own codecs, and
   witnesses are coherent (spec §3.10): found beside the types they take or the trait, never where
-  they are asked for, so a derived codec belongs to its type alone. Conformance takes a derived codec when no
-  declared one is found (`checker/resolution/conformance.ts`): a call to the `json` module's
+  they are asked for, so a derived codec belongs to its type alone. Conformance takes a derived
+  codec when no declared one is found, as for every trait the compiler derives
+  (`checker/resolution/derived-traits.ts`): a call to the `json` module's
   `_toJson<T>` or `_fromJson<T>`, externs whose bodies lowering writes per type
   (`language/well-known.ts`, `derivedCodecs`). A recursive type counts as meeting the trait while
   its own parts are decided.

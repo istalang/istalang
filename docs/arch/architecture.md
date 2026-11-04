@@ -72,7 +72,8 @@ src/
                                                                  `any` types, and the object safety they need (object-safety.ts)
       resolution/                                                what a call or a name may mean (applied-call.ts: every call chosen, instantiated
                                                                  and fitted in one place): candidates and ADL, choice, conformance and
-                                                                 witnesses, the calls a construct makes, a type or variant named as a value
+                                                                 witnesses, the traits the compiler derives (derived-traits.ts: one table),
+                                                                 the calls a construct makes, a type or variant named as a value
       calls/                                                     a call in a body: arguments checked against the chosen function, operators,
                                                                  the places a call or an assignment changes
       patterns/ flow/                                            one walk for every pattern; the order a body's code runs in, which

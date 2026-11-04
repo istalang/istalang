@@ -78,10 +78,13 @@ export interface JsonFormQueries {
   readonly callOf: (name: CodecHelper, typeArguments: readonly Type[]) => FunctionCall;
 }
 
-/** The codec the compiler derives for a type, or what the type lacks to have one. */
+/**
+ * The codec the compiler derives for a type, or what the type lacks to have one: what its form
+ * says, or else, with nothing to say, the codec declared for it (undefined).
+ */
 export type DerivedCodec =
   | { readonly kind: 'derived'; readonly call: FunctionCall }
-  | { readonly kind: 'lacking'; readonly missing: string };
+  | { readonly kind: 'lacking'; readonly missing: string | undefined };
 
 /** What meeting `Encodable` and `Decodable` asks, beside what later phases do. */
 export interface JsonCodecs extends JsonFormQueries {

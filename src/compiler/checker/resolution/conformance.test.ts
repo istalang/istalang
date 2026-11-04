@@ -8,6 +8,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
+import { diagnosedAt } from '../../compile.test-kit.ts';
 import { idOf } from '../../program/program.test-kit.ts';
 import { reported } from '../check.test-kit.ts';
 import { checkProgram } from '../check.ts';
@@ -214,6 +215,58 @@ describe('Sendable', () => {
   ])('holds for %s only', (_, parameters, isUnmet) => {
     const text = `${declarations}\nfn wrap${parameters}(value: T) -> Envelope<T>: Envelope{value}`;
     expect(unmet(text)).toBe(isUnmet);
+  });
+});
+
+describe('a derived trait', () => {
+  /** What checking `text`, after an import of the json module, says each unmet constraint needs. */
+  function needs(text: string): readonly string[] {
+    const main = `import * as json from "json"\n${text}`;
+    const { diagnostics } = diagnosedAt(stdProgramOf({ 'main.ista': main }), 'main.ista');
+    return diagnostics.map(({ code, message }) => {
+      const needed = message.slice(message.indexOf('it needs ') + 'it needs '.length, -1);
+      return code === notConforming.code ? needed : `${code}: ${message}`;
+    });
+  }
+
+  it.each([
+    [
+      'Sendable, of a function',
+      'struct Sent<T is Sendable> { value: T }\nfn f(x: Sent<fn() -> Int>): ()',
+      'every value inside it to be sendable',
+    ],
+    [
+      'Encodable, of a handle, as Sendable first',
+      'fn f(x: Slot<Int>) -> String: json.stringify(x)',
+      'every value inside it to be sendable',
+    ],
+    [
+      'Encodable, of a nested optional',
+      'fn f(x: Int??) -> String: json.stringify(x)',
+      'no optional directly inside it, since JSON has one null for both its nones',
+    ],
+    [
+      'Encodable, of a sendable function',
+      'fn f(x: sendable fn() -> Int) -> String: json.stringify(x)',
+      'a JSON form, which no function has',
+    ],
+    [
+      'Encodable, of a struct holding one',
+      'struct Job { run: sendable fn() -> Int }\nfn f(x: Job) -> String: json.stringify(x)',
+      "its field 'run' to be Encodable",
+    ],
+    [
+      'Encodable, of a type parameter',
+      'fn f<T is Sendable>(x: T) -> String: json.stringify(x)',
+      "'toJson' as Encodable declares it",
+    ],
+    [
+      'Decodable, of a type parameter',
+      'fn f<T is Sendable>() -> Result<T>: json.parse("1")',
+      "'fromJson' as Decodable declares it",
+    ],
+  ])('%s says what it needs', (_, text, needed) => {
+    expect(needs(text)).toEqual([needed]);
   });
 });
 

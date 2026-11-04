@@ -56,7 +56,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - search whether a type holds a matching part at any depth (`Future`, `Result`, disposable) → `heldType`, `heldParts` (`src/compiler/checker/types/held.ts`)
 - check whether a declaration or type is host-provided (non-std `extern`) → `isHostExtern`, `isHostType` (`src/compiler/checker/host-externs.ts`)
 - check whether an extern's types cross the host JSON boundary → `checkHostBoundary`, `crossesToHost` (`src/compiler/checker/rules/host-boundary.ts`)
-- check whether a type is `Sendable` → `isSendable`, `isSendableTrait` (`src/compiler/checker/traits/sendable.ts`)
+- check whether a type is `Sendable` → `isSendable` (`src/compiler/checker/traits/sendable.ts`)
 - check whether a trait is a well-known one → `isWellKnownTrait` (`src/compiler/checker/types/well-known.ts`)
 - check whether a type is `Disposable` or a function is `dispose` → `isDisposable`, `disposalOf`, `isDisposeFunction` (`src/compiler/checker/rules/disposal.ts`)
 - get a well-known constraint or a trait's members → `wellKnownConstraint`, `requiredFunctions`, `requiredFields` (`src/compiler/checker/traits/constraints.ts`)

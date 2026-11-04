@@ -10,10 +10,9 @@
  *   which must give the required result. The calls found are the witnesses the instantiation
  *   calls (check.ts).
  * - A required field is met by a struct field of the same name and type, or by a constraint on a
- *   type parameter requiring it too. `Sendable` is derived (traits/sendable.ts). `Encodable` and
- *   `Decodable` each imply it, since JSON written and read back is a copy sent, except where
- *   values cross to the host, which a disposable host type does unsendable (use-site.ts); a type
- *   declaring no codec of its own is met by the one the compiler derives (rules/json-forms/).
+ *   type parameter requiring it too.
+ * - A trait the compiler derives (derived-traits.ts) asks what its rule asks of every type first,
+ *   and a required function no function is declared for is met by the witness it derives.
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
  * - The required result is what the call is expected to give, so a type parameter no argument
@@ -25,15 +24,10 @@
  *   the bound is reported as such, at every level up to the use site.
  */
 
-import type {
-  FunctionDeclaration,
-  TraitDeclaration,
-  TypeParameter,
-} from '../../syntax/declarations.ts';
+import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type Completion, completeInference } from '../inference/complete.ts';
-import { type JsonDirection, jsonTraits } from '../json-form.ts';
 import type { ResolvedCall, Witnesses } from '../resolved-call.ts';
 import {
   constraintSubstitution,
@@ -43,16 +37,15 @@ import {
   requiredFunctions,
   substituteConstraint,
 } from '../traits/constraints.ts';
-import { isSendable, isSendableTrait } from '../traits/sendable.ts';
 import { sameType } from '../types/identity.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import { type Constraint, errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { isWellKnownTrait } from '../types/well-known.ts';
 import type { UseSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
 import { type Application, signatureOf } from './choice.ts';
 import { chooseWitness } from './declared-witness.ts';
+import { type Derivation, derivationOf } from './derived-traits.ts';
 
 /** A chosen function, complete: its type arguments, and the witnesses of its constraints. */
 export interface Instantiation {
@@ -181,8 +174,9 @@ export function conformWitnesses(
 }
 
 /**
- * The witness of every function `constraint` requires of `type`. A type already in error was
- * reported, so it fails silently.
+ * The witness of every function `constraint` requires of `type`; one no function is declared for
+ * is `unmet`'s, by default the one a derived trait derives, else reported missing. A type already
+ * in error was reported, so it fails silently.
  */
 function conform(
   meeting: Meeting,
@@ -190,24 +184,15 @@ function conform(
   unmet?: (declaration: FunctionDeclaration) => ResolvedCall | Failure,
 ): readonly ResolvedCall[] | Failure {
   const { site, type, constraint } = meeting;
-  const { checker } = site;
   if (type.kind === 'error') {
     return 'failed';
   }
-  if (isSendableTrait(checker, constraint.trait)) {
-    return isSendable(checker, type) ? [] : lacks(meeting, 'every value inside it to be sendable');
+  const derivation = derivationOf(site.checker, constraint.trait);
+  const missing = derivation?.lacking(site, type) ?? missingField(meeting);
+  if (missing !== undefined) {
+    return lacks(meeting, missing);
   }
-  const direction = jsonDirectionOf(checker, constraint.trait);
-  if (direction !== undefined) {
-    return codecWitness(meeting, direction, depth);
-  }
-  for (const field of requiredFields(constraint.trait)) {
-    const fieldType = requiredFieldType(checker, constraint, field, type);
-    if (!hasField(checker, type, field.name.text, fieldType)) {
-      return lacks(meeting, `a field '${field.name.text}: ${typeText(fieldType)}'`);
-    }
-  }
-  return functionWitnesses(meeting, depth, unmet);
+  return functionWitnesses(meeting, depth, unmet ?? derivedOrMissing(meeting, derivation));
 }
 
 /** A constraint being met by a type at a use site, for reporting why it isn't. */
@@ -224,48 +209,45 @@ function lacks({ site, type, constraint }: Meeting, missing: string): Failure {
   return 'failed';
 }
 
-/**
- * The codec meeting `Encodable` or `Decodable` (§3.10, §9): sendable, since each implies Sendable,
- * except where values cross to the host as JSON; then the codec declared for the type, or else the
- * one the compiler derives (rules/json-forms/).
- */
-function codecWitness(
-  meeting: Meeting,
-  direction: JsonDirection,
-  depth: number,
-): readonly ResolvedCall[] | Failure {
-  const { site, type } = meeting;
-  const { checker } = site;
-  if (!(site.toHost || isSendable(checker, type))) {
-    return lacks(meeting, 'every value inside it to be sendable');
+/** The first field the constraint requires that the type lacks, said as it lacks it. */
+function missingField({ site, type, constraint }: Meeting): string | undefined {
+  for (const field of requiredFields(constraint.trait)) {
+    const fieldType = requiredFieldType(site.checker, constraint, field, type);
+    if (!hasField(site.checker, type, field.name.text, fieldType)) {
+      return `a field '${field.name.text}: ${typeText(fieldType)}'`;
+    }
   }
-  const refusal = checker.json.refusalOf(type);
-  if (refusal !== undefined) {
-    return lacks(meeting, refusal);
-  }
-  return functionWitnesses(meeting, depth, () => {
-    const derived = checker.json.derivedOf(site, type, direction);
-    return derived.kind === 'derived' ? derived.call : lacks(meeting, derived.missing);
-  });
+  return undefined;
 }
 
-/** Reports that `declaration`, a function the trait requires, is missing on `meeting`'s type. */
-function missingFunction(meeting: Meeting, declaration: FunctionDeclaration): Failure {
-  return lacks(
-    meeting,
-    `'${declaration.name.text}' as ${meeting.constraint.trait.name.text} declares it`,
-  );
+/**
+ * What meets a required function no function is declared for: the witness `derivation` derives
+ * for the type, or else nothing, reported as what the type lacks to have one, by default the
+ * function itself.
+ */
+function derivedOrMissing(
+  meeting: Meeting,
+  derivation: Derivation | undefined,
+): (declaration: FunctionDeclaration) => ResolvedCall | Failure {
+  const { site, type, constraint } = meeting;
+  return (declaration) => {
+    const derived = derivation?.derive?.(site, type);
+    if (derived?.kind === 'derived') {
+      return derived.call;
+    }
+    const required = `'${declaration.name.text}' as ${constraint.trait.name.text} declares it`;
+    return lacks(meeting, derived?.missing ?? required);
+  };
 }
 
 /**
  * The witness of every function the constraint requires; one no function is declared for is
- * `unmet`'s, which by default reports it missing.
+ * `unmet`'s.
  */
 function functionWitnesses(
   meeting: Meeting,
   depth: number,
-  unmet: (declaration: FunctionDeclaration) => ResolvedCall | Failure = (declaration) =>
-    missingFunction(meeting, declaration),
+  unmet: (declaration: FunctionDeclaration) => ResolvedCall | Failure,
 ): readonly ResolvedCall[] | Failure {
   const { site, type, constraint } = meeting;
   const substitution = constraintSubstitution(constraint, type);
@@ -367,14 +349,4 @@ function witnessOf(
 function hasField(checker: CheckerContext, type: Type, name: string, fieldType: Type): boolean {
   const field = fieldOf(checker, type, name);
   return field !== undefined && sameType(field.member.type, fieldType);
-}
-
-/** Which way `trait` says a type crosses as JSON: `Encodable` writes, `Decodable` reads. */
-function jsonDirectionOf(
-  checker: CheckerContext,
-  trait: TraitDeclaration,
-): JsonDirection | undefined {
-  return (Object.keys(jsonTraits) as JsonDirection[]).find((direction) =>
-    isWellKnownTrait(checker, trait, jsonTraits[direction]),
-  );
 }
