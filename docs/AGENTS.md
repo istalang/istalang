@@ -4,5 +4,6 @@
 - `arch/`: architecture that outlives any one feature.
 - `reuse/`: the index of reusable units, one-way rules and extension recipes, grouped by caller need (`src/AGENTS.md`).
 - `work/`: per-feature plans and phase details, plus `tracker.md` for status and filed debt.
+- `proposals/`: language proposals not yet in the spec, numbered in the order to implement them.
 
 Every doc carries front-matter. Its `description` says what the doc covers and when to read it. Docs record only repo-specific knowledge, anchored to stable surfaces.
