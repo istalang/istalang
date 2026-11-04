@@ -266,3 +266,10 @@ describe('completion offers `elif` and `else` after an `if` chain still open', (
     expect(names(...nested, '  ‸', '  0')).not.toContain('else');
   });
 });
+
+describe('completion after `&` offers what may be referenced', () => {
+  it('a reference parameter, its `&` written in parentheses too', () => {
+    const offered = names('fn bump(n: &int):', '  n += 1', 'fn f(m: (&int)):', '  bump(&‸');
+    expect(offered).toContain('m');
+  });
+});

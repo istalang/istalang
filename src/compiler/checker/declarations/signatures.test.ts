@@ -1,3 +1,8 @@
+/**
+ * A parameter's `&` (§3.7) read through the parentheses around its type, as the parser reads a
+ * grouped type, so the checker adds no error of its own to the parser's.
+ */
+
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from '../../parser/diagnostics.ts';

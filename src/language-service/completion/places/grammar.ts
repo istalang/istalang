@@ -12,6 +12,7 @@
  */
 
 import { type Entity, localFunctionOf } from '../../../compiler/binder/entities.ts';
+import { unparenthesizedType } from '../../../compiler/syntax/types.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
@@ -61,6 +62,8 @@ function isChangeable(entity: Entity): boolean {
   const { owner } = entity;
   return (
     (owner.kind === 'VariableDeclaration' && owner.isMutable) ||
-    (owner.kind === 'Parameter' && owner.type?.kind === 'ReferenceType')
+    (owner.kind === 'Parameter' &&
+      owner.type !== undefined &&
+      unparenthesizedType(owner.type).kind === 'ReferenceType')
   );
 }

@@ -63,13 +63,13 @@ export interface FieldDeclaration extends NodeOf<'FieldDeclaration'>, Annotatabl
 }
 
 /** `&T`, valid only as a parameter's type (§3.7). */
+export interface ReferenceType extends NodeOf<'ReferenceType'> {
+  readonly referent: TypeNode;
+}
+
 /** `node` without the parentheses around it, which only group: `(A)` is `A`. */
 export function unparenthesizedType(node: TypeNode): TypeNode {
   return node.kind === 'ParenthesizedType' ? unparenthesizedType(node.inner) : node;
-}
-
-export interface ReferenceType extends NodeOf<'ReferenceType'> {
-  readonly referent: TypeNode;
 }
 
 export type TypeNode =

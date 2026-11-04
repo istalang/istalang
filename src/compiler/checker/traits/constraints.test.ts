@@ -1,3 +1,8 @@
+/**
+ * A constraint's trait (§3.5, §3.10) read through the parentheses around it, as any grouped type
+ * is read.
+ */
+
 import { describe, expect, it } from 'vitest';
 import { reportedNothing } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { reported } from '../check.test-kit.ts';
