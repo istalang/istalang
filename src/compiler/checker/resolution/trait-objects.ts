@@ -31,7 +31,7 @@ export function meetsAny(checker: CheckerContext, found: Type, target: AnyType):
   }
   const site = searchSite(checker);
   return target.constraints.every((constraint) =>
-    meets(site, found, constraintOn(constraint, found)),
+    meets(site, found, constraintOn(constraint, found, checker.typeRules)),
   );
 }
 
@@ -47,7 +47,7 @@ export function reportUnmet(site: UseSite, found: Type, target: AnyType): boolea
     return false;
   }
   return target.constraints.some(
-    (constraint) => !meets(site, found, constraintOn(constraint, found)),
+    (constraint) => !meets(site, found, constraintOn(constraint, found, site.checker.typeRules)),
   );
 }
 
@@ -62,7 +62,7 @@ export function memberWitnesses(
   const witnesses =
     own === undefined
       ? undefined
-      : witnessesFor(searchSite(checker), member, constraintOn(own, member));
+      : witnessesFor(searchSite(checker), member, constraintOn(own, member, checker.typeRules));
   if (witnesses === undefined) {
     unreachable(`${typeText(member)} was converted into ${typeText(type)} without meeting it.`);
   }

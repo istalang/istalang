@@ -4,6 +4,9 @@
  * (type.ts), so instantiating a generic declaration and applying a constraint are one operation.
  * An `any` type binds its traits' `Self`, so a substitution from outside never reaches it. A type
  * written through an alias stays written through it, its arguments substituted alike (type.ts).
+ * The types substitution builds are built by the program's rules (type-rules.ts), so a union
+ * reached through it is normalized as one written with its arguments in place: `T | any Stringable`
+ * with `T = String` is `any Stringable`.
  */
 
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
@@ -16,7 +19,8 @@ import {
   type TypeParameterType,
   type UnionType,
 } from './type.ts';
-import { mapChildren } from './type-parts.ts';
+import { mapChildren, mapParts } from './type-parts.ts';
+import type { TypeRules } from './type-rules.ts';
 
 /** Type parameters mapped to the types that replace them. */
 export type Substitution = ReadonlyMap<ParameterKey, Type>;
@@ -36,34 +40,40 @@ export function substitutionFor(
   );
 }
 
-/** `type` with every type parameter in `substitution` replaced. */
-export function substitute(type: Type, substitution: Substitution): Type {
+/** `type` with every type parameter in `substitution` replaced, built by the program's `rules`. */
+export function substitute(type: Type, substitution: Substitution, rules: TypeRules): Type {
   if (substitution.size === 0) {
     return type;
   }
   if (type.kind === 'parameter') {
-    return asWritten(type, substitution.get(type.declaration) ?? type, substitution);
+    return asWritten(type, substitution.get(type.declaration) ?? type, substitution, rules);
   }
   if (type.kind === 'any') {
-    return substituteAny(type, substitution);
+    return substituteAny(type, substitution, rules);
   }
   return asWritten(
     type,
-    mapChildren(type, (child) => substitute(child, substitution)),
+    mapChildren(type, (child) => substitute(child, substitution, rules), rules),
     substitution,
+    rules,
   );
 }
 
 /** An `any` type with `substitution` applied, but never to the `Self` it binds. */
-export function substituteAny(type: AnyType, substitution: Substitution): AnyType {
+export function substituteAny(
+  type: AnyType,
+  substitution: Substitution,
+  rules: TypeRules,
+): AnyType {
   const outer = new Map(substitution);
   for (const { trait } of type.constraints) {
     outer.delete(trait);
   }
   return asWritten(
     type,
-    mapChildren(type, (child) => substitute(child, outer)),
+    mapParts(type, (child) => substitute(child, outer, rules)),
     substitution,
+    rules,
   );
 }
 
@@ -71,11 +81,13 @@ export function substituteAny(type: AnyType, substitution: Substitution): AnyTyp
 export function substituteKept<Kept extends Exclude<Type, TypeParameterType | UnionType>>(
   type: Kept,
   substitution: Substitution,
+  rules: TypeRules,
 ): Kept {
   return asWritten(
     type,
-    mapChildren(type, (child) => substitute(child, substitution)),
+    mapParts(type, (child) => substitute(child, substitution, rules)),
     substitution,
+    rules,
   );
 }
 
@@ -84,12 +96,13 @@ function asWritten<Substituted extends Type>(
   type: Type,
   substituted: Substituted,
   substitution: Substitution,
+  rules: TypeRules,
 ): Substituted {
   const { alias } = type;
   return alias === undefined
     ? substituted
     : aliasedAs(substituted, {
         declaration: alias.declaration,
-        arguments: alias.arguments.map((each) => substitute(each, substitution)),
+        arguments: alias.arguments.map((each) => substitute(each, substitution, rules)),
       });
 }

@@ -24,10 +24,11 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/checked-field.ts';
 import { sameType } from '../../checker/types/identity.ts';
 import type { AnyType, Type } from '../../checker/types/type.ts';
-import { baseOf, hasOneValue } from '../../checker/types/unions.ts';
+import { hasOneValue } from '../../checker/types/unions.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CodeContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
+import { heldInAny, type IntoAny } from '../holdings.ts';
 import { closeWitness, type Dispatch } from '../instances.ts';
 import { spelledType } from '../names.ts';
 import { SynthesizedCode } from '../synthesized-code.ts';
@@ -36,20 +37,13 @@ import { eachMember, outOfUnion } from '../unions.ts';
 /** What writing an entry takes: the checker and the tables. */
 type Lowering = Pick<CodeContext, 'checker' | 'tables'>;
 
-/** A value converted into an `any` type: the register holding it, its concrete type, the target. */
-export interface IntoAny {
-  readonly value: Register;
-  readonly from: Type;
-  readonly to: AnyType;
-}
-
 /** The value `conversion` converts, in the `any` type it converts into. */
 export function convertedIntoAny(
   context: CodeContext,
   { value, from, to }: IntoAny,
   span: AnchoredSpan,
 ): Register {
-  const { tables, code } = context;
+  const { tables } = context;
   if (from.kind === 'any') {
     return sameType(from, to)
       ? value
@@ -64,11 +58,7 @@ export function convertedIntoAny(
       convertedIntoAny(context, { value: member.register, from: member.type, to }, span),
     );
   }
-  const dst = code.allocate();
-  const type = tables.types.anyIndex(to);
-  const variant = tables.types.anyVariant(to, baseOf(from));
-  code.emit({ kind: 'variant', span, dst, type, variant, fields: [value] });
-  return dst;
+  return heldInAny(context, { value, from, to }, span);
 }
 
 /**
@@ -93,7 +83,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
       );
     }
     const self = memberReceiver(code, receiver, { on, type, references });
-    const result = code.call(closeWitness(witness, dispatch), [self, ...rest]);
+    const result = code.call(closeWitness(witness, dispatch, checker.typeRules), [self, ...rest]);
     code.return(required.isAsync ? code.await(result) : result);
   });
   const generic = dispatch.typeArguments.map((type) => spelledType(checker, type));

@@ -68,6 +68,7 @@ import type {
   Type,
 } from './types/type.ts';
 import type { TypeKeys } from './types/type-keys.ts';
+import type { TypeRules } from './types/type-rules.ts';
 
 /** A parameter of a declared function, with its resolved type. */
 export interface SignatureParameter {
@@ -332,6 +333,11 @@ export interface Checker {
   readonly annotations: AnnotationQueries;
   /** How a value of type `found` fits where `expected` is, by implicit conversions (§2); undefined when it can't. */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
+  /**
+   * The program's rules for building types (types/type-rules.ts), which every substitution and
+   * union built after checking, as lowering's, takes, so its types are the checker's.
+   */
+  readonly typeRules: TypeRules;
   /** The type an alias stands for, its own type parameters left open (§3.17). */
   readonly aliasedType: (alias: TypeAliasDeclaration) => Type;
   /** What tools ask by position: what names denote, the body holding a node (lookup/). */

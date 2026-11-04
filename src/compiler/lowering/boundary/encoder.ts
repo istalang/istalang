@@ -12,9 +12,10 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
 import type { NominalType, Type } from '../../checker/types/type.ts';
 import { baseOf } from '../../checker/types/unions.ts';
+import type { TypedValue } from '../holdings.ts';
 import { closeCall } from '../instances.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
-import { eachMember, type TypedValue } from '../unions.ts';
+import { eachMember } from '../unions.ts';
 import { codecCall } from './codec-calls.ts';
 
 /** The body of `_toJson<T>`, written into `code`. */
@@ -36,7 +37,7 @@ export class Encoder {
     switch (form.kind) {
       case 'host': {
         const encode = code.checker.json.callOf(codecHelpers.encodeHandle, [form.type]);
-        code.return(code.call(closeCall(encode, undefined), [value]));
+        code.return(code.call(closeCall(encode, undefined, code.checker.typeRules), [value]));
         return;
       }
       case 'record':
@@ -115,7 +116,7 @@ export class Encoder {
         const encode =
           field.codec === undefined
             ? this.#codec(field.type)
-            : closeCall(field.codec.write, undefined);
+            : closeCall(field.codec.write, undefined, code.checker.typeRules);
         return [[code.constant(field.key), code.call(encode, [read(index)])]];
       }),
     ];

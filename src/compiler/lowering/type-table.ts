@@ -320,7 +320,7 @@ export class TypeTable {
     if (disposal.kind !== 'function') {
       return disposal;
     }
-    const instance = closeFunctionCall(disposal.call, undefined);
+    const instance = closeFunctionCall(disposal.call, undefined, this.#checker.typeRules);
     const entry = { kind: 'function', function: this.#seams.functionIndex(instance) } as const;
     return isHostExtern(this.#checker, instance.declaration)
       ? { ...entry, host: this.#seams.hostNativeIndex(instance.declaration) }

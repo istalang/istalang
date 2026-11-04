@@ -73,7 +73,7 @@ export class OptionalChains {
     if (base === undefined || none === undefined) {
       unreachable(`A '?.' at ${link.span.from} is outside a chain; lowering lost track of it.`);
     }
-    const read = { register: value, type: optionalOf(base), to: base };
+    const read = { register: value, type: optionalOf(base, context.checker.typeRules), to: base };
     const inside = presentOrJump(context, read, none, link.span);
     return context.fitted(inside, base, fit, step.target);
   }

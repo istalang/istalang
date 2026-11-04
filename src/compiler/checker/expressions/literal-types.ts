@@ -59,10 +59,14 @@ export function builtThrough(
   const aliased = context.checker.aliasedType(declaration);
   const known = knownArguments(context, node.type, declaration, target);
   const typeOf = (typeArguments: readonly Type[]): Type =>
-    aliasedAs(substitute(aliased, substitutionFor(declaration.typeParameters, typeArguments)), {
-      declaration,
-      arguments: typeArguments,
-    });
+    aliasedAs(
+      substitute(
+        aliased,
+        substitutionFor(declaration.typeParameters, typeArguments),
+        context.checker.typeRules,
+      ),
+      { declaration, arguments: typeArguments },
+    );
   return aliased.kind === 'anonymous'
     ? { kind: 'shape', shape: { owner: declaration, known, fields: aliased.fields, typeOf } }
     : undefined;

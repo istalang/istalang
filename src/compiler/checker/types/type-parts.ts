@@ -14,7 +14,8 @@ import {
   type UnionType,
   withPack,
 } from './type.ts';
-import { unionOf } from './unions.ts';
+import type { TypeRules } from './type-rules.ts';
+import { unionOf, unionOfNormalized } from './unions.ts';
 
 /** The types `type` is built from, one level down. */
 export function typeChildren(type: Type): readonly Type[] {
@@ -105,7 +106,10 @@ function sameOrigin(one: Type, other: Type): boolean {
 export function unaliased<Written extends Exclude<Type, UnionType>>(type: Written): Written;
 export function unaliased(type: Type): Type;
 export function unaliased(type: Type): Type {
-  return mapChildren(type.alias === undefined ? type : { ...type, alias: undefined }, unaliased);
+  if (type.kind === 'union') {
+    return unionOfNormalized(type.members.map(unaliased));
+  }
+  return mapParts(type.alias === undefined ? type : { ...type, alias: undefined }, unaliased);
 }
 
 /** The type parameters `type` mentions, each once, in order of appearance. */
@@ -142,19 +146,28 @@ export function mentionsError(type: Type): boolean {
 /**
  * `type` with each type it is built from, one level down, replaced by what `map` gives. The alias
  * `type` was written through comes along: a caller changing what it wrote drops it (type.ts). A
- * union is built again (unions.ts), so its members may merge into fewer, or into one.
+ * union is built again by the program's `rules` (unions.ts), so its members may merge into fewer,
+ * or into one.
  */
-export function mapChildren<Mapped extends Exclude<Type, UnionType>>(
+export function mapChildren(type: Type, map: (child: Type) => Type, rules: TypeRules): Type {
+  if (type.kind !== 'union') {
+    return mapParts(type, map);
+  }
+  const rebuilt = unionOf(type.members.map(map), rules);
+  return type.alias === undefined ? rebuilt : aliasedAs(rebuilt, type.alias);
+}
+
+/**
+ * `type`, not a union, with each type it is built from, one level down, replaced by what `map`
+ * gives, still of its kind; its alias comes along, as `mapChildren` says. Building one of these
+ * takes no rule of the program: only a union normalizes its members.
+ */
+export function mapParts<Mapped extends Exclude<Type, UnionType>>(
   type: Mapped,
   map: (child: Type) => Type,
 ): Mapped;
-export function mapChildren(type: Type, map: (child: Type) => Type): Type;
-export function mapChildren(type: Type, map: (child: Type) => Type): Type {
+export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => Type): Type {
   switch (type.kind) {
-    case 'union': {
-      const rebuilt = unionOf(type.members.map(map));
-      return type.alias === undefined ? rebuilt : aliasedAs(rebuilt, type.alias);
-    }
     case 'literal':
     case 'primitive':
     case 'parameter':

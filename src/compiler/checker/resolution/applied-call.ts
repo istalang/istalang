@@ -16,7 +16,7 @@
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
@@ -62,7 +62,7 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
   const candidates = metThroughTraits(checker, request.candidates);
   const choice = choose(checker, candidates, request.arguments, request.typeArguments);
   if (choice.kind === 'several') {
-    context.report(ambiguity(request, choice.tied));
+    context.report(ambiguity(checker, request, choice.tied));
     return undefined;
   }
   if (choice.kind === 'none') {
@@ -77,16 +77,25 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
     return undefined;
   }
   const count = request.arguments.length;
-  fitArguments(context, request.arguments, filledTypes(application, instantiation, count));
+  fitArguments(
+    context,
+    request.arguments,
+    filledTypes(checker.typeRules, application, instantiation, count),
+  );
   return {
     application,
     instantiation,
-    result: substitute(application.signature.result(), instantiation.substitution),
+    result: substitute(
+      application.signature.result(),
+      instantiation.substitution,
+      checker.typeRules,
+    ),
   };
 }
 
 /** What a call several candidates take alike reports: several traits of a union, or ambiguity. */
 function ambiguity(
+  checker: CheckerContext,
   request: CallApplication,
   tied: readonly Application[],
 ): Diagnostic<AnchoredSpan> {
@@ -96,6 +105,8 @@ function ambiguity(
     const list = argumentListText(request.arguments);
     return checkerDiagnostics.ambiguousCall(request.span, request.name, list);
   }
-  const traits = origins.map(({ through, on }) => traitMetBy(through, on).trait.name.text);
+  const traits = origins.map(
+    ({ through, on }) => traitMetBy(through, on, checker.typeRules).trait.name.text,
+  );
   return checkerDiagnostics.severalTraits(request.span, request.name, typeText(first.on), traits);
 }

@@ -22,7 +22,12 @@ import {
 import { optionalInner, optionalOf, unionOf } from './unions.ts';
 
 /** Fitting in a program no `any` type is met in. */
-const fitting = { meetsAny: () => false, shapeOf: () => undefined, memberUnionOf: () => undefined };
+const fitting = {
+  absorbs: () => false,
+  meetsAny: () => false,
+  shapeOf: () => undefined,
+  memberUnionOf: () => undefined,
+};
 
 /** How a value of `found` fits `expected`: as it is (0), put into a union (1), or not (undefined). */
 function levelsInto(found: Type, expected: Type): number | undefined {
@@ -50,7 +55,7 @@ function levelsBetween(found: number, expected: number): number | undefined {
 
 /** `type` made optional `levels` times, which is once for any `levels` above none (§2). */
 function wrapped(type: Type, levels: number): Type {
-  return levels === 0 ? type : optionalOf(wrapped(type, levels - 1));
+  return levels === 0 ? type : optionalOf(wrapped(type, levels - 1), fitting);
 }
 
 const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
@@ -281,12 +286,12 @@ describe("a struct's value where its shape is expected (§3.1)", () => {
 describe('a union where a union holding an `any` type is expected (§6)', () => {
   it('converts whole into the one any member each of its members meets, then goes into it', () => {
     const any: Type = { kind: 'any', constraints: [] };
-    const union = unionOf([intType, stringType]);
+    const union = unionOf([intType, stringType], fitting);
     const meeting = { ...fitting, meetsAny: () => true };
-    expect(fitShape(fitOf(union, optionalOf(any), meeting))).toEqual({
+    expect(fitShape(fitOf(union, optionalOf(any, fitting), meeting))).toEqual({
       conversion: { kind: 'any', to: any },
       into: true,
     });
-    expect(fitOf(union, optionalOf(any), fitting)).toBeUndefined();
+    expect(fitOf(union, optionalOf(any, fitting), fitting)).toBeUndefined();
   });
 });

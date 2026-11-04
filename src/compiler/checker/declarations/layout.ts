@@ -46,6 +46,7 @@ import {
   type Type,
 } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
+import type { TypeRules } from '../types/type-rules.ts';
 import { type FieldedDeclaration, TypeExpansion } from './type-expansion.ts';
 
 /** Whether two lists of fields name, type and declare their fields alike, in order. */
@@ -112,7 +113,7 @@ export class Layouts {
     }
     const declared = this.declaredFieldsOf(declaration);
     const laidOut = memo(this.#laidOut, declared, () => inFieldOrder(declared));
-    return instantiated(laidOut, substitutionOf(type));
+    return instantiated(laidOut, substitutionOf(type), this.#checker.typeRules);
   }
 
   /**
@@ -127,7 +128,11 @@ export class Layouts {
     if (declaration.kind !== 'SharedStructDeclaration') {
       return undefined;
     }
-    const fields = instantiated(this.declaredFieldsOf(declaration), substitutionOf(type));
+    const fields = instantiated(
+      this.declaredFieldsOf(declaration),
+      substitutionOf(type),
+      this.#checker.typeRules,
+    );
     return shapeType(declaration, fields);
   }
 
@@ -154,7 +159,7 @@ export class Layouts {
     const substitution = substitutionOf(type);
     return this.declaredVariantsOf(declaration).map((variant) => ({
       name: variant.name,
-      fields: instantiated(variant.fields, substitution),
+      fields: instantiated(variant.fields, substitution, this.#checker.typeRules),
     }));
   }
 
@@ -213,6 +218,7 @@ function substitutionOf(type: NominalType): Substitution {
 function instantiated(
   fields: readonly FieldMember[],
   substitution: Substitution,
+  rules: TypeRules,
 ): readonly FieldMember[] {
-  return fields.map((field) => ({ ...field, type: substitute(field.type, substitution) }));
+  return fields.map((field) => ({ ...field, type: substitute(field.type, substitution, rules) }));
 }

@@ -19,19 +19,21 @@
 import { sameType } from './identity.ts';
 import type { Type } from './type.ts';
 import { mapChildren } from './type-parts.ts';
+import type { TypeRules } from './type-rules.ts';
 import { baseOf } from './unions.ts';
 
 /**
  * `type` without its refinements, nor those of any type it is built from: `type` itself when it
  * has none, so it still reads as the alias it was written through; else a type no alias wrote.
+ * A union it is built from is built again by the program's `rules`.
  */
-export function widened(type: Type): Type {
-  return type.kind === 'literal' ? baseOf(type) : sendableWidened(type);
+export function widened(type: Type, rules: TypeRules): Type {
+  return type.kind === 'literal' ? baseOf(type) : sendableWidened(type, rules);
 }
 
 /** `type` with its sendable function types made plain at any depth, its literal types kept. */
-export function sendableWidened(type: Type): Type {
-  const children = mapChildren(type, sendableWidened);
+export function sendableWidened(type: Type, rules: TypeRules): Type {
+  const children = mapChildren(type, (child) => sendableWidened(child, rules), rules);
   const wider = children.kind === 'function' ? { ...children, isSendable: false } : children;
   return sameType(wider, type) ? type : { ...wider, alias: undefined };
 }

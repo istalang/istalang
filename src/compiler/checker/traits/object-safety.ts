@@ -46,10 +46,10 @@ export function objectUnsafety(
   const substitution = constraintSubstitution(constraint, self);
   const reading: SelfReading = {
     isSelf: (type) => {
-      const written = substitute(type, substitution);
+      const written = substitute(type, substitution, checker.typeRules);
       return written.kind === 'parameter' && written.declaration === trait;
     },
-    mentionsSelf: (type) => mentionsSelf(substitute(type, substitution)),
+    mentionsSelf: (type) => mentionsSelf(substitute(type, substitution, checker.typeRules)),
   };
   for (const required of requiredFunctions(trait)) {
     const unsafe = functionUnsafety(checker, required, reading);

@@ -199,7 +199,7 @@ function meetsWhereFound(
     return (
       found === undefined ||
       checker.constraintsOf(parameter).every((constraint) => {
-        const mapped = substituteConstraint(constraint, substitution);
+        const mapped = substituteConstraint(constraint, substitution, checker.typeRules);
         return mapped.arguments.flatMap(parametersIn).some(isOpen) || meets(site, found, mapped);
       })
     );

@@ -30,6 +30,7 @@ import type { RequirementOrigin } from '../resolved-call.ts';
 import { parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import type { AnyType, Constraint, ParameterKey, Type } from '../types/type.ts';
+import type { TypeRules } from '../types/type-rules.ts';
 
 /** The well-known trait `declaration` names, as a constraint with no type arguments. */
 export function wellKnownConstraint(
@@ -165,7 +166,7 @@ export function requirementsNamed(
  */
 export function knownConstraints(checker: CheckerContext, type: Type): readonly Constraint[] {
   if (type.kind === 'any') {
-    return type.constraints.map((constraint) => constraintOn(constraint, type));
+    return type.constraints.map((constraint) => constraintOn(constraint, type, checker.typeRules));
   }
   return type.kind === 'parameter' && type.declaration.kind === 'TypeParameter'
     ? checker.constraintsOf(type.declaration)
@@ -173,18 +174,19 @@ export function knownConstraints(checker: CheckerContext, type: Type): readonly 
 }
 
 /** `constraint` of an `any` type as met by `type`: its trait's own `Self` replaced by `type`. */
-export function constraintOn(constraint: Constraint, type: Type): Constraint {
-  return substituteConstraint(constraint, new Map([[constraint.trait, type]]));
+export function constraintOn(constraint: Constraint, type: Type, rules: TypeRules): Constraint {
+  return substituteConstraint(constraint, new Map([[constraint.trait, type]]), rules);
 }
 
 /** `constraint` with `substitution` applied to its trait's arguments. */
 export function substituteConstraint(
   constraint: Constraint,
   substitution: Substitution,
+  rules: TypeRules,
 ): Constraint {
   return {
     trait: constraint.trait,
-    arguments: constraint.arguments.map((argument) => substitute(argument, substitution)),
+    arguments: constraint.arguments.map((argument) => substitute(argument, substitution, rules)),
   };
 }
 
@@ -198,6 +200,7 @@ export function requiredFieldType(
   return substitute(
     checker.resolveType(checker.moduleOf(constraint.trait), field.type),
     constraintSubstitution(constraint, constrained),
+    checker.typeRules,
   );
 }
 

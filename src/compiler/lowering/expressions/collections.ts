@@ -259,7 +259,7 @@ function optionalInt(
   span: AnchoredSpan,
   value: Register | undefined,
 ): Register {
-  const type = optionalOf(intType);
+  const type = optionalOf(intType, context.checker.typeRules);
   return value === undefined
     ? noneOf(context, type, span)
     : someOf(context, type, { register: value, type: intType }, span);

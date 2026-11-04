@@ -26,7 +26,7 @@ export function metThroughTraits(
     if (origin === undefined) {
       return [candidate];
     }
-    const met = traitMetBy(origin.through, origin.on);
+    const met = traitMetBy(origin.through, origin.on, checker.typeRules);
     const witness = witnessesFor(site, origin.on, met)?.[origin.member];
     if (witness === undefined) {
       return [];

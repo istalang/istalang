@@ -19,7 +19,6 @@ import type { Inference } from '../inference/infer.ts';
 import { argumentSlotsOf } from '../resolution/binding.ts';
 import type { Application } from '../resolution/choice.ts';
 import { collectionTarget, expectedFunction, expectedTuple } from '../types/expected.ts';
-import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';
 
@@ -79,7 +78,7 @@ function inferNestedLambdas(
   inference: Inference,
 ): void {
   const bare = unparenthesized(node);
-  const guide = substitute(expected, inference.substitution());
+  const guide = inference.substituted(expected);
   switch (bare.kind) {
     case 'Lambda':
       inferLambdaAt(context, bare, guide, inference);

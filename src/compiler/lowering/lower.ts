@@ -168,10 +168,12 @@ function entryOf(
     key: keyOf(checker, declaration, parameters),
     constant: false,
     parameters: parameters.map((parameter) => ({
-      type: tables.types.reference(substitute(parameter.type, substitution)),
+      type: tables.types.reference(substitute(parameter.type, substitution, checker.typeRules)),
       reference: parameter.reference,
     })),
-    result: tables.types.reference(substitute(checker.resultOf(declaration), substitution)),
+    result: tables.types.reference(
+      substitute(checker.resultOf(declaration), substitution, checker.typeRules),
+    ),
     typeArguments: instance.typeArguments.map((type) => tables.types.reference(type)),
   };
 }

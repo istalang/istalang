@@ -12,6 +12,7 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../context.ts';
 import { substitute } from '../types/substitution.ts';
 import type { LiteralType, Type } from '../types/type.ts';
+import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { argumentSlotsOf } from './binding.ts';
 import type { CallArgument } from './call-arguments.ts';
@@ -28,6 +29,7 @@ export interface FittedArgument {
 
 /** The type each of `count` arguments fills in the chosen call, instantiated; undefined for none. */
 export function filledTypes(
+  rules: TypeRules,
   application: Application,
   instantiation: Instantiation,
   count: number,
@@ -35,7 +37,9 @@ export function filledTypes(
   const slots = argumentSlotsOf(application.signature.parameters, application.binding);
   return Array.from({ length: count }, (_, index) => {
     const slot = slots.get(index);
-    return slot === undefined ? undefined : substitute(slot.type, instantiation.substitution);
+    return slot === undefined
+      ? undefined
+      : substitute(slot.type, instantiation.substitution, rules);
   });
 }
 

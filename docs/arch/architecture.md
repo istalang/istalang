@@ -69,7 +69,9 @@ src/
                                                                  diagnostics they make, a checked body read through a substitution, the type a
                                                                  name names in a value's place or a pattern (named-types.ts); unions and
                                                                  literal types built normalized (unions.ts), `T?` being `T | None`, and what
-                                                                 a value built from an expected type takes of it (expected.ts)
+                                                                 a value built from an expected type takes of it (expected.ts); the rules
+                                                                 building a type needs of the program (type-rules.ts), which the checker
+                                                                 implements once and every type-building path takes
       inference/ traits/                                         inference of type arguments; constraints, the derived `Sendable`,
                                                                  `any` types, and the object safety they need (object-safety.ts)
       resolution/                                                what a call or a name may mean (applied-call.ts: every call chosen, instantiated
@@ -92,8 +94,10 @@ src/
       tables.ts type-table.ts names.ts constants.ts instances.ts the interned tables (types in type-table.ts), qualified names, compile-time constants,
                                                                  function instances (one entry per instantiation)
       places.ts                                                  places and parts of values: what assignments write and `&` passes
-      unions.ts optionals.ts                                     a union's values as its enum lays them out: into and out of one, a member
-                                                                 tested; `T?` read where it isn't `none`, and `none` itself
+      unions.ts optionals.ts holdings.ts                         a union's values as its enum lays them out: into and out of one, a member
+                                                                 tested; `T?` read where it isn't `none`, and `none` itself; where a value of
+                                                                 one type sits in another as an instantiation made both, inside an `any`
+                                                                 type that took it whole included
       optional-chains.ts patterns.ts                             a chain's links jumping to its end on `None`; a value matched against a
                                                                  checked pattern, its tests then its bindings
       iteration.ts emit-call.ts                                  the one loop of every iterating construct; the one place a `call` is written
@@ -164,7 +168,7 @@ text · diagnostics                      foundation; the runtime may use text/ f
 language · structures                   beneath every layer; they import nothing
 ```
 
-- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`text/`, `diagnostics/`) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`constant-form.ts`, `json-form.ts`, `checked-annotation.ts`, `struct-items.ts`, `denotation.ts`, `host-externs.ts`, `types/type.ts`, `types/identity.ts`, `types/named-types.ts`, `types/substitution.ts`, `types/fit.ts`, `types/expected.ts`, `types/unions.ts`, `types/type-keys.ts`, `types/type-text.ts`, `types/well-known.ts`, `types/instantiation.ts`), which lowering reads module by module.
+- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`text/`, `diagnostics/`) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`constant-form.ts`, `json-form.ts`, `checked-annotation.ts`, `struct-items.ts`, `denotation.ts`, `host-externs.ts`, `types/type.ts`, `types/identity.ts`, `types/named-types.ts`, `types/substitution.ts`, `types/type-rules.ts`, `types/fit.ts`, `types/expected.ts`, `types/unions.ts`, `types/type-keys.ts`, `types/type-text.ts`, `types/well-known.ts`, `types/instantiation.ts`), which lowering reads module by module.
 - Inside the checker, folders are layers too, from the type model up to the constructs: `diagnostics`, `types`, `inference`, `traits`, `resolution`, `calls`, `patterns`, `flow`, `rules`, `declarations`, `closures`, `expressions`, `statements`, `lookup`. A folder imports only those beneath it, so engines never import constructs. Its root modules are its entry, contexts and contracts, which every folder may import, except the classes that wire a body and a program together (`body-checker.ts`, `program-checker.ts`).
 - `syntax/` and `definition/` are contracts with high fan-in. Change them deliberately, and update every caller in the same change.
 - Mechanisms:

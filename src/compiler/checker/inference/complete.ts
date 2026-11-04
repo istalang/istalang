@@ -46,7 +46,7 @@ export function completeInference(
   return {
     kind: 'complete',
     typeArguments: parameters.map((parameter) =>
-      substitute(inference.boundOf(parameter) ?? errorType, substitution),
+      substitute(inference.boundOf(parameter) ?? errorType, substitution, checker.typeRules),
     ),
     substitution,
   };

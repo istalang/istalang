@@ -10,7 +10,7 @@
 
 import type { Checker } from '../check.ts';
 import type { Type } from '../types/type.ts';
-import { unionOf } from '../types/unions.ts';
+import { unionOfNormalized } from '../types/unions.ts';
 import { analyze, anyShape, type CaseShape } from './exhaustiveness.ts';
 import type { ValuePart } from './parts.ts';
 import { memberShape, signatureOf } from './shapes.ts';
@@ -30,7 +30,9 @@ export function remainingType(
     const { unreachable } = analyze(signatureOf(checker), subject, [...taking, probe]);
     return !unreachable.includes(taking.length);
   });
-  return left.length === subject.members.length || left.length === 0 ? subject : unionOf(left);
+  return left.length === subject.members.length || left.length === 0
+    ? subject
+    : unionOfNormalized(left);
 }
 
 /** The whole value of `subject` as a case whose binder has `remaining` takes it. */

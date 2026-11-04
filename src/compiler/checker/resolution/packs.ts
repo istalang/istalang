@@ -8,7 +8,6 @@
 
 import type { Inference } from '../inference/infer.ts';
 import type { Binding } from '../resolved-call.ts';
-import { substitute } from '../types/substitution.ts';
 import { isPack, type Type, tupleType } from '../types/type.ts';
 import type { CallArgument, Inapplicability, Takes } from './call-arguments.ts';
 
@@ -38,7 +37,7 @@ export function packInapplicability(
     if (slot.rest?.kind === 'pack' && source?.kind === 'rest') {
       const found = packOf(source.items.map(({ index }) => callArguments[index]));
       if (found === undefined || !inference.matchExactly(slot.type, found)) {
-        const expected = substitute(slot.type, inference.substitution());
+        const expected = inference.substituted(slot.type);
         return { kind: 'pack', index: source.items[0]?.index ?? 0, expected, found };
       }
     }

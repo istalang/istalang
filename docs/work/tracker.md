@@ -56,7 +56,6 @@ Language or toolchain features deferred by decision, not defects.
 | F18 | A union flattens the aliases written in it (§2), so `case String as s` against `Status \| Int` gives `s` the literals of `Status`, printed `"draft" \| "sent" \| "failed"` rather than `Status` (proposal 3 §5 says `Status`). Printing the alias needs a union to keep the groups its members were written in, as text only. | small | none; can be done now | p3-unions 2026-11-05 |
 | F19 | A call on a union through a trait (§3.10) finds only traits whose type parameters all have defaults, so `for x in u` over a union of iterables doesn't work (`Iterable<T>`); a trait's required fields can't be met through members either. | medium | none; can be done now | p3-unions 2026-11-05 |
 | F20 | A union converts into a wider union's `any` member only as a whole: `Email \| Int` doesn't go into `any Named \| Int` member by member. | small | none; can be done now | p3-unions 2026-11-05 |
-| F21 | An `any` member absorbs the members that meet its traits only in a union as written (§2 "Collapse"), not after substitution: `T \| any Stringable` with `T = String` keeps two members, so `Array<T \| any Stringable>` with `T = Int` is not `Array<Int \| any Stringable>`'s type, and `wrap<String>(a) == wrap<String>("hello")` is `false`. Absorbing needs the conformance check (`meetsAny`, in `checker/resolution/`), which `unionOf` and `substitute` in `checker/types/` sit below; about 52 `substitute` call sites build types. | medium | none; can be done now | p3-unions 2026-11-05 |
 
 ### Performance (P)
 

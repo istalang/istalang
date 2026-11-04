@@ -10,18 +10,25 @@
  *   `b` is optional too.
  * - An instantiation may collapse an optional (§3.5): `T?` with `T = None` is `None`, whose one
  *   value is always absent, and with `T = Int?` is `Int?`, which a value of `T` is already, so it
- *   goes in as it is.
+ *   goes in as it is; with `T = any Sendable`, which takes `None` whole (§2), it is that `any`
+ *   type, holding `none` as any other value (holdings.ts).
  */
 
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { sameType } from '../checker/types/identity.ts';
-import { isPrimitive, noneType, type Type, type UnionType } from '../checker/types/type.ts';
+import {
+  type AnyType,
+  isPrimitive,
+  noneType,
+  type Type,
+  type UnionType,
+} from '../checker/types/type.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Label } from './code-writer.ts';
-import { emitConstant } from './constants.ts';
 import type { CodeContext } from './context.ts';
-import { intoUnion, jumpIfMember, oneValueIn, outOfUnion, type TypedValue } from './unions.ts';
+import { jumpIfHeld, type TypedValue } from './holdings.ts';
+import { intoUnion, oneValueIn, outOfUnion } from './unions.ts';
 
 /** A value of the optional type `type` in `register`, read as `to` where it isn't `none`. */
 export interface OptionalRead {
@@ -30,11 +37,9 @@ export interface OptionalRead {
   readonly to: Type;
 }
 
-/** `none` as a value of `type`: an optional, or `None` itself. */
+/** `none` as a value of `type`: an optional, `None` itself, or an `any` type that took it whole. */
 export function noneOf(context: CodeContext, type: Type, span: AnchoredSpan): Register {
-  return type.kind === 'union'
-    ? oneValueIn(context, type, noneType, span)
-    : emitConstant(context, null, span);
+  return oneValueIn(context, type, noneType, span);
 }
 
 /** `value` put into the optional type `optional` (§2), unless it is a value of it already. */
@@ -61,7 +66,7 @@ export function presentOrJump(
     return read.register;
   }
   const optional = { register: read.register, type: optionalType(read.type) };
-  jumpIfMember(context, { value: optional, member: noneType }, absent, span);
+  jumpIfHeld(context, { value: optional, member: noneType }, absent, span);
   return outOfUnion(context, optional, read.to, span);
 }
 
@@ -86,9 +91,12 @@ export function presentOr(
   return inside;
 }
 
-/** `type`, an optional the checker made sure of, not collapsed into `None`: a union holding it. */
-function optionalType(type: Type): UnionType {
-  if (type.kind !== 'union') {
+/**
+ * `type`, an optional the checker made sure of, not collapsed into `None`: a union holding it, or
+ * the `any` type an instantiation collapsed it into.
+ */
+function optionalType(type: Type): UnionType | AnyType {
+  if (type.kind !== 'union' && type.kind !== 'any') {
     unreachable(`Expected an optional, not a ${type.kind} type; the checker should have said so.`);
   }
   return type;

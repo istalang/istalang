@@ -67,7 +67,7 @@ import {
   withPack,
 } from './type.ts';
 import { typeText } from './type-text.ts';
-import { absorbedInto, optionalOf, unionOf, writtenLiteral } from './unions.ts';
+import { optionalOf, unionOf, writtenLiteral } from './unions.ts';
 
 interface Resolution {
   readonly checker: CheckerContext;
@@ -84,7 +84,8 @@ export type GenericDeclaration =
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
   NamedType: (resolution, node) => namedType(resolution, node),
-  OptionalType: (resolution, node) => optionalOf(resolve(resolution, node.inner)),
+  OptionalType: (resolution, node) =>
+    optionalOf(resolve(resolution, node.inner), resolution.checker.typeRules),
   ParenthesizedType: (resolution, node) => resolve(resolution, node.inner),
   ReferenceType: (resolution, node) => resolve(resolution, node.referent),
   TupleType: (resolution, node) =>
@@ -174,6 +175,7 @@ export function defaultArgument(
   return substitute(
     checker.resolveType(checker.moduleOf(declaration), parameter.defaultType),
     earlier,
+    checker.typeRules,
   );
 }
 
@@ -244,7 +246,7 @@ function namedType(resolution: Resolution, node: NamedType): Type {
  * type (`namedType`) or in a value's place (named-types.ts).
  */
 export function typeOfEntity(
-  checker: Pick<CheckerContext, 'aliasedType'>,
+  checker: Pick<CheckerContext, 'aliasedType' | 'typeRules'>,
   entity: Entity,
   typeArgumentsOf: (
     declaration: NominalDeclaration | TypeAliasDeclaration,
@@ -272,7 +274,11 @@ export function typeOfEntity(
           const type =
             typeArguments.length === 0
               ? aliased
-              : substitute(aliased, substitutionFor(declaration.typeParameters, typeArguments));
+              : substitute(
+                  aliased,
+                  substitutionFor(declaration.typeParameters, typeArguments),
+                  checker.typeRules,
+                );
           return aliasedAs(type, { declaration, arguments: typeArguments });
         }
         default: {
@@ -357,11 +363,5 @@ function defaultedType(
  */
 function unionTypeOf(resolution: Resolution, node: UnionType): Type {
   const members = node.members.map((member) => resolve(resolution, member));
-  const { checker } = resolution;
-  return unionOf(
-    absorbedInto(
-      members,
-      (member, target) => checker.fitOf(member, target)?.conversion.kind === 'any',
-    ),
-  );
+  return unionOf(members, resolution.checker.typeRules);
 }

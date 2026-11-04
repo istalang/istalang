@@ -7,13 +7,14 @@
  * literal running it.
  */
 
-import type { CheckedBody, Checker } from '../check.ts';
+import type { CheckedBody, CheckedFunction, Checker } from '../check.ts';
 import { type FieldRead, requiredFieldRead } from '../checked-field.ts';
 import type { CheckedPattern, PartStep, PatternTest } from '../checked-pattern.ts';
 import type { Fit } from './fit.ts';
 import { sameType } from './identity.ts';
 import { type Substitution, substitute, substituteAny, substituteKept } from './substitution.ts';
 import type { FieldMember, Type } from './type.ts';
+import type { TypeRules } from './type-rules.ts';
 import { membersOf } from './unions.ts';
 
 /**
@@ -25,10 +26,10 @@ import { membersOf } from './unions.ts';
 export function instantiatedBody(
   body: CheckedBody,
   substitution: Substitution,
-  checker: Pick<Checker, 'fieldsOf'>,
+  checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
 ): CheckedBody {
-  const concrete = (type: Type) => substitute(type, substitution);
-  const concreteFit = (fit: Fit) => substitutedFit(fit, substitution);
+  const concrete = (type: Type) => substitute(type, substitution, checker.typeRules);
+  const concreteFit = (fit: Fit) => substitutedFit(fit, substitution, checker.typeRules);
   const concreteField = (field: FieldMember) => ({ ...field, type: concrete(field.type) });
   const concreteRead = (read: FieldRead): FieldRead =>
     read.kind === 'position' ? read : requiredFieldRead(checker, concrete(read.on), read.required);
@@ -53,22 +54,16 @@ export function instantiatedBody(
         .map((part) => ({ ...part, type: concrete(part.type), fit: concreteFit(part.fit) })),
     inCell: body.inCell,
     functionOf: (node) =>
-      mapDefined(body.functionOf(node), (checked) => ({
-        type: substituteKept(checked.type, substitution),
-        parameters: checked.parameters.map((parameter) => ({
-          ...parameter,
-          type: concrete(parameter.type),
-        })),
-        captures: checked.captures.map((captured) => ({
-          ...captured,
-          type: concrete(captured.type),
-        })),
-      })),
+      mapDefined(body.functionOf(node), (checked) =>
+        instantiatedFunction(checked, substitution, checker.typeRules),
+      ),
     sourcesOf: body.sourcesOf,
     literalFieldsOf: (literal) =>
       mapDefined(body.literalFieldsOf(literal), (fields) => fields.map(concreteField)),
     patternOf: (pattern) =>
-      mapDefined(body.patternOf(pattern), (checked) => instantiatedPattern(checked, substitution)),
+      mapDefined(body.patternOf(pattern), (checked) =>
+        instantiatedPattern(checked, substitution, checker.typeRules),
+      ),
     chainOf: (link) =>
       mapDefined(body.chainOf(link), (chained) => ({
         base: concrete(chained.base),
@@ -81,6 +76,23 @@ export function instantiatedBody(
     candidatesAt: body.candidatesAt,
     labels: body.labels,
     result: concrete(body.result),
+  };
+}
+
+/** A lambda or local function of the body with every type it records substituted. */
+function instantiatedFunction(
+  checked: CheckedFunction,
+  substitution: Substitution,
+  rules: TypeRules,
+): CheckedFunction {
+  const concrete = (type: Type) => substitute(type, substitution, rules);
+  return {
+    type: substituteKept(checked.type, substitution, rules),
+    parameters: checked.parameters.map((parameter) => ({
+      ...parameter,
+      type: concrete(parameter.type),
+    })),
+    captures: checked.captures.map((captured) => ({ ...captured, type: concrete(captured.type) })),
   };
 }
 
@@ -98,17 +110,21 @@ function mapDefined<T, R>(value: T | undefined, f: (defined: T) => R): R | undef
  * union, substituted here, so whoever reads the path sees the collapse, and a name narrowed from
  * it reads the value as it is.
  */
-function instantiatedPattern(checked: CheckedPattern, substitution: Substitution): CheckedPattern {
-  const concrete = (type: Type) => substitute(type, substitution);
+function instantiatedPattern(
+  checked: CheckedPattern,
+  substitution: Substitution,
+  rules: TypeRules,
+): CheckedPattern {
+  const concrete = (type: Type) => substitute(type, substitution, rules);
   const path = (steps: readonly PartStep[]) =>
-    steps.map((step) => instantiatedStep(step, substitution));
+    steps.map((step) => instantiatedStep(step, substitution, rules));
   const instantiatedTest = (patternTest: PatternTest): PatternTest => {
     switch (patternTest.kind) {
       case 'downcast':
         return {
           ...patternTest,
           path: path(patternTest.path),
-          from: substituteAny(patternTest.from, substitution),
+          from: substituteAny(patternTest.from, substitution, rules),
           to: concrete(patternTest.to),
         };
       case 'member':
@@ -122,7 +138,7 @@ function instantiatedPattern(checked: CheckedPattern, substitution: Substitution
         return {
           ...patternTest,
           alternatives: patternTest.alternatives.map((each) =>
-            instantiatedPattern(each, substitution),
+            instantiatedPattern(each, substitution, rules),
           ),
         };
       case 'variant':
@@ -151,13 +167,17 @@ function instantiatedPattern(checked: CheckedPattern, substitution: Substitution
 }
 
 /** `step` with the type it carries substituted. */
-function instantiatedStep(step: PartStep, substitution: Substitution): PartStep {
+function instantiatedStep(step: PartStep, substitution: Substitution, rules: TypeRules): PartStep {
   if (typeof step === 'number') {
     return step;
   }
   switch (step.kind) {
     case 'member':
-      return { ...step, union: substitute(step.union, substitution) };
+      return {
+        kind: 'member',
+        union: substitute(step.union, substitution, rules),
+        member: substitute(step.member, substitution, rules),
+      };
     case 'downcast':
     case 'length':
     case 'item':
@@ -175,26 +195,37 @@ function instantiatedStep(step: PartStep, substitution: Substitution): PartStep 
  * the value goes into may collapse into one type (§3.5): a value that went in as a member then is
  * a value of that type already, its own or a literal of it, which is its base's value; one that
  * went in member by member was a union of that type's literals, or that type, taken as its base.
+ * A union collapsing into an `any` type took the value's type whole (§2), so the value still goes
+ * into it, as lowering derives.
  */
-function substitutedFit({ conversion, into }: Fit, substitution: Substitution): Fit {
-  const substituted = substitutedConversion(conversion, substitution);
+function substitutedFit(
+  { conversion, into }: Fit,
+  substitution: Substitution,
+  rules: TypeRules,
+): Fit {
+  const substituted = substitutedConversion(conversion, substitution, rules);
   if (into === undefined) {
     return { conversion: substituted };
   }
-  const union = substitute(into.union, substitution);
-  const member = into.member === undefined ? undefined : substitute(into.member, substitution);
-  if (union.kind === 'union') {
+  const union = substitute(into.union, substitution, rules);
+  const member =
+    into.member === undefined ? undefined : substitute(into.member, substitution, rules);
+  if (union.kind === 'union' || union.kind === 'any') {
     return { conversion: substituted, into: { union, member } };
   }
   return { conversion: member === undefined ? { kind: 'base' } : substituted };
 }
 
-function substitutedConversion(conversion: Fit['conversion'], substitution: Substitution) {
+function substitutedConversion(
+  conversion: Fit['conversion'],
+  substitution: Substitution,
+  rules: TypeRules,
+) {
   switch (conversion.kind) {
     case 'any':
-      return { kind: 'any', to: substituteAny(conversion.to, substitution) } as const;
+      return { kind: 'any', to: substituteAny(conversion.to, substitution, rules) } as const;
     case 'shape':
-      return { kind: 'shape', to: substituteKept(conversion.to, substitution) } as const;
+      return { kind: 'shape', to: substituteKept(conversion.to, substitution, rules) } as const;
     default:
       return conversion;
   }

@@ -34,6 +34,7 @@ import {
   type UnionType,
 } from './type.ts';
 import { parametersIn } from './type-parts.ts';
+import type { TypeRules } from './type-rules.ts';
 import { baseOf, hasMember, membersOf } from './unions.ts';
 
 /**
@@ -60,9 +61,13 @@ export interface Fit {
   readonly into?: IntoUnion | undefined;
 }
 
-/** A value put into `union`: as its `member`, or, without one, member by member from a union. */
+/**
+ * A value put into `union`: as its `member`, or, without one, member by member from a union. An
+ * instantiation may absorb the member into an `any` member, or collapse the union into the `any`
+ * type that took the others whole (§2, §3.5), which lowering derives where the value then goes.
+ */
 interface IntoUnion {
-  readonly union: UnionType;
+  readonly union: UnionType | AnyType;
   readonly member?: Type | undefined;
 }
 
@@ -70,11 +75,11 @@ interface IntoUnion {
 export const exactFit: Fit = { conversion: { kind: 'none' } };
 
 /**
- * What fitting needs of the program: whether a type meets an `any` type's constraints, the shape a
- * nominal struct's value converts into, if any (§3.1), and the union a member parameter stands
- * for one member of (§3.5).
+ * What fitting needs of the program: the rules types are built by (type-rules.ts), whether a type
+ * meets an `any` type's constraints, the shape a nominal struct's value converts into, if any
+ * (§3.1), and the union a member parameter stands for one member of (§3.5).
  */
-export interface Fitting {
+export interface Fitting extends TypeRules {
   readonly meetsAny: (found: Type, target: AnyType) => boolean;
   readonly shapeOf: (found: Type) => AnonymousStructType | undefined;
   readonly memberUnionOf: (parameter: ParameterKey) => Type | undefined;

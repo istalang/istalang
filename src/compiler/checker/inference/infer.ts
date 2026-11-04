@@ -52,7 +52,7 @@ import {
   type UnionType,
 } from '../types/type.ts';
 import { parametersIn, typeChildren } from '../types/type-parts.ts';
-import { baseOf, literalOrBase, membersOf, unionOf } from '../types/unions.ts';
+import { baseOf, literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions.ts';
 
 export class Inference {
   readonly #unknowns: ReadonlySet<ParameterKey>;
@@ -80,7 +80,8 @@ export class Inference {
   /** Matches a declared type against a given one, binding what it can; whether they fit. */
   match(declared: Type, given: Type): boolean {
     return (
-      matchConversion(given, substitute(declared, this.#written), {
+      matchConversion(given, substitute(declared, this.#written, this.#fitting), {
+        absorbs: this.#fitting.absorbs,
         shapeOf: this.#fitting.shapeOf,
         memberUnionOf: this.#fitting.memberUnionOf,
         exact: (target, source) => this.#matchAtTop(target, source),
@@ -94,7 +95,7 @@ export class Inference {
    * since conversion binds none (§3.10).
    */
   #convertsInto(declared: AnyType, given: Type): boolean {
-    const known = substitute(declared, this.#bound);
+    const known = this.substituted(declared);
     if (known.kind !== 'any' || parametersIn(known).some((each) => this.#unknowns.has(each))) {
       return false;
     }
@@ -103,7 +104,10 @@ export class Inference {
 
   /** Matches `declared` against a type `given` must equal, as an expected result. */
   matchExactly(declared: Type, given: Type): boolean {
-    return given.kind === 'error' || this.#matchExact(substitute(declared, this.#written), given);
+    return (
+      given.kind === 'error' ||
+      this.#matchExact(substitute(declared, this.#written, this.#fitting), given)
+    );
   }
 
   /** Whether `parameter` is one this inference is finding. */
@@ -146,17 +150,22 @@ export class Inference {
    * whose union holds one; its base otherwise.
    */
   literalType(value: LiteralValue, declared: Type): Type {
-    const expected = substitute(declared, this.#bound);
+    const expected = this.substituted(declared);
     const taking = membersOf(expected).flatMap((member) => {
       const union = this.#memberUnionOf(member);
       return union === undefined ? [member] : membersOf(union);
     });
-    return literalOrBase(value, unionOf(taking));
+    return literalOrBase(value, unionOf(taking, this.#fitting));
   }
 
   /** What has been found so far, as a substitution. */
   substitution(): Substitution {
     return this.#bound;
+  }
+
+  /** `declared` with what has been found so far substituted. */
+  substituted(declared: Type): Type {
+    return substitute(declared, this.#bound, this.#fitting);
   }
 
   /** Matches at the top of a match, where a parameter's type converts and may widen. */
@@ -228,7 +237,7 @@ export class Inference {
     }
     const [only] = open;
     if (open.length <= 1) {
-      return only !== undefined && this.#matchExact(only, unionOf(left));
+      return only !== undefined && this.#matchExact(only, unionOfNormalized(left));
     }
     return (
       open.length === left.length &&
@@ -297,7 +306,7 @@ export class Inference {
     if (declared === undefined || given.kind === 'error' || isPrimitive(given, 'Never')) {
       return given;
     }
-    const union = substitute(declared, this.#bound);
+    const union = this.substituted(declared);
     const memberOf = (type: Type) =>
       [type, baseOf(type)].find((each) => isOneMember(union, each, this.#fitting.memberUnionOf));
     const members = membersOf(given).map(memberOf);
@@ -349,7 +358,7 @@ export class Inference {
       this.#bound.set(parameter, given);
       return true;
     }
-    const current = substitute(bound, this.#bound);
+    const current = this.substituted(bound);
     if (agrees(current)) {
       return true;
     }

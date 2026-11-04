@@ -60,7 +60,10 @@ function checkTarget(context: BodyContext, site: Call, mock: FunctionCall): Expr
   }
   const [taken] = context.checker.parametersOf(mock.function);
   const substitution = substitutionFor(mock.function.typeParameters, mock.typeArguments);
-  const expected = taken === undefined ? undefined : substitute(taken.type, substitution);
+  const expected =
+    taken === undefined
+      ? undefined
+      : substitute(taken.type, substitution, context.checker.typeRules);
   const fit =
     expected === undefined ? undefined : context.checker.fitOf(context.typeOf(target), expected);
   if (fit?.conversion.kind === 'async') {

@@ -12,9 +12,10 @@
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { ValueSite } from '../check.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../context.ts';
+import type { AcceptedPart, Accepts, BodyContext, CheckerContext } from '../context.ts';
 import { type Fit, isExact } from '../types/fit.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
+import type { TypeRules } from '../types/type-rules.ts';
 import { literalsBase } from '../types/unions.ts';
 import { sendableWidened, widened } from '../types/widening.ts';
 
@@ -36,19 +37,28 @@ export interface Agreement {
   readonly disagreeing: readonly Produced[];
 }
 
+/** What agreeing asks of the program: how a type fits the agreed one, and how types are built. */
+type Agreeing = Pick<CheckerContext, 'fitOf' | 'typeRules'>;
+
 /**
- * The type `produced` agree on. `fits` says how a type fits the agreed one; a producer that fits
- * only by converting its value (§2, §3.14) still disagrees, so its caller fits it and records it.
+ * The type `produced` agree on. `checker.fitOf` says how a type fits the agreed one; a producer
+ * that fits only by converting its value (§2, §3.14) still disagrees, so its caller fits it and
+ * records it.
  */
 export function agreedType(
   produced: readonly Produced[],
-  fits: (found: Type, decided: Type) => Fit | undefined,
+  checker: Agreeing,
   expected?: Type,
 ): Agreement {
+  const { fitOf: fits, typeRules: rules } = checker;
   const first = produced.find(({ type }) => !isPrimitive(type, 'Never'))?.type;
   const target = expected ?? first;
-  const widen = expected === undefined ? agreeingWidened : sendableWidened;
-  const decided = target === undefined ? undefined : firstOrWidened(target, produced, fits, widen);
+  const widen =
+    expected === undefined
+      ? (type: Type) => agreeingWidened(type, rules)
+      : (type: Type) => sendableWidened(type, rules);
+  const decided =
+    target === undefined ? undefined : firstOrWidened(target, produced, checker, widen);
   return {
     decided,
     disagreeing:
@@ -56,7 +66,9 @@ export function agreedType(
         ? []
         : produced.filter(
             ({ type }) =>
-              !(fitsExactly(fits(type, decided)) || fitsExactly(fits(widened(type), decided))),
+              !(
+                fitsExactly(fits(type, decided)) || fitsExactly(fits(widened(type, rules), decided))
+              ),
           ),
   };
 }
@@ -66,8 +78,8 @@ export function agreedType(
  * type, or a union of literals of one base, to that base, which each such producer is then
  * converted to, and a sendable function type to a plain one.
  */
-function agreeingWidened(type: Type): Type {
-  return literalsBase(type) ?? widened(type);
+function agreeingWidened(type: Type, rules: TypeRules): Type {
+  return literalsBase(type) ?? widened(type, rules);
 }
 
 /**
@@ -78,12 +90,13 @@ function agreeingWidened(type: Type): Type {
 function firstOrWidened(
   first: Type,
   produced: readonly Produced[],
-  fits: (found: Type, decided: Type) => Fit | undefined,
+  checker: Agreeing,
   widen: (type: Type) => Type,
 ): Type {
+  const fits = checker.fitOf;
   const fitsAll = (decided: Type, widenProducer = false) =>
     produced.every(({ type }) =>
-      fitsExactly(fits(widenProducer ? (literalsBase(type) ?? widened(type)) : type, decided)),
+      fitsExactly(fits(widenProducer ? agreeingWidened(type, checker.typeRules) : type, decided)),
     );
   if (fitsAll(first)) {
     return first;
@@ -103,7 +116,7 @@ export function settleAgreement(
   mismatch: (span: AnchoredSpan, decided: Type, found: Type) => Diagnostic<AnchoredSpan>,
 ): Type | undefined {
   const { fitOf } = context.checker;
-  const { decided, disagreeing } = agreedType(produced, fitOf, expected);
+  const { decided, disagreeing } = agreedType(produced, context.checker, expected);
   if (decided === undefined) {
     return undefined;
   }
@@ -132,7 +145,7 @@ export function decidedSoFar(
   context: BodyContext,
   produced: readonly Produced[],
 ): Type | undefined {
-  return agreedType(produced, context.checker.fitOf).decided;
+  return agreedType(produced, context.checker).decided;
 }
 
 /** Whether `part` can take a parameter of `expected`. */

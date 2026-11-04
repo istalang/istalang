@@ -156,7 +156,7 @@ function restParameters(
 ): readonly Register[] {
   const { call, span, declared } = rest;
   if (declared.rest?.kind === 'pack') {
-    const type = substitute(declared.type, substitutionOfCall(call));
+    const type = substitute(declared.type, substitutionOfCall(call), context.checker.typeRules);
     return items.flatMap(({ value, isSpread }) =>
       isSpread ? packElementsOf(context, value, { type, span }) : [value],
     );

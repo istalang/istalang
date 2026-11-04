@@ -51,7 +51,13 @@ import { computed, fittedForm, itemsOf, type Outcome, pairOf, refused, unknown }
 export interface ComputationScope {
   readonly checker: Pick<
     CheckerContext,
-    'fieldsOf' | 'parametersOf' | 'defaultsOf' | 'moduleOf' | 'bindings' | 'constantNamed'
+    | 'fieldsOf'
+    | 'parametersOf'
+    | 'defaultsOf'
+    | 'moduleOf'
+    | 'bindings'
+    | 'constantNamed'
+    | 'typeRules'
   >;
   readonly constant: VariableDeclaration | undefined;
   readonly checked: CheckedBody;
@@ -244,15 +250,18 @@ class Computation {
     const declaration = call.function;
     const parameters = checker.parametersOf(declaration);
     const module = checker.moduleOf(declaration);
-    const typeArguments = call.typeArguments.map((type) => substitute(type, this.#substitution));
+    const typeArguments = call.typeArguments.map((type) =>
+      substitute(type, this.#substitution, checker.typeRules),
+    );
     const substitution = substitutionFor(declaration.typeParameters, typeArguments);
     const fields = new Map<VariableOwner, CheckedConstant>(
-      parameters
-        .slice(0, earlier.length)
-        .map((parameter, index) => [
-          parameter.node,
-          { type: substitute(parameter.type, substitution), form: earlier[index] },
-        ]),
+      parameters.slice(0, earlier.length).map((parameter, index) => [
+        parameter.node,
+        {
+          type: substitute(parameter.type, substitution, checker.typeRules),
+          form: earlier[index],
+        },
+      ]),
     );
     const scope: ComputationScope = {
       checker,

@@ -121,7 +121,7 @@ function witnessesOf(
     }
     const met: (readonly ResolvedCall[])[] = [];
     for (const constraint of site.checker.constraintsOf(parameter)) {
-      const mapped = substituteConstraint(constraint, substitution);
+      const mapped = substituteConstraint(constraint, substitution, site.checker.typeRules);
       const witnessesOfConstraint = conform({ site, type: argument, constraint: mapped }, depth);
       if (isFailure(witnessesOfConstraint)) {
         return witnessesOfConstraint;
@@ -272,7 +272,7 @@ function throughMembers(
   const { union, through, declaration } = members;
   const index = requiredFunctions(constraint.trait).indexOf(declaration);
   const signature = signatureOf(checker, declaration, constraintSubstitution(constraint, type));
-  const candidate = membersCall(union, through, { declaration, member: index });
+  const candidate = membersCall(checker.typeRules, union, through, { declaration, member: index });
   const choice = chooseWitnessAmong(checker, [candidate], signature);
   const witness = witnessChosen(site, choice, signature, depth);
   return witness.kind === 'call' ? witness.call : 'failed';
@@ -388,7 +388,11 @@ function witnessChosen(
   if (isFailure(instantiation)) {
     return { kind: instantiation };
   }
-  const result = substitute(application.signature.result(), instantiation.substitution);
+  const result = substitute(
+    application.signature.result(),
+    instantiation.substitution,
+    site.checker.typeRules,
+  );
   if (!sameType(result, signature.result())) {
     return { kind: 'wrongResult', required: signature.result(), given: result };
   }

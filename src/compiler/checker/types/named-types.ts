@@ -44,7 +44,7 @@ import { type ShapeKey, typeKeys } from './type-keys.ts';
 import { baseOf, hasMember, optionalInner } from './unions.ts';
 import { arrayElement } from './well-known.ts';
 
-type Aliases = Pick<Checker, 'aliasedType'>;
+type Aliases = Pick<Checker, 'aliasedType' | 'typeRules'>;
 
 /**
  * The type `entity` names, a trait's none: a declared type or an alias with no type arguments
@@ -87,7 +87,7 @@ export function staticOwnerOf(type: Type | undefined): StaticOwner | undefined {
  * alias the type it stands for; undefined for any other function, or an owner with none.
  */
 export function declaredOwnerOf(
-  checker: Pick<Checker, 'aliasedType' | 'bindings'>,
+  checker: Pick<Checker, 'aliasedType' | 'typeRules' | 'bindings'>,
   module: ModuleId,
   declaration: FunctionDeclaration,
 ): StaticOwner | undefined {
@@ -137,7 +137,7 @@ export type DowncastTarget = PatternType | { readonly kind: 'unheld'; readonly t
  * inside has its own type, never an `any` one, so an alias of an `any` type names none.
  */
 export function downcastTargetOf(
-  checker: Pick<Checker, 'aliasedType' | 'fitOf'>,
+  checker: Pick<Checker, 'aliasedType' | 'typeRules' | 'fitOf'>,
   entity: Entity,
   from: AnyType,
 ): DowncastTarget {
@@ -179,7 +179,7 @@ export function namesOwnType(checker: Aliases, entity: Entity, type: Type): bool
 }
 
 /** What a pattern naming a type selects of a union's members reads of the program. */
-type MemberNaming = Pick<Checker, 'aliasedType' | 'variantsOf'>;
+type MemberNaming = Pick<Checker, 'aliasedType' | 'typeRules' | 'variantsOf'>;
 
 /**
  * The members of a union a pattern naming `entity` selects (§3.11): the enums declaring a variant

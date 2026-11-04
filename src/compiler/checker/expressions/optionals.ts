@@ -66,14 +66,16 @@ export class OptionalChains implements Chains {
    * The type of `node`, whose handler gave `value`: for a link of a chain, the chain's value so
    * far, wrapped into `T?` unless already optional; `value` itself for any other expression.
    */
-  linked(_context: BodyContext, node: Expression, value: Type): Type {
+  linked(context: BodyContext, node: Expression, value: Type): Type {
     const base = this.#bases.get(node);
     if (base === undefined) {
       return value;
     }
     this.#carried.set(node, value);
     this.#links.set(node, { base, carried: value });
-    return value.kind === 'error' || optionalInner(value) !== undefined ? value : optionalOf(value);
+    return value.kind === 'error' || optionalInner(value) !== undefined
+      ? value
+      : optionalOf(value, context.checker.typeRules);
   }
 
   chainOf(link: Expression): ChainLink | undefined {
@@ -100,7 +102,7 @@ export class OptionalChains implements Chains {
 export function checkUnwrap(context: BodyContext, node: Unwrap, expected: Type | undefined): Type {
   const operand = context.expression(
     node.operand,
-    expected === undefined ? undefined : optionalOf(expected),
+    expected === undefined ? undefined : optionalOf(expected, context.checker.typeRules),
   );
   context.report(checkerDiagnostics.forceUnwrap(node.span));
   const inner = optionalInner(operand);
@@ -124,7 +126,7 @@ export function checkNullish(context: BodyContext, node: Binary, expected: Type 
   const { checker } = context;
   const left = context.expression(
     node.left,
-    expected === undefined ? undefined : optionalOf(expected),
+    expected === undefined ? undefined : optionalOf(expected, checker.typeRules),
   );
   const inner = optionalInner(left);
   if (inner === undefined) {

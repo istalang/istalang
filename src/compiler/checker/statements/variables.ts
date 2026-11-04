@@ -134,6 +134,6 @@ export function checkVariableDeclaration(context: BodyContext, node: VariableDec
   }
   const declared = node.type === undefined ? undefined : context.resolveType(node.type);
   const initial = context.expect(node.initializer, declared);
-  const held = declared ?? (node.isMutable ? widened(initial) : initial);
+  const held = declared ?? (node.isMutable ? widened(initial, context.checker.typeRules) : initial);
   declareTargets(context, node, held);
 }

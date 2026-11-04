@@ -65,7 +65,11 @@ export function derivedCodecEntry(lowering: CodecLowering, direction: JsonDirect
   const { declaration } = instance;
   const parameters = checker.parametersOf(declaration).length;
   const code = new SynthesizedCode(lowering, declaration.name.span, parameters);
-  const result = substitute(checker.resultOf(declaration), substitutionOf(instance));
+  const result = substitute(
+    checker.resultOf(declaration),
+    substitutionOf(instance),
+    checker.typeRules,
+  );
   if (result.kind !== 'nominal') {
     unreachable('A codec returns a Json or a Result.');
   }

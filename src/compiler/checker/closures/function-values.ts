@@ -137,7 +137,7 @@ export function checkFunctionValue(
   }
   recordChosen(context, { site, application, instantiation });
   const { substitution } = instantiation;
-  const result = substitute(signature.result(), substitution);
+  const result = substitute(signature.result(), substitution, checker.typeRules);
   const pack = signature.parameters.find((slot) => slot.rest?.kind === 'pack');
   return withPack(
     {
@@ -146,12 +146,15 @@ export function checkFunctionValue(
       isAsync: signature.declaration.isAsync,
       parameters: signature.parameters
         .filter((slot, index) => slot !== pack && binding[index]?.kind === 'argument')
-        .map((slot) => ({ type: substitute(slot.type, substitution), reference: slot.reference })),
+        .map((slot) => ({
+          type: substitute(slot.type, substitution, checker.typeRules),
+          reference: slot.reference,
+        })),
       result: signature.declaration.isAsync
         ? (futureArgument(checker, result) ?? errorType)
         : result,
     },
-    pack === undefined ? undefined : substitute(pack.type, substitution),
+    pack === undefined ? undefined : substitute(pack.type, substitution, checker.typeRules),
   );
 }
 

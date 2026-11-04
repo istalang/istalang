@@ -85,6 +85,7 @@ import {
 } from './types/type.ts';
 import { typeKeys } from './types/type-keys.ts';
 import { sameTypeSpelled, unaliased } from './types/type-parts.ts';
+import type { TypeRules } from './types/type-rules.ts';
 
 /** What a checker is made with, beside its program. */
 export interface CheckerOptions {
@@ -104,6 +105,12 @@ export interface CheckerOptions {
   readonly observe?: ((table: string, key: unknown) => void) | undefined;
 }
 
+/** An `any` member of a union, and another member it may take whole (type-rules.ts). */
+interface Absorbing {
+  readonly target: AnyType;
+  readonly member: Type;
+}
+
 export class ProgramChecker implements CheckerContext {
   readonly program: Program;
   readonly typeKeys = typeKeys;
@@ -117,6 +124,12 @@ export class ProgramChecker implements CheckerContext {
   readonly #resolvedTypes: EntryTable<CheckerNote, TypeNode, Type, ModuleId>;
   /** Each type's disposal, by its key: finding a declared `dispose` chooses among candidates. */
   readonly #disposals: EntryTable<CheckerNote, string, Disposal, NominalType>;
+  /**
+   * Whether an `any` member of a union takes a member whole, by both their keys. Conformance may
+   * build the very union asking, so a question reached again while it is answered takes `false`,
+   * the member kept beside the `any` one, alike whichever was asked first.
+   */
+  readonly #absorbed: EntryTable<CheckerNote, string, boolean, Absorbing>;
   readonly #functions: FunctionChecks;
   readonly #constants: ConstantChecks;
   readonly #layouts: Layouts;
@@ -153,6 +166,11 @@ export class ProgramChecker implements CheckerContext {
       compute: (_key, type) => disposalOf(this, unaliased(type)),
       equal: (first, second) =>
         first === second || (first.kind !== 'function' && first.kind === second.kind),
+    });
+    this.#absorbed = entries.table({
+      name: 'absorbed members',
+      compute: (_key, { target, member }: Absorbing) => meetsAny(this, member, target),
+      cyclic: { standIn: () => false },
     });
     this.#functions = new FunctionChecks({
       checker: this,
@@ -262,8 +280,17 @@ export class ProgramChecker implements CheckerContext {
   readonly fitOf = (found: Type, expected: Type): Fit | undefined =>
     fitOf(found, expected, this.fitting);
 
+  readonly typeRules: TypeRules = {
+    absorbs: (target, member) =>
+      this.#absorbed.get(JSON.stringify([typeKeys.typeKey(target), typeKeys.typeKey(member)]), {
+        target,
+        member,
+      }),
+  };
+
   get fitting(): Fitting {
     return {
+      ...this.typeRules,
       meetsAny: (type, target) => meetsAny(this, type, target),
       shapeOf: (type) => this.#layouts.nominalShapeOf(type),
       memberUnionOf: (parameter) =>

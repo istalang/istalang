@@ -61,6 +61,7 @@ describe('a function type ending in a pack', () => {
         const substituted = substitute(
           packed(fixed),
           new Map([[packDeclaration, tupleType(elements)]]),
+          { absorbs: () => false },
         );
         expect(sameType(substituted, plain([...fixed, ...elements]))).toBe(true);
       }),

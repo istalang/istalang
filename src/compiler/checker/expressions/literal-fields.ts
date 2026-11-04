@@ -113,14 +113,21 @@ export function checkLiteralFields(
   const found = completed?.substitution ?? inference.substitution();
   context.literals.recordFields(
     node,
-    shape.fields.map((field) => ({ ...field, type: substitute(field.type, found) })),
+    shape.fields.map((field) => ({
+      ...field,
+      type: substitute(field.type, found, context.checker.typeRules),
+    })),
   );
   if (completed === undefined) {
     return errorType;
   }
   const type = shape.typeOf(completed.typeArguments);
   for (const value of items.given.values()) {
-    context.fit(value.type, substitute(value.declared, completed.substitution), value.node);
+    context.fit(
+      value.type,
+      substitute(value.declared, completed.substitution, context.checker.typeRules),
+      value.node,
+    );
   }
   if (spread !== undefined && spreadType !== undefined) {
     context.fit(spreadType, spreadOf(shape, completed.typeArguments), spread.node.expression);
@@ -278,7 +285,7 @@ function checkItem(
     items.fits = false;
     return;
   }
-  const declared = substitute(field.type, inference.substitution());
+  const declared = inference.substituted(field.type);
   const isKnown = parametersIn(declared).every((parameter) => !inference.isUnknown(parameter));
   const literal = writtenLiteral(unparenthesized(value));
   const literalType =

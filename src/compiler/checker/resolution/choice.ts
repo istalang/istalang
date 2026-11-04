@@ -76,7 +76,7 @@ export function signatureOf(
     declaration,
     typeParameters: typeParametersOf(declaration.typeParameters),
     parameters: checker.parametersOf(declaration).map(({ node, type, reference, rest }, index) => {
-      const substituted = substitute(type, substitution);
+      const substituted = substitute(type, substitution, checker.typeRules);
       const isReceiver = index === 0 && node.name.text === receiverParameter;
       return {
         type: substituted,
@@ -86,11 +86,11 @@ export function signatureOf(
         hasDefault: node.defaultValue !== undefined,
         rest:
           rest?.kind === 'array'
-            ? { kind: 'array', item: substitute(rest.item, substitution) }
+            ? { kind: 'array', item: substitute(rest.item, substitution, checker.typeRules) }
             : rest,
       };
     }),
-    result: () => substitute(checker.resultOf(declaration), substitution),
+    result: () => substitute(checker.resultOf(declaration), substitution, checker.typeRules),
   };
 }
 

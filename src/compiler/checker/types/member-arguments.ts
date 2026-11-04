@@ -45,7 +45,7 @@ export function standsForMember(
   if (written === undefined || argument.kind === 'error') {
     return true;
   }
-  const union = substitute(written, substitution);
+  const union = substitute(written, substitution, site.checker.typeRules);
   if (isOneMember(union, argument, site.checker.fitting.memberUnionOf)) {
     return true;
   }

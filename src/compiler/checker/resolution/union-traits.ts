@@ -34,6 +34,7 @@ import { sameType } from '../types/identity.ts';
 import { defaultArgument, parameterType } from '../types/resolve-type.ts';
 import { substitute } from '../types/substitution.ts';
 import type { AnyType, Constraint, ParameterKey, Type, UnionType } from '../types/type.ts';
+import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 
 /** A call through a union's trait, as a candidate: the required function, and how it is reached. */
@@ -57,11 +58,11 @@ export function traitAsAny(constraint: Constraint, union: Type): AnyType {
 }
 
 /** The one constraint of `through`, a trait as `any` takes it, as `type` meets it. */
-export function traitMetBy(through: AnyType, type: Type): Constraint {
+export function traitMetBy(through: AnyType, type: Type, rules: TypeRules): Constraint {
   const [written] = through.constraints;
   return written === undefined
     ? unreachable('A trait called through members is one constraint.')
-    : constraintOn(written, type);
+    : constraintOn(written, type, rules);
 }
 
 /**
@@ -84,18 +85,21 @@ export function membersShortfall(
     const name = declaration.name.text;
     return `'${name}' declared for it, as ${trait} can't be met through its members: ${unsafety}`;
   }
-  const unmet = union.members.find((member) => !memberMeets(member, traitMetBy(through, member)));
+  const unmet = union.members.find(
+    (member) => !memberMeets(member, traitMetBy(through, member, checker.typeRules)),
+  );
   return unmet === undefined ? undefined : `its member ${typeText(unmet)} to satisfy ${trait} too`;
 }
 
 /** The call of `declaration`, the `member`-th function of `through`'s trait, on `union`'s members. */
 export function membersCall(
+  rules: TypeRules,
   union: UnionType,
   through: AnyType,
   { declaration, member }: { readonly declaration: FunctionDeclaration; readonly member: number },
 ): MembersCall {
   const origin: MembersRequirement = { kind: 'members', on: union, through, member };
-  const substitution = constraintSubstitution(traitMetBy(through, union), union);
+  const substitution = constraintSubstitution(traitMetBy(through, union, rules), union);
   return { declaration, requirement: { declaration, substitution, origin } };
 }
 
@@ -124,7 +128,7 @@ export function traitCallsOn(
   const through: AnyType = { kind: 'any', constraints: [written] };
   return requiredFunctions(trait).flatMap((declaration, member) =>
     declaration.name.text === name && takesSelfFirst(checker, written, declaration)
-      ? [membersCall(union, through, { declaration, member })]
+      ? [membersCall(checker.typeRules, union, through, { declaration, member })]
       : [],
   );
 }
@@ -161,5 +165,8 @@ function takesSelfFirst(
     return false;
   }
   const self = parameterType(written.trait);
-  return sameType(substitute(receiver.type, constraintSubstitution(written, self)), self);
+  return sameType(
+    substitute(receiver.type, constraintSubstitution(written, self), checker.typeRules),
+    self,
+  );
 }

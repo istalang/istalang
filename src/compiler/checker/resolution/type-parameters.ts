@@ -111,7 +111,7 @@ export class TypeParameters {
       meets(
         useSite(this.#checker, module, at),
         argument,
-        substituteConstraint(constraint, typeArguments),
+        substituteConstraint(constraint, typeArguments, this.#checker.typeRules),
       );
     }
   }

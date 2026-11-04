@@ -40,7 +40,7 @@ import {
   hasMember,
   hasOneValue,
   membersOf,
-  unionOf,
+  unionOfNormalized,
   writtenLiteral,
 } from '../types/unions.ts';
 import { anyShape } from './exhaustiveness.ts';
@@ -90,7 +90,7 @@ export function memberTaken(
     test,
     part: hasOneValue(only)
       ? { type: only, path: part.path, narrowedFrom: union }
-      : { type: only, path: [...part.path, { kind: 'member', union }] },
+      : { type: only, path: [...part.path, { kind: 'member', union, member: only }] },
     decided: isTypePattern || hasOneValue(only),
     shapeOf: (inside) => (inside === undefined ? undefined : memberShape(only, inside)),
   };
@@ -99,13 +99,18 @@ export function memberTaken(
 /**
  * What a name bound to `selected` members of `part`'s union has: those earlier cases left, the
  * part's own type when that is all of them; all `selected` when earlier cases took every one.
+ * Alternatives may select one member twice, so the members are the union's own, each once.
  */
 export function leftOf(part: ValuePart, selected: readonly Type[]): Type {
-  const left = selected.filter((member) => hasMember(part.type, member));
-  if (left.length === membersOf(part.type).length) {
+  const selecting = (members: readonly Type[]) =>
+    members.filter((member) => selected.some((each) => hasMember(each, member)));
+  const own = membersOf(part.type);
+  const left = selecting(own);
+  if (left.length === own.length) {
     return part.type;
   }
-  return unionOf(left.length > 0 ? left : selected);
+  const union = unionPart(part) ?? part.type;
+  return unionOfNormalized(left.length > 0 ? left : selecting(membersOf(union)));
 }
 
 /**

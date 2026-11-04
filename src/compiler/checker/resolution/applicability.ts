@@ -23,7 +23,6 @@ import type { CheckerContext } from '../context.ts';
 import { Inference } from '../inference/infer.ts';
 import type { Binding } from '../resolved-call.ts';
 import { reshapes } from '../types/fit.ts';
-import { substitute } from '../types/substitution.ts';
 import {
   errorType,
   fillsPack,
@@ -88,7 +87,7 @@ export function takenBy(
     if (argument.type === undefined || slot === undefined) {
       return false;
     }
-    const expected = substitute(slot.type, inference.substitution());
+    const expected = inference.substituted(slot.type);
     const fit = checker.fitOf(argument.type, expected);
     return fit !== undefined && reshapes(fit);
   });
@@ -193,7 +192,7 @@ function judgedArgument(
   if (several !== undefined && several[0].kind === 'TypeParameter') {
     return { kind: 'severalMembers', index, parameter: several[0], found: several[1] };
   }
-  return fits ? 'fits' : { index, expected: substitute(slot.type, inference.substitution()) };
+  return fits ? 'fits' : { index, expected: inference.substituted(slot.type) };
 }
 
 /**
@@ -221,5 +220,5 @@ function isByReference(slot: ParameterSlot, argument: CallArgument): boolean {
 /** Whether an argument the chosen function decides can take a parameter of type `declared`. */
 function acceptsDecided(argument: CallArgument, declared: Type, inference: Inference): boolean {
   const isOpen = (part: Type) => part.kind === 'parameter' && inference.isUnknown(part.declaration);
-  return argument.accepts?.(substitute(declared, inference.substitution()), isOpen) ?? true;
+  return argument.accepts?.(inference.substituted(declared), isOpen) ?? true;
 }

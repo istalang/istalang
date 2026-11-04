@@ -13,24 +13,36 @@
  *   literals is compared with each, a test having made sure it is one.
  * - A literal type on its own is its base's value, so taking it as its base changes nothing; a
  *   union of literals is a tag, whose literal is written variant by variant.
+ * - An instantiation may let an `any` member take a member whole (§2, §3.5): `T | any Stringable`
+ *   with `T = Int` is `any Stringable`. A value of the member then sits inside the `any` type's
+ *   variant, which goes into the union's variant of that `any` member, and a test of it is the
+ *   union's test, then the `any` type's. Where a type sits in another (`holdingOf`) is derived
+ *   here, from the types as the instantiation made them, for every way in or out.
  */
 
 import type { Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { sameType } from '../checker/types/identity.ts';
-import { isPrimitive, type LiteralType, type Type, type UnionType } from '../checker/types/type.ts';
-import { baseOf, hasMember, hasOneValue } from '../checker/types/unions.ts';
+import {
+  type AnyType,
+  isPrimitive,
+  type LiteralType,
+  type Type,
+  type UnionType,
+} from '../checker/types/type.ts';
+import { baseOf, hasOneValue } from '../checker/types/unions.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { Label } from './code-writer.ts';
 import { emitConstant } from './constants.ts';
 import type { CodeContext } from './context.ts';
-
-/** A value in a register, with its type. */
-export interface TypedValue {
-  readonly register: Register;
-  readonly type: Type;
-}
+import {
+  branchOnHeld,
+  heldIn,
+  heldPositions,
+  holdingOf,
+  memberValue,
+  type TypedValue,
+} from './holdings.ts';
 
 /** A value of a union in a register. */
 export interface UnionValue {
@@ -38,42 +50,47 @@ export interface UnionValue {
   readonly type: UnionType;
 }
 
-/** The value of `union` that is the one value of `member`, a literal or `None`. */
+/** The value of `holder` that is the one value of `member`, a literal or `None`. */
 export function oneValueIn(
   context: CodeContext,
-  union: UnionType,
+  holder: Type,
   member: Type,
   span: AnchoredSpan,
 ): Register {
-  return memberValue(context, { union, member, fields: [] }, span);
+  const inside = () => emitConstant(context, oneValueOf(member), span);
+  return heldIn(context, { member, inside }, holder, span);
 }
 
 /**
- * `value`, of a member of `union`, a literal of a member's base, or a union `union` holds whole,
- * as a value of `union`. A literal's own value is its base's, so it goes into the base's variant.
+ * `value`, of a type `union` holds (`holdingOf`), or a union whose every member it holds, as a
+ * value of `union`, or of the `any` type an instantiation collapsed it into. A literal's own value
+ * is its base's, so it goes into the base's variant.
  */
 export function intoUnion(
   context: CodeContext,
   value: TypedValue,
-  union: UnionType,
+  union: UnionType | AnyType,
   span: AnchoredSpan,
 ): Register {
-  const { type } = value;
-  if (type.kind === 'union') {
-    return remapped(context, { register: value.register, type }, union, span);
+  const { register, type } = value;
+  if (sameType(type, union)) {
+    return register;
   }
-  const member = type.kind === 'literal' && !hasMember(union, type) ? baseOf(type) : type;
-  return memberValue(
-    context,
-    { union, member, fields: hasOneValue(member) ? [] : [value.register] },
-    span,
-  );
+  if (type.kind !== 'union') {
+    return heldIn(context, { member: type, inside: () => register }, union, span);
+  }
+  return union.kind === 'union'
+    ? remapped(context, { register, type }, union, span)
+    : eachMember(context, { register, type }, span, (member) =>
+        intoUnion(context, member, union, span),
+      );
 }
 
 /**
  * `value`, of the union `value.type`, as `to`: one of its members, a union of some of them, or the
  * union itself. A test made sure the value is one of `to`'s members. Where an instantiation
- * collapsed the union into one type, `to` is that type or literals merged into it.
+ * collapsed the union into one type, `to` is that type or literals merged into it, and where an
+ * `any` type took `to`, or each of its members, whole, its value is read out of the `any` type's.
  */
 export function outOfUnion(
   context: CodeContext,
@@ -85,15 +102,61 @@ export function outOfUnion(
   if (sameType(to, type)) {
     return register;
   }
-  if (type.kind !== 'union') {
-    return to.kind === 'union' ? literalIn(context, value, to, span) : register;
-  }
   if (to.kind === 'union') {
-    return remapped(context, { register, type }, to, span);
+    if (type.kind === 'any') {
+      return outOfAny(context, { register, type }, to, span);
+    }
+    return type.kind === 'union'
+      ? remapped(context, { register, type }, to, span)
+      : literalIn(context, value, to, span);
   }
-  return hasOneValue(to)
-    ? emitConstant(context, oneValueOf(to), span)
-    : context.code.field(register, 0, span);
+  if (hasOneValue(to)) {
+    return emitConstant(context, oneValueOf(to), span);
+  }
+  const holding = holdingOf(context, type, to);
+  const positions = holding === undefined ? [] : heldPositions(type, holding);
+  return context.code.readPath(register, positions, span);
+}
+
+/**
+ * `value`, of an `any` type that took each member of `to` whole (§2, §3.5), as a value of `to`,
+ * which a test made sure it is: the `any` type's value tested for each type it may hold, a
+ * literal's base standing for its literals, but the last, which is what is left.
+ */
+function outOfAny(
+  context: CodeContext,
+  value: { readonly register: Register; readonly type: AnyType },
+  to: UnionType,
+  span: AnchoredSpan,
+): Register {
+  const { code } = context;
+  const result = code.allocate();
+  const end = code.newLabel();
+  const carriers = to.members
+    .map((member) => (member.kind === 'literal' ? baseOf(member) : member))
+    .filter((carrier, index, all) => all.findIndex((each) => sameType(each, carrier)) === index);
+  for (const [index, carrier] of carriers.entries()) {
+    const next = code.newLabel();
+    if (index < carriers.length - 1) {
+      const here = code.newLabel();
+      branchOnHeld(
+        context,
+        { value, members: [carrier] },
+        { matched: here, otherwise: next },
+        span,
+      );
+      code.place(here);
+    }
+    const inside = () => outOfUnion(context, value, carrier, span);
+    const built = to.members.some((member) => sameType(member, carrier))
+      ? heldIn(context, { member: carrier, inside }, to, span)
+      : literalIn(context, { register: inside(), type: carrier }, to, span);
+    code.emit({ kind: 'move', span, dst: result, src: built });
+    code.jump(end, span);
+    code.place(next);
+  }
+  code.place(end);
+  return result;
 }
 
 /**
@@ -110,37 +173,6 @@ export function asBase(context: CodeContext, value: TypedValue, span: AnchoredSp
   });
 }
 
-/** The variant of `union`'s enum holding `member`. */
-function variantOf(context: CodeContext, union: UnionType, member: Type): number {
-  return context.tables.types.unionVariant(union, member);
-}
-
-/** Jumps to `matched` when `value` holds one of `members`, else to `otherwise`: a `switch`. */
-export function branchOnMembers(
-  context: CodeContext,
-  { value, members }: { readonly value: UnionValue; readonly members: readonly Type[] },
-  labels: { readonly matched: Label; readonly otherwise: Label },
-  span: AnchoredSpan,
-): void {
-  const variants = context.tables.types.unionMembers(value.type);
-  const targets = variants.map((variant) =>
-    members.some((member) => sameType(member, variant)) ? labels.matched : labels.otherwise,
-  );
-  context.code.switch(value.register, targets, span, labels.otherwise);
-}
-
-/** Jumps to `to` when `value` holds `member`, else carries on. */
-export function jumpIfMember(
-  context: CodeContext,
-  { value, member }: { readonly value: UnionValue; readonly member: Type },
-  to: Label,
-  span: AnchoredSpan,
-): void {
-  const past = context.code.newLabel();
-  branchOnMembers(context, { value, members: [member] }, { matched: to, otherwise: past }, span);
-  context.code.place(past);
-}
-
 /** The one value of `member`, which has one: a literal's, or `none`, which is `null`. */
 function oneValueOf(member: Type): Value {
   if (member.kind === 'literal') {
@@ -152,31 +184,6 @@ function oneValueOf(member: Type): Value {
 /** The value a literal type's one value is at run time: its base's (§2). */
 export function literalValue(type: LiteralType): Value {
   return type.value;
-}
-
-/** A value of `union` built as its `member`'s variant, holding `fields`. */
-interface MemberBuilt {
-  readonly union: UnionType;
-  readonly member: Type;
-  readonly fields: readonly Register[];
-}
-
-/** A value of `union` as its `member`'s variant, holding `fields`. */
-function memberValue(
-  context: CodeContext,
-  { union, member, fields }: MemberBuilt,
-  span: AnchoredSpan,
-): Register {
-  const dst = context.code.allocate();
-  context.code.emit({
-    kind: 'variant',
-    span,
-    dst,
-    type: context.tables.types.index(union),
-    variant: variantOf(context, union, member),
-    fields: [...fields],
-  });
-  return dst;
 }
 
 /**
@@ -191,26 +198,18 @@ function remapped(
   to: UnionType,
   span: AnchoredSpan,
 ): Register {
-  const targetOf = (member: Type): Type | undefined => {
-    if (hasMember(to, member)) {
-      return member;
-    }
-    return member.kind === 'literal' && hasMember(to, baseOf(member)) ? baseOf(member) : undefined;
-  };
+  const holds = (member: Type) => holdingOf(context, to, member) !== undefined;
   return eachVariant(context, value, span, {
     each: (member) => {
-      const target = targetOf(member);
-      if (target !== undefined && hasOneValue(target)) {
-        return memberValue(context, { union: to, member: target, fields: [] }, span);
-      }
-      const inside = hasOneValue(member)
-        ? emitConstant(context, oneValueOf(member), span)
-        : context.code.field(value.register, 0, span);
-      return target === undefined
-        ? literalIn(context, { register: inside, type: member }, to, span)
-        : memberValue(context, { union: to, member: target, fields: [inside] }, span);
+      const inside = () =>
+        hasOneValue(member)
+          ? emitConstant(context, oneValueOf(member), span)
+          : context.code.field(value.register, 0, span);
+      return holds(member)
+        ? heldIn(context, { member, inside }, to, span)
+        : literalIn(context, { register: inside(), type: member }, to, span);
     },
-    runs: (member) => targetOf(member) !== undefined || literalsOf(to, member).length > 0,
+    runs: (member) => holds(member) || literalsOf(to, member).length > 0,
   });
 }
 

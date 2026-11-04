@@ -4,19 +4,21 @@
  * - A union is a set of members: a member that is a union contributes its members, duplicates
  *   merge (by key, so an alias and the type it names are one member), `Never` drops out, and one
  *   member is that member, none `Never`.
- * - No value sits in two members: a literal merges into its base where the base is a member, and
- *   `true | false` is `Bool`. A member merging into an `any` member whose traits it meets needs the
- *   program to say so, so it is the caller's (`absorbedInto`), done where a written union is
- *   resolved.
+ * - No value sits in two members: a literal merges into its base where the base is a member,
+ *   `true | false` is `Bool`, and an `any` member takes whole every member meeting its traits, or
+ *   whose literals' base does, as the program's rules say (type-rules.ts).
  * - The error type makes the whole union the error type: a diagnostic already explained it.
- * - Substitution builds through `unionOf` (type-parts.ts), so `T | Int` with `T = Int` collapses.
- * - `T?` is `T | None`; what remains of a union without some members (`withoutMembers`) is what a
- *   `case` leaves to the cases after it.
+ * - `unionOf` is the one constructor of a union from types, written, substituted (type-parts.ts:
+ *   `T | Int` with `T = Int` collapses, `T | any Stringable` with `T = String` too), joined or made
+ *   optional, so normalization holds however a union was reached.
+ * - Leaving members of a union out keeps the rest normalized against each other, so what remains
+ *   (`unionOfNormalized`), what a `case` leaves to the cases after it, takes no rules.
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import {
+  type AnyType,
   isPrimitive,
   type LiteralType,
   type LiteralValue,
@@ -26,6 +28,7 @@ import {
   type Type,
 } from './type.ts';
 import { typeKeys } from './type-keys.ts';
+import type { TypeRules } from './type-rules.ts';
 
 /** The primitive a literal's value is a value of. */
 type LiteralBase = 'Int' | 'String' | 'Bool';
@@ -52,14 +55,31 @@ export function baseOf(type: Type): Type {
   return type.kind === 'literal' ? primitiveType(literalBase(type.value)) : type;
 }
 
-/** The union of `members`, normalized (§2); never a union of fewer than two members. */
-export function unionOf(members: readonly Type[]): Type {
+/**
+ * The union of `members`, normalized (§2) by the program's `rules`; never a union of fewer than two
+ * members.
+ */
+export function unionOf(members: readonly Type[], rules: TypeRules): Type {
   const flat = members.flatMap((member) => (member.kind === 'union' ? member.members : [member]));
   if (flat.some((member) => member.kind === 'error')) {
     return flat.find((member) => member.kind === 'error') ?? neverType;
   }
+  return unionOfNormalized(withoutAbsorbed(mergedLiterals(distinctMembers(flat)), rules));
+}
+
+/**
+ * The union of `members`, already normalized against each other: some members of one union, or
+ * each of them spelled again as the same type, as leaving members out or dropping aliases gives.
+ */
+export function unionOfNormalized(members: readonly Type[]): Type {
+  const [only] = members;
+  return members.length <= 1 ? (only ?? neverType) : { kind: 'union', members };
+}
+
+/** `members` without `Never` and without a member another one is, by key. */
+function distinctMembers(members: readonly Type[]): readonly Type[] {
   const keys = new Set<string>();
-  const distinct = flat.filter((member) => {
+  return members.filter((member) => {
     const key = typeKeys.typeKey(member);
     if (isPrimitive(member, 'Never') || keys.has(key)) {
       return false;
@@ -67,11 +87,16 @@ export function unionOf(members: readonly Type[]): Type {
     keys.add(key);
     return true;
   });
+}
+
+/** Distinct `members` with each literal merged into its base where it is a member, `true | false` into `Bool`. */
+function mergedLiterals(members: readonly Type[]): readonly Type[] {
+  const keys = new Set(members.map((member) => typeKeys.typeKey(member)));
   const bases = new Set(
-    distinct.flatMap((member) => (member.kind === 'primitive' ? [member.name] : [])),
+    members.flatMap((member) => (member.kind === 'primitive' ? [member.name] : [])),
   );
   const hasBool = keys.has(literalKeyOf(true)) && keys.has(literalKeyOf(false));
-  const kept = distinct.flatMap((member): Type[] => {
+  return members.flatMap((member): Type[] => {
     if (member.kind !== 'literal') {
       return [member];
     }
@@ -84,11 +109,34 @@ export function unionOf(members: readonly Type[]): Type {
     }
     return [member];
   });
-  const [only] = kept;
-  if (kept.length <= 1) {
-    return only ?? neverType;
+}
+
+/** `members` without each one an `any` member takes whole, so no value sits in two members. */
+function withoutAbsorbed(members: readonly Type[], rules: TypeRules): readonly Type[] {
+  if (!members.some((member) => member.kind === 'any')) {
+    return members;
   }
-  return { kind: 'union', members: kept };
+  return members.filter((member) => absorbingMember(members, member, rules) === undefined);
+}
+
+/**
+ * The `any` type among `members` that takes `member` whole (§2), as `rules` say: one whose every
+ * constraint `member` meets, or its literal's base does; undefined for an `any` type itself, which
+ * stays a member of its own, and for a type none takes.
+ */
+export function absorbingMember(
+  members: readonly Type[],
+  member: Type,
+  rules: TypeRules,
+): AnyType | undefined {
+  if (member.kind === 'any') {
+    return undefined;
+  }
+  return members.find(
+    (target): target is AnyType =>
+      target.kind === 'any' &&
+      (rules.absorbs(target, member) || rules.absorbs(target, baseOf(member))),
+  );
 }
 
 function literalKeyOf(value: LiteralValue): string {
@@ -104,7 +152,7 @@ export function membersOf(type: Type): readonly Type[] {
 function withoutMembers(type: Type, removed: Type): Type {
   const gone = new Set(membersOf(removed).map((member) => typeKeys.typeKey(member)));
   const left = membersOf(type).filter((member) => !gone.has(typeKeys.typeKey(member)));
-  return left.length === membersOf(type).length ? type : unionOf(left);
+  return left.length === membersOf(type).length ? type : unionOfNormalized(left);
 }
 
 /** Whether `member` is one of `type`'s members. */
@@ -113,30 +161,9 @@ export function hasMember(type: Type, member: Type): boolean {
   return membersOf(type).some((each) => typeKeys.typeKey(each) === key);
 }
 
-/**
- * `members` without each one an `any` member takes whole (§2): a type meeting every constraint of
- * an `any` member is merged into it, as `meets` says, and so is a literal whose base does, so no
- * value sits in two members.
- */
-export function absorbedInto(
-  members: readonly Type[],
-  meets: (member: Type, target: Extract<Type, { readonly kind: 'any' }>) => boolean,
-): readonly Type[] {
-  const anyMembers = members.filter((member) => member.kind === 'any');
-  return members.filter(
-    (member) =>
-      member.kind === 'any' ||
-      member.kind === 'error' ||
-      !anyMembers.some(
-        (target) =>
-          target.kind === 'any' && (meets(member, target) || meets(baseOf(member), target)),
-      ),
-  );
-}
-
-/** `T | None`, which `T?` is (§2). */
-export function optionalOf(type: Type): Type {
-  return unionOf([type, noneType]);
+/** `T | None`, which `T?` is (§2), normalized by the program's `rules`. */
+export function optionalOf(type: Type, rules: TypeRules): Type {
+  return unionOf([type, noneType], rules);
 }
 
 /** What `type` holds beside `none` when it is a union holding `None` (`T` of `T?`); else undefined. */

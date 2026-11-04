@@ -28,6 +28,7 @@ import {
   type PatternTest,
   type PatternValue,
 } from '../checker/checked-pattern.ts';
+import { sameType } from '../checker/types/identity.ts';
 import type { LiteralType, Type } from '../checker/types/type.ts';
 import { baseOf, hasMember } from '../checker/types/unions.ts';
 import type { Identifier } from '../syntax/node.ts';
@@ -38,8 +39,9 @@ import type { FunctionContext } from './context.ts';
 import { emitImplicitCall } from './emit-call.ts';
 import { equal, ordered } from './expressions/operators.ts';
 import { branchOnVariant } from './expressions/variants.ts';
+import { branchOnHeld, heldPositions, holdingOf, type TypedValue } from './holdings.ts';
 import { declareVariable } from './statements/variables.ts';
-import { branchOnMembers, outOfUnion, type TypedValue } from './unions.ts';
+import { outOfUnion } from './unions.ts';
 
 /** A value being matched, in a register, and the pattern it is matched against. */
 export interface Matching {
@@ -136,9 +138,10 @@ function lowerTest(
 }
 
 /**
- * A member test: a `switch` on the union's variants. An instantiation may have collapsed the union
- * (§3.5): into one type, whose value the part then is, which a member of that type passes and no
- * other; or a literal member into its base, whose value is then compared with the literal.
+ * A member test: a `switch` on the variants holding the members (holdings.ts). An instantiation
+ * may have collapsed the union (§3.5): into one type, whose value the part then is, which a member
+ * of that type passes and no other; a literal member into its base, whose value is then compared
+ * with the literal; or a member into the `any` type that took it whole, whose variant is tested.
  */
 function lowerMemberTest(
   context: FunctionContext,
@@ -147,49 +150,35 @@ function lowerMemberTest(
   { matched, otherwise, span }: Branch,
 ): void {
   const { code } = context;
-  const kept = members.filter((member) => hasMember(union, member));
+  const value = { register: part, type: union };
+  const isOwn = (member: Type) =>
+    union.kind === 'union' ? hasMember(union, member) : sameType(union, member);
   const merged = members.filter(
-    (member): member is LiteralType => member.kind === 'literal' && !hasMember(union, member),
+    (member): member is LiteralType => member.kind === 'literal' && !isOwn(member),
   );
+  const held = members.filter((member) => !merged.includes(member as LiteralType));
   let next = merged.length === 0 ? otherwise : code.newLabel();
-  if (union.kind === 'union') {
-    branchOnMembers(
-      context,
-      { value: { register: part, type: union }, members: kept },
-      { matched, otherwise: next },
-      span,
-    );
-  } else {
-    code.jump(kept.length > 0 ? matched : next, span);
-  }
+  branchOnHeld(context, { value, members: held }, { matched, otherwise: next }, span);
   for (const [index, literal] of merged.entries()) {
     code.place(next);
     next = index === merged.length - 1 ? otherwise : code.newLabel();
-    const value = { register: part, type: union };
-    const base = baseValue(context, value, baseOf(literal), { otherwise: next, span });
+    const base = heldOrJump(context, value, baseOf(literal), { otherwise: next, span });
     const constant = emitConstant(context, literal.value, span);
     code.branch(equal(context, span, [base, constant]), matched, next, span);
   }
 }
 
-/**
- * The value of `base`, a member of `value`'s union or the one type it collapsed into, jumping to
- * `otherwise` when the union holds another member.
- */
-function baseValue(
+/** The value of `member` `value` holds (holdings.ts), jumping to `otherwise` when it holds another. */
+function heldOrJump(
   context: FunctionContext,
   value: TypedValue,
-  base: Type,
+  member: Type,
   { otherwise, span }: Omit<Branch, 'matched'>,
 ): Register {
-  if (value.type.kind !== 'union') {
-    return value.register;
-  }
-  const inBase = context.code.newLabel();
-  const union = { register: value.register, type: value.type };
-  branchOnMembers(context, { value: union, members: [base] }, { matched: inBase, otherwise }, span);
-  context.code.place(inBase);
-  return context.code.field(value.register, 0, span);
+  const held = context.code.newLabel();
+  branchOnHeld(context, { value, members: [member] }, { matched: held, otherwise }, span);
+  context.code.place(held);
+  return outOfUnion(context, value, member, span);
 }
 
 /** A register holding whether `part` passes a comparing test. */
@@ -282,7 +271,7 @@ function readPartAlong(
       value = emitImplicitCall(context, step.site, step.kind, [array, ...constants]);
       positions = [];
     } else {
-      positions.push(...positionsOf(step));
+      positions.push(...positionsOf(context, step));
     }
   }
   return context.code.readPath(value, positions, span);
@@ -293,15 +282,23 @@ function isArrayStep(step: PartStep): step is ArrayStep {
 }
 
 /**
- * The positions `step` reads as a place: a field's or element's own, or the one field of the
- * variant a union's member or an `any`'s value is held in; none where an instantiation collapsed
- * the union into one type (§3.5), whose value the part already is.
+ * The positions `step` reads as a place: a field's or element's own, the one field of the variant
+ * an `any`'s value is held in, or where a union holds its member's value as an instantiation made
+ * it (holdings.ts): none where the union collapsed into that one type (§3.5), inside the `any`
+ * type that took the member whole.
  */
-function positionsOf(step: Exclude<PartStep, ArrayStep>): readonly number[] {
+function positionsOf(
+  context: FunctionContext,
+  step: Exclude<PartStep, ArrayStep>,
+): readonly number[] {
   if (typeof step === 'number') {
     return [step];
   }
-  return step.kind === 'downcast' || step.union.kind === 'union' ? [0] : [];
+  if (step.kind === 'downcast') {
+    return [0];
+  }
+  const holding = holdingOf(context, step.union, step.member);
+  return holding === undefined ? [] : heldPositions(step.union, holding);
 }
 
 function stepOffsets(step: ArrayStep): readonly number[] {
