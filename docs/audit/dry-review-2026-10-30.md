@@ -207,6 +207,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - Unlike `expressions/operators.ts` (where `parseOpenRange` and `rangeParselet` delegate to `parseRangeRest`), `parseRangePattern` and `parseOpenRangePattern` in `patterns.ts` duplicate the operator-kind check, `parseRangeBound`, and `RangePattern` node construction.
 - **Closed parselet dispatch tables duplicated in completion (`src/compiler/parser/`, `src/language-service/completion/grammar/words.ts`; tracked as `Q35`):**
   - `typeParselets`/`wordParselets`, `patternParselets`, `prefixParselets`/`infixParselets`, `statementParselets`, and `topLevelParselets` are internal to `parser/`, forcing `completion/grammar/words.ts` to restate the keyword sets (`Q35`).
+  - **Done** (`p3-unions`): each position's words have one home, `syntax/grammar-words.ts` (`declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers`). Every parselet table above `satisfies` its list both ways (`StartParselets` for keywords, `WordParselets` for contextual words, `parser/word-parselets.ts`), and the lookaheads of `shared`, `sendable`, `hold` and `async` read `followers`. Completion offers the lists and names only the words that need surroundings (`wordNeeds`). Its property test now runs both ways: each keyword the parser takes at a corpus statement or operand is offered, unless it needs surroundings.
 
 ### 10. `src/compiler/program/`
 

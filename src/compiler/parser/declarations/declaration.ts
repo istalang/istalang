@@ -2,9 +2,10 @@
  * Top-level declarations (§3), dispatched on their first token, and the module that holds them
  * (§3.13).
  *
- * The dispatch table covers the declarations that have a keyword of their own. Functions and
- * `const` are statements as well (a local `fn`, a local `const`). Which item may stand where is
- * decided once, for modules and blocks alike (syntax/placement.ts, parts/items.ts).
+ * The dispatch tables cover the declarations that have a word of their own (`declarationWords`,
+ * syntax/grammar-words.ts). Functions and `const` are statements as well (a local `fn`, a local
+ * `const`). Which item may stand where is decided once, for modules and blocks alike
+ * (syntax/placement.ts, parts/items.ts).
  *
  * `struct` and `type` start a declaration only when a name follows: `struct{…}` is an anonymous
  * struct literal, and `type` is a keyword only before a declared name (§2). `shared` is one only
@@ -12,11 +13,19 @@
  */
 
 import type { Declaration, Module } from '../../syntax/declarations.ts';
+import type { DeclarationWord } from '../../syntax/grammar-words.ts';
 import { attachAnnotations } from '../annotations.ts';
+import type { CursorKind } from '../cursor/index.ts';
 import { documentedBy } from '../docstrings.ts';
 import { type ItemRules, parseModuleLines } from '../layout/index.ts';
 import type { Parser } from '../parser.ts';
 import { parseModuleItem } from '../parts/items.ts';
+import {
+  followsModifier,
+  type StartParselets,
+  type WordParselets,
+  wordParseletAt,
+} from '../word-parselets.ts';
 import { parseExtern } from './externs.ts';
 import { parseImport } from './imports.ts';
 import {
@@ -27,44 +36,31 @@ import {
   parseTypeAlias,
 } from './type-declarations.ts';
 
-type TopLevelKeyword = 'import' | 'struct' | 'enum' | 'trait' | 'extern' | 'type' | 'shared';
+/** A declaration at its word, or undefined, with nothing consumed, where the word starts none. */
+type DeclarationParselet = (parser: Parser) => Declaration | undefined;
 
-const topLevelParselets: Record<TopLevelKeyword, (parser: Parser) => Declaration> = {
+const topLevelParselets: Partial<Record<CursorKind, DeclarationParselet>> = {
   import: parseImport,
-  struct: parseStruct,
+  struct: (parser) => (namedNext(parser) ? parseStruct(parser) : undefined),
   enum: parseEnum,
   trait: parseTrait,
   extern: parseExtern,
-  type: parseTypeAlias,
-  shared: parseSharedStruct,
-};
+} satisfies StartParselets<DeclarationWord, DeclarationParselet>;
+
+const wordParselets = {
+  type: (parser) => (namedNext(parser) ? parseTypeAlias(parser) : undefined),
+  shared: (parser) => (followsModifier(parser, 'shared') ? parseSharedStruct(parser) : undefined),
+} satisfies WordParselets<DeclarationWord, DeclarationParselet>;
 
 /** A declaration only the top level allows, or undefined if none starts here. */
 export function parseTopLevelDeclaration(parser: Parser): Declaration | undefined {
-  const keyword = topLevelKeyword(parser);
-  return keyword === undefined ? undefined : topLevelParselets[keyword](parser);
+  const parselet = topLevelParselets[parser.cursor.kind] ?? wordParseletAt(parser, wordParselets);
+  return parselet?.(parser);
 }
 
-function topLevelKeyword(parser: Parser): TopLevelKeyword | undefined {
-  const { cursor } = parser;
-  const { kind } = cursor;
-  const named = cursor.kindAt(1) === 'identifier';
-  switch (kind) {
-    case 'import':
-    case 'enum':
-    case 'trait':
-    case 'extern':
-      return kind;
-    case 'struct':
-      return named ? kind : undefined;
-    case 'identifier':
-      if (parser.atWord('shared') && cursor.kindAt(1) === 'struct') {
-        return 'shared';
-      }
-      return named && parser.atWord('type') ? 'type' : undefined;
-    default:
-      return undefined;
-  }
+/** Whether a name follows the word at the cursor. */
+function namedNext(parser: Parser): boolean {
+  return parser.cursor.kindAt(1) === 'identifier';
 }
 
 /** A whole source file: declarations at column 0. */

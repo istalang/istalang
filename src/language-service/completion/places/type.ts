@@ -1,18 +1,20 @@
 /**
  * What a `type` place offers: the visible names of types, with namespaces, which qualify one
- * (`time.Duration`), and the words a type starts with: `fn`, `async` and `sendable` for a function
- * type, `any` for a trait's values (§2, §3.10, §3.14).
+ * (`time.Duration`), and the words a type starts with (`typeWords`, syntax/grammar-words.ts, which
+ * the parser's type tables are keyed by). An anonymous struct type is written `{…}`, as the
+ * formatter prints it, so `struct` before its brace is not offered.
  *
  * A trait is no type of its own, so a trait is offered only where one is asked for: a type
  * parameter's bound (`T is ‸`) and after `any`. After `new`, only a shared struct is built (§3.18).
  */
 
 import { type Entity, namesType } from '../../../compiler/binder/entities.ts';
+import { typeWords } from '../../../compiler/syntax/grammar-words.ts';
 import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import { holderIn } from '../grammar/chain.ts';
-import { type Word, wordCandidates } from '../grammar/words.ts';
+import { wordCandidates } from '../grammar/words.ts';
 import { followsNew, type ParsedPlace } from '../placeholder.ts';
 import { visibleNames } from '../visible.ts';
 
@@ -28,11 +30,11 @@ export function offerType(
   }
   return [
     ...namesWhere(cursor, (entity) => namesType(entity) && !isDeclared(entity, 'TraitDeclaration')),
-    ...wordCandidates(typeWords),
+    ...wordCandidates(offeredTypeWords),
   ];
 }
 
-const typeWords: readonly Word[] = ['fn', 'async', 'sendable', 'any'];
+const offeredTypeWords = typeWords.filter((word) => word !== 'struct');
 
 /** The visible names `keeps`, with the namespaces, which may qualify one. */
 function namesWhere(cursor: Cursor, keeps: (entity: Entity) => boolean): readonly Candidate[] {

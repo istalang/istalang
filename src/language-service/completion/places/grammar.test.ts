@@ -1,9 +1,12 @@
 /**
- * Completion where a statement or an operand starts offers only words the grammar takes there:
- * over the corpus's statements and declared values, each word offered, written at the cursor, is
- * read by the parser without an error at it. What a word needs around it (a loop, an async body,
- * a function's body) and what a name must be (a function, a variable, a label) are cases of
- * their own.
+ * Completion where a statement or an operand starts offers the words the grammar takes there, and
+ * only those: over the corpus's statements and declared values, each word offered, written at the
+ * cursor, is read by the parser without an error at it, and each keyword the parser reads there so
+ * is offered. A contextual word is a name wherever a keyword isn't, so the parser reads any; those
+ * the parser starts something with are offered by type, as its tables and completion share one
+ * list of them (syntax/grammar-words.ts). What a word needs around it (a loop, an async body, a
+ * function's body, an open `if`) and what a name must be (a function, a variable, a label) are
+ * cases of their own.
  */
 
 import fc from 'fast-check';
@@ -13,9 +16,11 @@ import { parserDiagnostics } from '../../../compiler/parser/diagnostics.ts';
 import { parse } from '../../../compiler/parser/parse.ts';
 import { scan } from '../../../compiler/scanner/scan.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
+import { keywords } from '../../../compiler/syntax/tokens.ts';
 import { nodesUnder } from '../../../compiler/syntax/tree.ts';
 import { createSourceText } from '../../../text/source-text.ts';
 import { mainProgram, programAt } from '../../language-service.test-kit.ts';
+import { ifClauseWords, wordNeeds } from '../grammar/words.ts';
 import { completionsAt } from '../index.ts';
 
 /** A position in a program's text where a statement or an operand starts. */
@@ -69,21 +74,36 @@ const refusals = new Set(
   ].map(({ code }) => code),
 );
 
-/** The words offered at `site` that the parser refuses when written there. */
-function refusedWords({ text, offset, after }: Site): readonly string[] {
-  const { program, module } = mainProgram(text);
-  return completionsAt(program, module, offset)
+/** Whether the parser reads `word` written at `site` with no error where it stands. */
+function takes({ text, offset, after }: Site, word: string): boolean {
+  const source = createSourceText(
+    'main.ista',
+    text.slice(0, offset) + word + after + text.slice(offset),
+  );
+  return !parse(source, scan(source)).diagnostics.some(
+    ({ code, span }) => refusals.has(code) && span.start === offset,
+  );
+}
+
+/** The words completion offers only where the code around gives them meaning. */
+const situational: ReadonlySet<string> = new Set([...Object.keys(wordNeeds), ...ifClauseWords]);
+
+/**
+ * What `site` gets wrong either way: a word offered there that the parser refuses, and a keyword
+ * the parser takes there that isn't offered, but for one offered by its surroundings.
+ */
+function misofferedWords(site: Site): readonly string[] {
+  const { program, module } = mainProgram(site.text);
+  const offered = completionsAt(program, module, site.offset)
     .filter(({ kind }) => kind === 'keyword')
-    .map(({ name }) => name)
-    .filter((word) => {
-      const source = createSourceText(
-        'main.ista',
-        text.slice(0, offset) + word + after + text.slice(offset),
-      );
-      return parse(source, scan(source)).diagnostics.some(
-        ({ code, span }) => refusals.has(code) && span.start === offset,
-      );
-    });
+    .map(({ name }) => name);
+  const missing = keywords.filter(
+    (word) => !(offered.includes(word) || situational.has(word)) && takes(site, word),
+  );
+  return [
+    ...offered.filter((word) => !takes(site, word)).map((word) => `${word} refused`),
+    ...missing.map((word) => `${word} not offered`),
+  ];
 }
 
 describe('completion offers the words the grammar takes where it stands', () => {
@@ -94,7 +114,7 @@ describe('completion offers the words the grammar takes where it stands', () => 
   it('at the statements of the corpus', () => {
     fc.assert(
       fc.property(fc.constantFrom(...statements), (site) => {
-        expect(refusedWords(site)).toEqual([]);
+        expect(misofferedWords(site)).toEqual([]);
       }),
       { numRuns: 40 },
     );
@@ -103,7 +123,7 @@ describe('completion offers the words the grammar takes where it stands', () => 
   it('at the declared values of the corpus', () => {
     fc.assert(
       fc.property(fc.constantFrom(...operands), (site) => {
-        expect(refusedWords(site)).toEqual([]);
+        expect(misofferedWords(site)).toEqual([]);
       }),
       { numRuns: 40 },
     );

@@ -2,8 +2,8 @@
  * What a `grammar` place offers: what the grammar admits at the position the cursor is in
  * (grammar/position.ts), never every keyword.
  *
- * - A block's item starts with a statement's word, `break` and `continue` in a loop, `elif` and
- *   `else` after an `if` chain still open, or whatever an operand starts with.
+ * - A block's item starts with a statement's word (grammar/words.ts), `elif` and `else` after an
+ *   `if` chain still open, or whatever an operand starts with.
  * - `spawn` calls a function: a module's, a local one, or one a namespace qualifies (§9).
  * - `&` passes a place that may change: a `let` variable, or a reference parameter passing its
  *   caller's on (§3.7). A shared struct's cell or an element reached through others is left to the
@@ -18,7 +18,7 @@ import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import { operandCandidates } from '../grammar/expression.ts';
 import { type GrammarPosition, grammarPositionAt } from '../grammar/position.ts';
-import { ifClauseWords, loopWords, statementWords, wordCandidates } from '../grammar/words.ts';
+import { ifClauseWords, statementWordsIn, wordCandidates } from '../grammar/words.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 import { visibleNames } from '../visible.ts';
 
@@ -33,11 +33,7 @@ const byPosition: Handlers<Cursor, GrammarPosition, [place: GrammarPlace], reado
   words: (_cursor, { words }) => wordCandidates(words),
   statement: (cursor, { surroundings, continuesIf }, place) => [
     ...operandCandidates(cursor, place, surroundings),
-    ...wordCandidates([
-      ...statementWords,
-      ...(surroundings.scopes.some(({ kind }) => kind !== 'LabelledBlock') ? loopWords : []),
-      ...(continuesIf ? ifClauseWords : []),
-    ]),
+    ...wordCandidates([...statementWordsIn(surroundings), ...(continuesIf ? ifClauseWords : [])]),
   ],
   operand: (cursor, { surroundings }, place) => operandCandidates(cursor, place, surroundings),
   spawned: (cursor) => visibleNames(cursor, isFunction),

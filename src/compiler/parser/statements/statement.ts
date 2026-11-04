@@ -1,5 +1,6 @@
 /**
- * Statements (§3.4, §4, §7), dispatched on their first token.
+ * Statements (§3.4, §4, §7), dispatched on their first token: a word of `statementWords`
+ * (syntax/grammar-words.ts), or else a name or an expression.
  *
  * Three first tokens need a look further ahead:
  * - `fn` starts a local function (`fn name…`), or else a lambda expression (`fn(x): …`,
@@ -19,12 +20,19 @@
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';
+import type { StatementWord } from '../../syntax/grammar-words.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { isAssignmentOperator } from '../../syntax/operators.ts';
 import { destructures, isTarget, type Statement } from '../../syntax/statements.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
+import {
+  followsModifier,
+  type StartParselets,
+  type WordParselets,
+  wordParseletAt,
+} from '../word-parselets.ts';
 import { atLabel, parseFor, parseLabelled, parseWhile } from './loops.ts';
 import { parseBreak, parseContinue, parseDefer, parseDrop, parseReturn } from './simple.ts';
 import { atHold, parseHeldVariable, parseVariable } from './variables.ts';
@@ -44,7 +52,12 @@ const statementParselets: Partial<Record<CursorKind, StatementParselet>> = {
   defer: parseDefer,
   drop: parseDrop,
   identifier: parseNamedStatement,
-};
+} satisfies StartParselets<StatementWord, StatementParselet>;
+
+/** Each contextual word's statement, or undefined, with nothing consumed, where it is a name. */
+const wordParselets = {
+  hold: (parser) => (atHold(parser) ? parseHeldVariable(parser) : undefined),
+} satisfies WordParselets<StatementWord, (parser: Parser) => Statement | undefined>;
 
 export function parseStatement(parser: Parser): Statement | Invalid {
   const parselet = statementParselets[parser.cursor.kind] ?? parseExpressionStatement;
@@ -57,10 +70,11 @@ function parseFnStatement(parser: Parser): Statement | Invalid {
     : parseExpressionStatement(parser);
 }
 
-/** A held variable, a labelled loop or block, or an expression, each starting at a name. */
+/** A contextual word's statement, a labelled loop or block, or an expression, each at a name. */
 function parseNamedStatement(parser: Parser): Statement | Invalid {
-  if (atHold(parser)) {
-    return parseHeldVariable(parser);
+  const worded = wordParseletAt(parser, wordParselets)?.(parser);
+  if (worded !== undefined) {
+    return worded;
   }
   return atLabel(parser)
     ? parseLabelled(parser, () => parseStatement(parser))
@@ -69,7 +83,7 @@ function parseNamedStatement(parser: Parser): Statement | Invalid {
 
 /** `async fn name(…)` declares a function; any other `async fn` is a lambda. */
 function parseAsyncStatement(parser: Parser): Statement | Invalid {
-  const declares = parser.cursor.kindAt(1) === 'fn' && namesFunctionAt(parser, 2);
+  const declares = followsModifier(parser, 'async') && namesFunctionAt(parser, 2);
   return declares ? parser.functionDeclaration() : parseExpressionStatement(parser);
 }
 

@@ -2,7 +2,7 @@
 
 One folder per phase. Phases share only contracts.
 
-- `syntax/`: tokens, tree nodes, operator precedence, where items may stand, and traversal derived from node fields. Exhaustive node-kind handler tables use `structures/kind-table.ts`. It is a contract with high fan-in: change it deliberately, and update every consumer in the same change.
+- `syntax/`: tokens, the words each grammar position starts with (`grammar-words.ts`), tree nodes, operator precedence, where items may stand, and traversal derived from node fields. Exhaustive node-kind handler tables use `structures/kind-table.ts`. It is a contract with high fan-in: change it deliberately, and update every consumer in the same change.
 - `scanner/`: `scan.ts` turns text into tokens, comments and diagnostics. It is context-free, total and lossless.
 - `parser/`: tokens to tree; `parse.ts` is the entry.
   - A grammar category (`expressions/`, `statements/`, `declarations/`, `types.ts`, `patterns.ts`) reaches another only through the context in `parser.ts`, which `grammar.ts` wires.
@@ -13,6 +13,7 @@ One folder per phase. Phases share only contracts.
     - `layout/`: items separated by `;` or line breaks (blocks, braces of entries, the module) and annotations on items (`index.ts`), one-line bodies (`bodies.ts`)
     - `recovery.ts`: bracketed lists and recovery
     - `nesting.ts`: the nesting limit every recursive grammar entry goes through
+    - `word-parselets.ts`: tables keyed by the words of `syntax/grammar-words.ts`, which completion offers, checked against them both ways by type
 
 - `program/`: `program.ts` loads the module graph from roots through the `ModuleLoader` seam. It imposes no path syntax and does no I/O.
 - `binder/`: `bind.ts` binds a program's names; `entities.ts` is the vocabulary its consumers read. Each module binds on its own (`bind-module.ts`, memoized per tree), with categories wired through the context in `local-binder.ts` as the parser's are; `flow.ts` holds where bindings are visible; `link.ts` resolves what crosses modules.

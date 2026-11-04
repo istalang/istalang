@@ -1,9 +1,11 @@
 /**
- * The Pratt engine for expressions, and its two tables.
+ * The Pratt engine for expressions, and its tables.
  *
- * The tables map a token kind to the parselet that handles it. Each parselet lives with its
- * construct family. Binary operators are derived from the precedence table in syntax/operators.ts,
- * so an operator's level has one home.
+ * The tables map a token kind to the parselet that handles it, and a contextual word (`new`) to
+ * the one it starts where a name stands. Each parselet lives with its construct family. The words
+ * they take are the operand's and the infix ones of syntax/grammar-words.ts, which completion
+ * offers. Binary operators are derived from the precedence table in syntax/operators.ts, so an
+ * operator's level has one home.
  *
  * An infix parselet applies when its level is at least the level being parsed. Operands of a
  * left-associative operator parse one level tighter, so equal levels group to the left. Type
@@ -12,6 +14,7 @@
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';
+import type { InfixWord, OperandWord } from '../../syntax/grammar-words.ts';
 import {
   type BinaryOperator,
   binaryOperators,
@@ -23,7 +26,8 @@ import {
 import type { CursorKind } from '../cursor/index.ts';
 import { misplacedDocstring } from '../docstrings.ts';
 import type { Parser } from '../parser.ts';
-import { parseLiteral, parseName, parseParenthesized } from './atoms.ts';
+import { type StartParselets, type WordParselets, wordParseletAt } from '../word-parselets.ts';
+import { parseLiteral, parseParenthesized } from './atoms.ts';
 import { parseBlockExpression, parseIf, parseMatch, parseSelect } from './branches.ts';
 import { parseCollection } from './collections.ts';
 import { parseLambda } from './lambdas.ts';
@@ -51,7 +55,7 @@ import {
   structLiteralParselet,
   unwrapParselet,
 } from './postfix.ts';
-import { parseAnonymousStructLiteral } from './struct-literals.ts';
+import { parseAnonymousStructLiteral, parseNew } from './struct-literals.ts';
 import { parseTemplate, templateParselet } from './templates.ts';
 
 const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
@@ -82,7 +86,17 @@ const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
   if: parseIf,
   match: parseMatch,
   select: parseSelect,
-};
+} satisfies StartParselets<OperandWord, PrefixParselet>;
+
+/** `new` before a name starts a shared struct's literal (§3.18); undefined where it is a name. */
+const wordParselets = {
+  new: (parser) => (parser.cursor.kindAt(1) === 'identifier' ? parseNew(parser) : undefined),
+} satisfies WordParselets<OperandWord, (parser: Parser) => Expression | undefined>;
+
+/** A contextual word's operand, or else a name. */
+function parseName(parser: Parser): Expression {
+  return wordParseletAt(parser, wordParselets)?.(parser) ?? parser.identifier();
+}
 
 /** A parselet per prefix operator of the table in syntax/operators.ts. */
 function unaryParselets(): Record<UnaryOperator, PrefixParselet> {
@@ -99,7 +113,7 @@ const binaryParselets = Object.fromEntries(
   (Object.keys(binaryOperators) as BinaryOperator[])
     .filter((operator) => operator !== 'not in')
     .map((operator) => [operator, binaryParselet(operator)]),
-);
+) as Record<Exclude<BinaryOperator, 'not in'>, InfixParselet>;
 
 /** The postfix parselets a spawned callee is built of, before its call (§9). */
 const spawnCalleeSteps: Partial<Record<CursorKind, InfixParselet>> = {
@@ -122,7 +136,7 @@ const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
   '?': propagateParselet,
   '!': unwrapParselet,
   template: templateParselet,
-};
+} satisfies StartParselets<InfixWord, InfixParselet>;
 
 /** An expression whose operators all bind at least as tightly as `minLevel`. */
 export function parseExpression(parser: Parser, minLevel: PrecedenceLevel): Expression {

@@ -10,6 +10,7 @@ import { isUnnamed } from '../../../language/naming.ts';
 import type { Hold, VariableDeclaration } from '../../syntax/statements.ts';
 import type { Parser } from '../parser.ts';
 import { parseTargets } from '../parts/names.ts';
+import { followsModifier } from '../word-parselets.ts';
 
 /** `let …` or `const …`, starting at the keyword. */
 export function parseVariable(parser: Parser): VariableDeclaration {
@@ -22,8 +23,7 @@ function startsHeldVariableAt(parser: Parser, ahead: number): boolean {
   const { cursor } = parser;
   const next = cursor.peek(ahead);
   return (
-    next.kind === 'let' ||
-    next.kind === 'const' ||
+    followsModifier(parser, 'hold', ahead) ||
     (next.kind === 'identifier' &&
       isUnnamed(parser.textOf(next)) &&
       cursor.kindAt(ahead + 1) === '=')
@@ -33,11 +33,8 @@ function startsHeldVariableAt(parser: Parser, ahead: number): boolean {
 /** What `hold(name)` has between `hold` and the variable. */
 const holdLabel = ['(', 'identifier', ')'] as const;
 
-/** Whether `hold` or `hold(name)` starts a held variable at the cursor. */
+/** Whether the `hold` at the cursor, or `hold(name)`, starts a held variable. */
 export function atHold(parser: Parser): boolean {
-  if (!parser.atWord('hold')) {
-    return false;
-  }
   const named = holdLabel.every((kind, index) => parser.cursor.kindAt(index + 1) === kind);
   return startsHeldVariableAt(parser, 1 + (named ? holdLabel.length : 0));
 }

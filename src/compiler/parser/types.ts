@@ -11,7 +11,7 @@
  * `Setup<E> = async fn(async fn(E))` in §10 shows.
  */
 
-import { type ContextualWord, isContextualWord } from '../syntax/tokens.ts';
+import type { TypeWord } from '../syntax/grammar-words.ts';
 import type { FunctionType, ReferenceType, RestType, TypeNode } from '../syntax/types.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
@@ -20,6 +20,12 @@ import { parseFunctionKeyword } from './parts/functions.ts';
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
 import { afterStructKeyword, parseFieldEntries } from './parts/structs.ts';
 import { parseDelimited, parseGroup } from './recovery.ts';
+import {
+  followsModifier,
+  type StartParselets,
+  type WordParselets,
+  wordParseletAt,
+} from './word-parselets.ts';
 
 /** How a type starting at a token of some kind is parsed. */
 type TypeParselet = (parser: Parser) => TypeNode;
@@ -35,23 +41,17 @@ const typeParselets: Partial<Record<CursorKind, TypeParselet>> = {
   '{': parseStructType,
   struct: parseStructType,
   '&': parseMisplacedReferenceType,
-};
+} satisfies StartParselets<TypeWord, TypeParselet>;
 
 /**
- * Types a contextual word starts, when what follows it fits; the word is a type's name otherwise
- * (tokens.ts).
+ * Types a contextual word starts, when what follows it fits; undefined, with nothing consumed,
+ * where the word is a type's name (tokens.ts).
  */
-const wordParselets: Readonly<
-  Partial<
-    Record<
-      ContextualWord,
-      { readonly starts: (parser: Parser) => boolean; readonly parse: TypeParselet }
-    >
-  >
-> = {
-  sendable: { starts: atFunctionKeyword, parse: parseFunctionType },
-  any: { starts: (parser) => parser.cursor.kindAt(1) === 'identifier', parse: parseAnyType },
-};
+const wordParselets = {
+  sendable: (parser) =>
+    followsModifier(parser, 'sendable') ? parseFunctionType(parser) : undefined,
+  any: (parser) => (parser.cursor.kindAt(1) === 'identifier' ? parseAnyType(parser) : undefined),
+} satisfies WordParselets<TypeWord, (parser: Parser) => TypeNode | undefined>;
 
 const postfixTypeParselets: Partial<Record<CursorKind, PostfixTypeParselet>> = {
   '?': parseOptionalType,
@@ -78,9 +78,7 @@ export function parseParameterType(parser: Parser): TypeNode {
 
 /** A type a contextual word starts, or else a named type. */
 function parseWordType(parser: Parser): TypeNode {
-  const text = parser.textOf(parser.cursor.token);
-  const word = isContextualWord(text) ? wordParselets[text] : undefined;
-  return word?.starts(parser) ? word.parse(parser) : parseNamedType(parser);
+  return wordParseletAt(parser, wordParselets)?.(parser) ?? parseNamedType(parser);
 }
 
 /** `T?`, and `T??`, which arrives as one token and means `T?` twice. */
@@ -111,12 +109,6 @@ function parseTupleType(parser: Parser): TypeNode {
     tuple: (span, elements) => ({ kind: 'TupleType', span, elements }),
     grouped: (span, inner) => ({ kind: 'ParenthesizedType', span, inner }),
   });
-}
-
-/** Whether a function type's `fn` or `async` follows the word at the cursor (`sendable`, §3.14). */
-function atFunctionKeyword(parser: Parser): boolean {
-  const next = parser.cursor.kindAt(1);
-  return next === 'fn' || next === 'async';
 }
 
 /** `fn(A) -> R`, `async fn(A) -> R`, each maybe after `sendable`. */

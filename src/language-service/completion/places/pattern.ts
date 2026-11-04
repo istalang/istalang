@@ -21,6 +21,7 @@ import { sameType } from '../../../compiler/checker/types/identity.ts';
 import { downcastTargetOf, namesOwnType } from '../../../compiler/checker/types/named-types.ts';
 import { boolType, type Type } from '../../../compiler/checker/types/type.ts';
 import { casesOf } from '../../../compiler/syntax/expressions/index.ts';
+import type { PatternWord } from '../../../compiler/syntax/grammar-words.ts';
 import { lastName } from '../../../compiler/syntax/node.ts';
 import type { NamePattern, Pattern, StructPattern } from '../../../compiler/syntax/patterns.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
@@ -73,18 +74,25 @@ function patternStarts(
     ...variants,
     ...referringNames(cursor, type),
     ...wordCandidates(
-      literalKeywords.flatMap(([name, fits]) => (!known || fits(checker, type) ? [name] : [])),
+      Object.entries(startWordFits).flatMap(([name, fits]) =>
+        !known || fits(checker, type) ? [name] : [],
+      ),
     ),
   ];
 }
 
-/** The keywords a pattern may be, each with whether a value of a type may equal it. */
-const literalKeywords: readonly (readonly [string, (checker: Checker, type: Type) => boolean])[] = [
-  ['_', () => true],
-  ['true', (_checker, type) => sameType(type, boolType)],
-  ['false', (_checker, type) => sameType(type, boolType)],
-  ['none', (checker, type) => optionalInner(type, checker.optionalEntity) !== undefined],
-];
+/**
+ * The words a pattern starts with (`PatternWord`, syntax/grammar-words.ts, which the parser's
+ * pattern table is keyed by) and `_`, each with whether a value of a type may match it. A struct's
+ * value is matched through its type's name, offered where it fits, so `struct{…}` is offered
+ * nowhere.
+ */
+const startWordFits = {
+  _: () => true,
+  true: (_checker, type) => sameType(type, boolType),
+  false: (_checker, type) => sameType(type, boolType),
+  none: (checker, type) => optionalInner(type, checker.optionalEntity) !== undefined,
+} satisfies Record<Exclude<PatternWord, 'struct'> | '_', (checker: Checker, type: Type) => boolean>;
 
 /** The visible names a pattern matching `type` may start with to refer. */
 function referringNames(cursor: Cursor, type: Type | undefined): readonly Candidate[] {

@@ -13,12 +13,13 @@
 
 import { entityType, staticOwnerOf } from '../../../compiler/checker/types/named-types.ts';
 import type { FunctionDeclaration } from '../../../compiler/syntax/declarations.ts';
+import type { Word } from '../../../compiler/syntax/grammar-words.ts';
 import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import { receiverParameter } from '../../../language/well-known.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import { holderIn } from '../grammar/chain.ts';
-import { type Word, wordCandidates } from '../grammar/words.ts';
+import { wordCandidates } from '../grammar/words.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 import { visibleNames } from '../visible.ts';
 

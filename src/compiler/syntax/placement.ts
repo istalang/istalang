@@ -8,12 +8,45 @@
  * - an extern or static function (`fn Duration.zero()`) declares something the whole program
  *   sees, so it stays at the top level
  * - a mutable or function-held variable lives in a function, so it stays in blocks.
+ *
+ * The same rule, read by the word an item starts with, says what a module's item may start with:
+ * a declaration's word, or a statement's whose items a module holds too (`statementWordPlaces`).
  */
 
 import type { Declaration } from './declarations.ts';
+import {
+  type DeclarationWord,
+  declarationWords,
+  type StatementWord,
+  statementWords,
+} from './grammar-words.ts';
 import type { Statement } from './statements.ts';
 
 export type Item = Declaration | Statement;
+
+type Place = 'module' | 'block' | 'both';
+
+/** Where the items each statement word starts may stand: a function and a `const` in both. */
+const statementWordPlaces = {
+  let: 'block',
+  const: 'both',
+  fn: 'both',
+  async: 'both',
+  return: 'block',
+  break: 'block',
+  continue: 'block',
+  for: 'block',
+  while: 'block',
+  defer: 'block',
+  drop: 'block',
+  hold: 'block',
+} as const satisfies Record<StatementWord, Exclude<Place, 'module'>>;
+
+/** What a module's item may start with (§3, §3.13). */
+export const moduleItemWords: readonly (DeclarationWord | StatementWord)[] = [
+  ...declarationWords,
+  ...statementWords.filter((word) => statementWordPlaces[word] === 'both'),
+];
 
 export function allowedInModule(item: Item): item is Declaration {
   return placeOf(item) !== 'block';
@@ -23,7 +56,7 @@ export function allowedInBlock(item: Item): item is Statement {
   return placeOf(item) !== 'module';
 }
 
-function placeOf(item: Item): 'module' | 'block' | 'both' {
+function placeOf(item: Item): Place {
   switch (item.kind) {
     case 'NamedImport':
     case 'NamespaceImport':

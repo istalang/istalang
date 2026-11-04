@@ -16,7 +16,14 @@
  *   kind of name: a label, a function to spawn, a place a call's argument passes by reference.
  */
 
+import {
+  followers,
+  infixWords,
+  type Modifier,
+  type Word,
+} from '../../../compiler/syntax/grammar-words.ts';
 import type { Identifier, Invalid } from '../../../compiler/syntax/node.ts';
+import { moduleItemWords } from '../../../compiler/syntax/placement.ts';
 import type { LabelledScope } from '../../../compiler/syntax/statements.ts';
 import { isKeyword, type Token } from '../../../compiler/syntax/tokens.ts';
 import {
@@ -31,7 +38,6 @@ import { adjoinsBefore, type Cursor, touchingBefore } from '../cursor.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 import { holderIn } from './chain.ts';
 import { type Surroundings, surroundingsOf } from './surroundings.ts';
-import { declarationWords, followers, infixWords, type Modifier, type Word } from './words.ts';
 
 export type GrammarPosition =
   /** Only these words may be written. */
@@ -57,7 +63,7 @@ export function grammarPositionAt(cursor: Cursor, { parsed }: GrammarPlace): Gra
   const node = chain.at(-1);
   const parent = chain.at(-2);
   if (node === undefined || parent === undefined) {
-    return words(declarationWords);
+    return words(moduleItemWords);
   }
   const startsLine = startsItem(cursor);
   const after =
@@ -172,7 +178,7 @@ function unplacedIn(
     case 'Select':
       return words(parent.awaits || parent.elseClause !== undefined ? ['case'] : ['case', 'else']);
     case 'Module':
-      return words(startsItem(cursor) ? declarationWords : []);
+      return words(startsItem(cursor) ? moduleItemWords : []);
     default:
       if (parent !== undefined && startsItem(cursor)) {
         return statement(parsed, parent, unplaced, surroundings);

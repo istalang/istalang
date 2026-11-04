@@ -18,6 +18,7 @@
 
 import { isUnnamed } from '../../language/naming.ts';
 import { unreachable } from '../../structures/unreachable.ts';
+import type { PatternWord } from '../syntax/grammar-words.ts';
 import { isComparisonOperator, operatorLevels, tighterLevel } from '../syntax/operators.ts';
 import type {
   LiteralPattern,
@@ -34,6 +35,7 @@ import { literalFrom } from './parts/literals.ts';
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
 import { afterStructKeyword } from './parts/structs.ts';
 import { parseDelimited, parseGroup } from './recovery.ts';
+import type { StartParselets } from './word-parselets.ts';
 
 export function parsePattern(parser: Parser): Pattern {
   const pattern = parsePatternAt(parser, 'alternatives');
@@ -73,7 +75,7 @@ const patternParselets: Partial<Record<CursorKind, PatternParselet>> = {
   true: parseLiteralPattern,
   false: parseLiteralPattern,
   none: parseLiteralPattern,
-};
+} satisfies StartParselets<PatternWord, PatternParselet>;
 
 const infixPatternParselets: Partial<Record<CursorKind, InfixPatternParselet>> = {
   '|': { level: 'alternatives', parse: parseOrPattern },

@@ -18,6 +18,8 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - read a tree's tokens again, all of them or only its code's, or the bracket closing each opening one → `allTokensOf`, `codeTokensOf`, `closingBracketsOf` (`src/language-service/tokens.ts`)
 - pair a token list's brackets as the parser does, and find where each one left open ends → `pairBrackets` (`src/compiler/parser/brackets.ts`)
 - check whether a word is a reserved or contextual keyword → `isKeyword`, `isContextualWord`, `keywords`, `punctuators` (`src/compiler/syntax/tokens.ts`)
+- list the words a grammar position dispatches on: a declaration's, a statement's, an operand's, a type's or a pattern's start, what goes on after an operand, and what follows each modifier → `declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers` (`src/compiler/syntax/grammar-words.ts`); what a module's item starts with → `moduleItemWords` (`src/compiler/syntax/placement.ts`)
+- key a parser table by those words, checked both ways by type, read a contextual word's parselet, or ask whether a modifier's follower comes next → `StartParselets`, `WordParselets`, `wordParseletAt`, `followsModifier` (`src/compiler/parser/word-parselets.ts`)
 - get the last identifier of a `QualifiedName` or check for a missing identifier → `lastName`, `isMissingName` (`src/compiler/syntax/node.ts`)
 - list a syntax node's direct children in source order, its field children alone, or a function's body → `childrenOf`, `fieldChildrenOf`, `bodyOf`, `isNode` (`src/compiler/syntax/tree.ts`)
 - check whether an item may stand in a module or a block → `allowedInModule`, `allowedInBlock` (`src/compiler/syntax/placement.ts`)
@@ -63,8 +65,15 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - Node fields hold only nodes, node arrays, optional nodes/arrays, a span or primitives, so `childrenOf` (`tree.ts`) derives traversal automatically.
 - A node's span is anchored to its segment (`AnchoredSpan`, `positions.ts`): offsets of different segments never compare, and text positions come only through the tree (`spanIn`, `extentIn`). A function's own span covers its header alone, as does a top-level trait's whose members stand on lines of their own; use `extentIn` for all a node covers.
 - In `src/compiler/parser/`, bracketed lists use `parseEnclosed` / `parseDelimited` (`recovery.ts`) and recursive entries use `nested` (`nesting.ts`).
+- A word a grammar position starts with is listed once, in `src/compiler/syntax/grammar-words.ts`: the parser's table for that position `satisfies StartParselets` (keywords) and `WordParselets` (contextual words) of the list, and completion offers the list, never one of its own (`language-service/completion/grammar/words.ts` names only the words that need surroundings, `wordNeeds`).
 
 ## Recipes
+
+### Add a word a grammar position starts with
+
+1. Add it to the position's list in `src/compiler/syntax/grammar-words.ts` (a new modifier: `followers`).
+2. Give it a parselet in that position's table: a keyword in the table by token kind, a contextual word in the position's `WordParselets`, declining with `undefined` where what follows makes it a name. Either table fails to compile until it does. A statement word also needs its place in `statementWordPlaces` (`syntax/placement.ts`).
+3. Completion offers it there with no edit; add it to `wordNeeds` (`completion/grammar/words.ts`) only if it means something in some surroundings alone.
 
 ### Add a syntax node kind
 

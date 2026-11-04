@@ -15,13 +15,7 @@ import { expectedVariants, isBareVariant } from '../expected.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 import { visibleNames } from '../visible.ts';
 import { type Surroundings, surroundingsOf } from './surroundings.ts';
-import {
-  asyncOperandWords,
-  operandWords,
-  runningOperandWords,
-  type Word,
-  wordCandidates,
-} from './words.ts';
+import { operandWordsIn, wordCandidates } from './words.ts';
 
 /** What an expression written at `place` may start with. */
 export function expressionCandidates(cursor: Cursor, place: ParsedPlace): readonly Candidate[] {
@@ -33,20 +27,12 @@ export function expressionCandidates(cursor: Cursor, place: ParsedPlace): readon
 export function operandCandidates(
   cursor: Cursor,
   place: ParsedPlace,
-  { body }: Surroundings,
+  surroundings: Surroundings,
 ): readonly Candidate[] {
   return [
     ...visibleNames(cursor, namesValue).filter((candidate) => !isBareVariant(candidate)),
     ...expectedVariants(cursor, place),
-    ...wordCandidates(operandWordsIn(body)),
-  ];
-}
-
-function operandWordsIn(body: Surroundings['body']): readonly Word[] {
-  return [
-    ...operandWords,
-    ...(body === 'none' ? [] : runningOperandWords),
-    ...(body === 'async' ? asyncOperandWords : []),
+    ...wordCandidates(operandWordsIn(surroundings)),
   ];
 }
 
