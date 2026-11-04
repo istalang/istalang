@@ -41,7 +41,8 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - view a `CheckedBody` with all recorded types substituted for one instantiation → `instantiatedBody` (`src/compiler/checker/types/instantiation.ts`)
 - build or unwrap `Future<T>` or `Array<T>`, or unwrap `T?` through the public `Checker` → `futureOf`, `futureArgument`, `arrayOf`, `arrayElement`, `optionalArgument` (`src/compiler/checker/types/well-known.ts`)
 - build or unwrap any well-known type (`src/language/well-known.ts`) → `wellKnownOf`, `wellKnownArguments` (`src/compiler/checker/types/well-known.ts`)
-- unwrap `T?` once or through nested optionals, or find expected enums through optionals → `optionalInner`, `withoutOptionals`, `sameEnum`, `enumsExpected` (`src/compiler/checker/types/fit.ts`)
+- unwrap `T?` once or through nested optionals → `optionalInner`, `withoutOptionals` (`src/compiler/checker/types/fit.ts`)
+- take an expected type apart for a value built from it (a struct, tuple, array or map literal, a lambda, a function value, a bare variant or fieldless generic struct, lambdas inferred inside an argument) → `builtFrom`, `expectedTuple`, `collectionTarget`, `expectedFunction`, `sameNominal`, `enumsExpected`, `expectedNominal` (`src/compiler/checker/types/expected.ts`); never strip the expected optionals in a construct
 - build a parameter `Type`, fill default type arguments, check type argument constraints, or resolve declared fields → `parameterType`, `typeArgumentsFor`, `defaultArgument`, `constrainArguments`, `declaredFields` (`src/compiler/checker/types/resolve-type.ts`)
 - compute how a value fits an expected type → `fitOf`, `matchConversion`, `isExact`, `exactFit` (`src/compiler/checker/types/fit.ts`)
 - unwrap a 1-element tuple type or test if a `Fit` reshapes a value → `singleElement`, `reshapes` (`src/compiler/checker/types/fit.ts`)

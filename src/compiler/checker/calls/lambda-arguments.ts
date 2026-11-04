@@ -11,24 +11,17 @@
  * parameter nothing has bound is left for instantiating to report.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
-import {
-  casesOf,
-  type Expression,
-  type Lambda,
-  selectCasesOf,
-  unparenthesized,
-} from '../../syntax/expressions/index.ts';
+import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
+import { type Expression, type Lambda, unparenthesized } from '../../syntax/expressions/index.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import type { BodyContext } from '../context.ts';
 import type { Inference } from '../inference/infer.ts';
 import { argumentSlotsOf } from '../resolution/binding.ts';
 import type { Application } from '../resolution/choice.ts';
-import { withoutOptionals } from '../types/fit.ts';
+import { collectionTarget, expectedFunction, expectedTuple } from '../types/expected.ts';
 import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';
-import { arrayElement, wellKnownArguments } from '../types/well-known.ts';
 
 /** An argument of a call being resolved: its node, and its type unless the call decides it. */
 interface Argument {
@@ -64,12 +57,9 @@ function inferLambdaAt(
   expected: Type,
   inference: Inference,
 ): void {
-  const partial = withoutOptionals(
-    substitute(expected, inference.substitution()),
-    context.checker.optionalEntity,
-  );
+  const partial = expectedFunction(context.checker, expected);
   if (
-    partial.kind !== 'function' ||
+    partial === undefined ||
     partial.parameters.some((parameter) => isOpen(parameter.type, inference)) ||
     (partial.pack !== undefined && isOpen(partial.pack, inference))
   ) {
@@ -89,51 +79,58 @@ function inferNestedLambdas(
   inference: Inference,
 ): void {
   const bare = unparenthesized(node);
-  const unwrapped = withoutOptionals(
-    substitute(expected, inference.substitution()),
-    context.checker.optionalEntity,
-  );
+  const guide = substitute(expected, inference.substitution());
   switch (bare.kind) {
     case 'Lambda':
-      inferLambdaAt(context, bare, unwrapped, inference);
+      inferLambdaAt(context, bare, guide, inference);
       return;
     case 'BlockExpression':
+      inferBlockLambdas(context, bare.block, expected, inference);
+      return;
     case 'If':
     case 'Match':
     case 'Select':
-      for (const body of branchBodiesOf(bare)) {
+      for (const body of valueBranchesOf(bare)) {
         inferBlockLambdas(context, body, expected, inference);
       }
       return;
     case 'Tuple':
-      inferTupleLambdas(context, bare.elements, unwrapped, inference);
-      return;
     case 'ArrayLiteral':
-      inferArrayLambdas(context, bare.elements, unwrapped, inference);
-      return;
     case 'MapLiteral':
-      inferMapLambdas(context, bare.entries, unwrapped, inference);
+      for (const [part, type] of guidedParts(context, bare, guide)) {
+        inferNestedLambdas(context, part, type, inference);
+      }
       return;
     default:
       return;
   }
 }
 
-function branchBodiesOf(
-  node: Extract<Expression, { readonly kind: 'BlockExpression' | 'If' | 'Match' | 'Select' }>,
-): readonly Block[] {
+/** The parts of a tuple, array or map literal, each with the type `expected` asks of it. */
+function guidedParts(
+  context: BodyContext,
+  node: Extract<Expression, { readonly kind: 'Tuple' | 'ArrayLiteral' | 'MapLiteral' }>,
+  expected: Type,
+): readonly (readonly [Expression, Type])[] {
+  const { checker } = context;
   switch (node.kind) {
-    case 'BlockExpression':
-      return [node.block];
-    case 'If': {
-      const branches = node.branches.map(({ body }) => body);
-      return node.elseClause === undefined ? branches : [...branches, node.elseClause.body];
+    case 'Tuple': {
+      const elements = expectedTuple(checker, expected, node.elements.length) ?? [];
+      return node.elements.flatMap((element, index) => guided(element, elements[index]));
     }
-    case 'Match':
-      return casesOf(node).map(({ body }) => body);
-    case 'Select': {
-      const cases = selectCasesOf(node).map(({ body }) => body);
-      return node.elseClause === undefined ? cases : [...cases, node.elseClause.body];
+    case 'ArrayLiteral': {
+      const target = collectionTarget(checker, expected);
+      const item = target?.kind === 'array' ? target.item : undefined;
+      return node.elements.flatMap((element) =>
+        element.kind === 'Spread' ? [] : guided(element, item),
+      );
+    }
+    case 'MapLiteral': {
+      const target = collectionTarget(checker, expected);
+      const [key, value] = target?.kind === 'map' ? target.arguments : [];
+      return node.entries.flatMap((entry) =>
+        entry.kind === 'MapEntry' ? [...guided(entry.key, key), ...guided(entry.value, value)] : [],
+      );
     }
     default: {
       const unhandled: never = node;
@@ -142,57 +139,12 @@ function branchBodiesOf(
   }
 }
 
-function inferTupleLambdas(
-  context: BodyContext,
-  elements: readonly Expression[],
-  unwrapped: Type,
-  inference: Inference,
-): void {
-  if (unwrapped.kind !== 'tuple' || unwrapped.elements.length !== elements.length) {
-    return;
-  }
-  elements.forEach((element, index) => {
-    const guide = unwrapped.elements[index];
-    if (guide !== undefined) {
-      inferNestedLambdas(context, element, guide, inference);
-    }
-  });
-}
-
-function inferArrayLambdas(
-  context: BodyContext,
-  elements: Extract<Expression, { readonly kind: 'ArrayLiteral' }>['elements'],
-  unwrapped: Type,
-  inference: Inference,
-): void {
-  const item = arrayElement(context.checker, unwrapped);
-  if (item === undefined) {
-    return;
-  }
-  for (const element of elements) {
-    if (element.kind !== 'Spread') {
-      inferNestedLambdas(context, element, item, inference);
-    }
-  }
-}
-
-function inferMapLambdas(
-  context: BodyContext,
-  entries: Extract<Expression, { readonly kind: 'MapLiteral' }>['entries'],
-  unwrapped: Type,
-  inference: Inference,
-): void {
-  const [keyType, valueType] = wellKnownArguments(context.checker, wellKnown.map, unwrapped) ?? [];
-  for (const entry of entries) {
-    if (entry.kind === 'MapEntry') {
-      if (keyType !== undefined) {
-        inferNestedLambdas(context, entry.key, keyType, inference);
-      }
-      if (valueType !== undefined) {
-        inferNestedLambdas(context, entry.value, valueType, inference);
-      }
-    }
-  }
+/** `part` with the type it is guided by, when it has one. */
+function guided(
+  part: Expression,
+  type: Type | undefined,
+): readonly (readonly [Expression, Type])[] {
+  return type === undefined ? [] : [[part, type]];
 }
 
 function inferBlockLambdas(

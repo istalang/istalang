@@ -11,6 +11,7 @@ import { type DeclaredStruct, isDeclaredStruct } from '../../syntax/declarations
 import type { FieldsLiteral } from '../../syntax/expressions/index.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { BodyContext } from '../context.ts';
+import { builtFrom } from '../types/expected.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
 import { aliasedAs, isNominalEntity, type NominalEntity, type Type } from '../types/type.ts';
 import { knownArguments, type LiteralShape } from './literal-fields.ts';
@@ -39,15 +40,16 @@ export function builtThrough(
     return undefined;
   }
   const { declaration } = entity;
+  const target = builtFrom(context.checker, expected);
   if (isNominalEntity(entity) && isDeclaredStruct(declaration)) {
-    const known = knownArguments(context, node.type, declaration, expected);
+    const known = knownArguments(context, node.type, declaration, target);
     return { kind: 'declared', entity, struct: declaration, known };
   }
   if (declaration.kind !== 'TypeAliasDeclaration') {
     return undefined;
   }
   const aliased = context.checker.aliasedType(declaration);
-  const known = knownArguments(context, node.type, declaration, expected);
+  const known = knownArguments(context, node.type, declaration, target);
   const typeOf = (typeArguments: readonly Type[]): Type =>
     aliasedAs(substitute(aliased, substitutionFor(declaration.typeParameters, typeArguments)), {
       declaration,

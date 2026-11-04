@@ -1,0 +1,20 @@
+# outcome: "Int|Int|0|eu"
+# A value built from the expected type takes it through the optionals around it (§2), as a bare
+# variant does: a fieldless generic struct named bare, its default type arguments filled when
+# nothing is expected, and a generic struct literal whose items alone couldn't give its type.
+
+struct Tag<T = Int>
+
+struct Bag<T> { items: Array<T> }
+
+fn kind(t: Tag<Int>) -> String:
+  "Int"
+
+async fn main() -> Future<String>:
+  const expected: Tag<Int>? = Tag
+  const defaulted = Tag
+  const empty: Bag<Int>? = Bag{items: []}
+  const region: Bag<String>? = Bag{items: ["eu"]}
+  const lengths = empty?.items.length() ?? -1
+  const first = region?.items[0] ?? "none"
+  `${kind(expected ?? Tag)}|${kind(defaulted)}|${lengths}|${first}`

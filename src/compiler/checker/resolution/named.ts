@@ -12,7 +12,7 @@ import type { Identifier } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { enumsExpected } from '../types/fit.ts';
+import { enumsExpected } from '../types/expected.ts';
 import { entityType } from '../types/named-types.ts';
 import { expectsError, type Type } from '../types/type.ts';
 

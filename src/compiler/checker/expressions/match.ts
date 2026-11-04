@@ -11,6 +11,7 @@
  *   are declared here with their parts' types.
  */
 
+import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
 import { casesOf, type Is, type Match } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Accepts, BodyContext } from '../context.ts';
@@ -75,8 +76,5 @@ function reportCoverage(
 
 /** A `match` takes what its cases agree on. */
 export function matchAccepts(context: BodyContext, node: Match): Accepts | undefined {
-  return branchesAccepts(
-    context,
-    casesOf(node).map(({ body }) => body),
-  );
+  return branchesAccepts(context, valueBranchesOf(node));
 }

@@ -32,12 +32,12 @@ import {
 import { type Application, chooseAsValue, signatureOf } from '../resolution/choice.ts';
 import { instantiate } from '../resolution/conformance.ts';
 import { namedType } from '../resolution/named.ts';
+import { expectedFunction } from '../types/expected.ts';
 import { substitute } from '../types/substitution.ts';
 import { errorType, expectsError, type FunctionType, type Type, withPack } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument, futureOf } from '../types/well-known.ts';
 import { useSite } from '../use-site.ts';
-import { expectedFunction } from './lambdas.ts';
 
 /** Functions an expression names as a value: where, by what name in messages, and which. */
 export interface NamedFunctions {
@@ -91,7 +91,7 @@ function topLevelFunctions(
     site,
     name: name.text,
     candidates: (expected) => {
-      const shape = expectedFunction(context, expected);
+      const shape = expectedFunction(context.checker, expected);
       return shape === undefined
         ? named.map((declaration) => ({ declaration }))
         : callCandidates(
@@ -112,7 +112,7 @@ export function checkFunctionValue(
 ): Type {
   const { site, name } = named;
   const candidates = named.candidates(expected);
-  const shape = expectedFunction(context, expected);
+  const shape = expectedFunction(context.checker, expected);
   const application =
     shape === undefined ? loneFunction(context, candidates) : chosenFor(context, candidates, shape);
   if (application === undefined) {
@@ -167,7 +167,7 @@ export function functionsAccepted(
     return undefined;
   }
   return (expected) => {
-    const shape = expectedFunction(context, expected);
+    const shape = expectedFunction(context.checker, expected);
     return shape !== undefined && chosenFor(context, named.candidates(shape), shape) !== undefined;
   };
 }

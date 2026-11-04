@@ -3,6 +3,7 @@
  * `else` produces nothing, so its branches must be `Unit`.
  */
 
+import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
 import type { If } from '../../syntax/expressions/index.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -32,8 +33,7 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
 
 /** An `if` with `else` takes what its branches agree on; one without has a type of its own. */
 export function ifAccepts(context: BodyContext, node: If): Accepts | undefined {
-  const elseBody = node.elseClause?.body;
-  return elseBody === undefined
+  return node.elseClause === undefined
     ? undefined
-    : branchesAccepts(context, [...node.branches.map(({ body }) => body), elseBody]);
+    : branchesAccepts(context, valueBranchesOf(node));
 }

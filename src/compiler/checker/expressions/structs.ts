@@ -45,7 +45,8 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { namedType, nameNodeOf } from '../resolution/named.ts';
 import { fieldOf } from '../traits/constraints.ts';
-import { optionalInner, withoutOptionals } from '../types/fit.ts';
+import { builtFrom } from '../types/expected.ts';
+import { optionalInner } from '../types/fit.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import {
   byFieldName,
@@ -145,8 +146,7 @@ function checkAnonymousLiteral(
   expected: Type | undefined,
   spread: LiteralSpread | undefined,
 ): Type {
-  const target =
-    expected === undefined ? undefined : withoutOptionals(expected, context.checker.optionalEntity);
+  const target = builtFrom(context.checker, expected);
   const fromExpected = target === undefined ? undefined : shapeOf(context, target);
   if (fromExpected !== undefined) {
     return checkLiteralFields(context, node, fromExpected, spread);

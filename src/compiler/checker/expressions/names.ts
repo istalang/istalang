@@ -7,7 +7,6 @@
  */
 
 import { type Entity, localFunctionOf, type VariableEntity } from '../../binder/entities.ts';
-import { typeParametersOf } from '../../syntax/declarations.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import {
   checkFunctionValue,
@@ -17,7 +16,8 @@ import {
 import type { Accepts, BodyContext, CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { fieldlessStructOf } from '../resolution/named.ts';
-import { errorType, expectsError, nominalType, type Type } from '../types/type.ts';
+import { expectedNominal } from '../types/expected.ts';
+import { errorType, isNominalEntity, type Type } from '../types/type.ts';
 import { checkVariantName, variantsAccepted } from './variants.ts';
 
 export function checkName(
@@ -108,20 +108,8 @@ function bareStructValue(
   expected: Type | undefined,
 ): Type | undefined {
   const declaration = fieldlessStructOf(context.checker, entity);
-  if (entity.kind !== 'type' || declaration === undefined) {
+  if (entity.kind !== 'type' || !isNominalEntity(entity) || declaration === undefined) {
     return undefined;
   }
-  const [open] = typeParametersOf(declaration.typeParameters);
-  if (open === undefined) {
-    return nominalType(entity, []);
-  }
-  if (expected?.kind === 'nominal' && expected.entity.declaration === declaration) {
-    return expected;
-  }
-  if (!expectsError(expected)) {
-    context.report(
-      checkerDiagnostics.cannotInfer(node.span, declaration.name.text, open.name.text),
-    );
-  }
-  return errorType;
+  return expectedNominal(context, node.span, entity, expected);
 }

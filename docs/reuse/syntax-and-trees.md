@@ -39,6 +39,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - read the value or field name of a struct literal's `FieldItem` → `itemValue`, `itemName` (`src/compiler/syntax/expressions/index.ts`)
 - read the number a literal writes, negated or not (`-5`, `-(5)`), as one signed value → `signedNumberOf` (`src/compiler/syntax/expressions/numbers.ts`)
 - list valid `MatchCase`s of a `Match`, or `SelectCase`s of a `Select` → `casesOf`, `selectCasesOf` (`src/compiler/syntax/expressions/index.ts`); never filter `node.cases` by kind
+- list the blocks whose tails give an `if`, `match` or `select` its value → `valueBranchesOf` (`src/compiler/syntax/expressions/branches.ts`)
 - unwrap a `CallArgument`'s expression or find an out-of-order argument → `argumentValue`, `misplacedArgument` (`src/compiler/syntax/expressions/arguments.ts`)
 - inspect an optional chain step, or spell a link form's operator, optional or not → `chainStepOf`, `isOptionalStep`, `linkOperator`, `optionalOperatorOf` (`src/compiler/syntax/expressions/chains.ts`)
 - test whether an expression is inside an optional chain → `isOptionallyChained` (`src/compiler/syntax/expressions/chains.ts`)

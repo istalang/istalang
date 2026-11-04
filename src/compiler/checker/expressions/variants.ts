@@ -12,26 +12,25 @@
 
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
-import { type EnumDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
+import type { EnumDeclaration } from '../../syntax/declarations.ts';
 import type { FieldsLiteral, MemberAccess, NoneLiteral } from '../../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { chooseVariant } from '../resolution/named.ts';
-import { enumsExpected, optionalInner, sameEnum } from '../types/fit.ts';
-import { typeArgumentsFor } from '../types/resolve-type.ts';
+import { enumsExpected, expectedNominal, sameNominal } from '../types/expected.ts';
+import { optionalInner } from '../types/fit.ts';
 import {
   errorType,
   expectsError,
+  isNominalEntity,
+  type NominalEntity,
   type NominalType,
   nominalType,
   type Type,
 } from '../types/type.ts';
 import { checkLiteralFields, knownArguments } from './literal-fields.ts';
-
-/** A node naming a variant: bare, qualified, or as a literal's type. */
-type VariantNode = Identifier | MemberAccess | FieldsLiteral;
 
 /** The types `none` can take, as an argument a call's chosen function decides: any optional. */
 export function noneAccepted(context: BodyContext): Accepts {
@@ -83,7 +82,7 @@ export function checkVariantName(
     context.report(checkerDiagnostics.variantFields(node.span, name.text));
     return errorType;
   }
-  return enumTypeFor(context, node, chosen.enum, expected);
+  return expectedNominal(context, node.span, enumEntity(context, chosen.enum), expected);
 }
 
 /** The type of a variant built with braces: `Rejected{by: "legal"}`. */
@@ -103,7 +102,7 @@ export function checkVariantLiteral(
     return errorType;
   }
   const { checker } = context;
-  const target = sameEnum(checker, expected, chosen.enum);
+  const target = sameNominal(checker, expected, chosen.enum);
   const fields = checker
     .declaredVariantsOf(chosen.enum)
     .find((candidate) => candidate.name === chosen.variant.name.text)?.fields;
@@ -117,43 +116,19 @@ export function checkVariantLiteral(
   return checkLiteralFields(context, node, shape);
 }
 
-/** The enum type a fieldless variant has: the expected one, or one from the defaults. */
-function enumTypeFor(
-  context: BodyContext,
-  node: VariantNode,
-  declaration: EnumDeclaration,
-  expected: Type | undefined,
-): Type {
-  const same = sameEnum(context.checker, expected, declaration);
-  if (same !== undefined) {
-    return same;
-  }
-  if (expectsError(expected)) {
-    return errorType;
-  }
-  const open = typeParametersOf(declaration.typeParameters).find(
-    (parameter) => parameter.defaultType === undefined,
-  );
-  if (open !== undefined) {
-    context.report(
-      checkerDiagnostics.cannotInfer(node.span, declaration.name.text, open.name.text),
-    );
-    return errorType;
-  }
-  const list = { at: node.span, declaration, types: [] };
-  const typeArguments = typeArgumentsFor(context.checker, context.module, list);
-  return typeArguments === undefined ? errorType : enumType(context, declaration, typeArguments);
-}
-
 function enumType(
   context: BodyContext,
   declaration: EnumDeclaration,
   typeArguments: readonly Type[],
 ): NominalType {
+  return nominalType(enumEntity(context, declaration), typeArguments);
+}
+
+function enumEntity(context: BodyContext, declaration: EnumDeclaration): NominalEntity {
   const { checker } = context;
   const entity = checker.bindings.entityOf(checker.moduleOf(declaration), declaration.name);
-  if (entity?.kind !== 'type') {
+  if (entity?.kind !== 'type' || !isNominalEntity(entity)) {
     unreachable(`Enum '${declaration.name.text}' has no type entity.`);
   }
-  return nominalType(entity, typeArguments);
+  return entity;
 }

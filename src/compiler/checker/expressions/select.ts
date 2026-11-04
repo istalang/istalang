@@ -16,6 +16,7 @@
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
+import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
 import {
   type Expression,
   type Select,
@@ -96,7 +97,5 @@ function checkCaseFuture(context: BodyContext, selectCase: SelectCase): void {
 
 /** A `select` takes what its cases and its `else` agree on. */
 export function selectAccepts(context: BodyContext, node: Select): Accepts | undefined {
-  const cases = selectCasesOf(node).map(({ body }) => body);
-  const elseBody = node.elseClause?.body;
-  return branchesAccepts(context, elseBody === undefined ? cases : [...cases, elseBody]);
+  return branchesAccepts(context, valueBranchesOf(node));
 }

@@ -52,7 +52,8 @@ import {
   settleAgreement,
 } from '../rules/agreement.ts';
 import { checkIterated, iteratedItem } from '../rules/iteration.ts';
-import { isExact, withoutOptionals } from '../types/fit.ts';
+import { collectionTarget } from '../types/expected.ts';
+import { isExact } from '../types/fit.ts';
 import {
   errorType,
   expectsError,
@@ -84,7 +85,7 @@ export function checkArrayLiteral(
   node: ArrayLiteral,
   expected: Type | undefined,
 ): Type {
-  const target = literalTarget(context, expected);
+  const target = collectionTarget(context.checker, expected);
   if (node.elements.length === 0 && target?.kind === 'map') {
     context.collections.record(node, 'map');
     return target.type;
@@ -117,7 +118,7 @@ export function checkMapLiteral(
   node: MapLiteral,
   expected: Type | undefined,
 ): Type {
-  const target = literalTarget(context, expected);
+  const target = collectionTarget(context.checker, expected);
   if (target?.kind === 'declared') {
     return checkDeclaredLiteral(context, node, target.type);
   }
@@ -174,7 +175,7 @@ function spreadAcceptedPart(context: BodyContext, spread: Spread): AcceptedPart 
 /** Which types an array literal the call decides can take: what `[]` builds, or an array. */
 export function arrayAccepts(context: BodyContext, node: ArrayLiteral): Accepts | undefined {
   if (node.elements.length === 0) {
-    return (expected) => literalTarget(context, expected) !== undefined;
+    return (expected) => collectionTarget(context.checker, expected) !== undefined;
   }
   const items = agreedAccepts(
     context,
@@ -188,7 +189,7 @@ export function arrayAccepts(context: BodyContext, node: ArrayLiteral): Accepts 
     return undefined;
   }
   return (expected, isOpen) => {
-    const target = literalTarget(context, expected);
+    const target = collectionTarget(context.checker, expected);
     return target?.kind === 'array' && items(target.item, isOpen);
   };
 }
@@ -197,7 +198,7 @@ export function arrayAccepts(context: BodyContext, node: ArrayLiteral): Accepts 
 export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | undefined {
   if (node.entries.length === 0) {
     return (expected) => {
-      const kind = literalTarget(context, expected)?.kind;
+      const kind = collectionTarget(context.checker, expected)?.kind;
       return kind === 'map' || kind === 'declared';
     };
   }
@@ -212,7 +213,7 @@ export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | un
   const keys = keysNeed ?? allProducersAccept(context, keyParts);
   const values = valuesNeed ?? allProducersAccept(context, valueParts);
   return (expected, isOpen) => {
-    const target = literalTarget(context, expected);
+    const target = collectionTarget(context.checker, expected);
     if (target?.kind !== 'map') {
       return false;
     }
@@ -252,32 +253,8 @@ export function expectedArrayItem(
   context: BodyContext,
   expected: Type | undefined,
 ): Type | undefined {
-  const target = literalTarget(context, expected);
+  const target = collectionTarget(context.checker, expected);
   return target?.kind === 'array' ? target.item : undefined;
-}
-
-/** What a literal builds where `expected` is expected, if it guides the literal at all. */
-type LiteralTarget =
-  | { readonly kind: 'array'; readonly item: Type }
-  | { readonly kind: 'map'; readonly type: Type; readonly arguments: readonly Type[] }
-  | { readonly kind: 'declared'; readonly type: NominalType };
-
-function literalTarget(
-  context: BodyContext,
-  expected: Type | undefined,
-): LiteralTarget | undefined {
-  const { checker } = context;
-  const type =
-    expected === undefined ? undefined : withoutOptionals(expected, checker.optionalEntity);
-  if (type === undefined || type.kind !== 'nominal') {
-    return undefined;
-  }
-  const item = arrayElement(checker, type);
-  if (item !== undefined) {
-    return { kind: 'array', item };
-  }
-  const entry = wellKnownArguments(checker, wellKnown.map, type);
-  return entry === undefined ? { kind: 'declared', type } : { kind: 'map', type, arguments: entry };
 }
 
 /**

@@ -13,7 +13,7 @@ import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
 import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { partsAccept } from '../rules/agreement.ts';
-import { withoutOptionals } from '../types/fit.ts';
+import { expectedTuple } from '../types/expected.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -22,7 +22,7 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
   if (node.elements.length === 0) {
     return unitType;
   }
-  const guides = expectedTuple(context, expected, node.elements.length);
+  const guides = expectedTuple(context.checker, expected, node.elements.length);
   return {
     kind: 'tuple',
     elements: node.elements.map((element, index) => {
@@ -35,19 +35,6 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
       return guide;
     }),
   };
-}
-
-/** The element types `expected` asks a tuple of `length` elements for, through any optionals (§2). */
-function expectedTuple(
-  context: BodyContext,
-  expected: Type | undefined,
-  length: number,
-): readonly Type[] | undefined {
-  const target =
-    expected === undefined ? undefined : withoutOptionals(expected, context.checker.optionalEntity);
-  return target?.kind === 'tuple' && target.elements.length === length
-    ? target.elements
-    : undefined;
 }
 
 export function checkTupleElement(context: BodyContext, node: TupleElement): Type {
@@ -80,7 +67,7 @@ export function tupleAccepts(context: BodyContext, node: Tuple): Accepts | undef
     return undefined;
   }
   return (expected, isOpen) =>
-    expectedTuple(context, expected, elements.length)?.every(
+    expectedTuple(context.checker, expected, elements.length)?.every(
       (type, index) => elements[index]?.(type, isOpen) ?? true,
     ) === true;
 }

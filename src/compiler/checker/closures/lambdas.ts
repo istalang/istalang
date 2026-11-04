@@ -34,7 +34,8 @@ import { declaredBodyResult, writtenByReference } from '../declarations/signatur
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Produced } from '../rules/agreement.ts';
 import { isSendable } from '../traits/sendable.ts';
-import { withoutOptionals } from '../types/fit.ts';
+import { expectedFunction } from '../types/expected.ts';
+
 import {
   errorType,
   expectsError,
@@ -63,7 +64,7 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | und
   const fixed = parameters.filter((parameter) => !parameter.isRest).length;
   const hasRest = fixed < parameters.length;
   return (expected) => {
-    const shape = expectedFunction(context, expected);
+    const shape = expectedFunction(context.checker, expected);
     return (
       shape !== undefined &&
       (shape.isAsync || !node.isAsync) &&
@@ -78,7 +79,7 @@ export function checkLambda(context: BodyContext, node: Lambda, expected: Type |
   if (checked !== undefined) {
     return checked.type;
   }
-  const shape = expectedFunction(context, expected);
+  const shape = expectedFunction(context.checker, expected);
   const slots = shape ?? (expectsError(expected) ? errorSlots(node) : undefined);
   return checkLambdaAs(context, node, slots, shape?.result);
 }
@@ -87,16 +88,6 @@ export function checkLambda(context: BodyContext, node: Lambda, expected: Type |
 function errorSlots(node: Lambda): ParameterSlots {
   const parameters = node.parameters.map(() => ({ type: errorType, reference: false }));
   return { parameters, pack: errorType };
-}
-
-/** The function type `expected` asks a lambda or function value for, through any optionals (§2). */
-export function expectedFunction(
-  context: BodyContext,
-  expected: Type | undefined,
-): FunctionType | undefined {
-  const type =
-    expected === undefined ? undefined : withoutOptionals(expected, context.checker.optionalEntity);
-  return type?.kind === 'function' ? type : undefined;
 }
 
 /**

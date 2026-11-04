@@ -17,7 +17,7 @@
 
 import type { Entity } from '../../compiler/binder/entities.ts';
 import { checkProgram } from '../../compiler/checker/check.ts';
-import { enumsExpected, sameEnum } from '../../compiler/checker/types/fit.ts';
+import { enumsExpected, sameNominal } from '../../compiler/checker/types/expected.ts';
 import type { Type } from '../../compiler/checker/types/type.ts';
 import type { ModuleId, Program } from '../../compiler/program/program.ts';
 import type { Expression } from '../../compiler/syntax/expressions/index.ts';
@@ -55,7 +55,7 @@ export function expectedVariants(cursor: Cursor, place: Place): readonly Candida
     return visibleNames(cursor, isVariantEntity);
   }
   const candidates = enumsExpected(checker, expected).flatMap((declaration) => {
-    const enumType = sameEnum(checker, expected, declaration);
+    const enumType = sameNominal(checker, expected, declaration);
     return enumType === undefined
       ? []
       : (checker.variantsOf(enumType) ?? []).map(
