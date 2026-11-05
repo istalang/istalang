@@ -75,7 +75,10 @@ export class ModuleChecks {
   }
 }
 
-/** The diagnostics in `notes` reported in `module`, by position, then code and message. */
+/**
+ * The diagnostics in `notes` reported in `module`, by position, then code and message; one made
+ * again at the same place, as each pass of a field loop checks its body's text again (§4), once.
+ */
 function diagnosticsIn(
   module: ModuleId,
   tree: SegmentBases,
@@ -87,5 +90,9 @@ function diagnosticsIn(
         ? [diagnosticIn(tree, note.diagnostic)]
         : [],
     )
-    .sort(compareDiagnostics);
+    .sort(compareDiagnostics)
+    .filter((diagnostic, index, sorted) => {
+      const before = sorted[index - 1];
+      return before === undefined || compareDiagnostics(before, diagnostic) !== 0;
+    });
 }

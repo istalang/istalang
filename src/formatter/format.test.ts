@@ -134,6 +134,19 @@ describe('key types and mapped struct types (§3.1)', () => {
   });
 });
 
+describe('field loops (§4)', () => {
+  it('prints each as written, labelled or not, its targets destructured', () => {
+    const text = lines(
+      'fn f<S is struct>(s: S, shared: Box):',
+      '  outer: for key, (first, _) in ...s:',
+      '    for _, value in ...*shared: continue outer',
+    );
+    expect(formatText(text)).toBe(text);
+    const { actual, expected } = acceptanceOf(text);
+    expect(actual).toEqual(expected);
+  });
+});
+
 describe('type `match` (§3.17)', () => {
   it('prints its cases a line each, a case type after its colon, `infer` as written', () => {
     const text = lines(

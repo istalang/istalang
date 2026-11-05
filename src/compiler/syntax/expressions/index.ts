@@ -83,6 +83,17 @@ export interface Comprehension extends NodeOf<'Comprehension'> {
   readonly body: Expression;
 }
 
+/**
+ * `for key, value in ...x`: a field loop's header (§4), visiting each field of the struct `subject`
+ * gives, in name order. `key` is a name or `_`, `value` a declaration's target (§3.15); the `...`
+ * tells it from iterating an `Iterable`.
+ */
+export interface FieldHeader extends NodeOf<'FieldHeader'> {
+  readonly key: Pattern;
+  readonly value: Pattern;
+  readonly subject: Expression;
+}
+
 /** `(a, b)`, `(a,)`, and `()` for unit. */
 export interface Tuple extends NodeOf<'Tuple'> {
   readonly elements: readonly Expression[];
@@ -410,4 +421,5 @@ export type ExpressionPart =
   | ConditionalBranch
   | MatchCase
   | SelectCase
-  | ElseClause;
+  | ElseClause
+  | FieldHeader;

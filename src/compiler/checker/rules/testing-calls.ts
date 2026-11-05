@@ -22,7 +22,7 @@ import { typeText } from '../types/type-text.ts';
 /** Checks each of `calls`, a body's, that calls `mock` or `handle`; the mocks' targets. */
 export function checkTestingCalls(
   context: BodyContext,
-  calls: ReadonlyMap<ResolvedSite, ResolvedCall>,
+  calls: Iterable<readonly [ResolvedSite, ResolvedCall]>,
 ): ReadonlySet<NodeOf<string>> {
   const { checker } = context;
   const mocks = checker.languageFunctions(languageModules.testing, testingFunctions.mock);

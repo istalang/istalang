@@ -19,11 +19,11 @@ import {
   keyTypeText,
 } from '../../definition/extern-key.ts';
 import { staticName } from '../../language/static-names.ts';
-import { qualifiedName, selfType, wellKnown } from '../../language/well-known.ts';
+import { qualifiedName, wellKnown } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { NominalDeclaration, Type, UnionType } from '../checker/types/type.ts';
-import { typeText } from '../checker/types/type-text.ts';
+import { parameterText, typeText } from '../checker/types/type-text.ts';
 import { optionalInner } from '../checker/types/unions.ts';
 import { type ModuleId, programModule } from '../program/program.ts';
 import type {
@@ -165,7 +165,7 @@ function keyType(checker: Checker, type: Type): KeyType {
     case 'parameter':
       return {
         kind: 'parameter',
-        name: type.declaration.kind === 'TraitDeclaration' ? selfType : type.declaration.name.text,
+        name: parameterText(type),
       };
     case 'any':
       return {

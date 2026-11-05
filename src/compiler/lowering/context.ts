@@ -20,7 +20,7 @@ import type { Fit } from '../checker/types/fit.ts';
 import type { Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Expression, Lambda } from '../syntax/expressions/index.ts';
+import type { Expression, FieldHeader, Lambda } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
@@ -44,6 +44,7 @@ export interface FunctionContext {
   readonly checker: Checker;
   readonly tables: DefinitionTables;
   readonly module: ModuleId;
+  /** The body, as the passes of the field loops being lowered read it (§4). */
   readonly body: CheckedBody;
   /**
    * What the entry being lowered produces, which a `?` returns an `Err` of (§3.12): a lambda's or
@@ -58,6 +59,11 @@ export interface FunctionContext {
    * with no expression.
    */
   readonly fitted: (value: Register, type: Type, fit: Fit, site: ValueSite) => Register;
+  /**
+   * Runs `lower` reading the body as the pass of the field loop `header` heads that visits `field`
+   * reads it (§4), its calls closed and its nested functions keyed in that pass.
+   */
+  readonly inFieldPass: (header: FieldHeader, field: string, lower: () => void) => void;
   /** Lowers a block; the register holding its value (unit when it ends in a statement). */
   readonly block: (node: Block) => Register;
   readonly statement: (node: Statement | Invalid) => void;

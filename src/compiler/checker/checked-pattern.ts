@@ -4,7 +4,12 @@
  * (patterns/walk.ts).
  */
 
-import type { Comprehension, Expression, SelectCase } from '../syntax/expressions/index.ts';
+import type {
+  Comprehension,
+  Expression,
+  FieldHeader,
+  SelectCase,
+} from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { Relation } from '../syntax/operators.ts';
 import type { ArrayPattern, CompareFieldPattern, LiteralPattern } from '../syntax/patterns.ts';
@@ -15,7 +20,7 @@ import type { AnyType, Type } from './types/type.ts';
  * What binds targets (§3.15): a declaration, a `for` or comprehension for each item, or a select
  * case's `as` for the value of its future (§8).
  */
-export type TargetOwner = VariableDeclaration | For | Comprehension | SelectCase;
+export type TargetOwner = VariableDeclaration | For | FieldHeader | Comprehension | SelectCase;
 
 /**
  * A step from a value to one of its parts (§3.11, §3.15): a field or tuple element by position;

@@ -21,8 +21,9 @@ import type { Binding, Witnesses } from '../checker/resolved-call.ts';
 import { type Substitution, substitutionFor } from '../checker/types/substitution.ts';
 import type { FunctionType, Type } from '../checker/types/type.ts';
 import type { TypeKeys } from '../checker/types/type-keys.ts';
+import { literalType } from '../checker/types/unions.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Lambda } from '../syntax/expressions/index.ts';
+import type { FieldHeader, Lambda } from '../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
 import { qualifiedNameOf, spelledType } from './names.ts';
 
@@ -53,19 +54,41 @@ export interface NestedInstance {
   readonly node: Lambda | FunctionDeclaration;
 }
 
-/** What a lowered body belongs to: an instance of a function, or a top-level constant's value. */
-export type BodyOwner =
+/**
+ * What a lowered body belongs to: an instance of a function, or a top-level constant's value; and
+ * the passes of the field loops it is lowered inside (§4), outermost first, each read as checked.
+ */
+export type BodyOwner = (
   | { readonly kind: 'function'; readonly instance: FunctionInstance }
-  | { readonly kind: 'constant'; readonly declaration: VariableDeclaration };
+  | { readonly kind: 'constant'; readonly declaration: VariableDeclaration }
+) & { readonly passes?: readonly FieldPassStep[] };
+
+/** A pass of a field loop a body is lowered in (§4): the loop's header, and the field it visits. */
+export interface FieldPassStep {
+  readonly header: FieldHeader;
+  readonly field: string;
+}
+
+/**
+ * What the keys of the field loops `passes` are lowered in stand for: each field's name, as its
+ * literal type, which the pass of the fields a struct constraint leaves unnamed needs (§4).
+ */
+export function passBindings(passes: readonly FieldPassStep[] = []): Substitution {
+  return new Map(passes.map(({ header, field }) => [header, literalType(field)] as const));
+}
 
 /** The declaration `owner` is: its function's, or the constant's. */
 export function ownerDeclaration(owner: BodyOwner): FunctionDeclaration | VariableDeclaration {
   return owner.kind === 'function' ? owner.instance.declaration : owner.declaration;
 }
 
-/** How `owner` maps type parameters: its instance's arguments; a constant has none. */
+/**
+ * How `owner` maps type parameters: its instance's arguments, a constant none; and the keys of
+ * the field loops it is lowered inside (`passBindings`).
+ */
 export function ownerSubstitution(owner: BodyOwner): Substitution {
-  return owner.kind === 'function' ? substitutionOf(owner.instance) : new Map();
+  const own = owner.kind === 'function' ? substitutionOf(owner.instance) : new Map();
+  return new Map([...own, ...passBindings(owner.passes)]);
 }
 
 /** The instance `main` is: no type arguments, its own entry. */
@@ -101,9 +124,14 @@ export function asyncFitKey(keys: TypeKeys, fit: AsyncFit): string {
 }
 
 function ownerKey(keys: TypeKeys, owner: BodyOwner): string {
-  return owner.kind === 'function'
-    ? instanceKey(keys, owner.instance)
-    : `const ${keys.identityOf(owner.declaration)}`;
+  const own =
+    owner.kind === 'function'
+      ? instanceKey(keys, owner.instance)
+      : `const ${keys.identityOf(owner.declaration)}`;
+  const passes = (owner.passes ?? []).map(
+    ({ header, field }) => `[${keys.identityOf(header)}.${field}]`,
+  );
+  return `${own}${passes.join('')}`;
 }
 
 /** A nested function's name: its owner's, then its own name, or where a lambda stands. */
@@ -119,9 +147,12 @@ export function asyncFitName(checker: Checker, fit: AsyncFit, where: string): st
 }
 
 function ownerName(checker: Checker, owner: BodyOwner): string {
-  return owner.kind === 'function'
-    ? instanceName(checker, owner.instance)
-    : qualifiedNameOf(checker, owner.declaration);
+  const own =
+    owner.kind === 'function'
+      ? instanceName(checker, owner.instance)
+      : qualifiedNameOf(checker, owner.declaration);
+  const passes = (owner.passes ?? []).map(({ field }) => `[${field}]`);
+  return `${own}${passes.join('')}`;
 }
 
 /** The key two instances share exactly when they are one entry. */

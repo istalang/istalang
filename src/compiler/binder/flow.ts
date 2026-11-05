@@ -19,6 +19,7 @@ import type {
   Comprehension,
   ConditionalBranch,
   Expression,
+  FieldHeader,
   MatchCase,
   SelectCase,
 } from '../syntax/expressions/index.ts';
@@ -33,7 +34,7 @@ type Body = (scope: Scope) => void;
 type Conditional = ConditionalBranch | While | Comprehension | MatchCase;
 
 /** A construct whose body sees bindings of its own. */
-type Binding = For | Comprehension | MatchCase | SelectCase;
+type Binding = For | FieldHeader | Comprehension | MatchCase | SelectCase;
 
 /** Binds a condition and returns the scope its bindings flow into when it holds. */
 function bindCondition(binder: LocalBinder, node: Expression, scope: Scope): Scope {
@@ -129,6 +130,22 @@ export function underLoop(
   underBindings(binder, node, scope, { define, body });
 }
 
+/** A field loop's header (§4): its subject outside, its key and value fresh for `body`. */
+export function underFields(
+  binder: LocalBinder,
+  node: FieldHeader,
+  scope: Scope,
+  body: Body,
+): void {
+  binder.walk.expression(binder, node.subject, scope);
+  const define = (variables: Scope) => {
+    for (const target of [node.key, node.value]) {
+      binder.walk.pattern(binder, target, scope, { into: variables, declaration: node });
+    }
+  };
+  underBindings(binder, node, scope, { define, body });
+}
+
 /** Where a construct's own bindings start to be visible: after what declares them. */
 function bindingsStartOf(node: Binding): AnchoredSpan {
   switch (node.kind) {
@@ -136,6 +153,8 @@ function bindingsStartOf(node: Binding): AnchoredSpan {
       return endOf(node.pattern.span);
     case 'SelectCase':
       return endOf((node.binding ?? node.future).span);
+    case 'FieldHeader':
+      return endOf(node.subject.span);
     default:
       return endOf(node.iterable.span);
   }

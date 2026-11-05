@@ -106,6 +106,17 @@ export const statementPrinters: Printers<StatementKind> = {
         body(printer, node.body),
       ]),
     ),
+  FieldLoop: (printer, node) =>
+    annotated(
+      printer,
+      node,
+      group([
+        label(printer, node.label),
+        printer.print(node.header),
+        ':',
+        body(printer, node.body),
+      ]),
+    ),
   While: (printer, node) =>
     annotated(
       printer,

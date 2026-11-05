@@ -7,7 +7,7 @@
  * literal running it.
  */
 
-import type { CheckedBody, CheckedFunction, Checker } from '../check.ts';
+import type { CheckedBody, CheckedFunction, Checker, FieldPass } from '../check.ts';
 import { type FieldRead, instantiatedRead } from '../checked-field.ts';
 import type { CheckedPattern, PartStep, PatternTest } from '../checked-pattern.ts';
 import type { Fit } from './fit.ts';
@@ -74,6 +74,7 @@ export function instantiatedBody(
     chosenVariantOf: body.chosenVariantOf,
     candidatesAt: body.candidatesAt,
     labels: body.labels,
+    passesOf: (header) => instantiatedPasses(body.passesOf(header), substitution, checker),
     result: concrete(body.result),
   };
 }
@@ -93,6 +94,20 @@ function instantiatedFunction(
     })),
     captures: checked.captures.map((captured) => ({ ...captured, type: concrete(captured.type) })),
   };
+}
+
+/** A field loop's passes as one instantiation reads them: their types and bodies substituted. */
+function instantiatedPasses(
+  passes: readonly FieldPass[],
+  substitution: Substitution,
+  checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
+): readonly FieldPass[] {
+  return passes.map(({ field, key, value, body }) => ({
+    field,
+    key: substitute(key, substitution, checker.typeRules),
+    value: substitute(value, substitution, checker.typeRules),
+    body: instantiatedBody(body, substitution, checker),
+  }));
 }
 
 /** `f(value)`, or undefined for an undefined value: a table's answer, read through `f`. */

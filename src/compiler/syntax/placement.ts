@@ -78,6 +78,7 @@ function placeOf(item: Item): Place {
     case 'Break':
     case 'Continue':
     case 'For':
+    case 'FieldLoop':
     case 'While':
     case 'LabelledBlock':
     case 'Defer':

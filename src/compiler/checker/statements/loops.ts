@@ -1,5 +1,5 @@
 /**
- * Loops and labels (§3.4, §4): `while`, `for`, the `break` and `continue` that leave their bodies,
+ * Loops and labels (§3.4, §4): `while`, `for`, field loops, the `break` and `continue` that leave their bodies,
  * blocks labelled for `hold`, and the names labels give. A loop or labelled block is a statement
  * of type `Unit`; its body runs for its effects, so the body's value is discarded. What a `for`
  * runs over, and how, is the rule of iteration (rules/iteration.ts).
@@ -13,6 +13,7 @@
 import type {
   Break,
   Continue,
+  FieldLoop,
   For,
   Hold,
   LabelledBlock,
@@ -21,8 +22,11 @@ import type {
 } from '../../syntax/statements.ts';
 import type { BodyContext, LabelRecord } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { declareTargets } from '../patterns/targets.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
-import { boolType, neverType, type Type, unitType } from '../types/type.ts';
+import { fieldPassesOver } from '../traits/struct-keys.ts';
+import { boolType, errorType, neverType, type Type, tupleType, unitType } from '../types/type.ts';
+import { typeText } from '../types/type-text.ts';
 
 export function checkWhile(context: BodyContext, node: While): Type {
   context.expect(node.condition, boolType);
@@ -76,8 +80,37 @@ export function checkHoldScope(context: BodyContext, hold: Hold): void {
   }
 }
 
-/** Checks `scope`'s label and its body, and warns when nothing in the body named the label. */
-function checkScope(context: BodyContext, scope: LabelledScope): void {
+/**
+ * A field loop (§4): its body once per pass over its subject's fields (traits/struct-keys.ts), the
+ * key and value taking apart the pair of each pass's key and value; a subject with no fields to
+ * visit is reported, and the body checked once with nothing known of them.
+ */
+export function checkFieldLoop(context: BodyContext, node: FieldLoop): Type {
+  const { header } = node;
+  const subject = context.expression(header.subject);
+  const passes = fieldPassesOver(context.checker, subject, header);
+  if (passes === undefined && subject.kind !== 'error') {
+    context.report(checkerDiagnostics.fieldLoopSubject(header.subject.span, typeText(subject)));
+  }
+  const checked = passes ?? [{ field: undefined, key: errorType, value: errorType }];
+  checkScope(context, node, () => {
+    context.fieldPasses(header, checked, ({ key, value }) => {
+      declareTargets(context, header, tupleType([key, value]));
+      context.effectBlock(node.body);
+    });
+  });
+  return unitType;
+}
+
+/**
+ * Checks `scope`'s label and its body (`checkBody`, once unless a field loop's passes run it
+ * more), and warns when nothing in the body named the label.
+ */
+function checkScope(
+  context: BodyContext,
+  scope: LabelledScope,
+  checkBody = () => context.effectBlock(scope.body),
+): void {
   const { label } = scope;
   if (label !== undefined) {
     if (context.enclosing.labelled(label) !== undefined) {
@@ -86,7 +119,7 @@ function checkScope(context: BodyContext, scope: LabelledScope): void {
       context.report(checkerDiagnostics.ownNameLabel(label.span, label.text));
     }
   }
-  context.enclosing.inside(scope, () => context.effectBlock(scope.body));
+  context.enclosing.inside(scope, checkBody);
   if (label !== undefined && !context.labels.isNamed(scope)) {
     context.report(checkerDiagnostics.unusedLabel(label.span, label.text));
   }

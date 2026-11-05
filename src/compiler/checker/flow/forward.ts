@@ -374,6 +374,11 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
       exit: top,
       end: walk.sequence([...node.targets, node.body], top),
     })),
+  FieldLoop: (walk, node, state) =>
+    walk.loop(node, walk.node(node.header.subject, state), (top) => ({
+      exit: top,
+      end: walk.sequence([node.header.key, node.header.value, node.body], top),
+    })),
   While: (walk, node, state) =>
     walk.loop(node, state, (top) => {
       const tested = walk.node(node.condition, top);

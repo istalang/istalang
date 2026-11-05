@@ -17,6 +17,7 @@ import {
   type NominalType,
   type ParameterSlot,
   type Type,
+  type TypeParameterType,
   type UnionType,
 } from './type.ts';
 
@@ -63,7 +64,7 @@ export function typeText(type: Type): string {
       return `${head}(${parameters.join(', ')})${tail}`;
     }
     case 'parameter':
-      return type.declaration.kind === 'TraitDeclaration' ? selfType : type.declaration.name.text;
+      return parameterText(type);
     case 'any':
       return `any ${type.constraints.map(constraintText).join(' & ')}`;
     case 'literal':
@@ -171,4 +172,20 @@ function anonymousText(type: AnonymousStructType): string {
 
 function parameterizedText(name: string, typeArguments: readonly Type[]): string {
   return typeArguments.length === 0 ? name : `${name}<${typeArguments.map(typeText).join(', ')}>`;
+}
+
+/**
+ * A type parameter's name: its own, `Self` for a trait's; a field loop's key for the fields a
+ * struct constraint leaves unnamed reads as the keys it ranges over (§4).
+ */
+export function parameterText(type: TypeParameterType): string {
+  const { declaration } = type;
+  switch (declaration.kind) {
+    case 'TraitDeclaration':
+      return selfType;
+    case 'FieldHeader':
+      return type.within === undefined ? 'keyof …' : typeText(type.within);
+    default:
+      return declaration.name.text;
+  }
 }

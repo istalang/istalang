@@ -13,11 +13,12 @@ import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/field-defaul
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
+import { passesAround } from './pass-views.ts';
 
 /** What finding a holding body reads of the checker. */
 export type Holders = Pick<
   CheckerContext,
-  'inputs' | 'bodyOf' | 'defaultsOf' | 'constantBodyOf' | 'annotations'
+  'inputs' | 'bodyOf' | 'defaultsOf' | 'constantBodyOf' | 'annotations' | 'typeRules'
 >;
 
 /** `node` and the nodes holding it, innermost first, up to its module's root. */
@@ -37,7 +38,10 @@ export function itemHolding(tree: SyntaxTree, node: SyntaxNode): Declaration | u
   );
 }
 
-/** The checked body holding `node` of `module`; undefined outside every body. */
+/**
+ * The checked body holding `node` of `module`, as the passes of the field loops around it read
+ * it, joined (pass-views.ts); undefined outside every body.
+ */
 export function bodyHolding(
   checker: Holders,
   module: ModuleId,
@@ -45,9 +49,15 @@ export function bodyHolding(
 ): CheckedBody | undefined {
   const path = ancestorsOf(checker.inputs.treeOf(module), node);
   const annotation = path.find((each): each is Annotation => each.kind === 'Annotation');
-  if (annotation !== undefined) {
-    return checker.annotations.bodyOf(module, annotation);
-  }
+  const body =
+    annotation === undefined
+      ? bodyInModule(checker, path)
+      : checker.annotations.bodyOf(module, annotation);
+  return body === undefined ? undefined : passesAround(body, path, checker.typeRules);
+}
+
+/** The body holding the innermost of `path`, a node and the nodes holding it up to its module. */
+function bodyInModule(checker: Holders, path: readonly SyntaxNode[]): CheckedBody | undefined {
   const [root, ...inward] = path.toReversed();
   return root?.kind === 'Module' ? bodyInItem(checker, inward) : undefined;
 }

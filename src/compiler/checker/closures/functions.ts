@@ -24,16 +24,18 @@ import { encloses } from '../../syntax/positions.ts';
 import type { BodyContext, FunctionFrame, Functions } from '../body-context.ts';
 import type { CheckedFunction, NestedFunction } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../passes.ts';
 import { errorType, type Type } from '../types/type.ts';
 
 export class FunctionScopes implements Functions {
   readonly #stack: FunctionFrame[];
   /** Nested functions being checked with no declared result, whose type isn't known yet. */
   readonly #untyped = new Set<NestedFunction>();
-  readonly #checked = new Map<NestedFunction, CheckedFunction>();
+  readonly #checked: PassTable<NestedFunction, CheckedFunction>;
 
-  constructor(root: FunctionFrame) {
+  constructor(root: FunctionFrame, passes: Passes) {
     this.#stack = [root];
+    this.#checked = passes.table();
   }
 
   get current(): FunctionFrame {
@@ -86,8 +88,8 @@ export class FunctionScopes implements Functions {
     this.#checked.set(node, checked);
   }
 
-  checkedOf(node: NestedFunction): CheckedFunction | undefined {
-    return this.#checked.get(node);
+  checkedOf(node: NestedFunction, pass?: Pass): CheckedFunction | undefined {
+    return this.#checked.get(node, pass);
   }
 }
 

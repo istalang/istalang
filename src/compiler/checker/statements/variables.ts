@@ -10,7 +10,9 @@
  * - A parameter is declared with its checked signature, so whether it is a reference is known
  *   from one source, its written `&` or the expected function type's (closures/lambdas.ts).
  * - What lowering needs is recorded: each declaration's bindings, each assignment's parts, and
- *   which variables live in a cell, being passed by `&` or shared with a closure.
+ *   which variables live in a cell, being passed by `&` or shared with a closure. A type, a binding
+ *   and a part are recorded per pass of a field loop (passes.ts); whether a variable changes or
+ *   lives in a cell holds for every pass.
  */
 
 import type { VariableEntity } from '../../binder/entities.ts';
@@ -21,6 +23,7 @@ import type { BodyContext, Variables } from '../body-context.ts';
 import type { AssignedPart, SignatureParameter } from '../check.ts';
 import type { TargetBinding, TargetOwner } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../passes.ts';
 import { declareTargets } from '../patterns/targets.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { widened } from '../types/widening.ts';
@@ -31,12 +34,18 @@ import { checkHoldScope } from './loops.ts';
  * lowering reads of the declarations and assignments.
  */
 export class VariableScope implements Variables {
-  readonly #types = new Map<Identifier, Type>();
+  readonly #types: PassTable<Identifier, Type>;
   readonly #changed = new Set<Identifier>();
   readonly #inCell = new Set<Identifier>();
   readonly #references = new Set<Identifier>();
-  readonly #targets = new Map<TargetOwner, readonly TargetBinding[]>();
-  readonly #assigned = new Map<Assignment, readonly AssignedPart[]>();
+  readonly #targets: PassTable<TargetOwner, readonly TargetBinding[]>;
+  readonly #assigned: PassTable<Assignment, readonly AssignedPart[]>;
+
+  constructor(passes: Passes) {
+    this.#types = passes.table();
+    this.#targets = passes.table();
+    this.#assigned = passes.table();
+  }
 
   declare(name: Identifier, type: Type): void {
     this.#types.set(name, type);
@@ -74,8 +83,8 @@ export class VariableScope implements Variables {
   }
 
   /** The type `name` was declared with; undefined for a name this body doesn't declare. */
-  declaredTypeOf(name: Identifier): Type | undefined {
-    return this.#types.get(name);
+  declaredTypeOf(name: Identifier, pass?: Pass): Type | undefined {
+    return this.#types.get(name, pass);
   }
 
   noteChanged(variable: VariableEntity): void {
@@ -94,12 +103,12 @@ export class VariableScope implements Variables {
     return this.#inCell.has(name);
   }
 
-  targetsOf(owner: TargetOwner): readonly TargetBinding[] {
-    return this.#targets.get(owner) ?? [];
+  targetsOf(owner: TargetOwner, pass?: Pass): readonly TargetBinding[] {
+    return this.#targets.get(owner, pass) ?? [];
   }
 
-  assignedOf(assignment: Assignment): readonly AssignedPart[] {
-    return this.#assigned.get(assignment) ?? [];
+  assignedOf(assignment: Assignment, pass?: Pass): readonly AssignedPart[] {
+    return this.#assigned.get(assignment, pass) ?? [];
   }
 
   recordTargets(owner: TargetOwner, bindings: readonly TargetBinding[]): void {
@@ -115,7 +124,8 @@ export class VariableScope implements Variables {
    * change, a `const` of its own.
    */
   warnUnchanged(context: BodyContext): void {
-    for (const name of this.#types.keys()) {
+    const declared = new Set(this.#types.entries().map(([name]) => name));
+    for (const name of declared) {
       const entity = context.entityOf(name);
       const owner = entity?.kind === 'variable' ? entity.owner : undefined;
       if (owner?.kind === 'VariableDeclaration' && owner.isMutable && !this.#changed.has(name)) {

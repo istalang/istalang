@@ -23,8 +23,10 @@ import type { Type } from '../../checker/types/type.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import {
   type BodyOwner,
+  type FieldPassStep,
   type FunctionInstance,
   type NestedInstance,
+  passBindings,
   substitutionOf,
 } from '../instances.ts';
 import type { DefinitionTables, EntryHeader } from '../tables.ts';
@@ -70,16 +72,37 @@ export function loweredInstance(
   return body === undefined ? undefined : { ...lowering, owner, body };
 }
 
-/** What a nested function of `owner` is lowered from: its owner's body. */
+/**
+ * What a nested function of `owner` is lowered from: its owner's body, as the passes of the field
+ * loops the owner is lowered in read it (§4).
+ */
 export function loweredNested(lowering: Lowering, owner: BodyOwner): LoweredFunction {
+  const { checker } = lowering;
   const body =
     owner.kind === 'constant'
-      ? lowering.checker.constantBodyOf(owner.declaration)
-      : ownBodyOf(lowering.checker, owner.instance);
+      ? checker.constantBodyOf(owner.declaration)
+      : ownBodyOf(checker, owner.instance);
   if (body === undefined) {
     unreachable('A nested function has no checked body holding it.');
   }
-  return { ...lowering, owner, body };
+  const passed = (owner.passes ?? []).reduce((outer, step) => passBody(checker, outer, step), body);
+  return { ...lowering, owner, body: passed };
+}
+
+/**
+ * `body` as the pass `step` names reads it (§4): the field's own pass, or the pass of the fields a
+ * struct constraint leaves unnamed, read with its key standing for the field.
+ */
+export function passBody(checker: Checker, body: CheckedBody, step: FieldPassStep): CheckedBody {
+  const passes = body.passesOf(step.header);
+  const own = passes.find((pass) => pass.field === step.field);
+  if (own !== undefined) {
+    return own.body;
+  }
+  const others =
+    passes.find((pass) => pass.field === undefined) ??
+    unreachable(`No pass of a field loop reads the field '${step.field}'.`);
+  return instantiatedBody(others.body, passBindings([step]), checker);
 }
 
 /**

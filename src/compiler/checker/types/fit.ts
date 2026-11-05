@@ -178,10 +178,14 @@ function convertedInto(
   return isLiteralOf(found, expected) ? { kind: 'base' } : undefined;
 }
 
-/** Whether `found` is a literal type, or a union of literals, all of `base`'s base. */
+/**
+ * Whether `found` is a literal type, or a union of literals, all of `base`'s base; the keys of a
+ * struct not known yet are String literals too (§3.1).
+ */
 function isLiteralOf(found: Type, base: Type): boolean {
   return membersOf(found).every(
-    (member) => member.kind === 'literal' && isAssignable(baseOf(member), base),
+    (member) =>
+      (member.kind === 'literal' || member.kind === 'keys') && isAssignable(baseOf(member), base),
   );
 }
 

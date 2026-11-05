@@ -27,6 +27,7 @@ import { binaryOperators, type ImplicitOperator } from '../../syntax/operators.t
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext, ImplicitRecord } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../passes.ts';
 import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -37,23 +38,25 @@ import { type Candidate, topLevelCandidates } from './candidates.ts';
 
 /** The implicit calls of one body, by construct and role. */
 export class ImplicitCalls implements ImplicitRecord {
-  readonly #calls = new Map<NodeOf<string>, Map<ImplicitRole, ResolvedCall>>();
+  readonly #calls: PassTable<NodeOf<string>, ReadonlyMap<ImplicitRole, ResolvedCall>>;
 
-  record(node: NodeOf<string>, role: ImplicitRole, call: ResolvedCall): void {
-    const roles = this.#calls.get(node) ?? new Map<ImplicitRole, ResolvedCall>();
-    roles.set(role, call);
-    this.#calls.set(node, roles);
+  constructor(passes: Passes) {
+    this.#calls = passes.table();
   }
 
-  of(node: NodeOf<string>, role: ImplicitRole): ResolvedCall | undefined {
-    return this.#calls.get(node)?.get(role);
+  record(node: NodeOf<string>, role: ImplicitRole, call: ResolvedCall): void {
+    this.#calls.set(node, new Map([...(this.#calls.get(node) ?? []), [role, call]]));
+  }
+
+  of(node: NodeOf<string>, role: ImplicitRole, pass?: Pass): ResolvedCall | undefined {
+    return this.#calls.get(node, pass)?.get(role);
   }
 
   /** Every call recorded, with its construct. */
   made(): readonly MadeCall[] {
-    return [...this.#calls].flatMap(([site, roles]) =>
-      [...roles.values()].map((call) => ({ site, call })),
-    );
+    return this.#calls
+      .entries()
+      .flatMap(([site, roles]) => [...roles.values()].map((call) => ({ site, call })));
   }
 }
 

@@ -136,6 +136,15 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2029,
     message: () => 'A type match case gives one type, written after its colon (§3.17).',
   },
+  fieldLoopTargets: {
+    code: 2030,
+    message: () =>
+      'A field loop takes two targets, the key and the value: `for key, value in ...x` (§4).',
+  },
+  fieldLoopKey: {
+    code: 2031,
+    message: () => "A field loop's key is a name or '_': the field's name, a String (§4).",
+  },
   memberParameterAlone: {
     code: 2027,
     message: () =>

@@ -27,7 +27,13 @@ import {
 import type { FunctionContext } from '../context.ts';
 import { lowerLocalFunction } from '../expressions/closures.ts';
 import { neverLowered } from '../never-lowered.ts';
-import { lowerFor, lowerLabelledBlock, lowerLoopExit, lowerWhile } from './loops.ts';
+import {
+  lowerFieldLoop,
+  lowerFor,
+  lowerLabelledBlock,
+  lowerLoopExit,
+  lowerWhile,
+} from './loops.ts';
 import { endScope, release } from './scopes.ts';
 import { lowerAssignment, lowerVariableDeclaration } from './variables.ts';
 
@@ -47,6 +53,7 @@ const statementHandlers: Handlers<FunctionContext, Statement | Invalid, [], void
   Continue: lowerLoopExit,
   FunctionDeclaration: lowerLocalFunction,
   For: lowerFor,
+  FieldLoop: lowerFieldLoop,
   LabelledBlock: lowerLabelledBlock,
   Defer: (context, node) => {
     const guard = context.code.allocate();

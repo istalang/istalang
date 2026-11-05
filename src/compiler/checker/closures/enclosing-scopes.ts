@@ -6,7 +6,7 @@
 
 import { withPushed } from '../../../structures/stack.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import type { For, LabelledScope, While } from '../../syntax/statements.ts';
+import type { LabelledScope, Loop } from '../../syntax/statements.ts';
 import type { Enclosing } from '../body-context.ts';
 
 /** The scopes whose bodies are being checked, innermost last, and the function's own name. */
@@ -22,8 +22,8 @@ export class EnclosingScopes implements Enclosing {
     return withPushed(this.#scopes, scope, check);
   }
 
-  get innermostLoop(): For | While | undefined {
-    return this.#scopes.findLast((scope) => scope.kind !== 'LabelledBlock');
+  get innermostLoop(): Loop | undefined {
+    return this.#scopes.findLast((scope): scope is Loop => scope.kind !== 'LabelledBlock');
   }
 
   labelled(name: Identifier): LabelledScope | undefined {

@@ -40,10 +40,11 @@ import type {
 import type { BodyContext, PatternRecord } from '../body-context.ts';
 import { type CheckedPattern, namesBound, type PatternTest } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../passes.ts';
 import { implicitOperatorCall, preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, nameNodeOf } from '../resolution/named.ts';
 import type { ImplicitRole } from '../resolved-call.ts';
-import { checkEqualSides, comparable } from '../types/equality.ts';
+import { checkEqualSides, comparable, fitEqualSides } from '../types/equality.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
 import {
   errorType,
@@ -67,14 +68,18 @@ import { type WalkedPattern, walkPattern } from './walk.ts';
 
 /** The patterns of one body as checked, for lowering. */
 export class CheckedPatterns implements PatternRecord {
-  readonly #patterns = new Map<Pattern, CheckedPattern>();
+  readonly #patterns: PassTable<Pattern, CheckedPattern>;
+
+  constructor(passes: Passes) {
+    this.#patterns = passes.table();
+  }
 
   record(pattern: Pattern, checked: CheckedPattern): void {
     this.#patterns.set(pattern, checked);
   }
 
-  patternOf(pattern: Pattern): CheckedPattern | undefined {
-    return this.#patterns.get(pattern);
+  patternOf(pattern: Pattern, pass?: Pass): CheckedPattern | undefined {
+    return this.#patterns.get(pattern, pass);
   }
 }
 
@@ -209,7 +214,7 @@ function literal(context: BodyContext, node: LiteralPattern, part: ValuePart): L
     return isPrimitive(part.type, 'None') ? { tests: [], shape: anyShape } : failed;
   }
   const type = context.expression(value, part.type);
-  if (!comparable(type, part.type)) {
+  if (!fitEqualSides(context, { type: part.type, node: undefined }, { type, node: value })) {
     context.report(checkerDiagnostics.typeMismatch(node.span, typeText(part.type), typeText(type)));
   }
   return { tests: [equalTest(part, value, false)], shape: valueShape(context, value, part) };

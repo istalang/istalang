@@ -17,7 +17,14 @@
 import { isUnnamed } from '../../language/naming.ts';
 import type { Annotatable } from './annotations.ts';
 import type { FunctionDeclaration } from './declarations.ts';
-import { type Expression, itemName, itemValue, unparenthesized } from './expressions/index.ts';
+import {
+  type Comprehension,
+  type Expression,
+  type FieldHeader,
+  itemName,
+  itemValue,
+  unparenthesized,
+} from './expressions/index.ts';
 import { isPlace } from './expressions/places.ts';
 import type { Identifier, Invalid, NodeOf } from './node.ts';
 import type { AssignmentOperator } from './operators.ts';
@@ -197,6 +204,16 @@ export interface For extends NodeOf<'For'>, Annotatable {
   readonly body: Block;
 }
 
+/**
+ * `for key, value in ...x: …`, or `outer: for …` labelled: its body once per field of `x`, in name
+ * order (§4), as the body written out once per field.
+ */
+export interface FieldLoop extends NodeOf<'FieldLoop'>, Annotatable {
+  readonly label: Identifier | undefined;
+  readonly header: FieldHeader;
+  readonly body: Block;
+}
+
 /** `while c: …`, or `outer: while …` labelled. */
 export interface While extends NodeOf<'While'>, Annotatable {
   readonly label: Identifier | undefined;
@@ -213,8 +230,21 @@ export interface LabelledBlock extends NodeOf<'LabelledBlock'>, Annotatable {
   readonly body: Block;
 }
 
+/**
+ * The targets `owner` declares, which take its value apart (§3.15): a declaration's or loop's, or a
+ * field loop's key and value, which take apart the pair of a field's name and value.
+ */
+export function declaredTargets(
+  owner: VariableDeclaration | For | Comprehension | FieldHeader,
+): readonly Pattern[] {
+  return owner.kind === 'FieldHeader' ? [owner.key, owner.value] : owner.targets;
+}
+
+/** A loop (§4), which `break` and `continue` leave. */
+export type Loop = For | FieldLoop | While;
+
 /** A scope a label may name (§3.4, §4): a loop, or a block only `hold` names. */
-export type LabelledScope = For | While | LabelledBlock;
+export type LabelledScope = Loop | LabelledBlock;
 
 /** `defer f`: runs `f` when the block ends (§7). */
 export interface Defer extends NodeOf<'Defer'>, Annotatable {
@@ -235,6 +265,7 @@ export type Statement =
   | Break
   | Continue
   | For
+  | FieldLoop
   | While
   | LabelledBlock
   | Defer

@@ -1,6 +1,6 @@
 /**
- * The checker's diagnostics of struct keys, codes 5160–5169 (§3.1, §3.7, §3.9): `keyof`, `S[K]`,
- * mapped struct types, and reading or writing a field through a key. A part of the checker's one
+ * The checker's diagnostics of struct keys, codes 5160–5169 (§3.1, §3.7, §3.9, §4): `keyof`, `S[K]`,
+ * mapped struct types, reading or writing a field through a key, and what a field loop runs over. A part of the checker's one
  * catalog (index.ts).
  */
 
@@ -33,5 +33,10 @@ export const keyTemplates = {
     code: 5165,
     message: (key: string) =>
       `A field passed by '&' is one place, but a key of ${key} may name several fields, each of its own type; narrow the key to one first (§3.7).`,
+  },
+  fieldLoopSubject: {
+    code: 5166,
+    message: (type: string) =>
+      `A field loop runs over the fields of a struct, and ${type} is none: a struct declaration's, not shared or extern, a shape, or a type parameter with a struct constraint; '...*x' runs over the value behind a shared struct (§4).`,
   },
 };

@@ -16,13 +16,17 @@
  * - A mapped struct type's keys are its parameter's union less the names its braces give fields
  *   (`mappedKeys`), so its value is checked once for those keys, never for a field written beside
  *   it. Once they are String literals, it is the shape of its named fields and one field per key.
+ * - A field loop's body is checked once per key a literal names and once for the keys not known
+ *   yet (`fieldPassesOver`), as a mapped type's value is.
  */
 
 import { compareOrdered } from '../../../language/order.ts';
 import { programModule } from '../../program/program.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';
+import type { FieldHeader } from '../../syntax/expressions/index.ts';
 import { parentOf } from '../../syntax/tree.ts';
 import type { StructType } from '../../syntax/types.ts';
+import type { FieldPassType } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { isOpaque, type MappedParts } from '../types/computed-types.ts';
 import { substitute } from '../types/substitution.ts';
@@ -270,6 +274,37 @@ export function mappedTypeOf(
     return name === undefined ? [] : [{ name, type: mappedFieldType(checker, parts, key, outer) }];
   });
   return shapeType(parts.origin, [...parts.named, ...mapped]);
+}
+
+/**
+ * The passes a field loop's body is checked in over a value of `subject` (§4): one per key a
+ * literal names, its value that field's type; and, for the keys not known yet, one pass whose key
+ * is a member parameter keyed by `header` ranging over them, its value the field that key names.
+ * Undefined when `subject` has no keys.
+ */
+export function fieldPassesOver(
+  checker: CheckerContext,
+  subject: Type,
+  header: FieldHeader,
+): readonly FieldPassType[] | undefined {
+  const keys = keysOf(checker, subject, []);
+  if (keys.kind === 'error') {
+    return undefined;
+  }
+  const members = membersOf(keys).filter((member) => !isNever(member));
+  const named = members.flatMap((member): FieldPassType[] => {
+    const field = keyName(member);
+    return field === undefined
+      ? []
+      : [{ field, key: member, value: fieldTypeOf(checker, subject, member) }];
+  });
+  const others = members.filter((member) => keyName(member) === undefined);
+  if (others.length === 0) {
+    return named;
+  }
+  const within = unionOf(others, checker.typeRules);
+  const key: Type = { kind: 'parameter', declaration: header, within };
+  return [...named, { field: undefined, key, value: fieldTypeOf(checker, subject, key) }];
 }
 
 function isNever(type: Type): boolean {

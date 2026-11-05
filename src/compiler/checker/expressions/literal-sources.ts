@@ -9,6 +9,7 @@
 import type { Expression, FieldsLiteral } from '../../syntax/expressions/index.ts';
 import type { LiteralSources } from '../body-context.ts';
 import type { FieldSource } from '../check.ts';
+import type { Pass, Passes, PassTable } from '../passes.ts';
 import type { FunctionCall, MadeCall } from '../resolved-call.ts';
 import type { FieldMember } from '../types/type.ts';
 
@@ -17,8 +18,13 @@ import type { FieldMember } from '../types/type.ts';
  * from.
  */
 export class StructLiterals implements LiteralSources {
-  readonly #sources = new Map<FieldsLiteral, readonly FieldSource[]>();
-  readonly #fields = new Map<FieldsLiteral, readonly FieldMember[]>();
+  readonly #sources: PassTable<FieldsLiteral, readonly FieldSource[]>;
+  readonly #fields: PassTable<FieldsLiteral, readonly FieldMember[]>;
+
+  constructor(passes: Passes) {
+    this.#sources = passes.table();
+    this.#fields = passes.table();
+  }
 
   record(literal: FieldsLiteral, sources: readonly FieldSource[]): void {
     this.#sources.set(literal, sources);
@@ -28,19 +34,23 @@ export class StructLiterals implements LiteralSources {
     this.#fields.set(literal, fields);
   }
 
-  sourcesOf(literal: FieldsLiteral): readonly FieldSource[] | undefined {
-    return this.#sources.get(literal);
+  sourcesOf(literal: FieldsLiteral, pass?: Pass): readonly FieldSource[] | undefined {
+    return this.#sources.get(literal, pass);
   }
 
-  fieldsOf(literal: FieldsLiteral): readonly FieldMember[] | undefined {
-    return this.#fields.get(literal);
+  fieldsOf(literal: FieldsLiteral, pass?: Pass): readonly FieldMember[] | undefined {
+    return this.#fields.get(literal, pass);
   }
 
   /** The calls of the defaults the literals leave their fields to, each at its literal. */
   made(): readonly MadeCall[] {
-    return [...this.#sources].flatMap(([site, sources]) =>
-      sources.flatMap((source) => (source.kind === 'default' ? [{ site, call: source.call }] : [])),
-    );
+    return this.#sources
+      .entries()
+      .flatMap(([site, sources]) =>
+        sources.flatMap((source) =>
+          source.kind === 'default' ? [{ site, call: source.call }] : [],
+        ),
+      );
   }
 }
 

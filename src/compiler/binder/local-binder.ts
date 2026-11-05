@@ -26,7 +26,12 @@ import { memo, SequenceMemo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Annotatable } from '../syntax/annotations.ts';
 import type { FunctionDeclaration, Module } from '../syntax/declarations.ts';
-import type { Comprehension, Expression, Lambda } from '../syntax/expressions/index.ts';
+import type {
+  Comprehension,
+  Expression,
+  FieldHeader,
+  Lambda,
+} from '../syntax/expressions/index.ts';
 import { type Identifier, isMissingName, type QualifiedName } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
@@ -107,7 +112,7 @@ const variantsByModule = new SequenceMemo<Module['items'][number], Map<string, V
 export const holdsNoNames = (): void => undefined;
 
 /** A declaration whose targets are patterns, owning every name they bind (§3.15). */
-type TargetOwner = VariableDeclaration | For | Comprehension;
+type TargetOwner = VariableDeclaration | For | FieldHeader | Comprehension;
 
 /** Where a pattern's bindings go (patterns.ts). */
 export interface PatternBindings {

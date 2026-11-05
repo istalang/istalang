@@ -37,7 +37,13 @@ import type {
   TypeParameter,
   Variant,
 } from '../syntax/declarations.ts';
-import type { Comprehension, Lambda, Parameter, SelectCase } from '../syntax/expressions/index.ts';
+import type {
+  Comprehension,
+  FieldHeader,
+  Lambda,
+  Parameter,
+  SelectCase,
+} from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { AsPattern, BindFieldPattern, NamePattern, RestPattern } from '../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../syntax/statements.ts';
@@ -61,6 +67,7 @@ export type VariableOwner =
   | ExternConstantDeclaration
   | Parameter
   | For
+  | FieldHeader
   | Comprehension
   | SelectCase
   | NamePattern

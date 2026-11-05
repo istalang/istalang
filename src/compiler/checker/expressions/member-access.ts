@@ -25,6 +25,7 @@ import {
   namedFunctions,
 } from '../closures/function-values.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../passes.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { namedType, nameNodeOf } from '../resolution/named.ts';
 import { fieldOf } from '../traits/known-fields.ts';
@@ -116,14 +117,18 @@ export function recordFieldRead(
 
 /** The field reads of one body, by name or by key, recorded as each is checked. */
 export class FieldReads implements FieldReadRecord {
-  readonly #reads = new Map<FieldReading, FieldRead>();
+  readonly #reads: PassTable<FieldReading, FieldRead>;
+
+  constructor(passes: Passes) {
+    this.#reads = passes.table();
+  }
 
   record(reading: FieldReading, read: FieldRead): void {
     this.#reads.set(reading, read);
   }
 
-  of(reading: FieldReading): FieldRead | undefined {
-    return this.#reads.get(reading);
+  of(reading: FieldReading, pass?: Pass): FieldRead | undefined {
+    return this.#reads.get(reading, pass);
   }
 }
 

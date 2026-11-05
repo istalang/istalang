@@ -10,6 +10,7 @@ import type { ModuleId, Program } from '../compiler/program/program.ts';
 import { type Identifier, isMissingName } from '../compiler/syntax/node.ts';
 import { targetNames } from '../compiler/syntax/patterns.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
+import { declaredTargets } from '../compiler/syntax/statements.ts';
 import { childrenOf, extentIn, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import type { Span } from '../text/span.ts';
 import { type CheckedModule, checkedModule } from './checked-module.ts';
@@ -55,6 +56,8 @@ function ownUntypedNames(node: SyntaxNode): readonly Identifier[] {
       return node.type === undefined ? node.targets.flatMap(targetNames) : [];
     case 'For':
       return node.targets.flatMap(targetNames);
+    case 'FieldHeader':
+      return declaredTargets(node).flatMap(targetNames);
     case 'Lambda':
       return node.parameters.flatMap((parameter) =>
         parameter.kind === 'Parameter' && parameter.type === undefined ? [parameter.name] : [],

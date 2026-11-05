@@ -50,8 +50,14 @@ export function literalType(value: LiteralValue): LiteralType {
   return { kind: 'literal', value };
 }
 
-/** The type a value of `type` widens to without a literal type: a literal's base, else itself. */
+/**
+ * The type a value of `type` widens to without a literal type: a literal's base, `String` for the
+ * keys of a struct not known yet, each a String literal (§3.1), else itself.
+ */
 export function baseOf(type: Type): Type {
+  if (type.kind === 'keys') {
+    return primitiveType('String');
+  }
   return type.kind === 'literal' ? primitiveType(literalBase(type.value)) : type;
 }
 

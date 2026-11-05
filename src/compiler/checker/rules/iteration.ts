@@ -22,6 +22,7 @@ import type { For } from '../../syntax/statements.ts';
 import type { BodyContext, IterationRecord } from '../body-context.ts';
 import type { Checker, Iteration, IterationForm } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../passes.ts';
 import { declareTargets } from '../patterns/targets.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { implicitCall } from '../resolution/implicit.ts';
@@ -31,15 +32,19 @@ import { wellKnownArguments } from '../types/well-known.ts';
 
 /** How each iteration in one body runs. */
 export class Iterations implements IterationRecord {
-  readonly #forms = new Map<Iteration, IterationForm>();
+  readonly #forms: PassTable<Iteration, IterationForm>;
+
+  constructor(passes: Passes) {
+    this.#forms = passes.table();
+  }
 
   record(iteration: Iteration, form: IterationForm): void {
     this.#forms.set(iteration, form);
   }
 
   /** The form recorded for `iteration`; lowering asks only of a program checked clean. */
-  of(iteration: Iteration): IterationForm {
-    const form = this.#forms.get(iteration);
+  of(iteration: Iteration, pass?: Pass): IterationForm {
+    const form = this.#forms.get(iteration, pass);
     if (form === undefined) {
       unreachable(`An iteration at ${iteration.span.from} was never checked.`);
     }

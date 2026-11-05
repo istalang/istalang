@@ -42,6 +42,7 @@ import type { BodyContext, CollectionRecord } from '../body-context.ts';
 import { writeElement } from '../calls/collection-functions.ts';
 import type { CollectionForm } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../passes.ts';
 import { resolveDefault } from '../resolution/default-witness.ts';
 import { preludeCall } from '../resolution/implicit.ts';
 import { decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
@@ -63,14 +64,18 @@ import { useSite } from '../use-site.ts';
 
 /** The form of each collection literal of one body, for lowering. */
 export class CollectionForms implements CollectionRecord {
-  readonly #forms = new Map<ArrayLiteral | MapLiteral, CollectionForm>();
+  readonly #forms: PassTable<ArrayLiteral | MapLiteral, CollectionForm>;
+
+  constructor(passes: Passes) {
+    this.#forms = passes.table();
+  }
 
   record(literal: ArrayLiteral | MapLiteral, form: CollectionForm): void {
     this.#forms.set(literal, form);
   }
 
-  of(literal: ArrayLiteral | MapLiteral): CollectionForm {
-    return this.#forms.get(literal) ?? (literal.kind === 'MapLiteral' ? 'map' : 'array');
+  of(literal: ArrayLiteral | MapLiteral, pass?: Pass): CollectionForm {
+    return this.#forms.get(literal, pass) ?? (literal.kind === 'MapLiteral' ? 'map' : 'array');
   }
 }
 

@@ -40,7 +40,7 @@ import { substitute } from '../../checker/types/substitution.ts';
 import type { Type } from '../../checker/types/type.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Expression, Lambda } from '../../syntax/expressions/index.ts';
+import type { Expression, FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
@@ -75,6 +75,7 @@ import {
   loweredInstance,
   loweredNested,
   nestedFrame,
+  passBody,
 } from './frames.ts';
 
 /** Decodes a start entry's JSON argument into its parameter's value. */
@@ -121,8 +122,6 @@ class FunctionLowering implements FunctionContext {
   readonly checker: Checker;
   readonly tables: DefinitionTables;
   readonly module: ModuleId;
-  readonly body: CheckedBody;
-  readonly owner: BodyOwner;
   readonly frame: Frame;
   readonly code = new CodeWriter();
   readonly variables = new VariableRegisters();
@@ -130,15 +129,38 @@ class FunctionLowering implements FunctionContext {
   readonly loops = new LoopStack();
   readonly chains = new OptionalChains((node) => handlerOf(expressionHandlers, node)(this, node));
   #layout: readonly FrameSlot[] | undefined;
+  /** The body as the pass of the field loops being lowered reads it, and what owns it so. */
+  #reading: Pick<LoweredFunction, 'owner' | 'body'>;
 
   constructor(lowered: LoweredFunction, frame: Frame) {
     const { checker, tables, owner, body } = lowered;
     this.checker = checker;
     this.tables = tables;
     this.module = checker.moduleOf(ownerDeclaration(owner));
-    this.owner = owner;
-    this.body = body;
+    this.#reading = { owner, body };
     this.frame = frame;
+  }
+
+  get body(): CheckedBody {
+    return this.#reading.body;
+  }
+
+  get owner(): BodyOwner {
+    return this.#reading.owner;
+  }
+
+  inFieldPass(header: FieldHeader, field: string, lower: () => void): void {
+    const outer = this.#reading;
+    const step = { header, field };
+    this.#reading = {
+      owner: { ...outer.owner, passes: [...(outer.owner.passes ?? []), step] },
+      body: passBody(this.checker, outer.body, step),
+    };
+    try {
+      lower();
+    } finally {
+      this.#reading = outer;
+    }
   }
 
   /** The code entry for a function instance, whose body is `block`. */

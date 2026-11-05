@@ -84,6 +84,7 @@ const rolesOf: RolesOf = {
   // An annotation is a struct value (§3.16); written bare, its name is still the struct's.
   Annotation: (node) => (node.value.kind === 'Identifier' ? [[node.value, 'type']] : []),
   For: labelled,
+  FieldLoop: labelled,
   While: labelled,
   LabelledBlock: labelled,
   Break: labelled,

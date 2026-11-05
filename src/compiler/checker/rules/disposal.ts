@@ -215,7 +215,7 @@ function checkSelfStays(
  */
 export function checkDisposeUses(
   context: BodyContext,
-  calls: ReadonlyMap<ResolvedSite, ResolvedCall>,
+  calls: Iterable<readonly [ResolvedSite, ResolvedCall]>,
   mockTargets: ReadonlySet<NodeOf<string>>,
 ): void {
   for (const [site, call] of calls) {

@@ -25,7 +25,7 @@ import {
   type VariableDeclaration,
 } from '../syntax/statements.ts';
 import { bodyOf, type SyntaxNode } from '../syntax/tree.ts';
-import { underCondition, underLoop } from './flow.ts';
+import { underCondition, underFields, underLoop } from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
 
@@ -56,6 +56,8 @@ const statementHandlers: Handlers<LocalBinder, Statement, [Scope], void> = {
   Continue: holdsNoNames,
   For: (binder, node, scope) =>
     underLoop(binder, node, scope, (variables) => bindBlock(binder, node.body, variables)),
+  FieldLoop: (binder, node, scope) =>
+    underFields(binder, node.header, scope, (variables) => bindBlock(binder, node.body, variables)),
   While: (binder, node, scope) =>
     underCondition(binder, node, scope, (flow) => bindBlock(binder, node.body, flow)),
   LabelledBlock: (binder, node, scope) => bindBlock(binder, node.body, scope),
@@ -75,6 +77,7 @@ const declaredNames: Handlers<undefined, Statement, [], readonly Identifier[]> =
   Break: declaresNothing,
   Continue: declaresNothing,
   For: declaresNothing,
+  FieldLoop: declaresNothing,
   While: declaresNothing,
   LabelledBlock: declaresNothing,
   Defer: declaresNothing,

@@ -24,6 +24,7 @@ import type {
   Call,
   Comprehension,
   Expression,
+  FieldHeader,
   FieldsLiteral,
   Lambda,
   MapLiteral,
@@ -49,6 +50,7 @@ import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-patte
 import type { ConstantForm } from './constant-form.ts';
 import type { LookupQueries } from './denotation.ts';
 import type { JsonFormQueries } from './json-form.ts';
+import type { PassRecords } from './passes.ts';
 import { type CheckerOptions, ProgramChecker } from './program-checker.ts';
 import type {
   FunctionCall,
@@ -160,6 +162,23 @@ export type IterationForm =
   | { readonly kind: 'cursor'; readonly item: Type }
   | { readonly kind: 'copied' };
 
+/**
+ * One checking of a field loop's body (§4): for the field `field` names, its key that field's name
+ * as a literal type and its value that field's type; or, with no `field`, for every field a struct
+ * constraint leaves unnamed at once, its key a member parameter keyed by the loop's header, which
+ * each instantiated field gives its own literal, and its value the field that key names.
+ */
+export interface FieldPassType {
+  readonly field: string | undefined;
+  readonly key: Type;
+  readonly value: Type;
+}
+
+/** A field loop's pass as checked: its key and value, and the body as the pass reads it. */
+export interface FieldPass extends FieldPassType {
+  readonly body: CheckedBody;
+}
+
 /** What one body's exits and holds name, as lowering and the flow model read it. */
 export interface LabelResolution {
   /** The scope `exit` leaves or goes on with; undefined where the checker found none. */
@@ -180,9 +199,9 @@ export interface CheckedBody {
    */
   readonly expectedOf: (site: ValueSite) => Type | undefined;
   /** The function each call site of this body calls, or each function value names. */
-  readonly resolved: ReadonlyMap<ResolvedSite, ResolvedCall>;
+  readonly resolved: PassRecords<ResolvedSite, ResolvedCall>;
   /** The calls of function values, which call whatever their callee gives (§3.14). */
-  readonly valueCalls: ReadonlySet<Call>;
+  readonly valueCalls: PassRecords<Call, true>;
   /**
    * Every call the body makes, where it makes it: its call sites', the language's for constructs
    * with no call written (`implicitCallOf`), and the defaults its struct literals leave fields to.
@@ -243,6 +262,12 @@ export interface CheckedBody {
   readonly candidatesAt: (site: ResolvedSite) => readonly FunctionDeclaration[];
   /** What each `break`, `continue` and `hold(name)` of the body names (§3.4, §4). */
   readonly labels: LabelResolution;
+  /**
+   * The passes the field loop `header` heads was checked in (§4), in the order checked: one per
+   * field of a known struct, or one per field a struct constraint names and one for the others
+   * (passes.ts). Each pass reads the body as that pass checked it.
+   */
+  readonly passesOf: (header: FieldHeader) => readonly FieldPass[];
   /** What the body produces: `T` for an async function returning `Future<T>`. */
   readonly result: Type;
 }

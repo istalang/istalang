@@ -30,6 +30,7 @@ const bodyOpeners: ReadonlySet<SyntaxNode['kind']> = new Set([
   'Match',
   'Select',
   'For',
+  'FieldLoop',
   'While',
   'LabelledBlock',
   'FunctionDeclaration',

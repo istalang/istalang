@@ -11,7 +11,8 @@
  *   (statements/assignments.ts).
  *   Nothing is recomputed later, so lowering sees exactly what was checked.
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
- *   units of their own, beside those rules; this class only composes them. A lambda or local
+ *   units of their own, beside those rules; this class only composes them. What they record of a
+ *   node is kept per pass of a field loop (passes.ts), so the body reads as each pass checked it. A lambda or local
  *   function is checked in this same body, in a function scope of its own (closures/), so its
  *   result, loops and asyncness are the innermost scope's, and a name used in it is captured
  *   where it is used (`useEntity`).
@@ -23,14 +24,14 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Call, Expression } from '../syntax/expressions/index.ts';
+import type { Call, Expression, FieldHeader } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Block, Statement, VariableDeclaration } from '../syntax/statements.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { Accepts, BodyContext, Enclosing, Returns } from './body-context.ts';
-import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
+import type { CheckedBody, FieldPassType, SignatureParameter, ValueSite } from './check.ts';
 import { statementPlace } from './checked-annotation.ts';
 import { FunctionScope } from './closures/function-scope.ts';
 import { FunctionScopes } from './closures/functions.ts';
@@ -43,6 +44,7 @@ import { acceptedPartOf, acceptsOf, expressionHandlers } from './expressions/exp
 import { StructLiterals } from './expressions/literal-sources.ts';
 import { FieldReads } from './expressions/member-access.ts';
 import { OptionalChains } from './expressions/optionals.ts';
+import { type Pass, Passes } from './passes.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
 import { declareTargets } from './patterns/targets.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
@@ -81,27 +83,35 @@ export type BodyKind =
     }
   | { readonly kind: 'value'; readonly declaredResult: Type | undefined };
 
+/** A field loop's pass as checked: its key and value, and the pass its records are kept in. */
+interface CheckedPass extends FieldPassType {
+  readonly pass: Pass;
+}
+
 export class BodyChecker implements BodyContext {
   readonly checker: CheckerContext;
   readonly module: ModuleId;
-  readonly variables = new VariableScope();
+  /** The passes field loops are checked in; every record of a node below is kept per pass. */
+  readonly #passes = new Passes();
+  readonly variables = new VariableScope(this.#passes);
   readonly functions: FunctionScopes;
-  readonly literals = new StructLiterals();
-  readonly implicit = new ImplicitCalls();
-  readonly collections = new CollectionForms();
-  readonly iterations = new Iterations();
-  readonly patterns = new CheckedPatterns();
-  readonly chains = new OptionalChains();
-  readonly fieldReads = new FieldReads();
+  readonly literals = new StructLiterals(this.#passes);
+  readonly implicit = new ImplicitCalls(this.#passes);
+  readonly collections = new CollectionForms(this.#passes);
+  readonly iterations = new Iterations(this.#passes);
+  readonly patterns = new CheckedPatterns(this.#passes);
+  readonly chains = new OptionalChains(this.#passes);
+  readonly fieldReads = new FieldReads(this.#passes);
   readonly labels = new LabelTargets();
-  readonly #types = new Map<Expression, Type>();
-  readonly #expected = new Map<ValueSite, Type>();
-  readonly #resolved = new Map<ResolvedSite, ResolvedCall>();
-  readonly #valueCalls = new Set<Call>();
-  readonly #candidates = new Map<ResolvedSite, readonly FunctionDeclaration[]>();
-  readonly #namedFields = new Map<Identifier, FieldMember>();
-  readonly #chosenVariants = new Map<Identifier, VariantEntity>();
-  readonly #fits = new Map<ValueSite, Fit>();
+  readonly #types = this.#passes.table<Expression, Type>();
+  readonly #expected = this.#passes.table<ValueSite, Type>();
+  readonly #resolved = this.#passes.table<ResolvedSite, ResolvedCall>();
+  readonly #valueCalls = this.#passes.table<Call, true>();
+  readonly #candidates = this.#passes.table<ResolvedSite, readonly FunctionDeclaration[]>();
+  readonly #namedFields = this.#passes.table<Identifier, FieldMember>();
+  readonly #chosenVariants = this.#passes.table<Identifier, VariantEntity>();
+  readonly #fits = this.#passes.table<ValueSite, Fit>();
+  readonly #fieldPasses = this.#passes.table<FieldHeader, readonly CheckedPass[]>();
   /** The body's own result, which only the body's own function returns into. */
   readonly #result: ReturnScope;
 
@@ -113,7 +123,7 @@ export class BodyChecker implements BodyContext {
     const root = isFunction
       ? new FunctionScope(kind.declaration, kind.isAsync, this.#result)
       : new FunctionScope(undefined, false, this.#result);
-    this.functions = new FunctionScopes(root);
+    this.functions = new FunctionScopes(root, this.#passes);
   }
 
   get inAsync(): boolean {
@@ -165,8 +175,9 @@ export class BodyChecker implements BodyContext {
     for (const root of roots) {
       checkDropped(this, root);
     }
-    checkDisposeUses(this, this.#resolved, checkTestingCalls(this, this.#resolved));
-    return this.#checked(result);
+    const calls = this.#resolved.entries();
+    checkDisposeUses(this, calls, checkTestingCalls(this, calls));
+    return this.#checkedAt(this.#passes.root, result);
   }
 
   expression(node: Expression, given?: Type): Type {
@@ -277,7 +288,9 @@ export class BodyChecker implements BodyContext {
   }
 
   report(diagnostic: Diagnostic<AnchoredSpan>): void {
-    this.checker.report(this.module, diagnostic);
+    if (!this.#passes.hold(diagnostic)) {
+      this.checker.report(this.module, diagnostic);
+    }
   }
 
   resolveType(node: TypeNode): Type {
@@ -301,7 +314,22 @@ export class BodyChecker implements BodyContext {
   }
 
   recordValueCall(node: Call): void {
-    this.#valueCalls.add(node);
+    this.#valueCalls.set(node, true);
+  }
+
+  fieldPasses(
+    header: FieldHeader,
+    passes: readonly FieldPassType[],
+    check: (pass: FieldPassType) => void,
+  ): void {
+    const checked = passes.map((each) => ({
+      ...each,
+      pass: this.#passes.check(() => check(each)),
+    }));
+    this.#fieldPasses.set(header, checked);
+    for (const diagnostic of this.#passes.settled(checked.map(({ pass }) => pass))) {
+      this.report(diagnostic);
+    }
   }
 
   recordCandidates(site: ResolvedSite, candidates: readonly FunctionDeclaration[]): void {
@@ -316,56 +344,42 @@ export class BodyChecker implements BodyContext {
     this.#chosenVariants.set(name, variant);
   }
 
-  /** The CheckedBody of what was checked, producing `result`. */
-  #checked(result: Type): CheckedBody {
-    const types = this.#types;
-    const expected = this.#expected;
-    const resolved = this.#resolved;
-    const valueCalls = this.#valueCalls;
-    const fits = this.#fits;
-    const candidates = this.#candidates;
-    const namedFields = this.#namedFields;
-    const chosenVariants = this.#chosenVariants;
-    const {
-      variables,
-      literals,
-      implicit,
-      collections,
-      iterations,
-      patterns,
-      chains,
-      fieldReads,
-      functions,
-      labels,
-    } = this;
+  /** The CheckedBody of what was checked as `pass` sees it, producing `result`. */
+  #checkedAt(pass: Pass, result: Type): CheckedBody {
+    const { variables, literals, implicit, functions, labels } = this;
     return {
-      typeOf: (expression) => types.get(expression),
-      expectedOf: (site) => expected.get(site),
-      resolved,
-      valueCalls,
+      typeOf: (expression) => this.#types.get(expression, pass),
+      expectedOf: (site) => this.#expected.get(site, pass),
+      resolved: this.#resolved.at(pass),
+      valueCalls: this.#valueCalls.at(pass),
       madeCalls: () => [
-        ...[...resolved].map(([site, call]) => ({ site, call })),
+        ...this.#resolved.entries().map(([site, call]) => ({ site, call })),
         ...implicit.made(),
         ...literals.made(),
       ],
-      implicitCallOf: (node, role) => implicit.of(node, role),
-      collectionFormOf: (literal) => collections.of(literal),
-      iterationOf: (iteration) => iterations.of(iteration),
-      fitAt: (site) => fits.get(site) ?? exactFit,
-      targetsOf: (owner) => variables.targetsOf(owner),
-      assignedOf: (assignment) => variables.assignedOf(assignment),
+      implicitCallOf: (node, role) => implicit.of(node, role, pass),
+      collectionFormOf: (literal) => this.collections.of(literal, pass),
+      iterationOf: (iteration) => this.iterations.of(iteration, pass),
+      fitAt: (site) => this.#fits.get(site, pass) ?? exactFit,
+      targetsOf: (owner) => variables.targetsOf(owner, pass),
+      assignedOf: (assignment) => variables.assignedOf(assignment, pass),
       inCell: (name) => variables.inCell(name),
-      functionOf: (node) => functions.checkedOf(node),
-      sourcesOf: (literal) => literals.sourcesOf(literal),
-      literalFieldsOf: (literal) => literals.fieldsOf(literal),
-      patternOf: (pattern) => patterns.patternOf(pattern),
-      chainOf: (link) => chains.chainOf(link),
-      fieldReadOf: (access) => fieldReads.of(access),
-      declaredTypeOf: (name) => variables.declaredTypeOf(name),
-      namedFieldOf: (name) => namedFields.get(name),
-      chosenVariantOf: (name) => chosenVariants.get(name),
-      candidatesAt: (site) => candidates.get(site) ?? [],
+      functionOf: (node) => functions.checkedOf(node, pass),
+      sourcesOf: (literal) => literals.sourcesOf(literal, pass),
+      literalFieldsOf: (literal) => literals.fieldsOf(literal, pass),
+      patternOf: (pattern) => this.patterns.patternOf(pattern, pass),
+      chainOf: (link) => this.chains.chainOf(link, pass),
+      fieldReadOf: (access) => this.fieldReads.of(access, pass),
+      declaredTypeOf: (name) => variables.declaredTypeOf(name, pass),
+      namedFieldOf: (name) => this.#namedFields.get(name, pass),
+      chosenVariantOf: (name) => this.#chosenVariants.get(name, pass),
+      candidatesAt: (site) => this.#candidates.get(site, pass) ?? [],
       labels,
+      passesOf: (header) =>
+        (this.#fieldPasses.get(header, pass) ?? []).map(({ pass: inner, ...each }) => ({
+          ...each,
+          body: this.#checkedAt(inner, result),
+        })),
       result,
     };
   }

@@ -18,6 +18,7 @@ import type {
   ArrayLiteral,
   Call,
   Expression,
+  FieldHeader,
   FieldsLiteral,
   MapLiteral,
 } from '../syntax/expressions/index.ts';
@@ -29,12 +30,11 @@ import type {
   Block,
   Break,
   Continue,
-  For,
   Hold,
   LabelledScope,
+  Loop,
   Return,
   Statement,
-  While,
 } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type {
@@ -42,6 +42,7 @@ import type {
   ChainLink,
   CheckedFunction,
   CollectionForm,
+  FieldPassType,
   FieldSource,
   Iteration,
   IterationForm,
@@ -127,6 +128,15 @@ export interface BodyContext {
   readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
   /** Records that `node` calls a function value (§3.14). */
   readonly recordValueCall: (node: Call) => void;
+  /**
+   * Runs `check` once per pass of the field loop `header` heads (§4), each pass's records of nodes
+   * kept apart (passes.ts), so the body reads as each pass checked it.
+   */
+  readonly fieldPasses: (
+    header: FieldHeader,
+    passes: readonly FieldPassType[],
+    check: (pass: FieldPassType) => void,
+  ) => void;
   /** Whether the innermost function is async, the only kind that may `await` (§5). */
   readonly inAsync: boolean;
   readonly variables: Variables;
@@ -244,7 +254,7 @@ export interface Enclosing {
   /** Runs `check` inside the body of `scope`. */
   readonly inside: <Result>(scope: LabelledScope, check: () => Result) => Result;
   /** The innermost loop around: what a `break` or `continue` with no label leaves. */
-  readonly innermostLoop: For | While | undefined;
+  readonly innermostLoop: Loop | undefined;
   /** The innermost scope around labelled `name`. */
   readonly labelled: (name: Identifier) => LabelledScope | undefined;
   /** Whether `name` is the function's own, which `hold(name)` also names. */

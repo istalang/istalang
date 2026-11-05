@@ -24,6 +24,7 @@ import type { Binary, Expression, Unwrap } from '../../syntax/expressions/index.
 import type { BodyContext, Chains } from '../body-context.ts';
 import type { ChainLink } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../passes.ts';
 import { preludeCall } from '../resolution/implicit.ts';
 import { errorType, stringType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -39,9 +40,15 @@ import { optionalOf, presentType } from '../types/unions.ts';
  */
 export class OptionalChains implements Chains {
   /** The type each link's step works on, recorded when its handler reads its target. */
-  readonly #bases = new Map<Expression, Type>();
-  readonly #carried = new Map<Expression, Type>();
-  readonly #links = new Map<Expression, ChainLink>();
+  readonly #bases: PassTable<Expression, Type>;
+  readonly #carried: PassTable<Expression, Type>;
+  readonly #links: PassTable<Expression, ChainLink>;
+
+  constructor(passes: Passes) {
+    this.#bases = passes.table();
+    this.#carried = passes.table();
+    this.#links = passes.table();
+  }
 
   /** Whether `node`, a link or not, continues an optional chain: it uses `?.`, or its target is a link. */
   continues(node: Expression): boolean {
@@ -79,8 +86,8 @@ export class OptionalChains implements Chains {
       : optionalOf(value, context.checker.typeRules);
   }
 
-  chainOf(link: Expression): ChainLink | undefined {
-    return this.#links.get(link);
+  chainOf(link: Expression, pass?: Pass): ChainLink | undefined {
+    return this.#links.get(link, pass);
   }
 
   #baseOf(context: BodyContext, step: ChainStep, targetType: Type): Type {

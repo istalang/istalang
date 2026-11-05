@@ -57,7 +57,7 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../../syntax/declarations.ts';
-import type { StructLiteral } from '../../syntax/expressions/index.ts';
+import type { FieldHeader, StructLiteral } from '../../syntax/expressions/index.ts';
 import type { StructConstraint, StructType } from '../../syntax/types.ts';
 import type {
   AssociatedOfType,
@@ -214,8 +214,12 @@ export interface FunctionType extends WrittenThrough {
 /** A function type's pack: a pack type parameter, or the error type for one that failed. */
 export type PackType = TypeParameterType | ErrorType;
 
-/** What a type parameter is keyed by: its declaration, or a trait standing for its `Self`. */
-export type ParameterKey = TypeParameter | TraitDeclaration;
+/**
+ * What a type parameter is keyed by: its declaration, a trait standing for its `Self`, or a field
+ * loop's header, whose pass over the fields a struct constraint leaves unnamed stands for one of
+ * them by a key of its own (§4).
+ */
+export type ParameterKey = TypeParameter | TraitDeclaration | FieldHeader;
 
 /**
  * A type parameter, opaque inside the declaration that introduces it (§3.5). A mapped entry's binds
