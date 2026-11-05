@@ -21,16 +21,13 @@ import type { Literal } from '../compiler/syntax/expressions/literals.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
 import type { Token } from '../compiler/syntax/tokens.ts';
 import type { SyntaxNode, SyntaxTree } from '../compiler/syntax/tree.ts';
-import { splitLines } from '../text/line-map.ts';
-import { createSourceText, type SourceText } from '../text/source-text.ts';
+import { indentationAt, splitLines } from '../text/line-map.ts';
+import { createSourceText } from '../text/source-text.ts';
 import { textOf } from '../text/span.ts';
-import { columnOf } from './comments.ts';
 import { oneLine } from './lists.ts';
 import type { Printer, Printers } from './printer.ts';
 
 const { lineSuffixBoundary, literalline, markAsRoot } = builders;
-
-const leadingSpaces = /^ */u;
 
 /** Literals spanning lines, which print as copies. */
 export type CopiedLiteral = TemplateLiteral | Docstring;
@@ -99,7 +96,7 @@ function movedLines(
   later: readonly string[],
 ): readonly string[] | undefined {
   const { start } = spanIn(tree, node.span);
-  const indentation = ' '.repeat(lineIndentation(tree.source, start));
+  const indentation = ' '.repeat(indentationAt(tree.source.text, start));
   // A line of spaces shorter than the indentation is blank and moves as an empty line; the spaces
   // of a longer one past the indentation are part of the value, so they move with it.
   const moved = later.map((text) =>
@@ -113,12 +110,6 @@ function movedLines(
   return value !== undefined && value === decoded([first, ...result].join('\n'))
     ? result
     : undefined;
-}
-
-function lineIndentation(source: SourceText, offset: number): number {
-  const lineStart = offset - columnOf(source, offset);
-  const indentation = leadingSpaces.exec(source.text.slice(lineStart, offset));
-  return indentation?.[0].length ?? 0;
 }
 
 /** What scanning `text` alone decodes, spans left out; undefined when it doesn't scan clean. */

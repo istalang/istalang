@@ -12,6 +12,8 @@
  * values only split its text: a line holding one isn't blank.
  */
 
+import { leadingSpaceCount } from '../../text/line-map.ts';
+
 /**
  * One piece of a literal's text, before its lines are laid out. A `text` piece is a whole run of
  * plain characters, so no two stand next to each other (`PieceReader`).
@@ -60,7 +62,6 @@ export class PieceReader {
 }
 
 const blankText = /^[ \t]*$/u;
-const leadingSpaces = /^ */u;
 
 /** Each text of a literal, laid out (§2): `texts` are what stands around its values, in order. */
 export function layOutLines(texts: readonly Pieces[]): readonly string[] {
@@ -134,8 +135,4 @@ function decode(pieces: Pieces, indentation: number, startsAfterBreak: boolean):
       return piece.text.slice(removed);
     })
     .join('');
-}
-
-function leadingSpaceCount(text: string): number {
-  return leadingSpaces.exec(text)?.[0].length ?? 0;
 }

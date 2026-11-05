@@ -10,7 +10,7 @@
 
 import { builders, utils } from 'prettier/doc';
 import type { Comment } from '../compiler/syntax/tokens.ts';
-import { lineMapOf, splitLines } from '../text/line-map.ts';
+import { lineMapOf, lineStartAt, splitLines } from '../text/line-map.ts';
 import type { SourceText } from '../text/source-text.ts';
 import { type Span, textOf } from '../text/span.ts';
 
@@ -36,7 +36,7 @@ export interface CommentsOf {
 /** `comment` as its source shows it. */
 export function describeComment(source: SourceText, comment: Comment): PlacedComment {
   const { text } = source;
-  const lineStart = comment.span.start - columnOf(source, comment.span.start);
+  const lineStart = lineStartAt(text, comment.span.start);
   return {
     span: comment.span,
     text: textOf(source, comment.span),

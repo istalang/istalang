@@ -70,6 +70,18 @@ export function lineStartAt(text: string, offset: number): number {
   return start;
 }
 
+const leadingSpaces = /^ */u;
+
+/** How many spaces `text` starts with: its indentation, when it is a line. */
+export function leadingSpaceCount(text: string): number {
+  return leadingSpaces.exec(text)?.[0].length ?? 0;
+}
+
+/** The indentation of the line `offset` is on: the spaces opening it, up to `offset`. */
+export function indentationAt(text: string, offset: number): number {
+  return leadingSpaceCount(text.slice(lineStartAt(text, offset), offset));
+}
+
 export class LineMap {
   readonly #lineStarts: readonly number[];
   /** Where each line's content ends, before its line break. */

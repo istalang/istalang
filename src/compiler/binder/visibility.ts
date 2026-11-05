@@ -25,7 +25,7 @@
  * or a `for`'s iterable before its body.
  */
 
-import { lineStartAt } from '../../text/line-map.ts';
+import { indentationAt, lineStartAt } from '../../text/line-map.ts';
 import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
 import { nodesAt, parentOf, type SyntaxNode, type SyntaxTree } from '../syntax/tree.ts';
 import { type LocalEntity, Scope, type ScopeSnapshot } from './scope.ts';
@@ -75,9 +75,6 @@ const bodies: Readonly<
 
 /** Spaces, tabs, line breaks and comments alone: no code written. */
 const blank = /^(?:[ \t\r\n]|#[^\r\n]*(?=[\r\n]|$))*$/u;
-
-/** The spaces and tabs a line opens with. */
-const indentation = /^[ \t]*/u;
 
 /** Notes, while one tree is bound, the scope each node is bound in. */
 export class VisibilityNotes {
@@ -158,9 +155,4 @@ function constructOf(tree: SyntaxTree, node: SyntaxNode): SyntaxNode {
 
 function isBody(node: SyntaxNode): node is Extract<SyntaxNode, { kind: keyof typeof bodies }> {
   return Object.hasOwn(bodies, node.kind);
-}
-
-/** The width of the spaces opening the line `offset` is on, up to `offset`. */
-function indentationAt(text: string, offset: number): number {
-  return indentation.exec(text.slice(lineStartAt(text, offset), offset))?.[0].length ?? 0;
 }
