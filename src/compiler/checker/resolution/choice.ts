@@ -66,15 +66,20 @@ export type Choice =
   | { readonly kind: 'none'; readonly reasons: readonly Inapplicability[] }
   | { readonly kind: 'several'; readonly tied: readonly Application[] };
 
-/** The signature of `declaration`, with a requirement's trait mapped by `substitution`. */
+/**
+ * The signature of `declaration`, with a requirement's trait mapped by `substitution`; a trait's
+ * parameters it leaves `inferred` are found as the function's own are, after them, so type
+ * arguments written at the call give the function's own (traits/constraints.ts `Requirement`).
+ */
 export function signatureOf(
   checker: CheckerContext,
   declaration: FunctionDeclaration,
   substitution: Substitution = new Map(),
+  inferred: readonly TypeParameter[] = [],
 ): Signature {
   return {
     declaration,
-    typeParameters: typeParametersOf(declaration.typeParameters),
+    typeParameters: [...typeParametersOf(declaration.typeParameters), ...inferred],
     parameters: checker.parametersOf(declaration).map(({ node, type, reference, rest }, index) => {
       const substituted = substitute(type, substitution, checker.typeRules);
       const isReceiver = index === 0 && node.name.text === receiverParameter;
@@ -154,6 +159,7 @@ function applicationOf(
     checker,
     candidate.declaration,
     candidate.requirement?.substitution,
+    candidate.requirement?.inferred,
   );
   const taken = takenBy(checker, signature, given);
   return 'inference' in taken ? { candidate, signature, ...taken } : taken;

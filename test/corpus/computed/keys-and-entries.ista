@@ -1,0 +1,42 @@
+# outcome: "eu:5|11:7|42:42"
+# Key types (§8): keyof S, S[K], s[k] runtime field access, single-key places (&s[k] and s[k] = v),
+# multi-key writes converting into each field's type, compound assignment across uniform keys, and
+# the Entry<S, K> / AnyEntry<S> pattern.
+
+struct Settings { retries: Int; region: String }
+struct Counts { x: Int; y: Int }
+struct Widened { a: Int?; b: Int | String }
+
+struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }
+type AnyEntry<S is struct> = { [K in keyof S]: Entry<S, K> }[keyof S]
+
+trait Applies<S>:
+  fn apply(self: Self, target: &S)
+
+fn apply<S is struct, K in keyof S>(self: Entry<S, K>, target: &S):
+  target[self.key] = self.value
+
+fn addTen(target: &Int):
+  target += 10
+
+async fn main() -> Future<String>:
+  let settings = Settings{retries: 1, region: "us"}
+  const e1: AnyEntry<Settings> = Entry{key: "region", value: "eu"}
+  const e2: AnyEntry<Settings> = Entry{key: "retries", value: 5}
+  e1.apply(&settings)
+  e2.apply(&settings)
+
+  let counts = Counts{x: 1, y: 2}
+  addTen(&counts["x"])
+  const whichCount: keyof Counts = "y"
+  counts[whichCount] += 5
+
+  let w = Widened{a: none, b: "init"}
+  const k1: keyof Widened = "a"
+  const k2: keyof Widened = "b"
+  w[k1] = 42
+  w[k2] = 42
+  const bVal = match w.b:
+    case Int as n: n
+    case _: 0
+  `${settings.region}:${settings.retries}|${counts.x}:${counts.y}|${w.a ?? 0}:${bVal}`

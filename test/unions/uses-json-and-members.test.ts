@@ -64,6 +64,39 @@ describe('using a union: traits, overloads, clashes, equality, sendability, must
     ).toBe('mail(cfo):hi|sms(555):yo|42|Email(ops)|42|Email(ops)|-1');
   });
 
+  it('infers the arguments of a trait nothing names from a call on a union, refusing those a member does not meet', () => {
+    const decls = [
+      'trait Feeds<F>:',
+      '  fn feed(self: Self, food: F) -> String',
+      'trait Makes<T>:',
+      '  fn make(self: Self) -> T',
+      'struct Cat { name: String }',
+      'struct Dog { name: String }',
+      'fn feed(self: Cat, food: Int) -> String: `${self.name}:${food}`',
+      'fn feed(self: Dog, food: Int) -> String: `${self.name}+${food}`',
+      'fn make(self: Cat) -> Int: 1',
+      'fn make(self: Dog) -> Int: 2',
+    ];
+    expect(
+      runMain(
+        'String',
+        [
+          'const a: Cat | Dog = Cat{name: "c"}',
+          'const b: Cat | Dog = Dog{name: "d"}',
+          'const made: Int = b.make()',
+          '`${a.feed(3)}|${b.feed(4)}|${made}`',
+        ].join('\n  '),
+        decls,
+      ),
+    ).toBe('c:3|d+4|2');
+    expect(codesOf(...decls, 'fn bad(x: Cat | Dog) -> String: x.feed("bone")')).toEqual([
+      checkerDiagnostics.notConforming.code,
+    ]);
+    expect(codesOf(...decls, 'fn open(x: Cat | Dog):', '  _ = x.make()')).toEqual([
+      checkerDiagnostics.cannotInfer.code,
+    ]);
+  });
+
   it('refuses non-object-safe traits (static requirements, second Self) on a union without a declared union witness', () => {
     expect(
       codesOf(

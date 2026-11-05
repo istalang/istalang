@@ -140,4 +140,29 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
       ).length,
     ).toBeGreaterThan(0);
   });
+
+  it('runs the `Entry` / `AnyEntry` example: a union of entries applies through the trait its members meet', () => {
+    expect(
+      runMain(
+        'String',
+        [
+          'let settings = Settings{retries: 1, region: "us"}',
+          'const e1: AnyEntry<Settings> = Entry{key: "region", value: "eu"}',
+          'const e2: AnyEntry<Settings> = Entry{key: "retries", value: 5}',
+          'e1.apply(&settings)',
+          'e2.apply(&settings)',
+          '`${settings.region}:${settings.retries}`',
+        ].join('\n  '),
+        [
+          ...keyDecls,
+          'struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }',
+          'type AnyEntry<S is struct> = { [K in keyof S]: Entry<S, K> }[keyof S]',
+          'trait Applies<S>:',
+          '  fn apply(self: Self, target: &S)',
+          'fn apply<S is struct, K in keyof S>(self: Entry<S, K>, target: &S):',
+          '  target[self.key] = self.value',
+        ],
+      ),
+    ).toBe('eu:5');
+  });
 });

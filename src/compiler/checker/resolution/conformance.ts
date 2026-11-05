@@ -34,6 +34,7 @@ import { sameType } from '../types/identity.ts';
 import { standsForMember } from '../types/member-arguments.ts';
 import { type Substitution, substitute, substituteConstraint } from '../types/substitution.ts';
 import { type Constraint, errorType, type Type } from '../types/type.ts';
+import { mentionsError } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
 import { silent, type UseSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
@@ -364,7 +365,8 @@ function witnessOf(
 
 /**
  * The witness `choice` found for the required function `signature`, instantiated, or why there is
- * none.
+ * none. A required result of the error type, explained already or standing for any type (a call
+ * on a union probing a trait for arguments it infers later, trait-calls.ts), takes any result.
  */
 function witnessChosen(
   site: UseSite,
@@ -388,8 +390,9 @@ function witnessChosen(
     instantiation.substitution,
     site.checker.typeRules,
   );
-  if (!sameType(result, signature.result())) {
-    return { kind: 'wrongResult', required: signature.result(), given: result };
+  const required = signature.result();
+  if (!(mentionsError(required) || sameType(result, required))) {
+    return { kind: 'wrongResult', required, given: result };
   }
   return { kind: 'call', call: callMade(application, instantiation) };
 }

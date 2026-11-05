@@ -8,7 +8,8 @@
  *
  * - An argument of the error type was reported already, so the call reports nothing more.
  * - A call through a union's trait is a candidate only where the union meets the trait (§6,
- *   trait-calls.ts).
+ *   trait-calls.ts); one that inferred the trait's arguments is judged once they are, and closed
+ *   with them, or made through the function declared for the union whole instead.
  * - A call several candidates take alike is ambiguous, named as `name` says; several traits a
  *   union meets requiring the function called on it are reported as such.
  */
@@ -28,7 +29,7 @@ import type { CallArgument, Inapplicability } from './call-arguments.ts';
 import type { Candidate } from './candidates.ts';
 import { type Application, choose } from './choice.ts';
 import { type Instantiation, instantiate } from './conformance.ts';
-import { metThroughTraits } from './trait-calls.ts';
+import { closedThroughMembers, metThroughTraits } from './trait-calls.ts';
 import { membersRequirementOf, traitMetBy } from './union-traits.ts';
 
 /** A call to apply: where it stands, how reports name it, what it may call and is given. */
@@ -77,6 +78,18 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
   if (instantiation === undefined) {
     return undefined;
   }
+  const { candidate } = application;
+  const inferred = candidate.requirement?.inferred;
+  const closed =
+    inferred === undefined
+      ? { kind: 'members' as const, candidate, instantiation }
+      : closedThroughMembers(site, candidate, inferred, instantiation);
+  if (closed?.kind === 'declared') {
+    return applyCall(context, { ...request, candidates: [{ declaration: closed.declaration }] });
+  }
+  if (closed === undefined) {
+    return undefined;
+  }
   const count = request.arguments.length;
   fitArguments(
     context,
@@ -84,8 +97,8 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
     filledTypes(checker.typeRules, application, instantiation, count),
   );
   return {
-    application,
-    instantiation,
+    application: { ...application, candidate: closed.candidate },
+    instantiation: closed.instantiation,
     result: substitute(
       application.signature.result(),
       instantiation.substitution,

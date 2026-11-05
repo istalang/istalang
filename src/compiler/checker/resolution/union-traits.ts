@@ -9,16 +9,18 @@
  *   argument that is the union itself its trait's own `Self`. So the union and each member read it
  *   alike, and lowering finds each member's functions as it does for an `any` value's.
  * - A call on a union that no function takes whole calls the function of that name a trait
- *   visible at the call requires (candidates.ts): only a trait whose parameters all have defaults
- *   is named with nothing written, and only a function taking `Self` first is called on a value.
- *   Whether the union meets the trait is conformance's to say, where the call is chosen
- *   (applied-call.ts).
+ *   visible at the call requires (candidates.ts), only one taking `Self` first. Nothing names the
+ *   trait's arguments there, so a parameter with a default takes it, and one without is found from
+ *   the call's arguments, as the function's own type parameters are (`Requirement.inferred`).
+ *   Whether the union meets the trait is conformance's to say, where the call is chosen, or, for
+ *   arguments found so, once they are (trait-calls.ts, applied-call.ts).
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
 import {
   type FunctionDeclaration,
   type TraitDeclaration,
+  type TypeParameter,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
@@ -84,16 +86,32 @@ export function membersShortfall(
   return unmet === undefined ? undefined : `its member ${typeText(unmet)} to satisfy ${trait} too`;
 }
 
-/** The call of `declaration`, the `member`-th function of `through`'s trait, on `union`'s members. */
+/**
+ * The call of `declaration`, the `member`-th function of `through`'s trait, on `union`'s members;
+ * `inferred` are the trait's parameters `through` names as themselves, which the call finds.
+ */
 export function membersCall(
   rules: TypeRules,
   union: UnionType,
   through: AnyType,
-  { declaration, member }: { readonly declaration: FunctionDeclaration; readonly member: number },
+  call: {
+    readonly declaration: FunctionDeclaration;
+    readonly member: number;
+    readonly inferred?: readonly TypeParameter[];
+  },
 ): MembersCall {
+  const { declaration, member, inferred = [] } = call;
   const origin: MembersRequirement = { kind: 'members', on: union, through, member };
   const substitution = constraintSubstitution(traitMetBy(through, union, rules), union);
-  return { declaration, requirement: { declaration, substitution, origin } };
+  return {
+    declaration,
+    requirement: {
+      declaration,
+      substitution,
+      origin,
+      inferred: inferred.length === 0 ? undefined : inferred,
+    },
+  };
 }
 
 /** The union requirement a candidate calls through members; undefined for any other candidate. */
@@ -104,44 +122,45 @@ export function membersRequirementOf(candidate: {
   return origin?.kind === 'members' ? origin : undefined;
 }
 
-/**
- * The calls of `name` on `union` through `trait`: each function of that name it requires taking
- * `Self` first, when every parameter of the trait has a default; none otherwise.
- */
+/** The calls of `name` on `union` through `trait`: each function of that name it requires taking `Self` first. */
 export function traitCallsOn(
   checker: CheckerContext,
   union: UnionType,
   trait: TraitDeclaration,
   name: string,
 ): readonly MembersCall[] {
-  const written = traitNamedAlone(checker, trait);
-  if (written === undefined) {
-    return [];
-  }
+  const { written, inferred } = traitAsCalled(checker, trait);
   const through: AnyType = { kind: 'any', constraints: [written] };
   return requiredFunctions(trait).flatMap((declaration, member) =>
     declaration.name.text === name && takesSelfFirst(checker, written, declaration)
-      ? [membersCall(checker.typeRules, union, through, { declaration, member })]
+      ? [membersCall(checker.typeRules, union, through, { declaration, member, inferred })]
       : [],
   );
 }
 
 /**
- * `trait` named with no type arguments written, as `any` takes it, every parameter its default;
- * undefined when one has no default, since nothing at a call says what it is.
+ * `trait` as a call on a union names it, as `any` takes it, with no type arguments written: each
+ * parameter with a default takes it, and each without stands for itself, `inferred` by the call.
  */
-function traitNamedAlone(checker: CheckerContext, trait: TraitDeclaration): Constraint | undefined {
+function traitAsCalled(
+  checker: CheckerContext,
+  trait: TraitDeclaration,
+): { readonly written: Constraint; readonly inferred: readonly TypeParameter[] } {
   const substitution = new Map<ParameterKey, Type>([[trait, parameterType(trait)]]);
   const typeArguments: Type[] = [];
+  const inferred: TypeParameter[] = [];
   for (const parameter of typeParametersOf(trait.typeParameters)) {
     if (parameter.defaultType === undefined) {
-      return undefined;
+      inferred.push(parameter);
     }
-    const argument = defaultArgument(checker, trait, parameter, substitution);
+    const argument =
+      parameter.defaultType === undefined
+        ? parameterType(parameter)
+        : defaultArgument(checker, trait, parameter, substitution);
     substitution.set(parameter, argument);
     typeArguments.push(argument);
   }
-  return { trait, arguments: typeArguments };
+  return { written: { trait, arguments: typeArguments }, inferred };
 }
 
 /**
