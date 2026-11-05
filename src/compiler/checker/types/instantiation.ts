@@ -97,7 +97,7 @@ function instantiatedPart(
     ...part,
     path: instantiatedTargetPath(part.path, substitution, rules),
     type: substitute(part.type, substitution, rules),
-    fit: substitutedFit(part.fit, substitution, rules),
+    fit: part.fit === 'intoKeyedField' ? part.fit : substitutedFit(part.fit, substitution, rules),
   };
 }
 

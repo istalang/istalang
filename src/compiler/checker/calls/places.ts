@@ -100,23 +100,35 @@ function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boo
 
 /**
  * Whether a place passed by `&` reaches one field wherever a key reads one: a key that may name
- * several is reported (§3.7).
+ * several is reported (§3.7). An element written past such a key passes its container by `&` to
+ * `setIndex`, so it is passed by `&` too.
  */
 function referencesOneField(
   context: BodyContext,
   steps: readonly PlaceStep[],
   use: PlaceUse,
 ): boolean {
-  const several = steps.find(
-    (step): step is Index =>
-      step.kind === 'Index' && severalKeyedFields(context, step) !== undefined,
+  const at = steps.findIndex(
+    (step) => step.kind === 'Index' && severalKeyedFields(context, step) !== undefined,
   );
-  if (use === 'referenced' && several !== undefined) {
+  const several = steps[at];
+  if (several?.kind !== 'Index') {
+    return true;
+  }
+  const referenced =
+    use === 'referenced' ||
+    steps.slice(at + 1).some((step) => step.kind === 'Index' && isElementStep(context, step));
+  if (referenced) {
     const key = typeText(context.typeOf(several.index));
     context.report(checkerDiagnostics.severalKeysReferenced(several.index.span, key));
     return false;
   }
   return true;
+}
+
+/** Whether `step` reaches an element through its container's `index`, not a field by a key. */
+function isElementStep(context: BodyContext, step: Index): boolean {
+  return context.fieldReads.of(step) === undefined;
 }
 
 /**
@@ -128,7 +140,7 @@ export function severalKeyedFields(
   context: BodyContext,
   node: Expression,
 ): readonly Type[] | undefined {
-  if (node.kind !== 'Index' || context.fieldReads.of(node) === undefined) {
+  if (node.kind !== 'Index' || isElementStep(context, node)) {
     return undefined;
   }
   const { checker } = context;

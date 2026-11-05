@@ -136,15 +136,24 @@ export interface ChainLink {
 }
 
 /**
+ * How a value written to a place converts to fit it (§2, §3.10, §3.14): as checked, or, where a key
+ * that may name several fields reads the place (§3.9), into whichever field the key names, each
+ * conversion derived from the field types the instantiation makes concrete. A key of several names
+ * in a generic body may name one field once instantiated, which then takes the value as that one
+ * field's conversion says.
+ */
+export type WrittenFit = Fit | 'intoKeyedField';
+
+/**
  * A place an assignment writes, and the part of the assigned value it gets (§3.15): the steps to
  * it in the value (tuple positions and struct fields), its type, and how it is converted to fit
- * the place (§2, §3.10, §3.14).
+ * the place.
  */
 export interface AssignedPart {
   readonly target: Expression;
   readonly path: readonly TargetStep[];
   readonly type: Type;
-  readonly fit: Fit;
+  readonly fit: WrittenFit;
 }
 
 /**

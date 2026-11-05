@@ -15,7 +15,8 @@
  * - A value written to an optional place is wrapped into it (§2), whether the whole value, a part
  *   of it or an operator's result, so each part records its own fit. A place a key that may name
  *   several fields reads takes a value fitting each of them (§3.9), which converts into whichever
- *   the key names as lowering writes it, so its part records none (`writtenFit`).
+ *   the key names once its fields are concrete: its part records that, not one conversion
+ *   (`WrittenFit`), since an instantiation may leave the key one name or several.
  * - `*x = v` writes the value behind the handle `x` whole (§3.9; expressions/dereference.ts), as
  *   its one part.
  * - `_` as a target holds the value without a name, so it records no part to write (§3.4).
@@ -43,13 +44,12 @@ import {
   severalKeyedFields,
 } from '../calls/places.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
-import type { AssignedPart } from '../check.ts';
+import type { AssignedPart, WrittenFit } from '../check.ts';
 import type { FieldStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';
 import { type Taking, takeApart, takeTargets } from '../patterns/taking.ts';
-import { exactFit, type Fit } from '../types/fit.ts';
 import { errorType, type Type, tupleType } from '../types/type.ts';
 
 export function checkAssignment(context: BodyContext, node: Assignment): void {
@@ -156,9 +156,14 @@ interface Written {
 
 /**
  * How a value written to `target` fits it: as its place's type says, or, where a key that may name
- * several fields reads it, fitting each of their types, then converted as each is written.
+ * several fields reads it, fitting each of their types, then converted into whichever the key names
+ * as the instantiation makes it concrete.
  */
-function writtenFit(context: BodyContext, target: Expression, { type, place, at }: Written): Fit {
+function writtenFit(
+  context: BodyContext,
+  target: Expression,
+  { type, place, at }: Written,
+): WrittenFit {
   const fields = severalKeyedFields(context, target);
   if (fields === undefined) {
     return context.fitWritten(type, place, at);
@@ -166,7 +171,7 @@ function writtenFit(context: BodyContext, target: Expression, { type, place, at 
   for (const field of fields) {
     context.fitWritten(type, field, at);
   }
-  return exactFit;
+  return 'intoKeyedField';
 }
 
 /**
