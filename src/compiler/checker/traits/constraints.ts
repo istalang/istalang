@@ -28,7 +28,7 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { RequirementOrigin } from '../resolved-call.ts';
 import { sameType } from '../types/identity.ts';
-import { parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
+import { parameterType } from '../types/resolve-type.ts';
 import {
   type Substitution,
   substitute,
@@ -36,6 +36,7 @@ import {
   substitutionFor,
 } from '../types/substitution.ts';
 import type { AnyType, Constraint, ParameterKey, Type } from '../types/type.ts';
+import { typeArgumentsFor } from '../types/type-arguments.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 
 /** The well-known trait `declaration` names, as a constraint with no type arguments. */

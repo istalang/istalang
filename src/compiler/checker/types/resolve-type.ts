@@ -3,9 +3,7 @@
  * node kinds each have a handler.
  *
  * - A generic declaration's missing trailing type arguments take their declared defaults (§3.5),
- *   whatever the declaration: a struct, enum, trait, alias or function. A default is written in
- *   the declaring module and may name the parameters before it (and, in a trait, `Self`), so it is
- *   resolved there and then substituted. This module is the one place that fills them.
+ *   whatever the declaration: a struct, enum, trait, alias or function (type-arguments.ts).
  * - Every argument given for a constrained parameter must meet its constraints. Meeting one looks
  *   at function signatures, which may still be resolving their own types, so the check is noted
  *   here and runs when its module is checked (`constrainLater`). A type node resolves once
@@ -30,15 +28,8 @@
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
-import {
-  type FunctionDeclaration,
-  type TraitDeclaration,
-  type TypeAliasDeclaration,
-  type TypeParameter,
-  typeParametersOf,
-} from '../../syntax/declarations.ts';
+import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import { type Identifier, isMissingName } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
 import {
   type FunctionType as FunctionTypeNode,
   type NamedType,
@@ -51,7 +42,7 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isPack, withPack } from './function-types.ts';
 import { fieldWritten, keysWritten, structWritten } from './key-types.ts';
-import { substitute, substitutionFor } from './substitution.ts';
+import { substitutionFor } from './substitution.ts';
 import {
   aliasedAs,
   errorType,
@@ -64,6 +55,7 @@ import {
   tupleType,
   unitType,
 } from './type.ts';
+import { constrainArguments, noteConstraints, typeArgumentsFor } from './type-arguments.ts';
 import { aliasInstance } from './type-match.ts';
 import { typeText } from './type-text.ts';
 import { optionalOf, unionOf, writtenLiteral } from './unions.ts';
@@ -73,13 +65,6 @@ interface Resolution {
   readonly checker: CheckerContext;
   readonly module: ModuleId;
 }
-
-/** A declaration that takes type parameters. */
-export type GenericDeclaration =
-  | NominalDeclaration
-  | TraitDeclaration
-  | TypeAliasDeclaration
-  | FunctionDeclaration;
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
@@ -118,65 +103,6 @@ export function resolveTypeNode(checker: CheckerContext, module: ModuleId, node:
 /** The type a type parameter (or a trait's `Self`) stands for inside its declaration. */
 export function parameterType(declaration: ParameterKey): Type {
   return { kind: 'parameter', declaration };
-}
-
-/** Type arguments given a generic declaration at `at`; `self` is what a trait's `Self` stands for. */
-export interface ArgumentList {
-  readonly at: AnchoredSpan;
-  readonly declaration: GenericDeclaration;
-  readonly types: readonly Type[];
-  readonly self?: Type;
-}
-
-/**
- * The arguments for every type parameter of the list's declaration: the written ones, then the
- * defaults of the ones left out. Undefined after reporting that too few or too many were written.
- */
-export function typeArgumentsFor(
-  checker: CheckerContext,
-  module: ModuleId,
-  { at, declaration, types: written, self }: ArgumentList,
-): readonly Type[] | undefined {
-  const parameters = typeParametersOf(declaration.typeParameters);
-  const required = parameters.filter((parameter) => parameter.defaultType === undefined).length;
-  if (written.length < required || written.length > parameters.length) {
-    const expected = written.length < required ? required : parameters.length;
-    checker.report(
-      module,
-      checkerDiagnostics.typeArgumentCount(at, declaration.name.text, expected, written.length),
-    );
-    return undefined;
-  }
-  const substitution = new Map<ParameterKey, Type>();
-  if (self !== undefined && declaration.kind === 'TraitDeclaration') {
-    substitution.set(declaration, self);
-  }
-  return parameters.map((parameter, index) => {
-    const argument =
-      written[index] ?? defaultArgument(checker, declaration, parameter, substitution);
-    substitution.set(parameter, argument);
-    return argument;
-  });
-}
-
-/**
- * The default of `parameter`, resolved where `declaration` is written, with the parameters
- * before it (and `Self`) as `earlier` maps them; the error type when it has none.
- */
-export function defaultArgument(
-  checker: CheckerContext,
-  declaration: GenericDeclaration,
-  parameter: TypeParameter,
-  earlier: ReadonlyMap<ParameterKey, Type>,
-): Type {
-  if (parameter.defaultType === undefined) {
-    return errorType;
-  }
-  return substitute(
-    checker.resolveType(checker.moduleOf(declaration), parameter.defaultType),
-    earlier,
-    checker.typeRules,
-  );
 }
 
 function resolve({ checker, module }: Resolution, node: TypeNode): Type {
@@ -348,40 +274,16 @@ function argumentsOf(
   const written = node.typeArguments.map((argument) => resolve(resolution, argument));
   const list = { at: node.span, declaration, types: written };
   const typeArguments = typeArgumentsFor(checker, module, list);
-  if (typeArguments !== undefined && !inCasePattern(resolution, node)) {
-    constrainArguments(checker, module, { ...list, types: typeArguments });
+  if (typeArguments === undefined) {
+    return undefined;
+  }
+  const complete = { ...list, types: typeArguments };
+  if (inCasePattern(resolution, node)) {
+    noteConstraints(checker, module, complete);
+  } else {
+    constrainArguments(checker, module, complete);
   }
   return typeArguments;
-}
-
-/**
- * Notes every argument of a constrained parameter in a complete list for its constraints, and the
- * instantiation for the type `match`es it reaches (§3.5, §3.17): a generic declaration's, or a
- * type `match` alias's, whose every use reduces.
- */
-export function constrainArguments(
-  checker: CheckerContext,
-  module: ModuleId,
-  { at, declaration, types: typeArguments }: ArgumentList,
-): void {
-  const parameters = typeParametersOf(declaration.typeParameters);
-  const substitution = substitutionFor(declaration.typeParameters, typeArguments);
-  const checked = parameters.filter(
-    (each) => each.constraints.length > 0 || each.memberOf !== undefined,
-  );
-  for (const parameter of checked) {
-    checker.constrainLater(module, { kind: 'meets', at, parameter, typeArguments: substitution });
-  }
-  const isMatchAlias =
-    declaration.kind === 'TypeAliasDeclaration' && declaration.type.kind === 'TypeMatch';
-  if (declaration.kind !== 'TraitDeclaration' && (parameters.length > 0 || isMatchAlias)) {
-    checker.constrainLater(module, {
-      kind: 'reduces',
-      at,
-      declaration,
-      typeArguments: substitution,
-    });
-  }
 }
 
 /**

@@ -38,7 +38,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
 import { checkHostBoundary, crossesToHost } from '../rules/host-boundary.ts';
 import { checkSuite } from '../rules/suites.ts';
-import type { GenericDeclaration } from '../types/resolve-type.ts';
+import type { GenericDeclaration } from '../types/type-arguments.ts';
 import { futureArgument } from '../types/well-known.ts';
 import { checkFiniteFields } from './struct-rules.ts';
 

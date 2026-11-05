@@ -77,8 +77,8 @@ export function asWrittenInMatch(
 }
 
 /**
- * Whether `node` stands in a type `match` case's pattern, which is matched, not used: its type
- * arguments meet their constraints in any type it matches, so none is checked there (§3.17).
+ * Whether `node` stands in a type `match` case's pattern, which is matched, not used: a type, so its
+ * arguments meet their constraints, but nothing there is reduced (§3.17).
  */
 export function inCasePattern(written: Written, node: SyntaxNode): boolean {
   return matchPlaceOf(treeOf(written), node) === 'pattern';

@@ -11,7 +11,7 @@
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
-import type { ModuleId } from '../../program/program.ts';
+import { type ModuleId, programModule } from '../../program/program.ts';
 import type {
   RequiredAssociatedType,
   TraitDeclaration,
@@ -36,8 +36,14 @@ import { sameTypeSpelled } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
 import { silent, useSite } from '../use-site.ts';
 import { meets } from './conformance.ts';
+import { impliedConstraints } from './implied-constraints.ts';
 import { MatchRequirements } from './match-requirements.ts';
 import { meetsStructConstraints } from './shortfalls.ts';
+
+/** The tree of `module`, whose nodes a parameter's place is read from. */
+function treeOf(checker: CheckerContext, module: ModuleId) {
+  return programModule(checker.program, module).tree;
+}
 
 export class TypeParameters {
   readonly #checker: CheckerContext;
@@ -50,7 +56,10 @@ export class TypeParameters {
   readonly #bounds: EntryTable<CheckerNote, RequiredAssociatedType, ConstraintSet>;
   readonly #requirements: MatchRequirements;
 
-  /** `moduleOf` answers the module whose item declares a parameter; undefined for a local one. */
+  /**
+   * `moduleOf` answers the module declaring a parameter, a local one's (a local function's, a mapped
+   * type's, an `infer` variable's) too, or a trait's associated type requirement.
+   */
   constructor(
     checker: CheckerContext,
     moduleOf: (node: TypeParameter | RequiredAssociatedType) => ModuleId | undefined,
@@ -61,7 +70,12 @@ export class TypeParameters {
       name: 'constraints',
       compute: (parameter) => {
         const module = moduleOf(parameter);
-        return module === undefined ? [] : resolveConstraints(checker, module, parameter);
+        return module === undefined
+          ? []
+          : [
+              ...resolveConstraints(checker, module, parameter),
+              ...impliedConstraints(checker, treeOf(checker, module), parameter).traits,
+            ];
       },
       equal: sameItems(sameConstraint),
     });
@@ -69,7 +83,12 @@ export class TypeParameters {
       name: 'struct constraints',
       compute: (parameter) => {
         const module = moduleOf(parameter);
-        return module === undefined ? [] : resolveStructConstraints(checker, module, parameter);
+        return module === undefined
+          ? []
+          : [
+              ...resolveStructConstraints(checker, module, parameter),
+              ...impliedConstraints(checker, treeOf(checker, module), parameter).structs,
+            ];
       },
       equal: sameItems(sameStructConstraint),
     });

@@ -184,7 +184,9 @@ export class ProgramChecker implements CheckerContext {
     this.#aliases = new Aliases(this, (alias) => this.#aliasModuleOf(alias));
     this.typeMatches = this.#aliases;
     this.#statics = new StaticFunctions(this);
-    this.#typeParameters = new TypeParameters(this, this.#itemModuleOf);
+    this.#typeParameters = new TypeParameters(this, (node) =>
+      node.kind === 'TypeParameter' ? declaring.moduleOf(node) : this.#itemModuleOf(node),
+    );
     this.#moduleChecks = new ModuleChecks(this, {
       expansion: new Expansion(this),
       typeParameters: this.#typeParameters,

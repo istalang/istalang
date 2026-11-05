@@ -23,7 +23,6 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { typeArgumentsFor } from './resolve-type.ts';
 import {
   errorType,
   expectsError,
@@ -34,6 +33,7 @@ import {
   nominalType,
   type Type,
 } from './type.ts';
+import { typeArgumentsFor } from './type-arguments.ts';
 import { membersOf, optionalInner } from './unions.ts';
 import { arrayElement, wellKnownArguments } from './well-known.ts';
 
