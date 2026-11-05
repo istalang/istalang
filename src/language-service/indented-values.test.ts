@@ -14,6 +14,7 @@ import { hoverAt } from './hover.ts';
 import { mainProgram, programAt, treeOf } from './language-service.test-kit.ts';
 import { nameAt } from './navigation/declarations.ts';
 import { referencesAt } from './navigation/references.ts';
+import { renameEdits } from './navigation/rename.ts';
 import { builtKeyTypesOf } from './semantic-tokens/built-keys.ts';
 import { semanticTokensOf } from './semantic-tokens/semantic-tokens.ts';
 
@@ -129,6 +130,21 @@ describe('an indented value reads as the literal it builds, for hover and naviga
       at('  return ["retries": 1, "region": 2]'),
     );
     expect(at('  return ["retries": 1, "region": 2]')).toBe(2);
+  });
+
+  it("renames a struct's field with the bare keys of an indented value checking built as a map", () => {
+    const renaming = (...value: readonly string[]) => {
+      const { program, module, offset } = programAt(
+        'struct Settings { ret‸ries: Int, region: Int }',
+        'fn f() -> Map<keyof Settings, Int>:',
+        ...value,
+      );
+      return renameEdits(program, module, offset, 'attempts');
+    };
+    const indented = renaming('  return', '    retries: 1', '    region: 2');
+    expect(indented?.kind).toBe('renamed');
+    expect(indented?.kind === 'renamed' ? indented.edits : []).toHaveLength(2);
+    expect(renaming('  return ["retries": 1, "region": 2]')?.kind).toBe('renamed');
   });
 });
 

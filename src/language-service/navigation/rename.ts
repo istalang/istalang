@@ -25,6 +25,7 @@
  *   (§3.11).
  */
 
+import { checkProgram } from '../../compiler/checker/check.ts';
 import {
   isStdModule,
   type ModuleId,
@@ -33,8 +34,8 @@ import {
 } from '../../compiler/program/program.ts';
 import { spellsName } from '../../compiler/scanner/characters.ts';
 import type { Field } from '../../compiler/syntax/declarations.ts';
-import { literalOf, untypedForm } from '../../compiler/syntax/expressions/indented-values.ts';
-import type { FieldsLiteral } from '../../compiler/syntax/expressions/index.ts';
+import type { BuiltLiteral } from '../../compiler/syntax/expressions/indented-values.ts';
+import type { FieldsLiteral, IndentedValue } from '../../compiler/syntax/expressions/index.ts';
 import type { Invalid } from '../../compiler/syntax/node.ts';
 import { childrenOf, nodesUnder, parentOf, type SyntaxNode } from '../../compiler/syntax/tree.ts';
 import {
@@ -305,16 +306,20 @@ const writersByProgram = new WeakMap<Program, ReadonlyMap<string, Writers>>();
 
 /**
  * The writers of each set of field names in a program, by its key: `{…}` types, `struct{…}`
- * literals and keyed indented values with nothing named before them, and shared structs as shapes,
- * struct declarations apart.
+ * literals and indented values naming no type that checking built as one, and shared structs as
+ * shapes, struct declarations apart. What an indented value builds is the type it is built as's
+ * to decide (§2), so it is read from checking, never from its entries.
  */
 function shapeWriters(program: Program): ReadonlyMap<string, Writers> {
   return memo(writersByProgram, program, () => {
+    const checker = checkProgram(program);
     const writers = new Map<string, Writers>();
-    for (const { tree } of program.modules.values()) {
+    for (const [module, { tree }] of program.modules) {
+      const built = (value: IndentedValue) =>
+        checker.lookup.bodyHolding(module, value)?.builtLiteralOf(value);
       const pending: SyntaxNode[] = [tree.root];
       for (let node = pending.pop(); node !== undefined; node = pending.pop()) {
-        const writer = writerOf(node);
+        const writer = writerOf(node, built);
         if (writer !== undefined) {
           memo(writers, writer.key, () => ({ shapes: 0, structs: 0 }))[writer.kind] += 1;
         }
@@ -325,8 +330,14 @@ function shapeWriters(program: Program): ReadonlyMap<string, Writers> {
   });
 }
 
-/** The field names `node` writes a shape or a struct declaration with, as a key; undefined for others. */
-function writerOf(node: SyntaxNode): { key: string; kind: keyof Writers } | undefined {
+/**
+ * The field names `node` writes a shape or a struct declaration with, as a key, an indented value
+ * by what `built` says checking built it as; undefined for others.
+ */
+function writerOf(
+  node: SyntaxNode,
+  built: (value: IndentedValue) => BuiltLiteral | undefined,
+): { key: string; kind: keyof Writers } | undefined {
   switch (node.kind) {
     case 'StructType': {
       const named = node.fields.filter((field) => field.kind !== 'MappedField');
@@ -340,10 +351,10 @@ function writerOf(node: SyntaxNode): { key: string; kind: keyof Writers } | unde
       return { key: fieldsKey(node.fields), kind: 'structs' };
     case 'StructLiteral':
       return node.type === undefined ? shapeLiteralWriter(node) : undefined;
-    case 'IndentedValue':
-      return node.type === undefined && untypedForm(node) === 'struct'
-        ? shapeLiteralWriter(literalOf(node, 'struct'))
-        : undefined;
+    case 'IndentedValue': {
+      const literal = node.type === undefined ? built(node) : undefined;
+      return literal?.kind === 'StructLiteral' ? shapeLiteralWriter(literal) : undefined;
+    }
     default:
       return undefined;
   }
