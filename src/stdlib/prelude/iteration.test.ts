@@ -44,7 +44,7 @@ describe('a cursor', () => {
       '  if i == 3: break',
       'last',
     ];
-    expect(mainGives('Int', body.join('\n  '))).toBe(3);
+    expect(mainGives('Int', body.join('\n'))).toBe(3);
   });
 
   it("gives a string's code points, astral ones whole", () => {
@@ -67,7 +67,7 @@ describe('a cursor', () => {
     fc.assert(
       fc.property(fc.array(fc.option(ends, { nil: null }), { maxLength: 4 }), (items) => {
         const literal = items.map((item) => item ?? 'none').join(', ');
-        const body = `const xs: Array<Int?> = [${literal}]\n  [for x in xs: x]`;
+        const body = `const xs: Array<Int?> = [${literal}]\n[for x in xs: x]`;
         expect(mainGives('Array<Int?>', body)).toEqual(items);
       }),
       { numRuns: 10 },
@@ -83,7 +83,7 @@ describe('a cursor', () => {
       '  seen += 1',
       'seen',
     ];
-    expect(mainGives('Int', body.join('\n  '))).toBe(2);
+    expect(mainGives('Int', body.join('\n'))).toBe(2);
   });
 });
 

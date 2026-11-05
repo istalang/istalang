@@ -14,11 +14,6 @@ import { lines } from '../../parser/parse.test-kit.ts';
 import { reported } from '../check.test-kit.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 
-/** `main`'s body over several lines, each indented under `main`: `mainGives` indents its first. */
-function mainGivesLines(result: string, body: string, declarations?: string): unknown {
-  return mainGives(result, body.trimEnd().split('\n').join('\n  '), declarations);
-}
-
 describe('parameter patterns in declared functions and lambdas (§5)', () => {
   it('destructures named structs, generic structs, annotated shapes, {…} shorthands and tuples', () => {
     const decls = lines(
@@ -36,13 +31,7 @@ describe('parameter patterns in declared functions and lambdas (§5)', () => {
       'const r: Rect = struct{w: 5, h: 6}',
       '(sumPoint(p), joinPair(Pair{first: "k", second: 9}), area(r), perim(r), tupleSum((7, 8)))',
     );
-    expect(mainGivesLines('(Int, String, Int, Int, Int)', body, decls)).toEqual([
-      7,
-      'k:9',
-      30,
-      22,
-      15,
-    ]);
+    expect(mainGives('(Int, String, Int, Int, Int)', body, decls)).toEqual([7, 'k:9', 30, 22, 15]);
   });
 
   it('destructures nested patterns with field renames, struct rest, and implicit nominal-to-shape conversion', () => {
@@ -71,11 +60,7 @@ describe('parameter patterns in declared functions and lambdas (§5)', () => {
       '(sums1, sums2, sums3, labels, formatted)',
     );
     expect(
-      mainGivesLines(
-        '(Array<Int>, Array<Int>, Array<Int>, Array<String>, Array<String>)',
-        body,
-        decls,
-      ),
+      mainGives('(Array<Int>, Array<Int>, Array<Int>, Array<String>, Array<String>)', body, decls),
     ).toEqual([
       [3, 7],
       [2, 12],
@@ -98,7 +83,7 @@ describe('parameter patterns in declared functions and lambdas (§5)', () => {
       'const p = Point{x: 4, y: 5}',
       '(p.manhattan(), manhattan(p), shift(origin: p, dx: 10), shift(p), window(), window(Span{start: 1, end: 4}))',
     );
-    expect(mainGivesLines('(Int, Int, Int, Int, Int, Int)', body, decls)).toEqual([
+    expect(mainGives('(Int, Int, Int, Int, Int, Int)', body, decls)).toEqual([
       9, 9, 19, 13, 297, 143,
     ]);
   });

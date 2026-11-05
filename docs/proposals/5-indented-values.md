@@ -162,7 +162,7 @@ type Json = None | Bool | Int | Float | String | Array<Json> | Map<String, Json>
 - **Statements keep `;`.** Statements share a line as they do today: `x = 1; y = 2`, a one-line block `{ log(msg); save(msg) }`, `fn(msg): { log(msg); save(msg); msg.id }`. So do a module's declarations.
   - `,` can't take this job, because a `,` already continues a statement that starts with targets. `a, b = (b, a)` is one tuple assignment (§3.15), and `let a, b = t` declares two names.
   - So `;` between list items, and `,` between statements, are compile errors.
-- **Trait members are a list.** They declare what a type has, as fields do, and nothing evaluates them in order: `trait Shape { fn area(self: Self) -> Float, type Unit }`.
+- **Trait members are a list.** They declare what a type has, as fields do, and nothing evaluates them in order: `trait Shape { fn area(self: Self) -> Float, type Measure }`.
 - **Match and select cases are neither list nor statements: one per line, as today.** Each case has a body, and nothing may follow a one-line body on its line (§4). The cases of a type `match` (§3.17) stand one per line too.
 - **The formatter** writes a list on one line with `, `, and a broken list one item per line (§6 below). Statements keep the `;` the formatter writes today.
 

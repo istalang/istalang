@@ -37,9 +37,7 @@ describe('comma-separated declarations, constraints and mapped types (§4)', () 
       '`${t}:${m.id}:${m.count}:${xs[0]}:${Color.Green is Color}:${Decision.Approved is Decision}`',
     );
     expect(reported(`${decls}\nfn check(): ()`)).toEqual(reportedNothing);
-    expect(mainGives('String', body.split('\n').join('\n  '), decls)).toBe(
-      'form:ok:12:6:true:true',
-    );
+    expect(mainGives('String', body, decls)).toBe('form:ok:12:6:true:true');
   });
 });
 
@@ -50,7 +48,7 @@ describe('empty [] and [:] literals against union types (§3)', () => {
       'const m: Array<Int> | Map<String, Int> = [:]',
       '(a is Array<Int>, m is Map<String, Int>)',
     );
-    expect(mainGives('(Bool, Bool)', body.split('\n').join('\n  '))).toEqual([true, true]);
+    expect(mainGives('(Bool, Bool)', body)).toEqual([true, true]);
   });
 
   it('still reports 5300 when [] or [:] has no expected type or fits multiple array/map members', () => {

@@ -876,7 +876,7 @@ fn maxSendable<T is Sendable & Comparable>(xs: Array<T>) -> T?:
     ...
 ```
 
-- **Members** are a list, as a struct's fields are (§2): one per line in the trait's body, or separated by `,`, on one line of it or in braces: `trait Shape { fn area(self: Self) -> Float, type Unit }`. Nothing evaluates them in order.
+- **Members** are a list, as a struct's fields are (§2): one per line in the trait's body, or separated by `,`, on one line of it or in braces: `trait Shape { fn area(self: Self) -> Float, type Measure }`. Nothing evaluates them in order.
 - **`Self` and defaults.** `Self` is the constrained type: in `T is Addable`, `Self` is `T`. Trait type parameters may have defaults, so `T is Addable` means `T is Addable<T>`. A trait may take several type parameters, such as `trait Convertible<To, From = Self>`.
 - **Several traits.** `T is X & Y` requires both. In this position `&` joins traits; it never means a reference.
 - **Structural conformance.** A type satisfies a trait when functions with the required signatures exist for it. There are no `impl` blocks. The required functions must be declared beside the types they take or beside the trait: in the module declaring one of those types (the prelude, for a primitive), for a static function also its own type's, or in the trait's own module. Only the types themselves count, not their type arguments, as in argument-dependent lookup (§3.13). So a module declaring a trait can declare its functions for types it doesn't own, such as primitives, and no caller has to import them.

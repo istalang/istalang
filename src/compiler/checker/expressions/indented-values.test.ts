@@ -34,11 +34,6 @@ function constantTypeOf(source: string, name = 'target'): Type | undefined {
   return identifier === undefined ? undefined : checker.constantNamed(module, identifier)?.type;
 }
 
-/** `main`'s body written over several lines, each indented under `main`: `mainGives` indents its first. */
-function mainGivesLines(result: string, body: string, declarations?: string): unknown {
-  return mainGives(result, body.trimEnd().split('\n').join('\n  '), declarations);
-}
-
 function constantTypeText(source: string, name = 'target'): string {
   const type = constantTypeOf(source, name);
   return type === undefined ? 'missing' : typeText(type);
@@ -70,7 +65,7 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
       '(api.name, api.replicas, api.ports, api.env["LOG_LEVEL"], api.env["x-region"], api.retry.times, api.retry.backoffMs)',
     );
     expect(
-      mainGivesLines('(String, Int, Array<Int>, String, String, Int, Int)', body, serviceDecls),
+      mainGives('(String, Int, Array<Int>, String, String, Int, Int)', body, serviceDecls),
     ).toEqual(['api', 1, [80, 443], 'debug', 'eu', 3, 500]);
   });
 
@@ -97,7 +92,7 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
       '  case (Approved{by, note}, Rejected{reason}): `${by}:${note}:${reason}:${c->count}:${c->tag}`',
       '  case _: "unreachable"',
     );
-    expect(mainGivesLines('String', body, decls)).toBe('alice:ok:budget:58:c');
+    expect(mainGives('String', body, decls)).toBe('alice:ok:budget:58:c');
   });
 
   it('supports shorthand names, a leading spread, and a trailing struct comprehension', () => {
@@ -116,7 +111,7 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
       '  for k, v in ...rest: [k]: v * 10',
       '(updated.a, updated.b, updated.c, comp.a, comp.b, comp.c)',
     );
-    expect(mainGivesLines('(Int, Int, Int, Int, Int, Int)', body, decls)).toEqual([
+    expect(mainGives('(Int, Int, Int, Int, Int, Int)', body, decls)).toEqual([
       10, 25, 30, 1, 20, 30,
     ]);
   });
@@ -130,7 +125,7 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
       '  first: step("first", 1)',
       '(log, s.first, s.second)',
     );
-    expect(mainGivesLines('(Array<String>, Int, Int)', body)).toEqual([['second', 'first'], 1, 2]);
+    expect(mainGives('(Array<String>, Int, Int)', body)).toEqual([['second', 'first'], 1, 2]);
   });
 });
 
@@ -148,7 +143,7 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (Â
       '  dup: "first", "dup": "second"',
       '(env["LOG_LEVEL"], env["for"], env["host"], env["dup"], env.size())',
     );
-    expect(mainGivesLines('(String, String, String, String, Int)', body)).toEqual([
+    expect(mainGives('(String, String, String, String, Int)', body)).toEqual([
       'debug',
       'loop',
       'prod.internal',
@@ -173,7 +168,7 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (Â
       '    alpha: 10, "beta": 20',
       '(m == same, m.size(), d.entries["alpha"] + d.entries["beta"])',
     );
-    expect(mainGivesLines('(Bool, Int, Int)', body, decls)).toEqual([true, 2, 30]);
+    expect(mainGives('(Bool, Int, Int)', body, decls)).toEqual([true, 2, 30]);
   });
 
   it('builds arrays from "- value", "- -1", "- ...xs", nested "-" blocks and "- key: value" aligned items', () => {
@@ -199,7 +194,7 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (Â
       '      ok: false',
       '(nums, grid[0][1] + grid[1][0], rows[0].name, rows[1].port, rows[0].meta.ok)',
     );
-    expect(mainGivesLines('(Array<Int>, Int, String, Int, Bool)', body)).toEqual([
+    expect(mainGives('(Array<Int>, Int, String, Int, Bool)', body)).toEqual([
       [1, -1, 10, 20],
       5,
       'api',
@@ -229,7 +224,7 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (Â
       '  case Entry<Settings, "retries">{value}: `${value}`',
       '(matched, opt?.region ?? "none", u2 is Array<Int>)',
     );
-    expect(mainGivesLines('(String, String, Bool)', body, decls)).toEqual(['eu', 'ap', true]);
+    expect(mainGives('(String, String, Bool)', body, decls)).toEqual(['eu', 'ap', true]);
   });
 
   it('types an untyped indented value as a shape when all keys are bare, a Map<String, V> when any key is quoted, and an Array<T> when items', () => {
@@ -251,9 +246,7 @@ describe('meaning by type: maps, arrays, unions, untyped blocks and constants (Â
       '  - first',
       '  - a: 10',
     );
-    expect(
-      mainGivesLines('Int', 'items[0].a + items[0].b + items[1].a + table["k"].b', decls),
-    ).toBe(22);
+    expect(mainGives('Int', 'items[0].a + items[0].b + items[1].a + table["k"].b', decls)).toBe(22);
   });
 });
 
@@ -381,7 +374,7 @@ describe('commutation property: indented values vs brace and bracket literals (Â
         const typeA = constantTypeOf(source, 'firstVal');
         const typeB = constantTypeOf(source, 'secondVal');
         expect(typeA !== undefined && typeB !== undefined && sameType(typeA, typeB)).toBe(true);
-        expect(mainGivesLines('Bool', 'firstVal == secondVal', source)).toBe(true);
+        expect(mainGives('Bool', 'firstVal == secondVal', source)).toBe(true);
       }),
       { numRuns: 35 },
     );

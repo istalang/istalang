@@ -28,11 +28,6 @@ const jsonImports = lines(
   '    case Err{error}: panic(error.message)',
 );
 
-/** What `main` gives, its `body` written over several lines, each indented under `main`. */
-function mainGivesOver(result: string, body: string, declarations: string): unknown {
-  return mainGives(result, body.split('\n').join('\n  '), declarations);
-}
-
 describe('Json as a recursive union: literals, matching and codecs (§3)', () => {
   it('builds nested Json values from plain bracket literals and indented values with no wrapping', () => {
     const body = lines(
@@ -49,7 +44,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
       '  emptyMap: [:]',
       'inline == indented and json.stringify(inline) == json.stringify(indented)',
     );
-    expect(mainGivesOver('Bool', body, jsonImports)).toBe(true);
+    expect(mainGives('Bool', body, jsonImports)).toBe(true);
   });
 
   it('disambiguates [] as Array<Json> and [:] as Map<String, Json>', () => {
@@ -58,7 +53,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
       'const obj: Json = [:]',
       '(arr is Array<Json>, obj is Map<String, Json>, json.stringify(arr), json.stringify(obj))',
     );
-    expect(mainGivesOver('(Bool, Bool, String, String)', body, jsonImports)).toEqual([
+    expect(mainGives('(Bool, Bool, String, String)', body, jsonImports)).toEqual([
       true,
       true,
       '[]',
@@ -84,7 +79,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
       '[for each in samples: describe(each)]',
     );
     expect(reported(decls)).toEqual(reportedNothing);
-    expect(mainGivesOver('Array<String>', body, decls)).toEqual([
+    expect(mainGives('Array<String>', body, decls)).toEqual([
       'null',
       'bool:true',
       'int:42',
@@ -102,7 +97,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
       'const gotNull: Json? = obj.get("presentNull")',
       '(gotMissing == none, gotNull == none, obj.has("missing"), obj.has("presentNull"))',
     );
-    expect(mainGivesOver('(Bool, Bool, Bool, Bool)', body, jsonImports)).toEqual([
+    expect(mainGives('(Bool, Bool, Bool, Bool)', body, jsonImports)).toEqual([
       true,
       true,
       false,
@@ -120,7 +115,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
       '    (read == decoded, m["i"] is Int, m["f"] is Float, m["i"] == 42, m["f"] == 42.5)',
       '  case _: (false, false, false, false, false)',
     );
-    expect(mainGivesOver('(Bool, Bool, Bool, Bool, Bool)', body, jsonImports)).toEqual([
+    expect(mainGives('(Bool, Bool, Bool, Bool, Bool)', body, jsonImports)).toEqual([
       true,
       true,
       true,
@@ -148,12 +143,7 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
       'const asJson = json.encode(p)',
       '(asJson is Map<String, Json>, back(asJson) == p, p.cost.toJson() == "42", p.wait.toJson() is String)',
     );
-    expect(mainGivesOver('(Bool, Bool, Bool, Bool)', body, decls)).toEqual([
-      true,
-      true,
-      true,
-      true,
-    ]);
+    expect(mainGives('(Bool, Bool, Bool, Bool)', body, decls)).toEqual([true, true, true, true]);
   });
 });
 
@@ -246,7 +236,7 @@ describe('property: Json literals of generated nesting equal json.parse<Json> of
           'const roundTripped: Json = parsed(json.stringify(literalValue))',
           'literalValue == parsedValue and literalValue == roundTripped',
         );
-        expect(mainGivesOver('Bool', body, jsonImports)).toBe(true);
+        expect(mainGives('Bool', body, jsonImports)).toBe(true);
       }),
       { numRuns: 45 },
     );
