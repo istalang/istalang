@@ -17,7 +17,7 @@
 
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
-import { unfoldRecursive } from './computed-types.ts';
+import { unfolded, unfoldRecursive } from './computed-types.ts';
 import { folded } from './recursive-types.ts';
 import {
   isMemberParameter,
@@ -29,7 +29,7 @@ import {
   type Type,
 } from './type.ts';
 import { typeKeys } from './type-keys.ts';
-import { type TypeRules, unfolded } from './type-rules.ts';
+import type { TypeRules } from './type-rules.ts';
 import {
   absorbingMember,
   baseOf,
@@ -117,7 +117,7 @@ export function presentType(type: Type, rules: TypeRules): Type | undefined {
   }
   const inner = optionalInner(type);
   if (inner !== undefined) {
-    return unfolded(inner, rules);
+    return unfolded(inner);
   }
   return absorbingMember(membersOf(type), noneType, rules) === undefined ? undefined : type;
 }

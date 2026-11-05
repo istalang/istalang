@@ -20,6 +20,7 @@ import type { Checker } from '../check.ts';
 import type { FieldStep, PartStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { itemField } from '../struct-items.ts';
+import { unfolded } from '../types/computed-types.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
 import {
   type AnyType,
@@ -28,7 +29,6 @@ import {
   type Type,
   type UnionType,
 } from '../types/type.ts';
-import { unfolded } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 
 /** What a pattern reads and where it reports, in a body or in a top-level constant. */
@@ -100,7 +100,7 @@ export function elementParts<Step extends PartStep>(
   count: number,
   span: AnchoredSpan,
 ): readonly ValuePart<Step | number>[] {
-  const type = unfolded(part.type, scope.typeRules);
+  const type = unfolded(part.type);
   const fits = type.kind === 'error' || (type.kind === 'tuple' && type.elements.length === count);
   if (!fits) {
     scope.report(checkerDiagnostics.tupleArity(span, count, typeText(type)));

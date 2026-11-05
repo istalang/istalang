@@ -13,18 +13,18 @@
  */
 
 import type { StructDeclaration } from '../../syntax/declarations.ts';
-import type { RecursiveMatchType, RecursiveType } from './computed-types.ts';
+import { type RecursiveType, unfolded } from './computed-types.ts';
 import type { FieldMember, Type } from './type.ts';
 import { typeKeys } from './type-keys.ts';
-import { type TypeRules, unfolded } from './type-rules.ts';
+import type { TypeRules } from './type-rules.ts';
 
 /** What a value must never hold by value: a struct declaration's values, or a recursive type's. */
-export type SelfHolding = StructDeclaration | RecursiveType | RecursiveMatchType;
+export type SelfHolding = StructDeclaration | RecursiveType;
 
 /** How a struct type's fields are read: a declared struct's, and what a recursive type unfolds to. */
 export interface StructFieldReader {
   readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
-  readonly unfold: (type: RecursiveType | RecursiveMatchType) => Type;
+  readonly unfold: (type: RecursiveType) => Type;
 }
 
 /** The reader of `checker`'s struct types. */
@@ -34,7 +34,7 @@ export function fieldReaderOf(checker: {
 }): StructFieldReader {
   return {
     fieldsOf: (type) => checker.fieldsOf(type),
-    unfold: (type) => unfolded(type, checker.typeRules),
+    unfold: (type) => unfolded(type),
   };
 }
 
@@ -64,8 +64,7 @@ function holds(
       return type.elements.some((element) => holds(reader, element, target, seen));
     case 'anonymous':
       return isTargetUse(type, target) || fieldsHold(reader, type.fields, target, seen);
-    case 'recursive':
-    case 'recursiveMatch': {
+    case 'recursive': {
       if (isTargetUse(type, target)) {
         return true;
       }
@@ -118,8 +117,5 @@ function fieldsHold(
 
 /** Whether `type` is the recursive type `target`, or what it unfolds to, by their one key. */
 function isTargetUse(type: Type, target: SelfHolding): boolean {
-  return (
-    (target.kind === 'recursive' || target.kind === 'recursiveMatch') &&
-    typeKeys.typeKey(type) === typeKeys.typeKey(target)
-  );
+  return target.kind === 'recursive' && typeKeys.typeKey(type) === typeKeys.typeKey(target);
 }

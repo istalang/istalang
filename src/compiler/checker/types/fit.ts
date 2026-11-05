@@ -26,6 +26,7 @@
  *   does: it is one member of `U`, which each instantiation makes concrete.
  */
 
+import { unfolded } from './computed-types.ts';
 import { isAssignable } from './identity.ts';
 import {
   type AnonymousStructType,
@@ -36,7 +37,7 @@ import {
   type UnionType,
 } from './type.ts';
 import { parametersIn } from './type-parts.ts';
-import { type TypeRules, unfolded } from './type-rules.ts';
+import type { TypeRules } from './type-rules.ts';
 import { absorbingMember, baseOf } from './union-members.ts';
 import { hasMember, membersOf } from './unions.ts';
 
@@ -111,14 +112,9 @@ export function matchConversion(
   expected: Type,
   rules: ConversionRules,
 ): Fit | undefined {
-  const value = asValue(found, rules);
-  const place = asValue(expected, rules);
+  const value = unfolded(found);
+  const place = unfolded(expected);
   return ownConversion(value, place, rules) ?? memberParameterFit(value, place, rules);
-}
-
-/** `type` as a value of it goes in or out: what a recursive type unfolds to (§3.17), one type. */
-function asValue(type: Type, rules: TypeRules): Type {
-  return unfolded(type, rules);
 }
 
 /** How `found` fits `expected` as its own type, as `matchConversion` says. */

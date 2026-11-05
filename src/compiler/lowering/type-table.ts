@@ -150,8 +150,6 @@ export class TypeTable {
           ? { kind: 'named', type: this.#aliasEntry(type, unfolded) }
           : this.reference(unfolded);
       }
-      case 'recursiveMatch':
-        return this.reference(this.#checker.typeRules.unfold(type));
       case 'tuple':
         return {
           kind: 'tuple',

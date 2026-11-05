@@ -50,6 +50,7 @@ import { defaultWitness } from '../../resolution/default-witness.ts';
 import { callWithTypes } from '../../resolution/silent-choice.ts';
 import type { FunctionCall, ResolvedCall } from '../../resolved-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
+import { unfolded } from '../../types/computed-types.ts';
 import { sameType } from '../../types/identity.ts';
 import type {
   FieldMember,
@@ -61,7 +62,6 @@ import type {
 } from '../../types/type.ts';
 import { TypeCycle } from '../../types/type-cycle.ts';
 import { unaliased } from '../../types/type-parts.ts';
-import { unfolded } from '../../types/type-rules.ts';
 import { typeText } from '../../types/type-text.ts';
 import { baseOf } from '../../types/union-members.ts';
 import { optionalInner } from '../../types/unions.ts';
@@ -179,8 +179,7 @@ export class JsonForms implements JsonCodecs {
       case 'anonymous':
         return this.#record(type, type.fields);
       case 'recursive':
-      case 'recursiveMatch':
-        return this.#form(unfolded(type, this.#seams.checker.typeRules));
+        return this.#form(unfolded(type));
       case 'nominal':
         return this.#nominal(type);
       case 'function':

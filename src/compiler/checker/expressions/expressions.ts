@@ -192,7 +192,7 @@ export function acceptsOf(context: BodyContext, node: Expression): Accepts | und
   if (accepts === undefined) {
     return undefined;
   }
-  const taking = takingUnfolded(accepts, context.checker.typeRules);
+  const taking = takingUnfolded(accepts);
   return (expected, isOpen) => isOpen(expected) || taking(expected, isOpen);
 }
 
@@ -358,7 +358,7 @@ const buildsHandlers: Handlers<BodyContext, Expression, [PartReader], Accepts | 
  */
 function buildsOf(context: BodyContext, node: Expression, read: PartReader): Accepts | undefined {
   const builds = handlerOf(buildsHandlers, node)(context, node, read);
-  return builds === undefined ? undefined : takingUnfolded(builds, context.checker.typeRules);
+  return builds === undefined ? undefined : takingUnfolded(builds);
 }
 
 /**
@@ -373,7 +373,7 @@ export function openBuildsOf(context: BodyContext, node: Expression): Accepts | 
     literal?.kind === 'ArrayLiteral' || literal?.kind === 'MapLiteral'
       ? collectionOpenBuilds(context, literal)
       : undefined;
-  return builds === undefined ? undefined : takingUnfolded(builds, context.checker.typeRules);
+  return builds === undefined ? undefined : takingUnfolded(builds);
 }
 
 /** The type `node` has on its own: as checked, for an item checked already, else as written. */

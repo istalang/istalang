@@ -10,9 +10,9 @@
 
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AcceptedPart, BodyContext } from '../body-context.ts';
+import { unfolded } from '../types/computed-types.ts';
 import { memberBuilt } from '../types/expected.ts';
 import type { Type } from '../types/type.ts';
-import { unfolded } from '../types/type-rules.ts';
 import { isBuiltLiteral, openBuildsOf } from './expressions.ts';
 
 /** The type a value read as `part` is built as where `expected` is expected, at any depth. */
@@ -30,7 +30,6 @@ export function builtMember(
       openBuilds: () => openBuildsOf(context, node),
       fits: (type) => checker.fitOf(type, expected) !== undefined,
     }),
-    checker.typeRules,
   );
   return member !== expected && member.kind === 'union'
     ? builtMember(context, node, member, part)

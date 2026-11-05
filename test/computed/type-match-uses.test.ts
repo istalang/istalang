@@ -9,6 +9,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { unfoldRecursive } from '../../src/compiler/checker/types/computed-types.ts';
 import { substitute, substituteKept } from '../../src/compiler/checker/types/substitution.ts';
 import { intType } from '../../src/compiler/checker/types/type.ts';
 import { typeKeys } from '../../src/compiler/checker/types/type-keys.ts';
@@ -39,13 +40,13 @@ describe('recursive type `match` uses under substitution', () => {
     );
     const [parameter] = gen === undefined ? [] : checker.parametersOf(gen);
     const [typeParameter] = gen?.typeParameters ?? [];
-    expect(parameter?.type.kind).toBe('recursiveMatch');
-    if (parameter?.type.kind !== 'recursiveMatch' || typeParameter?.kind !== 'TypeParameter') {
+    expect(parameter?.type.kind).toBe('recursive');
+    if (parameter?.type.kind !== 'recursive' || typeParameter?.kind !== 'TypeParameter') {
       return;
     }
     const rules = checker.typeRules;
     const substitution = new Map([[typeParameter, intType]]);
-    const shape = rules.unfold(parameter.type);
+    const shape = unfoldRecursive(parameter.type);
     if (shape.kind !== 'anonymous') {
       throw new Error('A recursive type match use stands for a shape.');
     }
@@ -81,10 +82,11 @@ describe('recursive type `match` uses under substitution', () => {
 describe('a type `match` using itself with fixed arguments', () => {
   const selfDecls = ['type T1<T> = match T:', '  case _: { next: Array<T1<Int>> }'];
 
-  it('is a finite recursive type, whatever its own argument', () => {
+  it('is one finite recursive type, whatever its own argument', () => {
     const { types, diagnosticCodes } = resolveWrittenTypes(['T1<String>', 'T1<Int>'], selfDecls);
     expect(diagnosticCodes).toEqual([]);
-    expect(types.map((type) => type.kind)).toEqual(['anonymous', 'recursiveMatch']);
+    expect(types.map((type) => type.kind)).toEqual(['recursive', 'recursive']);
+    expect(new Set(types.map((type) => typeKeys.typeKey(type))).size).toBe(1);
     expect(
       runMain(
         'Int',

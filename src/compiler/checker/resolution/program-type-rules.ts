@@ -14,10 +14,11 @@ import type { EntryTable } from '../../../structures/entries/index.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { associatedTypeOf } from '../traits/known-constraints.ts';
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../traits/struct-keys.ts';
+import { unfolded } from '../types/computed-types.ts';
 import type { Fitting } from '../types/fit.ts';
 import type { AnonymousStructType, AnyType, Type } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
-import { type TypeRules, unfolded } from '../types/type-rules.ts';
+import type { TypeRules } from '../types/type-rules.ts';
 import { meetsAny } from './trait-objects.ts';
 import { TypeMatchReductions } from './type-matches.ts';
 
@@ -57,11 +58,10 @@ export function programTypeRules(
         member,
       }),
     associatedType: (of, name) => associatedTypeOf(checker, of, name),
-    fieldType: (of, key) => fieldTypeOf(checker, unfolded(of, checker.typeRules), key),
-    keysOf: (of, without) => keysOf(checker, unfolded(of, checker.typeRules), without),
+    fieldType: (of, key) => fieldTypeOf(checker, unfolded(of), key),
+    keysOf: (of, without) => keysOf(checker, unfolded(of), without),
     mappedType: (parts, outer) => mappedTypeOf(checker, parts, outer),
     matchType: (declaration, typeArguments) => reductions.reduce(declaration, typeArguments),
-    unfold: (type) => reductions.recursiveShape(type),
     isKeyOf: (key, of) => isKeyWithin(checker, key, checker.typeRules.keysOf(of, [])),
   };
   const fitting: Fitting = {

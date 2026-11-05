@@ -17,11 +17,12 @@ import type {
   TargetBinding,
   TargetStep,
 } from '../checked-pattern.ts';
+import { unfolded } from './computed-types.ts';
 import type { Fit } from './fit.ts';
 import { sameType } from './identity.ts';
 import { type Substitution, substitute, substituteAny, substituteKept } from './substitution.ts';
 import type { FieldMember, Type } from './type.ts';
-import { type TypeRules, unfolded } from './type-rules.ts';
+import type { TypeRules } from './type-rules.ts';
 import { membersOf } from './unions.ts';
 
 /**
@@ -35,8 +36,7 @@ export function instantiatedBody(
   substitution: Substitution,
   checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
 ): CheckedBody {
-  const concrete = (type: Type) =>
-    unfolded(substitute(type, substitution, checker.typeRules), checker.typeRules);
+  const concrete = (type: Type) => unfolded(substitute(type, substitution, checker.typeRules));
   const concreteFit = (fit: Fit) => substitutedFit(fit, substitution, checker.typeRules);
   const concreteField = (field: FieldMember) => ({ ...field, type: concrete(field.type) });
   const concreteRead = (read: FieldRead): FieldRead => instantiatedRead(checker, read, concrete);
@@ -195,7 +195,7 @@ function instantiatedPattern(
         return {
           ...patternTest,
           path: path(patternTest.path),
-          union: unfolded(concrete(patternTest.union), rules),
+          union: unfolded(concrete(patternTest.union)),
           members: patternTest.members.flatMap((member) => membersOf(concrete(member))),
         };
       case 'or':
@@ -241,7 +241,7 @@ function instantiatedStep(step: PartStep, substitution: Substitution, rules: Typ
     case 'member':
       return {
         kind: 'member',
-        union: unfolded(substitute(step.union, substitution, rules), rules),
+        union: unfolded(substitute(step.union, substitution, rules)),
         member: substitute(step.member, substitution, rules),
       };
     case 'field':
@@ -289,7 +289,7 @@ function substitutedFit(
     return { conversion: substituted };
   }
   // A recursive union substituted is its use again (§3.17); the value goes into what it unfolds to.
-  const union = unfolded(substitute(into.union, substitution, rules), rules);
+  const union = unfolded(substitute(into.union, substitution, rules));
   const member =
     into.member === undefined ? undefined : substitute(into.member, substitution, rules);
   if (union.kind === 'union' || union.kind === 'any') {

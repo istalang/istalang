@@ -21,6 +21,7 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import type { Checker } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
+import { unfolded } from '../types/computed-types.ts';
 import {
   type FieldMember,
   isMemberParameter,
@@ -30,7 +31,6 @@ import {
   type UnionType,
 } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
-import { unfolded } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { hasOneValue, membersOf } from '../types/unions.ts';
 import { arrayElement } from '../types/well-known.ts';
@@ -67,9 +67,9 @@ function constructorsOf(
   checker: ShapeChecker,
   type: Type,
 ): readonly ConstructorOf<Type>[] | undefined {
-  if (type.kind === 'recursive' || type.kind === 'recursiveMatch') {
+  if (type.kind === 'recursive') {
     // A recursive type is made of what it unfolds to (§3.17).
-    return constructorsOf(checker, unfolded(type, checker.typeRules));
+    return constructorsOf(checker, unfolded(type));
   }
   const union = isMemberParameter(type) ? checker.fitting.memberUnionOf(type) : undefined;
   if (union === undefined) {

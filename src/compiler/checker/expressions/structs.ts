@@ -136,7 +136,7 @@ function checkAnonymousLiteral(
   expected: Type | undefined,
   spread: LiteralSpread | undefined,
 ): Type {
-  const target = builtFrom(context.checker, expected);
+  const target = builtFrom(expected);
   const fromExpected = target === undefined ? undefined : shapeOf(context, target);
   if (fromExpected !== undefined) {
     return checkLiteralFields(context, node, fromExpected, spread);
@@ -361,7 +361,7 @@ function fieldsTaking(
     return undefined;
   }
   return (expected, isOpen) => {
-    const target = builtFrom(context.checker, expected);
+    const target = builtFrom(expected);
     const fields = target === undefined ? undefined : context.checker.fieldsOf(target);
     return (
       fields?.every((field) => names.has(field.name) || declaresDefault(field)) === true &&

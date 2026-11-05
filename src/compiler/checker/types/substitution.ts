@@ -6,12 +6,10 @@
  * written through an alias stays written through it, its arguments substituted alike (type.ts).
  * The types substitution builds are built by the program's rules (type-rules.ts), so a union
  * reached through it is normalized as one written with its arguments in place: `T | any Stringable`
- * with `T = String` is `any Stringable`. The shape a recursive type `match` use stands for is what
- * its substituted use stands for, decided again by the rules, never a verdict carried over; a
- * recursive type's graph closes again from its parts substituted (recursive-types.ts).
+ * with `T = String` is `any Stringable`. A recursive type's graph closes again from its parts
+ * substituted (recursive-types.ts).
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
 import type { ComputedType, MappedParts, RecursiveType } from './computed-types.ts';
 import {
@@ -20,13 +18,12 @@ import {
   type Constraint,
   errorType,
   type ParameterKey,
-  recursionOf,
   type Type,
   type TypeParameterType,
   type UnionType,
 } from './type.ts';
 import { mapChildren, mapParts } from './type-parts.ts';
-import { type TypeRules, unfolded } from './type-rules.ts';
+import type { TypeRules } from './type-rules.ts';
 
 /** Type parameters mapped to the types that replace them. */
 export type Substitution = ReadonlyMap<ParameterKey, Type>;
@@ -60,7 +57,7 @@ export function substitute(type: Type, substitution: Substitution, rules: TypeRu
   if (type.kind === 'any') {
     return substituteAny(type, substitution, rules);
   }
-  if (type.kind === 'mapped' && type.recursion === undefined) {
+  if (type.kind === 'mapped') {
     return asWritten(type, substituteMapped(type, substitution, rules), substitution, rules);
   }
   return asWritten(
@@ -112,31 +109,12 @@ export function substituteAny(
 export function substituteKept<
   Kept extends Exclude<Type, TypeParameterType | UnionType | RecursiveType | ComputedType>,
 >(type: Kept, substitution: Substitution, rules: TypeRules): Kept {
-  if (recursionOf(type) !== undefined) {
-    return substitutedUnfolding(type, substitution, rules);
-  }
   return asWritten(
     type,
     mapParts(type, (child) => substitute(child, substitution, rules)),
     substitution,
     rules,
   );
-}
-
-/**
- * The shape a recursive type `match` use stands for (§3.17), with `substitution` applied: what the
- * substituted use stands for, whether the rules find it recursive still or not, a shape.
- */
-function substitutedUnfolding<Kept extends Type>(
-  type: Kept,
-  substitution: Substitution,
-  rules: TypeRules,
-): Kept {
-  const substituted = substitute(type, substitution, rules);
-  const unfolding = unfolded(substituted, rules);
-  return unfolding.kind === type.kind
-    ? (unfolding as Kept)
-    : unreachable('A recursive type match use unfolds to a shape whatever its arguments.');
 }
 
 /** `substituted`, written through the alias `type` was written through, if any, substituted. */

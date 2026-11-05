@@ -16,9 +16,8 @@
  * - A type holding a recursive type (§3.17) is the canonical spelling of its minimized term graph
  *   (recursive-terms.ts), its nodes numbered from it with `~` and their structure spelled as here:
  *   equal unfoldings are one key, so a recursive type, what it unfolds to, and the same structure
- *   written out or through another alias are one type. A type `match` use reached again while it
- *   reduces is its alias and arguments, and so is the shape it unfolds to. A key holding `~` is no
- *   other type's.
+ *   written out or through another alias are one type; a recursive type `match` use closes into
+ *   such a graph too. A key holding `~` is no other type's.
  * - A type computed from types not known yet (`T.Data`, `S["meta"]`, `keyof S`) is its parts' keys:
  *   such a type is opaque, equal only to itself (§3.5). A mapped struct type not reduced yet keys its
  *   own parameter by how deep it binds, so its spelling's name for it never makes two types; it
@@ -41,15 +40,14 @@ import { memo } from '../../../structures/memo.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { MappedParts } from './computed-types.ts';
 import { canonicalKey } from './recursive-terms.ts';
-import {
-  type AliasUse,
-  type AnonymousStructType,
-  type FieldMember,
-  type FunctionType,
-  type ParameterKey,
-  type RecursiveUse,
-  recursionOf,
-  type Type,
+import type {
+  AliasUse,
+  AnonymousStructType,
+  FieldMember,
+  FunctionType,
+  ParameterKey,
+  RecursiveUse,
+  Type,
 } from './type.ts';
 import { holdsRecursion } from './type-children.ts';
 
@@ -70,13 +68,10 @@ export interface TypeKeys {
   /** The key of `type`. Type parameters in `positions` are keyed by their position there. */
   readonly typeKey: (type: Type, positions?: ReadonlyMap<ParameterKey, number>) => string;
   /**
-   * The key of a shape, `typeKey`'s, which starts with `{`, as no other type's does but a
-   * recursive type `match` use's, which a shape it unfolds to shares; or `~[` where the shape holds
-   * a recursive type, as a recursive type's key does.
+   * The key of a shape, `typeKey`'s, which starts with `{`, as no other type's does; or `~[` where
+   * the shape holds a recursive type, as a recursive type's key does.
    */
   readonly shapeKey: (type: AnonymousStructType) => ShapeKey;
-  /** The key of the recursive type `match` use `use`, and of the shape it unfolds to (§3.17). */
-  readonly recursionKey: (use: RecursiveUse) => ShapeKey;
   /** The key of `type`'s own structure, each type it is built from spelled by `partKey`. */
   readonly structureKey: (type: Type, partKey: (part: Type) => string) => string;
   /** The key of `type` with everything it is spelled with (the banner). */
@@ -102,7 +97,7 @@ function typeKey(type: Type, positions?: ReadonlyMap<ParameterKey, number>): str
 /** `type`'s key, `positions` keying type parameters: canonical where it holds recursion. */
 function keyAt(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefined): string {
   if (!holdsRecursion(type)) {
-    return keyOf(type, positions);
+    return structureKeyOf(type, positions, (each) => typeKey(each, positions));
   }
   return canonicalKey(
     type,
@@ -111,21 +106,7 @@ function keyAt(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefi
   );
 }
 
-/**
- * `type`'s key, its parts keyed by `key`: their own keys, or their spelled keys for the kinds whose
- * spelling is their parts' alone (`spelledKindKey`). The shape a recursive type `match` use stands
- * for is that use.
- */
-function keyOf(
-  type: Type,
-  positions: ReadonlyMap<ParameterKey, number> | undefined,
-  key: (each: Type) => string = (each) => typeKey(each, positions),
-): string {
-  const use = recursionOf(type);
-  return use === undefined ? structureKeyOf(type, positions, key) : recursionKeyOf(use, key);
-}
-
-/** `type`'s key by its kind and parts, as `keyOf` says, apart from any use it unfolds. */
+/** `type`'s key by its kind and parts, each part keyed by `key`. */
 function structureKeyOf(
   type: Type,
   positions: ReadonlyMap<ParameterKey, number> | undefined,
@@ -151,8 +132,6 @@ function structureKeyOf(
       return shapeKeyOf(type, key);
     case 'recursive':
       return unreachable('A recursive type is keyed by its graph.');
-    case 'recursiveMatch':
-      return recursionKeyOf(type, key);
     case 'tuple':
       return `(${type.elements.map(key).join(',')})`;
     case 'function':
@@ -222,14 +201,6 @@ function useKeyOf(use: RecursiveUse, key: (type: Type) => string): string {
   return `match:${identityOf(use.declaration)}<${use.arguments.map(key).join(',')}>`;
 }
 
-/**
- * The key of a recursive type `match` use, and of the shape it unfolds to, which no other type's
- * key can be: no field's name holds `~`.
- */
-function recursionKeyOf(use: RecursiveUse, key: (type: Type) => string): ShapeKey {
-  return `{~${identityOf(use.declaration)}<${use.arguments.map(key).join(',')}>}`;
-}
-
 function spelledKey(type: Type): string {
   return memo(spelledKeys, type, () => `${spelledKindKey(type)}${aliasKeyOf(type.alias)}`);
 }
@@ -252,18 +223,14 @@ function spelledKindKey(type: Type): string {
     case 'field':
     case 'keys':
     case 'match':
-    case 'recursiveMatch':
     case 'parameter':
-      return keyOf(type, undefined, key);
+      return structureKeyOf(type, undefined, key);
     case 'error':
       return type.unreduced === undefined
         ? '?'
         : `?${type.unreduced.cause}${useKeyOf(type.unreduced.use, key)}`;
-    case 'anonymous': {
-      const recursion = type.recursion === undefined ? '' : useKeyOf(type.recursion, key);
-      const fields = type.fields.map(spelledFieldKey).join(',');
-      return `{@${identityOf(type.origin)}${recursion}:${fields}}`;
-    }
+    case 'anonymous':
+      return `{@${identityOf(type.origin)}:${type.fields.map(spelledFieldKey).join(',')}}`;
     case 'any': {
       const constraints = type.constraints.map(
         ({ trait, arguments: typeArguments }) => `${identityOf(trait)}<${keys(typeArguments)}>`,
@@ -318,7 +285,6 @@ export const typeKeys: TypeKeys = {
   identityOf,
   typeKey,
   shapeKey: (type) => typeKey(type) as ShapeKey,
-  recursionKey: (use) => recursionKeyOf(use, (type) => typeKey(type)),
   structureKey: (type, partKey) => structureKeyOf(type, undefined, partKey),
   spelledKey,
 };

@@ -13,7 +13,6 @@ import type {
   DeclaredAliasUse,
   FieldMember,
   NominalType,
-  RecursiveUse,
   Type,
   TypeParameterType,
   WrittenThrough,
@@ -77,8 +76,6 @@ export interface MappedType extends WrittenThrough {
   readonly parameter: TypeParameter | RestPattern;
   readonly keys: Type;
   readonly value: Type;
-  /** The type `match` use that reduced to this mapped type while its arguments were opaque. */
-  readonly recursion?: RecursiveUse | undefined;
 }
 
 /**
@@ -94,7 +91,7 @@ export interface MatchType extends WrittenThrough {
 }
 
 /** What a mapped struct type is built from (`MappedType`), reduced or not. */
-export type MappedParts = Omit<MappedType, 'kind' | 'alias' | 'recursion'>;
+export type MappedParts = Omit<MappedType, 'kind' | 'alias'>;
 
 /** A type computed from others, opaque until they are known (§3.5): reduced by TypeRules. */
 export type ComputedType = AssociatedOfType | FieldOfType | KeysType | MappedType | MatchType;
@@ -121,7 +118,8 @@ export function isOpaque(type: Type): type is TypeParameterType | ComputedType {
  * is its structure (equi-recursive): two graphs whose nodes unfold alike are one type, whatever
  * aliases wrote them, so its key is its graph's canonical spelling (type-keys.ts). It stands for
  * what it unfolds to, its node's body (`unfoldRecursive`); no fold or unfold is ever written. Only
- * closing a group of bodies builds one (recursive-types.ts `closeRecursive`).
+ * closing a group of bodies builds one (recursive-types.ts `closeRecursive`): a recursive alias's
+ * group, or the recursive uses of type `match`es a reduction reaches (resolution/type-matches.ts).
  */
 export interface RecursiveType extends WrittenThrough {
   readonly kind: 'recursive';
@@ -146,16 +144,11 @@ export function unfoldRecursive(type: RecursiveType): Type {
 }
 
 /**
- * A use of a type `match` alias reached again while it reduces (§3.17), standing for the shape it
- * reduces to, with itself inside again: one type, known, its identity the alias and its arguments,
- * and the shape it unfolds to carries that identity (`AnonymousStructType.recursion`). Recursive
- * aliases close into graphs instead (`RecursiveType`); these join them once type `match` reductions
- * close through the same constructor (docs/work/proposals/p5-equi-recursive-identity.md, stage 2).
+ * `type`, as a value of it is built and taken apart: what a recursive type unfolds to (§3.17), the
+ * same type by identity; any other type as it is.
  */
-export interface RecursiveMatchType extends WrittenThrough {
-  readonly kind: 'recursiveMatch';
-  readonly declaration: AliasDeclaration;
-  readonly arguments: readonly Type[];
+export function unfolded(type: Type): Type {
+  return type.kind === 'recursive' ? unfoldRecursive(type) : type;
 }
 
 /** Whether `declaration`'s body is a type `match`, whose uses reduce rather than unfold (§3.17). */

@@ -11,8 +11,8 @@ import {
   structFieldOf,
 } from '../checked-field.ts';
 import type { CheckerContext } from '../context.ts';
+import { unfolded } from '../types/computed-types.ts';
 import type { Type } from '../types/type.ts';
-import { unfolded } from '../types/type-rules.ts';
 import { literalType } from '../types/unions.ts';
 import { requiredFields, requiredFieldType } from './constraints.ts';
 import { knownConstraints, structConstraintsOn } from './known-constraints.ts';
@@ -26,7 +26,7 @@ export function fieldOf(
   given: Type,
   name: string,
 ): FoundField | undefined {
-  const type = unfolded(given, checker.typeRules);
+  const type = unfolded(given);
   if (type.kind === 'nominal' || type.kind === 'anonymous') {
     return structFieldOf(checker, type, name);
   }

@@ -66,7 +66,7 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | und
   const fixed = parameters.filter((parameter) => !parameter.isRest).length;
   const hasRest = fixed < parameters.length;
   return (expected) => {
-    const shape = expectedFunction(checker, expected);
+    const shape = expectedFunction(expected);
     return (
       shape !== undefined &&
       (shape.isAsync || !node.isAsync) &&
@@ -85,7 +85,7 @@ export function checkLambda(context: BodyContext, node: Lambda, expected: Type |
   if (checked !== undefined) {
     return checked.type;
   }
-  const shape = expectedFunction(context.checker, expected);
+  const shape = expectedFunction(expected);
   const slots = shape ?? (expectsError(expected) ? errorSlots(node) : undefined);
   return checkLambdaAs(context, node, slots, shape?.result);
 }

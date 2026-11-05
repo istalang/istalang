@@ -12,8 +12,8 @@ import type { Register } from '../../../definition/operands.ts';
 import { codecHelpers, wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
+import { unfolded } from '../../checker/types/computed-types.ts';
 import { isPrimitive, type Type, type UnionType } from '../../checker/types/type.ts';
-import { unfolded } from '../../checker/types/type-rules.ts';
 import { baseOf } from '../../checker/types/union-members.ts';
 import { arrayElement, wellKnownArguments } from '../../checker/types/well-known.ts';
 import { closeCall } from '../closed-calls.ts';
@@ -29,7 +29,7 @@ export class Encoder {
 
   constructor(code: SynthesizedCode, json: Type) {
     this.#code = code;
-    const union = unfolded(json, code.checker.typeRules);
+    const union = unfolded(json);
     this.#json = union.kind === 'union' ? union : unreachable('Json is a union.');
   }
 

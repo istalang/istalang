@@ -85,6 +85,7 @@ import { checkTestingCalls } from './rules/testing-calls.ts';
 import { LabelTargets } from './statements/loops.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
+import { unfolded } from './types/computed-types.ts';
 import { exactFit, type Fit, isExact } from './types/fit.ts';
 import { keysOwner } from './types/key-types.ts';
 import { misfitOf } from './types/misfit.ts';
@@ -95,7 +96,6 @@ import {
   type Type,
   unitType,
 } from './types/type.ts';
-import { unfolded } from './types/type-rules.ts';
 import { useSite } from './use-site.ts';
 
 /**
@@ -199,8 +199,7 @@ export class BodyChecker implements BodyContext {
   }
 
   expression(node: Expression, given?: Type): Type {
-    const { typeRules } = this.checker;
-    const expected = given === undefined ? undefined : unfolded(given, typeRules);
+    const expected = given === undefined ? undefined : unfolded(given);
     if (expected !== undefined) {
       this.#records.expected.set(node, expected);
       if (node.kind === 'StringLiteral') {
@@ -250,7 +249,7 @@ export class BodyChecker implements BodyContext {
   }
 
   #record(node: Expression, value: Type): Type {
-    const type = this.chains.linked(this, node, unfolded(value, this.checker.typeRules));
+    const type = this.chains.linked(this, node, unfolded(value));
     this.#records.types.set(node, type);
     return type;
   }

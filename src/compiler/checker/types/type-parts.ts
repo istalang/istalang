@@ -20,7 +20,6 @@ import {
   type ErrorType,
   type NominalType,
   type ParameterKey,
-  type RecursiveUse,
   type Type,
   type UnionType,
 } from './type.ts';
@@ -163,18 +162,10 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
       case 'keys':
         return rules.keysOf(map(type.of), type.without);
       case 'mapped':
-        return type.recursion === undefined
-          ? rules.mappedType(mappedParts(type, map))
-          : rules.matchType(type.recursion.declaration, type.recursion.arguments.map(map));
+        return rules.mappedType(mappedParts(type, map));
       case 'match':
-      case 'recursiveMatch':
-        // A type `match` use is reduced again, which finds it recursive still or not.
+        // A type `match` use is reduced again, which finds it recursive or not.
         return rules.matchType(type.declaration, type.arguments.map(map));
-      case 'anonymous':
-        // The shape a recursive type `match` use stands for is that use, built again.
-        return type.recursion === undefined
-          ? undefined
-          : rules.matchType(type.recursion.declaration, type.recursion.arguments.map(map));
       default:
         return undefined;
     }
@@ -188,8 +179,7 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
  * replaced by what `map` gives, still of its kind; its alias comes along, as `mapChildren` says.
  * Building one of these takes no rule of the program: only a union and a recursive type's graph
  * normalize members, and only a computed type reduces, which `mapChildren` does. A computed type
- * kept as it is, its parts respelled (`unaliased`), stays of its kind here, and the shape a
- * recursive type `match` use stands for keeps that use, its arguments mapped alike.
+ * kept as it is, its parts respelled (`unaliased`), stays of its kind here.
  */
 export function mapParts<Mapped extends Exclude<Type, UnionType | RecursiveType>>(
   type: Mapped,
@@ -207,13 +197,8 @@ export function mapParts(
     case 'keys':
       return { ...type, of: map(type.of) };
     case 'mapped':
-      return {
-        ...type,
-        ...mappedParts(type, map),
-        recursion: mappedRecursion(type.recursion, map),
-      };
+      return { ...type, ...mappedParts(type, map) };
     case 'match':
-    case 'recursiveMatch':
       return { ...type, arguments: type.arguments.map(map) };
     case 'parameter':
       return type.within === undefined ? type : { ...type, within: map(type.within) };
@@ -224,11 +209,7 @@ export function mapParts(
     case 'nominal':
       return { ...type, arguments: type.arguments.map(map) };
     case 'anonymous':
-      return {
-        ...type,
-        fields: type.fields.map((field) => ({ ...field, type: map(field.type) })),
-        recursion: mappedRecursion(type.recursion, map),
-      };
+      return { ...type, fields: type.fields.map((field) => ({ ...field, type: map(field.type) })) };
     case 'tuple':
       return { ...type, elements: type.elements.map(map) };
     case 'function':
@@ -256,15 +237,6 @@ export function mapParts(
       return unhandled;
     }
   }
-}
-
-function mappedRecursion(
-  recursion: RecursiveUse | undefined,
-  map: (child: Type) => Type,
-): RecursiveUse | undefined {
-  return recursion === undefined
-    ? undefined
-    : { ...recursion, arguments: recursion.arguments.map(map) };
 }
 
 /** A mapped struct type's parts, each type it is built from replaced by what `map` gives. */

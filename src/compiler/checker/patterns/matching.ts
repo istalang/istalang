@@ -42,6 +42,7 @@ import type { Pass, Passes, PassTable } from '../passes.ts';
 import { implicitOperatorCall, preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, nameNodeOf } from '../resolution/named.ts';
 import type { ImplicitRole } from '../resolved-call.ts';
+import { unfolded } from '../types/computed-types.ts';
 import { comparable, fitEqualSides } from '../types/equality.ts';
 import { decidedEquality, isKnown } from '../types/known-literals.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
@@ -53,7 +54,6 @@ import {
   noneType,
   type Type,
 } from '../types/type.ts';
-import { unfolded } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { optionalInner } from '../types/unions.ts';
 import { arrayElement } from '../types/well-known.ts';
@@ -101,8 +101,7 @@ export function checkPattern(
   subject: Type,
   remaining: Type = subject,
 ): WalkedPattern {
-  const rules = context.checker.typeRules;
-  const whole = subjectPart(unfolded(subject, rules), unfolded(remaining, rules));
+  const whole = subjectPart(unfolded(subject), unfolded(remaining));
   const walked = walkPattern(bodyScope(context), testsIn(context), pattern, whole);
   for (const { name, type } of namesBound(walked)) {
     context.variables.declare(name, type);

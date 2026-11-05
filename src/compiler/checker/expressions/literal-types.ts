@@ -14,6 +14,7 @@ import { itemName, itemValue, unparenthesized } from '../../syntax/expressions/r
 import type { NamedType } from '../../syntax/types.ts';
 import type { BodyContext } from '../body-context.ts';
 import { itemField } from '../struct-items.ts';
+import { unfolded } from '../types/computed-types.ts';
 import { builtFrom } from '../types/expected.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
 import {
@@ -23,7 +24,6 @@ import {
   type NominalEntity,
   type Type,
 } from '../types/type.ts';
-import { unfolded } from '../types/type-rules.ts';
 import { literalOrBase, writtenLiteral } from '../types/unions.ts';
 import { knownArguments, type LiteralShape } from './literal-fields.ts';
 
@@ -51,7 +51,7 @@ export function builtThrough(
     return undefined;
   }
   const { declaration } = entity;
-  const target = builtMember(context, node, declaration, builtFrom(context.checker, expected));
+  const target = builtMember(context, node, declaration, builtFrom(expected));
   if (isNominalEntity(entity) && isDeclaredStruct(declaration)) {
     const known = knownArguments(context, node.type, declaration, target);
     return { kind: 'declared', entity, struct: declaration, known };
@@ -84,7 +84,7 @@ export function aliasedShape(
   if (declaration.kind !== 'TypeAliasDeclaration') {
     return undefined;
   }
-  const aliased = unfolded(context.checker.aliasedType(declaration), context.checker.typeRules);
+  const aliased = unfolded(context.checker.aliasedType(declaration));
   return aliased.kind === 'anonymous' ? aliased : undefined;
 }
 

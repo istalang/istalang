@@ -31,7 +31,7 @@ import { structConstraintsOn } from '../traits/known-constraints.ts';
 import { fieldOf } from '../traits/known-fields.ts';
 import { constraintsImply } from '../traits/sendable.ts';
 import { isStructType } from '../traits/struct-keys.ts';
-import { isOpaque } from '../types/computed-types.ts';
+import { isOpaque, unfolded } from '../types/computed-types.ts';
 import { sameType } from '../types/identity.ts';
 import {
   constraintSetText,
@@ -42,7 +42,7 @@ import {
 } from '../types/struct-constraint.ts';
 import { type Substitution, substituteConstraint } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type.ts';
-import { unfolded } from '../types/type-rules.ts';
+
 import { typeText } from '../types/type-text.ts';
 import { literalType } from '../types/unions.ts';
 import type { UseSite } from '../use-site.ts';
@@ -142,7 +142,7 @@ export function structShortfall(
   if (isOpaque(type)) {
     return opaqueShortfall(checker, type, model, meets);
   }
-  const target = unfolded(type, checker.typeRules);
+  const target = unfolded(type);
   if (!isStructType(target)) {
     return `${typeText(type)} is no struct type`;
   }

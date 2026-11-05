@@ -358,14 +358,6 @@ function keyType(spelling: Spelling, given: Type): KeyType {
     case 'literal':
     case 'recursive':
       return spelledKeyType(spelling, type);
-    case 'recursiveMatch':
-      return type.declaration.kind === 'TypeAliasDeclaration'
-        ? {
-            kind: 'named',
-            name: qualifiedNameOf(checker, type.declaration),
-            arguments: type.arguments.map((argument) => keyType(spelling, argument)),
-          }
-        : { kind: 'literal', text: typeText(type) };
     case 'union':
       return unionKey(spelling, type);
     case 'associated':

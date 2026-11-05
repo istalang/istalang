@@ -67,7 +67,6 @@ import type {
   KeysType,
   MappedType,
   MatchType,
-  RecursiveMatchType,
   RecursiveType,
 } from './computed-types.ts';
 import { inFieldOrder } from './field-order.ts';
@@ -181,15 +180,13 @@ export interface FieldMember {
 /**
  * A struct without a name, its shape (§3.1): introduced by a `{…}` type, by a `struct{…}` literal
  * with nothing to take a type from, by a shared struct as the value behind it (§3.18), by a
- * struct as the shape its value converts into, or by a struct pattern's rest (§3.11). Its fields are in name order; `origin` is where it
- * was written, which no relation reads. The shape a recursive type `match` use stands for carries
- * that use (`recursion`, `RecursiveMatchType`), whose identity it has.
+ * struct as the shape its value converts into, or by a struct pattern's rest (§3.11). Its fields
+ * are in name order; `origin` is where it was written, which no relation reads.
  */
 export interface AnonymousStructType extends WrittenThrough {
   readonly kind: 'anonymous';
   readonly origin: StructType | StructLiteral | DeclaredStruct | RestPattern;
   readonly fields: readonly FieldMember[];
-  readonly recursion?: RecursiveUse | undefined;
 }
 
 /** A use of an alias, by its declaration and arguments: a type `match` alias's (§3.17). */
@@ -281,13 +278,13 @@ interface StructCaseConstraint {
 }
 
 /**
- * A use of a type `match` that names no type (§3.17): no case matches its subject, or its
- * reduction reaches the use itself before any struct type holds it, so it would be itself.
+ * A use of a type `match` that names no type (§3.17): no case matches its subject, its reduction
+ * reaches the use itself before any struct type holds it, so it would be itself, or it is
+ * recursive and its values would hold themselves through `field` (§3.1).
  */
-export interface UnreducedUse {
-  readonly use: RecursiveUse;
-  readonly cause: 'unmatched' | 'itself';
-}
+export type UnreducedUse =
+  | { readonly use: RecursiveUse; readonly cause: 'unmatched' | 'itself' }
+  | { readonly use: RecursiveUse; readonly cause: 'holdsItself'; readonly field: string };
 
 /**
  * A type a diagnostic explains. A use of a type `match` naming no type is one, carrying that use
@@ -313,11 +310,6 @@ export interface UnionType extends WrittenThrough {
   readonly members: readonly Type[];
 }
 
-/** The recursive type match use the shape `type` stands for, whose identity it has. */
-export function recursionOf(type: Type): RecursiveUse | undefined {
-  return type.kind === 'anonymous' ? type.recursion : undefined;
-}
-
 /** A type a struct value can have: a declared struct or an anonymous one. */
 export type StructValueType = NominalType | AnonymousStructType;
 
@@ -337,7 +329,6 @@ export type Type =
   | MappedType
   | MatchType
   | RecursiveType
-  | RecursiveMatchType
   | ErrorType;
 
 /** `type` as written through `alias`; the error type stays itself, as a diagnostic explained it. */

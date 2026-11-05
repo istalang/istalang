@@ -90,7 +90,7 @@ The first hypothesis was: since every consumer reads identity through `typeKey`,
 ### Stages
 
 1. **Stage 1:** the graph representation, `closeRecursive` for aliases (single and mutual, generic via re-closing), canonical keys, union flattening and the alias-returning `unionOf`, display labels, the type-table entry by canonical key with alias label, and every deletion above except `MappedType.recursion`.
-2. **Stage 2:** P4's recursive type `match` reductions built through `closeRecursive`, removing `MappedType.recursion` and the `match:` use key where a reduction recurses.
+2. **Stage 2:** P4's recursive type `match` reductions built through `closeRecursive`, removing `MappedType.recursion` and the `match:` use key where a reduction recurses. Done: a recursive use closes with every recursive use its finding reached, the bodies reduced with those uses as unreduced `match` placeholders; the `recursiveMatch` kind, `AnonymousStructType.recursion`, `MappedType.recursion` and `TypeRules.unfold` are gone, `unfolded` moved to `computed-types.ts`, and a use whose values would hold themselves is the error type carrying `holdsItself`. Placeholders are opaque: a type `match` applied to a group's own use inside its bodies (`Wrap<A<D>>` in `A`'s case) stays unreduced in the graph.
 
 The intermediate states don't pass verify, and the work exceeds one fork session (forks stop at 200 turns; resume them with a message). Hence the separate worktree branch.
 

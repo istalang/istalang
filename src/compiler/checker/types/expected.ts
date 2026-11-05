@@ -30,6 +30,7 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { unfolded } from './computed-types.ts';
 import {
   errorType,
   expectsError,
@@ -42,7 +43,6 @@ import {
   type UnionType,
 } from './type.ts';
 import { typeArgumentsFor } from './type-arguments.ts';
-import { type TypeRules, unfolded } from './type-rules.ts';
 import { membersOf, optionalInner } from './unions.ts';
 import { arrayElement, wellKnownArguments } from './well-known.ts';
 
@@ -136,12 +136,12 @@ const builtKinds: ReadonlySet<Expression['kind']> = new Set([
  * as that member: `[1, [2]]` takes `Json`, and `((1, none), 2)` takes `((Int, Int?) | String, Int)`.
  * Unfolding ends, since a guarded alias reaches itself only inside another type (§3.17).
  */
-export function takingUnfolded(accepts: Accepts, rules: TypeRules): Accepts {
+export function takingUnfolded(accepts: Accepts): Accepts {
   const taking: Accepts = (expected, isOpen) => {
     if (accepts(expected, isOpen)) {
       return true;
     }
-    const target = unfolded(expected, rules);
+    const target = unfolded(expected);
     return target.kind === 'union'
       ? target.members.some((member) => taking(member, isOpen))
       : target !== expected && taking(target, isOpen);
@@ -153,30 +153,24 @@ export function takingUnfolded(accepts: Accepts, rules: TypeRules): Accepts {
  * The type a value built where `expected` is expected takes its type from (§2): past `None`, and
  * a recursive type as what it unfolds to (§3.17).
  */
-export function builtFrom(checker: Expecting, expected: Type | undefined): Type | undefined {
-  return expected === undefined
-    ? undefined
-    : unfolded(optionalInner(expected) ?? expected, checker.typeRules);
+export function builtFrom(expected: Type | undefined): Type | undefined {
+  return expected === undefined ? undefined : unfolded(optionalInner(expected) ?? expected);
 }
 
 /** The element types `expected` asks a tuple of `length` elements for. */
 export function expectedTuple(
-  checker: Expecting,
   expected: Type | undefined,
   length: number,
 ): readonly Type[] | undefined {
-  const target = builtFrom(checker, expected);
+  const target = builtFrom(expected);
   return target?.kind === 'tuple' && target.elements.length === length
     ? target.elements
     : undefined;
 }
 
 /** The function type `expected` asks a lambda or a function value for. */
-export function expectedFunction(
-  checker: Expecting,
-  expected: Type | undefined,
-): FunctionType | undefined {
-  const target = builtFrom(checker, expected);
+export function expectedFunction(expected: Type | undefined): FunctionType | undefined {
+  const target = builtFrom(expected);
   return target?.kind === 'function' ? target : undefined;
 }
 
@@ -194,7 +188,7 @@ export function collectionTarget(
   checker: Expecting,
   expected: Type | undefined,
 ): CollectionTarget | undefined {
-  const type = builtFrom(checker, expected);
+  const type = builtFrom(expected);
   if (type === undefined || type.kind !== 'nominal') {
     return undefined;
   }

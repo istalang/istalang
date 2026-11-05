@@ -31,19 +31,18 @@ import { type Entity, typeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration, TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { Checker } from '../check.ts';
-import { unfoldRecursive } from './computed-types.ts';
+import { unfolded, unfoldRecursive } from './computed-types.ts';
 import { sameType } from './identity.ts';
 import { typeOfEntity } from './resolve-type.ts';
 import {
   type AnyType,
   isPrimitive,
   type NominalDeclaration,
-  recursionOf,
   type Type,
   tupleElements,
 } from './type.ts';
 import { type ShapeKey, typeKeys } from './type-keys.ts';
-import { type TypeRules, unfolded } from './type-rules.ts';
+import type { TypeRules } from './type-rules.ts';
 import { absorbingMember, baseOf } from './union-members.ts';
 import { hasMember, optionalInner } from './unions.ts';
 import { arrayElement } from './well-known.ts';
@@ -72,10 +71,6 @@ export type StaticOwner = NominalDeclaration | PrimitiveName | ShapeKey | typeof
 
 /** What static functions on `type` are declared on; undefined for a type that has none. */
 export function staticOwnerOf(type: Type | undefined): StaticOwner | undefined {
-  const use = type === undefined ? undefined : recursionOf(type);
-  if (use !== undefined) {
-    return typeKeys.recursionKey(use);
-  }
   switch (type?.kind) {
     case 'primitive':
       return type.name;
@@ -85,8 +80,6 @@ export function staticOwnerOf(type: Type | undefined): StaticOwner | undefined {
       return typeKeys.shapeKey(type);
     case 'recursive':
       return typeKeys.typeKey(type) as ShapeKey;
-    case 'recursiveMatch':
-      return typeKeys.recursionKey(type);
     case 'union':
       return optionalInner(type) === undefined ? undefined : optionalOwner;
     default:
@@ -264,7 +257,7 @@ export function membersOfType(
   if (own.length > 0) {
     return own;
   }
-  const union = unfolded(type, checker.typeRules);
+  const union = unfolded(type);
   const inside = members.filter((member) => hasMember(union, member));
   if (union.kind === 'union' && inside.length === union.members.length) {
     return inside;
@@ -347,9 +340,7 @@ export function kindMembers(
   pattern: PatternKind,
   members: readonly Type[],
 ): readonly Type[] {
-  return members.filter((member) =>
-    isOfKind(checker, pattern, unfolded(member, checker.typeRules)),
-  );
+  return members.filter((member) => isOfKind(checker, pattern, unfolded(member)));
 }
 
 function isOfKind(

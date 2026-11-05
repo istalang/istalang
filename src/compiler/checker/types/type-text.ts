@@ -21,7 +21,6 @@ import {
   isPrimitive,
   type NominalType,
   type ParameterSlot,
-  recursionOf,
   type Type,
   type TypeParameterType,
   type UnionType,
@@ -85,10 +84,6 @@ export function typeText(given: Type): string {
   if (alias !== undefined) {
     return spellingText(alias);
   }
-  const use = recursionOf(type);
-  if (use !== undefined) {
-    return parameterizedText(use.declaration.name.text, use.arguments);
-  }
   switch (type.kind) {
     case 'primitive':
       return type.name;
@@ -100,8 +95,6 @@ export function typeText(given: Type): string {
       const label = type.graph.labels[type.node];
       return label === undefined ? unlabelledText(type) : spellingText(label);
     }
-    case 'recursiveMatch':
-      return parameterizedText(type.declaration.name.text, type.arguments);
     case 'tuple':
       return `(${type.elements.map(typeText).join(', ')}${type.elements.length === 1 ? ',' : ''})`;
     case 'function': {

@@ -50,7 +50,6 @@ export function typeChildren(type: Type): readonly Type[] {
     case 'mapped':
       return [...type.named.map((field) => field.type), type.keys, type.value];
     case 'match':
-    case 'recursiveMatch':
       return type.arguments;
     case 'recursive':
       return graphParts(type.graph);
@@ -131,7 +130,6 @@ function withListedParts(type: Type, child: () => Type): Type {
   switch (type.kind) {
     case 'nominal':
     case 'match':
-    case 'recursiveMatch':
       return { ...type, arguments: type.arguments.map(child) };
     case 'tuple':
       return { ...type, elements: type.elements.map(child) };

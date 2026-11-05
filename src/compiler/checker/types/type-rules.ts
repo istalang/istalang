@@ -16,7 +16,7 @@
  */
 
 import type { AliasDeclaration } from '../../syntax/declarations.ts';
-import { type MappedParts, type RecursiveMatchType, unfoldRecursive } from './computed-types.ts';
+import type { MappedParts } from './computed-types.ts';
 import type { AnyType, ParameterKey, Type } from './type.ts';
 
 /** The rules of the program building a type that types/ sits below. */
@@ -56,26 +56,6 @@ export interface TypeRules {
    * no case matches.
    */
   readonly matchType: (declaration: AliasDeclaration, typeArguments: readonly Type[]) => Type;
-  /**
-   * The shape the recursive type `match` use `type` stands for (§3.17), the use itself inside it
-   * where it is reached again, carrying the use's identity.
-   */
-  readonly unfold: (type: RecursiveMatchType) => Type;
   /** Whether every key `key` may be names a field of `of`, as a written `S[K]` must (§3.1). */
   readonly isKeyOf: (key: Type, of: Type) => boolean;
-}
-
-/**
- * `type`, as a value of it is built and taken apart: what a recursive type unfolds to (§3.17), the
- * same type by identity; any other type as it is.
- */
-export function unfolded(type: Type, rules: TypeRules): Type {
-  switch (type.kind) {
-    case 'recursive':
-      return unfoldRecursive(type);
-    case 'recursiveMatch':
-      return rules.unfold(type);
-    default:
-      return type;
-  }
 }

@@ -213,7 +213,6 @@ export class Inference {
       case 'mapped':
       case 'match':
       case 'recursive':
-      case 'recursiveMatch':
         // Opaque: what it stands for is known only once its parameters are (§3.5), and inference
         // never goes through it (§3.5, §3.17).
         return (

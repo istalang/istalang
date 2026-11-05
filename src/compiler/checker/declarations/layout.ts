@@ -34,6 +34,7 @@ import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { VariantMember } from '../check.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
+import { unfolded } from '../types/computed-types.ts';
 import { declaredFields } from '../types/declared-fields.ts';
 import { inFieldOrder } from '../types/field-order.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
@@ -46,7 +47,7 @@ import {
   type Type,
 } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
-import { type TypeRules, unfolded } from '../types/type-rules.ts';
+import type { TypeRules } from '../types/type-rules.ts';
 import { type FieldedDeclaration, TypeExpansion } from './type-expansion.ts';
 
 /** Whether two lists of fields name, type and declare their fields alike, in order. */
@@ -104,8 +105,8 @@ export class Layouts {
     if (type.kind === 'anonymous') {
       return type.fields;
     }
-    if (type.kind === 'recursive' || type.kind === 'recursiveMatch') {
-      return this.fieldsOf(unfolded(type, this.#checker.typeRules));
+    if (type.kind === 'recursive') {
+      return this.fieldsOf(unfolded(type));
     }
     if (type.kind !== 'nominal') {
       return undefined;
