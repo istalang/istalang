@@ -89,6 +89,12 @@ describe('totality', () => {
       { numRuns: 300 },
     );
   });
+
+  it('nests a field loop header missing its comma, its value target left out where the key ends', () => {
+    const tree = parseText('fn f(s: S):\n  _ = struct{for field node in ...s: [field]: node}\n');
+    expect(spanViolations(tree, tree.root)).toEqual([]);
+    expect(tree.diagnostics.length).toBeGreaterThan(0);
+  });
 });
 
 describe('hostile nesting', () => {

@@ -11,8 +11,8 @@ import type { Parser } from '../parser.ts';
 
 /**
  * A field loop's header from its `...` on, the targets before `in` parsed: exactly a key, a name or
- * `_`, and a value; more or fewer are reported, and a target left out, or a key that is neither,
- * reads as `_`, so nothing after the parser reports it again.
+ * `_`, and a value; more or fewer are reported, and a target left out, empty where the written
+ * targets end, or a key that is neither, reads as `_`, so nothing after the parser reports it again.
  */
 export function parseFieldHeaderAfter(
   parser: Parser,
@@ -26,7 +26,11 @@ export function parseFieldHeaderAfter(
   if (targets.length !== 2 || key === undefined || value === undefined) {
     parser.report(parserDiagnostics.fieldLoopTargets(parser.textSpanFrom(start)));
   }
-  const missing = { kind: 'WildcardPattern', span } as const;
+  const last = targets.at(-1)?.span;
+  const missing = {
+    kind: 'WildcardPattern',
+    span: last === undefined ? parser.placeholder().span : { ...last, from: last.to },
+  } as const;
   const keyTarget = key ?? missing;
   const isName =
     keyTarget.kind === 'NamePattern' &&
