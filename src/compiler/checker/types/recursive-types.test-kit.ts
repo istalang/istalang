@@ -7,6 +7,9 @@
  *   normalizes: a literal beside its base, `true | false`, `Never`, and an `any Shows` member taking
  *   every primitive and literal whole, which the test rules (`showingRules`) say.
  * - The open slot is the alias's type parameter `T`; substituting it may merge members anew.
+ * - A trait object part (`any Holds<…> & Pairs<…, …>`) holds slots as its traits' arguments, or
+ *   a trait's own `Self`, which the trait object binds, its constraints written in either order:
+ *   they are a set.
  */
 
 import fc from 'fast-check';
@@ -34,11 +37,21 @@ export type Spec =
 /** A member of a union holding no body: a primitive, a literal, `Never`, `any Shows` or `T`. */
 type Leaf = 'Int' | 'String' | 'Bool' | 1 | 'a' | true | false | 'Never' | 'Shows' | 'open';
 
-/** A guarded part: a tuple or a function of slots, or, unguarded in a union, an earlier body. */
+/**
+ * A guarded part: a tuple, a function or a trait object of slots, or, unguarded in a union, an
+ * earlier body.
+ */
 type Part =
   | { readonly kind: 'tuple'; readonly elements: readonly Slot[] }
   | { readonly kind: 'function'; readonly parameter: Slot; readonly result: Slot }
+  | { readonly kind: 'traits'; readonly constraints: readonly TraitPart[] }
   | { readonly kind: 'earlier'; readonly body: number };
+
+/** A trait object's constraint: `Holds` takes one argument, `Pairs` two, either maybe its `Self`. */
+interface TraitPart {
+  readonly trait: 'holds' | 'pairs';
+  readonly arguments: readonly (Slot | { readonly kind: 'self' })[];
+}
 
 /** What a guarded position holds: a body of the group, a primitive, or the open parameter. */
 type Slot =
@@ -54,7 +67,15 @@ const aliases = [0, 1, 2, 3].map(
     }) as unknown as TypeAliasDeclaration,
 );
 export const open = { kind: 'TypeParameter', name: { text: 'T' } } as unknown as TypeParameter;
-const shows = { kind: 'TraitDeclaration', name: { text: 'Shows' } } as unknown as TraitDeclaration;
+const traitNamed = (text: string) =>
+  ({ kind: 'TraitDeclaration', name: { text } }) as unknown as TraitDeclaration;
+const shows = traitNamed('Shows');
+const traits = { holds: traitNamed('Holds'), pairs: traitNamed('Pairs') };
+
+/** The `Self` of the trait named `name`, which a trait object binds. */
+export function selfOf(name: keyof typeof traits): Type {
+  return { kind: 'parameter', declaration: traits[name] };
+}
 
 /** The rules of a program where `any Shows` takes every primitive whole, and so every literal. */
 export const showingRules: TypeRules = {
@@ -84,6 +105,24 @@ function partArbitrary(size: number, index: number): fc.Arbitrary<Part> {
       elements: fc.array(slot, { minLength: 1, maxLength: 2 }),
     }),
     fc.record({ kind: fc.constant('function' as const), parameter: slot, result: slot }),
+    fc.record({
+      kind: fc.constant('traits' as const),
+      constraints: fc
+        .shuffledSubarray(['holds', 'pairs'] as const, { minLength: 1 })
+        .chain((names) =>
+          fc.tuple(
+            ...names.map((trait) =>
+              fc.record({
+                trait: fc.constant(trait),
+                arguments: fc.array(fc.oneof(slot, fc.constant({ kind: 'self' as const })), {
+                  minLength: trait === 'holds' ? 1 : 2,
+                  maxLength: trait === 'holds' ? 1 : 2,
+                }),
+              }),
+            ),
+          ),
+        ),
+    }),
   );
   return index === 0
     ? guarded
@@ -168,6 +207,16 @@ export function bodiesOf(
           isAsync: false,
           parameters: [{ type: slot(each.parameter), reference: false }],
           result: slot(each.result),
+        };
+      case 'traits':
+        return {
+          kind: 'any',
+          constraints: each.constraints.map((constraint) => ({
+            trait: traits[constraint.trait],
+            arguments: constraint.arguments.map((argument) =>
+              argument.kind === 'self' ? selfOf(constraint.trait) : slot(argument),
+            ),
+          })),
         };
       default:
         return { kind: 'parameter', declaration: aliases[each.body] ?? open };
@@ -317,7 +366,17 @@ function sameNode(first: Side, second: Side, inner: ReadonlySet<string>): boolea
       [...y.parameters.map((each) => each.type), y.result],
     );
   }
-  return typeKeys.typeKey(x) === typeKeys.typeKey(y) && x.kind !== 'tuple' && x.kind !== 'function';
+  if (x.kind === 'any' && y.kind === 'any') {
+    return (
+      x.constraints.length === y.constraints.length &&
+      x.constraints.every((constraint) => {
+        const other = y.constraints.find((each) => each.trait === constraint.trait);
+        return other !== undefined && parts(constraint.arguments, other.arguments);
+      })
+    );
+  }
+  const composite = (type: Type) => ['tuple', 'function', 'any'].includes(type.kind);
+  return typeKeys.typeKey(x) === typeKeys.typeKey(y) && !composite(x);
 }
 
 /**
@@ -340,6 +399,16 @@ export function duplicated(specs: readonly Spec[]): readonly Spec[] {
         return { ...each, elements: each.elements.map(slot) };
       case 'function':
         return { ...each, parameter: slot(each.parameter), result: slot(each.result) };
+      case 'traits':
+        return {
+          ...each,
+          constraints: each.constraints.map((constraint) => ({
+            ...constraint,
+            arguments: constraint.arguments.map((argument) =>
+              argument.kind === 'self' ? argument : slot(argument),
+            ),
+          })),
+        };
       default:
         return each;
     }

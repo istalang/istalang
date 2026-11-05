@@ -23,11 +23,12 @@
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { RecursiveGraph, RecursiveType } from './computed-types.ts';
 import { type Slot, TermGraph } from './recursive-terms.ts';
-import type { DeclaredAliasUse, Type } from './type.ts';
+import type { DeclaredAliasUse, ParameterKey, Type } from './type.ts';
 import {
+  boundWithin,
   graphParts,
+  graphPlaceOf,
   holdsRecursion,
-  namesNodeOf,
   typeChildren,
   withTypeChildren,
 } from './type-children.ts';
@@ -203,19 +204,24 @@ export function mapRecursive(
   if ([...mapped].every(([part, replaced]) => part === replaced)) {
     return type;
   }
-  const remapped = (each: Type): Type => {
-    if (each.kind === 'recursive' && each.graph === graph) {
-      return each;
+  const remapped = (each: Type, bound: ReadonlySet<ParameterKey>): Type => {
+    switch (graphPlaceOf(each, graph, bound)) {
+      case 'part':
+        return mapped.get(each) ?? map(each);
+      case 'built':
+        return rebuiltWithin(each, bound);
+      default:
+        return each;
     }
-    const replaced = mapped.get(each);
-    if (replaced !== undefined) {
-      return replaced;
-    }
-    return namesNodeOf(each, graph)
-      ? rebuiltFrom(each, typeChildren(each).map(remapped))
-      : map(each);
   };
-  const bodies = graph.nodes.map((body) => rebuiltFrom(body, typeChildren(body).map(remapped)));
+  const rebuiltWithin = (each: Type, bound: ReadonlySet<ParameterKey>): Type => {
+    const inner = boundWithin(each, bound);
+    return rebuiltFrom(
+      each,
+      typeChildren(each).map((child) => remapped(child, inner)),
+    );
+  };
+  const bodies = graph.nodes.map((body) => rebuiltWithin(body, new Set()));
   const labels = graph.labels.map((label) =>
     label === undefined ? undefined : { ...label, arguments: label.arguments.map(map) },
   );

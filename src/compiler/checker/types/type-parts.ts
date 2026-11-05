@@ -24,7 +24,7 @@ import {
   type Type,
   type UnionType,
 } from './type.ts';
-import { typeChildren } from './type-children.ts';
+import { boundParameters, typeChildren } from './type-children.ts';
 import { typeKeys } from './type-keys.ts';
 import type { TypeRules } from './type-rules.ts';
 import { unionOf, unionOfNormalized } from './unions.ts';
@@ -76,13 +76,8 @@ export function parametersIn(type: Type): readonly ParameterKey[] {
     return [type.declaration];
   }
   const mentioned = new Set(typeChildren(type).flatMap(parametersIn));
-  if (type.kind === 'any') {
-    for (const { trait } of type.constraints) {
-      mentioned.delete(trait);
-    }
-  }
-  if (type.kind === 'mapped') {
-    mentioned.delete(type.parameter);
+  for (const bound of boundParameters(type)) {
+    mentioned.delete(bound);
   }
   return [...mentioned];
 }

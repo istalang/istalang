@@ -103,6 +103,7 @@ type List = { head: Int, tail: List? }
 
 - **Self-reference.** An alias may refer to itself, directly or through other aliases, when each reference stands inside a type built from others:
   - a type argument: `Array<Tree<T>>`, `Map<String, Json>`;
+  - a trait's argument in an `any` type: `kids: any Iterable<Tree>`;
   - a field of a shape;
   - a tuple element;
   - a function type's parameter or result.
@@ -331,7 +332,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
 - **YAML syntax left out:** block scalars `|` and `>` (multi-line templates serve), `null` and `~`, anchors and aliases in source (spreads serve), and unquoted String values.
 - **Where an indented value can't go:** inside brackets; as a body's last line, which is a label; with anything after it, such as a method call after its block.
 - **Indented forms left out:** maps whose keys aren't Strings; nested items on one line (`- - 1`); items at their key's own column, as YAML allows.
-- **Recursion left out:** recursive aliases that aren't regular, and a reference where what it names must be known first (`keyof A`, `A.Data`, inside an `any` type's traits).
+- **Recursion left out:** recursive aliases that aren't regular, and a reference where what it names must be known first (`keyof A`, `A.Data`, `A[K]`).
 - **Patterns left out of parameters:** refutable patterns, which would be overloading by pattern, patterns behind `&`, and patterns as rest parameters.
 
 **Lost.**

@@ -131,8 +131,15 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
   readonly resolvedTypeOf: (node: TypeNode) => Type | undefined;
   /** The type `match`es of aliases and associated types, resolved (§3.17). */
   readonly typeMatches: TypeMatchQueries;
-  /** The type `any` followed by `traits` denotes in `module` (§3.10). */
-  readonly anyTypeOf: (module: ModuleId, traits: readonly TypeNode[]) => Type;
+  /**
+   * The type `any` followed by `traits` denotes in `module` (§3.10), the traits' type arguments
+   * resolved by `argumentType`, as the resolution asking resolves type nodes.
+   */
+  readonly anyTypeOf: (
+    module: ModuleId,
+    traits: readonly TypeNode[],
+    argumentType: (argument: TypeNode) => Type,
+  ) => Type;
   /** A struct declaration's fields, types as declared (not substituted). */
   readonly declaredFieldsOf: (declaration: DeclaredStruct) => readonly FieldMember[];
   /** An enum declaration's variants, types as declared (not substituted). */

@@ -128,10 +128,8 @@ describe('finiteness and regularity rules (§2, §3.1, §3.5)', () => {
   });
 
   it('refuses an alias reached again where it must be known first, guarded or not (5106)', () => {
-    for (const body of ['{ k: keyof A }', '{ f: any Shows<A> }']) {
-      expect(reported(`trait Shows<T>:\n  fn show(self) -> T\ntype A = ${body}`).codes).toContain(
-        checkerDiagnostics.aliasCycle.code,
-      );
+    for (const body of ['{ k: keyof A }', '{ v: A["k"] }', '{ d: A.Data }']) {
+      expect(reported(`type A = ${body}`).codes).toContain(checkerDiagnostics.aliasCycle.code);
     }
   });
 

@@ -13,13 +13,17 @@ import { type Constraint, errorType, type Type } from '../types/type.ts';
 import { resolveAnyConstraints } from './constraints.ts';
 import { objectUnsafety } from './object-safety.ts';
 
-/** The type `any` followed by `traits` denotes in `module`; the error type after a report. */
+/**
+ * The type `any` followed by `traits` denotes in `module`, their type arguments resolved by
+ * `argumentType`; the error type after a report.
+ */
 export function resolveAnyType(
   checker: CheckerContext,
   module: ModuleId,
   traits: readonly TypeNode[],
+  argumentType: (argument: TypeNode) => Type,
 ): Type {
-  const resolved = resolveAnyConstraints(checker, module, traits);
+  const resolved = resolveAnyConstraints(checker, module, traits, argumentType);
   const constraints: Constraint[] = [];
   for (const [index, constraint] of resolved.entries()) {
     const node = traits[index];

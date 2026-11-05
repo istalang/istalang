@@ -80,21 +80,34 @@ export function resolveConstraints(
   });
 }
 
-/** The constraints after `any`, each trait's `Self` its own (§3.10); undefined for one reported. */
+/**
+ * The constraints after `any`, each trait's `Self` its own (§3.10), their type arguments resolved
+ * by `argumentType`; undefined for one reported.
+ */
 export function resolveAnyConstraints(
   checker: CheckerContext,
   module: ModuleId,
   nodes: readonly TypeNode[],
+  argumentType: (argument: TypeNode) => Type,
 ): readonly (Constraint | undefined)[] {
   return nodes.map((node) =>
-    resolveConstraint(checker, module, node, { keyword: 'any', selfOf: parameterType }),
+    resolveConstraint(checker, module, node, {
+      keyword: 'any',
+      selfOf: parameterType,
+      argumentType,
+    }),
   );
 }
 
-/** Where a constraint is written: after which keyword, and what its trait's `Self` stands for. */
+/**
+ * Where a constraint is written: after which keyword, what its trait's `Self` stands for, and how
+ * its written type arguments resolve there: as the checker resolves type nodes, unless a closing
+ * body's resolution (types/resolve-type.ts) gives its own.
+ */
 export interface ConstraintSite {
   readonly keyword: 'is' | 'any';
   readonly selfOf: (trait: TraitDeclaration) => Type;
+  readonly argumentType?: (argument: TypeNode) => Type;
 }
 
 /** The trait `constraint` names, parentheses aside, with its arguments for `Self`; undefined after a report. */
@@ -102,7 +115,11 @@ export function resolveConstraint(
   checker: CheckerContext,
   module: ModuleId,
   constraint: TypeNode,
-  { keyword, selfOf }: ConstraintSite,
+  {
+    keyword,
+    selfOf,
+    argumentType = (argument: TypeNode): Type => checker.resolveType(module, argument),
+  }: ConstraintSite,
 ): Constraint | undefined {
   const node = unparenthesizedType(constraint);
   if (node.kind !== 'NamedType') {
@@ -119,7 +136,7 @@ export function resolveConstraint(
   }
   const trait = entity.declaration;
   const self = selfOf(trait);
-  const written = node.typeArguments.map((argument) => checker.resolveType(module, argument));
+  const written = node.typeArguments.map(argumentType);
   const typeArguments = typeArgumentsFor(checker, module, {
     at: node.span,
     declaration: trait,

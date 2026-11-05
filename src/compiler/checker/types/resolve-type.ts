@@ -97,7 +97,10 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
   FunctionType: (resolution, node) => functionType(resolution, node),
   StructType: (resolution, node) =>
     structWritten(resolution, node, (each) => resolve(resolution, each)),
-  AnyType: ({ checker, module }, node) => checker.anyTypeOf(module, node.traits),
+  AnyType: (resolution, node) =>
+    resolution.checker.anyTypeOf(resolution.module, node.traits, (argument) =>
+      resolve(resolution, argument),
+    ),
   UnionType: (resolution, node) => unionTypeOf(resolution, node),
   LiteralType: (_resolution, node) => writtenLiteral(node.value) ?? errorType,
   MemberType: (resolution, node) =>

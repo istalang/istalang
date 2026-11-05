@@ -4,12 +4,12 @@
  * alias (a placeholder while its group closes) or would resolve the body again (a cycle, reported where aliases resolve).
  *
  * - A reference to an alias is guarded where it stands inside a type built from others: a type
- *   argument, a field of a shape, a tuple element, a function type's parameter or result. It is
- *   unguarded as the whole body, a union's member, an optional's inner type or in parentheses.
- * - It blocks where what it names must be known first, guarded or not: `A.Data`, `A[K]`, `keyof A`,
- *   and inside an `any` type's constraints, which resolve as conformance does. Closing a group
- *   resolves its bodies with each use a placeholder (recursive-bodies.ts), which nothing can be
- *   asked of.
+ *   argument, a trait's argument in an `any` type, a field of a shape, a tuple element, a function
+ *   type's parameter or result. It is unguarded as the whole body, a union's member, an optional's
+ *   inner type or in parentheses.
+ * - It blocks where what it names must be known first, guarded or not: `A.Data`, `A[K]`, `keyof A`.
+ *   Closing a group resolves its bodies with each use a placeholder (recursive-bodies.ts), which
+ *   nothing can be asked of.
  * - An alias is recursive when a chain of references from its body reaches it again, and every
  *   such chain passes a guarded reference and no blocking one. One reached again through unguarded
  *   or blocking references names no type: its resolution is a cycle (5106).
@@ -280,7 +280,7 @@ function typeChildrenOf(node: TypeNode): readonly {
     case 'IndexedType':
       return blocking([node.owner, node.key]);
     case 'AnyType':
-      return blocking(node.traits);
+      return guarded(node.traits);
     case 'LiteralType':
     case 'InferType':
     case 'Missing':

@@ -15,11 +15,20 @@ import {
   duplicated,
   groups,
   open,
+  selfOf,
   showingRules,
 } from './recursive-types.test-kit.ts';
 import { substitute } from './substitution.ts';
-import { boolType, intType, stringType, type Type } from './type.ts';
+import { boolType, intType, type ParameterKey, stringType, type Type } from './type.ts';
 import { typeKeys } from './type-keys.ts';
+
+/** The trait whose `Self` the parameter `self` is. */
+function traitOf(self: Type): ParameterKey {
+  if (self.kind !== 'parameter') {
+    throw new Error('A Self is a parameter.');
+  }
+  return self.declaration;
+}
 
 describe('equi-recursive identity', () => {
   it('keys two closed types alike exactly when their unfoldings are bisimilar', () => {
@@ -63,7 +72,7 @@ describe('equi-recursive identity', () => {
     );
   });
 
-  it('substitutes then closes as it closes then substitutes', () => {
+  it('substitutes then closes as it closes then substitutes, never past a trait object binding Self', () => {
     fc.assert(
       fc.property(
         groups,
@@ -75,7 +84,11 @@ describe('equi-recursive identity', () => {
           if (generic === undefined) {
             throw new Error('A body closed to nothing.');
           }
-          const substitutedAfter = substitute(generic, new Map([[open, given]]), showingRules);
+          const substitution = new Map<ParameterKey, Type>([
+            [open, given],
+            [traitOf(selfOf('holds')), given],
+          ]);
+          const substitutedAfter = substitute(generic, substitution, showingRules);
           const substitutedBefore = closed(bodiesOf(specs, given))[index];
           expect(substitutedBefore === undefined ? '' : typeKeys.typeKey(substitutedBefore)).toBe(
             typeKeys.typeKey(substitutedAfter),

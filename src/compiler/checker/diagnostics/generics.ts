@@ -46,7 +46,7 @@ export const genericTemplates = {
   aliasCycle: {
     code: 5106,
     message: (name: string) =>
-      `The alias '${name}' refers to itself where it would have to be known first: a recursive alias names itself only inside a type built from others (a type argument, a field, a tuple element, a function's parameter or result) (§3.17).`,
+      `The alias '${name}' refers to itself where it would have to be known first: a recursive alias names itself only inside a type built from others (a type argument, a trait's argument in an 'any' type, a field, a tuple element, a function's parameter or result) (§3.17).`,
   },
   irregularAlias: {
     code: 5128,

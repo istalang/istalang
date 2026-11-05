@@ -249,8 +249,12 @@ export class ProgramChecker implements CheckerContext {
     return memberWitnesses(this, type, constraint, member);
   }
 
-  anyTypeOf(module: ModuleId, traits: readonly TypeNode[]): Type {
-    return resolveAnyType(this, module, traits);
+  anyTypeOf(
+    module: ModuleId,
+    traits: readonly TypeNode[],
+    argumentType: (argument: TypeNode) => Type,
+  ): Type {
+    return resolveAnyType(this, module, traits, argumentType);
   }
 
   parametersOf(declaration: FunctionDeclaration): readonly SignatureParameter[] {
