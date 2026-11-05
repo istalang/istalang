@@ -337,9 +337,9 @@ Pass 2 walks the tree again and emits a view node per schema node.
 
 Its rules:
 
-- **Props.** A literal becomes `Prop.Fixed{…}` (or bare `Fixed{…}` inside check calls). An expression becomes `Prop.Computed{eval: fn(sc: Sc): { const struct{data, ctx} = sc; <expr> }}`. If the expression contains `await`, it becomes `forms.awaited(Pending.X, async fn(sc: Sc): { const struct{data, ctx} = sc; <expr> })` instead, which owns a task.
+- **Props.** A literal becomes `Prop.Fixed{…}` (or bare `Fixed{…}` inside check calls). An expression becomes `Prop.Computed{eval: fn({data, ctx}: Sc): <expr>}`. If the expression contains `await`, it becomes `forms.awaited(Pending.X, async fn({data, ctx}: Sc): <expr>)` instead, which owns a task.
 - **Widgets.** The widget and its ui props become one prop: `Prop.Fixed{FieldWidget.Select{placeholder: none}}`. If any ui prop is computed, so is the whole widget value.
-- **Lambdas.** A lambda takes its typed scope `sc: Sc` and destructures it with `const struct{data, ctx, item} = sc` inside a block expression, so pasted expressions read bare names.
+- **Lambdas.** A lambda takes its typed scope `Sc` through a parameter pattern, `fn({data, ctx, item}: Sc)`, so pasted expressions read bare names.
 - **Scopes.** A repeat row, a variant case and a mount each get a wider scope: the outer variables plus the new one. Drawing moves into it through a `ScopedView`, whose `scope` builds it, for example `fn(sc): OrderScope1{data: sc.data, ctx: sc.ctx, item: r1.seen()}`. Inside the wider scope, view nodes are typed by it.
 - **Keys.** Nodes are numbered in tree order: `n1`, `n2`… A key inside a repeat row adds the row's key (`n6@r1`; nested rows `n9@r1@r2`), and inside a mounted def its mount's key (`n4/n2`). Keys are stable within a version.
 - **Checks.**
@@ -796,12 +796,11 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
         widget: Prop.Fixed{LayoutWidget.Section{title: "Order", description: none, collapsible: none, labels: none}},
         checks: [
             forms.later(
-                async fn(sc: OrderScope) -> Future<String?>: {
-                    const struct{data, ctx} = sc
+                async fn({data, ctx}: OrderScope) -> Future<String?>: {
                     if logic.totalQty(data.items) <= 500 or await approvals.ask(ctx.user.id, logic.totalQty(data.items)): none
                     else: `The order was not approved`
                 },
-                fn(sc: OrderScope): { const struct{data, ctx} = sc; `Waiting for approval of a large order` },
+                fn({data, ctx}: OrderScope): `Waiting for approval of a large order`,
             ),
         ],
         children: [
@@ -813,17 +812,17 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 label: Prop.Fixed{"Country"},
                 checks: [
                     forms.answered(),
-                    forms.rule(fn(sc: OrderScope): { const struct{data, ctx} = sc; not logic.isBlocked(data.country) }, fn(sc: OrderScope): { const struct{data, ctx} = sc; forms.t(translations, ctx.user.lang, "We don't ship to ${data.country}", `We don't ship to ${forms.text(data.country)}`, [forms.text(data.country)]) }),
+                    forms.rule(fn({data, ctx}: OrderScope): not logic.isBlocked(data.country), fn({data, ctx}: OrderScope): forms.t(translations, ctx.user.lang, "We don't ship to ${data.country}", `We don't ship to ${forms.text(data.country)}`, [forms.text(data.country)])),
                 ],
                 options: Options.Rows{
-                    from: forms.awaited(Pending.Form, async fn(sc: OrderScope): { const struct{data, ctx} = sc; [for row in await geo.countries(ctx.params.region): Choice{value: (row.id), label: (row.name)}] }),
-                    resolve: forms.awaited(Pending.Form, async fn(sc: OrderScope): { const struct{data, ctx} = sc; (await geo.countries(ctx.params.region)).some(fn c: c.id == data.country) }),
+                    from: forms.awaited(Pending.Form, async fn({data, ctx}: OrderScope): [for row in await geo.countries(ctx.params.region): Choice{value: (row.id), label: (row.name)}]),
+                    resolve: forms.awaited(Pending.Form, async fn({data, ctx}: OrderScope): (await geo.countries(ctx.params.region)).some(fn c: c.id == data.country)),
                 },
             },
             new FieldView<OrderScope, String>{
                 key: "n3",
                 parent: none,
-                when: Prop.Computed{eval: fn(sc: OrderScope): { const struct{data, ctx} = sc; data.country != none }},
+                when: Prop.Computed{eval: fn({data, ctx}: OrderScope): data.country != none},
                 field: m.city->node,
                 hide: m.city,
                 widget: Prop.Fixed{FieldWidget.Select{placeholder: none}},
@@ -832,8 +831,8 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                     forms.answered(),
                 ],
                 options: Options.Rows{
-                    from: forms.awaited(Pending.Node, async fn(sc: OrderScope): { const struct{data, ctx} = sc; [for row in await geo.cities(data.country ?? ""): Choice{value: (row.id), label: (row.name)}] }),
-                    resolve: forms.awaited(Pending.Node, async fn(sc: OrderScope): { const struct{data, ctx} = sc; (await geo.cities(data.country ?? "")).some(fn c: c.id == data.city) }),
+                    from: forms.awaited(Pending.Node, async fn({data, ctx}: OrderScope): [for row in await geo.cities(data.country ?? ""): Choice{value: (row.id), label: (row.name)}]),
+                    resolve: forms.awaited(Pending.Node, async fn({data, ctx}: OrderScope): (await geo.cities(data.country ?? "")).some(fn c: c.id == data.city)),
                 },
             },
             new RepeatView<OrderScope, OrderItemsRow>{
@@ -885,7 +884,7 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 field: none,
                 widget: Prop.Fixed{FieldWidget.Input{placeholder: none}},
                 label: Prop.Fixed{"Total quantity"},
-                value: Prop.Computed{eval: fn(sc: OrderScope): { const struct{data, ctx} = sc; logic.totalQty(data.items) }},
+                value: Prop.Computed{eval: fn({data, ctx}: OrderScope): logic.totalQty(data.items)},
                 checks: [],
             },
             VariantView<OrderScope, OrderPaymentCases>{
@@ -927,10 +926,10 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
             new FieldView<OrderScope, String>{
                 key: "n12",
                 parent: none,
-                when: Prop.Computed{eval: fn(sc: OrderScope): { const struct{data, ctx} = sc; logic.totalQty(data.items) > 100 }},
+                when: Prop.Computed{eval: fn({data, ctx}: OrderScope): logic.totalQty(data.items) > 100},
                 field: m.note->node,
                 hide: m.note,
-                widget: Prop.Computed{eval: fn(sc: OrderScope): { const struct{data, ctx} = sc; FieldWidget.Textarea{rows: (if logic.totalQty(data.items) > 1000: 6 else: 3)} }},
+                widget: Prop.Computed{eval: fn({data, ctx}: OrderScope): FieldWidget.Textarea{rows: (if logic.totalQty(data.items) > 1000: 6 else: 3)}},
                 label: Prop.Fixed{"Delivery note"},
                 checks: [
                     forms.answered(),

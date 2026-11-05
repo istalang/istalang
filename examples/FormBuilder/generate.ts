@@ -580,16 +580,13 @@ class ViewGen {
       : istaString(k);
   }
 
-  /** A lambda over the scope. Destructures the scope in a block expression. */
+  /** A lambda over the scope. Its parameter pattern destructures the scope, so pasted expressions read bare names. */
   lam(sc: Scope, body: string, extra: string[] = [], ret?: string): string {
-    const params = [`sc: ${sc.type}`, ...extra].join(', ');
+    const params = [`{${sc.vars.join(', ')}}: ${sc.type}`, ...extra].join(', ');
     const isAsync = awaits(body);
     const retAnn = ret ? ` -> ${isAsync ? `Future<${ret}>` : ret}` : '';
     const head = isAsync ? `async fn(${params})${retAnn}` : `fn(${params})${retAnn}`;
-    const bind = `const struct{${sc.vars.join(', ')}} = sc`;
-    return body.includes('\n')
-      ? `${head}: {\n    ${bind}\n    ${indent(body, 4)}\n}`
-      : `${head}: { ${bind}; ${body} }`;
+    return body.includes('\n') ? `${head}: {\n    ${indent(body, 4)}\n}` : `${head}: ${body}`;
   }
 
   /** A Template as an expression yielding the text, localized when the form has a translation. */

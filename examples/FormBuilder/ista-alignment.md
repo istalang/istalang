@@ -3,8 +3,8 @@ description: alignment of the FormBuilder prototype with the Istalang specificat
 owner: tech-lead
 status: active
 applies_to: examples/FormBuilder
-last_verified: 2026-11-05
-last_updated: 2026-11-05
+last_verified: 2026-11-06
+last_updated: 2026-11-06
 tags: [form-builder, alignment, specification, compiler]
 ---
 
@@ -23,13 +23,13 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 | 5 | Top-level type aliases, including generic ones (`type OrderData = …`) | spec §8 #5 | **Fixed** |
 | 6 | Constructing a shape through a type alias (`OrderScope1{…}`) | spec §8 #6 | **Fixed** |
 | 7 | Async lambdas and `async fn(Sc) -> T` function types | spec §8 #7 | **Fixed** |
-| 8 | Struct destructuring in lambda parameters (`fn({data, ctx}): …`) | spec §8 #8 | **Rewritten** |
+| 8 | Struct destructuring in lambda parameters (`fn({data, ctx}): …`) | spec §8 #8 | **Fixed** |
 | 9 | Generic traits and `any View<Sc>` over generic structs | spec §8 #9 | **Fixed** |
 | 10 | Async trait methods and structural trait conformance (no `impl` blocks) | spec §8 #10 | **Fixed** |
 | 11 | Widening a struct with a new field (`{ ...sc.ctx, search }`) | spec §8 #11 | **Rewritten** |
 | 12 | Structural `==` and `!=` on structs and computed types | spec §8 #12 | **Fixed** |
 | 13 | Parsing JSON into literal unions and structs (`json.parse<T>`) | spec §8 #13 | **Fixed** |
-| 14 | Recursive form definitions (`CategoryModel` with `List<Group<CategoryModel>>`) | spec §8 #14 | **Needs a language change** |
+| 14 | Recursive form definitions (`CategoryModel` with `List<Group<CategoryModel>>`) | spec §8 #14 | **Fixed** |
 | 15 | Struct constraints (`struct { [_] is FormNode }`) met by anonymous structs | spec §8 #15 | **Fixed** |
 | 16 | Implicit conversion of a `shared struct` (`Hidden<N>`) to `(any Showable)?` | spec §8 #16 | **Fixed** |
 | 17 | Empty struct declarations and values (`struct CategoryParams`) | spec §8 #17 | **Fixed** |
@@ -49,7 +49,7 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 - `order.ista`: **0 errors, 0 warnings**
 - `supplier.ista`: **0 errors, 0 warnings**
 - `order.gen.ista`: **0 errors, 0 warnings** (and passes end-to-end runtime execution)
-- `supplier.gen.ista`: **0 warnings**; the only remaining errors are the `error 5134` diagnostics on the recursive `CategoryModel` definition (entry #14 below).
+- `supplier.gen.ista`: **0 errors, 0 warnings** (a program building the recursive `categoryModel()` and `categoryView(…)` runs)
 
 ---
 
@@ -114,13 +114,13 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
   2. A lambda with an explicit return type annotation writes `async fn(sc: Sc) -> Future<T>: …` (§3.3).
 - **Change:** Updated `Prop.Awaited`, `awaited`, `Check.Later`, `later`, `Options.Search`, and `ScopedView.scope` in `forms.ista` to use `async fn(…) -> …`, and annotated `forms.later`'s check lambda with `-> Future<String?>` (or `-> String?` when synchronous) in `generate.ts` so `if …: none else: "…"` has expected type `String?`.
 
-### 8. Struct patterns as lambda parameters (spec §8 #8) — **Rewritten**
+### 8. Struct patterns as lambda parameters (spec §8 #8) — **Fixed**
 
 - **Assumption:** `fn({data, ctx, item}): item.qty > 0` destructures the scope parameter in the parameter list.
-- **Spec (`docs/spec.md` §3.3, §3.14, §3.15):** Function and lambda parameters are plain identifiers; struct destructuring is supported in `const`/`let` declarations, including anonymous struct patterns `const struct{data, ctx} = sc` (§3.15).
-- **Alternative used:** Updated `generate.ts` (`lam`) to emit:
+- **Spec (`docs/spec.md` §3.3, §3.14, §3.15):** A parameter may be any pattern that can't fail; in a parameter, `{…}` is short for `struct{…}`, and a lambda's pattern takes its type from the expected function type or an annotation.
+- **Change:** `generate.ts` (`lam`) emits:
   ```python
-  fn(sc: OrderScope): { const struct{data, ctx} = sc; <expr> }
+  fn({data, ctx}: OrderScope): <expr>
   ```
 
 ### 9. Generic traits and `any Trait<P>` over generic structs (spec §8 #9) — **Fixed**
@@ -154,20 +154,14 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 - **Spec (`docs/spec.md` §3.5, §9):** The compiler derives `Encodable` and `Decodable` for structs, enums, tuples, literal types, and unions of literals (§9). Generic functions calling `json.parse<T>` or `json.stringify` must constrain `T is Decodable` / `T is Encodable` (§3.5).
 - **Change:** Constrained `setJson<T is Decodable>` and `FieldView.draw<Sc, T is Encodable & Decodable>` in `forms.ista`.
 
-### 14. Recursive types through generic containers (spec §8 #14) — **Needs a language change**
+### 14. Recursive types through generic containers (spec §8 #14) — **Fixed**
 
 - **Assumption:** A local form definition `#category` mounting itself inside a repeat (`struct CategoryModel { name: Field<String>, children: List<Group<CategoryModel>> }`) works with generic `Group<S>` and `List<R>`.
 - **What works after fixing `Group<S>`:**
   - In `forms.ista`, `Group<S>` originally wrote `type Data = { [F in keyof S]: S[F].Data }` and `type Seen = { [F in keyof S]: S[F].Seen }`. Per `docs/spec.md` §3.1 and §3.17, only an alias or associated type whose body is a `type match` may refer to itself; a non-`match` associated type on a recursive struct caused a stack overflow in `substituteMapped`.
   - Wrapping `Group<S>`'s associated types in a `type match` (`type Data = match S: case _: { [F in keyof S]: S[F].Data }` and `type Seen = match S: case _: { [F in keyof S]: S[F].Seen }`) fixes the stack overflow and resolves `Group<CategoryModel>.Data` and `Group<CategoryModel>.Seen` to recursive shapes (§3.17).
-- **What still fails in the compiler:**
-  - `Group<S is struct { [_] is FormNode }>` checks `CategoryModel is struct { [_] is FormNode }`, which checks `List<Group<CategoryModel>> is FormNode` (via `List`'s generic `seen<R is FormNode>`, `read<R is FormNode>`, `load<R is FormNode>`), which in turn checks `Group<CategoryModel> is FormNode` (via `Group`'s generic `seen<S is struct { [_] is FormNode }>`), cycling back to `CategoryModel is struct { [_] is FormNode }`.
-  - Unlike compiler-derived traits (`Sendable`, `Encodable`, `Decodable`), which use a coinductive cycle guard (`src/compiler/checker/types/type-cycle.ts`), user-trait and struct-constraint conformance in `src/compiler/checker/resolution/conformance.ts` is bounded inductively by `maximumDepth` and reports `error 5134: Field 'children: List<CategoryChildrenRow>' doesn't meet FormNode, so CategoryModel doesn't meet struct { [_] is FormNode } (§3.5)`.
-- **Proposed language change:**
-  - **What:** Coinductive trait and struct-constraint conformance for recursive types.
-  - **Spec section:** §3.5 (*Generics — Struct constraints*, *Compiled per instantiation*) and §3.10 (*Traits — Structural conformance*).
-  - **Why the form builder needs it:** A recursive form definition (`#category`) models tree-shaped data (`children: List<Group<CategoryModel>>`) using the same generic `Group` and `List` nodes as non-recursive forms, without generating per-form `FormNode` implementations.
-  - **Smallest form of it:** In §3.5 and §3.10, specify that a recursive type satisfies a trait or struct constraint coinductively when assuming the `(Type, Constraint)` goal holds on the active conformance stack allows all required associated types, fields, and witness functions to be satisfied (matching the existing coinductive rule for `Sendable`, `Encodable`, and `Decodable` in §3.1 and §9). In lowering (`closed-calls.ts`), tie recursive witness cycles by function instance id rather than unrolling an infinite `ResolvedCall.witnesses` tree.
+- **Spec (`docs/spec.md` §3.5):** A recursive struct type meets a struct constraint when its fields do, assuming the struct itself meets it while its fields are checked. So `CategoryModel is struct { [_] is FormNode }`, which reaches itself through `List<Group<CategoryModel>> is FormNode` and `Group<CategoryModel> is FormNode`, holds.
+- **Status:** `supplier.gen.ista` checks with no errors, and a program building `categoryModel()` and `categoryView(…)` runs.
 
 ### 15. Struct constraints satisfied by nested anonymous structs (spec §8 #15) — **Fixed**
 
