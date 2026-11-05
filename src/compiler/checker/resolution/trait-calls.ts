@@ -9,7 +9,7 @@
 import type { CheckerContext } from '../context.ts';
 import { searchSite } from '../use-site.ts';
 import type { Candidate } from './candidates.ts';
-import { witnessesFor } from './conformance.ts';
+import { callWitnessesFor } from './conformance.ts';
 import { membersRequirementOf, traitMetBy } from './union-traits.ts';
 
 /**
@@ -27,7 +27,7 @@ export function metThroughTraits(
       return [candidate];
     }
     const met = traitMetBy(origin.through, origin.on, checker.typeRules);
-    const witness = witnessesFor(site, origin.on, met)?.[origin.member];
+    const witness = callWitnessesFor(site, origin.on, met)?.[origin.member];
     if (witness === undefined) {
       return [];
     }

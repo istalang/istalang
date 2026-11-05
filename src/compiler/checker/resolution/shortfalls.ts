@@ -6,11 +6,12 @@
  *
  * - A required field is met by a struct field of the same name and type, or through a constraint
  *   requiring it too. A required associated type is met by the type's own (§3.1), which meets the
- *   bound; a union meets a trait through its members (union-traits.ts), each with its own.
+ *   bound; a union or an `any` type has none, so it meets such a trait only for calls on its values
+ *   (conformance.ts `callWitnessesFor`).
  * - Only a struct type meets a struct constraint: a struct declaration, not a shared or extern
  *   one, or a shape. Each named entry needs its field, of exactly its type or meeting its
  *   constraints; the others' entry holds for every field the constraint doesn't name. A type known
- *   only per instantiation meets one through its own struct constraints, which must state as much.
+ *   only per instantiation meets one when its own struct constraints imply it (`entailed`).
  */
 
 import type { TypeParameter } from '../../syntax/declarations.ts';
@@ -59,7 +60,8 @@ export function fieldShortfall(
 
 /**
  * The first associated type `constraint`'s trait requires that `type` lacks, or whose bound it
- * doesn't meet, said as it lacks it; a union's members each have their own.
+ * doesn't meet, said as it lacks it. A union has none of its own (§3.1), so it never meets such a
+ * trait as a type; a call on its values runs its members' functions (`callWitnessesFor`).
  */
 export function associatedShortfall(
   checker: CheckerContext,
@@ -67,12 +69,12 @@ export function associatedShortfall(
   constraint: Constraint,
   meets: Meets,
 ): string | undefined {
-  if (type.kind === 'union') {
-    return undefined;
-  }
   const substitution = constraintSubstitution(constraint, type);
   for (const requirement of requiredAssociatedTypes(constraint.trait)) {
     const name = requirement.name.text;
+    if (type.kind === 'union') {
+      return `an associated type '${name}', which a union never has, each member having its own`;
+    }
     const associated = checker.typeRules.associatedType(type, name);
     if (associated.kind === 'error') {
       return `an associated type '${name}'`;
@@ -175,9 +177,10 @@ function ruleShortfall(
 }
 
 /**
- * What a type known only per instantiation lacks to meet `model`, judged by its own struct
- * constraints: each field `model` names must be one they name, meeting its entry, and every field
- * they leave to its others' entry, or name beyond `model`'s, must meet `model`'s others' entry.
+ * What a type known only per instantiation lacks to meet `model`, judged by what its own struct
+ * constraints imply (`knownFields`): each field `model` names must be one they name, with rules
+ * implying its entry's; and, when `model` constrains its other fields, every field they name beyond
+ * `model`'s, and every field they leave to their own others' entries, must meet that rule.
  */
 function opaqueShortfall(
   checker: CheckerContext,
@@ -185,22 +188,19 @@ function opaqueShortfall(
   model: StructConstraintModel,
   meets: Meets,
 ): string | undefined {
-  const own = structConstraintsOn(checker, type);
-  if (own.length === 0) {
+  const known = knownFields(structConstraintsOn(checker, type));
+  if (known === undefined) {
     return 'to be a struct type';
   }
-  const ownNamed = new Set(own.flatMap((each) => each.named.map((entry) => entry.name)));
-  const fieldNamed = (name: string) => ({
-    name,
-    type: checker.typeRules.fieldType(type, literalType(name)),
-  });
+  const field = (name: string) =>
+    `its field '${name}: ${typeText(checker.typeRules.fieldType(type, literalType(name)))}'`;
   for (const entry of model.named) {
-    if (!ownNamed.has(entry.name)) {
+    const rules = known.named.get(entry.name);
+    if (rules === undefined) {
       return `a field '${entry.name}'`;
     }
-    const shortfall = ruleShortfall(checker, fieldNamed(entry.name), entry.rule, meets);
-    if (shortfall !== undefined) {
-      return shortfall;
+    if (!entailed(checker, rules, entry.rule, meets)) {
+      return `${field(entry.name)} to be ${ruleText(entry.rule)}`;
     }
   }
   const { others } = model;
@@ -208,15 +208,42 @@ function opaqueShortfall(
     return undefined;
   }
   const named = new Set(model.named.map((entry) => entry.name));
-  for (const name of [...ownNamed].filter((each) => !named.has(each))) {
-    const shortfall = ruleShortfall(checker, fieldNamed(name), others, meets);
-    if (shortfall !== undefined) {
-      return shortfall;
+  for (const [name, rules] of known.named) {
+    if (!(named.has(name) || entailed(checker, rules, others, meets))) {
+      return `${field(name)} to be ${ruleText(others)}`;
     }
   }
-  const ownOthers = own.flatMap((each) => (each.others === undefined ? [] : [each.others]));
-  const met = ownOthers.some((rule) => entails(checker, rule, others, meets));
-  return met ? undefined : `every other field to be ${ruleText(others)}`;
+  return entailed(checker, known.others, others, meets)
+    ? undefined
+    : `every other field to be ${ruleText(others)}`;
+}
+
+/**
+ * What struct constraints, all met at once, say of a struct's fields: the rules each field one of
+ * them names must meet, its entries' and the others' entries of those not naming it; and the rules
+ * every field none of them names must meet, their others' entries, none for a field left open.
+ */
+interface KnownFields {
+  readonly named: ReadonlyMap<string, readonly EntryRule[]>;
+  readonly others: readonly EntryRule[];
+}
+
+/** What `models` say of a struct's fields; undefined for none, which says it is no struct at all. */
+function knownFields(models: readonly StructConstraintModel[]): KnownFields | undefined {
+  if (models.length === 0) {
+    return undefined;
+  }
+  const names = new Set(models.flatMap((model) => model.named.map((entry) => entry.name)));
+  const named = new Map(
+    [...names].map((name) => [
+      name,
+      models.flatMap((model) => {
+        const rule = model.named.find((entry) => entry.name === name)?.rule ?? model.others;
+        return rule === undefined ? [] : [rule];
+      }),
+    ]),
+  );
+  return { named, others: models.flatMap((model) => model.others ?? []) };
 }
 
 /** What an entry's rule asks, as a message says it. */
@@ -225,32 +252,69 @@ function ruleText(rule: EntryRule): string {
 }
 
 /**
- * Whether every field meeting `given` meets `needed` too: an exact type meeting it, or a
- * constraint set asking at least as much; a nested struct constraint is entailed only by an exact
- * type meeting it.
+ * Whether every field meeting all of `given` meets `needed` too: an exact type among them decides
+ * it, as that type meets `needed` or not; otherwise `needed` can't ask an exact type, each trait it
+ * asks is one they ask (traits have no supertraits), and each struct constraint it asks is implied
+ * by theirs, all met at once.
  */
-function entails(
+function entailed(
   checker: CheckerContext,
-  given: EntryRule,
+  given: readonly EntryRule[],
   needed: EntryRule,
   meets: Meets,
 ): boolean {
-  if (given.kind === 'type') {
-    return ruleShortfall(checker, { name: '_', type: given.type }, needed, meets) === undefined;
+  const exact = given.find((rule) => rule.kind === 'type');
+  if (exact !== undefined) {
+    return ruleShortfall(checker, { name: '_', type: exact.type }, needed, meets) === undefined;
   }
-  if (needed.kind === 'type' || needed.structs.length > 0) {
+  if (needed.kind === 'type') {
     return false;
   }
-  return needed.traits.every((trait) =>
-    given.traits.some(
-      (each) =>
-        each.trait === trait.trait &&
-        each.arguments.length === trait.arguments.length &&
-        each.arguments.every((argument, index) => {
-          const other = trait.arguments[index];
-          return other !== undefined && sameType(argument, other);
-        }),
-    ),
+  const sets = given.flatMap((rule) => (rule.kind === 'meets' ? [rule] : []));
+  const traits = sets.flatMap((set) => set.traits);
+  const structs = sets.flatMap((set) => set.structs);
+  return (
+    needed.traits.every((trait) => traits.some((each) => sameConstraint(each, trait))) &&
+    needed.structs.every((struct) => structEntailed(checker, structs, struct, meets))
+  );
+}
+
+/** Whether every struct meeting all of `given` meets `needed`. */
+function structEntailed(
+  checker: CheckerContext,
+  given: readonly StructConstraintModel[],
+  needed: StructConstraintModel,
+  meets: Meets,
+): boolean {
+  const known = knownFields(given);
+  if (known === undefined) {
+    return false;
+  }
+  const namedMet = needed.named.every((entry) => {
+    const rules = known.named.get(entry.name);
+    return rules !== undefined && entailed(checker, rules, entry.rule, meets);
+  });
+  const { others } = needed;
+  if (!namedMet || others === undefined) {
+    return namedMet;
+  }
+  const named = new Set(needed.named.map((entry) => entry.name));
+  return (
+    [...known.named].every(
+      ([name, rules]) => named.has(name) || entailed(checker, rules, others, meets),
+    ) && entailed(checker, known.others, others, meets)
+  );
+}
+
+/** Whether two trait constraints are one: the same trait, with the same arguments. */
+function sameConstraint(one: Constraint, other: Constraint): boolean {
+  return (
+    one.trait === other.trait &&
+    one.arguments.length === other.arguments.length &&
+    one.arguments.every((argument, index) => {
+      const each = other.arguments[index];
+      return each !== undefined && sameType(argument, each);
+    })
   );
 }
 

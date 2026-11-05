@@ -47,25 +47,13 @@ import {
   meetsStructConstraints,
 } from './shortfalls.ts';
 import { type MembersMeeting, membersCall, membersShortfall } from './union-traits.ts';
+import { type Failure, isFailure, maximumDepth, type WitnessOutcome } from './witness-outcomes.ts';
 
 /** A chosen function, complete: its type arguments, and the witnesses of its constraints. */
 export interface Instantiation {
   readonly typeArguments: readonly Type[];
   readonly substitution: Substitution;
   readonly witnesses: Witnesses;
-}
-
-/** How deeply witness searches nest before one counts as endless. */
-const maximumDepth = 16;
-
-/**
- * Why a search failed, after reporting it at its use site: `endless` when a witness search reached
- * the depth bound, which every level up reports as such, and `failed` for any other cause.
- */
-type Failure = 'failed' | 'endless';
-
-function isFailure<Found>(outcome: Found | Failure): outcome is Failure {
-  return outcome === 'failed' || outcome === 'endless';
 }
 
 /**
@@ -152,6 +140,21 @@ export function witnessesFor(
   return isFailure(witnesses) ? undefined : witnesses;
 }
 
+/**
+ * The witnesses a call through `constraint`'s trait on a value of `type`, a union, runs (§6): its
+ * required functions, through its members or declared for it whole. A union has no associated type
+ * (§3.1), each member its own, which such a call never reads of the union itself. Undefined after
+ * reporting at `site` why it can't be called so.
+ */
+export function callWitnessesFor(
+  site: UseSite,
+  type: Type,
+  constraint: Constraint,
+): readonly ResolvedCall[] | undefined {
+  const witnesses = conform({ site, type, constraint, onValues: true }, 0);
+  return isFailure(witnesses) ? undefined : witnesses;
+}
+
 /** What searching for a constraint's witnesses found, distinguishing an undeclared function from a failure. */
 export type ConformanceOutcome =
   | { readonly kind: 'met'; readonly witnesses: readonly ResolvedCall[] }
@@ -198,18 +201,24 @@ function conform(
   const missing =
     derivation?.lacking(site, type) ??
     fieldShortfall(checker, type, constraint) ??
-    associatedShortfall(checker, type, constraint, silentMeets(site, depth));
+    (meeting.onValues === true
+      ? undefined
+      : associatedShortfall(checker, type, constraint, silentMeets(site, depth)));
   if (missing !== undefined) {
     return lacks(meeting, missing);
   }
   return functionWitnesses(meeting, depth, unmet ?? undeclaredWitness(meeting, derivation, depth));
 }
 
-/** A constraint being met by a type at a use site, for reporting why it isn't. */
+/**
+ * A constraint being met by a type at a use site, for reporting why it isn't; `onValues` when only
+ * calls on its values need it met, as by a union's members (`callWitnessesFor`).
+ */
 interface Meeting {
   readonly site: UseSite;
   readonly type: Type;
   readonly constraint: Constraint;
+  readonly onValues?: boolean;
 }
 
 /** Whether a type meets a constraint, searched `depth` deep, reporting nothing. */
@@ -332,19 +341,6 @@ function functionWitnesses(
   }
   return witnesses;
 }
-
-/**
- * What searching for a single required function's witness found: the call, nothing declared
- * (`none`), several candidates tying (`ambiguous`), a declared function giving another result
- * (`wrongResult`), or a declared function whose own instantiation failed (`failed` / `endless`).
- */
-type WitnessOutcome =
-  | { readonly kind: 'call'; readonly call: ResolvedCall }
-  | { readonly kind: 'none' }
-  | { readonly kind: 'ambiguous' }
-  | { readonly kind: 'wrongResult'; readonly required: Type; readonly given: Type }
-  | { readonly kind: 'failed' }
-  | { readonly kind: 'endless' };
 
 /** A function a trait requires, mapped for the type that must meet it. */
 interface RequiredFunction {

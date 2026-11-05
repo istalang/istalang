@@ -4,9 +4,10 @@
  * fields and associated types. One home for these, since each answer of a computed type is read
  * from what the type it is computed from meets.
  *
- * - `T.Data` (§3.1) meets the bound its trait's requirement states (`type Data is C`), its
- *   requirement found among what `T` meets; on a known type it is that type's own associated type,
- *   an alias substituted for the type's arguments. Inside a trait, `Self` meets the trait itself.
+ * - `T.Data` (§3.1) is one type, meeting the bound of every requirement of `Data` among what `T`
+ *   meets (`type Data is C`); on a known type it is that type's own associated type, an alias
+ *   substituted for the type's arguments. Inside a trait, `Self` meets the trait itself. A union or
+ *   an `any` type has none: only a type's own declaration declares one.
  * - `S["meta"]` (§3.5) meets what the entries of `S`'s struct constraints ask of that field; on a
  *   known struct it is the field's type, and an entry asking an exact type gives that type.
  * - A field of a type is a struct's, or, on a type known only per instantiation, one a constraint's
@@ -73,7 +74,7 @@ export function knownConstraints(checker: CheckerContext, type: Type): readonly 
         ? checker.constraintsOf(type.declaration)
         : [];
     case 'associated':
-      return boundsOf(checker, type)?.traits ?? [];
+      return boundsOf(checker, type).traits;
     case 'field':
       return entryRules(checker, type).flatMap((rule) =>
         rule.kind === 'meets'
@@ -96,7 +97,7 @@ export function structConstraintsOn(
         ? checker.structConstraintsOf(type.declaration)
         : [];
     case 'associated':
-      return boundsOf(checker, type)?.structs ?? [];
+      return boundsOf(checker, type).structs;
     case 'field':
       return entryRules(checker, type).flatMap((rule) =>
         rule.kind === 'meets' ? rule.structs : [],
@@ -261,23 +262,20 @@ interface DeclaringConstraint {
 }
 
 /**
- * The requirement of an associated type `name` among the constraints `of` meets; inside a trait,
- * `Self` meets the trait itself, with its own parameters.
+ * Every requirement of an associated type `name` among the constraints `of` meets: `of.name` is
+ * one type, meeting each one's bound. Inside a trait, `Self` meets the trait itself, with its own
+ * parameters.
  */
-function requirementDeclaring(
+function requirementsDeclaring(
   checker: CheckerContext,
   of: Type,
   name: string,
-): DeclaringConstraint | undefined {
-  for (const constraint of constraintsDeclaring(checker, of)) {
-    const requirement = requiredAssociatedTypes(constraint.trait).find(
-      (each) => each.name.text === name,
-    );
-    if (requirement !== undefined) {
-      return { constraint, requirement };
-    }
-  }
-  return undefined;
+): readonly DeclaringConstraint[] {
+  return constraintsDeclaring(checker, of).flatMap((constraint) =>
+    requiredAssociatedTypes(constraint.trait)
+      .filter((each) => each.name.text === name)
+      .map((requirement) => ({ constraint, requirement })),
+  );
 }
 
 /** The constraints `of` meets, as its associated types are found: inside a trait, `Self` meets it. */
@@ -293,18 +291,21 @@ function selfConstraint(trait: Constraint['trait']): Constraint {
   return { trait, arguments: parameters.map(parameterType) };
 }
 
-/** The bounds `type`'s requirement states, as `type` meets them. */
+/** The bounds every requirement of `type` states, as `type` meets them all. */
 function boundsOf(checker: CheckerContext, type: Extract<Type, { kind: 'associated' }>) {
-  const declaring = requirementDeclaring(checker, type.of, type.name);
-  if (declaring === undefined) {
-    return;
-  }
-  const { constraint, requirement } = declaring;
-  const substitution = constraintSubstitution(constraint, type.of);
-  const { traits, structs } = checker.associatedBoundsOf(requirement);
   const rules = checker.typeRules;
+  const bounds = requirementsDeclaring(checker, type.of, type.name).map(
+    ({ constraint, requirement }) => {
+      const substitution = constraintSubstitution(constraint, type.of);
+      const { traits, structs } = checker.associatedBoundsOf(requirement);
+      return {
+        traits: traits.map((trait) => substituteConstraint(trait, substitution, rules)),
+        structs: structs.map((struct) => substituteStructConstraint(struct, substitution, rules)),
+      };
+    },
+  );
   return {
-    traits: traits.map((trait) => substituteConstraint(trait, substitution, rules)),
-    structs: structs.map((struct) => substituteStructConstraint(struct, substitution, rules)),
+    traits: bounds.flatMap((bound) => bound.traits),
+    structs: bounds.flatMap((bound) => bound.structs),
   };
 }
