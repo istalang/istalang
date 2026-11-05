@@ -95,7 +95,7 @@ type FormOrNone = DerivedForm | { readonly kind: 'none'; readonly reason: string
 
 export class JsonForms implements JsonCodecs {
   readonly #seams: JsonFormSeams;
-  /** Each type's form, by its key. */
+  /** Each type's form, by the spelled key of the type through no alias (types/type-keys.ts). */
   readonly #forms: EntryTable<CheckerNote, string, FormOrNone, Type>;
   /** The derived codecs being decided, by direction, which count as found meanwhile. */
   readonly #deciding: Readonly<Record<JsonDirection, TypeCycle>>;
@@ -104,7 +104,7 @@ export class JsonForms implements JsonCodecs {
     this.#seams = seams;
     this.#forms = seams.checker.entries.table({
       name: 'json forms',
-      compute: (_key, type) => this.#form(unaliased(type)),
+      compute: (_key, type) => this.#form(type),
     });
     const { typeKeys } = seams.checker;
     this.#deciding = { write: new TypeCycle(typeKeys), read: new TypeCycle(typeKeys) };
@@ -118,8 +118,10 @@ export class JsonForms implements JsonCodecs {
     return form;
   }
 
+  /** `type`'s form, kept by the spelling it is computed from: `type`'s, through no alias. */
   #formOf(type: Type): FormOrNone {
-    return this.#forms.get(this.#seams.checker.typeKeys.typeKey(type), type);
+    const unspelled = unaliased(type);
+    return this.#forms.get(this.#seams.checker.typeKeys.spelledKey(unspelled), unspelled);
   }
 
   derivedOf(site: UseSite, type: Type, direction: JsonDirection): DerivedCodec {

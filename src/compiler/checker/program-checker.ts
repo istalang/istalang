@@ -159,7 +159,7 @@ export class ProgramChecker implements CheckerContext {
     });
     this.#disposals = entries.table({
       name: 'disposals',
-      compute: (_key, type) => disposalOf(this, unaliased(type)),
+      compute: (_key, type) => disposalOf(this, type),
       equal: (first, second) =>
         first === second || (first.kind !== 'function' && first.kind === second.kind),
     });
@@ -345,7 +345,8 @@ export class ProgramChecker implements CheckerContext {
   }
 
   disposalOf(type: NominalType): Disposal {
-    return this.#disposals.get(this.typeKeys.typeKey(type), type);
+    const unspelled = unaliased(type);
+    return this.#disposals.get(this.typeKeys.spelledKey(unspelled), unspelled);
   }
 
   declaredFieldsOf(declaration: DeclaredStruct): readonly FieldMember[] {

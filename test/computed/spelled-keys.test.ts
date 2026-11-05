@@ -10,7 +10,7 @@
 import { describe, expect, it } from 'vitest';
 import { checkedApart } from '../../src/compiler/checker/check.test-kit.ts';
 import { typeKeys } from '../../src/compiler/checker/types/type-keys.ts';
-import { sameTypeSpelled } from '../../src/compiler/checker/types/type-parts.ts';
+import { sameTypeSpelled, unaliased } from '../../src/compiler/checker/types/type-parts.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations.ts';
 import { resolveWrittenTypes } from './computed.test-kit.ts';
 
@@ -112,4 +112,18 @@ describe('a spelled key', () => {
       );
     },
   );
+});
+
+describe('a result kept for a type, computed from it as spelled', () => {
+  it('answers each spelling with its own, as a JSON form does', () => {
+    const { checker, types } = resolveWrittenTypes([
+      'Array<{ x: Int }>',
+      '{ x: Int }',
+      '{ x: Int }',
+    ]);
+    const [, one, other] = types;
+    for (const type of [one, other]) {
+      expect(type && sameTypeSpelled(checker.json.formOf(type).type, unaliased(type))).toBe(true);
+    }
+  });
 });
