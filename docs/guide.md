@@ -110,6 +110,11 @@ const o = Order{id: "o1", items: [struct{sku: "a", qty: 2}]}
 const o2 = Order{...o, retries: 5}              # updated copy; o is untouched
 const id = "o2"
 const o3 = Order{id, items: []}                 # id is short for id: id
+const o4 = Order:                               # an indented value: one entry per line
+    id: "o4"
+    items:
+        - sku: "a"                              # an item; its keys align
+          qty: 2
 
 enum Decision:
     Approved { by: String }
@@ -117,6 +122,7 @@ enum Decision:
     Expired
 ```
 
+- **Indented values.** After a `const`/`let`/assignment `=`, `return`, an entry's `:` or an item's `-`, a line ending there (or in `T:`, which names the type) opens a value on the deeper lines below: `key: value` entries build a struct or a `Map<String, V>`, `- value` items an array, chosen by the expected type. Nowhere else: `if c:`, `fn(x):` and the other headers keep statement bodies, and inside brackets an argument or element is written `T{…}`.
 - **Empty structs:** declared `struct Marker` (or `struct Marker {}`); constructed bare as `Marker` (`Marker{}` in an expression is a compile error).
 - **Optionals (`T?`):** `T | None`. Match with `case None:` then `case v:` (which narrows `v` to `T`), chain with `user?.name`, `a?->b`, `f?.(x)`, `xs?.[i]`, or fallback with `name ?? "anon"`.
 - **Result & Error:** `Result<T, E = Error>` has variants `Ok{value: T}` and `Err{error: E}`. `Error` requires **both** `message: String` and `code: String` (`trace: String = _trace()` is defaulted): `Err{Error{message: "unanswered", code: "unanswered"}}`.
@@ -153,6 +159,7 @@ fn Duration.zero() -> Duration: …                 # static function, called Du
 async fn fetch(id: String) -> Future<User>: …     # may await; inside it, return a User
 ```
 
+- **Parameter patterns.** A parameter may be a pattern that can't fail: `fn norm(Point{x, y}) -> Float`, `fn area(struct{w, h}: Rect)`, `fn sum((a, b): (Int, Int))`, `ps.map(fn({x, y}): x + y)` (`{…}` is short for `struct{…}` there). A pattern naming its type takes no annotation; a lambda's may take its type from the expected function type.
 - **Overloading.** Functions overload by parameter types and arity, never by return type.
 - **References (`&T`).** `&` is implicit only on a method's receiver (`s.push(x)`). Every other `&T` argument must be written `&x` at the call site, including when forwarding a `&T` parameter (`helper(&out)`). References cannot be stored in variables or fields, captured by closures, or returned.
 
@@ -190,7 +197,7 @@ fn sum<T is Monoid>(xs: Array<T>) -> T:
 - **Struct constraints:** `S is struct { title: String, [_] is FormNode }` (met by nominal `struct`s and anonymous shapes, not `shared` or `extern` structs).
 - **Mapped struct types:** `{ [F in keyof S]: S[F].Data }` (a structural shape with one field per key of `S`; named fields alongside `[F in …]` override/skip those keys).
 - **Field loops & comprehensions:** `for f, node in ...s:` (or `...*s` on a shared struct) checks and runs once per field in name order; `[for f, v in ...s: …]` builds an array; `struct{id, for f, v in ...s: [f]: g(v)}` builds a struct field by field.
-- **`keyof S`, `s[k]`, and `type match`:** `keyof S` is the union of `S`'s field names as string literal types; `S[K]` is the field type (or union of field types), and `s[k]` reads/writes it. `type Out<D> = match D: case Field<infer T>: T case _: D` computes a type by pattern matching.
+- **`keyof S`, `s[k]`, and `type match`:** `keyof S` is the union of `S`'s field names as string literal types; `S[K]` is the field type (or union of field types), and `s[k]` reads/writes it. `type Out<D> = match D:` computes a type by pattern matching, its cases one per line below it (`case Field<infer T>: T`, then `case _: D`).
 
 ```python
 trait FormNode:
@@ -306,6 +313,7 @@ import * as time from 'time'                      # a standard-library module
 import helper from './helper'                     # relative to this file
 ```
 
+- **Import lists and renames.** Bare names stay on one line, `import a, b as bee from 'x'`; a longer list goes in parentheses and may break one name per line: `import (approve, decide as decidePurchase) from 'purchase/approve'`. Only an alias is in scope, so `import f as add` clashes with the prelude's `add`.
 - **Prelude (no import needed):** `Int`, `Float`, `Bool`, `String`, `None`, `Unit`, `Never`, `Optional`, `Result`/`Ok`/`Err`, `Error`, `Step`, `Range`, `Array`, `Map`, `Slot`, `Future`, `WeakRef`, `Instance`, `Shared`, `Waypoint`, `panic`, and built-in traits (`Sendable`, `Disposable`, `Iterable`, `Container`, `Indexable`, `IndexAssignable`, `Convertible`, `Default`, `Stringable`, `Parsable`, `Comparable`, arithmetic/bitwise traits).
 - **Standard library (must be imported):**
   - `'inbox'`: `Inbox`, `Revertible`
@@ -313,6 +321,7 @@ import helper from './helper'                     # relative to this file
   - `'json'`: `Json`, `Encodable`, `Decodable`, `parse<T>(s) -> Result<T>`, `stringify(v)`, `encode`, `decode`, `encodeText`, `decodeText`, `JsonName`, `JsonSkip`, `JsonBigInt`
   - `'regex'`: `Regex{pattern}`, `Regex.parse(s)`, `Match`, `test`, `find`, `findAll`, `replace`, `replaceAll`, `split`, `escape`
   - `'time'`, `'math'`, `'decimal'`, `'crypto'`, `'random'`, `'log'`, `'runtime'`, `'collections'` (`WeakMap`), `'futures'`, `'rpc'`, `'fanout'`, `'testing'`
+- **`Json`** is the recursive union `None | Bool | Int | Float | String | Array<Json> | Map<String, Json>`: write JSON of any depth as plain values (`const j: Json = ["a": 1, "b": [true, none]]`, or as an indented value), and take it apart with type patterns (`case Map<String, Json> as fields`, `case Int as n`). `[]` against it is the array, `[:]` the map.
 - **JSON codecs:** Derived automatically for structs, shapes, enums (tagged by `"type"`), tuples, literal types, and **unions of literals** (`"a" | "b"`). General non-literal unions (other than `T?`) do not derive `Encodable`/`Decodable`. Generic code calling `json.parse<T>` or `json.stringify` must constrain `T is Decodable` / `T is Encodable`.
 - **CLI:** `ista check`, `ista fmt`, `ista run <entry> [--store <dir>] [--resume <id>] [--host <js>]`, `ista test`.
 
@@ -338,7 +347,9 @@ Only `*.test.ista` files may import `'testing'` (`Suite`, `Test`, `test`, `group
 
 **Syntax & literals**
 - **Braces in expressions are blocks, never object literals (unlike JS/TS).** Write `struct{a: 1}` for an anonymous struct literal and `struct{for k, v in ...s: [k]: v}` for a struct comprehension. In type positions, `{ a: Int }` and `struct { a: Int }` are identical. A one-line block needs `;` (`if x: { a(); b() }`); `if x: a(); b()` is a compile error.
-- **No parameter destructuring (unlike JS/TS).** Parameters are plain names (`fn({a, b})` is a syntax error). Destructure inside the body: `fn(sc): { const struct{data, ctx} = sc; … }` or `const a, b = pair`.
+- **`,` separates every list's items; `;` only statements.** `{ sku: String, qty: Int }`, `enum Color { Red, Green, Blue }`, `trait Shape { fn area(self: Self) -> Float, type Measure }`; `;` between items, or `,` between statements, is a compile error (`a, b = (b, a)` is one tuple assignment).
+- **A line break separates a broken list's items** where an item can end and the next line can start one, so `[` / `(1, "a")` / `(2, "b")` / `]` on four lines is two tuples, not a call. A line starting with a binary operator, `.`, `?.`, `->`, or `-`/`*` followed by a space continues the item; `-1`, `*x` and `&x` glued to their operand start one. `,` at a line's end or start still separates.
+- **A parameter pattern can't fail and has no name.** `fn f(Ok{value})` is an error (use `match`). A destructured parameter is passed only by position, unless named with `as` (`fn length(Point{x, y} as self)` is a method). No patterns on `&` or rest parameters, externs, trait requirements, function types, or the paren-less `fn x: …`.
 - **Single-field positional construction:** `Ok{v}` means `Ok{v: v}` (field shorthand for a field named `v`), **never** the variable `v` passed to `Ok.value`. Wrap a variable in parentheses to pass it positionally: `Ok{(v)}`, or write `Ok{value: v}`. Patterns never take positional fields: `case Ok{value as v}`.
 - **Struct spread does not add new fields (unlike TS `{ ...ctx, search }`).** `Req{...r, a: 2}` and `struct{...r, a: 2}` only override existing fields of `r`'s own type. To build a wider shape with an extra field, use a struct comprehension: `struct{search, for k, v in ...ctx: [k]: v}`.
 - **Template interpolation of optionals:** `${x}` and `String(x)` require `x is Stringable`. `None` is not `Stringable`, so `x: T?` fails to interpolate directly; write `${x ?? ""}` or convert through a helper taking `T?`.
@@ -351,7 +362,8 @@ Only `*.test.ista` files may import `'testing'` (`Suite`, `Test`, `test`, `group
 - **Generic variant literals as call arguments:** In `min(Prop.Fixed{1})` where `Prop<Sc, T>.Fixed` does not mention `Sc`, qualified `Prop.Fixed{1}` is checked before `min` is chosen and fails with `Can't infer 'Sc'`. Write the bare variant `min(Fixed{1})` (which defers to the parameter's expected type) or give explicit type arguments `Prop.Fixed<Sc, Int>{1}`.
 - **Lambdas passed to generic functions:** A lambda with an untyped parameter `fn(sc): …` needs the call's parameter type to already know `Sc`. When `Sc` only comes from the enclosing return context, annotate the lambda parameter (`fn(sc: OrderScope): …`).
 - **Indexing `s[k]` with a union key in generic code:** For `k: keyof C`, `self.cases[k]` has the union of field types, which has no associated types (`Self.Data`). Use `for k, g in ...self.cases:` or `struct{for k, g in ...self.cases: [k]: …}` so each pass checks `g` at its own key `k`.
-- **Recursive associated types & traits:** An alias or associated type can refer to itself only when its body is a `type match` (`type Data = match S: case _: { [F in keyof S]: S[F].Data }`). User-trait conformance is inductive, not coinductive, so recursive structs cannot satisfy a user trait through a cycle of generic wrappers.
+- **Recursive types:** An alias may refer to itself only inside a type built from others: a type argument, a shape's field, a tuple element, a function's parameter or result (`type Tree<T> = T | Array<Tree<T>>`, `type List = { head: Int, tail: List? }`). As the whole body or a member of its union it is an error (`type A = A | Int`), and each self-reference passes the alias's own parameters in order. An associated type refers to itself only through a `type match` (`type Data = match S: case _: { [F in keyof S]: S[F].Data }`).
+- **Recursive conformance:** A recursive struct meets a struct constraint when its fields do, assuming it meets it while they are checked, and a recursive union likewise through its members; so `CategoryModel` with `children: List<Group<CategoryModel>>` meets `struct { [_] is FormNode }`. A cycle through traits alone is still bounded, not assumed.
 - **Coherence:** A type meets a trait only through functions declared in the trait's module or the type's own module (never a third module, and only by the outer type, not its type arguments).
 
 **Mutation, references, and lifetimes**
