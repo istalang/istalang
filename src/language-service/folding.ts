@@ -7,7 +7,8 @@
  * parameters, collections, struct literals, braced blocks. Layout (§4) is found from the tree,
  * since only the parser knows where an indented block or an item list begins and ends:
  * - an indented block folds from the line that introduces it, where its `:` stands, past any
- *   docstring between, to its last line;
+ *   docstring between, to its last line, and so does an indented value (§2), from its `=`,
+ *   `return`, key or `-`;
  * - a declaration's members, and a `match`'s or a `select`'s cases, fold from the line naming the
  *   declaration or holding the keyword.
  *
@@ -83,14 +84,17 @@ const named = (node: { readonly name: Identifier }, tree: SyntaxTree) =>
 
 const own = (node: SyntaxNode, tree: SyntaxTree) => spanIn(tree, node.span).start;
 
+/** The token before `node`, which ends the line that introduces it: a `:`, `=`, `return` or `-`. */
+const introduced = (node: SyntaxNode, tree: SyntaxTree, tokens: readonly Token[]) =>
+  tokens[lastIndexAtMost(tokens, (token) => token.span.end, own(node, tree))]?.span.start;
+
 /** Where each node that folds by layout starts its fold. */
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const layoutStarts: LayoutStarts = {
   // An indented block starts where its first statement does; a braced one is a bracket pair.
   Block: (node, tree, tokens) =>
-    node.statements[0]?.span.from === node.span.from
-      ? tokens[lastIndexAtMost(tokens, (token) => token.span.end, own(node, tree))]?.span.start
-      : undefined,
+    node.statements[0]?.span.from === node.span.from ? introduced(node, tree, tokens) : undefined,
+  IndentedValue: introduced,
   StructDeclaration: named,
   SharedStructDeclaration: named,
   EnumDeclaration: named,

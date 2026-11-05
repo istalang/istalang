@@ -14,12 +14,14 @@ import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { BuiltLiteral } from '../syntax/expressions/indented-values.ts';
 import type {
   ArrayLiteral,
   Call,
   Expression,
   FieldHeader,
   FieldsLiteral,
+  IndentedValue,
   MapLiteral,
 } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
@@ -138,6 +140,8 @@ export interface BodyContext {
    * types): where checking decides it, so tools read it as a name of that struct's field.
    */
   readonly recordKey: (value: Expression, owner: Type | undefined) => void;
+  /** Records the literal the indented value `value` was checked as (expressions/indented-values.ts). */
+  readonly recordBuilt: (value: IndentedValue, literal: BuiltLiteral) => void;
   /** Records the variant the bare name `name` chose (resolution/named.ts). */
   readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
   /** Records that `node` calls a function value (§3.14). */

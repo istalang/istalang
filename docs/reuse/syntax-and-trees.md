@@ -3,7 +3,7 @@ description: tokens, AST nodes, operators, places, chains, field defaults, templ
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-29
+last_verified: 2026-11-05
 last_updated: 2026-11-05
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
@@ -46,6 +46,10 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - check whether a node writes a type, a function type's rest included, never by a list of kinds of your own → `isWrittenType` (`src/compiler/syntax/types.ts`)
 - read a `QualifiedName` from an `Identifier` or non-optional `MemberAccess` chain → `qualifiedPath` (`src/compiler/syntax/expressions/readings.ts`)
 - read the value or field name of a struct literal's `FieldItem` → `itemValue`, `itemName` (`src/compiler/syntax/expressions/readings.ts`)
+- read an indented value (spec §2) as the brace or bracket literal it builds, tell items from keys, or find the entries a form can't hold → `literalOf`, `untypedForm`, `isItem`, `isKeyed`, `entriesLeftOut` (`src/compiler/syntax/expressions/indented-values.ts`)
+- parse the value after `=`, `return` or a key's `:`, an indented value where the line ends there or in `T:` → `parser.value(opener)` (`parseValue`, `src/compiler/parser/expressions/indented-values.ts`); never `parser.expression()` at those places
+- parse a block of items on the lines below, right of a given column → `parseBlockBelow` (`src/compiler/parser/layout/bodies.ts`); `parseBody` when the column is the header's line's
+- test whether a text scans as one name, no keyword → `spellsName` (`src/compiler/scanner/characters.ts`)
 - read the number a literal writes, negated or not (`-5`, `-(5)`), as one signed value → `signedNumberOf` (`src/compiler/syntax/expressions/numbers.ts`)
 - list valid `MatchCase`s of a `Match`, or `SelectCase`s of a `Select` → `casesOf`, `selectCasesOf` (`src/compiler/syntax/expressions/readings.ts`); never filter `node.cases` by kind
 - list the blocks whose tails give an `if`, `match` or `select` its value → `valueBranchesOf` (`src/compiler/syntax/expressions/branches.ts`)
@@ -73,6 +77,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - A node's span is anchored to its segment (`AnchoredSpan`, `positions.ts`): offsets of different segments never compare, and text positions come only through the tree (`spanIn`, `extentIn`). A function's own span covers its header alone, as does a top-level trait's whose members stand on lines of their own; use `extentIn` for all a node covers.
 - In `src/compiler/parser/`, a bracketed construct uses `parseEnclosed`, a list `parseList` / `parseDelimited` (`recovery.ts`, which enters the cursor's list region), and recursive entries use `nested` (`nesting.ts`).
 - Where a line break separates two items of a list (spec §2) has one home, `layout/item-breaks.ts`: `breakSeparatesItems` (the next line can start an item), `startsLineInList` and `atPostfix` (a postfix bracket attaches only on its operand's line). Ask it only where an item could end: the Pratt `extend` loop, `leveledGrammar`'s loop (types, patterns), the comma list, and a lookahead deciding an item's shape by the token after it (struct literal shorthand). What starts an item is derived, never listed: the expression tables (`startsItemOnNewLine`, expressions/expression.ts) with the item parsers' openers (`spreadOpener`, `parts/spreads.ts`; `structComprehensionOpener`; `annotationOpener`). A `<…>` list, which nothing pairs, ends at a line heading no deeper than its `<`'s own unless its `>` heads it (`angleListRegion`, `cursor/`), as a bracket left open ends (`brackets.ts`).
+- An indented value is checked, lowered, computed and offered as the literal checking built it as (`CheckedBody.builtLiteralOf`): a phase meeting an `IndentedValue` reads that literal, never its entries a second way. Which literal is the checker's one decision (`checker/expressions/indented-values.ts`, from the type, else `untypedForm`).
 - What separates a block's items on one line is its `ItemRules.separator` (`ItemSeparator`, `recovery.ts`; spec §2): `;` for statements and a module's declarations, `,` for every list (fields, variants, trait members, constraint entries), `'lineBreak'` for cases. Entries in braces are a list (`parseItemEntries`, layout/index.ts): `,` or a separating line break, with each entry's annotations. Layout (`layout/index.ts`) reads either separator and reports the wrong one once (2038, 2039), as `parseCommaSeparated` reports a `;` between bracketed items; no other site tests for a separator.
 - A word a grammar position starts with is listed once, in `src/compiler/syntax/grammar-words.ts`: the parser's table for that position `satisfies StartParselets` (keywords) and `WordParselets` (contextual words) of the list, and completion offers the list, never one of its own (`language-service/completion/grammar/words.ts` names only the words that need surroundings, `wordNeeds`).
 

@@ -175,6 +175,21 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: () =>
       "',' separates the items of a list: write ';' between statements on one line, or put each on its own line (§2).",
   },
+  valueAfterOpening: {
+    code: 2040,
+    message: () =>
+      "An indented value's entries stand on the lines below its 'T:', deeper than its line; nothing follows it on its own line (§2).",
+  },
+  itemStartingWithDash: {
+    code: 2041,
+    message: () =>
+      "An item's value can't start with '- ': write a nested array as '- [1]', or as '-' with its items on the lines below (§2).",
+  },
+  dashGluedToItem: {
+    code: 2042,
+    message: () =>
+      "An item's '-' is followed by a space, so a line starting '-1' holds no item: write '- -1' for the item −1 (§2).",
+  },
   fieldLoopCondition: {
     code: 2037,
     message: () =>

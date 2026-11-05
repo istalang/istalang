@@ -20,6 +20,7 @@ import type {
   StructLiteral,
 } from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { atPostfix, breakSeparatesItems } from '../layout/item-breaks.ts';
@@ -75,16 +76,26 @@ function parseItems(parser: Parser): FieldsLiteral['items'] {
   if (positional !== undefined && items.length > 1) {
     parser.report(parserDiagnostics.positionalNotAlone(parser.textSpanOf(positional.span)));
   }
-  const comprehension = items.findIndex((item) => item.kind === 'StructComprehension');
-  if (comprehension >= 0) {
-    const misplaced = items.filter(
-      (item, index) => index > comprehension || item.kind === 'Spread',
-    );
-    for (const item of misplaced) {
-      parser.report(parserDiagnostics.structComprehensionLast(parser.textSpanOf(item.span)));
-    }
-  }
+  reportAfterComprehension(parser, items);
   return items;
+}
+
+/**
+ * Reports what stands after a struct comprehension, or as a spread beside it: the comprehension
+ * gives the literal's other fields itself, in braces and in an indented value alike (§3.1).
+ */
+export function reportAfterComprehension(
+  parser: Parser,
+  items: readonly { readonly kind: string; readonly span: AnchoredSpan }[],
+): void {
+  const comprehension = items.findIndex((item) => item.kind === 'StructComprehension');
+  if (comprehension < 0) {
+    return;
+  }
+  const misplaced = items.filter((item, index) => index > comprehension || item.kind === 'Spread');
+  for (const item of misplaced) {
+    parser.report(parserDiagnostics.structComprehensionLast(parser.textSpanOf(item.span)));
+  }
 }
 
 function parseItem(parser: Parser): FieldsLiteral['items'][number] {
@@ -107,7 +118,7 @@ function parseItem(parser: Parser): FieldsLiteral['items'][number] {
 }
 
 /** `for k, v in ...x: [k]: value`, from `for`; brackets naming anything but the loop's key are reported. */
-function parseStructComprehension(parser: Parser): StructComprehension {
+export function parseStructComprehension(parser: Parser): StructComprehension {
   const { start } = parser.cursor.advance().span;
   const targets = parseTargets(parser);
   parser.expect('in');

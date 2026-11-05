@@ -43,7 +43,8 @@ src/
     syntax/             contract: token kinds, the words each grammar position starts with (grammar-words.ts), tree node types, where items may stand, generic traversal, parents and the nodes at an offset,
                         spans anchored to segments of the text and read as text positions through the tree (positions.ts),
                         how targets, places (expressions/places.ts), optional chains (expressions/chains.ts) and struct items read as written, the function a declaration's
-                        fields with defaults read as (field-defaults.ts), and what a template stands for: its text, or the call a tag makes (expressions/templates.ts)
+                        fields with defaults read as (field-defaults.ts), what a template stands for: its text, or the call a tag makes (expressions/templates.ts),
+                        and the literal an indented value reads as once its form is known (expressions/indented-values.ts)
     scanner/            text → tokens + comments + diagnostics
     parser/             tokens → SyntaxTree; parse.ts is the entry
       parser.ts grammar.ts                                       context, category wiring
@@ -52,7 +53,8 @@ src/
       docstrings.ts                                              docstrings and where they stand
       parts/                                                     pieces every category may import; imports no category
       word-parselets.ts                                          tables keyed by syntax/grammar-words.ts's lists, checked both ways by type
-      expressions/ patterns types statements declarations        by construct (parselet tables by token kind in expressions/, patterns.ts, types.ts)
+      expressions/ patterns types statements declarations        by construct (parselet tables by token kind in expressions/, patterns.ts, types.ts); the value after
+                                                                 `=`, `return` or a key, an indented value or an expression (expressions/indented-values.ts)
     program/            Program snapshot, module graph, the ModuleLoader seam; imposes no path syntax
     binder/             entities, scopes, imports/exports, name resolution; link/ resolves across modules (qualifiers.ts: what a
                         qualified name's next part is found through, an alias of an enum as the enum); an imported name is a
@@ -150,7 +152,8 @@ src/
                         literals from their source text (literals.ts)
   language-service/     what an editor asks of a project, with no protocol and no I/O: workspace.ts (the open texts,
                         and the program they make through the ProgramLoader seam), one module or folder per feature
-                        (symbols.ts, folding.ts, semantic-tokens/; over types: hover.ts, inlay-hints.ts,
+                        (symbols.ts, folding.ts, semantic-tokens/, which reads checking only for an indented map's
+                        bare keys (built-keys.ts); over types: hover.ts, inlay-hints.ts,
                         signature-help.ts, completion/), tokens.ts (a tree's tokens, scanned again once, brackets paired),
                         checked-module.ts (a module and its program's checker), signatures.ts (how a function reads),
                         call-at.ts (the call around a cursor, and the parameter each written argument gives)

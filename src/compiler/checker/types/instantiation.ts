@@ -77,6 +77,7 @@ export function instantiatedBody(
     declaredTypeOf: (name) => mapDefined(body.declaredTypeOf(name), concrete),
     namedFieldOf: (name) => mapDefined(body.namedFieldOf(name), concreteField),
     keyOwnerOf: (literal) => mapDefined(body.keyOwnerOf(literal), concrete),
+    builtLiteralOf: body.builtLiteralOf,
     chosenVariantOf: body.chosenVariantOf,
     candidatesAt: body.candidatesAt,
     labels: body.labels,

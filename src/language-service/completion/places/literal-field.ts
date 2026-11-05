@@ -2,7 +2,9 @@
  * A literal field's place: where a struct or variant literal's item names its field, the fields
  * the literal builds that its other items don't give (§3.1), by the checker's one rule of which
  * field an item gives (struct-items.ts), so a value given by position counts; none for a literal
- * checking found no declared fields for.
+ * checking found no declared fields for. An indented value's entry (§2) is the same place, read
+ * through the literal checking built it as: a struct's fields, or the keys a map's key type
+ * spells, as names where they are names and quoted where not.
  *
  * Right after its `{`, a literal building one field also takes that field's value without its name
  * (§3.1), so a value may stand there too, and the visible names are offered beside the field when
@@ -13,14 +15,21 @@
  */
 
 import { itemField } from '../../../compiler/checker/struct-items.ts';
-import type { FieldMember } from '../../../compiler/checker/types/type.ts';
-import type { FieldItem, FieldsLiteral } from '../../../compiler/syntax/expressions/index.ts';
+import type { FieldMember, Type } from '../../../compiler/checker/types/type.ts';
+import { membersOf } from '../../../compiler/checker/types/unions.ts';
+import { spellsName } from '../../../compiler/scanner/characters.ts';
+import type {
+  FieldItem,
+  FieldsLiteral,
+  IndentedEntry,
+  IndentedValue,
+} from '../../../compiler/syntax/expressions/index.ts';
 import { itemName } from '../../../compiler/syntax/expressions/readings.ts';
 import type { Identifier } from '../../../compiler/syntax/node.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
 import type { Token } from '../../../compiler/syntax/tokens.ts';
 import { nodesAt, type SyntaxNode, type SyntaxTree } from '../../../compiler/syntax/tree.ts';
-import { lineStartAt } from '../../../text/line-map.ts';
+import { indentationAt, lineStartAt } from '../../../text/line-map.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import { isBareVariant } from '../expected.ts';
@@ -34,8 +43,9 @@ import { visibleCandidates } from '../visible.ts';
  */
 export interface LiteralFieldPlace {
   readonly kind: 'literalField';
-  readonly literal: FieldsLiteral;
-  readonly item: FieldsLiteral['items'][number] | undefined;
+  /** The literal in braces, or the indented value, whose item or entry the cursor writes. */
+  readonly literal: FieldsLiteral | IndentedValue;
+  readonly item: FieldsLiteral['items'][number] | IndentedEntry | undefined;
   readonly opens: boolean;
 }
 
@@ -53,12 +63,52 @@ export function literalFieldPlaceAt({
     ? nodesAt(tree, before.span.start).at(-1)
     : literalWithItemBefore(tree, before, name?.span.start ?? offset);
   if (!isFieldsLiteral(literal)) {
+    return indentedEntryPlaceAt(tree, before, name?.span.start ?? offset);
+  }
+  const item = itemAt(tree, literal.items, name?.span.start);
+  return { kind: 'literalField', literal, item, opens: before.kind === '{' };
+}
+
+/** The item of `items` written at `start`, the cursor's name, if any. */
+function itemAt<Item extends { readonly span: FieldsLiteral['span'] }>(
+  tree: SyntaxTree,
+  items: readonly Item[],
+  start: number | undefined,
+): Item | undefined {
+  return items.find(({ span }) => start !== undefined && spanIn(tree, span).start === start);
+}
+
+/**
+ * An indented value's entry starting at `start`, first on its line: of the innermost value around
+ * `before` whose entries stand at that column, or, with none yet, whose block would open there.
+ */
+function indentedEntryPlaceAt(
+  tree: SyntaxTree,
+  before: Token,
+  start: number,
+): LiteralFieldPlace | undefined {
+  const { text } = tree.source;
+  const lineStart = lineStartAt(text, start);
+  if (text.slice(lineStart, start).trim() !== '' || lineStart <= before.span.end) {
     return undefined;
   }
-  const item = literal.items.find(
-    ({ span }) => name !== undefined && spanIn(tree, span).start === name.span.start,
-  );
-  return { kind: 'literalField', literal, item, opens: before.kind === '{' };
+  const column = start - lineStart;
+  const around = [...nodesAt(tree, before.span.start), ...nodesAt(tree, before.span.end)];
+  const value = around
+    .filter((node): node is IndentedValue => node.kind === 'IndentedValue')
+    .findLast((each) => {
+      const [first] = each.entries;
+      if (first === undefined) {
+        return column > indentationAt(text, spanIn(tree, each.span).start);
+      }
+      const at = spanIn(tree, first.span).start;
+      return at - lineStartAt(text, at) === column;
+    });
+  if (value === undefined) {
+    return undefined;
+  }
+  const item = itemAt(tree, value.entries, start);
+  return { kind: 'literalField', literal: value, item, opens: false };
 }
 
 /**
@@ -93,16 +143,46 @@ export function offerLiteralFields(
   { literal, item, opens }: LiteralFieldPlace,
 ): readonly Candidate[] {
   const { checker, module } = cursor;
-  const fields = checker.lookup.bodyHolding(module, literal)?.literalFieldsOf(literal) ?? [];
-  const others = literal.items.flatMap((each) =>
+  const body = checker.lookup.bodyHolding(module, literal);
+  const built = literal.kind === 'IndentedValue' ? body?.builtLiteralOf(literal) : literal;
+  const items = literal.kind === 'IndentedValue' ? literal.entries : literal.items;
+  const others = items.flatMap((each) =>
     each !== item && isFieldItem(each) ? [itemName(each)] : [],
   );
-  const first = literal.items.every((each) => each === item);
-  return literalItems(cursor, { fields, others, opens, first });
+  const first = items.every((each) => each === item);
+  if (built?.kind === 'MapLiteral') {
+    return mapKeys(body?.typeOf(built), others);
+  }
+  const fields =
+    built === undefined || !isFieldsLiteral(built) ? [] : (body?.literalFieldsOf(built) ?? []);
+  const startsItems = first && (opens || literal.kind === 'IndentedValue');
+  return literalItems(cursor, { fields, others, opens, startsItems });
 }
 
-function isFieldItem(item: FieldsLiteral['items'][number]): item is FieldItem {
+function isFieldItem(item: FieldsLiteral['items'][number] | IndentedEntry): item is FieldItem {
   return item.kind === 'FieldInitializer' || item.kind === 'PositionalInitializer';
+}
+
+/**
+ * The keys an indented map's key type spells (§2) that `others` don't give: each String literal
+ * among its members, bare where it is a name, quoted where not.
+ */
+function mapKeys(
+  type: Type | undefined,
+  others: readonly (Identifier | undefined)[],
+): readonly Candidate[] {
+  const key = type?.kind === 'nominal' ? type.arguments[0] : undefined;
+  const given = new Set(others.map((name) => name?.text));
+  return (key === undefined ? [] : membersOf(key)).flatMap((member): readonly Candidate[] =>
+    member.kind === 'literal' && typeof member.value === 'string' && !given.has(member.value)
+      ? [{ name: keyText(member.value), subject: { kind: 'literal', type: member } }]
+      : [],
+  );
+}
+
+/** A key as an indented value writes it: bare where it is a name, else quoted (§2). */
+function keyText(key: string): string {
+  return spellsName(key) ? key : JSON.stringify(key);
 }
 
 /** What a literal's item may start with, as the literal's own braces and items say. */
@@ -113,8 +193,8 @@ interface LiteralItemSlot {
   readonly others: readonly (Identifier | undefined)[];
   /** Whether the item follows the literal's `{` rather than a `,`. */
   readonly opens: boolean;
-  /** Whether no other item comes before it. */
-  readonly first: boolean;
+  /** Whether it is the first item, where the leading spread may stand. */
+  readonly startsItems: boolean;
 }
 
 /**
@@ -125,7 +205,7 @@ interface LiteralItemSlot {
  */
 function literalItems(
   cursor: Cursor,
-  { fields, others, opens, first }: LiteralItemSlot,
+  { fields, others, opens, startsItems }: LiteralItemSlot,
 ): readonly Candidate[] {
   const visible = visibleCandidates(cursor);
   const given = new Set(others.map((named) => fields[itemField(named, fields)]));
@@ -135,10 +215,9 @@ function literalItems(
       ...shorthandFor(visible, field.name),
       { name: field.name, subject: { kind: 'field', field } },
     ]);
-  const startsItems = opens && first && fields.length > 0;
   const takesValue = opens && fields.length === 1 && cursor.trigger === undefined;
   const values = takesValue ? visible.filter((candidate) => !isBareVariant(candidate)) : [];
-  return [...offered, ...(startsItems ? [spread] : []), ...values];
+  return [...offered, ...(startsItems && fields.length > 0 ? [spread] : []), ...values];
 }
 
 /** The leading spread, `...value`, which only the first item may be (§3.1). */

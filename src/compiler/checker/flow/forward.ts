@@ -319,6 +319,7 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
   Parenthesized: children,
   StructLiteral: children,
   NewStructLiteral: children,
+  IndentedValue: children,
   Lambda: (walk, node, state) => {
     walk.function(node.body, state);
     return state;

@@ -49,7 +49,19 @@ export function parseBody<Item extends SyntaxNode>(
   rules: ItemRules<Item>,
   headerStart: number,
 ): Body<Item> {
-  const reading = { headerStart, isDocumented: false, enter: inPlace, describe: spanned(parser) };
+  return parseBlockBelow(parser, rules, parser.indentationAt(headerStart));
+}
+
+/**
+ * A body whose block must stand right of `column`: an indented value's, whose column may be that of
+ * the entries it stands among rather than its line's (§2). As `parseBody` otherwise.
+ */
+export function parseBlockBelow<Item extends SyntaxNode>(
+  parser: Parser,
+  rules: ItemRules<Item>,
+  column: number,
+): Body<Item> {
+  const reading = { above: column, isDocumented: false, enter: inPlace, describe: spanned(parser) };
   return parseBodyOf(parser, rules, reading).value;
 }
 
@@ -64,7 +76,7 @@ export function parseDocumentedBody<Item extends SyntaxNode>(
   enter: BodyEntry,
 ): WithDocstring<Body<Item>> {
   return parseBodyOf(parser, rules, {
-    headerStart,
+    above: parser.indentationAt(headerStart),
     isDocumented: true,
     enter,
     describe: spanned(parser),
@@ -80,7 +92,12 @@ export function parseDocumentedMembers<Item extends SyntaxNode>(
   rules: ItemRules<Item>,
   headerStart: number,
 ): WithDocstring<Members<Item>> {
-  const reading = { headerStart, isDocumented: true, enter: inPlace, describe: () => ({}) };
+  const reading = {
+    above: parser.indentationAt(headerStart),
+    isDocumented: true,
+    enter: inPlace,
+    describe: () => ({}),
+  };
   return parseBodyOf(parser, rules, reading);
 }
 
@@ -105,11 +122,11 @@ type ReadItems<Item> = Pick<Members<Item>, 'items' | 'headedSegments'>;
 type Description<Item, Extra> = (items: Items<Item>) => Extra;
 
 /**
- * How to read a body: where its construct starts, whether a docstring may come first, and how its
- * items are entered and described.
+ * How to read a body: the column its block must stand right of (its construct's line's), whether a
+ * docstring may come first, and how its items are entered and described.
  */
 interface BodyReading<Item, Extra> {
-  readonly headerStart: number;
+  readonly above: number;
   readonly isDocumented: boolean;
   readonly enter: BodyEntry;
   readonly describe: Description<Item, Extra>;
@@ -123,7 +140,7 @@ function spanned(parser: Parser) {
 function parseBodyOf<Item extends SyntaxNode, Extra>(
   parser: Parser,
   rules: ItemRules<Item>,
-  { headerStart, isDocumented, enter, describe }: BodyReading<Item, Extra>,
+  { above, isDocumented, enter, describe }: BodyReading<Item, Extra>,
 ): WithDocstring<Members<Item> & Extra> {
   const { cursor } = parser;
   const read = (parse: () => ReadItems<Item>) => entered(parser, enter, parse, describe);
@@ -132,7 +149,7 @@ function parseBodyOf<Item extends SyntaxNode, Extra>(
   const next = cursor.lineStart;
   if (next !== undefined) {
     const column = parser.columnOf(next);
-    if (column <= parser.indentationAt(headerStart) || cursor.closesAny(next.kind)) {
+    if (column <= above || cursor.closesAny(next.kind)) {
       return { value: alone(() => emptyBody(parser)), doc: undefined };
     }
     return cursor.inBlock(column, () => {

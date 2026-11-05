@@ -51,6 +51,7 @@ import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections.ts
 import { checkComprehension, checkFieldComprehension } from './comprehensions.ts';
 import { checkIf, ifAccepts } from './control.ts';
 import { checkDereference } from './dereference.ts';
+import { checkIndentedValue, indentedAccepts } from './indented-values.ts';
 import { checkIndex } from './indexing.ts';
 import { checkDurationLiteral } from './literals.ts';
 import { checkIs, checkMatch, matchAccepts } from './match.ts';
@@ -97,6 +98,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Call: checkCall,
   StructLiteral: checkStructLiteral,
   NewStructLiteral: checkNamedLiteral,
+  IndentedValue: checkIndentedValue,
   MemberAccess: checkMemberAccess,
   TupleElement: checkTupleElement,
   BlockExpression: (context, node, expected) => context.block(node.block, expected),
@@ -143,6 +145,7 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
   Call: ownType,
   StructLiteral: structLiteralAccepts,
   NewStructLiteral: ownType,
+  IndentedValue: indentedAccepts,
   MemberAccess: memberAccepts,
   TupleElement: ownType,
   BlockExpression: (context, node) => blockAccepts(context, node.block),
@@ -198,6 +201,7 @@ const knownTypeHandlers: Handlers<BodyContext, Expression, [], Type | undefined>
   Call: unknownType,
   StructLiteral: structLiteralKnownType,
   NewStructLiteral: unknownType,
+  IndentedValue: unknownType,
   MemberAccess: unknownType,
   TupleElement: unknownType,
   BlockExpression: (context, node) => blockKnownType(context, node.block),
@@ -288,6 +292,7 @@ const buildsHandlers: Handlers<BodyContext, Expression, [PartReader], Accepts | 
   Call: builtAsItIs,
   StructLiteral: structLiteralBuilds,
   NewStructLiteral: builtAsItIs,
+  IndentedValue: builtAsItIs,
   MemberAccess: builtAsItIs,
   TupleElement: builtAsItIs,
   BlockExpression: builtAsItIs,

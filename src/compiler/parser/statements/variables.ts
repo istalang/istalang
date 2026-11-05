@@ -64,7 +64,7 @@ function parseVariableAfter(
   }
   const targets = parseTargets(parser);
   const type = cursor.eat(':') === undefined ? undefined : parser.type();
-  const initializer = parser.expect('=') === undefined ? parser.placeholder() : parser.expression();
+  const initializer = parser.expect('=') === undefined ? parser.placeholder() : parser.value(start);
   const span = parser.spanFrom(start);
   return {
     kind: 'VariableDeclaration',

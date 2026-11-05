@@ -55,14 +55,14 @@ function parseDeclaredField(parser: Parser): DeclaredField {
   const start = parser.startOf(name);
   const field = { kind: 'DeclaredField', name } as const;
   if (parser.cursor.eat('=') !== undefined) {
-    const defaultValue = parser.expression();
+    const defaultValue = parser.value(start);
     return { ...field, span: parser.spanFrom(start), type: undefined, defaultValue };
   }
   if (parser.expect(':') === undefined) {
     return { ...field, span: name.span, type: parser.placeholder(), defaultValue: undefined };
   }
   const type = parser.cursor.at('lineBreak') ? parseFieldBlock(parser, start) : parser.type();
-  const defaultValue = parser.cursor.eat('=') === undefined ? undefined : parser.expression();
+  const defaultValue = parser.cursor.eat('=') === undefined ? undefined : parser.value(start);
   return { ...field, span: parser.spanFrom(start), type, defaultValue };
 }
 

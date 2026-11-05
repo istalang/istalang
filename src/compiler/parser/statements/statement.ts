@@ -114,7 +114,7 @@ function parseExpressionStatement(parser: Parser): Statement {
   for (const target of targets.filter((each) => !isTarget(each))) {
     parser.report(parserDiagnostics.invalidAssignmentTarget(parser.textSpanOf(target.span)));
   }
-  const value = parser.expression();
+  const value = parser.value(start);
   return { kind: 'Assignment', span: parser.spanFrom(start), targets, operator, value };
 }
 

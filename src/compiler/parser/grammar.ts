@@ -13,6 +13,7 @@ import {
   startsExpression,
   startsItemOnNewLine,
 } from './expressions/expression.ts';
+import { parseValue } from './expressions/indented-values.ts';
 import { nested } from './nesting.ts';
 import { type Grammar, Parser } from './parser.ts';
 import { parsePattern } from './patterns.ts';
@@ -25,6 +26,7 @@ const grammar: Grammar = {
   continueExpression,
   startsExpression,
   startsItemOnNewLine,
+  value: (parser, opener) => nested(parser, () => parseValue(parser, opener)),
   type: (parser) => nested(parser, () => parseType(parser)),
   parameterType: (parser) => nested(parser, () => parseParameterType(parser)),
   typeArguments: parseTypeArguments,

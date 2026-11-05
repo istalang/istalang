@@ -19,6 +19,7 @@ import type {
   FunctionDeclaration,
   TypeParameter,
 } from '../syntax/declarations.ts';
+import type { BuiltLiteral } from '../syntax/expressions/indented-values.ts';
 import type {
   ArrayLiteral,
   Call,
@@ -26,6 +27,7 @@ import type {
   Expression,
   FieldHeader,
   FieldsLiteral,
+  IndentedValue,
   Lambda,
   MapLiteral,
   Parameter,
@@ -262,6 +264,8 @@ export interface CheckedBody {
   readonly namedFieldOf: (name: Identifier) => FieldMember | undefined;
   /** The struct whose key a String literal of this body was checked as (§3.1); else undefined. */
   readonly keyOwnerOf: (literal: StringLiteral) => Type | undefined;
+  /** The literal an indented value was checked as (§2); undefined for one never checked as one. */
+  readonly builtLiteralOf: (value: IndentedValue) => BuiltLiteral | undefined;
   /** The variant a bare variant name chose by the type expected of it (§3.11). */
   readonly chosenVariantOf: (name: Identifier) => VariantEntity | undefined;
   /** The functions a call site chose among, in the order considered; none where nothing was. */

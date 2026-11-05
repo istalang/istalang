@@ -28,7 +28,8 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Call, Expression, FieldHeader } from '../syntax/expressions/index.ts';
+import type { BuiltLiteral } from '../syntax/expressions/indented-values.ts';
+import type { Call, Expression, FieldHeader, IndentedValue } from '../syntax/expressions/index.ts';
 import { unparenthesized } from '../syntax/expressions/readings.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
@@ -366,6 +367,10 @@ export class BodyChecker implements BodyContext {
     if (owner !== undefined && literal.kind === 'StringLiteral') {
       this.#records.keyOwners.set(literal, owner);
     }
+  }
+
+  recordBuilt(value: IndentedValue, literal: BuiltLiteral): void {
+    this.#records.builtLiterals.set(value, literal);
   }
 
   recordVariant(name: Identifier, variant: VariantEntity): void {

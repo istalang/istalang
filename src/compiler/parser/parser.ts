@@ -59,6 +59,11 @@ export interface Grammar {
   ) => Expression;
   readonly startsExpression: (parser: Parser) => boolean;
   /**
+   * The value after `=`, `return` or a key's `:`, `opener` starting its line or entry: an indented
+   * value when the line ends there or in `T:` (§2), else an expression.
+   */
+  readonly value: (parser: Parser, opener: number) => Expression;
+  /**
    * Whether a token of `kind`, first on its line inside a list, starts an item rather than
    * continuing the one before (layout/item-breaks.ts), given the `next` token's kind, and `glued`
    * when nothing stands between the two.
@@ -285,6 +290,10 @@ export class Parser implements SegmentBases {
 
   startsExpression(): boolean {
     return this.#grammar.startsExpression(this);
+  }
+
+  value(opener: number): Expression {
+    return this.#grammar.value(this, opener);
   }
 
   /** The grammar's `startsItemOnNewLine`. */

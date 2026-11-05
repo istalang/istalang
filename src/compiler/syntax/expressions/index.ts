@@ -23,7 +23,7 @@ import type { BinaryOperator, ChainingOperator, UnaryOperator } from '../operato
 import type { Pattern } from '../patterns.ts';
 import type { Block } from '../statements.ts';
 import type { NamedType, TypeNode } from '../types.ts';
-import type { Literal } from './literals.ts';
+import type { Literal, StringLiteral } from './literals.ts';
 
 /** `...xs` inside an array, map, call or struct literal. */
 export interface Spread extends NodeOf<'Spread'> {
@@ -129,6 +129,44 @@ interface PositionalInitializer extends NodeOf<'PositionalInitializer'> {
 
 /** A struct literal's item naming a field's value, by name or by position. */
 export type FieldItem = FieldInitializer | PositionalInitializer;
+
+/** `"x-region": "eu"`: an indented value's entry under a quoted key, which only a map takes (§2). */
+export interface QuotedEntry extends NodeOf<'QuotedEntry'> {
+  readonly key: StringLiteral;
+  readonly value: Expression;
+}
+
+/** `- value`, an indented value's item (§2); `- ...xs` spreads another collection's items. */
+export interface IndentedItem extends NodeOf<'IndentedItem'> {
+  readonly value: Expression | Spread;
+}
+
+/**
+ * One entry of an indented value, told apart by its first tokens: the struct literal's items
+ * (`key: value`, the shorthand `name`, `...value`, a struct comprehension), a quoted key, or an item.
+ */
+export type IndentedEntry =
+  | FieldInitializer
+  | QuotedEntry
+  | Spread
+  | StructComprehension
+  | IndentedItem
+  | Invalid;
+
+interface IndentedValueOf<Type extends NamedType | undefined> extends NodeOf<'IndentedValue'> {
+  readonly type: Type;
+  readonly entries: readonly IndentedEntry[];
+}
+
+/**
+ * A struct, map or array value written as an indented block (§2): after `T:` or `new T:`, which
+ * name its type, or after a line ending in `=`, `return`, a key's `:` or an item's `-`, when it
+ * takes its type from the expected one. It reads alike whatever it builds: the type it is built as
+ * decides that (syntax/expressions/indented-values.ts), so it is one node for every block.
+ */
+export type IndentedValue =
+  | (IndentedValueOf<NamedType> & { readonly isNew: boolean })
+  | (IndentedValueOf<undefined> & { readonly isNew: false });
 
 export interface Parameter extends NodeOf<'Parameter'> {
   /** `...name`, collecting the remaining arguments. */
@@ -339,6 +377,7 @@ export type Expression =
   | Parenthesized
   | StructLiteral
   | NewStructLiteral
+  | IndentedValue
   | Lambda
   | Call
   | Spawn
@@ -377,4 +416,6 @@ export type ExpressionPart =
   | SelectCase
   | ElseClause
   | FieldHeader
-  | StructComprehension;
+  | StructComprehension
+  | QuotedEntry
+  | IndentedItem;

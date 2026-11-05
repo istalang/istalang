@@ -6,7 +6,8 @@
 
 import type { VariantEntity } from '../binder/entities.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Call, Expression, FieldHeader } from '../syntax/expressions/index.ts';
+import type { BuiltLiteral } from '../syntax/expressions/indented-values.ts';
+import type { Call, Expression, FieldHeader, IndentedValue } from '../syntax/expressions/index.ts';
 import type { StringLiteral } from '../syntax/expressions/literals.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { Assignment, Block } from '../syntax/statements.ts';
@@ -41,6 +42,7 @@ export function bodyRecords(passes: Passes) {
     candidates: passes.table<ResolvedSite, readonly FunctionDeclaration[]>(),
     namedFields: passes.table<Identifier, FieldMember>(),
     keyOwners: passes.table<StringLiteral, Type>(),
+    builtLiterals: passes.table<IndentedValue, BuiltLiteral>(),
     chosenVariants: passes.table<Identifier, VariantEntity>(),
     ruledOut: passes.table<Block, true>(),
     stops: passes.table<Expression | Assignment, readonly Expression[]>(),
@@ -100,6 +102,7 @@ export function checkedAt(
     declaredTypeOf: (name) => variables.declaredTypeOf(name, pass),
     namedFieldOf: (name) => records.namedFields.get(name, pass),
     keyOwnerOf: (literal) => records.keyOwners.get(literal, pass),
+    builtLiteralOf: (value) => records.builtLiterals.get(value, pass),
     chosenVariantOf: (name) => records.chosenVariants.get(name, pass),
     isRuledOut: (body) => records.ruledOut.has(body, pass),
     stopsAt: (operation) => records.stops.get(operation, pass),

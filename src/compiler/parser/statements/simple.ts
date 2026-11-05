@@ -2,9 +2,9 @@
  * Statements made of a keyword and at most one expression or label (§4, §7): `return`, `break`,
  * `continue`, `defer` and `drop`.
  *
- * `return` takes a value only when an expression follows on its line, so `if x: return` and a
- * bare `return` at the end of a line both return unit. `break` and `continue` take a label the
- * same way.
+ * `return` takes a value only when an expression follows on its line, or an indented value on the
+ * lines below, deeper than its own (§2); so `if x: return` and a bare `return` at the end of a line
+ * with no deeper line below both return unit. `break` and `continue` take a label on their line.
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';
@@ -14,8 +14,17 @@ import type { Parser } from '../parser.ts';
 
 export function parseReturn(parser: Parser): Return {
   const { start } = parser.cursor.advance().span;
-  const value = parser.startsExpression() ? parser.expression() : undefined;
+  const value = returnsValue(parser, start) ? parser.value(start) : undefined;
   return { kind: 'Return', span: parser.spanFrom(start), value };
+}
+
+/** Whether a value follows the `return` at `start`: on its line, or indented below it. */
+function returnsValue(parser: Parser, start: number): boolean {
+  const next = parser.cursor.lineStart;
+  return (
+    parser.startsExpression() ||
+    (next !== undefined && parser.columnOf(next) > parser.indentationAt(start))
+  );
 }
 
 export function parseBreak(parser: Parser): Break {

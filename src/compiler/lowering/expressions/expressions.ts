@@ -6,6 +6,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Handlers } from '../../../structures/kind-table.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { neverLowered } from '../never-lowered.ts';
@@ -51,6 +52,11 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
       ? lowerVariantLiteral(context, node)
       : lowerStructLiteral(context, node),
   NewStructLiteral: lowerNewStructLiteral,
+  IndentedValue: (context, node) =>
+    context.expression(
+      context.body.builtLiteralOf(node) ??
+        unreachable('An indented value is lowered once checked.'),
+    ),
   MemberAccess: lowerMemberAccess,
   TupleElement: lowerTupleElement,
   If: lowerIf,

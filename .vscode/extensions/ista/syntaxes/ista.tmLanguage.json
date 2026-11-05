@@ -13,6 +13,7 @@
     { "include": "#type" },
     { "include": "#call" },
     { "include": "#number" },
+    { "include": "#item" },
     { "include": "#operator" },
     { "include": "#punctuation" }
   ],
@@ -212,6 +213,11 @@
         },
         { "name": "constant.numeric.integer.ista", "match": "\\b[0-9](_?[0-9])*\\b" }
       ]
+    },
+    "item": {
+      "comment": "An indented value's item (spec §2): a `-` first on its line, then a space or the line's end; `-1` there is a number.",
+      "match": "^\\s*(-)(?=\\s|$)",
+      "captures": { "1": { "name": "punctuation.definition.list.begin.ista" } }
     },
     "operator": {
       "patterns": [

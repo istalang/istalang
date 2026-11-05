@@ -7,6 +7,8 @@
  * and get `false` instead of a special case.
  */
 
+import { isKeyword } from '../syntax/tokens.ts';
+
 /** Whitespace between tokens. Line breaks are handled separately (see lineBreakLength). */
 export function isInlineWhitespace(char: string | undefined): boolean {
   return char === ' ' || char === '\t';
@@ -45,4 +47,11 @@ export function identifierRunEnd(text: string, offset: number): number {
     end += 1;
   }
   return end;
+}
+
+/** Whether `text` scans as one name and nothing else: an identifier that is no keyword. */
+export function spellsName(text: string): boolean {
+  return (
+    isIdentifierStart(text[0]) && identifierRunEnd(text, 0) === text.length && !isKeyword(text)
+  );
 }

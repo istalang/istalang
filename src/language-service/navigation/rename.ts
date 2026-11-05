@@ -31,10 +31,9 @@ import {
   type Program,
   programModule,
 } from '../../compiler/program/program.ts';
-import { identifierRunEnd, isIdentifierStart } from '../../compiler/scanner/characters.ts';
+import { spellsName } from '../../compiler/scanner/characters.ts';
 import type { Field } from '../../compiler/syntax/declarations.ts';
 import type { Invalid } from '../../compiler/syntax/node.ts';
-import { isKeyword } from '../../compiler/syntax/tokens.ts';
 import { childrenOf, nodesUnder, parentOf, type SyntaxNode } from '../../compiler/syntax/tree.ts';
 import {
   bindsInPattern,
@@ -175,7 +174,7 @@ function newNameRefusal(
   newName: string,
 ): string | undefined {
   const old = spelledName(at.name);
-  if (!isName(newName) || isUnnamed(newName)) {
+  if (!spellsName(newName) || isUnnamed(newName)) {
     return `\`${newName}\` is not a name a declaration can have.`;
   }
   if (isBuiltInTypeName(newName)) {
@@ -355,13 +354,6 @@ function fieldsKey(fields: readonly (Field | Invalid)[]): string {
 /** A set of field names as one key, in the name order a shape keeps them. */
 function namesKey(names: readonly string[]): string {
   return names.toSorted(compareOrdered).join(',');
-}
-
-/** Whether `text` scans as one identifier and nothing else. */
-function isName(text: string): boolean {
-  return (
-    isIdentifierStart(text[0]) && identifierRunEnd(text, 0) === text.length && !isKeyword(text)
-  );
 }
 
 /**

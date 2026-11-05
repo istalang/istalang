@@ -52,6 +52,8 @@ export function standingIn(parent: SyntaxNode, child: SyntaxNode): Standing {
     case 'NewStructLiteral':
     case 'StructPattern':
       return child === parent.type ? 'outside' : 'brackets';
+    case 'IndentedValue':
+      return child === parent.type ? 'outside' : 'lines';
     case 'Call':
       return child === parent.callee ? 'outside' : 'brackets';
     case 'Index':

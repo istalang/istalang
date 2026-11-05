@@ -71,6 +71,7 @@ const builtKinds: ReadonlySet<Expression['kind']> = new Set([
   'Identifier',
   'MemberAccess',
   'StructLiteral',
+  'IndentedValue',
   'ArrayLiteral',
   'MapLiteral',
   'Tuple',

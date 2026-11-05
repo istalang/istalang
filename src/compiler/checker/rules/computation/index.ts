@@ -131,6 +131,10 @@ class Computation {
       }
       case 'StructLiteral':
         return this.#struct(node);
+      case 'IndentedValue': {
+        const literal = this.#scope.checked.builtLiteralOf(node);
+        return literal === undefined ? unknown : this.of(literal);
+      }
       case 'Tuple':
         return this.#tuple(node.elements);
       case 'ArrayLiteral':

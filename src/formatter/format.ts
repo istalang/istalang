@@ -38,6 +38,7 @@ import {
 } from './comments.ts';
 import { declarationPrinters } from './declarations.ts';
 import { expressionPrinters } from './expressions.ts';
+import { indentedValuePrinters } from './indented-values.ts';
 import { isMultiLine, literalPrinters } from './literals.ts';
 import { patternPrinters } from './patterns.ts';
 import type { Printer, Printers } from './printer.ts';
@@ -55,6 +56,7 @@ const printers: Printers<SyntaxNode> = {
   ...statementPrinters,
   ...branchPrinters,
   ...expressionPrinters,
+  ...indentedValuePrinters,
   ...literalPrinters,
   ...patternPrinters,
   ...typePrinters,

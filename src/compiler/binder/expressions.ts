@@ -13,6 +13,7 @@ import type {
   CallArgument,
   Expression,
   FieldsLiteral,
+  IndentedValue,
   MatchCase,
   SelectCase,
 } from '../syntax/expressions/index.ts';
@@ -28,11 +29,12 @@ import {
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import type { Scope } from './scope.ts';
 
-function bindLiteral(binder: LocalBinder, node: FieldsLiteral, scope: Scope): void {
+/** A struct literal's or an indented value's type and entries (§3.1, §2). */
+function bindLiteral(binder: LocalBinder, node: FieldsLiteral | IndentedValue, scope: Scope): void {
   if (node.type !== undefined) {
     binder.constructedType(node.type, scope);
   }
-  for (const item of node.items) {
+  for (const item of node.kind === 'IndentedValue' ? node.entries : node.items) {
     if (item.kind === 'FieldInitializer') {
       // The shorthand `Pair{first}` reads the variable named like the field.
       bindFieldValue(binder, item.name, item.value, scope);
@@ -107,6 +109,7 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   Is: bindConditionValue,
   StructLiteral: bindLiteral,
   NewStructLiteral: bindLiteral,
+  IndentedValue: bindLiteral,
   Lambda: (binder, node, scope) => binder.walk.function(binder, node, scope),
   BlockExpression: (binder, node, scope) => binder.walk.block(binder, node.block, scope),
   Comprehension: (binder, node, scope) =>
