@@ -21,7 +21,13 @@
 
 import { parse } from '../../compiler/parser/parse.ts';
 import { scan } from '../../compiler/scanner/scan.ts';
+import { buildsShared, literalNaming } from '../../compiler/syntax/expressions/built-types.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
+import {
+  declaredTargets,
+  ownsTargets,
+  type TargetOwner,
+} from '../../compiler/syntax/statements.ts';
 import type { TokenKind } from '../../compiler/syntax/tokens.ts';
 import { extentIn, nodesAt, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { isWrittenType } from '../../compiler/syntax/types.ts';
@@ -198,12 +204,14 @@ function roleIn(link: Link<SyntaxNode>): ParsedPlaceKind | undefined {
 
 /**
  * The name a struct or variant literal builds, or a struct pattern tests, which the tree holds as
- * a written type: a value is written there (`Ok‸{(v)}`), or a pattern (`case Ok‸{value}`). A
- * struct pattern a declaration destructures with names a type (`const Pair‸{first} = p`).
+ * a written type: a value is written there (`Ok‸{(v)}`, `Ok‸:`), or a pattern (`case Ok‸{value}`).
+ * A shared struct's literal (`new P‸{…}`) and a struct pattern a declaration destructures with
+ * (`const Pair‸{first} = p`) name a type.
  */
 function builtNameRole({ parsed, node, holder }: Link<SyntaxNode>): ParsedPlaceKind | undefined {
-  if (holder?.kind === 'StructLiteral' && holder.type === node) {
-    return 'grammar';
+  const literal = literalNaming(holder, node);
+  if (literal !== undefined) {
+    return buildsShared(literal) ? undefined : 'grammar';
   }
   return holder?.kind === 'StructPattern' && holder.type === node && isTested(parsed, holder)
     ? 'pattern'
@@ -214,17 +222,15 @@ function builtNameRole({ parsed, node, holder }: Link<SyntaxNode>): ParsedPlaceK
 function isTested({ chain }: PlaceholderParse, pattern: SyntaxNode): boolean {
   const owner = chain
     .slice(0, chain.indexOf(pattern))
-    .findLast(({ kind }) => testers.has(kind) || declarers.has(kind));
+    .findLast((node) => testers.has(node.kind) || ownsTargets(node));
   return owner !== undefined && testers.has(owner.kind);
 }
 
 const testers: ReadonlySet<string> = new Set(['MatchCase', 'Is']);
-const declarers: ReadonlySet<string> = new Set(['VariableDeclaration', 'For', 'Comprehension']);
 
-const holdsTargets: Role<
-  Extract<SyntaxNode, { kind: 'VariableDeclaration' | 'For' | 'Comprehension' }>
-> = ({ node, child }) =>
-  node.targets.some((target) => target === child) ? 'declaredName' : undefined;
+/** A target a declaration, a loop or a parameter declares, where a new name is written. */
+const holdsTargets: Role<Extract<SyntaxNode, TargetOwner>> = ({ node, child }) =>
+  declaredTargets(node).some((target) => target === child) ? 'declaredName' : undefined;
 
 /** The nodes, by kind, giving the placeholder a role of their own. */
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -239,6 +245,8 @@ const roles: { readonly [Kind in SyntaxNode['kind']]?: Role<Extract<SyntaxNode, 
     VariableDeclaration: holdsTargets,
     For: holdsTargets,
     Comprehension: holdsTargets,
+    FieldHeader: holdsTargets,
+    Parameter: holdsTargets,
     Binary: ({ parsed, node, child }) =>
       child === node.right && opensTypeArguments(parsed, node) ? 'type' : undefined,
     BindFieldPattern: ({ node, child }) =>

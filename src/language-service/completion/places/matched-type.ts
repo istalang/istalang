@@ -1,6 +1,6 @@
 /**
  * The type a pattern being written matches (§3.11), read down from the type the `match` subject or
- * the `is` operand has as checked: an alternative, a parenthesized or an `as` pattern matches its
+ * the `is` operand has as checked, or the parameter whose pattern it is (§3.3): an alternative, a parenthesized or an `as` pattern matches its
  * whole; a struct pattern's item, the field it names, among those of the variant or struct the
  * pattern names (against an `any` value, the type it downcasts to); a nested field pattern, that
  * field's type; a tuple's element, its element's; an array's item, its item's, and its rest the
@@ -24,13 +24,14 @@ import {
 } from '../../../compiler/checker/types/named-types.ts';
 import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type.ts';
 import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
+import type { Parameter } from '../../../compiler/syntax/expressions/index.ts';
 import { type Identifier, lastName } from '../../../compiler/syntax/node.ts';
 import type {
   ArrayPattern,
   NamePattern,
   StructPattern,
 } from '../../../compiler/syntax/patterns.ts';
-import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
+import { nodesAt, parentOf, type SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import type { NamedType } from '../../../compiler/syntax/types.ts';
 import { checkedTwinOf } from '../checked-twin.ts';
 import type { Cursor } from '../cursor.ts';
@@ -271,6 +272,25 @@ function subjectType(
     : cursor.checker.lookup.bodyHolding(cursor.module, checked)?.typeOf(checked);
 }
 
+/**
+ * What the parameter whose pattern holds the cursor has, as checked: a declared function's
+ * signature gives it, and a lambda's as the body holding it checked the lambda. The pattern reaches
+ * past the cursor, so the checked tree's parameter is the one there.
+ */
+function parameterTypeAt({ cursor }: Link<SyntaxNode>): Type | undefined {
+  const { checker, module, tree, offset } = cursor;
+  const parameter = nodesAt(tree, offset).findLast(
+    (node): node is Parameter => node.kind === 'Parameter',
+  );
+  const holder = parameter === undefined ? undefined : parentOf(tree, parameter);
+  const declared = holder?.kind === 'FunctionDeclaration' ? checker.parametersOf(holder) : [];
+  const nested =
+    holder?.kind === 'Lambda'
+      ? (checker.lookup.bodyHolding(module, holder)?.functionOf(holder)?.parameters ?? [])
+      : [];
+  return [...declared, ...nested].find(({ node }) => node === parameter)?.type;
+}
+
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const steps: { readonly [Kind in SyntaxNode['kind']]?: Step<Extract<SyntaxNode, { kind: Kind }>> } =
   {
@@ -280,6 +300,7 @@ const steps: { readonly [Kind in SyntaxNode['kind']]?: Step<Extract<SyntaxNode, 
         : undefined,
     Is: (link) =>
       link.child === link.node.pattern ? subjectType(link, link.node.subject) : undefined,
+    Parameter: (link) => (link.child === link.node.pattern ? parameterTypeAt(link) : undefined),
     OrPattern: whole,
     ParenthesizedPattern: whole,
     AsPattern: (link) => (link.child === link.node.pattern ? link.type : undefined),

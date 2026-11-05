@@ -90,7 +90,7 @@ function bodyInItem(
 
 /**
  * The body holding `inner` inside `part` of the function `declaration`: its body, the one block a
- * function holds, or its defaults.
+ * function holds, where a parameter's pattern is declared too (§3.3), or its defaults.
  */
 function bodyInFunction(
   checker: Holders,
@@ -98,7 +98,7 @@ function bodyInFunction(
   part: SyntaxNode | undefined,
   inner: SyntaxNode | undefined,
 ): CheckedBody | undefined {
-  if (part?.kind === 'Block') {
+  if (part?.kind === 'Block' || (part?.kind === 'Parameter' && inner === part.pattern)) {
     return checker.bodyOf(declaration);
   }
   return isDefault(part, inner) ? checker.defaultsOf(declaration) : undefined;

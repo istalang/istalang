@@ -100,6 +100,16 @@ describe('renaming', () => {
     expect(refusalOf(program, named('main', 'width'))).toBeUndefined();
   });
 
+  it('counts an anonymous indented value as the shape its braces would write (§3.1)', () => {
+    const refusal = (value: string) => {
+      const { program, named } = navigable({ main: `struct Size { width: Int }\n${value}` });
+      return refusalOf(program, named('main', 'width'));
+    };
+    const braces = refusal('const s: Size = struct{width: 1}\n');
+    expect(braces).toContain('shape');
+    expect(refusal('const s: Size =\n  width: 1\n')).toBe(braces);
+  });
+
   it('renames the String literals that name a field as its key, and only those (§3.1)', () => {
     const { program, named } = navigable({
       main: [

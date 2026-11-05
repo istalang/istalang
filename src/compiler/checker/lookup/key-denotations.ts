@@ -13,6 +13,7 @@
 
 import type { ModuleId } from '../../program/program.ts';
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
+import { literalNaming } from '../../syntax/expressions/built-types.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import type { LiteralType } from '../../syntax/types.ts';
@@ -30,11 +31,17 @@ export function keyDenotationsOf(
   module: ModuleId,
   literal: StringLiteral,
 ): readonly Denotation[] {
-  const owner = keyOwnerAt(checker, module, literal);
+  return keyedFieldDenotations(checker, keyOwnerAt(checker, module, literal), literal.value);
+}
+
+/** The field of `owner`, the struct a key is of, that the key `key` names; none for no such field. */
+export function keyedFieldDenotations(
+  checker: CheckerContext,
+  owner: Type | undefined,
+  key: string,
+): readonly Denotation[] {
   const field =
-    owner === undefined
-      ? undefined
-      : checker.fieldsOf(owner)?.find((each) => each.name === literal.value);
+    owner === undefined ? undefined : checker.fieldsOf(owner)?.find((each) => each.name === key);
   return field === undefined ? [] : [{ declared: { kind: 'field', field }, type: field.type }];
 }
 
@@ -104,10 +111,11 @@ function instantiationAt(
     return undefined;
   }
   const holder = parentOf(tree, node);
+  const literal = literalNaming(holder, node);
   const named =
-    holder?.kind === 'StructLiteral' && holder.type === node
-      ? bodyHolding(checker, module, holder)?.typeOf(holder)
-      : checker.resolvedTypeOf(node);
+    literal === undefined
+      ? checker.resolvedTypeOf(node)
+      : bodyHolding(checker, module, literal)?.typeOf(literal);
   if (named?.alias?.kind === 'alias') {
     return {
       parameters: named.alias.declaration.typeParameters,

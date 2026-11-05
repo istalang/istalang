@@ -16,7 +16,7 @@
 import { memo } from '../../../structures/memo.ts';
 import type {
   ArrayLiteral,
-  Expression,
+  FieldInitializer,
   IndentedEntry,
   IndentedValue,
   MapEntry,
@@ -25,12 +25,20 @@ import type {
   Spread,
   StructLiteral,
 } from './index.ts';
+import type { StringLiteral } from './literals.ts';
 
 /** What an indented value is built as. */
 export type LiteralForm = 'struct' | 'map' | 'array';
 
+/** The literal an indented value reads as, by its form. */
+interface LiteralsByForm {
+  readonly struct: StructLiteral | NewStructLiteral;
+  readonly map: MapLiteral;
+  readonly array: ArrayLiteral;
+}
+
 /** The literal an indented value reads as, of its form. */
-export type BuiltLiteral = StructLiteral | NewStructLiteral | MapLiteral | ArrayLiteral;
+export type BuiltLiteral = LiteralsByForm[LiteralForm];
 
 /** Whether `entry` is an item, `- value`, which only an array holds. */
 export function isItem(entry: IndentedEntry): boolean {
@@ -53,9 +61,26 @@ export function untypedForm(value: IndentedValue): LiteralForm {
 const literals = new WeakMap<IndentedValue, Map<LiteralForm, BuiltLiteral>>();
 
 /** The literal `value` reads as when built as `form`, made once per value and form. */
-export function literalOf(value: IndentedValue, form: LiteralForm): BuiltLiteral {
+export function literalOf<Form extends LiteralForm>(
+  value: IndentedValue,
+  form: Form,
+): LiteralsByForm[Form] {
   const byForm = memo(literals, value, () => new Map<LiteralForm, BuiltLiteral>());
-  return memo(byForm, form, () => builders[form](value));
+  return memo(byForm, form, () => builders[form](value)) as LiteralsByForm[Form];
+}
+
+const bareKeys = new WeakMap<FieldInitializer, StringLiteral>();
+
+/**
+ * The String a map's bare key reads as (`LOG_LEVEL:` keys `"LOG_LEVEL"`), made once per entry, so
+ * what checking records of it as a key (§3.1 Key types), tools read through the entry.
+ */
+export function bareKeyOf(entry: FieldInitializer): StringLiteral {
+  return memo(bareKeys, entry, () => ({
+    kind: 'StringLiteral',
+    span: entry.name.span,
+    value: entry.name.text,
+  }));
 }
 
 /** The entries `value` holds that the literal of `form` leaves out, for the checker to report. */
@@ -82,41 +107,41 @@ const holds: Record<LiteralForm, (entry: IndentedEntry) => boolean> = {
   array: isItem,
 };
 
-const builders: Record<LiteralForm, (value: IndentedValue) => BuiltLiteral> = {
-  struct: (value) => {
-    const items = value.entries.filter(isStructItem);
-    const { span } = value;
-    if (value.type === undefined) {
-      return { kind: 'StructLiteral', span, type: undefined, items };
-    }
-    return value.isNew
-      ? { kind: 'NewStructLiteral', span, type: value.type, items }
-      : { kind: 'StructLiteral', span, type: value.type, items };
-  },
-  map: (value) => ({
-    kind: 'MapLiteral',
-    span: value.span,
-    entries: value.entries.flatMap((entry): readonly (MapEntry | Spread)[] => {
-      switch (entry.kind) {
-        case 'FieldInitializer': {
-          const { name, span } = entry;
-          const key: Expression = { kind: 'StringLiteral', span: name.span, value: name.text };
-          return [{ kind: 'MapEntry', span, key, value: entry.value ?? name }];
-        }
-        case 'QuotedEntry':
-          return [{ kind: 'MapEntry', span: entry.span, key: entry.key, value: entry.value }];
-        case 'Spread':
-          return [entry];
-        default:
-          return [];
+const builders: { readonly [Form in LiteralForm]: (value: IndentedValue) => LiteralsByForm[Form] } =
+  {
+    struct: (value) => {
+      const items = value.entries.filter(isStructItem);
+      const { span } = value;
+      if (value.type === undefined) {
+        return { kind: 'StructLiteral', span, type: undefined, items };
       }
+      return value.isNew
+        ? { kind: 'NewStructLiteral', span, type: value.type, items }
+        : { kind: 'StructLiteral', span, type: value.type, items };
+    },
+    map: (value) => ({
+      kind: 'MapLiteral',
+      span: value.span,
+      entries: value.entries.flatMap((entry): readonly (MapEntry | Spread)[] => {
+        switch (entry.kind) {
+          case 'FieldInitializer': {
+            const { name, span } = entry;
+            return [{ kind: 'MapEntry', span, key: bareKeyOf(entry), value: entry.value ?? name }];
+          }
+          case 'QuotedEntry':
+            return [{ kind: 'MapEntry', span: entry.span, key: entry.key, value: entry.value }];
+          case 'Spread':
+            return [entry];
+          default:
+            return [];
+        }
+      }),
     }),
-  }),
-  array: (value) => ({
-    kind: 'ArrayLiteral',
-    span: value.span,
-    elements: value.entries.flatMap((entry) =>
-      entry.kind === 'IndentedItem' ? [entry.value] : [],
-    ),
-  }),
-};
+    array: (value) => ({
+      kind: 'ArrayLiteral',
+      span: value.span,
+      elements: value.entries.flatMap((entry) =>
+        entry.kind === 'IndentedItem' ? [entry.value] : [],
+      ),
+    }),
+  };

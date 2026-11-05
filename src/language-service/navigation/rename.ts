@@ -33,6 +33,8 @@ import {
 } from '../../compiler/program/program.ts';
 import { spellsName } from '../../compiler/scanner/characters.ts';
 import type { Field } from '../../compiler/syntax/declarations.ts';
+import { literalOf, untypedForm } from '../../compiler/syntax/expressions/indented-values.ts';
+import type { FieldsLiteral } from '../../compiler/syntax/expressions/index.ts';
 import type { Invalid } from '../../compiler/syntax/node.ts';
 import { childrenOf, nodesUnder, parentOf, type SyntaxNode } from '../../compiler/syntax/tree.ts';
 import {
@@ -303,7 +305,8 @@ const writersByProgram = new WeakMap<Program, ReadonlyMap<string, Writers>>();
 
 /**
  * The writers of each set of field names in a program, by its key: `{…}` types, `struct{…}`
- * literals with nothing named before them and shared structs as shapes, struct declarations apart.
+ * literals and keyed indented values with nothing named before them, and shared structs as shapes,
+ * struct declarations apart.
  */
 function shapeWriters(program: Program): ReadonlyMap<string, Writers> {
   return memo(writersByProgram, program, () => {
@@ -335,15 +338,23 @@ function writerOf(node: SyntaxNode): { key: string; kind: keyof Writers } | unde
       return { key: fieldsKey(node.fields), kind: 'shapes' };
     case 'StructDeclaration':
       return { key: fieldsKey(node.fields), kind: 'structs' };
-    case 'StructLiteral': {
-      const named = node.items.flatMap((item) =>
-        item.kind === 'FieldInitializer' ? [item.name.text] : [],
-      );
-      return node.type === undefined ? { key: namesKey(named), kind: 'shapes' } : undefined;
-    }
+    case 'StructLiteral':
+      return node.type === undefined ? shapeLiteralWriter(node) : undefined;
+    case 'IndentedValue':
+      return node.type === undefined && untypedForm(node) === 'struct'
+        ? shapeLiteralWriter(literalOf(node, 'struct'))
+        : undefined;
     default:
       return undefined;
   }
+}
+
+/** The shape a `struct{…}` literal writes, or the struct literal an indented value reads as. */
+function shapeLiteralWriter(literal: FieldsLiteral): { key: string; kind: keyof Writers } {
+  const named = literal.items.flatMap((item) =>
+    item.kind === 'FieldInitializer' ? [item.name.text] : [],
+  );
+  return { key: namesKey(named), kind: 'shapes' };
 }
 
 /** The names of written fields as one key, as `namesKey` makes it. */

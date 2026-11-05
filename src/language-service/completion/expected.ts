@@ -22,6 +22,7 @@ import type { Type } from '../../compiler/checker/types/type.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
 import { membersOf } from '../../compiler/checker/types/unions.ts';
 import type { ModuleId, Program } from '../../compiler/program/program.ts';
+import { literalNaming } from '../../compiler/syntax/expressions/built-types.ts';
 import type { Expression } from '../../compiler/syntax/expressions/index.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
 import { spanIn } from '../../compiler/syntax/positions.ts';
@@ -177,12 +178,11 @@ function expectedOfWritten(
 
 /**
  * The value the name `name` writes, `chain` holding it: the name itself, or the struct or variant
- * literal it names (`Ok‸{(v)}`), whose type the tree holds as a written type.
+ * literal it names (`Ok‸{(v)}`, `Ok‸:`), whose type the tree holds as a written type.
  */
 function valueNamedBy(chain: readonly SyntaxNode[], name: Identifier): Expression {
   const type = holderIn(chain, name);
-  const literal = type === undefined ? undefined : holderIn(chain, type);
-  return literal?.kind === 'StructLiteral' && literal.type === type ? literal : name;
+  return (type === undefined ? undefined : literalNaming(holderIn(chain, type), type)) ?? name;
 }
 
 /** The name the cursor writes as the program's tree holds it, which its own checker answers for. */

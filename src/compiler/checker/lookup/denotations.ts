@@ -21,7 +21,9 @@ import {
 } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
-import type { Call, MemberAccess } from '../../syntax/expressions/index.ts';
+import { literalNaming } from '../../syntax/expressions/built-types.ts';
+import { bareKeyOf } from '../../syntax/expressions/indented-values.ts';
+import type { Call, FieldInitializer, MemberAccess } from '../../syntax/expressions/index.ts';
 import { isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { Hold } from '../../syntax/statements.ts';
@@ -38,6 +40,7 @@ import { entityType } from '../types/named-types.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import { type FieldMember, nominalType, type Type } from '../types/type.ts';
 import { ancestorsOf, bodyHolding } from './holders.ts';
+import { keyedFieldDenotations } from './key-denotations.ts';
 
 /** An identifier, where it stands, and the body holding it, if any. */
 interface NameSite {
@@ -94,8 +97,7 @@ type NameHolder = Extract<
 const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undefined> = {
   MemberAccess: (site, node) =>
     site.name === node.member ? memberDenotations(site, node, site.holders[1]) : undefined,
-  FieldInitializer: (site, node) =>
-    site.name === node.name ? fieldOrShorthand(site, node.value === undefined) : undefined,
+  FieldInitializer: (site, node) => (site.name === node.name ? itemNamed(site, node) : undefined),
   BindFieldPattern: (site, node) =>
     site.name === node.field ? fieldOrShorthand(site, node.alias === undefined) : undefined,
   CompareFieldPattern: (site, node) => (site.name === node.field ? fieldNamed(site) : undefined),
@@ -139,6 +141,21 @@ function chosenWhereItStands(site: NameSite): readonly Denotation[] | undefined 
 /** The field a name gives; for a shorthand, the variable it reads or binds too. */
 function fieldOrShorthand(site: NameSite, isShorthand: boolean): readonly Denotation[] {
   return isShorthand ? [...fieldNamed(site), ...named(site)] : fieldNamed(site);
+}
+
+/**
+ * What an item's name denotes: the field it gives, or where its indented value was built as a map,
+ * the field its bare key names as a key (§3.1 Key types); a shorthand's variable beside either.
+ */
+function itemNamed(site: NameSite, item: FieldInitializer): readonly Denotation[] {
+  const [, value] = site.holders;
+  const built = value?.kind === 'IndentedValue' ? site.body?.builtLiteralOf(value) : undefined;
+  if (built?.kind !== 'MapLiteral') {
+    return fieldOrShorthand(site, item.value === undefined);
+  }
+  const key = bareKeyOf(item);
+  const field = keyedFieldDenotations(site.checker, site.body?.keyOwnerOf(key), key.value);
+  return item.value === undefined ? [...field, ...named(site)] : field;
 }
 
 function fieldNamed(site: NameSite): readonly Denotation[] {
@@ -279,10 +296,9 @@ function writtenTypeName(
   node: NamedType,
   holder: SyntaxNode | undefined,
 ): readonly Denotation[] {
-  const isLiteral =
-    (holder?.kind === 'StructLiteral' || holder?.kind === 'NewStructLiteral') &&
-    holder.type === node;
-  const type = isLiteral ? site.body?.typeOf(holder) : site.checker.resolvedTypeOf(node);
+  const literal = literalNaming(holder, node);
+  const type =
+    literal === undefined ? site.checker.resolvedTypeOf(node) : site.body?.typeOf(literal);
   const bound = named(site, type);
   return bound.length > 0 ? bound : associatedNamed(site.checker, type);
 }

@@ -231,14 +231,30 @@ export interface LabelledBlock extends NodeOf<'LabelledBlock'>, Annotatable {
   readonly body: Block;
 }
 
+/** What declares targets (`declaredTargets`). */
+export type TargetOwner = VariableDeclaration | For | Comprehension | FieldHeader | Parameter;
+
+const targetOwnerKinds: ReadonlySet<string> = new Set<TargetOwner['kind']>([
+  'VariableDeclaration',
+  'For',
+  'Comprehension',
+  'FieldHeader',
+  'Parameter',
+]);
+
+/** Whether `node` declares targets, which `declaredTargets` reads. */
+export function ownsTargets<Node extends { readonly kind: string }>(
+  node: Node,
+): node is Extract<Node, TargetOwner> {
+  return targetOwnerKinds.has(node.kind);
+}
+
 /**
  * The targets `owner` declares, which take its value apart (§3.15): a declaration's or loop's, a
  * field loop's key and value, which take apart the pair of a field's name and value, or a
  * parameter's pattern, which takes its argument apart (§3.3).
  */
-export function declaredTargets(
-  owner: VariableDeclaration | For | Comprehension | FieldHeader | Parameter,
-): readonly Pattern[] {
+export function declaredTargets(owner: TargetOwner): readonly Pattern[] {
   switch (owner.kind) {
     case 'FieldHeader':
       return [owner.key, owner.value];

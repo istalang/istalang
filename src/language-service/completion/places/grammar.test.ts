@@ -128,6 +128,20 @@ describe('completion offers the words the grammar takes where it stands', () => 
       { numRuns: 40 },
     );
   }, 60_000);
+
+  it("at a declared value a select opens, whose word and `:` read as an indented value's type", () => {
+    const text = [
+      'fn tryTake(s: Slot<Int>) -> Int:',
+      '  const got: Int? = select:',
+      '    case s.read() as value:',
+      '      value',
+      '    else:',
+      '      none',
+      '  got ?? 0',
+      '',
+    ].join('\n');
+    expect(misofferedWords({ text, offset: text.indexOf('select'), after: ' ' })).toEqual([]);
+  });
 });
 
 function names(...lines: readonly string[]): readonly string[] {

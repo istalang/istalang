@@ -28,7 +28,12 @@ import { itemName } from '../../../compiler/syntax/expressions/readings.ts';
 import type { Identifier } from '../../../compiler/syntax/node.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
 import type { Token } from '../../../compiler/syntax/tokens.ts';
-import { nodesAt, type SyntaxNode, type SyntaxTree } from '../../../compiler/syntax/tree.ts';
+import {
+  childrenOf,
+  nodesAt,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../../../compiler/syntax/tree.ts';
 import { indentationAt, lineStartAt } from '../../../text/line-map.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
@@ -80,7 +85,8 @@ function itemAt<Item extends { readonly span: FieldsLiteral['span'] }>(
 
 /**
  * An indented value's entry starting at `start`, first on its line: of the innermost value around
- * `before` whose entries stand at that column, or, with none yet, whose block would open there.
+ * `before` whose entries stand at that column, or, with none yet, whose block would open there, as
+ * the value of a key whose `:` is `before` does, which holds no token to stand around.
  */
 function indentedEntryPlaceAt(
   tree: SyntaxTree,
@@ -93,7 +99,9 @@ function indentedEntryPlaceAt(
     return undefined;
   }
   const column = start - lineStart;
-  const around = [...nodesAt(tree, before.span.start), ...nodesAt(tree, before.span.end)];
+  const around = [...nodesAt(tree, before.span.start), ...nodesAt(tree, before.span.end)].flatMap(
+    (node) => [node, ...childrenOf(tree, node)],
+  );
   const value = around
     .filter((node): node is IndentedValue => node.kind === 'IndentedValue')
     .findLast((each) => {

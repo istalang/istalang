@@ -108,6 +108,30 @@ describe('navigation (go-to-definition and references) on indented values and pa
   });
 });
 
+describe('an indented value reads as the literal it builds, for hover and navigation (notes 3, 5)', () => {
+  it("hovers the type a value names as its brace form's, instantiated", () => {
+    const braces = hover('fn f() -> Result<Int>:', '  return O‸k{value: 1}');
+    const indented = hover('fn f() -> Result<Int>:', '  return O‸k:', '    value: 1');
+    expect(indented?.code).toEqual(braces?.code);
+    expect(indented?.code.join('\n')).toContain('Result<Int, Error>');
+  });
+
+  it("reaches a struct's field from the bare keys of an indented map keyed by its names", () => {
+    const at = (...value: readonly string[]) => {
+      const { program, module, offset } = programAt(
+        'struct Settings { ret‸ries: Int, region: Int }',
+        'fn f() -> Map<keyof Settings, Int>:',
+        ...value,
+      );
+      return referencesAt(program, module, offset).length;
+    };
+    expect(at('  return', '    retries: 1', '    region: 2')).toBe(
+      at('  return ["retries": 1, "region": 2]'),
+    );
+    expect(at('  return ["retries": 1, "region": 2]')).toBe(2);
+  });
+});
+
 describe('completion in indented values and after separating line breaks (notes 5, 10)', () => {
   it('offers the remaining fields of a struct in a named or anonymous indented value', () => {
     expect(
@@ -133,6 +157,30 @@ describe('completion in indented values and after separating line breaks (notes 
         '  s',
       ),
     ).toEqual(['backoffMs']);
+  });
+
+  it("offers the fields of an anonymous value after 'return' and under a key with no entry yet", () => {
+    expect(
+      completedFields(...serviceDecls, 'fn f() -> Service:', '  return', '    name: "x"', '    ‸'),
+    ).toEqual(['replicas', 'retry']);
+    expect(
+      completedFields(
+        ...serviceDecls,
+        'fn f() -> Service:',
+        '  const b: Service =',
+        '    name: "x"',
+        '    retry:',
+        '      ‸',
+        '  b',
+      ),
+    ).toEqual(['times', 'backoffMs']);
+  });
+
+  it("offers a value's names, its variants among them, where an indented value names its type", () => {
+    const paint = ['enum Paint:', '  Red { shade: Int }', '  Blue { shade: Int }', ''];
+    expect(completedNames(...paint, 'fn f() -> Paint:', '  return Re‸:', '    shade: 1')).toEqual(
+      expect.arrayContaining(['Red', 'Blue']),
+    );
   });
 
   it('offers the keys the key type of an indented map spells that no entry gives yet, quoted where no name', () => {

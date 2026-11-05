@@ -117,7 +117,7 @@ export interface NewStructLiteral extends NodeOf<'NewStructLiteral'> {
 export type FieldsLiteral = StructLiteral | NewStructLiteral;
 
 /** `first: 1`, or the shorthand `first` (meaning `first: first`) when `value` is undefined. */
-interface FieldInitializer extends NodeOf<'FieldInitializer'> {
+export interface FieldInitializer extends NodeOf<'FieldInitializer'> {
   readonly name: Identifier;
   readonly value: Expression | undefined;
 }
