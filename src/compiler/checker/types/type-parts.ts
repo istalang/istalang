@@ -5,12 +5,8 @@
  */
 
 import { sameItems } from '../../../structures/equality.ts';
-import {
-  type ComputedType,
-  isComputed,
-  type MappedParts,
-  type RecursiveType,
-} from './computed-types.ts';
+import { mappedParts, reducedComputed } from './computed-reduction.ts';
+import { type ComputedType, isComputed, type RecursiveType } from './computed-types.ts';
 import { withPack } from './function-types.ts';
 import { mapRecursive } from './recursive-types.ts';
 import {
@@ -155,19 +151,8 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
         return unionOf(type.members.map(map), rules);
       case 'recursive':
         return mapRecursive(type, map, rules);
-      case 'associated':
-        return rules.associatedType(map(type.of), type.name);
-      case 'field':
-        return rules.fieldType(map(type.of), map(type.key));
-      case 'keys':
-        return rules.keysOf(map(type.of), type.without);
-      case 'mapped':
-        return rules.mappedType(mappedParts(type, map));
-      case 'match':
-        // A type `match` use is reduced again, which finds it recursive or not.
-        return rules.matchType(type.declaration, type.arguments.map(map));
       default:
-        return undefined;
+        return isComputed(type) ? reducedComputed(type, map, rules) : undefined;
     }
   };
   const built = rebuilt();
@@ -237,15 +222,4 @@ export function mapParts(
       return unhandled;
     }
   }
-}
-
-/** A mapped struct type's parts, each type it is built from replaced by what `map` gives. */
-function mappedParts(type: MappedParts, map: (child: Type) => Type): MappedParts {
-  return {
-    origin: type.origin,
-    named: type.named.map((field) => ({ ...field, type: map(field.type) })),
-    parameter: type.parameter,
-    keys: map(type.keys),
-    value: map(type.value),
-  };
 }

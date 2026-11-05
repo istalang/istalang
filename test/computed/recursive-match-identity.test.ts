@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { codesOf, runMain } from './computed.test-kit.ts';
+import { codesOf, compareWrittenTypes, runMain, sameComputedType } from './computed.test-kit.ts';
 
 const dataDecls = [
   'struct Node<T> { value: T, next: Array<Node<T>> }',
@@ -40,5 +40,58 @@ describe('a recursive type `match` use', () => {
       'fn cross(d: Data<Node<String>>) -> Other<Pair<String>>: d',
     ];
     expect(codesOf(...declarations)).toEqual([]);
+  });
+
+  it('reduces a type `match` its own use is given inside its body, once that use is closed', () => {
+    const declarations = [
+      'struct Node { v: Int }',
+      'type Wrap<X> = match X:',
+      '  case struct { n: infer K }: K',
+      '  case _: String',
+      'type A<D> = match D:',
+      '  case Node: { w: Array<Wrap<A<D>>>, n: Int }',
+      'fn first(a: A<Node>) -> Int: a.w[0] + a.n',
+    ];
+    expect(codesOf(...declarations)).toEqual([]);
+    expect(runMain('Int', 'first(struct{w: [5], n: 2})', declarations)).toBe(7);
+  });
+
+  it('closes a type `match` its own use is given inside its body when it holds itself in turn', () => {
+    const declarations = [
+      'struct Node { v: Int }',
+      'type Box<X> = match X:',
+      '  case struct { w: infer W }: { inner: W }',
+      'type A<D> = match D:',
+      '  case Node: { w: Array<Box<A<D>>>, n: Int }',
+      'fn depth(a: A<Node>) -> Int: a.w.length() + a.w[0].inner[0].inner.length()',
+    ];
+    expect(codesOf(...declarations)).toEqual([]);
+    expect(
+      runMain('Int', 'depth(struct{w: [struct{inner: [struct{inner: []}]}], n: 1})', declarations),
+    ).toBe(1);
+  });
+
+  it('matches a recursive type as what it unfolds to, as a subject and as a pattern', () => {
+    const declarations = [
+      'type Tree = { n: Int, kids: Array<Tree> }',
+      'type Rose = Array<Rose>',
+      'type IdOf<X> = match X:',
+      '  case struct { n: infer K }: K',
+      '  case _: String',
+      'type ItemOf<X> = match X:',
+      '  case Array<infer T>: T',
+      '  case _: String',
+      'type IsTree<X> = match X:',
+      '  case Tree: "tree"',
+      '  case _: "other"',
+    ];
+    expect(compareWrittenTypes('IdOf<Tree>', 'Int', declarations)).toEqual(sameComputedType);
+    expect(compareWrittenTypes('ItemOf<Rose>', 'Rose', declarations)).toEqual(sameComputedType);
+    expect(
+      compareWrittenTypes('IsTree<{ n: Int, kids: Array<Tree> }>', '"tree"', declarations),
+    ).toEqual(sameComputedType);
+    expect(compareWrittenTypes('IsTree<{ n: Int }>', '"other"', declarations)).toEqual(
+      sameComputedType,
+    );
   });
 });

@@ -212,7 +212,7 @@ export function boundParameters(type: Type): readonly ParameterKey[] {
 }
 
 /** Whether `type` is, or is built from, a node of `graph`. */
-function namesNodeOf(type: Type, graph: RecursiveGraph): boolean {
+export function namesNodeOf(type: Type, graph: RecursiveGraph): boolean {
   if (type.kind === 'recursive') {
     return type.graph === graph;
   }

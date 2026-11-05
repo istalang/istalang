@@ -10,6 +10,11 @@
  *   node is reached again, any other class rebuilt in place. So a graph refers to no other graph,
  *   and its parts hold no recursive type (type-children.ts).
  * - A recursive alias in a union is flattened: its members join the union, as a union member's do.
+ * - A computed type a body holds over a use of the group (a type `match` given it, say) stays
+ *   unreduced while that use is a placeholder, which decides nothing. Once the group has closed,
+ *   each one built from a node is reduced, joins the group as a body of its own, and the group
+ *   closes again, so no graph keeps a computed type its own nodes decide (stage 2 of
+ *   docs/work/proposals/p5-equi-recursive-identity.md).
  * - A node is labelled with the alias it reads as: the group's own alias holding it, else the label
  *   of the node it copied; one made only to break a cycle has none. A label identifies nothing.
  * - A recursive type's parts replaced (substitution, `mapRecursive`) closes its graph again from its
@@ -21,7 +26,8 @@
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { RecursiveGraph, RecursiveType } from './computed-types.ts';
+import { reducedComputed } from './computed-reduction.ts';
+import { isComputed, type RecursiveGraph, type RecursiveType } from './computed-types.ts';
 import { type Slot, TermGraph } from './recursive-terms.ts';
 import type { DeclaredAliasUse, ParameterKey, Type } from './type.ts';
 import {
@@ -29,11 +35,12 @@ import {
   graphParts,
   graphPlaceOf,
   holdsRecursion,
+  namesNodeOf,
   typeChildren,
   withTypeChildren,
 } from './type-children.ts';
 import { typeKeys } from './type-keys.ts';
-import type { MemberRules } from './union-members.ts';
+import type { TypeRules } from './type-rules.ts';
 
 /** A group of bodies closing together, and what each one reads as. */
 export interface RecursiveGroup {
@@ -43,12 +50,29 @@ export interface RecursiveGroup {
   readonly placeholderOf: (type: Type) => number | undefined;
   /** The alias each body is written as, if any. */
   readonly labels: readonly (DeclaredAliasUse | undefined)[];
-  /** The rules of the program, which normalize unions the graph flattens (union-members.ts). */
-  readonly rules: MemberRules;
+  /**
+   * The rules of the program, which normalize unions the graph flattens (union-members.ts) and
+   * reduce computed types built from its nodes (computed-reduction.ts).
+   */
+  readonly rules: TypeRules;
 }
 
 /** The type each of `group`'s bodies closes to (the banner), in order. */
 export function closeRecursive(group: RecursiveGroup): readonly Type[] {
+  return withTermsReduced(closedOnce(group), group);
+}
+
+/** What a group closed to once: each body's type, and the graph closing built. */
+interface Closed {
+  readonly types: readonly Type[];
+  readonly graph: RecursiveGraph;
+}
+
+/** How many computed types one closing reduces before it takes the rest as never reducing. */
+const mostReducedTerms = 256;
+
+/** `group` closed into one graph, its computed types left as its bodies hold them. */
+function closedOnce(group: RecursiveGroup): Closed {
   const terms = new TermGraph({
     bodies: group.bodies,
     placeholderOf: group.placeholderOf,
@@ -67,6 +91,99 @@ export function closeRecursive(group: RecursiveGroup): readonly Type[] {
   }
   nodes.breakCycles(roots);
   return nodes.build(roots);
+}
+
+/**
+ * What `closed` closes to with each computed type built from its graph's nodes reduced (the
+ * banner): a body resolves with placeholders, which decide no type `match` given one, say, so it
+ * stays unreduced until the placeholder is a node. Each reduced one joins the group as a body of
+ * its own, so a reduction reaching it again closes a cycle through it, and the group closes again
+ * with the graph's nodes and the bodies that are none.
+ */
+function withTermsReduced(closed: Closed, group: RecursiveGroup): readonly Type[] {
+  const { graph, types } = closed;
+  if (graph.nodes.length === 0) {
+    return types;
+  }
+  const others = [...types.entries()].filter(([, type]) => !isNodeOf(type, graph));
+  const reductions = new Map<string, Type>();
+  const stuck = new Set<string>();
+  const pending = [...graph.nodes, ...others.map(([, type]) => type)].flatMap((type) =>
+    termsOver(type, graph),
+  );
+  for (
+    let term = pending.pop();
+    term !== undefined && reductions.size < mostReducedTerms;
+    term = pending.pop()
+  ) {
+    const key = typeKeys.typeKey(term);
+    if (!(reductions.has(key) || stuck.has(key))) {
+      const reduced = reducedOver(term, graph, group.rules);
+      if (typeKeys.typeKey(reduced) === key) {
+        stuck.add(key);
+      } else {
+        reductions.set(key, reduced);
+        pending.push(...termsOver(reduced, graph));
+      }
+    }
+  }
+  if (reductions.size === 0) {
+    return types;
+  }
+  const firstReduction = graph.nodes.length + others.length;
+  const indexOfTerm = new Map([...reductions.keys()].map((key, at) => [key, firstReduction + at]));
+  const again = closedOnce({
+    bodies: [...graph.nodes, ...others.map(([, type]) => type), ...reductions.values()],
+    placeholderOf: (type) => {
+      if (isNodeOf(type, graph)) {
+        return type.node;
+      }
+      return isComputed(type) ? indexOfTerm.get(typeKeys.typeKey(type)) : undefined;
+    },
+    labels: [
+      ...graph.labels,
+      ...others.map(([index]) => group.labels[index]),
+      ...[...reductions.keys()].map(() => undefined),
+    ],
+    rules: group.rules,
+  }).types;
+  const indexOfOther = new Map(others.map(([index], at) => [index, graph.nodes.length + at]));
+  return types.map(
+    (type, index) =>
+      again[isNodeOf(type, graph) ? type.node : (indexOfOther.get(index) ?? -1)] ??
+      unreachable('A body closed to nothing.'),
+  );
+}
+
+/** Whether `type` is a node of `graph`. */
+function isNodeOf(type: Type, graph: RecursiveGraph): type is RecursiveType {
+  return type.kind === 'recursive' && type.graph === graph;
+}
+
+/** The outermost computed types in `type` built from a node of `graph`. */
+function termsOver(type: Type, graph: RecursiveGraph): readonly Type[] {
+  if (type.kind === 'recursive' || !holdsRecursion(type)) {
+    return [];
+  }
+  if (isComputed(type) && namesNodeOf(type, graph)) {
+    return [type];
+  }
+  return typeChildren(type).flatMap((child) => termsOver(child, graph));
+}
+
+/** `type` with every computed type in it built from a node of `graph` reduced, innermost first. */
+function reducedOver(type: Type, graph: RecursiveGraph, rules: TypeRules): Type {
+  if (type.kind === 'recursive' || !holdsRecursion(type)) {
+    return type;
+  }
+  const children = typeChildren(type);
+  const reduced = children.map((child) => reducedOver(child, graph, rules));
+  const rebuilt = reduced.every((child, at) => child === children[at])
+    ? type
+    : withTypeChildren(type, reduced);
+  return isComputed(rebuilt) && namesNodeOf(rebuilt, graph)
+    ? reducedComputed(rebuilt, (child) => child, rules)
+    : rebuilt;
 }
 
 /** Which classes of a minimized term graph become a graph's nodes, and the graph they build. */
@@ -162,7 +279,7 @@ class GraphNodes {
   }
 
   /** The graph of the named classes, and the type each of `roots` closes to. */
-  build(roots: readonly Slot[]): readonly Type[] {
+  build(roots: readonly Slot[]): Closed {
     const terms = this.#terms;
     const nodes: Type[] = [];
     const types: RecursiveType[] = [];
@@ -186,7 +303,7 @@ class GraphNodes {
     for (const term of this.#representatives) {
       nodes.push(rebuilt(term));
     }
-    return roots.map(typeOfSlot);
+    return { types: roots.map(typeOfSlot), graph };
   }
 }
 
@@ -197,7 +314,7 @@ class GraphNodes {
 export function mapRecursive(
   type: RecursiveType,
   map: (part: Type) => Type,
-  rules: MemberRules,
+  rules: TypeRules,
 ): Type {
   const { graph } = type;
   const mapped = new Map(graphParts(graph).map((part) => [part, map(part)] as const));

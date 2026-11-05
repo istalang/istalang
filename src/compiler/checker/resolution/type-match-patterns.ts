@@ -15,17 +15,20 @@
  *   becomes, which is what lets a generic body skip a case (§3.5).
  * - A variable's constraints, and a struct constraint, are judged as conformance judges them,
  *   reporting nothing: not meeting one fails the case, which is no error.
+ * - A recursive type is matched as what it unfolds to (§3.17), on either side; a pair of types met
+ *   again while it is matched holds, as two unfoldings equal so far stay equal, so matching ends.
  */
 
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { constraintOn } from '../traits/constraints.ts';
 import { isStructType } from '../traits/struct-keys.ts';
-import { isOpaque } from '../types/computed-types.ts';
+import { isOpaque, unfolded } from '../types/computed-types.ts';
 import { sameType } from '../types/identity.ts';
 import type { StructConstraintModel } from '../types/struct-constraint.ts';
 import type { Type } from '../types/type.ts';
 import { typeChildren } from '../types/type-children.ts';
+import { typeKeys } from '../types/type-keys.ts';
 import type { CasePatternForm, InferVariable } from '../types/type-match.ts';
 import { isKnown, parametersIn, unaliased } from '../types/type-parts.ts';
 import { baseOf } from '../types/union-members.ts';
@@ -43,6 +46,8 @@ interface Matching {
   readonly variables: ReadonlyMap<TypeParameter, InferVariable>;
   readonly bound: Map<TypeParameter, Type>;
   readonly meets: Meets;
+  /** The pairs of types holding recursion being matched, by key, which hold when met again. */
+  readonly unfolding: Set<string>;
 }
 
 /**
@@ -60,6 +65,7 @@ export function matchCase(
     variables: new Map(variables.map((variable) => [variable.parameter, variable])),
     bound: new Map(),
     meets: silentMeets(searchSite(checker)),
+    unfolding: new Set(),
   };
   const outcome = all([
     () => matchPattern(matching, pattern, type),
@@ -77,7 +83,7 @@ function matchPattern(matching: Matching, pattern: CasePatternForm, type: Type):
     case 'type':
       return matchWhole(matching, unaliased(pattern.type), unaliased(type));
     case 'struct':
-      return matchStruct(matching, pattern.constraint, unaliased(type));
+      return matchStruct(matching, pattern.constraint, unfolded(unaliased(type)));
     default: {
       const unhandled: never = pattern;
       return unhandled;
@@ -116,6 +122,9 @@ function matchType(matching: Matching, pattern: Type, type: Type): Outcome {
   if (isOpaque(type) || isOpaque(pattern)) {
     return sameType(pattern, type) ? 'match' : 'undecided';
   }
+  if (type.kind === 'recursive' || pattern.kind === 'recursive') {
+    return matchUnfolded(matching, pattern, type);
+  }
   if (pattern.kind === 'union') {
     return matchUnion(matching, pattern.members, type);
   }
@@ -123,6 +132,23 @@ function matchType(matching: Matching, pattern: Type, type: Type): Outcome {
     return 'fail';
   }
   return matchParts(matching, pattern, type);
+}
+
+/** Whether `pattern` matches `type`, one of them recursive, as they unfold (the banner). */
+function matchUnfolded(matching: Matching, pattern: Type, type: Type): Outcome {
+  if (sameType(pattern, type)) {
+    return 'match';
+  }
+  const pair = `${typeKeys.typeKey(pattern)} ~ ${typeKeys.typeKey(type)}`;
+  if (matching.unfolding.has(pair)) {
+    return 'match';
+  }
+  matching.unfolding.add(pair);
+  try {
+    return matchType(matching, unfolded(pattern), unfolded(type));
+  } finally {
+    matching.unfolding.delete(pair);
+  }
 }
 
 /** Whether two types of one kind, neither a union, match part by part. */
