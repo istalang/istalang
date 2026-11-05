@@ -8,6 +8,7 @@ import type {
   Comprehension,
   Expression,
   FieldHeader,
+  Parameter,
   SelectCase,
 } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
@@ -17,10 +18,16 @@ import type { For, VariableDeclaration } from '../syntax/statements.ts';
 import type { AnyType, Type } from './types/type.ts';
 
 /**
- * What binds targets (§3.15): a declaration, a `for` or comprehension for each item, or a select
- * case's `as` for the value of its future (§8).
+ * What binds targets (§3.15): a declaration, a `for` or comprehension for each item, a parameter's
+ * pattern for its argument (§3.3), or a select case's `as` for the value of its future (§8).
  */
-export type TargetOwner = VariableDeclaration | For | FieldHeader | Comprehension | SelectCase;
+export type TargetOwner =
+  | VariableDeclaration
+  | For
+  | FieldHeader
+  | Comprehension
+  | Parameter
+  | SelectCase;
 
 /**
  * A step from a value to one of its parts (§3.11, §3.15): a struct's field by its name

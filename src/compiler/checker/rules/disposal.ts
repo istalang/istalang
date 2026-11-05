@@ -188,14 +188,15 @@ function checkSelfStays(
   };
   const visit = (node: SyntaxNode, outer: readonly SyntaxNode[], nested: boolean): void => {
     const entity = node.kind === 'Identifier' ? checker.bindings.entityOf(module, node) : undefined;
-    if (entity?.kind === 'variable' && entity.owner === self) {
+    // A parameter owns its pattern's names too (§3.3); only its own name is the disposed value.
+    if (entity?.kind === 'variable' && entity.name === self.name) {
       const [parent, grandparent] = outer.filter((each) => each.kind !== 'Parenthesized');
       const stays =
         parent?.kind === 'Dereference' ||
         (parent?.kind === 'Call' && parent.callee !== node && isExternCall(parent)) ||
         (parent?.kind === 'MemberAccess' && isExternCall(grandparent));
       if (nested || !stays) {
-        checker.report(module, checkerDiagnostics.disposeSelfEscapes(node.span, self.name.text));
+        checker.report(module, checkerDiagnostics.disposeSelfEscapes(node.span, entity.name.text));
       }
     }
     const inner = nested || nestsFunction(node);

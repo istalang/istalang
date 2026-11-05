@@ -46,6 +46,7 @@ function parseLambdaParameters(parser: Parser): readonly (Parameter | Invalid)[]
       span: name.span,
       isRest: false,
       name,
+      pattern: undefined,
       type: undefined,
       defaultValue: undefined,
     },

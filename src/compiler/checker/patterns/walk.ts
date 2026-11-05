@@ -18,7 +18,8 @@
  *   part's type rules out (a `never` test, §3.11) is left out; with none left, the pattern never
  *   matches.
  * - What a pattern selects of its part comes first (selections.ts): a downcast of an `any` value,
- *   or the members of a union's. Type arguments are written only there, on a union's members.
+ *   or the members of a union's. Type arguments are written only there, on a union's members, and
+ *   in a parameter's own pattern, whose head names the parameter's type (§3.3, `typed`).
  * - A shape is undefined when the pattern acts as a guard for exhaustiveness: it compares by more
  *   than `==` against a literal or variant, tests one field twice, or is a range (§3.11).
  */
@@ -75,14 +76,16 @@ export function walkPattern(
 /**
  * The names a declaration's or loop's `targets` bind in a value of `type`, each with its part
  * (§3.15). A target refuses whatever could fail to match before taking it apart (`refused`), so
- * its parts are fields and tuple elements only.
+ * its parts are fields and tuple elements only. `typed` is a struct pattern among them whose
+ * written type is the value's own, a parameter's (§3.3), so its type arguments are that type's.
  */
 export function walkTargets(
   scope: PatternScope,
   targets: readonly Pattern[],
   type: Type,
+  typed?: StructPattern,
 ): readonly TargetBinding[] {
-  const walk = newWalk(scope, undefined);
+  const walk = newWalk(scope, undefined, typed);
   takeTargets(walk, targets, { type, path: [] }, spanOf(targets));
   return walk.bindings.map(({ path, ...binding }) => ({
     ...binding,
@@ -97,6 +100,8 @@ export function walkTargets(
 /** A pattern's walk: what it found so far. */
 interface Walk extends Taking<Pattern | PatternPart> {
   readonly tests: PatternTests | undefined;
+  /** The struct pattern whose written type arguments are its value's type's (`walkTargets`). */
+  readonly typed: StructPattern | undefined;
   readonly found: PatternTest[];
   readonly bindings: PartBinding[];
 }
@@ -111,10 +116,15 @@ interface Matched {
   readonly selected?: PatternTest | undefined;
 }
 
-function newWalk(scope: PatternScope, tests: PatternTests | undefined): Walk {
+function newWalk(
+  scope: PatternScope,
+  tests: PatternTests | undefined,
+  typed?: StructPattern,
+): Walk {
   const walk: Walk = {
     scope,
     tests,
+    typed,
     found: [],
     bindings: [],
     take: (node, part) => takeMatched(walk, node, part).shape,
@@ -200,13 +210,20 @@ function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart
     return { shape, part: { type: errorType, path: part.path } };
   }
   if (selection === undefined) {
-    refuseTypeArguments(walk.scope, node);
+    refuseUnwritten(walk, node);
     const shape = handlerOf(patternHandlers, node)(walk, node, part);
     return { shape: part.type.kind === 'error' ? anyShape : shape, part: literalPart(node, part) };
   }
   return selection.test.kind === 'never'
     ? takeRuledOut(walk, node, part)
     : takeSelected(walk, node, selection);
+}
+
+/** Refuses type arguments `node` gives, unless they write its value's own type (`typed`). */
+function refuseUnwritten(walk: Walk, node: Pattern | PatternPart): void {
+  if (node !== walk.typed) {
+    refuseTypeArguments(walk.scope, node);
+  }
 }
 
 /** `node` past what it selected: the selection's test, then the rest of it against the selection. */

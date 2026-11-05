@@ -63,6 +63,7 @@ import { type DefaultsBody, Parameters } from './declarations/parameters.ts';
 import { writtenByReference } from './declarations/signatures.ts';
 import { StaticFunctions } from './declarations/statics.ts';
 import { Lookup } from './lookup/lookup.ts';
+import { declareParameter } from './patterns/targets.ts';
 import { declaringInputs, programInputs, recordedBindings } from './program-inputs.ts';
 import { programTypeRules } from './resolution/program-type-rules.ts';
 import { memberWitnesses } from './resolution/trait-objects.ts';
@@ -222,7 +223,7 @@ export class ProgramChecker implements CheckerContext {
     return {
       check: (value, declared) => body.expect(value, declared),
       declare: (node, type) =>
-        body.variables.declareParameter({ node, type, reference: writtenByReference(node) }),
+        declareParameter(body, { node, type, reference: writtenByReference(node) }),
       checked: (values) => body.defaults(values),
     };
   }

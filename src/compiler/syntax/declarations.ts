@@ -88,7 +88,7 @@ export function nestedFunctionSpan(
 /** Whether `declaration` is a method: its first parameter is named `self` (§3.7). */
 export function isMethod(declaration: FunctionDeclaration): boolean {
   const [first] = declaration.parameters;
-  return first?.kind === 'Parameter' && first.name.text === receiverParameter;
+  return first?.kind === 'Parameter' && first.name?.text === receiverParameter;
 }
 
 /**

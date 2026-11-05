@@ -194,7 +194,8 @@ function sourceKey(source: Binding[number]): string {
 
 /**
  * An instance's name in the Definition (definition.md, "Names"): the declaration's, with its type
- * arguments spelled as keys spell them, and for a default's entry, `/` and the parameter's name.
+ * arguments spelled as keys spell them, and for a default's entry, `/` and the parameter's name, or
+ * its position for a pattern with no name.
  */
 export function instanceName(checker: Checker, instance: FunctionInstance): string {
   const { declaration, typeArguments, entry } = instance;
@@ -203,7 +204,9 @@ export function instanceName(checker: Checker, instance: FunctionInstance): stri
     typeArguments.length === 0
       ? ''
       : `<${typeArguments.map((type) => spelledType(checker, type)).join(', ')}>`;
-  const parameter =
-    entry.kind === 'default' ? checker.parametersOf(declaration)[entry.parameter] : undefined;
-  return `${name}${generic}${parameter === undefined ? '' : `/${parameter.node.name.text}`}`;
+  if (entry.kind !== 'default') {
+    return `${name}${generic}`;
+  }
+  const parameter = checker.parametersOf(declaration)[entry.parameter];
+  return `${name}${generic}/${parameter?.node.name?.text ?? entry.parameter}`;
 }

@@ -13,6 +13,9 @@
  *   elements each one (packs.ts), then a closure's captures, then locals and temporaries. A
  *   variable living in a cell is listed in `cells`; a reference parameter's register holds the
  *   caller's reference, and a captured cell's register the cell its closure carries.
+ * - A parameter with a pattern (§3.3) takes its argument whole, in a register of its own, named
+ *   only by its `as` name; once the frame is laid out, the argument is taken apart into the
+ *   pattern's names as a declaration's targets take its value (statements/variables.ts).
  * - A lambda or local function (§3.14) answers to its own name through the closure it runs,
  *   taken once at its entry (`currentClosure`).
  * - A default's entry takes the parameters before its own, and gives its default (§3.1, §3.3);
@@ -64,7 +67,7 @@ import { packElements } from '../packs.ts';
 import { HoldScopes } from '../statements/holds.ts';
 import { LoopStack } from '../statements/loops.ts';
 import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
-import { declareVariable, VariableRegisters } from '../statements/variables.ts';
+import { bindTargets, declareVariable, VariableRegisters } from '../statements/variables.ts';
 import type { DefinitionTables, EntryHeader } from '../tables.ts';
 import { fittedValue } from './fits.ts';
 import {
@@ -195,8 +198,9 @@ class FunctionLowering implements FunctionContext {
         unreachable(`No edge for argument ${index} of a start entry.`);
       }
       const value = decode(this, json, span);
-      const register = declareVariable(this, parameter.node.name, this.#concrete(parameter.type));
+      const register = this.#declareArgument(parameter);
       this.code.emit({ kind: 'move', span, dst: register, src: value });
+      this.#takeApart(parameter, register);
     }
     const { self } = this.frame;
     if (self !== undefined && edges.self !== undefined) {
@@ -297,10 +301,12 @@ class FunctionLowering implements FunctionContext {
   /**
    * Declares the frame's variables in its layout's order: the parameters, each in a register of
    * its own and a pack's elements in one each, then the captures, then a nested function's own
-   * name, then each pack's tuple; the parameters' registers.
+   * name, then each pack's tuple, then the names patterns take apart of arguments; the parameters'
+   * registers.
    */
   #declareFrame(): readonly Register[] {
     const packs: { readonly parameter: SignatureParameter; readonly elements: Register[] }[] = [];
+    const taken: { readonly parameter: SignatureParameter; readonly register: Register }[] = [];
     const parameters = this.#slots().flatMap(({ parameter, elements: types }) => {
       if (types !== undefined) {
         const elements = types.map(() => this.code.allocate());
@@ -308,10 +314,14 @@ class FunctionLowering implements FunctionContext {
         return elements;
       }
       if (!parameter.reference) {
-        return [declareVariable(this, parameter.node.name, this.#concrete(parameter.type))];
+        const register = this.#declareArgument(parameter);
+        taken.push({ parameter, register });
+        return [register];
       }
       const register = this.code.allocate();
-      this.variables.declare(parameter.node.name, register);
+      if (parameter.node.name !== undefined) {
+        this.variables.declare(parameter.node.name, register);
+      }
       return [register];
     });
     for (const { entity, type } of this.frame.captures) {
@@ -323,12 +333,37 @@ class FunctionLowering implements FunctionContext {
     }
     this.#declareOwnCall();
     for (const { parameter, elements } of packs) {
-      const { name } = parameter.node;
-      const tuple = tupleOf(this, elements, name.span);
-      const register = declareVariable(this, name, this.#concrete(parameter.type));
-      this.code.emit({ kind: 'move', span: name.span, dst: register, src: tuple });
+      const { span } = parameter.node;
+      const tuple = tupleOf(this, elements, span);
+      const register = this.#declareArgument(parameter);
+      this.code.emit({ kind: 'move', span, dst: register, src: tuple });
+    }
+    for (const { parameter, register } of taken) {
+      this.#takeApart(parameter, register);
     }
     return parameters;
+  }
+
+  /**
+   * A register for `parameter`'s argument: its name's variable, or, for a pattern alone, one with
+   * no name, which lasts as the frame does.
+   */
+  #declareArgument(parameter: SignatureParameter): Register {
+    const type = this.#concrete(parameter.type);
+    const { name } = parameter.node;
+    if (name !== undefined) {
+      return declareVariable(this, name, type);
+    }
+    const register = this.code.allocate();
+    this.variables.declareUnnamed(register);
+    return register;
+  }
+
+  /** Takes the argument in `register` apart into `parameter`'s pattern's names, if it has one. */
+  #takeApart(parameter: SignatureParameter, register: Register): void {
+    if (parameter.node.pattern !== undefined) {
+      bindTargets(this, parameter.node, register, parameter.node.span);
+    }
   }
 
   /** The frame's parameters, a pack's with the element types it takes as parameters (packs.ts). */

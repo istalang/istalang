@@ -237,7 +237,10 @@ export const expressionPrinters: Printers<ExpressionKind> = {
   PositionalInitializer: (printer, node) => printer.print(node.value),
   Parameter: (printer, node) => [
     node.isRest ? '...' : '',
-    printer.print(node.name),
+    node.pattern === undefined ? '' : printer.print(node.pattern),
+    node.name === undefined
+      ? ''
+      : [node.pattern === undefined ? '' : ' as ', printer.print(node.name)],
     node.type === undefined ? '' : [': ', printer.print(node.type)],
     node.defaultValue === undefined ? '' : [' = ', printer.print(node.defaultValue)],
   ],

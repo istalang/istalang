@@ -105,6 +105,21 @@ export const patternTemplates = {
     message: () =>
       "No value reaches this case: its subject's type can't hold what the pattern matches, so it never runs (§3.11).",
   },
+  patternTypeTwice: {
+    code: 5423,
+    message: (type: string) =>
+      `This pattern names its type, ${type}, so the parameter takes no annotation, which would name it twice (§3.3).`,
+  },
+  patternWithoutBody: {
+    code: 5424,
+    message: (what: string) =>
+      `A parameter's pattern binds names in a body of its function's own, which ${what} has none of: name the parameter (§3.3).`,
+  },
+  patternByReference: {
+    code: 5425,
+    message: () =>
+      "A pattern takes a value apart, while '&' passes a place: a parameter taking a reference is a name (§3.3, §3.7).",
+  },
   insideOptional: {
     code: 5409,
     message: (found: string, operator: string) =>

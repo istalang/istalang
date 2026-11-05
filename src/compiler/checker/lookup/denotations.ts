@@ -239,11 +239,12 @@ function parameterNamed(site: NameSite, call: SyntaxNode | undefined): readonly 
   }
   const parameter = checker
     .parametersOf(resolved.function)
-    .find(({ node }) => node.name.text === name.text);
+    .find(({ node }) => node.name?.text === name.text);
+  const declaring = parameter?.node.name;
   const entity =
-    parameter === undefined
+    declaring === undefined
       ? undefined
-      : checker.bindings.entityOf(checker.moduleOf(resolved.function), parameter.node.name);
+      : checker.bindings.entityOf(checker.moduleOf(resolved.function), declaring);
   return entity?.kind === 'variable'
     ? [{ declared: { kind: 'variable', entity }, type: parameter?.type }]
     : [];

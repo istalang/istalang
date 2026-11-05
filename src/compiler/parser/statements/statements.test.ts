@@ -148,18 +148,18 @@ describe('fn and async at the start of a statement', () => {
   it.each([
     [
       'fn add(a: Int, b = 1): a + b',
-      `(FunctionDeclaration _ add [] [(Parameter a ${int} _) (Parameter b _ 1)] _ ${bodyOf('(Binary a + b)')})`,
+      `(FunctionDeclaration _ add [] [(Parameter a _ ${int} _) (Parameter b _ _ 1)] _ ${bodyOf('(Binary a + b)')})`,
     ],
     [
       'async fn f() -> Future<Int>: await g()',
       `(FunctionDeclaration isAsync _ f [] [] (NamedType [Future] [${int}]) ${bodyOf('(Await (Call g [] []))')})`,
     ],
-    ['fn(x): x * 2', '(ExpressionStatement (Lambda _ [(Parameter x _ _)] _ (Binary x * 2)))'],
+    ['fn(x): x * 2', '(ExpressionStatement (Lambda _ [(Parameter x _ _ _)] _ (Binary x * 2)))'],
     [
       'async fn(msg): await handle(msg)',
-      '(ExpressionStatement (Lambda isAsync _ [(Parameter msg _ _)] _ (Await (Call handle [] [msg]))))',
+      '(ExpressionStatement (Lambda isAsync _ [(Parameter msg _ _ _)] _ (Await (Call handle [] [msg]))))',
     ],
-    ['fn x: x > 0', '(ExpressionStatement (Lambda _ [(Parameter x _ _)] _ (Binary x > 0)))'],
+    ['fn x: x > 0', '(ExpressionStatement (Lambda _ [(Parameter x _ _ _)] _ (Binary x > 0)))'],
     ['struct{value: 1}', '(ExpressionStatement (StructLiteral _ [(FieldInitializer value 1)]))'],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('statement', text)).toBe(tree);

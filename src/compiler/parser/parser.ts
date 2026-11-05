@@ -72,6 +72,8 @@ export interface Grammar {
   readonly type: (parser: Parser) => TypeNode;
   /** A parameter's type, the one place `&T` is allowed (§3.7). */
   readonly parameterType: (parser: Parser) => TypeNode;
+  /** A parameter's pattern (§3.3), the one place `{…}` stands for `struct{…}`. */
+  readonly parameterPattern: (parser: Parser) => Pattern;
   /** `<A, B>`, starting at the `<`. */
   readonly typeArguments: (parser: Parser) => readonly TypeNode[];
   readonly pattern: (parser: Parser) => Pattern;
@@ -311,6 +313,10 @@ export class Parser implements SegmentBases {
 
   typeArguments(): readonly TypeNode[] {
     return this.#grammar.typeArguments(this);
+  }
+
+  parameterPattern(): Pattern {
+    return this.#grammar.parameterPattern(this);
   }
 
   pattern(): Pattern {

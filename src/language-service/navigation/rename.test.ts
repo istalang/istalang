@@ -53,6 +53,19 @@ describe('renaming', () => {
     expect(renamed(program, named('main', 'count', 2), 'sum')).toEqual(aliasRenamed);
   });
 
+  it("renames a name a parameter's pattern binds, spelling its field's shorthand out", () => {
+    const point = 'struct Point { x: Int, y: Int }\n';
+    const { program, named } = navigable({
+      main: `${point}fn norm(Point{x, y} as p) -> Int: x + y + p.x\n`,
+    });
+    expect(renamed(program, named('main', 'x', 2), 'px')).toEqual({
+      main: `${point}fn norm(Point{x as px, y} as p) -> Int: px + y + p.x\n`,
+    });
+    expect(renamed(program, named('main', 'p', 1), 'point')).toEqual({
+      main: `${point}fn norm(Point{x, y} as point) -> Int: x + y + point.x\n`,
+    });
+  });
+
   it("spells a literal's shorthand out, for its field or its variable", () => {
     const { program, named } = navigable({
       main: `${pair}fn f(first: Int) -> Pair: Pair{first, second: 2}\n`,

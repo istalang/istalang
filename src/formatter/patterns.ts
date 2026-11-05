@@ -1,12 +1,13 @@
 /**
  * Patterns (spec §3.11, §3.15), printed as written: a struct pattern's braces hold a comma list
- * like a struct literal's (`Pair{first, second as s}`), which may break as brackets do.
+ * like a struct literal's (`Pair{first, second as s}`), which may break as brackets do, and a
+ * parameter's `{…}` stays the short form of `struct{…}` it was written as (§3.3).
  */
 
 import { builders } from 'prettier/doc';
-import type { Pattern, PatternPart } from '../compiler/syntax/patterns.ts';
+import type { Pattern, PatternPart, StructPattern } from '../compiler/syntax/patterns.ts';
 import { angled, bracketed, enclosed, tupleList } from './lists.ts';
-import type { Printers } from './printer.ts';
+import type { Printer, Printers } from './printer.ts';
 
 const { join } = builders;
 
@@ -26,7 +27,7 @@ export const patternPrinters: Printers<PatternKind> = {
   TuplePattern: (printer, node) => tupleList(printer, node, node.elements),
   ParenthesizedPattern: (printer, node) => enclosed(printer, node, ['(', ')'], node.pattern),
   StructPattern: (printer, node) => [
-    node.type === undefined ? 'struct' : printer.print(node.type),
+    structHead(printer, node),
     bracketed(
       printer,
       node,
@@ -63,3 +64,11 @@ export const patternPrinters: Printers<PatternKind> = {
   AsPattern: (printer, node) => [printer.print(node.pattern), ' as ', printer.print(node.name)],
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
+
+/** What names a struct pattern's struct: its type, `struct`, or nothing in a parameter's short form. */
+function structHead(printer: Printer, node: StructPattern): builders.Doc {
+  if (node.type !== undefined) {
+    return printer.print(node.type);
+  }
+  return node.isShort ? '' : 'struct';
+}

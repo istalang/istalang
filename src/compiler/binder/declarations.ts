@@ -8,7 +8,8 @@
  * - Type parameters are all defined before any constraint or default is bound, so they may refer
  *   to one another (`<A, B is Convertible<A>>`).
  * - A parameter's default may use the parameters before it (§3.3), so each parameter is defined
- *   after its own type and default are bound. A field's default may use the fields before it the
+ *   after its own type and default are bound: its name, and the names its pattern binds, which
+ *   the parameter owns, as a declaration owns its targets' (patterns.ts). A field's default may use the fields before it the
  *   same way (§3.1), as a parameter of the function the fields read as
  *   (syntax/field-defaults.ts).
  * - A named lambda's name is visible only inside the lambda (§3.14).
@@ -84,9 +85,17 @@ function bindParameters(
       binder.walk.type(binder, parameter.type, scope);
     }
   }
-  bindDefaults(binder, { node, parameters: node.parameters }, scope, (parameter) =>
-    binder.declareVariable(scope, parameter.name, parameter),
-  );
+  bindDefaults(binder, { node, parameters: node.parameters }, scope, (parameter) => {
+    if (parameter.pattern !== undefined) {
+      binder.walk.pattern(binder, parameter.pattern, scope, {
+        into: scope,
+        declaration: parameter,
+      });
+    }
+    if (parameter.name !== undefined) {
+      binder.declareVariable(scope, parameter.name, parameter);
+    }
+  });
 }
 
 /**
@@ -104,7 +113,9 @@ function bindFieldDefaults(
   }
   const inner = Scope.nested(scope);
   bindDefaults(binder, { node: owner, parameters: fieldsFunction.parameters }, inner, (field) => {
-    binder.declare(inner, field.name, variableEntity(field.name, field), { clash: false });
+    if (field.name !== undefined) {
+      binder.declare(inner, field.name, variableEntity(field.name, field), { clash: false });
+    }
   });
 }
 

@@ -63,7 +63,8 @@ const rolesOf: RolesOf = {
   DeclaredField: named('property'),
   FieldDeclaration: named('property'),
   Variant: named('enumMember'),
-  Parameter: named('parameter'),
+  // A pattern's names are its own nodes'; a parameter names only the whole, if it has a name.
+  Parameter: (node) => (node.name === undefined ? [] : [[node.name, 'parameter']]),
   NamedArgument: named('parameter'),
   FieldInitializer: named('property'),
   NamespaceImport: (node) => [[node.alias, 'namespace']],

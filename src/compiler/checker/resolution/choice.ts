@@ -84,11 +84,11 @@ export function signatureOf(
     typeParameters: [...typeParametersOf(declaration.typeParameters), ...inferred],
     parameters: checker.parametersOf(declaration).map(({ node, type, reference, rest }, index) => {
       const substituted = substitute(type, substitution, checker.typeRules);
-      const isReceiver = index === 0 && node.name.text === receiverParameter;
+      const isReceiver = index === 0 && node.name?.text === receiverParameter;
       return {
         type: substituted,
         reference,
-        name: isReceiver ? undefined : node.name.text,
+        name: isReceiver ? undefined : node.name?.text,
         isReceiver,
         hasDefault: node.defaultValue !== undefined,
         rest:

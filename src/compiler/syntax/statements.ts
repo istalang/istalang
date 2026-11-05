@@ -22,6 +22,7 @@ import type {
   Expression,
   FieldComprehension,
   FieldHeader,
+  Parameter,
   StructComprehension,
 } from './expressions/index.ts';
 import { isPlace } from './expressions/places.ts';
@@ -231,13 +232,21 @@ export interface LabelledBlock extends NodeOf<'LabelledBlock'>, Annotatable {
 }
 
 /**
- * The targets `owner` declares, which take its value apart (§3.15): a declaration's or loop's, or a
- * field loop's key and value, which take apart the pair of a field's name and value.
+ * The targets `owner` declares, which take its value apart (§3.15): a declaration's or loop's, a
+ * field loop's key and value, which take apart the pair of a field's name and value, or a
+ * parameter's pattern, which takes its argument apart (§3.3).
  */
 export function declaredTargets(
-  owner: VariableDeclaration | For | Comprehension | FieldHeader,
+  owner: VariableDeclaration | For | Comprehension | FieldHeader | Parameter,
 ): readonly Pattern[] {
-  return owner.kind === 'FieldHeader' ? [owner.key, owner.value] : owner.targets;
+  switch (owner.kind) {
+    case 'FieldHeader':
+      return [owner.key, owner.value];
+    case 'Parameter':
+      return owner.pattern === undefined ? [] : [owner.pattern];
+    default:
+      return owner.targets;
+  }
 }
 
 /** A construct running over a struct's fields (§4): a field loop, an array or a struct comprehension. */

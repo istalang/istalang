@@ -53,7 +53,10 @@ function isNamedOnward({ call, argument }: CallAt): boolean {
   return call.arguments.slice(0, argument + 1).some(({ kind }) => kind === 'NamedArgument');
 }
 
-/** The names of the parameters `callees` leave to give, each once, in the order declared. */
+/**
+ * The names of the parameters `callees` leave to give, each once, in the order declared; a pattern
+ * with no `as` name is given only by position (§3.3), so it offers none.
+ */
 function argumentNames(
   checker: Checker,
   at: CallAt,
@@ -61,8 +64,9 @@ function argumentNames(
 ): readonly Candidate[] {
   const named = new Map<string, Candidate>();
   for (const parameter of callees.flatMap((callee) => ungiven(checker, at, callee))) {
-    const name = `${parameter.node.name.text}:`;
-    if (!named.has(name)) {
+    const written = parameter.node.name?.text;
+    const name = `${written}:`;
+    if (written !== undefined && !named.has(name)) {
       named.set(name, { name, subject: { kind: 'argument', parameter } });
     }
   }

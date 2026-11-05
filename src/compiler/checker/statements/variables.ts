@@ -51,10 +51,15 @@ export class VariableScope implements Variables {
     this.#types.set(name, type);
   }
 
+  /** Declares a parameter's name, if it has one; its pattern's are declared as targets are. */
   declareParameter(parameter: Pick<SignatureParameter, 'node' | 'type' | 'reference'>): void {
-    this.declare(parameter.node.name, parameter.type);
+    const { name } = parameter.node;
+    if (name === undefined) {
+      return;
+    }
+    this.declare(name, parameter.type);
     if (parameter.reference) {
-      this.#references.add(parameter.node.name);
+      this.#references.add(name);
     }
   }
 

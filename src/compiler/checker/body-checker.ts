@@ -60,7 +60,7 @@ import { OptionalChains } from './expressions/optionals.ts';
 import type { FieldPassType } from './passes.ts';
 import { Passes } from './passes.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
-import { declareTargets } from './patterns/targets.ts';
+import { declareParameter, declareTargets } from './patterns/targets.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
 import { reportUnmet } from './resolution/trait-objects.ts';
 import type { ResolvedCall, ResolvedSite } from './resolved-call.ts';
@@ -144,7 +144,7 @@ export class BodyChecker implements BodyContext {
   /** Checks a function's body against its parameters and its declared result, if any. */
   checkFunction(body: Block, parameters: readonly SignatureParameter[]): CheckedBody {
     for (const parameter of parameters) {
-      this.variables.declareParameter(parameter);
+      declareParameter(this, parameter);
     }
     declareOwnCall(this);
     const tail = this.block(body, this.#result.declared);

@@ -122,7 +122,7 @@ function fieldParameter(field: DeclaredField | Invalid): Parameter | Invalid {
     return field;
   }
   const { span, name, type, defaultValue } = field;
-  return { kind: 'Parameter', span, isRest: false, name, type, defaultValue };
+  return { kind: 'Parameter', span, isRest: false, name, pattern: undefined, type, defaultValue };
 }
 
 function present<T>(value: T | undefined): readonly T[] {

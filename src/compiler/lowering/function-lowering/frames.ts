@@ -183,7 +183,7 @@ export function nestedFrame(
 export function defaultValueOf(parameter: SignatureParameter): Expression {
   const { defaultValue } = parameter.node;
   if (defaultValue === undefined) {
-    unreachable(`'${parameter.node.name.text}' has no default; the checker should have said so.`);
+    unreachable(`A parameter at ${parameter.node.span.from} has no default; the checker said so.`);
   }
   return defaultValue;
 }

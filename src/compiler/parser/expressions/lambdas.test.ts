@@ -8,7 +8,7 @@ import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { dumpClean, int, reported } from '../parse.test-kit.ts';
 
-const param = (name: string, type = '_', value = '_') => `(Parameter ${name} ${type} ${value})`;
+const param = (name: string, type = '_', value = '_') => `(Parameter ${name} _ ${type} ${value})`;
 
 describe('lambda forms', () => {
   it.each([
@@ -26,7 +26,7 @@ describe('lambda forms', () => {
     ['fn f(n: Int) -> Int: n', `(Lambda f [${param('n', int)}] ${int} n)`],
     [
       'fn(a, b = 1, ...rest: Array<Int>,): a',
-      `(Lambda _ [${param('a')} ${param('b', '_', '1')} (Parameter isRest rest (NamedType [Array] [${int}]) _)] _ a)`,
+      `(Lambda _ [${param('a')} ${param('b', '_', '1')} (Parameter isRest rest _ (NamedType [Array] [${int}]) _)] _ a)`,
     ],
     [
       'fn(self: &Stack<T>): self',
@@ -53,7 +53,7 @@ describe('lambda forms', () => {
     ['fn: 5', ':'],
     ['fn(x) x', 'x'],
     ['async (x): x', '('],
-    ['fn(1): x', '1'],
+    ['fn(+): x', '+'],
   ])('reports the malformed lambda %j once', (text, spanText) => {
     expect(reported('expression', text)).toEqual(
       reportedOnce(parserDiagnostics.expected.code, spanText),

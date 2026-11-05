@@ -55,7 +55,7 @@ function expectedAt(module: ModuleId, call: Call): Expected | undefined {
     const receivers = resolved.receiver === undefined ? 0 : 1;
     const names = resolved.function.parameters.map((parameter) =>
       parameter.kind === 'Parameter'
-        ? `${parameter.isRest ? '...' : ''}${parameter.name.text}:`
+        ? `${parameter.isRest ? '...' : ''}${parameter.name?.text}:`
         : '',
     );
     return {

@@ -187,6 +187,35 @@ describe('proposal 5 behaviour table: row by row', () => {
     expect(mainGivesLines('Int', body)).toBe(33);
   });
 
+  it('row 17: "ps.map(fn(struct{x, y}): x + y)" takes each Point apart', () => {
+    const decls = 'struct Point { x: Int, y: Int }';
+    const body = lines(
+      'const ps = [Point{x: 1, y: 2}, Point{x: 10, y: 20}]',
+      'ps.map(fn(struct{x, y}): x + y)',
+    );
+    expect(mainGivesLines('Array<Int>', body, decls)).toEqual([3, 30]);
+  });
+
+  it('row 18: "pairs.map(fn((a, b)): a + b)" takes each pair apart', () => {
+    const body = lines('const pairs = [(1, 2), (3, 4)]', 'pairs.map(fn((a, b)): a + b)');
+    expect(mainGivesLines('Array<Int>', body)).toEqual([3, 7]);
+  });
+
+  it('row 19: "fn norm(Point{x, y}) -> Float" declares a function of a Point', () => {
+    const decls = lines(
+      "import * as math from 'math'",
+      'struct Point { x: Float, y: Float }',
+      'fn norm(Point{x, y}) -> Float: math.sqrt(x * x + y * y)',
+    );
+    expect(mainGives('Float', 'norm(Point{x: 3.0, y: 4.0})', decls)).toBe(5);
+  });
+
+  it('row 20: "fn f(Ok{value})" is still an error because the pattern can fail', () => {
+    expect(reported('fn f(Ok{value}: Result<Int>) -> Int: value').codes).toContain(
+      checkerDiagnostics.refutableTarget.code,
+    );
+  });
+
   it('row 21: "P{" over the lines \'id: "x"\' and "qty: 2", then "}" builds two fields', () => {
     const decls = 'struct P { id: String, qty: Int }';
     const body = lines('const p = P{', '  id: "x"', '  qty: 2', '}', '`${p.id}:${p.qty}`');

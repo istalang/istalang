@@ -45,6 +45,11 @@ interface ParenthesizedPattern extends NodeOf<'ParenthesizedPattern'> {
  */
 export interface StructPattern extends NodeOf<'StructPattern'> {
   readonly type: NamedType | undefined;
+  /**
+   * Whether it was written `{…}`, a parameter's short form of `struct{…}` (§3.3): the same
+   * pattern, its spelling kept for the formatter, as an import's parentheses are.
+   */
+  readonly isShort: boolean;
   readonly fields: readonly (
     | BindFieldPattern
     | CompareFieldPattern

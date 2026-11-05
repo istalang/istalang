@@ -99,7 +99,7 @@ describe('type declarations', () => {
         '    fn add(left: Self, right: Self) -> Self',
         '    value: Int',
       ),
-      `(TraitDeclaration Monoid [] [(FunctionDeclaration Self zero [] [] ${named('Self')} _) (FunctionDeclaration _ add [] [(Parameter left ${named('Self')} _) (Parameter right ${named('Self')} _)] ${named('Self')} _) ${field('value', int)}])`,
+      `(TraitDeclaration Monoid [] [(FunctionDeclaration Self zero [] [] ${named('Self')} _) (FunctionDeclaration _ add [] [(Parameter left _ ${named('Self')} _) (Parameter right _ ${named('Self')} _)] ${named('Self')} _) ${field('value', int)}])`,
     ],
     [
       'type Entries<T> = Array<(String, T)>',
@@ -146,7 +146,7 @@ describe('externs and functions', () => {
   it.each([
     [
       'extern fn chargeCard(id: String) -> Result<String>',
-      `(FunctionDeclaration isExtern _ chargeCard [] [(Parameter id ${string} _)] (NamedType [Result] [${string}]) _)`,
+      `(FunctionDeclaration isExtern _ chargeCard [] [(Parameter id _ ${string} _)] (NamedType [Result] [${string}]) _)`,
     ],
     [
       'extern approvalDeadline: Duration',

@@ -9,6 +9,7 @@ import { InlayHintRequest } from 'vscode-languageserver/node';
 import { checkProgram } from '../../compiler/checker/check.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
+import { parameterNames } from '../../compiler/syntax/parameters.ts';
 import { targetNames } from '../../compiler/syntax/patterns.ts';
 import { spanIn } from '../../compiler/syntax/positions.ts';
 import { declaredTargets } from '../../compiler/syntax/statements.ts';
@@ -38,7 +39,9 @@ function untypedNames(node: SyntaxNode): readonly Identifier[] {
   }
   if (node.kind === 'Lambda') {
     return node.parameters.flatMap((parameter) =>
-      parameter.kind === 'Parameter' && parameter.type === undefined ? [parameter.name] : [],
+      parameter.kind === 'Parameter' && parameter.type === undefined
+        ? parameterNames(parameter)
+        : [],
     );
   }
   return [];

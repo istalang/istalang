@@ -168,13 +168,24 @@ export type IndentedValue =
   | (IndentedValueOf<NamedType> & { readonly isNew: boolean })
   | (IndentedValueOf<undefined> & { readonly isNew: false });
 
-export interface Parameter extends NodeOf<'Parameter'> {
+interface ParameterParts extends NodeOf<'Parameter'> {
   /** `...name`, collecting the remaining arguments. */
   readonly isRest: boolean;
-  readonly name: Identifier;
   readonly type: TypeNode | undefined;
   readonly defaultValue: Expression | undefined;
 }
+
+/**
+ * What a parameter binds (§3.3): a name, the whole argument's, and a pattern that takes the
+ * argument apart when the body is entered. A plain parameter is a name alone; `Point{x, y} as p`
+ * is both, the `as` name being the parameter's; `Point{x, y}` is a pattern alone, which no named
+ * argument reaches. A bare name is never a pattern, so a name has one home.
+ */
+export type ParameterBinding =
+  | { readonly name: Identifier; readonly pattern: Pattern | undefined }
+  | { readonly name: undefined; readonly pattern: Pattern };
+
+export type Parameter = ParameterParts & ParameterBinding;
 
 /** `fn(x): x * 2`, `async fn(msg): …`, and `fn f(n): …`, whose name is visible only inside. */
 export interface Lambda extends NodeOf<'Lambda'> {

@@ -87,7 +87,7 @@ export function writtenParameter(
   const written = call.arguments[argument];
   if (written?.kind === 'NamedArgument') {
     const named = parameters.findIndex(
-      (parameter) => parameter.kind === 'Parameter' && parameter.name.text === written.name.text,
+      (parameter) => parameter.kind === 'Parameter' && parameter.name?.text === written.name.text,
     );
     return named === -1 ? undefined : named;
   }

@@ -115,13 +115,10 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
       ...called(presenting, name),
     };
   },
-  argument: (_presenting, { parameter }) => ({
+  argument: (_presenting, { parameter }, name) => ({
     kind: 'variable',
     detail: slotText(parameter),
-    insert: {
-      kind: 'text',
-      text: `${parameter.node.name.text}: ${parameter.reference ? '&' : ''}`,
-    },
+    insert: { kind: 'text', text: `${name} ${parameter.reference ? '&' : ''}` },
     next: 'completion',
   }),
   variant: (presenting, { variant, enum: type }, name) => {

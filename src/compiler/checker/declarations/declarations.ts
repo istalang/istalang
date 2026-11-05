@@ -33,6 +33,7 @@ import {
 } from '../../syntax/declarations.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
+import { parameterSite } from '../../syntax/parameters.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
@@ -89,6 +90,7 @@ function checkFunction(checker: CheckerContext, node: FunctionDeclaration): void
   checker.bodyOf(node);
   if (node.isExtern) {
     checkHostBoundary(checker, module, node);
+    refusePatterns(checker, module, node, 'an extern function');
   }
   if (checker.annotations.suiteTitleOf(module, node) !== undefined) {
     checkSuite(checker, module, node);
@@ -175,6 +177,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
       if (member.kind === 'FunctionDeclaration') {
         checkFunction(checker, member);
         refuseRequiredDefaults(checker, module, member);
+        refusePatterns(checker, module, member, "a trait's requirement");
       } else if (member.kind === 'FieldDeclaration') {
         checker.resolveType(module, member.type);
         checker.annotations.of(module, member, { kind: 'field' });
@@ -238,8 +241,27 @@ function refuseRequiredDefaults(
 ): void {
   for (const parameter of required.parameters) {
     if (parameter.kind === 'Parameter' && parameter.defaultValue !== undefined) {
-      const { name } = parameter;
-      checker.report(module, checkerDiagnostics.requiredDefault(name.span, name.text));
+      const { span } = parameterSite(parameter);
+      checker.report(module, checkerDiagnostics.requiredDefault(span, parameter.name?.text));
+    }
+  }
+}
+
+/**
+ * A parameter's pattern binds names in its function's own body (§3.3): an extern function has
+ * none, and a trait's requirement is a signature, whose default body, if any, is one of many a
+ * witness could give, so both take their parameters by name.
+ */
+function refusePatterns(
+  checker: CheckerContext,
+  module: ModuleId,
+  declaration: FunctionDeclaration,
+  what: string,
+): void {
+  for (const parameter of declaration.parameters) {
+    if (parameter.kind === 'Parameter' && parameter.pattern !== undefined) {
+      const { span } = parameter.pattern;
+      checker.report(module, checkerDiagnostics.patternWithoutBody(span, what));
     }
   }
 }

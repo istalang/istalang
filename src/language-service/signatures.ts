@@ -5,14 +5,22 @@
  * completion all show a function through this, so they never disagree on how one reads.
  *
  * Types read as messages spell them (checker types/type-text.ts). A default value reads as `…`,
- * since its text may span lines; type parameters read by name, as a call site names them.
+ * since its text may span lines; type parameters read by name, as a call site names them. A
+ * parameter's pattern reads as written, on one line, with its `as` name (§3.3); one naming its
+ * type (`Point{x, y}`) shows no type beside it, as source writes none.
  */
 
 import type { Checker, SignatureParameter } from '../compiler/checker/check.ts';
 import type { FunctionType } from '../compiler/checker/types/type.ts';
 import { functionTypeParts, slotText, typeText } from '../compiler/checker/types/type-text.ts';
+import { programModule } from '../compiler/program/program.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../compiler/syntax/declarations.ts';
+import { patternNamedType } from '../compiler/syntax/parameters.ts';
+import type { Pattern } from '../compiler/syntax/patterns.ts';
+import { spanIn } from '../compiler/syntax/positions.ts';
+import type { SyntaxTree } from '../compiler/syntax/tree.ts';
 import { staticName } from '../language/static-names.ts';
+import { textOf } from '../text/span.ts';
 
 /** A signature's text, and where each parameter's text stands in it. */
 export interface Signature {
@@ -35,7 +43,10 @@ export function signatureOf(checker: Checker, declaration: FunctionDeclaration):
     owner === undefined ? name.text : staticName(owner.text, name.text),
     generics.length === 0 ? '' : `<${generics.join(', ')}>`,
   ].join('');
-  const parameters = checker.parametersOf(declaration).map(parameterText);
+  const { tree } = programModule(checker.program, checker.moduleOf(declaration));
+  const parameters = checker
+    .parametersOf(declaration)
+    .map((parameter) => parameterText(tree, parameter));
   return joined(head, parameters, ` -> ${typeText(checker.resultOf(declaration))}`);
 }
 
@@ -45,10 +56,21 @@ export function functionTypeSignature(type: FunctionType): Signature {
   return joined(head, parameters, tail);
 }
 
-function parameterText(parameter: SignatureParameter): string {
-  const { isRest, name, defaultValue } = parameter.node;
-  const written = `${isRest ? '...' : ''}${name.text}: ${slotText(parameter)}`;
+function parameterText(tree: SyntaxTree, parameter: SignatureParameter): string {
+  const { node } = parameter;
+  const { isRest, name, pattern, defaultValue } = node;
+  const bound =
+    pattern === undefined
+      ? (name?.text ?? '')
+      : `${patternText(tree, pattern)}${name === undefined ? '' : ` as ${name.text}`}`;
+  const typedByPattern = node.type === undefined && patternNamedType(node) !== undefined;
+  const written = `${isRest ? '...' : ''}${bound}${typedByPattern ? '' : `: ${slotText(parameter)}`}`;
   return defaultValue === undefined ? written : `${written} = …`;
+}
+
+/** `pattern` as written, its line breaks and the indentation after them read as one space. */
+function patternText(tree: SyntaxTree, pattern: Pattern): string {
+  return textOf(tree.source, spanIn(tree, pattern.span)).replace(/\s*\n\s*/gu, ' ');
 }
 
 function joined(head: string, parameters: readonly string[], tail: string): Signature {

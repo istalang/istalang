@@ -27,11 +27,20 @@
 import { type FunctionDeclaration, nestedFunctionSpan } from '../../syntax/declarations.ts';
 import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
+import { parameterSite } from '../../syntax/parameters.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { TypeNode } from '../../syntax/types.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import type { NestedFunction, SignatureParameter } from '../check.ts';
-import { declaredBodyResult, writtenByReference } from '../declarations/signatures.ts';
+import {
+  checkWrittenType,
+  declaredBodyResult,
+  wholeTypeNamedByPattern,
+  writtenByReference,
+  writtenTypeOf,
+} from '../declarations/signatures.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { declareParameter } from '../patterns/targets.ts';
 import type { Produced } from '../rules/agreement.ts';
 import { isSendable } from '../traits/sendable.ts';
 import { expectedFunction } from '../types/expected.ts';
@@ -168,7 +177,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
   );
   const result = context.functions.inside(scope, () => {
     for (const parameter of parameters) {
-      context.variables.declareParameter(parameter);
+      declareParameter(context, parameter);
     }
     declareOwnCall(context);
     return scope.returns.result(context, header.tail(declaredResult));
@@ -193,9 +202,12 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
 }
 
 /**
- * A nested function's parameters: each written type, or else the slot of the expected function
- * type at its position, a reference if the slot takes one, and for a rest parameter the expected
- * type's pack; default values, and a rest parameter that isn't a pack, are refused (§3.14).
+ * A nested function's parameters: each written type, its annotation or the type its pattern names
+ * whole, or else the slot of the expected function type at its position, a reference if the slot
+ * takes one, and for a rest parameter the expected type's pack; a generic type its pattern names
+ * bare takes its type arguments from that slot, and is resolved as written only where there is
+ * none, which reports them missing. Default values, and a rest parameter that isn't a pack, are
+ * refused (§3.14).
  */
 function nestedParameters(
   context: BodyContext,
@@ -206,19 +218,23 @@ function nestedParameters(
     if (node.kind === 'Invalid') {
       return [];
     }
+    const site = parameterSite(node);
     if (node.defaultValue !== undefined) {
-      context.report(checkerDiagnostics.nestedFunctionForm(node.name.span, 'default values'));
+      context.report(checkerDiagnostics.nestedFunctionForm(site.span, 'default values'));
     }
-    const parameter = writtenParameter(context, node) ?? expectedSlot(node, index, slots);
+    checkWrittenType(context, node);
+    const { checker, module } = context;
+    const parameter =
+      typedAs(context, node, node.type ?? wholeTypeNamedByPattern(checker, module, node)) ??
+      expectedSlot(node, index, slots) ??
+      typedAs(context, node, writtenTypeOf(checker, module, node));
     if (node.isRest && parameter !== undefined && !fillsRest(parameter.type)) {
       const form = "an array's rest parameter";
-      context.report(checkerDiagnostics.nestedFunctionForm(node.name.span, form));
+      context.report(checkerDiagnostics.nestedFunctionForm(site.span, form));
     }
     if (parameter === undefined) {
       const count = slots?.parameters.length;
-      context.report(
-        checkerDiagnostics.parameterTypeUnknown(node.name.span, node.name.text, count),
-      );
+      context.report(checkerDiagnostics.parameterTypeUnknown(site.span, node.name?.text, count));
       return [{ node, type: errorType, reference: false, rest: restOf(node) }];
     }
     return [{ node, ...parameter, rest: restOf(node) }];
@@ -247,11 +263,13 @@ function expectedSlot(
   return slots?.pack === undefined ? undefined : { type: slots.pack, reference: false };
 }
 
-function writtenParameter(
+/** `node` typed as `written` says, a reference if it writes one; undefined where none is written. */
+function typedAs(
   context: BodyContext,
   node: Parameter,
+  written: TypeNode | undefined,
 ): { readonly type: Type; readonly reference: boolean } | undefined {
-  return node.type === undefined
+  return written === undefined
     ? undefined
-    : { type: context.resolveType(node.type), reference: writtenByReference(node) };
+    : { type: context.resolveType(written), reference: writtenByReference(node) };
 }

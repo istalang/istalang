@@ -30,6 +30,7 @@ import type {
   Expression,
   FieldHeader,
   Lambda,
+  Parameter,
 } from '../syntax/expressions/index.ts';
 import { type Identifier, isMissingName, type QualifiedName } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
@@ -110,8 +111,11 @@ const variantsByModule = new SequenceMemo<Module['items'][number], Map<string, V
 /** The handler of a kind whose nodes hold no names. */
 export const holdsNoNames = (): void => undefined;
 
-/** A declaration whose targets are patterns, owning every name they bind (§3.15). */
-type TargetOwner = VariableDeclaration | For | FieldHeader | Comprehension;
+/**
+ * A declaration whose targets are patterns, owning every name they bind (§3.15): a parameter
+ * owns its pattern's names (§3.3).
+ */
+type TargetOwner = VariableDeclaration | For | FieldHeader | Comprehension | Parameter;
 
 /** Where a pattern's bindings go (patterns.ts). */
 export interface PatternBindings {

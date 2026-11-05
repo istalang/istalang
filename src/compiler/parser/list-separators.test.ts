@@ -76,7 +76,7 @@ describe('every list in §4 separates its items with ","', () => {
       'module' as const,
       'trait Shape { fn area(self: Self) -> Float, type Unit }',
       moduleOf(
-        `(TraitDeclaration Shape [] [(FunctionDeclaration _ area [] [(Parameter self ${named('Self')} _)] ${float} _) (RequiredAssociatedType Unit [])])`,
+        `(TraitDeclaration Shape [] [(FunctionDeclaration _ area [] [(Parameter self _ ${named('Self')} _)] ${float} _) (RequiredAssociatedType Unit [])])`,
       ),
     ],
     [
@@ -84,7 +84,7 @@ describe('every list in §4 separates its items with ","', () => {
       'module' as const,
       'fn f<S is struct { title: String, [_] is Stringable }>(s: S): ()',
       moduleOf(
-        `(FunctionDeclaration _ f [(TypeParameter S _ [(StructConstraint [(FieldTypeEntry title ${string}) (FieldConstraintEntry (OtherFields) [${named('Stringable')}])])] _)] [(Parameter s ${named('S')} _)] _ (Block [(ExpressionStatement (Tuple []))]))`,
+        `(FunctionDeclaration _ f [(TypeParameter S _ [(StructConstraint [(FieldTypeEntry title ${string}) (FieldConstraintEntry (OtherFields) [${named('Stringable')}])])] _)] [(Parameter s _ ${named('S')} _)] _ (Block [(ExpressionStatement (Tuple []))]))`,
       ),
     ],
     [
@@ -107,7 +107,7 @@ describe('every list in §4 separates its items with ","', () => {
       moduleOf(
         `(StructDeclaration Req [] [${declaredField('id', int)} ${declaredField('value', string)}] [])`,
         '(EnumDeclaration Color [] [(Variant Red []) (Variant Green []) (Variant Blue [])] [])',
-        `(TraitDeclaration Shape [] [(FunctionDeclaration _ area [] [(Parameter self ${named('Self')} _)] ${float} _) (RequiredAssociatedType Unit [])])`,
+        `(TraitDeclaration Shape [] [(FunctionDeclaration _ area [] [(Parameter self _ ${named('Self')} _)] ${float} _) (RequiredAssociatedType Unit [])])`,
       ),
     ],
   ])('parses %s', (_name, category, text, expectedTree) => {

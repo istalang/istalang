@@ -1,0 +1,43 @@
+/**
+ * How a parameter reads as written (§3.3): what a diagnostic about it points at, and the type its
+ * pattern names. A parameter binds a name, a pattern, or both (expressions/index.ts); the checker,
+ * the binder and the tools all read those two through here, so a pattern parameter has one reading.
+ *
+ * A pattern names its parameter's type when it is a struct pattern written with its type,
+ * `Point{x, y}` or `Pair<Int, String>{first, second}`, parentheses aside. A `struct{…}` or tuple
+ * pattern names none, so its parameter takes its type from an annotation, a default or the
+ * function type a lambda is expected as.
+ */
+
+import type { Parameter } from './expressions/index.ts';
+import type { Identifier } from './node.ts';
+import { type Pattern, type StructPattern, targetNames } from './patterns.ts';
+import type { NamedType } from './types.ts';
+
+/** What a diagnostic about `parameter` points at: its name, or else the pattern it is instead. */
+export function parameterSite(parameter: Parameter): Identifier | Pattern {
+  return parameter.name === undefined ? parameter.pattern : parameter.name;
+}
+
+/** The names `parameter` binds: its pattern's, then its own, which names the whole argument. */
+export function parameterNames(parameter: Parameter): readonly Identifier[] {
+  const parts = parameter.pattern === undefined ? [] : targetNames(parameter.pattern);
+  return parameter.name === undefined ? parts : [...parts, parameter.name];
+}
+
+/** The type `parameter`'s pattern names, as written; undefined for a name or a pattern naming none. */
+export function patternNamedType(parameter: Parameter): NamedType | undefined {
+  return typingPattern(parameter)?.type;
+}
+
+/**
+ * The struct pattern heading `parameter`'s pattern, parentheses aside, which names the parameter's
+ * type when it is written with one.
+ */
+export function typingPattern(parameter: Parameter): StructPattern | undefined {
+  let { pattern } = parameter;
+  while (pattern?.kind === 'ParenthesizedPattern') {
+    ({ pattern } = pattern);
+  }
+  return pattern?.kind === 'StructPattern' ? pattern : undefined;
+}

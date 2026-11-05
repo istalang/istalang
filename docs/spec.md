@@ -488,6 +488,26 @@ extern fn chargeCard(id: String, amount: Int) -> Result<String>  # implemented b
 - When a block ends, including a function's body, it releases everything its variables hold, disposing whatever nothing else holds (§3.4, §7).
 - `extern fn` declares a host function with a typed signature and no body (§3.6).
 - **Parameters are immutable,** as if declared `const` (§3.4): a by-value parameter can't be reassigned, changed in part or passed by `&`. Only a reference parameter (`&T`, §3.7) changes, and what it changes is the caller's place.
+- **Parameter types.** A declared function's parameter has a type: written after `:`, named by its pattern (below), or taken from its default. A parameter with none of these is a compile error.
+
+**Parameter patterns.** A parameter may be a declaration target (§3.15) in place of its name: a pattern that can't fail, which takes its argument apart when the body is entered.
+
+```python
+import * as math from 'math'
+
+type Point = { x: Float, y: Float }
+type Rect = { w: Int, h: Int }
+
+fn norm(Point{x, y}) -> Float: math.sqrt(x * x + y * y)
+fn area(struct{w, h}: Rect) -> Int: w * h
+fn sum((a, b): (Int, Int)) -> Int: a + b
+fn moved({x, y} as start: Point, dx: Float = x) -> Point: Point{x: start.x + dx, y}
+```
+
+- **Its names.** They are bound in the body and are immutable, like any parameter. The argument converts into the parameter's type first (§2), so every part is there, and each name holds a copy of its part, as a destructuring `const`'s does (§3.15). A pattern that can fail (§3.11) is a compile error: `fn f(Ok{value})`.
+- **Its type.** A pattern naming its type, `Point{x, y}` or `Pair<Int, String>{first, second}`, takes no annotation: one beside it would write the type twice. A generic type named without its type arguments is an error, as a missing annotation is. A `struct{…}` or tuple pattern names none, so it is annotated or takes its type from its default, as a name does. In a parameter, `{…}` is short for `struct{…}`, in its pattern and every pattern nested in it, since a `{` there can only be a pattern.
+- **Its name.** A destructured parameter has no name, so a call gives it by position only. `Pattern as name` names the whole as well, bound beside the parts; that name is the parameter's, for named arguments, and `as self` makes the function a method (§3.7).
+- **Where not.** A pattern binds values, while a reference passes a place, so a `&` parameter is a name; so is a rest parameter or a pack. An extern function and a trait's requirement have no body of their own to bind a pattern's names in, so theirs are names too. Clashes and overloads compare parameter types only (§3.7): `fn f(Point{x, y})` and `fn f(p: Point)` clash.
 
 ```python statements
 fn retry(times: Int = 3, backoff: Duration = 1s): ...
@@ -503,8 +523,8 @@ log(level: "info", parts: more)
 
 **Arguments.** A call fills its function's parameters as a struct literal fills fields (§3.1): by position, then by name, and each parameter it leaves out takes its default. A call broken over lines needs no `,` between its arguments (§2).
 
-- **Defaults.** Parameters with defaults come after the others. A default is an expression evaluated at every call that leaves its parameter out, and it may use earlier parameters, as in `fn window(start: Int, end: Int = start + 10)`. It is a value, not part of the function's body, so neither `return` nor `?` can leave it. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A struct's fields have defaults the same way (§3.1).
-- **Named arguments.** `f(name: value)` gives the parameter of that name, so a call can leave out a default before one it gives: `retry(backoff: 2s)`. Named arguments follow the positional ones, in any order. A positional argument or a spread after a named one is a compile error, and so is a parameter given twice. A `&` parameter is named with its `&`: `f(target: &x)`. A method's `self` is given before the dot, never by name.
+- **Defaults.** Parameters with defaults come after the others. A default is an expression evaluated at every call that leaves its parameter out, and it may use earlier parameters, as in `fn window(start: Int, end: Int = start + 10)`, the names an earlier parameter's pattern binds among them: `fn window(Range{start, end}, step: Int = end - start)`. It is a value, not part of the function's body, so neither `return` nor `?` can leave it. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A struct's fields have defaults the same way (§3.1).
+- **Named arguments.** `f(name: value)` gives the parameter of that name, so a call can leave out a default before one it gives: `retry(backoff: 2s)`. Named arguments follow the positional ones, in any order. A positional argument or a spread after a named one is a compile error, and so is a parameter given twice. A `&` parameter is named with its `&`: `f(target: &x)`. A destructured parameter is named only by its `as` name. A method's `self` is given before the dot, never by name.
 - **Order.** Arguments are evaluated in the order they are written, then each default left out, in parameter order, so a default sees the parameters before it however they were given. A spawned call's defaults are computed by the new instance, which runs the function (§9).
 - **Rest parameters** are sugar for an array. The last parameter, written `...name: Array<T>`, comes after any parameters with defaults and collects the remaining positional arguments. `...xs` at a call spreads anything iterable into them, as in an array literal (§2), mixed freely with single arguments; a spread anywhere else is a compile error. Named, the rest parameter takes a whole array: `log(level: "info", parts: more)`. An extern function's rest parameter reaches its host as an array (§9). A rest parameter may instead be a pack, `...args: A`, which collects the arguments into a tuple (§3.5).
 - **Function values.** Names and defaults aren't part of a function's type (§3.14), so a function value's call gives every argument by position, with no spread.
@@ -607,7 +627,7 @@ extern purchaseRequests: Queue<PurchaseRequest>     # a queue the host provides
 
 ### 3.7 Methods and references
 
-A method is an ordinary function whose first parameter is named `self`. Methods live in the program's definition, not inside values, so data stays plain and serializable. Dispatch is static, by the receiver's type.
+A method is an ordinary function whose first parameter is named `self`, or is a pattern named so, `Point{x, y} as self` (§3.3). Methods live in the program's definition, not inside values, so data stays plain and serializable. Dispatch is static, by the receiver's type.
 
 ```python
 struct Stack<T>:
@@ -1093,7 +1113,7 @@ fn makeCounter(start: Int) -> fn() -> Int:
 - **No `&` references** can be captured, because references can't be stored.
 - **Copying a closure shares its state.** The struct is copied, but the cells inside it are the same storage, so `const g = next` is a second name for the same counter.
 - **Calling through a `const` binding is allowed,** since immutability stops at handles (§3.4).
-- **Lambdas** are written with `fn` and no name: `fn(x): x * 2`, `fn(x: Int, y: Int) -> Int: x * y`, `async fn(msg): await handle(msg)`. With exactly one untyped parameter, the parentheses may be dropped, as in Python's `lambda`: `xs.filter(fn a: a > 0)`. Parameter types may be omitted when the expected function type gives them. The body after `:` is an expression, which ends at the next `,` or `)`.
+- **Lambdas** are written with `fn` and no name: `fn(x): x * 2`, `fn(x: Int, y: Int) -> Int: x * y`, `async fn(msg): await handle(msg)`. With exactly one untyped parameter, the parentheses may be dropped, as in Python's `lambda`: `xs.filter(fn a: a > 0)`; that form takes a name only. Parameter types may be omitted when the expected function type gives them. A parameter may be a pattern (§3.3), which takes each argument apart: `ps.map(fn(struct{x, y}): x + y)`, `pairs.map(fn((k, v)): k)`. The body after `:` is an expression, which ends at the next `,` or `)`.
 - **Named lambdas.** A lambda may carry a name that is visible only inside its own body, so it can call itself: in `const fact = fn f(n: Int) -> Int: { … }`, the body can call `f`, while outside it the function is only `fact`.
 - **Several statements** go in a block expression (§4): `fn(msg): { log(msg); save(msg); msg.id }`, or the same block spread over several indented lines. There is no brace-less form with `;`.
 - **Overloaded names** passed as values, like `xs.map(add)`, need an expected function type to choose the overload; otherwise they are a compile error.
@@ -1121,7 +1141,7 @@ The only difference is that a lambda can also be bound with `let` and reassigned
 **What a lambda or local function may be.**
 
 - **One value.** A lambda or a local `fn` can't be generic, or have default values or an array's rest parameter: a function value is one function, and its call gives every argument by position (§3.3). Its rest may be a pack of the function around it, `fn(...args: A)`, since each instantiation flattens it into single parameters (§3.5).
-- **Parameter types.** A lambda's untyped parameter takes its type from the function type the lambda is expected as; with none, it is a compile error. Passed to a generic function, a lambda is checked after the other arguments, so they give its parameter types, and its result then infers the type parameters that remain (§3.5).
+- **Parameter types.** A lambda's untyped parameter takes its type from the function type the lambda is expected as; with none, it is a compile error. A pattern naming its type with its type arguments, or one that takes none, writes the parameter's type; a generic one named bare takes its type arguments from the expected function type. Passed to a generic function, a lambda is checked after the other arguments, so they give its parameter types, and its result then infers the type parameters that remain (§3.5).
 - **Its own function.** `return` in a lambda returns from the lambda, `break` and `continue` can't leave it, and `await` needs an `async fn` lambda.
 - **Captures.** A by-value parameter is immutable (§3.3), so it is captured as a copy, like a `const`.
 - **Async function types.** Calling an `async fn(A) -> R` yields a `Future<R>`, and `await` gives the `R`. A declared `async fn f(x: A) -> Future<R>` is therefore the value `async fn(A) -> R`. A plain function fits where an async one of the same parameters and result is expected, `fn(A) -> R` where `async fn(A) -> R` is and `sendable fn(A) -> R` where `sendable async fn(A) -> R` is: calling it yields a future that is already resolved, and the call never suspends. As with the conversion into a union (§2), this fits the value passed or assigned, not one inside another type: an `Array<fn()>` isn't an `Array<async fn()>`.
@@ -1158,7 +1178,7 @@ for key, verdict in answered.entries():
 - **A one-element tuple converts.** A `(T,)` fits where a `T` is expected, giving its element, and a `T` fits where a `(T,)` is, as a one-element tuple, so a pack of one (§3.5) reads as its value. The conversion applies to a whole value, once, before any conversion into a union (§2), never inside a collection or a function type: an `Array<(T,)>` is no `Array<T>`.
 - **Elements by position:** `t.0`, `t.1`, as a decimal number after the dot. `t.0 = v` assigns one and `&t.0` passes one by reference. `t.0.1` reads an element of an element.
 - **Destructuring** works in `const` and `let` declarations, in `for` loops, and in plain assignment to existing variables. `_` is an unnamed variable: it holds its value like any other variable (§7), it just can't be referred to.
-- **Declaration targets** are patterns that can't fail (§3.11): names, `_`, tuple patterns and struct patterns, a struct pattern's rest included, nested at any depth, with `as` to rename. Several targets are a tuple of them: `let (a, b), c = t`, `const Pair{first, second as s} = p`, `const struct{first} = p`, which takes the type from the value, and `const struct{title, ...rest} = form`. A pattern that can fail (§3.11) is a compile error here. Each level's count must match its tuple's size.
+- **Declaration targets** are patterns that can't fail (§3.11): names, `_`, tuple patterns and struct patterns, a struct pattern's rest included, nested at any depth, with `as` to rename. Several targets are a tuple of them: `let (a, b), c = t`, `const Pair{first, second as s} = p`, `const struct{first} = p`, which takes the type from the value, and `const struct{title, ...rest} = form`. A pattern that can fail (§3.11) is a compile error here. Each level's count must match its tuple's size. A declaration target also stands as a parameter, taking its argument apart (§3.3).
 - **Assignment targets** are places, or tuples and struct literals of targets: `a, b = (b, a)`, `(a, b), c = t`, and `Pair{first: p.x, second} = q`, which assigns `q.first` to `p.x` and `q.second` to the variable `second`. The value is evaluated first, then each part is assigned, left to right. An assignment writes each place once: `a, a = t`, `p, p.x = t` and `*x, x->a = t` are errors. Where two places may be one only when the program runs, two elements `xs[i], xs[j]` or two variables holding one handle, they are written left to right.
 - **No named tuples.** When positions need names, use a struct. A good guideline: tuples for two or three positional values, structs beyond that.
 

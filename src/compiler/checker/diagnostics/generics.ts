@@ -3,6 +3,8 @@
  * a part of the checker's one catalog (index.ts).
  */
 
+import { spelledParameter } from './spelling.ts';
+
 export const genericTemplates = {
   cannotInfer: {
     code: 5100,
@@ -86,8 +88,13 @@ export const genericTemplates = {
   },
   defaultMissing: {
     code: 5113,
-    message: (name: string) =>
-      `'${name}' comes after a parameter with a default, so it needs a default too.`,
+    message: (name: string | undefined) =>
+      `${spelledParameter(name, true)} comes after a parameter with a default, so it needs a default too.`,
+  },
+  parameterTypeMissing: {
+    code: 5129,
+    message: (name: string | undefined) =>
+      `${spelledParameter(name, true)} has no type: write one, or give it a default to take it from (§3.3).`,
   },
   endlessConformance: {
     code: 5114,
@@ -133,8 +140,8 @@ export const genericTemplates = {
   },
   requiredDefault: {
     code: 5124,
-    message: (name: string) =>
-      `A trait's required function has no defaults, so '${name}' can't have one: each type meeting the trait could give another.`,
+    message: (name: string | undefined) =>
+      `A trait's required function has no defaults, so ${spelledParameter(name)} can't have one: each type meeting the trait could give another.`,
   },
   valueCallArgument: {
     code: 5122,

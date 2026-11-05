@@ -3,6 +3,8 @@
  * of the checker's one catalog (index.ts).
  */
 
+import { spelledParameter } from './spelling.ts';
+
 export const closureTemplates = {
   nestedFunctionForm: {
     code: 5500,
@@ -11,10 +13,10 @@ export const closureTemplates = {
   },
   parameterTypeUnknown: {
     code: 5501,
-    message: (name: string, expectedParameters: number | undefined) =>
+    message: (name: string | undefined, expectedParameters: number | undefined) =>
       expectedParameters === undefined
-        ? `The type of '${name}' can't be inferred: write it, or pass the lambda where a function type is expected.`
-        : `The type of '${name}' can't be inferred: the function type expected here takes only ${expectedParameters} parameter(s).`,
+        ? `The type of ${spelledParameter(name)} can't be inferred: write it, or pass the lambda where a function type is expected.`
+        : `The type of ${spelledParameter(name)} can't be inferred: the function type expected here takes only ${expectedParameters} parameter(s).`,
   },
   capturedReference: {
     code: 5502,

@@ -2,8 +2,10 @@
  * What a function declaration promises before its body is checked: its parameters and declared
  * result (§3.3).
  *
- * - A declared function's parameters carry types; the parser keeps them required. `&T` takes a
- *   reference (§3.7).
+ * - A declared function's parameter carries its type: its annotation, or the type its pattern
+ *   names (`Point{x, y}`), never both, since one type would be written twice; else its default
+ *   gives one, and a parameter with none of these is reported. `&T` takes a reference (§3.7), which
+ *   a pattern can't take apart, since it passes a place.
  * - An async function declares its real result, `Future<T>`; its body produces the `T` (§3.3).
  * - A parameter's default (§3.3) is checked as part of one body per function, in which each
  *   default sees the parameters before it (`DefaultValues`). A parameter with a default may omit
@@ -14,15 +16,20 @@
  *   into gives it an empty array.
  */
 
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression, Parameter } from '../../syntax/expressions/index.ts';
 import { isFieldsFunction } from '../../syntax/field-defaults.ts';
-import { unparenthesizedType } from '../../syntax/types.ts';
+import { lastName } from '../../syntax/node.ts';
+import { parameterSite, patternNamedType } from '../../syntax/parameters.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { type NamedType, type TypeNode, unparenthesizedType } from '../../syntax/types.ts';
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isPack, packRestSlot, type RestSlot } from '../types/function-types.ts';
+import { patternTypeOf } from '../types/named-types.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { arrayElement, futureArgument, futureOf } from '../types/well-known.ts';
@@ -49,14 +56,14 @@ export function declaredParameters(
     if (node.kind === 'Invalid') {
       return [];
     }
-    const declared = node.type === undefined ? undefined : checker.resolveType(module, node.type);
+    checkWrittenType({ checker, module, report: (found) => checker.report(module, found) }, node);
+    const written = writtenTypeOf(checker, module, node);
+    const declared = written === undefined ? undefined : checker.resolveType(module, written);
     if (node.isRest) {
       checkRest(checker, module, { node, declared, isLast: node === last });
     }
     const { defaultValue } = node;
-    if (defaultValue === undefined && afterDefault && inOrder && !node.isRest) {
-      checker.report(module, checkerDiagnostics.defaultMissing(node.name.span, node.name.text));
-    }
+    checkGiven(checker, module, node, { declared, defaultBefore: afterDefault && inOrder });
     afterDefault ||= defaultValue !== undefined;
     const valueType =
       defaultValue === undefined || defaults === undefined
@@ -69,6 +76,29 @@ export function declaredParameters(
 }
 
 /**
+ * Reports a parameter a call could leave without a value, after one with a default, and one with
+ * no type: neither written nor taken from a default (§3.3).
+ */
+function checkGiven(
+  checker: CheckerContext,
+  module: ModuleId,
+  node: Parameter,
+  {
+    declared,
+    defaultBefore,
+  }: { readonly declared: Type | undefined; readonly defaultBefore: boolean },
+): void {
+  const { span } = parameterSite(node);
+  const name = node.name?.text;
+  if (node.defaultValue === undefined && defaultBefore && !node.isRest) {
+    checker.report(module, checkerDiagnostics.defaultMissing(span, name));
+  }
+  if (declared === undefined && node.defaultValue === undefined) {
+    checker.report(module, checkerDiagnostics.parameterTypeMissing(span, name));
+  }
+}
+
+/**
  * The parameters of `declaration` as written, a type taken from a default read as the error type.
  * It reports nothing, so it can stand for the parameters while their defaults reach them.
  */
@@ -77,17 +107,82 @@ export function writtenParameters(
   module: ModuleId,
   declaration: FunctionDeclaration,
 ): readonly SignatureParameter[] {
-  return declaration.parameters.flatMap((node) =>
-    node.kind === 'Invalid'
-      ? []
-      : [
-          signatureParameter(
-            checker,
-            node,
-            node.type === undefined ? errorType : checker.resolveType(module, node.type),
-          ),
-        ],
-  );
+  return declaration.parameters.flatMap((node) => {
+    if (node.kind === 'Invalid') {
+      return [];
+    }
+    const written = writtenTypeOf(checker, module, node);
+    const type = written === undefined ? errorType : checker.resolveType(module, written);
+    return [signatureParameter(checker, node, type)];
+  });
+}
+
+/**
+ * The type `node` is written with: its annotation, or the type its pattern names when that names a
+ * type, not a variant, which a pattern can fail on (§3.11).
+ */
+export function writtenTypeOf(
+  checker: CheckerContext,
+  module: ModuleId,
+  node: Parameter,
+): TypeNode | undefined {
+  return node.type ?? namedByPattern(checker, module, node);
+}
+
+function namedByPattern(
+  checker: CheckerContext,
+  module: ModuleId,
+  node: Parameter,
+): NamedType | undefined {
+  const named = patternNamedType(node);
+  return named !== undefined &&
+    checker.bindings.entityOf(module, lastName(named.path))?.kind === 'type'
+    ? named
+    : undefined;
+}
+
+/**
+ * The type `node`'s pattern names whole: with its type arguments, or one that takes none. A
+ * generic one named bare is left to what the parameter's place gives, a lambda's expected type.
+ */
+export function wholeTypeNamedByPattern(
+  checker: CheckerContext,
+  module: ModuleId,
+  node: Parameter,
+): NamedType | undefined {
+  const named = namedByPattern(checker, module, node);
+  if (named === undefined || named.typeArguments.length > 0) {
+    return named;
+  }
+  const entity = checker.bindings.entityOf(module, lastName(named.path));
+  const generic = entity !== undefined && patternTypeOf(checker, entity).kind.startsWith('generic');
+  return generic ? undefined : named;
+}
+
+/** Where a parameter's written type is checked: its module, and where what it finds goes. */
+export interface ParameterSite {
+  readonly checker: CheckerContext;
+  readonly module: ModuleId;
+  readonly report: (diagnostic: Diagnostic<AnchoredSpan>) => void;
+}
+
+/**
+ * Reports a type written twice, as an annotation beside a pattern naming it, and a pattern taking
+ * apart what `&` passes, a place (§3.3, §3.7). A declared function's and a nested one's parameters
+ * are held to both alike.
+ */
+export function checkWrittenType(
+  { checker, module, report }: ParameterSite,
+  node: Parameter,
+): void {
+  const named = namedByPattern(checker, module, node);
+  if (node.type !== undefined && named !== undefined) {
+    const type = typeText(checker.resolveType(module, named));
+    report(checkerDiagnostics.patternTypeTwice(node.type.span, type));
+  }
+  if (node.pattern !== undefined && writtenByReference(node)) {
+    report(checkerDiagnostics.patternByReference(node.pattern.span));
+  }
 }
 
 function signatureParameter(
@@ -115,12 +210,13 @@ function checkRest(
   rest: { readonly node: Parameter; readonly declared: Type | undefined; readonly isLast: boolean },
 ): void {
   const { node, declared, isLast } = rest;
-  const { name } = node;
+  const site = parameterSite(node);
+  const name = node.name?.text ?? '';
   if (!isLast) {
-    checker.report(module, checkerDiagnostics.restNotLast(name.span, name.text));
+    checker.report(module, checkerDiagnostics.restNotLast(site.span, name));
   }
   if (node.defaultValue !== undefined) {
-    checker.report(module, checkerDiagnostics.restDefault(name.span, name.text));
+    checker.report(module, checkerDiagnostics.restDefault(site.span, name));
   }
   const collects =
     declared === undefined ||
@@ -128,8 +224,8 @@ function checkRest(
     isPack(declared) ||
     arrayElement(checker, declared) !== undefined;
   if (!collects) {
-    const at = node.type?.span ?? name.span;
-    checker.report(module, checkerDiagnostics.restNotArray(at, name.text, typeText(declared)));
+    const at = node.type?.span ?? site.span;
+    checker.report(module, checkerDiagnostics.restNotArray(at, name, typeText(declared)));
   }
 }
 

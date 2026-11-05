@@ -16,7 +16,7 @@ import {
 import { parseValue } from './expressions/indented-values.ts';
 import { nested } from './nesting.ts';
 import { type Grammar, Parser } from './parser.ts';
-import { parsePattern } from './patterns.ts';
+import { parseParameterPattern, parsePattern } from './patterns.ts';
 import { parseStatement } from './statements/statement.ts';
 import { parseParameterType, parseType, parseTypeArguments } from './types.ts';
 
@@ -31,6 +31,7 @@ const grammar: Grammar = {
   parameterType: (parser) => nested(parser, () => parseParameterType(parser)),
   typeArguments: parseTypeArguments,
   pattern: (parser) => nested(parser, () => parsePattern(parser)),
+  parameterPattern: (parser) => nested(parser, () => parseParameterPattern(parser)),
   statement: (parser) => nested(parser, () => parseStatement(parser)),
   topLevelDeclaration: parseTopLevelDeclaration,
   functionDeclaration: parseDefinedFunction,

@@ -3,7 +3,9 @@
  *
  * Patterns parse as expressions do, through tables: a prefix parselet per token that starts one,
  * and the operators that extend one, at their levels: `|` between alternatives, then `..` and
- * `..=` between a range's literals. `as name` binds the whole pattern, alternatives included, so
+ * `..=` between a range's literals. A parameter's pattern (§3.3) reads through the same grammar
+ * over one start more, `{`, short for `struct{`, which every pattern nested in it takes too: a
+ * grammar hands each parselet its own reader of nested patterns, so no flag says where it is. `as name` binds the whole pattern, alternatives included, so
  * `A | B as x` binds what either matched. A name may take type arguments, `Entry<S, "a">{value}`
  * or `Box<Int> as b`, which select a generic member of a union (§3.11); a pattern holds no
  * comparison, but an `is` expression around it may, so they are only read when they parse.
@@ -33,10 +35,11 @@ import type {
   StructPattern,
   WildcardPattern,
 } from '../syntax/patterns.ts';
-import type { NamedType, TypeNode } from '../syntax/types.ts';
+import type { TypeNode } from '../syntax/types.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { atPostfix } from './layout/item-breaks.ts';
+import { nested } from './nesting.ts';
 import type { Parser } from './parser.ts';
 import { type LeveledParselet, leveledGrammar } from './parts/levels.ts';
 import {
@@ -51,8 +54,8 @@ import { afterStructKeyword } from './parts/structs.ts';
 import { parseDelimited, parseGroup } from './recovery.ts';
 import type { StartParselets } from './word-parselets.ts';
 
-export function parsePattern(parser: Parser): Pattern {
-  const pattern = parsePatternAt(parser, 'alternatives');
+/** `pattern`, or `pattern as name` binding the whole when `as` follows it. */
+function withAsName(parser: Parser, pattern: Pattern): Pattern {
   if (parser.cursor.eat('as') === undefined) {
     return pattern;
   }
@@ -60,8 +63,14 @@ export function parsePattern(parser: Parser): Pattern {
   return { kind: 'AsPattern', span: parser.spanFrom(parser.startOf(pattern)), pattern, name };
 }
 
-/** How a pattern starting at a token of some kind is parsed. */
-type PatternParselet = (parser: Parser) => Pattern;
+/** A pattern standing inside another, read by the grammar of the pattern holding it. */
+type NestedPattern = (parser: Parser) => Pattern;
+
+/**
+ * How a pattern starting at a token of some kind is parsed; the patterns inside it are read by
+ * `nested`, so they take the same short forms as the pattern holding them.
+ */
+type PatternParselet = (parser: Parser, nested: NestedPattern) => Pattern;
 
 /** The levels pattern operators bind at, loosest first. */
 const patternLevels = ['alternatives', 'range'] as const;
@@ -91,34 +100,59 @@ const patternParselets: Partial<Record<CursorKind, PatternParselet>> = {
   none: parseLiteralPattern,
 } satisfies StartParselets<PatternWord, PatternParselet>;
 
-const infixPatternParselets: Partial<Record<CursorKind, LeveledParselet<PatternLevel, Pattern>>> = {
-  '|': { level: 'alternatives', parse: parseOrPattern },
-  '..': { level: 'range', parse: parseRangePattern },
-  '..=': { level: 'range', parse: parseRangePattern },
-};
-
-/** A pattern whose operators all bind at least as tightly as a level. */
-const parsePatternAt = leveledGrammar(patternLevels, parsePrimaryPattern, infixPatternParselets);
-
-function parsePrimaryPattern(parser: Parser): Pattern {
-  const parselet = patternParselets[parser.cursor.kind];
-  return parselet === undefined ? parser.missing('a pattern') : parselet(parser);
+/**
+ * The pattern grammar over `starts`: a pattern, its alternatives, ranges and `as name`, every
+ * pattern nested in it read by the same grammar, each descending a level (nesting.ts).
+ */
+function patternGrammar(starts: Partial<Record<CursorKind, PatternParselet>>): NestedPattern {
+  const nestedPattern: NestedPattern = (parser) => nested(parser, () => pattern(parser));
+  const primary = (parser: Parser): Pattern => {
+    const parselet = starts[parser.cursor.kind];
+    return parselet === undefined ? parser.missing('a pattern') : parselet(parser, nestedPattern);
+  };
+  const alternatives = (parser: Parser, first: Pattern): Pattern =>
+    parseOrPattern(parser, first, (inner) => parseAt(inner, 'range'));
+  const parseAt = leveledGrammar(patternLevels, primary, {
+    '|': { level: 'alternatives', parse: alternatives },
+    '..': { level: 'range', parse: parseRangePattern },
+    '..=': { level: 'range', parse: parseRangePattern },
+  } satisfies Partial<Record<CursorKind, LeveledParselet<PatternLevel, Pattern>>>);
+  const pattern = (parser: Parser): Pattern => withAsName(parser, parseAt(parser, 'alternatives'));
+  return pattern;
 }
 
-/** `A | B | C`, at the first `|`: one node for every alternative. */
-function parseOrPattern(parser: Parser, first: Pattern): Pattern {
+/** A pattern, wherever one stands (§3.11). */
+export const parsePattern = patternGrammar(patternParselets);
+
+/**
+ * A parameter's pattern (§3.3), where `{…}` is short for `struct{…}`, since a `{` can start
+ * nothing else there; so it is in every pattern nested in it.
+ */
+export const parseParameterPattern = patternGrammar({
+  ...patternParselets,
+  '{': (parser, inner) => parseStructPattern(parser, inner, { type: undefined, isShort: true }),
+});
+
+/** A literal, standing as a range's bound, which no grammar's short form changes. */
+function parsePrimaryPattern(parser: Parser): Pattern {
+  const parselet = patternParselets[parser.cursor.kind];
+  return parselet === undefined ? parser.missing('a pattern') : parselet(parser, parsePattern);
+}
+
+/** `A | B | C`, at the first `|`: one node for every alternative, each read by `alternative`. */
+function parseOrPattern(parser: Parser, first: Pattern, alternative: NestedPattern): Pattern {
   const alternatives = [first];
   while (parser.cursor.eat('|') !== undefined) {
-    alternatives.push(parsePatternAt(parser, 'range'));
+    alternatives.push(alternative(parser));
   }
   return { kind: 'OrPattern', span: parser.spanFrom(parser.startOf(first)), alternatives };
 }
 
 /** `[first, ...rest, last]`; a second rest is reported, since the items between would be ambiguous. */
-function parseArrayPattern(parser: Parser): Pattern {
+function parseArrayPattern(parser: Parser, inner: NestedPattern): Pattern {
   const { start } = parser.cursor.token.span;
   const { items } = parseDelimited(parser, '[', () =>
-    parser.cursor.at(spreadOpener) ? parseRestPattern(parser) : parser.pattern(),
+    parser.cursor.at(spreadOpener) ? parseRestPattern(parser) : inner(parser),
   );
   for (const extra of items.filter((item) => item.kind === 'RestPattern').slice(1)) {
     parser.report(parserDiagnostics.secondRest(parser.textSpanOf(extra.span)));
@@ -192,7 +226,7 @@ function boundOf(parser: Parser, bound: Pattern): LiteralPattern | undefined {
   return undefined;
 }
 
-function parseNamedPattern(parser: Parser): Pattern {
+function parseNamedPattern(parser: Parser, inner: NestedPattern): Pattern {
   const wildcard = parseWildcard(parser);
   if (wildcard !== undefined) {
     return wildcard;
@@ -200,9 +234,11 @@ function parseNamedPattern(parser: Parser): Pattern {
   const path = parseQualifiedName(parser);
   const start = parser.startOf(path[0]);
   const typeArguments = parsePatternTypeArguments(parser);
-  return atPostfix(parser, '{')
-    ? parseStructPattern(parser, namedTypeFrom(parser, path, typeArguments), start)
-    : { kind: 'NamePattern', span: parser.spanFrom(start), path, typeArguments };
+  if (!atPostfix(parser, '{')) {
+    return { kind: 'NamePattern', span: parser.spanFrom(start), path, typeArguments };
+  }
+  const type = namedTypeFrom(parser, path, typeArguments);
+  return parseStructPattern(parser, inner, { type, isShort: false }, start);
 }
 
 /**
@@ -230,18 +266,26 @@ const continuingOperators: ReadonlySet<string> = new Set(
 );
 
 /** `struct{…}`, matching an anonymous struct. */
-function parseAnonymousStructPattern(parser: Parser): Pattern {
+function parseAnonymousStructPattern(parser: Parser, inner: NestedPattern): Pattern {
   const { start } = parser.cursor.token.span;
-  return afterStructKeyword(parser, () => parseStructPattern(parser, undefined, start));
+  return afterStructKeyword(parser, () =>
+    parseStructPattern(parser, inner, { type: undefined, isShort: false }, start),
+  );
 }
 
 /**
- * The braced field tests, starting at the `{`, and the rest after them. A rest anywhere but last,
+ * The braced field tests, starting at the `{`, and the rest after them, `head` saying how the
+ * pattern names its struct; from `start`, its head's, or else the `{`'s. A rest anywhere but last,
  * or a second one, is reported; the first stands as the pattern's rest, so its name still binds.
  */
-function parseStructPattern(parser: Parser, type: NamedType | undefined, start: number): Pattern {
+function parseStructPattern(
+  parser: Parser,
+  inner: NestedPattern,
+  head: Pick<StructPattern, 'type' | 'isShort'>,
+  start = parser.cursor.token.span.start,
+): Pattern {
   const { items } = parseDelimited(parser, '{', () =>
-    parser.cursor.at(spreadOpener) ? parseRestPattern(parser) : parseFieldPattern(parser),
+    parser.cursor.at(spreadOpener) ? parseRestPattern(parser) : parseFieldPattern(parser, inner),
   );
   const [rest, ...extra] = items.filter((item) => item.kind === 'RestPattern');
   const fieldAfter = rest !== undefined && items.slice(items.indexOf(rest)).some(isFieldItem);
@@ -249,7 +293,7 @@ function parseStructPattern(parser: Parser, type: NamedType | undefined, start: 
     parser.report(parserDiagnostics.structRestLast(parser.textSpanOf(misplaced.span)));
   }
   const fields = items.filter(isFieldItem);
-  return { kind: 'StructPattern', span: parser.spanFrom(start), type, fields, rest };
+  return { kind: 'StructPattern', span: parser.spanFrom(start), ...head, fields, rest };
 }
 
 function isFieldItem<Item extends { readonly kind: string }>(
@@ -258,7 +302,7 @@ function isFieldItem<Item extends { readonly kind: string }>(
   return item.kind !== 'RestPattern';
 }
 
-function parseFieldPattern(parser: Parser): StructPattern['fields'][number] {
+function parseFieldPattern(parser: Parser, inner: NestedPattern): StructPattern['fields'][number] {
   const { cursor } = parser;
   const field = parser.identifier('a field name');
   const start = parser.startOf(field);
@@ -279,15 +323,15 @@ function parseFieldPattern(parser: Parser): StructPattern['fields'][number] {
     };
   }
   if (cursor.eat('is') !== undefined) {
-    const pattern = parser.pattern();
+    const pattern = inner(parser);
     return { kind: 'NestedFieldPattern', span: parser.spanFrom(start), field, pattern };
   }
   return { kind: 'BindFieldPattern', span: parser.spanFrom(start), field, alias: undefined };
 }
 
 /** `()`, `(a,)` and `(a, b)` are tuple patterns; `(p)` groups. */
-function parseTuplePattern(parser: Parser): Pattern {
-  return parseGroup<Pattern, Pattern>(parser, () => parser.pattern(), {
+function parseTuplePattern(parser: Parser, inner: NestedPattern): Pattern {
+  return parseGroup<Pattern, Pattern>(parser, () => inner(parser), {
     tuple: (span, elements) => ({ kind: 'TuplePattern', span, elements }),
     grouped: (span, pattern) => ({ kind: 'ParenthesizedPattern', span, pattern }),
   });
