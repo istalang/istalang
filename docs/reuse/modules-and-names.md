@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 tags: [reuse, language, modules, program, binder, names]
 ---
 
@@ -36,10 +36,10 @@ tags: [reuse, language, modules, program, binder, names]
 - read an import's path in the toolchain's one syntax: the `.`/`..` it starts with and the names after, or that it is no path → `importPathOf`, `ImportPath` (`src/language/import-paths.ts`)
 - find project `.ista` sources or load a project `Program` with stdlib roles, from given files or std sources, reusing a previous snapshot's trees → `loadProject`, `ProjectOptions`, `findProjectSources`, `findSources` (`src/project/project.ts`)
 - keep an editor's open texts and the program they make, one load per change → `Workspace`, `ProgramLoader`, `OpenTexts` (`src/language-service/workspace.ts`)
-- find the identifier an editor's cursor is on, inside it or right after it → `identifierAt` (`src/language-service/identifier-at.ts`)
-- find what a name denotes and where each is declared, or what references and rename act on → `nameAt`, `declarationsOf`, `isSamePlace`, `NamePlace` (`src/language-service/navigation/declarations.ts`)
+- find the identifier, or the String literal, an editor's cursor is on, inside it or right after it → `identifierAt`, `stringLiteralAt` (`src/language-service/identifier-at.ts`)
+- find what a name denotes and where each is declared, or what references and rename act on → `nameAt`, `declarationsOf`, `isSamePlace`, `NamePlace`, `WrittenName`/`spelledName` (an identifier, or a String literal naming a field as its key) (`src/language-service/navigation/declarations.ts`); the field a key literal names → `lookup.keyDenotationsOf` (`src/compiler/checker/lookup/key-denotations.ts`)
 - list every name of a program denoting a declaration, binder entities, fields, methods and statics alike (the one index of uses, per Program) → `namesDenoting`, `referencesAt` (`src/language-service/navigation/references.ts`)
-- rename a declaration across a program, or learn why it is refused → `renamingAt`, `renameEdits` (`src/language-service/navigation/rename.ts`); the String literals of a literal type a program writes, which may be keys naming fields and so keep a field's name, old or new, from renaming → `keyLiterals` (`navigation/key-literals.ts`)
+- rename a declaration across a program, or learn why it is refused → `renamingAt`, `renameEdits` (`src/language-service/navigation/rename.ts`), the key literals naming a field among its names
 - read what an editor's cursor is writing: the name there, the token before it, and whether space parts them, or only spaces and tabs (also between any token and an offset) → `cursorAt`, `touchingBefore`, `adjoinsBefore`, `adjoins`, `Cursor` (`src/language-service/completion/cursor.ts`)
 - find the call whose parentheses a cursor is inside, the argument it writes, the functions the call may call, and the parameter a written argument gives → `callAt`, `calleesOf`, `writtenParameter` (`src/language-service/call-at.ts`)
 - tell what the grammar admits at a cursor (a type, a declared name, a pattern, a call's argument, a member…) → `placeAt`, `Place` (`src/language-service/completion/place.ts`), which reads all but members and literal fields from a parse with a placeholder name there (`parsedPlaceAt`, `placeholder.ts`)

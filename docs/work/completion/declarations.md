@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-30
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 tags: [plan, completion, lsp]
 ---
 

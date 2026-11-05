@@ -3,8 +3,8 @@ description: A developer's guide to writing Istalang programs, breadth first —
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-28
-last_updated: 2026-11-04
+last_verified: 2026-11-05
+last_updated: 2026-11-05
 tags: [language, guide]
 ---
 
@@ -186,6 +186,31 @@ fn sum<T is Monoid>(xs: Array<T>) -> T:
 - **Operators are functions.** `a + b` calls `add(a, b)`, so declaring `fn add(left: Money, right: Money) -> Money` gives `Money` a `+`. `<`, `>`, `<=` and `>=` all go through one `compare`, `x[k]` through `index`, and `for` through `iterate`.
 - **`==` is built in.** It compares values structurally and handles by identity, and it can't be overloaded.
 
+Types can be computed from other types (§3.1, §3.5, §3.17): a struct names an **associated type** (`type Data = T`) that a trait may require, a **struct constraint** states a struct's fields (`S is struct { [_] is FormNode }`), a **mapped struct type** gives a field per key (`{ [F in keyof S]: S[F].Data }`), and a **field loop** runs once per field (`for field, node in ...s:`), checked once for every field it may reach.
+
+```python
+trait FormNode:
+    type Data
+    fn check(self: Self, data: Self.Data) -> Bool
+
+struct Field<T>:
+    value: T?
+    type Data = T
+
+fn check<T>(self: Field<T>, data: T) -> Bool: true
+
+struct Group<S is struct { [_] is FormNode }>:
+    fields: S
+    type Data = { [F in keyof S]: S[F].Data }
+
+fn check<S is struct { [_] is FormNode }>(self: Group<S>, data: Group<S>.Data) -> Bool:
+    for field, node in ...self.fields:
+        if not node.check(data[field]): return false
+    true
+```
+
+- **`keyof S` and `s[k]`.** `keyof S` is the union of `S`'s field names as literal types, and `s[k]` reads the field `k` names; a type `match` (`case Field<infer T>: T`) computes a type case by case.
+
 ### 2.6 Control flow and patterns (§4, §3.11)
 
 ```python statements
@@ -338,7 +363,7 @@ fn suite() -> Array<Test>: [
 - Passing an element (`&xs[i]`) or a shared struct's part (`&u->items`) to an **async** function is an error. Copy it into a `let`, pass that, and assign it back.
 - `a[1..3]` is a copy, and `for x in c` iterates over a copy.
 - A shared struct's fields are reached only with `->`; `x.field` is an error. `new` builds only shared structs, and shared structs only with `new`.
-- Two anonymous structs with the same fields are still different types. Name the struct to reuse a shape.
+- Two anonymous structs with the same fields are one type, their shape (§3.1); a declared struct is a type of its own, which converts into its shape.
 - A field whose type is its own struct must be optional (`next: Node?`) or sit inside a collection.
 
 **Construction and patterns**
