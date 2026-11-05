@@ -142,6 +142,11 @@ describe('a condition decided by types', () => {
     ).toEqual([5009, 5421, 5421]);
   });
 
+  it('leaves a case it rules out out of what the cases cover', () => {
+    const lines = ['fn f(x: "a" | "b") -> Int:', '  match x:', '    case "c": 1', '    case _: 2'];
+    expect(codesOf(...lines)).not.toContain(5401);
+  });
+
   it("is decided false over the others' key for a name the constraint lists", () => {
     const declarations = [
       'fn sizes<S is struct { title: String; [_]: Int }>(s: S) -> Int:',

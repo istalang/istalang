@@ -40,15 +40,16 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
     if (matchCase.guard !== undefined && !ruledOut) {
       context.expect(matchCase.guard, boolType);
     }
-    cases.push({
-      shape: shape ?? anyShape,
-      guarded: matchCase.guard !== undefined || shape === undefined,
-      at: matchCase.pattern.span,
-    });
     if (ruledOut) {
+      // A case its subject's type rules out matches no value, so it covers none.
       context.report(checkerDiagnostics.heldNoValue(matchCase.pattern.span));
       context.ruleOut(matchCase.body);
     } else {
+      cases.push({
+        shape: shape ?? anyShape,
+        guarded: matchCase.guard !== undefined || shape === undefined,
+        at: matchCase.pattern.span,
+      });
       branches.add(matchCase.body);
     }
   }
