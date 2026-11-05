@@ -9,7 +9,8 @@
  *   whose literals' base does, as the program's rules say (type-rules.ts).
  * - A recursive alias use (§3.17) stands as one member, never flattened, however it is spelled:
  *   the union it unfolds to is the use. A member its body already holds merges into it, as into an
- *   `any` member, so `Json | Int` and `Json?` are `Json`.
+ *   `any` member, so `Json | Int` and `Json?` are `Json`; so does one a recursive member of its
+ *   body holds, at any depth (`holdingMember`).
  * - The error type makes the whole union the error type: a diagnostic already explained it.
  * - `unionOf` is the one constructor of a union from types, written, substituted (type-parts.ts:
  *   `T | Int` with `T = Int` collapses, `T | any Stringable` with `T = String` too), joined or made
@@ -98,9 +99,11 @@ function withoutHeld(members: readonly Type[], rules: TypeRules): readonly Type[
 }
 
 /**
- * The recursive member among `members` whose union already holds `member` (§2, §3.17), so a value
- * of `member` sits in that member's variant, inside the union it unfolds to, as in an `any` member
- * that took it whole; undefined where none does, and for that member itself.
+ * The recursive member among `members` whose union already holds `member` (§2, §3.17), at any
+ * depth, so a value of `member` sits in that member's variant, inside the union it unfolds to, as
+ * in an `any` member that took it whole; undefined where none does, and for that member itself.
+ * Every reader of a union's holding asks this, and repeats it on the union it unfolds to to find
+ * the next member on the way, so the depth a value goes in at has one rule.
  */
 export function holdingMember(
   members: readonly Type[],
@@ -108,17 +111,42 @@ export function holdingMember(
   rules: TypeRules,
 ): RecursiveType | undefined {
   const key = typeKeys.typeKey(member);
-  return members.find((holder): holder is RecursiveType => {
-    if (holder.kind !== 'recursive' || typeKeys.typeKey(holder) === key) {
-      return false;
-    }
-    const held = rules.unfoldedMembers(holder);
-    return (
-      held !== undefined &&
-      withoutAbsorbed(mergedLiterals(distinctMembers([...held, member])), rules).length ===
-        held.length
-    );
-  });
+  return members.find(
+    (holder): holder is RecursiveType =>
+      holder.kind === 'recursive' &&
+      typeKeys.typeKey(holder) !== key &&
+      holds(holder, member, rules, new Set()),
+  );
+}
+
+/**
+ * Whether the union `holder` unfolds to holds `member`: as a member of it, merged into one, or held
+ * in turn by a recursive member of it. `entered` keeps the uses already unfolded on the way, so a
+ * chain of aliases each holding the next is walked once whatever its length.
+ */
+function holds(
+  holder: RecursiveType,
+  member: Type,
+  rules: TypeRules,
+  entered: ReadonlySet<string>,
+): boolean {
+  const held = rules.unfoldedMembers(holder);
+  if (held === undefined) {
+    return false;
+  }
+  if (
+    withoutAbsorbed(mergedLiterals(distinctMembers([...held, member])), rules).length ===
+    held.length
+  ) {
+    return true;
+  }
+  const inside = new Set([...entered, typeKeys.typeKey(holder)]);
+  return held.some(
+    (inner) =>
+      inner.kind === 'recursive' &&
+      !inside.has(typeKeys.typeKey(inner)) &&
+      holds(inner, member, rules, inside),
+  );
 }
 
 /**
