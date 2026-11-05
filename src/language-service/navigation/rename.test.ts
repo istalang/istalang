@@ -98,6 +98,28 @@ describe('renaming', () => {
     }
   });
 
+  it('renames a key given as a type argument, and one a literal pattern matches (§3.1, §4)', () => {
+    const { program, named } = navigable({
+      main: [
+        'struct Settings { retries: Int; region: String }',
+        'struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }',
+        'fn kinds(s: Settings) -> String:',
+        '  const e: Entry<Settings, "region"> = Entry{key: "region", value: "eu"}',
+        '  let out = e.value',
+        '  for k, _ in ...s:',
+        '    match k:',
+        '      case "region": out = `${out}!`',
+        '      case _: out = out',
+        '  out',
+        '',
+      ].join('\n'),
+    });
+    const regionRenamed = renamed(program, named('main', 'region'), 'area');
+    for (const renamedUse of ['Entry<Settings, "area">', 'case "area"']) {
+      expect(regionRenamed).toEqual({ main: expect.stringContaining(renamedUse) });
+    }
+  });
+
   it('refuses an associated type a trait requires by its name', () => {
     const { program, named } = navigable({
       main: [

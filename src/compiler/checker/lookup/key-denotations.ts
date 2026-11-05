@@ -11,17 +11,25 @@
  *   or as a member parameter within it, is a key of `S`;
  * - a literal given to a field or parameter whose type is a member parameter within the keys of a
  *   type parameter, `Entry{key: "region"}` for `K in keyof S`, is a key of the struct the literal's
- *   or the call's instantiation makes `S`.
+ *   or the call's instantiation makes `S`, and so is a literal type given as a type argument for
+ *   one, `Entry<Settings, "region">`;
+ * - a literal pattern matching a key is a key of its struct: a field loop's key's (§4), the struct
+ *   it runs over, or a value typed by the keys, theirs.
  */
 
 import type { ModuleId } from '../../program/program.ts';
+import { typeParametersOf } from '../../syntax/declarations.ts';
 import type { StructLiteral } from '../../syntax/expressions/index.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals.ts';
+import { unparenthesized } from '../../syntax/expressions/readings.ts';
+import type { LiteralPattern } from '../../syntax/patterns.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
+import type { LiteralType } from '../../syntax/types.ts';
 import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation } from '../denotation.ts';
 import { parameterOfArgument } from '../resolved-call.ts';
+import { parameterType } from '../types/resolve-type.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
 import { bodyHolding } from './holders.ts';
@@ -49,14 +57,14 @@ function keyOwnerAt(
   const tree = checker.inputs.treeOf(module);
   const parent = parentOf(tree, literal);
   if (parent?.kind === 'LiteralType') {
-    const indexed = parentOf(tree, parent);
-    return indexed?.kind === 'IndexedType' && indexed.key === parent
-      ? checker.resolvedTypeOf(indexed.owner)
-      : undefined;
+    return typeKeyOwner(checker, tree, parent);
   }
   const body = bodyHolding(checker, module, literal);
   if (body === undefined) {
     return undefined;
+  }
+  if (parent?.kind === 'LiteralPattern') {
+    return patternKeyOwner(checker, { module, tree, body }, parent);
   }
   if (parent?.kind === 'Index' && parent.index === literal) {
     return body.fieldReadOf(parent) === undefined ? undefined : body.typeOf(parent.target);
@@ -141,4 +149,58 @@ function literalSubstitution(body: CheckedBody, literal: StructLiteral): Substit
   return type?.kind === 'nominal'
     ? substitutionFor(type.entity.declaration.typeParameters, type.arguments)
     : undefined;
+}
+
+/** The struct a literal type is a key of: `S["region"]`'s, or a type argument's within its keys. */
+function typeKeyOwner(
+  checker: CheckerContext,
+  tree: SyntaxTree,
+  literal: LiteralType,
+): Type | undefined {
+  const parent = parentOf(tree, literal);
+  if (parent?.kind === 'IndexedType') {
+    return parent.key === literal ? checker.resolvedTypeOf(parent.owner) : undefined;
+  }
+  const named = parent?.kind === 'NamedType' ? checker.resolvedTypeOf(parent) : undefined;
+  const index = parent?.kind === 'NamedType' ? parent.typeArguments.indexOf(literal) : -1;
+  if (named?.kind !== 'nominal' || index < 0) {
+    return undefined;
+  }
+  const { typeParameters } = named.entity.declaration;
+  const parameter = typeParametersOf(typeParameters)[index];
+  return parameter === undefined
+    ? undefined
+    : instantiatedKeysOwner(
+        checker,
+        parameterType(parameter),
+        substitutionFor(typeParameters, named.arguments),
+      );
+}
+
+/** The struct a literal pattern's value is a key of, when the case's subject is a key. */
+function patternKeyOwner(
+  checker: CheckerContext,
+  { module, tree, body }: { module: ModuleId; tree: SyntaxTree; body: CheckedBody },
+  pattern: LiteralPattern,
+): Type | undefined {
+  let node: SyntaxNode | undefined = parentOf(tree, pattern);
+  while (node?.kind === 'OrPattern' || node?.kind === 'AsPattern') {
+    node = parentOf(tree, node);
+  }
+  const match = node?.kind === 'MatchCase' ? parentOf(tree, node) : undefined;
+  if (match?.kind !== 'Match') {
+    return undefined;
+  }
+  const subject = unparenthesized(match.subject);
+  const entity =
+    subject.kind === 'Identifier' ? checker.bindings.entityOf(module, subject) : undefined;
+  if (entity?.kind === 'variable' && entity.owner.kind === 'FieldHeader') {
+    const { key, subject: struct } = entity.owner;
+    const inKey =
+      key.span.segment === entity.name.span.segment &&
+      key.span.from <= entity.name.span.from &&
+      entity.name.span.to <= key.span.to;
+    return inKey ? body.typeOf(struct) : undefined;
+  }
+  return keysOwner(body.typeOf(match.subject));
 }
