@@ -143,3 +143,51 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
     expect(mainGives('Int', 'return sum((1, (2, (3, none))))', declarations)).toBe(6);
   });
 });
+
+describe('a recursive shape alias and a generic recursive alias named where a type is', () => {
+  const list = 'type List = { head: Int, tail: List? }';
+
+  it('builds a recursive shape alias from braces and from an indented value', () => {
+    const declarations = lines(
+      list,
+      'fn braces() -> List: List{head: 1, tail: none}',
+      'fn indented() -> List:',
+      '  return List:',
+      '    head: 2',
+      '    tail: none',
+    );
+    expect(reported(declarations)).toEqual(reportedNothing);
+    expect(mainGives('Int', 'return braces().head + indented().head', declarations)).toBe(3);
+  });
+
+  it('matches a generic recursive alias by name, with its arguments or without', () => {
+    const declarations = lines(
+      'type Tree<T> = T | Array<Tree<T>>',
+      'fn named(x: Tree<Int> | String) -> Bool: x is Tree<Int>',
+      'fn bare(x: Tree<Int> | String) -> Bool: x is Tree',
+    );
+    expect(reported(declarations)).toEqual(reportedNothing);
+    expect(
+      mainGives('Bool', 'return named(1) and bare([2]) and not named("s")', declarations),
+    ).toBe(true);
+  });
+});
+
+describe('an indented value as a literal of its form', () => {
+  it('widens its items as the bracket literal it reads as does', () => {
+    const body = (items: string) =>
+      lines(
+        'struct Form { a: Int, b: Int }',
+        'fn count(f: Form) -> Int:',
+        '  let n = 0',
+        '  for k, _ in ...f:',
+        `    const pair =${items}`,
+        '    n += pair.length()',
+        '  return n',
+      );
+    const brackets = body(' [struct{key: k}, struct{key: "other"}]');
+    const indented = body('\n      - key: k\n      - key: "other"');
+    expect(reported(indented)).toEqual(reported(brackets));
+    expect(reported(indented)).toEqual(reportedNothing);
+  });
+});

@@ -20,6 +20,7 @@ import {
   kindMembers,
   membersNamed,
   namesOwnType,
+  patternTypeOf,
 } from '../../../compiler/checker/types/named-types.ts';
 import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type.ts';
 import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
@@ -181,7 +182,10 @@ function membersNamedBy(
     const type = checked && cursor.checker.lookup.typeOfNode(cursor.module, checked);
     return type === undefined ? [] : [type];
   });
-  return given.length === named.typeArguments.length ? instancesWith(selected, given) : [];
+  const pattern = entity === undefined ? undefined : patternTypeOf(cursor.checker, entity);
+  return pattern?.kind === 'generic' && given.length === named.typeArguments.length
+    ? instancesWith(selected, pattern.declaration, given)
+    : [];
 }
 
 /**

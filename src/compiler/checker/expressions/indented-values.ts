@@ -36,6 +36,7 @@ import { builtFrom, collectionTarget } from '../types/expected.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalType, membersOf } from '../types/unions.ts';
+import { aliasedShape } from './literal-types.ts';
 
 /** What a value is built as, and the type its literal is checked against. */
 interface Building {
@@ -97,10 +98,7 @@ function namesStruct(context: BodyContext, entity: Entity): boolean {
     return false;
   }
   const { declaration } = entity;
-  if (declaration.kind === 'TypeAliasDeclaration') {
-    return context.checker.aliasedType(declaration).kind === 'anonymous';
-  }
-  return isDeclaredStruct(declaration);
+  return aliasedShape(context, declaration) !== undefined || isDeclaredStruct(declaration);
 }
 
 const collections = [wellKnown.array, wellKnown.map];

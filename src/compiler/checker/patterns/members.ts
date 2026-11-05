@@ -328,7 +328,7 @@ function instanceNamed(
   const pattern = patternTypeOf(scope, entity);
   const declared = pattern.kind === 'generic' ? pattern.declaration.typeParameters.length : 0;
   const { typeArguments } = written;
-  if (typeArguments.length !== declared) {
+  if (pattern.kind !== 'generic' || typeArguments.length !== declared) {
     const { text } = lastName(written.path);
     scope.report(
       checkerDiagnostics.typeArgumentCount(written.span, text, declared, typeArguments.length),
@@ -336,5 +336,7 @@ function instanceNamed(
     return undefined;
   }
   const given = typeArguments.map((argument) => scope.resolveType(argument));
-  return given.some((type) => type.kind === 'error') ? undefined : instancesWith(named, given);
+  return given.some((type) => type.kind === 'error')
+    ? undefined
+    : instancesWith(named, pattern.declaration, given);
 }

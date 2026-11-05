@@ -104,12 +104,18 @@ export function declaredOwnerOf(
     : staticOwnerOf(entityType(checker, checker.bindings.entityOf(module, declaration.owner)));
 }
 
+/** A generic type a pattern names: a nominal one, or a recursive alias, whose uses are types (§3.17). */
+export type GenericDeclaration = NominalDeclaration | TypeAliasDeclaration;
+
 /** The type a pattern naming an entity tests a value for. */
 export type PatternType =
   | { readonly kind: 'type'; readonly type: Type }
-  /** A generic type, named without the type arguments a pattern can't give. */
-  | { readonly kind: 'generic'; readonly declaration: NominalDeclaration }
-  /** A generic alias, which stands for no one type without its type arguments. */
+  /**
+   * A generic type, named without the type arguments a pattern can't give: a nominal type, or a
+   * recursive alias, each of whose uses is a type of its own (§3.17).
+   */
+  | { readonly kind: 'generic'; readonly declaration: GenericDeclaration }
+  /** A generic alias of no recursion, which stands for no one type without its type arguments. */
   | { readonly kind: 'genericAlias'; readonly declaration: TypeAliasDeclaration }
   | { readonly kind: 'none' };
 
@@ -129,7 +135,8 @@ export function patternTypeOf(checker: Aliases, entity: Entity): PatternType {
     declaration.kind !== 'RequiredAssociatedType' &&
     declaration.typeParameters.length > 0;
   if (isGeneric) {
-    return declaration.kind === 'TypeAliasDeclaration'
+    return declaration.kind === 'TypeAliasDeclaration' &&
+      checker.aliasedType(declaration).kind !== 'recursive'
       ? { kind: 'genericAlias', declaration }
       : { kind: 'generic', declaration };
   }
@@ -177,7 +184,7 @@ export function namesOwnType(checker: Aliases, entity: Entity, type: Type): bool
     case 'type':
       return named.type.kind === 'error' || sameType(named.type, type);
     case 'generic':
-      return type.kind === 'nominal' && type.entity.declaration === named.declaration;
+      return instanceOf(type, named.declaration) !== undefined;
     case 'genericAlias':
     case 'none':
       return false;
@@ -251,22 +258,40 @@ function typeMembers(checker: Aliases, entity: Entity, members: readonly Type[])
       return takenWhole(members, named.type, checker.typeRules) ? [named.type] : [];
     }
     case 'generic':
-      return members.filter(
-        (member) => member.kind === 'nominal' && member.entity.declaration === named.declaration,
-      );
+      return members.filter((member) => instanceOf(member, named.declaration) !== undefined);
     default:
       return [];
   }
 }
 
-/** Of a generic type's instances among `members`, the one instantiating it with `typeArguments`. */
+/**
+ * Of the generic type `declaration`'s instances among `members`, the one instantiating it with
+ * `typeArguments`.
+ */
 export function instancesWith(
   members: readonly Type[],
+  declaration: GenericDeclaration,
   typeArguments: readonly Type[],
 ): readonly Type[] {
-  return members.filter(
-    (member) => member.kind === 'nominal' && sameItems(sameType)(member.arguments, typeArguments),
-  );
+  return members.filter((member) => {
+    const instance = instanceOf(member, declaration);
+    return instance !== undefined && sameItems(sameType)(instance, typeArguments);
+  });
+}
+
+/**
+ * The type arguments `type` instantiates the generic `declaration` with: a nominal type's, or a
+ * recursive alias use's, whether used or unfolded (§3.17), which a nominal type it unfolds to is an
+ * instance of as well; undefined when it instantiates `declaration` in neither way.
+ */
+function instanceOf(type: Type, declaration: GenericDeclaration): readonly Type[] | undefined {
+  const use = type.kind === 'recursive' ? type : recursionOf(type);
+  if (use?.declaration === declaration) {
+    return use.arguments;
+  }
+  return type.kind === 'nominal' && type.entity.declaration === declaration
+    ? type.arguments
+    : undefined;
 }
 
 /**

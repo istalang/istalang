@@ -19,7 +19,8 @@
 import { wellKnown } from '../../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { localFunctionOf } from '../../binder/entities.ts';
-import type { Expression, Reference } from '../../syntax/expressions/index.ts';
+import { literalOf, untypedForm } from '../../syntax/expressions/indented-values.ts';
+import type { Expression, IndentedValue, Reference } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
@@ -208,7 +209,10 @@ const knownTypeHandlers: Handlers<BodyContext, Expression, [], Type | undefined>
   Call: unknownType,
   StructLiteral: structLiteralKnownType,
   NewStructLiteral: unknownType,
-  IndentedValue: unknownType,
+  IndentedValue: (context, node) => {
+    const literal = untypedLiteral(node);
+    return literal === undefined ? undefined : knownTypeOf(context, literal);
+  },
   MemberAccess: unknownType,
   TupleElement: unknownType,
   BlockExpression: (context, node) => blockKnownType(context, node.block),
@@ -271,8 +275,8 @@ export function checkedPartOf(context: BodyContext, node: Expression | undefined
 
 /**
  * Whether `node` is a literal of items that can be built as another type than its own (§3.7): a
- * tuple, an array or map literal, a `struct{…}`, maybe parenthesized. A literal naming its type
- * builds that type alone.
+ * tuple, an array or map literal, a `struct{…}` or an indented value naming no type, maybe
+ * parenthesized. A literal naming its type builds that type alone.
  */
 export function isBuiltLiteral(node: Expression): boolean {
   switch (node.kind) {
@@ -281,6 +285,7 @@ export function isBuiltLiteral(node: Expression): boolean {
     case 'MapLiteral':
       return true;
     case 'StructLiteral':
+    case 'IndentedValue':
       return node.type === undefined;
     case 'Parenthesized':
       return isBuiltLiteral(node.expression);
@@ -305,7 +310,10 @@ const buildsHandlers: Handlers<BodyContext, Expression, [PartReader], Accepts | 
   Call: builtAsItIs,
   StructLiteral: structLiteralBuilds,
   NewStructLiteral: builtAsItIs,
-  IndentedValue: builtAsItIs,
+  IndentedValue: (context, node, read) => {
+    const literal = untypedLiteral(node);
+    return literal === undefined ? undefined : buildsOf(context, literal, read);
+  },
   MemberAccess: builtAsItIs,
   TupleElement: builtAsItIs,
   BlockExpression: builtAsItIs,
@@ -352,6 +360,15 @@ function buildsOf(context: BodyContext, node: Expression, read: PartReader): Acc
 
 function knownTypeOf(context: BodyContext, node: Expression): Type | undefined {
   return handlerOf(knownTypeHandlers, node)(context, node);
+}
+
+/**
+ * The literal an indented value naming no type reads as before its type is decided, the one its
+ * entries make (`untypedForm`), as a bracket or `struct{…}` literal has its own type and builds;
+ * undefined for one naming its type, which builds that type alone, as a literal naming it does.
+ */
+function untypedLiteral(node: IndentedValue): Expression | undefined {
+  return node.type === undefined ? literalOf(node, untypedForm(node)) : undefined;
 }
 
 /** A negated number written in place has its literal's type (syntax/expressions/numbers.ts). */

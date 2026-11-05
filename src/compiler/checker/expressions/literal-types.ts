@@ -16,7 +16,14 @@ import type { BodyContext } from '../body-context.ts';
 import { itemField } from '../struct-items.ts';
 import { builtFrom } from '../types/expected.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
-import { aliasedAs, isNominalEntity, type NominalEntity, type Type } from '../types/type.ts';
+import {
+  type AnonymousStructType,
+  aliasedAs,
+  isNominalEntity,
+  type NominalEntity,
+  type Type,
+} from '../types/type.ts';
+import { unfolded } from '../types/type-rules.ts';
 import { literalOrBase, writtenLiteral } from '../types/unions.ts';
 import { knownArguments, type LiteralShape } from './literal-fields.ts';
 
@@ -49,10 +56,10 @@ export function builtThrough(
     const known = knownArguments(context, node.type, declaration, target);
     return { kind: 'declared', entity, struct: declaration, known };
   }
-  if (declaration.kind !== 'TypeAliasDeclaration') {
+  const aliased = aliasedShape(context, declaration);
+  if (declaration.kind !== 'TypeAliasDeclaration' || aliased === undefined) {
     return undefined;
   }
-  const aliased = context.checker.aliasedType(declaration);
   const known = knownArguments(context, node.type, declaration, target);
   const typeOf = (typeArguments: readonly Type[]): Type =>
     aliasedAs(
@@ -63,9 +70,22 @@ export function builtThrough(
       ),
       { kind: 'alias', declaration, arguments: typeArguments },
     );
-  return aliased.kind === 'anonymous'
-    ? { kind: 'shape', shape: { owner: declaration, known, fields: aliased.fields, typeOf } }
-    : undefined;
+  return { kind: 'shape', shape: { owner: declaration, known, fields: aliased.fields, typeOf } };
+}
+
+/**
+ * The shape the alias `declaration` names, with its own type parameters, a recursive one's as it
+ * unfolds (§3.17); undefined for any other declaration, or an alias of anything but a shape.
+ */
+export function aliasedShape(
+  context: BodyContext,
+  declaration: TypeEntity['declaration'],
+): AnonymousStructType | undefined {
+  if (declaration.kind !== 'TypeAliasDeclaration') {
+    return undefined;
+  }
+  const aliased = unfolded(context.checker.aliasedType(declaration), context.checker.typeRules);
+  return aliased.kind === 'anonymous' ? aliased : undefined;
 }
 
 /**
