@@ -21,6 +21,7 @@ import { patternTemplates } from './patterns.ts';
 import { templateTemplates } from './templates.ts';
 import { testingTemplates } from './testing.ts';
 import { traitObjectTemplates } from './trait-objects.ts';
+import { typeMatchTemplates } from './type-matches.ts';
 import { valueTemplates } from './values.ts';
 import { weakSideTemplates } from './weak-side.ts';
 
@@ -158,6 +159,7 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   ...keyTemplates,
   ...packTemplates,
   ...traitObjectTemplates,
+  ...typeMatchTemplates,
   ...valueTemplates,
   ...collectionTemplates,
   ...patternTemplates,

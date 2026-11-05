@@ -111,7 +111,7 @@ export type InfixWord = (typeof infixWords)[number];
 
 /**
  * What starts a type (§2, §3.1, §3.10, §3.14): function types, anonymous structs, `any`'s values,
- * a struct's keys, and the literal types spelled as words.
+ * a struct's keys, a type `match` case's type variables, and the literal types spelled as words.
  */
 export const typeWords = [
   'fn',
@@ -120,6 +120,7 @@ export const typeWords = [
   'sendable',
   'any',
   'keyof',
+  'infer',
   'true',
   'false',
 ] as const satisfies readonly Word[];

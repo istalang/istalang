@@ -10,13 +10,12 @@
  */
 
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
+import type { ComputedType, MappedParts } from './computed-types.ts';
 import {
   type AnyType,
   aliasedAs,
-  type ComputedType,
   type Constraint,
   errorType,
-  type MappedParts,
   type ParameterKey,
   type Type,
   type TypeParameterType,

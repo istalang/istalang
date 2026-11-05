@@ -132,6 +132,10 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: () =>
       "An associated type takes no type parameters; it uses its declaration's own (§3.1).",
   },
+  severalCaseTypes: {
+    code: 2029,
+    message: () => 'A type match case gives one type, written after its colon (§3.17).',
+  },
   memberParameterAlone: {
     code: 2027,
     message: () =>

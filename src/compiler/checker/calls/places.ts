@@ -45,7 +45,8 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Passing } from '../resolution/call-arguments.ts';
 import { keyMembers, structConstraintsOn } from '../traits/known-constraints.ts';
-import { errorType, isOpaque, type Type } from '../types/type.ts';
+import { isOpaque } from '../types/computed-types.ts';
+import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { runsAtOnce, writeElement } from './collection-functions.ts';
 

@@ -7,16 +7,21 @@
  *
  * A mapped entry's type parameter (`[F in keyof S]: T`, §3.1) is visible in its field's type
  * alone; its union is bound in the type's own scope, where `F` is not yet defined.
+ *
+ * A type `match` case's `infer` variables (§3.17) are visible in its whole case: its pattern, so a
+ * later bare `T` names the same part as `infer T`, and its type.
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import type { Field } from '../syntax/declarations.ts';
+import type { AliasBody, Field } from '../syntax/declarations.ts';
 import type { Invalid } from '../syntax/node.ts';
+import { inferTypesIn } from '../syntax/type-matches.ts';
 import type {
   ConstraintNode,
   MappedField,
   StructConstraint,
   StructType,
+  TypeCase,
   TypeNode,
 } from '../syntax/types.ts';
 import { typeEntity } from './entities.ts';
@@ -50,6 +55,7 @@ const typeHandlers: Handlers<LocalBinder, TypeNode, [Scope], void> = {
   MemberType: (binder, node, scope) => bindType(binder, node.owner, scope),
   IndexedType: (binder, node, scope) => bindTypes(binder, [node.owner, node.key], scope),
   KeyofType: (binder, node, scope) => bindType(binder, node.owner, scope),
+  InferType: (binder, node, scope) => bindConstraints(binder, node.parameter.constraints, scope),
   Missing: holdsNoNames,
   Invalid: holdsNoNames,
 };
@@ -64,6 +70,37 @@ function bindTypes(binder: LocalBinder, nodes: readonly TypeNode[], scope: Scope
   for (const node of nodes) {
     bindType(binder, node, scope);
   }
+}
+
+/** What an alias or an associated type stands for: a type, or a type `match`'s subject and cases. */
+export function bindAliasBody(binder: LocalBinder, node: AliasBody, scope: Scope): void {
+  if (node.kind !== 'TypeMatch') {
+    bindType(binder, node, scope);
+    return;
+  }
+  binder.enter(node, scope);
+  bindType(binder, node.subject, scope);
+  for (const each of node.cases) {
+    if (each.kind === 'TypeCase') {
+      bindTypeCase(binder, each, scope);
+    }
+  }
+}
+
+/** `case P: T`, in a scope of its own declaring the `infer` variables `P` writes (the banner). */
+function bindTypeCase(binder: LocalBinder, node: TypeCase, scope: Scope): void {
+  const inner = Scope.nested(scope);
+  for (const { parameter } of inferTypesIn(node.pattern)) {
+    binder.declare(inner, parameter.name, typeEntity(parameter), { convention: 'type' });
+  }
+  binder.enter(node, inner);
+  const { pattern } = node;
+  if (pattern.kind === 'StructConstraint') {
+    bindConstraints(binder, [pattern], inner);
+  } else if (pattern.kind !== 'WildcardPattern') {
+    bindType(binder, pattern, inner);
+  }
+  bindType(binder, node.type, inner);
 }
 
 /** An anonymous struct type's entries: its fields, then its mapped entries, each in its own scope. */

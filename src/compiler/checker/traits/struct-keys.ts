@@ -24,11 +24,10 @@ import type { TypeParameter } from '../../syntax/declarations.ts';
 import { parentOf } from '../../syntax/tree.ts';
 import type { StructType } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
+import { isOpaque, type MappedParts } from '../types/computed-types.ts';
 import { substitute } from '../types/substitution.ts';
 import {
   errorType,
-  isOpaque,
-  type MappedParts,
   neverType,
   type ParameterKey,
   type StructValueType,

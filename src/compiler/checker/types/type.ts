@@ -48,6 +48,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { TypeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type {
+  AliasDeclaration,
   DeclaredStruct,
   EnumDeclaration,
   ExternStructDeclaration,
@@ -57,8 +58,17 @@ import type {
   TypeParameter,
 } from '../../syntax/declarations.ts';
 import type { StructLiteral } from '../../syntax/expressions/index.ts';
-import type { StructType } from '../../syntax/types.ts';
+import type { StructConstraint, StructType } from '../../syntax/types.ts';
+import type {
+  AssociatedOfType,
+  FieldOfType,
+  KeysType,
+  MappedType,
+  MatchType,
+  RecursiveType,
+} from './computed-types.ts';
 import { inFieldOrder } from './field-order.ts';
+import type { StructConstraintModel } from './struct-constraint.ts';
 
 /** The alias a type was written through, with the arguments it was given there (§3.17). */
 interface DeclaredAliasUse {
@@ -81,7 +91,7 @@ interface AssociatedUse {
 export type AliasUse = DeclaredAliasUse | AssociatedUse;
 
 /** What every type carries beside its kind: the alias it was written through, if any. */
-interface WrittenThrough {
+export interface WrittenThrough {
   readonly alias?: AliasUse | undefined;
 }
 
@@ -163,6 +173,14 @@ export interface AnonymousStructType extends WrittenThrough {
   readonly kind: 'anonymous';
   readonly origin: StructType | StructLiteral | DeclaredStruct;
   readonly fields: readonly FieldMember[];
+  /** The recursive type `match` use it is the shape of, whose identity it has (`RecursiveType`). */
+  readonly recursion?: TypeMatchUse | undefined;
+}
+
+/** A use of an alias whose body is a type `match`: the alias, and its arguments (§3.17). */
+export interface TypeMatchUse {
+  readonly declaration: AliasDeclaration;
+  readonly arguments: readonly Type[];
 }
 
 /** The shape of `fields`, written at `origin`: its fields in name order (§3.1). */
@@ -205,11 +223,21 @@ export type ParameterKey = TypeParameter | TraitDeclaration;
  * carry the keys it ranges over (`within`), substituted with them, never read again from where
  * it is written. Its key holds them (type-keys.ts): what is known of one field of several keys
  * isn't what is known of one of fewer, and results kept by a type's key must tell them apart.
+ * A type `match`'s subject, written in the type of a `case struct …:`, stands for a member meeting
+ * that constraint (§3.17), which it carries (`meeting`) and its key holds alike. Every use of the
+ * alias substitutes the subject, so a substitution never keeps one.
  */
 export interface TypeParameterType extends WrittenThrough {
   readonly kind: 'parameter';
   readonly declaration: ParameterKey;
   readonly within?: Type | undefined;
+  readonly meeting?: StructCaseConstraint | undefined;
+}
+
+/** The struct constraint of the case a type `match`'s subject is written in (§3.17). */
+interface StructCaseConstraint {
+  readonly pattern: StructConstraint;
+  readonly constraint: StructConstraintModel;
 }
 
 export interface ErrorType extends WrittenThrough {
@@ -231,78 +259,6 @@ export interface UnionType extends WrittenThrough {
   readonly members: readonly Type[];
 }
 
-/**
- * `T.Data` (§3.1): the associated type `name` of `of`, a type not known yet, a type parameter or
- * another such type. Opaque (§3.5): equal only to itself, it meets what its trait requires of it
- * (`type Data is C`). An instantiation that makes `of` known reduces it to that type's own
- * associated type (TypeRules), so lowering never meets one.
- */
-interface AssociatedOfType extends WrittenThrough {
-  readonly kind: 'associated';
-  readonly of: Type;
-  readonly name: string;
-}
-
-/**
- * `S["meta"]` (§3.5, §3.9): the type of the field `key` names in `of`, a struct type not known
- * yet, such as a type parameter with a struct constraint. Opaque until an instantiation makes `of`
- * known (TypeRules): equal only to itself, it meets what the constraint's entry for that field
- * requires. A known struct's is its field's type.
- */
-interface FieldOfType extends WrittenThrough {
-  readonly kind: 'field';
-  readonly of: Type;
-  readonly key: Type;
-}
-
-/**
- * The keys of `of`, a struct type not known yet, that its struct constraints don't name, less those
- * `without` names, in name order (§3.1, §3.5): opaque until `of` is known. `keyof S` is this beside
- * the literals its constraints name, so a written key fits it as a union member does; the keys of
- * a field loop's other fields, a rest's and a mapped entry's are this with more names left out.
- */
-interface KeysType extends WrittenThrough {
-  readonly kind: 'keys';
-  readonly of: Type;
-  readonly without: readonly string[];
-}
-
-/**
- * A mapped struct type (§3.1) whose `keys` aren't all known yet: its `named` fields, in name
- * order, and a field of the type `value` for each key, `parameter` standing for that key in it.
- * Once the keys are String literals it is the shape of those fields (TypeRules), written at
- * `origin`; until then it is opaque, equal to another only up to the name of its parameter.
- */
-interface MappedType extends WrittenThrough {
-  readonly kind: 'mapped';
-  readonly origin: StructType;
-  readonly named: readonly FieldMember[];
-  readonly parameter: TypeParameter;
-  readonly keys: Type;
-  readonly value: Type;
-}
-
-/** What a mapped struct type is built from (`MappedType`), reduced or not. */
-export type MappedParts = Omit<MappedType, 'kind' | 'alias'>;
-
-/** A type computed from others, opaque until they are known (§3.5): reduced by TypeRules. */
-export type ComputedType = AssociatedOfType | FieldOfType | KeysType | MappedType;
-
-/** Whether `type` is computed from types not known yet, so only an instantiation reduces it. */
-export function isComputed(type: Type): type is ComputedType {
-  return (
-    type.kind === 'associated' ||
-    type.kind === 'field' ||
-    type.kind === 'keys' ||
-    type.kind === 'mapped'
-  );
-}
-
-/** Whether `type` is known only per instantiation: a type parameter, or computed from one (§3.5). */
-export function isOpaque(type: Type): type is TypeParameterType | ComputedType {
-  return type.kind === 'parameter' || isComputed(type);
-}
-
 /** A type a struct value can have: a declared struct or an anonymous one. */
 export type StructValueType = NominalType | AnonymousStructType;
 
@@ -320,6 +276,8 @@ export type Type =
   | FieldOfType
   | KeysType
   | MappedType
+  | MatchType
+  | RecursiveType
   | ErrorType;
 
 /** `type` as written through `alias`; the error type stays itself, as a diagnostic explained it. */

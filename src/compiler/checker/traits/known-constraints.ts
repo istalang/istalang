@@ -22,6 +22,7 @@ import type {
 } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import type { RequirementOrigin } from '../resolved-call.ts';
+import { type ComputedType, isOpaque } from '../types/computed-types.ts';
 import { sameType } from '../types/identity.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import {
@@ -33,13 +34,12 @@ import { substitute, substituteConstraint, substitutionFor } from '../types/subs
 import {
   type AnyType,
   aliasedAs,
-  type ComputedType,
   type Constraint,
   errorType,
-  isOpaque,
   isPrimitive,
   type Type,
 } from '../types/type.ts';
+import { aliasInstance } from '../types/type-match.ts';
 import { parametersIn } from '../types/type-parts.ts';
 import { literalType, membersOf, unionOf } from '../types/unions.ts';
 import {
@@ -85,9 +85,12 @@ export function structConstraintsOn(
 ): readonly StructConstraintModel[] {
   switch (type.kind) {
     case 'parameter':
-      return type.declaration.kind === 'TypeParameter'
-        ? checker.structConstraintsOf(type.declaration)
-        : [];
+      return [
+        ...(type.declaration.kind === 'TypeParameter'
+          ? checker.structConstraintsOf(type.declaration)
+          : []),
+        ...(type.meeting === undefined ? [] : [type.meeting.constraint]),
+      ];
     case 'associated':
       return boundsOf(checker, type).structs;
     case 'field':
@@ -191,7 +194,8 @@ export function associatedTypeOf(checker: CheckerContext, of: Type, name: string
     return { kind: 'associated', of, name };
   }
   const substitution = substitutionFor(of.entity.declaration.typeParameters, of.arguments);
-  const type = substitute(checker.aliasedType(declared), substitution, checker.typeRules);
+  const aliased = checker.aliasedType(declared);
+  const type = aliasInstance(declared, aliased, substitution, checker.typeRules);
   return aliasedAs(type, { kind: 'associated', of, name });
 }
 

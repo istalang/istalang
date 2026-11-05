@@ -65,6 +65,7 @@ import {
   type Type,
   unitType,
 } from './types/type.ts';
+import { unfolded } from './types/type-match.ts';
 import { useSite } from './use-site.ts';
 
 /**
@@ -168,7 +169,8 @@ export class BodyChecker implements BodyContext {
     return this.#checked(result);
   }
 
-  expression(node: Expression, expected?: Type): Type {
+  expression(node: Expression, given?: Type): Type {
+    const expected = given === undefined ? undefined : unfolded(given, this.checker.typeRules);
     if (expected !== undefined) {
       this.#expected.set(node, expected);
     }
@@ -196,7 +198,7 @@ export class BodyChecker implements BodyContext {
   }
 
   #record(node: Expression, value: Type): Type {
-    const type = this.chains.linked(this, node, value);
+    const type = this.chains.linked(this, node, unfolded(value, this.checker.typeRules));
     this.#types.set(node, type);
     return type;
   }

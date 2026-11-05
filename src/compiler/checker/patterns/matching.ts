@@ -53,6 +53,7 @@ import {
   noneType,
   type Type,
 } from '../types/type.ts';
+import { unfolded } from '../types/type-match.ts';
 import { typeText } from '../types/type-text.ts';
 import { optionalInner } from '../types/unions.ts';
 import { arrayElement } from '../types/well-known.ts';
@@ -88,7 +89,8 @@ export function checkPattern(
   subject: Type,
   remaining: Type = subject,
 ): WalkedPattern {
-  const whole = subjectPart(subject, remaining);
+  const rules = context.checker.typeRules;
+  const whole = subjectPart(unfolded(subject, rules), unfolded(remaining, rules));
   const walked = walkPattern(bodyScope(context), testsIn(context), pattern, whole);
   for (const { name, type } of namesBound(walked)) {
     context.variables.declare(name, type);

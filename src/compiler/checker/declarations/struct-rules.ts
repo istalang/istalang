@@ -57,6 +57,8 @@ function holds(
     case 'field':
     case 'keys':
     case 'mapped':
+    case 'match':
+    case 'recursive':
     case 'any':
     case 'error':
       return false;

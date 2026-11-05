@@ -4,16 +4,18 @@
  * for the same type, so braces are the one spelling. A struct constraint (§3.5) keeps its
  * `struct`, which makes it one, and prints bare when it has no entries: `struct` and `struct {}`
  * are the same constraint. A mapped entry prints its parameter as a member type parameter does,
- * `[F in keyof S]: T` (§3.1).
+ * `[F in keyof S]: T` (§3.1). A type `match`'s cases stand on lines of their own, as a `match`
+ * expression's do; a case's type follows its colon on the same line while it fits, indented below
+ * otherwise (§3.17).
  */
 
 import { builders } from 'prettier/doc';
 import type { ConstraintNode, TypeNode, TypePart } from '../compiler/syntax/types.ts';
-import { annotated } from './bodies.ts';
+import { annotated, indentedBody } from './bodies.ts';
 import { angled, bracketed, enclosed, fieldList, tupleList } from './lists.ts';
 import type { Printer, Printers } from './printer.ts';
 
-const { join } = builders;
+const { group, indent, join, line } = builders;
 
 type TypeKind = Exclude<TypeNode | TypePart, { kind: 'Missing' | 'Invalid' }>;
 
@@ -60,6 +62,15 @@ export const typePrinters: Printers<TypeKind> = {
     enclosed(printer, node, ['[', ']'], node.key),
   ],
   KeyofType: (printer, node) => ['keyof ', printer.print(node.owner)],
+  InferType: (printer, node) => ['infer ', printer.print(node.parameter)],
+  TypeMatch: (printer, node) => [
+    'match ',
+    printer.print(node.subject),
+    ':',
+    indentedBody(printer, undefined, node.cases),
+  ],
+  TypeCase: (printer, node) =>
+    group(['case ', printer.print(node.pattern), ':', indent([line, printer.print(node.type)])]),
   MappedField: (printer, node) =>
     annotated(printer, node, [
       enclosed(printer, node, ['[', ']'], node.parameter),

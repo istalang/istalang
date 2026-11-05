@@ -89,6 +89,7 @@ import {
   type Type,
 } from './types/type.ts';
 import { typeKeys } from './types/type-keys.ts';
+import type { TypeMatchQueries } from './types/type-match.ts';
 import { sameTypeSpelled, unaliased } from './types/type-parts.ts';
 import type { TypeRules } from './types/type-rules.ts';
 
@@ -130,6 +131,7 @@ export class ProgramChecker implements CheckerContext {
   readonly #layouts: Layouts;
   readonly #parameters: Parameters;
   readonly #aliases: Aliases;
+  readonly typeMatches: TypeMatchQueries;
   readonly #statics: StaticFunctions;
   readonly #typeParameters: TypeParameters;
   readonly #moduleChecks: ModuleChecks;
@@ -181,6 +183,7 @@ export class ProgramChecker implements CheckerContext {
       defaultsBody: (declaration) => this.#defaultsBody(declaration),
     });
     this.#aliases = new Aliases(this, (alias) => this.#aliasModuleOf(alias));
+    this.typeMatches = this.#aliases;
     this.#statics = new StaticFunctions(this);
     this.#typeParameters = new TypeParameters(this, this.#itemModuleOf);
     this.#moduleChecks = new ModuleChecks(this, {

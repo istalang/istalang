@@ -22,13 +22,14 @@ import {
   type ResolvedCall,
   type Witnesses,
 } from '../checker/resolved-call.ts';
+import { isOpaque } from '../checker/types/computed-types.ts';
 import {
   type Substitution,
   substitute,
   substituteAny,
   substitutionFor,
 } from '../checker/types/substitution.ts';
-import { type AnyType, isOpaque, type ParameterKey, type Type } from '../checker/types/type.ts';
+import type { AnyType, ParameterKey, Type } from '../checker/types/type.ts';
 import { typeText } from '../checker/types/type-text.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { type BodyOwner, type FunctionInstance, ownEntry, substitutionOf } from './instances.ts';

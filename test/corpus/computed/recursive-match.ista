@@ -1,0 +1,30 @@
+# outcome: "3|true|{\"children\":[{\"children\":[],\"value\":1}],\"value\":1}"
+# A type match whose reduction reaches itself is one recursive type (§3.17): its values are built,
+# read, compared and encoded as the struct type it stands for.
+import * as json from 'json'
+
+struct Box<T> { value: T }
+
+struct Tree:
+  value: Box<Int>
+  children: Array<Tree>
+
+type TreeData<D> = match D:
+  case Box<infer T>: T
+  case Array<infer E>: Array<TreeData<E>>
+  case struct: { [F in keyof D]: TreeData<D[F]> }
+
+fn sumTree(t: TreeData<Tree>) -> Int:
+  let sum = t.value
+  for child in t.children:
+    sum += sumTree(child)
+  sum
+
+async fn main() -> Future<String>:
+  const tree: TreeData<Tree> = struct{
+    value: 1,
+    children: [struct{value: 1, children: []}, struct{value: 1, children: []}],
+  }
+  const small: TreeData<Tree> = struct{value: 1, children: [struct{value: 1, children: []}]}
+  const same: TreeData<Tree> = struct{value: 1, children: [struct{value: 1, children: []}]}
+  `${sumTree(tree)}|${small == same}|${json.stringify(small)}`

@@ -42,7 +42,7 @@ import { selfEntity, typeEntity, variableEntity } from './entities.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
 import { bindTargets, bindVariableValue, spanThrough } from './statements.ts';
-import { bindConstraints, bindFields } from './types.ts';
+import { bindAliasBody, bindConstraints, bindFields } from './types.ts';
 
 export function bindFunction(
   binder: LocalBinder,
@@ -168,7 +168,7 @@ function bindAssociatedTypes(
   }
   for (const associated of node.associatedTypes) {
     binder.annotations(associated, scope);
-    binder.walk.type(binder, associated.type, scope);
+    bindAliasBody(binder, associated.type, scope);
   }
 }
 
@@ -186,7 +186,7 @@ const declarationHandlers: Handlers<LocalBinder, Declaration, [Scope], void> = {
     typeParameterScope(binder, node, scope);
   },
   TypeAliasDeclaration: (binder, node, scope) =>
-    binder.walk.type(binder, node.type, typeParameterScope(binder, node, scope)),
+    bindAliasBody(binder, node.type, typeParameterScope(binder, node, scope)),
   EnumDeclaration: bindEnum,
   TraitDeclaration: bindTrait,
   NamedImport: holdsNoNames,

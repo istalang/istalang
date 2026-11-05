@@ -33,6 +33,7 @@ import {
   type TypeParameterType,
   type UnionType,
 } from './type.ts';
+import { unfolded } from './type-match.ts';
 import { parametersIn } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
 import { absorbingMember, baseOf, hasMember, membersOf } from './unions.ts';
@@ -108,7 +109,9 @@ export function matchConversion(
   expected: Type,
   rules: ConversionRules,
 ): Fit | undefined {
-  return ownConversion(found, expected, rules) ?? memberParameterFit(found, expected, rules);
+  const value = unfolded(found, rules);
+  const place = unfolded(expected, rules);
+  return ownConversion(value, place, rules) ?? memberParameterFit(value, place, rules);
 }
 
 /** How `found` fits `expected` as its own type, as `matchConversion` says. */

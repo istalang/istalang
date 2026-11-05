@@ -69,7 +69,9 @@ src/
                                                                  diagnostics they make, a checked body read through a substitution, the type a
                                                                  name names in a value's place or a pattern (named-types.ts); unions and
                                                                  literal types built normalized (unions.ts), `T?` being `T | None`, and what
-                                                                 a value built from an expected type takes of it (expected.ts); the rules
+                                                                 a value built from an expected type takes of it (expected.ts); types computed
+                                                                 from others (computed-types.ts) and type `match`es resolved, given, placed and
+                                                                 unfolded (type-match.ts, written-matches.ts); the rules
                                                                  building a type needs of the program (type-rules.ts), which the checker
                                                                  implements once and every type-building path takes
       inference/ traits/                                         inference of type arguments; constraints, the derived `Sendable`,
@@ -80,7 +82,8 @@ src/
       resolution/                                                what a call or a name may mean (applied-call.ts: every call chosen, instantiated
                                                                  and fitted in one place): candidates and ADL, choice, conformance and
                                                                  witnesses, the traits the compiler derives (derived-traits.ts: one table),
-                                                                 the calls a construct makes, a type or variant named as a value
+                                                                 the calls a construct makes, a type or variant named as a value, a type
+                                                                 `match`'s use reduced (type-matches.ts) and its cases matched (type-match-patterns.ts)
       calls/                                                     a call in a body: arguments checked against the chosen function, operators,
                                                                  the places a call or an assignment changes
       patterns/ flow/                                            one walk for every pattern, the member of a union each selects (members.ts)

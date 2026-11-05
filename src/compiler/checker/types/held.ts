@@ -13,7 +13,10 @@ import { typeChildren } from './type-parts.ts';
 
 /** The first type `type` holds, itself first, that `picks` picks; undefined when none is. */
 export function heldType(
-  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'typeKeys'>,
+  checker: Pick<
+    CheckerContext,
+    'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'typeKeys' | 'typeRules'
+  >,
   type: Type,
   picks: (type: Type) => boolean,
 ): Type | undefined {
@@ -39,10 +42,12 @@ export function heldType(
  * which stand for the values the runtime or the host keeps in it.
  */
 export function heldParts(
-  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'sharedValueOf'>,
+  checker: Pick<CheckerContext, 'fieldsOf' | 'variantsOf' | 'sharedValueOf' | 'typeRules'>,
   type: Type,
 ): readonly Type[] {
   switch (type.kind) {
+    case 'recursive':
+      return typeChildren(checker.typeRules.recursiveShape(type));
     case 'tuple':
     case 'anonymous':
     case 'union':
@@ -73,6 +78,7 @@ export function heldParts(
     case 'associated':
     case 'field':
     case 'keys':
+    case 'match':
     case 'any':
     case 'error':
       return [];

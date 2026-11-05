@@ -104,6 +104,9 @@ export class Layouts {
     if (type.kind === 'anonymous') {
       return type.fields;
     }
+    if (type.kind === 'recursive') {
+      return this.#checker.typeRules.recursiveShape(type).fields;
+    }
     if (type.kind !== 'nominal') {
       return undefined;
     }

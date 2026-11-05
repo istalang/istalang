@@ -17,8 +17,10 @@ import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../traits/struct
 import type { Fitting } from '../types/fit.ts';
 import type { AnonymousStructType, AnyType, Type } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
+import { unfolded } from '../types/type-match.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { meetsAny } from './trait-objects.ts';
+import { TypeMatchReductions } from './type-matches.ts';
 
 /** An `any` member of a union, and another member it may take whole. */
 interface Absorbing {
@@ -45,6 +47,7 @@ export function programTypeRules(
     compute: (_key, { target, member }: Absorbing) => meetsAny(checker, member, target),
     cyclic: { standIn: () => false },
   });
+  const reductions = new TypeMatchReductions(checker);
   const typeRules: TypeRules = {
     absorbs: (target, member) =>
       absorbed.get(JSON.stringify([typeKeys.typeKey(target), typeKeys.typeKey(member)]), {
@@ -52,9 +55,11 @@ export function programTypeRules(
         member,
       }),
     associatedType: (of, name) => associatedTypeOf(checker, of, name),
-    fieldType: (of, key) => fieldTypeOf(checker, of, key),
-    keysOf: (of, without) => keysOf(checker, of, without),
+    fieldType: (of, key) => fieldTypeOf(checker, unfolded(of, checker.typeRules), key),
+    keysOf: (of, without) => keysOf(checker, unfolded(of, checker.typeRules), without),
     mappedType: (parts, outer) => mappedTypeOf(checker, parts, outer),
+    matchType: (declaration, typeArguments) => reductions.reduce(declaration, typeArguments),
+    recursiveShape: (type) => reductions.recursiveShape(type),
     isKeyOf: (key, of) => isKeyWithin(checker, key, checker.typeRules.keysOf(of, [])),
   };
   const fitting: Fitting = {

@@ -27,6 +27,7 @@ import {
 import { structConstraintsOn } from '../traits/known-constraints.ts';
 import { fieldOf } from '../traits/known-fields.ts';
 import { isStructType } from '../traits/struct-keys.ts';
+import { isOpaque } from '../types/computed-types.ts';
 import { sameType } from '../types/identity.ts';
 import {
   constraintSetText,
@@ -36,7 +37,7 @@ import {
   substituteStructConstraint,
 } from '../types/struct-constraint.ts';
 import { type Substitution, substituteConstraint } from '../types/substitution.ts';
-import { type Constraint, isOpaque, type Type } from '../types/type.ts';
+import type { Constraint, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalType } from '../types/unions.ts';
 import type { UseSite } from '../use-site.ts';
@@ -103,7 +104,7 @@ export function associatedShortfall(
  * What `type` lacks to meet the struct constraint `model`; undefined when it meets it. Traits an
  * entry asks for are met as `meets` says.
  */
-function structShortfall(
+export function structShortfall(
   checker: CheckerContext,
   type: Type,
   model: StructConstraintModel,

@@ -18,6 +18,7 @@ import type { Annotatable } from './annotations.ts';
 import type { TypeParameter } from './declarations.ts';
 import type { Literal, Unary } from './expressions/index.ts';
 import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './node.ts';
+import type { WildcardPattern } from './patterns.ts';
 
 export interface NamedType extends NodeOf<'NamedType'> {
   readonly path: QualifiedName;
@@ -137,6 +138,7 @@ export type TypeNode =
   | MemberType
   | IndexedType
   | KeyofType
+  | InferType
   | Missing
   | Invalid;
 
@@ -182,8 +184,41 @@ export type FieldEntry = FieldTypeEntry | FieldConstraintEntry;
 /** What stands after `is` (§3.5): a trait, as a type names it, or a struct constraint. */
 export type ConstraintNode = TypeNode | StructConstraint;
 
+/**
+ * `infer T`, `infer T is C` in a type `match` case's pattern (§3.17): a new type variable, bound to
+ * the part of the subject standing there and visible in the case's type. `T` is a TypeParameter
+ * node, so it is a type parameter like any other; `infer` is contextual (§2). Written anywhere else
+ * it is a compile error.
+ */
+export interface InferType extends NodeOf<'InferType'> {
+  readonly parameter: TypeParameter;
+}
+
+/**
+ * `match D:` and its cases (§3.17): the whole body of a type alias or an associated type, the type
+ * of its first case matching the subject. `match (A, B):` matches two at once, as a tuple.
+ */
+export interface TypeMatch extends NodeOf<'TypeMatch'> {
+  readonly subject: TypeNode;
+  readonly cases: readonly (TypeCase | Invalid)[];
+}
+
+/**
+ * `case Field<infer T>: T`: what the subject must be, and the type the case gives. A pattern is a
+ * type, which may hold `infer`, a struct constraint (`case struct { id: infer K }:`), or `_`.
+ */
+export interface TypeCase extends NodeOf<'TypeCase'> {
+  readonly pattern: CasePattern;
+  readonly type: TypeNode;
+}
+
+/** What a type `match` case matches: a type's form, a struct constraint, or any type (`_`). */
+export type CasePattern = TypeNode | StructConstraint | WildcardPattern;
+
 /** Nodes that occur only as parts of a type or a constraint. */
 export type TypePart =
+  | TypeMatch
+  | TypeCase
   | FieldDeclaration
   | MappedField
   | RestType
@@ -211,6 +246,7 @@ const writtenTypeKinds = {
   MemberType: true,
   IndexedType: true,
   KeyofType: true,
+  InferType: true,
 } as const satisfies Record<WrittenType['kind'], true>;
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 

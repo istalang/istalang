@@ -8,12 +8,12 @@
  */
 
 import { selfType } from '../../../language/well-known.ts';
+import type { MappedParts } from './computed-types.ts';
 import {
   type AnonymousStructType,
   type Constraint,
   type FunctionType,
   isPrimitive,
-  type MappedParts,
   type NominalType,
   type ParameterSlot,
   type Type,
@@ -51,7 +51,11 @@ export function typeText(type: Type): string {
     case 'nominal':
       return nominalTypeText(type);
     case 'anonymous':
-      return anonymousText(type);
+      return type.recursion === undefined
+        ? anonymousText(type)
+        : parameterizedText(type.recursion.declaration.name.text, type.recursion.arguments);
+    case 'recursive':
+      return parameterizedText(type.declaration.name.text, type.arguments);
     case 'tuple':
       return `(${type.elements.map(typeText).join(', ')}${type.elements.length === 1 ? ',' : ''})`;
     case 'function': {
@@ -74,6 +78,8 @@ export function typeText(type: Type): string {
       return keysText(type.of, type.without);
     case 'mapped':
       return mappedText(type);
+    case 'match':
+      return parameterizedText(type.declaration.name.text, type.arguments);
     case 'error':
       return '?';
     default: {

@@ -209,7 +209,10 @@ export class Inference {
       case 'field':
       case 'keys':
       case 'mapped':
-        // Opaque: what it stands for is known only once its parameters are (§3.5).
+      case 'match':
+      case 'recursive':
+        // Opaque: what it stands for is known only once its parameters are (§3.5), and inference
+        // never goes through it (§3.5, §3.17).
         return (
           parametersIn(declared).some((each) => this.#unknowns.has(each)) ||
           sameType(declared, given)

@@ -37,6 +37,7 @@ import type { Parser } from '../parser.ts';
 import { parseConstraints } from '../parts/constraints.ts';
 import { declaredFieldRules, parseField } from '../parts/structs.ts';
 import { parseFunction } from './functions.ts';
+import { parseAliasBody } from './type-matches.ts';
 import { parseTypeParameters } from './type-parameters.ts';
 
 export function parseStruct(parser: Parser): StructDeclaration {
@@ -120,7 +121,7 @@ function declaresType(parser: Parser): boolean {
 /** `type Data = T`, at `type`; an associated type takes no type parameters (§3.1). */
 function parseAssociatedType(parser: Parser): AssociatedType {
   const { start, name } = parseAssociatedHead(parser);
-  const type = parser.expect('=') === undefined ? parser.placeholder() : parser.type();
+  const type = parser.expect('=') === undefined ? parser.placeholder() : parseAliasBody(parser);
   return { kind: 'AssociatedType', span: parser.spanFrom(start), name, type };
 }
 
@@ -160,10 +161,10 @@ export function parseTrait(parser: Parser): TraitDeclaration {
   return { kind: 'TraitDeclaration', span, name, typeParameters, members, ...documentedBy(doc) };
 }
 
-/** `type Name<T> = Type`, starting at `type`, which is a keyword only here (§2). */
+/** `type Name<T> = Type` or `= match …`, starting at `type`, which is a keyword only here (§2). */
 export function parseTypeAlias(parser: Parser): TypeAliasDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);
-  const type = parser.expect('=') === undefined ? parser.placeholder() : parser.type();
+  const type = parser.expect('=') === undefined ? parser.placeholder() : parseAliasBody(parser);
   const span = parser.spanFrom(start);
   return { kind: 'TypeAliasDeclaration', span, name, typeParameters, type };
 }

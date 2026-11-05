@@ -23,6 +23,7 @@ import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable } from '../../syntax/annotations.ts';
 import {
+  type AliasDeclaration,
   type AssociatingDeclaration,
   type Declaration,
   type DeclaredStruct,
@@ -139,8 +140,21 @@ function checkAssociatedTypes(
 ): void {
   for (const associated of node.associatedTypes) {
     annotatedNowhere('an associated type')(checker, associated, module);
-    checker.aliasedType(associated);
+    checkAlias(checker, associated);
   }
+}
+
+/**
+ * Resolves what an alias or associated type stands for, which reports one referring to itself;
+ * a type `match`'s subject, patterns and case types, and whether its reductions end (§3.17).
+ */
+function checkAlias(checker: CheckerContext, alias: AliasDeclaration): void {
+  checker.aliasedType(alias);
+  const { typeMatches } = checker;
+  for (const { node } of typeMatches.typeMatchOf(alias)?.cases ?? []) {
+    typeMatches.caseTypeOf(alias, node);
+  }
+  typeMatches.isEndless(alias);
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -170,7 +184,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
   TypeAliasDeclaration: (checker, node, module) => {
     annotatedNowhere('a type alias')(checker, node, module);
     checkTypeParameters(checker, node);
-    checker.aliasedType(node);
+    checkAlias(checker, node);
   },
   StructDeclaration: (checker, node, module) => {
     checkStruct(checker, node, module);

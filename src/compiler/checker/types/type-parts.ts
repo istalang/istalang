@@ -4,14 +4,12 @@
  * the error type.
  */
 
+import { type ComputedType, isComputed, type MappedParts } from './computed-types.ts';
 import { withPack } from './function-types.ts';
 import { sameType } from './identity.ts';
 import {
   type AnyType,
   aliasedAs,
-  type ComputedType,
-  isComputed,
-  type MappedParts,
   type NominalType,
   type ParameterKey,
   type Type,
@@ -47,6 +45,9 @@ export function typeChildren(type: Type): readonly Type[] {
       return [type.of];
     case 'mapped':
       return [...type.named.map((field) => field.type), type.keys, type.value];
+    case 'match':
+    case 'recursive':
+      return type.arguments;
     case 'parameter':
       return type.within === undefined ? [] : [type.within];
     case 'literal':
@@ -191,6 +192,11 @@ export function computedTypesIn(type: Type): readonly ComputedType[] {
   return typeChildren(type).flatMap(computedTypesIn);
 }
 
+/** Whether `type` holds no type that isn't known yet: no type parameter, nothing computed. */
+export function isKnown(type: Type): boolean {
+  return parametersIn(type).length === 0 && computedTypesIn(type).length === 0;
+}
+
 /** Whether `type` is, or is built from, the error type. */
 export function mentionsError(type: Type): boolean {
   return type.kind === 'error' || typeChildren(type).some(mentionsError);
@@ -228,6 +234,13 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
         return rules.keysOf(map(type.of), type.without);
       case 'mapped':
         return rules.mappedType(mappedParts(type, map));
+      case 'match':
+      case 'recursive':
+        return rules.matchType(type.declaration, type.arguments.map(map));
+      case 'anonymous':
+        return type.recursion === undefined
+          ? undefined
+          : rules.matchType(type.recursion.declaration, type.recursion.arguments.map(map));
       default:
         return undefined;
     }
@@ -257,6 +270,9 @@ export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => T
       return { ...type, of: map(type.of) };
     case 'mapped':
       return { ...type, ...mappedParts(type, map) };
+    case 'match':
+    case 'recursive':
+      return { ...type, arguments: type.arguments.map(map) };
     case 'parameter':
       return type.within === undefined ? type : { ...type, within: map(type.within) };
     case 'literal':

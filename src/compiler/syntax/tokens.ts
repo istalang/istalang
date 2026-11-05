@@ -129,6 +129,7 @@ const contextualWords = [
   'by',
   'any',
   'keyof',
+  'infer',
 ] as const;
 
 export type ContextualWord = (typeof contextualWords)[number];

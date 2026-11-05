@@ -1,7 +1,8 @@
 /**
  * Type grammar (§2, §3): named and generic types, `T?`, tuples, function types (whose parameters
  * may end in a rest, `...A`), anonymous structs (mapped ones too, parts/structs.ts), `any T`, `&T`,
- * unions, literal types, associated types (`Field<Int>.Data`) and key types (`keyof S`, `S[K]`).
+ * unions, literal types, associated types (`Field<Int>.Data`), key types (`keyof S`, `S[K]`) and
+ * a type `match` case's type variables (`infer T`).
  * What follows `is` is parts/constraints.ts's.
  *
  * Operators bind at two levels, as patterns' do (parts/levels.ts): `|` between a union's members,
@@ -20,6 +21,7 @@
  * `Setup<E> = async fn(async fn(E))` in §10 shows.
  */
 
+import type { TypeParameter } from '../syntax/declarations.ts';
 import type { TypeWord } from '../syntax/grammar-words.ts';
 import type {
   FunctionType,
@@ -31,6 +33,7 @@ import type {
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
+import { parseConstraints } from './parts/constraints.ts';
 import { parseFunctionKeyword } from './parts/functions.ts';
 import { type LeveledParselet, leveledGrammar } from './parts/levels.ts';
 import { type Negatable, parseLiteral, parseNegativeLiteral } from './parts/literals.ts';
@@ -83,6 +86,8 @@ const wordParselets = {
   any: (parser) => (parser.cursor.kindAt(1) === 'identifier' ? parseAnyType(parser) : undefined),
   keyof: (parser) =>
     typeParselets[parser.cursor.kindAt(1)] === undefined ? undefined : parseKeyofType(parser),
+  infer: (parser) =>
+    parser.cursor.kindAt(1) === 'identifier' ? parseInferType(parser) : undefined,
 } satisfies WordParselets<TypeWord, (parser: Parser) => TypeNode | undefined>;
 
 const typeOperators: Partial<Record<CursorKind, LeveledParselet<TypeLevel, TypeNode>>> = {
@@ -164,6 +169,26 @@ function parseKeyofType(parser: Parser): TypeNode {
   const { start } = parser.cursor.advance().span;
   const owner = parseTypeAt(parser, 'postfix');
   return { kind: 'KeyofType', span: parser.spanFrom(start), owner };
+}
+
+/**
+ * `infer T`, or `infer T is C & D`, at `infer` (§3.17): its variable is a type parameter, whose
+ * constraints are read as any type parameter's are. Where it may stand is the checker's to judge.
+ */
+function parseInferType(parser: Parser): TypeNode {
+  const { start } = parser.cursor.advance().span;
+  const name = parser.identifier('a type variable');
+  const constraints = parser.cursor.eat('is') === undefined ? [] : parseConstraints(parser);
+  const parameter: TypeParameter = {
+    kind: 'TypeParameter',
+    span: parser.spanFrom(parser.startOf(name)),
+    isPack: false,
+    name,
+    memberOf: undefined,
+    constraints,
+    defaultType: undefined,
+  };
+  return { kind: 'InferType', span: parser.spanFrom(start), parameter };
 }
 
 /** `<A, B>`, starting at the `<`. */

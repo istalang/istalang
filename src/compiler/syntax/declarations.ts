@@ -24,7 +24,7 @@ import type { Expression, Parameter, StringLiteral } from './expressions/index.t
 import type { Identifier, Invalid, Missing, NodeOf } from './node.ts';
 import { type AnchoredSpan, spanAcross } from './positions.ts';
 import type { Block, VariableDeclaration } from './statements.ts';
-import type { ConstraintNode, FieldDeclaration, TypeNode } from './types.ts';
+import type { ConstraintNode, FieldDeclaration, TypeMatch, TypeNode } from './types.ts';
 
 /** `"""…"""`: what a declaration or module is for, in its own words (§2); tools read it. */
 export interface Docstring extends NodeOf<'Docstring'> {
@@ -98,7 +98,7 @@ export function isMethod(declaration: FunctionDeclaration): boolean {
  */
 export interface AssociatedType extends NodeOf<'AssociatedType'>, Annotatable {
   readonly name: Identifier;
-  readonly type: TypeNode;
+  readonly type: AliasBody;
 }
 
 /**
@@ -222,8 +222,11 @@ export interface TraitDeclaration extends NodeOf<'TraitDeclaration'>, Annotatabl
 export interface TypeAliasDeclaration extends NodeOf<'TypeAliasDeclaration'>, Annotatable {
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
-  readonly type: TypeNode;
+  readonly type: AliasBody;
 }
+
+/** What an alias or an associated type stands for: a type, or a type `match` (§3.17). */
+export type AliasBody = TypeNode | TypeMatch;
 
 /** `import a, b from 'path'`. */
 export interface NamedImport extends NodeOf<'NamedImport'>, Annotatable {

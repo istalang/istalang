@@ -134,6 +134,38 @@ describe('key types and mapped struct types (§3.1)', () => {
   });
 });
 
+describe('type `match` (§3.17)', () => {
+  it('prints its cases a line each, a case type after its colon, `infer` as written', () => {
+    const text = lines(
+      'type DataOf<D> = match D:',
+      '  case Field<infer T is Encodable & Sendable>: T',
+      '  case Pair<infer T, T>: Array<T>',
+      '  case struct { id: infer K; [_] is Sendable }: K',
+      '  case struct: { [F in keyof D]: DataOf<D[F]> }',
+      '  case _: Never',
+      'struct Wrapper<D>:',
+      '  value: D',
+      '  type Out = match (D,):',
+      '    case (Int | String,): D',
+      '    case _: Unit',
+    );
+    expect(formatText(text)).toBe(text);
+    const { actual, expected } = acceptanceOf(text);
+    expect(actual).toEqual(expected);
+  });
+
+  it('puts a case type below its case when it is written there or too long', () => {
+    const below = lines('type Short<T> = match T:', '  case Field<infer V>:', '    V');
+    expect(formatText(below)).toBe(lines('type Short<T> = match T:', '  case Field<infer V>: V'));
+    const long = lines(
+      'type Long<T> = match T:',
+      '  case Field<infer Value>:',
+      '    { identifier: String; description: String; annotation: Value; other: Array<Value> }',
+    );
+    expect(formatText(long)).toBe(long);
+  });
+});
+
 describe('refusing', () => {
   it('a tree with syntax diagnostics', () => {
     const tree = parseText('fn f(:\n  1\n');

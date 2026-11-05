@@ -130,6 +130,8 @@ export class TypeTable {
       case 'nominal':
       case 'anonymous':
         return { kind: 'named', type: this.#typeEntry(type) };
+      case 'recursive':
+        return this.reference(this.#checker.typeRules.recursiveShape(type));
       case 'tuple':
         return {
           kind: 'tuple',
@@ -147,6 +149,7 @@ export class TypeTable {
       case 'field':
       case 'keys':
       case 'mapped':
+      case 'match':
       case 'error':
         return unreachable(`A ${type.kind} type can't reach lowering.`);
       case 'any':

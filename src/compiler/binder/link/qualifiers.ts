@@ -47,9 +47,10 @@ function aliasedEntity(
   declaration: TypeAliasDeclaration,
 ): Entity | undefined {
   const module = lookup.moduleOf(alias);
-  const written = unparenthesizedType(declaration.type);
+  const written =
+    declaration.type.kind === 'TypeMatch' ? undefined : unparenthesizedType(declaration.type);
   const isPlainName =
-    written.kind === 'NamedType' &&
+    written?.kind === 'NamedType' &&
     written.typeArguments.length === 0 &&
     declaration.typeParameters.length === 0;
   if (module === undefined || !isPlainName) {

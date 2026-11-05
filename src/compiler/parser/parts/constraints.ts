@@ -29,7 +29,7 @@ export function parseConstraints(parser: Parser): ConstraintNode[] {
 }
 
 /** `struct`, or `struct { title: String; [_] is FormNode }`, at `struct`. */
-function parseStructConstraint(parser: Parser): StructConstraint {
+export function parseStructConstraint(parser: Parser): StructConstraint {
   const { start } = parser.cursor.advance().span;
   const entries = parser.cursor.at('{') ? parseItemEntries(parser, entryRules).value : [];
   return { kind: 'StructConstraint', span: parser.spanFrom(start), entries };

@@ -202,6 +202,7 @@ function keyType(checker: Checker, type: Type): KeyType {
         result: keyType(checker, type.result),
       };
     case 'literal':
+    case 'recursive':
       return { kind: 'literal', text: typeText(type) };
     case 'union':
       return unionKey(checker, type);
@@ -209,6 +210,7 @@ function keyType(checker: Checker, type: Type): KeyType {
     case 'field':
     case 'keys':
     case 'mapped':
+    case 'match':
       return unreachable('An instantiated type is computed already.');
     case 'error':
       return unreachable('An extern with an unresolved type reached lowering.');

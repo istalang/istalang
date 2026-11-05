@@ -64,8 +64,10 @@ import {
   tupleType,
   unitType,
 } from './type.ts';
+import { aliasInstance } from './type-match.ts';
 import { typeText } from './type-text.ts';
 import { optionalOf, unionOf, writtenLiteral } from './unions.ts';
+import { asWrittenInMatch, inCasePattern, inferWritten, unreducedUse } from './written-matches.ts';
 
 interface Resolution {
   readonly checker: CheckerContext;
@@ -99,6 +101,7 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
     fieldWritten(resolution, node, resolve(resolution, node.owner), resolve(resolution, node.key)),
   KeyofType: (resolution, node) =>
     keysWritten(resolution, node.owner, resolve(resolution, node.owner)),
+  InferType: (resolution, node) => inferWritten(resolution, node),
   Missing: () => errorType,
   Invalid: () => errorType,
 };
@@ -237,9 +240,13 @@ function namedType(resolution: Resolution, node: NamedType): Type {
     return errorType;
   }
   const written = members.length === 0 ? node : { ...node, typeArguments: [] };
-  const type = typeOfEntity(checker, entity, (declaration) =>
-    argumentsOf(resolution, written, declaration),
-  );
+  const argumentsFor = (declaration: NominalDeclaration | TypeAliasDeclaration) =>
+    argumentsOf(resolution, written, declaration);
+  const unreduced = unreducedUse(resolution, node, entity, argumentsFor);
+  if (unreduced !== undefined) {
+    return unreduced;
+  }
+  const type = asWrittenInMatch(resolution, node, typeOfEntity(checker, entity, argumentsFor));
   if (type === undefined) {
     checker.report(module, checkerDiagnostics.notType(node.span, name.text));
     return errorType;
@@ -304,20 +311,22 @@ export function typeOfEntity(
             return errorType;
           }
           // No arguments name a generic alias as a whole, its own parameters standing in it.
-          const aliased = checker.aliasedType(declaration);
-          const type =
+          const substitution =
             typeArguments.length === 0
-              ? aliased
-              : substitute(
-                  aliased,
-                  substitutionFor(declaration.typeParameters, typeArguments),
-                  checker.typeRules,
-                );
+              ? new Map()
+              : substitutionFor(declaration.typeParameters, typeArguments);
+          const aliased = checker.aliasedType(declaration);
+          const type = aliasInstance(declaration, aliased, substitution, checker.typeRules);
           return aliasedAs(type, { kind: 'alias', declaration, arguments: typeArguments });
         }
         case 'AssociatedType':
           // Named bare inside its own declaration, it is the type it stands for there (§3.1).
-          return checker.aliasedType(declaration);
+          return aliasInstance(
+            declaration,
+            checker.aliasedType(declaration),
+            new Map(),
+            checker.typeRules,
+          );
         default: {
           const typeArguments = typeArgumentsOf(declaration);
           return typeArguments === undefined ? errorType : nominalType(entity, typeArguments);
@@ -339,7 +348,7 @@ function argumentsOf(
   const written = node.typeArguments.map((argument) => resolve(resolution, argument));
   const list = { at: node.span, declaration, types: written };
   const typeArguments = typeArgumentsFor(checker, module, list);
-  if (typeArguments !== undefined) {
+  if (typeArguments !== undefined && !inCasePattern(resolution, node)) {
     constrainArguments(checker, module, { ...list, types: typeArguments });
   }
   return typeArguments;

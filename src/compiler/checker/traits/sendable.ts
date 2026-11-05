@@ -55,12 +55,17 @@ function sendable(checker: CheckerContext, type: Type, deciding: TypeCycle): boo
     case 'parameter':
     case 'associated':
     case 'field':
+    case 'match':
     case 'any':
       return knownConstraints(checker, type).some(({ trait }) =>
         sendableTraits.some((each) => isWellKnownTrait(checker, trait, each)),
       );
     case 'nominal':
       return nominalSendable(checker, type, deciding);
+    case 'recursive':
+      return deciding.enter(type, true, () =>
+        heldParts(checker, type).every((part) => sendable(checker, part, deciding)),
+      );
     default: {
       const unhandled: never = type;
       return unhandled;

@@ -25,7 +25,14 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
-import type { AnonymousStructType, MappedParts, ParameterKey, Type } from './type.ts';
+import type { MappedParts } from './computed-types.ts';
+import type {
+  AnonymousStructType,
+  FunctionType,
+  ParameterKey,
+  Type,
+  TypeMatchUse,
+} from './type.ts';
 
 /** Every identity numbered so far; an object no longer reachable lets its number go. */
 const identities = new WeakMap<object, number>();
@@ -73,24 +80,19 @@ function keyOf(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefi
         return `$${position}`;
       }
       const ranging = type.within === undefined ? '' : `in ${key(type.within)}`;
-      return `'${identityOf(type.declaration)}${ranging}`;
+      const meeting = type.meeting === undefined ? '' : `@${identityOf(type.meeting.pattern)}`;
+      return `'${identityOf(type.declaration)}${ranging}${meeting}`;
     }
     case 'nominal':
       return `#${identityOf(type.entity)}<${type.arguments.map(key).join(',')}>`;
     case 'anonymous':
       return shapeKeyOf(type, positions);
+    case 'recursive':
+      return recursionKeyOf(type, key);
     case 'tuple':
       return `(${type.elements.map(key).join(',')})`;
-    case 'function': {
-      const parameters = type.parameters.map(
-        (parameter) => `${parameter.reference ? '&' : ''}${key(parameter.type)}`,
-      );
-      if (type.pack !== undefined) {
-        parameters.push(`...${key(type.pack)}`);
-      }
-      const prefix = `${type.isSendable ? 'sendable ' : ''}${type.isAsync ? 'async ' : ''}`;
-      return `${prefix}fn(${parameters.join(',')})->${key(type.result)}`;
-    }
+    case 'function':
+      return functionKeyOf(type, key);
     case 'any': {
       const constraints = type.constraints.map(
         ({ trait, arguments: typeArguments }) =>
@@ -110,6 +112,8 @@ function keyOf(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefi
       return `keyof(${key(type.of)})-${JSON.stringify(type.without)}`;
     case 'mapped':
       return mappedKeyOf(type, positions);
+    case 'match':
+      return useKeyOf(type, key);
     default: {
       const unhandled: never = type;
       return unhandled;
@@ -137,7 +141,37 @@ function shapeKeyOf(
   type: AnonymousStructType,
   positions: ReadonlyMap<ParameterKey, number> | undefined,
 ): ShapeKey {
-  return `{${type.fields.map((field) => `${field.name}:${typeKey(field.type, positions)}`).join(',')}}`;
+  const key = (each: Type): string => typeKey(each, positions);
+  if (type.recursion !== undefined) {
+    // The shape a recursive type match use stands for is that use, by identity (§3.17).
+    return recursionKeyOf(type.recursion, key);
+  }
+  return `{${type.fields.map((field) => `${field.name}:${key(field.type)}`).join(',')}}`;
+}
+
+/** The key of a function type: its parameters, by `&` or not, its pack, and its result. */
+function functionKeyOf(type: FunctionType, key: (type: Type) => string): string {
+  const parameters = type.parameters.map(
+    (parameter) => `${parameter.reference ? '&' : ''}${key(parameter.type)}`,
+  );
+  if (type.pack !== undefined) {
+    parameters.push(`...${key(type.pack)}`);
+  }
+  const prefix = `${type.isSendable ? 'sendable ' : ''}${type.isAsync ? 'async ' : ''}`;
+  return `${prefix}fn(${parameters.join(',')})->${key(type.result)}`;
+}
+
+/** The key of an unreduced use of a type `match` alias (§3.17). */
+function useKeyOf(use: TypeMatchUse, key: (type: Type) => string): string {
+  return `match:${identityOf(use.declaration)}<${use.arguments.map(key).join(',')}>`;
+}
+
+/**
+ * The key of a recursive use of a type `match` alias, and of the shape it stands for, which no
+ * other shape's key can be: no field's name holds `~`.
+ */
+function recursionKeyOf(use: TypeMatchUse, key: (type: Type) => string): ShapeKey {
+  return `{~${identityOf(use.declaration)}<${use.arguments.map(key).join(',')}>}`;
 }
 
 /** The one numbering of identities every checker keys types by. */

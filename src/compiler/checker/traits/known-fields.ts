@@ -12,6 +12,7 @@ import {
 } from '../checked-field.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Type } from '../types/type.ts';
+import { unfolded } from '../types/type-match.ts';
 import { literalType } from '../types/unions.ts';
 import { requiredFields, requiredFieldType } from './constraints.ts';
 import { knownConstraints, structConstraintsOn } from './known-constraints.ts';
@@ -20,7 +21,12 @@ import { knownConstraints, structConstraintsOn } from './known-constraints.ts';
  * The field `name` of `type`: a struct's, or, on a type known only per instantiation, one a trait
  * of its constraints requires or one its struct constraints name (§3.5, §3.10).
  */
-export function fieldOf(checker: CheckerContext, type: Type, name: string): FoundField | undefined {
+export function fieldOf(
+  checker: CheckerContext,
+  given: Type,
+  name: string,
+): FoundField | undefined {
+  const type = unfolded(given, checker.typeRules);
   if (type.kind === 'nominal' || type.kind === 'anonymous') {
     return structFieldOf(checker, type, name);
   }

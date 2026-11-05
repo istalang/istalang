@@ -174,6 +174,10 @@ export class JsonForms implements JsonCodecs {
         return { kind: 'tuple', type };
       case 'anonymous':
         return this.#record(type, type.fields);
+      case 'recursive': {
+        const shape = this.#seams.checker.typeRules.recursiveShape(type);
+        return this.#record(shape, shape.fields);
+      }
       case 'nominal':
         return this.#nominal(type);
       case 'function':
@@ -190,6 +194,7 @@ export class JsonForms implements JsonCodecs {
       case 'field':
       case 'keys':
       case 'mapped':
+      case 'match':
       case 'error':
         return { kind: 'none', reason: undefined };
       default: {

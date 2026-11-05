@@ -37,6 +37,7 @@ import type { StaticOwner } from './types/named-types.ts';
 import type { ConstraintSet, StructConstraintModel } from './types/struct-constraint.ts';
 import type { Substitution } from './types/substitution.ts';
 import type { Constraint, FieldMember, Type } from './types/type.ts';
+import type { TypeMatchQueries } from './types/type-match.ts';
 
 /** That `typeArguments` gives `parameter` an argument at `at`, which must meet its constraints. */
 export interface ConstraintCheck {
@@ -108,6 +109,8 @@ export interface CheckerContext extends Checker {
    * or a struct literal's type, which name a type rather than denote one. Asking reports nothing.
    */
   readonly resolvedTypeOf: (node: TypeNode) => Type | undefined;
+  /** The type `match`es of aliases and associated types, resolved (§3.17). */
+  readonly typeMatches: TypeMatchQueries;
   /** The type `any` followed by `traits` denotes in `module` (§3.10). */
   readonly anyTypeOf: (module: ModuleId, traits: readonly TypeNode[]) => Type;
   /** A struct declaration's fields, types as declared (not substituted). */

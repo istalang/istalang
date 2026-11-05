@@ -28,7 +28,7 @@ import { parseBody } from '../layout/bodies.ts';
 import { type ItemRules, moveToContinuation, parseBlockBraces } from '../layout/index.ts';
 import type { Parser } from '../parser.ts';
 import { parseHeaderBody, statementRules } from '../parts/blocks.ts';
-import { skipToSeparator } from '../recovery.ts';
+import { parseCase } from '../parts/cases.ts';
 
 export function parseIf(parser: Parser): Expression {
   const { start } = parser.cursor.token.span;
@@ -120,21 +120,6 @@ const selectLineRules: ItemRules<SelectCase | ElseClause> = {
   parseItem: parseSelectLine,
   annotate: undefined,
 };
-
-/**
- * `case`, then whatever `parseRest` reads from where the case starts. A line that doesn't start
- * with `case` is reported and skipped whole, as one Invalid node.
- */
-function parseCase<Case>(parser: Parser, parseRest: (start: number) => Case): Case | Invalid {
-  const reported = parser.diagnostics.length;
-  const keyword = parser.expect('case');
-  if (keyword !== undefined) {
-    return parseRest(keyword.span.start);
-  }
-  const at = parser.cursor.previousEnd;
-  const [skipped] = skipToSeparator(parser, reported);
-  return skipped ?? { kind: 'Invalid', span: parser.anchor({ start: at, end: at }) };
-}
 
 /** `{ a; b }`, or the same over several lines, as an expression. */
 export function parseBlockExpression(parser: Parser): Expression {

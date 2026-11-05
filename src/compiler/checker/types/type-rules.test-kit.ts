@@ -3,6 +3,7 @@
  * another, and no type has an associated type, a field or keys a computed type could reduce to.
  */
 
+import { unreachable } from '../../../structures/unreachable.ts';
 import { errorType } from './type.ts';
 import type { TypeRules } from './type-rules.ts';
 
@@ -13,5 +14,7 @@ export const noProgramRules: TypeRules = {
   fieldType: () => errorType,
   keysOf: () => errorType,
   mappedType: () => errorType,
+  matchType: () => errorType,
+  recursiveShape: () => unreachable('A program declaring nothing has no type match.'),
   isKeyOf: () => false,
 };

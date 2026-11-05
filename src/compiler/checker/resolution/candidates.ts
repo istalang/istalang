@@ -35,8 +35,9 @@ import { isPlace } from '../../syntax/expressions/places.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Requirement } from '../traits/constraints.ts';
 import { requirementsNamed } from '../traits/known-constraints.ts';
+import { type ComputedType, isComputed } from '../types/computed-types.ts';
 import { type StaticOwner, staticOwnerOf } from '../types/named-types.ts';
-import { type ComputedType, isComputed, type Type } from '../types/type.ts';
+import type { Type } from '../types/type.ts';
 import { anyTypesIn, computedTypesIn, parametersIn } from '../types/type-parts.ts';
 import { traitCallsOn } from './union-traits.ts';
 

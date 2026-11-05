@@ -15,7 +15,9 @@
  *   question reached again while it is answered takes a stand-in (structures/entries/).
  */
 
-import type { AnyType, MappedParts, ParameterKey, Type } from './type.ts';
+import type { AliasDeclaration } from '../../syntax/declarations.ts';
+import type { MappedParts, RecursiveType } from './computed-types.ts';
+import type { AnonymousStructType, AnyType, ParameterKey, Type } from './type.ts';
 
 /** The rules of the program building a type that types/ sits below. */
 export interface TypeRules {
@@ -47,6 +49,18 @@ export interface TypeRules {
    * replaced in the value together; else the opaque `MappedType`.
    */
   readonly mappedType: (parts: MappedParts, outer?: ReadonlyMap<ParameterKey, Type>) => Type;
+  /**
+   * The use of `declaration`, an alias or associated type whose body is a type `match`, with
+   * `typeArguments` (§3.17): the type of the first case matching its subject, unions distributed;
+   * the opaque `MatchType` while that case isn't decided by what is known yet; the error type when
+   * no case matches.
+   */
+  readonly matchType: (declaration: AliasDeclaration, typeArguments: readonly Type[]) => Type;
+  /**
+   * The shape the recursive type `match` use `type` reduces to (§3.17), the use itself inside it
+   * where its reduction reaches it again; its identity is the use's.
+   */
+  readonly recursiveShape: (type: RecursiveType) => AnonymousStructType;
   /** Whether every key `key` may be names a field of `of`, as a written `S[K]` must (§3.1). */
   readonly isKeyOf: (key: Type, of: Type) => boolean;
 }
