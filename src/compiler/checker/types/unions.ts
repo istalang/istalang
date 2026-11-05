@@ -230,10 +230,13 @@ export function literalOrBase(value: LiteralValue, expected: Type | undefined): 
   return literalExpected ? literal : base;
 }
 
-/** The base a literal type, or a union of literals of one base, widens to; else undefined. */
+/**
+ * The base a literal type, or a union of literals of one base, widens to, the keys of a struct not
+ * known yet being Strings (§3.1); else undefined.
+ */
 export function literalsBase(type: Type): Type | undefined {
   const bases = membersOf(type).map((member) =>
-    member.kind === 'literal' ? baseOf(member) : undefined,
+    member.kind === 'literal' || member.kind === 'keys' ? baseOf(member) : undefined,
   );
   const [first] = bases;
   return first !== undefined &&

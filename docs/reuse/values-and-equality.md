@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 tags: [reuse, values, equality, maps, json, natives, runtime]
 ---
 
@@ -27,7 +27,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - build `Err` or `parse` native return values → `resultErr`, `resultError`, `parseFailure`, `parseResult` (`src/stdlib/native-values.ts`)
 - read or build `time.Time` and `time.Duration` millisecond values → `millisecondsOf`, `resultMilliseconds`, `okMilliseconds` (`src/stdlib/time/fields.ts`)
 - read or write a nested part of an immutable `Value` along field positions → `partAt`, `withPart` (`src/runtime/values/parts.ts`)
-- read a nested part of a compile-time `ConstantForm` or build a duration form → `formAt`, `durationForm` (`src/compiler/checker/constant-form.ts`)
+- read a nested part of a compile-time `ConstantForm` along a target's steps (a struct pattern's rest built by name), or build a duration form → `formAt`, `durationForm` (`src/compiler/checker/constant-form.ts`)
 - compare runtime `Value`s with `==` or build a `MapValue` → `valuesEqual`, `mapOf` (`src/definition/equality.ts`)
 - look up, insert or remove an entry in a runtime `MapValue` → `entryPosition`, `entryValue`, `withEntry`, `withoutEntry` (`src/definition/equality.ts`)
 - compare compile-time `ConstantForm`s with `==` or build constant maps → `formSemantics` (`src/compiler/checker/constant-form.ts`)

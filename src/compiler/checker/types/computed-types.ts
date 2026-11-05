@@ -6,6 +6,7 @@
  */
 
 import type { AliasDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import type { RestPattern } from '../../syntax/patterns.ts';
 import type { StructType } from '../../syntax/types.ts';
 import type { FieldMember, Type, TypeParameterType, WrittenThrough } from './type.ts';
 
@@ -49,13 +50,14 @@ export interface KeysType extends WrittenThrough {
  * A mapped struct type (§3.1) whose `keys` aren't all known yet: its `named` fields, in name
  * order, and a field of the type `value` for each key, `parameter` standing for that key in it.
  * Once the keys are String literals it is the shape of those fields (TypeRules), written at
- * `origin`; until then it is opaque, equal to another only up to the name of its parameter.
+ * `origin`; until then it is opaque, equal to another only up to the name of its parameter. A
+ * struct pattern's rest is one, written at the rest: `{ [F in keyof S except …]: S[F] }` (§3.11).
  */
 export interface MappedType extends WrittenThrough {
   readonly kind: 'mapped';
-  readonly origin: StructType;
+  readonly origin: StructType | RestPattern;
   readonly named: readonly FieldMember[];
-  readonly parameter: TypeParameter;
+  readonly parameter: TypeParameter | RestPattern;
   readonly keys: Type;
   readonly value: Type;
 }

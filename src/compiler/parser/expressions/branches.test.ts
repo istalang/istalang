@@ -36,7 +36,7 @@ describe('match', () => {
     );
     expect(dumpClean('statement', text)).toBe(
       expressionStatement(
-        `(Match d [(MatchCase (StructPattern ${named('Approved')} [(BindFieldPattern by _)]) _ ${body('by')}) (MatchCase (StructPattern ${named('Rejected')} [(BindFieldPattern reason why)]) (Binary why != "") ${body('why')}) (MatchCase (WildcardPattern) _ ${body('"x"')})])`,
+        `(Match d [(MatchCase (StructPattern ${named('Approved')} [(BindFieldPattern by _)] _) _ ${body('by')}) (MatchCase (StructPattern ${named('Rejected')} [(BindFieldPattern reason why)] _) (Binary why != "") ${body('why')}) (MatchCase (WildcardPattern) _ ${body('"x"')})])`,
       ),
     );
   });

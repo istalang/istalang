@@ -58,6 +58,7 @@ import type {
   TypeParameter,
 } from '../../syntax/declarations.ts';
 import type { FieldHeader, StructLiteral } from '../../syntax/expressions/index.ts';
+import type { RestPattern } from '../../syntax/patterns.ts';
 import type { StructConstraint, StructType } from '../../syntax/types.ts';
 import type {
   AssociatedOfType,
@@ -165,13 +166,13 @@ export interface FieldMember {
 
 /**
  * A struct without a name, its shape (§3.1): introduced by a `{…}` type, by a `struct{…}` literal
- * with nothing to take a type from, by a shared struct as the value behind it (§3.18), or by a
- * struct as the shape its value converts into. Its fields are in name order; `origin` is where it
+ * with nothing to take a type from, by a shared struct as the value behind it (§3.18), by a
+ * struct as the shape its value converts into, or by a struct pattern's rest (§3.11). Its fields are in name order; `origin` is where it
  * was written, which no relation reads.
  */
 export interface AnonymousStructType extends WrittenThrough {
   readonly kind: 'anonymous';
-  readonly origin: StructType | StructLiteral | DeclaredStruct;
+  readonly origin: StructType | StructLiteral | DeclaredStruct | RestPattern;
   readonly fields: readonly FieldMember[];
   /** The recursive type `match` use it is the shape of, whose identity it has (`RecursiveType`). */
   readonly recursion?: TypeMatchUse | undefined;
@@ -215,11 +216,12 @@ export interface FunctionType extends WrittenThrough {
 export type PackType = TypeParameterType | ErrorType;
 
 /**
- * What a type parameter is keyed by: its declaration, a trait standing for its `Self`, or a field
+ * What a type parameter is keyed by: its declaration, a trait standing for its `Self`, a field
  * loop's header, whose pass over the fields a struct constraint leaves unnamed stands for one of
- * them by a key of its own (§4).
+ * them by a key of its own (§4), or a struct pattern's rest, whose struct maps each key it takes to
+ * its field by one (§3.11).
  */
-export type ParameterKey = TypeParameter | TraitDeclaration | FieldHeader;
+export type ParameterKey = TypeParameter | TraitDeclaration | FieldHeader | RestPattern;
 
 /**
  * A type parameter, opaque inside the declaration that introduces it (§3.5). A mapped entry's binds

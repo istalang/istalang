@@ -27,7 +27,12 @@ export const patternPrinters: Printers<PatternKind> = {
   ParenthesizedPattern: (printer, node) => enclosed(printer, node, ['(', ')'], node.pattern),
   StructPattern: (printer, node) => [
     node.type === undefined ? 'struct' : printer.print(node.type),
-    bracketed(printer, node, ['{', '}'], node.fields),
+    bracketed(
+      printer,
+      node,
+      ['{', '}'],
+      [...node.fields, ...(node.rest === undefined ? [] : [node.rest])],
+    ),
   ],
   BindFieldPattern: (printer, node) => [
     printer.print(node.field),

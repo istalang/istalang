@@ -8,8 +8,10 @@
 import { type MapOf, ValueSemantics } from '../../language/values.ts';
 import type { Lambda } from '../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
+import type { TargetStep } from './checked-pattern.ts';
+import { laidOut, namedValues } from './types/field-order.ts';
 import { sameType } from './types/identity.ts';
-import type { NominalType, StructValueType } from './types/type.ts';
+import type { FieldMember, NominalType, StructValueType, Type } from './types/type.ts';
 import { sameTypeSpelled } from './types/type-parts.ts';
 
 /**
@@ -34,14 +36,43 @@ export function durationForm(type: NominalType, milliseconds: bigint): ConstantF
   return { kind: 'struct', type, fields: [{ kind: 'primitive', value: milliseconds }] };
 }
 
-/** The part of `form` at `path`, field and element positions outermost first (§3.15). */
-export function formAt(form: ConstantForm, path: readonly number[]): ConstantForm | undefined {
-  const [position, ...rest] = path;
-  if (position === undefined) {
+/**
+ * The part of `form` at `path`, outermost first (§3.15): a field or element by position, a field
+ * by its name in the struct `fieldsOf` lays out, or a struct pattern's rest, the struct of the
+ * fields it takes (§3.11), built from `form`'s by name.
+ */
+export function formAt(
+  form: ConstantForm,
+  path: readonly TargetStep[],
+  fieldsOf: (type: Type) => readonly FieldMember[] | undefined,
+): ConstantForm | undefined {
+  const [step, ...rest] = path;
+  if (step === undefined) {
     return form;
   }
-  const part = (form.kind === 'map' ? form.entries.flat() : partsOf(form))[position];
-  return part === undefined ? undefined : formAt(part, rest);
+  const part = formStep(form, step, fieldsOf);
+  return part === undefined ? undefined : formAt(part, rest, fieldsOf);
+}
+
+function formStep(
+  form: ConstantForm,
+  step: TargetStep,
+  fieldsOf: (type: Type) => readonly FieldMember[] | undefined,
+): ConstantForm | undefined {
+  if (typeof step === 'number') {
+    return (form.kind === 'map' ? form.entries.flat() : partsOf(form))[step];
+  }
+  if (form.kind !== 'struct') {
+    return undefined;
+  }
+  const named = namedValues(fieldsOf(form.type) ?? [], form.fields);
+  if (step.kind === 'field') {
+    return named.get(step.name);
+  }
+  const { to } = step;
+  return to.kind === 'nominal' || to.kind === 'anonymous'
+    ? { kind: 'struct', type: to, fields: laidOut(fieldsOf(to) ?? [], named) }
+    : undefined;
 }
 
 /**

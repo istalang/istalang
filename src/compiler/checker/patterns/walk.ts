@@ -45,6 +45,7 @@ import { literalTypeOf } from './members.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import type { Leaf, PatternTests } from './pattern-tests.ts';
 import { selectionOf } from './selections.ts';
+import { isStructNotKnown, restBinding, takeFieldsByName } from './struct-fields.ts';
 import { constructed, type Taking, takeApart, takeFields, takeTargets } from './taking.ts';
 
 /** A pattern as walked. */
@@ -81,7 +82,9 @@ export function walkTargets(
   return walk.bindings.map(({ path, ...binding }) => ({
     ...binding,
     path: path.map((step) =>
-      typeof step === 'number' ? step : unreachable('A target took an array apart.'),
+      typeof step === 'number' || step.kind === 'field' || step.kind === 'fieldRest'
+        ? step
+        : unreachable('A target took an array apart, or tested a member.'),
     ),
   }));
 }
@@ -304,20 +307,42 @@ function takeStruct(walk: Walk, node: StructPattern, part: ValuePart): Shape | u
   );
   const named = node.type === undefined ? undefined : walk.scope.entityOf(lastName(node.type.path));
   const isVariant = named?.kind === 'variant' || named?.kind === 'variants';
+  if (isVariant && node.rest !== undefined && node.type !== undefined) {
+    walk.scope.report(
+      checkerDiagnostics.variantRest(node.rest.span, lastName(node.type.path).text),
+    );
+  }
   if (walk.tests === undefined && isVariant) {
     return refused(walk, node, part);
   }
   if (walk.tests === undefined || !isVariant) {
-    const struct = { kind: 'struct', type: node.type, items, span: node.span } as const;
-    return takeApart(walk, struct, part);
+    const shape =
+      node.type === undefined && isStructNotKnown(walk.scope, part.type)
+        ? takeFieldsByName(walk, items, part)
+        : takeApart(walk, { kind: 'struct', type: node.type, items, span: node.span }, part);
+    takeRest(walk, node, part);
+    return shape;
   }
   const variant = walk.tests.variant(node, named, part);
+  takeRest(walk, node, part);
   if (variant === undefined) {
     takeFields(walk, items, undefined, part);
     return anyShape;
   }
   walk.found.push(variant.test);
   return constructed(variant.key, takeFields(walk, items, variant.fields, part));
+}
+
+/** Binds a struct pattern's rest, if it has one, to the struct of the fields its items leave. */
+function takeRest(walk: Walk, node: StructPattern, part: ValuePart): void {
+  if (node.rest === undefined) {
+    return;
+  }
+  const named = node.fields.flatMap((item) => (item.kind === 'Invalid' ? [] : [item.field.text]));
+  const binding = restBinding(walk.scope.typeRules, node.rest, named, part);
+  if (binding !== undefined) {
+    walk.bindings.push(binding);
+  }
 }
 
 /** A construct that could fail to match: tested where tests are given, refused in a target. */

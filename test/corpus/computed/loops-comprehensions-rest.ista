@@ -1,0 +1,43 @@
+# outcome: "a:1,m:2,z:3|named-z,named-a,comp-b,comp-x|cfg:a=10,b=20|1:2|a,title,z"
+# Field loops (§5), struct comprehensions (§6), and rest in struct patterns (§7): name-order
+# visitation on nominal structs and shapes, ...*shared, evaluation order of named fields before
+# struct comprehension, and ...rest in declaration targets, match cases, and constrained generics.
+
+struct Misordered { z: Int; a: Int; m: Int }
+shared struct SharedCounters { b: Int; a: Int }
+
+fn record(log: &Array<String>, step: String, v: Int) -> Int:
+  log.push(step)
+  v
+
+fn collect<S is struct { title: String; [_]: Int }>(form: S, data: { [F in keyof S]: S[F] }) -> String:
+  let out: Array<String> = []
+  for k, _ in ...form:
+    out.push(`${k}`)
+  _ = data
+  out.join(",")
+
+fn formatRest<S is struct { title: String; [_]: Int }>(s: S) -> String:
+  const struct{title, ...rest} = s
+  const parts = [for k, v in ...rest: `${k}=${v}`]
+  `${title}:${parts.join(",")}`
+
+async fn main() -> Future<String>:
+  const m = Misordered{z: 3, a: 1, m: 2}
+  let visited: Array<String> = []
+  for k, v in ...m:
+    visited.push(`${k}:${v}`)
+
+  let orderLog: Array<String> = []
+  const built = struct{
+    z: record(&orderLog, "named-z", 9),
+    a: record(&orderLog, "named-a", 8),
+    for k, v in ...struct{x: 2, b: 1}: [k]: record(&orderLog, `comp-${k}`, v)
+  }
+  _ = built
+
+  const restSummary = formatRest(struct{title: "cfg", b: 20, a: 10})
+  const sc = new SharedCounters{b: 2, a: 1}
+  const sharedVals = [for _, v in ...*sc: String(v)]
+  const counts = struct{title: "t", z: 1, a: 2}
+  `${visited.join(",")}|${orderLog.join(",")}|${restSummary}|${sharedVals.join(":")}|${collect(counts, counts)}`

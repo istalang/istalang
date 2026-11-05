@@ -21,10 +21,8 @@
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import {
-  type ArrayStep,
   type CheckedPattern,
   namesBound,
-  type PartStep,
   type PatternTest,
   type PatternValue,
 } from '../checker/checked-pattern.ts';
@@ -39,7 +37,8 @@ import type { FunctionContext } from './context.ts';
 import { emitImplicitCall } from './emit-call.ts';
 import { equal, ordered } from './expressions/operators.ts';
 import { branchOnVariant } from './expressions/variants.ts';
-import { branchOnHeld, heldPositions, holdingOf, type TypedValue } from './holdings.ts';
+import { branchOnHeld, type TypedValue } from './holdings.ts';
+import { readPartAlong } from './part-paths.ts';
 import { declareVariable } from './statements/variables.ts';
 import { outOfUnion } from './unions.ts';
 
@@ -249,63 +248,6 @@ function bindChosen(
     code.place(next);
   }
   code.place(end);
-}
-
-/**
- * The part of `subject` along `path`: fields, tuple elements and what a union's or an `any`'s
- * variant holds read as a place, and an array's item or rest through the call the checker made at
- * its pattern.
- */
-function readPartAlong(
-  context: FunctionContext,
-  subject: Register,
-  path: readonly PartStep[],
-  span: AnchoredSpan,
-): Register {
-  let value = subject;
-  let positions: number[] = [];
-  for (const step of path) {
-    if (isArrayStep(step)) {
-      const array = context.code.readPath(value, positions, span);
-      const constants = stepOffsets(step).map((offset) => context.constant(BigInt(offset), span));
-      value = emitImplicitCall(context, step.site, step.kind, [array, ...constants]);
-      positions = [];
-    } else {
-      positions.push(...positionsOf(context, step));
-    }
-  }
-  return context.code.readPath(value, positions, span);
-}
-
-function isArrayStep(step: PartStep): step is ArrayStep {
-  return typeof step !== 'number' && step.kind !== 'member' && step.kind !== 'downcast';
-}
-
-/**
- * The positions `step` reads as a place: a field's or element's own, the one field of the variant
- * an `any`'s value is held in, or where a union holds its member's value as an instantiation made
- * it (holdings.ts): none where the union collapsed into that one type (§3.5), inside the `any`
- * type that took the member whole.
- */
-function positionsOf(
-  context: FunctionContext,
-  step: Exclude<PartStep, ArrayStep>,
-): readonly number[] {
-  if (typeof step === 'number') {
-    return [step];
-  }
-  if (step.kind === 'downcast') {
-    return [0];
-  }
-  const holding = holdingOf(context, step.union, step.member);
-  return holding === undefined ? [] : heldPositions(step.union, holding);
-}
-
-function stepOffsets(step: ArrayStep): readonly number[] {
-  if (step.kind === 'length') {
-    return [];
-  }
-  return step.kind === 'item' ? [step.offset] : [step.before, step.after];
 }
 
 /** The value an `equal` or `compare` test compares the part with. */

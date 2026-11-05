@@ -151,7 +151,10 @@ export class ConstantChecks {
     }
     return {
       type: binding.type,
-      form: form === undefined ? undefined : formAt(form, binding.path),
+      form:
+        form === undefined
+          ? undefined
+          : formAt(form, binding.path, (type) => this.#seams.checker.fieldsOf(type)),
     };
   }
 

@@ -19,12 +19,11 @@ import type {
   Comprehension,
   ConditionalBranch,
   Expression,
-  FieldHeader,
   MatchCase,
   SelectCase,
 } from '../syntax/expressions/index.ts';
 import { type AnchoredSpan, endOf } from '../syntax/positions.ts';
-import type { For, While } from '../syntax/statements.ts';
+import type { For, OverFields, While } from '../syntax/statements.ts';
 import type { LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
 
@@ -34,7 +33,7 @@ type Body = (scope: Scope) => void;
 type Conditional = ConditionalBranch | While | Comprehension | MatchCase;
 
 /** A construct whose body sees bindings of its own. */
-type Binding = For | FieldHeader | Comprehension | MatchCase | SelectCase;
+type Binding = For | OverFields | Comprehension | MatchCase | SelectCase;
 
 /** Binds a condition and returns the scope its bindings flow into when it holds. */
 function bindCondition(binder: LocalBinder, node: Expression, scope: Scope): Scope {
@@ -130,17 +129,16 @@ export function underLoop(
   underBindings(binder, node, scope, { define, body });
 }
 
-/** A field loop's header (§4): its subject outside, its key and value fresh for `body`. */
-export function underFields(
-  binder: LocalBinder,
-  node: FieldHeader,
-  scope: Scope,
-  body: Body,
-): void {
-  binder.walk.expression(binder, node.subject, scope);
+/**
+ * A construct over a struct's fields (§4): its header's subject outside, its key and value fresh
+ * for `body`, from the subject on to the construct's end, as a `for`'s variables are.
+ */
+export function underFields(binder: LocalBinder, node: OverFields, scope: Scope, body: Body): void {
+  const { header } = node;
+  binder.walk.expression(binder, header.subject, scope);
   const define = (variables: Scope) => {
-    for (const target of [node.key, node.value]) {
-      binder.walk.pattern(binder, target, scope, { into: variables, declaration: node });
+    for (const target of [header.key, header.value]) {
+      binder.walk.pattern(binder, target, scope, { into: variables, declaration: header });
     }
   };
   underBindings(binder, node, scope, { define, body });
@@ -153,8 +151,10 @@ function bindingsStartOf(node: Binding): AnchoredSpan {
       return endOf(node.pattern.span);
     case 'SelectCase':
       return endOf((node.binding ?? node.future).span);
-    case 'FieldHeader':
-      return endOf(node.subject.span);
+    case 'FieldLoop':
+    case 'FieldComprehension':
+    case 'StructComprehension':
+      return endOf(node.header.subject.span);
     default:
       return endOf(node.iterable.span);
   }

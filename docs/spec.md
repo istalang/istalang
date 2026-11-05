@@ -106,6 +106,7 @@ match decision:
     case Verdict{ok == false}: ...                # compare
     case Review{verdict is Verdict{ok == false}}: ... # nested
     case _: ...
+const struct{title, ...rest} = form               # rest: a struct of the fields not named
 match x:                                          # x: Int | String | None
     case None: ...
     case Int as n: ...                            # a type pattern selects a member
@@ -864,6 +865,9 @@ const text: String = match decision:
 - **`field as name`** binds it under another name: `case Rejected{reason as why}`. Only a variable name may follow `as`.
 - **`field == expr`**, or any other comparison, tests it: `case Verdict{ok == false}`, `case Order{amount > 1000}`.
 - **`field is Pattern`** matches the field against a nested pattern: `case Review{verdict is Verdict{ok == false} as v}`. Only a pattern may follow `is`.
+- **`...name`**, the last item, binds a struct of the fields no other item names, a copy: `case Page{title == "", ...rest}`. Its type is the mapped struct type `{ [F in K]: S[F] }` (§3.1), `K` being the keys of the matched struct `S` but those the pattern names: for a struct whose fields are known, the shape of those fields, and for a type parameter with a struct constraint (§3.5) an opaque struct meeting that constraint without the entries the pattern names, such as `struct { [_] is C }`, whose fields field loops, struct comprehensions and keys reach (§3.1, §4). A rest can't fail. A variant is no struct, so its pattern takes no rest; `..._` takes none.
+
+A struct pattern on a type parameter with a struct constraint takes the fields its constraint names, as reading them does (§3.5): `const struct{title, ...rest} = form`.
 
 A pattern can also be a literal (`case 0:`, `case "cfo":`), a tuple of patterns (`case (a, _):`), `_`, or a bare name. A camelCase bare name binds a new variable, as `a` does in `case (a, _):`, while a PascalCase one refers to a variant, a struct without fields or a type, as in `case Expired:`, `case Marker:` or `case Int:`; a qualified name (`case Decision.Expired:`, `case limits.max:`) always refers. A constant, being camelCase, is therefore compared through a qualified name or a guard (`case n if n == limit:`). There is no positional binding in struct patterns, not even for a type with a single field: a bare name always binds the field of that name, and `as` renames it, as in `case Ok{value as receipt}`. An anonymous struct is matched with `case struct{…}`, or through an alias naming its shape (§3.17), `case Point{x, y}`; against an `any` value, such a pattern matches a value whose own type is that shape, while a struct declaration's value inside keeps its own type, so it doesn't match.
 
@@ -1074,7 +1078,7 @@ for key, verdict in answered.entries():
 - **A one-element tuple converts.** A `(T,)` fits where a `T` is expected, giving its element, and a `T` fits where a `(T,)` is, as a one-element tuple, so a pack of one (§3.5) reads as its value. The conversion applies to a whole value, once, before any conversion into a union (§2), never inside a collection or a function type: an `Array<(T,)>` is no `Array<T>`.
 - **Elements by position:** `t.0`, `t.1`, as a decimal number after the dot. `t.0 = v` assigns one and `&t.0` passes one by reference. `t.0.1` reads an element of an element.
 - **Destructuring** works in `const` and `let` declarations, in `for` loops, and in plain assignment to existing variables. `_` is an unnamed variable: it holds its value like any other variable (§7), it just can't be referred to.
-- **Declaration targets** are patterns that can't fail (§3.11): names, `_`, tuple patterns and struct patterns, nested at any depth, with `as` to rename. Several targets are a tuple of them: `let (a, b), c = t`, `const Pair{first, second as s} = p`, and `const struct{first} = p`, which takes the type from the value. A pattern that can fail (§3.11) is a compile error here. Each level's count must match its tuple's size.
+- **Declaration targets** are patterns that can't fail (§3.11): names, `_`, tuple patterns and struct patterns, a struct pattern's rest included, nested at any depth, with `as` to rename. Several targets are a tuple of them: `let (a, b), c = t`, `const Pair{first, second as s} = p`, `const struct{first} = p`, which takes the type from the value, and `const struct{title, ...rest} = form`. A pattern that can fail (§3.11) is a compile error here. Each level's count must match its tuple's size.
 - **Assignment targets** are places, or tuples and struct literals of targets: `a, b = (b, a)`, `(a, b), c = t`, and `Pair{first: p.x, second} = q`, which assigns `q.first` to `p.x` and `q.second` to the variable `second`. The value is evaluated first, then each part is assigned, left to right. An assignment writes each place once: `a, a = t`, `p, p.x = t` and `*x, x->a = t` are errors. Where two places may be one only when the program runs, two elements `xs[i], xs[j]` or two variables holding one handle, they are written left to right.
 - **No named tuples.** When positions need names, use a struct. A good guideline: tuples for two or three positional values, structs beyond that.
 

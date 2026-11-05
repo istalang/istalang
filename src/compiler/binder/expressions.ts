@@ -39,7 +39,7 @@ function bindLiteral(binder: LocalBinder, node: FieldsLiteral, scope: Scope): vo
       // The shorthand `Pair{first}` reads the variable named like the field.
       bindFieldValue(binder, item.name, item.value, scope);
     } else if (item.kind === 'StructComprehension') {
-      underFields(binder, item.header, scope, (variables) => {
+      underFields(binder, item, scope, (variables) => {
         bindExpression(binder, item.key, variables);
         bindExpression(binder, item.value, variables);
       });
@@ -116,9 +116,7 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
       underCondition(binder, node, variables, (flow) => bindExpression(binder, node.body, flow)),
     ),
   FieldComprehension: (binder, node, scope) =>
-    underFields(binder, node.header, scope, (variables) =>
-      bindExpression(binder, node.body, variables),
-    ),
+    underFields(binder, node, scope, (variables) => bindExpression(binder, node.body, variables)),
   If: (binder, node, scope) => {
     for (const branch of node.branches) {
       underCondition(binder, branch, scope, (flow) => binder.walk.block(binder, branch.body, flow));

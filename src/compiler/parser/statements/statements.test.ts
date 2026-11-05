@@ -54,11 +54,11 @@ describe('destructuring declarations (§3.15)', () => {
     ],
     [
       'const Pair{first, second as s} = p',
-      '(VariableDeclaration _ [(StructPattern (NamedType [Pair] []) [(BindFieldPattern first _) (BindFieldPattern second s)])] _ p)',
+      '(VariableDeclaration _ [(StructPattern (NamedType [Pair] []) [(BindFieldPattern first _) (BindFieldPattern second s)] _)] _ p)',
     ],
     [
       'const struct{first is (x, _)} = p',
-      '(VariableDeclaration _ [(StructPattern _ [(NestedFieldPattern first (TuplePattern [(NamePattern [x] []) (WildcardPattern)]))])] _ p)',
+      '(VariableDeclaration _ [(StructPattern _ [(NestedFieldPattern first (TuplePattern [(NamePattern [x] []) (WildcardPattern)]))] _)] _ p)',
     ],
     [
       'const _, max = pair',

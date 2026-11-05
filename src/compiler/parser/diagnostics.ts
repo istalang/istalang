@@ -155,6 +155,11 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: () =>
       "A struct comprehension's brackets hold its loop's key, a name: `for k, v in ...x: [k]: …` (§3.1).",
   },
+  structRestLast: {
+    code: 2034,
+    message: () =>
+      "A struct pattern's rest is its last item, and its only one: it takes the fields no item names (§3.11).",
+  },
   memberParameterAlone: {
     code: 2027,
     message: () =>

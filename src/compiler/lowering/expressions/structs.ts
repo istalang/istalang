@@ -14,12 +14,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { FieldSource } from '../../checker/check.ts';
-import { laidOut, namedValues } from '../../checker/types/field-order.ts';
-import type {
-  AnonymousStructType,
-  NominalType,
-  StructValueType,
-} from '../../checker/types/type.ts';
+import type { AnonymousStructType, NominalType } from '../../checker/types/type.ts';
 import {
   type Expression,
   type FieldsLiteral,
@@ -29,11 +24,11 @@ import {
   type StructComprehension,
   type StructLiteral,
 } from '../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { defaultEntryOf } from '../closed-calls.ts';
-import type { CodeContext, FunctionContext } from '../context.ts';
+import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
 import { fieldsVisited, valueInFieldScope } from '../field-passes.ts';
+import { construct } from '../struct-values.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
   const fields = namedFields(literalFields(context, node));
@@ -196,35 +191,6 @@ export function lowerFieldRead(
       return unhandled;
     }
   }
-}
-
-/** Builds a struct of `type`, each of its fields taken by its name from `named`. */
-export function construct(
-  context: CodeContext,
-  type: NominalType | AnonymousStructType,
-  named: ReadonlyMap<string, Register>,
-  span: AnchoredSpan,
-): Register {
-  const dst = context.code.allocate();
-  const index = context.tables.types.index(type);
-  const fields = laidOut(context.checker.fieldsOf(type) ?? [], named);
-  context.code.emit({ kind: 'struct', span, dst, type: index, fields });
-  return dst;
-}
-
-/**
- * `value`, a struct of `from`, built anew as a struct of `to`, each field taken by its name: a
- * nominal struct's value as its shape (§3.1).
- */
-export function rebuiltAs(
-  context: FunctionContext,
-  value: Register,
-  { from, to }: { readonly from: StructValueType; readonly to: StructValueType },
-  span: AnchoredSpan,
-): Register {
-  const fields = context.checker.fieldsOf(from) ?? [];
-  const values = fields.map((_, index) => context.code.field(value, index, span));
-  return construct(context, to, namedValues(fields, values), span);
 }
 
 /** The struct type the checker gave `node`, declared or anonymous. */

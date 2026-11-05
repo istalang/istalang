@@ -34,38 +34,38 @@ describe('pattern forms', () => {
 
 describe('struct patterns', () => {
   it.each([
-    ['Approved{by}', `(StructPattern ${named('Approved')} [(BindFieldPattern by _)])`],
+    ['Approved{by}', `(StructPattern ${named('Approved')} [(BindFieldPattern by _)] _)`],
     [
       'Rejected{reason as why}',
-      `(StructPattern ${named('Rejected')} [(BindFieldPattern reason why)])`,
+      `(StructPattern ${named('Rejected')} [(BindFieldPattern reason why)] _)`,
     ],
     [
       'Verdict{ok == false}',
-      `(StructPattern ${named('Verdict')} [(CompareFieldPattern ok == false)])`,
+      `(StructPattern ${named('Verdict')} [(CompareFieldPattern ok == false)] _)`,
     ],
     [
       'Order{amount > 1000}',
-      `(StructPattern ${named('Order')} [(CompareFieldPattern amount > 1000)])`,
+      `(StructPattern ${named('Order')} [(CompareFieldPattern amount > 1000)] _)`,
     ],
     [
       'Order{amount >= base * 2}',
-      `(StructPattern ${named('Order')} [(CompareFieldPattern amount >= (Binary base * 2))])`,
+      `(StructPattern ${named('Order')} [(CompareFieldPattern amount >= (Binary base * 2))] _)`,
     ],
     [
       'Some{value is Verdict{ok == false} as v}',
-      `(StructPattern ${named('Some')} [(NestedFieldPattern value (AsPattern (StructPattern ${named('Verdict')} [(CompareFieldPattern ok == false)]) v))])`,
+      `(StructPattern ${named('Some')} [(NestedFieldPattern value (AsPattern (StructPattern ${named('Verdict')} [(CompareFieldPattern ok == false)] _) v))] _)`,
     ],
     [
       'Verdict{ok == false} as v',
-      `(AsPattern (StructPattern ${named('Verdict')} [(CompareFieldPattern ok == false)]) v)`,
+      `(AsPattern (StructPattern ${named('Verdict')} [(CompareFieldPattern ok == false)] _) v)`,
     ],
-    ['struct{a, b}', '(StructPattern _ [(BindFieldPattern a _) (BindFieldPattern b _)])'],
-    ['m.Pair{first,}', '(StructPattern (NamedType [m Pair] []) [(BindFieldPattern first _)])'],
+    ['struct{a, b}', '(StructPattern _ [(BindFieldPattern a _) (BindFieldPattern b _)] _)'],
+    ['m.Pair{first,}', '(StructPattern (NamedType [m Pair] []) [(BindFieldPattern first _)] _)'],
     [
       'Pair{\n  first,\n  second\n}',
-      `(StructPattern ${named('Pair')} [(BindFieldPattern first _) (BindFieldPattern second _)])`,
+      `(StructPattern ${named('Pair')} [(BindFieldPattern first _) (BindFieldPattern second _)] _)`,
     ],
-    ['Ok{}', `(StructPattern ${named('Ok')} [])`],
+    ['Ok{}', `(StructPattern ${named('Ok')} [] _)`],
   ])('parses %j', (text, tree) => {
     expect(dumpClean('pattern', text)).toBe(tree);
   });
@@ -77,7 +77,7 @@ describe('patterns naming a generic type with its type arguments (§3.11)', () =
   it.each([
     [
       'Entry<Settings, "region">{value}',
-      `(StructPattern (NamedType [Entry] ${settingsRegion}) [(BindFieldPattern value _)])`,
+      `(StructPattern (NamedType [Entry] ${settingsRegion}) [(BindFieldPattern value _)] _)`,
     ],
     ['Entry<Settings, "region"> as e', `(AsPattern (NamePattern [Entry] ${settingsRegion}) e)`],
     ['m.Box<Int | None>', `(NamePattern [m Box] [(UnionType [${named('Int')} ${named('None')}])])`],

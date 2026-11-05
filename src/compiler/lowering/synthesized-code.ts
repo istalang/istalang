@@ -28,10 +28,10 @@ import { emitConstant } from './constants.ts';
 import type { CodeContext } from './context.ts';
 import { emitCall, emitFunctionCall } from './emit-call.ts';
 import { equal } from './expressions/operators.ts';
-import { construct } from './expressions/structs.ts';
 import { tupleOf } from './expressions/tuples.ts';
 import { buildVariant, payloadOf, payloadOr } from './expressions/variants.ts';
 import type { CellRegister } from './statements/variables.ts';
+import { construct } from './struct-values.ts';
 import type { DefinitionTables, EntryHeader } from './tables.ts';
 
 /** What a call names: an entry already numbered, or a closed call to number. */

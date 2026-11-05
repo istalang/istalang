@@ -36,7 +36,7 @@ import { cursorOf, emitLoop } from '../iteration.ts';
 import { lowerKeyRead } from '../keyed-fields.ts';
 import { noneOf, someOf } from '../optionals.ts';
 import { cellRegister } from '../places.ts';
-import { construct } from './structs.ts';
+import { construct } from '../struct-values.ts';
 
 /** An element of an `array` instruction. */
 type ArrayItem = Extract<Instruction, { kind: 'array' }>['elements'][number];

@@ -37,10 +37,10 @@ describe('levels and associativity', () => {
 
 describe('is and ranges', () => {
   it.each([
-    ['x is Ok{value}', '(Is x (StructPattern (NamedType [Ok] []) [(BindFieldPattern value _)]))'],
+    ['x is Ok{value}', '(Is x (StructPattern (NamedType [Ok] []) [(BindFieldPattern value _)] _))'],
     [
       'r is Ok{value as y} and y > 0',
-      '(Binary (Is r (StructPattern (NamedType [Ok] []) [(BindFieldPattern value y)])) and (Binary y > 0))',
+      '(Binary (Is r (StructPattern (NamedType [Ok] []) [(BindFieldPattern value y)] _)) and (Binary y > 0))',
     ],
     ['not x is P', '(Unary not (Is x (NamePattern [P] [])))'],
     ['x is P < y', '(Binary (Is x (NamePattern [P] [])) < y)'],

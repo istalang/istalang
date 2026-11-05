@@ -8,6 +8,8 @@
  */
 
 import { selfType } from '../../../language/well-known.ts';
+import type { TypeParameter } from '../../syntax/declarations.ts';
+import type { RestPattern } from '../../syntax/patterns.ts';
 import type { MappedParts } from './computed-types.ts';
 import {
   type AnonymousStructType,
@@ -162,7 +164,7 @@ function keysText(of: Type, without: readonly string[]): string {
 /** A mapped struct type as written: `{ id: String; [F in keyof S]: S[F]? }` (§3.1). */
 function mappedText(type: MappedParts): string {
   const named = type.named.map((field) => `${field.name}: ${typeText(field.type)}`);
-  const mapped = `[${type.parameter.name.text} in ${typeText(type.keys)}]: ${typeText(type.value)}`;
+  const mapped = `[${boundName(type.parameter)} in ${typeText(type.keys)}]: ${typeText(type.value)}`;
   return `{ ${[...named, mapped].join('; ')} }`;
 }
 
@@ -186,6 +188,14 @@ export function parameterText(type: TypeParameterType): string {
     case 'FieldHeader':
       return type.within === undefined ? 'keyof …' : typeText(type.within);
     default:
-      return declaration.name.text;
+      return boundName(declaration);
   }
+}
+
+/**
+ * The name a parameter a declaration or a mapped type binds is written with; a struct pattern's
+ * rest binds one for its keys unwritten, read as a mapped entry's conventional `F` (§3.11).
+ */
+function boundName(declaration: TypeParameter | RestPattern): string {
+  return declaration.kind === 'RestPattern' ? 'F' : declaration.name.text;
 }

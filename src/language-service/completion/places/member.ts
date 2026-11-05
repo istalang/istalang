@@ -37,20 +37,22 @@ import {
   type SyntaxNode,
   type SyntaxTree,
 } from '../../../compiler/syntax/tree.ts';
-import type { NamedType } from '../../../compiler/syntax/types.ts';
+import type { NamedType, TypeNode } from '../../../compiler/syntax/types.ts';
 import { importedModule } from '../../namespaces.ts';
 import type { Candidate } from '../candidate.ts';
 import { type Cursor, touchingBefore } from '../cursor.ts';
 
 /**
- * Where a member is written: after a namespace or a type, `head` names it; after a value, `access`
- * reads it. A qualified name in a type or a pattern has a head alone; after a `.` where no member
- * can stand, neither is known. `names` is what the member names: a value or a value's member, a
- * type, or a struct or variant a literal builds or a pattern matches.
+ * Where a member is written: after a namespace or a type, `head` names it, or, after a type written
+ * with more than a name (`Field<Int>.Data`), `owner` is that type; after a value, `access` reads it.
+ * A qualified name in a type or a pattern has a head alone; after a `.` where no member can stand,
+ * none is known. `names` is what the member names: a value or a value's member, a type, or a
+ * struct or variant a literal builds or a pattern matches.
  */
 export interface MemberPlace {
   readonly kind: 'member';
   readonly head: Identifier | undefined;
+  readonly owner?: TypeNode | undefined;
   readonly access: MemberAccess | undefined;
   readonly names: 'value' | 'type' | 'variant';
 }
@@ -111,14 +113,21 @@ function memberPlaceOf(
     const head = node.path[node.path.findIndex((name, index) => index > 0 && reaches(name)) - 1];
     return head && { kind: 'member', head, access: undefined, names: namedBy(tree, node) };
   }
+  if (node.kind === 'MemberType' && reaches(node.name)) {
+    return { kind: 'member', head: undefined, owner: node.owner, access: undefined, names: 'type' };
+  }
   return undefined;
 }
 
 export function offerMembers(
   cursor: Cursor,
-  { head, access, names }: MemberPlace,
+  { head, owner, access, names }: MemberPlace,
 ): readonly Candidate[] {
   const { checker, module, tree } = cursor;
+  if (owner !== undefined) {
+    const type = checker.lookup.typeOfNode(module, owner);
+    return type === undefined ? [] : typeMembers(checker, module, type, names);
+  }
   const named = head === undefined ? [] : checker.lookup.denotationsOf(module, head);
   for (const { declared, type } of named) {
     if (declared.kind === 'namespace') {

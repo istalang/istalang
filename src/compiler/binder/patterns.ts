@@ -16,7 +16,7 @@
 import { bindsInPattern } from '../../language/naming.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { Identifier } from '../syntax/node.ts';
-import type { Pattern } from '../syntax/patterns.ts';
+import type { Pattern, RestPattern } from '../syntax/patterns.ts';
 import type { VariableEntity, VariableOwner } from './entities.ts';
 import { holdsNoNames, type LocalBinder, type PatternBindings } from './local-binder.ts';
 import { Scope } from './scope.ts';
@@ -60,9 +60,7 @@ const patternHandlers: Handlers<LocalBinder, Pattern, [Binding], void> = {
   ArrayPattern: (binder, node, binding) => {
     for (const element of node.elements) {
       if (element.kind === 'RestPattern') {
-        if (element.target.kind === 'Identifier') {
-          define(binder, binding.bindings, element.target, element);
-        }
+        defineRest(binder, element, binding);
       } else {
         walk(binder, element, binding);
       }
@@ -76,8 +74,18 @@ const patternHandlers: Handlers<LocalBinder, Pattern, [Binding], void> = {
     for (const field of node.fields) {
       handlerOf(fieldPatternHandlers, field)(binder, field, binding);
     }
+    if (node.rest !== undefined) {
+      defineRest(binder, node.rest, binding);
+    }
   },
 };
+
+/** `...name` binds `name`; `..._` nothing. */
+function defineRest(binder: LocalBinder, rest: RestPattern, binding: Binding): void {
+  if (rest.target.kind === 'Identifier') {
+    define(binder, binding.bindings, rest.target, rest);
+  }
+}
 
 type FieldPattern = Extract<Pattern, { kind: 'StructPattern' }>['fields'][number];
 

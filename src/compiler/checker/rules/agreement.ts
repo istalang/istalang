@@ -16,7 +16,6 @@ import type { ValueSite } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { type Fit, isExact } from '../types/fit.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
-import type { TypeRules } from '../types/type-rules.ts';
 import { literalsBase } from '../types/unions.ts';
 import { sendableWidened, widened } from '../types/widening.ts';
 
@@ -39,7 +38,7 @@ export interface Agreement {
 }
 
 /** What agreeing asks of the program: how a type fits the agreed one, and how types are built. */
-type Agreeing = Pick<CheckerContext, 'fitOf' | 'typeRules'>;
+type Agreeing = Pick<CheckerContext, 'fitOf' | 'typeRules' | 'memberUnionOf'>;
 
 /**
  * The type `produced` agree on. `checker.fitOf` says how a type fits the agreed one; a producer
@@ -56,7 +55,7 @@ export function agreedType(
   const target = expected ?? first;
   const widen =
     expected === undefined
-      ? (type: Type) => agreeingWidened(type, rules)
+      ? (type: Type) => agreeingWidened(type, checker)
       : (type: Type) => sendableWidened(type, rules);
   const decided =
     target === undefined ? undefined : firstOrWidened(target, produced, checker, widen);
@@ -75,11 +74,24 @@ function agrees(checker: Agreeing, type: Type, decided: Type): boolean {
 
 /**
  * What producers agreeing with no expected type widen the first one's type to (§2): a literal
- * type, or a union of literals of one base, to that base, which each such producer is then
- * converted to, and a sendable function type to a plain one.
+ * type, a union of literals of one base, or a member parameter standing for one of them, such as
+ * a field loop's key (§4), to that base, which each such producer is then converted to, and a
+ * sendable function type to a plain one.
  */
-function agreeingWidened(type: Type, rules: TypeRules): Type {
-  return literalsBase(type) ?? widened(type, rules);
+export function agreeingWidened(type: Type, checker: Agreeing): Type {
+  return literalsBase(type) ?? memberBase(type, checker) ?? widened(type, checker.typeRules);
+}
+
+/** The base a member parameter's union of literals has; undefined for any other type. */
+function memberBase(type: Type, checker: Agreeing): Type | undefined {
+  if (type.kind !== 'parameter') {
+    return undefined;
+  }
+  const { declaration, within } = type;
+  const union =
+    within ??
+    (declaration.kind === 'TypeParameter' ? checker.memberUnionOf(declaration) : undefined);
+  return union === undefined ? undefined : literalsBase(union);
 }
 
 /**
@@ -96,7 +108,7 @@ function firstOrWidened(
   const fits = checker.fitOf;
   const fitsAll = (decided: Type, widenProducer = false) =>
     produced.every(({ type }) =>
-      fitsExactly(fits(widenProducer ? agreeingWidened(type, checker.typeRules) : type, decided)),
+      fitsExactly(fits(widenProducer ? agreeingWidened(type, checker) : type, decided)),
     );
   if (fitsAll(first)) {
     return first;

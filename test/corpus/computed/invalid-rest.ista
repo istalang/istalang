@@ -1,0 +1,34 @@
+# error: 2034 at 15:16
+# error: 2034 at 19:30
+# error: 5420 at 24:17
+# error: 5013 at 28:23
+# error: 5167 at 33:45
+# A struct pattern's rest (§3.11): it is the last item and the only one; a variant's pattern takes
+# none; a pattern on a constrained type parameter names only the fields its constraint names; and
+# a struct comprehension over a rest of one needs a type expected of it.
+
+struct Page { title: String; body: String }
+
+enum Shape { Circle { radius: Int }; Square { side: Int } }
+
+fn first(p: Page) -> String:
+  const struct{...rest, title} = p
+  title
+
+fn twice(p: Page) -> String:
+  const struct{title, ...r1, ...r2} = p
+  title
+
+fn variant(s: Shape) -> Int:
+  match s:
+    case Circle{...rest}: 1
+    case _: 0
+
+fn unnamed<S is struct { title: String }>(s: S) -> String:
+  const struct{title, other} = s
+  title
+
+fn unexpected<S is struct { title: String }>(s: S) -> Int:
+  const struct{title, ...rest} = s
+  const copy = struct{for k, v in ...rest: [k]: v}
+  0

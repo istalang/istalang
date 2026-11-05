@@ -124,7 +124,7 @@ function parseArrayPattern(parser: Parser): Pattern {
   return { kind: 'ArrayPattern', span: parser.spanFrom(start), elements: items };
 }
 
-/** `...rest` or `..._` in an array pattern. */
+/** `...rest` or `..._`, in an array or a struct pattern. */
 function parseRestPattern(parser: Parser): RestPattern {
   const { start } = parser.cursor.advance().span;
   const target = parseWildcard(parser) ?? parser.identifier('a name for the rest');
@@ -234,10 +234,27 @@ function parseAnonymousStructPattern(parser: Parser): Pattern {
   return afterStructKeyword(parser, () => parseStructPattern(parser, undefined, start));
 }
 
-/** The braced field tests, starting at the `{`. */
+/**
+ * The braced field tests, starting at the `{`, and the rest after them. A rest anywhere but last,
+ * or a second one, is reported; the first stands as the pattern's rest, so its name still binds.
+ */
 function parseStructPattern(parser: Parser, type: NamedType | undefined, start: number): Pattern {
-  const fields = parseDelimited(parser, '{', () => parseFieldPattern(parser)).items;
-  return { kind: 'StructPattern', span: parser.spanFrom(start), type, fields };
+  const { items } = parseDelimited(parser, '{', () =>
+    parser.cursor.at('...') ? parseRestPattern(parser) : parseFieldPattern(parser),
+  );
+  const [rest, ...extra] = items.filter((item) => item.kind === 'RestPattern');
+  const fieldAfter = rest !== undefined && items.slice(items.indexOf(rest)).some(isFieldItem);
+  for (const misplaced of [...(fieldAfter ? [rest] : []), ...extra]) {
+    parser.report(parserDiagnostics.structRestLast(parser.textSpanOf(misplaced.span)));
+  }
+  const fields = items.filter(isFieldItem);
+  return { kind: 'StructPattern', span: parser.spanFrom(start), type, fields, rest };
+}
+
+function isFieldItem<Item extends { readonly kind: string }>(
+  item: Item,
+): item is Exclude<Item, RestPattern> {
+  return item.kind !== 'RestPattern';
 }
 
 function parseFieldPattern(parser: Parser): StructPattern['fields'][number] {

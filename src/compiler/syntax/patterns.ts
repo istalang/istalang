@@ -38,7 +38,10 @@ interface ParenthesizedPattern extends NodeOf<'ParenthesizedPattern'> {
   readonly pattern: Pattern;
 }
 
-/** `Approved{by}`, `m.Verdict{ok == false}`, or `struct{…}` when `type` is undefined. */
+/**
+ * `Approved{by}`, `m.Verdict{ok == false}`, or `struct{…}` when `type` is undefined; `...rest`, its
+ * last item, binds a struct of the fields no item names (§3.11), so it is held apart from them.
+ */
 export interface StructPattern extends NodeOf<'StructPattern'> {
   readonly type: NamedType | undefined;
   readonly fields: readonly (
@@ -47,6 +50,7 @@ export interface StructPattern extends NodeOf<'StructPattern'> {
     | NestedFieldPattern
     | Invalid
   )[];
+  readonly rest: RestPattern | undefined;
 }
 
 /** `by` binds the field to a variable of the same name; `reason as why` renames it. */
@@ -78,7 +82,10 @@ export interface ArrayPattern extends NodeOf<'ArrayPattern'> {
   readonly elements: readonly (Pattern | RestPattern)[];
 }
 
-/** `...rest` in an array pattern: the elements between those matched before and after it. */
+/**
+ * `...rest`: in an array pattern, the elements between those matched before and after it; last in
+ * a struct pattern, a struct of the fields the pattern doesn't name (§3.11).
+ */
 export interface RestPattern extends NodeOf<'RestPattern'> {
   readonly target: Identifier | WildcardPattern;
 }
@@ -124,7 +131,8 @@ const targetLeafHandlers: Handlers<undefined, Pattern | PatternPart, [], readonl
   NestedFieldPattern: (_, node) => targetLeaves(node.pattern),
   ParenthesizedPattern: (_, node) => targetLeaves(node.pattern),
   TuplePattern: (_, node) => node.elements.flatMap(targetLeaves),
-  StructPattern: (_, node) => node.fields.flatMap(targetLeaves),
+  StructPattern: (_, node) =>
+    [...node.fields, ...(node.rest === undefined ? [] : [node.rest])].flatMap(targetLeaves),
   // Every alternative binds the first's names (§3.11).
   OrPattern: (_, node) =>
     node.alternatives[0] === undefined ? [] : targetLeaves(node.alternatives[0]),

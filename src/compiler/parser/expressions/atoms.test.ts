@@ -83,7 +83,7 @@ describe('comprehensions', () => {
     ['[for k, v in m: k]', '(Comprehension [(NamePattern [k] []) (NamePattern [v] [])] m _ k)'],
     [
       '[for r in results if r is Ok{value}: value]',
-      '(Comprehension [(NamePattern [r] [])] results (Is r (StructPattern (NamedType [Ok] []) [(BindFieldPattern value _)])) value)',
+      '(Comprehension [(NamePattern [r] [])] results (Is r (StructPattern (NamedType [Ok] []) [(BindFieldPattern value _)] _)) value)',
     ],
     ['[\n  for x in xs:\n    x\n]', '(Comprehension [(NamePattern [x] [])] xs _ x)'],
   ])('parses %j', (text, tree) => {

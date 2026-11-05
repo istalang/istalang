@@ -1,0 +1,74 @@
+# outcome: "ok:0|bad:missing-country,non-positive|same:true"
+# Proposal 4 opening example: FormNode trait with associated type Data, Field<T>, Repeat<Row>,
+# Group<S> with struct constraint and mapped struct type { [F in keyof S]: S[F].Data }, field loop
+# indexing data[field], and the equivalent DataOf<D> recursive type match alias.
+
+trait FormNode:
+  type Data
+  fn validate(self: Self, data: Self.Data) -> Array<String>
+
+struct Field<T>:
+  value: T?
+  type Data = T
+
+fn validate(self: Field<String>, data: String) -> Array<String>:
+  if data == "": ["missing-country"] else: []
+
+fn validate(self: Field<Int>, data: Int) -> Array<String>:
+  if data <= 0: ["non-positive"] else: []
+
+struct Repeat<Row is FormNode>:
+  row: Row
+  type Data = Array<Row.Data>
+
+fn validate<R is FormNode>(self: Repeat<R>, data: Array<R.Data>) -> Array<String>:
+  let errors: Array<String> = []
+  for item in data:
+    errors = [...errors, ...self.row.validate(item)]
+  errors
+
+struct Group<S is struct { [_] is FormNode }>:
+  fields: S
+  type Data = { [F in keyof S]: S[F].Data }
+
+fn validate<S is struct { [_] is FormNode }>(self: Group<S>, data: Group<S>.Data) -> Array<String>:
+  let errors: Array<String> = []
+  for field, node in ...self.fields:
+    errors = [...errors, ...node.validate(data[field])]
+  errors
+
+struct OrderForm:
+  country: Field<String>
+  items: Repeat<Group<{ sku: Field<String>; qty: Field<Int> }>>
+
+type Order = Group<OrderForm>.Data
+
+type DataOf<D> = match D:
+  case Field<infer T>: T
+  case Repeat<infer R>: Array<DataOf<R>>
+  case Group<infer S>: DataOf<S>
+  case struct: { [F in keyof D]: DataOf<D[F]> }
+
+type MatchedOrder = DataOf<OrderForm>
+
+async fn main() -> Future<String>:
+  const schema = Group{
+    fields: OrderForm{
+      country: Field{value: "DE"},
+      items: Repeat{
+        row: Group{fields: struct{sku: Field{value: "A1"}, qty: Field{value: 1}}},
+      },
+    },
+  }
+  const validOrder: Order = struct{
+    country: "DE",
+    items: [struct{sku: "A1", qty: 2}],
+  }
+  const matchedCopy: MatchedOrder = validOrder
+  const invalidOrder: Order = struct{
+    country: "",
+    items: [struct{sku: "A1", qty: 0}],
+  }
+  const okErrs = schema.validate(validOrder)
+  const badErrs = schema.validate(invalidOrder)
+  `ok:${okErrs.length()}|bad:${badErrs.join(",")}|same:${validOrder == matchedCopy}`

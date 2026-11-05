@@ -7,14 +7,22 @@
  * `[for k, v in ...x: e]` builds one of `e` per field of `x` instead (rules/field-passes.ts), `e`
  * checked once per pass as an array literal's elements are, each expected to have what those
  * before it agree on; the elements then agree as an array literal's do (rules/agreement.ts), each
- * settled back in its own pass. A struct with no fields gives no element, so an array of `Never`
- * with nothing expected.
+ * settled back in its own pass, widened with nothing expected as disagreeing ones widen however
+ * many passes there are, so a key gives a String (§4) over one field as over several, and over a
+ * generic struct as over the one substituted for it. A struct with no fields gives no element, so
+ * an array of `Never` with nothing expected.
  */
 
 import type { Comprehension, FieldComprehension } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { agreedType, decidedSoFar, type Produced, settleProduced } from '../rules/agreement.ts';
+import {
+  agreedType,
+  agreeingWidened,
+  decidedSoFar,
+  type Produced,
+  settleProduced,
+} from '../rules/agreement.ts';
 import { checkedFieldPasses, inFieldPasses } from '../rules/field-passes.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
 import { boolType, neverType, type Type } from '../types/type.ts';
@@ -49,7 +57,7 @@ export function checkFieldComprehension(
     const type = context.expression(node.body, expectedElement ?? decidedSoFar(context, produced));
     produced.push({ type, span: node.body.span, site: node.body });
   });
-  const { decided } = agreedType(produced, context.checker, expectedElement);
+  const decided = agreedElement(context, produced, expectedElement);
   if (decided !== undefined) {
     const agreed = {
       decided,
@@ -65,4 +73,20 @@ export function checkFieldComprehension(
     });
   }
   return arrayOf(context.checker, expectedElement ?? decided ?? neverType);
+}
+
+/**
+ * What a field comprehension's elements agree on: with nothing expected, widened as producers
+ * that disagree widen, so a key is a String whichever and however many fields it names (§4), and
+ * a generic comprehension has, instantiated, the type it has over the struct substituted.
+ */
+function agreedElement(
+  context: BodyContext,
+  produced: readonly Produced[],
+  expected: Type | undefined,
+): Type | undefined {
+  const { decided } = agreedType(produced, context.checker, expected);
+  return expected === undefined && decided !== undefined
+    ? agreeingWidened(decided, context.checker)
+    : decided;
 }

@@ -14,9 +14,9 @@ import type { FunctionType, NominalType, Type } from '../../checker/types/type.t
 import { baseOf, membersOf } from '../../checker/types/unions.ts';
 import { madeAsync } from '../async-fits.ts';
 import type { FunctionContext } from '../context.ts';
-import { rebuiltAs } from '../expressions/structs.ts';
 import { tupleOf } from '../expressions/tuples.ts';
 import type { BodyOwner } from '../instances.ts';
+import { rebuiltAs } from '../struct-values.ts';
 import { convertedIntoAny } from '../trait-objects/trait-objects.ts';
 import { asBase, intoUnion } from '../unions.ts';
 

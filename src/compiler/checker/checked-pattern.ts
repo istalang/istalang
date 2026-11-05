@@ -31,13 +31,28 @@ export type TargetOwner = VariableDeclaration | For | FieldHeader | Comprehensio
  * prelude calls the checker made at `site`: its length, the item `offset` from its start, or from
  * its end when negative, and the items between the first `before` and the last `after`. A target
  * never reads an array, since its length can fail, nor tests a member, so its parts are positions
- * (`TargetBinding`).
+ * and the struct steps below (`TargetBinding`).
  */
 export type PartStep =
   | number
   | { readonly kind: 'member'; readonly union: Type; readonly member: Type }
   | { readonly kind: 'downcast' }
-  | ArrayStep;
+  | ArrayStep
+  | StructStep;
+
+/**
+ * A step into a struct that names its field rather than its position: a field of `of`, a struct
+ * whose fields aren't known yet (a type parameter with a struct constraint, §3.5), whose position
+ * each instantiation decides; or a rest (§3.11), the struct `to` of the fields of `from` that the
+ * pattern doesn't name, built anew from them by name. A struct whose fields are known is read by
+ * position, the layout its fields are in (name order, §3.1), which no instantiation changes.
+ */
+export type StructStep =
+  | { readonly kind: 'field'; readonly of: Type; readonly name: string }
+  | { readonly kind: 'fieldRest'; readonly from: Type; readonly to: Type };
+
+/** A step a target's part is reached by: a field's or an element's position, or a struct step. */
+export type TargetStep = number | StructStep;
 
 /** A step an array pattern takes through a prelude call (`PartStep`). */
 export type ArrayStep =
@@ -50,12 +65,12 @@ export type ArrayStep =
       readonly after: number;
     };
 
-/** A name a target binds: its part's type, and the field and tuple element positions to it (§3.15). */
+/** A name a target binds: its part's type, and the steps to it from the whole value (§3.15). */
 export interface TargetBinding {
   readonly name: Identifier;
   readonly type: Type;
-  /** Field or tuple element positions from the whole value to the part, outermost first. */
-  readonly path: readonly number[];
+  /** Field or tuple element positions, or struct steps, from the whole value, outermost first. */
+  readonly path: readonly TargetStep[];
 }
 
 /** A name a pattern binds: its part's type, and the steps to it from the whole value (§3.11). */

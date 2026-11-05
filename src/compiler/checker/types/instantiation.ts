@@ -9,7 +9,13 @@
 
 import type { CheckedBody, CheckedFunction, Checker, FieldPass } from '../check.ts';
 import { type FieldRead, instantiatedRead } from '../checked-field.ts';
-import type { CheckedPattern, PartStep, PatternTest } from '../checked-pattern.ts';
+import type {
+  CheckedPattern,
+  PartStep,
+  PatternTest,
+  StructStep,
+  TargetBinding,
+} from '../checked-pattern.ts';
 import type { Fit } from './fit.ts';
 import { sameType } from './identity.ts';
 import { type Substitution, substitute, substituteAny, substituteKept } from './substitution.ts';
@@ -46,7 +52,7 @@ export function instantiatedBody(
     },
     fitAt: (site) => concreteFit(body.fitAt(site)),
     targetsOf: (owner) =>
-      body.targetsOf(owner).map((binding) => ({ ...binding, type: concrete(binding.type) })),
+      body.targetsOf(owner).map((binding) => instantiatedTarget(binding, substitution, checker)),
     assignedOf: (assignment) =>
       body
         .assignedOf(assignment)
@@ -108,6 +114,22 @@ function instantiatedPasses(
     value: substitute(value, substitution, checker.typeRules),
     body: instantiatedBody(body, substitution, checker),
   }));
+}
+
+/** What a target binds, as one instantiation sees it: its type and its path's types substituted. */
+function instantiatedTarget(
+  binding: TargetBinding,
+  substitution: Substitution,
+  checker: Pick<Checker, 'typeRules'>,
+): TargetBinding {
+  const rules = checker.typeRules;
+  return {
+    ...binding,
+    type: substitute(binding.type, substitution, rules),
+    path: binding.path.map((step) =>
+      typeof step === 'number' ? step : instantiatedStructStep(step, substitution, rules),
+    ),
+  };
 }
 
 /** `f(value)`, or undefined for an undefined value: a table's answer, read through `f`. */
@@ -192,6 +214,9 @@ function instantiatedStep(step: PartStep, substitution: Substitution, rules: Typ
         union: substitute(step.union, substitution, rules),
         member: substitute(step.member, substitution, rules),
       };
+    case 'field':
+    case 'fieldRest':
+      return instantiatedStructStep(step, substitution, rules);
     case 'downcast':
     case 'length':
     case 'item':
@@ -202,6 +227,18 @@ function instantiatedStep(step: PartStep, substitution: Substitution, rules: Typ
       return unhandled;
     }
   }
+}
+
+/** A struct step with the types it carries substituted: an instantiation decides what they are. */
+function instantiatedStructStep(
+  step: StructStep,
+  substitution: Substitution,
+  rules: TypeRules,
+): StructStep {
+  const concrete = (type: Type) => substitute(type, substitution, rules);
+  return step.kind === 'field'
+    ? { ...step, of: concrete(step.of) }
+    : { kind: 'fieldRest', from: concrete(step.from), to: concrete(step.to) };
 }
 
 /**

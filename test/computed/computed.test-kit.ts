@@ -16,7 +16,15 @@ import { typeText } from '../../src/compiler/checker/types/type-text.ts';
 import { compiledText } from '../../src/compiler/compile.test-kit.ts';
 import { idOf } from '../../src/compiler/program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations.ts';
+import { dump } from '../../src/compiler/syntax/tree.test-kit.ts';
 import { decodeJson } from '../../src/definition/codec.ts';
+import { parseText } from '../../src/formatter/format.test-kit.ts';
+import { formatText } from '../../src/formatter/format.ts';
+import { completionsAt } from '../../src/language-service/completion/index.ts';
+import { hoverAt } from '../../src/language-service/hover.ts';
+import { programAt } from '../../src/language-service/language-service.test-kit.ts';
+import { nameAt } from '../../src/language-service/navigation/declarations.ts';
+import { placeOf } from '../../src/language-service/navigation/navigation.test-kit.ts';
 import { startToEnd, testRuntime } from '../../src/runtime/runtime.test-kit.ts';
 
 /** A checked program with `declarations` and a probe function `fn _probe(...parameters)`. */
@@ -115,6 +123,47 @@ export function runMain(
   const source = [...declarations, `async fn main() -> Future<${result}>:`, `  ${body}`].join('\n');
   const state = startToEnd(testRuntime(), compiledText(source));
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
+}
+
+/** The hover's code lines at the `‸` cursor in `lines`, as `main.ista` beside the std modules. */
+export function hoverCodeAt(...lines: readonly string[]): readonly string[] | undefined {
+  const { program, module, offset } = programAt(...lines);
+  return hoverAt(program, module, offset)?.code;
+}
+
+/** Completion item names offered at the `‸` cursor in `lines`. */
+export function completionNamesAt(...lines: readonly string[]): readonly string[] {
+  const { program, module, offset } = programAt(...lines);
+  return completionsAt(program, module, offset).map(({ name }) => name);
+}
+
+/** Declaration places (`module:line:col:text`) that the identifier at `‸` resolves to. */
+export function declaredPlacesAt(...lines: readonly string[]): readonly string[] {
+  const { program, module, offset } = programAt(...lines);
+  const found = nameAt(program, module, offset);
+  return (found?.declarations ?? []).map(({ at }) => placeOf(program, at));
+}
+
+/** Formatting `source` twice, and the syntax tree's dump before and after. */
+export interface FormattedRoundTrip {
+  readonly formatted: string | undefined;
+  readonly twice: string | undefined;
+  readonly dumpBefore: string;
+  readonly dumpAfter: string | undefined;
+}
+
+/** Formats `source` twice and dumps its syntax tree before and after. */
+export function formatRoundTrip(source: string): FormattedRoundTrip {
+  const treeBefore = parseText(source);
+  const formatted = formatText(source);
+  const twice = formatted === undefined ? undefined : formatText(formatted);
+  const treeAfter = formatted === undefined ? undefined : parseText(formatted);
+  return {
+    formatted,
+    twice,
+    dumpBefore: dump(treeBefore, treeBefore.root),
+    dumpAfter: treeAfter === undefined ? undefined : dump(treeAfter, treeAfter.root),
+  };
 }
 
 /** A generated struct field with a name, type, initial literal, and alternate literal. */
