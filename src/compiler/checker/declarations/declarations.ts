@@ -39,6 +39,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
 import { checkHostBoundary, crossesToHost } from '../rules/host-boundary.ts';
 import { checkSuite } from '../rules/suites.ts';
+import { namesMemberParameter } from '../traits/struct-keys.ts';
 import type { GenericDeclaration } from '../types/type-arguments.ts';
 import { futureArgument } from '../types/well-known.ts';
 import { checkFiniteAlias, checkFiniteFields } from './struct-rules.ts';
@@ -55,6 +56,11 @@ function checkTypeParameters(checker: CheckerContext, declaration: GenericDeclar
     checker.constraintsOf(parameter);
     checker.structConstraintsOf(parameter);
     checker.memberUnionOf(parameter);
+    if (parameter.memberOf !== undefined && namesMemberParameter(checker, parameter)) {
+      const module = checker.moduleOf(declaration);
+      const { memberOf, name } = parameter;
+      checker.report(module, checkerDiagnostics.memberOfMemberParameter(memberOf.span, name.text));
+    }
     if (parameter.defaultType !== undefined) {
       checker.resolveType(checker.moduleOf(declaration), parameter.defaultType);
     }

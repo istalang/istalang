@@ -36,6 +36,7 @@ import { substitute } from '../types/substitution.ts';
 import {
   aliasedAs,
   errorType,
+  isMemberParameter,
   isPrimitive,
   neverType,
   type ParameterKey,
@@ -134,11 +135,15 @@ function mappedKeys(checker: CheckerContext, holding: StructType, union: Type): 
 /**
  * The union the member parameter `parameter` stands for one member of, resolved where it is
  * declared (§3.5); a mapped entry's less the names its braces give fields (`mappedKeys`).
- * Undefined for any other parameter.
+ * Undefined for any other parameter; the error type where it names a member parameter, one type
+ * with no members to choose from (`namesMemberParameter`), so nothing follows it round a cycle.
  */
 export function memberUnionOf(checker: CheckerContext, parameter: TypeParameter): Type | undefined {
   if (parameter.memberOf === undefined) {
     return undefined;
+  }
+  if (namesMemberParameter(checker, parameter)) {
+    return errorType;
   }
   const module = checker.moduleOf(parameter);
   const union = checker.resolveType(module, parameter.memberOf);
@@ -146,6 +151,17 @@ export function memberUnionOf(checker: CheckerContext, parameter: TypeParameter)
   const entry = parentOf(tree, parameter);
   const holding = entry?.kind === 'MappedField' ? parentOf(tree, entry) : undefined;
   return holding?.kind === 'StructType' ? mappedKeys(checker, holding, union) : union;
+}
+
+/**
+ * Whether the member parameter `parameter` is written of another member parameter (`S in S`,
+ * `A in B, B in A`, `T in S`), which stands for one type already: a mistake (§3.5).
+ */
+export function namesMemberParameter(checker: CheckerContext, parameter: TypeParameter): boolean {
+  return (
+    parameter.memberOf !== undefined &&
+    isMemberParameter(checker.resolveType(checker.moduleOf(parameter), parameter.memberOf))
+  );
 }
 
 /**

@@ -167,6 +167,11 @@ export const genericTemplates = {
     message: (parameter: string, union: string, found: string) =>
       `'${parameter}' stands for one member of ${union}, which ${found} isn't (§3.5).`,
   },
+  memberOfMemberParameter: {
+    code: 5135,
+    message: (parameter: string) =>
+      `'${parameter}' stands for one member of a union, and a member parameter is one type already, with no members to choose from: write the union itself after 'in' (§3.5).`,
+  },
   severalMembersArgument: {
     code: 5130,
     message: (parameter: string, union: string, found: string) =>

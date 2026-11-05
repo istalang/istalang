@@ -1,9 +1,12 @@
-# error: 5130 at 15:48
-# error: 5001 at 17:34
-# error: 2027 at 19:28
-# error: 5419 at 23:14
-# error: 5419 at 26:13
-# error: 5020 at 31:10
+# error: 5130 at 18:48
+# error: 5001 at 20:34
+# error: 2027 at 22:28
+# error: 5419 at 26:14
+# error: 5419 at 29:13
+# error: 5020 at 34:10
+# error: 5135 at 37:20
+# error: 5135 at 39:23
+# error: 5135 at 39:31
 # Member parameters (§3.5) take one member of their union, and type arguments in a pattern pick a
 # member of a union only (§3.11).
 
@@ -30,3 +33,7 @@ fn arity(x: Box<Int> | Box<String>) -> Int:
   match x:
     case Box<Int, Int>{value}: 1
     case _: 0
+
+fn selfMember<S in S>(s: S) -> String: s
+
+fn mutualMembers<A in B, B in A>(a: A) -> Int: 0
