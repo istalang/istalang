@@ -1,10 +1,13 @@
 /**
  * Type grammar (§2, §3): named and generic types, `T?`, tuples, function types (whose parameters
- * may end in a rest, `...A`), anonymous structs, `any T`, `&T`, unions, literal types, associated
- * types (`Field<Int>.Data`). What follows `is` is parts/constraints.ts's.
+ * may end in a rest, `...A`), anonymous structs (mapped ones too, parts/structs.ts), `any T`, `&T`,
+ * unions, literal types, associated types (`Field<Int>.Data`) and key types (`keyof S`, `S[K]`).
+ * What follows `is` is parts/constraints.ts's.
  *
  * Operators bind at two levels, as patterns' do (parts/levels.ts): `|` between a union's members,
- * then the postfix `?` and `.Name`. A function type's return type is a whole type, so `fn() -> A | B` returns
+ * then the postfix `?`, `.Name` and `[K]`. `keyof` takes a type of the postfix level, so
+ * `keyof S[K]` is `keyof (S[K])` and `keyof S | T` is `(keyof S) | T` (§3.1). A function type's
+ * return type is a whole type, so `fn() -> A | B` returns
  * the union, while `any`'s traits are names, so `any A & B | C` is `(any A & B) | C`. A literal
  * type is a string, an integer, maybe negative, or a bool (§2), so another literal is no type.
  *
@@ -33,7 +36,7 @@ import { type LeveledParselet, leveledGrammar } from './parts/levels.ts';
 import { type Negatable, parseLiteral, parseNegativeLiteral } from './parts/literals.ts';
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
 import { afterStructKeyword, parseFieldEntries } from './parts/structs.ts';
-import { parseDelimited, parseGroup } from './recovery.ts';
+import { parseDelimited, parseEnclosed, parseGroup } from './recovery.ts';
 import {
   followsModifier,
   type StartParselets,
@@ -78,6 +81,8 @@ const wordParselets = {
   sendable: (parser) =>
     followsModifier(parser, 'sendable') ? parseFunctionType(parser) : undefined,
   any: (parser) => (parser.cursor.kindAt(1) === 'identifier' ? parseAnyType(parser) : undefined),
+  keyof: (parser) =>
+    typeParselets[parser.cursor.kindAt(1)] === undefined ? undefined : parseKeyofType(parser),
 } satisfies WordParselets<TypeWord, (parser: Parser) => TypeNode | undefined>;
 
 const typeOperators: Partial<Record<CursorKind, LeveledParselet<TypeLevel, TypeNode>>> = {
@@ -85,6 +90,7 @@ const typeOperators: Partial<Record<CursorKind, LeveledParselet<TypeLevel, TypeN
   '?': { level: 'postfix', parse: parseOptionalType },
   '??': { level: 'postfix', parse: parseOptionalType },
   '.': { level: 'postfix', parse: parseMemberType },
+  '[': { level: 'postfix', parse: parseIndexedType },
 };
 
 /** A type whose operators all bind at least as tightly as a level. */
@@ -145,6 +151,19 @@ function parseMemberType(parser: Parser, owner: TypeNode): TypeNode {
   parser.cursor.advance();
   const name = parser.identifier('an associated type name');
   return { kind: 'MemberType', span: parser.spanFrom(parser.startOf(owner)), owner, name };
+}
+
+/** `[K]` after a type, `S["region"]`: the type of the field the key names (§3.1). */
+function parseIndexedType(parser: Parser, owner: TypeNode): TypeNode {
+  const key = parseEnclosed(parser, '[', () => parser.type()).value;
+  return { kind: 'IndexedType', span: parser.spanFrom(parser.startOf(owner)), owner, key };
+}
+
+/** `keyof S`, at `keyof`: the type after it binds tighter than `|` (the banner). */
+function parseKeyofType(parser: Parser): TypeNode {
+  const { start } = parser.cursor.advance().span;
+  const owner = parseTypeAt(parser, 'postfix');
+  return { kind: 'KeyofType', span: parser.spanFrom(start), owner };
 }
 
 /** `<A, B>`, starting at the `<`. */

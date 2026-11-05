@@ -73,6 +73,7 @@ import { disposalOf } from './rules/disposal.ts';
 import { Expansion } from './rules/expansion.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
 import { resolveAnyType } from './traits/any-types.ts';
+import { memberUnionOf } from './traits/struct-keys.ts';
 import { type Fit, type Fitting, fitOf } from './types/fit.ts';
 import type { StaticOwner } from './types/named-types.ts';
 import { resolveTypeNode } from './types/resolve-type.ts';
@@ -117,7 +118,7 @@ export class ProgramChecker implements CheckerContext {
   readonly fitting: Fitting;
   readonly bindings: Bindings;
   readonly inputs: ProgramInputs;
-  readonly moduleOf: (declaration: Declaration | VariableDeclaration) => ModuleId;
+  readonly moduleOf: (declaration: Declaration | VariableDeclaration | TypeParameter) => ModuleId;
   readonly isStd: (module: ModuleId | undefined) => boolean;
   /** The module whose item, or item's type parameter, `node` is; undefined for a local one. */
   readonly #itemModuleOf: (node: NodeOf<string>) => ModuleId | undefined;
@@ -285,10 +286,7 @@ export class ProgramChecker implements CheckerContext {
   }
 
   memberUnionOf(parameter: TypeParameter): Type | undefined {
-    const module = this.#itemModuleOf(parameter);
-    return parameter.memberOf === undefined || module === undefined
-      ? undefined
-      : this.resolveType(module, parameter.memberOf);
+    return memberUnionOf(this, parameter);
   }
 
   constrainLater(

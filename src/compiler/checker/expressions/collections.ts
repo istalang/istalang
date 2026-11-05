@@ -54,11 +54,11 @@ import {
 import { checkIterated, iteratedItem } from '../rules/iteration.ts';
 import { collectionTarget } from '../types/expected.ts';
 import { isExact } from '../types/fit.ts';
+import { isPack } from '../types/function-types.ts';
 import {
   errorType,
   expectsError,
   intType,
-  isPack,
   type NominalType,
   neverType,
   type Type,

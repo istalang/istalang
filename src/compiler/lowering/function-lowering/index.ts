@@ -32,7 +32,7 @@ import { handlerOf } from '../../../structures/kind-table.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { CheckedBody, Checker, SignatureParameter, ValueSite } from '../../checker/check.ts';
-import type { FieldRead } from '../../checker/checked-field.ts';
+import type { FieldRead, FieldReading } from '../../checker/checked-field.ts';
 import type { CheckedPattern } from '../../checker/checked-pattern.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../../checker/resolved-call.ts';
 import type { Fit } from '../../checker/types/fit.ts';
@@ -40,7 +40,7 @@ import { substitute } from '../../checker/types/substitution.ts';
 import type { Type } from '../../checker/types/type.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Expression, Lambda, MemberAccess } from '../../syntax/expressions/index.ts';
+import type { Expression, Lambda } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
@@ -239,8 +239,8 @@ class FunctionLowering implements FunctionContext {
     return checkedAt(this.body.typeOf(node), node, 'type');
   }
 
-  fieldReadOf(access: MemberAccess): FieldRead {
-    return checkedAt(this.body.fieldReadOf(access), access, 'field read');
+  fieldReadOf(reading: FieldReading): FieldRead {
+    return checkedAt(this.body.fieldReadOf(reading), reading, 'field read');
   }
 
   patternOf(pattern: Pattern): CheckedPattern {

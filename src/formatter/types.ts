@@ -3,7 +3,8 @@
  * `struct` before `{` changes nothing (§3.1), and the indented field block under a field is sugar
  * for the same type, so braces are the one spelling. A struct constraint (§3.5) keeps its
  * `struct`, which makes it one, and prints bare when it has no entries: `struct` and `struct {}`
- * are the same constraint.
+ * are the same constraint. A mapped entry prints its parameter as a member type parameter does,
+ * `[F in keyof S]: T` (§3.1).
  */
 
 import { builders } from 'prettier/doc';
@@ -54,6 +55,17 @@ export const typePrinters: Printers<TypeKind> = {
     ),
   LiteralType: (printer, node) => printer.print(node.value),
   MemberType: (printer, node) => [printer.print(node.owner), '.', printer.print(node.name)],
+  IndexedType: (printer, node) => [
+    printer.print(node.owner),
+    enclosed(printer, node, ['[', ']'], node.key),
+  ],
+  KeyofType: (printer, node) => ['keyof ', printer.print(node.owner)],
+  MappedField: (printer, node) =>
+    annotated(printer, node, [
+      enclosed(printer, node, ['[', ']'], node.parameter),
+      ': ',
+      printer.print(node.type),
+    ]),
   StructConstraint: (printer, node) => {
     const entries = fieldList(printer, node, node.entries);
     return entries === '{}' ? 'struct' : ['struct ', entries];

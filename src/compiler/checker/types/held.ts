@@ -64,12 +64,15 @@ export function heldParts(
           return unhandled;
         }
       }
+    case 'mapped':
+      return [...type.named.map((field) => field.type), type.value];
     case 'primitive':
     case 'literal':
     case 'function':
     case 'parameter':
     case 'associated':
     case 'field':
+    case 'keys':
     case 'any':
     case 'error':
       return [];

@@ -1,0 +1,138 @@
+/**
+ * Key types and anonymous struct types as written (§3.1): `keyof S`, `S[K]`, and a `{…}` type,
+ * a mapped one among them. Each builds through the program's rules (type-rules.ts), which reduce
+ * it once what it is built from is known, so a written type and a substituted one are one type;
+ * here, what only writing it can get wrong is reported.
+ *
+ * - A shape's field takes no annotation (§3.16), which is reported here, where nothing else
+ *   declares it, without computing its value: that could reach the very type being resolved.
+ * - A mapped entry's keys are its parameter's union less the names the braces give fields
+ *   (checker `memberUnionOf`), each a String literal naming a field, or the keys of a struct not
+ *   known yet; one entry at most. Its value is resolved once, its parameter standing for every key.
+ */
+
+import { followsConvention, isUnnamed } from '../../../language/naming.ts';
+import type { ModuleId } from '../../program/program.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { isKeyword } from '../../syntax/tokens.ts';
+import type { IndexedType, MappedField, StructType, TypeNode } from '../../syntax/types.ts';
+import type { CheckerContext } from '../context.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { declaredFields } from './declared-fields.ts';
+import { errorType, shapeType, type Type } from './type.ts';
+import { typeText } from './type-text.ts';
+import { membersOf } from './unions.ts';
+
+/** Where a type is written: the checker resolving it, and its module. */
+interface Written {
+  readonly checker: CheckerContext;
+  readonly module: ModuleId;
+}
+
+/** `keyof S` (§3.1): the union of `S`'s keys; the error type, reported, for no struct type. */
+export function keysWritten({ checker, module }: Written, node: TypeNode, owner: Type): Type {
+  const keys = checker.typeRules.keysOf(owner, []);
+  if (keys.kind === 'error' && owner.kind !== 'error') {
+    checker.report(module, checkerDiagnostics.noStructKeys(node.span, typeText(owner)));
+  }
+  return keys;
+}
+
+/**
+ * `S[K]` (§3.1): the type of the field `K` names, or the union of those it may name; the error
+ * type, reported, when `S` has no keys or `K` isn't one of them.
+ */
+export function fieldWritten(written: Written, node: IndexedType, owner: Type, key: Type): Type {
+  const { checker, module } = written;
+  const keys = keysWritten(written, node.owner, owner);
+  const type = checker.typeRules.fieldType(owner, key);
+  if (type.kind === 'error' && keys.kind !== 'error' && key.kind !== 'error') {
+    checker.report(
+      module,
+      checkerDiagnostics.notKeyOf(node.key.span, typeText(key), typeText(owner)),
+    );
+  }
+  return type;
+}
+
+/** A `{…}` type (§3.1): a shape, or a mapped struct type when one of its entries maps keys. */
+export function structWritten(written: Written, node: StructType): Type {
+  const { checker, module } = written;
+  for (const field of node.fields) {
+    for (const annotation of field.annotations ?? []) {
+      checker.report(module, checkerDiagnostics.shapeFieldAnnotation(annotation.span));
+    }
+  }
+  const named = declaredFields(
+    checker,
+    module,
+    node.fields.filter((field) => field.kind !== 'MappedField'),
+  );
+  const [entry, ...more] = node.fields.filter((field) => field.kind === 'MappedField');
+  if (entry === undefined) {
+    return shapeType(node, named);
+  }
+  for (const extra of more) {
+    checker.report(module, checkerDiagnostics.severalMappedEntries(extra.span));
+  }
+  const keys = mappedKeysWritten(written, entry);
+  const value = checker.resolveType(module, entry.type);
+  return keys.kind === 'error'
+    ? keys
+    : checker.typeRules.mappedType({
+        origin: node,
+        named,
+        parameter: entry.parameter,
+        keys,
+        value,
+      });
+}
+
+/** A mapped entry's keys, each reported that names no field; the error type after a report. */
+function mappedKeysWritten({ checker, module }: Written, entry: MappedField): Type {
+  const keys = checker.memberUnionOf(entry.parameter) ?? errorType;
+  if (keys.kind === 'error') {
+    return keys;
+  }
+  const at: AnchoredSpan = entry.parameter.memberOf?.span ?? entry.parameter.span;
+  const names = membersOf(keys).flatMap((key) =>
+    key.kind === 'literal' && typeof key.value === 'string' ? [key.value] : [],
+  );
+  if (!membersOf(keys).every((key) => isKey(checker, key))) {
+    checker.report(module, checkerDiagnostics.mappedKeysNotNames(at, typeText(keys)));
+    return errorType;
+  }
+  const misnamed = names.find((name) => !isFieldName(name));
+  if (misnamed !== undefined) {
+    checker.report(module, checkerDiagnostics.mappedFieldName(at, misnamed));
+    return errorType;
+  }
+  return keys;
+}
+
+/**
+ * Whether `key` may stand among a mapped entry's keys: a String literal, `Never`, a struct's other
+ * keys not known yet, or a member parameter, which stands for one of its union's.
+ */
+function isKey(checker: CheckerContext, key: Type): boolean {
+  switch (key.kind) {
+    case 'literal':
+      return typeof key.value === 'string';
+    case 'keys':
+      return true;
+    case 'primitive':
+      return key.name === 'Never';
+    case 'parameter':
+      return (
+        key.declaration.kind === 'TypeParameter' &&
+        checker.memberUnionOf(key.declaration) !== undefined
+      );
+    default:
+      return false;
+  }
+}
+
+/** Whether `name` can name a field, as a key a mapped entry makes one of (§2, §3.1). */
+function isFieldName(name: string): boolean {
+  return !(isUnnamed(name) || isKeyword(name)) && followsConvention(name, 'value');
+}

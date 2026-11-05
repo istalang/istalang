@@ -19,8 +19,9 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { takenBy } from '../resolution/applicability.ts';
 import { fitArguments } from '../resolution/argument-fit.ts';
 import { bindArguments } from '../resolution/binding.ts';
+import { packRestSlot } from '../types/function-types.ts';
 import { insideOptional } from '../types/inside-optional.ts';
-import { errorType, packRestSlot, type Type } from '../types/type.ts';
+import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureOf } from '../types/well-known.ts';
 

@@ -7,11 +7,31 @@
 import {
   errorType,
   type FunctionType,
-  isPack,
   type Type,
+  type TypeParameterType,
   tupleElements,
   tupleType,
 } from './type.ts';
+
+/** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
+export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };
+
+/** The rest slot of a parameter or function type ending in a pack (§3.5). */
+export const packRestSlot: RestSlot = { kind: 'pack' };
+
+/** Whether `type` is a pack, a type parameter standing for a tuple of types (§3.5). */
+export function isPack(type: Type): type is TypeParameterType {
+  return (
+    type.kind === 'parameter' &&
+    type.declaration.kind === 'TypeParameter' &&
+    type.declaration.isPack
+  );
+}
+
+/** Whether `type` can stand for a pack: a tuple, `Unit` (the empty tuple), or a pack (§3.5). */
+export function fillsPack(type: Type): boolean {
+  return type.kind === 'error' || isPack(type) || tupleElements(type) !== undefined;
+}
 
 /**
  * `type` ending in `pack`: a pack it keeps, a tuple it flattens into parameters by value, `Unit`

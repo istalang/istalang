@@ -17,20 +17,11 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import {
-  declaredFunctions,
-  type FunctionDeclaration,
-  isMethod,
-  type TypeParameter,
-} from '../../syntax/declarations.ts';
+import { declaredFunctions, type FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { CheckerContext } from '../context.ts';
 import type { TypeMembers } from '../denotation.ts';
-import type { Inference } from '../inference/infer.ts';
-import { takenBy } from '../resolution/applicability.ts';
-import { bindArguments } from '../resolution/binding.ts';
 import {
-  type Candidate,
   callableThrough,
   modulesSeenFrom,
   staticCandidates,
@@ -38,8 +29,7 @@ import {
   staticTargetOf,
   topLevelCandidates,
 } from '../resolution/candidates.ts';
-import { signatureOf } from '../resolution/choice.ts';
-import { meets } from '../resolution/conformance.ts';
+import { takesAsSelf } from '../resolution/receivers.ts';
 import { metThroughTraits } from '../resolution/trait-calls.ts';
 import { requiredFields, requiredFunctions } from '../traits/constraints.ts';
 import {
@@ -48,10 +38,7 @@ import {
   knownConstraints,
   structConstraintsOn,
 } from '../traits/known-constraints.ts';
-import { substituteConstraint } from '../types/substitution.ts';
-import { type FieldMember, type ParameterKey, type Type, tupleElements } from '../types/type.ts';
-import { parametersIn } from '../types/type-parts.ts';
-import { searchSite } from '../use-site.ts';
+import { type FieldMember, type Type, tupleElements } from '../types/type.ts';
 
 const noMembers: TypeMembers = {
   fields: [],
@@ -171,56 +158,4 @@ function methodNames(checker: CheckerContext, module: ModuleId, type: Type): Rea
       requiredFunctions(trait).map(({ name }) => name.text),
     ),
   ]);
-}
-
-/**
- * Whether `candidate` is a method a call through a value of `type` may choose, its other arguments
- * aside: its `self` takes the value as the call's receiver, and the type parameters that decides
- * meet their constraints.
- */
-function takesAsSelf(checker: CheckerContext, candidate: Candidate, type: Type): boolean {
-  const { declaration, requirement } = candidate;
-  if (!isMethod(declaration)) {
-    return false;
-  }
-  const { typeParameters, parameters } = signatureOf(
-    checker,
-    declaration,
-    requirement?.substitution,
-  );
-  const taken = takenBy(
-    checker,
-    { typeParameters, parameters: parameters.slice(0, 1) },
-    {
-      callArguments: [{ type, passing: 'receiver' }],
-      written: undefined,
-      binder: bindArguments,
-    },
-  );
-  return 'inference' in taken && meetsWhereFound(checker, typeParameters, taken.inference);
-}
-
-/**
- * Whether the type parameters `inference` found meet their constraints. A parameter still open, or
- * a constraint mentioning one, waits for the arguments that decide it.
- */
-function meetsWhereFound(
-  checker: CheckerContext,
-  parameters: readonly TypeParameter[],
-  inference: Inference,
-): boolean {
-  const site = searchSite(checker);
-  const substitution = inference.substitution();
-  const isOpen = (parameter: ParameterKey) =>
-    inference.isUnknown(parameter) && inference.boundOf(parameter) === undefined;
-  return parameters.every((parameter) => {
-    const found = inference.boundOf(parameter);
-    return (
-      found === undefined ||
-      checker.constraintsOf(parameter).every((constraint) => {
-        const mapped = substituteConstraint(constraint, substitution, checker.typeRules);
-        return mapped.arguments.flatMap(parametersIn).some(isOpen) || meets(site, found, mapped);
-      })
-    );
-  });
 }

@@ -20,7 +20,6 @@ import type {
   Expression,
   FieldsLiteral,
   MapLiteral,
-  MemberAccess,
 } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
@@ -51,7 +50,7 @@ import type {
   SignatureParameter,
   ValueSite,
 } from './check.ts';
-import type { FieldRead } from './checked-field.ts';
+import type { FieldRead, FieldReading } from './checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { CheckerContext } from './context.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
@@ -262,9 +261,13 @@ export interface IterationRecord {
   readonly record: (iteration: Iteration, form: IterationForm) => void;
 }
 
-/** How each field read reaches its field (expressions/member-access.ts). */
+/**
+ * How each field read reaches its field (expressions/member-access.ts), which a place reaching it
+ * asks again: a field a key reads is a place's field, never an element (calls/places.ts).
+ */
 export interface FieldReadRecord {
-  readonly record: (access: MemberAccess, read: FieldRead) => void;
+  readonly record: (reading: FieldReading, read: FieldRead) => void;
+  readonly of: (reading: FieldReading) => FieldRead | undefined;
 }
 
 /** Each pattern's tests and bindings (patterns/matching.ts). */

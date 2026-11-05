@@ -11,6 +11,7 @@ import {
   aliasedAs,
   type ComputedType,
   isComputed,
+  type MappedParts,
   type NominalType,
   type ParameterKey,
   type Type,
@@ -42,6 +43,10 @@ export function typeChildren(type: Type): readonly Type[] {
       return [type.of];
     case 'field':
       return [type.of, type.key];
+    case 'keys':
+      return [type.of];
+    case 'mapped':
+      return [...type.named.map((field) => field.type), type.keys, type.value];
     case 'literal':
     case 'primitive':
     case 'parameter':
@@ -120,8 +125,14 @@ function sameConstraintOrder(one: Type, other: Type): boolean {
   );
 }
 
-/** Whether two types that are shapes were written at the same node, which tools locate them by. */
+/**
+ * Whether two types that are shapes, or mapped struct types, were written at the same node, which
+ * tools locate them by and a mapped type's parameter belongs to.
+ */
 function sameOrigin(one: Type, other: Type): boolean {
+  if (one.kind === 'mapped') {
+    return other.kind === 'mapped' && one.origin === other.origin;
+  }
   return one.kind !== 'anonymous' || (other.kind === 'anonymous' && one.origin === other.origin);
 }
 
@@ -139,7 +150,10 @@ export function unaliased(type: Type): Type {
   return mapParts(type.alias === undefined ? type : { ...type, alias: undefined }, unaliased);
 }
 
-/** The type parameters `type` mentions, each once, in order of appearance. */
+/**
+ * The type parameters `type` mentions, each once, in order of appearance; not those it binds: an
+ * `any` type's `Self`, a mapped struct type's parameter.
+ */
 export function parametersIn(type: Type): readonly ParameterKey[] {
   if (type.kind === 'parameter') {
     return [type.declaration];
@@ -149,6 +163,9 @@ export function parametersIn(type: Type): readonly ParameterKey[] {
     for (const { trait } of type.constraints) {
       mentioned.delete(trait);
     }
+  }
+  if (type.kind === 'mapped') {
+    mentioned.delete(type.parameter);
   }
   return [...mentioned];
 }
@@ -206,6 +223,10 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
         return rules.associatedType(map(type.of), type.name);
       case 'field':
         return rules.fieldType(map(type.of), map(type.key));
+      case 'keys':
+        return rules.keysOf(map(type.of), type.without);
+      case 'mapped':
+        return rules.mappedType(mappedParts(type, map));
       default:
         return undefined;
     }
@@ -231,6 +252,10 @@ export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => T
       return { ...type, of: map(type.of) };
     case 'field':
       return { ...type, of: map(type.of), key: map(type.key) };
+    case 'keys':
+      return { ...type, of: map(type.of) };
+    case 'mapped':
+      return { ...type, ...mappedParts(type, map) };
     case 'literal':
     case 'primitive':
     case 'parameter':
@@ -267,4 +292,15 @@ export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => T
       return unhandled;
     }
   }
+}
+
+/** A mapped struct type's parts, each type it is built from replaced by what `map` gives. */
+function mappedParts(type: MappedParts, map: (child: Type) => Type): MappedParts {
+  return {
+    origin: type.origin,
+    named: type.named.map((field) => ({ ...field, type: map(field.type) })),
+    parameter: type.parameter,
+    keys: map(type.keys),
+    value: map(type.value),
+  };
 }

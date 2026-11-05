@@ -6,20 +6,24 @@
  * A field whose type is left for the next lines is the indented sugar for an anonymous struct
  * (§3.1): `data:` over indented fields means `data: { … }`, so it becomes a StructType too.
  *
+ * An anonymous struct type's entry may map a union's keys to fields, `[F in keyof S]: T` (§3.1),
+ * where `F` is a member type parameter of the union, so it is read as one. How many a type holds
+ * is the checker's to judge, as a struct's repeated field names are.
+ *
  * Only a struct's or a variant's declaration gives its fields defaults (§3.1); a default anywhere
  * else is read, so recovery goes on past it, then reported and left out of the tree.
  */
 
-import type { DeclaredField } from '../../syntax/declarations.ts';
-import type { Invalid, Missing } from '../../syntax/node.ts';
-import type { FieldDeclaration, StructType } from '../../syntax/types.ts';
+import type { DeclaredField, TypeParameter } from '../../syntax/declarations.ts';
+import type { Missing } from '../../syntax/node.ts';
+import type { FieldDeclaration, MappedField, StructType } from '../../syntax/types.ts';
 import { attachAnnotations } from '../annotations.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { parseBody } from '../layout/bodies.ts';
 import { type ItemRules, parseItemEntries } from '../layout/index.ts';
 import { nested } from '../nesting.ts';
 import type { Parser } from '../parser.ts';
-import type { Enclosed } from '../recovery.ts';
+import { type Enclosed, parseEnclosed } from '../recovery.ts';
 
 /**
  * What `parseBraced` parses after an optional `struct`, which must be followed by `{`: a missing
@@ -59,9 +63,39 @@ function parseDeclaredField(parser: Parser): DeclaredField {
   return { ...field, span: parser.spanFrom(start), type, defaultValue };
 }
 
+/** `[F in U]: T`, at the `[`: a mapped entry of an anonymous struct type (§3.1). */
+function parseMappedField(parser: Parser): MappedField {
+  const { start } = parser.cursor.token.span;
+  const parameter = parseEnclosed(parser, '[', () => parseMappedParameter(parser)).value;
+  parser.expect(':');
+  const type = parser.type();
+  return { kind: 'MappedField', span: parser.spanFrom(start), parameter, type };
+}
+
+/** `F in U` inside a mapped entry's brackets: a member type parameter of `U` (§3.5). */
+function parseMappedParameter(parser: Parser): TypeParameter {
+  const name = parser.identifier('a type parameter');
+  parser.expect('in');
+  const memberOf = parser.type();
+  return {
+    kind: 'TypeParameter',
+    span: parser.spanFrom(parser.startOf(name)),
+    isPack: false,
+    name,
+    memberOf,
+    constraints: [],
+    defaultType: undefined,
+  };
+}
+
+/** An anonymous struct type's entry: a field, or a mapped entry, at its `[`. */
+function parseFieldEntry(parser: Parser): FieldDeclaration | MappedField {
+  return parser.cursor.at('[') ? parseMappedField(parser) : parseField(parser);
+}
+
 /** Fields nest through their indented blocks, so each descends a level (nesting.ts). */
-const fieldRules: ItemRules<FieldDeclaration> = {
-  parseItem: (parser) => nested(parser, () => parseField(parser)),
+const fieldRules: ItemRules<FieldDeclaration | MappedField> = {
+  parseItem: (parser) => nested(parser, () => parseFieldEntry(parser)),
   annotate: attachAnnotations,
 };
 
@@ -72,9 +106,7 @@ export const declaredFieldRules: ItemRules<DeclaredField> = {
 };
 
 /** `{ a: A; b: B }`, the fields separated by `;` or line breaks; the cursor must be at the `{`. */
-export function parseFieldEntries(
-  parser: Parser,
-): Enclosed<readonly (FieldDeclaration | Invalid)[]> {
+export function parseFieldEntries(parser: Parser): Enclosed<StructType['fields']> {
   return parseItemEntries(parser, fieldRules);
 }
 

@@ -4,14 +4,24 @@
  *
  * Fields live in their own namespace, so they are checked for convention and repeats but never
  * defined in a scope, except as the variables the defaults after them read (declarations.ts, §3.1).
+ *
+ * A mapped entry's type parameter (`[F in keyof S]: T`, §3.1) is visible in its field's type
+ * alone; its union is bound in the type's own scope, where `F` is not yet defined.
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { Field } from '../syntax/declarations.ts';
 import type { Invalid } from '../syntax/node.ts';
-import type { ConstraintNode, StructConstraint, TypeNode } from '../syntax/types.ts';
+import type {
+  ConstraintNode,
+  MappedField,
+  StructConstraint,
+  StructType,
+  TypeNode,
+} from '../syntax/types.ts';
+import { typeEntity } from './entities.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
-import type { Scope } from './scope.ts';
+import { Scope } from './scope.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const typeHandlers: Handlers<LocalBinder, TypeNode, [Scope], void> = {
@@ -33,11 +43,13 @@ const typeHandlers: Handlers<LocalBinder, TypeNode, [Scope], void> = {
     );
     bindTypes(binder, node.returnType === undefined ? [] : [node.returnType], scope);
   },
-  StructType: (binder, node, scope) => bindFields(binder, node.fields, scope),
+  StructType: (binder, node, scope) => bindStructType(binder, node, scope),
   AnyType: (binder, node, scope) => bindTypes(binder, node.traits, scope),
   UnionType: (binder, node, scope) => bindTypes(binder, node.members, scope),
   LiteralType: holdsNoNames,
   MemberType: (binder, node, scope) => bindType(binder, node.owner, scope),
+  IndexedType: (binder, node, scope) => bindTypes(binder, [node.owner, node.key], scope),
+  KeyofType: (binder, node, scope) => bindType(binder, node.owner, scope),
   Missing: holdsNoNames,
   Invalid: holdsNoNames,
 };
@@ -52,6 +64,33 @@ function bindTypes(binder: LocalBinder, nodes: readonly TypeNode[], scope: Scope
   for (const node of nodes) {
     bindType(binder, node, scope);
   }
+}
+
+/** An anonymous struct type's entries: its fields, then its mapped entries, each in its own scope. */
+function bindStructType(binder: LocalBinder, node: StructType, scope: Scope): void {
+  bindFields(
+    binder,
+    node.fields.filter((field) => field.kind !== 'MappedField'),
+    scope,
+  );
+  for (const field of node.fields) {
+    if (field.kind === 'MappedField') {
+      bindMappedField(binder, field, scope);
+    }
+  }
+}
+
+/** `[F in U]: T`: `U` in the type's scope, `T` where `F` names the parameter (the banner). */
+function bindMappedField(binder: LocalBinder, node: MappedField, scope: Scope): void {
+  const { parameter } = node;
+  if (parameter.memberOf !== undefined) {
+    bindType(binder, parameter.memberOf, scope);
+  }
+  const inner = Scope.nested(scope);
+  binder.declare(inner, parameter.name, typeEntity(parameter), { convention: 'type' });
+  binder.enter(node, inner);
+  bindType(binder, node.type, inner);
+  binder.annotations(node, scope);
 }
 
 /**

@@ -33,7 +33,7 @@
  */
 
 import { type Fitting, fitOf, matchConversion } from '../types/fit.ts';
-import { functionFits } from '../types/function-types.ts';
+import { fillsPack, functionFits, isPack } from '../types/function-types.ts';
 import { sameType } from '../types/identity.ts';
 import { isOneMember } from '../types/member-arguments.ts';
 import { parameterType } from '../types/resolve-type.ts';
@@ -42,8 +42,6 @@ import {
   type AnonymousStructType,
   type AnyType,
   type FunctionType,
-  fillsPack,
-  isPack,
   isPrimitive,
   type LiteralValue,
   neverType,
@@ -151,7 +149,7 @@ export class Inference {
     const expected = this.substituted(declared);
     const taking = membersOf(expected).flatMap((member) => {
       const union = this.#memberUnionOf(member);
-      return union === undefined ? [member] : membersOf(union);
+      return union === undefined ? [member] : membersOf(this.substituted(union));
     });
     return literalOrBase(value, unionOf(taking, this.#fitting));
   }
@@ -209,6 +207,8 @@ export class Inference {
         return this.#matchUnion(declared, given);
       case 'associated':
       case 'field':
+      case 'keys':
+      case 'mapped':
         // Opaque: what it stands for is known only once its parameters are (§3.5).
         return (
           parametersIn(declared).some((each) => this.#unknowns.has(each)) ||

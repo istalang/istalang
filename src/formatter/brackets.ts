@@ -53,6 +53,10 @@ export function standingIn(parent: SyntaxNode, child: SyntaxNode): Standing {
       return child === parent.callee ? 'outside' : 'brackets';
     case 'Index':
       return child === parent.index ? 'brackets' : 'outside';
+    case 'IndexedType':
+      return child === parent.key ? 'brackets' : 'outside';
+    case 'MappedField':
+      return child === parent.parameter ? 'brackets' : 'outside';
     case 'Lambda':
     case 'FunctionDeclaration':
     case 'FunctionType': {

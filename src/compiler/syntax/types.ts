@@ -15,6 +15,7 @@
  */
 
 import type { Annotatable } from './annotations.ts';
+import type { TypeParameter } from './declarations.ts';
 import type { Literal, Unary } from './expressions/index.ts';
 import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './node.ts';
 
@@ -58,9 +59,24 @@ interface AnyType extends NodeOf<'AnyType'> {
   readonly traits: readonly TypeNode[];
 }
 
-/** An anonymous struct: `{ sku: String; qty: Int }` or `struct { … }`. */
+/**
+ * An anonymous struct: `{ sku: String; qty: Int }` or `struct { … }`. One entry may map a union of
+ * keys to fields (`{ id: String; [F in keyof S]: S[F]? }`, §3.1), which makes it a mapped struct
+ * type: still an anonymous struct type, its fields the named ones and one per key no named entry
+ * names.
+ */
 export interface StructType extends NodeOf<'StructType'> {
-  readonly fields: readonly (FieldDeclaration | Invalid)[];
+  readonly fields: readonly (FieldDeclaration | MappedField | Invalid)[];
+}
+
+/**
+ * `[F in keyof S]: T`, an anonymous struct type's mapped entry (§3.1): a field of type `T` for each
+ * String literal of the union that no named entry of the braces names. `F` is a member type
+ * parameter of that union (§3.5), visible in `T` alone, where it stands for one field's name.
+ */
+export interface MappedField extends NodeOf<'MappedField'>, Annotatable {
+  readonly parameter: TypeParameter;
+  readonly type: TypeNode;
 }
 
 /** `name: Type`: a field of an anonymous struct type or a trait, which has no default. */
@@ -84,6 +100,24 @@ export interface ReferenceType extends NodeOf<'ReferenceType'> {
   readonly referent: TypeNode;
 }
 
+/**
+ * `S[K]` (§3.1): the type of the field the key `K` names in `S`, or the union of those its keys
+ * name. Binds as tightly as `?` and `.Name`.
+ */
+export interface IndexedType extends NodeOf<'IndexedType'> {
+  readonly owner: TypeNode;
+  readonly key: TypeNode;
+}
+
+/**
+ * `keyof S` (§3.1): the union of `S`'s field names as String literal types. `keyof` is contextual
+ * (§2), and binds looser than `[K]`, `.Name` and `?`, tighter than `|`: `keyof S[K]` is
+ * `keyof (S[K])`.
+ */
+interface KeyofType extends NodeOf<'KeyofType'> {
+  readonly owner: TypeNode;
+}
+
 /** `node` without the parentheses around it, which only group: `(A)` is `A`. */
 export function unparenthesizedType(node: TypeNode): TypeNode {
   return node.kind === 'ParenthesizedType' ? unparenthesizedType(node.inner) : node;
@@ -101,6 +135,8 @@ export type TypeNode =
   | UnionType
   | LiteralType
   | MemberType
+  | IndexedType
+  | KeyofType
   | Missing
   | Invalid;
 
@@ -149,6 +185,7 @@ export type ConstraintNode = TypeNode | StructConstraint;
 /** Nodes that occur only as parts of a type or a constraint. */
 export type TypePart =
   | FieldDeclaration
+  | MappedField
   | RestType
   | StructConstraint
   | OtherFields
@@ -172,6 +209,8 @@ const writtenTypeKinds = {
   UnionType: true,
   LiteralType: true,
   MemberType: true,
+  IndexedType: true,
+  KeyofType: true,
 } as const satisfies Record<WrittenType['kind'], true>;
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 

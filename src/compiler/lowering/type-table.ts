@@ -145,6 +145,8 @@ export class TypeTable {
       case 'parameter':
       case 'associated':
       case 'field':
+      case 'keys':
+      case 'mapped':
       case 'error':
         return unreachable(`A ${type.kind} type can't reach lowering.`);
       case 'any':

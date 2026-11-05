@@ -8,7 +8,8 @@
 
 import type { Inference } from '../inference/infer.ts';
 import type { Binding } from '../resolved-call.ts';
-import { isPack, type Type, tupleType } from '../types/type.ts';
+import { isPack } from '../types/function-types.ts';
+import { type Type, tupleType } from '../types/type.ts';
 import type { CallArgument, Inapplicability, Takes } from './call-arguments.ts';
 
 /** The arguments `binding` gives the pack rest parameters of `takes`, by argument number. */

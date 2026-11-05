@@ -57,6 +57,8 @@ export function isDisposable(checker: CheckerContext, type: Type): boolean {
     case 'primitive':
     case 'literal':
     case 'union':
+    case 'keys':
+    case 'mapped':
     case 'anonymous':
     case 'tuple':
     case 'function':

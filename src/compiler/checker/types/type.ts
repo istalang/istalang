@@ -217,12 +217,6 @@ export interface ParameterSlot {
   readonly reference: boolean;
 }
 
-/** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
-export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };
-
-/** The rest slot of a parameter or function type ending in a pack (§3.5). */
-export const packRestSlot: RestSlot = { kind: 'pack' };
-
 /**
  * A function type; a sendable one's values capture only sendable values (§3.14). Its parameters
  * may end in a pack (`fn(Int, ...A) -> R`, §3.5), which stands for the parameters a tuple
@@ -292,12 +286,47 @@ interface FieldOfType extends WrittenThrough {
   readonly key: Type;
 }
 
+/**
+ * The keys of `of`, a struct type not known yet, that its struct constraints don't name, less those
+ * `without` names, in name order (§3.1, §3.5): opaque until `of` is known. `keyof S` is this beside
+ * the literals its constraints name, so a written key fits it as a union member does; the keys of
+ * a field loop's other fields, a rest's and a mapped entry's are this with more names left out.
+ */
+interface KeysType extends WrittenThrough {
+  readonly kind: 'keys';
+  readonly of: Type;
+  readonly without: readonly string[];
+}
+
+/**
+ * A mapped struct type (§3.1) whose `keys` aren't all known yet: its `named` fields, in name
+ * order, and a field of the type `value` for each key, `parameter` standing for that key in it.
+ * Once the keys are String literals it is the shape of those fields (TypeRules), written at
+ * `origin`; until then it is opaque, equal to another only up to the name of its parameter.
+ */
+interface MappedType extends WrittenThrough {
+  readonly kind: 'mapped';
+  readonly origin: StructType;
+  readonly named: readonly FieldMember[];
+  readonly parameter: TypeParameter;
+  readonly keys: Type;
+  readonly value: Type;
+}
+
+/** What a mapped struct type is built from (`MappedType`), reduced or not. */
+export type MappedParts = Omit<MappedType, 'kind' | 'alias'>;
+
 /** A type computed from others, opaque until they are known (§3.5): reduced by TypeRules. */
-export type ComputedType = AssociatedOfType | FieldOfType;
+export type ComputedType = AssociatedOfType | FieldOfType | KeysType | MappedType;
 
 /** Whether `type` is computed from types not known yet, so only an instantiation reduces it. */
 export function isComputed(type: Type): type is ComputedType {
-  return type.kind === 'associated' || type.kind === 'field';
+  return (
+    type.kind === 'associated' ||
+    type.kind === 'field' ||
+    type.kind === 'keys' ||
+    type.kind === 'mapped'
+  );
 }
 
 /** Whether `type` is known only per instantiation: a type parameter, or computed from one (§3.5). */
@@ -320,6 +349,8 @@ export type Type =
   | UnionType
   | AssociatedOfType
   | FieldOfType
+  | KeysType
+  | MappedType
   | ErrorType;
 
 /** `type` as written through `alias`; the error type stays itself, as a diagnostic explained it. */
@@ -366,18 +397,4 @@ export function tupleElements(type: Type): readonly Type[] | undefined {
     return type.elements;
   }
   return isPrimitive(type, 'Unit') ? [] : undefined;
-}
-
-/** Whether `type` is a pack, a type parameter standing for a tuple of types (§3.5). */
-export function isPack(type: Type): type is TypeParameterType {
-  return (
-    type.kind === 'parameter' &&
-    type.declaration.kind === 'TypeParameter' &&
-    type.declaration.isPack
-  );
-}
-
-/** Whether `type` can stand for a pack: a tuple, `Unit` (the empty tuple), or a pack (§3.5). */
-export function fillsPack(type: Type): boolean {
-  return type.kind === 'error' || isPack(type) || tupleElements(type) !== undefined;
 }

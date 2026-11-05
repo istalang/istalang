@@ -297,7 +297,12 @@ function shapeWriters(program: Program): ReadonlyMap<string, Writers> {
 /** The field names `node` writes a shape or a struct declaration with, as a key; undefined for others. */
 function writerOf(node: SyntaxNode): { key: string; kind: keyof Writers } | undefined {
   switch (node.kind) {
-    case 'StructType':
+    case 'StructType': {
+      const named = node.fields.filter((field) => field.kind !== 'MappedField');
+      return named.length === node.fields.length
+        ? { key: fieldsKey(named), kind: 'shapes' }
+        : undefined;
+    }
     case 'SharedStructDeclaration':
       return { key: fieldsKey(node.fields), kind: 'shapes' };
     case 'StructDeclaration':

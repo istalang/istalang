@@ -22,7 +22,8 @@ import { unparenthesizedType } from '../../syntax/types.ts';
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { errorType, isPack, packRestSlot, type RestSlot, type Type } from '../types/type.ts';
+import { isPack, packRestSlot, type RestSlot } from '../types/function-types.ts';
+import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { arrayElement, futureArgument, futureOf } from '../types/well-known.ts';
 

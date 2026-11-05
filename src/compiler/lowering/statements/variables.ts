@@ -35,6 +35,7 @@ import {
 } from '../../syntax/statements.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCallAt } from '../emit-call.ts';
+import type { TypedValue } from '../holdings.ts';
 import { type AssignedPlace, cellRegister, enterAssigned } from '../places.ts';
 
 /** A register holding a cell, and the `_Cell<T>` type entry it is created as. */
@@ -243,7 +244,11 @@ function lowerCompound(
   place.write(writtenPart(context, result, part), node.span);
 }
 
-/** `value`, the part of an assignment's value `part` writes, fitted to its place (§2, §3.14). */
-function writtenPart(context: FunctionContext, value: Register, part: AssignedPart): Register {
-  return context.fitted(value, part.type, part.fit, part.target);
+/**
+ * `value`, the part of an assignment's value `part` writes, fitted to its place (§2, §3.14), with
+ * the type the checker found for it: a place a key of several fields names takes it as it is and
+ * converts it into each field's own type (keyed-fields.ts).
+ */
+function writtenPart(context: FunctionContext, value: Register, part: AssignedPart): TypedValue {
+  return { register: context.fitted(value, part.type, part.fit, part.target), type: part.type };
 }

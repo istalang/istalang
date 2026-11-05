@@ -15,7 +15,7 @@
  *   question reached again while it is answered takes a stand-in (structures/entries/).
  */
 
-import type { AnyType, Type } from './type.ts';
+import type { AnyType, MappedParts, ParameterKey, Type } from './type.ts';
 
 /** The rules of the program building a type that types/ sits below. */
 export interface TypeRules {
@@ -35,4 +35,18 @@ export interface TypeRules {
    * not known yet's opaque `FieldOfType`; the error type when `of` has no such field.
    */
   readonly fieldType: (of: Type, key: Type) => Type;
+  /**
+   * The keys of `of` but those `without` names (§3.1): a known struct type's field names as a union
+   * of String literals, `Never` for none; a struct type not known yet's, the literals its
+   * constraints name beside the opaque `KeysType` of the others; the error type for no struct.
+   */
+  readonly keysOf: (of: Type, without: readonly string[]) => Type;
+  /**
+   * The mapped struct type of `parts` (§3.1), its value read through `outer` too: once its keys
+   * are String literals, the shape of its named fields and one per key, the key and `outer`
+   * replaced in the value together; else the opaque `MappedType`.
+   */
+  readonly mappedType: (parts: MappedParts, outer?: ReadonlyMap<ParameterKey, Type>) => Type;
+  /** Whether every key `key` may be names a field of `of`, as a written `S[K]` must (§3.1). */
+  readonly isKeyOf: (key: Type, of: Type) => boolean;
 }

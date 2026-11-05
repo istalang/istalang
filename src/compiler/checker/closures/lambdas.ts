@@ -35,17 +35,8 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Produced } from '../rules/agreement.ts';
 import { isSendable } from '../traits/sendable.ts';
 import { expectedFunction } from '../types/expected.ts';
-import { withPack } from '../types/function-types.ts';
-import {
-  errorType,
-  expectsError,
-  type FunctionType,
-  isPack,
-  packRestSlot,
-  type RestSlot,
-  type Type,
-  unitType,
-} from '../types/type.ts';
+import { isPack, packRestSlot, type RestSlot, withPack } from '../types/function-types.ts';
+import { errorType, expectsError, type FunctionType, type Type, unitType } from '../types/type.ts';
 import { FunctionScope } from './function-scope.ts';
 import { declareOwnCall } from './own-calls.ts';
 import { blockTail, ReturnScope } from './returns.ts';

@@ -48,7 +48,10 @@ function sendable(checker: CheckerContext, type: Type, deciding: TypeCycle): boo
     case 'tuple':
     case 'anonymous':
     case 'union':
+    case 'mapped':
       return heldParts(checker, type).every((child) => sendable(checker, child, deciding));
+    case 'keys':
+      return true;
     case 'parameter':
     case 'associated':
     case 'field':

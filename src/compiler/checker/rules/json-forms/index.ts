@@ -188,6 +188,8 @@ export class JsonForms implements JsonCodecs {
       case 'parameter':
       case 'associated':
       case 'field':
+      case 'keys':
+      case 'mapped':
       case 'error':
         return { kind: 'none', reason: undefined };
       default: {

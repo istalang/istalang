@@ -25,6 +25,7 @@ import {
   requiredFieldType,
 } from '../traits/constraints.ts';
 import { fieldOf, structConstraintsOn } from '../traits/known-constraints.ts';
+import { isStructType } from '../traits/struct-keys.ts';
 import { sameType } from '../types/identity.ts';
 import {
   constraintSetText,
@@ -139,14 +140,6 @@ function structShortfall(
     }
   }
   return undefined;
-}
-
-/** Whether `type` is a struct type (§3.5): a struct declaration's, not shared or extern, or a shape. */
-function isStructType(type: Type): boolean {
-  return (
-    type.kind === 'anonymous' ||
-    (type.kind === 'nominal' && type.entity.declaration.kind === 'StructDeclaration')
-  );
 }
 
 /** What a field, by its name and type, lacks to meet an entry's `rule`. */

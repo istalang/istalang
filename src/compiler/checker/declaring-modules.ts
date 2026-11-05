@@ -13,7 +13,7 @@
 import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { ModuleId, Program } from '../program/program.ts';
-import { type Declaration, typeParametersOf } from '../syntax/declarations.ts';
+import { type Declaration, type TypeParameter, typeParametersOf } from '../syntax/declarations.ts';
 import { fieldsFunctionsOf } from '../syntax/field-defaults.ts';
 import type { NodeOf } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
@@ -40,12 +40,15 @@ export class DeclaringModules {
     return this.#items.get(node);
   };
 
-  /** The module declaring `declaration`, an item or a local declaration. */
-  readonly moduleOf = (declaration: Declaration | VariableDeclaration): ModuleId =>
+  /**
+   * The module declaring `declaration`, an item or a local declaration, or the type parameter of
+   * either, a mapped struct type's among them (§3.1).
+   */
+  readonly moduleOf = (declaration: Declaration | VariableDeclaration | TypeParameter): ModuleId =>
     this.itemModuleOf(declaration) ??
     memo(this.#locals, declaration, () => this.#moduleHolding(declaration));
 
-  #moduleHolding(node: Declaration | VariableDeclaration): ModuleId {
+  #moduleHolding(node: Declaration | VariableDeclaration | TypeParameter): ModuleId {
     for (const [id, { tree }] of this.#program.modules) {
       if (parentOf(tree, node) !== undefined) {
         return id;

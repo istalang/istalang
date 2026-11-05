@@ -31,6 +31,7 @@ import {
 } from '../checked-field.ts';
 import type { CheckerContext } from '../context.ts';
 import type { RequirementOrigin } from '../resolved-call.ts';
+import { sameType } from '../types/identity.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import {
   type EntryRule,
@@ -47,7 +48,7 @@ import {
   isOpaque,
   type Type,
 } from '../types/type.ts';
-import { literalType } from '../types/unions.ts';
+import { literalType, membersOf } from '../types/unions.ts';
 import {
   constraintOn,
   constraintSubstitution,
@@ -202,9 +203,50 @@ export function associatedDeclarationsOn(
     const { declaration } = of.entity;
     return declaration.kind === 'ExternStructDeclaration' ? [] : declaration.associatedTypes;
   }
+  const fields = of.kind === 'field' ? keyedFieldTypes(checker, of.of, of.key) : undefined;
+  if (fields !== undefined) {
+    const [first = [], ...others] = fields.map((type) => associatedDeclarationsOn(checker, type));
+    return first.filter((declared) =>
+      others.every((each) => each.some((other) => other.name.text === declared.name.text)),
+    );
+  }
   return isOpaque(of)
     ? constraintsDeclaring(checker, of).flatMap(({ trait }) => requiredAssociatedTypes(trait))
     : [];
+}
+
+/**
+ * The types of the fields a key not known yet may name in `of`, a struct type known already, so
+ * its field's type is one of these per instantiation; undefined for any other `of`, or a key known.
+ */
+function keyedFieldTypes(
+  checker: CheckerContext,
+  of: Type,
+  key: Type,
+): readonly Type[] | undefined {
+  if (isOpaque(of) || !isOpaque(key)) {
+    return undefined;
+  }
+  const fields = checker.fieldsOf(of);
+  const types = keyMembers(checker, key).map(
+    (member) =>
+      fields?.find((field) => member.kind === 'literal' && field.name === member.value)?.type,
+  );
+  return types.every((type) => type !== undefined) ? types : undefined;
+}
+
+/**
+ * The keys `key` may be, each one key: a union's members, a member parameter's union's, at any
+ * depth (§3.5); anything else, itself.
+ */
+export function keyMembers(checker: CheckerContext, key: Type): readonly Type[] {
+  return membersOf(key).flatMap((member) => {
+    const union =
+      member.kind === 'parameter' && member.declaration.kind === 'TypeParameter'
+        ? checker.memberUnionOf(member.declaration)
+        : undefined;
+    return union === undefined ? [member] : keyMembers(checker, union);
+  });
 }
 
 /** What declares the associated type `name` of `of` (§3.1); undefined when it has none. */
@@ -217,41 +259,61 @@ export function associatedDeclarationOf(
 }
 
 /**
- * The type of the field `key` names in `of` (§3.5): a known struct's field's; on a type not known
- * yet, the exact type its struct constraints give that field, or else the opaque type naming it,
- * when they name it; the error type when there is no such field.
+ * What the struct constraints of a field's struct ask of it, by the key naming it: the entries
+ * naming a literal key; for the other keys (a `KeysType`), the others' entries, since only a field
+ * that is there has a type; for a key not known yet, what each of the keys it may be is asked
+ * alike, by its traits (`commonRules`). None on a struct type known already, whose fields have
+ * types of their own.
  */
-export function fieldTypeOf(checker: CheckerContext, of: Type, key: Type): Type {
-  if (of.kind === 'error' || key.kind === 'error') {
-    return errorType;
+export function entryRules(checker: CheckerContext, type: Type): readonly EntryRule[] {
+  if (type.kind !== 'field') {
+    return [];
   }
-  if (key.kind !== 'literal' || typeof key.value !== 'string') {
-    return errorType;
-  }
-  const name = key.value;
-  if (!isOpaque(of)) {
-    return checker.fieldsOf(of)?.find((field) => field.name === name)?.type ?? errorType;
-  }
-  const opaque: Type = { kind: 'field', of, key };
-  const rules = entryRules(checker, opaque);
-  const exact = rules.find((rule) => rule.kind === 'type');
-  if (exact !== undefined) {
-    return exact.type;
-  }
-  return rules.length === 0 ? errorType : opaque;
+  const models = structConstraintsOn(checker, type.of);
+  const rulesOf = (key: Type): readonly EntryRule[] => {
+    if (key.kind === 'literal' && typeof key.value === 'string') {
+      const name = key.value;
+      return models.flatMap(
+        (model) => model.named.find((entry) => entry.name === name)?.rule ?? [],
+      );
+    }
+    if (key.kind === 'keys') {
+      return models.flatMap((model) => model.others ?? []);
+    }
+    const members = keyMembers(checker, key);
+    return members.length === 1 && members[0] === key ? [] : commonRules(members.map(rulesOf));
+  };
+  return rulesOf(type.key);
 }
 
 /**
- * What the struct constraints of a field's struct ask of it, by the name its key is: the entries
- * naming it, since one only the others' entry covers may not be there at all.
+ * The traits each of several fields' rules asks, as one rule: a field any of them gives an exact
+ * type, or asks a struct constraint of, meets nothing known here beside them.
  */
-function entryRules(checker: CheckerContext, type: Type): readonly EntryRule[] {
-  if (type.kind !== 'field' || type.key.kind !== 'literal' || typeof type.key.value !== 'string') {
+function commonRules(each: readonly (readonly EntryRule[])[]): readonly EntryRule[] {
+  const sets = each.map((rules) =>
+    rules.every((rule) => rule.kind === 'meets' && rule.structs.length === 0)
+      ? rules.flatMap((rule) => (rule.kind === 'meets' ? rule.traits : []))
+      : undefined,
+  );
+  const [first, ...others] = sets;
+  if (first === undefined || sets.some((set) => set === undefined)) {
     return [];
   }
-  const name = type.key.value;
-  return structConstraintsOn(checker, type.of).flatMap(
-    (model) => model.named.find((entry) => entry.name === name)?.rule ?? [],
+  const traits = first.filter((trait) =>
+    others.every((set) => set?.some((other) => sameConstraint(other, trait))),
+  );
+  return traits.length === 0 ? [] : [{ kind: 'meets', traits, structs: [] }];
+}
+
+function sameConstraint(one: Constraint, other: Constraint): boolean {
+  return (
+    one.trait === other.trait &&
+    one.arguments.length === other.arguments.length &&
+    one.arguments.every((argument, index) => {
+      const second = other.arguments[index];
+      return second !== undefined && sameType(argument, second);
+    })
   );
 }
 

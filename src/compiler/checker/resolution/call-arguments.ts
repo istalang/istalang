@@ -8,7 +8,8 @@
 
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { Accepts } from '../body-context.ts';
-import type { LiteralType, ParameterSlot, RestSlot, Type } from '../types/type.ts';
+import type { RestSlot } from '../types/function-types.ts';
+import type { LiteralType, ParameterSlot, Type } from '../types/type.ts';
 import type { BindingFailure } from './binding.ts';
 
 /**

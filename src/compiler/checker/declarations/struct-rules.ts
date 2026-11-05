@@ -55,6 +55,8 @@ function holds(
     case 'parameter':
     case 'associated':
     case 'field':
+    case 'keys':
+    case 'mapped':
     case 'any':
     case 'error':
       return false;

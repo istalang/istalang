@@ -13,8 +13,10 @@
  *   since a collision would make two types one without any error.
  * - A literal type is its value, a string's quoted as JSON, so no text it holds can end it early.
  * - A union is its members' keys, sorted, since its members are a set.
- * - A type computed from types not known yet (`T.Data`, `S["meta"]`) is its parts' keys: such a
- *   type is opaque, equal only to itself (§3.5).
+ * - A type computed from types not known yet (`T.Data`, `S["meta"]`, `keyof S`) is its parts' keys:
+ *   such a type is opaque, equal only to itself (§3.5). A mapped struct type not reduced yet keys its
+ *   own parameter by how deep it binds, so its spelling's name for it never makes two types; it
+ *   starts with `*`, as no other type's key does, so it never keys alike with a shape.
  * - An alias names no type of its own (§3.17), so no key mentions one.
  * - A type's own key is memoized per type object, which is immutable. Comparing generic signatures
  *   up to the names of their type parameters (rules/clashes.ts) keys each of those parameters by
@@ -23,7 +25,7 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
-import type { AnonymousStructType, ParameterKey, Type } from './type.ts';
+import type { AnonymousStructType, MappedParts, ParameterKey, Type } from './type.ts';
 
 /** Every identity numbered so far; an object no longer reachable lets its number go. */
 const identities = new WeakMap<object, number>();
@@ -100,11 +102,31 @@ function keyOf(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefi
       return `${key(type.of)}.${type.name}`;
     case 'field':
       return `${key(type.of)}[${key(type.key)}]`;
+    case 'keys':
+      return `keyof(${key(type.of)})-${JSON.stringify(type.without)}`;
+    case 'mapped':
+      return mappedKeyOf(type, positions);
     default: {
       const unhandled: never = type;
       return unhandled;
     }
   }
+}
+
+/**
+ * A mapped struct type's key: its named fields', its keys' and its value's, its own parameter keyed
+ * by how many mapped types bind one around it, so two alike up to that name are one type.
+ */
+function mappedKeyOf(
+  type: MappedParts,
+  positions: ReadonlyMap<ParameterKey, number> | undefined,
+): string {
+  const outer = positions ?? new Map<ParameterKey, number>();
+  const bound = -1 - [...outer.values()].filter((position) => position < 0).length;
+  const inner = new Map([...outer, [type.parameter, bound]]);
+  const named = type.named.map((field) => `${field.name}:${typeKey(field.type, positions)}`);
+  const mapped = `[${typeKey(type.keys, positions)}]:${typeKey(type.value, inner)}`;
+  return `*{${[...named, mapped].join(',')}}`;
 }
 
 function shapeKeyOf(

@@ -3,10 +3,15 @@
  * lowering reads the record and never looks a field up by name again. A read through a type
  * parameter's constraint can't be resolved by the generic body checked once; each instantiation
  * resolves it into one of the others (`instantiatedRead`), by the one rule here.
+ *
+ * A field is read by its name, `s.name`, or by a key, `s[k]` (§3.9): a key that is one name once
+ * known reads as the name does, and several keys read the field the key's value names when the
+ * program runs.
  */
 
 import { unreachable } from '../../structures/unreachable.ts';
 import type { TraitDeclaration } from '../syntax/declarations.ts';
+import type { Index, MemberAccess } from '../syntax/expressions/index.ts';
 import type { FieldDeclaration } from '../syntax/types.ts';
 import type { Checker } from './check.ts';
 import { type AnyType, type FieldMember, isOpaque, type Type } from './types/type.ts';
@@ -28,7 +33,25 @@ export type FieldRead =
   | { readonly kind: 'position'; readonly index: number }
   | { readonly kind: 'dispatch'; readonly on: AnyType; readonly required: RequiredField }
   | { readonly kind: 'required'; readonly on: Type; readonly required: RequiredField }
-  | { readonly kind: 'named'; readonly on: Type; readonly name: string };
+  | { readonly kind: 'named'; readonly on: Type; readonly name: string }
+  | { readonly kind: 'keyed'; readonly on: Type; readonly key: Type };
+
+/** What reads a field: `s.name`, or `s[k]` with a key of `s`'s type (§3.9). */
+export type FieldReading = MemberAccess | Index;
+
+/**
+ * How a read by a key of the type `key` reaches its field on a value of `type`: as its name does,
+ * when the key is one name; by the key's value, when it may be several or isn't known yet.
+ */
+export function keyedFieldRead(
+  checker: Pick<Checker, 'fieldsOf'>,
+  type: Type,
+  key: Type,
+): FieldRead {
+  return key.kind === 'literal' && typeof key.value === 'string'
+    ? namedFieldRead(checker, type, key.value)
+    : { kind: 'keyed', on: type, key };
+}
 
 /** How a read of `required`'s field reaches it on a value of `type`, which meets the trait. */
 export function requiredFieldRead(
@@ -77,6 +100,8 @@ export function instantiatedRead(
       return requiredFieldRead(checker, concrete(read.on), read.required);
     case 'named':
       return namedFieldRead(checker, concrete(read.on), read.name);
+    case 'keyed':
+      return keyedFieldRead(checker, concrete(read.on), concrete(read.key));
     default: {
       const unhandled: never = read;
       return unhandled;

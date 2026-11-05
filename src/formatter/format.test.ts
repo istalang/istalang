@@ -110,6 +110,30 @@ describe('unions, literal types, member parameters and generic patterns (§2, §
   });
 });
 
+describe('key types and mapped struct types (§3.1)', () => {
+  it('prints each as written', () => {
+    const text = lines(
+      'type Keys<S is struct> = keyof S | keyof S["meta"]',
+      'type Mapped<S is struct> = { id: String; [F in keyof S]: S[F]?; tag: (keyof S)? }',
+      'fn read<S is struct, K in keyof S>(s: S, k: K) -> S[K]: s[k]',
+    );
+    expect(formatText(text)).toBe(text);
+    const { actual, expected } = acceptanceOf(text);
+    expect(actual).toEqual(expected);
+  });
+
+  it('breaks a long mapped struct type into lines, one entry each', () => {
+    const text = lines(
+      'type Long<S is struct> = {',
+      '  identifier: String',
+      '  [Field in keyof S]: Array<Map<String, S[Field]>>',
+      '  annotation: String',
+      '}',
+    );
+    expect(formatText(text)).toBe(text);
+  });
+});
+
 describe('refusing', () => {
   it('a tree with syntax diagnostics', () => {
     const tree = parseText('fn f(:\n  1\n');

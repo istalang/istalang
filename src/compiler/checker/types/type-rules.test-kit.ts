@@ -1,6 +1,6 @@
 /**
  * Rules of no program, for unit tests of types/ built without a checker: no `any` member takes
- * another, and no type has an associated type or a field a computed type could reduce to.
+ * another, and no type has an associated type, a field or keys a computed type could reduce to.
  */
 
 import { errorType } from './type.ts';
@@ -11,4 +11,7 @@ export const noProgramRules: TypeRules = {
   absorbs: () => false,
   associatedType: () => errorType,
   fieldType: () => errorType,
+  keysOf: () => errorType,
+  mappedType: () => errorType,
+  isKeyOf: () => false,
 };

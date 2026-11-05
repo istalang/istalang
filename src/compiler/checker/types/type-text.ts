@@ -13,6 +13,7 @@ import {
   type Constraint,
   type FunctionType,
   isPrimitive,
+  type MappedParts,
   type NominalType,
   type ParameterSlot,
   type Type,
@@ -69,6 +70,10 @@ export function typeText(type: Type): string {
       return associatedText(type.of, type.name);
     case 'field':
       return `${ownerText(type.of)}[${typeText(type.key)}]`;
+    case 'keys':
+      return keysText(type.of, type.without);
+    case 'mapped':
+      return mappedText(type);
     case 'error':
       return '?';
     default: {
@@ -136,6 +141,24 @@ function unionText(type: UnionType): string {
 }
 
 /** A shape as written, its fields in the name order it keeps them in (§3.1). */
+/**
+ * The keys of a struct type not known yet that its constraints don't name: `keyof S`, the names
+ * also left out following it, as a mapped entry's or a rest's (§3.1).
+ */
+function keysText(of: Type, without: readonly string[]): string {
+  const keys = `keyof ${ownerText(of)}`;
+  return without.length === 0
+    ? keys
+    : `${keys} except ${without.map((name) => JSON.stringify(name)).join(' | ')}`;
+}
+
+/** A mapped struct type as written: `{ id: String; [F in keyof S]: S[F]? }` (§3.1). */
+function mappedText(type: MappedParts): string {
+  const named = type.named.map((field) => `${field.name}: ${typeText(field.type)}`);
+  const mapped = `[${type.parameter.name.text} in ${typeText(type.keys)}]: ${typeText(type.value)}`;
+  return `{ ${[...named, mapped].join('; ')} }`;
+}
+
 function anonymousText(type: AnonymousStructType): string {
   return `struct { ${type.fields.map((field) => `${field.name}: ${typeText(field.type)}`).join('; ')} }`;
 }

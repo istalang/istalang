@@ -14,6 +14,7 @@ import { closureTemplates } from './closures.ts';
 import { collectionTemplates } from './collections.ts';
 import { concurrencyTemplates } from './concurrency.ts';
 import { genericTemplates } from './generics.ts';
+import { keyTemplates } from './keys.ts';
 import { lifetimeTemplates } from './lifetimes.ts';
 import { packTemplates } from './packs.ts';
 import { patternTemplates } from './patterns.ts';
@@ -154,6 +155,7 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
       "This value's field defaults build a value needing those defaults again, so it would never be finished.",
   },
   ...genericTemplates,
+  ...keyTemplates,
   ...packTemplates,
   ...traitObjectTemplates,
   ...valueTemplates,

@@ -13,7 +13,12 @@ import type { LanguageModule, WellKnownDeclaration } from '../../language/well-k
 import { memo } from '../../structures/memo.ts';
 import type { Bindings, Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
-import type { AliasDeclaration, Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
+import type {
+  AliasDeclaration,
+  Declaration,
+  FunctionDeclaration,
+  TypeParameter,
+} from '../syntax/declarations.ts';
 import type {
   ArrayLiteral,
   Call,
@@ -22,7 +27,6 @@ import type {
   FieldsLiteral,
   Lambda,
   MapLiteral,
-  MemberAccess,
   Parameter,
   Spread,
 } from '../syntax/expressions/index.ts';
@@ -40,7 +44,7 @@ import type {
   VariableDeclaration,
 } from '../syntax/statements.ts';
 import type { AnnotationQueries } from './checked-annotation.ts';
-import type { FieldRead } from './checked-field.ts';
+import type { FieldRead, FieldReading } from './checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { ConstantForm } from './constant-form.ts';
 import type { LookupQueries } from './denotation.ts';
@@ -54,13 +58,13 @@ import type {
   ResolvedSite,
 } from './resolved-call.ts';
 import type { Fit } from './types/fit.ts';
+import type { RestSlot } from './types/function-types.ts';
 import type {
   AnonymousStructType,
   AnyType,
   FieldMember,
   FunctionType,
   NominalType,
-  RestSlot,
   Type,
 } from './types/type.ts';
 import type { TypeKeys } from './types/type-keys.ts';
@@ -221,8 +225,11 @@ export interface CheckedBody {
   readonly patternOf: (pattern: Pattern) => CheckedPattern | undefined;
   /** A link of an optional chain (§4), such as `a?.b` or the `.c` of `a?.b.c`; else undefined. */
   readonly chainOf: (link: Expression) => ChainLink | undefined;
-  /** How the field read `access` reaches its field; undefined where it reads no field. */
-  readonly fieldReadOf: (access: MemberAccess) => FieldRead | undefined;
+  /**
+   * How `reading`, `s.name` or `s[k]` by a key, reaches its field; undefined where it reads no
+   * field: a name of a namespace or a type, or an element `index` gives.
+   */
+  readonly fieldReadOf: (reading: FieldReading) => FieldRead | undefined;
   /**
    * The type of a name the body declares: a variable's, a parameter's, or what a loop, a pattern
    * or a `select` case binds; undefined for any other name.
@@ -264,7 +271,7 @@ export interface Checker {
   /** Every diagnostic of checking `module`, which checks all of its declarations. */
   readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic[];
   /** The module declaring `declaration`: whose item it is, or whose tree holds a local one. */
-  readonly moduleOf: (declaration: Declaration | VariableDeclaration) => ModuleId;
+  readonly moduleOf: (declaration: Declaration | VariableDeclaration | TypeParameter) => ModuleId;
   /** Whether the toolchain ships `module` (§3.8); false for none. */
   readonly isStd: (module: ModuleId | undefined) => boolean;
   readonly parametersOf: (declaration: FunctionDeclaration) => readonly SignatureParameter[];

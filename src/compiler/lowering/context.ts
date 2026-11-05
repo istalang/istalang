@@ -13,14 +13,14 @@ import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import type { Entity } from '../binder/entities.ts';
 import type { CheckedBody, Checker, ValueSite } from '../checker/check.ts';
-import type { FieldRead } from '../checker/checked-field.ts';
+import type { FieldRead, FieldReading } from '../checker/checked-field.ts';
 import type { CheckedPattern } from '../checker/checked-pattern.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../checker/resolved-call.ts';
 import type { Fit } from '../checker/types/fit.ts';
 import type { Type } from '../checker/types/type.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { Expression, Lambda, MemberAccess } from '../syntax/expressions/index.ts';
+import type { Expression, Lambda } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
@@ -65,7 +65,7 @@ export interface FunctionContext {
   /** The type the checker found for `node`; lowering reads only what was checked. */
   readonly typeOf: (node: Expression) => Type;
   /** How the checker found the field read `access` reaches its field. */
-  readonly fieldReadOf: (access: MemberAccess) => FieldRead;
+  readonly fieldReadOf: (reading: FieldReading) => FieldRead;
   /** A `match` case's or `is`'s pattern as checked. */
   readonly patternOf: (pattern: Pattern) => CheckedPattern;
   /** The call the checker resolved at `site`, closed here (closed-calls.ts). */

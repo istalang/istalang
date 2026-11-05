@@ -7,6 +7,9 @@
  *   which builds the new value along it (values are immutable); writing a bare register is a
  *   `move`. A register holding a cell or a reference is read and written through it by the
  *   runtime, so lowering emits the same instructions whatever the variable's storage is.
+ * - A field reached by a key of one name (`s["x"]`, §3.9) is a field position as `s.x` is; one
+ *   reached by a key of several names is the field the key's value names, a switch on it
+ *   (keyed-fields.ts), where nothing else stands past it and nothing passes it by `&`.
  * - An indexed element and the value behind a handle (`*x`) are reached through an accessor
  *   instead, a pair of reads and writes: an element is read with its container's `index` and
  *   written with `setIndex(&container, key, element)`, the value behind a handle with `readCell`
@@ -34,6 +37,8 @@ import type { Identifier } from '../syntax/node.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { CodeContext, FunctionContext } from './context.ts';
 import { emitFunctionCall } from './emit-call.ts';
+import type { TypedValue } from './holdings.ts';
+import { type KeyedField, readKeyed, writeKeyed } from './keyed-fields.ts';
 
 /**
  * A part of a place reached through a read and a write (§3.7, §3.9). An element is read with its
@@ -47,15 +52,24 @@ interface Accessor {
   readonly write: (value: Register) => void;
 }
 
-/** Where a place is: a Definition place, or field positions into the value an accessor reads. */
+/**
+ * Where a place is: a Definition place, field positions into the value an accessor reads, or the
+ * field of a place `within` a key's value names.
+ */
 type Location =
   | { readonly kind: 'place'; readonly place: Place }
-  | { readonly kind: 'accessor'; readonly accessor: Accessor; readonly path: readonly number[] };
+  | { readonly kind: 'accessor'; readonly accessor: Accessor; readonly path: readonly number[] }
+  | {
+      readonly kind: 'keyed';
+      readonly within: Location;
+      readonly keyed: KeyedField;
+      readonly node: Index;
+    };
 
 /** A place entered for an assignment, read and written where it stands when each happens. */
 export interface AssignedPlace {
   readonly read: (span: AnchoredSpan) => Register;
-  readonly write: (value: Register, span: AnchoredSpan) => void;
+  readonly write: (value: TypedValue, span: AnchoredSpan) => void;
 }
 
 /** Enters the place `node` names for an assignment, computing its handle and keys. */
@@ -63,7 +77,15 @@ export function enterAssigned(context: FunctionContext, node: Expression): Assig
   const location = locate(context, node);
   return {
     read: (span) => readAt(context, location, span),
-    write: (value, span) => writeAt(context, location, value, span),
+    write: (value, span) => {
+      if (location.kind === 'keyed') {
+        const writeField = (position: number, converted: Register) =>
+          writeAt(context, withField(location.within, position), converted, span);
+        writeKeyed(context, { keyed: location.keyed, value, node: location.node }, writeField);
+      } else {
+        writeAt(context, location, value.register, span);
+      }
+    },
   };
 }
 
@@ -81,6 +103,9 @@ export function enterReferenced(context: FunctionContext, node: Expression): Ref
   const location = locate(context, node);
   if (location.kind === 'place') {
     return { place: location.place, leave: undefined };
+  }
+  if (location.kind === 'keyed') {
+    return unreachable(`A key of several fields at ${node.span.from} is passed by '&'.`);
   }
   const cell = cellRegister(context, context.typeOf(node));
   const src = readAt(context, location, node.span);
@@ -124,28 +149,52 @@ function locate(context: FunctionContext, node: Expression): Location {
       ? { kind: 'place', place: { register: variableRegister(context, root), path: [] } }
       : { kind: 'accessor', accessor: sharedAccessor(context, root), path: [] };
   for (const step of steps) {
-    if (step.kind === 'Index') {
-      const key = context.expression(step.index);
-      const accessor = elementAccessor(context, location, key, step);
-      location = { kind: 'accessor', accessor, path: [] };
-    } else {
-      location = withField(location, fieldPosition(context, step));
-    }
+    location = stepped(context, location, step);
   }
   return location;
 }
 
+/** `location`, then `step`: a field's or an element's, computing a key there. */
+function stepped(context: FunctionContext, location: Location, step: PlaceStep): Location {
+  if (step.kind !== 'Index') {
+    return withField(location, fieldPosition(context, step));
+  }
+  const key = context.expression(step.index);
+  const read = context.body.fieldReadOf(step);
+  if (read === undefined) {
+    return { kind: 'accessor', accessor: elementAccessor(context, location, key, step), path: [] };
+  }
+  if (read.kind === 'position') {
+    return withField(location, read.index);
+  }
+  if (read.kind !== 'keyed') {
+    return unreachable(`A key reads no ${read.kind} field once instantiated.`);
+  }
+  const keyed = { on: read.on, key: { register: key, type: context.typeOf(step.index) } };
+  return { kind: 'keyed', within: location, keyed, node: step };
+}
+
 /** `location` one field position deeper. */
 function withField(location: Location, index: number): Location {
-  return location.kind === 'place'
-    ? { ...location, place: { ...location.place, path: [...location.place.path, index] } }
-    : { ...location, path: [...location.path, index] };
+  switch (location.kind) {
+    case 'place':
+      return { ...location, place: { ...location.place, path: [...location.place.path, index] } };
+    case 'accessor':
+      return { ...location, path: [...location.path, index] };
+    default:
+      return unreachable('Nothing stands past a key of several fields.');
+  }
 }
 
 /** Reads the value at `location` as it stands now. */
 function readAt(context: FunctionContext, location: Location, span: AnchoredSpan): Register {
   if (location.kind === 'place') {
     return readPlace(context, location.place, span);
+  }
+  if (location.kind === 'keyed') {
+    const { within, keyed, node } = location;
+    const readField = (position: number) => readAt(context, withField(within, position), span);
+    return readKeyed(context, { keyed, result: context.typeOf(node) }, readField, span);
   }
   const { accessor, path } = location;
   return readPlace(context, { register: accessor.read(span), path: [...path] }, span);
@@ -184,6 +233,9 @@ function changeAt(
   if (location.kind === 'place') {
     change(location.place);
     return;
+  }
+  if (location.kind === 'keyed') {
+    unreachable('A key of several fields is written by its own switch.');
   }
   const { accessor, path } = location;
   const register = passedOn

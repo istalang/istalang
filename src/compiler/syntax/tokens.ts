@@ -119,7 +119,17 @@ export const punctuators = [
 ] as const;
 
 /** Words that are keywords only where the grammar expects them (§2). */
-const contextualWords = ['type', 'from', 'sendable', 'shared', 'new', 'hold', 'by', 'any'] as const;
+const contextualWords = [
+  'type',
+  'from',
+  'sendable',
+  'shared',
+  'new',
+  'hold',
+  'by',
+  'any',
+  'keyof',
+] as const;
 
 export type ContextualWord = (typeof contextualWords)[number];
 

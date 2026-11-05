@@ -207,6 +207,8 @@ function keyType(checker: Checker, type: Type): KeyType {
       return unionKey(checker, type);
     case 'associated':
     case 'field':
+    case 'keys':
+    case 'mapped':
       return unreachable('An instantiated type is computed already.');
     case 'error':
       return unreachable('An extern with an unresolved type reached lowering.');

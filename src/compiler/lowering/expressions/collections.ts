@@ -10,7 +10,8 @@
  *   `setIndex` of each entry on the value, which lives in a cell so it can be passed by `&`; a
  *   spread's tuples are assigned one by one in the same loop.
  * - A range is the prelude's `Range` struct of two optional ints; `..=` stores `end + 1`.
- * - `x[k]` calls the `index` the checker resolved.
+ * - `x[k]` calls the `index` the checker resolved, or reads the field a key of a struct names
+ *   (keyed-fields.ts).
  */
 
 import type { Instruction } from '../../../definition/instructions/instruction.ts';
@@ -32,6 +33,7 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitCallAt, emitImplicitCall, referenceTo } from '../emit-call.ts';
 import { cursorOf, emitLoop } from '../iteration.ts';
+import { lowerKeyRead } from '../keyed-fields.ts';
 import { noneOf, someOf } from '../optionals.ts';
 import { cellRegister } from '../places.ts';
 import { construct } from './structs.ts';
@@ -161,7 +163,10 @@ export function lowerRange(context: FunctionContext, node: Range): Register {
 
 export function lowerIndex(context: FunctionContext, node: Index): Register {
   const container = context.chains.target(context, node);
-  return emitCallAt(context, node, [container, context.expression(node.index)]);
+  const key = context.expression(node.index);
+  return context.body.fieldReadOf(node) === undefined
+    ? emitCallAt(context, node, [container, key])
+    : lowerKeyRead(context, container, key, node);
 }
 
 /**

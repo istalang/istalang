@@ -18,7 +18,7 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { CheckedBody, SignatureParameter } from '../check.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { RestSlot } from '../types/type.ts';
+import type { RestSlot } from '../types/function-types.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import { type DefaultValues, declaredParameters, writtenParameters } from './signatures.ts';
 

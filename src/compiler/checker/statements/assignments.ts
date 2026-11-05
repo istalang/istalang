@@ -13,7 +13,9 @@
  * - A compound assignment `x += y` is `x = x + y` (§3.9): the operator's function is resolved for
  *   the place's type and recorded on the assignment, and its result must fit the place.
  * - A value written to an optional place is wrapped into it (§2), whether the whole value, a part
- *   of it or an operator's result, so each part records its own fit.
+ *   of it or an operator's result, so each part records its own fit. A place a key that may name
+ *   several fields reads takes a value fitting each of them (§3.9), which converts into whichever
+ *   the key names as lowering writes it, so its part records none (`writtenFit`).
  * - `*x = v` writes the value behind the handle `x` whole (§3.9; expressions/dereference.ts), as
  *   its one part.
  * - `_` as a target holds the value without a name, so it records no part to write (§3.4).
@@ -33,12 +35,18 @@ import {
 } from '../../syntax/statements.ts';
 import type { BodyContext } from '../body-context.ts';
 import { binaryApplied, resolveOperator } from '../calls/operators.ts';
-import { checkChangedPlace, checkDistinctPlaces, immutableKind } from '../calls/places.ts';
+import {
+  checkChangedPlace,
+  checkDistinctPlaces,
+  immutableKind,
+  severalKeyedFields,
+} from '../calls/places.ts';
 import type { AssignedPart } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';
 import { type Taking, takeApart, takeTargets } from '../patterns/taking.ts';
+import { exactFit, type Fit } from '../types/fit.ts';
 import { errorType, type Type, tupleType } from '../types/type.ts';
 
 export function checkAssignment(context: BodyContext, node: Assignment): void {
@@ -130,8 +138,30 @@ function checkCompound(
     { node: target, type: place },
     { node: node.value, type: operand },
   ]);
-  const fit = context.fitWritten(result, place, node.value.span);
+  const fit = writtenFit(context, target, { type: result, place, at: node.value.span });
   context.variables.recordAssigned(node, [{ target, path: [], type: result, fit }]);
+}
+
+/** A value of `type` written to `place`, the type of `target`, as an assignment reports it at `at`. */
+interface Written {
+  readonly type: Type;
+  readonly place: Type;
+  readonly at: AnchoredSpan;
+}
+
+/**
+ * How a value written to `target` fits it: as its place's type says, or, where a key that may name
+ * several fields reads it, fitting each of their types, then converted as each is written.
+ */
+function writtenFit(context: BodyContext, target: Expression, { type, place, at }: Written): Fit {
+  const fields = severalKeyedFields(context, target);
+  if (fields === undefined) {
+    return context.fitWritten(type, place, at);
+  }
+  for (const field of fields) {
+    context.fitWritten(type, field, at);
+  }
+  return exactFit;
 }
 
 /**
@@ -170,7 +200,7 @@ function assignPart(
       return anyShape;
     case 'place': {
       const at = part.path.length === 0 ? assigning.valueSpan : target.node.span;
-      const fit = context.fitWritten(part.type, target.type, at);
+      const fit = writtenFit(context, target.node, { type: part.type, place: target.type, at });
       assigning.parts.push({ target: target.node, path: part.path, type: part.type, fit });
       return anyShape;
     }

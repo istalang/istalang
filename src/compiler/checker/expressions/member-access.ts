@@ -18,7 +18,7 @@ import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts
 import { isMissingName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Accepts, BodyContext, FieldReadRecord } from '../body-context.ts';
-import type { FieldRead, FoundField } from '../checked-field.ts';
+import type { FieldRead, FieldReading, FoundField } from '../checked-field.ts';
 import {
   checkFunctionValue,
   functionsAccepted,
@@ -114,16 +114,16 @@ export function recordFieldRead(
   context.recordField(access.member, found.member);
 }
 
-/** The field reads of one body, recorded as each is checked. */
+/** The field reads of one body, by name or by key, recorded as each is checked. */
 export class FieldReads implements FieldReadRecord {
-  readonly #reads = new Map<MemberAccess, FieldRead>();
+  readonly #reads = new Map<FieldReading, FieldRead>();
 
-  record(access: MemberAccess, read: FieldRead): void {
-    this.#reads.set(access, read);
+  record(reading: FieldReading, read: FieldRead): void {
+    this.#reads.set(reading, read);
   }
 
-  of(access: MemberAccess): FieldRead | undefined {
-    return this.#reads.get(access);
+  of(reading: FieldReading): FieldRead | undefined {
+    return this.#reads.get(reading);
   }
 }
 

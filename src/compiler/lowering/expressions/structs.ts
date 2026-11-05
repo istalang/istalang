@@ -166,6 +166,8 @@ export function lowerFieldRead(
     case 'required':
     case 'named':
       return unreachable("An instantiated body reads no field of a type it doesn't know.");
+    case 'keyed':
+      return unreachable('A field read by name is no read by a key.');
     default: {
       const unhandled: never = read;
       return unhandled;

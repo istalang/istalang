@@ -16,6 +16,7 @@ import {
   type ComputedType,
   type Constraint,
   errorType,
+  type MappedParts,
   type ParameterKey,
   type Type,
   type TypeParameterType,
@@ -53,11 +54,33 @@ export function substitute(type: Type, substitution: Substitution, rules: TypeRu
   if (type.kind === 'any') {
     return substituteAny(type, substitution, rules);
   }
+  if (type.kind === 'mapped') {
+    return asWritten(type, substituteMapped(type, substitution, rules), substitution, rules);
+  }
   return asWritten(
     type,
     mapChildren(type, (child) => substitute(child, substitution, rules), rules),
     substitution,
     rules,
+  );
+}
+
+/**
+ * A mapped struct type with `substitution` applied, never to the parameter it binds (§3.1): its
+ * keys and named fields first, then its value together with each key, once its keys are known
+ * (type-rules.ts `mappedType`).
+ */
+function substituteMapped(type: MappedParts, substitution: Substitution, rules: TypeRules): Type {
+  const outer = new Map(substitution);
+  outer.delete(type.parameter);
+  const map = (child: Type) => substitute(child, outer, rules);
+  return rules.mappedType(
+    {
+      ...type,
+      named: type.named.map((field) => ({ ...field, type: map(field.type) })),
+      keys: map(type.keys),
+    },
+    outer,
   );
 }
 

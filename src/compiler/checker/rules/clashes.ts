@@ -38,8 +38,9 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { positionalCounts } from '../resolution/binding.ts';
 import { signatureOf } from '../resolution/choice.ts';
+import type { RestSlot } from '../types/function-types.ts';
 import { declaredOwnerOf, type StaticOwner } from '../types/named-types.ts';
-import type { ParameterKey, RestSlot, Type } from '../types/type.ts';
+import type { ParameterKey, Type } from '../types/type.ts';
 import { mentionsError } from '../types/type-parts.ts';
 import { baseOf, membersOf } from '../types/unions.ts';
 

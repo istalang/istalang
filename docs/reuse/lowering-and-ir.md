@@ -27,7 +27,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - emit a direct or closed `call` instruction → `emitCall`, `emitFunctionCall`, `referenceTo` (`src/compiler/lowering/emit-call.ts`)
 - emit a call recorded at a call site or implicit construct → `emitCallAt`, `emitImplicitCall` (`src/compiler/lowering/emit-call.ts`)
 - emit the cursor loop of a `for`, comprehension or non-copied spread → `cursorOf`, `emitLoop`, `emitLoopOver` (`src/compiler/lowering/iteration.ts`)
-- enter an assigned or `&`-referenced place → `enterAssigned`, `enterReferenced` (`src/compiler/lowering/places.ts`)
+- enter an assigned or `&`-referenced place → `enterAssigned`, `enterReferenced` (`src/compiler/lowering/places.ts`); read or write the field a key of several names names, switching on its tag → `lowerKeyRead`, `readKeyed`, `writeKeyed` (`src/compiler/lowering/keyed-fields.ts`); run code per member of a union value → `onEachMember`, or into one register → `eachMember` (`src/compiler/lowering/unions.ts`)
 - read one field of a value, or its part along field and element positions → `CodeWriter.field`, `CodeWriter.readPath` (`src/compiler/lowering/code-writer.ts`); compare two registers with the built-in `equal` → `CodeWriter.equal`, or `equal` (`operators.ts`) for `!=` too
 - a variable's register → `VariableRegisters.registerOf` (`src/compiler/lowering/statements/variables.ts`); allocate a cell → `cellRegister` (`src/compiler/lowering/places.ts`)
 - read how a field access reaches its field → `CheckedBody.fieldReadOf` (`src/compiler/checker/check.ts`)

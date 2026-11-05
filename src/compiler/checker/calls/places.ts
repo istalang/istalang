@@ -18,6 +18,10 @@
  *   an operator's function, so any type with a `setIndex` takes element writes (§3.7, §3.9). Each
  *   indexed step of a changing place records its `setIndex`, and both functions must run at once
  *   (collection-functions.ts).
+ * - A field a key reads, `s[k]` (§3.9), is a field path, as `s.name` is: no accessor. A key of one
+ *   name is one field. A key that may name several is no place to pass by `&`, which would let the
+ *   callee write another field's type; a value written to it must fit each field it may name
+ *   (`severalKeyedFields`), each through its own conversion.
  * - The value behind a handle, `*x`, is a place too (§3.9): the place starts there, whatever the
  *   handle is read from, since changing it changes what is behind the handle, not the handle.
  *   Changing it (`x->f = v`, `*x += v`, `&*x`) reads it whole and writes it back whole, which
@@ -33,13 +37,14 @@
 
 import type { VariableEntity, VariableOwner } from '../../binder/entities.ts';
 import type { Dereference, Expression, Index } from '../../syntax/expressions/index.ts';
-import { placePath } from '../../syntax/expressions/places.ts';
+import { type PlaceStep, placePath } from '../../syntax/expressions/places.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../body-context.ts';
 import type { AssignedPart } from '../check.ts';
+import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Passing } from '../resolution/call-arguments.ts';
-import { structConstraintsOn } from '../traits/known-constraints.ts';
+import { keyMembers, structConstraintsOn } from '../traits/known-constraints.ts';
 import { errorType, isOpaque, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { runsAtOnce, writeElement } from './collection-functions.ts';
@@ -79,13 +84,72 @@ function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boo
     return false;
   }
   if (root.kind === 'Dereference') {
-    return writesAccessors(context, node);
+    return writesAccessors(context, node) && referencesOneField(context, steps, use);
   }
   if (root.kind !== 'Identifier') {
     return false;
   }
-  const passedByReference = use === 'referenced' || reachesAccessor(node);
-  return requireChangeable(context, root, passedByReference) && writesAccessors(context, node);
+  const passedByReference = use === 'referenced' || reachesAccessor(context, node);
+  return (
+    requireChangeable(context, root, passedByReference) &&
+    writesAccessors(context, node) &&
+    referencesOneField(context, steps, use)
+  );
+}
+
+/**
+ * Whether a place passed by `&` reaches one field wherever a key reads one: a key that may name
+ * several is reported (§3.7).
+ */
+function referencesOneField(
+  context: BodyContext,
+  steps: readonly PlaceStep[],
+  use: PlaceUse,
+): boolean {
+  const several = steps.find(
+    (step): step is Index =>
+      step.kind === 'Index' && severalKeyedFields(context, step) !== undefined,
+  );
+  if (use === 'referenced' && several !== undefined) {
+    const key = typeText(context.typeOf(several.index));
+    context.report(checkerDiagnostics.severalKeysReferenced(several.index.span, key));
+    return false;
+  }
+  return true;
+}
+
+/**
+ * The fields a value written to `node` must each fit, when a key that may name several reads it
+ * (§3.9): the type of each field its key may name. Undefined for any other place, which a value
+ * fits as its type says.
+ */
+export function severalKeyedFields(
+  context: BodyContext,
+  node: Expression,
+): readonly Type[] | undefined {
+  if (node.kind !== 'Index' || context.fieldReads.of(node) === undefined) {
+    return undefined;
+  }
+  const { checker } = context;
+  const key = context.typeOf(node.index);
+  if (isSingleKey(checker, key)) {
+    return undefined;
+  }
+  const container = context.typeOf(node.target);
+  return keyMembers(checker, key).map((each) => checker.typeRules.fieldType(container, each));
+}
+
+/**
+ * Whether a key of type `key` names one field however the program runs: one literal, or a member
+ * type parameter, one key per instantiation (§3.5, §3.9).
+ */
+function isSingleKey(checker: CheckerContext, key: Type): boolean {
+  return (
+    (key.kind === 'literal' && typeof key.value === 'string') ||
+    (key.kind === 'parameter' &&
+      key.declaration.kind === 'TypeParameter' &&
+      checker.memberUnionOf(key.declaration) !== undefined)
+  );
 }
 
 /**
@@ -129,7 +193,7 @@ export function checkReferencedPlaces(
     return [argument.node.kind === 'Reference' ? argument.node.expression : argument.node];
   });
   places.forEach((place, position) => {
-    if (callee.isAsync && reachesAccessor(place)) {
+    if (callee.isAsync && reachesAccessor(context, place)) {
       context.report(checkerDiagnostics.accessorToAsync(place.span, callee.name));
     }
     const earlier = places.slice(0, position);
@@ -137,7 +201,7 @@ export function checkReferencedPlaces(
     const overlapping = earlier.some(
       (other) =>
         rootVariable(context, other) === variable &&
-        (reachesAccessor(other) || reachesAccessor(place)),
+        (reachesAccessor(context, other) || reachesAccessor(context, place)),
     );
     if (variable !== undefined && overlapping) {
       context.report(
@@ -156,8 +220,8 @@ function throughShared(node: Expression): boolean {
 }
 
 /** Whether the place `node` names reaches through an accessor: a handle's value or an element. */
-function reachesAccessor(node: Expression): boolean {
-  return accessorsOf(node).length > 0;
+function reachesAccessor(context: BodyContext, node: Expression): boolean {
+  return accessorsOf(context, node).length > 0;
 }
 
 /** The variable at the root of the place `node`, if a variable stands there. */
@@ -188,10 +252,11 @@ function placeIdentity(context: BodyContext, target: Expression): PlaceIdentity 
   const { root, steps } = placePath(target);
   const names: string[] = [];
   for (const step of steps) {
-    if (step.kind === 'Index') {
+    const name = stepName(context, step);
+    if (name === undefined) {
       return undefined;
     }
-    names.push(step.kind === 'MemberAccess' ? step.member.text : String(step.element));
+    names.push(name);
   }
   if (root.kind === 'Identifier') {
     const variable = variableAt(context, root);
@@ -209,6 +274,27 @@ function placeIdentity(context: BodyContext, target: Expression): PlaceIdentity 
   const handle = root.operand.text;
   const text = names.length === 0 ? `*${handle}` : `${handle}->${names.join('.')}`;
   return { variable, dereferenced: true, steps: names, text };
+}
+
+/**
+ * The name of the field or element `step` reads, as a place's identity spells it; undefined for an
+ * element, or a field a key not known yet names, known only when the program runs.
+ */
+function stepName(context: BodyContext, step: PlaceStep): string | undefined {
+  switch (step.kind) {
+    case 'MemberAccess':
+      return step.member.text;
+    case 'TupleElement':
+      return String(step.element);
+    default: {
+      const key = context.typeOf(step.index);
+      const isNamed =
+        context.fieldReads.of(step) !== undefined &&
+        key.kind === 'literal' &&
+        typeof key.value === 'string';
+      return isNamed ? String(key.value) : undefined;
+    }
+  }
 }
 
 /** Whether one of two places is the other or a part of it. */
@@ -239,17 +325,20 @@ export function checkDistinctPlaces(context: BodyContext, parts: readonly Assign
 
 /**
  * The accessors of the place `node`, the parts it reaches through a pair of reads and writes,
- * outermost first: the value behind its handle, then each indexed element.
+ * outermost first: the value behind its handle, then each indexed element. A field a key reads is
+ * none.
  */
-function accessorsOf(node: Expression): readonly (Dereference | Index)[] {
+function accessorsOf(context: BodyContext, node: Expression): readonly (Dereference | Index)[] {
   const { root, steps } = placePath(node);
-  const elements = steps.filter((step) => step.kind === 'Index');
+  const elements = steps.filter(
+    (step): step is Index => step.kind === 'Index' && context.fieldReads.of(step) === undefined,
+  );
   return root.kind === 'Dereference' ? [root, ...elements] : elements;
 }
 
 /** Makes the `setIndex` writing back each element the place `node` reaches; false after a report. */
 function writesAccessors(context: BodyContext, node: Expression): boolean {
-  return accessorsOf(node).every(
+  return accessorsOf(context, node).every(
     (accessor) => accessor.kind !== 'Index' || writesElement(context, accessor),
   );
 }

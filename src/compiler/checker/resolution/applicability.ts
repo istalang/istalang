@@ -23,13 +23,8 @@ import type { CheckerContext } from '../context.ts';
 import { Inference } from '../inference/infer.ts';
 import type { Binding } from '../resolved-call.ts';
 import { reshapes } from '../types/fit.ts';
-import {
-  errorType,
-  fillsPack,
-  type ParameterKey,
-  type ParameterSlot,
-  type Type,
-} from '../types/type.ts';
+import { fillsPack } from '../types/function-types.ts';
+import { errorType, type ParameterKey, type ParameterSlot, type Type } from '../types/type.ts';
 import { argumentSlotsOf, type Binder, isBinding } from './binding.ts';
 import type { CallArgument, Inapplicability, Misfit, Takes } from './call-arguments.ts';
 import { packInapplicability, packItems } from './packs.ts';

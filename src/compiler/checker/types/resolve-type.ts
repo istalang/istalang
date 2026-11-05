@@ -22,9 +22,8 @@
  *   writing them (declared-fields.ts).
  * - A path past the type it names reaches its associated types, `T.Data`, and so does `.Name` after
  *   type arguments, `Field<Int>.Data` (§3.1); either reduces through `TypeRules`.
- * - A `{…}` type is a shape (§3.1), whose fields resolve here. A shape's field takes no annotation
- *   (§3.16), which is reported here, where nothing else declares it, without computing its value:
- *   that could reach the very type being resolved.
+ * - A `{…}` type is a shape (§3.1), or a mapped struct type, and `keyof S` and `S[K]` are key
+ *   types (key-types.ts).
  * - A trait names no type of its own; after `any` it names the traits of one (§3.10).
  */
 
@@ -50,19 +49,17 @@ import {
 } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { declaredFields } from './declared-fields.ts';
-import { withPack } from './function-types.ts';
+import { isPack, withPack } from './function-types.ts';
+import { fieldWritten, keysWritten, structWritten } from './key-types.ts';
 import { substitute, substitutionFor } from './substitution.ts';
 import {
   aliasedAs,
   errorType,
-  isPack,
   type NominalDeclaration,
   nominalType,
   type PackType,
   type ParameterKey,
   primitiveType,
-  shapeType,
   type Type,
   tupleType,
   unitType,
@@ -92,19 +89,16 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
   TupleType: (resolution, node) =>
     tupleType(node.elements.map((element) => resolve(resolution, element))),
   FunctionType: (resolution, node) => functionType(resolution, node),
-  StructType: ({ checker, module }, node) => {
-    for (const field of node.fields) {
-      for (const annotation of field.annotations ?? []) {
-        checker.report(module, checkerDiagnostics.shapeFieldAnnotation(annotation.span));
-      }
-    }
-    return shapeType(node, declaredFields(checker, module, node.fields));
-  },
+  StructType: (resolution, node) => structWritten(resolution, node),
   AnyType: ({ checker, module }, node) => checker.anyTypeOf(module, node.traits),
   UnionType: (resolution, node) => unionTypeOf(resolution, node),
   LiteralType: (_resolution, node) => writtenLiteral(node.value) ?? errorType,
   MemberType: (resolution, node) =>
     associatedAt(resolution, resolve(resolution, node.owner), node.name),
+  IndexedType: (resolution, node) =>
+    fieldWritten(resolution, node, resolve(resolution, node.owner), resolve(resolution, node.key)),
+  KeyofType: (resolution, node) =>
+    keysWritten(resolution, node.owner, resolve(resolution, node.owner)),
   Missing: () => errorType,
   Invalid: () => errorType,
 };

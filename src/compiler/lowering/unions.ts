@@ -269,6 +269,12 @@ export function eachMember(
   });
 }
 
+/** What each member's case of a switch runs, and which members it never reaches. */
+interface MemberCases {
+  readonly each: (member: Type) => void;
+  readonly runs?: ((member: Type) => boolean) | undefined;
+}
+
 /** What each member's case of a switch writes, and which members it never reaches. */
 interface VariantCases {
   readonly each: (member: Type) => Register;
@@ -285,11 +291,28 @@ function eachVariant(
   span: AnchoredSpan,
   { each, runs = () => true }: VariantCases,
 ): Register {
+  const result = context.code.allocate();
+  onEachMember(context, value, span, {
+    each: (member) => context.code.emit({ kind: 'move', span, dst: result, src: each(member) }),
+    runs,
+  });
+  return result;
+}
+
+/**
+ * Switches on `value`'s variant, each member's case running what `each` writes for it, then going
+ * on past the switch. A member `runs` rules out never runs, as `eachVariant` says.
+ */
+export function onEachMember(
+  context: CodeContext,
+  value: UnionValue,
+  span: AnchoredSpan,
+  { each, runs = () => true }: MemberCases,
+): void {
   const { code } = context;
   const members = context.tables.types.unionMembers(value.type);
   const kept = members.map((member) => (runs(member) ? code.newLabel() : undefined));
   const first = kept.find((label) => label !== undefined) ?? unreachable('A member is kept.');
-  const result = code.allocate();
   const end = code.newLabel();
   code.switch(
     value.register,
@@ -302,9 +325,8 @@ function eachVariant(
       return;
     }
     code.place(label);
-    code.emit({ kind: 'move', span, dst: result, src: each(member) });
+    each(member);
     code.jump(end, span);
   });
   code.place(end);
-  return result;
 }
