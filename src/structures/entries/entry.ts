@@ -9,12 +9,13 @@ import { unreachable } from '../unreachable.ts';
 import type { TupleSet } from './tuple-set.ts';
 
 /** How a table's entries answer in a cycle. */
-interface Cyclic<Key, Value> {
+interface Cyclic<Key, Value, Context> {
   /**
    * What an entry answers while it computes, and for good once it is found in a cycle: made once
-   * per entry, when first needed, in the entry that needs it.
+   * per entry, when first needed, in the entry that needs it, from its key and the context the key
+   * was asked in (which the key decides).
    */
-  readonly standIn: (key: Key) => Value;
+  readonly standIn: (key: Key, context: Context) => Value;
   /** Reports one member of a cycle, once, inside the member's own entry. */
   readonly reportMember?: (key: Key) => void;
 }
@@ -26,7 +27,7 @@ export interface TableOptions<Key, Value, Context> {
   readonly compute: (key: Key, context: Context) => Value;
   /** Whether an answer computed again equals the one before; identity unless given. */
   readonly equal?: Equality<Value>;
-  readonly cyclic?: Cyclic<Key, Value>;
+  readonly cyclic?: Cyclic<Key, Value, Context>;
 }
 
 export interface Table<Note> {
@@ -93,7 +94,7 @@ export function answerOf<Note>(entry: Entry<Note>): unknown {
   }
   const standIn = entry.table.options.cyclic?.standIn;
   if (standIn !== undefined) {
-    entry.madeStandIn ??= { value: standIn(entry.key) };
+    entry.madeStandIn ??= { value: standIn(entry.key, entry.context) };
     return entry.madeStandIn.value;
   }
   return entry.running

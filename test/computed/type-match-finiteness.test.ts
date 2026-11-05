@@ -7,7 +7,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
+import { diagnosedAt } from '../../src/compiler/compile.test-kit.ts';
 import { codesOf, runMain } from './computed.test-kit.ts';
 
 const itself = checkerDiagnostics.aliasCycle('' as never, '').code;
@@ -31,6 +33,28 @@ describe('a type match use reaching itself with no struct type on the way', () =
   ])('is no type: %j used as %s', (declarations, use) => {
     expect(codesOf(...declarations, `fn f(x: ${use}) -> Int: 1`)).toEqual([itself]);
     expect(codesOf(...declarations, 'fn g():', `  const z: ${use} = 1`)).toEqual([itself]);
+  });
+
+  it('names each use on the cycle itself, whichever is asked first', () => {
+    const mutual = [
+      'type X1<T> = match T:',
+      '  case _: Y1<T>',
+      'type Y1<T> = match T:',
+      '  case _: X1<T>',
+    ];
+    const messages = (uses: readonly string[]) => {
+      const lines = [...mutual, ...uses.map((use, index) => `fn f${index}(x: ${use}) -> Int: 1`)];
+      const { diagnostics } = diagnosedAt(
+        stdProgramOf({ 'main.ista': lines.join('\n') }),
+        'main.ista',
+      );
+      return diagnostics.map(({ message }) => message).toSorted();
+    };
+    const firstX = messages(['X1<Int>', 'Y1<Int>']);
+    expect(firstX).toHaveLength(2);
+    expect(firstX).toEqual(messages(['Y1<Int>', 'X1<Int>']));
+    expect(firstX.some((message) => message.includes('X1'))).toBe(true);
+    expect(firstX.some((message) => message.includes('Y1'))).toBe(true);
   });
 
   it('leaves the uses whose cases end alone', () => {
