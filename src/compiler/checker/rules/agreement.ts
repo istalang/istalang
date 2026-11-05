@@ -49,10 +49,12 @@ interface BuiltLiteral {
   readonly builds: (type: Type) => boolean;
 }
 
-/** What the expression `node` produced, `type`, and what it can be built as instead (§3.7). */
+/**
+ * What the expression `node`, checked, produced, `type`, and what its checked items can build it
+ * as instead (§3.7).
+ */
 export function producedBy(context: BodyContext, node: Expression, type: Type): Produced {
-  const part = context.acceptedPart(node);
-  const builds = part.kind === 'typed' ? part.builds : undefined;
+  const { builds } = context.checkedPart(node);
   return {
     type,
     span: node.span,
@@ -235,7 +237,7 @@ export function settleProduced(context: BodyContext, produced: Produced, agreed:
   }
   const { literal } = produced;
   if (literal?.builds(decided) === true) {
-    context.expect(literal.node, decided);
+    context.rebuild(literal.node, decided);
     return;
   }
   if (expected === undefined && context.checker.fitOf(produced.type, decided) === undefined) {

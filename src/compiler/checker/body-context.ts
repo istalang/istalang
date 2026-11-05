@@ -70,6 +70,8 @@ export interface BodyContext {
   readonly accepts: (node: Expression) => Accepts | undefined;
   /** How `node` takes part in a composite argument's `Accepts` check (expressions.ts). */
   readonly acceptedPart: (node: Expression | undefined) => AcceptedPart;
+  /** How `node`, already checked, takes part in building a literal as another type (§3.7). */
+  readonly checkedPart: (node: Expression | undefined) => TypedPart;
   /**
    * Checks `node`, a lambda, maybe parenthesized, recording its type, where its parameters' types
    * are known and its result is left for its body to decide (§3.5).
@@ -84,6 +86,13 @@ export interface BodyContext {
   readonly callAt: (site: ResolvedSite) => ResolvedCall | undefined;
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
   readonly expect: (node: Expression, expected: Type | undefined) => Type;
+  /**
+   * Checks `node` again, a literal of items already checked (expressions.ts `isBuiltLiteral`), as
+   * the `type` it is built as instead of its own (§3.7): the literals it is made of are checked
+   * again as their parts of `type`, every other item keeps the type it was checked to have and is
+   * fitted to its part, never checked twice.
+   */
+  readonly rebuild: (node: Expression, type: Type) => Type;
   /**
    * Reports at `at` (the site's own span when absent) when `found`, the type of what `site` gives,
    * doesn't fit `expected`. When it fits by converting the value, made async or wrapped into `T?`
@@ -185,10 +194,10 @@ export interface CheckedPasses {
 }
 
 /**
- * What one part of a composite argument has before the call is chosen: the parameter types it can
- * take when the call decides its type, or its own type when known without side effects, with, for
- * a literal of items each with a type of its own, the types its items can build it as instead
- * (§3.7).
+ * What one part of a composite literal has, read before checking (`acceptedPart`, as a call is
+ * chosen) or as checked (`checkedPartOf`, as producers agree): the parameter types it can take when
+ * the call decides its type, or its own type when known, with, for a literal of items each with a
+ * type of its own, the types its items can build it as instead (§3.7).
  */
 export type AcceptedPart =
   | { readonly kind: 'decided'; readonly accepts: Accepts }
@@ -197,6 +206,12 @@ export type AcceptedPart =
       readonly type: Type | undefined;
       readonly builds?: Accepts | undefined;
     };
+
+/** A part with a type of its own, as every part already checked has. */
+export type TypedPart = Extract<AcceptedPart, { readonly kind: 'typed' }>;
+
+/** How a composite literal's parts are read: before checking, or as checked (`AcceptedPart`). */
+export type PartReader = (node: Expression | undefined) => AcceptedPart;
 
 /** A body's variables: types, uses, and what targets take (statements/variables.ts). */
 export interface Variables {

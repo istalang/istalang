@@ -18,7 +18,7 @@ import type {
   MapLiteral,
   Spread,
 } from '../../syntax/expressions/index.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
+import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../body-context.ts';
 import { agreedAccepts, agreedBuilds, allProducersAccept } from '../rules/agreement.ts';
 import { collectionTarget } from '../types/expected.ts';
 import { sameType } from '../types/identity.ts';
@@ -26,11 +26,11 @@ import type { Type } from '../types/type.ts';
 import { arrayElement, arrayOf, wellKnownOf } from '../types/well-known.ts';
 
 /**
- * What a spread's items have before the call is chosen: an array's elements when its type is known;
- * any other spread's are left open, its items known only once it is checked.
+ * What a spread's items have, as `read` reads its operand: an array's elements when its type is
+ * known; any other spread's are left open, its items known only once it is checked.
  */
-function spreadAcceptedPart(context: BodyContext, spread: Spread): AcceptedPart {
-  const part = context.acceptedPart(spread.expression);
+function spreadPart(context: BodyContext, spread: Spread, read: PartReader): AcceptedPart {
+  const part = read(spread.expression);
   const type = part.kind === 'typed' ? part.type : undefined;
   return {
     kind: 'typed',
@@ -43,14 +43,24 @@ export function arrayAccepts(context: BodyContext, node: ArrayLiteral): Accepts 
   if (node.elements.length === 0) {
     return (expected) => collectionTarget(context.checker, expected) !== undefined;
   }
-  return arrayTaking(context, agreedAccepts(context, elementParts(context, node)));
+  return arrayTaking(
+    context,
+    agreedAccepts(context, elementParts(context, node, beforeChecking(context))),
+  );
 }
 
-/** Which array types an array literal of elements with types of their own can be built as (§3.7). */
-export function arrayBuilds(context: BodyContext, node: ArrayLiteral): Accepts | undefined {
+/**
+ * Which array types an array literal of elements with types of their own, as `read` reads them,
+ * can be built as (§3.7).
+ */
+export function arrayBuilds(
+  context: BodyContext,
+  node: ArrayLiteral,
+  read: PartReader,
+): Accepts | undefined {
   return node.elements.length === 0
     ? undefined
-    : arrayTaking(context, agreedBuilds(context, elementParts(context, node)));
+    : arrayTaking(context, agreedBuilds(context, elementParts(context, node, read)));
 }
 
 /** The array of the one type an array literal's elements each have on their own, if they do. */
@@ -59,12 +69,19 @@ export function arrayKnownType(context: BodyContext, node: ArrayLiteral): Type |
   return element === undefined ? undefined : arrayOf(context.checker, element);
 }
 
-function elementParts(context: BodyContext, node: ArrayLiteral): readonly AcceptedPart[] {
+function elementParts(
+  context: BodyContext,
+  node: ArrayLiteral,
+  read: PartReader,
+): readonly AcceptedPart[] {
   return node.elements.map((element) =>
-    element.kind === 'Spread'
-      ? spreadAcceptedPart(context, element)
-      : context.acceptedPart(element),
+    element.kind === 'Spread' ? spreadPart(context, element, read) : read(element),
   );
+}
+
+/** The parts of a literal as they are before checking, as a call is chosen. */
+function beforeChecking(context: BodyContext): PartReader {
+  return (node) => context.acceptedPart(node);
 }
 
 /** The array types whose item type `items` take. */
@@ -86,7 +103,7 @@ export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | un
       return kind === 'map' || kind === 'declared';
     };
   }
-  const { keyParts, valueParts } = entryParts(context, node);
+  const { keyParts, valueParts } = entryParts(node, beforeChecking(context));
   const keysNeed = agreedAccepts(context, keyParts);
   const valuesNeed = agreedAccepts(context, valueParts);
   if (keysNeed === undefined && valuesNeed === undefined) {
@@ -99,12 +116,19 @@ export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | un
   );
 }
 
-/** Which `Map` types a map literal of keys and values with types of their own can be built as (§3.7). */
-export function mapBuilds(context: BodyContext, node: MapLiteral): Accepts | undefined {
+/**
+ * Which `Map` types a map literal of keys and values with types of their own, as `read` reads
+ * them, can be built as (§3.7).
+ */
+export function mapBuilds(
+  context: BodyContext,
+  node: MapLiteral,
+  read: PartReader,
+): Accepts | undefined {
   if (node.entries.length === 0) {
     return undefined;
   }
-  const { keyParts, valueParts } = entryParts(context, node);
+  const { keyParts, valueParts } = entryParts(node, read);
   const keys = agreedBuilds(context, keyParts);
   const values = agreedBuilds(context, valueParts);
   return keys === undefined || values === undefined ? undefined : mapTaking(context, keys, values);
@@ -129,11 +153,11 @@ export function mapKnownType(context: BodyContext, node: MapLiteral): Type | und
     : wellKnownOf(context.checker, wellKnown.map, [key, value]);
 }
 
-function entryParts(context: BodyContext, node: MapLiteral) {
+function entryParts(node: MapLiteral, read: PartReader) {
   const entries = node.entries.map((entry) => (entry.kind === 'MapEntry' ? entry : undefined));
   return {
-    keyParts: entries.map((entry) => context.acceptedPart(entry?.key)),
-    valueParts: entries.map((entry) => context.acceptedPart(entry?.value)),
+    keyParts: entries.map((entry) => read(entry?.key)),
+    valueParts: entries.map((entry) => read(entry?.value)),
   };
 }
 

@@ -369,7 +369,7 @@ function reportMissing(
   const at = node.type?.span ?? node.span;
   const isGiven = (index: number) =>
     given.has(index) ||
-    (comprehended === undefined ? declaresDefault(shape, index) : comprehended.has(index));
+    (comprehended === undefined ? declaresDefault(shape.fields[index]) : comprehended.has(index));
   for (const [index, field] of shape.fields.entries()) {
     if (!isGiven(index)) {
       context.report(checkerDiagnostics.missingField(at, typeText(type), field.name));
@@ -377,9 +377,9 @@ function reportMissing(
   }
 }
 
-/** Whether field `index` of `shape` declares a default (§3.1). */
-function declaresDefault({ fields }: LiteralShape, index: number): boolean {
-  const declared = fields[index]?.declared?.node;
+/** Whether `field` declares a default (§3.1), as only a declared struct's field can. */
+export function declaresDefault(field: FieldMember | undefined): boolean {
+  const declared = field?.declared?.node;
   return declared !== undefined && hasDefault(declared);
 }
 
@@ -395,7 +395,7 @@ function defaultCalls(
   typeArguments: readonly Type[],
 ): readonly (FunctionCall | undefined)[] {
   const { defaults, fields } = shape;
-  const isLeftOut = (index: number) => !given.has(index) && declaresDefault(shape, index);
+  const isLeftOut = (index: number) => !given.has(index) && declaresDefault(shape.fields[index]);
   if (defaults === undefined || !fields.some((_, index) => isLeftOut(index))) {
     return [];
   }

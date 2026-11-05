@@ -56,6 +56,29 @@ describe('a literal argument of items with types of their own', () => {
     ).toBe('optional string');
   });
 
+  it('is built from items whatever expression gives them, each checked once', () => {
+    expect(
+      outcome(
+        [...takers, 'fn plus(n: Int) -> Int: n + 1'],
+        'const x = 2\n  `${f(struct{c: x + 1})} ${g((plus(x),))} ${h([x * 2, x])}`',
+      ),
+    ).toBe('f:3 g:3 h:2');
+  });
+
+  it('is built only as a struct type it gives every field of, but those with a default', () => {
+    const declarations = [
+      'fn pick(x: { a: Int? }) -> String: "one"',
+      'fn pick(x: { a: Int?; b: String }) -> String: "two"',
+      'struct Defaulted { a: Int?; b: String = "b" }',
+      'fn fill(x: Defaulted) -> String: x.b',
+    ];
+    const body = [
+      'const u: { a: Int? } | { a: Int?; b: String } = struct{a: none}',
+      '`${pick(struct{a: 3})} ${pick(struct{a: none})} ${pick(struct{a: 3, b: "x"})} ${fill(struct{a: 1})}`',
+    ].join('\n  ');
+    expect(outcome(declarations, body)).toBe('one one two b');
+  });
+
   it('prefers the overload taking it as its own type', () => {
     expect(
       outcome(

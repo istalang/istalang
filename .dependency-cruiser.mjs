@@ -213,7 +213,7 @@ export default {
       severity: 'error',
       from: {
         path: '^src/compiler/checker/[^/]+\\.ts$',
-        pathNot: '^src/compiler/checker/(body-checker|program-checker)\\.ts$',
+        pathNot: '^src/compiler/checker/(body-checker|body-records|program-checker)\\.ts$',
       },
       to: { path: checkerFolder(checkerLayers.filter((layer) => !checkerModel.includes(layer))) },
     },
@@ -221,7 +221,7 @@ export default {
       name: 'checker-folder-imports-wiring',
       severity: 'error',
       from: { path: '^src/compiler/checker/[^/]+/' },
-      to: { path: '^src/compiler/checker/(body-checker|program-checker)\\.ts$' },
+      to: { path: '^src/compiler/checker/(body-checker|body-records|program-checker)\\.ts$' },
     },
     {
       // Compiling or editing a program loads std sources without natives or the runtime they reach.

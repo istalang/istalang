@@ -23,7 +23,7 @@ import type { Expression, Reference } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
+import type { AcceptedPart, Accepts, BodyContext, PartReader, TypedPart } from '../body-context.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
 import { blockAccepts } from '../rules/branches.ts';
 import {
@@ -228,28 +228,61 @@ const knownTypeHandlers: Handlers<BodyContext, Expression, [], Type | undefined>
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
-/** How `node` takes part in a composite argument's `Accepts` check. */
+/** How `node` takes part in a composite argument's `Accepts` check, read before checking it. */
 export function acceptedPartOf(context: BodyContext, node: Expression | undefined): AcceptedPart {
   if (node === undefined) {
     return { kind: 'typed', type: undefined };
   }
   const accepts = context.accepts(node);
+  const read: PartReader = (part) => acceptedPartOf(context, part);
   return accepts === undefined
-    ? { kind: 'typed', type: knownTypeOf(context, node), builds: buildsOf(context, node) }
+    ? { kind: 'typed', type: knownTypeOf(context, node), builds: buildsOf(context, node, read) }
     : { kind: 'decided', accepts };
+}
+
+/**
+ * How `node`, already checked, takes part in building a literal as another type (§3.7): its type
+ * as checked, and, for a literal of items, the types its checked items can build it as.
+ */
+export function checkedPartOf(context: BodyContext, node: Expression | undefined): TypedPart {
+  if (node === undefined) {
+    return { kind: 'typed', type: undefined };
+  }
+  const read: PartReader = (part) => checkedPartOf(context, part);
+  return { kind: 'typed', type: context.typeOf(node), builds: buildsOf(context, node, read) };
+}
+
+/**
+ * Whether `node` is a literal of items that can be built as another type than its own (§3.7): a
+ * tuple, an array or map literal, a `struct{…}`, maybe parenthesized. A literal naming its type
+ * builds that type alone.
+ */
+export function isBuiltLiteral(node: Expression): boolean {
+  switch (node.kind) {
+    case 'Tuple':
+    case 'ArrayLiteral':
+    case 'MapLiteral':
+      return true;
+    case 'StructLiteral':
+      return node.type === undefined;
+    case 'Parenthesized':
+      return isBuiltLiteral(node.expression);
+    default:
+      return false;
+  }
 }
 
 /** A kind that is no literal of items, or one whose items can't be built as another type. */
 const builtAsItIs = (): undefined => undefined;
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-const buildsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined> = {
+const buildsHandlers: Handlers<BodyContext, Expression, [PartReader], Accepts | undefined> = {
   Identifier: builtAsItIs,
   IntegerLiteral: builtAsItIs,
   FloatLiteral: builtAsItIs,
   StringLiteral: builtAsItIs,
   BooleanLiteral: builtAsItIs,
-  Parenthesized: (context, node) => buildsOf(context, node.expression),
+  Parenthesized: (context, node, read) => buildsOf(context, node.expression, read),
   Binary: builtAsItIs,
   Unary: builtAsItIs,
   Call: builtAsItIs,
@@ -287,10 +320,10 @@ const buildsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined>
 
 /**
  * Which parameter types a literal of items each with a type of its own can be built as instead of
- * its own (§3.7); undefined for any other expression.
+ * its own (§3.7), its items read by `read`; undefined for any other expression.
  */
-function buildsOf(context: BodyContext, node: Expression): Accepts | undefined {
-  return handlerOf(buildsHandlers, node)(context, node);
+function buildsOf(context: BodyContext, node: Expression, read: PartReader): Accepts | undefined {
+  return handlerOf(buildsHandlers, node)(context, node, read);
 }
 
 function knownTypeOf(context: BodyContext, node: Expression): Type | undefined {

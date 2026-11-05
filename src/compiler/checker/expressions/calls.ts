@@ -130,15 +130,12 @@ function valueArgument(context: BodyContext, argument: Expression): WrittenArgum
   }
   const part = context.acceptedPart(argument);
   const literal = writtenLiteral(unparenthesized(argument));
-  return part.kind === 'decided'
-    ? { node: argument, passing: 'value', type: undefined, literal, accepts: part.accepts }
-    : {
-        node: argument,
-        passing: 'value',
-        type: context.expression(argument),
-        literal,
-        builds: part.builds,
-      };
+  if (part.kind === 'decided') {
+    return { node: argument, passing: 'value', type: undefined, literal, accepts: part.accepts };
+  }
+  const type = context.expression(argument);
+  const { builds } = context.checkedPart(argument);
+  return { node: argument, passing: 'value', type, literal, builds };
 }
 
 /**

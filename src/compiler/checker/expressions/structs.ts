@@ -20,7 +20,7 @@ import { itemValue } from '../../syntax/expressions/readings.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
+import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../body-context.ts';
 import type { FieldSource } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { partsAccept, partsBuild } from '../rules/agreement.ts';
@@ -35,7 +35,12 @@ import {
   type Type,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { checkLiteralFields, type LiteralShape, type LiteralSpread } from './literal-fields.ts';
+import {
+  checkLiteralFields,
+  declaresDefault,
+  type LiteralShape,
+  type LiteralSpread,
+} from './literal-fields.ts';
 import { builtThrough } from './literal-types.ts';
 import {
   checkComprehensionAlone,
@@ -276,18 +281,25 @@ export function structLiteralAccepts(
   if (node.type !== undefined) {
     return variantsAccepted(context, context.entityOf(lastName(node.type.path)));
   }
-  return fieldsTaking(context, node, partsAccept);
+  return fieldsTaking(context, node, {
+    combine: partsAccept,
+    read: (value) => context.acceptedPart(value),
+  });
 }
 
 /**
- * Which struct types a `struct{…}` literal of values each with a type of its own can be built as
- * instead of its shape (§3.7): those with a field of each name it gives, each value fitting it.
+ * Which struct types a `struct{…}` literal of values each with a type of its own, as `read` reads
+ * them, can be built as instead of its shape (§3.7): those it gives every field of, each value
+ * fitting it, but the fields with a default.
  */
 export function structLiteralBuilds(
   context: BodyContext,
   node: StructLiteral,
+  read: PartReader,
 ): Accepts | undefined {
-  return node.type === undefined ? fieldsTaking(context, node, partsBuild) : undefined;
+  return node.type === undefined
+    ? fieldsTaking(context, node, { combine: partsBuild, read })
+    : undefined;
 }
 
 /**
@@ -315,18 +327,34 @@ export function structLiteralKnownType(
   return shapeType(node, fields);
 }
 
-/** The struct types whose field of each name `node` gives the value read by `read` takes. */
+/**
+ * How a `struct{…}` literal's values take a struct type's fields: each read by `read`, and what
+ * the values together can take, from `combine` (rules/agreement.ts).
+ */
+interface ValuesTaking {
+  readonly combine: (
+    context: BodyContext,
+    parts: readonly AcceptedPart[],
+  ) => readonly Accepts[] | undefined;
+  readonly read: PartReader;
+}
+
+/**
+ * The struct types `node` gives a value of each field of, but those with a default, each value as
+ * `taking` says taking its field's type: a field named twice, or one the type lacks, takes none.
+ */
 function fieldsTaking(
   context: BodyContext,
   node: StructLiteral,
-  read: (context: BodyContext, parts: readonly AcceptedPart[]) => readonly Accepts[] | undefined,
+  { combine, read }: ValuesTaking,
 ): Accepts | undefined {
   const named = node.items.flatMap((item) => (item.kind === 'FieldInitializer' ? [item] : []));
+  const names = new Set(named.map((item) => item.name.text));
   const values =
-    named.length === node.items.length
-      ? read(
+    named.length === node.items.length && names.size === named.length
+      ? combine(
           context,
-          named.map((item) => context.acceptedPart(itemValue(item))),
+          named.map((item) => read(itemValue(item))),
         )
       : undefined;
   if (values === undefined) {
@@ -336,7 +364,7 @@ function fieldsTaking(
     const target = builtFrom(expected);
     const fields = target === undefined ? undefined : context.checker.fieldsOf(target);
     return (
-      fields !== undefined &&
+      fields?.every((field) => names.has(field.name) || declaresDefault(field)) === true &&
       named.every((item, index) => {
         const field = fields.find(({ name }) => name === item.name.text);
         return field !== undefined && (values[index]?.(field.type, isOpen) ?? true);

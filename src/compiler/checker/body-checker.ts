@@ -9,6 +9,10 @@
  *   target, and every value's implicit conversions (§2, types/fit.ts), which `fit` finds: on the
  *   node giving the value, or, for a value an assignment writes, on its part
  *   (statements/assignments.ts). Nothing is recomputed later, so lowering sees what was checked.
+ * - A node is checked once. A literal of items each with a type of its own, checked before the type
+ *   it is built as is decided (§3.7: a call's argument, a producer agreeing with others), is built
+ *   again as that type (`rebuild`): its own literals are checked again as their parts, and every
+ *   other item keeps what it was checked to have, fitted to its part.
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. What they record of a
  *   node is kept per pass of a field loop (passes.ts), so the body reads as each pass checked it.
@@ -19,6 +23,7 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { handlerOf } from '../../structures/kind-table.ts';
+import { withPushed } from '../../structures/stack.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
@@ -30,6 +35,7 @@ import type { Assignment, Block, Statement, VariableDeclaration } from '../synta
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { Accepts, BodyContext, CheckedPasses, Enclosing, Returns } from './body-context.ts';
+import { bodyRecords, checkedAt } from './body-records.ts';
 import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
 import { statementPlace } from './checked-annotation.ts';
 import { FunctionScope } from './closures/function-scope.ts';
@@ -39,12 +45,18 @@ import { declareOwnCall } from './closures/own-calls.ts';
 import { blockTail, ReturnScope } from './closures/returns.ts';
 import type { CheckerContext } from './context.ts';
 import { CollectionForms } from './expressions/collections.ts';
-import { acceptedPartOf, acceptsOf, expressionHandlers } from './expressions/expressions.ts';
+import {
+  acceptedPartOf,
+  acceptsOf,
+  checkedPartOf,
+  expressionHandlers,
+  isBuiltLiteral,
+} from './expressions/expressions.ts';
 import { StructLiterals } from './expressions/literal-sources.ts';
 import { FieldReads } from './expressions/member-access.ts';
 import { OptionalChains } from './expressions/optionals.ts';
 import type { FieldPassType } from './passes.ts';
-import { type Pass, Passes } from './passes.ts';
+import { Passes } from './passes.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
 import { declareTargets } from './patterns/targets.ts';
 import { ImplicitCalls } from './resolution/implicit.ts';
@@ -83,11 +95,6 @@ export type BodyKind =
     }
   | { readonly kind: 'value'; readonly declaredResult: Type | undefined };
 
-/** A field loop's pass as checked: its key and value, and the pass its records are kept in. */
-interface CheckedPass extends FieldPassType {
-  readonly pass: Pass;
-}
-
 export class BodyChecker implements BodyContext {
   readonly checker: CheckerContext;
   readonly module: ModuleId;
@@ -103,20 +110,11 @@ export class BodyChecker implements BodyContext {
   readonly chains = new OptionalChains(this.#passes);
   readonly fieldReads = new FieldReads(this.#passes);
   readonly labels = new LabelTargets();
-  readonly #types = this.#passes.table<Expression, Type>();
-  readonly #expected = this.#passes.table<ValueSite, Type>();
-  readonly #resolved = this.#passes.table<ResolvedSite, ResolvedCall>();
-  readonly #valueCalls = this.#passes.table<Call, true>();
-  readonly #candidates = this.#passes.table<ResolvedSite, readonly FunctionDeclaration[]>();
-  readonly #namedFields = this.#passes.table<Identifier, FieldMember>();
-  readonly #chosenVariants = this.#passes.table<Identifier, VariantEntity>();
-  readonly #ruledOut = this.#passes.table<Block, true>();
-  readonly #stops = this.#passes.table<Expression | Assignment, readonly Expression[]>();
-  readonly #decided = this.#passes.table<Expression, boolean>();
-  readonly #fits = this.#passes.table<ValueSite, Fit>();
-  readonly #fieldPasses = this.#passes.table<FieldHeader, readonly CheckedPass[]>();
+  readonly #records = bodyRecords(this.#passes);
   /** The body's own result, which only the body's own function returns into. */
   readonly #result: ReturnScope;
+  /** The literals being built again as another type (`rebuild`), their items kept. */
+  readonly #rebuilt: Expression[] = [];
 
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
@@ -177,16 +175,21 @@ export class BodyChecker implements BodyContext {
     for (const root of roots) {
       checkDropped(this, root);
     }
-    const calls = this.#resolved.entries();
+    const calls = this.#records.resolved.entries();
     checkDisposeUses(this, calls, checkTestingCalls(this, calls));
-    return this.#checkedAt(this.#passes.root, result);
+    return checkedAt(this.#records, this, this.#passes.root, result);
   }
 
   expression(node: Expression, given?: Type): Type {
     const { typeRules } = this.checker;
     const expected = given === undefined ? undefined : unfolded(given, typeRules);
     if (expected !== undefined) {
-      this.#expected.set(node, expected);
+      this.#records.expected.set(node, expected);
+    }
+    const checked =
+      this.#rebuilt.length > 0 && !isBuiltLiteral(node) ? this.#records.types.get(node) : undefined;
+    if (checked !== undefined) {
+      return checked;
     }
     const guide =
       expected === undefined
@@ -206,6 +209,10 @@ export class BodyChecker implements BodyContext {
     return acceptedPartOf(this, node);
   }
 
+  checkedPart(node: Expression | undefined) {
+    return checkedPartOf(this, node);
+  }
+
   inferLambda(node: Expression, parameters: Pick<FunctionType, 'parameters' | 'pack'>): Type {
     if (node.kind === 'Parenthesized') {
       return this.#record(node, this.inferLambda(node.expression, parameters));
@@ -218,16 +225,16 @@ export class BodyChecker implements BodyContext {
 
   #record(node: Expression, value: Type): Type {
     const type = this.chains.linked(this, node, unfolded(value, this.checker.typeRules));
-    this.#types.set(node, type);
+    this.#records.types.set(node, type);
     return type;
   }
 
   typeOf(node: Expression): Type {
-    return this.#types.get(node) ?? errorType;
+    return this.#records.types.get(node) ?? errorType;
   }
 
   callAt(site: ResolvedSite): ResolvedCall | undefined {
-    return this.#resolved.get(site);
+    return this.#records.resolved.get(site);
   }
 
   expect(node: Expression, expected: Type | undefined): Type {
@@ -238,11 +245,15 @@ export class BodyChecker implements BodyContext {
     return type;
   }
 
+  rebuild(node: Expression, type: Type): Type {
+    return withPushed(this.#rebuilt, node, () => this.expect(node, type));
+  }
+
   fit(found: Type, expected: Type, site: ValueSite, at = site.span): void {
-    this.#expected.set(site, expected);
+    this.#records.expected.set(site, expected);
     const fit = this.#fitOf(found, expected, at);
     if (!isExact(fit)) {
-      this.#fits.set(site, fit);
+      this.#records.fits.set(site, fit);
     }
   }
 
@@ -318,11 +329,11 @@ export class BodyChecker implements BodyContext {
   }
 
   recordCall(site: ResolvedSite, call: ResolvedCall): void {
-    this.#resolved.set(site, call);
+    this.#records.resolved.set(site, call);
   }
 
   recordValueCall(node: Call): void {
-    this.#valueCalls.set(node, true);
+    this.#records.valueCalls.set(node, true);
   }
 
   fieldPasses(
@@ -333,78 +344,35 @@ export class BodyChecker implements BodyContext {
     const { checked, inEach } = this.#passes.checkEach(passes, check, (diagnostic) =>
       this.report(diagnostic),
     );
-    this.#fieldPasses.set(header, checked);
+    this.#records.fieldPasses.set(header, checked);
     return { inEach };
   }
 
   recordCandidates(site: ResolvedSite, candidates: readonly FunctionDeclaration[]): void {
-    this.#candidates.set(site, candidates);
+    this.#records.candidates.set(site, candidates);
   }
 
   recordField(name: Identifier, field: FieldMember): void {
-    this.#namedFields.set(name, field);
+    this.#records.namedFields.set(name, field);
   }
 
   recordVariant(name: Identifier, variant: VariantEntity): void {
-    this.#chosenVariants.set(name, variant);
+    this.#records.chosenVariants.set(name, variant);
   }
 
   ruleOut(body: Block): void {
-    this.#ruledOut.set(body, true);
+    this.#records.ruledOut.set(body, true);
   }
 
   stopAt(operation: Expression | Assignment, operands: readonly Expression[]): void {
-    this.#stops.set(operation, operands);
+    this.#records.stops.set(operation, operands);
   }
 
   decide(condition: Expression, value: boolean): void {
-    this.#decided.set(condition, value);
+    this.#records.decided.set(condition, value);
   }
 
   decidedAt(node: Expression): boolean | undefined {
-    return this.#decided.get(node);
-  }
-
-  /** The CheckedBody of what was checked as `pass` sees it, producing `result`. */
-  #checkedAt(pass: Pass, result: Type): CheckedBody {
-    const { variables, literals, implicit, functions, labels } = this;
-    return {
-      typeOf: (expression) => this.#types.get(expression, pass),
-      expectedOf: (site) => this.#expected.get(site, pass),
-      resolved: this.#resolved.at(pass),
-      valueCalls: this.#valueCalls.at(pass),
-      madeCalls: () => [
-        ...this.#resolved.entries().map(([site, call]) => ({ site, call })),
-        ...implicit.made(),
-        ...literals.made(),
-      ],
-      implicitCallOf: (node, role) => implicit.of(node, role, pass),
-      collectionFormOf: (literal) => this.collections.of(literal, pass),
-      iterationOf: (iteration) => this.iterations.of(iteration, pass),
-      fitAt: (site) => this.#fits.get(site, pass) ?? exactFit,
-      targetsOf: (owner) => variables.targetsOf(owner, pass),
-      assignedOf: (assignment) => variables.assignedOf(assignment, pass),
-      inCell: (name) => variables.inCell(name),
-      functionOf: (node) => functions.checkedOf(node, pass),
-      sourcesOf: (literal) => literals.sourcesOf(literal, pass),
-      literalFieldsOf: (literal) => literals.fieldsOf(literal, pass),
-      patternOf: (pattern) => this.patterns.patternOf(pattern, pass),
-      chainOf: (link) => this.chains.chainOf(link, pass),
-      fieldReadOf: (access) => this.fieldReads.of(access, pass),
-      declaredTypeOf: (name) => variables.declaredTypeOf(name, pass),
-      namedFieldOf: (name) => this.#namedFields.get(name, pass),
-      chosenVariantOf: (name) => this.#chosenVariants.get(name, pass),
-      isRuledOut: (body) => this.#ruledOut.has(body, pass),
-      stopsAt: (operation) => this.#stops.get(operation, pass),
-      decidedOf: (condition) => this.#decided.get(condition, pass),
-      candidatesAt: (site) => this.#candidates.get(site, pass) ?? [],
-      labels,
-      passesOf: (header) =>
-        (this.#fieldPasses.get(header, pass) ?? []).map(({ pass: inner, ...each }) => ({
-          ...each,
-          body: this.#checkedAt(inner, result),
-        })),
-      result,
-    };
+    return this.#records.decided.get(node);
   }
 }

@@ -52,8 +52,8 @@ export function filledTypes(
 /**
  * Fits each argument to the type it fills, `expected` by argument number, checking first one the
  * chosen function decides, and checking a literal again: a scalar one, which has its literal type
- * where the type it fills expects one (§2), and one of items whose own type doesn't fit, built as
- * the type it fills (§3.7).
+ * where the type it fills expects one (§2), and building one of items whose own type doesn't fit as
+ * the type it fills (§3.7), its items checked once.
  */
 export function fitArguments(
   context: BodyContext,
@@ -64,21 +64,14 @@ export function fitArguments(
     const { node, type, isSpread } = argument;
     const parameter = expected[index];
     if (node !== undefined && parameter !== undefined && isSpread !== true) {
-      const checked =
-        type === undefined || isCheckedAgainst(context.checker, argument, type, parameter);
+      if (type !== undefined && isBuiltAs(context.checker, { ...argument, type }, parameter)) {
+        context.rebuild(node, parameter);
+        return;
+      }
+      const checked = type === undefined || argument.literal !== undefined;
       context.fit(checked ? context.expression(node, parameter) : type, parameter, node);
     }
   });
-}
-
-/** Whether an argument of its own `type` is checked again with the type it fills expected. */
-function isCheckedAgainst(
-  checker: Pick<CheckerContext, 'fitOf'>,
-  { literal, builds }: FittedArgument,
-  type: Type,
-  parameter: Type,
-): boolean {
-  return literal !== undefined || isBuiltAs(checker, { type, builds }, parameter);
 }
 
 /**

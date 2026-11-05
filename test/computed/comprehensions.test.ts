@@ -68,6 +68,22 @@ describe('elements holding keys', () => {
     expect(runText(lines, declarations)).toBe('a2,b1,a2,b1');
   });
 
+  it('agree whatever expressions give the other items, checked once', () => {
+    const declarations = ['struct P { b: Int; a: Int }', 'fn twice(n: Int) -> Int: n * 2'];
+    const lines = [
+      'const p = P{b: 1, a: 2}',
+      'const sums = [for k, v in ...p: (k, v + 1)]',
+      'const calls = [for k, v in ...p: (k, twice(v))]',
+      'const texts = [for k, v in ...p: (k, `${v}`)]',
+      'const ka: "a" = "a"',
+      'const kb: "b" = "b"',
+      'const written = [(ka, 1 + 1), (kb, 2 + 2)]',
+      'const all: Array<(String, Int)> = [...sums, ...calls, ...written]',
+      '`${all.map(fn pair: `${pair.0}${pair.1}`).join(",")};${texts.length()}`',
+    ];
+    expect(runText(lines, declarations)).toBe('a3,b2,a4,b2,a2,b4;2');
+  });
+
   it('agree over any struct, as the array literal written out per field', () => {
     fc.assert(
       fc.property(generatedFieldsArbitrary, (fields) => {
