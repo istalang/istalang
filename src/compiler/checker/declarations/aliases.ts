@@ -18,6 +18,7 @@ import type { ModuleId } from '../../program/program.ts';
 import {
   type AliasBody,
   type AliasDeclaration,
+  type AssociatedType,
   type TypeParameters,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
@@ -28,7 +29,13 @@ import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { resolveConstraintSet } from '../traits/struct-constraints.ts';
 import { parameterType } from '../types/resolve-type.ts';
-import { errorType, type Type } from '../types/type.ts';
+import {
+  errorType,
+  isNominalEntity,
+  nominalType,
+  type RecursiveLabel,
+  type Type,
+} from '../types/type.ts';
 import {
   type CaseForm,
   type CasePatternForm,
@@ -161,13 +168,32 @@ export class Aliases implements TypeMatchQueries {
     }
   }
 
+  spellingOf(alias: AliasDeclaration, typeArguments: readonly Type[]): RecursiveLabel | undefined {
+    if (alias.kind === 'TypeAliasDeclaration') {
+      return { kind: 'alias', declaration: alias, arguments: typeArguments };
+    }
+    const owner = this.#ownerOf(alias);
+    const name = owner !== undefined && 'name' in owner ? owner.name?.text : undefined;
+    const entity =
+      name === undefined
+        ? undefined
+        : this.#checker.bindings.topLevelNamed(this.#moduleOf(alias), name);
+    return entity?.kind === 'type' && isNominalEntity(entity)
+      ? { kind: 'associated', of: nominalType(entity, typeArguments), name: alias.name.text }
+      : undefined;
+  }
+
   /** What a use of `alias` gives arguments for: its own parameters, or its declaration's. */
   #parametersOf(alias: AliasDeclaration): TypeParameters {
     if (alias.kind === 'TypeAliasDeclaration') {
       return alias.typeParameters;
     }
-    const tree = this.#checker.inputs.treeOf(this.#moduleOf(alias));
-    const owner = parentOf(tree, alias);
+    const owner = this.#ownerOf(alias);
     return owner !== undefined && 'typeParameters' in owner ? owner.typeParameters : [];
+  }
+
+  /** The declaration an associated type is a part of. */
+  #ownerOf(alias: AssociatedType) {
+    return parentOf(this.#checker.inputs.treeOf(this.#moduleOf(alias)), alias);
   }
 }

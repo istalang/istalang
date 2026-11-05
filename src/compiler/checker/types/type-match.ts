@@ -16,7 +16,7 @@ import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts
 import type { TypeCase } from '../../syntax/types.ts';
 import type { ConstraintSet, StructConstraintModel } from './struct-constraint.ts';
 import { type Substitution, substitute } from './substitution.ts';
-import type { Type } from './type.ts';
+import type { RecursiveLabel, Type } from './type.ts';
 import { mapChildren } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
 
@@ -63,6 +63,15 @@ export interface TypeMatchQueries {
    * parameters: reported once, at the alias.
    */
   readonly isEndless: (alias: AliasDeclaration) => boolean;
+  /**
+   * How a use of `alias` with `typeArguments` reads: the alias given them, or the associated type
+   * of its declaration's type given them, `Group<Category>.Data`; undefined when that declaration
+   * names no type.
+   */
+  readonly spellingOf: (
+    alias: AliasDeclaration,
+    typeArguments: readonly Type[],
+  ) => RecursiveLabel | undefined;
 }
 
 /** The unreduced use of `declaration`, whose body is a type `match`, with `typeArguments`. */

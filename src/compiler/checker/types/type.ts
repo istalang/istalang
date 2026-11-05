@@ -104,6 +104,12 @@ interface KeysUse {
  */
 export type AliasUse = DeclaredAliasUse | AssociatedUse | KeysUse;
 
+/**
+ * How a recursive type's node reads (§3.17): the alias it was written through, or, for a recursive
+ * type `match` use an associated type stands for, that associated type, `Group<Category>.Data`.
+ */
+export type RecursiveLabel = DeclaredAliasUse | AssociatedUse;
+
 /** What every type carries beside its kind: the alias it was written through, if any. */
 export interface WrittenThrough {
   readonly alias?: AliasUse | undefined;

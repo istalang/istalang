@@ -29,7 +29,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { reducedComputed } from './computed-reduction.ts';
 import { isComputed, type RecursiveGraph, type RecursiveType } from './computed-types.ts';
 import { type Slot, TermGraph } from './recursive-terms.ts';
-import type { DeclaredAliasUse, ParameterKey, Type } from './type.ts';
+import type { ParameterKey, RecursiveLabel, Type } from './type.ts';
 import {
   boundWithin,
   graphParts,
@@ -48,8 +48,8 @@ export interface RecursiveGroup {
   readonly bodies: readonly Type[];
   /** The index of the body the placeholder `type` stands for; undefined for any other type. */
   readonly placeholderOf: (type: Type) => number | undefined;
-  /** The alias each body is written as, if any. */
-  readonly labels: readonly (DeclaredAliasUse | undefined)[];
+  /** How each body reads: the alias, or associated type, it is written as, if any. */
+  readonly labels: readonly (RecursiveLabel | undefined)[];
   /**
    * The rules of the program, which normalize unions the graph flattens (union-members.ts) and
    * reduce computed types built from its nodes (computed-reduction.ts).
@@ -191,7 +191,7 @@ class GraphNodes {
   readonly #terms: TermGraph;
   readonly #nodeOfClass = new Map<number, number>();
   readonly #representatives: number[] = [];
-  readonly #labels: (DeclaredAliasUse | undefined)[] = [];
+  readonly #labels: (RecursiveLabel | undefined)[] = [];
 
   constructor(terms: TermGraph) {
     this.#terms = terms;
@@ -202,7 +202,7 @@ class GraphNodes {
    * itself through no cycle: a body that closes no cycle, or holds only others', is finite, and
    * rebuilds in place, so a recursive type always unfolds without end and never keys as a finite one.
    */
-  name(slot: Slot, label: DeclaredAliasUse | undefined): void {
+  name(slot: Slot, label: RecursiveLabel | undefined): void {
     const resolved = this.#terms.resolved(slot);
     if (resolved.kind === 'leaf' || !this.#reachesItself(resolved.term)) {
       return;
@@ -339,9 +339,7 @@ export function mapRecursive(
     );
   };
   const bodies = graph.nodes.map((body) => rebuiltWithin(body, new Set()));
-  const labels = graph.labels.map((label) =>
-    label === undefined ? undefined : { ...label, arguments: label.arguments.map(map) },
-  );
+  const labels = graph.labels.map((label) => label && relabelled(label, map));
   const closed = closeRecursive({
     bodies,
     placeholderOf: (each) =>
@@ -351,6 +349,13 @@ export function mapRecursive(
   });
   const result = closed[type.node] ?? unreachable('A node closed to nothing.');
   return type.alias === undefined ? result : { ...result, alias: type.alias };
+}
+
+/** `label` with the types it names replaced by what `map` gives. */
+function relabelled(label: RecursiveLabel, map: (part: Type) => Type): RecursiveLabel {
+  return label.kind === 'alias'
+    ? { ...label, arguments: label.arguments.map(map) }
+    : { ...label, of: map(label.of) };
 }
 
 /** `type` rebuilt from `children`, a union as the set of them, which closing normalizes. */

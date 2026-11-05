@@ -46,13 +46,7 @@ import { fieldReaderOf, selfHoldingField } from '../types/finiteness.ts';
 import { closeRecursive } from '../types/recursive-types.ts';
 import { substituteStructConstraint } from '../types/struct-constraint.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
-import {
-  type DeclaredAliasUse,
-  errorType,
-  isPrimitive,
-  neverType,
-  type Type,
-} from '../types/type.ts';
+import { errorType, isPrimitive, neverType, type Type } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
 import {
   type CaseForm,
@@ -185,7 +179,9 @@ export class TypeMatchReductions {
       bodies,
       placeholderOf: (type) =>
         type.kind === 'match' ? closing.get(typeKeys.typeKey(type)) : undefined,
-      labels: group.map(([, eachUse]) => labelOf(eachUse)),
+      labels: group.map(([, { declaration, typeArguments }]) =>
+        this.#checker.typeMatches.spellingOf(declaration, typeArguments),
+      ),
       rules: this.#checker.typeRules,
     })[closing.get(key) ?? -1];
     if (closed === undefined) {
@@ -369,13 +365,6 @@ function unreducedUse(
 function holdingItself({ declaration, typeArguments }: MatchUse, field: string): Type {
   const use = { declaration, arguments: typeArguments };
   return { kind: 'error', unreduced: { use, cause: 'holdsItself', field } };
-}
-
-/** The alias a recursive use reads as: a top-level alias with its arguments; none for an associated type. */
-function labelOf({ declaration, typeArguments }: MatchUse): DeclaredAliasUse | undefined {
-  return declaration.kind === 'TypeAliasDeclaration'
-    ? { kind: 'alias', declaration, arguments: typeArguments }
-    : undefined;
 }
 
 /** A case's pattern with its declaration's parameters given their arguments. */

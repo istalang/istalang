@@ -10,9 +10,9 @@ import type { AliasDeclaration, AssociatedType, TypeParameter } from '../../synt
 import type { RestPattern } from '../../syntax/patterns.ts';
 import type { StructType } from '../../syntax/types.ts';
 import type {
-  DeclaredAliasUse,
   FieldMember,
   NominalType,
+  RecursiveLabel,
   Type,
   TypeParameterType,
   WrittenThrough,
@@ -135,7 +135,7 @@ export interface RecursiveType extends WrittenThrough {
 export interface RecursiveGraph {
   readonly nodes: readonly Type[];
   readonly types: readonly RecursiveType[];
-  readonly labels: readonly (DeclaredAliasUse | undefined)[];
+  readonly labels: readonly (RecursiveLabel | undefined)[];
 }
 
 /** What the recursive type `type` stands for (§3.17): its node's body. */

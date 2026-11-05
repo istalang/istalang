@@ -216,13 +216,16 @@ export function recursiveName(
 /**
  * The alias the type table names the recursive type `type` by (§3.17): of the program's recursive
  * aliases taking no type arguments whose type it is, a std module's first, then by module name,
- * then by name; for one no such alias is, the alias its graph labels its node with, if any.
+ * then by name; for one no such alias is, the alias its graph labels its node with, if any (an
+ * associated type labelling it names no entry).
  */
 function preferredAlias(checker: Checker, type: RecursiveType): DeclaredAliasUse | undefined {
   const preferred = preferredAliases(checker).get(checker.typeKeys.typeKey(type));
-  return preferred === undefined
-    ? type.graph.labels[type.node]
-    : { kind: 'alias', declaration: preferred, arguments: [] };
+  const label = type.graph.labels[type.node];
+  if (preferred !== undefined) {
+    return { kind: 'alias', declaration: preferred, arguments: [] };
+  }
+  return label?.kind === 'alias' ? label : undefined;
 }
 
 /** Each program's preferred alias of each recursive type key (`preferredAlias`). */

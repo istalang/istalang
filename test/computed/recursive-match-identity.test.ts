@@ -5,7 +5,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { codesOf, compareWrittenTypes, runMain, sameComputedType } from './computed.test-kit.ts';
+import {
+  codesOf,
+  compareWrittenTypes,
+  hoverCodeAt,
+  runMain,
+  sameComputedType,
+} from './computed.test-kit.ts';
 
 const dataDecls = [
   'struct Node<T> { value: T, next: Array<Node<T>> }',
@@ -93,5 +99,31 @@ describe('a recursive type `match` use', () => {
     expect(compareWrittenTypes('IsTree<{ n: Int }>', '"other"', declarations)).toEqual(
       sameComputedType,
     );
+  });
+
+  it('reads, inside itself too, as the associated type it was written through', () => {
+    const model = [
+      'trait Node:',
+      '  type Data',
+      'struct Field<T>:',
+      '  value: T?',
+      '  type Data = T',
+      'struct List<R is Node>:',
+      '  rows: Array<R>',
+      '  type Data = Array<R.Data>',
+      'struct Group<S is struct { [_] is Node }>:',
+      '  fields: S',
+      '  type Data = match S:',
+      '    case _: { [F in keyof S]: S[F].Data }',
+      'struct Category:',
+      '  name: Field<String>',
+      '  children: List<Group<Category>>',
+    ];
+    const hover = (read: string) =>
+      hoverCodeAt(...model, 'fn f(d: Group<Category>.Data):', `  const ‸a = ${read}`, '  _ = a');
+    expect(codesOf(...model)).toEqual([]);
+    expect(hover('d')).toEqual(['(variable) a: Group<Category>.Data']);
+    expect(hover('d.children')).toEqual(['(variable) a: Array<Group<Category>.Data>']);
+    expect(hover('d.children[0]')).toEqual(['(variable) a: Group<Category>.Data']);
   });
 });
