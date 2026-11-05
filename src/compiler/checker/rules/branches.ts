@@ -12,7 +12,7 @@
  */
 
 import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../context.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

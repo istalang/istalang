@@ -14,7 +14,7 @@
 import { templateFunctions } from '../../../language/well-known.ts';
 import type { Expression, TemplateLiteral } from '../../syntax/expressions/index.ts';
 import { constantTextOf, isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { implicitCall, preludeCall } from '../resolution/implicit.ts';

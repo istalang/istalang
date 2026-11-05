@@ -23,13 +23,13 @@ import type { ImplicitRole, ResolvedSite } from '../checker/resolved-call.ts';
 import { substitute } from '../checker/types/substitution.ts';
 import type { NodeOf } from '../syntax/node.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { CodeContext, FunctionContext } from './context.ts';
 import {
   type ClosedCall,
   calledParameters,
   defaultEntryOf,
   substitutionOfCall,
-} from './instances.ts';
+} from './closed-calls.ts';
+import type { CodeContext, FunctionContext } from './context.ts';
 import { packElementsOf } from './packs.ts';
 
 /** A call to write: where it is written, what it calls, and its arguments. */

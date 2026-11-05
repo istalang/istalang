@@ -47,7 +47,8 @@ import type {
 } from '../checker/types/type.ts';
 import { baseOf, hasOneValue } from '../checker/types/unions.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { closeFunctionCall, type FunctionInstance } from './instances.ts';
+import { closeFunctionCall } from './closed-calls.ts';
+import type { FunctionInstance } from './instances.ts';
 import { qualifiedNameOf, spelledType, unionName } from './names.ts';
 
 /** What a type entry refers to outside the type table. */

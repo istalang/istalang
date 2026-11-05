@@ -36,8 +36,8 @@ import {
   isImplicitOperator,
 } from '../../syntax/operators.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { BodyContext } from '../body-context.ts';
 import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
-import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type ImplicitOperand, implicitOperatorCall } from '../resolution/implicit.ts';
 import { checkEqualSides } from '../types/equality.ts';

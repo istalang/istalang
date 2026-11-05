@@ -9,7 +9,7 @@
 
 import { chainStepOf } from '../../syntax/expressions/chains.ts';
 import type { Dereference } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';

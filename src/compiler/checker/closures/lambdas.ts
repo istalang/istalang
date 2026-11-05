@@ -28,8 +28,8 @@ import { type FunctionDeclaration, nestedFunctionSpan } from '../../syntax/decla
 import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { Accepts, BodyContext } from '../body-context.ts';
 import type { NestedFunction, SignatureParameter } from '../check.ts';
-import type { Accepts, BodyContext } from '../context.ts';
 import { declaredBodyResult, writtenByReference } from '../declarations/signatures.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Produced } from '../rules/agreement.ts';

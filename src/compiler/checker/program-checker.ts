@@ -11,7 +11,8 @@
  *   is defined through itself (§3).
  * - What one kind of declaration needs lives in a unit beside its rules, which this class composes
  *   (declarations/: functions, constants, layouts, parameters, aliases, static functions;
- *   resolution/: type parameters; rules/: expansion), as BodyChecker composes a body's units.
+ *   resolution/: type parameters, the type rules and fitting; rules/: expansion), as BodyChecker
+ *   composes a body's units.
  * - Items checked by their module are its top-level items and a trait's members; type parameters
  *   resolve their constraints in the module declaring them (declaring-modules.ts).
  * - A checker made with the checker of an earlier snapshot takes over its entries wherever what
@@ -63,7 +64,8 @@ import { writtenByReference } from './declarations/signatures.ts';
 import { StaticFunctions } from './declarations/statics.ts';
 import { Lookup } from './lookup/lookup.ts';
 import { declaringInputs, programInputs, recordedBindings } from './program-inputs.ts';
-import { meetsAny, memberWitnesses } from './resolution/trait-objects.ts';
+import { programTypeRules } from './resolution/program-type-rules.ts';
+import { memberWitnesses } from './resolution/trait-objects.ts';
 import { TypeParameters } from './resolution/type-parameters.ts';
 import type { ResolvedCall } from './resolved-call.ts';
 import { Annotations } from './rules/annotations.ts';
@@ -71,7 +73,6 @@ import { disposalOf } from './rules/disposal.ts';
 import { Expansion } from './rules/expansion.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
 import { resolveAnyType } from './traits/any-types.ts';
-import { associatedTypeOf, fieldTypeOf } from './traits/known-constraints.ts';
 import { type Fit, type Fitting, fitOf } from './types/fit.ts';
 import type { StaticOwner } from './types/named-types.ts';
 import { resolveTypeNode } from './types/resolve-type.ts';
@@ -108,16 +109,12 @@ export interface CheckerOptions {
   readonly observe?: ((table: string, key: unknown) => void) | undefined;
 }
 
-/** An `any` member of a union, and another member it may take whole (type-rules.ts). */
-interface Absorbing {
-  readonly target: AnyType;
-  readonly member: Type;
-}
-
 export class ProgramChecker implements CheckerContext {
   readonly program: Program;
   readonly typeKeys = typeKeys;
   readonly entries: Entries<CheckerNote>;
+  readonly typeRules: TypeRules;
+  readonly fitting: Fitting;
   readonly bindings: Bindings;
   readonly inputs: ProgramInputs;
   readonly moduleOf: (declaration: Declaration | VariableDeclaration) => ModuleId;
@@ -127,12 +124,6 @@ export class ProgramChecker implements CheckerContext {
   readonly #resolvedTypes: EntryTable<CheckerNote, TypeNode, Type, ModuleId>;
   /** Each type's disposal, by its key: finding a declared `dispose` chooses among candidates. */
   readonly #disposals: EntryTable<CheckerNote, string, Disposal, NominalType>;
-  /**
-   * Whether an `any` member of a union takes a member whole, by both their keys. Conformance may
-   * build the very union asking, so a question reached again while it is answered takes `false`,
-   * the member kept beside the `any` one, alike whichever was asked first.
-   */
-  readonly #absorbed: EntryTable<CheckerNote, string, boolean, Absorbing>;
   readonly #functions: FunctionChecks;
   readonly #constants: ConstantChecks;
   readonly #layouts: Layouts;
@@ -170,11 +161,9 @@ export class ProgramChecker implements CheckerContext {
       equal: (first, second) =>
         first === second || (first.kind !== 'function' && first.kind === second.kind),
     });
-    this.#absorbed = entries.table({
-      name: 'absorbed members',
-      compute: (_key, { target, member }: Absorbing) => meetsAny(this, member, target),
-      cyclic: { standIn: () => false },
-    });
+    const rules = programTypeRules(this, (type) => this.#layouts.nominalShapeOf(type));
+    this.typeRules = rules.typeRules;
+    this.fitting = rules.fitting;
     this.#functions = new FunctionChecks({
       checker: this,
       checkBody: (module, declaration, declared) => this.#checkBody(module, declaration, declared),
@@ -282,26 +271,6 @@ export class ProgramChecker implements CheckerContext {
   /** An arrow, so the relation can be passed around on its own (rules/agreement.ts). */
   readonly fitOf = (found: Type, expected: Type): Fit | undefined =>
     fitOf(found, expected, this.fitting);
-
-  readonly typeRules: TypeRules = {
-    absorbs: (target, member) =>
-      this.#absorbed.get(JSON.stringify([typeKeys.typeKey(target), typeKeys.typeKey(member)]), {
-        target,
-        member,
-      }),
-    associatedType: (of, name) => associatedTypeOf(this, of, name),
-    fieldType: (of, key) => fieldTypeOf(this, of, key),
-  };
-
-  get fitting(): Fitting {
-    return {
-      ...this.typeRules,
-      meetsAny: (type, target) => meetsAny(this, type, target),
-      shapeOf: (type) => this.#layouts.nominalShapeOf(type),
-      memberUnionOf: (parameter) =>
-        parameter.kind === 'TypeParameter' ? this.memberUnionOf(parameter) : undefined,
-    };
-  }
 
   constraintsOf(parameter: TypeParameter): readonly Constraint[] {
     return this.#typeParameters.constraintsOf(parameter);

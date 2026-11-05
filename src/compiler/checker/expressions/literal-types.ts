@@ -16,7 +16,7 @@ import {
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
 import type { NamedType } from '../../syntax/types.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import { itemField } from '../struct-items.ts';
 import { builtFrom } from '../types/expected.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';

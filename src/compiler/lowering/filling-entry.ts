@@ -14,8 +14,9 @@
 import type { CodeFunction } from '../../definition/functions.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { type Binding, parameterOfArgument } from '../checker/resolved-call.ts';
+import { callOfFilling } from './closed-calls.ts';
 import type { CodeContext } from './context.ts';
-import { callOfFilling, type FunctionInstance } from './instances.ts';
+import type { FunctionInstance } from './instances.ts';
 import { SynthesizedCode } from './synthesized-code.ts';
 
 /** The code of `instance`, a filling entry filling its function's parameters as `binding` says. */

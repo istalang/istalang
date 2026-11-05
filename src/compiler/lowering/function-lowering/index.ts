@@ -46,6 +46,7 @@ import type { Pattern } from '../../syntax/patterns.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
 import { writtenBodyOf } from '../bodies.ts';
+import { type ClosedCall, closeCallWithin } from '../closed-calls.ts';
 import { CodeWriter, type WrittenInstruction } from '../code-writer.ts';
 import { emitConstant } from '../constants.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
@@ -53,8 +54,6 @@ import { expressionHandlers } from '../expressions/expressions.ts';
 import { tupleOf } from '../expressions/tuples.ts';
 import {
   type BodyOwner,
-  type ClosedCall,
-  closeCallWithin,
   type FunctionInstance,
   type NestedInstance,
   ownerDeclaration,

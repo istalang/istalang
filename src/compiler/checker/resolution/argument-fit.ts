@@ -9,7 +9,7 @@
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import { substitute } from '../types/substitution.ts';
 import type { LiteralType, Type } from '../types/type.ts';
 import type { TypeRules } from '../types/type-rules.ts';

@@ -19,7 +19,7 @@ import type {
   LabelledScope,
   While,
 } from '../../syntax/statements.ts';
-import type { BodyContext, LabelRecord } from '../context.ts';
+import type { BodyContext, LabelRecord } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
 import { boolType, neverType, type Type, unitType } from '../types/type.ts';

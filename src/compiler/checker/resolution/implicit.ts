@@ -25,7 +25,7 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import { binaryOperators, type ImplicitOperator } from '../../syntax/operators.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext, ImplicitRecord } from '../context.ts';
+import type { BodyContext, ImplicitRecord } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';

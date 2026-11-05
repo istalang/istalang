@@ -14,7 +14,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
 import type { LiteralType, NominalType, Type } from '../../checker/types/type.ts';
 import { typeText } from '../../checker/types/type-text.ts';
-import { type ClosedCall, closeCall } from '../instances.ts';
+import { type ClosedCall, closeCall } from '../closed-calls.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
 import { literalValue, oneValueIn } from '../unions.ts';
 import { codecCall } from './codec-calls.ts';

@@ -6,7 +6,7 @@
 
 import type { Comprehension } from '../../syntax/expressions/index.ts';
 import type { For, VariableDeclaration } from '../../syntax/statements.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import type { Type } from '../types/type.ts';
 import { bodyScope } from './parts.ts';
 import { walkTargets } from './walk.ts';

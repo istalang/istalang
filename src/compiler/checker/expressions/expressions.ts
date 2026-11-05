@@ -19,8 +19,8 @@ import { localFunctionOf } from '../../binder/entities.ts';
 import type { Expression, Reference } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../context.ts';
 import { blockAccepts } from '../rules/branches.ts';
 import {
   boolType,

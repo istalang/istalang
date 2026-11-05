@@ -31,10 +31,10 @@ import {
   destructuringOf,
   isUnnamedTarget,
 } from '../../syntax/statements.ts';
+import type { BodyContext } from '../body-context.ts';
 import { binaryApplied, resolveOperator } from '../calls/operators.ts';
 import { checkChangedPlace, checkDistinctPlaces, immutableKind } from '../calls/places.ts';
 import type { AssignedPart } from '../check.ts';
-import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';

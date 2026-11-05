@@ -1,0 +1,63 @@
+/**
+ * The rules over types that need the program, as one checker gives them: normalizing types
+ * (types/type-rules.ts: whether an `any` member of a union takes another member whole, what an
+ * associated type or a field's type of a known type reduces to), and fitting a value to a type
+ * (types/fit.ts), which adds conformance, the shapes of nominal structs and member parameters.
+ *
+ * An absorbing question is an entry of the checker's tables, keyed by both types' keys:
+ * conformance may build the very union asking, so a question reached again while it is answered
+ * takes `false`, the member kept beside the `any` one, alike whichever was asked first.
+ */
+
+import type { EntryTable } from '../../../structures/entries/index.ts';
+import type { CheckerContext, CheckerNote } from '../context.ts';
+import { associatedTypeOf, fieldTypeOf } from '../traits/known-constraints.ts';
+import type { Fitting } from '../types/fit.ts';
+import type { AnonymousStructType, AnyType, Type } from '../types/type.ts';
+import { typeKeys } from '../types/type-keys.ts';
+import type { TypeRules } from '../types/type-rules.ts';
+import { meetsAny } from './trait-objects.ts';
+
+/** An `any` member of a union, and another member it may take whole. */
+interface Absorbing {
+  readonly target: AnyType;
+  readonly member: Type;
+}
+
+/** The type rules and the fitting of `checker`'s program. */
+export interface ProgramTypeRules {
+  readonly typeRules: TypeRules;
+  readonly fitting: Fitting;
+}
+
+/**
+ * The rules of `checker`'s program, its absorbing answers kept in its entries; `shapeOf` gives a
+ * nominal struct's shape, which its layouts know.
+ */
+export function programTypeRules(
+  checker: CheckerContext,
+  shapeOf: (type: Type) => AnonymousStructType | undefined,
+): ProgramTypeRules {
+  const absorbed: EntryTable<CheckerNote, string, boolean, Absorbing> = checker.entries.table({
+    name: 'absorbed members',
+    compute: (_key, { target, member }: Absorbing) => meetsAny(checker, member, target),
+    cyclic: { standIn: () => false },
+  });
+  const typeRules: TypeRules = {
+    absorbs: (target, member) =>
+      absorbed.get(JSON.stringify([typeKeys.typeKey(target), typeKeys.typeKey(member)]), {
+        target,
+        member,
+      }),
+    associatedType: (of, name) => associatedTypeOf(checker, of, name),
+    fieldType: (of, key) => fieldTypeOf(checker, of, key),
+  };
+  const fitting: Fitting = {
+    ...typeRules,
+    meetsAny: (type, target) => meetsAny(checker, type, target),
+    shapeOf,
+    memberUnionOf: (parameter) =>
+      parameter.kind === 'TypeParameter' ? checker.memberUnionOf(parameter) : undefined,
+  };
+  return { typeRules, fitting };
+}

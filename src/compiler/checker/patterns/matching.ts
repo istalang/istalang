@@ -37,8 +37,8 @@ import type {
   RangePattern,
   StructPattern,
 } from '../../syntax/patterns.ts';
+import type { BodyContext, PatternRecord } from '../body-context.ts';
 import { type CheckedPattern, namesBound, type PatternTest } from '../checked-pattern.ts';
-import type { BodyContext, PatternRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { implicitOperatorCall, preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, nameNodeOf } from '../resolution/named.ts';

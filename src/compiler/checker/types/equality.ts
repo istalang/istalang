@@ -10,7 +10,7 @@
 
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { sameType } from './identity.ts';
 import { isPrimitive, type Type } from './type.ts';

@@ -38,9 +38,9 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { AcceptedPart, Accepts, BodyContext, CollectionRecord } from '../body-context.ts';
 import { writeElement } from '../calls/collection-functions.ts';
 import type { CollectionForm } from '../check.ts';
-import type { AcceptedPart, Accepts, BodyContext, CollectionRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { resolveDefault } from '../resolution/default-witness.ts';
 import { preludeCall } from '../resolution/implicit.ts';

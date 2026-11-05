@@ -7,8 +7,8 @@
 
 import { collectionFunctions } from '../../../language/well-known.ts';
 import type { Index } from '../../syntax/expressions/index.ts';
+import type { BodyContext } from '../body-context.ts';
 import { resolveCall } from '../calls/resolve.ts';
-import type { BodyContext } from '../context.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import type { Type } from '../types/type.ts';

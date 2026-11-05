@@ -10,7 +10,8 @@ import type { EnumDeclaration, StructDeclaration, Variant } from '../../syntax/d
 import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext, CheckerContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
+import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { enumsExpected } from '../types/expected.ts';
 import { entityType } from '../types/named-types.ts';

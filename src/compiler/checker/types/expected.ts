@@ -20,7 +20,8 @@ import { wellKnown } from '../../../language/well-known.ts';
 import { typeParametersOf } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { Accepts, BodyContext, CheckerContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../body-context.ts';
+import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { typeArgumentsFor } from './resolve-type.ts';
 import {

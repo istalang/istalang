@@ -25,8 +25,8 @@ import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
+import type { ClosedCall } from './closed-calls.ts';
 import type { CodeWriter } from './code-writer.ts';
-import type { ClosedCall } from './instances.ts';
 import type { OptionalChains } from './optional-chains.ts';
 import type { HoldScopes } from './statements/holds.ts';
 import type { LoopStack } from './statements/loops.ts';
@@ -68,7 +68,7 @@ export interface FunctionContext {
   readonly fieldReadOf: (access: MemberAccess) => FieldRead;
   /** A `match` case's or `is`'s pattern as checked. */
   readonly patternOf: (pattern: Pattern) => CheckedPattern;
-  /** The call the checker resolved at `site`, closed here (instances.ts). */
+  /** The call the checker resolved at `site`, closed here (closed-calls.ts). */
   readonly callAt: (site: ResolvedSite) => ClosedCall;
   /** `call`, one the checker recorded with no site, closed here. */
   readonly closed: (call: ResolvedCall) => ClosedCall;

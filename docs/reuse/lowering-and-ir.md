@@ -18,9 +18,9 @@ tags: [reuse, lowering, definition, ir, instructions]
 - lower a function instance or nested function body → `instanceLowering`, `nestedLowering` (`src/compiler/lowering/function-lowering/index.ts`)
 - build the `LoweredFunction` for an instance or nested entry → `loweredInstance`, `loweredNested` (`src/compiler/lowering/function-lowering/frames.ts`)
 - lay out the `Frame` for an instance or nested entry → `instanceFrame`, `nestedFrame` (`src/compiler/lowering/function-lowering/frames.ts`)
-- close a `ResolvedCall` against an instantiation's substitution/witnesses → `closeCall`, `closeCallWithin` (`src/compiler/lowering/instances.ts`), given the checker as a `Closer` (its type rules, and the witnesses a requirement on a computed type takes once known)
-- close a `FunctionCall` or a trait witness call → `closeFunctionCall`, `closeWitness` (`src/compiler/lowering/instances.ts`)
-- build root, filling or default `FunctionInstance`s → `rootInstance`, `takingPassed`, `defaultEntryOf`, `substitutionOf` (`src/compiler/lowering/instances.ts`)
+- close a `ResolvedCall` against an instantiation's substitution/witnesses → `closeCall`, `closeCallWithin` (`src/compiler/lowering/closed-calls.ts`), given the checker as a `Closer` (its type rules, and the witnesses a requirement on a computed type takes once known)
+- close a `FunctionCall` or a trait witness call → `closeFunctionCall`, `closeWitness` (`src/compiler/lowering/closed-calls.ts`)
+- build root, filling or default `FunctionInstance`s → `rootInstance`, `substitutionOf` (`src/compiler/lowering/instances.ts`), `takingPassed`, `defaultEntryOf` (`src/compiler/lowering/closed-calls.ts`)
 - allocate registers, place labels, and emit jumps, branches or instructions → `CodeWriter` (`src/compiler/lowering/code-writer.ts`), via `context.code`
 - write code with no syntax behind it (codecs, host wrappers, `any` dispatch, async fits) → `SynthesizedCode` (`src/compiler/lowering/synthesized-code.ts`); pass its parameters on, those it takes by `&` by `&` (into a part too) → `SynthesizedCode.passedOn`; pass by `&` a value it has no place for → `SynthesizedCode.inCell`
 - build a struct from registers by its fields' names, a tuple, or `==`, with a body or without → `construct`, `tupleOf`, `equal` (`src/compiler/lowering/expressions/structs.ts`, `tuples.ts`, `operators.ts`, all on `CodeContext`); a struct's value rebuilt as another struct type, its fields by name (a nominal value as its shape, §3.1) → `rebuiltAs` (`src/compiler/lowering/expressions/structs.ts`)

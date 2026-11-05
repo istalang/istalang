@@ -24,7 +24,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { Accepts, BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { applyCall } from '../resolution/applied-call.ts';
 import { argumentListText } from '../resolution/argument-fit.ts';

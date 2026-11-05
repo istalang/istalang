@@ -12,9 +12,9 @@
  */
 
 import type { Call, Expression } from '../../syntax/expressions/index.ts';
+import type { BodyContext } from '../body-context.ts';
 import { checkReferencedPlaces } from '../calls/places.ts';
 import { callArgumentOf, explain, type WrittenArgument } from '../calls/resolve.ts';
-import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { takenBy } from '../resolution/applicability.ts';
 import { fitArguments } from '../resolution/argument-fit.ts';

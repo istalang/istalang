@@ -18,7 +18,7 @@ import {
   type UnaryOperator,
   unaryOperators,
 } from '../../syntax/operators.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import type { ResolvedSite } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';

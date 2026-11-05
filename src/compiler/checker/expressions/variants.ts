@@ -16,7 +16,7 @@ import type { EnumDeclaration } from '../../syntax/declarations.ts';
 import type { FieldsLiteral, MemberAccess } from '../../syntax/expressions/index.ts';
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
-import type { Accepts, BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { chooseVariant } from '../resolution/named.ts';
 import { enumsExpected, expectedNominal, sameNominal } from '../types/expected.ts';

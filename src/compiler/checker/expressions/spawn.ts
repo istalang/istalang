@@ -23,7 +23,7 @@ import {
   type Spawn,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isSendable } from '../traits/sendable.ts';
 import { errorType, type Type } from '../types/type.ts';

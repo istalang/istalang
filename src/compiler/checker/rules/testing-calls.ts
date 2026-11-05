@@ -11,7 +11,7 @@ import { languageModules, testingFunctions } from '../../../language/well-known.
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import { type Call, type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isHostType } from '../host-externs.ts';
 import type { FunctionCall, ResolvedCall, ResolvedSite } from '../resolved-call.ts';

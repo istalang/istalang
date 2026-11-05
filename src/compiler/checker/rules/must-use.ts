@@ -21,7 +21,7 @@ import type { VariableEntity } from '../../binder/entities.ts';
 import { localFunctionOf } from '../../binder/entities.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import { type Drop, droppedName } from '../../syntax/statements.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { heldType } from '../types/held.ts';
 import { type Type, unitType } from '../types/type.ts';

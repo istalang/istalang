@@ -33,9 +33,9 @@ import {
   type Spawn,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
+import { type ClosedCall, calledParameters } from '../closed-calls.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall, emitFunctionCall } from '../emit-call.ts';
-import { type ClosedCall, calledParameters } from '../instances.ts';
 import { packElementsOf } from '../packs.ts';
 import { enterReferenced } from '../places.ts';
 import { spreadArray } from './collections.ts';

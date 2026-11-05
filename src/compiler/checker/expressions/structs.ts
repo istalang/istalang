@@ -23,8 +23,8 @@ import {
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
+import type { Accepts, BodyContext } from '../body-context.ts';
 import type { FieldSource } from '../check.ts';
-import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { builtFrom } from '../types/expected.ts';
 import {

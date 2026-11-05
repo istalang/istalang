@@ -32,14 +32,13 @@ import type {
 import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
 import type { SyntaxTree } from '../syntax/tree.ts';
 import { nestedSpanOf } from './bodies.ts';
+import { type ClosedCall, type Dispatch, takingPassed } from './closed-calls.ts';
 import { annotationValues } from './constants.ts';
 import {
   type AsyncFit,
   asyncFitKey,
   asyncFitName,
   type BodyOwner,
-  type ClosedCall,
-  type Dispatch,
   type FunctionInstance,
   instanceKey,
   instanceName,
@@ -47,7 +46,6 @@ import {
   nestedKey,
   nestedName,
   ownerDeclaration,
-  takingPassed,
 } from './instances.ts';
 import { qualifiedNameOf } from './names.ts';
 import { TypeTable } from './type-table.ts';

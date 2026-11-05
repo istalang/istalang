@@ -24,8 +24,8 @@ import {
   selectCasesOf,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
+import type { Accepts, BodyContext } from '../body-context.ts';
 import { ownCallerOf } from '../closures/own-calls.ts';
-import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { checkDiscarded } from '../rules/must-use.ts';

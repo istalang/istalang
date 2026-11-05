@@ -5,7 +5,7 @@
 
 import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
 import type { If } from '../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { isAssignable } from '../types/identity.ts';

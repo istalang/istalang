@@ -6,7 +6,7 @@
  */
 
 import type { Comprehension } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
 import { boolType, type Type } from '../types/type.ts';
 import { arrayOf } from '../types/well-known.ts';

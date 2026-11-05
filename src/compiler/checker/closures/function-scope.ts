@@ -7,8 +7,8 @@
 import type { VariableEntity } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { FunctionFrame } from '../body-context.ts';
 import type { NestedFunction } from '../check.ts';
-import type { FunctionFrame } from '../context.ts';
 import { EnclosingScopes } from './enclosing-scopes.ts';
 import type { ReturnScope } from './returns.ts';
 

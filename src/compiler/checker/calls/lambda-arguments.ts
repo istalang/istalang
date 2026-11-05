@@ -14,7 +14,7 @@
 import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
 import { type Expression, type Lambda, unparenthesized } from '../../syntax/expressions/index.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
-import type { BodyContext } from '../context.ts';
+import type { BodyContext } from '../body-context.ts';
 import type { Inference } from '../inference/infer.ts';
 import { argumentSlotsOf } from '../resolution/binding.ts';
 import type { Application } from '../resolution/choice.ts';

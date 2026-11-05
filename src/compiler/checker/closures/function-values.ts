@@ -19,8 +19,8 @@ import { staticName } from '../../../language/static-names.ts';
 import type { FunctionsEntity } from '../../binder/entities.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
+import type { Accepts, BodyContext } from '../body-context.ts';
 import { recordChosen } from '../calls/resolve.ts';
-import type { Accepts, BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Passing } from '../resolution/call-arguments.ts';
 import {

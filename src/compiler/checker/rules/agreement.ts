@@ -11,8 +11,9 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import type { ValueSite } from '../check.ts';
-import type { AcceptedPart, Accepts, BodyContext, CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../context.ts';
 import { type Fit, isExact } from '../types/fit.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
 import type { TypeRules } from '../types/type-rules.ts';

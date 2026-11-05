@@ -7,8 +7,8 @@
  */
 
 import type { Expression, FieldsLiteral } from '../../syntax/expressions/index.ts';
+import type { LiteralSources } from '../body-context.ts';
 import type { FieldSource } from '../check.ts';
-import type { LiteralSources } from '../context.ts';
 import type { FunctionCall, MadeCall } from '../resolved-call.ts';
 import type { FieldMember } from '../types/type.ts';
 

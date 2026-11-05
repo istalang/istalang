@@ -38,10 +38,10 @@ import {
   type MemberAccess,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
+import type { BodyContext } from '../body-context.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
-import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
   callableThrough,

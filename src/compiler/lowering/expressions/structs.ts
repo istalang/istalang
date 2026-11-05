@@ -30,9 +30,9 @@ import {
   type StructLiteral,
 } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { defaultEntryOf } from '../closed-calls.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
-import { defaultEntryOf } from '../instances.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
   const fields = namedFields(literalFields(context, node));

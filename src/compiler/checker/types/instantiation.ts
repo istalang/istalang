@@ -2,7 +2,7 @@
  * A checked body read through a substitution (§3.5): a body is checked once, generically, so what
  * runs for one instantiation reads it with every type it records substituted. The calls it records
  * stay as checked: closing one takes the instantiation's witnesses too, which its reader has, so
- * the reader closes it (lowering/instances.ts `closeCall`, rules/computation.ts for a default's).
+ * the reader closes it (lowering/closed-calls.ts `closeCall`, rules/computation.ts for a default's).
  * Lowering reads a function instance's body this way, and compile time a field's default for the
  * literal running it.
  */

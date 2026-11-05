@@ -17,13 +17,13 @@ import { linkOperator } from '../../syntax/expressions/chains.ts';
 import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts';
 import { isMissingName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { Accepts, BodyContext, FieldReadRecord } from '../body-context.ts';
 import type { FieldRead, FoundField } from '../checked-field.ts';
 import {
   checkFunctionValue,
   functionsAccepted,
   namedFunctions,
 } from '../closures/function-values.ts';
-import type { Accepts, BodyContext, FieldReadRecord } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { namedType, nameNodeOf } from '../resolution/named.ts';

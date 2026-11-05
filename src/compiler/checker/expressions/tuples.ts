@@ -10,7 +10,7 @@
  */
 
 import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext } from '../context.ts';
+import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { partsAccept } from '../rules/agreement.ts';
 import { expectedTuple } from '../types/expected.ts';
