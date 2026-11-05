@@ -24,7 +24,7 @@ Specs: `docs/proposals/1-type-names.md` to `4-computed-types.md`, implemented in
 | 1 Type names | done, `43d9b81` |
 | 2 Structural types | done, `b6de118`, with its debt items (Q30 left open) |
 | 3 Union types | done, `5bbe9d3` and its fixes, with its debt items (tracker F17–F21, Q39–Q41, B27, B29) |
-| 4 Computed types | ready; its Before P4 items open |
+| 4 Computed types | done, `ad015dd`..`6e11581` (55 commits), with its debt items (audit units 19, 29; D3; tracker F21, Q41) |
 
 ## Decisions so far (the human's)
 
@@ -74,11 +74,13 @@ P2's report adds: a generic alias's static owners are keyed by the alias's own p
 | Item | Audit | Why P4 needs it | Status |
 | --- | --- | --- | --- |
 | `bindLoopTargets` copied `declareTargets` | unit 18 | field loops | done, fast wins |
-| `Expansion` and `TypeExpansion` run the same graph walk | unit 19 | type `match` recursion | open |
-| The formatter lists bracketed children twice (`bodies.ts`, `brackets.ts`) | unit 29 | mapped types, struct comprehensions | open |
-| Nominal structs keep declaration-order layout; only shapes are in name order (P2's deviation, unobservable today) | P2 report | field loops, comprehensions and rest patterns must visit name order (P2's field-order rule) | open |
+| `Expansion` and `TypeExpansion` run the same graph walk | unit 19 | type `match` recursion | done, `ad015dd` |
+| The formatter lists bracketed children twice (`bodies.ts`, `brackets.ts`) | unit 29 | mapped types, struct comprehensions | done, `5182be8` |
+| Nominal structs keep declaration-order layout; only shapes are in name order (P2's deviation, unobservable today) | P2 report | field loops, comprehensions and rest patterns must visit name order (P2's field-order rule) | done, `d6ec2df` |
 
-P3's report adds: computed types substitute into unions, where an `any` member absorbs nothing after substitution (tracker F21); and struct rest patterns extend a pattern part's path, which writes a union member's unwrap as field `0` (Q41).
+P3's report adds: computed types substitute into unions, where an `any` member absorbs nothing after substitution (tracker F21); and struct rest patterns extend a pattern part's path, which writes a union member's unwrap as field `0` (Q41). Both done: F21 in `d1269f7` (one `TypeRules` seam), Q41 in `a33ee24`.
+
+P4's report adds: the human's decisions during P4 (an `any` member is looked through by patterns and `??`; unions and `any` types have no associated types; the literal-to-base exception only for a literal matched whole; a case or comparison its subject's type rules out is one warning; conditions decided by literal types skip their branch; `infer` carries implied constraints; an empty struct's field loop is checked once at `Never`). Left open: spec §14's new items, tracker F19 (extended), F22, Q42 and B31.
 
 ## Fast wins (done, `60f153f`)
 
