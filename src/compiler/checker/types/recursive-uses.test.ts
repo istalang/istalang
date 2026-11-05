@@ -158,6 +158,9 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
     ['a map of a call beside a String', '["a": t(), "b": "s"]', '{"a": 3, "b": "s"}'],
     ['a call beside an array of arithmetic', '[t(), [1 + 1]]', '[3, [2]]'],
     ['mixed items two levels down', '[["a": [t(), "b"]], 1 + 1]', '[{"a": [3, "b"]}, 2]'],
+    ['a spread of a call beside a String', '[...ints(), "a"]', '[1, 2, "a"]'],
+    ['an array of arithmetic beside a spread', '[[1 + 1], ...ints()]', '[[2], 1, 2]'],
+    ['a spread two levels down', '[["a": [...ints(), "b"]], t()]', '[{"a": [1, 2, "b"]}, 3]'],
   ])(
     'passes %s as an argument built as Json, as it builds after return',
     (_name, literal, text) => {
@@ -165,6 +168,7 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
         "import * as json from 'json'",
         "import Json from 'json'",
         'fn t() -> Int: 3',
+        'fn ints() -> Array<Int>: [1, 2]',
         'fn take(j: Json) -> Json: j',
         `fn passed() -> Json: take(${literal})`,
         `fn returned() -> Json: ${literal}`,

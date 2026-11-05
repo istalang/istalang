@@ -131,6 +131,7 @@ describe('a recursive use and what it unfolds to', () => {
         const declarations = lines(
           'type R = Int | String | Array<R>',
           'fn one() -> Int: 1',
+          'fn ints() -> Array<Int>: [1, 2]',
           'fn weight(r: R) -> Int:',
           '  match r:',
           '    case Int as n: return n',
@@ -165,7 +166,8 @@ interface Mixed {
 
 /**
  * Arrays nesting items of every kind: a literal Int or String, which have types of their own, and
- * arithmetic or a call, whose types only checking tells, side by side at any depth.
+ * arithmetic, a call or a spread of a call's array, whose types only checking tells, side by side
+ * at any depth.
  */
 const mixedItems: fc.Arbitrary<Mixed> = fc.letrec<{ item: Mixed; array: Mixed }>((tie) => ({
   item: fc.oneof(
@@ -174,6 +176,7 @@ const mixedItems: fc.Arbitrary<Mixed> = fc.letrec<{ item: Mixed; array: Mixed }>
     fc.constant({ text: '"s"', weight: 1 }),
     fc.constant({ text: '1 + 1', weight: 2 }),
     fc.constant({ text: 'one()', weight: 1 }),
+    fc.constant({ text: '...ints()', weight: 3 }),
     tie('array'),
   ),
   array: fc.array(tie('item'), { minLength: 1, maxLength: 3 }).map((items) => ({

@@ -8,8 +8,10 @@
  * part in choosing and inference as any argument's type does.
  *
  * Only the items are checked ahead, never the literal: it is checked once, after them, while each
- * keeps what it was checked to have, never checked twice (body-checker.ts). A spread is left to the
- * literal, which checks it with the items it gives.
+ * keeps what it was checked to have, never checked twice (body-checker.ts). A spread's operand is
+ * checked ahead as an item is, so the literal's part reads the items it gives as it reads an
+ * item's type (collection-accepts.ts `spreadPart`): `g([...f(), "a"])` as `[...f(), "a"]` after
+ * `return`.
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';
@@ -61,19 +63,29 @@ function hasTypeOnlyChecked(part: AcceptedPart): boolean {
 
 /**
  * The items a literal of items (`isBuiltLiteral`) gives values by: a tuple's elements, an array
- * literal's elements, a map literal's keys and values, a `struct{…}`'s field values, and those of
- * the literal an indented value naming no type reads as; no spread or struct comprehension.
+ * literal's elements and its spreads' operands, a map literal's keys, values and spreads'
+ * operands, a `struct{…}`'s field values, and those of the literal an indented value naming no
+ * type reads as; no struct comprehension, nor a struct's spread, which gives fields, not items.
  */
 function literalItems(node: Expression): readonly Expression[] {
   switch (node.kind) {
     case 'Tuple':
       return node.elements;
     case 'ArrayLiteral':
-      return node.elements.flatMap((element) => (element.kind === 'Spread' ? [] : [element]));
-    case 'MapLiteral':
-      return node.entries.flatMap((entry) =>
-        entry.kind === 'MapEntry' ? [entry.key, entry.value] : [],
+      return node.elements.map((element) =>
+        element.kind === 'Spread' ? element.expression : element,
       );
+    case 'MapLiteral':
+      return node.entries.flatMap((entry) => {
+        switch (entry.kind) {
+          case 'MapEntry':
+            return [entry.key, entry.value];
+          case 'Spread':
+            return [entry.expression];
+          default:
+            return [];
+        }
+      });
     case 'StructLiteral':
       return node.type === undefined
         ? node.items.flatMap((item) =>
