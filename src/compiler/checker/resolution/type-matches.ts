@@ -7,7 +7,8 @@
  * - A use whose arguments hold types not known yet reduces only when its first case that could
  *   match matches whatever they become (type-match-patterns.ts): a subject that may itself become
  *   a union, a type parameter or a type computed from one, decides nothing, since it would
- *   distribute, and `Never`, no member, would give `Never` whatever the cases. Otherwise the use stays unreduced, opaque, and an instantiation reduces it.
+ *   distribute, and `Never`, no member, would give `Never` whatever the cases. Otherwise the use
+ *   stays unreduced, opaque, and an instantiation reduces it.
  * - A use matching no case is the error type, carrying the use: the check of the instantiation
  *   reaching it reports it there (match-requirements.ts), so nothing else reports it again.
  * - An alias reducing to itself with a type built from its own parameter never ends (§3.5); its
