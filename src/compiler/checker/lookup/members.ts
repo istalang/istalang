@@ -34,10 +34,10 @@ import { metThroughTraits } from '../resolution/trait-calls.ts';
 import { requiredFields, requiredFunctions } from '../traits/constraints.ts';
 import {
   associatedDeclarationsOn,
-  fieldOf,
   knownConstraints,
   structConstraintsOn,
 } from '../traits/known-constraints.ts';
+import { fieldOf } from '../traits/known-fields.ts';
 import { type FieldMember, type Type, tupleElements } from '../types/type.ts';
 
 const noMembers: TypeMembers = {

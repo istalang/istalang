@@ -24,7 +24,8 @@ import {
   requiredFields,
   requiredFieldType,
 } from '../traits/constraints.ts';
-import { fieldOf, structConstraintsOn } from '../traits/known-constraints.ts';
+import { structConstraintsOn } from '../traits/known-constraints.ts';
+import { fieldOf } from '../traits/known-fields.ts';
 import { isStructType } from '../traits/struct-keys.ts';
 import { sameType } from '../types/identity.ts';
 import {

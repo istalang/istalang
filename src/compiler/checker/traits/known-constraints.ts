@@ -1,7 +1,7 @@
 /**
  * What a type meets by what it is (§3.5, §3.10): the constraints of a type parameter, of an `any`
- * type, and of the types computed from types not known yet, and through them its requirements,
- * fields and associated types. One home for these, since each answer of a computed type is read
+ * type, and of the types computed from types not known yet, and through them its requirements
+ * and associated types; its fields are read through them too (known-fields.ts). One home for these, since each answer of a computed type is read
  * from what the type it is computed from meets.
  *
  * - `T.Data` (§3.1) is one type, meeting the bound of every requirement of `Data` among what `T`
@@ -10,9 +10,6 @@
  *   an `any` type has none: only a type's own declaration declares one.
  * - `S["meta"]` (§3.5) meets what the entries of `S`'s struct constraints ask of that field; on a
  *   known struct it is the field's type, and an entry asking an exact type gives that type.
- * - A field of a type is a struct's, or, on a type known only per instantiation, one a constraint's
- *   trait requires or a struct constraint names (`fieldOf`): one rule for a field read, a field
- *   called and conformance.
  * - A requirement on a type parameter or an `any` type is numbered by constraint and function
  *   (`ConstraintRequirement`); on a computed type it is the trait as `any` takes it, its witness
  *   chosen once an instantiation makes the type known (`ComputedRequirement`).
@@ -23,12 +20,6 @@ import type {
   RequiredAssociatedType,
   TypeParameter,
 } from '../../syntax/declarations.ts';
-import {
-  type FoundField,
-  namedFieldRead,
-  requiredFieldRead,
-  structFieldOf,
-} from '../checked-field.ts';
 import type { CheckerContext } from '../context.ts';
 import type { RequirementOrigin } from '../resolved-call.ts';
 import { sameType } from '../types/identity.ts';
@@ -56,8 +47,6 @@ import {
   constraintSubstitution,
   type Requirement,
   requiredAssociatedTypes,
-  requiredFields,
-  requiredFieldType,
   requiredFunctions,
   traitAsAny,
 } from './constraints.ts';
@@ -183,42 +172,6 @@ export function requirementsNamed(
       return [{ declaration, substitution, origin }];
     });
   });
-}
-
-/**
- * The field `name` of `type`: a struct's, or, on a type known only per instantiation, one a trait
- * of its constraints requires or one its struct constraints name (§3.5, §3.10).
- */
-export function fieldOf(checker: CheckerContext, type: Type, name: string): FoundField | undefined {
-  if (type.kind === 'nominal' || type.kind === 'anonymous') {
-    return structFieldOf(checker, type, name);
-  }
-  for (const constraint of knownConstraints(checker, type)) {
-    const field = requiredFields(constraint.trait).find((each) => each.name.text === name);
-    if (field !== undefined) {
-      return {
-        member: {
-          name,
-          type: requiredFieldType(checker, constraint, field, type),
-          declared: {
-            node: field,
-            module: checker.moduleOf(constraint.trait),
-            type: checker.resolveType(checker.moduleOf(constraint.trait), field.type),
-          },
-        },
-        read: requiredFieldRead(checker, type, { trait: constraint.trait, field }),
-      };
-    }
-  }
-  const named = structConstraintsOn(checker, type).some((model) =>
-    model.named.some((entry) => entry.name === name),
-  );
-  return named
-    ? {
-        member: { name, type: checker.typeRules.fieldType(type, literalType(name)) },
-        read: namedFieldRead(checker, type, name),
-      }
-    : undefined;
 }
 
 /**
