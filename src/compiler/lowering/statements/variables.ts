@@ -213,6 +213,13 @@ function copied(context: FunctionContext, value: Register, span: AnchoredSpan): 
 }
 
 export function lowerAssignment(context: FunctionContext, node: Assignment): void {
+  const stopsAt = context.body.stopsAt(node);
+  if (stopsAt !== undefined) {
+    for (const operand of stopsAt) {
+      context.expression(operand);
+    }
+    return;
+  }
   const parts = context.body.assignedOf(node);
   const [only] = parts;
   if (node.operator !== '=' && only !== undefined) {

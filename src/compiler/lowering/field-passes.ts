@@ -9,7 +9,7 @@
 
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { FieldMember } from '../checker/types/type.ts';
+import { type FieldMember, isPrimitive } from '../checker/types/type.ts';
 import type { FieldHeader } from '../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { FunctionContext } from './context.ts';
@@ -31,8 +31,9 @@ export function fieldsVisited(
   span: AnchoredSpan,
 ): VisitedFields {
   const subject = context.expression(header.subject);
+  const type = context.typeOf(header.subject);
   const fields =
-    context.checker.fieldsOf(context.typeOf(header.subject)) ??
+    (isPrimitive(type, 'Never') ? [] : context.checker.fieldsOf(type)) ??
     unreachable(
       `A field loop at ${span.from} runs over no struct; the checker should have said so.`,
     );

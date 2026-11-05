@@ -267,6 +267,8 @@ export interface CheckedBody {
    * it out (§4), so nothing of it was checked and nothing is lowered.
    */
   readonly isRuledOut: (body: Block) => boolean;
+  /** The operands an operation on a value of type `Never` runs before it stops (§2); else undefined. */
+  readonly stopsAt: (operation: Expression | Assignment) => readonly Expression[] | undefined;
   /** The value an `if`'s condition always has, by its operands' types; undefined when not fixed. */
   readonly decidedOf: (condition: Expression) => boolean | undefined;
   /** What the body produces: `T` for an async function returning `Future<T>`. */

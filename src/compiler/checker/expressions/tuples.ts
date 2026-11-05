@@ -12,6 +12,7 @@
 
 import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { partsAccept, partsBuild } from '../rules/agreement.ts';
 import { expectedTuple } from '../types/expected.ts';
@@ -40,8 +41,9 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
 
 export function checkTupleElement(context: BodyContext, node: TupleElement): Type {
   const type = context.chains.target(context, node);
-  if (type.kind === 'error') {
-    return errorType;
+  const stopped = stoppedOperation(context, node, [{ node: node.target, type }]);
+  if (stopped !== undefined) {
+    return stopped;
   }
   if (type.kind !== 'tuple') {
     context.report(

@@ -7,7 +7,7 @@
  * literal running it.
  */
 
-import type { CheckedBody, CheckedFunction, Checker, FieldPass } from '../check.ts';
+import type { AssignedPart, CheckedBody, CheckedFunction, Checker, FieldPass } from '../check.ts';
 import { type FieldRead, instantiatedRead } from '../checked-field.ts';
 import type {
   CheckedPattern,
@@ -55,12 +55,7 @@ export function instantiatedBody(
     targetsOf: (owner) =>
       body.targetsOf(owner).map((binding) => instantiatedTarget(binding, substitution, checker)),
     assignedOf: (assignment) =>
-      body.assignedOf(assignment).map((part) => ({
-        ...part,
-        path: instantiatedTargetPath(part.path, substitution, checker.typeRules),
-        type: concrete(part.type),
-        fit: concreteFit(part.fit),
-      })),
+      body.assignedOf(assignment).map((part) => instantiatedPart(part, substitution, checker)),
     inCell: body.inCell,
     functionOf: (node) =>
       mapDefined(body.functionOf(node), (checked) =>
@@ -86,8 +81,23 @@ export function instantiatedBody(
     labels: body.labels,
     passesOf: (header) => instantiatedPasses(body.passesOf(header), substitution, checker),
     isRuledOut: body.isRuledOut,
+    stopsAt: body.stopsAt,
     decidedOf: body.decidedOf,
     result: concrete(body.result),
+  };
+}
+
+/** A part an assignment writes, its path, type and fit substituted. */
+function instantiatedPart(
+  part: AssignedPart,
+  substitution: Substitution,
+  { typeRules: rules }: Pick<Checker, 'typeRules'>,
+): AssignedPart {
+  return {
+    ...part,
+    path: instantiatedTargetPath(part.path, substitution, rules),
+    type: substitute(part.type, substitution, rules),
+    fit: substitutedFit(part.fit, substitution, rules),
   };
 }
 

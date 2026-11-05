@@ -12,9 +12,10 @@
  */
 
 import { templateFunctions } from '../../../language/well-known.ts';
-import type { Expression, TemplateLiteral } from '../../syntax/expressions/index.ts';
+import type { TemplateLiteral } from '../../syntax/expressions/index.ts';
 import { constantTextOf, isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
 import type { BodyContext } from '../body-context.ts';
+import { type StoppingOperand, stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { implicitCall, preludeCall } from '../resolution/implicit.ts';
@@ -31,7 +32,12 @@ export function checkTemplate(
   if (isTagged(node)) {
     return context.expression(taggedCall(node), expected);
   }
-  for (const value of node.values) {
+  const values = node.values.map((value) => ({ node: value, type: context.expression(value) }));
+  const stopped = stoppedOperation(context, node, values);
+  if (stopped !== undefined) {
+    return stopped;
+  }
+  for (const value of values) {
     interpolate(context, value);
   }
   if (constantTextOf(node) === undefined) {
@@ -50,9 +56,8 @@ function join(context: BodyContext, node: TemplateLiteral): void {
   });
 }
 
-/** Checks `value` and makes the `toString` call that writes it as text. */
-function interpolate(context: BodyContext, value: Expression): void {
-  const type = context.expression(value);
+/** Makes the `toString` call that writes `value`, of `type`, as text. */
+function interpolate(context: BodyContext, { node: value, type }: StoppingOperand): void {
   const failure = () => checkerDiagnostics.notStringable(value.span, typeText(type));
   const text = implicitCall(context, {
     node: value,

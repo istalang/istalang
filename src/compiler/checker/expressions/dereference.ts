@@ -10,22 +10,29 @@
 import { chainStepOf } from '../../syntax/expressions/chains.ts';
 import type { Dereference } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../body-context.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 export function checkDereference(context: BodyContext, node: Dereference): Type {
-  return valueBehind(context, node) ?? errorType;
-}
-
-/** The value behind the handle `node` reads through; undefined after a report. */
-function valueBehind(context: BodyContext, node: Dereference): Type | undefined {
   const isLink = chainStepOf(node) !== undefined;
   const handle = isLink ? context.chains.target(context, node) : context.expression(node.operand);
-  if (handle.kind === 'error') {
-    return undefined;
-  }
+  return (
+    stoppedOperation(context, node, [{ node: node.operand, type: handle }]) ??
+    valueBehind(context, node, handle, isLink) ??
+    errorType
+  );
+}
+
+/** The value behind `handle`, which `node` reads through; undefined after a report. */
+function valueBehind(
+  context: BodyContext,
+  node: Dereference,
+  handle: Type,
+  isLink: boolean,
+): Type | undefined {
   const { checker } = context;
   const sharedValue = checker.sharedValueOf(handle);
   if (sharedValue !== undefined) {

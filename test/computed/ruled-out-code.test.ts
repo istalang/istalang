@@ -61,6 +61,45 @@ describe('a loop over a struct with no fields', () => {
   });
 });
 
+describe('a value of type Never', () => {
+  const declarations = [
+    'struct P { x: Int }',
+    'fn stopped(flag: Bool) -> String:',
+    '  if flag:',
+    '    const n = panic("stop")',
+    '    const sum = n.x + n.size() + -n',
+    '    const text = `${n}${n[0]}${n.0}${n ?? 1}${n.y?.z}`',
+    '    for k, v in ...n:',
+    '      _ = `${k}${v.y}`',
+    '    const label = match n:',
+    '      case "a": "a"',
+    '      case P{x}: `${x}`',
+    '      case _: "other"',
+    '    return `${sum}${text}${label}${n == "b"}${n < 3}${n is Int}`',
+    '  "ran"',
+  ];
+
+  it('is operated on silently, and the code compiles and runs up to it', () => {
+    expect(codesOf(...declarations)).toEqual([]);
+    expect(runMain('String', 'stopped(false)', declarations)).toBe('ran');
+  });
+
+  it("still reports what doesn't depend on it, and decides no condition", () => {
+    expect(
+      codesOf(
+        'struct Empty',
+        'fn f(e: Empty) -> Int:',
+        '  let total = 0',
+        '  for k, v in ...e:',
+        '    if k == "a":',
+        '      total += v',
+        '    missing(v)',
+        '  total',
+      ),
+    ).toEqual([5103]);
+  });
+});
+
 const mixed = ['struct Mixed { count: Int; name: String; size: Int }'];
 
 describe('a condition decided by types', () => {

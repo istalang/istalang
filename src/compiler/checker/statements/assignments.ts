@@ -42,6 +42,7 @@ import {
   immutableKind,
   severalKeyedFields,
 } from '../calls/places.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import type { AssignedPart } from '../check.ts';
 import type { FieldStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -135,11 +136,13 @@ function checkCompound(
   operator: CompoundAssignment,
 ): void {
   const place = assignedPlace(context, target);
-  const operand = context.expression(node.value);
-  const result = resolveOperator(context, node, binaryApplied(compoundOperator(operator)), [
+  const operands = [
     { node: target, type: place },
-    { node: node.value, type: operand },
-  ]);
+    { node: node.value, type: context.expression(node.value) },
+  ];
+  const result =
+    stoppedOperation(context, node, operands) ??
+    resolveOperator(context, node, binaryApplied(compoundOperator(operator)), operands);
   const fit = writtenFit(context, target, { type: result, place, at: node.value.span });
   context.variables.recordAssigned(node, [{ target, path: [], type: result, fit }]);
 }

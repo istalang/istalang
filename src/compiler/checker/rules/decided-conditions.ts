@@ -18,7 +18,7 @@
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { BodyContext } from '../body-context.ts';
-import { isMemberParameter, type LiteralValue, type Type } from '../types/type.ts';
+import { isMemberParameter, isPrimitive, type LiteralValue, type Type } from '../types/type.ts';
 import { membersOf, writtenLiteral } from '../types/unions.ts';
 
 /** The literals a value of some type may be, when known: some values, and maybe any other name. */
@@ -122,9 +122,12 @@ function operandLiterals(context: BodyContext, operand: Expression): KnownLitera
     : { values: [written.value], anyNameBut: undefined };
 }
 
-/** The literals a value of `type` may be (the module's banner); undefined when not known. */
+/**
+ * The literals a value of `type` may be (the module's banner); undefined when not known, and for
+ * `Never`, whose value can't exist, so the code comparing it never runs and decides nothing.
+ */
 function literalsOf(context: BodyContext, type: Type | undefined): KnownLiterals | undefined {
-  if (type === undefined) {
+  if (type === undefined || isPrimitive(type, 'Never')) {
     return undefined;
   }
   const ranging = isMemberParameter(type) ? context.checker.fitting.memberUnionOf(type) : type;

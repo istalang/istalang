@@ -22,11 +22,12 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type ChainStep, chainStepOf, isOptionalStep } from '../../syntax/expressions/chains.ts';
 import type { Binary, Expression, Unwrap } from '../../syntax/expressions/index.ts';
 import type { BodyContext, Chains } from '../body-context.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import type { ChainLink } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
 import { preludeCall } from '../resolution/implicit.ts';
-import { errorType, stringType, type Type } from '../types/type.ts';
+import { errorType, isPrimitive, stringType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { optionalOf, presentType } from '../types/unions.ts';
 
@@ -92,7 +93,7 @@ export class OptionalChains implements Chains {
 
   #baseOf(context: BodyContext, step: ChainStep, targetType: Type): Type {
     const carried = this.#carried.get(step.target) ?? targetType;
-    if (!isOptionalStep(step) || carried.kind === 'error') {
+    if (!isOptionalStep(step) || carried.kind === 'error' || isPrimitive(carried, 'Never')) {
       return carried;
     }
     const inner = presentType(carried, context.checker.typeRules);
@@ -113,12 +114,13 @@ export function checkUnwrap(context: BodyContext, node: Unwrap, expected: Type |
     expected === undefined ? undefined : optionalOf(expected, context.checker.typeRules),
   );
   context.report(checkerDiagnostics.forceUnwrap(node.span));
+  const stopped = stoppedOperation(context, node, [{ node: node.operand, type: operand }]);
+  if (stopped !== undefined) {
+    return stopped;
+  }
   const inner = presentType(operand, context.checker.typeRules);
   if (inner === undefined) {
-    if (operand.kind !== 'error') {
-      context.report(checkerDiagnostics.needsOptional(node.operand.span, '!', typeText(operand)));
-    }
-    return errorType;
+    return reportedNeedsOptional(context, node.operand, '!', operand);
   }
   preludeCall(context, {
     node,
@@ -138,11 +140,11 @@ export function checkNullish(context: BodyContext, node: Binary, expected: Type 
   );
   const inner = presentType(left, checker.typeRules);
   if (inner === undefined) {
-    if (left.kind !== 'error') {
-      context.report(checkerDiagnostics.needsOptional(node.left.span, '??', typeText(left)));
-    }
     context.expression(node.right);
-    return errorType;
+    return (
+      stoppedOperation(context, node, [{ node: node.left, type: left }]) ??
+      reportedNeedsOptional(context, node.left, '??', left)
+    );
   }
   const right = context.expression(node.right, expected ?? inner);
   if (checker.fitOf(right, inner) === undefined && checker.fitOf(right, left) !== undefined) {
@@ -151,4 +153,15 @@ export function checkNullish(context: BodyContext, node: Binary, expected: Type 
   }
   context.fit(right, inner, node.right);
   return inner;
+}
+
+/** Reports that `operand`, of `type`, is no optional for `operator` to work on; the error type. */
+function reportedNeedsOptional(
+  context: BodyContext,
+  operand: Expression,
+  operator: string,
+  type: Type,
+): Type {
+  context.report(checkerDiagnostics.needsOptional(operand.span, operator, typeText(type)));
+  return errorType;
 }

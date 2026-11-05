@@ -98,6 +98,7 @@ function joined(outer: CheckedBody, header: FieldHeader, rules: TypeRules): Chec
       passes.find((pass) => pass.candidatesAt(site).length > 0)?.candidatesAt(site) ?? [],
     passesOf: (inner) => passes.flatMap((pass) => pass.passesOf(inner)),
     isRuledOut: (body) => passes.every((pass) => pass.isRuledOut(body)),
+    stopsAt: firstOf((pass) => pass.stopsAt),
     decidedOf: firstOf((pass) => pass.decidedOf),
   };
 }

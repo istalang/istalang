@@ -38,6 +38,7 @@ import {
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../body-context.ts';
 import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type ImplicitOperand, implicitOperatorCall } from '../resolution/implicit.ts';
 import { checkEqualSides } from '../types/equality.ts';
@@ -49,7 +50,7 @@ import { checkNullish } from './optionals.ts';
 export function checkBinary(context: BodyContext, node: Binary, expected: Type | undefined): Type {
   const link = comparisonLinkOf(node);
   if (link !== undefined) {
-    return checkComparisons(context, [link]);
+    return checkComparisons(context, node, [link]);
   }
   const { operator } = node;
   const { meaning }: { readonly meaning: BinaryMeaning } = binaryOperators[operator];
@@ -64,7 +65,11 @@ export function checkBinary(context: BodyContext, node: Binary, expected: Type |
   if (meaning.kind !== 'call') {
     unreachable(`'${operator}' is a comparison; comparisonLinkOf should have matched it.`);
   }
-  return resolveOperator(context, node, applied(operator, meaning), operandsOf(context, node));
+  const operands = operandsOf(context, node);
+  return (
+    stoppedOperation(context, node, operands) ??
+    resolveOperator(context, node, applied(operator, meaning), operands)
+  );
 }
 
 export function checkUnary(context: BodyContext, node: Unary, expected?: Type): Type {
@@ -72,20 +77,28 @@ export function checkUnary(context: BodyContext, node: Unary, expected?: Type): 
     context.expect(node.operand, boolType);
     return boolType;
   }
-  const type = resolveOperator(context, node, unaryApplied(node.operator), [
-    { node: node.operand, type: context.expression(node.operand) },
-  ]);
+  const operands = [{ node: node.operand, type: context.expression(node.operand) }];
+  const type =
+    stoppedOperation(context, node, operands) ??
+    resolveOperator(context, node, unaryApplied(node.operator), operands);
   const written = writtenLiteral(node);
   return written === undefined ? type : literalOrBase(written.value, expected);
 }
 
 /** `a < b <= c`: each operand compared with the next (§3.9). */
 export function checkChainedComparison(context: BodyContext, node: ChainedComparison): Type {
-  return checkComparisons(context, comparisonLinksOf(node));
+  return checkComparisons(context, node, comparisonLinksOf(node));
 }
 
-/** Checks one or more comparison links in sequence, checking shared operands once. */
-function checkComparisons(context: BodyContext, links: readonly ComparisonLink[]): Type {
+/**
+ * Checks one or more comparison links of `comparison` in sequence, checking shared operands once;
+ * an operand with no value stops it (calls/stopped-operations.ts).
+ */
+function checkComparisons(
+  context: BodyContext,
+  comparison: Expression,
+  links: readonly ComparisonLink[],
+): Type {
   const checked = new Map<Expression, Type>();
   const operand = (expression: Expression, expected?: Type): Operand => {
     const type = checked.get(expression) ?? context.expression(expression, expected);
@@ -98,11 +111,18 @@ function checkComparisons(context: BodyContext, links: readonly ComparisonLink[]
   for (const link of links) {
     const { operator } = link;
     const left = operand(link.left);
+    const right = operand(link.right, isImplicitOperator(operator) ? undefined : left.type);
+    const stopped = stoppedOperation(
+      context,
+      comparison,
+      [...checked].map(([node, type]) => ({ node, type })),
+    );
+    if (stopped !== undefined) {
+      return stopped;
+    }
     if (isImplicitOperator(operator)) {
-      const right = operand(link.right);
       checkLinkCall(context, link, operator, [wrappable(left), wrappable(right)]);
     } else {
-      const right = operand(link.right, left.type);
       checkEqualSides(context, wrappable(left), wrappable(right), {
         span: linkSpan(link),
         operator,

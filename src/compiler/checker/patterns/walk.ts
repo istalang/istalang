@@ -35,7 +35,7 @@ import { targetNames, unparenthesizedPattern } from '../../syntax/patterns.ts';
 import { type AnchoredSpan, spanAcross } from '../../syntax/positions.ts';
 import type { PartBinding, PatternTest, TargetBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { errorType, isPrimitive, neverType, type Type } from '../types/type.ts';
 import { partSelected, sameNames } from './alternatives.ts';
 import { takeArray } from './arrays.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
@@ -166,7 +166,9 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
 /**
  * `node` matched at `part`, what it selects of the part first (selections.ts). A part already in
  * error, or a selection refused, was reported where it arose; it takes anything, for exhaustiveness,
- * and a refused one still binds its names, at the error type (`bindAtError`).
+ * and a refused one still binds its names, at the error type (`bindAt`). A part of type `Never`
+ * has no value (§2), so the pattern never runs: it takes anything and binds its names at `Never`,
+ * testing and reporting nothing (calls/stopped-operations.ts).
  */
 function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart): Matched {
   const node =
@@ -175,12 +177,16 @@ function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart
     return takeAlternatives(walk, node, part);
   }
   const isBinding = node.kind === 'NamePattern' && binds(walk, node);
+  if (!isBinding && isPrimitive(part.type, 'Never')) {
+    bindAt(walk, node, part, neverType);
+    return { shape: anyShape, part };
+  }
   const selection =
     walk.tests === undefined || isBinding
       ? undefined
       : selectionOf(walk.scope, walk.tests, node, part);
   if (selection === 'refused') {
-    bindAtError(walk, node, part);
+    bindAt(walk, node, part, errorType);
     // A downcast is a guard however it goes, the types inside an `any` type being an open set.
     const shape = part.type.kind === 'any' ? undefined : anyShape;
     return { shape, part: { type: errorType, path: part.path } };
@@ -328,22 +334,23 @@ function refutable(
 
 /**
  * A construct that could fail to match, standing in a target, which must always match: reported
- * once, its names bound at the error type (`bindAtError`). Nothing inside it is taken apart, so a
+ * once, its names bound at the error type (`bindAt`). Nothing inside it is taken apart, so a
  * target's parts are fields and tuple elements only.
  */
 function refused(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Shape {
   walk.scope.report(checkerDiagnostics.refutableTarget(node.span));
-  bindAtError(walk, node, part);
+  bindAt(walk, node, part, errorType);
   return anyShape;
 }
 
 /**
- * Binds each name `node` binds at the error type, to the part it stands at: what a pattern that
- * isn't taken apart, refused where it stands or naming nothing, binds, so each use of its names
- * resolves with nothing more to report, and an or-pattern's alternatives still agree on them. In a
- * case, a bare name the binder didn't make a variable refers to something, so it binds nothing.
+ * Binds each name `node` binds at `type`, the error type or `Never`, to the part it stands at: what
+ * a pattern that isn't taken apart, refused where it stands, naming nothing or never running, binds,
+ * so each use of its names resolves with nothing more to report, and an or-pattern's alternatives
+ * still agree on them. In a case, a bare name the binder didn't make a variable refers to something,
+ * so it binds nothing.
  */
-function bindAtError(walk: Walk, node: Pattern | PatternPart, part: ValuePart): void {
+function bindAt(walk: Walk, node: Pattern | PatternPart, part: ValuePart, type: Type): void {
   const names = new Set(
     targetNames(node).flatMap((name) => {
       const entity = walk.scope.entityOf(name);
@@ -354,7 +361,7 @@ function bindAtError(walk: Walk, node: Pattern | PatternPart, part: ValuePart): 
     }),
   );
   for (const name of names) {
-    walk.bindings.push({ name, type: errorType, path: part.path });
+    walk.bindings.push({ name, type, path: part.path });
   }
 }
 

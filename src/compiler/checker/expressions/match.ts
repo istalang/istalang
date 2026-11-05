@@ -19,6 +19,7 @@ import type { Is, Match } from '../../syntax/expressions/index.ts';
 import { casesOf } from '../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { analyze, anyShape, type CaseShape } from '../patterns/exhaustiveness.ts';
 import { checkPattern } from '../patterns/matching.ts';
@@ -51,15 +52,21 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
       branches.add(matchCase.body);
     }
   }
-  if (subject.kind !== 'error') {
-    reportCoverage(context, node, subject, cases);
+  if (subject.kind === 'error') {
+    return branches.agreedType();
   }
+  const stopped = stoppedOperation(context, node, [{ node: node.subject, type: subject }]);
+  if (stopped !== undefined) {
+    return stopped;
+  }
+  reportCoverage(context, node, subject, cases);
   return branches.agreedType();
 }
 
 export function checkIs(context: BodyContext, node: Is): Type {
-  checkPattern(context, node.pattern, context.expression(node.subject));
-  return boolType;
+  const subject = context.expression(node.subject);
+  checkPattern(context, node.pattern, subject);
+  return stoppedOperation(context, node, [{ node: node.subject, type: subject }]) ?? boolType;
 }
 
 /** A case as exhaustiveness sees it, and where its pattern is written. */

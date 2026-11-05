@@ -41,6 +41,7 @@ import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
@@ -148,8 +149,9 @@ function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAcces
   const { checker, chains } = context;
   const receiver = callee.target;
   const receiverType = chains.target(context, call.node);
-  if (receiverType.kind === 'error') {
-    return errorType;
+  const stopped = stoppedOperation(context, call.node, [{ node: receiver, type: receiverType }]);
+  if (stopped !== undefined) {
+    return stopped;
   }
   const name = callee.member.text;
   const field = fieldOf(checker, receiverType, name);

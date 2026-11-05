@@ -14,6 +14,7 @@ import { collectionFunctions } from '../../../language/well-known.ts';
 import type { Index } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../body-context.ts';
 import { resolveCall } from '../calls/resolve.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { keyedFieldRead } from '../checked-field.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { takesAsSelf } from '../resolution/receivers.ts';
@@ -22,11 +23,23 @@ import { errorType, type Type } from '../types/type.ts';
 
 export function checkIndex(context: BodyContext, node: Index, expected: Type | undefined): Type {
   const container = context.chains.target(context, node);
+  const operands = [{ node: node.target, type: container }];
+  const stopped = stoppedOperation(context, node, operands);
+  if (stopped !== undefined) {
+    return stopped;
+  }
   const rules = context.checker.typeRules;
   const keys = rules.keysOf(container, []);
   const byKey = keys.kind !== 'error';
   const indexed = byKey && declaresIndex(context, container);
   const key = context.expression(node.index, byKey && !indexed ? keys : undefined);
+  const stoppedByKey = stoppedOperation(context, node, [
+    ...operands,
+    { node: node.index, type: key },
+  ]);
+  if (stoppedByKey !== undefined) {
+    return stoppedByKey;
+  }
   if (byKey && rules.isKeyOf(key, container)) {
     context.fieldReads.record(node, keyedFieldRead(context.checker, container, key));
     return rules.fieldType(container, key);

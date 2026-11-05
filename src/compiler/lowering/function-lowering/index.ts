@@ -223,6 +223,13 @@ class FunctionLowering implements FunctionContext {
   }
 
   expression(node: Expression): Register {
+    const stopsAt = this.body.stopsAt(node);
+    if (stopsAt !== undefined) {
+      for (const operand of stopsAt) {
+        this.expression(operand);
+      }
+      return this.code.allocate();
+    }
     const register =
       this.body.chainOf(node) === undefined
         ? handlerOf(expressionHandlers, node)(this, node)

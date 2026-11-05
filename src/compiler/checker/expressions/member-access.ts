@@ -18,6 +18,7 @@ import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts
 import { isMissingName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Accepts, BodyContext, FieldReadRecord } from '../body-context.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import type { FieldRead, FieldReading, FoundField } from '../checked-field.ts';
 import {
   checkFunctionValue,
@@ -64,8 +65,9 @@ export function checkMemberAccess(
     return errorType;
   }
   const type = context.chains.target(context, node);
-  if (type.kind === 'error') {
-    return errorType;
+  const stopped = stoppedOperation(context, node, [{ node: node.target, type }]);
+  if (stopped !== undefined) {
+    return stopped;
   }
   const field = fieldOf(context.checker, type, node.member.text);
   if (field === undefined) {

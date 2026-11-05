@@ -7,6 +7,7 @@
 import type { Await } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../body-context.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -16,8 +17,9 @@ export function checkAwait(context: BodyContext, node: Await, expected: Type | u
   reportWait(context, node.span);
   const expectedFuture = expected === undefined ? undefined : futureOf(context.checker, expected);
   const operand = context.expression(node.operand, expectedFuture);
-  if (operand.kind === 'error') {
-    return errorType;
+  const stopped = stoppedOperation(context, node, [{ node: node.operand, type: operand }]);
+  if (stopped !== undefined) {
+    return stopped;
   }
   const value = futureArgument(context.checker, operand);
   if (value === undefined) {

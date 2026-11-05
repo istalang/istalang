@@ -282,14 +282,17 @@ export function mappedTypeOf(
  * The passes a field loop's body is checked in over a value of `subject` (§4): one per key a
  * literal names, its value that field's type; and, for the keys not known yet, one pass whose key
  * is a member parameter keyed by `header` ranging over them, its value the field that key names;
- * a struct with no field, one pass visiting none (`noFieldPass`). Undefined when `subject` has no
- * keys.
+ * a struct with no field, or a subject with no value (§2), one pass visiting none (`noFieldPass`).
+ * Undefined when `subject` has no keys.
  */
 export function fieldPassesOver(
   checker: CheckerContext,
   subject: Type,
   header: FieldHeader,
 ): readonly FieldPassType[] | undefined {
+  if (isNever(subject)) {
+    return [noFieldPass];
+  }
   const keys = keysOf(checker, subject, []);
   if (keys.kind === 'error') {
     return undefined;
@@ -321,9 +324,10 @@ export function fieldPassesOver(
 
 /**
  * The pass over a struct with no field: its body never runs, so it is checked once for the mistakes
- * that don't depend on a field, its key and value of the type nothing more is reported about.
+ * that don't depend on a field, its key and value of type `Never` (`keyof {}`), whose operations
+ * report nothing (calls/stopped-operations.ts).
  */
-const noFieldPass: FieldPassType = { visits: { kind: 'none' }, key: errorType, value: errorType };
+const noFieldPass: FieldPassType = { visits: { kind: 'none' }, key: neverType, value: neverType };
 
 function isNever(type: Type): boolean {
   return type.kind === 'primitive' && type.name === 'Never';

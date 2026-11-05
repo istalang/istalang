@@ -202,9 +202,9 @@ function passTable<Key, Value>(passes: Passes): PassTable<Key, Value> {
  * that field's name as a literal type and its value that field's type; every field a struct
  * constraint leaves unnamed at once, its key a member parameter keyed by the loop's header, which
  * each instantiated field gives its own literal, and its value the field that key names; or none,
- * for a subject with no field to visit, a struct with none or one already reported, whose body is
- * checked once as code that never runs, its key and value of the error type: nothing about them
- * can be wrong, so only the mistakes that don't depend on a field are reported.
+ * for a subject with no field to visit, whose body is checked once as code that never runs, so only
+ * the mistakes that don't depend on a field are reported: over a struct with none or a value that
+ * can't exist, its key and value of type `Never`; over a subject already reported, the error type.
  */
 type PassVisits =
   | { readonly kind: 'field'; readonly name: string }

@@ -15,6 +15,7 @@ import type { Call, Expression } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkReferencedPlaces } from '../calls/places.ts';
 import { callArgumentOf, explain, type WrittenArgument } from '../calls/resolve.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { takenBy } from '../resolution/applicability.ts';
 import { fitArguments } from '../resolution/argument-fit.ts';
@@ -39,10 +40,11 @@ export function checkValueCall(
   callee: Expression,
   calleeType: Type = context.expression(callee),
 ): Type {
-  context.recordValueCall(call.node);
-  if (calleeType.kind === 'error') {
-    return errorType;
+  const stopped = stoppedOperation(context, call.node, [{ node: callee, type: calleeType }]);
+  if (stopped !== undefined) {
+    return stopped;
   }
+  context.recordValueCall(call.node);
   if (calleeType.kind !== 'function') {
     context.report(
       insideOptional(callee.span, calleeType, '(') ??

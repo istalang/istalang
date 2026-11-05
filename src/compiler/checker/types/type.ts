@@ -19,12 +19,11 @@
  *   in two members and no union holds another. Its members keep the order they were first written
  *   in, which only its text reads; identity sorts them (type-keys.ts). `T?` is `T | None`, `None`
  *   being the primitive whose one value is `none`.
- * - `error` stands for a type nothing more is reported about: one a diagnostic has already
- *   explained, or a field loop's key and value over a struct with no field, whose body never runs
- *   (struct-keys.ts). It is compatible with everything, so one mistake is reported once instead of
- *   at every use that follows.
+ * - `error` stands for a type a diagnostic has already explained. It is compatible with everything,
+ *   so one mistake is reported once instead of at every use that follows.
  * - `Never` (§2) is the type of expressions that don't produce a value, and fits wherever any type
- *   is expected.
+ *   is expected. No value of it exists, so an operation on one never runs and reports nothing
+ *   (calls/stopped-operations.ts).
  * - A type parameter is keyed by its declaration. A trait's `Self` is the trait's own implicit
  *   parameter, keyed by the trait declaration, so substituting the constrained type for it is the
  *   same operation as for any other parameter.

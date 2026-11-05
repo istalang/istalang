@@ -133,6 +133,8 @@ export interface BodyContext {
    * out (rules/decided-conditions.ts), so it is neither checked nor lowered.
    */
   readonly ruleOut: (body: Block) => void;
+  /** Records that `operation` never runs past `operands`, the last of which has no value (§2). */
+  readonly stopAt: (operation: Expression | Assignment, operands: readonly Expression[]) => void;
   /** Records the value `condition` always has, by its operands' types (rules/decided-conditions.ts). */
   readonly decide: (condition: Expression, value: boolean) => void;
   /**

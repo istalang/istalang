@@ -8,14 +8,13 @@
  * - What lowering needs is recorded as checking goes: every expression's type, every call's
  *   target, and every value's implicit conversions (§2, types/fit.ts), which `fit` finds: on the
  *   node giving the value, or, for a value an assignment writes, on its part
- *   (statements/assignments.ts).
- *   Nothing is recomputed later, so lowering sees exactly what was checked.
+ *   (statements/assignments.ts). Nothing is recomputed later, so lowering sees what was checked.
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. What they record of a
- *   node is kept per pass of a field loop (passes.ts), so the body reads as each pass checked it. A lambda or local
- *   function is checked in this same body, in a function scope of its own (closures/), so its
- *   result, loops and asyncness are the innermost scope's, and a name used in it is captured
- *   where it is used (`useEntity`).
+ *   node is kept per pass of a field loop (passes.ts), so the body reads as each pass checked it.
+ *   A lambda or local function is checked in this same body, in a function scope of its own
+ *   (closures/), so its result, loops and asyncness are the innermost scope's, and a name used in
+ *   it is captured where it is used (`useEntity`).
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -27,7 +26,7 @@ import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Call, Expression, FieldHeader } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { Block, Statement, VariableDeclaration } from '../syntax/statements.ts';
+import type { Assignment, Block, Statement, VariableDeclaration } from '../syntax/statements.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { Accepts, BodyContext, CheckedPasses, Enclosing, Returns } from './body-context.ts';
@@ -112,6 +111,7 @@ export class BodyChecker implements BodyContext {
   readonly #namedFields = this.#passes.table<Identifier, FieldMember>();
   readonly #chosenVariants = this.#passes.table<Identifier, VariantEntity>();
   readonly #ruledOut = this.#passes.table<Block, true>();
+  readonly #stops = this.#passes.table<Expression | Assignment, readonly Expression[]>();
   readonly #decided = this.#passes.table<Expression, boolean>();
   readonly #fits = this.#passes.table<ValueSite, Fit>();
   readonly #fieldPasses = this.#passes.table<FieldHeader, readonly CheckedPass[]>();
@@ -123,9 +123,8 @@ export class BodyChecker implements BodyContext {
     this.module = module;
     const isFunction = kind.kind === 'function';
     this.#result = new ReturnScope(kind.declaredResult, isFunction);
-    const root = isFunction
-      ? new FunctionScope(kind.declaration, kind.isAsync, this.#result)
-      : new FunctionScope(undefined, false, this.#result);
+    const declaration = isFunction ? kind.declaration : undefined;
+    const root = new FunctionScope(declaration, isFunction && kind.isAsync, this.#result);
     this.functions = new FunctionScopes(root, this.#passes);
   }
 
@@ -348,6 +347,10 @@ export class BodyChecker implements BodyContext {
     this.#ruledOut.set(body, true);
   }
 
+  stopAt(operation: Expression | Assignment, operands: readonly Expression[]): void {
+    this.#stops.set(operation, operands);
+  }
+
   decide(condition: Expression, value: boolean): void {
     this.#decided.set(condition, value);
   }
@@ -382,6 +385,7 @@ export class BodyChecker implements BodyContext {
       namedFieldOf: (name) => this.#namedFields.get(name, pass),
       chosenVariantOf: (name) => this.#chosenVariants.get(name, pass),
       isRuledOut: (body) => this.#ruledOut.has(body, pass),
+      stopsAt: (operation) => this.#stops.get(operation, pass),
       decidedOf: (condition) => this.#decided.get(condition, pass),
       candidatesAt: (site) => this.#candidates.get(site, pass) ?? [],
       labels,

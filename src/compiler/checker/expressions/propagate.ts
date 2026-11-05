@@ -7,6 +7,7 @@
 import { wellKnown } from '../../../language/well-known.ts';
 import type { Propagate } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../body-context.ts';
+import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -14,8 +15,9 @@ import { wellKnownArguments } from '../types/well-known.ts';
 
 export function checkPropagate(context: BodyContext, node: Propagate): Type {
   const type = context.expression(node.operand);
-  if (type.kind === 'error') {
-    return errorType;
+  const stopped = stoppedOperation(context, node, [{ node: node.operand, type }]);
+  if (stopped !== undefined) {
+    return stopped;
   }
   const [value, error] = wellKnownArguments(context.checker, wellKnown.result, type) ?? [];
   if (value === undefined || error === undefined) {
