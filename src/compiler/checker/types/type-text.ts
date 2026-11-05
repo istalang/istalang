@@ -19,6 +19,7 @@ import {
   isPrimitive,
   type NominalType,
   type ParameterSlot,
+  recursionOf,
   type Type,
   type TypeParameterType,
   type UnionType,
@@ -62,15 +63,17 @@ export function typeText(type: Type): string {
   if (alias !== undefined) {
     return spellingText(alias);
   }
+  const use = recursionOf(type);
+  if (use !== undefined) {
+    return parameterizedText(use.declaration.name.text, use.arguments);
+  }
   switch (type.kind) {
     case 'primitive':
       return type.name;
     case 'nominal':
       return nominalTypeText(type);
     case 'anonymous':
-      return type.recursion === undefined
-        ? anonymousText(type)
-        : parameterizedText(type.recursion.declaration.name.text, type.recursion.arguments);
+      return anonymousText(type);
     case 'recursive':
       return parameterizedText(type.declaration.name.text, type.arguments);
     case 'tuple':
@@ -86,9 +89,7 @@ export function typeText(type: Type): string {
     case 'literal':
       return typeof type.value === 'string' ? JSON.stringify(type.value) : String(type.value);
     case 'union':
-      return type.recursion === undefined
-        ? unionText(type)
-        : parameterizedText(type.recursion.declaration.name.text, type.recursion.arguments);
+      return unionText(type);
     case 'associated':
       return associatedText(type.of, type.name);
     case 'field':

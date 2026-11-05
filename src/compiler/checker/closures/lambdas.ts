@@ -55,7 +55,7 @@ import { blockTail, ReturnScope } from './returns.ts';
  * chosen function decides (§3.5); undefined for one whose parameters are all typed. A plain lambda
  * takes an async function type too, which it fits made async (§3.14).
  */
-export function lambdaAccepts(_context: BodyContext, node: Lambda): Accepts | undefined {
+export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | undefined {
   const parameters = node.parameters.filter((parameter) => parameter.kind === 'Parameter');
   if (parameters.every((parameter) => parameter.type !== undefined)) {
     return undefined;
@@ -63,7 +63,7 @@ export function lambdaAccepts(_context: BodyContext, node: Lambda): Accepts | un
   const fixed = parameters.filter((parameter) => !parameter.isRest).length;
   const hasRest = fixed < parameters.length;
   return (expected) => {
-    const shape = expectedFunction(expected);
+    const shape = expectedFunction(context.checker, expected);
     return (
       shape !== undefined &&
       (shape.isAsync || !node.isAsync) &&
@@ -78,7 +78,7 @@ export function checkLambda(context: BodyContext, node: Lambda, expected: Type |
   if (checked !== undefined) {
     return checked.type;
   }
-  const shape = expectedFunction(expected);
+  const shape = expectedFunction(context.checker, expected);
   const slots = shape ?? (expectsError(expected) ? errorSlots(node) : undefined);
   return checkLambdaAs(context, node, slots, shape?.result);
 }

@@ -10,6 +10,9 @@
  *   Stringable` with `T = Int`), a value of the member sits there, in the union's variant of that
  *   `any` member or in the `any` type the union collapsed into, and a test of it is the union's
  *   test, then the `any` type's.
+ * - A union's recursive member holds a value of a member its own union holds (§3.17): it sits in
+ *   that union's variant, inside the outer union's variant of the recursive member, and a test
+ *   of it is the outer union's test, then the inner union's, at any depth.
  * - A member with one value, a literal or `none`, holds nothing in its own variant.
  */
 
@@ -17,7 +20,13 @@ import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { sameType } from '../checker/types/identity.ts';
 import type { AnyType, Type, UnionType } from '../checker/types/type.ts';
-import { absorbingMember, baseOf, hasMember, hasOneValue } from '../checker/types/unions.ts';
+import {
+  absorbingMember,
+  baseOf,
+  hasMember,
+  hasOneValue,
+  holdingMember,
+} from '../checker/types/unions.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Label } from './code-writer.ts';
 import type { CodeContext } from './context.ts';
@@ -31,12 +40,20 @@ export interface TypedValue {
 /**
  * Where a value of a type sits in a value of `holder`, both as an instantiation made them (§2,
  * §3.5): in the variant of `holder`'s member `variant`, its own, its literal's base, or the `any`
- * member that took it whole, none when `holder` is no union; and inside `inAny`, where an `any`
- * type took it whole, `holder` itself or its member.
+ * or recursive member that took it whole, none when `holder` is no union; inside `inAny`, where an
+ * `any` type took it whole, `holder` itself or its member; and inside `inRecursive`, the union the
+ * recursive member `variant` unfolds to, where that union holds it (§3.17).
  */
 export interface Holding {
   readonly variant?: Type | undefined;
   readonly inAny?: AnyType | undefined;
+  readonly inRecursive?: Nested | undefined;
+}
+
+/** Where the union a recursive member unfolds to holds a value, as `Holding` says. */
+interface Nested {
+  readonly union: UnionType;
+  readonly holding: Holding;
 }
 
 /** Where `holder` holds a value of `member` (`Holding`); undefined when it holds none. */
@@ -57,13 +74,26 @@ export function holdingOf(context: CodeContext, holder: Type, member: Type): Hol
     return { variant: baseOf(member) };
   }
   const absorbing = absorbingMember(holder.members, member, rules);
-  return absorbing === undefined ? undefined : { variant: absorbing, inAny: absorbing };
+  if (absorbing !== undefined) {
+    return { variant: absorbing, inAny: absorbing };
+  }
+  const recursive = holdingMember(holder.members, member, rules);
+  const union = recursive === undefined ? undefined : rules.unfold(recursive);
+  const holding = union?.kind === 'union' ? holdingOf(context, union, member) : undefined;
+  return holding === undefined || union?.kind !== 'union'
+    ? undefined
+    : { variant: recursive, inRecursive: { union, holding } };
 }
 
 /** The fields read from a value of `holder` down to the value it holds where `holding` says. */
 export function heldPositions(holder: Type, holding: Holding): readonly number[] {
   const inVariant = holder.kind === 'union' && holding.variant !== undefined;
-  return [...(inVariant ? [0] : []), ...(holding.inAny === undefined ? [] : [0])];
+  const { inAny, inRecursive } = holding;
+  return [
+    ...(inVariant ? [0] : []),
+    ...(inAny === undefined ? [] : [0]),
+    ...(inRecursive === undefined ? [] : heldPositions(inRecursive.union, inRecursive.holding)),
+  ];
 }
 
 /** A value of a type, which `inside` gives once asked, with its type. */
@@ -84,22 +114,38 @@ export function heldIn(
 ): Register {
   const holding =
     holdingOf(context, holder, member) ?? unreachable('A value goes only where it is held.');
-  const { variant, inAny } = holding;
+  const { variant, inAny, inRecursive } = holding;
   if (
     holder.kind === 'union' &&
     variant !== undefined &&
     inAny === undefined &&
+    inRecursive === undefined &&
     hasOneValue(variant)
   ) {
     return memberValue(context, { union: holder, member: variant, fields: [] }, span);
   }
-  const value =
-    inAny === undefined
-      ? inside()
-      : heldInAny(context, { value: inside(), from: member, to: inAny }, span);
+  const value = heldInside(context, { member, inside }, holding, span);
   return holder.kind === 'union' && variant !== undefined
     ? memberValue(context, { union: holder, member: variant, fields: [value] }, span)
     : value;
+}
+
+/**
+ * The value `held` gives inside the variant `holding` names: the value itself, or that value in
+ * the `any` type or the recursive member's union that took it whole.
+ */
+function heldInside(
+  context: CodeContext,
+  held: HeldValue,
+  { inAny, inRecursive }: Holding,
+  span: AnchoredSpan,
+): Register {
+  if (inRecursive !== undefined) {
+    return heldIn(context, held, inRecursive.union, span);
+  }
+  return inAny === undefined
+    ? held.inside()
+    : heldInAny(context, { value: held.inside(), from: held.member, to: inAny }, span);
 }
 
 /** A value converted into an `any` type: the register holding it, its concrete type, the target. */
@@ -165,29 +211,34 @@ export function branchOnHeld(
     );
     return;
   }
-  const pending: { label: Label; any: AnyType; members: Type[] }[] = [];
+  const pending: { label: Label; inside: AnyType | UnionType; members: Type[] }[] = [];
   const targets = context.tables.types.unionMembers(type).map((variant) => {
     const here = held.filter(({ holding }) => sameType(holding.variant ?? variant, variant));
-    if (here.some(({ holding }) => holding.inAny === undefined)) {
+    if (
+      here.some(({ holding }) => holding.inAny === undefined && holding.inRecursive === undefined)
+    ) {
       return matched;
     }
-    if (here.length === 0 || variant.kind !== 'any') {
+    const [first] = here;
+    const inside = variant.kind === 'any' ? variant : first?.holding.inRecursive?.union;
+    if (first === undefined || inside === undefined) {
       return otherwise;
     }
     const label = code.newLabel();
-    pending.push({ label, any: variant, members: here.map(({ member }) => member) });
+    pending.push({ label, inside, members: here.map(({ member }) => member) });
     return label;
   });
   code.switch(value.register, targets, span, otherwise);
-  for (const { label, any, members: absorbed } of pending) {
+  for (const { label, inside, members: absorbed } of pending) {
     code.place(label);
-    const inside = { register: code.field(value.register, 0, span), type: any };
-    branchOnAnyVariants(
-      context,
-      { value: inside, members: absorbed },
-      { matched, otherwise },
-      span,
-    );
+    const register = code.field(value.register, 0, span);
+    if (inside.kind === 'any') {
+      const any = { register, type: inside };
+      branchOnAnyVariants(context, { value: any, members: absorbed }, { matched, otherwise }, span);
+    } else {
+      const union = { register, type: inside };
+      branchOnHeld(context, { value: union, members: absorbed }, { matched, otherwise }, span);
+    }
   }
 }
 

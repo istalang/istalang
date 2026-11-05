@@ -9,13 +9,14 @@
 import type { AliasDeclaration, AssociatedType, TypeParameter } from '../../syntax/declarations.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
 import type { StructType } from '../../syntax/types.ts';
-import type {
-  FieldMember,
-  NominalType,
-  RecursiveUse,
-  Type,
-  TypeParameterType,
-  WrittenThrough,
+import {
+  type FieldMember,
+  isUnfoldable,
+  type NominalType,
+  type RecursiveUse,
+  type Type,
+  type TypeParameterType,
+  type WrittenThrough,
 } from './type.ts';
 
 /**
@@ -118,8 +119,8 @@ export function isOpaque(type: Type): type is TypeParameterType | ComputedType {
  * A use of an alias that reaches itself (§3.17), as a recursive struct refers to itself: one type,
  * known, its identity the alias and its arguments (iso-recursive). It stands for what it unfolds to
  * (type-rules.ts `unfold`): the alias's body with this use inside it again, or the shape a type
- * `match` alias reduces to. A shape or a union it unfolds to carries the same identity
- * (`recursion`), so the two are one type; no fold or unfold is ever written.
+ * `match` alias reduces to. What it unfolds to carries the same identity (`Unfolding`), whatever
+ * its kind, so the two are one type; no fold or unfold is ever written.
  */
 export interface RecursiveType extends WrittenThrough {
   readonly kind: 'recursive';
@@ -132,7 +133,10 @@ export function isMatchAlias(declaration: AliasDeclaration): boolean {
   return declaration.type.kind === 'TypeMatch';
 }
 
-/** What `body` stands for as the unfolding of `use`: a shape or a union with its identity. */
+/**
+ * What `body` stands for as the unfolding of `use`: the body with the use's identity. Every body a
+ * guarded alias has is of a kind that carries it (alias-recursion.ts); the error type stays itself.
+ */
 export function withRecursion(body: Type, use: RecursiveUse): Type {
-  return body.kind === 'anonymous' || body.kind === 'union' ? { ...body, recursion: use } : body;
+  return isUnfoldable(body) ? { ...body, recursion: use } : body;
 }

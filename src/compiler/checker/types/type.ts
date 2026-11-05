@@ -132,8 +132,17 @@ export interface AnyType extends WrittenThrough {
   readonly constraints: readonly Constraint[];
 }
 
+/**
+ * What a recursive alias use unfolds to carries (§3.17): the use, whose identity it has, so the
+ * use and its unfolding are one type whatever the body's kind (type-keys.ts), and a value of either
+ * is taken apart as the body's. Only the kinds a body can be carry it (`UnfoldedType`).
+ */
+interface Unfolding {
+  readonly recursion?: RecursiveUse | undefined;
+}
+
 /** A declared struct, shared or not, enum or extern type, with its type arguments. */
-export interface NominalType extends WrittenThrough {
+export interface NominalType extends WrittenThrough, Unfolding {
   readonly kind: 'nominal';
   readonly entity: NominalEntity;
   readonly arguments: readonly Type[];
@@ -161,7 +170,7 @@ export function nominalType(entity: TypeEntity, typeArguments: readonly Type[]):
   return { kind: 'nominal', entity, arguments: typeArguments };
 }
 
-export interface TupleType extends WrittenThrough {
+export interface TupleType extends WrittenThrough, Unfolding {
   readonly kind: 'tuple';
   readonly elements: readonly Type[];
 }
@@ -183,12 +192,10 @@ export interface FieldMember {
  * struct as the shape its value converts into, or by a struct pattern's rest (§3.11). Its fields are in name order; `origin` is where it
  * was written, which no relation reads.
  */
-export interface AnonymousStructType extends WrittenThrough {
+export interface AnonymousStructType extends WrittenThrough, Unfolding {
   readonly kind: 'anonymous';
   readonly origin: StructType | StructLiteral | DeclaredStruct | RestPattern;
   readonly fields: readonly FieldMember[];
-  /** The recursive use it is the shape of, whose identity it has (`RecursiveType`). */
-  readonly recursion?: RecursiveUse | undefined;
 }
 
 /**
@@ -219,7 +226,7 @@ export interface ParameterSlot {
  * may end in a pack (`fn(Int, ...A) -> R`, §3.5), which stands for the parameters a tuple
  * substituted for it flattens into (`withPack`), so a type with a pack is always generic.
  */
-export interface FunctionType extends WrittenThrough {
+export interface FunctionType extends WrittenThrough, Unfolding {
   readonly kind: 'function';
   readonly isSendable: boolean;
   readonly isAsync: boolean;
@@ -302,15 +309,39 @@ export interface LiteralType extends WrittenThrough {
   readonly value: LiteralValue;
 }
 
-/** `A | B` (§2): a value of one of its members, two or more, normalized (unions.ts). */
-export interface UnionType extends WrittenThrough {
+/**
+ * `A | B` (§2): a value of one of its members, two or more, normalized (unions.ts). One a recursive
+ * use unfolds to (`Unfolding`) stands whole as a member of another union, never flattened.
+ */
+export interface UnionType extends WrittenThrough, Unfolding {
   readonly kind: 'union';
   readonly members: readonly Type[];
-  /**
-   * The recursive alias use it is the body of (§3.17), whose identity it has (`RecursiveType`):
-   * as a member of another union it stands whole, never flattened (unions.ts).
-   */
-  readonly recursion?: RecursiveUse | undefined;
+}
+
+/** The kinds a recursive alias use can unfold to, which carry its identity (`Unfolding`). */
+export type UnfoldedType = NominalType | AnonymousStructType | TupleType | FunctionType | UnionType;
+
+/** Whether `type` is of a kind a recursive alias use can unfold to (`UnfoldedType`). */
+export function isUnfoldable(type: Type): type is UnfoldedType {
+  return (
+    type.kind === 'nominal' ||
+    type.kind === 'anonymous' ||
+    type.kind === 'tuple' ||
+    type.kind === 'function' ||
+    type.kind === 'union'
+  );
+}
+
+/** The recursive alias use `type` is the unfolding of, whose identity it has (`Unfolding`). */
+export function recursionOf(type: Type): RecursiveUse | undefined {
+  return isUnfoldable(type) ? type.recursion : undefined;
+}
+
+/** `type` as its own kind, apart from any recursive use it is the unfolding of. */
+export function withoutRecursion(type: Type): Type {
+  return isUnfoldable(type) && type.recursion !== undefined
+    ? { ...type, recursion: undefined }
+    : type;
 }
 
 /** A type a struct value can have: a declared struct or an anonymous one. */

@@ -82,7 +82,7 @@ function anonymousForm(
   node: IndentedValue,
   expected: Type | undefined,
 ): LiteralForm {
-  return formOf(context, builtFrom(expected)) ?? untypedForm(node);
+  return formOf(context, builtFrom(context.checker, expected)) ?? untypedForm(node);
 }
 
 /**
@@ -184,7 +184,9 @@ function keysFit(
     return true;
   }
   const at = node.type?.span ?? node.span;
-  context.report(checkerDiagnostics.keysNotStrings(at, typeText(builtFrom(target) ?? key)));
+  context.report(
+    checkerDiagnostics.keysNotStrings(at, typeText(builtFrom(context.checker, target) ?? key)),
+  );
   return false;
 }
 

@@ -24,7 +24,7 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
   if (node.elements.length === 0) {
     return unitType;
   }
-  const guides = expectedTuple(expected, node.elements.length);
+  const guides = expectedTuple(context.checker, expected, node.elements.length);
   return {
     kind: 'tuple',
     elements: node.elements.map((element, index) => {
@@ -63,6 +63,7 @@ export function checkTupleElement(context: BodyContext, node: TupleElement): Typ
 /** Which tuple types `node` can take: its size, each element taking its own, if one has none. */
 export function tupleAccepts(context: BodyContext, node: Tuple): Accepts | undefined {
   return tupleTaking(
+    context,
     partsAccept(
       context,
       node.elements.map((element) => context.acceptedPart(element)),
@@ -80,6 +81,7 @@ export function tupleBuilds(
   read: PartReader,
 ): Accepts | undefined {
   return tupleTaking(
+    context,
     partsBuild(
       context,
       node.elements.map((element) => read(element)),
@@ -88,12 +90,15 @@ export function tupleBuilds(
 }
 
 /** The tuple types of `elements`' size whose each element the element at its position takes. */
-function tupleTaking(elements: readonly Accepts[] | undefined): Accepts | undefined {
+function tupleTaking(
+  context: BodyContext,
+  elements: readonly Accepts[] | undefined,
+): Accepts | undefined {
   if (elements === undefined) {
     return undefined;
   }
   return (expected, isOpen) =>
-    expectedTuple(expected, elements.length)?.every(
+    expectedTuple(context.checker, expected, elements.length)?.every(
       (type, index) => elements[index]?.(type, isOpen) ?? true,
     ) === true;
 }

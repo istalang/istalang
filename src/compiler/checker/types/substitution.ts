@@ -14,12 +14,12 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
 import type { ComputedType, MappedParts } from './computed-types.ts';
 import {
-  type AnonymousStructType,
   type AnyType,
   aliasedAs,
   type Constraint,
   errorType,
   type ParameterKey,
+  recursionOf,
   type Type,
   type TypeParameterType,
   type UnionType,
@@ -111,8 +111,8 @@ export function substituteAny(
 export function substituteKept<
   Kept extends Exclude<Type, TypeParameterType | UnionType | ComputedType>,
 >(type: Kept, substitution: Substitution, rules: TypeRules): Kept {
-  if (type.kind === 'anonymous' && type.recursion !== undefined) {
-    return substitutedShape(type, substitution, rules) as Kept;
+  if (recursionOf(type) !== undefined) {
+    return substitutedUnfolding(type, substitution, rules);
   }
   return asWritten(
     type,
@@ -123,19 +123,19 @@ export function substituteKept<
 }
 
 /**
- * The shape a recursive use stands for (§3.17), with `substitution` applied: the shape the
- * substituted use stands for, whether the rules find it recursive still or not.
+ * What a recursive use unfolds to (§3.17), with `substitution` applied: what the substituted use
+ * unfolds to, whether the rules find it recursive still or not, of the same kind.
  */
-function substitutedShape(
-  type: AnonymousStructType,
+function substitutedUnfolding<Kept extends Type>(
+  type: Kept,
   substitution: Substitution,
   rules: TypeRules,
-): AnonymousStructType {
+): Kept {
   const substituted = substitute(type, substitution, rules);
-  const shape = substituted.kind === 'recursive' ? rules.unfold(substituted) : substituted;
-  return shape.kind === 'anonymous'
-    ? shape
-    : unreachable('A recursive shape stands for a struct type whatever its arguments.');
+  const unfolding = substituted.kind === 'recursive' ? rules.unfold(substituted) : substituted;
+  return unfolding.kind === type.kind
+    ? (unfolding as Kept)
+    : unreachable('A recursive use unfolds to a type of one kind whatever its arguments.');
 }
 
 /** `substituted`, written through the alias `type` was written through, if any, substituted. */

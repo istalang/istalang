@@ -18,8 +18,7 @@ import { isMatchAlias } from '../types/computed-types.ts';
 import type { Fitting } from '../types/fit.ts';
 import type { AnonymousStructType, AnyType, Type } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
-import { unfolded } from '../types/type-match.ts';
-import type { TypeRules } from '../types/type-rules.ts';
+import { type TypeRules, unfolded } from '../types/type-rules.ts';
 import { meetsAny } from './trait-objects.ts';
 import { TypeMatchReductions } from './type-matches.ts';
 

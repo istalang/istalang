@@ -21,8 +21,7 @@ import type { Fit } from './fit.ts';
 import { sameType } from './identity.ts';
 import { type Substitution, substitute, substituteAny, substituteKept } from './substitution.ts';
 import type { FieldMember, Type } from './type.ts';
-import { unfolded } from './type-match.ts';
-import type { TypeRules } from './type-rules.ts';
+import { type TypeRules, unfolded } from './type-rules.ts';
 import { membersOf } from './unions.ts';
 
 /**

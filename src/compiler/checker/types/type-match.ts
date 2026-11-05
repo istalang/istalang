@@ -112,14 +112,6 @@ export function structCaseOf(
 }
 
 /**
- * `type`, as a value of it is built and taken apart: what a recursive use unfolds to (§3.17), a
- * shape or a union the same type by identity; any other type as it is.
- */
-export function unfolded(type: Type, rules: TypeRules): Type {
-  return type.kind === 'recursive' ? rules.unfold(type) : type;
-}
-
-/**
  * `type` built again by `rules` at every level, each type in it computed from others reduced as far
  * as its parts allow: what a case's type, resolved with the uses in it unreduced, becomes once a use
  * of its alias picks it.

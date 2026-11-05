@@ -12,7 +12,7 @@ import {
 } from '../checked-field.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Type } from '../types/type.ts';
-import { unfolded } from '../types/type-match.ts';
+import { unfolded } from '../types/type-rules.ts';
 import { literalType } from '../types/unions.ts';
 import { requiredFields, requiredFieldType } from './constraints.ts';
 import { knownConstraints, structConstraintsOn } from './known-constraints.ts';

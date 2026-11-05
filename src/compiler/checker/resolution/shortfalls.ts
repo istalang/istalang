@@ -42,7 +42,7 @@ import {
 } from '../types/struct-constraint.ts';
 import { type Substitution, substituteConstraint } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type.ts';
-import { unfolded } from '../types/type-match.ts';
+import { unfolded } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalType } from '../types/unions.ts';
 import type { UseSite } from '../use-site.ts';

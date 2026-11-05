@@ -53,7 +53,7 @@ import {
   noneType,
   type Type,
 } from '../types/type.ts';
-import { unfolded } from '../types/type-match.ts';
+import { unfolded } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { optionalInner } from '../types/unions.ts';
 import { arrayElement } from '../types/well-known.ts';

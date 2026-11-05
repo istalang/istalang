@@ -28,7 +28,7 @@ import {
   type Type,
   type UnionType,
 } from '../types/type.ts';
-import { unfolded } from '../types/type-match.ts';
+import { unfolded } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 
 /** What a pattern reads and where it reports, in a body or in a top-level constant. */

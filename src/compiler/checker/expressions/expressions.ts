@@ -253,7 +253,7 @@ export function acceptedPartOf(context: BodyContext, node: Expression | undefine
   const builds = buildsOf(context, node, read);
   // A literal whose items agree on no one type has none of its own: where it goes decides it.
   return type === undefined && builds !== undefined
-    ? { kind: 'decided', accepts: takingUnfolded(builds, context.checker.typeRules) }
+    ? { kind: 'decided', accepts: builds }
     : { kind: 'typed', type, builds };
 }
 
@@ -340,8 +340,14 @@ const buildsHandlers: Handlers<BodyContext, Expression, [PartReader], Accepts | 
  * Which parameter types a literal of items each with a type of its own can be built as instead of
  * its own (§3.7), its items read by `read`; undefined for any other expression.
  */
+/**
+ * The types `node`'s items, as `read` reads them, can build it as instead of its own (§3.7), and,
+ * as every `Accepts` taken apart does, a recursive use or a union it is built as one member of
+ * (types/expected.ts `takingUnfolded`).
+ */
 function buildsOf(context: BodyContext, node: Expression, read: PartReader): Accepts | undefined {
-  return handlerOf(buildsHandlers, node)(context, node, read);
+  const builds = handlerOf(buildsHandlers, node)(context, node, read);
+  return builds === undefined ? undefined : takingUnfolded(builds, context.checker.typeRules);
 }
 
 function knownTypeOf(context: BodyContext, node: Expression): Type | undefined {

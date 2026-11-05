@@ -10,7 +10,7 @@ import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { ValueSite } from '../../checker/check.ts';
 import { type Fit, singleElement } from '../../checker/types/fit.ts';
-import type { FunctionType, NominalType, Type } from '../../checker/types/type.ts';
+import type { FunctionType, StructValueType, Type } from '../../checker/types/type.ts';
 import { baseOf, membersOf } from '../../checker/types/unions.ts';
 import { madeAsync } from '../async-fits.ts';
 import type { FunctionContext } from '../context.ts';
@@ -103,8 +103,8 @@ function convertedValue(
 }
 
 /** `type`, whose value the checker converted into a shape, so a nominal struct. */
-function structTypeOf(type: Type): NominalType {
-  if (type.kind !== 'nominal') {
+function structTypeOf(type: Type): StructValueType {
+  if (type.kind !== 'nominal' && type.kind !== 'anonymous') {
     unreachable(`Only a struct's value converts into a shape, not a ${type.kind} type's.`);
   }
   return type;

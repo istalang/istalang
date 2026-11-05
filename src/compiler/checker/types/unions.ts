@@ -20,6 +20,7 @@
 
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
+import type { RecursiveType } from './computed-types.ts';
 import {
   type AnyType,
   isMemberParameter,
@@ -29,10 +30,11 @@ import {
   neverType,
   noneType,
   primitiveType,
+  recursionOf,
   type Type,
 } from './type.ts';
 import { typeKeys } from './type-keys.ts';
-import type { TypeRules } from './type-rules.ts';
+import { type TypeRules, unfolded } from './type-rules.ts';
 
 /** The primitive a literal's value is a value of. */
 type LiteralBase = 'Int' | 'String' | 'Bool';
@@ -78,34 +80,45 @@ export function unionOf(members: readonly Type[], rules: TypeRules): Type {
   return unionOfNormalized(withoutHeld(normalized, rules));
 }
 
-/** The members `type` gives a union: a union's own, but a recursive use's union stands whole. */
+/**
+ * The members `type` gives a union: a union's own; but what a recursive use unfolds to stands whole,
+ * as that use.
+ */
 function memberTypesOf(type: Type): readonly Type[] {
-  if (type.kind !== 'union') {
-    return [type];
+  const use = recursionOf(type);
+  if (use !== undefined) {
+    return [{ kind: 'recursive', declaration: use.declaration, arguments: use.arguments }];
   }
-  const { recursion } = type;
-  return recursion === undefined
-    ? type.members
-    : [{ kind: 'recursive', declaration: recursion.declaration, arguments: recursion.arguments }];
+  return type.kind === 'union' ? type.members : [type];
 }
 
 /** `members` without each one a recursive member's union already holds (the banner). */
 function withoutHeld(members: readonly Type[], rules: TypeRules): readonly Type[] {
-  const holders = members.flatMap((member) => {
-    const held = member.kind === 'recursive' ? rules.unfoldedMembers(member) : undefined;
-    return held === undefined ? [] : [{ member, held }];
-  });
-  if (holders.length === 0) {
-    return members;
-  }
-  const isHeld = (member: Type) =>
-    holders.some(
-      ({ member: holder, held }) =>
-        holder !== member &&
-        withoutAbsorbed(mergedLiterals(distinctMembers([...held, member])), rules).length ===
-          held.length,
+  return members.filter((member) => holdingMember(members, member, rules) === undefined);
+}
+
+/**
+ * The recursive member among `members` whose union already holds `member` (§2, §3.17), so a value
+ * of `member` sits in that member's variant, inside the union it unfolds to, as in an `any` member
+ * that took it whole; undefined where none does, and for that member itself.
+ */
+export function holdingMember(
+  members: readonly Type[],
+  member: Type,
+  rules: TypeRules,
+): RecursiveType | undefined {
+  const key = typeKeys.typeKey(member);
+  return members.find((holder): holder is RecursiveType => {
+    if (holder.kind !== 'recursive' || typeKeys.typeKey(holder) === key) {
+      return false;
+    }
+    const held = rules.unfoldedMembers(holder);
+    return (
+      held !== undefined &&
+      withoutAbsorbed(mergedLiterals(distinctMembers([...held, member])), rules).length ===
+        held.length
     );
-  return members.filter((member) => !isHeld(member));
+  });
 }
 
 /**
@@ -216,7 +229,8 @@ export function optionalInner(type: Type): Type | undefined {
 
 /**
  * What a value of `type` is where it isn't `none`, when `type` may hold `none` (§2, §4), as `??`,
- * `?.`, `!` and `case none` test it: a union holding `None`, without it; `Never` for `None`
+ * `?.`, `!` and `case none` test it: a union holding `None`, without it, a recursive use left
+ * unfolded, as a value of it is taken apart (`unfolded`); `Never` for `None`
  * itself, whose one value is `none`; or, where an `any` member took `None` whole, `type` itself,
  * `none` being one of the values that member holds. Undefined for a type never holding `none`.
  */
@@ -224,10 +238,11 @@ export function presentType(type: Type, rules: TypeRules): Type | undefined {
   if (isPrimitive(type, 'None')) {
     return neverType;
   }
-  return (
-    optionalInner(type) ??
-    (absorbingMember(membersOf(type), noneType, rules) === undefined ? undefined : type)
-  );
+  const inner = optionalInner(type);
+  if (inner !== undefined) {
+    return unfolded(inner, rules);
+  }
+  return absorbingMember(membersOf(type), noneType, rules) === undefined ? undefined : type;
 }
 
 /** Whether `member` has one value only, a literal's or `none`, so a union's tag alone says it. */

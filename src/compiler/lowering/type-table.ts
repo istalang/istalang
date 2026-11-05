@@ -11,7 +11,9 @@
  *   shares it (§3.1), its fields in the name order the shape keeps.
  * - A recursive alias use (§3.17) is the entry of what it unfolds to, whose layout refers back to
  *   it through the table; one unfolding to a tuple or a function type, which have no entry of their
- *   own, has an alias entry standing for it, numbered first for the same reason.
+ *   own, has an alias entry standing for it, numbered first for the same reason. What a use unfolds
+ *   to is that use: a tuple or a function type it unfolds to refers to its alias entry, and a
+ *   nominal type is the entry of its declaration with its arguments, one per instantiation.
  * - A union (§2) is an enum, one variant per member, in the order of their spelled names, which
  *   no numbering of identities changes: a member's value is the variant's one field, and a member
  *   with one value only, a literal type or `None`, is a variant without fields, its tag. A literal
@@ -41,13 +43,15 @@ import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
 import type { RecursiveType } from '../checker/types/computed-types.ts';
 import { sameType } from '../checker/types/identity.ts';
-import type {
-  AnonymousStructType,
-  AnyType,
-  FieldMember,
-  NominalType,
-  Type,
-  UnionType,
+import {
+  type AnonymousStructType,
+  type AnyType,
+  type FieldMember,
+  type NominalType,
+  recursionOf,
+  type Type,
+  type UnionType,
+  withoutRecursion,
 } from '../checker/types/type.ts';
 import { baseOf, hasOneValue } from '../checker/types/unions.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
@@ -131,6 +135,10 @@ export class TypeTable {
 
   /** How the Definition refers to `type`. */
   reference(type: Type): TypeReference {
+    const use = recursionOf(type);
+    if (use !== undefined && (type.kind === 'tuple' || type.kind === 'function')) {
+      return this.reference({ kind: 'recursive', ...use });
+    }
     switch (type.kind) {
       case 'primitive':
         return { kind: 'primitive', name: type.name };
@@ -237,7 +245,9 @@ export class TypeTable {
    * layout refers to the type itself.
    */
   #typeEntry(type: EntryType): TypeId {
-    const key = this.#checker.typeKeys.typeKey(type);
+    const key = this.#checker.typeKeys.typeKey(
+      type.kind === 'nominal' ? withoutRecursion(type) : type,
+    );
     const known = this.#indexes.get(key);
     if (known !== undefined) {
       return known;

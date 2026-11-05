@@ -12,7 +12,9 @@
  * - A node is checked once. A literal of items each with a type of its own, checked before the type
  *   it is built as is decided (§3.7: a call's argument, a producer agreeing with others), is built
  *   again as that type (`rebuild`): its own literals are checked again as their parts, and every
- *   other item keeps what it was checked to have, fitted to its part.
+ *   other item keeps what it was checked to have, fitted to its part. So is a literal whose items'
+ *   types only checking tells, where its own type doesn't go into the union expected: as the one
+ *   member its checked items build it as (§2, types/expected.ts `memberBuilt`).
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. What they record of a
  *   node is kept per pass of a field loop (passes.ts), so the body reads as each pass checked it.
@@ -36,7 +38,14 @@ import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Assignment, Block, Statement, VariableDeclaration } from '../syntax/statements.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
-import type { Accepts, BodyContext, CheckedPasses, Enclosing, Returns } from './body-context.ts';
+import type {
+  AcceptedPart,
+  Accepts,
+  BodyContext,
+  CheckedPasses,
+  Enclosing,
+  Returns,
+} from './body-context.ts';
 import { bodyRecords, checkedAt } from './body-records.ts';
 import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
 import { statementPlace } from './checked-annotation.ts';
@@ -82,7 +91,7 @@ import {
   type Type,
   unitType,
 } from './types/type.ts';
-import { unfolded } from './types/type-match.ts';
+import { unfolded } from './types/type-rules.ts';
 import { useSite } from './use-site.ts';
 
 /**
@@ -200,16 +209,41 @@ export class BodyChecker implements BodyContext {
     const guide =
       expected === undefined
         ? undefined
-        : unfolded(
-            memberBuilt(expected, node, {
-              checker: this.checker,
-              rules: typeRules,
-              part: () => this.acceptedPart(node),
-              fits: (type) => this.checker.fitOf(type, expected) !== undefined,
-            }),
-            typeRules,
-          );
-    return this.#record(node, handlerOf(expressionHandlers, node)(this, node, guide));
+        : this.#memberBuilt(node, expected, () => this.acceptedPart(node));
+    const type = this.#record(node, handlerOf(expressionHandlers, node)(this, node, guide));
+    return guide?.kind === 'union' ? this.#builtAsChecked(node, type, guide) : type;
+  }
+
+  /**
+   * The type a value read as `part` is built as where `expected` is expected (`memberBuilt`), as
+   * it is taken apart (`unfolded`): a member that is a union again, a recursive one's, gives the
+   * member of it the value is built as, at any depth.
+   */
+  #memberBuilt(node: Expression, expected: Type, part: () => AcceptedPart): Type {
+    const member = unfolded(
+      memberBuilt(expected, node, {
+        checker: this.checker,
+        part,
+        fits: (type) => this.checker.fitOf(type, expected) !== undefined,
+      }),
+      this.checker.typeRules,
+    );
+    return member !== expected && member.kind === 'union'
+      ? this.#memberBuilt(node, member, part)
+      : member;
+  }
+
+  /**
+   * `node`, checked as `type` where the union `expected` decided no member before checking, built
+   * again as the member its checked items build it as, where its own type doesn't go in (the
+   * banner); `type` otherwise.
+   */
+  #builtAsChecked(node: Expression, type: Type, expected: Type): Type {
+    if (!isBuiltLiteral(node) || this.checker.fitOf(type, expected) !== undefined) {
+      return type;
+    }
+    const member = this.#memberBuilt(node, expected, () => this.checkedPart(node));
+    return member === expected ? type : this.rebuild(node, member);
   }
 
   accepts(node: Expression): Accepts | undefined {

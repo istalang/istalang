@@ -12,9 +12,11 @@ import {
   aliasedAs,
   type Constraint,
   type ErrorType,
+  isUnfoldable,
   type NominalType,
   type ParameterKey,
   type RecursiveUse,
+  recursionOf,
   type Type,
   type UnionType,
 } from './type.ts';
@@ -191,11 +193,14 @@ type Rebuilt = UnionType | ComputedType;
  */
 function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Type | undefined {
   const rebuilt = (): Type | undefined => {
+    const use = recursionOf(type);
+    if (use !== undefined) {
+      // What a recursive use unfolds to is that use, built again from its own arguments.
+      return recursiveUseOf(use, use.arguments.map(map), rules);
+    }
     switch (type.kind) {
       case 'union':
-        return type.recursion === undefined
-          ? unionOf(type.members.map(map), rules)
-          : recursiveUseOf(type.recursion, type.recursion.arguments.map(map), rules);
+        return unionOf(type.members.map(map), rules);
       case 'associated':
         return rules.associatedType(map(type.of), type.name);
       case 'field':
@@ -210,10 +215,6 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
         return rules.matchType(type.declaration, type.arguments.map(map));
       case 'recursive':
         return recursiveUseOf(type, type.arguments.map(map), rules);
-      case 'anonymous':
-        return type.recursion === undefined
-          ? undefined
-          : recursiveUseOf(type.recursion, type.recursion.arguments.map(map), rules);
       default:
         return undefined;
     }
@@ -227,13 +228,23 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
  * gives, still of its kind; its alias comes along, as `mapChildren` says. Building one of these
  * takes no rule of the program: only a union normalizes its members, and only a computed type
  * reduces, which `mapChildren` does. A computed type kept as it is, its parts respelled
- * (`unaliased`), stays of its kind here.
+ * (`unaliased`), stays of its kind here, and what a recursive use unfolds to keeps that use, its
+ * arguments mapped alike.
  */
 export function mapParts<Mapped extends Exclude<Type, UnionType>>(
   type: Mapped,
   map: (child: Type) => Type,
 ): Mapped;
 export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => Type): Type {
+  const mapped = mapKindParts(type, map);
+  const use = recursionOf(type);
+  return use !== undefined && isUnfoldable(mapped)
+    ? { ...mapped, recursion: mappedRecursion(use, map) }
+    : mapped;
+}
+
+/** `type`'s own parts mapped, as `mapParts` says, apart from the recursive use it unfolds. */
+function mapKindParts(type: Exclude<Type, UnionType>, map: (child: Type) => Type): Type {
   switch (type.kind) {
     case 'associated':
       return { ...type, of: map(type.of) };
@@ -259,11 +270,7 @@ export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => T
     case 'nominal':
       return { ...type, arguments: type.arguments.map(map) };
     case 'anonymous':
-      return {
-        ...type,
-        fields: type.fields.map((field) => ({ ...field, type: map(field.type) })),
-        recursion: mappedRecursion(type.recursion, map),
-      };
+      return { ...type, fields: type.fields.map((field) => ({ ...field, type: map(field.type) })) };
     case 'tuple':
       return { ...type, elements: type.elements.map(map) };
     case 'function':

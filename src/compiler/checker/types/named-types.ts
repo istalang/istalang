@@ -37,13 +37,13 @@ import {
   type AnyType,
   isPrimitive,
   type NominalDeclaration,
+  recursionOf,
   type Type,
   tupleElements,
 } from './type.ts';
 import { type ShapeKey, typeKeys } from './type-keys.ts';
-import { unfolded } from './type-match.ts';
-import type { TypeRules } from './type-rules.ts';
-import { absorbingMember, baseOf, hasMember, optionalInner } from './unions.ts';
+import { type TypeRules, unfolded } from './type-rules.ts';
+import { absorbingMember, baseOf, hasMember, holdingMember, optionalInner } from './unions.ts';
 import { arrayElement } from './well-known.ts';
 
 type Aliases = Pick<Checker, 'aliasedType' | 'typeRules'>;
@@ -70,6 +70,10 @@ export type StaticOwner = NominalDeclaration | PrimitiveName | ShapeKey | typeof
 
 /** What static functions on `type` are declared on; undefined for a type that has none. */
 export function staticOwnerOf(type: Type | undefined): StaticOwner | undefined {
+  const use = type === undefined ? undefined : recursionOf(type);
+  if (use !== undefined) {
+    return typeKeys.recursionKey(use);
+  }
   switch (type?.kind) {
     case 'primitive':
       return type.name;
@@ -80,9 +84,6 @@ export function staticOwnerOf(type: Type | undefined): StaticOwner | undefined {
     case 'recursive':
       return typeKeys.recursionKey(type);
     case 'union':
-      if (type.recursion !== undefined) {
-        return typeKeys.recursionKey(type.recursion);
-      }
       return optionalInner(type) === undefined ? undefined : optionalOwner;
     default:
       return undefined;
@@ -195,9 +196,9 @@ type MemberNaming = Pick<Checker, 'aliasedType' | 'typeRules' | 'variantsOf'>;
  * it names, bare or qualified; the member of a type it names, else the members of a union it names
  * where the union holds them all (`case Status as s` against `Status | Int`), else every literal
  * member of that base (`case String as s` against `Status | Int`), else the type itself where an
- * `any` member took it whole (`case Int` against `Plain | any Shows`), a downcast through that
- * member; every member instantiating a generic type it names. Anything else, a constant's name
- * among them, selects none here.
+ * `any` or a recursive member took it whole (`case Int` against `Plain | any Shows`, or against
+ * `Tree | String`), a downcast through that member; every member instantiating a generic type it
+ * names. Anything else, a constant's name among them, selects none here.
  */
 export function membersNamed(
   checker: MemberNaming,
@@ -247,9 +248,7 @@ function typeMembers(checker: Aliases, entity: Entity, members: readonly Type[])
       if (literals.length > 0) {
         return literals;
       }
-      return absorbingMember(members, named.type, checker.typeRules) === undefined
-        ? []
-        : [named.type];
+      return takenWhole(members, named.type, checker.typeRules) ? [named.type] : [];
     }
     case 'generic':
       return members.filter(
@@ -272,8 +271,8 @@ export function instancesWith(
 
 /**
  * The members a literal of type `literal` selects: its own literal type's, else its base's, else
- * the literal itself through the `any` member that took it whole (§2), as `rules` say: the value
- * inside that member is the literal's own.
+ * the literal itself through the `any` or recursive member that took it whole (§2), as `rules`
+ * say: the value inside that member is the literal's own.
  */
 export function literalMembers(
   members: readonly Type[],
@@ -286,9 +285,18 @@ export function literalMembers(
   }
   const base = baseOf(literal);
   const based = members.filter((member) => sameType(member, base));
-  return based.length === 0 && absorbingMember(members, literal, rules) !== undefined
-    ? [literal]
-    : based;
+  return based.length === 0 && takenWhole(members, literal, rules) ? [literal] : based;
+}
+
+/**
+ * Whether an `any` or a recursive member among `members` took `type` whole (§2, §3.17), so a value
+ * of it sits inside that member's.
+ */
+function takenWhole(members: readonly Type[], type: Type, rules: TypeRules): boolean {
+  return (
+    absorbingMember(members, type, rules) !== undefined ||
+    holdingMember(members, type, rules) !== undefined
+  );
 }
 
 /**

@@ -24,7 +24,6 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import type { ValueSite } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
-import { takingUnfolded } from '../types/expected.ts';
 import { type Fit, isExact } from '../types/fit.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
 import { mapChildren } from '../types/type-parts.ts';
@@ -284,8 +283,7 @@ function partAccepts(
     part.type === undefined ||
     isOpen(expected) ||
     context.checker.fitOf(part.type, expected) !== undefined ||
-    (part.builds !== undefined &&
-      takingUnfolded(part.builds, context.checker.typeRules)(expected, isOpen))
+    part.builds?.(expected, isOpen) === true
   );
 }
 

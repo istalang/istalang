@@ -44,7 +44,7 @@ export function builtThrough(
     return undefined;
   }
   const { declaration } = entity;
-  const target = builtMember(context, node, declaration, builtFrom(expected));
+  const target = builtMember(context, node, declaration, builtFrom(context.checker, expected));
   if (isNominalEntity(entity) && isDeclaredStruct(declaration)) {
     const known = knownArguments(context, node.type, declaration, target);
     return { kind: 'declared', entity, struct: declaration, known };

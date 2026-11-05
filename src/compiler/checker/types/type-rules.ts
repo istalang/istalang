@@ -70,3 +70,11 @@ export interface TypeRules {
   /** Whether every key `key` may be names a field of `of`, as a written `S[K]` must (§3.1). */
   readonly isKeyOf: (key: Type, of: Type) => boolean;
 }
+
+/**
+ * `type`, as a value of it is built and taken apart: what a recursive use unfolds to (§3.17), the
+ * same type by identity (`Unfolding`); any other type as it is.
+ */
+export function unfolded(type: Type, rules: TypeRules): Type {
+  return type.kind === 'recursive' ? rules.unfold(type) : type;
+}
