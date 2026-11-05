@@ -1,0 +1,8 @@
+# Rendered from the sources beside them (README.md), with archify's receipts and captures
+*.html
+*.delivery.json
+*.finalize.json
+*.finalize-summary.json
+*.browser-check.json
+visual-*/
+review-*/

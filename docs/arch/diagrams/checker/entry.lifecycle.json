@@ -1,0 +1,109 @@
+{
+  "schema_version": 3,
+  "diagram_type": "lifecycle",
+  "meta": {
+    "title": "One entry across two checker revisions",
+    "quality_profile": "showcase",
+    "locale": "en"
+  },
+  "mainPath": ["asked", "replaying", "takenOver"],
+  "states": [
+    {
+      "id": "asked",
+      "type": "start",
+      "label": "Asked",
+      "sublabel": "table.get(key)"
+    },
+    {
+      "id": "replaying",
+      "type": "decision",
+      "label": "Replaying",
+      "sublabel": "previous reads, in order"
+    },
+    {
+      "id": "takenOver",
+      "type": "success",
+      "label": "Taken over",
+      "sublabel": "old value and notes"
+    },
+    {
+      "id": "computing",
+      "type": "active",
+      "label": "Computing",
+      "sublabel": "compute(key, context)"
+    },
+    {
+      "id": "recorded",
+      "type": "success",
+      "label": "Recorded",
+      "sublabel": "value, reads, notes"
+    },
+    {
+      "id": "member",
+      "type": "neutral",
+      "label": "Cycle member",
+      "sublabel": "answers stand-in"
+    }
+  ],
+  "transitions": [
+    {
+      "id": "asked-replaying",
+      "from": "asked",
+      "to": "replaying",
+      "label": "previous has it"
+    },
+    {
+      "id": "replaying-takenover",
+      "from": "replaying",
+      "to": "takenOver",
+      "label": "every read alike",
+      "note": "a read recomputed equal counts alike: early cutoff"
+    },
+    {
+      "id": "asked-computing",
+      "from": "asked",
+      "to": "computing",
+      "label": "no previous"
+    },
+    {
+      "id": "replaying-computing",
+      "from": "replaying",
+      "to": "computing",
+      "label": "a read differs",
+      "variant": "dashed"
+    },
+    {
+      "id": "computing-recorded",
+      "from": "computing",
+      "to": "recorded",
+      "label": "returns"
+    },
+    {
+      "id": "computing-member",
+      "from": "computing",
+      "to": "member",
+      "label": "reached while running",
+      "variant": "security"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "What an entry logs",
+      "items": [
+        "Each entry read, with the answer it got",
+        "Each input read: module items, a body, a Bindings answer",
+        "Notes: diagnostics and constraint checks to run later"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Cycles",
+      "items": [
+        "A member never is taken over",
+        "Every member answers the table's stand-in, whoever asked first",
+        "results: stand-in is the error type, reported as a recursive return type"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Runtime parts",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "Host API"
+        },
+        "backend": {
+          "label": "Runtime part"
+        },
+        "external": {
+          "label": "Seam: natives"
+        },
+        "database": {
+          "label": "Seam: store"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "loaded",
+      "type": "backend",
+      "label": "loadDefinition",
+      "sublabel": "validate, bind",
+      "pos": [40, 40],
+      "size": [128, 56]
+    },
+    {
+      "id": "hostapi",
+      "type": "frontend",
+      "label": "host.ts",
+      "sublabel": "createRuntime",
+      "pos": [245, 40],
+      "size": [128, 56]
+    },
+    {
+      "id": "store",
+      "type": "database",
+      "label": "InstanceStore",
+      "sublabel": "texts by key",
+      "pos": [450, 40],
+      "size": [128, 56]
+    },
+    {
+      "id": "wake",
+      "type": "backend",
+      "label": "advance",
+      "sublabel": "scheduler/wake.ts",
+      "pos": [245, 150],
+      "size": [128, 56]
+    },
+    {
+      "id": "lifetimes",
+      "type": "backend",
+      "label": "Collector",
+      "sublabel": "lifetimes/",
+      "pos": [40, 260],
+      "size": [128, 56]
+    },
+    {
+      "id": "segment",
+      "type": "backend",
+      "label": "runSegment",
+      "sublabel": "one segment",
+      "pos": [245, 260],
+      "size": [128, 56]
+    },
+    {
+      "id": "interp",
+      "type": "backend",
+      "label": "instruction table",
+      "sublabel": "interpreter/",
+      "pos": [450, 260],
+      "size": [128, 56]
+    },
+    {
+      "id": "calls",
+      "type": "backend",
+      "label": "startCall",
+      "sublabel": "mock, native, code",
+      "pos": [245, 370],
+      "size": [128, 56]
+    },
+    {
+      "id": "natives",
+      "type": "external",
+      "label": "Natives seam",
+      "sublabel": "std, host, mocks",
+      "pos": [450, 370],
+      "size": [128, 56]
+    }
+  ],
+  "connections": [
+    {
+      "id": "host-loaded",
+      "from": "hostapi",
+      "to": "loaded",
+      "label": "deploy"
+    },
+    {
+      "id": "host-store",
+      "from": "hostapi",
+      "to": "store",
+      "label": "by hash"
+    },
+    {
+      "id": "host-wake",
+      "from": "hostapi",
+      "to": "wake",
+      "label": "start, wake",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "id": "wake-store",
+      "from": "wake",
+      "to": "store",
+      "label": "commit",
+      "fromSide": "right",
+      "toSide": "bottom",
+      "variant": "emphasis"
+    },
+    {
+      "id": "wake-segment",
+      "from": "wake",
+      "to": "segment",
+      "label": "run",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "id": "segment-interp",
+      "from": "segment",
+      "to": "interp",
+      "label": "step"
+    },
+    {
+      "id": "segment-lifetimes",
+      "from": "segment",
+      "to": "lifetimes",
+      "label": "dispose"
+    },
+    {
+      "id": "segment-calls",
+      "from": "segment",
+      "to": "calls",
+      "label": "call",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "calls-natives",
+      "from": "calls",
+      "to": "natives",
+      "label": "extern"
+    }
+  ]
+}

@@ -1,0 +1,470 @@
+{
+  "schema_version": 1,
+  "diagram_type": "class",
+  "meta": {
+    "title": "Checker body storage: where types and variable facts live",
+    "output": "checker-storage.html",
+    "quality_profile": "showcase",
+    "locale": "en"
+  },
+  "layout": {
+    "mode": "grid"
+  },
+  "types": [
+    {
+      "id": "identifier",
+      "label": "Identifier (declaring)",
+      "kind": "record",
+      "sublabel": "VariableEntity.name",
+      "row": 0,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "text",
+          "type": "string"
+        },
+        {
+          "name": "span",
+          "type": "AnchoredSpan"
+        }
+      ]
+    },
+    {
+      "id": "varEntity",
+      "label": "VariableEntity",
+      "kind": "record",
+      "sublabel": "from the binder",
+      "row": 0,
+      "col": 3,
+      "attributes": [
+        {
+          "name": "name",
+          "type": "Identifier"
+        },
+        {
+          "name": "owner",
+          "type": "VariableOwner"
+        }
+      ]
+    },
+    {
+      "id": "targetBinding",
+      "label": "TargetBinding",
+      "kind": "record",
+      "sublabel": "one per name a target binds",
+      "row": 1,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "name",
+          "type": "Identifier"
+        },
+        {
+          "name": "type",
+          "type": "Type"
+        },
+        {
+          "name": "path",
+          "type": "TargetStep[]: index | field"
+        }
+      ]
+    },
+    {
+      "id": "variableScope",
+      "label": "VariableScope",
+      "kind": "class",
+      "sublabel": "context.variables",
+      "row": 1,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "#types",
+          "type": "PassTable<Identifier, Type>"
+        },
+        {
+          "name": "#targets",
+          "type": "PassTable<TargetOwner, TargetBinding[]>"
+        },
+        {
+          "name": "#assigned",
+          "type": "PassTable<Assignment, AssignedPart[]>"
+        },
+        {
+          "name": "#changed",
+          "type": "Set<Identifier>"
+        },
+        {
+          "name": "#inCell",
+          "type": "Set<Identifier>"
+        },
+        {
+          "name": "#references",
+          "type": "Set<Identifier>"
+        }
+      ],
+      "methods": [
+        {
+          "name": "declare",
+          "parameters": "name, type",
+          "returns": "void"
+        },
+        {
+          "name": "typeOf",
+          "parameters": "entity",
+          "returns": "Type"
+        },
+        {
+          "name": "isChangeable",
+          "parameters": "entity",
+          "returns": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "bodyChecker",
+      "label": "BodyChecker",
+      "kind": "class",
+      "sublabel": "implements BodyContext",
+      "row": 1,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "#types",
+          "type": "PassTable<Expression, Type>"
+        },
+        {
+          "name": "#expected",
+          "type": "PassTable<ValueSite, Type>"
+        },
+        {
+          "name": "#fits",
+          "type": "PassTable<ValueSite, Fit>"
+        },
+        {
+          "name": "#resolved",
+          "type": "PassTable<ResolvedSite, ResolvedCall>"
+        },
+        {
+          "name": "#namedFields",
+          "type": "PassTable<Identifier, FieldMember>"
+        },
+        {
+          "name": "#fieldPasses",
+          "type": "PassTable<FieldHeader, CheckedPass[]>"
+        }
+      ],
+      "methods": [
+        {
+          "name": "expression",
+          "parameters": "node, expected",
+          "returns": "Type"
+        },
+        {
+          "name": "useEntity",
+          "parameters": "name",
+          "returns": "Entity"
+        }
+      ]
+    },
+    {
+      "id": "functionScopes",
+      "label": "FunctionScopes",
+      "kind": "class",
+      "sublabel": "context.functions",
+      "row": 1,
+      "col": 3,
+      "attributes": [
+        {
+          "name": "#stack",
+          "type": "FunctionFrame[]"
+        },
+        {
+          "name": "#checked",
+          "type": "PassTable<NestedFunction, CheckedFunction>"
+        },
+        {
+          "name": "#untyped",
+          "type": "Set<NestedFunction>"
+        }
+      ],
+      "methods": [
+        {
+          "name": "noteUse",
+          "parameters": "ctx, name, entity",
+          "returns": "void"
+        }
+      ]
+    },
+    {
+      "id": "functionScope",
+      "label": "FunctionScope",
+      "kind": "class",
+      "sublabel": "body's own, or a lambda",
+      "row": 1,
+      "col": 4,
+      "attributes": [
+        {
+          "name": "reach",
+          "type": "AnchoredSpan"
+        },
+        {
+          "name": "isAsync",
+          "type": "boolean"
+        },
+        {
+          "name": "returns",
+          "type": "ReturnScope"
+        },
+        {
+          "name": "#captures",
+          "type": "Map<Identifier, VariableEntity>"
+        }
+      ]
+    },
+    {
+      "id": "passTable",
+      "label": "PassTable<K, V>",
+      "kind": "interface",
+      "sublabel": "records by node, per pass",
+      "row": 2,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "records",
+          "type": "Map<Pass, Map<K, V>>"
+        }
+      ],
+      "methods": [
+        {
+          "name": "set",
+          "parameters": "key, value",
+          "returns": "into current pass"
+        },
+        {
+          "name": "get",
+          "parameters": "key, pass",
+          "returns": "walks pass.outer"
+        },
+        {
+          "name": "at",
+          "parameters": "pass",
+          "returns": "PassRecords"
+        }
+      ]
+    },
+    {
+      "id": "passes",
+      "label": "Passes",
+      "kind": "class",
+      "sublabel": "one per body",
+      "row": 2,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "root",
+          "type": "Pass { outer: undefined }"
+        },
+        {
+          "name": "#current",
+          "type": "Pass"
+        },
+        {
+          "name": "#held",
+          "type": "Map<Pass, Diagnostic[]>"
+        }
+      ],
+      "methods": [
+        {
+          "name": "checkEach",
+          "parameters": "items, check, report",
+          "returns": "passes"
+        }
+      ]
+    },
+    {
+      "id": "checkedBody",
+      "label": "CheckedBody",
+      "kind": "interface",
+      "sublabel": "a view at one pass",
+      "row": 2,
+      "col": 3,
+      "methods": [
+        {
+          "name": "typeOf",
+          "parameters": "expression",
+          "returns": "Type"
+        },
+        {
+          "name": "declaredTypeOf",
+          "parameters": "name",
+          "returns": "Type"
+        },
+        {
+          "name": "targetsOf",
+          "parameters": "owner",
+          "returns": "TargetBinding[]"
+        },
+        {
+          "name": "inCell",
+          "parameters": "name",
+          "returns": "boolean"
+        },
+        {
+          "name": "functionOf",
+          "parameters": "lambda",
+          "returns": "CheckedFunction"
+        },
+        {
+          "name": "passesOf",
+          "parameters": "header",
+          "returns": "FieldPass[]"
+        }
+      ]
+    },
+    {
+      "id": "checkedFunction",
+      "label": "CheckedFunction",
+      "kind": "record",
+      "sublabel": "a lambda or local fn",
+      "row": 2,
+      "col": 4,
+      "attributes": [
+        {
+          "name": "type",
+          "type": "FunctionType"
+        },
+        {
+          "name": "parameters",
+          "type": "SignatureParameter[]"
+        },
+        {
+          "name": "captures",
+          "type": "{ entity, type }[]"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "body-vars",
+      "from": "bodyChecker",
+      "to": "variableScope",
+      "kind": "composition",
+      "label": "variables"
+    },
+    {
+      "id": "body-fns",
+      "from": "bodyChecker",
+      "to": "functionScopes",
+      "kind": "composition",
+      "label": "functions"
+    },
+    {
+      "id": "body-passes",
+      "from": "bodyChecker",
+      "to": "passes",
+      "kind": "composition",
+      "label": "#passes"
+    },
+    {
+      "id": "body-view",
+      "from": "bodyChecker",
+      "to": "checkedBody",
+      "kind": "dependency",
+      "label": "#checkedAt(pass)"
+    },
+    {
+      "id": "vars-key",
+      "from": "variableScope",
+      "to": "identifier",
+      "kind": "association",
+      "label": "#types key"
+    },
+    {
+      "id": "vars-targets",
+      "from": "variableScope",
+      "to": "targetBinding",
+      "kind": "aggregation",
+      "label": "#targets"
+    },
+    {
+      "id": "target-name",
+      "from": "targetBinding",
+      "to": "identifier",
+      "kind": "association",
+      "label": "name"
+    },
+    {
+      "id": "vars-table",
+      "from": "variableScope",
+      "to": "passTable",
+      "kind": "dependency",
+      "label": "stores in"
+    },
+    {
+      "id": "passes-table",
+      "from": "passes",
+      "to": "passTable",
+      "kind": "dependency",
+      "label": "table()"
+    },
+    {
+      "id": "fns-stack",
+      "from": "functionScopes",
+      "to": "functionScope",
+      "kind": "composition",
+      "label": "#stack"
+    },
+    {
+      "id": "scope-captures",
+      "from": "functionScope",
+      "to": "varEntity",
+      "kind": "association",
+      "label": "#captures"
+    },
+    {
+      "id": "entity-name",
+      "from": "varEntity",
+      "to": "identifier",
+      "kind": "association",
+      "label": "name"
+    },
+    {
+      "id": "fns-checked",
+      "from": "functionScopes",
+      "to": "checkedFunction",
+      "kind": "aggregation",
+      "label": "#checked"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "One key, three phases",
+      "items": [
+        "binder: VariableEntity memoized by its declaring Identifier",
+        "checker: VariableScope #types and flags keyed by that Identifier",
+        "lowering: Variables #registers keyed by that Identifier"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Type of a variable read",
+      "items": [
+        "extern constant: its written type",
+        "top-level constant: constantNamed(module, name).type",
+        "local fn: FunctionScopes.typeOfFunction, error type while untyped",
+        "else VariableScope #types.get(entity.name) at the pass"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Flags",
+      "items": [
+        "#changed: assignments and & places; drives the unused-let warning",
+        "#inCell: passed by & or a captured let; lowering makes a cell",
+        "#references: & parameters; capturing one is an error"
+      ]
+    }
+  ]
+}

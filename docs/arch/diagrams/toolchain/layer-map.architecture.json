@@ -1,0 +1,257 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Layers and import direction",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "App: composition root"
+        },
+        "backend": {
+          "label": "Phase or library"
+        },
+        "security": {
+          "label": "Contract with high fan-in"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "cli",
+      "type": "frontend",
+      "label": "ista CLI",
+      "sublabel": "cli/",
+      "pos": [40, 40],
+      "size": [128, 56]
+    },
+    {
+      "id": "lsp",
+      "type": "frontend",
+      "label": "lsp server",
+      "sublabel": "lsp/",
+      "pos": [245, 40],
+      "size": [128, 56]
+    },
+    {
+      "id": "langsvc",
+      "type": "backend",
+      "label": "language-service",
+      "sublabel": "editor queries",
+      "pos": [450, 40],
+      "size": [128, 56]
+    },
+    {
+      "id": "compile",
+      "type": "backend",
+      "label": "compile.ts",
+      "sublabel": "phase order",
+      "pos": [40, 150],
+      "size": [128, 56]
+    },
+    {
+      "id": "lowering",
+      "type": "backend",
+      "label": "lowering",
+      "sublabel": "checked to IR",
+      "pos": [245, 150],
+      "size": [128, 56]
+    },
+    {
+      "id": "checker",
+      "type": "backend",
+      "label": "checker",
+      "sublabel": "types, bodies",
+      "pos": [450, 150],
+      "size": [128, 56]
+    },
+    {
+      "id": "binder",
+      "type": "backend",
+      "label": "binder",
+      "sublabel": "names to entities",
+      "pos": [655, 150],
+      "size": [128, 56]
+    },
+    {
+      "id": "runtime",
+      "type": "backend",
+      "label": "runtime",
+      "sublabel": "interpreter",
+      "pos": [40, 260],
+      "size": [128, 56]
+    },
+    {
+      "id": "definition",
+      "type": "security",
+      "label": "definition",
+      "sublabel": "IR contract",
+      "pos": [245, 260],
+      "size": [128, 56]
+    },
+    {
+      "id": "project",
+      "type": "backend",
+      "label": "project",
+      "sublabel": "files on disk",
+      "pos": [450, 260],
+      "size": [128, 56]
+    },
+    {
+      "id": "program",
+      "type": "backend",
+      "label": "program",
+      "sublabel": "module graph",
+      "pos": [655, 260],
+      "size": [128, 56]
+    },
+    {
+      "id": "stdlib",
+      "type": "backend",
+      "label": "stdlib",
+      "sublabel": "std modules",
+      "pos": [245, 370],
+      "size": [128, 56]
+    },
+    {
+      "id": "frontend",
+      "type": "backend",
+      "label": "scanner, parser",
+      "sublabel": "text to tree",
+      "pos": [655, 370],
+      "size": [128, 56]
+    },
+    {
+      "id": "syntax",
+      "type": "security",
+      "label": "syntax",
+      "sublabel": "tree contract",
+      "pos": [655, 480],
+      "size": [128, 56]
+    }
+  ],
+  "connections": [
+    {
+      "id": "cli-lsp",
+      "from": "cli",
+      "to": "lsp"
+    },
+    {
+      "id": "cli-compile",
+      "from": "cli",
+      "to": "compile",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "cli-runtime",
+      "from": "cli",
+      "to": "runtime",
+      "label": "run",
+      "fromSide": "left",
+      "toSide": "left",
+      "via": [[16, 68], [16, 288]]
+    },
+    {
+      "id": "lsp-langsvc",
+      "from": "lsp",
+      "to": "langsvc"
+    },
+    {
+      "id": "langsvc-compile",
+      "from": "langsvc",
+      "to": "compile",
+      "label": "diagnose",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "langsvc-checker",
+      "from": "langsvc",
+      "to": "checker",
+      "label": "queries",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "compile-lowering",
+      "from": "compile",
+      "to": "lowering",
+      "variant": "emphasis"
+    },
+    {
+      "id": "lowering-checker",
+      "from": "lowering",
+      "to": "checker",
+      "variant": "emphasis"
+    },
+    {
+      "id": "checker-binder",
+      "from": "checker",
+      "to": "binder",
+      "variant": "emphasis"
+    },
+    {
+      "id": "binder-program",
+      "from": "binder",
+      "to": "program",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "program-frontend",
+      "from": "program",
+      "to": "frontend",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "frontend-syntax",
+      "from": "frontend",
+      "to": "syntax",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "lowering-definition",
+      "from": "lowering",
+      "to": "definition",
+      "label": "emits",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "runtime-definition",
+      "from": "runtime",
+      "to": "definition",
+      "label": "loads"
+    },
+    {
+      "id": "project-program",
+      "from": "project",
+      "to": "program"
+    },
+    {
+      "id": "project-stdlib",
+      "from": "project",
+      "to": "stdlib",
+      "label": "loader",
+      "fromSide": "bottom",
+      "toSide": "right"
+    },
+    {
+      "id": "stdlib-runtime",
+      "from": "stdlib",
+      "to": "runtime",
+      "label": "natives",
+      "fromSide": "left",
+      "toSide": "bottom"
+    }
+  ]
+}

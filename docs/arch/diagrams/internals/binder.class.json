@@ -1,0 +1,352 @@
+{
+  "schema_version": 1,
+  "diagram_type": "class",
+  "meta": {
+    "title": "Binder internals: what it stores, keyed by which node",
+    "output": "binder-internals.html",
+    "quality_profile": "showcase",
+    "locale": "en"
+  },
+  "layout": { "mode": "grid" },
+  "types": [
+    {
+      "id": "namedImport",
+      "label": "NamedImport",
+      "kind": "record",
+      "sublabel": "syntax node",
+      "row": 0,
+      "col": 1,
+      "attributes": [
+        { "name": "names", "type": "Identifier[]" },
+        { "name": "path", "type": "string" }
+      ]
+    },
+    {
+      "id": "placeholder",
+      "label": "ImportPlaceholder",
+      "kind": "record",
+      "sublabel": "memo: WeakMap<Identifier, …>",
+      "row": 0,
+      "col": 2,
+      "attributes": [
+        { "name": "kind", "type": "'import'" },
+        { "name": "name", "type": "Identifier" },
+        { "name": "declaration", "type": "NamedImport" }
+      ]
+    },
+    {
+      "id": "fnDecl",
+      "label": "FunctionDeclaration",
+      "kind": "record",
+      "sublabel": "syntax node",
+      "row": 0,
+      "col": 3,
+      "attributes": [
+        { "name": "name", "type": "Identifier" },
+        { "name": "parameters", "type": "Parameter[]" },
+        { "name": "isAsync", "type": "boolean" },
+        { "name": "body", "type": "held by tree: bodyOf" }
+      ]
+    },
+    {
+      "id": "fnsEntity",
+      "label": "FunctionsEntity",
+      "kind": "record",
+      "sublabel": "memo: by overload list",
+      "row": 0,
+      "col": 4,
+      "attributes": [
+        { "name": "kind", "type": "'functions'" },
+        { "name": "name", "type": "string" },
+        { "name": "overloads", "type": "FunctionDeclaration[]" }
+      ]
+    },
+    {
+      "id": "varDecl",
+      "label": "VariableDeclaration",
+      "kind": "record",
+      "sublabel": "one of 14 VariableOwner kinds",
+      "row": 1,
+      "col": 0,
+      "attributes": [
+        { "name": "targets", "type": "Pattern[]" },
+        { "name": "type", "type": "TypeNode?" },
+        { "name": "initializer", "type": "Expression" },
+        { "name": "isMutable", "type": "boolean" }
+      ]
+    },
+    {
+      "id": "varEntity",
+      "label": "VariableEntity",
+      "kind": "record",
+      "sublabel": "memo: WeakMap<Identifier, …>",
+      "row": 1,
+      "col": 1,
+      "attributes": [
+        { "name": "kind", "type": "'variable'" },
+        { "name": "name", "type": "Identifier (declaring)" },
+        { "name": "owner", "type": "VariableOwner" }
+      ]
+    },
+    {
+      "id": "identifier",
+      "label": "Identifier",
+      "kind": "record",
+      "sublabel": "the key every phase shares",
+      "row": 1,
+      "col": 2,
+      "attributes": [
+        { "name": "kind", "type": "'Identifier'" },
+        { "name": "text", "type": "string" },
+        { "name": "span", "type": "AnchoredSpan" }
+      ]
+    },
+    {
+      "id": "moduleLinks",
+      "label": "ModuleLinks",
+      "kind": "record",
+      "sublabel": "one per module, per Program",
+      "row": 1,
+      "col": 3,
+      "attributes": [
+        { "name": "local", "type": "ModuleBindings" },
+        { "name": "resolved", "type": "Map<Identifier, Entity>" },
+        { "name": "imports", "type": "Map<ImportPlaceholder, Entity>" },
+        { "name": "refused", "type": "Set<Identifier>" }
+      ]
+    },
+    {
+      "id": "linker",
+      "label": "Linker",
+      "kind": "class",
+      "sublabel": "memo: bindProgram(program)",
+      "row": 1,
+      "col": 4,
+      "attributes": [
+        { "name": "#links", "type": "Map<ModuleId, ModuleLinks>" },
+        { "name": "#owners", "type": "Map<Entity, ModuleId>" },
+        { "name": "#topLevel", "type": "Set<Entity>" },
+        { "name": "#variantsByName", "type": "Map<string, VariantEntity[]>" },
+        { "name": "#overloads", "type": "Map<FunctionsEntity, FunctionDeclaration[]>" }
+      ]
+    },
+    {
+      "id": "scope",
+      "label": "Scope",
+      "kind": "class",
+      "sublabel": "universe, module, block, nested, body",
+      "row": 2,
+      "col": 1,
+      "attributes": [
+        { "name": "#defined", "type": "Map<string, LocalEntity>" },
+        { "name": "#numbers", "type": "Map<string, number>" },
+        { "name": "#misses", "type": "Map<string, pending | ended | underOr>" },
+        { "name": "#parent", "type": "Scope?" },
+        { "name": "#function", "type": "FunctionDeclaration | Lambda" }
+      ],
+      "methods": [
+        { "name": "lookup", "parameters": "name", "returns": "LocalEntity" },
+        { "name": "define", "parameters": "name, entity", "returns": "boolean" }
+      ]
+    },
+    {
+      "id": "moduleBindings",
+      "label": "ModuleBindings",
+      "kind": "record",
+      "sublabel": "memo: bindModule(tree)",
+      "row": 2,
+      "col": 2,
+      "attributes": [
+        { "name": "entities", "type": "Map<Identifier, LocalEntity>" },
+        { "name": "free", "type": "FreeName[]" },
+        { "name": "paths", "type": "QualifiedPath[]" },
+        { "name": "ownCalls", "type": "Map<fn, VariableEntity>" },
+        { "name": "topLevel, exports, privates", "type": "Map<string, …>" }
+      ]
+    },
+    {
+      "id": "visibility",
+      "label": "VisibilityNotes",
+      "kind": "class",
+      "sublabel": "for completion and visibleAt",
+      "row": 2,
+      "col": 3,
+      "attributes": [
+        { "name": "#noted", "type": "Map<SyntaxNode, NotedSnapshot[]>" },
+        { "name": "snapshot", "type": "{ scope, at: count }" }
+      ]
+    },
+    {
+      "id": "bindings",
+      "label": "Bindings",
+      "kind": "interface",
+      "sublabel": "what the checker reads",
+      "row": 2,
+      "col": 4,
+      "methods": [
+        { "name": "entityOf", "parameters": "module, name", "returns": "Entity" },
+        { "name": "overloadsOf", "parameters": "functions", "returns": "FunctionDeclaration[]" },
+        { "name": "moduleOf, isTopLevel", "parameters": "entity", "returns": "…" },
+        { "name": "visibleAt", "parameters": "module, offset", "returns": "Map" }
+      ]
+    },
+    {
+      "id": "localBinder",
+      "label": "LocalBinder",
+      "kind": "class",
+      "sublabel": "one walk per tree",
+      "row": 3,
+      "col": 2,
+      "attributes": [
+        { "name": "#entities", "type": "Map<Identifier, LocalEntity>" },
+        { "name": "#free", "type": "FreeName[]" },
+        { "name": "#paths", "type": "QualifiedPath[]" }
+      ],
+      "methods": [
+        { "name": "use", "parameters": "name, scope, role", "returns": "void" },
+        { "name": "declareVariable", "parameters": "scope, name, owner", "returns": "void" }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "var-name",
+      "from": "varEntity",
+      "to": "identifier",
+      "kind": "association",
+      "label": "name: memo key, 1:1"
+    },
+    {
+      "id": "var-owner",
+      "from": "varEntity",
+      "to": "varDecl",
+      "kind": "association",
+      "label": "owner"
+    },
+    {
+      "id": "fns-overloads",
+      "from": "fnsEntity",
+      "to": "fnDecl",
+      "kind": "aggregation",
+      "label": "overloads"
+    },
+    {
+      "id": "placeholder-name",
+      "from": "placeholder",
+      "to": "identifier",
+      "kind": "association",
+      "label": "name"
+    },
+    {
+      "id": "placeholder-import",
+      "from": "placeholder",
+      "to": "namedImport",
+      "kind": "association",
+      "label": "declaration"
+    },
+    {
+      "id": "scope-defines",
+      "from": "scope",
+      "to": "varEntity",
+      "kind": "association",
+      "label": "#defined"
+    },
+    {
+      "id": "binder-scope",
+      "from": "localBinder",
+      "to": "scope",
+      "kind": "dependency",
+      "label": "lookup, define"
+    },
+    {
+      "id": "binder-result",
+      "from": "localBinder",
+      "to": "moduleBindings",
+      "kind": "composition",
+      "label": "result()"
+    },
+    {
+      "id": "bindings-key",
+      "from": "moduleBindings",
+      "to": "identifier",
+      "kind": "association",
+      "label": "entities key: every name"
+    },
+    {
+      "id": "bindings-visibility",
+      "from": "moduleBindings",
+      "to": "visibility",
+      "kind": "composition",
+      "label": "visibility"
+    },
+    {
+      "id": "links-local",
+      "from": "moduleLinks",
+      "to": "moduleBindings",
+      "kind": "association",
+      "label": "local"
+    },
+    {
+      "id": "links-resolved",
+      "from": "moduleLinks",
+      "to": "identifier",
+      "kind": "association",
+      "label": "resolved key"
+    },
+    {
+      "id": "links-imports",
+      "from": "moduleLinks",
+      "to": "placeholder",
+      "kind": "association",
+      "label": "imports key"
+    },
+    {
+      "id": "linker-links",
+      "from": "linker",
+      "to": "moduleLinks",
+      "kind": "composition",
+      "label": "#links"
+    },
+    {
+      "id": "linker-overloads",
+      "from": "linker",
+      "to": "fnsEntity",
+      "kind": "association",
+      "label": "#overloads + prelude"
+    },
+    {
+      "id": "linker-bindings",
+      "from": "linker",
+      "to": "bindings",
+      "kind": "realization",
+      "label": "link()"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Two lifetimes",
+      "items": [
+        "bindModule(tree): memoized on the SyntaxTree, rebinds only an edited module",
+        "link(program): memoized on the Program, cheap, redone per snapshot"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Identity",
+      "items": [
+        "Every entity is made in local binding, through a WeakMap keyed by its node",
+        "A segment an edit keeps keeps its nodes, so its entities, so every checker entry keyed by them"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "entityOf(module, name)",
+      "items": [
+        "refused.has(name): undefined",
+        "else resolved.get(name)",
+        "else local.entities.get(name), an import placeholder replaced by imports.get(it)"
+      ]
+    }
+  ]
+}

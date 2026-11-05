@@ -1,0 +1,322 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Istalang toolchain: layers and import direction",
+    "output": "layer-map.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "App: composition root"
+        },
+        "backend": {
+          "label": "Phase or library"
+        },
+        "security": {
+          "label": "Contract with high fan-in"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "cli",
+      "type": "frontend",
+      "label": "ista CLI",
+      "sublabel": "cli/",
+      "pos": [48, 56],
+      "size": [128, 56]
+    },
+    {
+      "id": "lsp",
+      "type": "frontend",
+      "label": "lsp server",
+      "sublabel": "lsp/",
+      "pos": [244, 56],
+      "size": [128, 56]
+    },
+    {
+      "id": "langsvc",
+      "type": "backend",
+      "label": "language-service",
+      "sublabel": "editor queries",
+      "pos": [440, 56],
+      "size": [128, 56]
+    },
+    {
+      "id": "formatter",
+      "type": "backend",
+      "label": "formatter",
+      "sublabel": "tree to text",
+      "pos": [1224, 56],
+      "size": [128, 56]
+    },
+    {
+      "id": "compile",
+      "type": "backend",
+      "label": "compile.ts",
+      "sublabel": "phase order",
+      "pos": [48, 176],
+      "size": [128, 56]
+    },
+    {
+      "id": "lowering",
+      "type": "backend",
+      "label": "lowering",
+      "sublabel": "checked to IR",
+      "pos": [244, 176],
+      "size": [128, 56]
+    },
+    {
+      "id": "checker",
+      "type": "backend",
+      "label": "checker",
+      "sublabel": "types, bodies",
+      "pos": [440, 176],
+      "size": [128, 56]
+    },
+    {
+      "id": "binder",
+      "type": "backend",
+      "label": "binder",
+      "sublabel": "names to entities",
+      "pos": [636, 176],
+      "size": [128, 56]
+    },
+    {
+      "id": "program",
+      "type": "backend",
+      "label": "program",
+      "sublabel": "module graph",
+      "pos": [832, 176],
+      "size": [128, 56]
+    },
+    {
+      "id": "parser",
+      "type": "backend",
+      "label": "parser",
+      "sublabel": "tokens to tree",
+      "pos": [1028, 176],
+      "size": [128, 56]
+    },
+    {
+      "id": "syntax",
+      "type": "security",
+      "label": "syntax",
+      "sublabel": "tree contract",
+      "pos": [1224, 176],
+      "size": [128, 56]
+    },
+    {
+      "id": "definition",
+      "type": "security",
+      "label": "definition",
+      "sublabel": "IR contract",
+      "pos": [244, 296],
+      "size": [128, 56]
+    },
+    {
+      "id": "runtime",
+      "type": "backend",
+      "label": "runtime",
+      "sublabel": "interpreter",
+      "pos": [440, 296],
+      "size": [128, 56]
+    },
+    {
+      "id": "stdlib",
+      "type": "backend",
+      "label": "stdlib",
+      "sublabel": "std modules",
+      "pos": [636, 296],
+      "size": [128, 56]
+    },
+    {
+      "id": "project",
+      "type": "backend",
+      "label": "project",
+      "sublabel": "files on disk",
+      "pos": [832, 296],
+      "size": [128, 56]
+    },
+    {
+      "id": "scanner",
+      "type": "backend",
+      "label": "scanner",
+      "sublabel": "text to tokens",
+      "pos": [1028, 296],
+      "size": [128, 56]
+    }
+  ],
+  "connections": [
+    {
+      "id": "cli-lsp",
+      "from": "cli",
+      "to": "lsp"
+    },
+    {
+      "id": "cli-compile",
+      "from": "cli",
+      "to": "compile",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "cli-runtime",
+      "from": "cli",
+      "to": "runtime",
+      "label": "run",
+      "fromSide": "left",
+      "toSide": "bottom",
+      "via": [[20, 84], [20, 392], [504, 392]]
+    },
+    {
+      "id": "lsp-langsvc",
+      "from": "lsp",
+      "to": "langsvc"
+    },
+    {
+      "id": "lsp-formatter",
+      "from": "lsp",
+      "to": "formatter",
+      "fromSide": "top",
+      "toSide": "top",
+      "via": [[308, 28], [1288, 28]]
+    },
+    {
+      "id": "langsvc-compile",
+      "from": "langsvc",
+      "to": "compile",
+      "label": "diagnose",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "langsvc-checker",
+      "from": "langsvc",
+      "to": "checker",
+      "label": "queries",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "formatter-syntax",
+      "from": "formatter",
+      "to": "syntax",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "compile-lowering",
+      "from": "compile",
+      "to": "lowering",
+      "variant": "emphasis"
+    },
+    {
+      "id": "lowering-checker",
+      "from": "lowering",
+      "to": "checker",
+      "variant": "emphasis"
+    },
+    {
+      "id": "checker-binder",
+      "from": "checker",
+      "to": "binder",
+      "variant": "emphasis"
+    },
+    {
+      "id": "binder-program",
+      "from": "binder",
+      "to": "program",
+      "variant": "emphasis"
+    },
+    {
+      "id": "program-parser",
+      "from": "program",
+      "to": "parser",
+      "variant": "emphasis"
+    },
+    {
+      "id": "parser-syntax",
+      "from": "parser",
+      "to": "syntax",
+      "variant": "emphasis"
+    },
+    {
+      "id": "program-scanner",
+      "from": "program",
+      "to": "scanner",
+      "fromSide": "right",
+      "toSide": "left"
+    },
+    {
+      "id": "scanner-syntax",
+      "from": "scanner",
+      "to": "syntax",
+      "fromSide": "right",
+      "toSide": "bottom"
+    },
+    {
+      "id": "lowering-definition",
+      "from": "lowering",
+      "to": "definition",
+      "label": "emits",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "runtime-definition",
+      "from": "runtime",
+      "to": "definition",
+      "label": "loads"
+    },
+    {
+      "id": "stdlib-runtime",
+      "from": "stdlib",
+      "to": "runtime",
+      "label": "natives"
+    },
+    {
+      "id": "project-stdlib",
+      "from": "project",
+      "to": "stdlib",
+      "label": "loader"
+    },
+    {
+      "id": "project-program",
+      "from": "project",
+      "to": "program",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "stdlib-program",
+      "from": "stdlib",
+      "to": "program",
+      "fromSide": "top",
+      "toSide": "bottom"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Rules",
+      "items": [
+        "Imports point only downward; cycles fail lint",
+        "dependency-cruiser holds every layer to an allow-list",
+        "A phase is used only through its entry module"
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Left out",
+      "items": [
+        "text, diagnostics, language and structures sit beneath every box",
+        "cli also imports project, formatter and std natives",
+        "language-service also reads program, binder and syntax"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,323 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Istalang type checker: units and who calls whom",
+    "output": "checker-map.html",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "Reads the checker"
+        },
+        "backend": {
+          "label": "Checker unit"
+        },
+        "security": {
+          "label": "Surface or type model"
+        },
+        "database": {
+          "label": "Memo tables (entries)"
+        },
+        "external": {
+          "label": "Earlier phase"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "compile",
+      "type": "frontend",
+      "label": "compile.ts",
+      "sublabel": "diagnose(program)",
+      "pos": [40, 40],
+      "size": [140, 60]
+    },
+    {
+      "id": "lowering",
+      "type": "frontend",
+      "label": "lowering",
+      "sublabel": "lower(checker, main)",
+      "pos": [40, 160],
+      "size": [140, 60]
+    },
+    {
+      "id": "langsvc",
+      "type": "frontend",
+      "label": "language-service",
+      "sublabel": "hover, rename",
+      "pos": [40, 400],
+      "size": [140, 60]
+    },
+    {
+      "id": "check",
+      "type": "security",
+      "label": "check.ts",
+      "sublabel": "Checker surface",
+      "pos": [268, 160],
+      "size": [140, 60]
+    },
+    {
+      "id": "lookup",
+      "type": "backend",
+      "label": "lookup/",
+      "sublabel": "tool queries",
+      "pos": [268, 400],
+      "size": [140, 60]
+    },
+    {
+      "id": "entries",
+      "type": "database",
+      "label": "Entries",
+      "sublabel": "reads, notes, cycles",
+      "pos": [496, 40],
+      "size": [140, 60]
+    },
+    {
+      "id": "progchk",
+      "type": "backend",
+      "label": "ProgramChecker",
+      "sublabel": "CheckerContext",
+      "pos": [496, 160],
+      "size": [140, 60]
+    },
+    {
+      "id": "inputs",
+      "type": "backend",
+      "label": "program-inputs",
+      "sublabel": "recorded reads",
+      "pos": [496, 280],
+      "size": [140, 60]
+    },
+    {
+      "id": "binder",
+      "type": "external",
+      "label": "bindProgram",
+      "sublabel": "Bindings",
+      "pos": [496, 400],
+      "size": [140, 60]
+    },
+    {
+      "id": "decls",
+      "type": "backend",
+      "label": "declarations/",
+      "sublabel": "module, item, fn units",
+      "pos": [724, 160],
+      "size": [140, 60]
+    },
+    {
+      "id": "patterns",
+      "type": "backend",
+      "label": "patterns/ flow/",
+      "sublabel": "one walk, data flow",
+      "pos": [724, 280],
+      "size": [140, 60]
+    },
+    {
+      "id": "bodychk",
+      "type": "backend",
+      "label": "BodyChecker",
+      "sublabel": "BodyContext, passes",
+      "pos": [952, 160],
+      "size": [140, 60]
+    },
+    {
+      "id": "handlers",
+      "type": "backend",
+      "label": "handler tables",
+      "sublabel": "exprs, stmts, closures",
+      "pos": [952, 280],
+      "size": [140, 60]
+    },
+    {
+      "id": "types",
+      "type": "security",
+      "label": "types/",
+      "sublabel": "Type, fit, substitute",
+      "pos": [952, 400],
+      "size": [140, 60]
+    },
+    {
+      "id": "rules",
+      "type": "backend",
+      "label": "rules/",
+      "sublabel": "drop, disposal, json",
+      "pos": [1180, 160],
+      "size": [140, 60]
+    },
+    {
+      "id": "resolution",
+      "type": "backend",
+      "label": "resolution/ calls/",
+      "sublabel": "choose, instantiate",
+      "pos": [1180, 280],
+      "size": [140, 60]
+    },
+    {
+      "id": "inference",
+      "type": "backend",
+      "label": "inference/ traits/",
+      "sublabel": "type args, witnesses",
+      "pos": [1180, 400],
+      "size": [140, 60]
+    }
+  ],
+  "connections": [
+    {
+      "id": "compile-check",
+      "from": "compile",
+      "to": "check",
+      "label": "diagnosticsOf",
+      "fromSide": "right",
+      "toSide": "top"
+    },
+    {
+      "id": "lowering-check",
+      "from": "lowering",
+      "to": "check",
+      "label": "bodyOf"
+    },
+    {
+      "id": "langsvc-lookup",
+      "from": "langsvc",
+      "to": "lookup",
+      "label": "queries"
+    },
+    {
+      "id": "check-progchk",
+      "from": "check",
+      "to": "progchk",
+      "label": "memo",
+      "variant": "emphasis"
+    },
+    {
+      "id": "lookup-progchk",
+      "from": "lookup",
+      "to": "progchk",
+      "label": "checkItem",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "progchk-entries",
+      "from": "progchk",
+      "to": "entries",
+      "label": "tables",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "progchk-inputs",
+      "from": "progchk",
+      "to": "inputs",
+      "label": "reads",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "inputs-binder",
+      "from": "inputs",
+      "to": "binder",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "progchk-decls",
+      "from": "progchk",
+      "to": "decls",
+      "label": "composes",
+      "variant": "emphasis"
+    },
+    {
+      "id": "decls-bodychk",
+      "from": "decls",
+      "to": "bodychk",
+      "label": "checkBody",
+      "variant": "emphasis"
+    },
+    {
+      "id": "bodychk-handlers",
+      "from": "bodychk",
+      "to": "handlers",
+      "label": "handlerOf",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "id": "bodychk-rules",
+      "from": "bodychk",
+      "to": "rules",
+      "label": "finished"
+    },
+    {
+      "id": "handlers-resolution",
+      "from": "handlers",
+      "to": "resolution",
+      "label": "calls",
+      "variant": "emphasis"
+    },
+    {
+      "id": "handlers-patterns",
+      "from": "handlers",
+      "to": "patterns",
+      "label": "match, let"
+    },
+    {
+      "id": "handlers-types",
+      "from": "handlers",
+      "to": "types",
+      "label": "fit",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "resolution-inference",
+      "from": "resolution",
+      "to": "inference",
+      "label": "infer",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "inference-types",
+      "from": "inference",
+      "to": "types"
+    },
+    {
+      "id": "patterns-types",
+      "from": "patterns",
+      "to": "types",
+      "fromSide": "bottom",
+      "toSide": "left"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Lazy",
+      "items": [
+        "A body is checked the first time diagnostics, lowering or result inference asks",
+        "Std modules are skipped by diagnose; lowering checks what a program uses"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Incremental",
+      "items": [
+        "Every answer is an entry with its reads and notes",
+        "A checker made after an edit takes over entries whose reads answer alike"
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Layers inside",
+      "items": [
+        "diagnostics, types, inference, traits, resolution, calls, patterns, flow, rules, declarations, closures, expressions, statements, lookup",
+        "Each folder imports only those before it"
+      ]
+    }
+  ]
+}

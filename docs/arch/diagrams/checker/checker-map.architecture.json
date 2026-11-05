@@ -1,0 +1,292 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Checker units and who calls whom",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "legend": {
+      "entries": {
+        "frontend": {
+          "label": "Reads the checker"
+        },
+        "backend": {
+          "label": "Checker unit"
+        },
+        "security": {
+          "label": "Surface or type model"
+        },
+        "database": {
+          "label": "Memo tables (entries)"
+        },
+        "external": {
+          "label": "Earlier phase"
+        }
+      }
+    }
+  },
+  "components": [
+    {
+      "id": "compile",
+      "type": "frontend",
+      "label": "compile.ts",
+      "sublabel": "diagnose",
+      "pos": [40, 40],
+      "size": [128, 56]
+    },
+    {
+      "id": "lowering",
+      "type": "frontend",
+      "label": "lowering",
+      "sublabel": "lower",
+      "pos": [245, 40],
+      "size": [128, 56]
+    },
+    {
+      "id": "entries",
+      "type": "database",
+      "label": "Entries",
+      "sublabel": "reads, notes",
+      "pos": [450, 40],
+      "size": [128, 56]
+    },
+    {
+      "id": "langsvc",
+      "type": "frontend",
+      "label": "language-service",
+      "sublabel": "hover, rename",
+      "pos": [655, 40],
+      "size": [128, 56]
+    },
+    {
+      "id": "check",
+      "type": "security",
+      "label": "check.ts",
+      "sublabel": "Checker surface",
+      "pos": [40, 150],
+      "size": [128, 56]
+    },
+    {
+      "id": "progchk",
+      "type": "backend",
+      "label": "ProgramChecker",
+      "sublabel": "CheckerContext",
+      "pos": [450, 150],
+      "size": [128, 56]
+    },
+    {
+      "id": "lookup",
+      "type": "backend",
+      "label": "lookup/",
+      "sublabel": "tool queries",
+      "pos": [655, 150],
+      "size": [128, 56]
+    },
+    {
+      "id": "binder",
+      "type": "external",
+      "label": "bindProgram",
+      "sublabel": "Bindings",
+      "pos": [40, 260],
+      "size": [128, 56]
+    },
+    {
+      "id": "inputs",
+      "type": "backend",
+      "label": "program-inputs",
+      "sublabel": "recorded reads",
+      "pos": [245, 260],
+      "size": [128, 56]
+    },
+    {
+      "id": "decls",
+      "type": "backend",
+      "label": "declarations/",
+      "sublabel": "module, item, fn",
+      "pos": [450, 260],
+      "size": [128, 56]
+    },
+    {
+      "id": "bodychk",
+      "type": "backend",
+      "label": "BodyChecker",
+      "sublabel": "BodyContext",
+      "pos": [655, 260],
+      "size": [128, 56]
+    },
+    {
+      "id": "rules",
+      "type": "backend",
+      "label": "rules/",
+      "sublabel": "drop, disposal",
+      "pos": [245, 370],
+      "size": [128, 56]
+    },
+    {
+      "id": "patterns",
+      "type": "backend",
+      "label": "patterns/ flow/",
+      "sublabel": "walk, data flow",
+      "pos": [450, 370],
+      "size": [128, 56]
+    },
+    {
+      "id": "handlers",
+      "type": "backend",
+      "label": "handler tables",
+      "sublabel": "exprs, stmts",
+      "pos": [655, 370],
+      "size": [128, 56]
+    },
+    {
+      "id": "types",
+      "type": "security",
+      "label": "types/",
+      "sublabel": "Type, fit",
+      "pos": [245, 480],
+      "size": [128, 56]
+    },
+    {
+      "id": "inference",
+      "type": "backend",
+      "label": "inference/ traits/",
+      "sublabel": "type arguments",
+      "pos": [450, 480],
+      "size": [128, 56]
+    },
+    {
+      "id": "resolution",
+      "type": "backend",
+      "label": "resolution/ calls/",
+      "sublabel": "choose, instantiate",
+      "pos": [655, 480],
+      "size": [128, 56]
+    }
+  ],
+  "connections": [
+    {
+      "id": "compile-check",
+      "from": "compile",
+      "to": "check",
+      "label": "diagnosticsOf",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "lowering-check",
+      "from": "lowering",
+      "to": "check",
+      "label": "bodyOf",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "langsvc-lookup",
+      "from": "langsvc",
+      "to": "lookup",
+      "label": "queries",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "check-progchk",
+      "from": "check",
+      "to": "progchk",
+      "label": "memo",
+      "variant": "emphasis"
+    },
+    {
+      "id": "lookup-progchk",
+      "from": "lookup",
+      "to": "progchk",
+      "label": "checkItem"
+    },
+    {
+      "id": "progchk-entries",
+      "from": "progchk",
+      "to": "entries",
+      "label": "tables",
+      "fromSide": "top",
+      "toSide": "bottom"
+    },
+    {
+      "id": "progchk-inputs",
+      "from": "progchk",
+      "to": "inputs",
+      "label": "reads",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "inputs-binder",
+      "from": "inputs",
+      "to": "binder"
+    },
+    {
+      "id": "progchk-decls",
+      "from": "progchk",
+      "to": "decls",
+      "label": "composes",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "id": "decls-bodychk",
+      "from": "decls",
+      "to": "bodychk",
+      "label": "checkBody",
+      "variant": "emphasis"
+    },
+    {
+      "id": "bodychk-handlers",
+      "from": "bodychk",
+      "to": "handlers",
+      "label": "handlerOf",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "id": "bodychk-rules",
+      "from": "bodychk",
+      "to": "rules",
+      "label": "finished",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "handlers-patterns",
+      "from": "handlers",
+      "to": "patterns",
+      "label": "match"
+    },
+    {
+      "id": "handlers-resolution",
+      "from": "handlers",
+      "to": "resolution",
+      "label": "calls",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "emphasis"
+    },
+    {
+      "id": "resolution-inference",
+      "from": "resolution",
+      "to": "inference",
+      "label": "infer"
+    },
+    {
+      "id": "inference-types",
+      "from": "inference",
+      "to": "types"
+    },
+    {
+      "id": "patterns-types",
+      "from": "patterns",
+      "to": "types",
+      "fromSide": "bottom",
+      "toSide": "top"
+    }
+  ]
+}

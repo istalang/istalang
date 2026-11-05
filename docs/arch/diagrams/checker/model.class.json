@@ -1,0 +1,461 @@
+{
+  "schema_version": 1,
+  "diagram_type": "class",
+  "meta": {
+    "title": "Syntax, entities, types and checked records",
+    "quality_profile": "showcase",
+    "locale": "en"
+  },
+  "layout": {
+    "mode": "grid",
+    "typeMaxW": 240
+  },
+  "types": [
+    {
+      "id": "program",
+      "label": "Program",
+      "kind": "record",
+      "sublabel": "immutable snapshot",
+      "row": 0,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "roots",
+          "type": "ModuleId[]"
+        },
+        {
+          "name": "modules",
+          "type": "Map<ModuleId, ProgramModule>"
+        }
+      ]
+    },
+    {
+      "id": "programModule",
+      "label": "ProgramModule",
+      "kind": "record",
+      "sublabel": "one loaded module",
+      "row": 0,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "name",
+          "type": "string"
+        },
+        {
+          "name": "isStd, isTest",
+          "type": "boolean"
+        },
+        {
+          "name": "imports",
+          "type": "Map<Import, ModuleId>"
+        }
+      ]
+    },
+    {
+      "id": "syntaxTree",
+      "label": "SyntaxTree",
+      "kind": "record",
+      "sublabel": "derived traversal",
+      "row": 0,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "root",
+          "type": "Module"
+        },
+        {
+          "name": "bases",
+          "type": "segment starts"
+        }
+      ],
+      "methods": [
+        {
+          "name": "bodyOf",
+          "parameters": "tree, fn",
+          "returns": "Block"
+        },
+        {
+          "name": "parentOf",
+          "parameters": "tree, node",
+          "returns": "Node"
+        }
+      ]
+    },
+    {
+      "id": "syntaxNode",
+      "label": "SyntaxNode",
+      "kind": "interface",
+      "sublabel": "plain immutable object",
+      "row": 1,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "kind",
+          "type": "string"
+        },
+        {
+          "name": "span",
+          "type": "AnchoredSpan"
+        }
+      ]
+    },
+    {
+      "id": "functionDeclaration",
+      "label": "FunctionDeclaration",
+      "kind": "record",
+      "sublabel": "body held by the tree",
+      "row": 2,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "name",
+          "type": "Identifier"
+        },
+        {
+          "name": "parameters",
+          "type": "Parameter[]"
+        },
+        {
+          "name": "isAsync",
+          "type": "boolean"
+        }
+      ]
+    },
+    {
+      "id": "bindings",
+      "label": "Bindings",
+      "kind": "interface",
+      "sublabel": "memoized per Program",
+      "row": 1,
+      "col": 0,
+      "methods": [
+        {
+          "name": "entityOf",
+          "parameters": "module, name",
+          "returns": "Entity"
+        },
+        {
+          "name": "overloadsOf",
+          "parameters": "set",
+          "returns": "FunctionDeclaration[]"
+        }
+      ]
+    },
+    {
+      "id": "entity",
+      "label": "Entity",
+      "kind": "interface",
+      "sublabel": "one per declaring node",
+      "row": 1,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "kind",
+          "type": "variable | functions | type \u2026"
+        },
+        {
+          "name": "declaration",
+          "type": "SyntaxNode"
+        }
+      ]
+    },
+    {
+      "id": "nominalType",
+      "label": "NominalType",
+      "kind": "record",
+      "sublabel": "struct, enum, extern",
+      "row": 2,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "kind",
+          "type": "'nominal'"
+        },
+        {
+          "name": "entity",
+          "type": "NominalEntity"
+        },
+        {
+          "name": "arguments",
+          "type": "Type[]"
+        }
+      ]
+    },
+    {
+      "id": "type",
+      "label": "Type",
+      "kind": "interface",
+      "sublabel": "immutable value, keyed",
+      "row": 2,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "kind",
+          "type": "nominal | union | any | function \u2026"
+        }
+      ]
+    },
+    {
+      "id": "checker",
+      "label": "Checker",
+      "kind": "interface",
+      "sublabel": "one per Program",
+      "row": 3,
+      "col": 0,
+      "attributes": [
+        {
+          "name": "program",
+          "type": "Program"
+        },
+        {
+          "name": "bindings",
+          "type": "Bindings"
+        }
+      ],
+      "methods": [
+        {
+          "name": "bodyOf",
+          "parameters": "fn",
+          "returns": "CheckedBody"
+        },
+        {
+          "name": "resultOf",
+          "parameters": "fn",
+          "returns": "Type"
+        },
+        {
+          "name": "diagnosticsOf",
+          "parameters": "module",
+          "returns": "Diagnostic[]"
+        }
+      ]
+    },
+    {
+      "id": "checkedBody",
+      "label": "CheckedBody",
+      "kind": "interface",
+      "sublabel": "side tables keyed by node",
+      "row": 3,
+      "col": 1,
+      "methods": [
+        {
+          "name": "typeOf",
+          "parameters": "expression",
+          "returns": "Type"
+        },
+        {
+          "name": "resolved",
+          "parameters": "site",
+          "returns": "ResolvedCall"
+        },
+        {
+          "name": "fitAt",
+          "parameters": "site",
+          "returns": "Fit"
+        },
+        {
+          "name": "patternOf",
+          "parameters": "pattern",
+          "returns": "CheckedPattern"
+        },
+        {
+          "name": "passesOf",
+          "parameters": "header",
+          "returns": "FieldPass[]"
+        }
+      ]
+    },
+    {
+      "id": "resolvedCall",
+      "label": "ResolvedCall",
+      "kind": "record",
+      "sublabel": "function or requirement",
+      "row": 3,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "kind",
+          "type": "'function' | 'requirement'"
+        },
+        {
+          "name": "typeArguments",
+          "type": "Type[]"
+        },
+        {
+          "name": "witnesses",
+          "type": "ResolvedCall[]"
+        },
+        {
+          "name": "binding",
+          "type": "argument per parameter"
+        }
+      ]
+    },
+    {
+      "id": "entries",
+      "label": "Entries",
+      "kind": "class",
+      "sublabel": "structures/entries",
+      "row": 4,
+      "col": 0,
+      "methods": [
+        {
+          "name": "table",
+          "parameters": "name, compute, equal",
+          "returns": "EntryTable"
+        },
+        {
+          "name": "input",
+          "parameters": "name, read",
+          "returns": "reader"
+        },
+        {
+          "name": "note",
+          "parameters": "note",
+          "returns": "void"
+        }
+      ]
+    },
+    {
+      "id": "checkedPattern",
+      "label": "CheckedPattern",
+      "kind": "record",
+      "sublabel": "tests in run order",
+      "row": 4,
+      "col": 1,
+      "attributes": [
+        {
+          "name": "tests",
+          "type": "PatternTest[]"
+        },
+        {
+          "name": "bindings",
+          "type": "PartBinding[]"
+        }
+      ]
+    },
+    {
+      "id": "fit",
+      "label": "Fit",
+      "kind": "record",
+      "sublabel": "implicit conversion",
+      "row": 4,
+      "col": 2,
+      "attributes": [
+        {
+          "name": "conversion",
+          "type": "none | any | shape | async \u2026"
+        },
+        {
+          "name": "into",
+          "type": "union member"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "id": "program-modules",
+      "from": "program",
+      "to": "programModule",
+      "kind": "composition",
+      "label": "modules"
+    },
+    {
+      "id": "module-tree",
+      "from": "programModule",
+      "to": "syntaxTree",
+      "kind": "composition",
+      "label": "tree"
+    },
+    {
+      "id": "tree-nodes",
+      "from": "syntaxTree",
+      "to": "syntaxNode",
+      "kind": "composition",
+      "label": "nodes"
+    },
+    {
+      "id": "fn-is-node",
+      "from": "functionDeclaration",
+      "to": "syntaxNode",
+      "kind": "realization"
+    },
+    {
+      "id": "bindings-entity",
+      "from": "bindings",
+      "to": "entity",
+      "kind": "association",
+      "label": "name to entity"
+    },
+    {
+      "id": "entity-node",
+      "from": "entity",
+      "to": "syntaxNode",
+      "kind": "association",
+      "label": "declared by"
+    },
+    {
+      "id": "nominal-entity",
+      "from": "nominalType",
+      "to": "entity",
+      "kind": "association",
+      "label": "identity"
+    },
+    {
+      "id": "nominal-type",
+      "from": "nominalType",
+      "to": "type",
+      "kind": "realization"
+    },
+    {
+      "id": "checker-bodies",
+      "from": "checker",
+      "to": "checkedBody",
+      "kind": "composition",
+      "label": "bodyOf"
+    },
+    {
+      "id": "checker-entries",
+      "from": "checker",
+      "to": "entries",
+      "kind": "dependency",
+      "label": "answers kept in"
+    },
+    {
+      "id": "body-types",
+      "from": "checkedBody",
+      "to": "type",
+      "kind": "association",
+      "label": "typeOf"
+    },
+    {
+      "id": "body-calls",
+      "from": "checkedBody",
+      "to": "resolvedCall",
+      "kind": "association",
+      "label": "resolved"
+    },
+    {
+      "id": "call-target",
+      "from": "resolvedCall",
+      "to": "functionDeclaration",
+      "kind": "association",
+      "label": "calls"
+    },
+    {
+      "id": "body-patterns",
+      "from": "checkedBody",
+      "to": "checkedPattern",
+      "kind": "association",
+      "label": "patternOf"
+    },
+    {
+      "id": "body-fits",
+      "from": "checkedBody",
+      "to": "fit",
+      "kind": "association",
+      "label": "fitAt"
+    }
+  ]
+}
