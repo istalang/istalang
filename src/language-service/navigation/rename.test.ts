@@ -136,6 +136,24 @@ describe('renaming', () => {
     expect(refusalOf(program, named('main', 'Other'))).toBeUndefined();
   });
 
+  it('refuses a field a struct constraint names, in a bound or a type `match` case (§3.5)', () => {
+    const { program, named } = navigable({
+      main: [
+        'struct Page:',
+        '  title: String',
+        '  body: String',
+        '  id: Int',
+        'fn show<S is struct { title: String; [_] is Stringable }>(s: S) -> String: s.title',
+        'type IdOf<D> = match D:',
+        '  case struct { id: infer K }: K',
+        '',
+      ].join('\n'),
+    });
+    expect(refusalOf(program, named('main', 'title'))).toContain('struct constraint');
+    expect(refusalOf(program, named('main', 'id'))).toContain('struct constraint');
+    expect(refusalOf(program, named('main', 'body'))).toBeUndefined();
+  });
+
   it('refuses a field a shared struct and a struct share, the one spreading into the other (§3.18)', () => {
     const { program, named } = navigable({
       main: 'shared struct Lease { name: String }\nstruct Plain { name: String }\nstruct Other { size: Int }\nshared struct Cell { size: Int }\nshared struct Lone { count: Int }\n',

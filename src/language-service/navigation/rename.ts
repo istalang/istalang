@@ -11,9 +11,10 @@
  * - a declaration of a std module, which the toolchain ships;
  * - a declaration some name denotes together with another of that name, as an import names every
  *   overload of a function: renaming one alone would part them;
- * - a function, field or associated type named like a member of a trait, or like a function the
- *   language calls by name (`main`, the JSON codecs): a type meets a trait through such names
- *   (§3.10), so renaming one could change which traits a type meets; and a parameter named
+ * - a function, field or associated type named like a member of a trait, a field named like an
+ *   entry of a struct constraint, or like a function the language calls by name (`main`, the JSON
+ *   codecs): a type meets a trait or a struct constraint through such names (§3.5, §3.10), so
+ *   renaming one could change which it meets; and a parameter named
  *   `self`, which makes its function a method (§3.7). A new name of that kind is refused for the
  *   same reason;
  * - a field of a shape, which is one type with every shape of its fields wherever written (§3.1),
@@ -34,7 +35,7 @@ import { identifierRunEnd, isIdentifierStart } from '../../compiler/scanner/char
 import type { Field } from '../../compiler/syntax/declarations.ts';
 import type { Invalid } from '../../compiler/syntax/node.ts';
 import { isKeyword } from '../../compiler/syntax/tokens.ts';
-import { childrenOf, parentOf, type SyntaxNode } from '../../compiler/syntax/tree.ts';
+import { childrenOf, nodesUnder, parentOf, type SyntaxNode } from '../../compiler/syntax/tree.ts';
 import {
   bindsInPattern,
   type Convention,
@@ -195,7 +196,7 @@ function newNameRefusal(
 }
 
 function meaningRefusal(name: string): string {
-  return `The language reads \`${name}\` by name: a type may meet a trait through it (§3.10), a function be a method by it (§3.7), or the language call it; renaming could change what the program does.`;
+  return `The language reads \`${name}\` by name: a type may meet a trait or a struct constraint through it (§3.5, §3.10), a function be a method by it (§3.7), or the language call it; renaming could change what the program does.`;
 }
 
 /** A name a declaration may have, in the program that has it. */
@@ -236,7 +237,11 @@ function meansMore(program: Program, declared: DeclaredAt['declared'], name: str
 
 const calledByName = new WeakMap<Program, ReadonlySet<string>>();
 
-/** What any trait of `program` requires, and the functions the language calls by name. */
+/**
+ * What any trait of `program` requires, the fields any struct constraint names (§3.5: a struct
+ * meets one by its fields' names, in a type `match` case too), and the functions the language
+ * calls by name.
+ */
 function namesCalledByName(program: Program): ReadonlySet<string> {
   return memo(
     calledByName,
@@ -245,15 +250,24 @@ function namesCalledByName(program: Program): ReadonlySet<string> {
       new Set([
         entryFunction,
         ...Object.values(codecFunctions),
-        ...[...program.modules.values()].flatMap(({ tree }) =>
-          tree.root.items.flatMap((item) =>
+        ...[...program.modules.values()].flatMap(({ tree }) => [
+          ...tree.root.items.flatMap((item) =>
             item.kind === 'TraitDeclaration'
               ? item.members.flatMap((member) =>
                   member.kind === 'Invalid' ? [] : [member.name.text],
                 )
               : [],
           ),
-        ),
+          ...nodesUnder(tree, tree.root).flatMap((node) =>
+            node.kind === 'StructConstraint'
+              ? node.entries.flatMap((entry) =>
+                  entry.kind !== 'Invalid' && entry.field.kind === 'Identifier'
+                    ? [entry.field.text]
+                    : [],
+                )
+              : [],
+          ),
+        ]),
       ]),
   );
 }
