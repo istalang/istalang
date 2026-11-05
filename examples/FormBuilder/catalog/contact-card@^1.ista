@@ -20,19 +20,19 @@ type Scope = forms.Scope<Group<Model>.Seen, Ctx>
 fn model() -> Group<Model>: Group{fields: Model{phone: new Field<String>{}}}
 
 fn view(m: Model, k: String) -> any View<Scope>: LayoutView<Scope>{
-  key: `${k}/n1`,
-  parent: none,
+  key: `${k}/n1`
+  parent: none
   widget: Prop.Fixed{
-    LayoutWidget.Section{title: none, description: none, collapsible: none, labels: none},
-  },
+    LayoutWidget.Section{title: none, description: none, collapsible: none, labels: none}
+  }
   children: [
     new FieldView<Scope, String>{
-      key: `${k}/n2`,
-      parent: none,
-      field: m.phone,
-      widget: Prop.Fixed{FieldWidget.Input{placeholder: none}},
-      label: Prop.Fixed{"Phone"},
-      checks: [forms.answered()],
-    },
-  ],
+      key: `${k}/n2`
+      parent: none
+      field: m.phone
+      widget: Prop.Fixed{FieldWidget.Input{placeholder: none}}
+      label: Prop.Fixed{"Phone"}
+      checks: [forms.answered()]
+    }
+  ]
 }

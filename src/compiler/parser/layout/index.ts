@@ -15,16 +15,17 @@
  * constraint entries), and nothing between cases, which stand one per line. The other separator
  * is reported as misplaced and read as the right one, so one slip costs one diagnostic. A module
  * is the block at column 0, so its first line is held to that column too. Entries in braces
- * (`struct Req { id: Int, value: String }`) are the same list without a column: every line
- * continues it until the `}`.
+ * (`struct Req { id: Int, value: String }`) are the same items as a list instead (§2): `,` or a
+ * line break separating two of them (item-breaks.ts), so an entry may span lines.
  *
  * `elif` and `else` continue an `if` on its line, or first on a later line at the column where the
- * `if`'s line starts (§4). A dangling `else` therefore binds to the nearest `if` whose line it
- * lines up with.
+ * `if`'s line starts (§4, continuations.ts). A dangling `else` therefore binds to the nearest `if`
+ * whose line it lines up with.
  *
  * Annotations are handled here, for every kind of item. One standing alone on its line waits for
- * the next item of the block. One written on an item's line applies to that item, before it or
- * after it. Where items can't carry annotations (match and select cases), an annotation is
+ * the next item of the block, or of the list, which reads past the line break to it. One written
+ * on an item's line applies to that item, before it or after it; in a list, one starting a line
+ * after an item starts the next. Where items can't carry annotations (match and select cases), an annotation is
  * reported and kept as an Invalid node.
  *
  * Docstrings are placed here too (§2): first in a documented body (bodies.ts) or a module, or on
@@ -32,11 +33,12 @@
  * docstring starting any other item is reported.
  */
 
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Annotation } from '../../syntax/annotations.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
-import { parseAnnotations, rejectAnnotations } from '../annotations.ts';
+import { annotationOpener, parseAnnotation, rejectAnnotations } from '../annotations.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { misplacedDocstring, parseDocstring, type WithDocstring } from '../docstrings.ts';
@@ -45,9 +47,10 @@ import {
   atRegionEnd,
   type Enclosed,
   type ItemSeparator,
+  parseCommaSeparated,
   parseEnclosedIn,
+  parseList,
   skipToSeparator,
-  skipUntil,
 } from '../recovery.ts';
 
 /** How to parse one kind of item, what separates two of them, and how they take annotations. */
@@ -117,26 +120,37 @@ export function parseBlockBraces<Item extends SyntaxNode>(
   return parseEnclosedIn(parser, '{', enter, () => parseLines(parser, rules));
 }
 
-/** `{ a: Int, b: Int }`: `rules` items separated by `,` or line breaks, at any column. */
+/** `{ a: Int, b: Int }`: `rules` items as a list (§2), each with its annotations. */
 export function parseItemEntries<Item extends SyntaxNode>(
   parser: Parser,
   rules: ItemRules<Item>,
 ): Enclosed<Items<Item>> {
-  const { cursor } = parser;
-  const enter = (parse: () => Items<Item>): Items<Item> => cursor.withinEntryBraces(parse);
-  return parseEnclosedIn(parser, '{', enter, () => parseLines(parser, rules).items);
+  return parseList(parser, '{', () =>
+    parseCommaSeparated(parser, () => parseListItem(parser, rules)).items.flat(),
+  );
 }
 
 /**
- * The items of the current list region (cursor/regions.ts), up to the line where it ends. Items heading
- * segments do so only in a block, where each stands on lines of its own, not in braces.
+ * One item of a list with its annotations; annotations with no item after them, before a `,` or
+ * the closer, are reported.
+ */
+function parseListItem<Item extends SyntaxNode>(
+  parser: Parser,
+  rules: ItemRules<Item>,
+): Items<Item> {
+  const step = parseLineItem(parser, rules, [], false);
+  return [...step.items, ...rejectAnnotations(parser, step.pending, danglingAnnotation)];
+}
+
+/**
+ * The items of the current block (cursor/regions.ts), up to the line where it ends, each heading
+ * a segment where the rules say so.
  */
 export function parseLines<Item extends SyntaxNode>(
   parser: Parser,
   rules: ItemRules<Item>,
 ): Lines<Item> {
-  const headsSegments = rules.headsSegments === true && parser.cursor.blockColumn !== undefined;
-  return headsSegments
+  return rules.headsSegments === true
     ? parser.restoringSegment(() => parseLinesOf(parser, rules, true))
     : parseLinesOf(parser, rules, false);
 }
@@ -201,7 +215,7 @@ function parseLineItem<Item extends SyntaxNode>(
   pending: readonly Annotation[],
   headsSegment: boolean,
 ): LineItem<Item> {
-  const before = parseAnnotations(parser);
+  const before = parseLeadingAnnotations(parser);
   if (before.length > 0 && (atSeparator(parser, rules.separator) || atRegionEnd(parser))) {
     return { items: [], pending: [...pending, ...before] };
   }
@@ -209,8 +223,32 @@ function parseLineItem<Item extends SyntaxNode>(
     parser.markItemStart();
   }
   const item = parser.cursor.at('docstring') ? misplacedDocstring(parser) : rules.parseItem(parser);
-  const annotations = { leading: [...pending, ...before], trailing: parseAnnotations(parser) };
+  const annotations = {
+    leading: [...pending, ...before],
+    trailing: parseTrailingAnnotations(parser),
+  };
   return { items: annotate(parser, rules, item, annotations), pending: [] };
+}
+
+/** The annotations from here up to the item they precede, on its line or the lines before. */
+function parseLeadingAnnotations(parser: Parser): Annotation[] {
+  return parseAnnotationsWhile(parser, () => true);
+}
+
+/** The annotations after an item on its line: in a list, one starting a line is the next item's. */
+function parseTrailingAnnotations(parser: Parser): Annotation[] {
+  return parseAnnotationsWhile(parser, () => !parser.cursor.startsLineInList());
+}
+
+function parseAnnotationsWhile(parser: Parser, goesOn: () => boolean): Annotation[] {
+  const annotations: Annotation[] = [];
+  while (parser.cursor.at(annotationOpener) && goesOn()) {
+    const annotation = parseAnnotation(parser);
+    if (annotation !== undefined) {
+      annotations.push(annotation);
+    }
+  }
+  return annotations;
 }
 
 function annotate<Item extends SyntaxNode>(
@@ -291,11 +329,10 @@ function moveToItem(parser: Parser): boolean {
 }
 
 /**
- * Where the next line stands relative to the current list:
+ * Where the next line stands relative to the current block, which holds its lines to its column:
  * - `sameBlock`, `deeper` or `strayDedent`: its next item, the last two reported
- * - `ownCloser`: the `}` of the list's own braces, which ends the list and closes them
+ * - `ownCloser`: the `}` of the block's own braces, which ends the block and closes them
  * - `outside`: it belongs to an enclosing construct.
- * A block holds its lines to its column; entries in braces may start at any column.
  */
 function placeOfNextLine(
   parser: Parser,
@@ -312,10 +349,7 @@ function placeOfNextLine(
   if (cursor.closesEnclosing(next.kind)) {
     return 'outside';
   }
-  const column = cursor.blockColumn;
-  if (column === undefined) {
-    return 'sameBlock';
-  }
+  const column = cursor.blockColumn ?? unreachable('a region separating items is a block');
   const at = parser.columnOf(next);
   if (at > column) {
     return 'deeper';
@@ -325,43 +359,4 @@ function placeOfNextLine(
   }
   const outer = cursor.enclosingBlockColumn;
   return outer === undefined || at <= outer ? 'outside' : 'strayDedent';
-}
-
-/**
- * Moves to `keyword` if it continues the construct that starts at `constructStart`: next on this
- * line, or first on the next line at the column where the construct's line starts (§4). Returns
- * whether it did.
- */
-export function moveToContinuation(
-  parser: Parser,
-  keyword: CursorKind,
-  constructStart: number,
-): boolean {
-  const { cursor } = parser;
-  if (cursor.at(keyword)) {
-    return true;
-  }
-  const next = cursor.lineStart;
-  if (next?.kind !== keyword || parser.columnOf(next) !== parser.indentationAt(constructStart)) {
-    return false;
-  }
-  cursor.crossLineBreak();
-  return true;
-}
-
-/**
- * Skips every following line indented deeper than `indentation`: lines that can only belong to
- * a construct being skipped. While speculating, recovery skips nothing, so this crosses nothing.
- */
-export function skipDeeperLines(parser: Parser, indentation: number): void {
-  const { cursor } = parser;
-  while (!parser.isSpeculating && deeperLineFollows(parser, indentation)) {
-    cursor.crossLineBreak();
-    skipUntil(parser, []);
-  }
-}
-
-function deeperLineFollows(parser: Parser, indentation: number): boolean {
-  const next = parser.cursor.lineStart;
-  return next !== undefined && parser.columnOf(next) > indentation;
 }

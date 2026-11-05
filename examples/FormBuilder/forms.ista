@@ -56,10 +56,10 @@ struct Group<S is struct { [_] is FormNode }>:
     case _: { [F in keyof S]: S[F].Seen }
 
 fn seen<S is struct { [_] is FormNode }>(self: Group<S>) -> Group<S>.Seen: struct{
-  for f, node in ...self.fields: [f]: node.seen(),
+  for f, node in ...self.fields: [f]: node.seen()
 }
 fn read<S is struct { [_] is FormNode }>(self: Group<S>) -> Result<Group<S>.Data>: Ok{
-  struct{for f, node in ...self.fields: [f]: node.read()?},
+  struct{for f, node in ...self.fields: [f]: node.read()?}
 }
 fn load<S is struct { [_] is FormNode }>(self: Group<S>, v: Group<S>.Seen) -> Unit:
   for f, node in ...self.fields: node.load(v[f])
@@ -128,17 +128,17 @@ fn seen<C is struct { [_] is FormNode }>(self: Variant<C>) -> Variant<C>.Seen:
     case None: none
     case a: a
   struct{
-    tag: active,
-    value: struct{for k, g in ...self.cases: [k]: if activeStr == k: g.seen() else: none},
+    tag: active
+    value: struct{for k, g in ...self.cases: [k]: if activeStr == k: g.seen() else: none}
   }
 fn read<C is struct { [_] is FormNode }>(self: Variant<C>) -> Result<Variant<C>.Data>:
   const active = self.tag.read()?
   const activeStr: String = active
   Ok{
     struct{
-      tag: active,
-      value: struct{for k, g in ...self.cases: [k]: if activeStr == k: g.read()? else: none},
-    },
+      tag: active
+      value: struct{for k, g in ...self.cases: [k]: if activeStr == k: g.read()? else: none}
+    }
   }
 fn load<C is struct { [_] is FormNode }>(self: Variant<C>, v: Variant<C>.Seen) -> Unit:
   self.tag.load(v.tag)
@@ -217,9 +217,9 @@ enum Pending:
   Hidden # its own task: the node stays hidden
 
 fn awaited<Sc, T>(pending: Pending, eval: async fn(Sc) -> T) -> Prop<Sc, T>: Prop.Awaited{
-  pending,
-  eval,
-  task: new Task<Sc, T>{},
+  pending
+  eval
+  task: new Task<Sc, T>{}
 }
 
 # An awaited expression's run. It starts again only when the scope it ran with changes, so a
@@ -287,10 +287,10 @@ enum Format:
 # One helper per constraint. The generator adds answered() to every stored field without a default
 # or computed value: everything must be answered. required() is the schema's `required`: non-empty.
 fn answered<Sc, T>() -> Check<Sc, T>: Check.Now{
-  test: fn(sc, v): if v == none: "Required" else: none,
+  test: fn(sc, v): if v == none: "Required" else: none
 }
 fn required<Sc>(on: Prop<Sc, Bool>) -> Check<Sc, String>: Check.Now{
-  test: fn(sc, v): if on.evalNow(sc) == true and (v == none or v == ""): "Required" else: none,
+  test: fn(sc, v): if on.evalNow(sc) == true and (v == none or v == ""): "Required" else: none
 }
 fn someItems<Sc, T>(on: Prop<Sc, Bool>) -> Check<Sc, Array<T>>: Check.Now{
   test: fn(sc, v): {
@@ -301,21 +301,21 @@ fn someItems<Sc, T>(on: Prop<Sc, Bool>) -> Check<Sc, Array<T>>: Check.Now{
       case items:
         if on.evalNow(sc) == true and items.length() == 0: "Required"
         else: none
-  },
+  }
 }
 fn minLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: Check.Now{
   test: fn(sc, v): {
     match (v, n.evalNow(sc)):
       case (String as s, Int as bound) if s.length() < bound: `Minimum length is ${bound}`
       case _: none
-  },
+  }
 }
 fn maxLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: Check.Now{
   test: fn(sc, v): {
     match (v, n.evalNow(sc)):
       case (String as s, Int as bound) if s.length() > bound: `Maximum length is ${bound}`
       case _: none
-  },
+  }
 }
 fn pattern<Sc>(p: Prop<Sc, String>) -> Check<Sc, String>: Check.Now{
   test: fn(sc, v): {
@@ -328,7 +328,7 @@ fn pattern<Sc>(p: Prop<Sc, String>) -> Check<Sc, String>: Check.Now{
           case Err{}: "Invalid format"
       }
       case _: none
-  },
+  }
 }
 fn format<Sc>(f: Format) -> Check<Sc, String>: Check.Now{
   test: fn(sc, v): {
@@ -342,7 +342,7 @@ fn format<Sc>(f: Format) -> Check<Sc, String>: Check.Now{
         if regex.Regex{pattern: pat}.test(s): none
         else: "Invalid format"
       }
-  },
+  }
 }
 fn min<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now{
   test: fn(sc, v): {
@@ -355,7 +355,7 @@ fn min<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now{
             if val < bound: "Too small"
             else: none
       }
-  },
+  }
 }
 fn max<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now{
   test: fn(sc, v): {
@@ -368,7 +368,7 @@ fn max<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now{
             if val > bound: "Too large"
             else: none
       }
-  },
+  }
 }
 fn multipleOf<Sc>(n: Prop<Sc, Float>) -> Check<Sc, Float>: Check.Now{
   test: fn(sc, v): {
@@ -379,7 +379,7 @@ fn multipleOf<Sc>(n: Prop<Sc, Float>) -> Check<Sc, Float>: Check.Now{
         else: "Invalid step"
       }
       case _: none
-  },
+  }
 }
 fn accept<Sc>(types: Array<String>) -> Check<Sc, FileId>: Check.Now{test: fn(sc, v): none}
 fn maxBytes<Sc>(n: Int) -> Check<Sc, FileId>: Check.Now{test: fn(sc, v): none}
@@ -394,7 +394,7 @@ fn minItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now{
             if items.length() < bound: `Minimum items is ${bound}`
             else: none
       }
-  },
+  }
 }
 fn maxItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now{
   test: fn(sc, v): {
@@ -407,19 +407,19 @@ fn maxItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now{
             if items.length() > bound: `Maximum items is ${bound}`
             else: none
       }
-  },
+  }
 }
 fn rule<Sc, T>(check: fn(Sc) -> Bool, message: fn(Sc) -> String) -> Check<Sc, T>: Check.Now{
-  test: fn(sc, v): if check(sc): none else: message(sc),
+  test: fn(sc, v): if check(sc): none else: message(sc)
 }
 
 # A Template in a language: its translation with $0…$n filled in, else the rendered original.
 fn t(
-  table: Map<String, Map<String, String>>,
-  lang: String,
-  original: String,
-  rendered: String,
-  args: Array<String>,
+  table: Map<String, Map<String, String>>
+  lang: String
+  original: String
+  rendered: String
+  args: Array<String>
 ) -> String:
   match table.get(original)?.get(lang):
     case None: rendered
@@ -475,11 +475,11 @@ shared struct FieldView<Sc, T>:
   search: String = "" # the text typed into a search widget
 
 async fn _check<Sc, T>(
-  checks: Array<Check<Sc, T>>,
-  sc: Sc,
-  v: T?,
-  touched: Bool,
-  out: &Drawing,
+  checks: Array<Check<Sc, T>>
+  sc: Sc
+  v: T?
+  touched: Bool
+  out: &Drawing
 ) -> Future<(Array<String>, Array<String>)>:
   let errors: Array<String> = []
   let waiting: Array<String> = []
@@ -509,9 +509,9 @@ async fn _check<Sc, T>(
   (errors, waiting)
 
 async fn draw<Sc, T is Encodable & Decodable>(
-  self: FieldView<Sc, T>,
-  sc: Sc,
-  out: &Drawing,
+  self: FieldView<Sc, T>
+  sc: Sc
+  out: &Drawing
 ) -> Future<Array<Node>>:
   # 1. Visibility. A hidden field draws nothing, and its Hidden stays unshown.
   match self->when:
@@ -610,16 +610,16 @@ async fn draw<Sc, T is Encodable & Decodable>(
     case val: json.stringify(val)
   [
     Node.Field{
-      key: self->key,
-      widget: widget ?? FieldWidget.Raw,
-      parent,
-      label: label ?? "",
-      help,
-      value: encoded,
-      options: opts,
-      errors,
-      readOnly: self->value != none,
-    },
+      key: self->key
+      widget: widget ?? FieldWidget.Raw
+      parent
+      label: label ?? ""
+      help
+      value: encoded
+      options: opts
+      errors
+      readOnly: self->value != none
+    }
   ]
 
 shared struct RepeatView<Sc, R is FormNode>:
@@ -649,9 +649,9 @@ fn removeRow<Sc, R is FormNode>(self: RepeatView<Sc, R>, key: String) -> Unit:
   self->list.remove(key)
 
 async fn draw<Sc, R is FormNode>(
-  self: RepeatView<Sc, R>,
-  sc: Sc,
-  out: &Drawing,
+  self: RepeatView<Sc, R>
+  sc: Sc
+  out: &Drawing
 ) -> Future<Array<Node>>:
   match self->when:
     case None: ()
@@ -714,14 +714,14 @@ async fn draw<Sc, R is FormNode>(
   if self->canAdd: out.lists[self->key] = self
   [
     Node.Repeat{
-      key: self->key,
-      widget: widget ?? RepeatWidget.Table{addLabel: none},
-      parent,
-      label,
-      rows: drawnRows,
-      canAdd: self->canAdd,
-      errors,
-    },
+      key: self->key
+      widget: widget ?? RepeatWidget.Table{addLabel: none}
+      parent
+      label
+      rows: drawnRows
+      canAdd: self->canAdd
+      errors
+    }
   ]
 
 # A variant. Each case body is wrapped by the generated code in a ScopedView that adds the
@@ -744,9 +744,9 @@ struct CaseView<Sc>:
   body: any View<Sc>
 
 async fn draw<Sc, C is struct { [_] is FormNode }>(
-  self: VariantView<Sc, C>,
-  sc: Sc,
-  out: &Drawing,
+  self: VariantView<Sc, C>
+  sc: Sc
+  out: &Drawing
 ) -> Future<Array<Node>>:
   match self.when:
     case None: ()
@@ -788,15 +788,15 @@ async fn draw<Sc, C is struct { [_] is FormNode }>(
   out.inputs[self.key] = self.variant
   [
     Node.Variant{
-      key: self.key,
-      widget: widget ?? VariantWidget.Inline,
-      parent,
-      label,
-      cases: caseOpts,
-      active: activeStr,
-      body: bodyNode,
-      errors,
-    },
+      key: self.key
+      widget: widget ?? VariantWidget.Inline
+      parent
+      label
+      cases: caseOpts
+      active: activeStr
+      body: bodyNode
+      errors
+    }
   ]
 
 struct LayoutView<Sc>:
@@ -834,14 +834,14 @@ async fn draw<Sc>(self: LayoutView<Sc>, sc: Sc, out: &Drawing) -> Future<Array<N
   const errors, waiting = await _check(self.checks, sc, (), out.submitted, &out)
   [
     Node.Layout{
-      key: self.key,
-      widget: widget ?? LayoutWidget.Divider,
-      parent,
-      label,
-      errors,
-      waiting,
-      children,
-    },
+      key: self.key
+      widget: widget ?? LayoutWidget.Divider
+      parent
+      label
+      errors
+      waiting
+      children
+    }
   ]
 
 # Moves drawing into a wider or different scope: a repeat row ({ data, ctx, item }), a variant
@@ -1075,12 +1075,12 @@ fn markShown(self: &Drawing, h: (any Showable)?):
 
 # Runs a form until a valid submit, and returns its data, typed Group<M>.Data.
 async fn run<M is struct { [_] is FormNode }, C>(
-  model: Group<M>,
-  view: any View<Scope<Group<M>.Seen, C>>,
-  ctx: C,
-  translations: Map<String, Map<String, String>>,
-  events: Inbox<FormEvent>,
-  views: Inbox<Node>,
+  model: Group<M>
+  view: any View<Scope<Group<M>.Seen, C>>
+  ctx: C
+  translations: Map<String, Map<String, String>>
+  events: Inbox<FormEvent>
+  views: Inbox<Node>
 ) -> Future<Group<M>.Data>:
   let submitted = false
   let shown: Array<any Showable> = []

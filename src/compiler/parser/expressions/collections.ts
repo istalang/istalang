@@ -23,7 +23,8 @@ import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 import { parseFieldHeaderAfter } from '../parts/field-headers.ts';
 import { parseTargets } from '../parts/names.ts';
-import { parseCommaSeparated, parseEnclosed } from '../recovery.ts';
+import { spreadOpener } from '../parts/spreads.ts';
+import { parseCommaSeparated, parseList } from '../recovery.ts';
 import { parseSpread } from './spread.ts';
 
 type CollectionItem = Expression | Spread | MapEntry;
@@ -39,7 +40,7 @@ type Contents =
 
 /** A bracket literal, starting at the `[`. */
 export function parseCollection(parser: Parser): Expression {
-  const { value: contents, span } = parseEnclosed(parser, '[', () => parseContents(parser));
+  const { value: contents, span } = parseList(parser, '[', () => parseContents(parser));
   switch (contents.shape) {
     case 'comprehension':
       return 'header' in contents.parts
@@ -65,7 +66,7 @@ function parseContents(parser: Parser): Contents {
 }
 
 function parseItem(parser: Parser): CollectionItem {
-  if (parser.cursor.at('...')) {
+  if (parser.cursor.at(spreadOpener)) {
     return parseSpread(parser);
   }
   const key = parser.expression();

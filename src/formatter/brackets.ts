@@ -1,8 +1,10 @@
 /**
- * Which nodes stand in brackets, where a line break means nothing (spec §2): inside `()`, `[]` and
- * a struct literal's or pattern's `{}`. A block nested there, or a field list, makes line breaks
- * count again (parser/cursor.ts), and so does a template's `${…}` for the formatter, which keeps
- * a single-line template on its line.
+ * Which nodes stand in brackets, where the printer may break a line inside an item (spec §2): inside
+ * `()`, `[]` and a struct literal's or pattern's `{}`. A break it makes after an operator or an
+ * opening bracket continues the item, since only one before a token that starts an item separates
+ * two. A block nested there makes line breaks count again (parser/cursor/), a field list is
+ * printed an entry per line, never broken inside one, and a template's `${…}` keeps a single-line
+ * template on its line.
  *
  * Derived once per tree, from the tree alone, so a printer asks instead of being told by its
  * caller. Which delimiters enclose which children is listed once (`standingIn`), which bodies.ts
@@ -16,8 +18,8 @@ import { childrenOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax
  * - `outside` its parent's delimiters, standing as its parent does: a call's callee, an index's
  *   target, a struct literal's or pattern's type, a function's result and body, any child of a
  *   node with no delimiters;
- * - in `brackets`, `()`, `[]` or a struct literal's or pattern's `{}`, where a line break means
- *   nothing;
+ * - in `brackets`, `()`, `[]` or a struct literal's or pattern's `{}`, where a line break may stand
+ *   inside an item;
  * - in `braces` that hold lines again: a braced block's `{}`, a field list's, a template's `${…}`;
  * - on a block's `lines`, with no delimiters around them, where line breaks count again.
  */

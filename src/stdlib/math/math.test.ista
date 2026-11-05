@@ -10,12 +10,12 @@ const ties = [-2.5, -1.5, -0.5, 0.4, 0.5, 1.5, 2.5, 2.6, -2.6]
 
 # Each mode's results for `ties`, in order.
 fn roundings() -> Array<(Rounding, Array<Float>)>: [
-  (Rounding.Floor, [-3.0, -2.0, -1.0, 0.0, 0.0, 1.0, 2.0, 2.0, -3.0]),
-  (Rounding.Ceiling, [-2.0, -1.0, 0.0, 1.0, 1.0, 2.0, 3.0, 3.0, -2.0]),
-  (Rounding.TowardZero, [-2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 2.0, -2.0]),
-  (Rounding.AwayFromZero, [-3.0, -2.0, -1.0, 1.0, 1.0, 2.0, 3.0, 3.0, -3.0]),
-  (Rounding.HalfEven, [-2.0, -2.0, 0.0, 0.0, 0.0, 2.0, 2.0, 3.0, -3.0]),
-  (Rounding.HalfAwayFromZero, [-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 3.0, -3.0]),
+  (Rounding.Floor, [-3.0, -2.0, -1.0, 0.0, 0.0, 1.0, 2.0, 2.0, -3.0])
+  (Rounding.Ceiling, [-2.0, -1.0, 0.0, 1.0, 1.0, 2.0, 3.0, 3.0, -2.0])
+  (Rounding.TowardZero, [-2.0, -1.0, 0.0, 0.0, 0.0, 1.0, 2.0, 2.0, -2.0])
+  (Rounding.AwayFromZero, [-3.0, -2.0, -1.0, 1.0, 1.0, 2.0, 3.0, 3.0, -3.0])
+  (Rounding.HalfEven, [-2.0, -2.0, 0.0, 0.0, 0.0, 2.0, 2.0, 3.0, -3.0])
+  (Rounding.HalfAwayFromZero, [-3.0, -2.0, -1.0, 0.0, 1.0, 2.0, 3.0, 3.0, -3.0])
 ]
 
 fn isNaN(x: Float) -> Bool: x != x
@@ -30,47 +30,47 @@ fn suite() -> Array<Test>: [
         for position in 0..ties.length():
           const x = ties[position]
           assertEq((x, math.round(x, mode)), (x, expected[position]))
-    }),
+    })
     test("rounds half to even when no mode is given", fn(): {
       assertEq([math.round(0.5), math.round(1.5), math.round(2.5), math.round(-2.5)], [
-        0.0,
-        2.0,
-        2.0,
-        -2.0,
+        0.0
+        2.0
+        2.0
+        -2.0
       ])
-    }),
+    })
     test("floor and ceil are its Floor and Ceiling", fn(): {
       assertEq([math.floor(2.7), math.floor(-2.2), math.ceil(2.2), math.ceil(-2.7)], [
-        2.0,
-        -3.0,
-        3.0,
-        -2.0,
+        2.0
+        -3.0
+        3.0
+        -2.0
       ])
-    }),
+    })
     test("keeps the type, so NaN and the infinities stay", fn(): {
       const infinity = 1.0 / 0.0
       assert(isNaN(math.round(0.0 / 0.0)))
       assertEq([math.floor(infinity), math.ceil(-infinity)], [infinity, -infinity])
       assertEq(Int(math.floor(-2.5)), -3)
-    }),
+    })
     test("leaves a float too large for a fraction as it is", fn(): {
       assertEq(math.round(4503599627370497.0), 4503599627370497.0)
-    }),
-  ]),
+    })
+  ])
   test("each function is also a method once imported by name", fn(): {
     assertEq([(-3).abs(), 3.min(2), 3.max(2)], [3, 2, 3])
     assertEq([2.5.round(), 2.5.round(Rounding.Ceiling), 2.25.sqrt()], [2.0, 3.0, 1.5])
-  }),
+  })
   test("abs of ints and floats", fn(): {
     assertEq([math.abs(-3), math.abs(3), math.abs(0)], [3, 3, 0])
     assertEq([math.abs(-2.5), math.abs(2.5)], [2.5, 2.5])
     assertEq(math.abs(-100000000000000000000000), 100000000000000000000000)
-  }),
+  })
   test("sqrt of ints and floats, NaN for a negative number", fn(): {
     assertEq([math.sqrt(16), math.sqrt(2.25), math.sqrt(0)], [4.0, 1.5, 0.0])
     assert(isNaN(math.sqrt(-1.0)))
     assert(isNaN(math.sqrt(-4)))
-  }),
+  })
   group("min, max and clamp", [
     test("order ints, floats, strings and times", fn(): {
       assertEq([math.min(3, 2), math.max(3, 2)], [2, 3])
@@ -79,17 +79,17 @@ fn suite() -> Array<Test>: [
       const early = time.Time{value: 1}
       const late = time.Time{value: 2}
       assertEq([math.min(late, early), math.max(early, late)], [early, late])
-    }),
+    })
     test("give the first of equal arguments", fn(): {
       assert(1.0 / math.min(0.0, -0.0) > 0.0)
       assert(1.0 / math.max(-0.0, 0.0) < 0.0)
-    }),
+    })
     test("clamp keeps a value inside its bounds", fn(): {
       assertEq([(-4).clamp(0, 10), 4.clamp(0, 10), 14.clamp(0, 10), 4.clamp(4, 4)], [0, 4, 10, 4])
       assertEq(2.5.clamp(0.0, 1.0), 1.0)
-    }),
+    })
     test("clamp panics when its low bound is above its high bound", async fn(): {
       assertEq(await expectPanic(emptyClamp), "clamp's low bound is above its high bound.")
-    }),
-  ]),
+    })
+  ])
 ]

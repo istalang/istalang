@@ -54,7 +54,7 @@ describe('a >= closing type arguments', () => {
   it('reads as > inside <…> and leaves its = behind', () => {
     const cursor = cursorOver('<Int>= x');
     cursor.advance();
-    cursor.within('<', () => {
+    cursor.withinList('<', () => {
       cursor.advance();
       expect(cursor.kind).toBe('>');
       expect(cursor.eat('>')?.span).toEqual({ start: 4, end: 5 });
@@ -69,7 +69,7 @@ describe('a >= closing type arguments', () => {
     const cursor = cursorOver('a<b>=c');
     cursor.advance();
     const mark = cursor.mark();
-    cursor.within('<', () => {
+    cursor.withinList('<', () => {
       cursor.advance();
       cursor.advance();
       cursor.eat('>');

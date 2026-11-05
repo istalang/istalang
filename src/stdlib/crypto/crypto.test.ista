@@ -14,82 +14,82 @@ fn suite() -> Array<Test>: [
     test("matches FIPS 180's digests of abc", fn(): {
       assertEq(crypto.hash(Hash.Sha1, "abc"), "a9993e364706816aba3e25717850c26c9cd0d89d")
       assertEq(
-        crypto.hash(Hash.Sha256, "abc"),
-        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+        crypto.hash(Hash.Sha256, "abc")
+        "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
       )
       assertEq(
-        crypto.hash(Hash.Sha384, "abc"),
-        "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7",
+        crypto.hash(Hash.Sha384, "abc")
+        "cb00753f45a35e8bb5a03d699ac65007272c32ab0eded1631a8b605a43ff5bed8086072ba1e7cc2358baeca134c825a7"
       )
       assertEq(
-        crypto.hash(Hash.Sha512, "abc"),
-        "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f",
+        crypto.hash(Hash.Sha512, "abc")
+        "ddaf35a193617abacc417349ae20413112e6fa4e89a97ea20a9eeee64b55d39a2192992a274fc1a836ba3c23a3feebbd454d4423643ce80e2a9ac94fa54ca49f"
       )
-    }),
+    })
     test("of nothing", fn(): {
       assertEq(
-        crypto.hash(Hash.Sha256, ""),
-        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        crypto.hash(Hash.Sha256, "")
+        "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
       )
-    }),
+    })
     test("writes the digest in the encoding asked for", fn(): {
       assertEq(
-        crypto.hash(Hash.Sha256, "abc", Encoding.Base64),
-        "ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0=",
+        crypto.hash(Hash.Sha256, "abc", Encoding.Base64)
+        "ungWv48Bz+pBQUDeXa4iI7ADYaOWF3qctBD/YfIAFa0="
       )
       assertEq(
-        crypto.hash(Hash.Sha256, "abc", Encoding.Base64Url),
-        "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0",
+        crypto.hash(Hash.Sha256, "abc", Encoding.Base64Url)
+        "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0"
       )
-    }),
+    })
     test("hashes text as its UTF-8", fn(): {
       assertEq(crypto.encode("é", Encoding.Hex), "c3a9")
       assertEq(
-        crypto.hash(Hash.Sha256, "é"),
-        "4a99557e4033c3539de2eb65472017cad5f9557f7a0625a09f1c3f6e2ba69c4c",
+        crypto.hash(Hash.Sha256, "é")
+        "4a99557e4033c3539de2eb65472017cad5f9557f7a0625a09f1c3f6e2ba69c4c"
       )
-    }),
-  ]),
+    })
+  ])
   test("hmac matches RFC 2202's and RFC 4231's second case", fn(): {
     assertEq(crypto.hmac(Hash.Sha1, jefe, jefeData), "effcdf6ae5eb2fa2d27416d5f184df9c259a7c79")
     assertEq(
-      crypto.hmac(Hash.Sha256, jefe, jefeData),
-      "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843",
+      crypto.hmac(Hash.Sha256, jefe, jefeData)
+      "5bdcc146bf60754e6a042426089575c75a003f089d2739839dec58b964ec3843"
     )
     assertEq(
-      crypto.hmac(Hash.Sha384, jefe, jefeData),
-      "af45d2e376484031617f78d2b58a6b1b9c7ef464f5a01b47e42ec3736322445e8e2240ca5e69e2c78b3239ecfab21649",
+      crypto.hmac(Hash.Sha384, jefe, jefeData)
+      "af45d2e376484031617f78d2b58a6b1b9c7ef464f5a01b47e42ec3736322445e8e2240ca5e69e2c78b3239ecfab21649"
     )
     assertEq(
-      crypto.hmac(Hash.Sha512, jefe, jefeData),
-      "164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737",
+      crypto.hmac(Hash.Sha512, jefe, jefeData)
+      "164b7a7bfcf819e2e395fbe73b56e0a387bd64222e831fd610270cd7ea2505549758bf75c05a994a6d034f65f8f0e6fdcaeab1a34d4a6b4b636e070a38bce737"
     )
-  }),
+  })
   test("timingSafeEqual tells equal strings apart from others, of any length", fn(): {
     assert(crypto.timingSafeEqual("secret", "secret"))
     assert(not crypto.timingSafeEqual("secret", "secreT"))
     assert(not crypto.timingSafeEqual("secret", "secrets"))
-  }),
+  })
   group("encodings", [
     test("encode RFC 4648's examples", fn(): {
       for (text, base64) in [
-        ("", ""),
-        ("f", "Zg=="),
-        ("fo", "Zm8="),
-        ("foo", "Zm9v"),
-        ("foob", "Zm9vYg=="),
-        ("fooba", "Zm9vYmE="),
-        ("foobar", "Zm9vYmFy"),
+        ("", "")
+        ("f", "Zg==")
+        ("fo", "Zm8=")
+        ("foo", "Zm9v")
+        ("foob", "Zm9vYg==")
+        ("fooba", "Zm9vYmE=")
+        ("foobar", "Zm9vYmFy")
       ]:
         assertEq(crypto.encode(text, Encoding.Base64), base64)
         assertEq(crypto.decode(base64, Encoding.Base64), Ok{value: text})
       assertEq(crypto.encode("foobar", Encoding.Hex), "666f6f626172")
       assertEq(crypto.encode("f", Encoding.Base64Url), "Zg")
-    }),
+    })
     test("decode hex in either case", fn(): {
       assertEq(crypto.decode("666F6F626172", Encoding.Hex), Ok{value: "foobar"})
       assertEq(crypto.decode("666f6f626172", Encoding.Hex), Ok{value: "foobar"})
-    }),
+    })
     test("decode fails on text that isn't canonical, or whose bytes aren't UTF-8", fn(): {
       assert(crypto.decode("Zg=", Encoding.Base64) is Err{})
       assert(crypto.decode("Zh==", Encoding.Base64) is Err{})
@@ -97,6 +97,6 @@ fn suite() -> Array<Test>: [
       assert(crypto.decode("Zg==", Encoding.Base64Url) is Err{})
       assert(crypto.decode("abc", Encoding.Hex) is Err{})
       assert(crypto.decode("ff", Encoding.Hex) is Err{})
-    }),
-  ]),
+    })
+  ])
 ]

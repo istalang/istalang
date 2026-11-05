@@ -36,6 +36,7 @@ import type {
 import type { NamedType, TypeNode } from '../syntax/types.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
+import { atPostfix } from './layout/item-breaks.ts';
 import type { Parser } from './parser.ts';
 import { type LeveledParselet, leveledGrammar } from './parts/levels.ts';
 import {
@@ -45,6 +46,7 @@ import {
   parseNegativeLiteral,
 } from './parts/literals.ts';
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
+import { spreadOpener } from './parts/spreads.ts';
 import { afterStructKeyword } from './parts/structs.ts';
 import { parseDelimited, parseGroup } from './recovery.ts';
 import type { StartParselets } from './word-parselets.ts';
@@ -116,7 +118,7 @@ function parseOrPattern(parser: Parser, first: Pattern): Pattern {
 function parseArrayPattern(parser: Parser): Pattern {
   const { start } = parser.cursor.token.span;
   const { items } = parseDelimited(parser, '[', () =>
-    parser.cursor.at('...') ? parseRestPattern(parser) : parser.pattern(),
+    parser.cursor.at(spreadOpener) ? parseRestPattern(parser) : parser.pattern(),
   );
   for (const extra of items.filter((item) => item.kind === 'RestPattern').slice(1)) {
     parser.report(parserDiagnostics.secondRest(parser.textSpanOf(extra.span)));
@@ -191,7 +193,6 @@ function boundOf(parser: Parser, bound: Pattern): LiteralPattern | undefined {
 }
 
 function parseNamedPattern(parser: Parser): Pattern {
-  const { cursor } = parser;
   const wildcard = parseWildcard(parser);
   if (wildcard !== undefined) {
     return wildcard;
@@ -199,7 +200,7 @@ function parseNamedPattern(parser: Parser): Pattern {
   const path = parseQualifiedName(parser);
   const start = parser.startOf(path[0]);
   const typeArguments = parsePatternTypeArguments(parser);
-  return cursor.at('{')
+  return atPostfix(parser, '{')
     ? parseStructPattern(parser, namedTypeFrom(parser, path, typeArguments), start)
     : { kind: 'NamePattern', span: parser.spanFrom(start), path, typeArguments };
 }
@@ -210,7 +211,7 @@ function parseNamedPattern(parser: Parser): Pattern {
  * `x is P < a >> b` compare.
  */
 function parsePatternTypeArguments(parser: Parser): readonly TypeNode[] {
-  if (!parser.cursor.at('<')) {
+  if (!atPostfix(parser, '<')) {
     return [];
   }
   const typeArguments = parser.speculate(() => {
@@ -240,7 +241,7 @@ function parseAnonymousStructPattern(parser: Parser): Pattern {
  */
 function parseStructPattern(parser: Parser, type: NamedType | undefined, start: number): Pattern {
   const { items } = parseDelimited(parser, '{', () =>
-    parser.cursor.at('...') ? parseRestPattern(parser) : parseFieldPattern(parser),
+    parser.cursor.at(spreadOpener) ? parseRestPattern(parser) : parseFieldPattern(parser),
   );
   const [rest, ...extra] = items.filter((item) => item.kind === 'RestPattern');
   const fieldAfter = rest !== undefined && items.slice(items.indexOf(rest)).some(isFieldItem);

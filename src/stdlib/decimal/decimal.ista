@@ -47,22 +47,22 @@ extern fn divide(left: Decimal, right: Decimal) -> Decimal
 extern fn divide(left: Decimal, right: Int) -> Decimal
 extern fn divide(left: Int, right: Decimal) -> Decimal
 extern fn divide(
-  left: Decimal,
-  right: Decimal,
-  places: Int,
-  mode: Rounding = Rounding.HalfEven,
+  left: Decimal
+  right: Decimal
+  places: Int
+  mode: Rounding = Rounding.HalfEven
 ) -> Decimal
 extern fn divide(
-  left: Decimal,
-  right: Int,
-  places: Int,
-  mode: Rounding = Rounding.HalfEven,
+  left: Decimal
+  right: Int
+  places: Int
+  mode: Rounding = Rounding.HalfEven
 ) -> Decimal
 extern fn divide(
-  left: Int,
-  right: Decimal,
-  places: Int,
-  mode: Rounding = Rounding.HalfEven,
+  left: Int
+  right: Decimal
+  places: Int
+  mode: Rounding = Rounding.HalfEven
 ) -> Decimal
 
 # As on ints, `a == (a // b) * b + a % b`, and `%` takes the divisor's sign (§3.9).

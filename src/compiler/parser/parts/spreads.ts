@@ -1,0 +1,8 @@
+/**
+ * The token opening a spread (`...xs` in an array, a map, a call or a struct literal, §2) and a
+ * rest (a pattern's, a parameter's, a function type's or a type parameter pack's, §3.3, §3.5,
+ * §3.11): every list item it opens is read through this name, which also tells where a line
+ * break before it starts an item (layout/item-breaks.ts).
+ */
+
+export const spreadOpener = '...';

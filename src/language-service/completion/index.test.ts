@@ -171,6 +171,10 @@ describe('completion', () => {
     expect(fields(...pair, ...multiline)).toEqual(['second']);
     const before = ['fn f() -> Pair:', '  Pair{', '    fi‸', '    second: 2', '  }'];
     expect(fields(...pair, ...before)).toContain('first');
+    const separated = ['fn f() -> Pair:', '  Pair{', '    first: 1', '    ‸', '  }'];
+    expect(fields(...pair, ...separated)).toEqual(['second']);
+    const written = ['fn f() -> Pair:', '  Pair{', '    first: 1', '    se‸', '  }'];
+    expect(fields(...pair, ...written)).toEqual(['second']);
     const slot = ['struct Slot:', '  index: Int', '  inbox: String', ''];
     expect(fields(...slot, 'fn f() -> Slot: Slot{in‸}')).toEqual(['index', 'inbox']);
   });

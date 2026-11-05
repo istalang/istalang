@@ -27,72 +27,72 @@ fn suite() -> Array<Test>: [
   test("a duration scales by an int", fn(): {
     assertEq(Duration{value: 1500} * 2, Duration{value: 3000})
     assertEq(Duration{value: 1500} * -1, Duration{value: -1500})
-  }),
+  })
   test("times and durations are ordered as their milliseconds", fn(): {
     assert(Time{value: 1} < Time{value: 2})
     assert(Duration{value: -1} < Duration{value: 0})
     assertEq(compare(noon, noon), 0)
-  }),
+  })
   group("Zone", [
     test("parses IANA names in any case, as one zone with its canonical id", fn(): {
       assertEq(Zone.parse("europe/berlin"), Ok{value: berlin()})
       assertEq(String(parsed<Zone>("europe/berlin")), "Europe/Berlin")
       assertEq(Zone.parse("utc"), Ok{value: time.utc()})
       assertEq(String(time.utc()), "UTC")
-    }),
+    })
     test("crosses as JSON as its canonical id", fn(): {
       assertEq(json.stringify(berlin()), "\"Europe/Berlin\"")
       assertEq(json.parse<Zone>("\"europe/berlin\""), Ok{value: berlin()})
       assert(json.parse<Zone>("\"Mars/Olympus\"") is Err{})
-    }),
+    })
     test("refuses a name no zone has, and a fixed offset, which no IANA zone is", fn(): {
       assert(Zone.parse("Mars/Olympus") is Err{})
       assert(Zone.parse("+01:00") is Err{})
-    }),
-  ]),
+    })
+  ])
   group("DateTime", [
     test("is written and read as ISO 8601 without a zone", fn(): {
       const dateTime = DateTime{year: 2026, month: 10, day: 25, hour: 13}
       assertEq(String(dateTime), "2026-10-25T13:00:00")
       assertEq(
-        DateTime.parse("2026-10-25T13:00:00.5"),
-        Ok{value: DateTime{...dateTime, millisecond: 500}},
+        DateTime.parse("2026-10-25T13:00:00.5")
+        Ok{value: DateTime{...dateTime, millisecond: 500}}
       )
       assert(DateTime.parse("2026-10-25T13:00:00Z") is Err{})
       assert(DateTime.parse("2026-02-30T00:00:00") is Err{})
       assert(DateTime.parse("2026-10-25T13:00:00.0001") is Err{})
-    }),
+    })
     test("gives its weekday, 1 for Monday", fn(): {
       assertEq(DateTime{year: 2026, month: 10, day: 25}.weekday(), 7)
       assertEq(DateTime{year: 2026, month: 10, day: 26}.weekday(), 1)
-    }),
+    })
     test("adds calendar days at the same wall-clock time", fn(): {
       const evening = DateTime{year: 2026, month: 10, day: 24, hour: 21}
       assertEq(evening.addDays(8), DateTime{year: 2026, month: 11, day: 1, hour: 21})
       const before = Time.of(evening, berlin())
       const after = Time.of(evening.addDays(1), berlin())
       assertEq(after.value - before.value, 25 * 3_600_000)
-    }),
-  ]),
+    })
+  ])
   group("Time in a zone", [
     test("reads the zone's wall clock", fn(): {
       assertEq(noon.inZone(berlin()), DateTime{year: 2026, month: 10, day: 25, hour: 13})
       assertEq(noon.inZone(time.utc()), DateTime{year: 2026, month: 10, day: 25, hour: 12})
-    }),
+    })
     test("formats with the zone's offset, which Time.parse reads back", fn(): {
       assertEq(noon.format(berlin()), "2026-10-25T13:00:00.000+01:00")
       assertEq(instant(noon.format(berlin())), noon)
-    }),
+    })
     test("of a skipped wall-clock time moves forward by the gap", fn(): {
       const skipped = DateTime{year: 2026, month: 3, day: 29, hour: 2, minute: 30}
       assertEq(Time.of(skipped, berlin()), instant("2026-03-29T01:30:00.000Z"))
-    }),
+    })
     test("of a repeated wall-clock time is the earlier", fn(): {
       const repeated = DateTime{year: 2026, month: 10, day: 25, hour: 2, minute: 30}
       assertEq(Time.of(repeated, berlin()), instant("2026-10-25T00:30:00.000Z"))
-    }),
+    })
     test("panics on a date that doesn't exist", async fn(): {
       assertEq(await expectPanic(february30), "There is no date and time 2026-02-30T00:00:00.000.")
-    }),
-  ]),
+    })
+  ])
 ]

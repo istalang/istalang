@@ -147,7 +147,7 @@ describe('comprehensions over fields (§3.1, §4)', () => {
       '  struct{first: compute(s.first, 1), second: compute(s.second, 2), for key, value in ...s.rest: [key]: compute(value, 3)}',
     );
     const broken = formatText(long) ?? '';
-    expect(broken).toContain('\n  for key, value in ...s.rest: [key]: compute(value, 3),\n}');
+    expect(broken).toContain('\n  for key, value in ...s.rest: [key]: compute(value, 3)\n}');
     expect(formatText(broken)).toBe(broken);
     const { actual, expected } = acceptanceOf(text);
     expect(actual).toEqual(expected);
@@ -224,9 +224,9 @@ describe('the canonical style', () => {
         'fn f(a: Int) -> Int: return a',
         'fn g():',
         '  call(',
-        `    ${long},`,
-        `    ${long},`,
-        `    ${long},`,
+        `    ${long}`,
+        `    ${long}`,
+        `    ${long}`,
         '  )',
       ),
     );
@@ -291,7 +291,7 @@ describe('the canonical style', () => {
       '  test("one", fn(): {',
       `    ${body}`,
       `    ${body}`,
-      '  }),',
+      '  })',
       ']',
     );
     expect(formatText(text)).toBe(text);
@@ -360,7 +360,7 @@ describe('the canonical style', () => {
         `        ${operand} +`,
         `        ${operand} +`,
         `        ${operand}`,
-        '    ),',
+        '    )',
         '  )',
       ),
     );

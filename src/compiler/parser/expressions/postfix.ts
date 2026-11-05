@@ -36,6 +36,7 @@ import type { TypeNode } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 import { namedTypeFrom } from '../parts/names.ts';
+import { spreadOpener } from '../parts/spreads.ts';
 import { parseDelimited, parseEnclosed } from '../recovery.ts';
 import { parseReference } from './operators.ts';
 import type { InfixParselet } from './parselet.ts';
@@ -83,7 +84,7 @@ function parseCall(
 /** An argument: a spread, a value named by its parameter, or a value. */
 function parseArgument(parser: Parser): CallArgument {
   const { cursor } = parser;
-  if (cursor.at('...')) {
+  if (cursor.at(spreadOpener)) {
     return parseSpread(parser);
   }
   if (cursor.at('identifier') && cursor.kindAt(1) === ':') {

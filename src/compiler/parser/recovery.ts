@@ -1,14 +1,17 @@
 /**
  * Bracketed constructs and error recovery.
  *
- * Every bracketed construct in the grammar goes through `parseEnclosed` (or, for braces whose lines
- * matter, `parseEnclosedIn`), so trailing commas (§2), line-break rules (§2) and recovery
- * behave the same everywhere. A caller names only the opener; its closer comes from `openers`
- * (brackets.ts). The closer is consumed inside the construct's own region, so a closer on a line of
- * its own still closes it. Blocks, whose items line breaks separate, are layout's (layout/index.ts).
+ * Every bracketed construct in the grammar goes through `parseEnclosed`, a list through `parseList`
+ * (or, for braces whose lines matter, `parseEnclosedIn`), so trailing commas (§2), line-break
+ * rules (§2) and recovery behave the same everywhere. A caller names only the opener; its closer
+ * comes from `openers` (brackets.ts). The closer is consumed inside the construct's own region, so
+ * a closer on a line of its own still closes it. A list's items are separated by `,` or by a line
+ * break where layout/item-breaks.ts says one separates them; blocks, whose items line breaks
+ * separate by their columns, are layout's (layout/index.ts).
  *
  * Recovery:
- * - It skips to the next separator, the construct's closer, or a line break.
+ * - It skips to the next separator, a line break separating a list's items, the construct's
+ *   closer, or a line break ending its region.
  * - It never consumes a closer that belongs to an enclosing bracket, so one bad list can't swallow
  *   the code after it.
  * - Nested bracket groups inside skipped tokens are skipped whole.
@@ -19,9 +22,16 @@
 
 import type { Invalid } from '../syntax/node.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
-import { type Closer, isBracketOpener, type Opener, openers } from './brackets.ts';
+import {
+  type BracketOpener,
+  type Closer,
+  isBracketOpener,
+  type Opener,
+  openers,
+} from './brackets.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
+import { breakSeparatesItems } from './layout/item-breaks.ts';
 import type { Parser } from './parser.ts';
 
 export interface Enclosed<Value> {
@@ -32,7 +42,7 @@ export interface Enclosed<Value> {
 
 export interface CommaSeparated<Item> {
   readonly items: readonly (Item | Invalid)[];
-  /** Whether any comma was written, which tells `(x,)` from `(x)`. */
+  /** Whether any comma was written, which tells `(x,)` from `(x)`; a line break doesn't. */
   readonly separated: boolean;
 }
 
@@ -44,7 +54,7 @@ export type DelimitedList<Item> = CommaSeparated<Item> & { readonly span: Anchor
  */
 export function parseEnclosed<Value>(
   parser: Parser,
-  opener: Opener,
+  opener: BracketOpener,
   parseInner: () => Value,
 ): Enclosed<Value> {
   return parseEnclosedIn(
@@ -56,8 +66,25 @@ export function parseEnclosed<Value>(
 }
 
 /**
+ * Parses `opener`, a list `parseInner` reads, and the matching closer, as `parseEnclosed` does: a
+ * line break may separate the list's items (layout/item-breaks.ts).
+ */
+export function parseList<Value>(
+  parser: Parser,
+  opener: Opener,
+  parseInner: () => Value,
+): Enclosed<Value> {
+  return parseEnclosedIn(
+    parser,
+    opener,
+    (parse) => parser.cursor.withinList(opener, parse),
+    parseInner,
+  );
+}
+
+/**
  * `opener`, whatever `parseInner` reads, and the matching closer, inside the region `enter` opens
- * (cursor/regions.ts): a bracket region, or the line-sensitive one of a block or entries in braces.
+ * (cursor/regions.ts): a bracket's, a list's, or the line-sensitive one of a block in braces.
  */
 export function parseEnclosedIn<Value>(
   parser: Parser,
@@ -72,7 +99,7 @@ export function parseEnclosedIn<Value>(
     const reported = parser.diagnostics.length;
     const result = parseInner();
     if (!atRegionEnd(parser)) {
-      skipUnexpected(parser, reported, `'${closer}'`, [closer]);
+      skipUnexpected(parser, reported, `'${closer}'`, () => cursor.at(closer));
     }
     if (cursor.eat(closer) === undefined) {
       parser.report(parserDiagnostics.unclosedBracket(openerToken.span, opener, closer));
@@ -88,9 +115,7 @@ export function parseDelimited<Item>(
   opener: Opener,
   parseItem: () => Item,
 ): DelimitedList<Item> {
-  const { value, span } = parseEnclosed(parser, opener, () =>
-    parseCommaSeparated(parser, parseItem),
-  );
+  const { value, span } = parseList(parser, opener, () => parseCommaSeparated(parser, parseItem));
   return { ...value, span };
 }
 
@@ -116,7 +141,10 @@ export function parseGroup<Item, Node>(
     : shapes.tuple(list.span, list.items);
 }
 
-/** `item, item, …` up to the current region's closer, inside `parseEnclosed`. */
+/**
+ * `item, item, …` up to the current region's closer, inside `parseList`: a `,`, or a line break
+ * that separates two items (layout/item-breaks.ts), stands between two.
+ */
 export function parseCommaSeparated<Item>(
   parser: Parser,
   parseItem: () => Item,
@@ -129,31 +157,42 @@ export function parseCommaSeparated<Item>(
     const reported = parser.diagnostics.length;
     items.push(parseItem());
     if (!(atListSeparator(parser) || atRegionEnd(parser))) {
-      items.push(
-        ...skipUnexpected(parser, reported, `',' or ${describeCloser(cursor.closer)}`, [',', ';']),
-      );
+      const expected = `',', a line break or ${describeCloser(cursor.closer)}`;
+      items.push(...skipUnexpected(parser, reported, expected, () => atListSeparator(parser)));
     }
-    if (!eatListSeparator(parser) || cursor.index === before) {
+    const separator = takeListSeparator(parser);
+    if (separator === undefined || cursor.index === before) {
       break;
     }
-    separated = true;
+    separated ||= separator === ',';
   }
   return { items, separated };
 }
 
-/** Whether a `,` comes next, or a `;` read as one where it stands between a list's items (§2). */
+/**
+ * Whether a list's separator comes next: a `,`, a `;` read as one, or a line break separating two
+ * items.
+ */
 function atListSeparator(parser: Parser): boolean {
-  return parser.cursor.at(',') || parser.cursor.at(';');
+  const { cursor } = parser;
+  return cursor.at(',') || cursor.at(';') || breakSeparatesItems(parser);
 }
 
-/** Consumes a `,`, or a `;` in its place, reported once: `;` separates only statements (§2). */
-function eatListSeparator(parser: Parser): boolean {
-  const semicolon = parser.cursor.eat(';');
+/**
+ * Takes the separator next, if any: a `,`, a `;` in its place, reported once (`;` separates only
+ * statements, §2), or a line break separating two items, which leaves nothing to consume.
+ */
+function takeListSeparator(parser: Parser): ',' | 'lineBreak' | undefined {
+  const { cursor } = parser;
+  const semicolon = cursor.eat(';');
   if (semicolon !== undefined) {
     parser.report(parserDiagnostics.semicolonBetweenItems(semicolon.span));
-    return true;
+    return ',';
   }
-  return parser.cursor.eat(',') !== undefined;
+  if (cursor.eat(',') !== undefined) {
+    return ',';
+  }
+  return breakSeparatesItems(parser) ? 'lineBreak' : undefined;
 }
 
 /**
@@ -182,7 +221,7 @@ export function skipToSeparator(
     separator === 'lineBreak'
       ? `a line break or ${closer}`
       : `'${separator}', a line break or ${closer}`;
-  return skipUnexpected(parser, reported, expected, stops);
+  return skipUnexpected(parser, reported, expected, () => stops.includes(parser.cursor.kind));
 }
 
 /** Whether the next token ends the current region: its closer, an enclosing closer, a line break, or the end. */
@@ -200,19 +239,19 @@ function describeCloser(closer: Closer | undefined): string {
 
 /**
  * Reports what stands where `expected` should (unless an error since `reported` already explains
- * it) and skips it, up to one of `stops` or the end of the region. Returns the skipped tokens as an
- * Invalid node.
+ * it) and skips it, up to where `isStop` holds or the end of the region. Returns the skipped
+ * tokens as an Invalid node.
  */
 function skipUnexpected(
   parser: Parser,
   reported: number,
   expected: string,
-  stops: readonly CursorKind[],
+  isStop: () => boolean,
 ): Invalid[] {
   if (parser.diagnostics.length === reported) {
     parser.reportExpected(expected);
   }
-  return skipUntil(parser, stops);
+  return skipTo(parser, isStop);
 }
 
 /**
@@ -220,13 +259,18 @@ function skipUnexpected(
  * them as an Invalid node. While speculating, nothing is skipped: the attempt will be undone.
  */
 export function skipUntil(parser: Parser, stops: readonly CursorKind[]): Invalid[] {
+  return skipTo(parser, () => stops.includes(parser.cursor.kind));
+}
+
+/** `skipUntil`, up to where `isStop` holds. */
+function skipTo(parser: Parser, isStop: () => boolean): Invalid[] {
   if (parser.isSpeculating) {
     return [];
   }
   const { cursor } = parser;
   const { start } = cursor.token.span;
   const before = cursor.index;
-  while (!(stops.includes(cursor.kind) || atRegionEnd(parser))) {
+  while (!(isStop() || atRegionEnd(parser))) {
     if (isBracketOpener(cursor.kind)) {
       cursor.skipGroup();
     } else {

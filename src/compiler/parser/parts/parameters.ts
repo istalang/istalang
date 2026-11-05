@@ -7,6 +7,7 @@ import type { Parameter } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { Parser } from '../parser.ts';
 import { parseDelimited } from '../recovery.ts';
+import { spreadOpener } from './spreads.ts';
 
 /** `(a: Int, b = 1, ...rest: Array<T>)`, starting at the `(`. */
 export function parseParameters(parser: Parser): readonly (Parameter | Invalid)[] {
@@ -15,7 +16,7 @@ export function parseParameters(parser: Parser): readonly (Parameter | Invalid)[
 
 function parseParameter(parser: Parser): Parameter {
   const { cursor } = parser;
-  const rest = cursor.eat('...');
+  const rest = cursor.eat(spreadOpener);
   const name = parser.identifier('a parameter name');
   const type = cursor.eat(':') === undefined ? undefined : parser.parameterType();
   const defaultValue = cursor.eat('=') === undefined ? undefined : parser.expression();

@@ -17,17 +17,17 @@ async fn main() -> Future<String>:
   const missing: Int? = xs.at(10)
   const words = ["a", "b", "c"]
   const parts = [
-    String(sum),
-    show(xs),
-    String(base.length()),
-    String(xs.at(-1) == 4),
-    String(popped == 4),
-    if missing == none: "none" else: "some",
-    String(xs.indexOf(2)),
-    String(xs.includes(9)),
-    String(base.indexOf(7)),
-    words.join("-"),
-    show(base.slice(1)),
-    show(base.slice(-5, 2)),
+    String(sum)
+    show(xs)
+    String(base.length())
+    String(xs.at(-1) == 4)
+    String(popped == 4)
+    if missing == none: "none" else: "some"
+    String(xs.indexOf(2))
+    String(xs.includes(9))
+    String(base.indexOf(7))
+    words.join("-")
+    show(base.slice(1))
+    show(base.slice(-5, 2))
   ]
   parts.join(" ")

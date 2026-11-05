@@ -34,12 +34,12 @@ fn rpcSuite() -> Array<Test>: [
     const double = rpc.create<Int, Int>()
     hold _ = double.onMessage(fn(n: Int): n * 2)
     assertEq(await double.call(21), Ok{(42)})
-  }),
+  })
   ...runAndReRun(
-    "serves calls one at a time, in the order they arrived",
-    servingTwoCalls,
-    ([Ok{(1)}, Ok{(2)}], ["start 1", "end 1", "start 2", "end 2"]),
-  ),
+    "serves calls one at a time, in the order they arrived"
+    servingTwoCalls
+    ([Ok{(1)}, Ok{(2)}], ["start 1", "end 1", "start 2", "end 2"])
+  )
   test("shares the calls among its servers, each call going to one", async fn(): {
     const method = rpc.create<Int, String>()
     hold _ = method.onMessage(fn(n: Int): "a" + n)
@@ -47,7 +47,7 @@ fn rpcSuite() -> Array<Test>: [
     await runtime.commit()
     const (first, second) = (method.call(1), method.call(2))
     assertEq([await first, await second], [Ok{("a1")}, Ok{("b2")}])
-  }),
+  })
   test("fails a call whose server is disposed while handling it", async fn(): {
     const method = rpc.create<Int, Int>()
     const never = Slot.create<Int>()
@@ -56,11 +56,11 @@ fn rpcSuite() -> Array<Test>: [
     await runtime.commit()
     drop server
     assert(unanswered(await reply))
-  }),
+  })
   test("fails a call still queued when its method dies", async fn(): {
     const reply = rpc.create<Int, Int>().call(1)
     assert(unanswered(await reply))
-  }),
+  })
   test("withdraws a call its caller lets go of before a server takes it", async fn(): {
     const method = rpc.create<Int, Int>()
     let served: Array<Int> = []
@@ -68,5 +68,5 @@ fn rpcSuite() -> Array<Test>: [
     hold _ = method.onMessage(fn(n: Int): { served.push(n); n })
     assertEq(await method.call(2), Ok{(2)})
     assertEq(served, [2])
-  }),
+  })
 ]

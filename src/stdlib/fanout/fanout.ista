@@ -49,9 +49,9 @@ fn _publish<M>(bus: Bus<M>, message: M) -> Shared<Bool>:
   retracted
 
 async fn _follow<M>(
-  start: Slot<_Link<M>>,
-  bus: WeakRef<Bus<M>>,
-  handler: async fn(M) -> Unit,
+  start: Slot<_Link<M>>
+  bus: WeakRef<Bus<M>>
+  handler: async fn(M) -> Unit
 ) -> Future<Unit>:
   let at = start
   while true:

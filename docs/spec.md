@@ -177,8 +177,24 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
 
 - **Indentation** uses spaces only: a tab in a line's leading whitespace is a compile error. Any consistent width works.
 - **Line breaks** are `\n`, `\r\n` or a lone `\r`. A byte order mark at the start of a file is ignored.
-- **Continuation.** A line break is ignored inside `(…)`, `[…]` and the braces of a struct literal, so a call or literal may span lines. Inside braces that list fields or variants, as in `{ sku: String, qty: Int }`, a line break separates entries just as `,` does. There is no backslash continuation.
-- **Trailing commas** are allowed in every comma-separated list.
+- **Continuation.** Inside a bracketed list a line break separates two items, as `,` does, where the item before it could end there and the next line's first token can start an item; anywhere else in brackets it is ignored, so an item spans lines. The lists are the items of `(…)`, `[…]` and `<…>`, a struct literal's and a struct pattern's braces, and the braces that list fields or variants, as in `{ sku: String, qty: Int }`. There is no backslash continuation.
+  - **What starts an item:** a name, a literal, a template, `true`, `false` or `none`; an opening bracket; `fn`, `async`, `if`, `struct`, `new`, `not`, `await`, `for`, `...` or `@`; and `-`, `*`, `&`, `..` or `..=` glued to its operand (`-1`, `*x`, `&x`, `..5`).
+  - **What continues the item:** a binary operator, `not in` among them; `-`, `*`, `&`, `..` or `..=` followed by a space (`- 1`); `.`, `?.`, `->`, `?->`, `!`, `?`; and `else`, `elif`, `in`, `is`, `as`, `by`, `=`, `:`. So does any line ending where the item can't end: after an operator, `.`, `:`, `=`, `->`, an opening bracket or a prefix.
+  - **A postfix bracket stands on its operand's line:** a call's `(`, an index's `[`, a struct literal's `{` and type arguments' `<`, as a tagged template's tag does. On the next line each starts an item, or for `<`, continues as the operator.
+  - `,` and line breaks mix: a `,` ending or starting a line separates once, and items sharing a line still need `,`. Blank lines and comments between two items change nothing.
+
+  ```python statements
+  const pairs = [
+      (1, "a")                     # two items, not a call
+      (2, "b")
+  ]
+  retry(
+      times: 3
+      backoff: base
+          * 2                      # `*` and a space: the item goes on
+  )
+  ```
+- **Trailing commas** are allowed in every comma-separated list; a list broken over lines needs none.
 - **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
 - **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Ten more words are keywords only where the grammar expects them and ordinary names elsewhere: `type` before an alias's name, or an associated type's in a struct, enum or trait body (§3.1, §3.10), `shared` before `struct` and `new` before a name (§3.18), `from` before an import's path, `sendable` right after `extern` or before a function type's `fn` or `async`, `any` before a trait's name in a type (§3.10), `keyof` before a type in a type (§3.1), `infer` before a type variable's name in a type `match` case's pattern (§3.17), `hold` before the variable declaration it holds (§3.4), and `by` after a range, before its step (§3.8). So `T.from` (§3.10), a field named `type` (§9) and a function named `hold` are valid. The built-in types' names, `Int`, `Float`, `Bool`, `String`, `None`, `Unit`, `Never` and `Self` (§3.10), are no keywords, but no type, variant or type parameter is declared with them, since every module sees them.
 
@@ -251,7 +267,7 @@ Duration literals are sugar for the standard library's `Duration`: an integer pl
 **Literals:**
 
 - **Strings:** `"…"` or `'…'` on a single line, with the escapes `\n`, `\t`, `\\`, `\"`, `\'`, `` \` ``, `\$` and `\u{…}`, which takes 1 to 6 hex digits naming a Unicode scalar value. Any other escape is a compile error.
-- **Templates:** `` `Purchase ${req.id} awaits ${who}` `` is a `String`. Each `${…}` holds an expression, whose value is written as text by its `toString`, found as an operator's function is (§3.9), so a program's own type, a type parameter that is `Stringable` and an `any Stringable` all work; a value with no such `toString` is a compile error. A template takes a String's escapes: `\${` writes `${`, and a `$` not before `{` is plain text. Inside `${…}` line breaks are ignored, as inside brackets, and a `#` comment runs to the end of its line. A template without values is a constant, as a String literal is. For text whose shape comes from data, `strings.format` remains (§3.8).
+- **Templates:** `` `Purchase ${req.id} awaits ${who}` `` is a `String`. Each `${…}` holds an expression, whose value is written as text by its `toString`, found as an operator's function is (§3.9), so a program's own type, a type parameter that is `Stringable` and an `any Stringable` all work; a value with no such `toString` is a compile error. A template takes a String's escapes: `\${` writes `${`, and a `$` not before `{` is plain text. Inside `${…}` line breaks are ignored, since its one expression is no list, and a `#` comment runs to the end of its line. A template without values is a constant, as a String literal is. For text whose shape comes from data, `strings.format` remains (§3.8).
 - **Tagged templates:** `` tag`a ${x} b` `` is the call `tag(["a ", " b"], x)`: the texts, one more than the values, then each value. It is an ordinary call, so `tag` is any function, method or function value, and its parameters decide what the values must be, as `fn sql(parts: Array<String>, ...values: Array<any Stringable>)` takes any text-writable ones. A tag stands on the template's line, as a call's `(` does.
 - **Multi-line text:** a template, and a docstring (below), may span lines. A line break in it is `\n`, whichever the source uses. If the opening delimiter ends its line, that line break goes, and so does the one before a closing delimiter alone on its line, with the spaces before it. Then every line after the first loses the leading spaces they all share; blank lines don't count. Indentation is read before escapes are, so an escaped `\n` or `\t` is never a line break or indentation. A template, a `${…}` or a docstring left open runs to the end of the file, as in JavaScript; the error points at its opening delimiter:
 
@@ -429,7 +445,7 @@ log("info", "a", ...more)    # parts is "a" followed by the elements of more
 log(level: "info", parts: more)
 ```
 
-**Arguments.** A call fills its function's parameters as a struct literal fills fields (§3.1): by position, then by name, and each parameter it leaves out takes its default.
+**Arguments.** A call fills its function's parameters as a struct literal fills fields (§3.1): by position, then by name, and each parameter it leaves out takes its default. A call broken over lines needs no `,` between its arguments (§2).
 
 - **Defaults.** Parameters with defaults come after the others. A default is an expression evaluated at every call that leaves its parameter out, and it may use earlier parameters, as in `fn window(start: Int, end: Int = start + 10)`. It is a value, not part of the function's body, so neither `return` nor `?` can leave it. Such a parameter may omit its type, which is inferred from the default: `fn retry(times = 3)`. A struct's fields have defaults the same way (§3.1).
 - **Named arguments.** `f(name: value)` gives the parameter of that name, so a call can leave out a default before one it gives: `retry(backoff: 2s)`. Named arguments follow the positional ones, in any order. A positional argument or a spread after a named one is a compile error, and so is a parameter given twice. A `&` parameter is named with its `&`: `f(target: &x)`. A method's `self` is given before the dot, never by name.

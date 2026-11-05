@@ -11,11 +11,11 @@ async fn main() -> Future<String>:
   const steps: Array<Int?> = [...range]
   const nested: Array<Int??> = [...xs]
   const parts = [
-    String(ys.length()),
-    String(ys[1] ?? -1),
-    String(ys[3] ?? -1),
-    letters[1] ?? "-",
-    String(steps[1] ?? -1),
-    String((nested[0] ?? none) ?? -1),
+    String(ys.length())
+    String(ys[1] ?? -1)
+    String(ys[3] ?? -1)
+    letters[1] ?? "-"
+    String(steps[1] ?? -1)
+    String((nested[0] ?? none) ?? -1)
   ]
   parts.join(" ")

@@ -21,21 +21,21 @@ fn suite() -> Array<Test>: [
     test("Regex.parse checks a pattern", fn(): {
       assertEq(parsed("a+(b|c)*"), "ok")
       assertEq(
-        parsed("("),
-        "'(' is not a regular expression (error parsing regexp: missing closing ): `(`).",
+        parsed("(")
+        "'(' is not a regular expression (error parsing regexp: missing closing ): `(`)."
       )
-    }),
+    })
     test("backreferences and lookaround are refused", fn(): {
       assert(parsed("(a)\\1") != "ok")
       assert(parsed("a(?=b)") != "ok")
       assert(parsed("(?<=a)b") != "ok")
-    }),
+    })
     test("an invalid literal pattern panics where it is used", async fn(): {
       assertEq(
-        await expectPanic(fn(): Regex{"a)"}.test("a")),
-        "'a)' is not a regular expression (error parsing regexp: unexpected ): `a)`).",
+        await expectPanic(fn(): Regex{"a)"}.test("a"))
+        "'a)' is not a regular expression (error parsing regexp: unexpected ): `a)`)."
       )
-    }),
+    })
     test("flags are written inline", fn(): {
       assert(Regex{"(?i)abc"}.test("xABCx"))
       assert(not Regex{"abc"}.test("ABC"))
@@ -43,24 +43,24 @@ fn suite() -> Array<Test>: [
       assert(not Regex{"^b$"}.test("a\nb\nc"))
       assert(Regex{"(?s)a.b"}.test("a\nb"))
       assert(not Regex{"a.b"}.test("a\nb"))
-    }),
+    })
     test("a regex is its pattern's text, in JSON too", fn(): {
       assertEq(String(Regex{"a+"}), "a+")
       assertEq(json.stringify(Regex{"a+"}), "\"a+\"")
       assert(json.parse<Regex>("\"a+\"") is Ok{value is Regex{pattern is "a+"}})
       assert(json.parse<Regex>("\"(\"") is Err{})
-    }),
+    })
     test("escape gives the pattern matching a text literally", fn(): {
       const dotted = Regex{regex.escape("a.b*")}
       assert(dotted.test("xa.b*"))
       assert(not dotted.test("axbb"))
-    }),
-  ]),
+    })
+  ])
   group("matching", [
     test("test matches anywhere", fn(): {
       assert(Regex{"b+"}.test("abbc"))
       assert(not Regex{"x"}.test("abc"))
-    }),
+    })
     test("find gives the first match, where it starts and its groups", fn(): {
       const found = date().find("😀 on 2026-10")
       assert(found is Match{text is "2026-10", index is 5})
@@ -68,10 +68,10 @@ fn suite() -> Array<Test>: [
         const captures: Array<String?> = ["2026", "10", none, none]
         assertEq(m.captures, captures)
         assertEq(m.named, ["year": "2026", "month": "10"])
-    }),
+    })
     test("find gives none when nothing matches", fn(): {
       assertEq(Regex{"\\d"}.find("abc"), none)
-    }),
+    })
     test("findAll gives every match, in order", fn(): {
       const all = date().findAll("2026-10-27, 😀1999-01")
       assertEq([for m in all: m.text], ["2026-10-27", "1999-01"])
@@ -79,36 +79,36 @@ fn suite() -> Array<Test>: [
       const days: Array<String?> = ["27", none]
       assertEq([for m in all: m.named.get("day")], days)
       assertEq(Regex{"x"}.findAll("abc").length(), 0)
-    }),
+    })
     test("a pattern that backtracks exponentially elsewhere runs in linear time", fn(): {
       const text = "a".repeat(100_000) + "b"
       assert(not Regex{"(a+)+$"}.test(text + "!"))
       assert(not Regex{"(a|aa)*c"}.test(text))
       assert(Regex{"(a+)+b"}.test(text))
-    }),
-  ]),
+    })
+  ])
   group("rewriting", [
     test("replace replaces the first match, replaceAll every one", fn(): {
       assertEq(Regex{"o"}.replace("foo", "0"), "f0o")
       assertEq(Regex{"o"}.replaceAll("foo", "0"), "f00")
       assertEq(Regex{"x"}.replaceAll("foo", "0"), "foo")
-    }),
+    })
     test("a replacement expands groups as JavaScript's does", fn(): {
       assertEq(Regex{"(\\w)(\\w)"}.replaceAll("ab cd", "$2$1"), "ba dc")
       assertEq(date().replace("on 2026-10", "$<month>/$<year>"), "on 10/2026")
       assertEq(Regex{"b"}.replace("abc", "[$&]"), "a[b]c")
       assertEq(Regex{"b"}.replace("abc", "$$"), "a$c")
-    }),
+    })
     test("split cuts around each match, keeping empty pieces", fn(): {
       assertEq(Regex{",\\s*"}.split("a, b,c,"), ["a", "b", "c", ""])
       assertEq(Regex{","}.split(",a,,b"), ["", "a", "", "b"])
       assertEq(Regex{"x"}.split("abc"), ["abc"])
-    }),
+    })
     test("an empty match splits between code points, never at the ends", fn(): {
       assertEq(Regex{""}.split("a😀b"), ["a", "😀", "b"])
       assertEq(Regex{"x*"}.split("axbc"), ["a", "b", "c"])
       assertEq(Regex{""}.split(""), [])
       assertEq(Regex{"x"}.split(""), [""])
-    }),
-  ]),
+    })
+  ])
 ]

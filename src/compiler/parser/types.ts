@@ -16,8 +16,8 @@
  * that allows it. A `&` met anywhere else is still parsed, so the tree shows what was written, but
  * it is reported. Expressions follow the same rule for `&x` in call arguments.
  *
- * `T??` arrives as one `??` token and means `T?` twice. Fields of an anonymous struct are
- * separated by `,` or line breaks (§2). A function type without `->` returns unit, as
+ * `T??` arrives as one `??` token and means `T?` twice. Fields of an anonymous struct, as the items
+ * of every list in a type, are separated by `,` or line breaks (§2). A function type without `->` returns unit, as
  * `Setup<E> = async fn(async fn(E))` in §10 shows.
  */
 
@@ -32,12 +32,14 @@ import type {
 } from '../syntax/types.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
+import { atPostfix } from './layout/item-breaks.ts';
 import type { Parser } from './parser.ts';
 import { parseConstraints, parseStructConstraint } from './parts/constraints.ts';
 import { parseFunctionKeyword } from './parts/functions.ts';
 import { type LeveledParselet, leveledGrammar } from './parts/levels.ts';
 import { type Negatable, parseLiteral, parseNegativeLiteral } from './parts/literals.ts';
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
+import { spreadOpener } from './parts/spreads.ts';
 import { afterStructKeyword, parseFieldEntries } from './parts/structs.ts';
 import { parseDelimited, parseEnclosed, parseGroup } from './recovery.ts';
 import {
@@ -201,7 +203,7 @@ export function parseTypeArguments(parser: Parser): readonly TypeNode[] {
 
 function parseNamedType(parser: Parser): TypeNode {
   const path = parseQualifiedName(parser);
-  const typeArguments = parser.cursor.at('<') ? parseTypeArguments(parser) : [];
+  const typeArguments = atPostfix(parser, '<') ? parseTypeArguments(parser) : [];
   return namedTypeFrom(parser, path, typeArguments);
 }
 
@@ -241,7 +243,7 @@ function parseParameterTypes(parser: Parser): FunctionType['parameters'] {
     return [];
   }
   return parseDelimited(parser, '(', () =>
-    parser.cursor.at('...') ? parseRestType(parser) : parser.parameterType(),
+    parser.cursor.at(spreadOpener) ? parseRestType(parser) : parser.parameterType(),
   ).items;
 }
 

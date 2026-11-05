@@ -10,13 +10,13 @@ async fn main() -> Future<String>:
   for ch in s:
     joined = if joined == "": ch else: joined + "," + ch
   const parts = [
-    String(s.length()),
-    "abc"[1],
-    s[3],
-    String(missing == none),
-    s[..2] + s[3..4],
-    "abc"[0..2],
-    String(chars.length()),
-    joined,
+    String(s.length())
+    "abc"[1]
+    s[3]
+    String(missing == none)
+    s[..2] + s[3..4]
+    "abc"[0..2]
+    String(chars.length())
+    joined
   ]
   parts.join(" ")

@@ -17,10 +17,10 @@ enum Encoding:
 extern fn hash(algorithm: Hash, data: String, encoding: Encoding = Encoding.Hex) -> String
 
 extern fn hmac(
-  algorithm: Hash,
-  key: String,
-  data: String,
-  encoding: Encoding = Encoding.Hex,
+  algorithm: Hash
+  key: String
+  data: String
+  encoding: Encoding = Encoding.Hex
 ) -> String
 
 # Takes the same time whatever two strings of one length hold; strings of different lengths are

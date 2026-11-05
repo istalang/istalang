@@ -7,9 +7,13 @@
  * - In a line-sensitive region, a token that starts a line (other than the region's first token)
  *   reads as the pseudo-token `lineBreak`. A construct being parsed therefore stops there, as a
  *   Python statement does.
- * - In a list of items, a line break separates items, one or more to a line. A block's lines must
- *   start at its column, and layout decides from the next line's column whether the block goes on
- *   (layout.ts). Entries in braces, `{ a: Int, b: Int }`, have no column: every line continues.
+ * - In a block, a line break separates items, one or more to a line. A block's lines must start at
+ *   its column, and layout decides from the next line's column whether the block goes on
+ *   (layout/index.ts).
+ * - In a list, `[1, 2]`, `f(a, b)` or `{ a: Int, b: Int }`, line breaks are read past as in
+ *   brackets, and the parser decides where one separates two items (layout/item-breaks.ts). A
+ *   `<…>` list, `<` being no bracket, ends at a line heading no deeper than its `<`'s own, unless
+ *   its `>` heads that line: that line break ends it as one ends a line-sensitive region.
  * Regions nest. A region also records the closer that ends it, so recovery knows which closing
  * brackets belong to enclosing constructs and must not be consumed. A region without a closer of
  * its own keeps the closer of the region it sits in, since that closer also ends it. A bracket no
@@ -33,14 +37,21 @@
 import { lastIndexAtMost } from '../../../structures/sorted.ts';
 import type { Span } from '../../../text/span.ts';
 import type { TemplateValue, Token, TokenKind } from '../../syntax/tokens.ts';
-import { bracketClosers, type Closer, type Opener, openers } from '../brackets.ts';
 import {
+  type BracketOpener,
+  bracketClosers,
+  type Closer,
+  type Opener,
+  openers,
+} from '../brackets.ts';
+import {
+  angleListRegion,
   blockBracesRegion,
   blockRegion,
   bracketRegion,
   entered,
-  entryBracesRegion,
   type LineRegionShape,
+  listRegion,
   oneLineRegion,
   type Region,
   topLevelRegion,
@@ -64,10 +75,17 @@ export interface CursorMark {
   readonly regionStart: number;
 }
 
+/** How indentation reads a token list: where brackets left open end, and each token's column. */
+export interface Indentation {
+  /** Where each bracket no closer matches ends, by the index its region starts at (brackets.ts). */
+  readonly unclosedEnds: ReadonlyMap<number, number>;
+  readonly columnOf: (token: Token) => number;
+}
+
 export class Cursor {
   readonly #tokens: readonly Token[];
-  /** Where each bracket no closer matches ends, by the index its region starts at. */
-  readonly #unclosedEnds: ReadonlyMap<number, number>;
+  /** Undefined in a template's value, where no line ends a bracket or a list. */
+  readonly #indentation: Indentation | undefined;
   /** The regions enclosing the current one, outermost first. */
   readonly #enclosing: Region[] = [];
   #current: Region = topLevelRegion();
@@ -79,15 +97,11 @@ export class Cursor {
 
   /**
    * `tokens` must end with the `end` token, as a ScanResult's or `templateValue`'s do;
-   * `unclosedEnds` are theirs as brackets.ts finds them.
+   * `indentation` reads theirs.
    */
-  constructor(
-    tokens: readonly Token[],
-    templateValue?: TemplateValue,
-    unclosedEnds: ReadonlyMap<number, number> = new Map(),
-  ) {
+  constructor(tokens: readonly Token[], templateValue?: TemplateValue, indentation?: Indentation) {
     this.#tokens = tokens;
-    this.#unclosedEnds = unclosedEnds;
+    this.#indentation = indentation;
     this.#origin = templateValue === undefined ? 0 : templateValue.span.start + 2;
     this.inTemplateValue = templateValue !== undefined;
   }
@@ -209,7 +223,7 @@ export class Cursor {
       const { kind } = this.#rawAt(this.#index);
       const closer = bracketClosers.get(kind);
       if (closer !== undefined) {
-        const own = bracketRegion(this.#index, closer, this.#unclosedEnds.get(this.#index + 1));
+        const own = bracketRegion(this.#index, closer, this.#unclosedEnd(this.#index + 1));
         pending.push(entered(own, pending.at(-1) ?? this.#current));
       } else if (pending.some((group) => group.closer === kind)) {
         pending.splice(pending.findLastIndex((group) => group.closer === kind));
@@ -234,9 +248,22 @@ export class Cursor {
     return this.#current.ownsCloser;
   }
 
-  /** Whether the current region is a list whose line breaks separate items. */
+  /** Whether the current region is a block, whose line breaks separate items. */
   get separatesItems(): boolean {
     return this.#current.lineBreaks === 'separate';
+  }
+
+  /**
+   * Whether the token `ahead` positions on starts a line inside the current list, where the parser
+   * decides whether the break before it separates two items (layout/item-breaks.ts).
+   */
+  startsLineInList(ahead = 0): boolean {
+    if (this.#current.lineBreaks !== 'betweenItems') {
+      return false;
+    }
+    const index = this.#index + ahead;
+    const token = this.#rawAt(index);
+    return token.firstOnLine && token.kind !== 'end' && !this.#isPastEnd(index);
   }
 
   /** The current region's column, if it is a block. */
@@ -249,26 +276,26 @@ export class Cursor {
     return this.#enclosing.findLast((region) => region.column !== undefined)?.column;
   }
 
-  /** Runs `parse` inside the region `opener` opens, which its closer ends. */
-  within<Result>(opener: Opener, parse: () => Result): Result {
-    const { closer, isBracket } = openers[opener];
-    const region = isBracket
-      ? bracketRegion(this.#index, closer, this.#unclosedEnds.get(this.#index))
-      : { ...this.#current, closer, ownsCloser: true };
+  /** Runs `parse` inside the bracket `opener` opens, which its closer ends; the cursor past it. */
+  within<Result>(opener: BracketOpener, parse: () => Result): Result {
+    const { closer } = openers[opener];
+    const until = this.#unclosedEnd(this.#index);
+    return this.#inRegion(bracketRegion(this.#index, closer, until), parse);
+  }
+
+  /** Runs `parse` inside the list `opener` opens, which its closer ends; the cursor past it. */
+  withinList<Result>(opener: Opener, parse: () => Result): Result {
+    const { closer } = openers[opener];
+    const region =
+      opener === '<'
+        ? angleListRegion(this.#index)
+        : listRegion(this.#index, closer, this.#unclosedEnd(this.#index));
     return this.#inRegion(region, parse);
   }
 
   /** Runs `parse` inside `{…}` whose lines form a block at `column`, as a block expression's do. */
   withinBlockBraces<Result>(column: number, parse: () => Result): Result {
-    return this.#inLineRegion(
-      blockBracesRegion(column, this.#unclosedEnds.get(this.#index)),
-      parse,
-    );
-  }
-
-  /** Runs `parse` inside `{…}` whose entries are separated by `,` or line breaks, at any column. */
-  withinEntryBraces<Result>(parse: () => Result): Result {
-    return this.#inLineRegion(entryBracesRegion(this.#unclosedEnds.get(this.#index)), parse);
+    return this.#inLineRegion(blockBracesRegion(column, this.#unclosedEnd(this.#index)), parse);
   }
 
   /** Runs `parse` inside a block at `column`, starting at the next token. */
@@ -325,10 +352,37 @@ export class Cursor {
     if (token.kind === 'end') {
       return false;
     }
+    if (this.#isPastEnd(index)) {
+      return true;
+    }
+    if (!token.firstOnLine) {
+      return false;
+    }
+    if (region.angleOpener !== undefined) {
+      return this.#endsAngleList(region.angleOpener, index);
+    }
     return (
-      this.#isPastEnd(index) ||
-      (region.lineBreaks !== 'ignored' && index > region.start && token.firstOnLine)
+      index > region.start && (region.lineBreaks === 'end' || region.lineBreaks === 'separate')
     );
+  }
+
+  /**
+   * Whether the line headed by the token at `index` ends the `<…>` list opened at `opener`
+   * (`Region.angleOpener`): it stands no deeper than the `<`'s line, and its head isn't the `>`.
+   */
+  #endsAngleList(opener: number, index: number): boolean {
+    const indentation = this.#indentation;
+    const angle = this.#tokens[opener];
+    if (indentation === undefined || angle === undefined || this.#readAt(index).kind === '>') {
+      return false;
+    }
+    const { columnOf } = indentation;
+    return columnOf(this.#rawAt(index)) <= columnOf(this.lineHead(angle.span.start));
+  }
+
+  /** Where the bracket whose region starts at `start` ends if no closer matches it. */
+  #unclosedEnd(start: number): number | undefined {
+    return this.#indentation?.unclosedEnds.get(start);
   }
 
   /** Whether `index` is at or past where a bracket no closer matches ends the current region. */

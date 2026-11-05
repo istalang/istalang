@@ -40,14 +40,14 @@ async fn main() -> Future<String>:
   const box = Box<Array<Int>>{size: 4}
   const circle: Shape = Circle{}
   [
-    String(plain.times),
-    String(plain.backoff),
-    String(plain.limit),
-    String(spread.backoff),
-    String(box.items.length()),
-    String(box.size),
-    String(radius(circle)),
-    String(wide.low),
-    String(wide.high),
-    String(holder.items.length()),
+    String(plain.times)
+    String(plain.backoff)
+    String(plain.limit)
+    String(spread.backoff)
+    String(box.items.length())
+    String(box.size)
+    String(radius(circle))
+    String(wide.low)
+    String(wide.high)
+    String(holder.items.length())
   ].join(" ")

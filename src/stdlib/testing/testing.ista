@@ -56,7 +56,7 @@ async fn _run(suite: fn() -> Array<Test>, title: String, position: Int, expected
     panic(
       "The suite listed other tests when it was called again, so test '" +
         expected +
-        "' can't be found.",
+        "' can't be found."
     )
 
 # The tests of `tests`, depth first, titled under `title`, each with its own marks and `skipping`
@@ -67,15 +67,15 @@ fn _entries(title: String, tests: Array<Test>, skipping: Bool, focusing: Bool) -
     match each:
       case Case{title as own, body, skipped, only as focused}:
         const listed = Listed{
-          title: title + " › " + own,
-          skipped: skipped or skipping,
-          only: focused or focusing,
+          title: title + " › " + own
+          skipped: skipped or skipping
+          only: focused or focusing
         }
         entries.push(_Entry{listed, body})
       case Group{title as own, tests as inner, skipped, only as focused}:
         entries = [
-          ...entries,
-          ..._entries(title + " › " + own, inner, skipped or skipping, focused or focusing),
+          ...entries
+          ..._entries(title + " › " + own, inner, skipped or skipping, focused or focusing)
         ]
   entries
 
@@ -90,7 +90,7 @@ extern fn _calls<F, A>(self: Mock<F>) -> Array<A>
 fn mock<...A, R>(target: fn(...A) -> R, replacement: fn(...A) -> R) -> Mock<fn(...A) -> R>:
   _mock(target, replacement)
 fn mock<...A, R>(target: async fn(...A) -> R, replacement: async fn(...A) -> R) -> Mock<async fn(
-  ...A,
+  ...A
 ) -> R>:
   _mock(target, replacement)
 
@@ -141,16 +141,16 @@ fn only(entry: Test) -> Test: _marked(entry, false, true)
 fn _marked(entry: Test, skipping: Bool, focusing: Bool) -> Test:
   match entry:
     case Case{title, body, skipped, only as focused}: Case{
-      title,
-      body,
-      skipped: skipped or skipping,
-      only: focused or focusing,
+      title
+      body
+      skipped: skipped or skipping
+      only: focused or focusing
     }
     case Group{title, tests, skipped, only as focused}: Group{
-      title,
-      tests,
-      skipped: skipped or skipping,
-      only: focused or focusing,
+      title
+      tests
+      skipped: skipped or skipping
+      only: focused or focusing
     }
 
 # An environment for tests (§10): prepares it, runs the test inside it, and tears it down after.
@@ -163,27 +163,27 @@ fn setups<A, B, C>(a: Setup<A>, b: Setup<B>, c: Setup<C>) -> Setup<(A, B, C)>:
 fn setups<A, B, C, D>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>) -> Setup<(A, B, C, D)>:
   _joined(setups(a, b, c), d, fn(p: (A, B, C), z: D): (p.0, p.1, p.2, z))
 fn setups<A, B, C, D, E>(a: Setup<A>, b: Setup<B>, c: Setup<C>, d: Setup<D>, e: Setup<E>) -> Setup<(
-  A,
-  B,
-  C,
-  D,
-  E,
+  A
+  B
+  C
+  D
+  E
 )>:
   _joined(setups(a, b, c, d), e, fn(p: (A, B, C, D), z: E): (p.0, p.1, p.2, p.3, z))
 fn setups<A, B, C, D, E, G>(
-  a: Setup<A>,
-  b: Setup<B>,
-  c: Setup<C>,
-  d: Setup<D>,
-  e: Setup<E>,
-  g: Setup<G>,
+  a: Setup<A>
+  b: Setup<B>
+  c: Setup<C>
+  d: Setup<D>
+  e: Setup<E>
+  g: Setup<G>
 ) -> Setup<(A, B, C, D, E, G)>:
   _joined(setups(a, b, c, d, e), g, fn(p: (A, B, C, D, E), z: G): (p.0, p.1, p.2, p.3, p.4, z))
 
 # `outer` around `inner`, the test receiving their environments as `join` makes one of them.
 fn _joined<O, I, J>(outer: Setup<O>, inner: Setup<I>, join: fn(O, I) -> J) -> Setup<J>:
   async fn(body: async fn(J) -> Unit): await outer(
-    async fn(o: O): await inner(async fn(i: I): await body(join(o, i))),
+    async fn(o: O): await inner(async fn(i: I): await body(join(o, i)))
   )
 
 # Panics unless `condition` holds (§10).

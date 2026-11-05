@@ -24,16 +24,16 @@ async fn main() -> Future<Array<String>>:
     case Ok{value}: String(value)
     case Err{error}: error.code
   [
-    String(42),
-    String(1.0),
-    (-0.5).toString(),
-    true.toString(),
-    time.Time{value: 1792929600000}.toString(),
-    String(90m),
-    read(Int.parse("-7")),
-    flag,
-    due,
-    at,
-    read(Int.parse("4x")),
-    code,
+    String(42)
+    String(1.0)
+    (-0.5).toString()
+    true.toString()
+    time.Time{value: 1792929600000}.toString()
+    String(90m)
+    read(Int.parse("-7"))
+    flag
+    due
+    at
+    read(Int.parse("4x"))
+    code
   ]

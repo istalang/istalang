@@ -220,7 +220,7 @@ fn _mismatch<T>(json: Json, path: String, expected: String) -> Result<T>:
   _failure(path, "expected " + expected + ", found " + _kind(json))
 
 fn _failure<T>(path: String, message: String) -> Result<T>: Err{
-  error: _error(path + ": " + message),
+  error: _error(path + ": " + message)
 }
 
 # The Error every read of JSON fails with.

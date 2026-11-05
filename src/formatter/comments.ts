@@ -8,7 +8,7 @@
  * line its node ends, through a line suffix, so nothing printed after it on that line can be eaten.
  */
 
-import { builders } from 'prettier/doc';
+import { builders, utils } from 'prettier/doc';
 import type { Comment } from '../compiler/syntax/tokens.ts';
 import { lineMapOf, splitLines } from '../text/line-map.ts';
 import type { SourceText } from '../text/source-text.ts';
@@ -81,10 +81,15 @@ export function hasBlankLine(text: string, start: number, end: number): boolean 
 /**
  * An end-of-line comment, at the end of the line it is printed on. Another one waiting for that
  * line's end would merge with it into one comment, so a line break comes first then: in brackets,
- * the only place two can meet, as `a: # c\n 1, # d` printed on one line would put them.
+ * the only place two can meet, as `a # c\n + b # d` printed on one line would put them.
  */
 function endOfLineDoc(comment: PlacedComment): builders.Doc {
   return [lineSuffixBoundary, lineSuffix(` ${comment.text}`), breakParent];
+}
+
+/** An own-line comment after its node: on the next line, which nothing else is printed on. */
+function ownLineAfterDoc(comment: PlacedComment): builders.Doc {
+  return [lineSuffix([hardline, comment.blankBefore ? hardline : '', comment.text]), breakParent];
 }
 
 /** Comments printed before their node: an own-line one on its line, an end-of-line one after the code. */
@@ -96,13 +101,27 @@ export function leadingDocs(comments: readonly PlacedComment[]): builders.Doc[] 
   );
 }
 
-/** Comments printed after their node, at the end of its line or on lines of their own. */
-export function trailingDocs(comments: readonly PlacedComment[]): builders.Doc[] {
-  return comments.map((comment) =>
-    comment.ownLine
-      ? [lineSuffix([hardline, comment.blankBefore ? hardline : '', comment.text]), breakParent]
-      : endOfLineDoc(comment),
-  );
+/**
+ * Comments printed after their node, `doc`, at the end of its line or on lines of their own. An
+ * end-of-line one goes on a line of its own where `doc` or a comment before it already ends that
+ * line with one, as `a: # c\n 1, # d` printed as `a: 1 # c` leaves `# d` to the next line.
+ */
+export function trailingDocs(
+  comments: readonly PlacedComment[],
+  doc: builders.Doc,
+): builders.Doc[] {
+  let lineTaken = utils.findInDoc(doc, (part) => (isLineSuffix(part) ? true : undefined), false);
+  return comments.map((comment) => {
+    if (comment.ownLine || lineTaken) {
+      return ownLineAfterDoc(comment);
+    }
+    lineTaken = true;
+    return endOfLineDoc(comment);
+  });
+}
+
+function isLineSuffix(part: builders.Doc): boolean {
+  return typeof part === 'object' && !Array.isArray(part) && part.type === 'line-suffix';
 }
 
 /**

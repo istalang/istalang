@@ -9,8 +9,9 @@ import { lastIndexAtMost } from '../../structures/sorted.ts';
 import type { Token } from '../syntax/tokens.ts';
 
 /**
- * Each opener's closer. `<` is also the less-than operator, so it is not a bracket: line breaks
- * inside `<…>` follow the enclosing region, and recovery never skips it as a group.
+ * Each opener's closer. `<` is also the less-than operator, so it is not a bracket: pairing leaves
+ * it out, recovery never skips it as a group, and a `<…>` list ends where indentation says
+ * (cursor/), never by pairing.
  */
 export const openers = {
   '(': { closer: ')', isBracket: true },
@@ -20,6 +21,9 @@ export const openers = {
 } as const;
 
 export type Opener = keyof typeof openers;
+
+/** The openers that are brackets: what recovery skips whole, and pairing pairs. */
+export type BracketOpener = Exclude<Opener, '<'>;
 
 export type Closer = (typeof openers)[Opener]['closer'];
 
@@ -33,7 +37,7 @@ export const bracketClosers: ReadonlyMap<string, Closer> = new Map(
 /** `bracketClosers` as a plain object, read once per token while pairing a whole file's. */
 const closerOf: Readonly<Record<string, Closer>> = Object.fromEntries(bracketClosers);
 
-export function isBracketOpener(kind: string): kind is Opener {
+export function isBracketOpener(kind: string): kind is BracketOpener {
   return bracketClosers.has(kind);
 }
 

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-10-29
+last_updated: 2026-11-05
 tags: [plan, m6, formatter]
 ---
 
@@ -15,7 +15,7 @@ tags: [plan, m6, formatter]
 The style is canonical and has no options:
 - **Indent:** 2 spaces.
 - **Width:** 100.
-- **Trailing commas:** every list that breaks gets one.
+- **Broken lists:** one item per line, with no `,` at line ends, since a line break between two items separates them (spec §2, proposal 5); a one-element tuple keeps its `,`. A list on one line separates its items with `, `.
 - **Blank lines:** a run of blank lines between items or statements is kept as one.
 - **One-item bodies:** a one-item body stays on its header's line when it fits, with three exceptions:
   - an item that has a body of its own (`if`, `for`, `match`…), since an outer `else` would then re-attach to it;

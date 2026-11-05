@@ -41,14 +41,14 @@ fn weakMap() -> Array<Test>: [
     assert(map.has(key) and key in map)
     assertEq(map.get(other), none)
     assert(not map.has(other) and other not in map)
-  }),
+  })
   test("setting a key again replaces its value", fn(): {
     const map = WeakMap.create<Inbox<Int>, String>()
     const key = Inbox.create<Int>()
     map.set(key, "a")
     map.set(key, "b")
     assertEq(map.get(key), "b")
-  }),
+  })
   test("delete says whether the map held the key", fn(): {
     const map = WeakMap.create<Inbox<Int>, String>()
     const key = Inbox.create<Int>()
@@ -56,21 +56,21 @@ fn weakMap() -> Array<Test>: [
     assert(map.delete(key))
     assert(not map.has(key))
     assert(not map.delete(key))
-  }),
+  })
   test("keeps an entry while its key lives", async fn(): {
     const map: Boxes = WeakMap.create()
     const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
     const watched = entryOf(map, holder)
     await runtime.commit()
     assert(watched.value.deref() is Inbox)
-  }),
+  })
   test("holds no key", fn(): {
     const map: Boxes = WeakMap.create()
     const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
     const watched = entryOf(map, holder)
     holder->value = none
     assert(watched.key.deref() is None)
-  }),
+  })
   test("lets go of an entry and its value once its key is disposed", async fn(): {
     const map: Boxes = WeakMap.create()
     const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
@@ -78,15 +78,15 @@ fn weakMap() -> Array<Test>: [
     holder->value = none
     await watched.value.disposed()
     assert(watched.value.deref() is None)
-  }),
+  })
   test("deleting an entry lets go of its value", async fn(): {
     const map: Boxes = WeakMap.create()
     const holder = new Shared<Inbox<Int>?>{value: Inbox.create<Int>()}
     const watched = entryOf(map, holder)
     if holder->value is Inbox as key: assert(map.delete(key))
     await watched.value.disposed()
-  }),
+  })
   test("lets go of an entry whose key is disposed after a snapshot", async fn(): {
     assertEq(await spawnCrashingEveryAwait(evictedAcrossSnapshots).result(), Ok{"evicted"})
-  }),
+  })
 ]

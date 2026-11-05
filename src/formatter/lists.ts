@@ -2,9 +2,10 @@
  * The lists every construct prints its parts in (formatter.md, Style), and the only places the
  * formatter breaks a line inside a construct:
  * - items of a block, one per line, keeping one blank line where the source had any;
- * - comma lists in brackets, `()`, `[]` and a struct literal's `{}`, where line breaks mean nothing
- *   (spec §2): on one line when they fit, else one item per line with a trailing comma;
- * - field lists in braces, where a line break separates entries as `,` does.
+ * - lists in brackets, `()`, `[]` and a struct literal's `{}`, and field lists in braces: on one
+ *   line, separated by `, `, when they fit, else one item per line with no `,`, since a line break
+ *   between two items separates them as `,` does (spec §2). Every item starts with a token that
+ *   starts an item on a new line, so the broken list reads back as the one printed.
  * Everywhere else a line break would end the construct, so nothing else here breaks a line.
  */
 
@@ -43,27 +44,27 @@ export function bracketed(
   [open, close]: readonly [string, string],
   items: readonly SyntaxNode[],
 ): builders.Doc {
-  return commaList(printer, owner, items, { open, close, trailingComma: ifBreak(',') });
+  return commaList(printer, owner, items, { open, close, trailingComma: '' });
 }
 
 /**
- * A tuple's elements in parentheses, of a value, a type or a pattern: one element keeps its comma
- * on one line too, since without it `(x)` only groups `x`.
+ * A tuple's elements in parentheses, of a value, a type or a pattern: one element keeps its comma,
+ * broken or not, since without it `(x)` only groups `x`.
  */
 export function tupleList(
   printer: Printer,
   owner: SyntaxNode,
   elements: readonly SyntaxNode[],
 ): builders.Doc {
-  const trailingComma = elements.length === 1 ? ',' : ifBreak(',');
+  const trailingComma = elements.length === 1 ? ',' : '';
   return commaList(printer, owner, elements, { open: '(', close: ')', trailingComma });
 }
 
-/** What a comma list stands between, and what follows its last item when it breaks. */
+/** What a comma list stands between, and what follows its last item. */
 interface ListEnds {
   readonly open: string;
   readonly close: string;
-  readonly trailingComma: builders.Doc;
+  readonly trailingComma: string;
 }
 
 function commaList(
@@ -82,7 +83,7 @@ function commaList(
       inside,
       softline,
       join(
-        [',', line],
+        [ifBreak('', ','), line],
         items.map((item) => printer.print(item)),
       ),
     ]),
@@ -110,7 +111,7 @@ export function enclosed(
   ]);
 }
 
-/** Fields in braces: `{ a: Int, b: Int }` on one line, else one field per line. */
+/** Fields in braces: `{ a: Int, b: Int }` on one line, else one field per line with no `,`. */
 export function fieldList(
   printer: Printer,
   owner: SyntaxNode,

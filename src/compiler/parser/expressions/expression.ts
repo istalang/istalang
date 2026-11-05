@@ -23,10 +23,13 @@ import {
   type UnaryOperator,
   unaryOperators,
 } from '../../syntax/operators.ts';
+import { isKeyword } from '../../syntax/tokens.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import { misplacedDocstring } from '../docstrings.ts';
+import { atPostfix, breakSeparatesItems } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
 import { parseLiteral } from '../parts/literals.ts';
+import { spreadOpener } from '../parts/spreads.ts';
 import { type StartParselets, type WordParselets, wordParseletAt } from '../word-parselets.ts';
 import { parseParenthesized } from './atoms.ts';
 import { parseBlockExpression, parseIf, parseMatch, parseSelect } from './branches.ts';
@@ -56,7 +59,11 @@ import {
   structLiteralParselet,
   unwrapParselet,
 } from './postfix.ts';
-import { parseAnonymousStructLiteral, parseNew } from './struct-literals.ts';
+import {
+  parseAnonymousStructLiteral,
+  parseNew,
+  structComprehensionOpener,
+} from './struct-literals.ts';
 import { parseTemplate, templateParselet } from './templates.ts';
 
 const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
@@ -167,7 +174,10 @@ function extend(
   left: Expression,
   minLevel: PrecedenceLevel,
 ): Expression | undefined {
-  if (parser.cursor.at('<')) {
+  if (breakSeparatesItems(parser)) {
+    return undefined;
+  }
+  if (atPostfix(parser, '<')) {
     const application = parseTypeApplication(parser, left);
     if (application !== undefined) {
       return application;
@@ -199,7 +209,7 @@ function parseSpawn(parser: Parser): Expression {
     callee = step;
   }
   const call =
-    callee.kind !== 'Call' && parser.cursor.at('(')
+    callee.kind !== 'Call' && atPostfix(parser, '(')
       ? (callParselet.parse(parser, callee) ?? callee)
       : callee;
   return { kind: 'Spawn', span: parser.spanFrom(start), call };
@@ -211,10 +221,10 @@ function parseSpawn(parser: Parser): Expression {
  */
 function calleeStep(parser: Parser, callee: Expression): Expression | undefined {
   const { kind } = parser.cursor;
-  if (callee.kind === 'Call') {
+  if (callee.kind === 'Call' || breakSeparatesItems(parser)) {
     return undefined;
   }
-  return kind === '<'
+  return atPostfix(parser, '<')
     ? parseTypeApplication(parser, callee)
     : spawnCalleeSteps[kind]?.parse(parser, callee);
 }
@@ -222,4 +232,29 @@ function calleeStep(parser: Parser, callee: Expression): Expression | undefined 
 /** Whether the next token can start an expression. */
 export function startsExpression(parser: Parser): boolean {
   return prefixParselets[parser.cursor.kind] !== undefined;
+}
+
+/** What opens an item only a list holds, beyond an operand: a spread or a rest, a struct comprehension. */
+const listItemOpeners: ReadonlySet<CursorKind> = new Set([spreadOpener, structComprehensionOpener]);
+
+/**
+ * Whether a token of `kind`, first on its line inside a list, starts an item rather than
+ * continuing the one before (§2), as the item parsers and the tables say: what opens an item only
+ * a list holds starts one, and so does a token only the prefix table has. One both tables have starts one where it applies to an operand only on the operand's line
+ * (a postfix bracket or a template); where it is a word, unless it spells a binary operator with
+ * the `next` token (`not in`); and where it is a symbol `glued` to the next token, as `-1` is and
+ * `- 1` isn't.
+ */
+export function startsItemOnNewLine(kind: CursorKind, next: CursorKind, glued: boolean): boolean {
+  if (listItemOpeners.has(kind)) {
+    return true;
+  }
+  if (prefixParselets[kind] === undefined) {
+    return false;
+  }
+  const infix = infixParselets[kind];
+  if (infix === undefined || infix.level === 'postfix') {
+    return true;
+  }
+  return isKeyword(kind) ? !(`${kind} ${next}` in binaryOperators) : glued;
 }

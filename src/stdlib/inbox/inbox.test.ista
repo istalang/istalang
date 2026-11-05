@@ -13,12 +13,12 @@ fn pending() -> Array<Test>: [
     assertEq(box.pending(), [1, 2])
     assertEq(await box.receive(), 1)
     assertEq(box.pending(), [2])
-  }),
+  })
   test("leaves out a retracted message", fn(): {
     const box = Inbox.create<Int>()
     const held = box.sendRevertible(1)
     box.send(2)
     drop held
     assertEq(box.pending(), [2])
-  }),
+  })
 ]

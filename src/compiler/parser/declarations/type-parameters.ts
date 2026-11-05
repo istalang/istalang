@@ -12,6 +12,7 @@ import type { ConstraintNode } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 import { parseConstraints } from '../parts/constraints.ts';
+import { spreadOpener } from '../parts/spreads.ts';
 import { parseDelimited } from '../recovery.ts';
 
 /** `<…>` after a declaration's name, or none. */
@@ -23,7 +24,7 @@ export function parseTypeParameters(parser: Parser): TypeParameters {
 
 function parseTypeParameter(parser: Parser): TypeParameter {
   const { cursor } = parser;
-  const pack = cursor.eat('...');
+  const pack = cursor.eat(spreadOpener);
   const name = parser.identifier('a type parameter');
   const start = pack?.span.start ?? parser.startOf(name);
   const memberOf = cursor.eat('in') === undefined ? undefined : parser.type();

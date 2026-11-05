@@ -1,7 +1,7 @@
 /**
  * Docstrings (§2): reading one where a declaration takes it, and refusing one anywhere else.
  *
- * Where a docstring may stand is layout's to decide (layout.ts): first in a declaration's indented
+ * Where a docstring may stand is layout's to decide (layout/): first in a declaration's indented
  * body or a module, or on the line right after a declaration without one. The field is set only
  * when there is a docstring, so a declaration without one has no `doc` at all.
  */

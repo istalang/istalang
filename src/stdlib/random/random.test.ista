@@ -48,51 +48,51 @@ fn suite() -> Array<Test>: [
     const draws = [for _ in 0..200: random.integer(1..=6)]
     for value in 1..=6: assert(draws.includes(value), "never drew " + value)
     assertEq([for each in draws if each < 1 or each > 6: each], [])
-  }),
+  })
   test("integer draws only the values a stepped range reaches, either way", fn(): {
     const draws = [for _ in 0..100: random.integer(0..20 by 5)]
     for value in 0..20 by 5: assert(value in draws, "never drew " + value)
     assertEq([for each in draws if each not in 0..20 by 5: each], [])
     assertEq([for _ in 0..20: random.integer(10..0 by -10)], [for _ in 0..20: 10])
-  }),
+  })
   test("integer of a one-value range gives that value", fn(): {
     assertEq(random.integer(7..8), 7)
-  }),
+  })
   test("integer draws beyond 64 bits", fn(): {
     const draws = [for _ in 0..8: random.integer(0..twoTo64 * twoTo64)]
     assert([for each in draws if each >= twoTo64: each].length() > 0)
-  }),
+  })
   test("integer panics on an empty or an open range", async fn(): {
     assertEq(
-      await expectPanic(emptyRange),
-      "random.integer has nothing to draw from the empty range 3..3.",
+      await expectPanic(emptyRange)
+      "random.integer has nothing to draw from the empty range 3..3."
     )
     assertEq(await expectPanic(openRange), "random.integer needs a range with both ends, not 3...")
-  }),
+  })
   test("fraction lies from 0 up to 1", fn(): {
     const draws = [for _ in 0..100: random.fraction()]
     assertEq([for each in draws if each < 0.0 or each >= 1.0: each], [])
-  }),
+  })
   test("a mocked integer fixes fraction too", fn(): {
     hold _ = mock(random.integer, zero)
     assertEq(random.fraction(), 0.0)
-  }),
+  })
   test("uuid is a version 4 UUID in lowercase, different each time", fn(): {
     const id = random.uuid()
     assertEq(id.length(), 36)
     assertEq([id[8], id[13], id[14], id[18], id[23]], ["-", "-", "4", "-", "-"])
     assert(["8", "9", "a", "b"].includes(id[19]))
     assert(random.uuid() != id)
-  }),
+  })
   test("a segment that runs again draws the same values", async fn(): {
     const recorded = mock(seen, ignored)
     assertEq(await spawnCrashingEveryAwait(drawsThenCommits).result(), Ok{()})
     const values = calls(recorded)
     assertEq(values.length(), 2)
     assertEq(values[0], values[1])
-  }),
+  })
   test(
-    "a spawned instance draws from a seed of its own, the same one when its parent's segment runs again",
+    "a spawned instance draws from a seed of its own, the same one when its parent's segment runs again"
     async fn(): {
       const recorded = mock(seenText, ignoredText)
       assertEq(await spawnCrashingEveryAwait(spawnsThenDraws).result(), Ok{()})
@@ -102,6 +102,6 @@ fn suite() -> Array<Test>: [
       assertEq(values[2], values[3])
       assert(values[2].0[0..36] != values[2].0[37..73], "siblings drew alike")
       assert(values[2].0[0..36] != values[0].0, "a child drew as its parent")
-    },
-  ),
+    }
+  )
 ]

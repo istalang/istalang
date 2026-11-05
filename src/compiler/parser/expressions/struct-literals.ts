@@ -22,12 +22,17 @@ import type {
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
+import { atPostfix, breakSeparatesItems } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
 import { parseFieldHeaderAfter } from '../parts/field-headers.ts';
 import { parseTargets } from '../parts/names.ts';
+import { spreadOpener } from '../parts/spreads.ts';
 import { afterStructKeyword } from '../parts/structs.ts';
 import { parseDelimited } from '../recovery.ts';
 import { parseSpread } from './spread.ts';
+
+/** What opens a struct comprehension, the last item of a struct literal. */
+export const structComprehensionOpener = 'for';
 
 /** A struct literal's braced items, starting at the `{`; `type` is undefined for `struct{…}`. */
 export function parseStructLiteralBody(
@@ -46,7 +51,7 @@ export function parseStructLiteralBody(
 export function parseNew(parser: Parser): Expression {
   const { start } = parser.cursor.advance().span;
   const type = parser.type();
-  if (type.kind !== 'NamedType' || !parser.cursor.at('{')) {
+  if (type.kind !== 'NamedType' || !atPostfix(parser, '{')) {
     parser.report(parserDiagnostics.newWithoutLiteral(parser.textSpanFrom(start)));
     return { kind: 'Invalid', span: parser.spanFrom(start) };
   }
@@ -84,14 +89,15 @@ function parseItems(parser: Parser): FieldsLiteral['items'] {
 
 function parseItem(parser: Parser): FieldsLiteral['items'][number] {
   const { cursor } = parser;
-  if (cursor.at('...')) {
+  if (cursor.at(spreadOpener)) {
     return parseSpread(parser);
   }
-  if (cursor.at('for')) {
+  if (cursor.at(structComprehensionOpener)) {
     return parseStructComprehension(parser);
   }
   const next = cursor.kindAt(1);
-  if (cursor.at('identifier') && (next === ':' || next === ',' || next === '}')) {
+  const alone = next === ',' || next === '}' || breakSeparatesItems(parser, 1);
+  if (cursor.at('identifier') && (next === ':' || alone)) {
     const name = parser.identifier();
     const value = cursor.eat(':') === undefined ? undefined : parser.expression();
     return { kind: 'FieldInitializer', span: parser.spanFrom(parser.startOf(name)), name, value };

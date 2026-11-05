@@ -64,17 +64,17 @@ async fn relays(name: String) -> Future<Int>:
 
 @Suite{"testing › tests"}
 fn tests() -> Array<Test>: [
-  test("run a plain body", fn(): assert(true)),
-  test("run an async body", async fn(): await time.delay(Duration{value: 0})),
-  test("hand a setup's environment to a plain body", withFortyOne, fn(n): assertEq(n, 41)),
-  test("hand a setup's environment to an async body", withFortyOne, async fn(n): assertEq(n, 41)),
+  test("run a plain body", fn(): assert(true))
+  test("run an async body", async fn(): await time.delay(Duration{value: 0}))
+  test("hand a setup's environment to a plain body", withFortyOne, fn(n): assertEq(n, 41))
+  test("hand a setup's environment to an async body", withFortyOne, async fn(n): assertEq(n, 41))
   test("are marked by skip and only, as are groups, each mark kept", fn(): {
     const plain = test("t", fn(): ())
     assertEq(described(plain), "t")
     assertEq(described(skip(plain)), "t skipped")
     assertEq(described(only(plain)), "t only")
     assertEq(described(only(skip(group("g", [plain])))), "g skipped only")
-  }),
+  })
 ]
 
 @Suite{"testing › setups"}
@@ -82,22 +82,22 @@ fn setupTests() -> Array<Test>: [
   test("nest the first outermost, handing the test every environment", async fn(): {
     const log = new Log{}
     await setups(logged(log, 1), logged(log, 2))(
-      async fn(both: (Int, Int)): log->lines.push("test " + both.0 + both.1),
+      async fn(both: (Int, Int)): log->lines.push("test " + both.0 + both.1)
     )
     assertEq(log->lines, ["prepare 1", "prepare 2", "test 12", "tear down 2", "tear down 1"])
-  }),
+  })
   test("join up to six", async fn(): {
     const log = new Log{}
     const six = setups(
-      logged(log, 1),
-      logged(log, 2),
-      logged(log, 3),
-      logged(log, 4),
-      logged(log, 5),
-      logged(log, 6),
+      logged(log, 1)
+      logged(log, 2)
+      logged(log, 3)
+      logged(log, 4)
+      logged(log, 5)
+      logged(log, 6)
     )
     await six(async fn(all: (Int, Int, Int, Int, Int, Int)): assertEq(all, (1, 2, 3, 4, 5, 6)))
-  }),
+  })
 ]
 
 @Suite{"testing › assertions"}
@@ -106,23 +106,23 @@ fn assertions() -> Array<Test>: [
     assert(1 < 2)
     assertEq(await expectPanic(fn(): assert(false)), "The assertion failed.")
     assertEq(await expectPanic(fn(): assert(1 > 2, "one isn't more")), "one isn't more")
-  }),
+  })
   test("assertEq panics showing both values as JSON", async fn(): {
     assertEq([1, 2], [1, 2])
     assertEq(
-      await expectPanic(fn(): assertEq("approved", "expired")),
-      "expected \"expired\", found \"approved\"",
+      await expectPanic(fn(): assertEq("approved", "expired"))
+      "expected \"expired\", found \"approved\""
     )
     assertEq(await expectPanic(fn(): assertEq([1, 2], [1])), "expected [1], found [1,2]")
-  }),
+  })
   test("expectPanic gives the message of a plain or an async function's panic", async fn(): {
     assertEq(await expectPanic(fn(): panic("now")), "now")
     assertEq(await expectPanic(panicsLater), "later")
-  }),
+  })
   test("expectPanic panics when the function returns", async fn(): {
     const message = await expectPanic(async fn(): assertEq(await expectPanic(fn(): 1), ""))
     assertEq(message, "expectPanic expected a panic, but the function returned.")
-  }),
+  })
 ]
 
 fn pair() -> Int: 0
@@ -132,24 +132,24 @@ async fn later(a: Int) -> Future<Int>: a
 @Suite{"testing › mock"}
 fn mocks() -> Array<Test>: [
   test(
-    "records a unit per call of a function of none, and a tuple per call of seven or more",
+    "records a unit per call of a function of none, and a tuple per call of seven or more"
     async fn(): {
       const nullary = mock(pair, fn(): 7)
       const lots = mock(
-        many,
-        fn(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int, h: String): "m" + h,
+        many
+        fn(a: Int, b: Int, c: Int, d: Int, e: Int, f: Int, g: Int, h: String): "m" + h
       )
       assertEq([pair(), pair()], [7, 7])
       assertEq(many(1, 2, 3, 4, 5, 6, 7, "q"), "mq")
       assertEq(nullary.calls(), [(), ()])
       assertEq(lots.calls(), [(1, 2, 3, 4, 5, 6, 7, "q")])
-    },
-  ),
+    }
+  )
   test("keeps an async target's own type and records its calls", async fn(): {
     const m = mock(later, async fn(a: Int): a * 10)
     assertEq(await later(9), 90)
     assertEq(m.calls(), [(9,)])
-  }),
+  })
 ]
 
 @Suite{"testing › FakeClock"}
@@ -160,14 +160,14 @@ fn clocks() -> Array<Test>: [
     assertEq(time.now(), Time{value: 7})
     clock.advance(Duration{value: 3})
     assertEq(time.now(), Time{value: 10})
-  }),
+  })
   test("replaces a target its mock names", fn(): {
     const clock = FakeClock{start: Time{value: 5}}
     hold _ = mock(replacement: clock.now, target: time.now)
     assertEq(time.now(), Time{value: 5})
-  }),
+  })
   test("fills a deadline once advanced to it, in an instance the test started", withClock, async fn(
-    clock,
+    clock
   ): {
     const started = spawn waitsAday()
     await started.idle()
@@ -176,7 +176,7 @@ fn clocks() -> Array<Test>: [
     assert(started.state() is Waiting)
     clock.advance(Duration{value: 1})
     assertEq(await started.result(), Ok{86_400_000})
-  }),
+  })
   test("fills deadlines earliest first, ties in the order they were set", async fn(): {
     const clock = FakeClock{start: Time{value: 0}}
     hold _ = mock(time.at, clock.at)
@@ -189,24 +189,24 @@ fn clocks() -> Array<Test>: [
     await second.idle()
     clock.advance(Duration{value: 2})
     assertEq([await late.result(), await first.result(), await second.result()], [
-      Ok{()},
-      Ok{()},
-      Ok{()},
+      Ok{()}
+      Ok{()}
+      Ok{()}
     ])
     assertEq(records.calls(), [("first",), ("second",), ("late",)])
-  }),
+  })
   test("resolves a deadline already reached at once", async fn(): {
     const clock = FakeClock{start: Time{value: 5}}
     hold _ = mock(time.at, clock.at)
     await time.at(Time{value: 5})
     await time.at(Time{value: 1})
-  }),
+  })
   test("panics when advanced by a negative duration", async fn(): {
     const message = await expectPanic(
-      fn(): FakeClock{start: Time{value: 0}}.advance(Duration{value: -1}),
+      fn(): FakeClock{start: Time{value: 0}}.advance(Duration{value: -1})
     )
     assertEq(message, "A fake clock only moves forward, not by " + Duration{value: -1} + ".")
-  }),
+  })
 ]
 
 @Suite{"testing › FakeQueue"}
@@ -223,7 +223,7 @@ fn queues() -> Array<Test>: [
     fake.post("in", 41)
     assertEq(await started.result(), Ok{41})
     assertEq(fake.pending("out"), [42])
-  }),
+  })
   test("retracts a revertible send once its holder lets go", fn(): {
     const fake = FakeQueue<Queue<Int>, Int>{make: handle}
     const receipts = FakeReceipts<Sent>{make: handle}
@@ -236,9 +236,9 @@ fn queues() -> Array<Test>: [
     assertEq(fake.pending("a"), [2, 3])
     drop held
     assertEq(fake.pending("a"), [3])
-  }),
+  })
   test("panics given a queue it didn't open", async fn(): {
     const message = await expectPanic(sendsToAnother)
     assertEq(message, "This FakeQueue didn't open the queue it was given.")
-  }),
+  })
 ]

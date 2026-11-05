@@ -22,41 +22,41 @@ fn arrays() -> Array<Test>: [
     test("map gives each item's result, in order", fn(): {
       assertEq([1, 2, 3].map(fn(n): n * 10), [10, 20, 30])
       assertEq([1, 2].map(fn(n): "#" + n), ["#1", "#2"])
-    }),
+    })
     test("filter keeps the items its test accepts, in order", fn(): {
       assertEq([1, 2, 3, 4].filter(isEven), [2, 4])
       assertEq([1, 3].filter(isEven), [])
-    }),
+    })
     test("flatMap joins each item's array", fn(): {
       assertEq([1, 2].flatMap(fn(n): [n, n]), [1, 1, 2, 2])
       assertEq([1, 2].flatMap(fn(n): [for _ in 0..0: n]), [])
-    }),
+    })
     test("flat joins the arrays of an array, one level deep", fn(): {
       assertEq([[1], [], [2, 3]].flat(), [1, 2, 3])
       assertEq([[[1]], [[2]]].flat(), [[1], [2]])
-    }),
+    })
     test("reduce folds from the initial value, which an empty array gives back", fn(): {
       assertEq([1, 2, 3].reduce(fn(sum, n): sum + n, 0), 6)
       assertEq([1, 2].reduce(fn(text, n): text + n, ">"), ">12")
       const empty: Array<Int> = []
       assertEq(empty.reduce(fn(sum, n): sum + n, 7), 7)
-    }),
-  ]),
+    })
+  ])
   group("searching", [
     test("find and findIndex give the first item its test accepts", fn(): {
       assertEq([1, 2, 3, 4].find(isEven), 2)
       assertEq([1, 2, 3, 4].findIndex(isEven), 1)
-    }),
+    })
     test("findLast and findLastIndex give the last", fn(): {
       assertEq([1, 2, 3, 4, 5].findLast(isEven), 4)
       assertEq([1, 2, 3, 4, 5].findLastIndex(isEven), 3)
-    }),
+    })
     test("a search that finds nothing gives none or -1", fn(): {
       assertEq([1, 3].find(isEven), none)
       assertEq([1, 3].findLast(isEven), none)
       assertEq([1, 3].findIndex(isEven), -1)
       assertEq([1, 3].findLastIndex(isEven), -1)
-    }),
+    })
     test("some and every", fn(): {
       assert([1, 2].some(isEven))
       assert(not [1, 3].some(isEven))
@@ -65,19 +65,19 @@ fn arrays() -> Array<Test>: [
       const empty: Array<Int> = []
       assert(not empty.some(isEven))
       assert(empty.every(isEven))
-    }),
+    })
     test("a search stops at the first item it finds", fn(): {
       assertEq([1, 2, 3].find(fn(n): n == 2 or panicsOnThree(n)), 2)
       assert([2, 3].some(fn(n): isEven(n) or panicsOnThree(n)))
-    }),
+    })
     test("a panic in the function a method calls panics the caller", async fn(): {
       assertEq(await expectPanic(fn(): [1, 2, 3].filter(panicsOnThree)), "three")
-    }),
+    })
     test("lastIndexOf gives the last position of an equal item, or -1", fn(): {
       assertEq([1, 2, 1].lastIndexOf(1), 2)
       assertEq([1, 2].lastIndexOf(3), -1)
-    }),
-  ]),
+    })
+  ])
   group("ordering", [
     test("sort orders Comparable items in place", fn(): {
       let numbers = [3, 1, 2, 1]
@@ -86,19 +86,19 @@ fn arrays() -> Array<Test>: [
       let words = ["b", "c", "a"]
       words.sort()
       assertEq(words, ["a", "b", "c"])
-    }),
+    })
     test("sort orders by a comparator, keeping level items in order", fn(): {
       let items = [
-        Item{name: "c", rank: 2},
-        Item{name: "a", rank: 1},
-        Item{name: "d", rank: 2},
-        Item{name: "b", rank: 1},
+        Item{name: "c", rank: 2}
+        Item{name: "a", rank: 1}
+        Item{name: "d", rank: 2}
+        Item{name: "b", rank: 1}
       ]
       items.sort(byRank)
       assertEq(items.map(fn(item): item.name), ["a", "b", "c", "d"])
       items.sort(fn(left, right): right.rank - left.rank)
       assertEq(items.map(fn(item): item.name), ["c", "d", "a", "b"])
-    }),
+    })
     test("sort leaves an empty array and a single item alone", fn(): {
       let empty: Array<Int> = []
       empty.sort()
@@ -106,13 +106,13 @@ fn arrays() -> Array<Test>: [
       let one = [5]
       one.sort()
       assertEq(one, [5])
-    }),
+    })
     test("reverse reverses in place", fn(): {
       let numbers = [1, 2, 3]
       numbers.reverse()
       assertEq(numbers, [3, 2, 1])
-    }),
-  ]),
+    })
+  ])
 ]
 
 @Suite{"prelude › maps"}
@@ -122,15 +122,15 @@ fn maps() -> Array<Test>: [
     assertEq(groups[true], [2, 4])
     assertEq(groups[false], [1, 3, 5])
     assertEq(groups.size(), 2)
-  }),
+  })
   test("Map.groupBy of no items is empty", fn(): {
     const groups = Map.groupBy([], fn(n: Int): n)
     assertEq(groups.size(), 0)
-  }),
+  })
   test("includes a key exactly when it has one", fn(): {
     const ages = ["ada": 36]
     assert(ages.includes("ada") and ages.has("ada") and not ages.includes("bob"))
-  }),
+  })
 ]
 
 fn zeroStep() -> Bool: 1 in 0..5 by 0
@@ -149,22 +149,22 @@ fn ranges() -> Array<Test>: [
     assertEq([for i in 10..=0 by -5: i], [10, 5, 0])
     assertEq([for i in 0..=6 by 3: i], [0, 3, 6])
     assertEq([for i in 0..5 by -1: i], [])
-  }),
+  })
   test("include an int they reach, an open end reaching without bound", fn(): {
     assert(6 in 0..10 by 3 and 7 not in 0..10 by 3 and 10 not in 0..10)
     assert(1_000_000 in 2.. by 2 and -7 in ..0 and 0 in 5..=0 by -1)
-  }),
+  })
   test(
-    "panic on a step of 0, an open start stepping by more than 1, and iterating an open one",
+    "panic on a step of 0, an open start stepping by more than 1, and iterating an open one"
     async fn(): {
       assertEq(await expectPanic(zeroStep), "The range 0..5 by 0 has a step of 0.")
       assertEq(
-        await expectPanic(openStart),
-        "The range ..5 by 2 has no start for its step to count from.",
+        await expectPanic(openStart)
+        "The range ..5 by 2 has no start for its step to count from."
       )
       assertEq(await expectPanic(openEnd), "Iterating needs a range with both ends, not 3...")
-    },
-  ),
+    }
+  )
 ]
 
 # A string doubled until it outgrows what the runtime can hold.
@@ -177,10 +177,10 @@ fn doubledForever() -> String:
 fn limits() -> Array<Test>: [
   test("a string outgrowing what the runtime can hold panics", async fn(): {
     assertEq(
-      await expectPanic(doubledForever),
-      "The string would be longer than the runtime can hold.",
+      await expectPanic(doubledForever)
+      "The string would be longer than the runtime can hold."
     )
-  }),
+  })
 ]
 
 fn negativePower() -> Int: 2 ** -1
@@ -195,35 +195,35 @@ fn numbers() -> Array<Test>: [
     test("of two ints is an exact int, grouping to the right", fn(): {
       assertEq([2 ** 10, (-3) ** 3, 7 ** 0, 0 ** 0, 2 ** 3 ** 2], [1024, -27, 1, 1, 512])
       assertEq(10 ** 30, 1000000000000000000000000000000)
-    }),
+    })
     test("with a float is a float, its right operand taking a sign", fn(): {
       assertEq([2.0 ** 0.5, 2 ** -1.0, 4.0 ** 2], [1.4142135623730951, 0.5, 16.0])
-    }),
+    })
     test("assigns compounded, and works through Powerable", fn(): {
       let n = 3
       n **= 2
       assertEq([n, cubed(2)], [9, 8])
       assertEq(cubed(1.5), 3.375)
-    }),
+    })
     test("of an int to a negative int power panics", async fn(): {
       assertEq(await expectPanic(negativePower), "2 to the power -1 is no int; use a float base.")
-    }),
-  ]),
+    })
+  ])
   group("bitwise", [
     test("and, or, xor and not act on an unbounded two's complement", fn(): {
       assertEq([12 & 10, 12 | 10, 12 ^ 10, ~5, -12 & 10, -1 ^ 5], [8, 14, 6, -6, 0, -6])
-    }),
+    })
     test("shifts left without bound and right toward negative infinity", fn(): {
       assertEq([1 << 70, -9 >> 1, 5 >> 10, 3 << 0], [1180591620717411303424, -5, 0, 3])
-    }),
+    })
     test("bind as Python's: shifts below +, then &, ^ and |, all above comparisons", fn(): {
       assertEq([1 + 2 << 3, 1 | 2 & 3, 6 ^ 3 & 1], [24, 3, 7])
       assert(4 & 6 == 4)
-    }),
+    })
     test("a negative shift count panics", async fn(): {
       assertEq(await expectPanic(negativeShift), "A shift count can't be negative, as -1 is.")
-    }),
-  ]),
+    })
+  ])
 ]
 
 fn answers() -> Int: 42
@@ -234,13 +234,13 @@ fn breaks() -> Int: panic("broken")
 fn instances() -> Array<Test>: [
   test("result gives what a spawned instance's function returned", async fn(): {
     assertEq(await spawn answers().result(), Ok{42})
-  }),
+  })
   test("result gives a spawned instance's panic as an Err", async fn(): {
     const outcome = await spawn breaks().result()
     assert(outcome is Err{error} and error.message == "broken" and error.code == "panic")
-  }),
+  })
   test("an instance's handle compares by identity", fn(): {
     const first = spawn answers()
     assert(first == first and first != spawn answers())
-  }),
+  })
 ]

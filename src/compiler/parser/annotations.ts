@@ -9,7 +9,7 @@
  * item parser has to know about annotations. It makes the item anew, so a function's body, which
  * the tree holds by its function (syntax/tree.ts), moves to the function made. Annotations nothing
  * can take are reported and kept in an Invalid node, which holds them; where that is, layout
- * decides (layout.ts).
+ * decides (layout/index.ts).
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -23,20 +23,20 @@ import type { SyntaxNode } from '../syntax/tree.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
 
-/** Every annotation from here to the end of the line or the first token that isn't `@`. */
-export function parseAnnotations(parser: Parser): Annotation[] {
-  const { cursor } = parser;
-  const annotations: Annotation[] = [];
-  let at = cursor.eat('@');
-  while (at !== undefined) {
-    const value = parser.expression('postfix');
-    if (!isAnnotationShape(value)) {
-      parser.report(parserDiagnostics.invalidAnnotation(parser.textSpanOf(value.span)));
-    }
-    annotations.push({ kind: 'Annotation', span: parser.spanFrom(at.span.start), value });
-    at = cursor.eat('@');
+/** What opens an annotation. */
+export const annotationOpener = '@';
+
+/** The annotation at the cursor's `@`, or undefined where none starts. */
+export function parseAnnotation(parser: Parser): Annotation | undefined {
+  const at = parser.cursor.eat(annotationOpener);
+  if (at === undefined) {
+    return undefined;
   }
-  return annotations;
+  const value = parser.expression('postfix');
+  if (!isAnnotationShape(value)) {
+    parser.report(parserDiagnostics.invalidAnnotation(parser.textSpanOf(value.span)));
+  }
+  return { kind: 'Annotation', span: parser.spanFrom(at.span.start), value };
 }
 
 function isAnnotationShape(value: Expression): boolean {

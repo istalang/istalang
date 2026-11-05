@@ -41,7 +41,7 @@ import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import { unclosedBracketEnds } from './brackets.ts';
-import { Cursor } from './cursor/index.ts';
+import { Cursor, type CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 
 /** The entry point of each grammar category, wired in by grammar.ts. */
@@ -58,6 +58,12 @@ export interface Grammar {
     minLevel: PrecedenceLevel,
   ) => Expression;
   readonly startsExpression: (parser: Parser) => boolean;
+  /**
+   * Whether a token of `kind`, first on its line inside a list, starts an item rather than
+   * continuing the one before (layout/item-breaks.ts), given the `next` token's kind, and `glued`
+   * when nothing stands between the two.
+   */
+  readonly startsItemOnNewLine: (kind: CursorKind, next: CursorKind, glued: boolean) => boolean;
   readonly type: (parser: Parser) => TypeNode;
   /** A parameter's type, the one place `&T` is allowed (§3.7). */
   readonly parameterType: (parser: Parser) => TypeNode;
@@ -100,11 +106,11 @@ export class Parser implements SegmentBases {
 
   constructor(source: SourceText, tokens: readonly Token[], grammar: Grammar) {
     this.#source = source;
-    this.#cursor = new Cursor(
-      tokens,
-      undefined,
-      unclosedBracketEnds(tokens, (token) => this.columnOf(token)),
-    );
+    const tokenColumn = (token: Token) => this.columnOf(token);
+    this.#cursor = new Cursor(tokens, undefined, {
+      unclosedEnds: unclosedBracketEnds(tokens, tokenColumn),
+      columnOf: tokenColumn,
+    });
     this.#grammar = grammar;
     this.#place = { segment: { kind: 'module' }, base: 0, itemStart: undefined };
     this.#bases.set(this.#place.segment, 0);
@@ -279,6 +285,11 @@ export class Parser implements SegmentBases {
 
   startsExpression(): boolean {
     return this.#grammar.startsExpression(this);
+  }
+
+  /** The grammar's `startsItemOnNewLine`. */
+  startsItemOnNewLine(kind: CursorKind, next: CursorKind, glued: boolean): boolean {
+    return this.#grammar.startsItemOnNewLine(kind, next, glued);
   }
 
   type(): TypeNode {

@@ -47,7 +47,7 @@ src/
     scanner/            text → tokens + comments + diagnostics
     parser/             tokens → SyntaxTree; parse.ts is the entry
       parser.ts grammar.ts                                       context, category wiring
-      cursor/ brackets.ts layout/ recovery.ts nesting.ts         line regions, the brackets paired and where one never closed ends, blocks and bodies (layout/bodies.ts), lists, depth limit,
+      cursor/ brackets.ts layout/ recovery.ts nesting.ts         line regions, the brackets paired and where one never closed ends, blocks and bodies (layout/bodies.ts), lists and where a line break separates their items (layout/item-breaks.ts), depth limit,
       annotations.ts                                             annotations,
       docstrings.ts                                              docstrings and where they stand
       parts/                                                     pieces every category may import; imports no category
@@ -145,7 +145,7 @@ src/
     testing/            running a test Definition (§10): world/ (one test's fresh runtime in memory: its instances, the mocks they reach, its watches, timers on the caller's clock; test-host.ts, the externs no mock replaces), run-tests.ts (listing each suite, then each test in a world of its own)
   stdlib/               std-sources.ts: the one list of std modules, each name with its embedded source, where a module's name is spelled unless the language names it by role; stdlib-loader.ts: the std ModuleLoader (simple name → source) and the roles, read from the list alone, so compiling imports no native (a cruiser rule); std-modules.ts: each module with its natives (std-module.ts: natives built from keys bound to the name, which key its functions and its own types; a module whose natives take another std module's type gets that module's keys, as `decimal` gets `math`'s for `Rounding`); natives.ts: every std native in one table, derived from the list; native-values.ts: the values natives read and return; positions.ts: what an index, a range, `at` and `slice` select of an array or a string; prelude/ and one folder per std module: <module>.ista + natives.ts (keys built by definition/extern-key.ts, as lowering's are)
   formatter/            SyntaxTree → canonical text (format.ts, the `istalang/formatter` entry): one printer table per family of
-                        constructs, comments placed on nodes (comment-placement.ts), which delimiters enclose which children and where a line break means nothing (brackets.ts),
+                        constructs, comments placed on nodes (comment-placement.ts), which delimiters enclose which children and where a line break may stand inside an item (brackets.ts),
                         literals from their source text (literals.ts)
   language-service/     what an editor asks of a project, with no protocol and no I/O: workspace.ts (the open texts,
                         and the program they make through the ProgramLoader seam), one module or folder per feature

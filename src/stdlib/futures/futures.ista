@@ -46,8 +46,8 @@ async fn any<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<T, Arr
 # The first `n` `Ok` values in the order they arrived, or the errors in position order once `n`
 # can't be reached.
 async fn quorum<T, E>(
-  n: Int,
-  futures: Array<Future<Result<T, E>>>,
+  n: Int
+  futures: Array<Future<Result<T, E>>>
 ) -> Future<Result<Array<T>, Array<E>>>:
   if n < 0 or n > futures.length():
     panic("A quorum of " + n + " can't be reached among " + futures.length() + " futures.")
@@ -71,9 +71,9 @@ async fn timeout<T>(future: Future<T>, limit: time.Duration) -> Future<T?>:
 # Calls `attempt` until it gives an `Ok`, at most `times` times, waiting `backoff` before the first
 # retry and twice as long before each next one: the first `Ok`, or the last `Err`.
 async fn retry<T, E>(
-  attempt: async fn() -> Result<T, E>,
-  times: Int = 3,
-  backoff: time.Duration = 1s,
+  attempt: async fn() -> Result<T, E>
+  times: Int = 3
+  backoff: time.Duration = 1s
 ) -> Future<Result<T, E>>:
   if times < 1: panic("retry needs at least one attempt, not " + times + ".")
   let wait = backoff

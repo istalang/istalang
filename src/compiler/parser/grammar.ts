@@ -7,7 +7,12 @@ import type { SourceText } from '../../text/source-text.ts';
 import type { ScanResult } from '../syntax/tokens.ts';
 import { parseTopLevelDeclaration } from './declarations/declaration.ts';
 import { parseDefinedFunction } from './declarations/functions.ts';
-import { continueExpression, parseExpression, startsExpression } from './expressions/expression.ts';
+import {
+  continueExpression,
+  parseExpression,
+  startsExpression,
+  startsItemOnNewLine,
+} from './expressions/expression.ts';
 import { nested } from './nesting.ts';
 import { type Grammar, Parser } from './parser.ts';
 import { parsePattern } from './patterns.ts';
@@ -19,6 +24,7 @@ const grammar: Grammar = {
   expression: (parser, minLevel) => nested(parser, () => parseExpression(parser, minLevel)),
   continueExpression,
   startsExpression,
+  startsItemOnNewLine,
   type: (parser) => nested(parser, () => parseType(parser)),
   parameterType: (parser) => nested(parser, () => parseParameterType(parser)),
   typeArguments: parseTypeArguments,

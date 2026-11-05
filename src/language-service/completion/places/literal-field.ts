@@ -18,7 +18,9 @@ import type { FieldItem, FieldsLiteral } from '../../../compiler/syntax/expressi
 import { itemName } from '../../../compiler/syntax/expressions/readings.ts';
 import type { Identifier } from '../../../compiler/syntax/node.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
-import { nodesAt, type SyntaxNode } from '../../../compiler/syntax/tree.ts';
+import type { Token } from '../../../compiler/syntax/tokens.ts';
+import { nodesAt, type SyntaxNode, type SyntaxTree } from '../../../compiler/syntax/tree.ts';
+import { lineStartAt } from '../../../text/line-map.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import { isBareVariant } from '../expected.ts';
@@ -26,8 +28,9 @@ import { visibleCandidates } from '../visible.ts';
 
 /**
  * Where a field's name is written in a struct or variant literal: right after the literal's own
- * `{` (`opens`) or one of its `,`, the only tokens an item follows, whatever the parser made of a
- * name half written there (`item`, the item it starts) or of a literal not closed yet.
+ * `{` (`opens`) or one of its `,`, or first on a line after one of its items, where the line break
+ * separates two items as a `,` does (§2), whatever the parser made of a name half written there
+ * (`item`, the item it starts) or of a literal not closed yet.
  */
 export interface LiteralFieldPlace {
   readonly kind: 'literalField';
@@ -36,11 +39,19 @@ export interface LiteralFieldPlace {
   readonly opens: boolean;
 }
 
-export function literalFieldPlaceAt({ tree, name, before }: Cursor): LiteralFieldPlace | undefined {
-  if (before?.kind !== '{' && before?.kind !== ',') {
+export function literalFieldPlaceAt({
+  tree,
+  name,
+  before,
+  offset,
+}: Cursor): LiteralFieldPlace | undefined {
+  if (before === undefined) {
     return undefined;
   }
-  const literal = nodesAt(tree, before.span.start).at(-1);
+  const separated = before.kind === '{' || before.kind === ',';
+  const literal = separated
+    ? nodesAt(tree, before.span.start).at(-1)
+    : literalWithItemBefore(tree, before, name?.span.start ?? offset);
   if (!isFieldsLiteral(literal)) {
     return undefined;
   }
@@ -48,6 +59,29 @@ export function literalFieldPlaceAt({ tree, name, before }: Cursor): LiteralFiel
     ({ span }) => name !== undefined && spanIn(tree, span).start === name.span.start,
   );
   return { kind: 'literalField', literal, item, opens: before.kind === '{' };
+}
+
+/**
+ * The literal one of whose items ends at `before`, where `start`, the cursor's name or the cursor,
+ * stands first on a later line: the next item starts there.
+ */
+function literalWithItemBefore(
+  tree: SyntaxTree,
+  before: Token,
+  start: number,
+): FieldsLiteral | undefined {
+  const { text } = tree.source;
+  if (
+    text.slice(lineStartAt(text, start), start).trim() !== '' ||
+    lineStartAt(text, start) <= before.span.end
+  ) {
+    return undefined;
+  }
+  return nodesAt(tree, before.span.start)
+    .filter(isFieldsLiteral)
+    .findLast((literal) =>
+      literal.items.some((item) => spanIn(tree, item.span).end === before.span.end),
+    );
 }
 
 function isFieldsLiteral(node: SyntaxNode | undefined): node is FieldsLiteral {

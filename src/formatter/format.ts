@@ -94,7 +94,7 @@ class TreePrinter implements Printer {
     const { leading, trailing } = this.#commentsOf(node);
     this.#mark(leading);
     this.#mark(trailing);
-    return [leadingDocs(leading), doc, trailingDocs(trailing)];
+    return [leadingDocs(leading), doc, trailingDocs(trailing, doc)];
   }
 
   dangling(node: SyntaxNode): builders.Doc {

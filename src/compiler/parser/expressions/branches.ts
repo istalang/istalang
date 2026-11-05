@@ -1,7 +1,7 @@
 /**
  * Expressions with bodies (§4, §8): `if`, `match`, `select`, and `{…}` blocks.
  *
- * Each body follows layout (layout.ts): one statement on the construct's line, or an indented
+ * Each body follows layout (layout/): one statement on the construct's line, or an indented
  * block. Layout also decides when `elif` and `else` continue an `if` (§4), which covers a
  * multi-line `if` used as a value, whose `else` lines up with the statement rather than the `if`.
  *
@@ -25,7 +25,8 @@ import type {
 import type { Invalid } from '../../syntax/node.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { parseBody } from '../layout/bodies.ts';
-import { type ItemRules, moveToContinuation, parseBlockBraces } from '../layout/index.ts';
+import { moveToContinuation } from '../layout/continuations.ts';
+import { type ItemRules, parseBlockBraces } from '../layout/index.ts';
 import type { Parser } from '../parser.ts';
 import { parseHeaderBody, statementRules } from '../parts/blocks.ts';
 import { parseCase } from '../parts/cases.ts';

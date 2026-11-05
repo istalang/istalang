@@ -40,7 +40,7 @@ fn fanoutSuite() -> Array<Test>: [
     bus.send(1)
     bus.send(2)
     assertEq((await received(a, 2), await received(b, 2)), ([1, 2], [1, 2]))
-  }),
+  })
   test("gives a subscriber only the messages sent after it subscribed", async fn(): {
     const bus = fanout.create<Int>()
     const seen = Inbox.create<Int>()
@@ -50,7 +50,7 @@ fn fanoutSuite() -> Array<Test>: [
     assertEq(await received(seen, 1), [2])
     await runtime.commit()
     assertEq(seen.pending(), [])
-  }),
+  })
   test("runs an async handler for one message at a time", async fn(): {
     const bus = fanout.create<Int>()
     const gate = Slot.create<Unit>()
@@ -66,12 +66,12 @@ fn fanoutSuite() -> Array<Test>: [
     assertEq(seen.pending(), [])
     await gate.put(())
     assertEq(await received(seen, 1), [2])
-  }),
+  })
   ...runAndReRun(
-    "retracts a revertible message from the subscribers that haven't read it",
-    retractingTheSecond,
-    ([1, 3], [1, 2]),
-  ),
+    "retracts a revertible message from the subscribers that haven't read it"
+    retractingTheSecond
+    ([1, 3], [1, 2])
+  )
   test("stops once its subscription is disposed", async fn(): {
     const bus = fanout.create<Int>()
     const seen = Inbox.create<Int>()
@@ -82,7 +82,7 @@ fn fanoutSuite() -> Array<Test>: [
     bus.send(2)
     await runtime.commit()
     assertEq(seen.pending(), [])
-  }),
+  })
   test("ends once the bus is disposed and every message sent before is handled", async fn(): {
     const bus = fanout.create<Int>()
     const seen = Inbox.create<Int>()
@@ -92,5 +92,5 @@ fn fanoutSuite() -> Array<Test>: [
     drop bus
     await subscription
     assertEq(seen.pending(), [1, 2])
-  }),
+  })
 ]
