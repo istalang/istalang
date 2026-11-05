@@ -1826,6 +1826,11 @@ Features deliberately left out of v0.1:
 - **Filtering, renaming or making fields optional per field** in a mapped struct type, and carrying field annotations into one (§3.1).
 - **Field loops over enums or tuples** (§4).
 - **Closed struct constraints,** met only by a struct with exactly the named fields, and conformance for every struct meeting a constraint at once, such as `derive FormNode for struct { [_] is FormNode }` (§3.5).
+- **Associated types of unions and `any` types,** such as `(A | B).Meta` as the union of its members' where every use of it stays sound; today neither has associated types, so neither meets a trait requiring one as a type argument (§3.1, §3.10).
+- **A named field overriding a struct comprehension's,** as a mapped type's named entry skips its key; today a field both named and given by the comprehension is given twice (§4).
+- **Rest in variant patterns,** the variant's fields a pattern doesn't name (§3.11).
+- **Union patterns with `infer` variables** beyond `infer T | rest` in a type `match` case (§3.17).
+- **Struct comprehensions in compile-time constants** (§3).
 
 - **Narrowing from function results.** Type predicates, as in TypeScript, so that `fn isOk(x): x is Ok` can narrow a value's type for later code, for example a `map` after a `filter`. Inside one function, `x is Pattern` in an `if` or `and` already narrows.
 - **Codecs written in the language,** and with them JSON for any union, deciding how a codec reads a member without a tag (§9).
