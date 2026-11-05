@@ -37,7 +37,8 @@ import {
 } from './type.ts';
 import { parametersIn } from './type-parts.ts';
 import { type TypeRules, unfolded } from './type-rules.ts';
-import { absorbingMember, baseOf, hasMember, membersOf } from './unions.ts';
+import { absorbingMember, baseOf } from './union-members.ts';
+import { hasMember, membersOf } from './unions.ts';
 
 /**
  * What converts a value itself, before it goes into a union: nothing, the conversion into an `any`

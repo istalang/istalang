@@ -8,29 +8,27 @@
  *   body), a node of a recursive type's graph, reached through that type, or a type built from
  *   either. A type holding none is a leaf, keyed as any type is.
  * - A union's members are a set: a member that is a union term, or a leaf union, gives its members
- *   (flattening, which equi-recursion makes a recursive alias in a union do), duplicates merge,
- *   `Never` drops out, an error member makes the union the error type, and a union of one member
- *   is that member.
- * - Minimizing is partition refinement: terms start in classes by their own structure (kind, field
- *   names, entity, arity), then split by their parts' classes, in order, a union's as a set, until
- *   no class splits. Each class's rank orders it by its unfolding to the depth that split it, a
- *   canonical order however the graph was written, so numbering classes from a root in that order
- *   spells a canonical key: two roots have one key exactly when their unfoldings are equal.
+ *   (flattening, which equi-recursion makes a recursive alias in a union do), and they are then
+ *   normalized as every union's are (union-members.ts), by the rules the source gives; a union of
+ *   one member is that member.
+ * - Minimizing is partition refinement (term-signatures.ts): terms start in classes by their own
+ *   structure (kind, field names, entity, arity), then split by their parts' classes, a union being
+ *   the set of its members', until no class splits; a union left with one member's class is that
+ *   member. Each class's rank orders it by its unfolding to the depth that split it, a canonical
+ *   order however the graph was written, so numbering classes from a root in that order spells a
+ *   canonical key: two roots have one key exactly when their unfoldings are equal.
  * - Keys are passed in (`TermSource`): this unit sits below type-keys.ts, which keys leaves and
  *   spells a term's own structure around its parts' spellings.
+ * - Keying a type (`canonicalKey`) takes no program's rules: every union it reaches was normalized
+ *   where it was built, recursive members flattened, so none takes another member whole again.
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { RecursiveGraph } from './computed-types.ts';
-import {
-  compareSignatures,
-  countOf,
-  rankedBy,
-  type Signature,
-  uniqueSorted,
-} from './term-signatures.ts';
+import { compareSignatures, refinedRanks, type Signature } from './term-signatures.ts';
 import { errorType, neverType, type Type } from './type.ts';
 import { holdsRecursion, typeChildren } from './type-children.ts';
+import { type MemberReading, type MemberRules, normalizedMembers } from './union-members.ts';
 
 /** Where a part of a term leads: a type holding no recursion, with its key, or a term. */
 export type Slot =
@@ -47,6 +45,8 @@ export interface TermSource {
   readonly leafKey: (type: Type) => string;
   /** The key of `type`'s own structure, each of its parts spelled by `partKey`. */
   readonly spell: (type: Type, partKey: (part: Type) => string) => string;
+  /** The rules a union's members are normalized by. */
+  readonly rules: MemberRules;
 }
 
 /** A term: the type it stands for, and where its parts lead, a union's members flattened. */
@@ -230,13 +230,7 @@ export class TermGraph {
       if (type.kind === 'union') {
         return `|<${this.#canonicalParts(term).map(spelled).join(',')}>`;
       }
-      const children = typeChildren(type);
-      const parts = this.partsOf(term);
-      const byChild = new Map(children.map((child, index) => [child, parts[index]] as const));
-      return this.#source.spell(type, (child) => {
-        const part = byChild.get(child);
-        return part === undefined ? this.#source.leafKey(child) : spelled(part);
-      });
+      return this.#spelled(term, spelled);
     });
     return `~[${bodies.join(';')}]`;
   }
@@ -297,32 +291,24 @@ export class TermGraph {
     return this.#terms[term] ?? unreachable(`No term ${term}.`);
   }
 
-  /** Each union's members flattened and merged (the banner). */
+  /** Each union's members flattened and normalized (the banner). */
   #flatten(): void {
     const flattened = this.#terms.map((term, index) =>
-      term.type.kind === 'union' ? this.#membersOf(index, new Set()) : term.parts,
+      term.type.kind === 'union' ? this.#membersOf(index, new Set()) : undefined,
     );
-    flattened.forEach((parts, index) => {
-      const term = this.#termAt(index);
-      if (term.type.kind !== 'union') {
+    const reading: MemberReading<Slot> = {
+      typeOf: (part) => (part.kind === 'leaf' ? part.type : this.typeOf(part.term)),
+      keyOf: (part) => this.#partId(part),
+      memberOf: (type) => this.#leaf(type),
+    };
+    flattened.forEach((members, index) => {
+      if (members === undefined) {
         return;
       }
-      const error = parts.find((part) => part.kind === 'leaf' && part.type.kind === 'error');
-      const kept = parts.filter(
-        (part) =>
-          !(part.kind === 'leaf' && part.type.kind === 'primitive' && part.type.name === 'Never'),
-      );
-      const seen = new Set<string>();
-      term.parts = kept.filter((part) => {
-        const id = this.#partId(part);
-        const fresh = !seen.has(id);
-        seen.add(id);
-        return fresh;
-      });
-      const [only, ...more] = term.parts;
-      if (error !== undefined) {
-        this.#redirects.set(index, error);
-      } else if (only === undefined) {
+      const parts = normalizedMembers(members, reading, this.#source.rules);
+      this.#termAt(index).parts = parts;
+      const [only, ...more] = parts;
+      if (only === undefined) {
         this.#redirects.set(index, this.#leaf(neverType));
       } else if (more.length === 0) {
         this.#redirects.set(index, only);
@@ -350,37 +336,30 @@ export class TermGraph {
     return { kind: 'leaf', type, key: this.#source.leafKey(type) };
   }
 
-  /** Partition refinement (the banner), each round ordering classes after the one before. */
+  /** Partition refinement (the banner), over the terms not redirected. */
   #refine(): void {
     const live = this.#terms.flatMap((_, index) => (this.#redirects.has(index) ? [] : [index]));
-    const labelOf = (term: number): string => {
-      const { type } = this.#termAt(term);
-      return type.kind === 'union' ? '|' : this.#source.spell(type, () => '_');
-    };
-    let ranks = rankedBy(live, (term) => [labelOf(term)], this.#terms.length);
-    let classes = countOf(ranks, live);
-    for (;;) {
-      const current = ranks;
-      const partSignature = (part: Slot): Signature =>
-        part.kind === 'leaf' ? [0, part.key] : [1, current[part.term] ?? -1];
-      const signatureOf = (term: number): Signature => {
-        const own = current[term] ?? -1;
-        const parts = this.#termAt(term).parts.map((part) => partSignature(this.resolved(part)));
-        if (this.#termAt(term).type.kind !== 'union') {
-          return [own, ...parts.flat()];
-        }
-        const distinct = uniqueSorted(parts);
-        return [own, distinct.length, ...distinct.flat()];
-      };
-      const next = rankedBy(live, signatureOf, this.#terms.length);
-      const count = countOf(next, live);
-      ranks = next;
-      if (count === classes) {
-        break;
-      }
-      classes = count;
-    }
-    this.#ranks = ranks;
+    const isUnion = (term: number) => this.typeOf(term).kind === 'union';
+    this.#ranks = refinedRanks({
+      size: this.#terms.length,
+      nodes: live.filter((term) => !isUnion(term)),
+      unions: live.filter(isUnion),
+      spelled: (node, spellPart) => this.#spelled(node, spellPart),
+      membersOf: (part) =>
+        part.kind === 'term' && isUnion(part.term)
+          ? this.#termAt(part.term).parts.map((member) => this.resolved(member))
+          : [part],
+    });
+  }
+
+  /** `term`'s own structure, not a union's, spelled with each of its parts, resolved, by `spellPart`. */
+  #spelled(term: number, spellPart: (part: Slot) => string): string {
+    const { type, parts } = this.#termAt(term);
+    const byChild = new Map(typeChildren(type).map((child, index) => [child, parts[index]]));
+    return this.#source.spell(type, (child) => {
+      const part = byChild.get(child);
+      return part === undefined ? this.#source.leafKey(child) : spellPart(this.resolved(part));
+    });
   }
 }
 
@@ -393,7 +372,13 @@ export function canonicalKey(
   leafKey: (type: Type) => string,
   spell: TermSource['spell'],
 ): string {
-  const graph = new TermGraph({ bodies: [], placeholderOf: () => undefined, leafKey, spell });
+  const graph = new TermGraph({
+    bodies: [],
+    placeholderOf: () => undefined,
+    leafKey,
+    spell,
+    rules: { absorbs: () => false },
+  });
   const root = graph.slotOf(type);
   graph.minimize();
   return graph.canonicalKey(root);

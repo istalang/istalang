@@ -51,7 +51,8 @@ import type {
   Type,
   UnionType,
 } from '../checker/types/type.ts';
-import { baseOf, hasOneValue } from '../checker/types/unions.ts';
+import { baseOf } from '../checker/types/union-members.ts';
+import { hasOneValue } from '../checker/types/unions.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { closeFunctionCall } from './closed-calls.ts';
 import type { FunctionInstance } from './instances.ts';

@@ -37,8 +37,8 @@ import {
 import { typeOfEntity } from '../types/resolve-type.ts';
 import { floatType, noneType, type Type, type UnionType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { baseOf } from '../types/union-members.ts';
 import {
-  baseOf,
   hasMember,
   hasOneValue,
   membersOf,

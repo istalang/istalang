@@ -20,7 +20,7 @@ import { sameType } from './identity.ts';
 import type { Type } from './type.ts';
 import { mapChildren } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
-import { baseOf } from './unions.ts';
+import { baseOf } from './union-members.ts';
 
 /**
  * `type` without its refinements, nor those of any type it is built from: `type` itself when it

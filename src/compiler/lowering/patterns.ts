@@ -28,7 +28,8 @@ import {
 } from '../checker/checked-pattern.ts';
 import { sameType } from '../checker/types/identity.ts';
 import type { LiteralType, Type } from '../checker/types/type.ts';
-import { baseOf, hasMember } from '../checker/types/unions.ts';
+import { baseOf } from '../checker/types/union-members.ts';
+import { hasMember } from '../checker/types/unions.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Label } from './code-writer.ts';

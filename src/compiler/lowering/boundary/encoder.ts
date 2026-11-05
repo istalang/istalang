@@ -14,7 +14,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
 import { isPrimitive, type Type, type UnionType } from '../../checker/types/type.ts';
 import { unfolded } from '../../checker/types/type-rules.ts';
-import { baseOf } from '../../checker/types/unions.ts';
+import { baseOf } from '../../checker/types/union-members.ts';
 import { arrayElement, wellKnownArguments } from '../../checker/types/well-known.ts';
 import { closeCall } from '../closed-calls.ts';
 import type { TypedValue } from '../holdings.ts';

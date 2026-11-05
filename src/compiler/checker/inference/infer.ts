@@ -51,7 +51,8 @@ import {
 } from '../types/type.ts';
 import { typeChildren } from '../types/type-children.ts';
 import { parametersIn } from '../types/type-parts.ts';
-import { baseOf, literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions.ts';
+import { baseOf } from '../types/union-members.ts';
+import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions.ts';
 
 export class Inference {
   readonly #unknowns: ReadonlySet<ParameterKey>;

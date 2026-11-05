@@ -36,7 +36,7 @@ import {
   variantOwners,
 } from '../types/named-types.ts';
 import type { AnyType, Type } from '../types/type.ts';
-import { baseOf } from '../types/unions.ts';
+import { baseOf } from '../types/union-members.ts';
 import { literalTypeOf, memberTaken, selectsMember, unionPart } from './members.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import { type PatternTests, ruledOutSelection, type Selection } from './pattern-tests.ts';

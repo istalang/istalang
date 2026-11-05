@@ -13,7 +13,7 @@
 
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
-import type { ComputedType, MappedParts } from './computed-types.ts';
+import type { ComputedType, MappedParts, RecursiveType } from './computed-types.ts';
 import {
   type AnyType,
   aliasedAs,
@@ -110,7 +110,7 @@ export function substituteAny(
 
 /** A type that is no type parameter with `substitution` applied, still of its kind. */
 export function substituteKept<
-  Kept extends Exclude<Type, TypeParameterType | UnionType | ComputedType>,
+  Kept extends Exclude<Type, TypeParameterType | UnionType | RecursiveType | ComputedType>,
 >(type: Kept, substitution: Substitution, rules: TypeRules): Kept {
   if (recursionOf(type) !== undefined) {
     return substitutedUnfolding(type, substitution, rules);

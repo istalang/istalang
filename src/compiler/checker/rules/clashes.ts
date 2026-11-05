@@ -42,7 +42,8 @@ import type { RestSlot } from '../types/function-types.ts';
 import { declaredOwnerOf, type StaticOwner } from '../types/named-types.ts';
 import type { ParameterKey, Type } from '../types/type.ts';
 import { mentionsError } from '../types/type-parts.ts';
-import { baseOf, membersOf } from '../types/unions.ts';
+import { baseOf } from '../types/union-members.ts';
+import { membersOf } from '../types/unions.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {

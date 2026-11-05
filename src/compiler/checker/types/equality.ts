@@ -12,7 +12,8 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../body-context.ts';
 import { sameType } from './identity.ts';
 import { isMemberParameter, isPrimitive, type Type } from './type.ts';
-import { baseOf, membersOf } from './unions.ts';
+import { baseOf } from './union-members.ts';
+import { membersOf } from './unions.ts';
 
 /**
  * Whether `==` and `!=` compare values of these types as they are (§3.9): one type on both sides,

@@ -14,7 +14,7 @@
 import type { CheckerContext } from '../context.ts';
 import { constraintSubstitution, requiredFunctions } from '../traits/constraints.ts';
 import type { Constraint, Type } from '../types/type.ts';
-import { baseOf } from '../types/unions.ts';
+import { baseOf } from '../types/union-members.ts';
 import type { CallArgument } from './call-arguments.ts';
 import { type Candidate, witnessCandidates } from './candidates.ts';
 import { type Choice, chooseAsValue, type Signature, signatureOf } from './choice.ts';

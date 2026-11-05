@@ -32,6 +32,7 @@ import {
   withTypeChildren,
 } from './type-children.ts';
 import { typeKeys } from './type-keys.ts';
+import type { MemberRules } from './union-members.ts';
 
 /** A group of bodies closing together, and what each one reads as. */
 export interface RecursiveGroup {
@@ -41,6 +42,8 @@ export interface RecursiveGroup {
   readonly placeholderOf: (type: Type) => number | undefined;
   /** The alias each body is written as, if any. */
   readonly labels: readonly (DeclaredAliasUse | undefined)[];
+  /** The rules of the program, which normalize unions the graph flattens (union-members.ts). */
+  readonly rules: MemberRules;
 }
 
 /** The type each of `group`'s bodies closes to (the banner), in order. */
@@ -50,6 +53,7 @@ export function closeRecursive(group: RecursiveGroup): readonly Type[] {
     placeholderOf: group.placeholderOf,
     leafKey: (type) => typeKeys.typeKey(type),
     spell: (type, partKey) => typeKeys.structureKey(type, partKey),
+    rules: group.rules,
   });
   const roots = group.bodies.map((_, index) => terms.bodySlot(index));
   terms.minimize();
@@ -187,9 +191,13 @@ class GraphNodes {
 
 /**
  * The recursive type `type` with each of its graph's parts replaced by what `map` gives, closed
- * again (the banner); `type` itself when `map` changes none.
+ * again by the program's `rules` (the banner); `type` itself when `map` changes none.
  */
-export function mapRecursive(type: RecursiveType, map: (part: Type) => Type): Type {
+export function mapRecursive(
+  type: RecursiveType,
+  map: (part: Type) => Type,
+  rules: MemberRules,
+): Type {
   const { graph } = type;
   const mapped = new Map(graphParts(graph).map((part) => [part, map(part)] as const));
   if ([...mapped].every(([part, replaced]) => part === replaced)) {
@@ -216,6 +224,7 @@ export function mapRecursive(type: RecursiveType, map: (part: Type) => Type): Ty
     placeholderOf: (each) =>
       each.kind === 'recursive' && each.graph === graph ? each.node : undefined,
     labels,
+    rules,
   });
   const result = closed[type.node] ?? unreachable('A node closed to nothing.');
   return type.alias === undefined ? result : { ...result, alias: type.alias };

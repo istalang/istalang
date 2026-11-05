@@ -82,6 +82,7 @@ export class RecursiveBodies {
         declaration: member,
         arguments: parameters,
       })),
+      rules,
     });
     return closed ?? errorType;
   }

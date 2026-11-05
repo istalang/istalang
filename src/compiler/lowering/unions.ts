@@ -31,7 +31,8 @@ import {
   type Type,
   type UnionType,
 } from '../checker/types/type.ts';
-import { baseOf, hasOneValue } from '../checker/types/unions.ts';
+import { baseOf } from '../checker/types/union-members.ts';
+import { hasOneValue } from '../checker/types/unions.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import { emitConstant } from './constants.ts';
 import type { CodeContext } from './context.ts';

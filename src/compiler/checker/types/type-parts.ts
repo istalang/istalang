@@ -5,7 +5,12 @@
  */
 
 import { sameItems } from '../../../structures/equality.ts';
-import { type ComputedType, isComputed, type MappedParts } from './computed-types.ts';
+import {
+  type ComputedType,
+  isComputed,
+  type MappedParts,
+  type RecursiveType,
+} from './computed-types.ts';
 import { withPack } from './function-types.ts';
 import { mapRecursive } from './recursive-types.ts';
 import {
@@ -44,15 +49,22 @@ export function sameConstraintSpelled(first: Constraint, second: Constraint): bo
 /**
  * `type` written through no alias at any level: the type its key names (type-keys.ts). A result
  * kept by a type's key is computed from it, so it never depends on how the type was spelled where
- * it was first asked for.
+ * it was first asked for. A recursive type's graph is one spelling already, whatever aliases its
+ * parts were written through (type-keys.ts `spelledKey`), so only the alias it is written through
+ * goes.
  */
 export function unaliased<Written extends Exclude<Type, UnionType>>(type: Written): Written;
 export function unaliased(type: Type): Type;
 export function unaliased(type: Type): Type {
-  if (type.kind === 'union') {
-    return unionOfNormalized(type.members.map(unaliased));
+  const bare = type.alias === undefined ? type : { ...type, alias: undefined };
+  switch (bare.kind) {
+    case 'union':
+      return unionOfNormalized(bare.members.map(unaliased));
+    case 'recursive':
+      return bare;
+    default:
+      return mapParts(bare, unaliased);
   }
-  return mapParts(type.alias === undefined ? type : { ...type, alias: undefined }, unaliased);
 }
 
 /**
@@ -130,19 +142,25 @@ export function mapChildren(type: Type, map: (child: Type) => Type, rules: TypeR
   return rebuilt === undefined ? mapParts(type as Exclude<Type, Rebuilt>, map) : rebuilt;
 }
 
-/** The types a program's rules build: a union, normalized, and the types computed from others. */
-type Rebuilt = UnionType | ComputedType;
+/**
+ * The types a program's rules build: a union, normalized, a recursive type, whose graph closes
+ * again normalizing its unions alike, and the types computed from others.
+ */
+type Rebuilt = UnionType | RecursiveType | ComputedType;
 
 /**
  * `type` rebuilt by `rules` from its parts as `map` gives them, written through its alias, when
- * building it takes the rules: a union, whose members may merge, or a computed type, which may
- * reduce (type-rules.ts); undefined for any other type.
+ * building it takes the rules: a union, whose members may merge, a recursive type, whose graph
+ * closes again (recursive-types.ts), or a computed type, which may reduce (type-rules.ts);
+ * undefined for any other type.
  */
 function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Type | undefined {
   const rebuilt = (): Type | undefined => {
     switch (type.kind) {
       case 'union':
         return unionOf(type.members.map(map), rules);
+      case 'recursive':
+        return mapRecursive(type, map, rules);
       case 'associated':
         return rules.associatedType(map(type.of), type.name);
       case 'field':
@@ -171,19 +189,21 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
 }
 
 /**
- * `type`, not a union, with each type it is built from, one level down, replaced by what `map`
- * gives, still of its kind; its alias comes along, as `mapChildren` says. Building one of these
- * takes no rule of the program: only a union normalizes its members, and only a computed type
- * reduces, which `mapChildren` does. A computed type kept as it is, its parts respelled
- * (`unaliased`), stays of its kind here, and the shape a recursive type `match` use stands for
- * keeps that use, its arguments mapped alike. A recursive type's graph closes again from its parts
- * mapped (recursive-types.ts).
+ * `type`, neither a union nor a recursive type, with each type it is built from, one level down,
+ * replaced by what `map` gives, still of its kind; its alias comes along, as `mapChildren` says.
+ * Building one of these takes no rule of the program: only a union and a recursive type's graph
+ * normalize members, and only a computed type reduces, which `mapChildren` does. A computed type
+ * kept as it is, its parts respelled (`unaliased`), stays of its kind here, and the shape a
+ * recursive type `match` use stands for keeps that use, its arguments mapped alike.
  */
-export function mapParts<Mapped extends Exclude<Type, UnionType>>(
+export function mapParts<Mapped extends Exclude<Type, UnionType | RecursiveType>>(
   type: Mapped,
   map: (child: Type) => Type,
 ): Mapped;
-export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => Type): Type {
+export function mapParts(
+  type: Exclude<Type, UnionType | RecursiveType>,
+  map: (child: Type) => Type,
+): Type {
   switch (type.kind) {
     case 'associated':
       return { ...type, of: map(type.of) };
@@ -200,8 +220,6 @@ export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => T
     case 'match':
     case 'recursiveMatch':
       return { ...type, arguments: type.arguments.map(map) };
-    case 'recursive':
-      return mapRecursive(type, map);
     case 'parameter':
       return type.within === undefined ? type : { ...type, within: map(type.within) };
     case 'literal':

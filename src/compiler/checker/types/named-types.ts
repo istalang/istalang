@@ -44,7 +44,8 @@ import {
 } from './type.ts';
 import { type ShapeKey, typeKeys } from './type-keys.ts';
 import { type TypeRules, unfolded } from './type-rules.ts';
-import { absorbingMember, baseOf, hasMember, optionalInner } from './unions.ts';
+import { absorbingMember, baseOf } from './union-members.ts';
+import { hasMember, optionalInner } from './unions.ts';
 import { arrayElement } from './well-known.ts';
 
 type Aliases = Pick<Checker, 'aliasedType' | 'typeRules'>;
