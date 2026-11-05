@@ -5,10 +5,10 @@
  * recursive type `match` use, which is known, standing for the shape it reduces to.
  */
 
-import type { AliasDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import type { AliasDeclaration, AssociatedType, TypeParameter } from '../../syntax/declarations.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
 import type { StructType } from '../../syntax/types.ts';
-import type { FieldMember, Type, TypeParameterType, WrittenThrough } from './type.ts';
+import type { FieldMember, NominalType, Type, TypeParameterType, WrittenThrough } from './type.ts';
 
 /**
  * `T.Data` (§3.1): the associated type `name` of `of`, a type not known yet, a type parameter or
@@ -20,6 +20,14 @@ export interface AssociatedOfType extends WrittenThrough {
   readonly kind: 'associated';
   readonly of: Type;
   readonly name: string;
+}
+
+/** The associated type `name` a nominal type's own declaration declares (§3.1); else undefined. */
+export function ownAssociatedType(owner: NominalType, name: string): AssociatedType | undefined {
+  const { declaration } = owner.entity;
+  return declaration.kind === 'ExternStructDeclaration'
+    ? undefined
+    : declaration.associatedTypes.find((each) => each.name.text === name);
 }
 
 /**

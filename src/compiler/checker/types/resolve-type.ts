@@ -40,6 +40,7 @@ import {
 } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { ownAssociatedType } from './computed-types.ts';
 import { isPack, withPack } from './function-types.ts';
 import { fieldWritten, keysWritten, structWritten } from './key-types.ts';
 import { substitutionFor } from './substitution.ts';
@@ -59,7 +60,13 @@ import { constrainArguments, noteConstraints, typeArgumentsFor } from './type-ar
 import { aliasInstance } from './type-match.ts';
 import { typeText } from './type-text.ts';
 import { optionalOf, unionOf, writtenLiteral } from './unions.ts';
-import { asWrittenInMatch, inCasePattern, inferWritten, unreducedUse } from './written-matches.ts';
+import {
+  asWrittenInMatch,
+  inCasePattern,
+  inferWritten,
+  unreducedAssociated,
+  unreducedUse,
+} from './written-matches.ts';
 
 interface Resolution {
   readonly checker: CheckerContext;
@@ -193,8 +200,16 @@ function namedType(resolution: Resolution, node: NamedType): Type {
 /** The associated type `name` names on `owner` (§3.1), reported when it has none. */
 function associatedAt(resolution: Resolution, owner: Type, name: Identifier): Type {
   const { checker, module } = resolution;
+  const unreduced = unreducedAssociated(resolution, owner, name);
+  if (unreduced !== undefined) {
+    return unreduced;
+  }
   const type = checker.typeRules.associatedType(owner, name.text);
-  if (type.kind === 'error' && owner.kind !== 'error' && !isMissingName(name)) {
+  const declared =
+    owner.kind === 'nominal'
+      ? ownAssociatedType(owner, name.text) !== undefined
+      : type.kind !== 'error';
+  if (!declared && owner.kind !== 'error' && !isMissingName(name)) {
     checker.report(
       module,
       checkerDiagnostics.noAssociatedType(name.span, typeText(owner), name.text),

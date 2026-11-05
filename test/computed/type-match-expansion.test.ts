@@ -92,3 +92,24 @@ describe('a type match growing its subject', () => {
     ).toEqual([]);
   });
 });
+
+describe('an associated type whose body is a type `match`', () => {
+  it('reduces, recurses and grows as an alias whose body is one does', () => {
+    const owner = (body: string) => ['struct W<T>:', '  value: T', '  type Grow = match T:', body];
+    expect(codesOf(...owner('    case _: W<Array<T>>.Grow'), 'fn f(x: W<Int>.Grow): ()')).toEqual(
+      codesOf('type G<T> = match T:', '  case _: G<Array<T>>', 'fn f(x: G<Int>): ()'),
+    );
+    expect(codesOf(...owner('    case _: W<T>.Grow'), 'fn f(x: W<Int>.Grow): ()')).toEqual(
+      codesOf('type G<T> = match T:', '  case _: G<T>', 'fn f(x: G<Int>): ()'),
+    );
+    const flat = [
+      'struct Box<T>:',
+      '  value: T',
+      '  type Flat = match T:',
+      '    case Box<infer U>: Box<U>.Flat',
+      '    case _: { leaf: T; next: Array<Flat> }',
+      'fn f(x: Box<Box<Int>>.Flat) -> Int: x.leaf + x.next.length()',
+    ];
+    expect(runMain('Int', 'f(struct{leaf: 3, next: []})', flat)).toBe(3);
+  });
+});

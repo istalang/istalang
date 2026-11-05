@@ -6,7 +6,8 @@
  * - A declaration's requirements are the types it holds that a type `match` use with arguments
  *   not known yet stands in: its fields, variants and associated types, an alias's body, and a
  *   function's written types, signature and body alike, with the type arguments its calls give and
- *   their callees' requirements, read through those arguments. A function reached again while its
+ *   their callees' requirements, read through those arguments; a struct's or variant's field
+ *   defaults bring what their calls reach alike. A function reached again while its
  *   requirements are found adds none: the cycle's own uses are among the others'.
  * - An instantiation substitutes them, and any use whose arguments are then all known reduces:
  *   one naming no type (matching no case, or being itself), the error type carrying it, is
@@ -30,9 +31,11 @@ import {
   type TypeAliasDeclaration,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
+import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { nodesUnder } from '../../syntax/tree.ts';
 import { isWrittenType } from '../../syntax/types.ts';
+import type { CheckedBody } from '../check.ts';
 import type { CheckerContext, CheckerNote, Instantiable } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { functionCallsWithin } from '../resolved-call.ts';
@@ -171,6 +174,11 @@ export class MatchRequirements {
             .declaredVariantsOf(declaration)
             .flatMap(({ fields }) => fields.map((field) => field.type)),
           ...associated(checker, declaration),
+          ...declaration.variants.flatMap((variant) =>
+            variant.kind === 'Variant'
+              ? this.#defaultsReach(fieldsFunctionOf(declaration, variant))
+              : [],
+          ),
         ];
       case 'ExternStructDeclaration':
         return [];
@@ -178,8 +186,14 @@ export class MatchRequirements {
         return [
           ...checker.declaredFieldsOf(declaration).map((field) => field.type),
           ...associated(checker, declaration),
+          ...this.#defaultsReach(fieldsFunctionOf(declaration)),
         ];
     }
+  }
+
+  /** What the defaults of a struct's or variant's fields reach through their calls (§3.1). */
+  #defaultsReach(fields: FieldsFunction | undefined): readonly Type[] {
+    return fields === undefined ? [] : this.#calledThrough([this.#checker.defaultsOf(fields)]);
   }
 
   /**
@@ -200,7 +214,12 @@ export class MatchRequirements {
         isWrittenType(node) && node.kind !== 'RestType' ? checker.resolvedTypeOf(node) : undefined;
       return type === undefined ? [] : [type];
     });
-    const called = bodies
+    return [...written, ...this.#calledThrough(bodies)];
+  }
+
+  /** The type arguments the calls `bodies` make give, and their callees' requirements through them. */
+  #calledThrough(bodies: readonly (CheckedBody | undefined)[]): readonly Type[] {
+    return bodies
       .flatMap((body) => body?.madeCalls() ?? [])
       .flatMap(({ call }) => functionCallsWithin(call))
       .flatMap((call) =>
@@ -208,7 +227,6 @@ export class MatchRequirements {
           ? []
           : [...call.typeArguments, ...this.#through(call.function, call.typeArguments)],
       );
-    return [...written, ...called];
   }
 
   /** Whether a type `match` use stands in `type`, or a nominal type whose declaration has some. */

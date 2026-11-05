@@ -1,8 +1,9 @@
 /**
  * Type `match`es as written (§3.17), what only resolving a written type decides:
  *
- * - Inside a type `match`, a use of a type `match` alias stays unreduced (type-match.ts): a case's
- *   type is resolved once with its alias's parameters open, and a use substitutes them.
+ * - Inside a type `match`, a use of a declaration whose body is a type `match`, an alias or an
+ *   associated type (§3.1), stays unreduced (type-match.ts): a case's type is resolved once with
+ *   its alias's parameters open, and a use substitutes them.
  * - `infer` stands only in a case's pattern; anywhere else it is reported.
  * - A use no case matches is the error type carrying it: the check noted for its instantiation
  *   reports it where it is written, as for any it reaches (resolution/match-requirements.ts).
@@ -12,12 +13,14 @@
 
 import type { Entity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
+import type { AliasDeclaration, TypeAliasDeclaration } from '../../syntax/declarations.ts';
+import type { Identifier } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import { matchPlaceOf } from '../../syntax/type-matches.ts';
 import type { InferType, NamedType } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { ownAssociatedType } from './computed-types.ts';
 import { aliasedAs, errorType, type NominalDeclaration, type Type } from './type.ts';
 import { matchUse, structCaseOf } from './type-match.ts';
 
@@ -39,13 +42,36 @@ export function unreducedUse(
     declaration: NominalDeclaration | TypeAliasDeclaration,
   ) => readonly Type[] | undefined,
 ): Type | undefined {
-  const alias = typeMatchAliasOf(entity);
-  if (alias === undefined || matchPlaceOf(treeOf(written), node) === 'outside') {
+  const alias =
+    entity.kind === 'type' && entity.declaration.kind === 'TypeAliasDeclaration'
+      ? entity.declaration
+      : undefined;
+  if (alias === undefined || !isTypeMatchBodied(alias) || !insideMatch(written, node)) {
     return undefined;
   }
   const typeArguments = argumentsFor(alias) ?? [];
   const use = matchUse(alias, typeArguments);
   return aliasedAs(use, { kind: 'alias', declaration: alias, arguments: typeArguments });
+}
+
+/**
+ * The unreduced use `name` writes of `owner`'s associated type of that name inside a type `match`,
+ * when its body is one, given `owner`'s arguments; undefined for any other, or outside one.
+ */
+export function unreducedAssociated(
+  written: Written,
+  owner: Type,
+  name: Identifier,
+): Type | undefined {
+  if (owner.kind !== 'nominal' || !insideMatch(written, name)) {
+    return undefined;
+  }
+  const found = ownAssociatedType(owner, name.text);
+  if (found === undefined || !isTypeMatchBodied(found)) {
+    return undefined;
+  }
+  const use = matchUse(found, owner.arguments);
+  return aliasedAs(use, { kind: 'associated', of: owner, name: name.text });
 }
 
 /**
@@ -94,13 +120,14 @@ export function inferWritten(written: Written, node: InferType): Type {
   return errorType;
 }
 
-/** The alias `entity` declares when its body is a type `match` (§3.17); else undefined. */
-function typeMatchAliasOf(entity: Entity): TypeAliasDeclaration | undefined {
-  return entity.kind === 'type' &&
-    entity.declaration.kind === 'TypeAliasDeclaration' &&
-    entity.declaration.type.kind === 'TypeMatch'
-    ? entity.declaration
-    : undefined;
+/** Whether `declaration`'s body is a type `match` (§3.17). */
+function isTypeMatchBodied(declaration: AliasDeclaration): boolean {
+  return declaration.type.kind === 'TypeMatch';
+}
+
+/** Whether `node` stands inside a type `match`, where uses of one stay unreduced (the banner). */
+function insideMatch(written: Written, node: SyntaxNode): boolean {
+  return matchPlaceOf(treeOf(written), node) !== 'outside';
 }
 
 function treeOf({ checker, module }: Written) {

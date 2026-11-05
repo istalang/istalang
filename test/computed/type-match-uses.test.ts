@@ -183,3 +183,32 @@ describe('a `struct{…}` literal passed as a call argument', () => {
     );
   });
 });
+
+describe('a type `match` a field default reaches', () => {
+  const helper = [
+    'type OnlyBox<D> = match D:',
+    '  case Box<infer T>: T',
+    'struct Box<T> { value: T }',
+    'fn helper<D>() -> Int:',
+    '  const _: OnlyBox<D>? = none',
+    '  0',
+  ];
+  it('is checked where its struct or variant is instantiated, as a field type is', () => {
+    expect(
+      codesOf(
+        ...helper,
+        'struct Holder<D>:',
+        '  x: Int = helper<D>()',
+        'fn g() -> Int: Holder<Int>{}.x',
+      ),
+    ).toEqual([5170]);
+    expect(
+      codesOf(
+        ...helper,
+        'enum Choice<D>:',
+        '  Held { x: Int = helper<D>() }',
+        'fn g(c: Choice<Int>): ()',
+      ),
+    ).toEqual([5170]);
+  });
+});
