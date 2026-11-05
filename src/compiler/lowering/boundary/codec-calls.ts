@@ -26,5 +26,5 @@ export function codecCall(
   if (codec === undefined) {
     unreachable(`A type crossing has no codec to ${direction}; checking should have said so.`);
   }
-  return closeCall(codec, within, checker.typeRules);
+  return closeCall(codec, within, checker);
 }

@@ -8,18 +8,19 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import { handMadeSpan } from '../../syntax/tree.test-kit.ts';
+import { sameShape } from './function-types.ts';
 import { sameType } from './identity.ts';
 import { substitute } from './substitution.ts';
 import {
   boolType,
   type FunctionType,
   intType,
-  sameShape,
   stringType,
   type Type,
   tupleType,
   unitType,
 } from './type.ts';
+import { noProgramRules } from './type-rules.test-kit.ts';
 
 const span = handMadeSpan(0);
 
@@ -61,7 +62,7 @@ describe('a function type ending in a pack', () => {
         const substituted = substitute(
           packed(fixed),
           new Map([[packDeclaration, tupleType(elements)]]),
-          { absorbs: () => false },
+          noProgramRules,
         );
         expect(sameType(substituted, plain([...fixed, ...elements]))).toBe(true);
       }),

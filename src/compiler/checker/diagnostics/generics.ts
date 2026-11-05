@@ -135,6 +135,15 @@ export const genericTemplates = {
     message: (name: string, union: string, traits: readonly string[]) =>
       `'${name}' on ${union} could be what any of ${traits.join(', ')} requires, each a trait it meets; convert the value into the 'any' type of the one meant, then call it (§3.10).`,
   },
+  noAssociatedType: {
+    code: 5132,
+    message: (type: string, name: string) => `${type} has no associated type '${name}' (§3.1).`,
+  },
+  severalOtherFields: {
+    code: 5133,
+    message: () =>
+      "A struct constraint has one '[_]' entry at most: it constrains every field the others don't name (§3.5).",
+  },
   notMemberArgument: {
     code: 5131,
     message: (parameter: string, union: string, found: string) =>

@@ -53,6 +53,8 @@ function holds(
     case 'union':
     case 'function':
     case 'parameter':
+    case 'associated':
+    case 'field':
     case 'any':
     case 'error':
       return false;

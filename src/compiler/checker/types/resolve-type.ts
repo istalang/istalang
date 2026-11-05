@@ -19,7 +19,9 @@
  * - `&T` is only ever a parameter's type (the parser enforces it); here it denotes `T`, and the
  *   signature records the reference.
  * - Fields, of a struct, an enum's variant or an anonymous struct type, resolve in the module
- *   writing them (`declaredFields`).
+ *   writing them (declared-fields.ts).
+ * - A path past the type it names reaches its associated types, `T.Data`, and so does `.Name` after
+ *   type arguments, `Field<Int>.Data` (§3.1); either reduces through `TypeRules`.
  * - A `{…}` type is a shape (§3.1), whose fields resolve here. A shape's field takes no annotation
  *   (§3.16), which is reported here, where nothing else declares it, without computing its value:
  *   that could reach the very type being resolved.
@@ -30,14 +32,13 @@ import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
 import {
-  type Field,
   type FunctionDeclaration,
   type TraitDeclaration,
   type TypeAliasDeclaration,
   type TypeParameter,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
-import { type Invalid, lastName } from '../../syntax/node.ts';
+import { type Identifier, isMissingName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import {
   type FunctionType as FunctionTypeNode,
@@ -49,11 +50,12 @@ import {
 } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { declaredFields } from './declared-fields.ts';
+import { withPack } from './function-types.ts';
 import { substitute, substitutionFor } from './substitution.ts';
 import {
   aliasedAs,
   errorType,
-  type FieldMember,
   isPack,
   type NominalDeclaration,
   nominalType,
@@ -64,7 +66,6 @@ import {
   type Type,
   tupleType,
   unitType,
-  withPack,
 } from './type.ts';
 import { typeText } from './type-text.ts';
 import { optionalOf, unionOf, writtenLiteral } from './unions.ts';
@@ -102,6 +103,8 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
   AnyType: ({ checker, module }, node) => checker.anyTypeOf(module, node.traits),
   UnionType: (resolution, node) => unionTypeOf(resolution, node),
   LiteralType: (_resolution, node) => writtenLiteral(node.value) ?? errorType,
+  MemberType: (resolution, node) =>
+    associatedAt(resolution, resolve(resolution, node.owner), node.name),
   Missing: () => errorType,
   Invalid: () => errorType,
 };
@@ -222,20 +225,55 @@ function isTypeNode(parameter: TypeNode | RestType): parameter is TypeNode {
   return parameter.kind !== 'RestType';
 }
 
+/**
+ * The type a named type names. A path past the type it names goes on with that type's associated
+ * types (`T.Data`, §3.1), which the binder leaves unresolved: the type arguments then belong to
+ * the last of them, which takes none.
+ */
 function namedType(resolution: Resolution, node: NamedType): Type {
   const { checker, module } = resolution;
-  const name = lastName(node.path);
-  const entity = checker.bindings.entityOf(module, name);
-  if (entity === undefined) {
+  const resolved = node.path.findIndex(
+    (part) => checker.bindings.entityOf(module, part) === undefined,
+  );
+  const named = resolved === -1 ? node.path.length : resolved;
+  const name = node.path[named - 1];
+  const entity = name === undefined ? undefined : checker.bindings.entityOf(module, name);
+  const members = node.path.slice(named);
+  if (name === undefined || entity === undefined || members.some(isMissingName)) {
     return errorType;
   }
+  const written = members.length === 0 ? node : { ...node, typeArguments: [] };
   const type = typeOfEntity(checker, entity, (declaration) =>
-    argumentsOf(resolution, node, declaration),
+    argumentsOf(resolution, written, declaration),
   );
   if (type === undefined) {
     checker.report(module, checkerDiagnostics.notType(node.span, name.text));
+    return errorType;
   }
-  return type ?? errorType;
+  const last = members.at(-1) ?? name;
+  if (
+    node.typeArguments.length > 0 &&
+    (members.length > 0 || entity.kind !== 'type' || entity.declaration.kind === 'AssociatedType')
+  ) {
+    checker.report(
+      module,
+      checkerDiagnostics.typeArgumentCount(node.span, last.text, 0, node.typeArguments.length),
+    );
+  }
+  return members.reduce((owner, member) => associatedAt(resolution, owner, member), type);
+}
+
+/** The associated type `name` names on `owner` (§3.1), reported when it has none. */
+function associatedAt(resolution: Resolution, owner: Type, name: Identifier): Type {
+  const { checker, module } = resolution;
+  const type = checker.typeRules.associatedType(owner, name.text);
+  if (type.kind === 'error' && owner.kind !== 'error' && !isMissingName(name)) {
+    checker.report(
+      module,
+      checkerDiagnostics.noAssociatedType(name.span, typeText(owner), name.text),
+    );
+  }
+  return type;
 }
 
 /**
@@ -263,6 +301,8 @@ export function typeOfEntity(
         case 'TypeParameter':
           return parameterType(declaration);
         case 'TraitDeclaration':
+        case 'RequiredAssociatedType':
+          // A requirement names a type only on what meets its trait (`T.Key`, §3.10).
           return undefined;
         case 'TypeAliasDeclaration': {
           const typeArguments = typeArgumentsOf(declaration);
@@ -279,8 +319,11 @@ export function typeOfEntity(
                   substitutionFor(declaration.typeParameters, typeArguments),
                   checker.typeRules,
                 );
-          return aliasedAs(type, { declaration, arguments: typeArguments });
+          return aliasedAs(type, { kind: 'alias', declaration, arguments: typeArguments });
         }
+        case 'AssociatedType':
+          // Named bare inside its own declaration, it is the type it stands for there (§3.1).
+          return checker.aliasedType(declaration);
         default: {
           const typeArguments = typeArgumentsOf(declaration);
           return typeArguments === undefined ? errorType : nominalType(entity, typeArguments);
@@ -322,39 +365,6 @@ export function constrainArguments(
   for (const parameter of checked) {
     checker.constrainLater(module, at, parameter, substitution);
   }
-}
-
-/**
- * The fields of a struct declaration, an enum variant or an anonymous struct type, their types
- * resolved in `module`, where they are written, but not substituted. A field whose default gives
- * its type has its parameter's in `defaults`, the function its declaration's fields read as
- * (syntax/field-defaults.ts), whose defaults are checked to infer it (§3.1, §3.3).
- */
-export function declaredFields(
-  checker: CheckerContext,
-  module: ModuleId,
-  fields: readonly (Field | Invalid)[],
-  defaults?: FunctionDeclaration,
-): readonly FieldMember[] {
-  const declared = fields.filter((field) => field.kind !== 'Invalid');
-  return declared.map((field, index) => {
-    const type =
-      field.type === undefined
-        ? defaultedType(checker, index, defaults)
-        : checker.resolveType(module, field.type);
-    return { name: field.name.text, type, declared: { node: field, module, type } };
-  });
-}
-
-/** The type field `index`'s default gives it: its parameter's in `defaults`, read in order. */
-function defaultedType(
-  checker: CheckerContext,
-  index: number,
-  defaults: FunctionDeclaration | undefined,
-): Type {
-  return (
-    (defaults === undefined ? undefined : checker.parametersOf(defaults)[index]?.type) ?? errorType
-  );
 }
 
 /**

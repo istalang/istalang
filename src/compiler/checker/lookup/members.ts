@@ -41,18 +41,25 @@ import {
 import { signatureOf } from '../resolution/choice.ts';
 import { meets } from '../resolution/conformance.ts';
 import { metThroughTraits } from '../resolution/trait-calls.ts';
+import { requiredFields, requiredFunctions } from '../traits/constraints.ts';
 import {
+  associatedDeclarationsOn,
   fieldOf,
   knownConstraints,
-  requiredFields,
-  requiredFunctions,
-  substituteConstraint,
-} from '../traits/constraints.ts';
+  structConstraintsOn,
+} from '../traits/known-constraints.ts';
+import { substituteConstraint } from '../types/substitution.ts';
 import { type FieldMember, type ParameterKey, type Type, tupleElements } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';
 import { searchSite } from '../use-site.ts';
 
-const noMembers: TypeMembers = { fields: [], variants: [], methods: [], statics: [] };
+const noMembers: TypeMembers = {
+  fields: [],
+  variants: [],
+  methods: [],
+  statics: [],
+  associatedTypes: [],
+};
 
 export function membersOf(
   checker: CheckerContext,
@@ -68,19 +75,31 @@ export function membersOf(
     variants: (type.kind === 'nominal' ? checker.variantsOf(type) : undefined) ?? [],
     methods: methodsOf(checker, module, type, access),
     statics: staticsOf(checker, module, type),
+    associatedTypes: associatedDeclarationsOn(checker, type),
   };
 }
 
-/** A struct's fields, a tuple's elements, or what the constraints on `type` require, as read. */
+/**
+ * A struct's fields, a tuple's elements, or what the constraints on `type` require or its struct
+ * constraints name, as read.
+ */
 function fieldsOf(checker: CheckerContext, type: Type): readonly FieldMember[] {
   const elements = tupleElements(type);
   if (elements !== undefined) {
     return elements.map((element, index) => ({ name: String(index), type: element }));
   }
-  const required = knownConstraints(checker, type)
-    .flatMap(({ trait }) => requiredFields(trait))
-    .flatMap(({ name }) => fieldOf(checker, type, name.text)?.member ?? []);
-  return checker.fieldsOf(type) ?? [...new Map(required.map((each) => [each.name, each])).values()];
+  const names = [
+    ...knownConstraints(checker, type).flatMap(({ trait }) =>
+      requiredFields(trait).map(({ name }) => name.text),
+    ),
+    ...structConstraintsOn(checker, type).flatMap((model) =>
+      model.named.map((entry) => entry.name),
+    ),
+  ];
+  const constrained = names.flatMap((name) => fieldOf(checker, type, name)?.member ?? []);
+  return (
+    checker.fieldsOf(type) ?? [...new Map(constrained.map((each) => [each.name, each])).values()]
+  );
 }
 
 /** The static functions a call through `type` may choose, seen from `module`. */
@@ -93,7 +112,7 @@ function staticsOf(
   switch (target?.kind) {
     case 'owner':
       return staticFunctionsAmong(checker, modulesSeenFrom(checker, module), target);
-    case 'parameter': {
+    case 'constrained': {
       const names = knownConstraints(checker, type).flatMap(({ trait }) =>
         requiredFunctions(trait).flatMap(({ owner, name }) =>
           owner === undefined ? [] : name.text,

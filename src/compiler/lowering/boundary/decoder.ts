@@ -158,7 +158,7 @@ export class Decoder {
   ): Register {
     const code = this.#code;
     if (field.skipped !== undefined) {
-      return code.call(closeCall(field.skipped, undefined, code.checker.typeRules), []);
+      return code.call(closeCall(field.skipped, undefined, code.checker), []);
     }
     const key = code.constant(field.key);
     const at = code.call(this.#helper(codecHelpers.fieldPath), [path, key]);
@@ -168,7 +168,7 @@ export class Decoder {
     const decode =
       field.codec === undefined
         ? this.#codec(field.type)
-        : closeCall(field.codec.read, undefined, code.checker.typeRules);
+        : closeCall(field.codec.read, undefined, code.checker);
     return this.#passed(code.call(decode, [json, at]));
   }
 
@@ -186,7 +186,7 @@ export class Decoder {
 
   #helper(name: CodecHelper, typeArguments: readonly Type[] = []): ClosedCall {
     const { checker } = this.#code;
-    return closeCall(checker.json.callOf(name, typeArguments), undefined, checker.typeRules);
+    return closeCall(checker.json.callOf(name, typeArguments), undefined, checker);
   }
 }
 

@@ -9,8 +9,8 @@
  *   `Self` mapped for that constraint. Requirements are numbered by constraint and by the trait's
  *   order of functions (`RequirementOrigin`), which is how a call to one and the witness that
  *   satisfies it find each other per instantiation.
- * - A field of a type is a struct's, or, on a type parameter or an `any` type, one a constraint's
- *   trait requires (`fieldOf`): one rule for a field read, a field called and conformance.
+ * - What a type meets by what it is, its fields and requirements included, is known-constraints.ts's;
+ *   struct constraints (§3.5) are resolved in struct-constraints.ts.
  */
 
 import type { WellKnownDeclaration } from '../../../language/well-known.ts';
@@ -18,17 +18,23 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type {
   FunctionDeclaration,
+  RequiredAssociatedType,
   TraitDeclaration,
   TypeParameter,
 } from '../../syntax/declarations.ts';
 import { lastName } from '../../syntax/node.ts';
 import { type FieldDeclaration, type TypeNode, unparenthesizedType } from '../../syntax/types.ts';
-import { type FoundField, requiredFieldRead, structFieldOf } from '../checked-field.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { RequirementOrigin } from '../resolved-call.ts';
+import { sameType } from '../types/identity.ts';
 import { parameterType, typeArgumentsFor } from '../types/resolve-type.ts';
-import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
+import {
+  type Substitution,
+  substitute,
+  substituteConstraint,
+  substitutionFor,
+} from '../types/substitution.ts';
 import type { AnyType, Constraint, ParameterKey, Type } from '../types/type.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 
@@ -59,10 +65,10 @@ export function resolveConstraints(
 ): readonly Constraint[] {
   const self = parameterType(parameter);
   return parameter.constraints.flatMap((node) => {
-    const constraint = resolveConstraint(checker, module, node, {
-      keyword: 'is',
-      selfOf: () => self,
-    });
+    const constraint =
+      node.kind === 'StructConstraint'
+        ? undefined
+        : resolveConstraint(checker, module, node, { keyword: 'is', selfOf: () => self });
     return constraint === undefined ? [] : [constraint];
   });
 }
@@ -79,13 +85,13 @@ export function resolveAnyConstraints(
 }
 
 /** Where a constraint is written: after which keyword, and what its trait's `Self` stands for. */
-interface ConstraintSite {
+export interface ConstraintSite {
   readonly keyword: 'is' | 'any';
   readonly selfOf: (trait: TraitDeclaration) => Type;
 }
 
 /** The trait `constraint` names, parentheses aside, with its arguments for `Self`; undefined after a report. */
-function resolveConstraint(
+export function resolveConstraint(
   checker: CheckerContext,
   module: ModuleId,
   constraint: TypeNode,
@@ -126,6 +132,23 @@ export function requiredFields(trait: TraitDeclaration): readonly FieldDeclarati
   return trait.members.filter((member) => member.kind === 'FieldDeclaration');
 }
 
+/** The associated types a trait requires (§3.10). */
+export function requiredAssociatedTypes(
+  trait: TraitDeclaration,
+): readonly RequiredAssociatedType[] {
+  return trait.members.filter((member) => member.kind === 'RequiredAssociatedType');
+}
+
+/**
+ * `constraint`, met by `on`, as `any` takes it (§3.10): an argument that is `on` itself is the
+ * trait's own `Self`, so each type `on` may become reads it alike.
+ */
+export function traitAsAny(constraint: Constraint, on: Type): AnyType {
+  const self = parameterType(constraint.trait);
+  const typeArguments = constraint.arguments.map((each) => (sameType(each, on) ? self : each));
+  return { kind: 'any', constraints: [{ trait: constraint.trait, arguments: typeArguments }] };
+}
+
 /** How a constraint maps its trait's parameters, and `Self` to `constrained`. */
 export function constraintSubstitution(constraint: Constraint, constrained: Type): Substitution {
   return new Map<ParameterKey, Type>([
@@ -134,60 +157,9 @@ export function constraintSubstitution(constraint: Constraint, constrained: Type
   ]);
 }
 
-/**
- * Every function the constraints on `on` require, named `name`: on a type parameter, or on an
- * `any` type, where each is the function its value's own type meets it with (§3.10).
- */
-export function requirementsNamed(
-  checker: CheckerContext,
-  on: TypeParameter | AnyType,
-  name: string,
-): readonly Requirement[] {
-  const type = on.kind === 'any' ? on : parameterType(on);
-  return knownConstraints(checker, type).flatMap((constraint, constraintIndex) => {
-    const substitution = constraintSubstitution(constraint, type);
-    return requiredFunctions(constraint.trait).flatMap((declaration, member) =>
-      declaration.name.text === name
-        ? [
-            {
-              declaration,
-              substitution,
-              origin: { kind: 'constraint', on, constraint: constraintIndex, member },
-            },
-          ]
-        : [],
-    );
-  });
-}
-
-/**
- * The constraints `type` meets by what it is (§3.5, §3.10): a type parameter's, or an `any` type's,
- * each with `Self` the type itself; none for any other type.
- */
-export function knownConstraints(checker: CheckerContext, type: Type): readonly Constraint[] {
-  if (type.kind === 'any') {
-    return type.constraints.map((constraint) => constraintOn(constraint, type, checker.typeRules));
-  }
-  return type.kind === 'parameter' && type.declaration.kind === 'TypeParameter'
-    ? checker.constraintsOf(type.declaration)
-    : [];
-}
-
 /** `constraint` of an `any` type as met by `type`: its trait's own `Self` replaced by `type`. */
 export function constraintOn(constraint: Constraint, type: Type, rules: TypeRules): Constraint {
   return substituteConstraint(constraint, new Map([[constraint.trait, type]]), rules);
-}
-
-/** `constraint` with `substitution` applied to its trait's arguments. */
-export function substituteConstraint(
-  constraint: Constraint,
-  substitution: Substitution,
-  rules: TypeRules,
-): Constraint {
-  return {
-    trait: constraint.trait,
-    arguments: constraint.arguments.map((argument) => substitute(argument, substitution, rules)),
-  };
 }
 
 /** The type `constraint` requires its trait's `field` to have, for the type `constrained`. */
@@ -202,29 +174,4 @@ export function requiredFieldType(
     constraintSubstitution(constraint, constrained),
     checker.typeRules,
   );
-}
-
-/** The field `name` of `type`: a struct's, or, through a constraint on it, one its trait requires. */
-export function fieldOf(checker: CheckerContext, type: Type, name: string): FoundField | undefined {
-  if (type.kind === 'nominal' || type.kind === 'anonymous') {
-    return structFieldOf(checker, type, name);
-  }
-  for (const constraint of knownConstraints(checker, type)) {
-    const field = requiredFields(constraint.trait).find((each) => each.name.text === name);
-    if (field !== undefined) {
-      return {
-        member: {
-          name,
-          type: requiredFieldType(checker, constraint, field, type),
-          declared: {
-            node: field,
-            module: checker.moduleOf(constraint.trait),
-            type: checker.resolveType(checker.moduleOf(constraint.trait), field.type),
-          },
-        },
-        read: requiredFieldRead(checker, type, { trait: constraint.trait, field }),
-      };
-    }
-  }
-  return undefined;
 }

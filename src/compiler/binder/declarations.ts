@@ -20,6 +20,7 @@
 import { selfType } from '../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import {
+  type AssociatingDeclaration,
   type Declaration,
   type DeclaredStruct,
   type EnumDeclaration,
@@ -36,11 +37,12 @@ import { fieldsFunctionOf } from '../syntax/field-defaults.ts';
 import type { Invalid } from '../syntax/node.ts';
 import { endOf } from '../syntax/positions.ts';
 import { bodyOf, type SyntaxNode } from '../syntax/tree.ts';
+import { binderDiagnostics } from './diagnostics.ts';
 import { selfEntity, typeEntity, variableEntity } from './entities.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
 import { bindTargets, bindVariableValue, spanThrough } from './statements.ts';
-import { bindFields } from './types.ts';
+import { bindConstraints, bindFields } from './types.ts';
 
 export function bindFunction(
   binder: LocalBinder,
@@ -135,8 +137,39 @@ function bindDefaults(
 
 function bindStruct(binder: LocalBinder, node: DeclaredStruct, scope: Scope): void {
   const inner = typeParameterScope(binder, node, scope);
+  bindAssociatedTypes(binder, node, inner);
   bindFields(binder, node.fields, inner);
   bindFieldDefaults(binder, node, fieldsFunctionOf(node), inner);
+}
+
+/**
+ * Defines a struct's or an enum's associated types in the scope of its type parameters, where
+ * its fields, variants and other associated types name them bare (§3.1), then binds what each
+ * names. In an enum, each differs from every variant's name.
+ */
+function bindAssociatedTypes(
+  binder: LocalBinder,
+  node: AssociatingDeclaration,
+  scope: Scope,
+): void {
+  const variants = new Set(
+    node.kind === 'EnumDeclaration'
+      ? node.variants.flatMap((variant) => (variant.kind === 'Variant' ? [variant.name.text] : []))
+      : [],
+  );
+  for (const associated of node.associatedTypes) {
+    const { name } = associated;
+    if (variants.has(name.text)) {
+      binder.checkConvention(name, 'type');
+      binder.report(binderDiagnostics.duplicateDeclaration(name.span, name.text));
+    } else {
+      binder.declare(scope, name, typeEntity(associated), { convention: 'type' });
+    }
+  }
+  for (const associated of node.associatedTypes) {
+    binder.annotations(associated, scope);
+    binder.walk.type(binder, associated.type, scope);
+  }
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -169,6 +202,7 @@ export function bindDeclaration(binder: LocalBinder, node: Declaration, scope: S
 
 function bindEnum(binder: LocalBinder, node: EnumDeclaration, scope: Scope): void {
   const inner = typeParameterScope(binder, node, scope);
+  bindAssociatedTypes(binder, node, inner);
   for (const variant of node.variants) {
     binder.annotations(variant, inner);
     if (variant.kind === 'Variant') {
@@ -183,8 +217,19 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
   inner.define(selfType, selfEntity(node));
   defineTypeParameters(binder, node.typeParameters, inner);
   binder.enter(node, inner);
-  const fields = node.members.filter((member) => member.kind !== 'FunctionDeclaration');
+  const fields = node.members.filter(
+    (member) => member.kind === 'FieldDeclaration' || member.kind === 'Invalid',
+  );
   bindFields(binder, fields, inner);
+  const associated = node.members.filter((member) => member.kind === 'RequiredAssociatedType');
+  binder.checkMemberNames(
+    associated.map((member) => member.name),
+    'type',
+  );
+  for (const member of associated) {
+    binder.annotations(member, inner);
+    bindConstraints(binder, member.constraints, inner);
+  }
   for (const member of node.members) {
     if (member.kind === 'FunctionDeclaration') {
       binder.annotations(member, inner);
@@ -215,10 +260,12 @@ function defineTypeParameters(binder: LocalBinder, parameters: TypeParameters, s
   }
   for (const parameter of declared) {
     const { memberOf, constraints, defaultType } = parameter;
-    for (const type of [memberOf, ...constraints, defaultType]) {
-      if (type !== undefined) {
-        binder.walk.type(binder, type, scope);
-      }
+    if (memberOf !== undefined) {
+      binder.walk.type(binder, memberOf, scope);
+    }
+    bindConstraints(binder, constraints, scope);
+    if (defaultType !== undefined) {
+      binder.walk.type(binder, defaultType, scope);
     }
   }
 }

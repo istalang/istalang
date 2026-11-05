@@ -30,6 +30,7 @@ export function standingIn(parent: SyntaxNode, child: SyntaxNode): Standing {
       return 'lines';
     case 'BlockExpression':
     case 'StructType':
+    case 'StructConstraint':
     case 'Variant':
     case 'TemplateLiteral':
       return 'braces';

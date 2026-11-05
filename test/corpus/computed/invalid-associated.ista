@@ -1,0 +1,42 @@
+# error: 5106 at 24:8
+# error: 4005 at 28:8
+# error: 5150 at 34:27
+# error: 5132 at 36:25
+# error: 5133 at 38:38
+# error: 5101 at 41:3
+# error: 5100 at 42:7
+# Invalid associated types and struct constraints (§3.1, §3.5): an associated type referring to
+# itself, one named as a variant, a trait using `Self.Data` after `any`, an associated type a
+# struct lacks, two `[_]` entries, a value meeting no struct constraint, and inference through an
+# associated type.
+
+trait FormNode:
+  type Data
+  fn validate(self: Self, data: Self.Data) -> Array<String>
+
+struct Field<T>:
+  value: T?
+  type Data = T
+
+fn validate<T>(self: Field<T>, data: T) -> Array<String>: []
+
+struct SelfAssoc:
+  type Loop = Loop
+
+enum VariantClash:
+  Red
+  type Red = Int
+
+fn needStruct<S is struct { [_] is FormNode }>(s: S): ()
+
+fn inferAssoc<T>(x: Field<T>.Data) -> T: x
+
+fn badObjectSafety(x: any FormNode): ()
+
+fn noSuch(x: Field<Int>.Missing): ()
+
+fn twoOthers<S is struct { [_]: Int; [_]: Int }>(s: S): ()
+
+fn badUses():
+  needStruct(123)
+  _ = inferAssoc(1)

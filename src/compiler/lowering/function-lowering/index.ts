@@ -229,7 +229,7 @@ class FunctionLowering implements FunctionContext {
   }
 
   closed(call: ResolvedCall): ClosedCall {
-    return closeCallWithin(call, this.owner, this.checker.typeRules);
+    return closeCallWithin(call, this.owner, this.checker);
   }
 
   #closedAt(resolved: ResolvedCall | undefined, at: NodeOf<string>): ClosedCall {

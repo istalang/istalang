@@ -62,14 +62,21 @@ function declaredBy(tree: SyntaxTree): readonly NodeOf<string>[] {
   );
 }
 
-/** `item`, its type parameters, a trait's members with theirs, and the functions it reads as. */
+/**
+ * `item`, its type parameters, a trait's members with theirs, its associated types (§3.1), and the
+ * functions it reads as.
+ */
 function declared(item: Declaration): readonly NodeOf<string>[] {
   const parameters = 'typeParameters' in item ? typeParametersOf(item.typeParameters) : [];
   const members =
     item.kind === 'TraitDeclaration'
-      ? item.members.flatMap((member) =>
-          member.kind === 'FunctionDeclaration' ? declared(member) : [],
-        )
+      ? item.members.flatMap((member) => {
+          if (member.kind === 'FunctionDeclaration') {
+            return declared(member);
+          }
+          return member.kind === 'RequiredAssociatedType' ? [member] : [];
+        })
       : [];
-  return [item, ...parameters, ...members, ...fieldsFunctionsOf(item)];
+  const associated = 'associatedTypes' in item ? item.associatedTypes : [];
+  return [item, ...parameters, ...members, ...associated, ...fieldsFunctionsOf(item)];
 }

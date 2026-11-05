@@ -4,15 +4,17 @@
  * the error type.
  */
 
+import { withPack } from './function-types.ts';
 import { sameType } from './identity.ts';
 import {
   type AnyType,
   aliasedAs,
+  type ComputedType,
+  isComputed,
   type NominalType,
   type ParameterKey,
   type Type,
   type UnionType,
-  withPack,
 } from './type.ts';
 import type { TypeRules } from './type-rules.ts';
 import { unionOf, unionOfNormalized } from './unions.ts';
@@ -36,6 +38,10 @@ export function typeChildren(type: Type): readonly Type[] {
       return type.constraints.flatMap((constraint) => constraint.arguments);
     case 'union':
       return type.members;
+    case 'associated':
+      return [type.of];
+    case 'field':
+      return [type.of, type.key];
     case 'literal':
     case 'primitive':
     case 'parameter':
@@ -63,7 +69,7 @@ export function sameTypeSpelled(first: Type, second: Type): boolean {
     const alike =
       one === other ||
       (sameType(one, other) &&
-        one.alias?.declaration === other.alias?.declaration &&
+        sameAliasWritten(one, other) &&
         sameConstraintOrder(one, other) &&
         sameOrigin(one, other) &&
         parts.length === others.length);
@@ -79,7 +85,28 @@ export function sameTypeSpelled(first: Type, second: Type): boolean {
 
 /** The types `type` is spelled with, one level down: its parts, then its alias's arguments. */
 function spelledParts(type: Type): readonly Type[] {
-  return [...typeChildren(type), ...(type.alias?.arguments ?? [])];
+  return [...typeChildren(type), ...aliasParts(type)];
+}
+
+/** The types the alias `type` is written through is spelled with: its arguments, or its owner. */
+function aliasParts(type: Type): readonly Type[] {
+  const { alias } = type;
+  if (alias === undefined) {
+    return [];
+  }
+  return alias.kind === 'alias' ? alias.arguments : [alias.of];
+}
+
+/** Whether two types are written through the same alias, or the same owner's associated type. */
+function sameAliasWritten(one: Type, other: Type): boolean {
+  const [first, second] = [one.alias, other.alias];
+  if (first === undefined || second === undefined) {
+    return first === second;
+  }
+  if (first.kind === 'alias') {
+    return second.kind === 'alias' && first.declaration === second.declaration;
+  }
+  return second.kind === 'associated' && first.name === second.name;
 }
 
 /** Whether two types that are `any` types name their constraints' traits in one order. */
@@ -138,6 +165,14 @@ export function anyTypesIn(type: Type): readonly AnyType[] {
   return type.kind === 'any' ? [type, ...inner] : inner;
 }
 
+/** The types computed from types not known yet that `type` is or is built from, outermost first. */
+export function computedTypesIn(type: Type): readonly ComputedType[] {
+  if (isComputed(type)) {
+    return [type];
+  }
+  return typeChildren(type).flatMap(computedTypesIn);
+}
+
 /** Whether `type` is, or is built from, the error type. */
 export function mentionsError(type: Type): boolean {
   return type.kind === 'error' || typeChildren(type).some(mentionsError);
@@ -150,17 +185,41 @@ export function mentionsError(type: Type): boolean {
  * or into one.
  */
 export function mapChildren(type: Type, map: (child: Type) => Type, rules: TypeRules): Type {
-  if (type.kind !== 'union') {
-    return mapParts(type, map);
-  }
-  const rebuilt = unionOf(type.members.map(map), rules);
-  return type.alias === undefined ? rebuilt : aliasedAs(rebuilt, type.alias);
+  const rebuilt = rebuiltBy(type, map, rules);
+  return rebuilt === undefined ? mapParts(type as Exclude<Type, Rebuilt>, map) : rebuilt;
+}
+
+/** The types a program's rules build: a union, normalized, and the types computed from others. */
+type Rebuilt = UnionType | ComputedType;
+
+/**
+ * `type` rebuilt by `rules` from its parts as `map` gives them, written through its alias, when
+ * building it takes the rules: a union, whose members may merge, or a computed type, which may
+ * reduce (type-rules.ts); undefined for any other type.
+ */
+function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Type | undefined {
+  const rebuilt = (): Type | undefined => {
+    switch (type.kind) {
+      case 'union':
+        return unionOf(type.members.map(map), rules);
+      case 'associated':
+        return rules.associatedType(map(type.of), type.name);
+      case 'field':
+        return rules.fieldType(map(type.of), map(type.key));
+      default:
+        return undefined;
+    }
+  };
+  const built = rebuilt();
+  return built === undefined || type.alias === undefined ? built : aliasedAs(built, type.alias);
 }
 
 /**
  * `type`, not a union, with each type it is built from, one level down, replaced by what `map`
  * gives, still of its kind; its alias comes along, as `mapChildren` says. Building one of these
- * takes no rule of the program: only a union normalizes its members.
+ * takes no rule of the program: only a union normalizes its members, and only a computed type
+ * reduces, which `mapChildren` does. A computed type kept as it is, its parts respelled
+ * (`unaliased`), stays of its kind here.
  */
 export function mapParts<Mapped extends Exclude<Type, UnionType>>(
   type: Mapped,
@@ -168,6 +227,10 @@ export function mapParts<Mapped extends Exclude<Type, UnionType>>(
 ): Mapped;
 export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => Type): Type {
   switch (type.kind) {
+    case 'associated':
+      return { ...type, of: map(type.of) };
+    case 'field':
+      return { ...type, of: map(type.of), key: map(type.key) };
     case 'literal':
     case 'primitive':
     case 'parameter':

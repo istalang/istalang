@@ -19,11 +19,12 @@ import {
   type Type,
   unitType,
 } from './type.ts';
+import { noProgramRules } from './type-rules.test-kit.ts';
 import { optionalInner, optionalOf, unionOf } from './unions.ts';
 
 /** Fitting in a program no `any` type is met in. */
 const fitting = {
-  absorbs: () => false,
+  ...noProgramRules,
   meetsAny: () => false,
   shapeOf: () => undefined,
   memberUnionOf: () => undefined,

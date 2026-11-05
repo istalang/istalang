@@ -13,6 +13,8 @@ import { type TypeParameters, typeParametersOf } from '../../syntax/declarations
 import {
   type AnyType,
   aliasedAs,
+  type ComputedType,
+  type Constraint,
   errorType,
   type ParameterKey,
   type Type,
@@ -78,11 +80,9 @@ export function substituteAny(
 }
 
 /** A type that is no type parameter with `substitution` applied, still of its kind. */
-export function substituteKept<Kept extends Exclude<Type, TypeParameterType | UnionType>>(
-  type: Kept,
-  substitution: Substitution,
-  rules: TypeRules,
-): Kept {
+export function substituteKept<
+  Kept extends Exclude<Type, TypeParameterType | UnionType | ComputedType>,
+>(type: Kept, substitution: Substitution, rules: TypeRules): Kept {
   return asWritten(
     type,
     mapParts(type, (child) => substitute(child, substitution, rules)),
@@ -99,10 +99,28 @@ function asWritten<Substituted extends Type>(
   rules: TypeRules,
 ): Substituted {
   const { alias } = type;
-  return alias === undefined
-    ? substituted
-    : aliasedAs(substituted, {
-        declaration: alias.declaration,
-        arguments: alias.arguments.map((each) => substitute(each, substitution, rules)),
-      });
+  if (alias === undefined) {
+    return substituted;
+  }
+  return aliasedAs(
+    substituted,
+    alias.kind === 'alias'
+      ? {
+          ...alias,
+          arguments: alias.arguments.map((each) => substitute(each, substitution, rules)),
+        }
+      : { ...alias, of: substitute(alias.of, substitution, rules) },
+  );
+}
+
+/** `constraint` with `substitution` applied to its trait's arguments. */
+export function substituteConstraint(
+  constraint: Constraint,
+  substitution: Substitution,
+  rules: TypeRules,
+): Constraint {
+  return {
+    trait: constraint.trait,
+    arguments: constraint.arguments.map((argument) => substitute(argument, substitution, rules)),
+  };
 }

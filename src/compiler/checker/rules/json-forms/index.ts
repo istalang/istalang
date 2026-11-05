@@ -186,6 +186,8 @@ export class JsonForms implements JsonCodecs {
         return literalsForm(type) ?? { kind: 'none', reason: unionHasNoForm };
       case 'primitive':
       case 'parameter':
+      case 'associated':
+      case 'field':
       case 'error':
         return { kind: 'none', reason: undefined };
       default: {

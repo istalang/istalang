@@ -50,13 +50,6 @@ export interface MembersMeeting {
   readonly declaration: FunctionDeclaration;
 }
 
-/** `constraint`, met by `union`, as `any` takes it: an argument that is the union is `Self`. */
-export function traitAsAny(constraint: Constraint, union: Type): AnyType {
-  const self = parameterType(constraint.trait);
-  const typeArguments = constraint.arguments.map((each) => (sameType(each, union) ? self : each));
-  return { kind: 'any', constraints: [{ trait: constraint.trait, arguments: typeArguments }] };
-}
-
 /** The one constraint of `through`, a trait as `any` takes it, as `type` meets it. */
 export function traitMetBy(through: AnyType, type: Type, rules: TypeRules): Constraint {
   const [written] = through.constraints;

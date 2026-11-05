@@ -26,6 +26,7 @@ import type {
   DeclaredStruct,
   EnumDeclaration,
   FunctionDeclaration,
+  RequiredAssociatedType,
   TypeParameter,
 } from '../syntax/declarations.ts';
 import type {
@@ -75,6 +76,7 @@ import type { JsonCodecs } from './json-form.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
 import type { Fit, Fitting } from './types/fit.ts';
 import type { StaticOwner } from './types/named-types.ts';
+import type { ConstraintSet, StructConstraintModel } from './types/struct-constraint.ts';
 import type { Substitution } from './types/substitution.ts';
 import type { Constraint, FieldMember, FunctionType, Type } from './types/type.ts';
 
@@ -160,8 +162,15 @@ export interface CheckerContext extends Checker {
   readonly fitting: Fitting;
   /** How `found` fits `expected`, by implicit conversions; undefined when nothing makes it (§2, §3.14). */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
-  /** The constraints after `is` on a type parameter, resolved where it is declared (§3.5). */
+  /** The trait constraints after `is` on a type parameter, resolved where it is declared (§3.5). */
   readonly constraintsOf: (parameter: TypeParameter) => readonly Constraint[];
+  /** The struct constraints after `is` on a type parameter, resolved where it is declared (§3.5). */
+  readonly structConstraintsOf: (parameter: TypeParameter) => readonly StructConstraintModel[];
+  /**
+   * The bound a trait's associated type requirement states (`type Key is C`, §3.10), resolved in
+   * the trait's module: each trait's `Self` the associated type of the trait's own `Self`.
+   */
+  readonly associatedBoundsOf: (requirement: RequiredAssociatedType) => ConstraintSet;
   /**
    * The union after `in` on a member parameter, which it stands for one member of, resolved where
    * it is declared (§3.5); undefined for any other parameter.

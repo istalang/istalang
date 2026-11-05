@@ -116,12 +116,6 @@ describe('binding reports, once and at the name', () => {
       'Q',
     ],
     [
-      'a name after a struct, in a type',
-      'struct P { x: Int }\nconst p: P.Q = P{x: 1}',
-      d.qualifiesNothing,
-      'Q',
-    ],
-    [
       'a name after a variant, in a type',
       'enum C { A; B }\nfn f(c: C.A.B): c',
       d.qualifiesNothing,

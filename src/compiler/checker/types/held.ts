@@ -68,6 +68,8 @@ export function heldParts(
     case 'literal':
     case 'function':
     case 'parameter':
+    case 'associated':
+    case 'field':
     case 'any':
     case 'error':
       return [];

@@ -5,7 +5,8 @@
  *
  * - A declaration's type parameters have their constraints resolved, and so does every member of
  *   a trait: its functions' signatures and its fields' types.
- * - An alias is resolved, which reports one that refers to itself (§3.17).
+ * - An alias is resolved, which reports one that refers to itself (§3.17), and so is a struct's or
+ *   an enum's associated type, an alias too (§3.1).
  * - The defaults of a struct's or a variant's fields are checked as the parameters they read as
  *   (§3.1).
  * - An extern a host implements takes and gives only what crosses as JSON (rules/host-boundary.ts),
@@ -22,6 +23,7 @@ import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable } from '../../syntax/annotations.ts';
 import {
+  type AssociatingDeclaration,
   type Declaration,
   type DeclaredStruct,
   type FunctionDeclaration,
@@ -49,6 +51,7 @@ function checkTypeParameters(checker: CheckerContext, declaration: GenericDeclar
       checkPack(checker, declaration, parameter);
     }
     checker.constraintsOf(parameter);
+    checker.structConstraintsOf(parameter);
     checker.memberUnionOf(parameter);
     if (parameter.defaultType !== undefined) {
       checker.resolveType(checker.moduleOf(declaration), parameter.defaultType);
@@ -123,8 +126,21 @@ function annotatedNowhere(description: string) {
 function checkStruct(checker: CheckerContext, node: DeclaredStruct, module: ModuleId): void {
   annotatedNowhere('a struct declaration')(checker, node, module);
   checkTypeParameters(checker, node);
+  checkAssociatedTypes(checker, node, module);
   checker.annotations.checkFields(checker.declaredFieldsOf(node));
   checkFieldDefaults(checker, fieldsFunctionOf(node));
+}
+
+/** Resolves a struct's or an enum's associated types, which reports one referring to itself (§3.1). */
+function checkAssociatedTypes(
+  checker: CheckerContext,
+  node: AssociatingDeclaration,
+  module: ModuleId,
+): void {
+  for (const associated of node.associatedTypes) {
+    annotatedNowhere('an associated type')(checker, associated, module);
+    checker.aliasedType(associated);
+  }
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -145,6 +161,9 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
       } else if (member.kind === 'FieldDeclaration') {
         checker.resolveType(module, member.type);
         checker.annotations.of(module, member, { kind: 'field' });
+      } else if (member.kind === 'RequiredAssociatedType') {
+        annotatedNowhere('an associated type')(checker, member, module);
+        checker.associatedBoundsOf(member);
       }
     }
   },
@@ -161,6 +180,7 @@ const declarationHandlers: Handlers<CheckerContext, Declaration, [ModuleId], voi
   EnumDeclaration: (checker, node, module) => {
     annotatedNowhere('an enum declaration')(checker, node, module);
     checkTypeParameters(checker, node);
+    checkAssociatedTypes(checker, node, module);
     for (const variant of node.variants) {
       if (variant.kind === 'Variant') {
         annotatedNowhere('an enum variant')(checker, variant, module);

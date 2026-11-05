@@ -19,13 +19,30 @@ import {
   type UnionType,
 } from './type.ts';
 
+/** `of.name`, an associated type as written (§3.1). */
+function associatedText(of: Type, name: string): string {
+  return `${ownerText(of)}.${name}`;
+}
+
+/** A type as it reads before `.` or `[`: parenthesized where it wouldn't bind tightest (§3.1). */
+function ownerText(type: Type): string {
+  const text = typeText(type);
+  const bindsLoosely =
+    type.alias === undefined &&
+    (type.kind === 'union' || type.kind === 'function' || type.kind === 'any');
+  return bindsLoosely ? `(${text})` : text;
+}
+
 /**
  * `type` as source would spell it. Extern keys spell types too (definition/extern-key.ts), but
  * apart on purpose: they are a persisted identity, and must never follow a change of wording here.
  */
 export function typeText(type: Type): string {
-  if (type.alias !== undefined) {
-    return parameterizedText(type.alias.declaration.name.text, type.alias.arguments);
+  const { alias } = type;
+  if (alias !== undefined) {
+    return alias.kind === 'alias'
+      ? parameterizedText(alias.declaration.name.text, alias.arguments)
+      : associatedText(alias.of, alias.name);
   }
   switch (type.kind) {
     case 'primitive':
@@ -48,6 +65,10 @@ export function typeText(type: Type): string {
       return typeof type.value === 'string' ? JSON.stringify(type.value) : String(type.value);
     case 'union':
       return unionText(type);
+    case 'associated':
+      return associatedText(type.of, type.name);
+    case 'field':
+      return `${ownerText(type.of)}[${typeText(type.key)}]`;
     case 'error':
       return '?';
     default: {

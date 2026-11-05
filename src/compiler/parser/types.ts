@@ -1,9 +1,10 @@
 /**
  * Type grammar (§2, §3): named and generic types, `T?`, tuples, function types (whose parameters
- * may end in a rest, `...A`), anonymous structs, `any T`, `&T`, unions and literal types.
+ * may end in a rest, `...A`), anonymous structs, `any T`, `&T`, unions, literal types, associated
+ * types (`Field<Int>.Data`). What follows `is` is parts/constraints.ts's.
  *
  * Operators bind at two levels, as patterns' do (parts/levels.ts): `|` between a union's members,
- * then the postfix `?`. A function type's return type is a whole type, so `fn() -> A | B` returns
+ * then the postfix `?` and `.Name`. A function type's return type is a whole type, so `fn() -> A | B` returns
  * the union, while `any`'s traits are names, so `any A & B | C` is `(any A & B) | C`. A literal
  * type is a string, an integer, maybe negative, or a bool (§2), so another literal is no type.
  *
@@ -83,6 +84,7 @@ const typeOperators: Partial<Record<CursorKind, LeveledParselet<TypeLevel, TypeN
   '|': { level: 'union', parse: parseUnionType },
   '?': { level: 'postfix', parse: parseOptionalType },
   '??': { level: 'postfix', parse: parseOptionalType },
+  '.': { level: 'postfix', parse: parseMemberType },
 };
 
 /** A type whose operators all bind at least as tightly as a level. */
@@ -133,6 +135,16 @@ function parseOptionalType(parser: Parser, inner: TypeNode): TypeNode {
       ? { kind: 'OptionalType', span: parser.anchor({ start, end: token.span.start + 1 }), inner }
       : inner;
   return { kind: 'OptionalType', span: parser.spanFrom(start), inner: once };
+}
+
+/**
+ * `.Data` after a type that isn't a plain path, `Field<Int>.Data`: its associated type. A path
+ * reads its own dots (`T.Data`), so this follows type arguments or parentheses.
+ */
+function parseMemberType(parser: Parser, owner: TypeNode): TypeNode {
+  parser.cursor.advance();
+  const name = parser.identifier('an associated type name');
+  return { kind: 'MemberType', span: parser.spanFrom(parser.startOf(owner)), owner, name };
 }
 
 /** `<A, B>`, starting at the `<`. */

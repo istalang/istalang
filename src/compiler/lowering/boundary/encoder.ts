@@ -37,7 +37,7 @@ export class Encoder {
     switch (form.kind) {
       case 'host': {
         const encode = code.checker.json.callOf(codecHelpers.encodeHandle, [form.type]);
-        code.return(code.call(closeCall(encode, undefined, code.checker.typeRules), [value]));
+        code.return(code.call(closeCall(encode, undefined, code.checker), [value]));
         return;
       }
       case 'record':
@@ -116,7 +116,7 @@ export class Encoder {
         const encode =
           field.codec === undefined
             ? this.#codec(field.type)
-            : closeCall(field.codec.write, undefined, code.checker.typeRules);
+            : closeCall(field.codec.write, undefined, code.checker);
         return [[code.constant(field.key), code.call(encode, [read(index)])]];
       }),
     ];

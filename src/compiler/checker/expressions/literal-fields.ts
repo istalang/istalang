@@ -184,7 +184,7 @@ function argumentsFor(
   type: Type | undefined,
 ): readonly Type[] | undefined {
   const alias = type?.alias;
-  if (alias !== undefined && alias.declaration === owner) {
+  if (alias?.kind === 'alias' && alias.declaration === owner) {
     return alias.arguments;
   }
   return type?.kind === 'nominal' && type.entity.declaration === owner ? type.arguments : undefined;

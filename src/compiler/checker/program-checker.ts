@@ -32,11 +32,12 @@ import { bindProgram } from '../binder/bind.ts';
 import type { Bindings, Entity } from '../binder/entities.ts';
 import { type ModuleId, type Program, programModule } from '../program/program.ts';
 import type {
+  AliasDeclaration,
   Declaration,
   DeclaredStruct,
   EnumDeclaration,
   FunctionDeclaration,
-  TypeAliasDeclaration,
+  RequiredAssociatedType,
   TypeParameter,
 } from '../syntax/declarations.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
@@ -70,9 +71,11 @@ import { disposalOf } from './rules/disposal.ts';
 import { Expansion } from './rules/expansion.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
 import { resolveAnyType } from './traits/any-types.ts';
+import { associatedTypeOf, fieldTypeOf } from './traits/known-constraints.ts';
 import { type Fit, type Fitting, fitOf } from './types/fit.ts';
 import type { StaticOwner } from './types/named-types.ts';
 import { resolveTypeNode } from './types/resolve-type.ts';
+import type { ConstraintSet, StructConstraintModel } from './types/struct-constraint.ts';
 import type { Substitution } from './types/substitution.ts';
 import {
   type AnonymousStructType,
@@ -187,7 +190,7 @@ export class ProgramChecker implements CheckerContext {
       checker: this,
       defaultsBody: (declaration) => this.#defaultsBody(declaration),
     });
-    this.#aliases = new Aliases(this);
+    this.#aliases = new Aliases(this, (alias) => this.#aliasModuleOf(alias));
     this.#statics = new StaticFunctions(this);
     this.#typeParameters = new TypeParameters(this, this.#itemModuleOf);
     this.#moduleChecks = new ModuleChecks(this, {
@@ -286,6 +289,8 @@ export class ProgramChecker implements CheckerContext {
         target,
         member,
       }),
+    associatedType: (of, name) => associatedTypeOf(this, of, name),
+    fieldType: (of, key) => fieldTypeOf(this, of, key),
   };
 
   get fitting(): Fitting {
@@ -300,6 +305,14 @@ export class ProgramChecker implements CheckerContext {
 
   constraintsOf(parameter: TypeParameter): readonly Constraint[] {
     return this.#typeParameters.constraintsOf(parameter);
+  }
+
+  structConstraintsOf(parameter: TypeParameter): readonly StructConstraintModel[] {
+    return this.#typeParameters.structConstraintsOf(parameter);
+  }
+
+  associatedBoundsOf(requirement: RequiredAssociatedType): ConstraintSet {
+    return this.#typeParameters.associatedBoundsOf(requirement);
   }
 
   memberUnionOf(parameter: TypeParameter): Type | undefined {
@@ -322,7 +335,14 @@ export class ProgramChecker implements CheckerContext {
     return this.#statics.in(module, owner);
   }
 
-  aliasedType(alias: TypeAliasDeclaration): Type {
+  /** The module writing `alias`, where its type resolves: an associated type's item's. */
+  #aliasModuleOf(alias: AliasDeclaration): ModuleId {
+    return alias.kind === 'TypeAliasDeclaration'
+      ? this.moduleOf(alias)
+      : (this.#itemModuleOf(alias) ?? unreachable("An associated type is an item's part."));
+  }
+
+  aliasedType(alias: AliasDeclaration): Type {
     return this.#aliases.aliasedType(alias);
   }
 

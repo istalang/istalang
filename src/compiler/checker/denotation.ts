@@ -12,7 +12,11 @@
 
 import type { Entity, NamespaceEntity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type {
+  AssociatedType,
+  FunctionDeclaration,
+  RequiredAssociatedType,
+} from '../syntax/declarations.ts';
 import type { MemberAccess } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
@@ -53,6 +57,8 @@ export interface TypeMembers {
   readonly methods: readonly FunctionDeclaration[];
   /** Functions declared on the type, `fn Type.name`, that its module sees (§3.7). */
   readonly statics: readonly FunctionDeclaration[];
+  /** What declares each associated type it has (§3.1): its own, or its traits' requirements. */
+  readonly associatedTypes: readonly (AssociatedType | RequiredAssociatedType)[];
 }
 
 /** What tools ask of a checked program, by module and node. */

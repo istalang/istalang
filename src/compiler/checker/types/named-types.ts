@@ -117,6 +117,8 @@ export function patternTypeOf(checker: Aliases, entity: Entity): PatternType {
     declaration !== undefined &&
     declaration.kind !== 'TypeParameter' &&
     declaration.kind !== 'TraitDeclaration' &&
+    declaration.kind !== 'AssociatedType' &&
+    declaration.kind !== 'RequiredAssociatedType' &&
     declaration.typeParameters.length > 0;
   if (isGeneric) {
     return declaration.kind === 'TypeAliasDeclaration'

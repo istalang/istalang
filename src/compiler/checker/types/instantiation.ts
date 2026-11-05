@@ -8,7 +8,7 @@
  */
 
 import type { CheckedBody, CheckedFunction, Checker } from '../check.ts';
-import { type FieldRead, requiredFieldRead } from '../checked-field.ts';
+import { type FieldRead, instantiatedRead } from '../checked-field.ts';
 import type { CheckedPattern, PartStep, PatternTest } from '../checked-pattern.ts';
 import type { Fit } from './fit.ts';
 import { sameType } from './identity.ts';
@@ -31,8 +31,7 @@ export function instantiatedBody(
   const concrete = (type: Type) => substitute(type, substitution, checker.typeRules);
   const concreteFit = (fit: Fit) => substitutedFit(fit, substitution, checker.typeRules);
   const concreteField = (field: FieldMember) => ({ ...field, type: concrete(field.type) });
-  const concreteRead = (read: FieldRead): FieldRead =>
-    read.kind === 'position' ? read : requiredFieldRead(checker, concrete(read.on), read.required);
+  const concreteRead = (read: FieldRead): FieldRead => instantiatedRead(checker, read, concrete);
   return {
     typeOf: (expression) => mapDefined(body.typeOf(expression), concrete),
     expectedOf: (site) => mapDefined(body.expectedOf(site), concrete),

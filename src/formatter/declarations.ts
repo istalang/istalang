@@ -10,19 +10,21 @@
 
 import { builders } from 'prettier/doc';
 import type { Annotation } from '../compiler/syntax/annotations.ts';
-import type {
-  Declaration,
-  DeclarationPart,
-  Documented,
-  FunctionDeclaration,
-  Module,
-  TypeParameters,
+import {
+  type Declaration,
+  type DeclarationPart,
+  type Documented,
+  type FunctionDeclaration,
+  type Module,
+  membersAsWritten,
+  type TypeParameters,
 } from '../compiler/syntax/declarations.ts';
 import type { Identifier } from '../compiler/syntax/node.ts';
 import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './bodies.ts';
 import { angled, bracketed, fieldList, itemLines } from './lists.ts';
 import type { Printer, Printers } from './printer.ts';
+import { constraintsAfterIs } from './types.ts';
 
 const { group, hardline, join } = builders;
 
@@ -78,13 +80,13 @@ export const declarationPrinters: Printers<DeclarationKind> = {
     annotated(printer, node, [
       'struct ',
       named(printer, node.name, node.typeParameters),
-      members(printer, node, node.fields),
+      members(printer, node, membersAsWritten(node)),
     ]),
   SharedStructDeclaration: (printer, node) =>
     annotated(printer, node, [
       'shared struct ',
       named(printer, node.name, node.typeParameters),
-      members(printer, node, node.fields),
+      members(printer, node, membersAsWritten(node)),
     ]),
   ExternStructDeclaration: (printer, node) =>
     annotated(printer, node, [
@@ -100,7 +102,15 @@ export const declarationPrinters: Printers<DeclarationKind> = {
     annotated(printer, node, [
       'enum ',
       named(printer, node.name, node.typeParameters),
-      members(printer, node, node.variants),
+      members(printer, node, membersAsWritten(node)),
+    ]),
+  AssociatedType: (printer, node) =>
+    annotated(printer, node, ['type ', printer.print(node.name), ' = ', printer.print(node.type)]),
+  RequiredAssociatedType: (printer, node) =>
+    annotated(printer, node, [
+      'type ',
+      printer.print(node.name),
+      constraintsAfterIs(printer, node.constraints),
     ]),
   Variant: (printer, node) =>
     annotated(printer, node, [
@@ -141,15 +151,7 @@ export const declarationPrinters: Printers<DeclarationKind> = {
     node.isPack ? '...' : '',
     printer.print(node.name),
     node.memberOf === undefined ? '' : [' in ', printer.print(node.memberOf)],
-    node.constraints.length === 0
-      ? ''
-      : [
-          ' is ',
-          join(
-            ' & ',
-            node.constraints.map((constraint) => printer.print(constraint)),
-          ),
-        ],
+    constraintsAfterIs(printer, node.constraints),
     node.defaultType === undefined ? '' : [' = ', printer.print(node.defaultType)],
   ],
   DeclaredField: (printer, node) =>

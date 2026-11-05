@@ -11,25 +11,43 @@
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { TypeParameter } from '../../syntax/declarations.ts';
+import type {
+  RequiredAssociatedType,
+  TraitDeclaration,
+  TypeParameter,
+} from '../../syntax/declarations.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CheckerContext, CheckerNote, ConstraintCheck } from '../context.ts';
-import { resolveConstraints, substituteConstraint } from '../traits/constraints.ts';
+import { resolveConstraints } from '../traits/constraints.ts';
+import { resolveConstraintSet, resolveStructConstraints } from '../traits/struct-constraints.ts';
 import { standsForMember } from '../types/member-arguments.ts';
-import type { Substitution } from '../types/substitution.ts';
-import type { Constraint } from '../types/type.ts';
+import { parameterType } from '../types/resolve-type.ts';
+import {
+  type ConstraintSet,
+  type StructConstraintModel,
+  sameStructConstraint,
+} from '../types/struct-constraint.ts';
+import { type Substitution, substituteConstraint } from '../types/substitution.ts';
+import type { Constraint, Type } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
-import { useSite } from '../use-site.ts';
+import { silent, useSite } from '../use-site.ts';
 import { meets } from './conformance.ts';
+import { meetsStructConstraints } from './shortfalls.ts';
 
 export class TypeParameters {
   readonly #checker: CheckerContext;
   readonly #constraints: EntryTable<CheckerNote, TypeParameter, readonly Constraint[]>;
+  readonly #structConstraints: EntryTable<
+    CheckerNote,
+    TypeParameter,
+    readonly StructConstraintModel[]
+  >;
+  readonly #bounds: EntryTable<CheckerNote, RequiredAssociatedType, ConstraintSet>;
 
   /** `moduleOf` answers the module whose item declares a parameter; undefined for a local one. */
   constructor(
     checker: CheckerContext,
-    moduleOf: (parameter: TypeParameter) => ModuleId | undefined,
+    moduleOf: (node: TypeParameter | RequiredAssociatedType) => ModuleId | undefined,
   ) {
     this.#checker = checker;
     this.#constraints = checker.entries.table({
@@ -38,16 +56,48 @@ export class TypeParameters {
         const module = moduleOf(parameter);
         return module === undefined ? [] : resolveConstraints(checker, module, parameter);
       },
-      equal: sameItems(
-        (first, second) =>
-          first.trait === second.trait &&
-          sameItems(sameTypeSpelled)(first.arguments, second.arguments),
-      ),
+      equal: sameItems(sameConstraint),
+    });
+    this.#structConstraints = checker.entries.table({
+      name: 'struct constraints',
+      compute: (parameter) => {
+        const module = moduleOf(parameter);
+        return module === undefined ? [] : resolveStructConstraints(checker, module, parameter);
+      },
+      equal: sameItems(sameStructConstraint),
+    });
+    this.#bounds = checker.entries.table({
+      name: 'associated type bounds',
+      compute: (requirement) => {
+        const module = moduleOf(requirement);
+        const trait =
+          module === undefined ? undefined : traitRequiring(checker, module, requirement);
+        if (module === undefined || trait === undefined) {
+          return { traits: [], structs: [] };
+        }
+        const self: Type = {
+          kind: 'associated',
+          of: parameterType(trait),
+          name: requirement.name.text,
+        };
+        return resolveConstraintSet(checker, module, requirement.constraints, () => self);
+      },
+      equal: (first, second) =>
+        sameItems(sameConstraint)(first.traits, second.traits) &&
+        sameItems(sameStructConstraint)(first.structs, second.structs),
     });
   }
 
   constraintsOf(parameter: TypeParameter): readonly Constraint[] {
     return this.#constraints.get(parameter);
+  }
+
+  structConstraintsOf(parameter: TypeParameter): readonly StructConstraintModel[] {
+    return this.#structConstraints.get(parameter);
+  }
+
+  associatedBoundsOf(requirement: RequiredAssociatedType): ConstraintSet {
+    return this.#bounds.get(requirement);
   }
 
   constrainLater(
@@ -106,7 +156,14 @@ export class TypeParameters {
     if (argument === undefined) {
       return;
     }
-    standsForMember(useSite(this.#checker, module, at), parameter, argument, typeArguments);
+    const site = useSite(this.#checker, module, at);
+    standsForMember(site, parameter, argument, typeArguments);
+    meetsStructConstraints(
+      site,
+      parameter,
+      { argument, substitution: typeArguments },
+      (type, met) => meets(silent(site), type, met),
+    );
     for (const constraint of this.constraintsOf(parameter)) {
       meets(
         useSite(this.#checker, module, at),
@@ -115,4 +172,25 @@ export class TypeParameters {
       );
     }
   }
+}
+
+/** Whether two trait constraints name one trait with alike arguments. */
+function sameConstraint(first: Constraint, second: Constraint): boolean {
+  return (
+    first.trait === second.trait && sameItems(sameTypeSpelled)(first.arguments, second.arguments)
+  );
+}
+
+/** The trait of `module` requiring `requirement` among its members. */
+function traitRequiring(
+  checker: CheckerContext,
+  module: ModuleId,
+  requirement: RequiredAssociatedType,
+): TraitDeclaration | undefined {
+  return checker.inputs
+    .itemsOf(module)
+    .find(
+      (item): item is TraitDeclaration =>
+        item.kind === 'TraitDeclaration' && item.members.includes(requirement),
+    );
 }

@@ -63,6 +63,8 @@ const typeKinds = {
   EnumDeclaration: ['enum', 'enum'],
   TraitDeclaration: ['trait', 'trait'],
   TypeAliasDeclaration: ['type', 'type'],
+  AssociatedType: ['type', 'associated type'],
+  RequiredAssociatedType: ['type', 'associated type'],
   TypeParameter: ['typeParameter', 'type parameter'],
 } as const satisfies Record<
   Extract<Entity, { kind: 'type' }>['declaration']['kind'],

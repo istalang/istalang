@@ -33,10 +33,11 @@ import type {
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import { isPlace } from '../../syntax/expressions/places.ts';
 import type { CheckerContext } from '../context.ts';
-import { type Requirement, requirementsNamed } from '../traits/constraints.ts';
+import type { Requirement } from '../traits/constraints.ts';
+import { requirementsNamed } from '../traits/known-constraints.ts';
 import { type StaticOwner, staticOwnerOf } from '../types/named-types.ts';
-import type { Type } from '../types/type.ts';
-import { anyTypesIn, parametersIn } from '../types/type-parts.ts';
+import { type ComputedType, isComputed, type Type } from '../types/type.ts';
+import { anyTypesIn, computedTypesIn, parametersIn } from '../types/type-parts.ts';
 import { traitCallsOn } from './union-traits.ts';
 
 /** A function a call may mean; a requirement is one a constraint provides. */
@@ -47,7 +48,8 @@ export interface Candidate {
 
 /**
  * What a static call is made through: a declared type, a primitive or a shape, with the module
- * declaring it, which a shape has none of; or a type parameter.
+ * declaring it, which a shape has none of; or a type known only per instantiation, a type
+ * parameter or a type computed from one (`R.Data`, §3.1), through its constraints.
  */
 export type StaticTarget =
   | {
@@ -55,7 +57,7 @@ export type StaticTarget =
       readonly owner: StaticOwner;
       readonly module: ModuleId | undefined;
     }
-  | { readonly kind: 'parameter'; readonly parameter: TypeParameter };
+  | { readonly kind: 'constrained'; readonly on: TypeParameter | ComputedType };
 
 /**
  * The candidates of a call of `name` written in `module` without a namespace, as an operator's
@@ -202,8 +204,8 @@ function staticCandidatesIn(
   target: StaticTarget,
   name: string,
 ): readonly Candidate[] {
-  if (target.kind === 'parameter') {
-    return requirementsNamed(checker, target.parameter, name)
+  if (target.kind === 'constrained') {
+    return requirementsNamed(checker, target.on, name)
       .filter((requirement) => requirement.declaration.owner !== undefined)
       .map((requirement) => ({ declaration: requirement.declaration, requirement }));
   }
@@ -257,8 +259,8 @@ function declaringModule(checker: CheckerContext, type: Type): ModuleId | undefi
 }
 
 /**
- * The functions named `name` that constraints require on the type parameters and `any` types the
- * arguments mention; static ones are called through their type instead.
+ * The functions named `name` that constraints require on the type parameters, `any` types and
+ * computed types the arguments mention; static ones are called through their type instead.
  */
 function requirementCandidates(
   checker: CheckerContext,
@@ -275,7 +277,13 @@ function requirementCandidates(
   const onAnyTypes = [...anyTypes.values()].flatMap((type) =>
     requirementsNamed(checker, type, name),
   );
-  return [...onParameters, ...onAnyTypes]
+  const computed = new Map(
+    argumentTypes.flatMap(computedTypesIn).map((type) => [checker.typeKeys.typeKey(type), type]),
+  );
+  const onComputed = [...computed.values()].flatMap((type) =>
+    requirementsNamed(checker, type, name),
+  );
+  return [...onParameters, ...onAnyTypes, ...onComputed]
     .filter((requirement) => requirement.declaration.owner === undefined)
     .map((requirement) => ({ declaration: requirement.declaration, requirement }));
 }
@@ -284,8 +292,11 @@ function requirementCandidates(
 export function staticTargetOf(checker: CheckerContext, type: Type): StaticTarget | undefined {
   if (type.kind === 'parameter') {
     return type.declaration.kind === 'TypeParameter'
-      ? { kind: 'parameter', parameter: type.declaration }
+      ? { kind: 'constrained', on: type.declaration }
       : undefined;
+  }
+  if (isComputed(type)) {
+    return { kind: 'constrained', on: type };
   }
   const owner = staticOwnerOf(type);
   if (owner === undefined) {

@@ -33,6 +33,7 @@
  */
 
 import { type Fitting, fitOf, matchConversion } from '../types/fit.ts';
+import { functionFits } from '../types/function-types.ts';
 import { sameType } from '../types/identity.ts';
 import { isOneMember } from '../types/member-arguments.ts';
 import { parameterType } from '../types/resolve-type.ts';
@@ -42,7 +43,6 @@ import {
   type AnyType,
   type FunctionType,
   fillsPack,
-  functionFits,
   isPack,
   isPrimitive,
   type LiteralValue,
@@ -81,9 +81,7 @@ export class Inference {
   match(declared: Type, given: Type): boolean {
     return (
       matchConversion(given, substitute(declared, this.#written, this.#fitting), {
-        absorbs: this.#fitting.absorbs,
-        shapeOf: this.#fitting.shapeOf,
-        memberUnionOf: this.#fitting.memberUnionOf,
+        ...this.#fitting,
         exact: (target, source) => this.#matchAtTop(target, source),
         meetsAny: (source, target) => this.#convertsInto(target, source),
       }) !== undefined
@@ -170,6 +168,9 @@ export class Inference {
 
   /** Matches at the top of a match, where a parameter's type converts and may widen. */
   #matchAtTop(declared: Type, given: Type): boolean {
+    if (givesNothing(declared)) {
+      return true;
+    }
     return declared.kind === 'parameter' &&
       this.#unknowns.has(declared.declaration) &&
       given.kind !== 'error'
@@ -178,7 +179,7 @@ export class Inference {
   }
 
   #matchExact(declared: Type, given: Type): boolean {
-    if (given.kind === 'error') {
+    if (given.kind === 'error' || givesNothing(declared)) {
       return true;
     }
     switch (declared.kind) {
@@ -206,6 +207,13 @@ export class Inference {
         return given.kind === 'any' && this.#matchConstraints(declared, given);
       case 'union':
         return this.#matchUnion(declared, given);
+      case 'associated':
+      case 'field':
+        // Opaque: what it stands for is known only once its parameters are (§3.5).
+        return (
+          parametersIn(declared).some((each) => this.#unknowns.has(each)) ||
+          sameType(declared, given)
+        );
       case 'primitive':
       case 'literal':
       case 'error':
@@ -377,4 +385,12 @@ function sameFieldNames(first: AnonymousStructType, second: AnonymousStructType)
     first.fields.length === second.fields.length &&
     first.fields.every((field, index) => field.name === second.fields[index]?.name)
   );
+}
+
+/**
+ * Whether inference learns nothing from `declared`: a type written as an associated type
+ * (`Field<T>.Data`), which inference never looks through (§3.5); a value is still fitted to it.
+ */
+function givesNothing(declared: Type): boolean {
+  return declared.alias?.kind === 'associated';
 }

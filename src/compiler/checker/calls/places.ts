@@ -39,7 +39,8 @@ import type { AssignedPart } from '../check.ts';
 import type { BodyContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Passing } from '../resolution/call-arguments.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { structConstraintsOn } from '../traits/known-constraints.ts';
+import { errorType, isOpaque, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { runsAtOnce, writeElement } from './collection-functions.ts';
 
@@ -67,7 +68,9 @@ export function checkChangedPlace(context: BodyContext, node: Expression, use: P
 function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boolean {
   const { root, steps } = placePath(node);
   const throughTrait = steps.find(
-    (step) => step.kind === 'MemberAccess' && holdsFieldsByTrait(context.typeOf(step.target)),
+    (step) =>
+      step.kind === 'MemberAccess' &&
+      holdsFieldByTrait(context, context.typeOf(step.target), step.member.text),
   );
   if (throughTrait?.kind === 'MemberAccess') {
     context.report(
@@ -85,9 +88,21 @@ function changePlace(context: BodyContext, node: Expression, use: PlaceUse): boo
   return requireChangeable(context, root, passedByReference) && writesAccessors(context, node);
 }
 
-/** Whether a value of `type` has fields only as its traits require them: an `any` type or a type parameter. */
-function holdsFieldsByTrait(type: Type): boolean {
-  return type.kind === 'any' || type.kind === 'parameter';
+/**
+ * Whether a value of `type` has the field `name` only as a trait requires it: on an `any` type, or
+ * on a type known only per instantiation unless a struct constraint names it, which states a
+ * struct's own field (§3.5, §3.10).
+ */
+function holdsFieldByTrait(context: BodyContext, type: Type, name: string): boolean {
+  if (type.kind === 'any') {
+    return true;
+  }
+  if (!isOpaque(type)) {
+    return false;
+  }
+  return !structConstraintsOn(context.checker, type).some((model) =>
+    model.named.some((entry) => entry.name === name),
+  );
 }
 
 /** What the places a call passes by `&` are checked against: the callee's parameters and kind. */

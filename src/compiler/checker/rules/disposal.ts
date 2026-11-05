@@ -29,7 +29,8 @@ import { isHostExtern, isHostType } from '../host-externs.ts';
 import { callCandidates, namedInModule } from '../resolution/candidates.ts';
 import { silentCall } from '../resolution/silent-choice.ts';
 import type { FunctionCall, ResolvedCall, ResolvedSite } from '../resolved-call.ts';
-import { knownConstraints, requiredFunctions } from '../traits/constraints.ts';
+import { requiredFunctions } from '../traits/constraints.ts';
+import { knownConstraints } from '../traits/known-constraints.ts';
 import { sameType } from '../types/identity.ts';
 import { type NominalType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -46,6 +47,8 @@ export function isDisposable(checker: CheckerContext, type: Type): boolean {
     case 'nominal':
       return checker.disposalOf(type).kind !== 'none';
     case 'parameter':
+    case 'associated':
+    case 'field':
     case 'any':
       return knownConstraints(checker, type).some(({ trait }) =>
         requiredFunctions(trait).some(({ name }) => name.text === disposeFunction),

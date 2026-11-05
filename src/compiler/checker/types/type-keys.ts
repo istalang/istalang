@@ -13,6 +13,8 @@
  *   since a collision would make two types one without any error.
  * - A literal type is its value, a string's quoted as JSON, so no text it holds can end it early.
  * - A union is its members' keys, sorted, since its members are a set.
+ * - A type computed from types not known yet (`T.Data`, `S["meta"]`) is its parts' keys: such a
+ *   type is opaque, equal only to itself (§3.5).
  * - An alias names no type of its own (§3.17), so no key mentions one.
  * - A type's own key is memoized per type object, which is immutable. Comparing generic signatures
  *   up to the names of their type parameters (rules/clashes.ts) keys each of those parameters by
@@ -94,6 +96,10 @@ function keyOf(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefi
       return `=${typeof type.value === 'string' ? JSON.stringify(type.value) : String(type.value)}`;
     case 'union':
       return `|<${type.members.map(key).sort().join(',')}>`;
+    case 'associated':
+      return `${key(type.of)}.${type.name}`;
+    case 'field':
+      return `${key(type.of)}[${key(type.key)}]`;
     default: {
       const unhandled: never = type;
       return unhandled;

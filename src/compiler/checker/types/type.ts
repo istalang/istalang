@@ -32,7 +32,10 @@
  *   type. The `any` type binds it, so substituting from outside never replaces it, and no type
  *   mentioning it is open.
  * - An alias names no type of its own (§3.17): a type written through one carries it only so its
- *   text can read as written (`Entries<Int>`), which messages and hovers show. Exact relations and
+ *   text can read as written (`Entries<Int>`), which messages and hovers show. An associated type
+ *   on a known type is such an alias too (`Field<Int>.Data`, §3.1), whose spelling also keeps
+ *   inference from looking through it (§3.5); on a type not known yet, it is a type of its own,
+ *   opaque (`AssociatedOfType`). Exact relations and
  *   type keys look through it. Only substitution keeps it, substituting its arguments too, since
  *   that rewrites the alias's own parameters alike; any other change of a type leaves a type the
  *   alias didn't write, so widening, the one other, drops it.
@@ -58,10 +61,24 @@ import type { StructLiteral } from '../../syntax/expressions/index.ts';
 import type { StructType } from '../../syntax/types.ts';
 
 /** The alias a type was written through, with the arguments it was given there (§3.17). */
-export interface AliasUse {
+interface DeclaredAliasUse {
+  readonly kind: 'alias';
   readonly declaration: TypeAliasDeclaration;
   readonly arguments: readonly Type[];
 }
+
+/**
+ * The associated type `name` of `of` a type was written as, `Field<T>.Data` (§3.1): the same type
+ * as what it names, which inference never looks through (§3.5).
+ */
+interface AssociatedUse {
+  readonly kind: 'associated';
+  readonly of: Type;
+  readonly name: string;
+}
+
+/** How a type was written where it isn't spelled as itself: through an alias or an associated type. */
+export type AliasUse = DeclaredAliasUse | AssociatedUse;
 
 /** What every type carries beside its kind: the alias it was written through, if any. */
 interface WrittenThrough {
@@ -251,6 +268,43 @@ export interface UnionType extends WrittenThrough {
   readonly members: readonly Type[];
 }
 
+/**
+ * `T.Data` (§3.1): the associated type `name` of `of`, a type not known yet, a type parameter or
+ * another such type. Opaque (§3.5): equal only to itself, it meets what its trait requires of it
+ * (`type Data is C`). An instantiation that makes `of` known reduces it to that type's own
+ * associated type (TypeRules), so lowering never meets one.
+ */
+interface AssociatedOfType extends WrittenThrough {
+  readonly kind: 'associated';
+  readonly of: Type;
+  readonly name: string;
+}
+
+/**
+ * `S["meta"]` (§3.5, §3.9): the type of the field `key` names in `of`, a struct type not known
+ * yet, such as a type parameter with a struct constraint. Opaque until an instantiation makes `of`
+ * known (TypeRules): equal only to itself, it meets what the constraint's entry for that field
+ * requires. A known struct's is its field's type.
+ */
+interface FieldOfType extends WrittenThrough {
+  readonly kind: 'field';
+  readonly of: Type;
+  readonly key: Type;
+}
+
+/** A type computed from others, opaque until they are known (§3.5): reduced by TypeRules. */
+export type ComputedType = AssociatedOfType | FieldOfType;
+
+/** Whether `type` is computed from types not known yet, so only an instantiation reduces it. */
+export function isComputed(type: Type): type is ComputedType {
+  return type.kind === 'associated' || type.kind === 'field';
+}
+
+/** Whether `type` is known only per instantiation: a type parameter, or computed from one (§3.5). */
+export function isOpaque(type: Type): type is TypeParameterType | ComputedType {
+  return type.kind === 'parameter' || isComputed(type);
+}
+
 /** A type a struct value can have: a declared struct or an anonymous one. */
 export type StructValueType = NominalType | AnonymousStructType;
 
@@ -264,6 +318,8 @@ export type Type =
   | AnyType
   | LiteralType
   | UnionType
+  | AssociatedOfType
+  | FieldOfType
   | ErrorType;
 
 /** `type` as written through `alias`; the error type stays itself, as a diagnostic explained it. */
@@ -324,92 +380,4 @@ export function isPack(type: Type): type is TypeParameterType {
 /** Whether `type` can stand for a pack: a tuple, `Unit` (the empty tuple), or a pack (§3.5). */
 export function fillsPack(type: Type): boolean {
   return type.kind === 'error' || isPack(type) || tupleElements(type) !== undefined;
-}
-
-/**
- * `type` ending in `pack`: a pack it keeps, a tuple it flattens into parameters by value, `Unit`
- * into none (§3.5); anything else was refused where it was bound to a pack, so it leaves the error
- * type.
- */
-export function withPack(type: FunctionType, pack: Type | undefined): FunctionType {
-  if (pack === undefined) {
-    return { ...type, pack: undefined };
-  }
-  if (isPack(pack) || pack.kind === 'error') {
-    return { ...type, pack };
-  }
-  const elements = tupleElements(pack);
-  if (elements === undefined) {
-    return { ...type, pack: errorType };
-  }
-  const flattened = elements.map((element) => ({ type: element, reference: false }));
-  return { ...type, parameters: [...type.parameters, ...flattened], pack: undefined };
-}
-
-/**
- * Whether two function types take the same parameters, each by value or by `&` alike, and give the
- * same result, their types compared by `parts`: exactly (`sameType`), or as inference matches a
- * declared type against a given one. Whether each is sendable or async is the caller's to compare.
- * A declared pack takes the given type's parameters past the declared ones, as their tuple, or the
- * given type's own pack when none are left (§3.5).
- */
-export function sameShape(
-  declared: FunctionType,
-  given: FunctionType,
-  parts: (declared: Type, given: Type) => boolean,
-  results: (declared: Type, given: Type) => boolean = parts,
-): boolean {
-  const fixed = declared.parameters.length;
-  const samePrefix =
-    given.parameters.length >= fixed &&
-    declared.parameters.every((parameter, index) => {
-      const other = given.parameters[index];
-      return (
-        other !== undefined &&
-        parameter.reference === other.reference &&
-        parts(parameter.type, other.type)
-      );
-    });
-  if (!samePrefix) {
-    return false;
-  }
-  if (declared.pack === undefined) {
-    return (
-      given.parameters.length === fixed &&
-      given.pack === undefined &&
-      results(declared.result, given.result)
-    );
-  }
-  const rest = restOf(given, fixed);
-  return rest !== undefined && parts(declared.pack, rest) && results(declared.result, given.result);
-}
-
-/**
- * `type`'s parameters from `start` on as one pack: its own pack when none are left, otherwise the
- * tuple of those, `Unit` of none; undefined when they can't be one, since one takes a `&`.
- */
-function restOf(type: FunctionType, start: number): Type | undefined {
-  const rest = type.parameters.slice(start);
-  if (type.pack !== undefined) {
-    return rest.length === 0 ? type.pack : undefined;
-  }
-  return rest.some((slot) => slot.reference) ? undefined : tupleType(rest.map((slot) => slot.type));
-}
-
-/**
- * Whether a function of type `given` fits where `declared` is expected: async alike, sendable
- * where `declared` is (§3.14), and of the same shape (`sameShape`), its parts and results compared
- * as the caller says.
- */
-export function functionFits(
-  declared: FunctionType,
-  given: FunctionType,
-  parts: (declared: Type, given: Type) => boolean,
-  results: (declared: Type, given: Type) => boolean = parts,
-): boolean {
-  return (
-    given.isAsync === declared.isAsync &&
-    (given.isSendable || !declared.isSendable) &&
-    sameShape(declared, given, parts, results)
-  );
 }

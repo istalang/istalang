@@ -35,7 +35,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Produced } from '../rules/agreement.ts';
 import { isSendable } from '../traits/sendable.ts';
 import { expectedFunction } from '../types/expected.ts';
-
+import { withPack } from '../types/function-types.ts';
 import {
   errorType,
   expectsError,
@@ -45,7 +45,6 @@ import {
   type RestSlot,
   type Type,
   unitType,
-  withPack,
 } from '../types/type.ts';
 import { FunctionScope } from './function-scope.ts';
 import { declareOwnCall } from './own-calls.ts';

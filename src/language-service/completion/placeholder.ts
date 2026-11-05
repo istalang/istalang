@@ -317,6 +317,8 @@ const declaringKinds: ReadonlySet<string> = new Set([
   'Variant',
   'TraitDeclaration',
   'TypeAliasDeclaration',
+  'AssociatedType',
+  'RequiredAssociatedType',
   'TypeParameter',
   'Parameter',
   'DeclaredField',

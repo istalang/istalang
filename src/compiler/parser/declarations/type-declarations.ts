@@ -6,26 +6,35 @@
  * braces on one line (`struct Req { id: Int; value: String }`, `enum Color { Red; Green }`). A
  * struct may also have no member list at all. One helper reads all three, with each declaration
  * supplying how a member is parsed.
+ *
+ * `type` before a name declares an associated type among the members (§3.1, §3.10): `type Data =
+ * T` in a struct or enum, `type Key is C` in a trait. Anywhere else among them it is a field's
+ * name, as `type: String`. A struct's or enum's associated types are a list of their own, read
+ * from the same lines as its fields or variants, in any order.
  */
 
 import type {
+  AssociatedType,
   DeclaredField,
   DeclaredStruct,
   EnumDeclaration,
-  FunctionDeclaration,
+  RequiredAssociatedType,
   SharedStructDeclaration,
   StructDeclaration,
   TraitDeclaration,
+  TraitMember,
   TypeAliasDeclaration,
   Variant,
 } from '../../syntax/declarations.ts';
 import type { Invalid } from '../../syntax/node.ts';
-import type { FieldDeclaration } from '../../syntax/types.ts';
+import { spanAcross } from '../../syntax/positions.ts';
 import { attachAnnotations } from '../annotations.ts';
+import { parserDiagnostics } from '../diagnostics.ts';
 import { documentedBy, type WithDocstring } from '../docstrings.ts';
 import { parseDocstringBelow, parseDocumentedMembers } from '../layout/bodies.ts';
 import { type ItemRules, type Items, parseItemEntries } from '../layout/index.ts';
 import type { Parser } from '../parser.ts';
+import { parseConstraints } from '../parts/constraints.ts';
 import { declaredFieldRules, parseField } from '../parts/structs.ts';
 import { parseFunction } from './functions.ts';
 import { parseTypeParameters } from './type-parameters.ts';
@@ -43,22 +52,95 @@ export function parseSharedStruct(parser: Parser): SharedStructDeclaration {
 /** A struct declaration but its kind, from its `struct`, which starts at `start` with what precedes it. */
 function parseStructFrom(parser: Parser, start: number): Omit<DeclaredStruct, 'kind'> {
   const { name, typeParameters } = parseTypeHead(parser);
-  const { value: fields, doc } = parseMembers(parser, declaredFieldRules, start);
+  const { value: members, doc } = parseMembers(
+    parser,
+    withAssociatedTypes(declaredFieldRules),
+    start,
+  );
+  const { associatedTypes, others: fields } = associatedTypesApart(members);
   const span = parser.spanFrom(start);
   return {
     span,
     name,
     typeParameters,
     fields,
+    associatedTypes,
     ...documentedBy(doc),
   };
 }
 
 export function parseEnum(parser: Parser): EnumDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);
-  const { value: variants, doc } = parseMembers(parser, variantRules, start);
+  const { value: members, doc } = parseMembers(parser, withAssociatedTypes(variantRules), start);
+  const { associatedTypes, others: variants } = associatedTypesApart(members);
   const span = parser.spanFrom(start);
-  return { kind: 'EnumDeclaration', span, name, typeParameters, variants, ...documentedBy(doc) };
+  return {
+    kind: 'EnumDeclaration',
+    span,
+    name,
+    typeParameters,
+    variants,
+    associatedTypes,
+    ...documentedBy(doc),
+  };
+}
+
+/** `rules` for a struct's or an enum's members, which may be associated types too. */
+function withAssociatedTypes<Item extends DeclaredField | Variant>(
+  rules: ItemRules<Item>,
+): ItemRules<Item | AssociatedType> {
+  return {
+    parseItem: (parser) =>
+      declaresType(parser) ? parseAssociatedType(parser) : rules.parseItem(parser),
+    annotate: attachAnnotations,
+  };
+}
+
+/** A struct's or an enum's members split into its associated types and the rest, each in order. */
+function associatedTypesApart<Item extends DeclaredField | Variant>(
+  members: readonly (Item | AssociatedType | Invalid)[],
+): { readonly associatedTypes: AssociatedType[]; readonly others: (Item | Invalid)[] } {
+  const associatedTypes: AssociatedType[] = [];
+  const others: (Item | Invalid)[] = [];
+  for (const member of members) {
+    if (member.kind === 'AssociatedType') {
+      associatedTypes.push(member);
+    } else {
+      others.push(member);
+    }
+  }
+  return { associatedTypes, others };
+}
+
+/** Whether the cursor is at `type` before a name, which declares an associated type there. */
+function declaresType(parser: Parser): boolean {
+  return parser.atWord('type') && parser.cursor.kindAt(1) === 'identifier';
+}
+
+/** `type Data = T`, at `type`; an associated type takes no type parameters (§3.1). */
+function parseAssociatedType(parser: Parser): AssociatedType {
+  const { start, name } = parseAssociatedHead(parser);
+  const type = parser.expect('=') === undefined ? parser.placeholder() : parser.type();
+  return { kind: 'AssociatedType', span: parser.spanFrom(start), name, type };
+}
+
+/** `type Key`, or `type Key is C & D`, at `type`, in a trait. */
+function parseRequiredAssociatedType(parser: Parser): RequiredAssociatedType {
+  const { start, name } = parseAssociatedHead(parser);
+  const constraints = parser.cursor.eat('is') === undefined ? [] : parseConstraints(parser);
+  return { kind: 'RequiredAssociatedType', span: parser.spanFrom(start), name, constraints };
+}
+
+/** `type Name` at `type`, reporting type parameters written after the name. */
+function parseAssociatedHead(parser: Parser) {
+  const { start } = parser.cursor.advance().span;
+  const name = parser.identifier('an associated type name');
+  if (parser.cursor.at('<')) {
+    const last = parseTypeParameters(parser).at(-1);
+    const span = last === undefined ? name.span : spanAcross(name.span, last.span);
+    parser.report(parserDiagnostics.associatedTypeParameters(parser.textSpanOf(span)));
+  }
+  return { start, name };
 }
 
 /**
@@ -97,9 +179,7 @@ function parseTypeHead(parser: Parser) {
  * An indented block or one-line braces of members, or none, and the declaration's docstring: first
  * in the block, or on the line below a declaration without one (§2).
  */
-function parseMembers<
-  Item extends DeclaredField | FieldDeclaration | Variant | FunctionDeclaration,
->(
+function parseMembers<Item extends DeclaredField | Variant | AssociatedType | TraitMember>(
   parser: Parser,
   rules: ItemRules<Item>,
   headerStart: number,
@@ -123,15 +203,16 @@ function parseVariant(parser: Parser): Variant {
 
 const variantRules: ItemRules<Variant> = { parseItem: parseVariant, annotate: attachAnnotations };
 
-/** A required function, whose body may be omitted, or a required field. */
-function parseTraitMember(parser: Parser): FunctionDeclaration | FieldDeclaration | Invalid {
+/** A required function, whose body may be omitted, a required field or associated type. */
+function parseTraitMember(parser: Parser): TraitMember | Invalid {
   const { kind } = parser.cursor;
-  return kind === 'fn' || kind === 'async'
-    ? parseFunction(parser, 'requirement')
-    : parseField(parser);
+  if (kind === 'fn' || kind === 'async') {
+    return parseFunction(parser, 'requirement');
+  }
+  return declaresType(parser) ? parseRequiredAssociatedType(parser) : parseField(parser);
 }
 
-const traitMemberRules: ItemRules<FunctionDeclaration | FieldDeclaration> = {
+const traitMemberRules: ItemRules<TraitMember> = {
   parseItem: parseTraitMember,
   annotate: attachAnnotations,
 };

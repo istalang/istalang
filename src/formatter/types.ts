@@ -1,14 +1,16 @@
 /**
  * Types (spec §2, §3). An anonymous struct type prints as its braces alone: in a type position
  * `struct` before `{` changes nothing (§3.1), and the indented field block under a field is sugar
- * for the same type, so braces are the one spelling.
+ * for the same type, so braces are the one spelling. A struct constraint (§3.5) keeps its
+ * `struct`, which makes it one, and prints bare when it has no entries: `struct` and `struct {}`
+ * are the same constraint.
  */
 
 import { builders } from 'prettier/doc';
-import type { TypeNode, TypePart } from '../compiler/syntax/types.ts';
+import type { ConstraintNode, TypeNode, TypePart } from '../compiler/syntax/types.ts';
 import { annotated } from './bodies.ts';
 import { angled, bracketed, enclosed, fieldList, tupleList } from './lists.ts';
-import type { Printers } from './printer.ts';
+import type { Printer, Printers } from './printer.ts';
 
 const { join } = builders;
 
@@ -51,5 +53,32 @@ export const typePrinters: Printers<TypeKind> = {
       node.members.map((member) => printer.print(member)),
     ),
   LiteralType: (printer, node) => printer.print(node.value),
+  MemberType: (printer, node) => [printer.print(node.owner), '.', printer.print(node.name)],
+  StructConstraint: (printer, node) => {
+    const entries = fieldList(printer, node, node.entries);
+    return entries === '{}' ? 'struct' : ['struct ', entries];
+  },
+  OtherFields: () => '[_]',
+  FieldTypeEntry: (printer, node) => [printer.print(node.field), ': ', printer.print(node.type)],
+  FieldConstraintEntry: (printer, node) => [
+    printer.print(node.field),
+    constraintsAfterIs(printer, node.constraints),
+  ],
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
+
+/** ` is A & B`, the constraints after `is` (§3.5); nothing for none. */
+export function constraintsAfterIs(
+  printer: Printer,
+  constraints: readonly ConstraintNode[],
+): builders.Doc {
+  return constraints.length === 0
+    ? ''
+    : [
+        ' is ',
+        join(
+          ' & ',
+          constraints.map((constraint) => printer.print(constraint)),
+        ),
+      ];
+}

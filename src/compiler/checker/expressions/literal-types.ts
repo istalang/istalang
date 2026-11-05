@@ -65,7 +65,7 @@ export function builtThrough(
         substitutionFor(declaration.typeParameters, typeArguments),
         context.checker.typeRules,
       ),
-      { declaration, arguments: typeArguments },
+      { kind: 'alias', declaration, arguments: typeArguments },
     );
   return aliased.kind === 'anonymous'
     ? { kind: 'shape', shape: { owner: declaration, known, fields: aliased.fields, typeOf } }

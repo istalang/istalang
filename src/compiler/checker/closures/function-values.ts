@@ -33,8 +33,9 @@ import { type Application, chooseAsValue, signatureOf } from '../resolution/choi
 import { instantiate } from '../resolution/conformance.ts';
 import { namedType } from '../resolution/named.ts';
 import { expectedFunction } from '../types/expected.ts';
+import { withPack } from '../types/function-types.ts';
 import { substitute } from '../types/substitution.ts';
-import { errorType, expectsError, type FunctionType, type Type, withPack } from '../types/type.ts';
+import { errorType, expectsError, type FunctionType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument, futureOf } from '../types/well-known.ts';
 import { useSite } from '../use-site.ts';

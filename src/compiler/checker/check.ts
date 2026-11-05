@@ -13,11 +13,7 @@ import type { LanguageModule, WellKnownDeclaration } from '../../language/well-k
 import { memo } from '../../structures/memo.ts';
 import type { Bindings, Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
-import type {
-  Declaration,
-  FunctionDeclaration,
-  TypeAliasDeclaration,
-} from '../syntax/declarations.ts';
+import type { AliasDeclaration, Declaration, FunctionDeclaration } from '../syntax/declarations.ts';
 import type {
   ArrayLiteral,
   Call,
@@ -339,7 +335,7 @@ export interface Checker {
    */
   readonly typeRules: TypeRules;
   /** The type an alias stands for, its own type parameters left open (§3.17). */
-  readonly aliasedType: (alias: TypeAliasDeclaration) => Type;
+  readonly aliasedType: (alias: AliasDeclaration) => Type;
   /** What tools ask by position: what names denote, the body holding a node (lookup/). */
   readonly lookup: LookupQueries;
 }

@@ -164,7 +164,8 @@ export function lowerFieldRead(
       return emitCall(context, { span: node.span, callee, arguments: [src] });
     }
     case 'required':
-      return unreachable('An instantiated body reads no field through a type parameter.');
+    case 'named':
+      return unreachable("An instantiated body reads no field of a type it doesn't know.");
     default: {
       const unhandled: never = read;
       return unhandled;

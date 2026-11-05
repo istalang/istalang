@@ -58,10 +58,10 @@ describe('imports', () => {
 
 describe('type declarations', () => {
   it.each([
-    ['struct Marker', '(StructDeclaration Marker [] [])'],
+    ['struct Marker', '(StructDeclaration Marker [] [] [])'],
     [
       'struct Req { id: Int; value: String }',
-      `(StructDeclaration Req [] [${declaredField('id', int)} ${declaredField('value', string)}])`,
+      `(StructDeclaration Req [] [${declaredField('id', int)} ${declaredField('value', string)}] [])`,
     ],
     [
       lines(
@@ -71,19 +71,19 @@ describe('type declarations', () => {
         '        value: Int',
         '        result: String',
       ),
-      `(StructDeclaration Response [] [${declaredField('id', string)} ${declaredField('data', `(StructType [${field('value', int)} ${field('result', string)}])`)}])`,
+      `(StructDeclaration Response [] [${declaredField('id', string)} ${declaredField('data', `(StructType [${field('value', int)} ${field('result', string)}])`)}] [])`,
     ],
     [
       'struct Node<T is Sendable & Comparable = Int> { value: T }',
-      `(StructDeclaration Node [(TypeParameter T _ [${named('Sendable')} ${named('Comparable')}] ${int})] [${declaredField('value', named('T'))}])`,
+      `(StructDeclaration Node [(TypeParameter T _ [${named('Sendable')} ${named('Comparable')}] ${int})] [${declaredField('value', named('T'))}] [])`,
     ],
     [
       lines('enum Decision:', '    Approved { by: String }', '    Expired'),
-      `(EnumDeclaration Decision [] [(Variant Approved [${declaredField('by', string)}]) (Variant Expired [])])`,
+      `(EnumDeclaration Decision [] [(Variant Approved [${declaredField('by', string)}]) (Variant Expired [])] [])`,
     ],
     [
       'enum Color { Red; Green; Blue }',
-      '(EnumDeclaration Color [] [(Variant Red []) (Variant Green []) (Variant Blue [])])',
+      '(EnumDeclaration Color [] [(Variant Red []) (Variant Green []) (Variant Blue [])] [])',
     ],
     [
       lines(
@@ -104,16 +104,16 @@ describe('type declarations', () => {
     ],
     [
       lines('shared struct Inbox<T>:', '    backlog: Array<T>', '    queued: Int = 0'),
-      `(SharedStructDeclaration Inbox [${typeParameter('T')}] [${declaredField('backlog', `(NamedType [Array] [${named('T')}])`)} ${declaredField('queued', int, '0')}])`,
+      `(SharedStructDeclaration Inbox [${typeParameter('T')}] [${declaredField('backlog', `(NamedType [Array] [${named('T')}])`)} ${declaredField('queued', int, '0')}] [])`,
     ],
-    ['shared struct Token', '(SharedStructDeclaration Token [] [])'],
+    ['shared struct Token', '(SharedStructDeclaration Token [] [] [])'],
     [
       lines('struct Retry:', '    times: Int = 3', '    backoff = times * 2'),
-      `(StructDeclaration Retry [] [${declaredField('times', int, '3')} ${declaredField('backoff', '_', '(Binary times * 2)')}])`,
+      `(StructDeclaration Retry [] [${declaredField('times', int, '3')} ${declaredField('backoff', '_', '(Binary times * 2)')}] [])`,
     ],
     [
       'enum Shape { Circle { r: Float = 1.0 } }',
-      `(EnumDeclaration Shape [] [(Variant Circle [${declaredField('r', named('Float'), '1')}])])`,
+      `(EnumDeclaration Shape [] [(Variant Circle [${declaredField('r', named('Float'), '1')}])] [])`,
     ],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('module', text)).toBe(moduleOf(tree));

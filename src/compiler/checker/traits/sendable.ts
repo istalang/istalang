@@ -20,7 +20,7 @@ import { heldParts } from '../types/held.ts';
 import type { NominalType, Type } from '../types/type.ts';
 import { TypeCycle } from '../types/type-cycle.ts';
 import { isWellKnownTrait } from '../types/well-known.ts';
-import { knownConstraints } from './constraints.ts';
+import { knownConstraints } from './known-constraints.ts';
 
 /**
  * The traits a type parameter may be constrained by to be sendable: Sendable, and those that
@@ -50,6 +50,8 @@ function sendable(checker: CheckerContext, type: Type, deciding: TypeCycle): boo
     case 'union':
       return heldParts(checker, type).every((child) => sendable(checker, child, deciding));
     case 'parameter':
+    case 'associated':
+    case 'field':
     case 'any':
       return knownConstraints(checker, type).some(({ trait }) =>
         sendableTraits.some((each) => isWellKnownTrait(checker, trait, each)),

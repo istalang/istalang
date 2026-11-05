@@ -34,7 +34,7 @@ import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { VariantMember } from '../check.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
-import { declaredFields } from '../types/resolve-type.ts';
+import { declaredFields } from '../types/declared-fields.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import {
   type AnonymousStructType,

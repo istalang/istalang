@@ -83,7 +83,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
       );
     }
     const self = memberReceiver(code, receiver, { on, type, references });
-    const result = code.call(closeWitness(witness, dispatch, checker.typeRules), [self, ...rest]);
+    const result = code.call(closeWitness(witness, dispatch, checker), [self, ...rest]);
     code.return(required.isAsync ? code.await(result) : result);
   });
   const generic = dispatch.typeArguments.map((type) => spelledType(checker, type));

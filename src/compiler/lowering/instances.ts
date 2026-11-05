@@ -37,9 +37,15 @@ import {
   substituteAny,
   substitutionFor,
 } from '../checker/types/substitution.ts';
-import type { AnyType, FunctionType, ParameterKey, Type } from '../checker/types/type.ts';
+import {
+  type AnyType,
+  type FunctionType,
+  isOpaque,
+  type ParameterKey,
+  type Type,
+} from '../checker/types/type.ts';
 import type { TypeKeys } from '../checker/types/type-keys.ts';
-import type { TypeRules } from '../checker/types/type-rules.ts';
+import { typeText } from '../checker/types/type-text.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Lambda } from '../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';
@@ -99,13 +105,13 @@ export function substitutionOf(
   return substitutionFor(instance.declaration.typeParameters, instance.typeArguments);
 }
 
-/** `resolved`, a call made inside the body `within` owns, closed there by the program's `rules`. */
+/** `resolved`, a call made inside the body `within` owns, closed there as `program` says. */
 export function closeCallWithin(
   resolved: ResolvedCall,
   within: BodyOwner,
-  rules: TypeRules,
+  program: Closer,
 ): ClosedCall {
-  return closeCall(resolved, within.kind === 'function' ? within.instance : undefined, rules);
+  return closeCall(resolved, within.kind === 'function' ? within.instance : undefined, program);
 }
 
 /**
@@ -277,19 +283,25 @@ export interface Dispatch {
   readonly witnesses: Witnesses;
 }
 
+/**
+ * What closing a call asks of the program: the rules its types are built by, and the witnesses a
+ * type an instantiation made known meets a trait with, for a requirement on a computed type.
+ */
+export type Closer = Pick<Checker, 'typeRules' | 'memberWitnesses'>;
+
 /** What closing reads of the instance a call is closed inside: how it maps type parameters. */
 type Closing = Pick<FunctionInstance, 'declaration' | 'typeArguments' | 'witnesses'>;
 
 /**
- * What `resolved` targets, closed inside `within`, its types built by the program's `rules`. A
+ * What `resolved` targets, closed inside `within`, as `program` says (`Closer`). A
  * constant's value is within no instance, so nothing in it names a type parameter.
  */
 export function closeCall(
   resolved: ResolvedCall,
   within: Closing | undefined,
-  rules: TypeRules,
+  program: Closer,
 ): ClosedCall {
-  const closed = closedInside(resolved, within, rules);
+  const closed = closedInside(resolved, within, program);
   if (closed.kind === 'function') {
     return { kind: 'function', instance: instanceOf(closed), binding: closed.binding };
   }
@@ -303,6 +315,9 @@ export function closeCall(
       dispatch: { on, through, constraint: 0, member, ...called },
       binding,
     };
+  }
+  if (origin.kind === 'computed') {
+    return unreachable(`No witness for ${typeText(origin.on)}; checking should have found one.`);
   }
   const { on, constraint, member } = origin;
   if (on.kind !== 'any') {
@@ -319,14 +334,16 @@ export function closeCall(
 export function closeFunctionCall(
   call: FunctionCall,
   within: Closing | undefined,
-  rules: TypeRules,
+  program: Closer,
 ): FunctionInstance {
   const substitution =
     within === undefined ? new Map<ParameterKey, Type>() : substitutionOf(within);
   return instanceOf({
     ...call,
-    typeArguments: call.typeArguments.map((type) => substitute(type, substitution, rules)),
-    witnesses: closeWitnesses(call.witnesses, within, rules),
+    typeArguments: call.typeArguments.map((type) =>
+      substitute(type, substitution, program.typeRules),
+    ),
+    witnesses: closeWitnesses(call.witnesses, within, program),
   });
 }
 
@@ -341,10 +358,10 @@ function instanceOf({ function: declaration, typeArguments, witnesses }: Functio
 export function closeWitness(
   witness: ResolvedCall,
   dispatch: Dispatch,
-  rules: TypeRules,
+  program: Closer,
 ): ClosedCall {
   const { required: declaration, typeArguments, witnesses } = dispatch;
-  return closeCall(witness, { declaration, typeArguments, witnesses }, rules);
+  return closeCall(witness, { declaration, typeArguments, witnesses }, program);
 }
 
 /**
@@ -357,25 +374,44 @@ export function closeWitness(
 function closedInside(
   resolved: ResolvedCall,
   within: Closing | undefined,
-  rules: TypeRules,
+  program: Closer,
 ): ResolvedCall {
   const substitution =
     within === undefined ? new Map<ParameterKey, Type>() : substitutionOf(within);
   if (resolved.kind === 'function') {
-    const { typeArguments, witnesses } = closeFunctionCall(resolved, within, rules);
+    const { typeArguments, witnesses } = closeFunctionCall(resolved, within, program);
     return { ...resolved, typeArguments, witnesses };
   }
-  const typeArguments = resolved.typeArguments.map((type) => substitute(type, substitution, rules));
-  const witnesses = closeWitnesses(resolved.witnesses, within, rules);
+  const typeArguments = resolved.typeArguments.map((type) =>
+    substitute(type, substitution, program.typeRules),
+  );
+  const witnesses = closeWitnesses(resolved.witnesses, within, program);
   const origin = resolved.requirement;
+  if (origin.kind === 'computed') {
+    const on = substitute(origin.on, substitution, program.typeRules);
+    const through = substituteAny(origin.through, substitution, program.typeRules);
+    if (isOpaque(on)) {
+      return { ...resolved, requirement: { ...origin, on, through }, typeArguments, witnesses };
+    }
+    const witness =
+      program.memberWitnesses(through, 0, on)[origin.member] ??
+      unreachable(`${typeText(on)} meets its bound without '${resolved.function.name.text}'.`);
+    const inRequired = { declaration: resolved.function, typeArguments, witnesses };
+    const met = closedInside(witness, inRequired, program);
+    return { ...met, binding: composed(met.binding, resolved.binding) };
+  }
   if (origin.kind === 'members') {
-    const through = substituteAny(origin.through, substitution, rules);
-    const closed = { ...origin, on: substitute(origin.on, substitution, rules), through };
+    const through = substituteAny(origin.through, substitution, program.typeRules);
+    const closed = {
+      ...origin,
+      on: substitute(origin.on, substitution, program.typeRules),
+      through,
+    };
     return { ...resolved, requirement: closed, typeArguments, witnesses };
   }
   const { on, constraint, member } = origin;
   if (on.kind === 'any') {
-    const closed = { ...origin, on: substituteAny(on, substitution, rules) };
+    const closed = { ...origin, on: substituteAny(on, substitution, program.typeRules) };
     return { ...resolved, requirement: closed, typeArguments, witnesses };
   }
   const witness = within?.witnesses.get(on)?.[constraint]?.[member];
@@ -383,7 +419,7 @@ function closedInside(
     return { ...resolved, typeArguments, witnesses };
   }
   const inRequired = { declaration: resolved.function, typeArguments, witnesses };
-  const met = closedInside(witness, inRequired, rules);
+  const met = closedInside(witness, inRequired, program);
   return { ...met, binding: composed(met.binding, resolved.binding) };
 }
 
@@ -405,12 +441,12 @@ function composed(binding: Binding, required: Binding): Binding {
 function closeWitnesses(
   witnesses: Witnesses,
   within: Closing | undefined,
-  rules: TypeRules,
+  program: Closer,
 ): Witnesses {
   return new Map(
     [...witnesses].map(([parameter, constraints]) => [
       parameter,
-      constraints.map((calls) => calls.map((call) => closedInside(call, within, rules))),
+      constraints.map((calls) => calls.map((call) => closedInside(call, within, program))),
     ]),
   );
 }

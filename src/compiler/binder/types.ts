@@ -9,7 +9,7 @@
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { Field } from '../syntax/declarations.ts';
 import type { Invalid } from '../syntax/node.ts';
-import type { TypeNode } from '../syntax/types.ts';
+import type { ConstraintNode, StructConstraint, TypeNode } from '../syntax/types.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import type { Scope } from './scope.ts';
 
@@ -37,6 +37,7 @@ const typeHandlers: Handlers<LocalBinder, TypeNode, [Scope], void> = {
   AnyType: (binder, node, scope) => bindTypes(binder, node.traits, scope),
   UnionType: (binder, node, scope) => bindTypes(binder, node.members, scope),
   LiteralType: holdsNoNames,
+  MemberType: (binder, node, scope) => bindType(binder, node.owner, scope),
   Missing: holdsNoNames,
   Invalid: holdsNoNames,
 };
@@ -50,6 +51,45 @@ export function bindType(binder: LocalBinder, node: TypeNode, scope: Scope): voi
 function bindTypes(binder: LocalBinder, nodes: readonly TypeNode[], scope: Scope): void {
   for (const node of nodes) {
     bindType(binder, node, scope);
+  }
+}
+
+/**
+ * Constraints after `is` (§3.5): a trait is a type's name; a struct constraint names fields, which
+ * live in their own namespace.
+ */
+export function bindConstraints(
+  binder: LocalBinder,
+  constraints: readonly ConstraintNode[],
+  scope: Scope,
+): void {
+  for (const constraint of constraints) {
+    if (constraint.kind === 'StructConstraint') {
+      bindStructConstraint(binder, constraint, scope);
+    } else {
+      bindType(binder, constraint, scope);
+    }
+  }
+}
+
+/** A struct constraint's entries: names checked as a field list's, types and constraints bound. */
+function bindStructConstraint(
+  binder: LocalBinder,
+  constraint: StructConstraint,
+  scope: Scope,
+): void {
+  binder.enter(constraint, scope);
+  const entries = constraint.entries.filter((entry) => entry.kind !== 'Invalid');
+  binder.checkMemberNames(
+    entries.flatMap(({ field }) => (field.kind === 'Identifier' ? [field] : [])),
+    'value',
+  );
+  for (const entry of entries) {
+    if (entry.kind === 'FieldTypeEntry') {
+      bindType(binder, entry.type, scope);
+    } else {
+      bindConstraints(binder, entry.constraints, scope);
+    }
   }
 }
 

@@ -1,0 +1,58 @@
+# outcome: "bearer:42|user-7|v1->v2|6"
+# Associated types (§1) on structs, braced structs, enums, and traits (with bounds, static calls
+# through K.Key.default(), and contextual `type: X` field), plus struct constraints (§2) across
+# all 5 table forms and reading/writing named fields in generic code.
+
+trait Keyed:
+  type Key is Stringable & Default
+  fn key(self: Self) -> Self.Key
+
+struct Cell<T> { value: T; type Data = T }
+
+struct Token<T>:
+  type: String
+  first: Pair
+  type Pair = (Item, Item)
+  type Item = T
+
+enum Stage<T>:
+  type Value = T
+  Ready { item: Value }
+  Empty
+
+struct Tag { text: String }
+
+fn Tag.default() -> Tag: Tag{text: "user-"}
+
+fn toString(self: Tag) -> String: self.text
+
+struct UserKey:
+  id: Int
+  type Key = Tag
+
+fn key(self: UserKey) -> Tag:
+  Tag{text: `${self.id}`}
+
+fn defaultAndFormat<K is Keyed>(item: K) -> String:
+  const fallback: K.Key = K.Key.default()
+  `${fallback}${item.key()}`
+
+fn countAnyStruct<S is struct>(s: S) -> Int: 1
+fn sumIntFields<S is struct { [_]: Int }>(s: S) -> Int: 2
+fn updateTitle<S is struct { title: String; [_]: Int }>(s: &S, next: String) -> String:
+  const old = s.title
+  s.title = next
+  old
+
+async fn main() -> Future<String>:
+  const tok = Token<Int>{type: "bearer", first: (20, 22)}
+  const cellVal: Cell<Int>.Data = tok.first.0 + tok.first.1
+  const step: Stage<Int> = Ready{item: 3}
+  const stepVal = match step:
+    case Ready{item}: item
+    case Empty: 0
+  const keyedText = defaultAndFormat(UserKey{id: 7})
+  let doc = struct{title: "v1", a: 1, b: 2}
+  const prev = updateTitle(&doc, "v2")
+  const total = countAnyStruct(doc) + sumIntFields(struct{x: 1, y: 2}) + stepVal
+  `${tok.type}:${cellVal}|${keyedText}|${prev}->${doc.title}|${total}`

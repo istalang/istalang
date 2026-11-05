@@ -205,6 +205,9 @@ function keyType(checker: Checker, type: Type): KeyType {
       return { kind: 'literal', text: typeText(type) };
     case 'union':
       return unionKey(checker, type);
+    case 'associated':
+    case 'field':
+      return unreachable('An instantiated type is computed already.');
     case 'error':
       return unreachable('An extern with an unresolved type reached lowering.');
     default: {

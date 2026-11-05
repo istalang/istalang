@@ -127,6 +127,11 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2026,
     message: () => "A range pattern's bounds are literals.",
   },
+  associatedTypeParameters: {
+    code: 2028,
+    message: () =>
+      "An associated type takes no type parameters; it uses its declaration's own (§3.1).",
+  },
   memberParameterAlone: {
     code: 2027,
     message: () =>

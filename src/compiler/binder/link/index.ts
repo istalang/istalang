@@ -313,17 +313,24 @@ class Linker {
     return entity;
   }
 
-  #resolvePath(id: ModuleId, links: ModuleLinks, { parts, inExpression }: QualifiedPath): void {
+  #resolvePath(id: ModuleId, links: ModuleLinks, { parts, role }: QualifiedPath): void {
+    const inExpression = role === 'expression';
     const [head, ...rest] = parts;
     let qualifier = head;
     let current = this.entityOf(id, head);
     for (const part of rest) {
-      const next =
-        current === undefined ? undefined : this.#member(current, part, inExpression, links);
+      const next = current === undefined ? undefined : this.#member(current, part, role, links);
       if (next === undefined) {
         // Outside an expression no check reads the parts before the last; in one, `x.y` reads a
-        // value's member, which the checker reports.
-        if (current !== undefined && !inExpression && this.#qualifierOf(current) === undefined) {
+        // value's member, which the checker reports. After a type, the parts are its associated
+        // types (§3.1), which the checker resolves too.
+        const associated = role === 'type' && current !== undefined && namesType(current);
+        if (
+          current !== undefined &&
+          !inExpression &&
+          !associated &&
+          this.#qualifierOf(current) === undefined
+        ) {
           links.diagnostics.push(binderDiagnostics.qualifiesNothing(part.span, qualifier.text));
         }
         return;
@@ -338,7 +345,7 @@ class Linker {
   #member(
     current: Entity,
     part: Identifier,
-    inExpression: boolean,
+    role: QualifiedPath['role'],
     links: ModuleLinks,
   ): Entity | undefined {
     const qualifier = this.#qualifierOf(current);
@@ -350,7 +357,8 @@ class Linker {
       return module === undefined ? undefined : this.#exported(module, part, links);
     }
     const variant = this.#variantsOfEnum.get(qualifier.declaration)?.get(part.text);
-    if (variant === undefined && !inExpression) {
+    const associated = role === 'type' && declaresAssociated(qualifier.declaration, part);
+    if (variant === undefined && role !== 'expression' && !associated) {
       const enumName = qualifier.declaration.name.text;
       links.diagnostics.push(binderDiagnostics.missingVariant(part.span, enumName, part.text));
     }
@@ -378,4 +386,14 @@ class Linker {
       ? undefined
       : this.#program.modules.get(importer)?.imports.get(namespace.declaration);
   }
+}
+
+/** Whether `entity` names a type, whose path's next parts are its associated types (§3.1). */
+function namesType(entity: Entity): boolean {
+  return entity.kind === 'type' || entity.kind === 'primitive' || entity.kind === 'self';
+}
+
+/** Whether the enum `declaration` declares an associated type named as `part` (§3.1). */
+function declaresAssociated(declaration: EnumDeclaration, part: Identifier): boolean {
+  return declaration.associatedTypes.some((associated) => associated.name.text === part.text);
 }

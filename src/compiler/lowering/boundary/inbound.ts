@@ -48,7 +48,7 @@ export function inboundOf(
   return {
     path,
     decode: codecCall(checker, within, type, 'read'),
-    accept: closeCall(checker.json.callOf(acceptors[from], [type]), within, checker.typeRules),
+    accept: closeCall(checker.json.callOf(acceptors[from], [type]), within, checker),
   };
 }
 

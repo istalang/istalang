@@ -9,8 +9,8 @@
  *   (resolution/candidates.ts). Each is the function declared to meet it (declared-witness.ts),
  *   which must give the required result. The calls found are the witnesses the instantiation
  *   calls (check.ts).
- * - A required field is met by a struct field of the same name and type, or by a constraint on a
- *   type parameter requiring it too.
+ * - A required field or associated type, and a struct constraint's entries, are met as
+ *   shortfalls.ts judges them.
  * - A trait the compiler derives (derived-traits.ts) asks what its rule asks of every type first,
  *   and a required function no function is declared for is met by the witness it derives. On a
  *   union, any other trait's is met through its members (union-traits.ts, §6).
@@ -29,17 +29,10 @@ import type { FunctionDeclaration, TypeParameter } from '../../syntax/declaratio
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type Completion, completeInference } from '../inference/complete.ts';
 import type { ResolvedCall, Witnesses } from '../resolved-call.ts';
-import {
-  constraintSubstitution,
-  fieldOf,
-  requiredFields,
-  requiredFieldType,
-  requiredFunctions,
-  substituteConstraint,
-} from '../traits/constraints.ts';
+import { constraintSubstitution, requiredFunctions, traitAsAny } from '../traits/constraints.ts';
 import { sameType } from '../types/identity.ts';
 import { standsForMember } from '../types/member-arguments.ts';
-import { type Substitution, substitute } from '../types/substitution.ts';
+import { type Substitution, substitute, substituteConstraint } from '../types/substitution.ts';
 import { type Constraint, errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { silent, type UseSite } from '../use-site.ts';
@@ -47,7 +40,13 @@ import { callMade } from './calls-made.ts';
 import { type Application, type Choice, type Signature, signatureOf } from './choice.ts';
 import { chooseWitness, chooseWitnessAmong } from './declared-witness.ts';
 import { type Derivation, derivationOf } from './derived-traits.ts';
-import { type MembersMeeting, membersCall, membersShortfall, traitAsAny } from './union-traits.ts';
+import {
+  associatedShortfall,
+  fieldShortfall,
+  type Meets,
+  meetsStructConstraints,
+} from './shortfalls.ts';
+import { type MembersMeeting, membersCall, membersShortfall } from './union-traits.ts';
 
 /** A chosen function, complete: its type arguments, and the witnesses of its constraints. */
 export interface Instantiation {
@@ -116,7 +115,9 @@ function witnessesOf(
   const witnesses = new Map<TypeParameter, readonly (readonly ResolvedCall[])[]>();
   for (const [index, parameter] of parameters.entries()) {
     const argument = typeArguments[index] ?? errorType;
-    if (!standsForMember(site, parameter, argument, substitution)) {
+    const given = { argument, substitution };
+    const struct = () => meetsStructConstraints(site, parameter, given, silentMeets(site, depth));
+    if (!(standsForMember(site, parameter, argument, substitution) && struct())) {
       return 'failed';
     }
     const met: (readonly ResolvedCall[])[] = [];
@@ -192,8 +193,12 @@ function conform(
   if (type.kind === 'error') {
     return 'failed';
   }
-  const derivation = derivationOf(site.checker, constraint.trait);
-  const missing = derivation?.lacking(site, type) ?? missingField(meeting);
+  const { checker } = site;
+  const derivation = derivationOf(checker, constraint.trait);
+  const missing =
+    derivation?.lacking(site, type) ??
+    fieldShortfall(checker, type, constraint) ??
+    associatedShortfall(checker, type, constraint, silentMeets(site, depth));
   if (missing !== undefined) {
     return lacks(meeting, missing);
   }
@@ -207,23 +212,17 @@ interface Meeting {
   readonly constraint: Constraint;
 }
 
+/** Whether a type meets a constraint, searched `depth` deep, reporting nothing. */
+function silentMeets(site: UseSite, depth: number): Meets {
+  return (type, constraint) =>
+    !isFailure(conform({ site: silent(site), type, constraint }, depth + 1));
+}
+
 /** Reports that the type lacks `missing` to meet the constraint. */
 function lacks({ site, type, constraint }: Meeting, missing: string): Failure {
   const trait = constraint.trait.name.text;
   site.report((at) => checkerDiagnostics.notConforming(at, typeText(type), trait, missing));
   return 'failed';
-}
-
-/** The first field the constraint requires that the type lacks, said as it lacks it. */
-function missingField({ site, type, constraint }: Meeting): string | undefined {
-  for (const field of requiredFields(constraint.trait)) {
-    const fieldType = requiredFieldType(site.checker, constraint, field, type);
-    const found = fieldOf(site.checker, type, field.name.text);
-    if (found === undefined || !sameType(found.member.type, fieldType)) {
-      return `a field '${field.name.text}: ${typeText(fieldType)}'`;
-    }
-  }
-  return undefined;
 }
 
 /**

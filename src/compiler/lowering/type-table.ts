@@ -142,6 +142,8 @@ export class TypeTable {
           result: this.reference(type.result),
         };
       case 'parameter':
+      case 'associated':
+      case 'field':
       case 'error':
         return unreachable(`A ${type.kind} type can't reach lowering.`);
       case 'any':
@@ -320,7 +322,7 @@ export class TypeTable {
     if (disposal.kind !== 'function') {
       return disposal;
     }
-    const instance = closeFunctionCall(disposal.call, undefined, this.#checker.typeRules);
+    const instance = closeFunctionCall(disposal.call, undefined, this.#checker);
     const entry = { kind: 'function', function: this.#seams.functionIndex(instance) } as const;
     return isHostExtern(this.#checker, instance.declaration)
       ? { ...entry, host: this.#seams.hostNativeIndex(instance.declaration) }

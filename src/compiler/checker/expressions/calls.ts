@@ -51,7 +51,7 @@ import {
   topLevelCandidates,
 } from '../resolution/candidates.ts';
 import { namedType } from '../resolution/named.ts';
-import { fieldOf } from '../traits/constraints.ts';
+import { fieldOf } from '../traits/known-constraints.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

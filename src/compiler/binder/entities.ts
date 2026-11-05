@@ -23,11 +23,13 @@ import type { PrimitiveName } from '../../language/primitives.ts';
 import { memo, SequenceMemo } from '../../structures/memo.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
+  AssociatedType,
   EnumDeclaration,
   ExternConstantDeclaration,
   ExternStructDeclaration,
   FunctionDeclaration,
   NamespaceImport,
+  RequiredAssociatedType,
   SharedStructDeclaration,
   StructDeclaration,
   TraitDeclaration,
@@ -94,6 +96,8 @@ export interface FunctionsEntity {
 }
 
 type TypeDeclaration =
+  | AssociatedType
+  | RequiredAssociatedType
   | StructDeclaration
   | SharedStructDeclaration
   | ExternStructDeclaration

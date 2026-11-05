@@ -4,8 +4,8 @@
  * the parser's type tables are keyed by). An anonymous struct type is written `{…}`, as the
  * formatter prints it, so `struct` before its brace is not offered.
  *
- * A trait is no type of its own, so a trait is offered only where one is asked for: a type
- * parameter's bound (`T is ‸`) and after `any`. After `new`, only a shared struct is built (§3.18).
+ * A trait is no type of its own, so a trait is offered only where one is asked for: after `is`
+ * (`T is ‸`, `type Key is ‸`, `[_] is ‸`) and after `any`. After `new`, only a shared struct is built (§3.18).
  */
 
 import { type Entity, namesType } from '../../../compiler/binder/entities.ts';
@@ -45,15 +45,25 @@ function isDeclared(entity: Entity, kind: SyntaxNode['kind']): boolean {
   return entity.kind === 'type' && entity.declaration.kind === kind;
 }
 
-/** Whether the written type is a bound or follows `any`: its node's holder, a type parameter's constraint or an `any`. */
+/**
+ * Whether the written type is a bound or follows `any`: its node's holder an `any`, or what holds
+ * constraints after `is`, a type parameter, an associated type's requirement or a struct
+ * constraint's entry, with the type among them.
+ */
 function asksForTrait(chain: readonly SyntaxNode[]): boolean {
   const written = chain.at(-2);
   const holder = written === undefined ? undefined : holderIn(chain, written);
   if (written === undefined || holder === undefined) {
     return false;
   }
-  return (
-    holder.kind === 'AnyType' ||
-    (holder.kind === 'TypeParameter' && holder.constraints.some((each) => each === written))
-  );
+  if (holder.kind === 'AnyType') {
+    return true;
+  }
+  const constraints: readonly SyntaxNode[] | undefined =
+    holder.kind === 'TypeParameter' ||
+    holder.kind === 'RequiredAssociatedType' ||
+    holder.kind === 'FieldConstraintEntry'
+      ? holder.constraints
+      : undefined;
+  return constraints?.includes(written) === true;
 }

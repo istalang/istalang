@@ -31,6 +31,8 @@ import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation } from '../denotation.ts';
 import { declaredOutsideBodies } from '../expressions/names.ts';
+import { namedType } from '../resolution/named.ts';
+import { associatedDeclarationOf } from '../traits/known-constraints.ts';
 import { declaredFieldOf } from '../types/declared-fields.ts';
 import { entityType } from '../types/named-types.ts';
 import { parameterType } from '../types/resolve-type.ts';
@@ -78,6 +80,7 @@ type NameHolder = Extract<
       | 'DeclaredField'
       | 'FieldDeclaration'
       | 'NamedType'
+      | 'MemberType'
       | 'FunctionDeclaration'
       | 'Hold';
   }
@@ -108,6 +111,10 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
   FieldDeclaration: (site, node) => (site.name === node.name ? declaredField(site) : undefined),
   NamedType: (site, node) =>
     site.name === lastName(node.path) ? writtenTypeName(site, node, site.holders[1]) : undefined,
+  MemberType: (site, node) =>
+    site.name === node.name
+      ? associatedNamed(site.checker, site.checker.resolvedTypeOf(node))
+      : undefined,
   // An item's, a static's or a trait's function: a local function's name is a variable's.
   FunctionDeclaration: (site, node) =>
     site.name === node.name && site.body === undefined
@@ -173,7 +180,28 @@ function memberDenotations(
     return calledAt(site, taggedCall(holder), undefined) ?? named(site);
   }
   const type = site.body?.typeOf(access);
-  return calledAt(site, access, type) ?? named(site, type);
+  const associated = associatedNamed(site.checker, namedType(namingAt(site), access));
+  return calledAt(site, access, type) ?? (associated.length > 0 ? associated : named(site, type));
+}
+
+/** What naming a type in value position reads where `site` stands. */
+function namingAt({ checker, module }: NameSite) {
+  return { checker, entityOf: (name: Identifier) => checker.bindings.entityOf(module, name) };
+}
+
+/**
+ * The associated type `type` is (§3.1): opaque, or a known type's own, written through it, with
+ * what declares it; none for any other type.
+ */
+function associatedNamed(checker: CheckerContext, type: Type | undefined): readonly Denotation[] {
+  const spelled = type?.kind === 'associated' ? type : type?.alias;
+  if (spelled?.kind !== 'associated') {
+    return [];
+  }
+  const declaration = associatedDeclarationOf(checker, spelled.of, spelled.name);
+  return declaration === undefined
+    ? []
+    : [{ declared: { kind: 'type', entity: typeEntity(declaration) }, type }];
 }
 
 /**
@@ -253,7 +281,9 @@ function writtenTypeName(
   const isLiteral =
     (holder?.kind === 'StructLiteral' || holder?.kind === 'NewStructLiteral') &&
     holder.type === node;
-  return named(site, isLiteral ? site.body?.typeOf(holder) : site.checker.resolvedTypeOf(node));
+  const type = isLiteral ? site.body?.typeOf(holder) : site.checker.resolvedTypeOf(node);
+  const bound = named(site, type);
+  return bound.length > 0 ? bound : associatedNamed(site.checker, type);
 }
 
 /**

@@ -65,13 +65,20 @@ export interface FreeName {
 }
 
 /**
- * A qualified name whose head may be a module or an enum. In an expression, a part after an enum
- * may also be a static function (`Color.default()`), which only the checker can tell.
+ * A qualified name whose head may be a module or an enum, and where it is written (`PathRole`). In
+ * an expression, a part after an enum may also be a static function (`Color.default()`), which
+ * only the checker can tell.
  */
 export interface QualifiedPath {
   readonly parts: QualifiedName;
-  readonly inExpression: boolean;
+  readonly role: PathRole;
 }
+
+/**
+ * Where a path is written, which says what may follow a part nothing qualifies: in an expression a
+ * value's member, in a type an associated type (§3.1), naming a pattern's or literal's type nothing.
+ */
+export type PathRole = 'expression' | 'type' | 'named';
 
 /** What binding one tree produced. */
 export interface LocalResult {
@@ -202,13 +209,13 @@ export class LocalBinder {
    */
   path(parts: QualifiedName, scope: Scope, role: Role): void {
     this.use(parts[0], scope, role);
-    this.#qualifyLater(parts, scope, false);
+    this.#qualifyLater(parts, scope, role === 'type' ? 'type' : 'named');
   }
 
   /** `a.b.c` in an expression, where a part after an enum may be a static function. */
   memberPath(parts: QualifiedName, scope: Scope): void {
     this.useBeforeMember(parts[0], scope);
-    this.#qualifyLater(parts, scope, true);
+    this.#qualifyLater(parts, scope, 'expression');
   }
 
   /**
@@ -309,12 +316,12 @@ export class LocalBinder {
    * expression, where linking reports a head that can't. A path still being written ends in a
    * missing name (`time.Duration.`): the parts before it are linked.
    */
-  #qualifyLater(parts: QualifiedName, scope: Scope, inExpression: boolean): void {
+  #qualifyLater(parts: QualifiedName, scope: Scope, role: PathRole): void {
     const written = withoutMissingLast(parts);
     const complete = !written.some(isMissingName);
-    const linked = !inExpression || mayQualify(scope.lookup(written[0].text));
+    const linked = role !== 'expression' || mayQualify(scope.lookup(written[0].text));
     if (written.length > 1 && complete && linked) {
-      this.#paths.push({ parts: written, inExpression });
+      this.#paths.push({ parts: written, role });
     }
   }
 

@@ -18,7 +18,7 @@
  * for, the integer's members are offered, since `2.toString()` calls one (§2).
  */
 
-import { type NamespaceEntity, namesType } from '../../../compiler/binder/entities.ts';
+import { type NamespaceEntity, namesType, typeEntity } from '../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../compiler/checker/check.ts';
 import type { Type } from '../../../compiler/checker/types/type.ts';
 import type { FunctionDeclaration } from '../../../compiler/syntax/declarations.ts';
@@ -146,18 +146,28 @@ function exportsNaming(
     .map(([name, entity]) => ({ name, subject: { kind: 'entity', entity } }));
 }
 
-/** What a type has through its name: its variants, and for a value its statics too. */
+/**
+ * What a type has through its name: its associated types (§3.1), its variants, and for a value its
+ * statics too.
+ */
 function typeMembers(
   checker: Checker,
   module: Cursor['module'],
   type: Type,
   names: MemberPlace['names'],
 ): readonly Candidate[] {
+  const { statics, variants, associatedTypes } = checker.lookup.membersOf(module, type);
+  const associated = associatedTypes.map(
+    (declaration): Candidate => ({
+      name: declaration.name.text,
+      subject: { kind: 'entity', entity: typeEntity(declaration) },
+    }),
+  );
   if (names === 'type') {
-    return [];
+    return associated;
   }
-  const { statics, variants } = checker.lookup.membersOf(module, type);
   return [
+    ...associated,
     ...(names === 'value' ? functionsThrough('type', statics) : []),
     ...variants.map(
       (variant): Candidate => ({

@@ -173,14 +173,14 @@ describe('annotations', () => {
   it('apply to the next item from a line of their own, and to their own line before or after', () => {
     const text = lines('struct S:', '    @A', '    @B x: Int @C', '    y: Int');
     expect(dumpClean('module', text)).toBe(
-      '(Module [(StructDeclaration S [] [(DeclaredField x (NamedType [Int] []) _ [(Annotation A) (Annotation B) (Annotation C)]) (DeclaredField y (NamedType [Int] []) _)])])',
+      '(Module [(StructDeclaration S [] [(DeclaredField x (NamedType [Int] []) _ [(Annotation A) (Annotation B) (Annotation C)]) (DeclaredField y (NamedType [Int] []) _)] [])])',
     );
   });
 
   it('wait on their own line for the next entry in braces, as in an indented block', () => {
     const text = lines('struct S {', '    @A', '    x: Int', '}');
     expect(dumpClean('module', text)).toBe(
-      '(Module [(StructDeclaration S [] [(DeclaredField x (NamedType [Int] []) _ [(Annotation A)])])])',
+      '(Module [(StructDeclaration S [] [(DeclaredField x (NamedType [Int] []) _ [(Annotation A)])] [])])',
     );
   });
 

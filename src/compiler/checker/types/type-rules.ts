@@ -8,6 +8,8 @@
  * - The rules are passed where a type is built, never stored in what describes one: a type or a
  *   substitution is data a later checker may take over (structures/entries/), while the rules
  *   answer for the program of the checker building it.
+ * - A type computed from others (`T.Data`, `S["meta"]`, §3.5) is reduced here once its parts
+ *   allow, so substituting a type parameter in one gives the type it then names.
  * - A rule may need types built by the same rules (conformance substitutes signatures, which may
  *   hold the very union being normalized), so the checker answers each question once per key and a
  *   question reached again while it is answered takes a stand-in (structures/entries/).
@@ -22,4 +24,15 @@ export interface TypeRules {
    * a value of `member` meets every constraint of `target`.
    */
   readonly absorbs: (target: AnyType, member: Type) => boolean;
+  /**
+   * The associated type `name` of `of` (§3.1): a known type's own, substituted and written through
+   * it; on a type not known yet, the opaque type naming it (`AssociatedOfType`), when one of its
+   * constraints requires it; the error type when `of` has none.
+   */
+  readonly associatedType: (of: Type, name: string) => Type;
+  /**
+   * The type of the field `key` names in `of` (§3.5): a known struct's field's, a struct type
+   * not known yet's opaque `FieldOfType`; the error type when `of` has no such field.
+   */
+  readonly fieldType: (of: Type, key: Type) => Type;
 }

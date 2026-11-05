@@ -18,7 +18,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - lower a function instance or nested function body → `instanceLowering`, `nestedLowering` (`src/compiler/lowering/function-lowering/index.ts`)
 - build the `LoweredFunction` for an instance or nested entry → `loweredInstance`, `loweredNested` (`src/compiler/lowering/function-lowering/frames.ts`)
 - lay out the `Frame` for an instance or nested entry → `instanceFrame`, `nestedFrame` (`src/compiler/lowering/function-lowering/frames.ts`)
-- close a `ResolvedCall` against an instantiation's substitution/witnesses → `closeCall`, `closeCallWithin` (`src/compiler/lowering/instances.ts`)
+- close a `ResolvedCall` against an instantiation's substitution/witnesses → `closeCall`, `closeCallWithin` (`src/compiler/lowering/instances.ts`), given the checker as a `Closer` (its type rules, and the witnesses a requirement on a computed type takes once known)
 - close a `FunctionCall` or a trait witness call → `closeFunctionCall`, `closeWitness` (`src/compiler/lowering/instances.ts`)
 - build root, filling or default `FunctionInstance`s → `rootInstance`, `takingPassed`, `defaultEntryOf`, `substitutionOf` (`src/compiler/lowering/instances.ts`)
 - allocate registers, place labels, and emit jumps, branches or instructions → `CodeWriter` (`src/compiler/lowering/code-writer.ts`), via `context.code`

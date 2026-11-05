@@ -24,7 +24,7 @@ import type { Expression, Parameter, StringLiteral } from './expressions/index.t
 import type { Identifier, Invalid, Missing, NodeOf } from './node.ts';
 import { type AnchoredSpan, spanAcross } from './positions.ts';
 import type { Block, VariableDeclaration } from './statements.ts';
-import type { FieldDeclaration, TypeNode } from './types.ts';
+import type { ConstraintNode, FieldDeclaration, TypeNode } from './types.ts';
 
 /** `"""…"""`: what a declaration or module is for, in its own words (§2); tools read it. */
 export interface Docstring extends NodeOf<'Docstring'> {
@@ -45,7 +45,7 @@ export interface TypeParameter extends NodeOf<'TypeParameter'> {
   readonly isPack: boolean;
   readonly name: Identifier;
   readonly memberOf: TypeNode | undefined;
-  readonly constraints: readonly TypeNode[];
+  readonly constraints: readonly ConstraintNode[];
   readonly defaultType: TypeNode | undefined;
 }
 
@@ -90,11 +90,35 @@ export function isMethod(declaration: FunctionDeclaration): boolean {
   return first?.kind === 'Parameter' && first.name.text === receiverParameter;
 }
 
-/** What a struct's declaration holds, shared or not: its name, type parameters and fields (§3.1). */
+/**
+ * `type Data = T` in a struct's or an enum's body (§3.1): an alias its type's own type arguments
+ * complete, read as `Field<Int>.Data`. The body's fields, variants and other associated types name
+ * it bare. It stands among them in any order, but is a member list of its own, since it is neither
+ * a field nor a variant.
+ */
+export interface AssociatedType extends NodeOf<'AssociatedType'>, Annotatable {
+  readonly name: Identifier;
+  readonly type: TypeNode;
+}
+
+/**
+ * `type Key is Stringable & Encodable` in a trait (§3.10): a type meeting the trait declares an
+ * associated type of that name, meeting each constraint.
+ */
+export interface RequiredAssociatedType extends NodeOf<'RequiredAssociatedType'>, Annotatable {
+  readonly name: Identifier;
+  readonly constraints: readonly ConstraintNode[];
+}
+
+/**
+ * What a struct's declaration holds, shared or not: its name, type parameters, fields (§3.1) and
+ * associated types.
+ */
 interface StructOf<Kind extends string> extends NodeOf<Kind>, Annotatable, Documented {
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
   readonly fields: readonly (DeclaredField | Invalid)[];
+  readonly associatedTypes: readonly AssociatedType[];
 }
 
 /** `struct Pair: …`: a value type made of its fields (§3.1). */
@@ -158,6 +182,26 @@ export interface EnumDeclaration extends NodeOf<'EnumDeclaration'>, Annotatable,
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
   readonly variants: readonly (Variant | Invalid)[];
+  readonly associatedTypes: readonly AssociatedType[];
+}
+
+/** A declaration standing for a type written beside it: an alias, or an associated type (§3.17, §3.1). */
+export type AliasDeclaration = TypeAliasDeclaration | AssociatedType;
+
+/** A declaration whose body may declare associated types (§3.1). */
+export type AssociatingDeclaration = DeclaredStruct | EnumDeclaration;
+
+/**
+ * A struct's or an enum's members as written: its fields or variants and its associated types,
+ * in source order, which only reading the text back (formatting, outlines) needs.
+ */
+export function membersAsWritten(
+  declaration: AssociatingDeclaration,
+): readonly (DeclaredField | Variant | AssociatedType | Invalid)[] {
+  const listed = declaration.kind === 'EnumDeclaration' ? declaration.variants : declaration.fields;
+  return [...listed, ...declaration.associatedTypes].toSorted(
+    (first, second) => first.span.from - second.span.from,
+  );
 }
 
 /** `Expired`, or `Rejected { by: String; reason: String }`. */
@@ -166,11 +210,13 @@ export interface Variant extends NodeOf<'Variant'>, Annotatable {
   readonly fields: readonly (DeclaredField | Invalid)[];
 }
 
-/** Required functions (with no body) and fields (§3.10). */
+/** What a trait requires: functions (with no body), fields and associated types (§3.10). */
+export type TraitMember = FunctionDeclaration | FieldDeclaration | RequiredAssociatedType;
+
 export interface TraitDeclaration extends NodeOf<'TraitDeclaration'>, Annotatable, Documented {
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
-  readonly members: readonly (FunctionDeclaration | FieldDeclaration | Invalid)[];
+  readonly members: readonly (TraitMember | Invalid)[];
 }
 
 export interface TypeAliasDeclaration extends NodeOf<'TypeAliasDeclaration'>, Annotatable {
@@ -222,4 +268,10 @@ export function declaredFunctions(module: Pick<Module, 'items'>): readonly Funct
 }
 
 /** Nodes that occur only as parts of a declaration. */
-export type DeclarationPart = TypeParameter | Variant | DeclaredField | Docstring;
+export type DeclarationPart =
+  | TypeParameter
+  | Variant
+  | DeclaredField
+  | AssociatedType
+  | RequiredAssociatedType
+  | Docstring;

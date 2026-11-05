@@ -95,10 +95,10 @@ interface RequirementCall extends WrittenAs {
 }
 
 /**
- * Which required function a requirement call calls: one a constraint requires, or one a trait
- * requires that a union meets through its members.
+ * Which required function a requirement call calls: one a constraint requires, one a trait
+ * requires that a union meets through its members, or one a computed type's bound requires.
  */
-export type RequirementOrigin = ConstraintRequirement | MembersRequirement;
+export type RequirementOrigin = ConstraintRequirement | MembersRequirement | ComputedRequirement;
 
 /**
  * The `member`-th function of the trait of the `constraint`-th constraint on `on`, a type parameter
@@ -119,6 +119,20 @@ interface ConstraintRequirement {
  */
 export interface MembersRequirement {
   readonly kind: 'members';
+  readonly on: Type;
+  readonly through: AnyType;
+  readonly member: number;
+}
+
+/**
+ * The `member`-th function of the trait of `through`, called on `on`, a type computed from types
+ * not known yet (`T.Data`, §3.1; `S["meta"]`, §3.5), which meets the trait as its bound or its
+ * struct constraint's entry says. `through` is the trait as `any` takes it. Each instantiation
+ * makes `on` known, and the witness is that type's own, chosen then (coherent, §3.10).
+ */
+interface ComputedRequirement {
+  readonly kind: 'computed';
+  /** A computed type, or, closed inside an instance that makes it known in part, what it became. */
   readonly on: Type;
   readonly through: AnyType;
   readonly member: number;
