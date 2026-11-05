@@ -5,12 +5,14 @@
  * checker decides what the literal builds, since a map literal also builds any `IndexAssignable`
  * type the context expects, and `[...m]` may spread a map. The first token inside the brackets
  * tells the three shapes apart: `for` starts a comprehension, `:` before `]` is the empty map, and
- * anything else starts a list of elements or entries.
+ * anything else starts a list of elements or entries. A comprehension whose `in` a `...` follows
+ * runs over a struct's fields (§4), as a field loop does.
  */
 
 import type {
   Comprehension,
   Expression,
+  FieldComprehension,
   MapEntry,
   MapLiteral,
   Spread,
@@ -19,13 +21,16 @@ import type { Invalid } from '../../syntax/node.ts';
 import { type AnchoredSpan, endOf } from '../../syntax/positions.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
+import { parseFieldHeaderAfter } from '../parts/field-headers.ts';
 import { parseTargets } from '../parts/names.ts';
 import { parseCommaSeparated, parseEnclosed } from '../recovery.ts';
 import { parseSpread } from './spread.ts';
 
 type CollectionItem = Expression | Spread | MapEntry;
 
-type ComprehensionParts = Omit<Comprehension, 'kind' | 'span'>;
+type ComprehensionParts =
+  | Omit<Comprehension, 'kind' | 'span'>
+  | Omit<FieldComprehension, 'kind' | 'span'>;
 
 type Contents =
   | { readonly shape: 'comprehension'; readonly parts: ComprehensionParts }
@@ -37,7 +42,9 @@ export function parseCollection(parser: Parser): Expression {
   const { value: contents, span } = parseEnclosed(parser, '[', () => parseContents(parser));
   switch (contents.shape) {
     case 'comprehension':
-      return { kind: 'Comprehension', span, ...contents.parts };
+      return 'header' in contents.parts
+        ? { kind: 'FieldComprehension', span, ...contents.parts }
+        : { kind: 'Comprehension', span, ...contents.parts };
     case 'emptyMap':
       return { kind: 'MapLiteral', span, entries: [] };
     default:
@@ -105,11 +112,16 @@ function toMapItem(item: CollectionItem | Invalid): MapLiteral['entries'][number
   };
 }
 
-/** `for x in xs if cond: body`, inside the brackets. */
+/** `for x in xs if cond: body`, or `for k, v in ...x: body`, inside the brackets. */
 function parseComprehension(parser: Parser): ComprehensionParts {
-  parser.cursor.advance();
+  const { start } = parser.cursor.advance().span;
   const targets = parseTargets(parser);
   parser.expect('in');
+  if (parser.cursor.at('...')) {
+    const header = parseFieldHeaderAfter(parser, start, targets);
+    parser.expect(':');
+    return { header, body: parser.expression() };
+  }
   const iterable = parser.expression();
   const condition = parser.cursor.eat('if') === undefined ? undefined : parser.expression();
   parser.expect(':');

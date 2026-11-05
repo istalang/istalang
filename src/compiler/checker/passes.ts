@@ -51,6 +51,47 @@ export class Passes {
     return pass;
   }
 
+  /**
+   * Checks each of `items` in a pass of its own (`check`), then reports what the passes settle on;
+   * each item comes back with its pass, and `inEach` runs back in each pass what is decided of all
+   * of them together, reporting what that settles on in turn.
+   */
+  checkEach<Item>(
+    items: readonly Item[],
+    check: (item: Item) => void,
+    report: (diagnostic: Diagnostic<AnchoredSpan>) => void,
+  ): {
+    readonly checked: readonly (Item & { readonly pass: Pass })[];
+    readonly inEach: (run: (item: Item, index: number) => void) => void;
+  } {
+    const checked = items.map((item) => ({ ...item, pass: this.check(() => check(item)) }));
+    const settle = () => {
+      for (const diagnostic of this.settled(checked.map(({ pass }) => pass))) {
+        report(diagnostic);
+      }
+    };
+    settle();
+    const inEach = (run: (item: Item, index: number) => void) => {
+      for (const [index, item] of items.entries()) {
+        const pass = checked[index]?.pass ?? this.root;
+        this.#within(pass, () => run(item, index));
+      }
+      settle();
+    };
+    return { checked, inEach };
+  }
+
+  /** Runs `run` back in `pass`, so what it records and reports belongs to that pass. */
+  #within(pass: Pass, run: () => void): void {
+    const outer = this.#current;
+    this.#current = pass;
+    try {
+      run();
+    } finally {
+      this.#current = outer;
+    }
+  }
+
   /** A table of records by node, kept per pass. */
   table<Key, Value>(): PassTable<Key, Value> {
     return passTable(this);
@@ -69,12 +110,15 @@ export class Passes {
   }
 
   /**
-   * What the passes of one loop report, once each: every diagnostic a pass made, except one about
-   * a case no value reaches, which holds of the loop only when every pass made it (§4): a case
-   * one field's pass never reaches, another's may.
+   * What the passes of one loop report, once each: every diagnostic a pass made since they were
+   * last settled, except one about a case no value reaches, which holds of the loop only when every
+   * pass made it (§4): a case one field's pass never reaches, another's may.
    */
   settled(passes: readonly Pass[]): readonly Diagnostic<AnchoredSpan>[] {
     const made = passes.map((pass) => this.#held.get(pass) ?? []);
+    for (const pass of passes) {
+      this.#held.delete(pass);
+    }
     const kept: Diagnostic<AnchoredSpan>[] = [];
     for (const diagnostic of made.flat()) {
       const holds =

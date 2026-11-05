@@ -37,6 +37,7 @@ export function standingIn(parent: SyntaxNode, child: SyntaxNode): Standing {
     case 'ArrayLiteral':
     case 'MapLiteral':
     case 'Comprehension':
+    case 'FieldComprehension':
     case 'Tuple':
     case 'Parenthesized':
     case 'TuplePattern':
@@ -54,6 +55,7 @@ export function standingIn(parent: SyntaxNode, child: SyntaxNode): Standing {
     case 'Index':
       return child === parent.index ? 'brackets' : 'outside';
     case 'IndexedType':
+    case 'StructComprehension':
       return child === parent.key ? 'brackets' : 'outside';
     case 'MappedField':
       return child === parent.parameter ? 'brackets' : 'outside';

@@ -48,7 +48,7 @@ import {
   mapKnownType,
 } from './collection-accepts.ts';
 import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections.ts';
-import { checkComprehension } from './comprehensions.ts';
+import { checkComprehension, checkFieldComprehension } from './comprehensions.ts';
 import { checkIf, ifAccepts } from './control.ts';
 import { checkDereference } from './dereference.ts';
 import { checkIndex } from './indexing.ts';
@@ -106,6 +106,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   ArrayLiteral: checkArrayLiteral,
   MapLiteral: checkMapLiteral,
   Comprehension: checkComprehension,
+  FieldComprehension: checkFieldComprehension,
   Tuple: checkTuple,
   Lambda: checkLambda,
   Reference: misplacedReference,
@@ -151,6 +152,7 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
   ArrayLiteral: arrayAccepts,
   MapLiteral: mapAccepts,
   Comprehension: ownType,
+  FieldComprehension: ownType,
   Tuple: tupleAccepts,
   Lambda: lambdaAccepts,
   Reference: ownType,
@@ -205,6 +207,7 @@ const knownTypeHandlers: Handlers<BodyContext, Expression, [], Type | undefined>
   ArrayLiteral: arrayKnownType,
   MapLiteral: mapKnownType,
   Comprehension: unknownType,
+  FieldComprehension: unknownType,
   Tuple: (context, node) => tupleKnownType(context, node.elements),
   Lambda: unknownType,
   Reference: unknownType,
@@ -261,6 +264,7 @@ const buildsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined>
   ArrayLiteral: arrayBuilds,
   MapLiteral: mapBuilds,
   Comprehension: builtAsItIs,
+  FieldComprehension: builtAsItIs,
   Tuple: tupleBuilds,
   Lambda: builtAsItIs,
   Reference: builtAsItIs,

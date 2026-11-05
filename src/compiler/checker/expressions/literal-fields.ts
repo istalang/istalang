@@ -56,6 +56,7 @@ import { parametersIn } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
 import { writtenLiteral } from '../types/unions.ts';
 import { type LiteralGiven, sourcesOf } from './literal-sources.ts';
+import { checkComprehended, comprehendedGiven, fitComprehended } from './struct-comprehensions.ts';
 
 /**
  * What a literal builds: its fields as declared, how to name its type from type arguments, and
@@ -109,6 +110,12 @@ export function checkLiteralFields(
   for (const item of node.items) {
     checkItem(context, items, item, spread?.node);
   }
+  const comprehended = checkComprehended(context, node, {
+    fields: shape.fields,
+    name: literalName(node),
+    inference,
+    isGiven: (index) => items.given.has(index),
+  });
   const completed = complete(context, node, shape, inference);
   const found = completed?.substitution ?? inference.substitution();
   context.literals.recordFields(
@@ -122,19 +129,17 @@ export function checkLiteralFields(
     return errorType;
   }
   const type = shape.typeOf(completed.typeArguments);
-  for (const value of items.given.values()) {
-    context.fit(
-      value.type,
-      substitute(value.declared, completed.substitution, context.checker.typeRules),
-      value.node,
-    );
-  }
+  fitItems(context, items.given, completed.substitution);
   if (spread !== undefined && spreadType !== undefined) {
     context.fit(spreadType, spreadOf(shape, completed.typeArguments), spread.node.expression);
   }
+  fitComprehended(context, comprehended, completed.substitution);
+  const comprehendedFields = comprehendedGiven(comprehended);
   const defaulted =
-    spread === undefined ? defaultCalls(context, shape, items.given, completed.typeArguments) : [];
-  reportMissing(context, items, type);
+    spread === undefined && comprehended === undefined
+      ? defaultCalls(context, shape, items.given, completed.typeArguments)
+      : [];
+  reportMissing(context, items, type, comprehendedFields?.indices);
   const sources = sourcesOf({
     fields: shape.fields,
     given: new Map([...items.given].map(([index, { node: value }]) => [index, value])),
@@ -143,11 +148,24 @@ export function checkLiteralFields(
         ? undefined
         : spreadGiven(context, spread, spreadOf(shape, completed.typeArguments)),
     defaulted,
+    comprehended: comprehendedFields,
   });
   if (items.fits && sources !== undefined) {
     context.literals.record(node, sources);
   }
   return type;
+}
+
+/** Fits each named item's value to its field, `substitution` giving the literal's type arguments. */
+function fitItems(
+  context: BodyContext,
+  given: ReadonlyMap<number, GivenField>,
+  substitution: Substitution,
+): void {
+  for (const value of given.values()) {
+    const declared = substitute(value.declared, substitution, context.checker.typeRules);
+    context.fit(value.type, declared, value.node);
+  }
 }
 
 /** What a literal's leading `spread` gives: its value, and the fields of `type`, the type it spreads. */
@@ -258,7 +276,7 @@ function checkItem(
   item: FieldsLiteral['items'][number],
   spread: Spread | undefined,
 ): void {
-  if (item.kind === 'Invalid' || item === spread) {
+  if (item.kind === 'Invalid' || item.kind === 'StructComprehension' || item === spread) {
     return;
   }
   if (item.kind === 'Spread') {
@@ -318,22 +336,30 @@ function reportMisfit(
 
 /**
  * With names alone, a field no item names is missing, unless it has a default: one that can't be
- * called for these type arguments is reported where they are checked, not as a missing field.
+ * called for these type arguments is reported where they are checked, not as a missing field. A
+ * struct comprehension gives the fields at `comprehended` and leaves none to a default (§3.1).
  */
 function reportMissing(
   context: BodyContext,
   { node, shape, given }: LiteralItems,
   type: Type,
+  comprehended: ReadonlySet<number> | undefined,
 ): void {
   const named = node.items.every(
-    (item) => item.kind === 'FieldInitializer' || item.kind === 'Invalid',
+    (item) =>
+      item.kind === 'FieldInitializer' ||
+      item.kind === 'StructComprehension' ||
+      item.kind === 'Invalid',
   );
   if (!named) {
     return;
   }
   const at = node.type?.span ?? node.span;
+  const isGiven = (index: number) =>
+    given.has(index) ||
+    (comprehended === undefined ? declaresDefault(shape, index) : comprehended.has(index));
   for (const [index, field] of shape.fields.entries()) {
-    if (!(given.has(index) || declaresDefault(shape, index))) {
+    if (!isGiven(index)) {
       context.report(checkerDiagnostics.missingField(at, typeText(type), field.name));
     }
   }

@@ -51,7 +51,7 @@ export function agreedType(
   checker: Agreeing,
   expected?: Type,
 ): Agreement {
-  const { fitOf: fits, typeRules: rules } = checker;
+  const { typeRules: rules } = checker;
   const first = produced.find(({ type }) => !isPrimitive(type, 'Never'))?.type;
   const target = expected ?? first;
   const widen =
@@ -63,15 +63,14 @@ export function agreedType(
   return {
     decided,
     disagreeing:
-      decided === undefined
-        ? []
-        : produced.filter(
-            ({ type }) =>
-              !(
-                fitsExactly(fits(type, decided)) || fitsExactly(fits(widened(type, rules), decided))
-              ),
-          ),
+      decided === undefined ? [] : produced.filter(({ type }) => !agrees(checker, type, decided)),
   };
+}
+
+/** Whether a producer of `type` agrees with `decided` as it is, or once widened. */
+function agrees(checker: Agreeing, type: Type, decided: Type): boolean {
+  const { fitOf: fits, typeRules: rules } = checker;
+  return fitsExactly(fits(type, decided)) || fitsExactly(fits(widened(type, rules), decided));
 }
 
 /**
@@ -116,19 +115,38 @@ export function settleAgreement(
   expected: Type | undefined,
   mismatch: (span: AnchoredSpan, decided: Type, found: Type) => Diagnostic<AnchoredSpan>,
 ): Type | undefined {
-  const { fitOf } = context.checker;
   const { decided, disagreeing } = agreedType(produced, context.checker, expected);
   if (decided === undefined) {
     return undefined;
   }
   for (const each of disagreeing) {
-    if (expected === undefined && fitOf(each.type, decided) === undefined) {
-      context.report(mismatch(each.span, decided, each.type));
-    } else {
-      fitProduced(context, each, decided);
-    }
+    settleProduced(context, each, { decided, expected, mismatch });
   }
   return decided;
+}
+
+/** The type producers agreed on, the type expected of them, if any, and how one that doesn't fit is reported. */
+export interface Agreed {
+  readonly decided: Type;
+  readonly expected: Type | undefined;
+  readonly mismatch: (span: AnchoredSpan, decided: Type, found: Type) => Diagnostic<AnchoredSpan>;
+}
+
+/**
+ * Settles `produced` against what it and the other producers agreed on (`settleAgreement`): one
+ * that doesn't fit is reported, with no type expected, else fitted; one that agrees, left as it is.
+ * A producer settled apart, in a pass of its own (§4), is settled here.
+ */
+export function settleProduced(context: BodyContext, produced: Produced, agreed: Agreed): void {
+  const { decided, expected, mismatch } = agreed;
+  if (agrees(context.checker, produced.type, decided)) {
+    return;
+  }
+  if (expected === undefined && context.checker.fitOf(produced.type, decided) === undefined) {
+    context.report(mismatch(produced.span, decided, produced.type));
+  } else {
+    fitProduced(context, produced, decided);
+  }
 }
 
 /** Fits what `produced` has to `expected`, recording any wrap on the node giving it. */

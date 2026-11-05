@@ -103,7 +103,7 @@ function builtMember(
 function itemsFit(context: BodyContext, node: FieldsLiteral, type: Type): boolean {
   const fields = context.checker.fieldsOf(type) ?? [];
   return node.items.every((item) => {
-    if (item.kind === 'Invalid' || item.kind === 'Spread') {
+    if (item.kind === 'Invalid' || item.kind === 'Spread' || item.kind === 'StructComprehension') {
       return true;
     }
     const field = fields[itemField(itemName(item), fields)];

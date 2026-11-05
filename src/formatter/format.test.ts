@@ -134,6 +134,26 @@ describe('key types and mapped struct types (§3.1)', () => {
   });
 });
 
+describe('comprehensions over fields (§3.1, §4)', () => {
+  it('prints an array and a struct comprehension as written, and breaks a long one inside', () => {
+    const text = lines(
+      'fn f<S is struct>(s: S) -> { [F in keyof S]: S[F] }:',
+      '  const keys = [for k, _ in ...s: k]',
+      '  struct{for k, v in ...s: [k]: v}',
+    );
+    expect(formatText(text)).toBe(text);
+    const long = lines(
+      'fn g(s: Settings):',
+      '  struct{first: compute(s.first, 1), second: compute(s.second, 2), for key, value in ...s.rest: [key]: compute(value, 3)}',
+    );
+    const broken = formatText(long) ?? '';
+    expect(broken).toContain('\n  for key, value in ...s.rest: [key]: compute(value, 3),\n}');
+    expect(formatText(broken)).toBe(broken);
+    const { actual, expected } = acceptanceOf(text);
+    expect(actual).toEqual(expected);
+  });
+});
+
 describe('field loops (§4)', () => {
   it('prints each as written, labelled or not, its targets destructured', () => {
     const text = lines(

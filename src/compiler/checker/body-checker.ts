@@ -30,7 +30,7 @@ import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Block, Statement, VariableDeclaration } from '../syntax/statements.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
-import type { Accepts, BodyContext, Enclosing, Returns } from './body-context.ts';
+import type { Accepts, BodyContext, CheckedPasses, Enclosing, Returns } from './body-context.ts';
 import type { CheckedBody, FieldPassType, SignatureParameter, ValueSite } from './check.ts';
 import { statementPlace } from './checked-annotation.ts';
 import { FunctionScope } from './closures/function-scope.ts';
@@ -321,15 +321,12 @@ export class BodyChecker implements BodyContext {
     header: FieldHeader,
     passes: readonly FieldPassType[],
     check: (pass: FieldPassType) => void,
-  ): void {
-    const checked = passes.map((each) => ({
-      ...each,
-      pass: this.#passes.check(() => check(each)),
-    }));
+  ): CheckedPasses {
+    const { checked, inEach } = this.#passes.checkEach(passes, check, (diagnostic) =>
+      this.report(diagnostic),
+    );
     this.#fieldPasses.set(header, checked);
-    for (const diagnostic of this.#passes.settled(checked.map(({ pass }) => pass))) {
-      this.report(diagnostic);
-    }
+    return { inEach };
   }
 
   recordCandidates(site: ResolvedSite, candidates: readonly FunctionDeclaration[]): void {

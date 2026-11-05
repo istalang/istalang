@@ -22,11 +22,9 @@ import type {
 } from '../../syntax/statements.ts';
 import type { BodyContext, LabelRecord } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { declareTargets } from '../patterns/targets.ts';
+import { checkedFieldPasses, inFieldPasses } from '../rules/field-passes.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
-import { fieldPassesOver } from '../traits/struct-keys.ts';
-import { boolType, errorType, neverType, type Type, tupleType, unitType } from '../types/type.ts';
-import { typeText } from '../types/type-text.ts';
+import { boolType, neverType, type Type, unitType } from '../types/type.ts';
 
 export function checkWhile(context: BodyContext, node: While): Type {
   context.expect(node.condition, boolType);
@@ -81,23 +79,13 @@ export function checkHoldScope(context: BodyContext, hold: Hold): void {
 }
 
 /**
- * A field loop (§4): its body once per pass over its subject's fields (traits/struct-keys.ts), the
- * key and value taking apart the pair of each pass's key and value; a subject with no fields to
- * visit is reported, and the body checked once with nothing known of them.
+ * A field loop (§4): its body once per pass over its subject's fields (rules/field-passes.ts).
  */
 export function checkFieldLoop(context: BodyContext, node: FieldLoop): Type {
   const { header } = node;
-  const subject = context.expression(header.subject);
-  const passes = fieldPassesOver(context.checker, subject, header);
-  if (passes === undefined && subject.kind !== 'error') {
-    context.report(checkerDiagnostics.fieldLoopSubject(header.subject.span, typeText(subject)));
-  }
-  const checked = passes ?? [{ field: undefined, key: errorType, value: errorType }];
+  const passes = checkedFieldPasses(context, header);
   checkScope(context, node, () => {
-    context.fieldPasses(header, checked, ({ key, value }) => {
-      declareTargets(context, header, tupleType([key, value]));
-      context.effectBlock(node.body);
-    });
+    inFieldPasses(context, header, passes, () => context.effectBlock(node.body));
   });
   return unitType;
 }

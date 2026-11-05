@@ -91,6 +91,7 @@ const huggedKinds: ReadonlySet<SyntaxNode['kind']> = new Set([
   'ArrayLiteral',
   'MapLiteral',
   'Comprehension',
+  'FieldComprehension',
   'StructLiteral',
   'NewStructLiteral',
 ]);

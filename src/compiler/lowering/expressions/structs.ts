@@ -26,12 +26,14 @@ import {
   itemValue,
   type MemberAccess,
   type NewStructLiteral,
+  type StructComprehension,
   type StructLiteral,
 } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { defaultEntryOf } from '../closed-calls.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
+import { fieldsVisited, valueInFieldScope } from '../field-passes.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
   const fields = namedFields(literalFields(context, node));
@@ -66,8 +68,8 @@ interface LiteralField {
 
 /**
  * The registers of a struct or variant literal's fields, in declaration order: its values evaluated
- * in source order, then each field taken from its value, read from the spread, or computed by its
- * default.
+ * in source order, a struct comprehension last (§3.1), then each field taken from its value, read
+ * from the spread, computed by its default, or given by the comprehension.
  */
 export function literalFields(context: FunctionContext, node: FieldsLiteral): LiteralField[] {
   const sources = context.body.sourcesOf(node);
@@ -77,21 +79,43 @@ export function literalFields(context: FunctionContext, node: FieldsLiteral): Li
     );
   }
   const values = new Map<Expression, Register>();
+  let comprehended: readonly LiteralField[] = [];
   for (const item of node.items) {
-    if (item.kind !== 'Invalid') {
+    if (item.kind === 'StructComprehension') {
+      comprehended = comprehendedFields(context, item);
+    } else if (item.kind !== 'Invalid') {
       const value = item.kind === 'Spread' ? item.expression : itemValue(item);
       values.set(value, context.expression(value));
     }
   }
   const fields: LiteralField[] = [];
   for (const source of sources) {
-    const earlier = fields.map(({ register }) => register);
-    fields.push({
-      field: source.field,
-      register: fieldOf(context, { node, values }, source, earlier),
-    });
+    if (source.kind === 'comprehension') {
+      fields.push(...comprehended);
+    } else {
+      const earlier = fields.map(({ register }) => register);
+      fields.push({
+        field: source.field,
+        register: fieldOf(context, { node, values }, source, earlier),
+      });
+    }
   }
   return fields;
+}
+
+/**
+ * The fields a struct comprehension gives (§3.1), one per field of its subject's struct, in name
+ * order, each the value it gives in that field's pass (field-passes.ts).
+ */
+function comprehendedFields(
+  context: FunctionContext,
+  node: StructComprehension,
+): readonly LiteralField[] {
+  const visited = fieldsVisited(context, node.header, node.span);
+  return visited.fields.map((field, position) => ({
+    field: field.name,
+    register: valueInFieldScope(context, visited, position, () => context.expression(node.value)),
+  }));
 }
 
 function namedFields(fields: readonly LiteralField[]): ReadonlyMap<string, Register> {
@@ -108,7 +132,7 @@ interface EvaluatedLiteral {
 function fieldOf(
   context: FunctionContext,
   { node, values }: EvaluatedLiteral,
-  source: FieldSource,
+  source: Exclude<FieldSource, { readonly kind: 'comprehension' }>,
   earlier: readonly Register[],
 ): Register {
   switch (source.kind) {

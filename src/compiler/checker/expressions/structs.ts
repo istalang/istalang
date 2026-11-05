@@ -40,6 +40,12 @@ import {
 import { typeText } from '../types/type-text.ts';
 import { checkLiteralFields, type LiteralShape, type LiteralSpread } from './literal-fields.ts';
 import { builtThrough } from './literal-types.ts';
+import {
+  checkComprehensionAlone,
+  checkOpaqueComprehended,
+  comprehensionOf,
+  freshComprehended,
+} from './struct-comprehensions.ts';
 import { checkVariantLiteral, variantsAccepted } from './variants.ts';
 
 export function checkStructLiteral(
@@ -130,6 +136,10 @@ function checkAnonymousLiteral(
   if (fromExpected !== undefined) {
     return checkLiteralFields(context, node, fromExpected, spread);
   }
+  const comprehension = comprehensionOf(node);
+  if (comprehension !== undefined && target !== undefined && hasKeys(context, target)) {
+    return checkOpaqueComprehended(context, node, comprehension, target);
+  }
   if (spread === undefined) {
     return freshAnonymous(context, node);
   }
@@ -143,6 +153,11 @@ function checkAnonymousLiteral(
     return errorType;
   }
   return checkLiteralFields(context, node, fromSpread, { ...spread, type });
+}
+
+/** Whether `type` is a struct type whose fields aren't all known yet, which has keys all the same (§3.1). */
+function hasKeys(context: BodyContext, type: Type): boolean {
+  return context.checker.typeRules.keysOf(type, []).kind !== 'error';
 }
 
 /**
@@ -210,23 +225,18 @@ function freshAnonymous(context: BodyContext, node: StructLiteral): Type {
           source: { field: item.name.text, kind: 'value', value },
         });
       }
-    } else if (item.kind !== 'Invalid') {
+    } else if (item.kind !== 'Invalid' && item.kind !== 'StructComprehension') {
       context.report(checkerDiagnostics.unnamedAnonymousField(item.span));
       context.expression(item.kind === 'Spread' ? item.expression : item.value);
       fits = false;
     }
   }
+  const comprehended = freshComprehended(context, node, new Set(given.map(({ name }) => name)));
   const ordered = inFieldOrder(given);
-  if (fits) {
-    context.literals.record(
-      node,
-      ordered.map((each) => each.source),
-    );
+  if (fits && comprehended !== undefined) {
+    context.literals.record(node, [...ordered.map((each) => each.source), ...comprehended.sources]);
   }
-  return shapeType(
-    node,
-    ordered.map((each) => each.field),
-  );
+  return shapeType(node, [...ordered.map((each) => each.field), ...(comprehended?.fields ?? [])]);
 }
 
 /** Checks every value of a literal whose type is unknown, so each is still recorded. */
@@ -234,6 +244,8 @@ function checkValuesAlone(context: BodyContext, node: FieldsLiteral): void {
   for (const item of node.items) {
     if (item.kind === 'Spread') {
       context.expression(item.expression);
+    } else if (item.kind === 'StructComprehension') {
+      checkComprehensionAlone(context, item);
     } else if (item.kind !== 'Invalid') {
       context.expression(itemValue(item));
     }

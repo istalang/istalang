@@ -29,6 +29,7 @@ import {
   type Expression,
   type MatchCase,
   type SelectCase,
+  type StructComprehension,
   selectCasesOf,
   unparenthesized,
 } from '../../syntax/expressions/index.ts';
@@ -40,6 +41,8 @@ import {
   type Break,
   type Continue,
   type Drop,
+  type OverFields,
+  passedParts,
   type Statement,
   targetParts,
 } from '../../syntax/statements.ts';
@@ -94,7 +97,7 @@ interface LoopExits {
 }
 
 /** The kinds that say how they run; any other node is a part, run as its construct says. */
-type Construct = Expression | Statement | Block;
+type Construct = Expression | Statement | Block | StructComprehension;
 
 class FlowWalk {
   readonly #rule: FlowRule<Opaque>;
@@ -271,6 +274,18 @@ class FlowWalk {
 }
 
 /** A construct whose parts run in source order. */
+/**
+ * A construct running over a struct's fields (§4): its header's subject once, then its key and value
+ * and what its passes check once per field, which may be never.
+ */
+function overFields(walk: FlowWalk, node: OverFields, state: Opaque): Flow {
+  const { header } = node;
+  return walk.loop(node, walk.node(header.subject, state), (top) => ({
+    exit: top,
+    end: walk.sequence([header.key, header.value, ...passedParts(node)], top),
+  }));
+}
+
 function children(walk: FlowWalk, node: SyntaxNode, state: Opaque): Flow {
   return walk.sequence(fieldChildrenOf(node), state);
 }
@@ -313,6 +328,8 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
         top,
       ),
     })),
+  FieldComprehension: overFields,
+  StructComprehension: overFields,
   Tuple: children,
   Parenthesized: children,
   StructLiteral: children,
@@ -374,11 +391,7 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
       exit: top,
       end: walk.sequence([...node.targets, node.body], top),
     })),
-  FieldLoop: (walk, node, state) =>
-    walk.loop(node, walk.node(node.header.subject, state), (top) => ({
-      exit: top,
-      end: walk.sequence([node.header.key, node.header.value, node.body], top),
-    })),
+  FieldLoop: overFields,
   While: (walk, node, state) =>
     walk.loop(node, state, (top) => {
       const tested = walk.node(node.condition, top);

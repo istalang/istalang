@@ -20,9 +20,11 @@ import type { FunctionDeclaration } from './declarations.ts';
 import {
   type Comprehension,
   type Expression,
+  type FieldComprehension,
   type FieldHeader,
   itemName,
   itemValue,
+  type StructComprehension,
   unparenthesized,
 } from './expressions/index.ts';
 import { isPlace } from './expressions/places.ts';
@@ -238,6 +240,34 @@ export function declaredTargets(
   owner: VariableDeclaration | For | Comprehension | FieldHeader,
 ): readonly Pattern[] {
   return owner.kind === 'FieldHeader' ? [owner.key, owner.value] : owner.targets;
+}
+
+/** A construct running over a struct's fields (§4): a field loop, an array or a struct comprehension. */
+export type OverFields = FieldLoop | FieldComprehension | StructComprehension;
+
+const overFieldsKinds: ReadonlySet<string> = new Set<OverFields['kind']>([
+  'FieldLoop',
+  'FieldComprehension',
+  'StructComprehension',
+]);
+
+export function isOverFields(node: { readonly kind: string }): node is OverFields {
+  return overFieldsKinds.has(node.kind);
+}
+
+/**
+ * What `node`'s passes check once per field, beside its header's key and value: a loop's or an
+ * array comprehension's body, a struct comprehension's bracketed key and value.
+ */
+export function passedParts(node: OverFields): readonly (Block | Expression)[] {
+  switch (node.kind) {
+    case 'FieldLoop':
+      return [node.body];
+    case 'FieldComprehension':
+      return [node.body];
+    default:
+      return [node.key, node.value];
+  }
 }
 
 /** A loop (§4), which `break` and `continue` leave. */

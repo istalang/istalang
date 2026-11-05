@@ -190,6 +190,9 @@ class Computation {
     }
     const forms = new Map<string, ConstantForm>();
     for (const source of sources) {
+      if (source.kind === 'comprehension') {
+        return refused(node);
+      }
       const part = this.#field(node, source, [...forms.values()]);
       if (part.kind !== 'computed') {
         return part;
@@ -200,7 +203,11 @@ class Computation {
   }
 
   /** A field of `literal` from `source`; a refused default is reported at `literal`. */
-  #field(literal: StructLiteral, source: FieldSource, earlier: readonly ConstantForm[]): Outcome {
+  #field(
+    literal: StructLiteral,
+    source: Exclude<FieldSource, { readonly kind: 'comprehension' }>,
+    earlier: readonly ConstantForm[],
+  ): Outcome {
     switch (source.kind) {
       case 'value':
         return this.of(source.value);

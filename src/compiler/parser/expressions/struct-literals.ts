@@ -1,18 +1,30 @@
 /**
- * Struct and variant literals (§3.1): `Pair{first: 1}`, `Pair{first}`, `Ok{42}`, `Req{...r, a: 0}`.
+ * Struct and variant literals (§3.1): `Pair{first: 1}`, `Pair{first}`, `Ok{42}`, `Req{...r, a: 0}`,
+ * `struct{id, for k, v in ...rest: [k]: f(v)}`.
  *
  * The item forms are told apart by their first two tokens alone, without knowing the struct's
  * fields, as the spec requires:
  * - a name followed by `:` is a named field
  * - a bare name is the shorthand `first: first`
+ * - `for` starts a struct comprehension, a field loop's header and `[key]: value`, which gives
+ *   the literal's other fields itself: it is the last item, beside no spread, and its brackets
+ *   hold the loop's key, so the entry never reads as a field's declaration
  * - anything else is a positional value, which must be the only item. `Ok{(x)}` is how a variable
  *   is passed positionally.
  */
 
-import type { Expression, FieldsLiteral, StructLiteral } from '../../syntax/expressions/index.ts';
+import type {
+  Expression,
+  FieldsLiteral,
+  StructComprehension,
+  StructLiteral,
+} from '../../syntax/expressions/index.ts';
+import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
+import { parseFieldHeaderAfter } from '../parts/field-headers.ts';
+import { parseTargets } from '../parts/names.ts';
 import { afterStructKeyword } from '../parts/structs.ts';
 import { parseDelimited } from '../recovery.ts';
 import { parseSpread } from './spread.ts';
@@ -48,12 +60,24 @@ export function parseAnonymousStructLiteral(parser: Parser): Expression {
   return afterStructKeyword(parser, () => parseStructLiteralBody(parser, undefined, start));
 }
 
-/** The braced items of a literal, from its `{`; a positional value must be the only one. */
+/**
+ * The braced items of a literal, from its `{`; a positional value must be the only one, and a
+ * struct comprehension the last, with no spread beside it.
+ */
 function parseItems(parser: Parser): FieldsLiteral['items'] {
   const { items } = parseDelimited(parser, '{', () => parseItem(parser));
   const positional = items.find((item) => item.kind === 'PositionalInitializer');
   if (positional !== undefined && items.length > 1) {
     parser.report(parserDiagnostics.positionalNotAlone(parser.textSpanOf(positional.span)));
+  }
+  const comprehension = items.findIndex((item) => item.kind === 'StructComprehension');
+  if (comprehension >= 0) {
+    const misplaced = items.filter(
+      (item, index) => index > comprehension || item.kind === 'Spread',
+    );
+    for (const item of misplaced) {
+      parser.report(parserDiagnostics.structComprehensionLast(parser.textSpanOf(item.span)));
+    }
   }
   return items;
 }
@@ -63,6 +87,9 @@ function parseItem(parser: Parser): FieldsLiteral['items'][number] {
   if (cursor.at('...')) {
     return parseSpread(parser);
   }
+  if (cursor.at('for')) {
+    return parseStructComprehension(parser);
+  }
   const next = cursor.kindAt(1);
   if (cursor.at('identifier') && (next === ':' || next === ',' || next === '}')) {
     const name = parser.identifier();
@@ -71,4 +98,23 @@ function parseItem(parser: Parser): FieldsLiteral['items'][number] {
   }
   const value = parser.expression();
   return { kind: 'PositionalInitializer', span: value.span, value };
+}
+
+/** `for k, v in ...x: [k]: value`, from `for`; brackets naming anything but the loop's key are reported. */
+function parseStructComprehension(parser: Parser): StructComprehension {
+  const { start } = parser.cursor.advance().span;
+  const targets = parseTargets(parser);
+  parser.expect('in');
+  const header = parseFieldHeaderAfter(parser, start, targets);
+  parser.expect(':');
+  parser.expect('[');
+  const key = parser.identifier("the loop's key");
+  parser.expect(']');
+  parser.expect(':');
+  const value = parser.expression();
+  const named = header.key.kind === 'NamePattern' ? lastName(header.key.path).text : undefined;
+  if (named !== key.text) {
+    parser.report(parserDiagnostics.structComprehensionKey(parser.textSpanOf(key.span)));
+  }
+  return { kind: 'StructComprehension', span: parser.spanFrom(start), header, key, value };
 }

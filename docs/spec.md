@@ -97,6 +97,8 @@ for i in 10..=0 by -2: ...                        # a step; 0 < x <= 10 chains, 
 while pending: ...
 for field, node in ...form: ...                   # a field loop: once per field, in name order
 const small = [for x in xs if x < 20: x * 2]      # array comprehension
+const names = [for field, _ in ...form: field]    # one element per field
+struct{for field, node in ...s: [field]: f(node)} # struct comprehension: a field per field
 
 match decision:
     case Approved{by}: ...                        # binds the field by
@@ -306,7 +308,7 @@ struct ReviewRequest:
     replyTo: Inbox<Verdict>
 ```
 
-Construction lists the fields in braces after the type's name: `ReviewRequest{purchaseId: "P-1", amount: 900, replyTo: replies}`. As in JavaScript, a bare name is always short for a field of the same name: `Pair{first, second}` means `Pair{first: first, second: second}`. A struct with exactly one field may take its value without the field's name, as long as that value isn't a bare name: `UserId{"u-1"}` and `UserId{prefix + id}` are positional, while `UserId{id}` always means the field `id`. To pass a variable positionally, wrap it in parentheses: `UserId{(id)}`. Both a reader and the parser can therefore tell the forms apart without knowing the struct's fields. A struct with no fields is written bare, its name alone being its value (`struct Marker` makes the value `Marker`); braces after it are a compile error. An updated copy spreads an existing value and overrides some fields: `Req{...req, amount: 0}` is `req` with `amount` changed, and `req` itself is untouched; `struct{...req, amount: 0}` does the same, taking the type from `req`. The spread comes first and only once, its value has the literal's type, and the fields named after it override it; `Req{...req}` is a plain copy. Structs can be destructured in `match` patterns, and by the targets of declarations and assignments (§3.15). Fields have no visibility modifiers: any code can read them, since any module could declare a method on the struct anyway. Names of functions, methods, variables and fields are camelCase, preferring JavaScript's names where one exists (`push`, `indexOf`). A name that breaks these conventions, or the PascalCase rule for types (§2), is a compile error.
+Construction lists the fields in braces after the type's name: `ReviewRequest{purchaseId: "P-1", amount: 900, replyTo: replies}`. As in JavaScript, a bare name is always short for a field of the same name: `Pair{first, second}` means `Pair{first: first, second: second}`. A struct with exactly one field may take its value without the field's name, as long as that value isn't a bare name: `UserId{"u-1"}` and `UserId{prefix + id}` are positional, while `UserId{id}` always means the field `id`. To pass a variable positionally, wrap it in parentheses: `UserId{(id)}`. Both a reader and the parser can therefore tell the forms apart without knowing the struct's fields. A struct with no fields is written bare, its name alone being its value (`struct Marker` makes the value `Marker`); braces after it are a compile error. An updated copy spreads an existing value and overrides some fields: `Req{...req, amount: 0}` is `req` with `amount` changed, and `req` itself is untouched; `struct{...req, amount: 0}` does the same, taking the type from `req`. The spread comes first and only once, its value has the literal's type, and the fields named after it override it; `Req{...req}` is a plain copy. A literal may instead end with a struct comprehension, which gives each field of a struct a field of its own (§4): `struct{id, for k, v in ...rest: [k]: f(v)}`. Structs can be destructured in `match` patterns, and by the targets of declarations and assignments (§3.15). Fields have no visibility modifiers: any code can read them, since any module could declare a method on the struct anyway. Names of functions, methods, variables and fields are camelCase, preferring JavaScript's names where one exists (`push`, `indexOf`). A name that breaks these conventions, or the PascalCase rule for types (§2), is a compile error.
 
 **Field defaults.** A field of a struct or a variant may have a default after its type: `times: Int = 3`. As a parameter's default does (§3.3), it runs at every literal that leaves the field out, in the declaring module's scope, and it may use the fields before it, as in `backoff: Int = times * 2`. A field with a default may omit its type, which is then the default's: `backoff = times * 2`. A literal written with names alone may leave out any field with a default, wherever the field stands; a spread gives every field, so it runs no default. A default runs as code of its own called from the literal, so it can't `await`, and a panic in it names it. A top-level `const` computes a default when compile time computes its expression (§3). JSON reads none: a field missing from an object fails as any missing field does (§9). Only a declaration's fields have defaults, not an anonymous struct type's or a trait's, nor associated types, and an anonymous struct type's fields take no annotations either (§3.16).
 
@@ -1186,6 +1188,21 @@ const values = [for r in results if r is Ok{value}: value]   # filter and destru
 - **The body is one expression;** a block expression gives it several statements.
 - **`is` bindings in the condition flow into the body,** just as they flow from an `if` condition into its body.
 - **It works on any `Iterable` (§3.10)** and builds the whole array at once. A plain `for` without brackets stays a statement and builds nothing.
+- **Over a struct's fields,** `[for k, v in ...x: expr]` takes a field loop's header (below) and gives one element per field, in name order, `expr` checked once per pass. With no `if` clause, the elements agree on one type as an array literal's do: the type expected, such as `any X` for an object-safe `X`, or else what they agree on, `String` for `k` itself.
+
+**Struct comprehensions.** A struct literal, `struct{…}` or `Name{…}`, may end with a field loop's header and `[key]: expr`, after any named fields: `struct{id, for k, v in ...rest: [k]: expr}`. It gives each field of `rest` a field named by the key, of `expr`'s value in that field's pass. The brackets hold the loop's key, a name, so the entry never reads as a field's declaration; there is no `if` clause and no spread, since the literal gives every field itself:
+
+```python
+struct Field<T> { value: T?; type Data = T }
+struct SettingsForm { retries: Field<Int>; region: Field<String> }
+
+fn current(s: SettingsForm) -> { [F in keyof SettingsForm]: SettingsForm[F].Data? }:
+    struct{for field, node in ...s: [field]: node.value}
+```
+
+- **Its type** is the one expected, as a `struct{…}` literal's (§3.1), which must have exactly the named fields and `x`'s, or the one it names. A generic body builds one whose fields aren't all known yet, such as a mapped struct type over `x`'s keys. With neither, it is the shape of the named fields and each of `x`'s, typed as `expr` is there, which needs `x`'s fields known: not a type parameter with a struct constraint, or a type computed from one.
+- **Checking** follows the field loop's, each `expr` against its field's type. A field both named and given by the comprehension is given twice, a compile error.
+- **Evaluation** runs the named fields as written, then the comprehension in name order.
 
 ```python fragment
 const label: String = if amount > 50_000:

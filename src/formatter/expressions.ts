@@ -126,6 +126,7 @@ const huggedArguments: ReadonlySet<SyntaxNode['kind']> = new Set([
   'ArrayLiteral',
   'MapLiteral',
   'Comprehension',
+  'FieldComprehension',
 ]);
 
 function huggable(printer: Printer, argument: CallArgument): boolean {
@@ -195,6 +196,26 @@ export const expressionPrinters: Printers<ExpressionKind> = {
       softline,
       ']',
     ]),
+  FieldComprehension: (printer, node) =>
+    group([
+      '[',
+      indent([
+        printer.dangling(node),
+        softline,
+        printer.print(node.header),
+        ': ',
+        printer.print(node.body),
+      ]),
+      softline,
+      ']',
+    ]),
+  StructComprehension: (printer, node) => [
+    printer.print(node.header),
+    ': [',
+    printer.print(node.key),
+    ']: ',
+    printer.print(node.value),
+  ],
   Tuple: (printer, node) => tupleList(printer, node, node.elements),
   Parenthesized: (printer, node) => enclosed(printer, node, ['(', ')'], node.expression),
   StructLiteral: (printer, node) => [

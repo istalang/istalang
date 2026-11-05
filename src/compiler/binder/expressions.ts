@@ -20,7 +20,13 @@ import {
   selectCasesOf,
 } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
-import { bindConditionValue, underBindings, underCondition, underLoop } from './flow.ts';
+import {
+  bindConditionValue,
+  underBindings,
+  underCondition,
+  underFields,
+  underLoop,
+} from './flow.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import type { Scope } from './scope.ts';
 
@@ -32,6 +38,11 @@ function bindLiteral(binder: LocalBinder, node: FieldsLiteral, scope: Scope): vo
     if (item.kind === 'FieldInitializer') {
       // The shorthand `Pair{first}` reads the variable named like the field.
       bindFieldValue(binder, item.name, item.value, scope);
+    } else if (item.kind === 'StructComprehension') {
+      underFields(binder, item.header, scope, (variables) => {
+        bindExpression(binder, item.key, variables);
+        bindExpression(binder, item.value, variables);
+      });
     } else if (item.kind !== 'Invalid') {
       bindAll(binder, [item.kind === 'Spread' ? item : item.value], scope);
     }
@@ -103,6 +114,10 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   Comprehension: (binder, node, scope) =>
     underLoop(binder, node, scope, (variables) =>
       underCondition(binder, node, variables, (flow) => bindExpression(binder, node.body, flow)),
+    ),
+  FieldComprehension: (binder, node, scope) =>
+    underFields(binder, node.header, scope, (variables) =>
+      bindExpression(binder, node.body, variables),
     ),
   If: (binder, node, scope) => {
     for (const branch of node.branches) {

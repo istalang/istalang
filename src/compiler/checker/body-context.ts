@@ -130,13 +130,14 @@ export interface BodyContext {
   readonly recordValueCall: (node: Call) => void;
   /**
    * Runs `check` once per pass of the field loop `header` heads (§4), each pass's records of nodes
-   * kept apart (passes.ts), so the body reads as each pass checked it.
+   * kept apart (passes.ts), so the body reads as each pass checked it; what is decided of every
+   * pass together is then recorded back in each (`CheckedPasses`).
    */
   readonly fieldPasses: (
     header: FieldHeader,
     passes: readonly FieldPassType[],
     check: (pass: FieldPassType) => void,
-  ) => void;
+  ) => CheckedPasses;
   /** Whether the innermost function is async, the only kind that may `await` (§5). */
   readonly inAsync: boolean;
   readonly variables: Variables;
@@ -162,6 +163,15 @@ export interface BodyContext {
  * a part `isOpen` says inference hasn't found yet can be anything.
  */
 export type Accepts = (expected: Type, isOpen: (part: Type) => boolean) => boolean;
+
+/**
+ * A field loop's passes once checked (§4): `inEach` runs back in each pass, in order, what is
+ * decided of all of them together, such as the type their values agree on or the type arguments
+ * they infer, recording and reporting it as that pass's.
+ */
+export interface CheckedPasses {
+  readonly inEach: (run: (pass: FieldPassType, index: number) => void) => void;
+}
 
 /**
  * What one part of a composite argument has before the call is chosen: the parameter types it can

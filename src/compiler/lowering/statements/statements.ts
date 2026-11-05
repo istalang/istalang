@@ -34,7 +34,7 @@ import {
   lowerLoopExit,
   lowerWhile,
 } from './loops.ts';
-import { endScope, release } from './scopes.ts';
+import { release, valueInBlock } from './scopes.ts';
 import { lowerAssignment, lowerVariableDeclaration } from './variables.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -83,21 +83,7 @@ export function lowerStatement(context: FunctionContext, node: Statement | Inval
  * is a statement too, except the value.
  */
 export function lowerBlock(context: FunctionContext, block: Block): Register {
-  const { result: lowered, scope } = context.variables.inBlock(() =>
-    context.code.allocating(() => lowerBody(context, block)),
-  );
-  const { result, registers } = lowered;
-  let value = result;
-  if (scope.declared.includes(result)) {
-    value = context.code.allocate();
-    context.code.emit({ kind: 'move', span: block.span, dst: value, src: result });
-  }
-  const temporaries = context.variables.temporariesAmong(
-    registers.filter((register) => register !== result),
-  );
-  endScope(context, scope, block.span);
-  release(context, temporaries, block.span);
-  return value;
+  return valueInBlock(context, block.span, () => lowerBody(context, block));
 }
 
 /**

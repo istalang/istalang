@@ -6,7 +6,11 @@
  * (§3.1 "Field order"), so a field is read from the spread by its name's position there.
  */
 
-import type { Expression, FieldsLiteral } from '../../syntax/expressions/index.ts';
+import type {
+  Expression,
+  FieldsLiteral,
+  StructComprehension,
+} from '../../syntax/expressions/index.ts';
 import type { LiteralSources } from '../body-context.ts';
 import type { FieldSource } from '../check.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
@@ -63,20 +67,26 @@ export interface LiteralGiven {
   readonly spread: { readonly from: Expression; readonly names: readonly string[] } | undefined;
   /** The call computing each field's default, if it has one. */
   readonly defaulted: readonly (FunctionCall | undefined)[];
+  /** The struct comprehension the literal ends with, and the positions of the fields it gives. */
+  readonly comprehended?:
+    | { readonly node: StructComprehension; readonly indices: ReadonlySet<number> }
+    | undefined;
 }
 
 /**
  * Each field's source in declaration order, the spread giving the rest, or else its default's
- * call; undefined if one has none.
+ * call; then the comprehension, the source of every field it gives. Undefined if one has none.
  */
 export function sourcesOf({
   fields,
   given,
   spread,
   defaulted,
+  comprehended,
 }: LiteralGiven): readonly FieldSource[] | undefined {
   const sources: FieldSource[] = [];
-  for (const [index, { name: field }] of fields.entries()) {
+  const own = [...fields.entries()].filter(([index]) => comprehended?.indices.has(index) !== true);
+  for (const [index, { name: field }] of own) {
     const value = given.get(index);
     const spreadIndex = spread?.names.indexOf(field) ?? -1;
     const call = defaulted[index];
@@ -90,5 +100,7 @@ export function sourcesOf({
       return undefined;
     }
   }
-  return sources;
+  return comprehended === undefined
+    ? sources
+    : [...sources, { kind: 'comprehension', comprehension: comprehended.node }];
 }

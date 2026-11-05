@@ -1,7 +1,7 @@
 /**
- * A body's calls as lowering reads them (CheckedBody): every call a clean program writes resolves
- * to a function or is recorded as a call of a function value, so lowering never reads a missing
- * record as either.
+ * A body's calls as lowering reads them (CheckedBody), through the passes of the field loops
+ * around them: every call a clean program writes resolves to a function or is recorded as a call
+ * of a function value, so lowering never reads a missing record as either.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -19,14 +19,19 @@ describe('a checked body', () => {
     const checker = checkProgram(program);
     const { tree } = programModule(program, idOf('main'));
     const unrecorded = functionsOf(tree.root).flatMap((declaration) => {
-      const body = checker.bodyOf(declaration);
       const written = bodyOf(tree, declaration);
-      if (body === undefined || written === undefined) {
+      if (checker.bodyOf(declaration) === undefined || written === undefined) {
         return [];
       }
-      return nodesUnder(tree, written).filter(
-        (node) => node.kind === 'Call' && body.resolved.has(node) === body.valueCalls.has(node),
-      );
+      // A call inside a field loop is recorded per pass, as lowering reads it.
+      return nodesUnder(tree, written).filter((node) => {
+        const body = checker.lookup.bodyHolding(idOf('main'), node);
+        return (
+          node.kind === 'Call' &&
+          body !== undefined &&
+          body.resolved.has(node) === body.valueCalls.has(node)
+        );
+      });
     });
     expect(checker.diagnosticsOf(idOf('main'))).toEqual([]);
     expect(unrecorded.map(({ span }) => span.from)).toEqual([]);

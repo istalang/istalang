@@ -29,6 +29,34 @@ export function endScope(context: FunctionContext, scope: BlockScope, span: Anch
 }
 
 /**
+ * Lowers `lower`'s value in a block of its own; the register holding it once the block ends. The
+ * end releases what the block's variables hold, after keeping what lasts until the function
+ * returns, and the temporaries `lower` made, except the value, moved out first when it is one of
+ * the block's variables.
+ */
+export function valueInBlock(
+  context: FunctionContext,
+  span: AnchoredSpan,
+  lower: () => Register,
+): Register {
+  const { result: lowered, scope } = context.variables.inBlock(() =>
+    context.code.allocating(lower),
+  );
+  const { result, registers } = lowered;
+  let value = result;
+  if (scope.declared.includes(result)) {
+    value = context.code.allocate();
+    context.code.emit({ kind: 'move', span, dst: value, src: result });
+  }
+  const temporaries = context.variables.temporariesAmong(
+    registers.filter((register) => register !== result),
+  );
+  endScope(context, scope, span);
+  release(context, temporaries, span);
+  return value;
+}
+
+/**
  * Lowers a header with `header`; its value, and its temporaries, which every path out of it
  * releases (`release`) instead of its statement.
  */

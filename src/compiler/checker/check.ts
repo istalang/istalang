@@ -30,6 +30,7 @@ import type {
   MapLiteral,
   Parameter,
   Spread,
+  StructComprehension,
 } from '../syntax/expressions/index.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
@@ -112,13 +113,17 @@ export interface VariantMember {
  * literal, the field of that position in its leading spread's value, or its default: `call`'s
  * default for that field, of the function the fields read as, computed from the fields before it
  * (syntax/field-defaults.ts). A literal's sources come in declaration order, the order evaluation
- * follows; its value takes its type's layout by the fields' names (`laidOut`).
+ * follows; its value takes its type's layout by the fields' names (`laidOut`). A struct
+ * comprehension (§3.1) is the source of every field it gives, one per field of the struct each
+ * instantiation runs it over, so it names none.
  */
-export type FieldSource = { readonly field: string } & (
-  | { readonly kind: 'value'; readonly value: Expression }
-  | { readonly kind: 'spread'; readonly from: Expression; readonly index: number }
-  | { readonly kind: 'default'; readonly call: FunctionCall }
-);
+export type FieldSource =
+  | ({ readonly field: string } & (
+      | { readonly kind: 'value'; readonly value: Expression }
+      | { readonly kind: 'spread'; readonly from: Expression; readonly index: number }
+      | { readonly kind: 'default'; readonly call: FunctionCall }
+    ))
+  | { readonly kind: 'comprehension'; readonly comprehension: StructComprehension };
 
 /**
  * A link of an optional chain (§4): the type its own step works on (the value inside, after

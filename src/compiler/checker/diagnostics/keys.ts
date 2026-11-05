@@ -1,7 +1,7 @@
 /**
  * The checker's diagnostics of struct keys, codes 5160–5169 (§3.1, §3.7, §3.9, §4): `keyof`, `S[K]`,
- * mapped struct types, reading or writing a field through a key, and what a field loop runs over. A part of the checker's one
- * catalog (index.ts).
+ * mapped struct types, reading or writing a field through a key, what a field loop runs over, and
+ * the fields a struct comprehension gives. A part of the checker's one catalog (index.ts).
  */
 
 export const keyTemplates = {
@@ -33,6 +33,16 @@ export const keyTemplates = {
     code: 5165,
     message: (key: string) =>
       `A field passed by '&' is one place, but a key of ${key} may name several fields, each of its own type; narrow the key to one first (§3.7).`,
+  },
+  comprehendedFieldsUnknown: {
+    code: 5167,
+    message: (type: string) =>
+      `A struct comprehension over ${type}, whose fields aren't all known, builds only a type expected of it whose fields are its named fields and those (§3.1): give the literal one, such as a mapped struct type over its keys.`,
+  },
+  comprehendedFields: {
+    code: 5168,
+    message: (type: string) =>
+      `This literal gives its named fields and those its struct comprehension runs over, which aren't exactly ${type}'s (§3.1).`,
   },
   fieldLoopSubject: {
     code: 5166,

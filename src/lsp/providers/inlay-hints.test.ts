@@ -11,6 +11,7 @@ import { typeText } from '../../compiler/checker/types/type-text.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
 import { targetNames } from '../../compiler/syntax/patterns.ts';
 import { spanIn } from '../../compiler/syntax/positions.ts';
+import { declaredTargets } from '../../compiler/syntax/statements.ts';
 import { nodesUnder, type SyntaxNode } from '../../compiler/syntax/tree.ts';
 import {
   corpusClient,
@@ -32,8 +33,8 @@ function untypedNames(node: SyntaxNode): readonly Identifier[] {
   if (node.kind === 'VariableDeclaration' && node.type === undefined) {
     return node.targets.flatMap(targetNames);
   }
-  if (node.kind === 'For') {
-    return node.targets.flatMap(targetNames);
+  if (node.kind === 'For' || node.kind === 'FieldHeader') {
+    return declaredTargets(node).flatMap(targetNames);
   }
   if (node.kind === 'Lambda') {
     return node.parameters.flatMap((parameter) =>

@@ -149,7 +149,7 @@ class FunctionLowering implements FunctionContext {
     return this.#reading.owner;
   }
 
-  inFieldPass(header: FieldHeader, field: string, lower: () => void): void {
+  inFieldPass<Lowered>(header: FieldHeader, field: string, lower: () => Lowered): Lowered {
     const outer = this.#reading;
     const step = { header, field };
     this.#reading = {
@@ -157,7 +157,7 @@ class FunctionLowering implements FunctionContext {
       body: passBody(this.checker, outer.body, step),
     };
     try {
-      lower();
+      return lower();
     } finally {
       this.#reading = outer;
     }

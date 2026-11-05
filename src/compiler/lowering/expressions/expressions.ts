@@ -15,7 +15,7 @@ import { lowerAwait } from './await.ts';
 import { lowerCall, lowerSpawn } from './calls.ts';
 import { lowerFunctionValue, lowerLambda } from './closures.ts';
 import { lowerArrayLiteral, lowerIndex, lowerMapLiteral, lowerRange } from './collections.ts';
-import { lowerComprehension } from './comprehensions.ts';
+import { lowerComprehension, lowerFieldComprehension } from './comprehensions.ts';
 import { lowerIf } from './control.ts';
 import { lowerDurationLiteral } from './literals.ts';
 import { lowerIs, lowerMatch } from './matching.ts';
@@ -59,6 +59,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   ArrayLiteral: lowerArrayLiteral,
   MapLiteral: lowerMapLiteral,
   Comprehension: lowerComprehension,
+  FieldComprehension: lowerFieldComprehension,
   Tuple: lowerTuple,
   Lambda: lowerLambda,
   Reference: neverLowered,

@@ -61,9 +61,13 @@ export interface FunctionContext {
   readonly fitted: (value: Register, type: Type, fit: Fit, site: ValueSite) => Register;
   /**
    * Runs `lower` reading the body as the pass of the field loop `header` heads that visits `field`
-   * reads it (§4), its calls closed and its nested functions keyed in that pass.
+   * reads it (§4), its calls closed and its nested functions keyed in that pass; what it gives.
    */
-  readonly inFieldPass: (header: FieldHeader, field: string, lower: () => void) => void;
+  readonly inFieldPass: <Lowered>(
+    header: FieldHeader,
+    field: string,
+    lower: () => Lowered,
+  ) => Lowered;
   /** Lowers a block; the register holding its value (unit when it ends in a statement). */
   readonly block: (node: Block) => Register;
   readonly statement: (node: Statement | Invalid) => void;

@@ -12,6 +12,7 @@
  */
 
 import type { FieldHeader } from '../../syntax/expressions/index.ts';
+import { isOverFields, passedParts } from '../../syntax/statements.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
 import type { Type } from '../types/type.ts';
@@ -19,8 +20,8 @@ import type { TypeRules } from '../types/type-rules.ts';
 import { unionOf } from '../types/unions.ts';
 
 /**
- * `body` as tools read it at `node`, below each field loop on `path` (from `node` outward) whose
- * header binds or whose body holds `node`: each such loop's passes, joined.
+ * `body` as tools read it at `node`, below each construct over fields on `path` (from `node`
+ * outward) whose header binds or whose passed parts hold `node`: each one's passes, joined.
  */
 export function passesAround(
   body: CheckedBody,
@@ -29,12 +30,15 @@ export function passesAround(
 ): CheckedBody {
   const outward = path.toReversed();
   return outward.reduce((outer, each, index) => {
-    if (each.kind !== 'FieldLoop') {
+    if (!isOverFields(each)) {
       return outer;
     }
     const child = outward[index + 1];
     const part = child === each.header ? outward[index + 2] : undefined;
-    const passed = child === each.body || part === each.header.key || part === each.header.value;
+    const passed =
+      passedParts(each).some((passedPart) => passedPart === child) ||
+      part === each.header.key ||
+      part === each.header.value;
     return passed ? joined(outer, each.header, rules) : outer;
   }, body);
 }

@@ -25,10 +25,9 @@ import type {
 } from '../../syntax/statements.ts';
 import type { Label } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
-import { tupleOf } from '../expressions/tuples.ts';
+import { fieldsVisited, inFieldScope } from '../field-passes.ts';
 import { emitLoopOver } from '../iteration.ts';
 import { endScope, lowerGuarded } from './scopes.ts';
-import { bindTargets } from './variables.ts';
 
 /** Where `break` and `continue` go inside a loop, and how many blocks were open around it. */
 export interface LoopTargets {
@@ -100,35 +99,22 @@ export function lowerFor(context: FunctionContext, node: For): void {
 }
 
 /**
- * A field loop (§4): its body written out once per field of its subject's struct, in name order,
- * each pass reading the body as that field's pass checked it, its key and value bound to the
- * field's name and a copy of its value; `continue` goes on to the next field, `break` past the
- * last. The subject is a struct of a known type once instantiated, so nothing is left to run time.
+ * A field loop (§4): its body written out once per field of its subject's struct, in name order
+ * (field-passes.ts); `continue` goes on to the next field, `break` past the last.
  */
 export function lowerFieldLoop(context: FunctionContext, node: FieldLoop): void {
   const { code } = context;
-  const { header, span } = node;
+  const { header } = node;
   context.holds.lowerScope(node, () => {
-    const subject = context.expression(header.subject);
-    const fields =
-      context.checker.fieldsOf(context.typeOf(header.subject)) ??
-      unreachable(
-        `A field loop at ${span.from} runs over no struct; the checker should have said so.`,
-      );
+    const visited = fieldsVisited(context, header, node.span);
     const exit = code.newLabel();
     const { depth } = context.variables;
-    for (const [position, field] of fields.entries()) {
+    for (const position of visited.fields.keys()) {
       const next = code.newLabel();
-      context.inFieldPass(header, field.name, () => {
-        const { scope } = context.variables.inBlock(() => {
-          const key = context.constant(field.name, span);
-          const value = code.field(subject, position, span);
-          bindTargets(context, header, tupleOf(context, [key, value], span), span);
-          context.loops.inside(node, { exit, next, depth }, () => {
-            context.block(node.body);
-          });
+      inFieldScope(context, visited, position, () => {
+        context.loops.inside(node, { exit, next, depth }, () => {
+          context.block(node.body);
         });
-        endScope(context, scope, span);
       });
       code.place(next);
     }

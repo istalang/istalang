@@ -94,6 +94,25 @@ export interface FieldHeader extends NodeOf<'FieldHeader'> {
   readonly subject: Expression;
 }
 
+/**
+ * `[for k, v in ...x: e]`: an array of `e`'s value for each field of `x`, in name order (§4), as the
+ * element written out once per field.
+ */
+export interface FieldComprehension extends NodeOf<'FieldComprehension'> {
+  readonly header: FieldHeader;
+  readonly body: Expression;
+}
+
+/**
+ * `for k, v in ...x: [k]: e`, the last item of a struct literal: a field of each of `x`'s, named by
+ * the loop's key the brackets hold, of `e`'s value in that field's pass (§3.1, §4).
+ */
+export interface StructComprehension extends NodeOf<'StructComprehension'> {
+  readonly header: FieldHeader;
+  readonly key: Identifier;
+  readonly value: Expression;
+}
+
 /** `(a, b)`, `(a,)`, and `()` for unit. */
 export interface Tuple extends NodeOf<'Tuple'> {
   readonly elements: readonly Expression[];
@@ -103,7 +122,12 @@ interface Parenthesized extends NodeOf<'Parenthesized'> {
   readonly expression: Expression;
 }
 
-type LiteralItem = FieldInitializer | PositionalInitializer | Spread | Invalid;
+type LiteralItem =
+  | FieldInitializer
+  | PositionalInitializer
+  | Spread
+  | StructComprehension
+  | Invalid;
 
 /** `Pair{…}`, `m.Pair<Int>{…}`, or `struct{…}` when `type` is undefined. */
 export interface StructLiteral extends NodeOf<'StructLiteral'> {
@@ -381,6 +405,7 @@ export type Expression =
   | ArrayLiteral
   | MapLiteral
   | Comprehension
+  | FieldComprehension
   | Tuple
   | Parenthesized
   | StructLiteral
@@ -422,4 +447,5 @@ export type ExpressionPart =
   | MatchCase
   | SelectCase
   | ElseClause
-  | FieldHeader;
+  | FieldHeader
+  | StructComprehension;

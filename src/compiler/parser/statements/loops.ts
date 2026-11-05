@@ -10,13 +10,12 @@
  * a statement reads so. It is reported, and the statement after it parsed as if it weren't there.
  */
 
-import type { FieldHeader } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
-import type { Pattern } from '../../syntax/patterns.ts';
 import type { FieldLoop, For, Statement, While } from '../../syntax/statements.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 import { parseHeaderBody } from '../parts/blocks.ts';
+import { parseFieldHeaderAfter } from '../parts/field-headers.ts';
 import { parseTargets } from '../parts/names.ts';
 
 export function parseFor(parser: Parser): For | FieldLoop {
@@ -74,37 +73,6 @@ function parseForAfter(
   const iterable = parser.expression();
   const body = parseHeaderBody(parser, start);
   return { kind: 'For', span: parser.spanFrom(start), label, targets, iterable, body };
-}
-
-/**
- * A field loop's header from its `...` on, the targets before `in` parsed: exactly a key, a name or
- * `_`, and a value; more or fewer are reported, and a target left out, or a key that is neither,
- * reads as `_`, so nothing after the parser reports it again.
- */
-function parseFieldHeaderAfter(
-  parser: Parser,
-  start: number,
-  targets: readonly Pattern[],
-): FieldHeader {
-  parser.expect('...');
-  const subject = parser.expression();
-  const span = parser.spanFrom(start);
-  const [key, value] = targets;
-  if (targets.length !== 2 || key === undefined || value === undefined) {
-    parser.report(parserDiagnostics.fieldLoopTargets(parser.textSpanFrom(start)));
-  }
-  const missing = { kind: 'WildcardPattern', span } as const;
-  const keyTarget = key ?? missing;
-  const isName =
-    keyTarget.kind === 'NamePattern' &&
-    keyTarget.path.length === 1 &&
-    keyTarget.typeArguments.length === 0;
-  const isKey = isName || keyTarget.kind === 'WildcardPattern';
-  if (!isKey) {
-    parser.report(parserDiagnostics.fieldLoopKey(parser.textSpanOf(keyTarget.span)));
-  }
-  const keyRead: Pattern = isKey ? keyTarget : { kind: 'WildcardPattern', span: keyTarget.span };
-  return { kind: 'FieldHeader', span, key: keyRead, value: value ?? missing, subject };
 }
 
 function parseWhileAfter(parser: Parser, start: number, label: Identifier | undefined): While {

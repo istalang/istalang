@@ -1,0 +1,31 @@
+# outcome: "a,m,z|named-z,named-a,comp-b,comp-x|1:2|20,40"
+# Comprehensions over a struct's fields (§3.1, §4): an array's elements and a struct
+# comprehension's fields in name order, the named fields evaluated as written before the
+# comprehension, and `...*x` over the value behind a shared struct.
+
+struct Misordered { z: Int; a: Int; m: Int }
+shared struct SharedCounters { b: Int; a: Int }
+
+fn record(log: &Array<String>, step: String, v: Int) -> Int:
+  log.push(step)
+  v
+
+fn doubled(m: Misordered) -> Misordered:
+  Misordered{for k, v in ...m: [k]: v * 2}
+
+async fn main() -> Future<String>:
+  const m = Misordered{z: 3, a: 1, m: 2}
+  const keys = [for k, _ in ...m: k]
+
+  let orderLog: Array<String> = []
+  const built = struct{
+    z: record(&orderLog, "named-z", 9),
+    a: record(&orderLog, "named-a", 8),
+    for k, v in ...struct{x: 2, b: 1}: [k]: record(&orderLog, `comp-${k}`, v)
+  }
+  _ = built
+
+  const sc = new SharedCounters{b: 2, a: 1}
+  const sharedVals = [for _, v in ...*sc: `${v}`]
+  const twice = doubled(Misordered{z: 30, a: 10, m: 20})
+  `${keys.join(",")}|${orderLog.join(",")}|${sharedVals.join(":")}|${[twice.a, twice.m].map(fn n: `${n}`).join(",")}`

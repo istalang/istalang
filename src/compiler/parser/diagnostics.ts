@@ -145,6 +145,16 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     code: 2031,
     message: () => "A field loop's key is a name or '_': the field's name, a String (§4).",
   },
+  structComprehensionLast: {
+    code: 2032,
+    message: () =>
+      "A struct comprehension gives the literal's other fields itself: it is the last item, and no spread stands beside it (§3.1).",
+  },
+  structComprehensionKey: {
+    code: 2033,
+    message: () =>
+      "A struct comprehension's brackets hold its loop's key, a name: `for k, v in ...x: [k]: …` (§3.1).",
+  },
   memberParameterAlone: {
     code: 2027,
     message: () =>
