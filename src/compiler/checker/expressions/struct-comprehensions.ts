@@ -101,18 +101,22 @@ function comprehendedField(
   { fields, name, inference, isGiven }: ComprehensionTarget,
   pass: FieldPassType,
 ): ComprehendedField | undefined {
-  const index = fields.findIndex((each) => each.name === pass.field);
+  const { visits } = pass;
+  const index =
+    visits.kind === 'field' ? fields.findIndex((each) => each.name === visits.name) : -1;
   const field = fields[index];
-  if (field === undefined || isGiven(index)) {
+  if (visits.kind !== 'field' || field === undefined || isGiven(index)) {
     const subject = context.typeOf(node.header.subject);
-    if (pass.field === undefined) {
+    if (visits.kind === 'others') {
       context.report(
         checkerDiagnostics.comprehendedFieldsUnknown(node.key.span, typeText(subject)),
       );
-    } else if (field === undefined) {
-      context.report(checkerDiagnostics.unknownField(node.key.span, name, pass.field));
-    } else {
-      context.report(checkerDiagnostics.repeatedField(node.key.span, pass.field));
+    } else if (visits.kind === 'field') {
+      context.report(
+        field === undefined
+          ? checkerDiagnostics.unknownField(node.key.span, name, visits.name)
+          : checkerDiagnostics.repeatedField(node.key.span, visits.name),
+      );
     }
     context.expression(node.value);
     return undefined;
@@ -179,14 +183,18 @@ export function freshComprehended(
   const fields: (FieldMember | undefined)[] = [];
   inFieldPasses(context, node.header, checkedFieldPasses(context, node.header), (pass) => {
     const type = context.expression(node.value);
-    if (pass.field === undefined) {
+    const { visits } = pass;
+    if (visits.kind === 'others') {
       const subject = typeText(context.typeOf(node.header.subject));
       context.report(checkerDiagnostics.comprehendedFieldsUnknown(node.key.span, subject));
-    } else if (named.has(pass.field)) {
-      context.report(checkerDiagnostics.repeatedField(node.key.span, pass.field));
+      fields.push(undefined);
+    } else if (visits.kind === 'field') {
+      const given = named.has(visits.name);
+      if (given) {
+        context.report(checkerDiagnostics.repeatedField(node.key.span, visits.name));
+      }
+      fields.push(given ? undefined : { name: visits.name, type });
     }
-    const given = pass.field === undefined || named.has(pass.field);
-    fields.push(given ? undefined : { name: pass.field ?? '', type });
   });
   return fields.every((field) => field !== undefined)
     ? { fields, sources: [comprehensionSource(node)] }
@@ -215,9 +223,16 @@ export function checkOpaqueComprehended(
   let { fits } = named;
   const passes = checkedFieldPasses(context, comprehension.header);
   inFieldPasses(context, comprehension.header, passes, (pass) => {
-    const { field } = pass;
-    if (field !== undefined && named.keys.some((key) => sameType(key, literalType(field)))) {
-      context.report(checkerDiagnostics.repeatedField(comprehension.key.span, field));
+    const { visits } = pass;
+    if (visits.kind === 'none') {
+      context.expression(comprehension.value);
+      return;
+    }
+    if (
+      visits.kind === 'field' &&
+      named.keys.some((key) => sameType(key, literalType(visits.name)))
+    ) {
+      context.report(checkerDiagnostics.repeatedField(comprehension.key.span, visits.name));
       fits = false;
     }
     context.expect(comprehension.value, rules.fieldType(expected, pass.key));

@@ -51,11 +51,17 @@ export function checkFieldComprehension(
   expected: Type | undefined,
 ): Type {
   const expectedElement = expectedArrayItem(context, expected);
+  const byPass: (Produced | undefined)[] = [];
   const produced: Produced[] = [];
   const passes = checkedFieldPasses(context, node.header);
-  const checked = inFieldPasses(context, node.header, passes, () => {
+  const checked = inFieldPasses(context, node.header, passes, ({ visits }) => {
     const type = context.expression(node.body, expectedElement ?? decidedSoFar(context, produced));
-    produced.push({ type, span: node.body.span, site: node.body });
+    const element = { type, span: node.body.span, site: node.body };
+    // A pass visiting no field gives no element: its body never runs.
+    byPass.push(visits.kind === 'none' ? undefined : element);
+    if (visits.kind !== 'none') {
+      produced.push(element);
+    }
   });
   const decided = agreedElement(context, produced, expectedElement);
   if (decided !== undefined) {
@@ -66,7 +72,7 @@ export function checkFieldComprehension(
         checkerDiagnostics.itemTypes(span, 'element', typeText(agreedOn), typeText(found)),
     };
     checked.inEach((_, index) => {
-      const element = produced[index];
+      const element = byPass[index];
       if (element !== undefined) {
         settleProduced(context, element, agreed);
       }

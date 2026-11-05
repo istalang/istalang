@@ -25,7 +25,7 @@ export function checkedFieldPasses(
   if (passes === undefined && subject.kind !== 'error') {
     context.report(checkerDiagnostics.fieldLoopSubject(header.subject.span, typeText(subject)));
   }
-  return passes ?? [{ field: undefined, key: errorType, value: errorType }];
+  return passes ?? [{ visits: { kind: 'none' }, key: errorType, value: errorType }];
 }
 
 /** Runs `each` once per pass of `passes`, `header`'s key and value bound to the pass's. */

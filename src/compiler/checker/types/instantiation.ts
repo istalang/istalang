@@ -112,8 +112,8 @@ function instantiatedPasses(
   substitution: Substitution,
   checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
 ): readonly FieldPass[] {
-  return passes.map(({ field, key, value, body }) => ({
-    field,
+  return passes.map(({ visits, key, value, body }) => ({
+    visits,
     key: substitute(key, substitution, checker.typeRules),
     value: substitute(value, substitution, checker.typeRules),
     body: instantiatedBody(body, substitution, checker),

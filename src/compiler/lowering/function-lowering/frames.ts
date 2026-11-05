@@ -96,12 +96,12 @@ export function loweredNested(lowering: Lowering, owner: BodyOwner): LoweredFunc
  */
 export function passBody(checker: Checker, body: CheckedBody, step: FieldPassStep): CheckedBody {
   const passes = body.passesOf(step.header);
-  const own = passes.find((pass) => pass.field === step.field);
+  const own = passes.find(({ visits }) => visits.kind === 'field' && visits.name === step.field);
   if (own !== undefined) {
     return own.body;
   }
   const others =
-    passes.find((pass) => pass.field === undefined) ??
+    passes.find((pass) => pass.visits.kind === 'others') ??
     unreachable(`No pass of a field loop reads the field '${step.field}'.`);
   return instantiatedBody(others.body, passBindings([step]), checker);
 }

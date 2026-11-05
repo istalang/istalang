@@ -191,13 +191,22 @@ function passTable<Key, Value>(passes: Passes): PassTable<Key, Value> {
 }
 
 /**
- * One checking of a field loop's body (§4): for the field `field` names, its key that field's name
- * as a literal type and its value that field's type; or, with no `field`, for every field a struct
+ * Which fields one checking of a field loop's body is for (§4): the field `name` names, its key
+ * that field's name as a literal type and its value that field's type; every field a struct
  * constraint leaves unnamed at once, its key a member parameter keyed by the loop's header, which
- * each instantiated field gives its own literal, and its value the field that key names.
+ * each instantiated field gives its own literal, and its value the field that key names; or none,
+ * for a subject with no field to visit, a struct with none or one already reported, whose body is
+ * checked once as code that never runs, its key and value of the error type: nothing about them
+ * can be wrong, so only the mistakes that don't depend on a field are reported.
  */
+type PassVisits =
+  | { readonly kind: 'field'; readonly name: string }
+  | { readonly kind: 'others' }
+  | { readonly kind: 'none' };
+
+/** One checking of a field loop's body: the fields it is for, and its key and value there. */
 export interface FieldPassType {
-  readonly field: string | undefined;
+  readonly visits: PassVisits;
   readonly key: Type;
   readonly value: Type;
 }

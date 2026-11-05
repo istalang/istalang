@@ -281,8 +281,9 @@ export function mappedTypeOf(
 /**
  * The passes a field loop's body is checked in over a value of `subject` (§4): one per key a
  * literal names, its value that field's type; and, for the keys not known yet, one pass whose key
- * is a member parameter keyed by `header` ranging over them, its value the field that key names.
- * Undefined when `subject` has no keys.
+ * is a member parameter keyed by `header` ranging over them, its value the field that key names;
+ * a struct with no field, one pass visiting none (`noFieldPass`). Undefined when `subject` has no
+ * keys.
  */
 export function fieldPassesOver(
   checker: CheckerContext,
@@ -294,11 +295,20 @@ export function fieldPassesOver(
     return undefined;
   }
   const members = membersOf(keys).filter((member) => !isNever(member));
+  if (members.length === 0) {
+    return [noFieldPass];
+  }
   const named = members.flatMap((member): FieldPassType[] => {
-    const field = keyName(member);
-    return field === undefined
+    const name = keyName(member);
+    return name === undefined
       ? []
-      : [{ field, key: member, value: fieldTypeOf(checker, subject, member) }];
+      : [
+          {
+            visits: { kind: 'field', name },
+            key: member,
+            value: fieldTypeOf(checker, subject, member),
+          },
+        ];
   });
   const others = members.filter((member) => keyName(member) === undefined);
   if (others.length === 0) {
@@ -306,8 +316,14 @@ export function fieldPassesOver(
   }
   const within = unionOf(others, checker.typeRules);
   const key: Type = { kind: 'parameter', declaration: header, within };
-  return [...named, { field: undefined, key, value: fieldTypeOf(checker, subject, key) }];
+  return [...named, { visits: { kind: 'others' }, key, value: fieldTypeOf(checker, subject, key) }];
 }
+
+/**
+ * The pass over a struct with no field: its body never runs, so it is checked once for the mistakes
+ * that don't depend on a field, its key and value of the type nothing more is reported about.
+ */
+const noFieldPass: FieldPassType = { visits: { kind: 'none' }, key: errorType, value: errorType };
 
 function isNever(type: Type): boolean {
   return type.kind === 'primitive' && type.name === 'Never';
