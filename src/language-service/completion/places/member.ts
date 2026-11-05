@@ -23,11 +23,8 @@ import type { Checker } from '../../../compiler/checker/check.ts';
 import type { Type } from '../../../compiler/checker/types/type.ts';
 import type { FunctionDeclaration } from '../../../compiler/syntax/declarations.ts';
 import { chainStepOf } from '../../../compiler/syntax/expressions/chains.ts';
-import {
-  type Expression,
-  type MemberAccess,
-  qualifiedPath,
-} from '../../../compiler/syntax/expressions/index.ts';
+import type { Expression, MemberAccess } from '../../../compiler/syntax/expressions/index.ts';
+import { qualifiedPath } from '../../../compiler/syntax/expressions/readings.ts';
 import type { Identifier } from '../../../compiler/syntax/node.ts';
 import type { NamePattern } from '../../../compiler/syntax/patterns.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';

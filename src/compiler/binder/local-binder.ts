@@ -21,7 +21,6 @@
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { type Convention, isUnnamed } from '../../language/naming.ts';
-import { entryFunction } from '../../language/well-known.ts';
 import { memo, SequenceMemo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Annotatable } from '../syntax/annotations.ts';
@@ -41,7 +40,6 @@ import type { NamedType, TypeNode } from '../syntax/types.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import {
   isAlias,
-  localFunctionOf,
   ownCallEntity,
   qualifies,
   type VariableEntity,
@@ -50,6 +48,7 @@ import {
   variableEntity,
 } from './entities.ts';
 import { namingViolation } from './naming.ts';
+import { functionsNamed, namesMain, noOwnCall } from './own-calls.ts';
 import type { LocalEntity, Miss, Scope, ScopeSnapshot } from './scope.ts';
 import { type Visibility, VisibilityNotes } from './visibility.ts';
 
@@ -357,36 +356,6 @@ interface DeclarationRules {
    * none when `false`, for a name whose repeat its declaration reported already.
    */
   readonly clash?: ((span: AnchoredSpan, name: string) => Diagnostic<AnchoredSpan>) | false;
-}
-
-/**
- * Why `name`, naming the functions `entity` before a `.`, denotes no call (§7): none of them that
- * encloses it is async, or it names `main`, whose call nothing holds.
- */
-export function noOwnCall(name: Identifier, entity: LocalEntity): Diagnostic<AnchoredSpan> {
-  return namesMain(name, entity)
-    ? binderDiagnostics.mainNeverDisposed(name.span)
-    : binderDiagnostics.notOwnCall(name.span, name.text);
-}
-
-function namesMain(name: Identifier, entity: LocalEntity): boolean {
-  return entity.kind === 'functions' && name.text === entryFunction;
-}
-
-/** The functions `entity` names: a top-level set of this tree's, or a local `fn` or named lambda. */
-function functionsNamed(
-  entity: LocalEntity | undefined,
-): readonly (FunctionDeclaration | Lambda)[] | undefined {
-  switch (entity?.kind) {
-    case 'functions':
-      return entity.overloads;
-    case 'variable': {
-      const local = localFunctionOf(entity);
-      return local === undefined ? undefined : [local];
-    }
-    default:
-      return undefined;
-  }
 }
 
 /**

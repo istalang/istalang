@@ -15,7 +15,8 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type { StringLiteral, StructLiteral } from '../../syntax/expressions/index.ts';
+import type { StructLiteral } from '../../syntax/expressions/index.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';

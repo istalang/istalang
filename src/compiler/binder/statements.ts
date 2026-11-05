@@ -13,7 +13,8 @@
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { type Expression, unparenthesized } from '../syntax/expressions/index.ts';
+import type { Expression } from '../syntax/expressions/index.ts';
+import { unparenthesized } from '../syntax/expressions/readings.ts';
 import type { Identifier } from '../syntax/node.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import { type AnchoredSpan, endOf } from '../syntax/positions.ts';

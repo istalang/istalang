@@ -15,18 +15,19 @@
  *   the others, gives as many fields as the struct it is instantiated with has.
  */
 
-import {
-  type FieldItem,
-  type FieldsLiteral,
-  itemValue,
-  type StructComprehension,
-  type StructLiteral,
+import type {
+  FieldItem,
+  FieldsLiteral,
+  StructComprehension,
+  StructLiteral,
 } from '../../syntax/expressions/index.ts';
+import { itemValue } from '../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext, CheckedPasses } from '../body-context.ts';
-import type { FieldPassType, FieldSource } from '../check.ts';
+import type { FieldSource } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Inference } from '../inference/infer.ts';
+import type { FieldPassType } from '../passes.ts';
 import { checkedFieldPasses, inFieldPasses } from '../rules/field-passes.ts';
 import { sameType } from '../types/identity.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';

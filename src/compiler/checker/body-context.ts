@@ -42,7 +42,6 @@ import type {
   ChainLink,
   CheckedFunction,
   CollectionForm,
-  FieldPassType,
   FieldSource,
   Iteration,
   IterationForm,
@@ -54,6 +53,7 @@ import type {
 import type { FieldRead, FieldReading } from './checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { CheckerContext } from './context.ts';
+import type { FieldPassType } from './passes.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
 import type { Fit } from './types/fit.ts';
 import type { FieldMember, FunctionType, Type } from './types/type.ts';

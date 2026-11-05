@@ -17,17 +17,15 @@
 import { isUnnamed } from '../../language/naming.ts';
 import type { Annotatable } from './annotations.ts';
 import type { FunctionDeclaration } from './declarations.ts';
-import {
-  type Comprehension,
-  type Expression,
-  type FieldComprehension,
-  type FieldHeader,
-  itemName,
-  itemValue,
-  type StructComprehension,
-  unparenthesized,
+import type {
+  Comprehension,
+  Expression,
+  FieldComprehension,
+  FieldHeader,
+  StructComprehension,
 } from './expressions/index.ts';
 import { isPlace } from './expressions/places.ts';
+import { itemName, itemValue, unparenthesized } from './expressions/readings.ts';
 import type { Identifier, Invalid, NodeOf } from './node.ts';
 import type { AssignmentOperator } from './operators.ts';
 import type { Pattern } from './patterns.ts';

@@ -26,8 +26,8 @@ import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { FieldHeader } from '../../syntax/expressions/index.ts';
 import { parentOf } from '../../syntax/tree.ts';
 import type { StructType } from '../../syntax/types.ts';
-import type { FieldPassType } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
+import type { FieldPassType } from '../passes.ts';
 import { isOpaque, type MappedParts } from '../types/computed-types.ts';
 import { substitute } from '../types/substitution.ts';
 import {

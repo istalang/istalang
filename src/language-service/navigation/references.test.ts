@@ -1,3 +1,8 @@
+/**
+ * The program's one index of the names denoting each declaration, against the binder's own
+ * resolution of the corpus and against single programs.
+ */
+
 import { describe, expect, it } from 'vitest';
 import { corpusDirectory } from '../../../test/corpus/programs.ts';
 import type { Entity } from '../../compiler/binder/entities.ts';

@@ -4,13 +4,8 @@
  */
 
 import { isOptionallyChained } from './chains.ts';
-import {
-  type Expression,
-  type Index,
-  type MemberAccess,
-  type TupleElement,
-  unparenthesized,
-} from './index.ts';
+import type { Expression, Index, MemberAccess, TupleElement } from './index.ts';
+import { unparenthesized } from './readings.ts';
 
 /** A field, a tuple element or an indexed element read off a place (§3.7, §3.9). */
 export type PlaceStep = MemberAccess | TupleElement | Index;

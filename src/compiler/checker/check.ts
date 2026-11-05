@@ -51,7 +51,7 @@ import type { CheckedPattern, TargetBinding, TargetOwner, TargetStep } from './c
 import type { ConstantForm } from './constant-form.ts';
 import type { LookupQueries } from './denotation.ts';
 import type { JsonFormQueries } from './json-form.ts';
-import type { PassRecords } from './passes.ts';
+import type { FieldPassType, PassRecords } from './passes.ts';
 import { type CheckerOptions, ProgramChecker } from './program-checker.ts';
 import type {
   FunctionCall,
@@ -167,18 +167,6 @@ export type CollectionForm = 'array' | 'map' | 'declared';
 export type IterationForm =
   | { readonly kind: 'cursor'; readonly item: Type }
   | { readonly kind: 'copied' };
-
-/**
- * One checking of a field loop's body (§4): for the field `field` names, its key that field's name
- * as a literal type and its value that field's type; or, with no `field`, for every field a struct
- * constraint leaves unnamed at once, its key a member parameter keyed by the loop's header, which
- * each instantiated field gives its own literal, and its value the field that key names.
- */
-export interface FieldPassType {
-  readonly field: string | undefined;
-  readonly key: Type;
-  readonly value: Type;
-}
 
 /** A field loop's pass as checked: its key and value, and the body as the pass reads it. */
 export interface FieldPass extends FieldPassType {

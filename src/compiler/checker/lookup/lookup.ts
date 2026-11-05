@@ -6,7 +6,8 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type { MemberAccess, StringLiteral } from '../../syntax/expressions/index.ts';
+import type { MemberAccess } from '../../syntax/expressions/index.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types.ts';

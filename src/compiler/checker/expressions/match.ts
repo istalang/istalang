@@ -12,7 +12,8 @@
  */
 
 import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
-import { casesOf, type Is, type Match } from '../../syntax/expressions/index.ts';
+import type { Is, Match } from '../../syntax/expressions/index.ts';
+import { casesOf } from '../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

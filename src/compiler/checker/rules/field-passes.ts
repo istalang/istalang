@@ -8,8 +8,8 @@
 
 import type { FieldHeader } from '../../syntax/expressions/index.ts';
 import type { BodyContext, CheckedPasses } from '../body-context.ts';
-import type { FieldPassType } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { FieldPassType } from '../passes.ts';
 import { declareTargets } from '../patterns/targets.ts';
 import { fieldPassesOver } from '../traits/struct-keys.ts';
 import { errorType, tupleType } from '../types/type.ts';

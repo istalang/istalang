@@ -12,7 +12,8 @@
  */
 
 import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
-import { type Expression, type Lambda, unparenthesized } from '../../syntax/expressions/index.ts';
+import type { Expression, Lambda } from '../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import type { BodyContext } from '../body-context.ts';
 import type { Inference } from '../inference/infer.ts';

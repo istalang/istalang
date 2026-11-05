@@ -8,6 +8,8 @@
  *   every value of it: an `any` type's, or a union's through its alias.
  * - A literal against an `any` type that took it whole selects it as a union's member is, as a
  *   downcast does its type.
+ * - A literal leaves its literal type to what binds it, and type arguments are written only where a
+ *   union's member is selected (§3.11).
  * - The types inside an `any` type are an open set, so a downcast acts as a guard for exhaustiveness;
  *   a union's members are a closed set, each a constructor (shapes.ts).
  */
@@ -20,8 +22,12 @@ import type {
   PatternPart,
   StructPattern,
 } from '../../syntax/patterns.ts';
+import { spanAcross } from '../../syntax/positions.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { sameType } from '../types/identity.ts';
 import { literalMembers, namesOwnType } from '../types/named-types.ts';
 import type { AnyType } from '../types/type.ts';
+import { baseOf } from '../types/unions.ts';
 import { literalTypeOf, memberTaken, selectsMember, unionPart } from './members.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import type { PatternTests, Selection } from './pattern-tests.ts';
@@ -105,4 +111,39 @@ function literalThroughAny(
         decided: true,
         shapeOf: () => undefined,
       };
+}
+
+/**
+ * The part a literal pattern leaves to what binds it: its literal type, where the part is of its
+ * base (`case "draft" as d` against a `String`), as only that value matched.
+ */
+export function literalPart(node: Pattern | PatternPart, part: ValuePart): ValuePart {
+  const literal = node.kind === 'LiteralPattern' ? literalTypeOf(node.value) : undefined;
+  return literal?.kind === 'literal' && sameType(baseOf(literal), part.type)
+    ? { ...part, type: literal }
+    : part;
+}
+
+/**
+ * Reports type arguments written in a pattern that selects no member of a union: only that one
+ * gives them, to tell apart the members instantiating one generic type (§3.11).
+ */
+export function refuseTypeArguments(
+  scope: Pick<PatternScope, 'report'>,
+  node: Pattern | PatternPart,
+): void {
+  const named = node.kind === 'StructPattern' ? node.type : node;
+  if (named?.kind !== 'NamePattern' && named?.kind !== 'NamedType') {
+    return;
+  }
+  const [first] = named.typeArguments;
+  const last = named.typeArguments.at(-1);
+  if (first !== undefined && last !== undefined) {
+    scope.report(
+      checkerDiagnostics.typeArgumentsOutsideUnion(
+        spanAcross(first.span, last.span),
+        lastName(named.path).text,
+      ),
+    );
+  }
 }

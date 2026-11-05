@@ -6,7 +6,8 @@
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Literal, Unary } from '../../syntax/expressions/index.ts';
+import type { Unary } from '../../syntax/expressions/index.ts';
+import type { Literal } from '../../syntax/expressions/literals.ts';
 import type { CursorKind, CursorToken } from '../cursor/index.ts';
 import type { Parser } from '../parser.ts';
 

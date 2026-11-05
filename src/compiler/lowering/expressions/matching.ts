@@ -12,7 +12,8 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import { casesOf, type Is, type Match } from '../../syntax/expressions/index.ts';
+import type { Is, Match } from '../../syntax/expressions/index.ts';
+import { casesOf } from '../../syntax/expressions/readings.ts';
 import type { FunctionContext } from '../context.ts';
 import { lowerMatching } from '../patterns.ts';
 import { endScope, headerTemporaries, lowerGuarded, release } from '../statements/scopes.ts';

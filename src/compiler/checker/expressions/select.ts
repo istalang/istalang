@@ -17,13 +17,8 @@
 
 import { wellKnown } from '../../../language/well-known.ts';
 import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
-import {
-  type Expression,
-  type Select,
-  type SelectCase,
-  selectCasesOf,
-  unparenthesized,
-} from '../../syntax/expressions/index.ts';
+import type { Expression, Select, SelectCase } from '../../syntax/expressions/index.ts';
+import { selectCasesOf, unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import { ownCallerOf } from '../closures/own-calls.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

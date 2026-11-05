@@ -1,3 +1,8 @@
+/**
+ * Hover over single programs: what a name, a key naming a field, an expression and a written type
+ * show, a spelling with what it names beside it.
+ */
+
 import { describe, expect, it } from 'vitest';
 import { hoverAt } from './hover.ts';
 import { programAt } from './language-service.test-kit.ts';

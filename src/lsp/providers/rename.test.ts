@@ -1,3 +1,8 @@
+/**
+ * Renaming through the server across the corpus: a rename keeps every diagnostic and every renamed
+ * name denoting what it did.
+ */
+
 import fc from 'fast-check';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {

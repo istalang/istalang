@@ -35,16 +35,13 @@ import { targetNames, unparenthesizedPattern } from '../../syntax/patterns.ts';
 import { type AnchoredSpan, spanAcross } from '../../syntax/positions.ts';
 import type { PartBinding, PatternTest, TargetBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { sameType } from '../types/identity.ts';
 import { errorType, type Type } from '../types/type.ts';
-import { baseOf } from '../types/unions.ts';
 import { partSelected, sameNames } from './alternatives.ts';
 import { takeArray } from './arrays.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
-import { literalTypeOf } from './members.ts';
 import { type PatternScope, type ValuePart, variantFieldStep } from './parts.ts';
 import type { Leaf, PatternTests } from './pattern-tests.ts';
-import { selectionOf } from './selections.ts';
+import { literalPart, refuseTypeArguments, selectionOf } from './selections.ts';
 import { isStructNotKnown, restBinding, takeFieldsByName } from './struct-fields.ts';
 import { constructed, type Taking, takeApart, takeFields, takeTargets } from './taking.ts';
 
@@ -189,12 +186,12 @@ function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart
     return { shape, part: { type: errorType, path: part.path } };
   }
   if (selection === undefined) {
-    refuseTypeArguments(walk, node);
+    refuseTypeArguments(walk.scope, node);
     const shape = handlerOf(patternHandlers, node)(walk, node, part);
     return { shape: part.type.kind === 'error' ? anyShape : shape, part: literalPart(node, part) };
   }
   if (selection.test.kind !== 'member') {
-    refuseTypeArguments(walk, node);
+    refuseTypeArguments(walk.scope, node);
   }
   walk.found.push(selection.test);
   const inside = selection.decided
@@ -205,38 +202,6 @@ function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart
     part: literalPart(node, selection.part),
     selected: selection.test,
   };
-}
-
-/**
- * The part a literal pattern leaves to what binds it: its literal type, where the part is of its
- * base (`case "draft" as d` against a `String`), as only that value matched.
- */
-function literalPart(node: Pattern | PatternPart, part: ValuePart): ValuePart {
-  const literal = node.kind === 'LiteralPattern' ? literalTypeOf(node.value) : undefined;
-  return literal?.kind === 'literal' && sameType(baseOf(literal), part.type)
-    ? { ...part, type: literal }
-    : part;
-}
-
-/**
- * Reports type arguments written in a pattern that selects no member of a union: only that one
- * gives them, to tell apart the members instantiating one generic type (§3.11).
- */
-function refuseTypeArguments(walk: Walk, node: Pattern | PatternPart): void {
-  const named = node.kind === 'StructPattern' ? node.type : node;
-  if (named?.kind !== 'NamePattern' && named?.kind !== 'NamedType') {
-    return;
-  }
-  const [first] = named.typeArguments;
-  const last = named.typeArguments.at(-1);
-  if (first !== undefined && last !== undefined) {
-    walk.scope.report(
-      checkerDiagnostics.typeArgumentsOutsideUnion(
-        spanAcross(first.span, last.span),
-        lastName(named.path).text,
-      ),
-    );
-  }
 }
 
 /**

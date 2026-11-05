@@ -1,3 +1,8 @@
+/**
+ * Renaming declarations in single programs: every name spelled anew, shorthands spelled out, keys
+ * naming a field renamed with it, and each refusal with its reason.
+ */
+
 import { describe, expect, it } from 'vitest';
 import type { Program } from '../../compiler/program/program.ts';
 import type { NamePlace } from './declarations.ts';

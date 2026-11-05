@@ -9,16 +9,14 @@
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { argumentValue } from '../syntax/expressions/arguments.ts';
-import {
-  type CallArgument,
-  casesOf,
-  type Expression,
-  type FieldsLiteral,
-  type MatchCase,
-  qualifiedPath,
-  type SelectCase,
-  selectCasesOf,
+import type {
+  CallArgument,
+  Expression,
+  FieldsLiteral,
+  MatchCase,
+  SelectCase,
 } from '../syntax/expressions/index.ts';
+import { casesOf, qualifiedPath, selectCasesOf } from '../syntax/expressions/readings.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
 import {
   bindConditionValue,

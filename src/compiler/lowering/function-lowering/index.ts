@@ -68,6 +68,7 @@ import { declareVariable, VariableRegisters } from '../statements/variables.ts';
 import type { DefinitionTables, EntryHeader } from '../tables.ts';
 import { fittedValue } from './fits.ts';
 import {
+  defaultValueOf,
   type Frame,
   instanceFrame,
   type LoweredFunction,
@@ -381,15 +382,6 @@ class FunctionLowering implements FunctionContext {
   constant(value: Value, span: AnchoredSpan): Register {
     return emitConstant(this, value, span);
   }
-}
-
-/** The default of `parameter`, which a parameter with a default's entry has. */
-function defaultValueOf(parameter: SignatureParameter): Expression {
-  const { defaultValue } = parameter.node;
-  if (defaultValue === undefined) {
-    unreachable(`'${parameter.node.name.text}' has no default; the checker should have said so.`);
-  }
-  return defaultValue;
 }
 
 /** The checker's `answer` about `at`, which lowering reads only of what was checked. */

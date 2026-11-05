@@ -22,6 +22,7 @@ import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { memo } from '../../structures/memo.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import { checkerDiagnostics } from './diagnostics/index.ts';
+import type { Type } from './types/type.ts';
 
 /** One checking of a field loop's body, inside `outer`; the body itself has none. */
 export interface Pass {
@@ -187,4 +188,16 @@ function passTable<Key, Value>(passes: Passes): PassTable<Key, Value> {
     at: (pass) => ({ get: (key) => get(key, pass), has: (key) => has(key, pass) }),
     entries: () => [...records.values()].flatMap((each) => [...each]),
   };
+}
+
+/**
+ * One checking of a field loop's body (§4): for the field `field` names, its key that field's name
+ * as a literal type and its value that field's type; or, with no `field`, for every field a struct
+ * constraint leaves unnamed at once, its key a member parameter keyed by the loop's header, which
+ * each instantiated field gives its own literal, and its value the field that key names.
+ */
+export interface FieldPassType {
+  readonly field: string | undefined;
+  readonly key: Type;
+  readonly value: Type;
 }

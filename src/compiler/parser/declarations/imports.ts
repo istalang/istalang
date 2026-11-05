@@ -9,7 +9,7 @@
  */
 
 import type { ImportDeclaration } from '../../syntax/declarations.ts';
-import type { StringLiteral } from '../../syntax/expressions/index.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals.ts';
 import { type Identifier, isMissingName, type Missing } from '../../syntax/node.ts';
 import { isKeyword } from '../../syntax/tokens.ts';
 import type { Parser } from '../parser.ts';

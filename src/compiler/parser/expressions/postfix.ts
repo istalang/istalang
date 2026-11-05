@@ -23,15 +23,15 @@
  */
 
 import { misplacedArgument } from '../../syntax/expressions/arguments.ts';
-import {
-  type Call,
-  type CallArgument,
-  type Dereference,
-  type Expression,
-  type Index,
-  qualifiedPath,
+import type {
+  Call,
+  CallArgument,
+  Dereference,
+  Expression,
+  Index,
 } from '../../syntax/expressions/index.ts';
 import { isPlace } from '../../syntax/expressions/places.ts';
+import { qualifiedPath } from '../../syntax/expressions/readings.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';

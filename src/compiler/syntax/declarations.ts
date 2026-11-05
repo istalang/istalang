@@ -20,7 +20,8 @@
 
 import { receiverParameter } from '../../language/well-known.ts';
 import type { Annotatable } from './annotations.ts';
-import type { Expression, Parameter, StringLiteral } from './expressions/index.ts';
+import type { Expression, Parameter } from './expressions/index.ts';
+import type { StringLiteral } from './expressions/literals.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from './node.ts';
 import { type AnchoredSpan, spanAcross } from './positions.ts';
 import type { Block, VariableDeclaration } from './statements.ts';

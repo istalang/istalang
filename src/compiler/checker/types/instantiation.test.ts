@@ -13,12 +13,8 @@ import {
   type TypeParameter,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
-import {
-  casesOf,
-  type Expression,
-  type Match,
-  type MemberAccess,
-} from '../../syntax/expressions/index.ts';
+import type { Expression, Match, MemberAccess } from '../../syntax/expressions/index.ts';
+import { casesOf } from '../../syntax/expressions/readings.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import { type For, tailExpressionOf } from '../../syntax/statements.ts';
 import { bodyOf, nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';

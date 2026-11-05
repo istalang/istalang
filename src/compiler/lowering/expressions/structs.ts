@@ -15,15 +15,15 @@ import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { FieldSource } from '../../checker/check.ts';
 import type { AnonymousStructType, NominalType } from '../../checker/types/type.ts';
-import {
-  type Expression,
-  type FieldsLiteral,
-  itemValue,
-  type MemberAccess,
-  type NewStructLiteral,
-  type StructComprehension,
-  type StructLiteral,
+import type {
+  Expression,
+  FieldsLiteral,
+  MemberAccess,
+  NewStructLiteral,
+  StructComprehension,
+  StructLiteral,
 } from '../../syntax/expressions/index.ts';
+import { itemValue } from '../../syntax/expressions/readings.ts';
 import { defaultEntryOf } from '../closed-calls.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';

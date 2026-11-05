@@ -27,7 +27,7 @@ import {
 } from '../../../compiler/checker/types/named-types.ts';
 import { noneType, type Type } from '../../../compiler/checker/types/type.ts';
 import { literalType, membersOf } from '../../../compiler/checker/types/unions.ts';
-import { casesOf } from '../../../compiler/syntax/expressions/index.ts';
+import { casesOf } from '../../../compiler/syntax/expressions/readings.ts';
 import type { PatternWord } from '../../../compiler/syntax/grammar-words.ts';
 import { lastName } from '../../../compiler/syntax/node.ts';
 import type { NamePattern, Pattern, StructPattern } from '../../../compiler/syntax/patterns.ts';

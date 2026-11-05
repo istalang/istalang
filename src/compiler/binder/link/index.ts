@@ -48,8 +48,9 @@ import type {
   Qualifier,
   VariantEntity,
 } from '../entities.ts';
-import { type FreeName, noOwnCall, type QualifiedPath } from '../local-binder.ts';
+import type { FreeName, QualifiedPath } from '../local-binder.ts';
 import { undeclaredName } from '../naming.ts';
+import { noOwnCall } from '../own-calls.ts';
 import { type ModuleLinks, resolvedImport } from './module-links.ts';
 import { type AliasLookup, qualifierOf } from './qualifiers.ts';
 import { checkTestImports, meetPrelude } from './top-level-rules.ts';

@@ -13,7 +13,7 @@
 import { type Checker, checkProgram } from '../../compiler/checker/check.ts';
 import type { Denotation } from '../../compiler/checker/denotation.ts';
 import { type ModuleId, type Program, programModule } from '../../compiler/program/program.ts';
-import type { StringLiteral } from '../../compiler/syntax/expressions/index.ts';
+import type { StringLiteral } from '../../compiler/syntax/expressions/literals.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
 import { spanIn, startTogether } from '../../compiler/syntax/positions.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';

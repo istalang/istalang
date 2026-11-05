@@ -6,7 +6,8 @@
  * number written in place.
  */
 
-import { type Expression, unparenthesized } from './index.ts';
+import type { Expression } from './index.ts';
+import { unparenthesized } from './readings.ts';
 
 /** A number written in place, with its literal's kind and its signed value. */
 export type SignedNumber =

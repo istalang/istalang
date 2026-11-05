@@ -14,11 +14,8 @@
 
 import { itemField } from '../../../compiler/checker/struct-items.ts';
 import type { FieldMember } from '../../../compiler/checker/types/type.ts';
-import {
-  type FieldItem,
-  type FieldsLiteral,
-  itemName,
-} from '../../../compiler/syntax/expressions/index.ts';
+import type { FieldItem, FieldsLiteral } from '../../../compiler/syntax/expressions/index.ts';
+import { itemName } from '../../../compiler/syntax/expressions/readings.ts';
 import type { Identifier } from '../../../compiler/syntax/node.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
 import { nodesAt, type SyntaxNode } from '../../../compiler/syntax/tree.ts';

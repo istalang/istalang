@@ -7,7 +7,8 @@
  */
 
 import type { Block } from '../statements.ts';
-import { casesOf, type If, type Match, type Select, selectCasesOf } from './index.ts';
+import type { If, Match, Select } from './index.ts';
+import { casesOf, selectCasesOf } from './readings.ts';
 
 export function valueBranchesOf(node: If | Match | Select): readonly Block[] {
   switch (node.kind) {

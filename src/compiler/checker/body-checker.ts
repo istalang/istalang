@@ -31,7 +31,7 @@ import type { Block, Statement, VariableDeclaration } from '../syntax/statements
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { Accepts, BodyContext, CheckedPasses, Enclosing, Returns } from './body-context.ts';
-import type { CheckedBody, FieldPassType, SignatureParameter, ValueSite } from './check.ts';
+import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
 import { statementPlace } from './checked-annotation.ts';
 import { FunctionScope } from './closures/function-scope.ts';
 import { FunctionScopes } from './closures/functions.ts';
@@ -44,6 +44,7 @@ import { acceptedPartOf, acceptsOf, expressionHandlers } from './expressions/exp
 import { StructLiterals } from './expressions/literal-sources.ts';
 import { FieldReads } from './expressions/member-access.ts';
 import { OptionalChains } from './expressions/optionals.ts';
+import type { FieldPassType } from './passes.ts';
 import { type Pass, Passes } from './passes.ts';
 import { CheckedPatterns } from './patterns/matching.ts';
 import { declareTargets } from './patterns/targets.ts';

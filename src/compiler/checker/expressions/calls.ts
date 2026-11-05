@@ -31,13 +31,13 @@ import { conversionFunction } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
 import { isMethod } from '../../syntax/declarations.ts';
 import { misplacedArgument } from '../../syntax/expressions/arguments.ts';
-import {
-  type Call,
-  type CallArgument,
-  type Expression,
-  type MemberAccess,
-  unparenthesized,
+import type {
+  Call,
+  CallArgument,
+  Expression,
+  MemberAccess,
 } from '../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';

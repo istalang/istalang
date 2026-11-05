@@ -31,15 +31,13 @@ import {
   type TypeAliasDeclaration,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
-import {
-  type Expression,
-  type FieldItem,
-  type FieldsLiteral,
-  itemName,
-  itemValue,
-  type Spread,
-  unparenthesized,
+import type {
+  Expression,
+  FieldItem,
+  FieldsLiteral,
+  Spread,
 } from '../../syntax/expressions/index.ts';
+import { itemName, itemValue, unparenthesized } from '../../syntax/expressions/readings.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { BodyContext } from '../body-context.ts';

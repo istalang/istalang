@@ -16,7 +16,8 @@
 
 import type { Annotatable } from './annotations.ts';
 import type { TypeParameter } from './declarations.ts';
-import type { Literal, Unary } from './expressions/index.ts';
+import type { Unary } from './expressions/index.ts';
+import type { Literal } from './expressions/literals.ts';
 import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './node.ts';
 import type { WildcardPattern } from './patterns.ts';
 

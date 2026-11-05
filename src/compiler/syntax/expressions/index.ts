@@ -18,43 +18,12 @@
  * was written.
  */
 
-import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from '../node.ts';
+import type { Identifier, Invalid, Missing, NodeOf } from '../node.ts';
 import type { BinaryOperator, ChainingOperator, UnaryOperator } from '../operators.ts';
 import type { Pattern } from '../patterns.ts';
 import type { Block } from '../statements.ts';
 import type { NamedType, TypeNode } from '../types.ts';
-
-interface IntegerLiteral extends NodeOf<'IntegerLiteral'> {
-  readonly value: bigint;
-}
-
-interface FloatLiteral extends NodeOf<'FloatLiteral'> {
-  readonly value: number;
-}
-
-/** `5d`: the value is in milliseconds. */
-export interface DurationLiteral extends NodeOf<'DurationLiteral'> {
-  readonly value: bigint;
-}
-
-/** The decoded text, escapes resolved. */
-export interface StringLiteral extends NodeOf<'StringLiteral'> {
-  readonly value: string;
-}
-
-interface BooleanLiteral extends NodeOf<'BooleanLiteral'> {
-  readonly value: boolean;
-}
-
-type NoneLiteral = NodeOf<'NoneLiteral'>;
-
-export type Literal =
-  | IntegerLiteral
-  | FloatLiteral
-  | DurationLiteral
-  | StringLiteral
-  | BooleanLiteral
-  | NoneLiteral;
+import type { Literal } from './literals.ts';
 
 /** `...xs` inside an array, map, call or struct literal. */
 export interface Spread extends NodeOf<'Spread'> {
@@ -161,16 +130,6 @@ interface PositionalInitializer extends NodeOf<'PositionalInitializer'> {
 /** A struct literal's item naming a field's value, by name or by position. */
 export type FieldItem = FieldInitializer | PositionalInitializer;
 
-/** The expression an item gives its field: its value, or for the shorthand, its own name. */
-export function itemValue(item: FieldItem): Expression {
-  return item.kind === 'FieldInitializer' ? (item.value ?? item.name) : item.value;
-}
-
-/** The field an item names; undefined for a positional item, which gives a struct's one field. */
-export function itemName(item: FieldItem): Identifier | undefined {
-  return item.kind === 'FieldInitializer' ? item.name : undefined;
-}
-
 export interface Parameter extends NodeOf<'Parameter'> {
   /** `...name`, collecting the remaining arguments. */
   readonly isRest: boolean;
@@ -234,26 +193,6 @@ export interface MemberAccess extends NodeOf<'MemberAccess'> {
   readonly target: Expression;
   readonly isOptional: boolean;
   readonly member: Identifier;
-}
-
-/**
- * The names of a qualified name such as `m.Pair`, or undefined for any other expression. Until a
- * `{` or `<…>` follows, a qualified name parses as member accesses; this reads it back as the
- * names alone, whose spans the type or binder path keeps.
- */
-export function qualifiedPath(expression: Expression): QualifiedName | undefined {
-  const members: Identifier[] = [];
-  let current: Expression = expression;
-  while (current.kind === 'MemberAccess' && !current.isOptional) {
-    members.unshift(current.member);
-    current = current.target;
-  }
-  return current.kind === 'Identifier' ? [current, ...members] : undefined;
-}
-
-/** `node` without the parentheses written around it, which change nothing about it. */
-export function unparenthesized(node: Expression): Expression {
-  return node.kind === 'Parenthesized' ? unparenthesized(node.expression) : node;
 }
 
 /** `a[i]`, and slicing when the index is a range; `a?.[i]` when `isOptional`. */
@@ -367,11 +306,6 @@ export interface MatchCase extends NodeOf<'MatchCase'> {
   readonly body: Block;
 }
 
-/** A `match`'s cases, without the invalid ones the parser reported. */
-export function casesOf(node: Match): readonly MatchCase[] {
-  return node.cases.filter((each) => each.kind === 'MatchCase');
-}
-
 /** `else: body`, ending an `if` or a `select`. */
 export interface ElseClause extends NodeOf<'ElseClause'> {
   readonly body: Block;
@@ -392,11 +326,6 @@ export interface SelectCase extends NodeOf<'SelectCase'> {
   readonly future: Expression;
   readonly binding: Identifier | undefined;
   readonly body: Block;
-}
-
-/** A `select`'s cases, without the invalid ones the parser reported. */
-export function selectCasesOf(node: Select): readonly SelectCase[] {
-  return node.cases.filter((each) => each.kind === 'SelectCase');
 }
 
 export type Expression =

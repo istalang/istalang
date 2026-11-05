@@ -9,12 +9,8 @@
 
 import type { Entity, TypeEntity } from '../../binder/entities.ts';
 import { type DeclaredStruct, isDeclaredStruct } from '../../syntax/declarations.ts';
-import {
-  type FieldsLiteral,
-  itemName,
-  itemValue,
-  unparenthesized,
-} from '../../syntax/expressions/index.ts';
+import type { FieldsLiteral } from '../../syntax/expressions/index.ts';
+import { itemName, itemValue, unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { BodyContext } from '../body-context.ts';
 import { itemField } from '../struct-items.ts';

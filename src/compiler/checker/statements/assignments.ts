@@ -24,7 +24,8 @@
  * - What lowering needs is recorded: each place written, with its part of the value and its fit.
  */
 
-import { type Expression, unparenthesized } from '../../syntax/expressions/index.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import { type CompoundAssignment, compoundOperator } from '../../syntax/operators.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import {

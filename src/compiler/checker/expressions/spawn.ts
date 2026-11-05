@@ -17,12 +17,8 @@
 
 import { wellKnown } from '../../../language/well-known.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
-import {
-  type Call,
-  type Expression,
-  type Spawn,
-  unparenthesized,
-} from '../../syntax/expressions/index.ts';
+import type { Call, Expression, Spawn } from '../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isSendable } from '../traits/sendable.ts';

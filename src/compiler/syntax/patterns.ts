@@ -9,7 +9,8 @@
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import type { Expression, Literal, Unary } from './expressions/index.ts';
+import type { Expression, Unary } from './expressions/index.ts';
+import type { Literal } from './expressions/literals.ts';
 import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './node.ts';
 import type { ComparisonOperator } from './operators.ts';
 import type { NamedType, TypeNode } from './types.ts';

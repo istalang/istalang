@@ -24,15 +24,13 @@
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import { chainStepOf, isOptionallyChained } from '../../syntax/expressions/chains.ts';
-import {
-  casesOf,
-  type Expression,
-  type MatchCase,
-  type SelectCase,
-  type StructComprehension,
-  selectCasesOf,
-  unparenthesized,
+import type {
+  Expression,
+  MatchCase,
+  SelectCase,
+  StructComprehension,
 } from '../../syntax/expressions/index.ts';
+import { casesOf, selectCasesOf, unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { binaryOperators } from '../../syntax/operators.ts';
 import {
@@ -48,6 +46,7 @@ import {
 } from '../../syntax/statements.ts';
 import { fieldChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { LabelResolution } from '../check.ts';
+import { partsBeside } from './chain-parts.ts';
 
 /** What a flow rule decides: its states, where paths meet, and what its own events do. */
 export interface FlowRule<State> {
@@ -293,20 +292,6 @@ function children(walk: FlowWalk, node: SyntaxNode, state: Opaque): Flow {
 /** A construct that may be a link of an optional chain. */
 function link(walk: FlowWalk, node: Expression, state: Opaque): Flow {
   return walk.link(node, state);
-}
-
-/**
- * The parts of `node` other than its step's `target`, a child or, for a method call, the callee's
- * child (`chainStepOf`): a callee holding the target is opened up into its other parts.
- */
-function partsBeside(node: SyntaxNode, target: SyntaxNode): readonly SyntaxNode[] {
-  return fieldChildrenOf(node).flatMap((child) => {
-    if (child === target) {
-      return [];
-    }
-    const parts = fieldChildrenOf(child);
-    return parts.includes(target) ? parts.filter((part) => part !== target) : [child];
-  });
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.

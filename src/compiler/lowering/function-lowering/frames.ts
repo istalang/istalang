@@ -20,6 +20,7 @@ import type {
 } from '../../checker/check.ts';
 import { instantiatedBody } from '../../checker/types/instantiation.ts';
 import type { Type } from '../../checker/types/type.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import {
   type BodyOwner,
@@ -176,4 +177,13 @@ export function nestedFrame(
     result: type.result,
     self: node.name,
   };
+}
+
+/** The default of `parameter`, which a parameter with a default's entry has. */
+export function defaultValueOf(parameter: SignatureParameter): Expression {
+  const { defaultValue } = parameter.node;
+  if (defaultValue === undefined) {
+    unreachable(`'${parameter.node.name.text}' has no default; the checker should have said so.`);
+  }
+  return defaultValue;
 }

@@ -27,12 +27,8 @@ import type { SignatureParameter } from '../../checker/check.ts';
 import { parameterOfArgument } from '../../checker/resolved-call.ts';
 import type { RestSlot } from '../../checker/types/function-types.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
-import {
-  type Call,
-  type Expression,
-  type Spawn,
-  unparenthesized,
-} from '../../syntax/expressions/index.ts';
+import type { Call, Expression, Spawn } from '../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import { type ClosedCall, calledParameters } from '../closed-calls.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall, emitFunctionCall } from '../emit-call.ts';
