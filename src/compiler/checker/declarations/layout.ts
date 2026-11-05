@@ -46,7 +46,7 @@ import {
   type Type,
 } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
-import type { TypeRules } from '../types/type-rules.ts';
+import { type TypeRules, unfolded } from '../types/type-rules.ts';
 import { type FieldedDeclaration, TypeExpansion } from './type-expansion.ts';
 
 /** Whether two lists of fields name, type and declare their fields alike, in order. */
@@ -104,8 +104,8 @@ export class Layouts {
     if (type.kind === 'anonymous') {
       return type.fields;
     }
-    if (type.kind === 'recursive') {
-      return this.fieldsOf(this.#checker.typeRules.unfold(type));
+    if (type.kind === 'recursive' || type.kind === 'recursiveMatch') {
+      return this.fieldsOf(unfolded(type, this.#checker.typeRules));
     }
     if (type.kind !== 'nominal') {
       return undefined;
@@ -199,7 +199,7 @@ export class Layouts {
     defaults: FunctionDeclaration | undefined,
   ): readonly FieldMember[] {
     const module = this.#checker.moduleOf(declaration);
-    return this.#ended(declaration, declaredFields(this.#checker, module, fields, defaults));
+    return this.#ended(declaration, declaredFields(this.#checker, module, fields, { defaults }));
   }
 
   /** `fields` of `declaration`, each that would make its instantiation endless read as an error. */

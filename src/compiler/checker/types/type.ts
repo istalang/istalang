@@ -67,13 +67,14 @@ import type {
   KeysType,
   MappedType,
   MatchType,
+  RecursiveMatchType,
   RecursiveType,
 } from './computed-types.ts';
 import { inFieldOrder } from './field-order.ts';
 import type { StructConstraintModel } from './struct-constraint.ts';
 
 /** The alias a type was written through, with the arguments it was given there (§3.17). */
-interface DeclaredAliasUse {
+export interface DeclaredAliasUse {
   readonly kind: 'alias';
   readonly declaration: TypeAliasDeclaration;
   readonly arguments: readonly Type[];
@@ -132,17 +133,8 @@ export interface AnyType extends WrittenThrough {
   readonly constraints: readonly Constraint[];
 }
 
-/**
- * What a recursive alias use unfolds to carries (§3.17): the use, whose identity it has, so the
- * use and its unfolding are one type whatever the body's kind (type-keys.ts), and a value of either
- * is taken apart as the body's. Only the kinds a body can be carry it (`UnfoldedType`).
- */
-interface Unfolding {
-  readonly recursion?: RecursiveUse | undefined;
-}
-
 /** A declared struct, shared or not, enum or extern type, with its type arguments. */
-export interface NominalType extends WrittenThrough, Unfolding {
+export interface NominalType extends WrittenThrough {
   readonly kind: 'nominal';
   readonly entity: NominalEntity;
   readonly arguments: readonly Type[];
@@ -170,7 +162,7 @@ export function nominalType(entity: TypeEntity, typeArguments: readonly Type[]):
   return { kind: 'nominal', entity, arguments: typeArguments };
 }
 
-export interface TupleType extends WrittenThrough, Unfolding {
+export interface TupleType extends WrittenThrough {
   readonly kind: 'tuple';
   readonly elements: readonly Type[];
 }
@@ -190,18 +182,17 @@ export interface FieldMember {
  * A struct without a name, its shape (§3.1): introduced by a `{…}` type, by a `struct{…}` literal
  * with nothing to take a type from, by a shared struct as the value behind it (§3.18), by a
  * struct as the shape its value converts into, or by a struct pattern's rest (§3.11). Its fields are in name order; `origin` is where it
- * was written, which no relation reads.
+ * was written, which no relation reads. The shape a recursive type `match` use stands for carries
+ * that use (`recursion`, `RecursiveMatchType`), whose identity it has.
  */
-export interface AnonymousStructType extends WrittenThrough, Unfolding {
+export interface AnonymousStructType extends WrittenThrough {
   readonly kind: 'anonymous';
   readonly origin: StructType | StructLiteral | DeclaredStruct | RestPattern;
   readonly fields: readonly FieldMember[];
+  readonly recursion?: RecursiveUse | undefined;
 }
 
-/**
- * A use of an alias that reaches itself (§3.17): one whose body refers to it, or whose type `match`
- * reduces to it again; the alias, and its arguments. Its identity is that of the use.
- */
+/** A use of an alias, by its declaration and arguments: a type `match` alias's (§3.17). */
 export interface RecursiveUse {
   readonly declaration: AliasDeclaration;
   readonly arguments: readonly Type[];
@@ -226,7 +217,7 @@ export interface ParameterSlot {
  * may end in a pack (`fn(Int, ...A) -> R`, §3.5), which stands for the parameters a tuple
  * substituted for it flattens into (`withPack`), so a type with a pack is always generic.
  */
-export interface FunctionType extends WrittenThrough, Unfolding {
+export interface FunctionType extends WrittenThrough {
   readonly kind: 'function';
   readonly isSendable: boolean;
   readonly isAsync: boolean;
@@ -241,10 +232,17 @@ export type PackType = TypeParameterType | ErrorType;
 /**
  * What a type parameter is keyed by: its declaration, a trait standing for its `Self`, a field
  * loop's header, whose pass over the fields a struct constraint leaves unnamed stands for one of
- * them by a key of its own (§4), or a struct pattern's rest, whose struct maps each key it takes to
- * its field by one (§3.11).
+ * them by a key of its own (§4), a struct pattern's rest, whose struct maps each key it takes to
+ * its field by one (§3.11), or a recursive alias, whose own uses inside its group's bodies stand
+ * for the type being closed while the group closes (declarations/recursive-bodies.ts), and nowhere
+ * else.
  */
-export type ParameterKey = TypeParameter | TraitDeclaration | FieldHeader | RestPattern;
+export type ParameterKey =
+  | TypeParameter
+  | TraitDeclaration
+  | FieldHeader
+  | RestPattern
+  | TypeAliasDeclaration;
 
 /**
  * A type parameter, opaque inside the declaration that introduces it (§3.5). A mapped entry's binds
@@ -309,39 +307,15 @@ export interface LiteralType extends WrittenThrough {
   readonly value: LiteralValue;
 }
 
-/**
- * `A | B` (§2): a value of one of its members, two or more, normalized (unions.ts). One a recursive
- * use unfolds to (`Unfolding`) stands whole as a member of another union, never flattened.
- */
-export interface UnionType extends WrittenThrough, Unfolding {
+/** `A | B` (§2): a value of one of its members, two or more, normalized (unions.ts). */
+export interface UnionType extends WrittenThrough {
   readonly kind: 'union';
   readonly members: readonly Type[];
 }
 
-/** The kinds a recursive alias use can unfold to, which carry its identity (`Unfolding`). */
-export type UnfoldedType = NominalType | AnonymousStructType | TupleType | FunctionType | UnionType;
-
-/** Whether `type` is of a kind a recursive alias use can unfold to (`UnfoldedType`). */
-export function isUnfoldable(type: Type): type is UnfoldedType {
-  return (
-    type.kind === 'nominal' ||
-    type.kind === 'anonymous' ||
-    type.kind === 'tuple' ||
-    type.kind === 'function' ||
-    type.kind === 'union'
-  );
-}
-
-/** The recursive alias use `type` is the unfolding of, whose identity it has (`Unfolding`). */
+/** The recursive type match use the shape `type` stands for, whose identity it has. */
 export function recursionOf(type: Type): RecursiveUse | undefined {
-  return isUnfoldable(type) ? type.recursion : undefined;
-}
-
-/** `type` as its own kind, apart from any recursive use it is the unfolding of. */
-export function withoutRecursion(type: Type): Type {
-  return isUnfoldable(type) && type.recursion !== undefined
-    ? { ...type, recursion: undefined }
-    : type;
+  return type.kind === 'anonymous' ? type.recursion : undefined;
 }
 
 /** A type a struct value can have: a declared struct or an anonymous one. */
@@ -363,6 +337,7 @@ export type Type =
   | MappedType
   | MatchType
   | RecursiveType
+  | RecursiveMatchType
   | ErrorType;
 
 /** `type` as written through `alias`; the error type stays itself, as a diagnostic explained it. */

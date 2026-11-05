@@ -17,9 +17,8 @@
  *   `Array<async fn()>`, nor an `Array<Int>` an `Array<Int?>`. An `any` type converts into another
  *   whose constraints are among its own. A nominal struct's value converts into a shape its fields
  *   are, as the program says (`Fitting.shapeOf`); a shape never converts into a nominal struct. A
- *   shape a recursive use unfolds to and the same shape written out convert into each other, the
- *   one value of the use's body (§3.17); a tuple's, a function's or a nominal type's need nothing
- *   (`asValue`).
+ *   recursive type's value is its body's, one type (§3.17), so it goes in and out as what it
+ *   unfolds to (`asValue`).
  * - A member written with a type parameter is tried after the members without one, so inference
  *   binds it only to what the others don't take (§3.5): `T?` given an `Int?` binds `T` to `Int`.
  * - Whether a type meets a constraint is the program's to say (`Fitting`).
@@ -35,11 +34,10 @@ import {
   type Type,
   type TypeParameterType,
   type UnionType,
-  withoutRecursion,
 } from './type.ts';
 import { parametersIn } from './type-parts.ts';
 import { type TypeRules, unfolded } from './type-rules.ts';
-import { absorbingMember, baseOf, hasMember, holdingMember, membersOf } from './unions.ts';
+import { absorbingMember, baseOf, hasMember, membersOf } from './unions.ts';
 
 /**
  * What converts a value itself, before it goes into a union: nothing, the conversion into an `any`
@@ -117,15 +115,9 @@ export function matchConversion(
   return ownConversion(value, place, rules) ?? memberParameterFit(value, place, rules);
 }
 
-/**
- * `type` as a value of it goes in or out: what a recursive use unfolds to (§3.17), and where that is
- * a tuple, a function or a nominal type, the body itself, whose values are the use's: a use and its
- * body each go where the other is expected, at the top, never inside a container. A shape or a
- * union a use unfolds to keeps the use's identity, since a value of it carries its type.
- */
+/** `type` as a value of it goes in or out: what a recursive type unfolds to (§3.17), one type. */
 function asValue(type: Type, rules: TypeRules): Type {
-  const value = unfolded(type, rules);
-  return value.kind === 'anonymous' || value.kind === 'union' ? value : withoutRecursion(value);
+  return unfolded(type, rules);
 }
 
 /** How `found` fits `expected` as its own type, as `matchConversion` says. */
@@ -185,7 +177,7 @@ function convertedInto(
   }
   if (expected.kind === 'anonymous') {
     const shape = found.kind === 'anonymous' ? found : rules.shapeOf(found);
-    return shape !== undefined && rules.exact(withoutRecursion(expected), withoutRecursion(shape))
+    return shape !== undefined && rules.exact(expected, shape)
       ? { kind: 'shape', to: expected }
       : undefined;
   }
@@ -222,8 +214,8 @@ function intoAnyMember(
 
 /**
  * A member of `expected` that `member`, a member of a union found, goes into: its own, its
- * literal's base, or the `any` or recursive member that takes it whole (§2, §3.17), which holds it
- * as its own type; or undefined.
+ * literal's base, or the `any` member that takes it whole (§2), which holds it as its own type; or
+ * undefined.
  */
 function intoMember(member: Type, expected: UnionType, rules: ConversionRules): Type | undefined {
   return (
@@ -231,21 +223,18 @@ function intoMember(member: Type, expected: UnionType, rules: ConversionRules): 
     (member.kind === 'literal' && hasMember(expected, baseOf(member))
       ? baseOf(member)
       : undefined) ??
-    absorbingMember(expected.members, member, rules) ??
-    holdingMember(expected.members, member, rules)
+    absorbingMember(expected.members, member, rules)
   );
 }
 
 /**
  * The member of `expected` that is `found`'s own type: one written without a type parameter, else
  * one written with one that takes it, so inference binds a parameter only to what the others
- * don't take (§3.5). A recursive alias use's value is its body's (`asValue`, §3.17).
+ * don't take (§3.5).
  */
 function ownMember(found: Type, expected: UnionType, rules: ConversionRules): Type | undefined {
   const isGeneric = (member: Type) => parametersIn(member).length > 0;
-  const isOwn = (member: Type) =>
-    rules.exact(member, found) ||
-    (member.kind === 'recursive' && rules.exact(asValue(member, rules), found));
+  const isOwn = (member: Type) => rules.exact(member, found);
   return (
     expected.members.find((member) => !isGeneric(member) && isOwn(member)) ??
     expected.members.find((member) => isGeneric(member) && isOwn(member))
@@ -254,18 +243,14 @@ function ownMember(found: Type, expected: UnionType, rules: ConversionRules): Ty
 
 /**
  * The members of the union `expected` that a value of `found`, no union, goes into, with how it
- * converts: its own type's member (`ownMember`); else its own type, where a recursive member's
- * union holds it (§3.17), which lowering derives the way into, as for an `any` member that took it
- * whole; else each member it converts into.
+ * converts: its own type's member (`ownMember`); else each member it converts into.
  */
 function membersTaking(
   found: Type,
   expected: UnionType,
   rules: ConversionRules,
 ): readonly { readonly member: Type; readonly conversion: Conversion }[] {
-  const own =
-    ownMember(found, expected, rules) ??
-    (holdingMember(expected.members, found, rules) === undefined ? undefined : found);
+  const own = ownMember(found, expected, rules);
   if (own !== undefined) {
     return [{ member: own, conversion: { kind: 'none' } }];
   }

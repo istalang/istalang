@@ -13,8 +13,12 @@
  *   since a collision would make two types one without any error.
  * - A literal type is its value, a string's quoted as JSON, so no text it holds can end it early.
  * - A union is its members' keys, sorted, since its members are a set.
- * - A recursive alias use is its alias and arguments (§3.17), and so is whatever it unfolds to,
- *   whatever its kind (`Unfolding`): the two are one type. A key holding `~` is no other type's.
+ * - A type holding a recursive type (§3.17) is the canonical spelling of its minimized term graph
+ *   (recursive-terms.ts), its nodes numbered from it with `~` and their structure spelled as here:
+ *   equal unfoldings are one key, so a recursive type, what it unfolds to, and the same structure
+ *   written out or through another alias are one type. A type `match` use reached again while it
+ *   reduces is its alias and arguments, and so is the shape it unfolds to. A key holding `~` is no
+ *   other type's.
  * - A type computed from types not known yet (`T.Data`, `S["meta"]`, `keyof S`) is its parts' keys:
  *   such a type is opaque, equal only to itself (§3.5). A mapped struct type not reduced yet keys its
  *   own parameter by how deep it binds, so its spelling's name for it never makes two types; it
@@ -34,7 +38,9 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import type { MappedParts } from './computed-types.ts';
+import { canonicalKey } from './recursive-terms.ts';
 import {
   type AliasUse,
   type AnonymousStructType,
@@ -45,6 +51,7 @@ import {
   recursionOf,
   type Type,
 } from './type.ts';
+import { holdsRecursion } from './type-children.ts';
 
 /** Every identity numbered so far; an object no longer reachable lets its number go. */
 const identities = new WeakMap<object, number>();
@@ -64,17 +71,20 @@ export interface TypeKeys {
   readonly typeKey: (type: Type, positions?: ReadonlyMap<ParameterKey, number>) => string;
   /**
    * The key of a shape, `typeKey`'s, which starts with `{`, as no other type's does but a
-   * recursive alias use's, which a shape it unfolds to shares.
+   * recursive type `match` use's, which a shape it unfolds to shares; or `~[` where the shape holds
+   * a recursive type, as a recursive type's key does.
    */
   readonly shapeKey: (type: AnonymousStructType) => ShapeKey;
-  /** The key of the recursive use `use`, and of whatever it unfolds to (§3.17). */
+  /** The key of the recursive type `match` use `use`, and of the shape it unfolds to (§3.17). */
   readonly recursionKey: (use: RecursiveUse) => ShapeKey;
+  /** The key of `type`'s own structure, each type it is built from spelled by `partKey`. */
+  readonly structureKey: (type: Type, partKey: (part: Type) => string) => string;
   /** The key of `type` with everything it is spelled with (the banner). */
   readonly spelledKey: (type: Type) => string;
 }
 
-/** A shape's key (`TypeKeys.shapeKey`). */
-export type ShapeKey = `{${string}`;
+/** A shape's key (`TypeKeys.shapeKey`), or a recursive type's. */
+export type ShapeKey = `{${string}` | `~[${string}`;
 
 function identityOf(object: object): number {
   return memo(identities, object, () => {
@@ -85,13 +95,26 @@ function identityOf(object: object): number {
 
 function typeKey(type: Type, positions?: ReadonlyMap<ParameterKey, number>): string {
   return positions === undefined || positions.size === 0
-    ? memo(ownKeys, type, () => keyOf(type, undefined))
-    : keyOf(type, positions);
+    ? memo(ownKeys, type, () => keyAt(type, undefined))
+    : keyAt(type, positions);
+}
+
+/** `type`'s key, `positions` keying type parameters: canonical where it holds recursion. */
+function keyAt(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefined): string {
+  if (!holdsRecursion(type)) {
+    return keyOf(type, positions);
+  }
+  return canonicalKey(
+    type,
+    (leaf) => typeKey(leaf, positions),
+    (term, partKey) => structureKeyOf(term, positions, partKey),
+  );
 }
 
 /**
  * `type`'s key, its parts keyed by `key`: their own keys, or their spelled keys for the kinds whose
- * spelling is their parts' alone (`spelledKindKey`). What a recursive use unfolds to is that use.
+ * spelling is their parts' alone (`spelledKindKey`). The shape a recursive type `match` use stands
+ * for is that use.
  */
 function keyOf(
   type: Type,
@@ -125,8 +148,10 @@ function structureKeyOf(
     case 'nominal':
       return `#${identityOf(type.entity)}<${type.arguments.map(key).join(',')}>`;
     case 'anonymous':
-      return shapeKeyOf(type, positions);
+      return shapeKeyOf(type, key);
     case 'recursive':
+      return unreachable('A recursive type is keyed by its graph.');
+    case 'recursiveMatch':
       return recursionKeyOf(type, key);
     case 'tuple':
       return `(${type.elements.map(key).join(',')})`;
@@ -176,11 +201,7 @@ function mappedKeyOf(
   return `*{${[...named, mapped].join(',')}}`;
 }
 
-function shapeKeyOf(
-  type: AnonymousStructType,
-  positions: ReadonlyMap<ParameterKey, number> | undefined,
-): ShapeKey {
-  const key = (each: Type): string => typeKey(each, positions);
+function shapeKeyOf(type: AnonymousStructType, key: (type: Type) => string): ShapeKey {
   return `{${type.fields.map((field) => `${field.name}:${key(field.type)}`).join(',')}}`;
 }
 
@@ -202,8 +223,8 @@ function useKeyOf(use: RecursiveUse, key: (type: Type) => string): string {
 }
 
 /**
- * The key of a recursive alias use, and of what it unfolds to, which no other type's key can be:
- * no field's name holds `~`.
+ * The key of a recursive type `match` use, and of the shape it unfolds to, which no other type's
+ * key can be: no field's name holds `~`.
  */
 function recursionKeyOf(use: RecursiveUse, key: (type: Type) => string): ShapeKey {
   return `{~${identityOf(use.declaration)}<${use.arguments.map(key).join(',')}>}`;
@@ -220,18 +241,18 @@ function spelledKindKey(type: Type): string {
   switch (type.kind) {
     case 'nominal':
     case 'tuple':
-    case 'function': {
-      const recursion = recursionOf(type);
-      const use = recursion === undefined ? '' : useKeyOf(recursion, key);
-      return `${use}${structureKeyOf(type, undefined, key)}`;
-    }
+    case 'function':
+      return structureKeyOf(type, undefined, key);
+    case 'recursive':
+      // A graph is never respelled: closing builds a new one, which is another spelling.
+      return `${typeKey(type)}@${identityOf(type.graph)}#${type.node}`;
     case 'primitive':
     case 'literal':
     case 'associated':
     case 'field':
     case 'keys':
     case 'match':
-    case 'recursive':
+    case 'recursiveMatch':
     case 'parameter':
       return keyOf(type, undefined, key);
     case 'error':
@@ -249,10 +270,8 @@ function spelledKindKey(type: Type): string {
       );
       return `any{${constraints.join('&')}}`;
     }
-    case 'union': {
-      const recursion = type.recursion === undefined ? '' : useKeyOf(type.recursion, key);
-      return `|<${recursion}${keys(type.members)}>`;
-    }
+    case 'union':
+      return `|<${keys(type.members)}>`;
     case 'mapped': {
       const named = type.named.map(spelledFieldKey).join(',');
       const written = `@${identityOf(type.origin)}'${identityOf(type.parameter)}`;
@@ -300,5 +319,6 @@ export const typeKeys: TypeKeys = {
   typeKey,
   shapeKey: (type) => typeKey(type) as ShapeKey,
   recursionKey: (use) => recursionKeyOf(use, (type) => typeKey(type)),
+  structureKey: (type, partKey) => structureKeyOf(type, undefined, partKey),
   spelledKey,
 };

@@ -8,6 +8,7 @@
 import type { StructDeclaration, TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { unfoldRecursive } from '../types/computed-types.ts';
 import { fieldReaderOf, holdsItself, selfHoldingField } from '../types/finiteness.ts';
 import { typeText } from '../types/type-text.ts';
 
@@ -30,11 +31,11 @@ export function checkFiniteFields(checker: CheckerContext, declaration: StructDe
 /** Reports a recursive `alias` whose values would hold themselves by value. */
 export function checkFiniteAlias(checker: CheckerContext, alias: TypeAliasDeclaration): void {
   const use = checker.aliasedType(alias);
-  if (use.kind !== 'recursive' || use.declaration !== alias) {
+  if (use.kind !== 'recursive') {
     return;
   }
   const reader = fieldReaderOf(checker);
-  const body = checker.typeRules.unfold(use);
+  const body = unfoldRecursive(use);
   const name = alias.name.text;
   const module = checker.moduleOf(alias);
   if (body.kind === 'anonymous') {

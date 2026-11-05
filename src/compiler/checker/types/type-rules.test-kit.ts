@@ -15,7 +15,6 @@ export const noProgramRules: TypeRules = {
   keysOf: () => errorType,
   mappedType: () => errorType,
   matchType: () => errorType,
-  unfold: () => unreachable('A program declaring nothing has no recursive alias.'),
-  unfoldedMembers: () => undefined,
+  unfold: () => unreachable('A program declaring nothing has no recursive type match use.'),
   isKeyOf: () => false,
 };

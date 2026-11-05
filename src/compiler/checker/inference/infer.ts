@@ -49,7 +49,8 @@ import {
   type Type,
   type UnionType,
 } from '../types/type.ts';
-import { parametersIn, typeChildren } from '../types/type-parts.ts';
+import { typeChildren } from '../types/type-children.ts';
+import { parametersIn } from '../types/type-parts.ts';
 import { baseOf, literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions.ts';
 
 export class Inference {
@@ -211,6 +212,7 @@ export class Inference {
       case 'mapped':
       case 'match':
       case 'recursive':
+      case 'recursiveMatch':
         // Opaque: what it stands for is known only once its parameters are (§3.5), and inference
         // never goes through it (§3.5, §3.17).
         return (

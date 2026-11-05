@@ -57,8 +57,15 @@ export function fieldWritten(written: Written, node: IndexedType, owner: Type, k
   return type;
 }
 
-/** A `{…}` type (§3.1): a shape, or a mapped struct type when one of its entries maps keys. */
-export function structWritten(written: Written, node: StructType): Type {
+/**
+ * A `{…}` type (§3.1): a shape, or a mapped struct type when one of its entries maps keys; each type
+ * it writes resolved by `resolve`.
+ */
+export function structWritten(
+  written: Written,
+  node: StructType,
+  resolve: (node: TypeNode) => Type,
+): Type {
   const { checker, module } = written;
   for (const field of node.fields) {
     for (const annotation of field.annotations ?? []) {
@@ -69,6 +76,7 @@ export function structWritten(written: Written, node: StructType): Type {
     checker,
     module,
     node.fields.filter((field) => field.kind !== 'MappedField'),
+    { resolve },
   );
   const [entry, ...more] = node.fields.filter((field) => field.kind === 'MappedField');
   if (entry === undefined) {
@@ -85,7 +93,7 @@ export function structWritten(written: Written, node: StructType): Type {
   const ranging = new Map<ParameterKey, Type>([
     [parameter, { kind: 'parameter', declaration: parameter, within: keys }],
   ]);
-  const value = substitute(checker.resolveType(module, entry.type), ranging, checker.typeRules);
+  const value = substitute(resolve(entry.type), ranging, checker.typeRules);
   return checker.typeRules.mappedType({ origin: node, named, parameter, keys, value });
 }
 

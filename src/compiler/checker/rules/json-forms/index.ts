@@ -61,6 +61,7 @@ import type {
 } from '../../types/type.ts';
 import { TypeCycle } from '../../types/type-cycle.ts';
 import { unaliased } from '../../types/type-parts.ts';
+import { unfolded } from '../../types/type-rules.ts';
 import { typeText } from '../../types/type-text.ts';
 import { baseOf, optionalInner } from '../../types/unions.ts';
 import { hostSite, searchSite, silent, type UseSite } from '../../use-site.ts';
@@ -177,7 +178,8 @@ export class JsonForms implements JsonCodecs {
       case 'anonymous':
         return this.#record(type, type.fields);
       case 'recursive':
-        return this.#form(this.#seams.checker.typeRules.unfold(type));
+      case 'recursiveMatch':
+        return this.#form(unfolded(type, this.#seams.checker.typeRules));
       case 'nominal':
         return this.#nominal(type);
       case 'function':

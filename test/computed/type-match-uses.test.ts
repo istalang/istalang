@@ -39,8 +39,8 @@ describe('recursive type `match` uses under substitution', () => {
     );
     const [parameter] = gen === undefined ? [] : checker.parametersOf(gen);
     const [typeParameter] = gen?.typeParameters ?? [];
-    expect(parameter?.type.kind).toBe('recursive');
-    if (parameter?.type.kind !== 'recursive' || typeParameter?.kind !== 'TypeParameter') {
+    expect(parameter?.type.kind).toBe('recursiveMatch');
+    if (parameter?.type.kind !== 'recursiveMatch' || typeParameter?.kind !== 'TypeParameter') {
       return;
     }
     const rules = checker.typeRules;
@@ -84,7 +84,7 @@ describe('a type `match` using itself with fixed arguments', () => {
   it('is a finite recursive type, whatever its own argument', () => {
     const { types, diagnosticCodes } = resolveWrittenTypes(['T1<String>', 'T1<Int>'], selfDecls);
     expect(diagnosticCodes).toEqual([]);
-    expect(types.map((type) => type.kind)).toEqual(['anonymous', 'recursive']);
+    expect(types.map((type) => type.kind)).toEqual(['anonymous', 'recursiveMatch']);
     expect(
       runMain(
         'Int',

@@ -14,7 +14,6 @@ import type { EntryTable } from '../../../structures/entries/index.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { associatedTypeOf } from '../traits/known-constraints.ts';
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../traits/struct-keys.ts';
-import { isMatchAlias } from '../types/computed-types.ts';
 import type { Fitting } from '../types/fit.ts';
 import type { AnonymousStructType, AnyType, Type } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
@@ -34,18 +33,16 @@ export interface ProgramTypeRules {
   readonly fitting: Fitting;
 }
 
-/** What the program's rules read of its declarations: struct layouts and aliases. */
+/** What the program's rules read of its declarations: struct layouts. */
 export interface TypeRuleSeams {
   /** A nominal struct's shape, which its layouts know. */
   readonly layouts: { readonly nominalShapeOf: (type: Type) => AnonymousStructType | undefined };
-  /** What a recursive use of an alias whose body is a type stands for, which its aliases know. */
-  readonly aliases: Pick<TypeRules, 'unfold' | 'unfoldedMembers'>;
 }
 
 /** The rules of `checker`'s program, its absorbing answers kept in its entries. */
 export function programTypeRules(
   checker: CheckerContext,
-  { layouts, aliases }: TypeRuleSeams,
+  { layouts }: TypeRuleSeams,
 ): ProgramTypeRules {
   const absorbed: EntryTable<CheckerNote, string, boolean, Absorbing> = checker.entries.table({
     name: 'absorbed members',
@@ -64,9 +61,7 @@ export function programTypeRules(
     keysOf: (of, without) => keysOf(checker, unfolded(of, checker.typeRules), without),
     mappedType: (parts, outer) => mappedTypeOf(checker, parts, outer),
     matchType: (declaration, typeArguments) => reductions.reduce(declaration, typeArguments),
-    unfold: (type) =>
-      isMatchAlias(type.declaration) ? reductions.recursiveShape(type) : aliases.unfold(type),
-    unfoldedMembers: (type) => aliases.unfoldedMembers(type),
+    unfold: (type) => reductions.recursiveShape(type),
     isKeyOf: (key, of) => isKeyWithin(checker, key, checker.typeRules.keysOf(of, [])),
   };
   const fitting: Fitting = {

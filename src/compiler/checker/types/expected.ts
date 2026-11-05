@@ -48,7 +48,7 @@ import { arrayElement, wellKnownArguments } from './well-known.ts';
 
 /**
  * What taking an expected type apart needs of the program: its well-known types, and its rules,
- * by which a recursive use is taken apart as what it unfolds to (§3.17).
+ * by which a recursive type is taken apart as what it unfolds to (§3.17).
  */
 type Expecting = Pick<CheckerContext, 'wellKnownType' | 'typeRules'>;
 
@@ -131,7 +131,7 @@ const builtKinds: ReadonlySet<Expression['kind']> = new Set([
 ]);
 
 /**
- * `accepts`, taking as well a type whose value it is built as (`memberBuilt`): what a recursive use
+ * `accepts`, taking as well a type whose value it is built as (`memberBuilt`): what a recursive type
  * unfolds to, and a union of whose members it takes one, at any depth, as the value is then built
  * as that member: `[1, [2]]` takes `Json`, and `((1, none), 2)` takes `((Int, Int?) | String, Int)`.
  * Unfolding ends, since a guarded alias reaches itself only inside another type (§3.17).
@@ -151,7 +151,7 @@ export function takingUnfolded(accepts: Accepts, rules: TypeRules): Accepts {
 
 /**
  * The type a value built where `expected` is expected takes its type from (§2): past `None`, and
- * a recursive use as what it unfolds to (§3.17).
+ * a recursive type as what it unfolds to (§3.17).
  */
 export function builtFrom(checker: Expecting, expected: Type | undefined): Type | undefined {
   return expected === undefined

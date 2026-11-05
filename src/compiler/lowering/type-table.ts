@@ -9,11 +9,10 @@
  *   (checker/rules/disposal.ts).
  * - A shape is a struct entry without a name, one per shape: every place writing equal fields
  *   shares it (§3.1), its fields in the name order the shape keeps.
- * - A recursive alias use (§3.17) is the entry of what it unfolds to, whose layout refers back to
- *   it through the table; one unfolding to a tuple or a function type, which have no entry of their
- *   own, has an alias entry standing for it, numbered first for the same reason. What a use unfolds
- *   to is that use: a tuple or a function type it unfolds to refers to its alias entry, and a
- *   nominal type is the entry of its declaration with its arguments, one per instantiation.
+ * - A recursive type (§3.17) is the entry of what it unfolds to, the same key, whose layout refers
+ *   back to it; one unfolding to a tuple or a function type, which have no entry of their own, has
+ *   an alias entry, numbered first for the same reason, as has the type written out (`folded`).
+ *   Equal recursive types share one entry, named by the preferred alias (names.ts).
  * - A union (§2) is an enum, one variant per member, in the order of their spelled names, which
  *   no numbering of identities changes: a member's value is the variant's one field, and a member
  *   with one value only, a literal type or `None`, is a variant without fields, its tag. A literal
@@ -41,23 +40,22 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker, Disposal } from '../checker/check.ts';
 import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
-import type { RecursiveType } from '../checker/types/computed-types.ts';
+import { type RecursiveType, unfoldRecursive } from '../checker/types/computed-types.ts';
 import { sameType } from '../checker/types/identity.ts';
-import {
-  type AnonymousStructType,
-  type AnyType,
-  type FieldMember,
-  type NominalType,
-  recursionOf,
-  type Type,
-  type UnionType,
-  withoutRecursion,
+import { folded } from '../checker/types/recursive-types.ts';
+import type {
+  AnonymousStructType,
+  AnyType,
+  FieldMember,
+  NominalType,
+  Type,
+  UnionType,
 } from '../checker/types/type.ts';
 import { baseOf, hasOneValue } from '../checker/types/unions.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import { closeFunctionCall } from './closed-calls.ts';
 import type { FunctionInstance } from './instances.ts';
-import { qualifiedNameOf, spelledType, unionName } from './names.ts';
+import { qualifiedNameOf, recursiveName, spelledType, unionName } from './names.ts';
 
 /** What a type entry refers to outside the type table. */
 export interface TypeTableSeams {
@@ -135,9 +133,9 @@ export class TypeTable {
 
   /** How the Definition refers to `type`. */
   reference(type: Type): TypeReference {
-    const use = recursionOf(type);
-    if (use !== undefined && (type.kind === 'tuple' || type.kind === 'function')) {
-      return this.reference({ kind: 'recursive', ...use });
+    const recursive = type.kind === 'tuple' || type.kind === 'function' ? folded(type) : type;
+    if (recursive.kind === 'recursive' && recursive !== type) {
+      return this.reference(recursive);
     }
     switch (type.kind) {
       case 'primitive':
@@ -146,11 +144,13 @@ export class TypeTable {
       case 'anonymous':
         return { kind: 'named', type: this.#typeEntry(type) };
       case 'recursive': {
-        const unfolded = this.#checker.typeRules.unfold(type);
+        const unfolded = unfoldRecursive(type);
         return unfolded.kind === 'tuple' || unfolded.kind === 'function'
           ? { kind: 'named', type: this.#aliasEntry(type, unfolded) }
           : this.reference(unfolded);
       }
+      case 'recursiveMatch':
+        return this.reference(this.#checker.typeRules.unfold(type));
       case 'tuple':
         return {
           kind: 'tuple',
@@ -245,9 +245,7 @@ export class TypeTable {
    * layout refers to the type itself.
    */
   #typeEntry(type: EntryType): TypeId {
-    const key = this.#checker.typeKeys.typeKey(
-      type.kind === 'nominal' ? withoutRecursion(type) : type,
-    );
+    const key = this.#checker.typeKeys.typeKey(type);
     const known = this.#indexes.get(key);
     if (known !== undefined) {
       return known;
@@ -259,7 +257,7 @@ export class TypeTable {
     return index;
   }
 
-  /** The alias entry of the recursive use `type`, standing for `unfolded`, numbered first. */
+  /** The alias entry of the recursive type `type`, standing for `unfolded`, numbered first. */
   #aliasEntry(type: RecursiveType, unfolded: Type): TypeId {
     const key = this.#checker.typeKeys.typeKey(type);
     const known = this.#indexes.get(key);
@@ -269,14 +267,11 @@ export class TypeTable {
     const index = this.#entries.length;
     this.#indexes.set(key, index);
     this.#entries.push({ kind: 'struct', name: '', arguments: [], fields: [] });
-    const { declaration } = type;
+    const named = recursiveName(this.#checker, type);
     this.#entries[index] = {
       kind: 'alias',
-      name:
-        declaration.kind === 'TypeAliasDeclaration'
-          ? qualifiedNameOf(this.#checker, declaration)
-          : unreachable('Only a top-level alias refers to itself (§3.17).'),
-      arguments: type.arguments.map((argument) => this.reference(argument)),
+      name: named.name,
+      arguments: named.arguments.map((argument) => this.reference(argument)),
       type: this.reference(unfolded),
     };
     return index;
@@ -351,14 +346,20 @@ export class TypeTable {
     }));
     const named = unionName(this.#checker, type);
     const typeArguments = named.arguments.map((argument) => this.reference(argument));
-    const declaration = type.recursion?.declaration;
-    const role = declaration === undefined ? undefined : this.#roleOf(enumRoles, declaration);
+    // The `json` role is the type `json.Json` is, by key, whatever alias wrote it.
+    const checker = this.#checker;
+    const json = checker.wellKnownEntity(enumRoles.json);
+    const isJson =
+      json?.kind === 'type' &&
+      json.declaration.kind === 'TypeAliasDeclaration' &&
+      checker.typeKeys.typeKey(checker.aliasedType(json.declaration)) ===
+        checker.typeKeys.typeKey(type);
     return {
       kind: 'enum',
       name: named.name,
       arguments: typeArguments,
       variants,
-      ...(role === undefined ? {} : { role }),
+      ...(isJson ? { role: 'json' as const } : {}),
     };
   }
 

@@ -37,7 +37,7 @@ import type { FunctionContext } from './context.ts';
 import { emitImplicitCall } from './emit-call.ts';
 import { equal, ordered } from './expressions/operators.ts';
 import { branchOnVariant } from './expressions/variants.ts';
-import { branchOnHeld, type TypedValue } from './holdings.ts';
+import { branchOnHeld, laidOutAs, type TypedValue } from './holdings.ts';
 import { readPartAlong } from './part-paths.ts';
 import { declareVariable } from './statements/variables.ts';
 import { outOfUnion } from './unions.ts';
@@ -146,11 +146,12 @@ function lowerTest(
  */
 function lowerMemberTest(
   context: FunctionContext,
-  { union, members }: Extract<PatternTest, { kind: 'member' }>,
+  { union: tested, members }: Extract<PatternTest, { kind: 'member' }>,
   part: Register,
   { matched, otherwise, span }: Branch,
 ): void {
   const { code } = context;
+  const union = laidOutAs(tested);
   const value = { register: part, type: union };
   const isOwn = (member: Type) =>
     union.kind === 'union' ? hasMember(union, member) : sameType(union, member);

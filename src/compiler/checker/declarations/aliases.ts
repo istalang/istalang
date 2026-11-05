@@ -5,8 +5,8 @@
  * others, is reported at each member of the cycle, which then stands for the error type.
  *
  * One naming itself only inside types built from others is recursive (alias-recursion.ts): it
- * stands for its own use, its parameters given for themselves, and a use unfolds on demand to its
- * body with the use's arguments, carrying the use's identity (types/computed-types.ts).
+ * stands for the recursive type its group closes to, its parameters given for themselves
+ * (recursive-bodies.ts), which a use substitutes as any alias's.
  *
  * One whose body is a type `match` stands for its own unreduced use, its parameters given for
  * themselves: a use reduces it (types/type-match.ts `aliasInstance`), so it may refer to itself.
@@ -18,7 +18,6 @@ import type { ModuleId } from '../../program/program.ts';
 import {
   type AliasBody,
   type AliasDeclaration,
-  type TypeAliasDeclaration,
   type TypeParameters,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
@@ -28,11 +27,8 @@ import type { TypeCase, TypeMatch } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { resolveConstraintSet } from '../traits/struct-constraints.ts';
-import { type RecursiveType, withRecursion } from '../types/computed-types.ts';
 import { parameterType } from '../types/resolve-type.ts';
-import { substitute, substitutionFor } from '../types/substitution.ts';
 import { errorType, type Type } from '../types/type.ts';
-import { typeKeys } from '../types/type-keys.ts';
 import {
   type CaseForm,
   type CasePatternForm,
@@ -42,6 +38,7 @@ import {
 } from '../types/type-match.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import { AliasRecursions } from './alias-recursion.ts';
+import { RecursiveBodies } from './recursive-bodies.ts';
 import { TypeMatchExpansion } from './type-match-expansion.ts';
 
 export class Aliases implements TypeMatchQueries {
@@ -52,9 +49,7 @@ export class Aliases implements TypeMatchQueries {
   readonly #caseTypes: EntryTable<CheckerNote, TypeCase, Type, ModuleId>;
   readonly #expansion: TypeMatchExpansion;
   readonly #recursions: AliasRecursions;
-  /** A recursive alias's body, its own parameters open, its uses of itself recursive. */
-  readonly #bodies: EntryTable<CheckerNote, TypeAliasDeclaration, Type>;
-  readonly #unfoldings: EntryTable<CheckerNote, string, Type, RecursiveType>;
+  readonly #recursiveBodies: RecursiveBodies;
 
   /** `moduleOf` answers the module writing each alias, where its type resolves. */
   constructor(checker: CheckerContext, moduleOf: (alias: AliasDeclaration) => ModuleId) {
@@ -85,61 +80,7 @@ export class Aliases implements TypeMatchQueries {
     });
     this.#expansion = new TypeMatchExpansion(checker, this, moduleOf);
     this.#recursions = new AliasRecursions(checker, moduleOf);
-    this.#bodies = checker.entries.table({
-      name: 'recursive alias bodies',
-      compute: (alias) =>
-        alias.type.kind === 'TypeMatch'
-          ? errorType
-          : checker.resolveType(moduleOf(alias), alias.type),
-      equal: sameTypeSpelled,
-      // A union body holding the alias in a union of its own (`type R = Int | Array<R?>`) needs
-      // its members to normalize that union: known first, as a cycle is.
-      cyclic: {
-        standIn: () => errorType,
-        reportMember: (member) =>
-          checker.report(
-            moduleOf(member),
-            checkerDiagnostics.aliasCycle(member.name.span, member.name.text),
-          ),
-      },
-    });
-    this.#unfoldings = checker.entries.table({
-      name: 'recursive alias unfoldings',
-      compute: (_key, type: RecursiveType) => this.#unfoldingOf(type),
-      equal: sameTypeSpelled,
-      cyclic: { standIn: () => errorType },
-    });
-  }
-
-  /**
-   * What the recursive use `type` of an alias whose body is a type stands for (§3.17): the body
-   * with the use's arguments, the use inside it again, a shape or a union with its identity.
-   */
-  unfold(type: RecursiveType): Type {
-    return this.#unfoldings.get(typeKeys.spelledKey(type), type);
-  }
-
-  /**
-   * The members of the union the recursive use `type` unfolds to, as a union holding the use asks
-   * (types/unions.ts); undefined where its alias's body is no union, which is then never resolved.
-   */
-  unfoldedMembers(type: RecursiveType): readonly Type[] | undefined {
-    const { declaration } = type;
-    if (declaration.kind !== 'TypeAliasDeclaration' || !this.#recursions.isUnionBody(declaration)) {
-      return undefined;
-    }
-    const unfolded = this.unfold(type);
-    return unfolded.kind === 'union' ? unfolded.members : undefined;
-  }
-
-  #unfoldingOf(type: RecursiveType): Type {
-    const { declaration } = type;
-    if (declaration.kind !== 'TypeAliasDeclaration') {
-      return errorType;
-    }
-    const substitution = substitutionFor(declaration.typeParameters, type.arguments);
-    const body = substitute(this.#bodies.get(declaration), substitution, this.#checker.typeRules);
-    return withRecursion(body, { declaration, arguments: type.arguments });
+    this.#recursiveBodies = new RecursiveBodies(checker, moduleOf, this.#recursions);
   }
 
   isEndless(alias: AliasDeclaration): boolean {
@@ -164,10 +105,8 @@ export class Aliases implements TypeMatchQueries {
     const body: AliasBody = alias.type;
     if (alias.kind === 'TypeAliasDeclaration') {
       switch (this.#recursions.recursionOf(alias)) {
-        case 'recursive': {
-          const typeArguments = typeParametersOf(alias.typeParameters).map(parameterType);
-          return { kind: 'recursive', declaration: alias, arguments: typeArguments };
-        }
+        case 'recursive':
+          return this.#recursiveBodies.closed(alias);
         case 'irregular':
           return errorType;
         default:

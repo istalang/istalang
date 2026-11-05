@@ -40,6 +40,7 @@ import {
   heldIn,
   heldPositions,
   holdingOf,
+  laidOutAs,
   memberValue,
   type TypedValue,
 } from './holdings.ts';
@@ -72,7 +73,8 @@ export function intoUnion(
   union: UnionType | AnyType,
   span: AnchoredSpan,
 ): Register {
-  const { register, type } = value;
+  const { register } = value;
+  const type = laidOutAs(value.type);
   if (sameType(type, union)) {
     return register;
   }
@@ -95,10 +97,12 @@ export function intoUnion(
 export function outOfUnion(
   context: CodeContext,
   value: TypedValue,
-  to: Type,
+  given: Type,
   span: AnchoredSpan,
 ): Register {
-  const { register, type } = value;
+  const { register } = value;
+  const type = laidOutAs(value.type);
+  const to = laidOutAs(given);
   if (sameType(to, type)) {
     return register;
   }
@@ -164,7 +168,7 @@ function outOfAny(
  * since it is its base's value already, and the tag's literal for a union.
  */
 export function asBase(context: CodeContext, value: TypedValue, span: AnchoredSpan): Register {
-  const { type } = value;
+  const type = laidOutAs(value.type);
   if (type.kind !== 'union') {
     return value.register;
   }

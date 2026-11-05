@@ -39,13 +39,14 @@ import type { CheckedBody } from '../check.ts';
 import type { CheckerContext, CheckerNote, Instantiable } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { functionCallsWithin } from '../resolved-call.ts';
-import type { RecursiveType } from '../types/computed-types.ts';
+import type { RecursiveMatchType } from '../types/computed-types.ts';
 import { fieldReaderOf, type StructFieldReader, selfHoldingField } from '../types/finiteness.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import type { RecursiveUse, Type, UnreducedUse } from '../types/type.ts';
+import { typeChildren } from '../types/type-children.ts';
 import { typeKeys } from '../types/type-keys.ts';
 import { aliasInstance, matchUse } from '../types/type-match.ts';
-import { isKnown, sameTypeSpelled, typeChildren } from '../types/type-parts.ts';
+import { isKnown, sameTypeSpelled } from '../types/type-parts.ts';
 import { typeText } from '../types/type-text.ts';
 
 /**
@@ -104,7 +105,7 @@ export class MatchRequirements {
       }
       const key = typeKeys.typeKey(type);
       const holding =
-        type.kind === 'recursive' && !seen.has(key) ? this.#holding(type, reader) : undefined;
+        type.kind === 'recursiveMatch' && !seen.has(key) ? this.#holding(type, reader) : undefined;
       if (holding !== undefined) {
         return holding;
       }
@@ -117,7 +118,7 @@ export class MatchRequirements {
   }
 
   /** The failure of the recursive use `type` whose shape's values would hold another; else none. */
-  #holding(type: RecursiveType, reader: StructFieldReader): MatchFailure | undefined {
+  #holding(type: RecursiveMatchType, reader: StructFieldReader): MatchFailure | undefined {
     const unfolded = this.#checker.typeRules.unfold(type);
     const fields = unfolded.kind === 'anonymous' ? unfolded.fields : [];
     const field = selfHoldingField(reader, fields, type);
@@ -133,7 +134,7 @@ export class MatchRequirements {
   /** What `type` leads on to: its parts, a recursive use's shape, a nominal's requirements. */
   #reached(type: Type): readonly Type[] {
     const parts = typeChildren(type);
-    if (type.kind === 'recursive') {
+    if (type.kind === 'recursiveMatch') {
       return [this.#checker.typeRules.unfold(type), ...parts];
     }
     return type.kind === 'nominal' && type.arguments.length > 0

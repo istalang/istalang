@@ -13,6 +13,7 @@ import { codecHelpers, wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
 import { isPrimitive, type Type, type UnionType } from '../../checker/types/type.ts';
+import { unfolded } from '../../checker/types/type-rules.ts';
 import { baseOf } from '../../checker/types/unions.ts';
 import { arrayElement, wellKnownArguments } from '../../checker/types/well-known.ts';
 import { closeCall } from '../closed-calls.ts';
@@ -28,7 +29,7 @@ export class Encoder {
 
   constructor(code: SynthesizedCode, json: Type) {
     this.#code = code;
-    const union = json.kind === 'recursive' ? code.checker.typeRules.unfold(json) : json;
+    const union = unfolded(json, code.checker.typeRules);
     this.#json = union.kind === 'union' ? union : unreachable('Json is a union.');
   }
 

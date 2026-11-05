@@ -283,16 +283,17 @@ describe('a recursive shape alias and a generic recursive alias named where a ty
     expect(mainGives('Int', 'return braces().head + indented().head', declarations)).toBe(3);
   });
 
-  it('matches a generic recursive alias by name, with its arguments or without', () => {
+  it('matches a generic recursive alias by name with its arguments, and names none without', () => {
     const declarations = lines(
       'type Tree<T> = T | Array<Tree<T>>',
       'fn named(x: Tree<Int> | String) -> Bool: x is Tree<Int>',
-      'fn bare(x: Tree<Int> | String) -> Bool: x is Tree',
     );
     expect(reported(declarations)).toEqual(reportedNothing);
     expect(
-      mainGives('Bool', 'return named(1) and bare([2]) and not named("s")', declarations),
+      mainGives('Bool', 'return named(1) and named([2]) and not named("s")', declarations),
     ).toBe(true);
+    const bare = lines(declarations, 'fn bare(x: Tree<Int> | String) -> Bool: x is Tree');
+    expect(reported(bare).codes.length).toBeGreaterThan(0);
   });
 });
 

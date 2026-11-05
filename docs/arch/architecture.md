@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-11-05
+last_updated: 2026-11-06
 tags: [architecture, compiler, runtime, tooling]
 ---
 
@@ -75,8 +75,8 @@ src/
                                                                  name names in a value's place or a pattern (named-types.ts); unions and
                                                                  literal types built normalized (unions.ts), `T?` being `T | None`, and what
                                                                  a value built from an expected type takes of it (expected.ts); types computed
-                                                                 from others (computed-types.ts), recursive alias uses unfolded where used,
-                                                                 each unfolding the use itself by identity (type.ts `Unfolding`), and
+                                                                 from others (computed-types.ts), recursive types as minimized graphs,
+                                                                 equi-recursive, closed by one constructor (recursive-types.ts), and
                                                                  type `match`es resolved, given, placed and
                                                                  unfolded (type-match.ts, written-matches.ts); the rules
                                                                  building a type needs of the program (type-rules.ts), which the checker

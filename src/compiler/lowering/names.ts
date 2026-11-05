@@ -18,15 +18,27 @@ import {
   type KeyType,
   keyTypeText,
 } from '../../definition/extern-key.ts';
+import { compareOrdered } from '../../language/order.ts';
 import { staticName } from '../../language/static-names.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
+import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { RecursiveType } from '../checker/types/computed-types.ts';
-import type { LiteralType, NominalDeclaration, Type, UnionType } from '../checker/types/type.ts';
+import { folded } from '../checker/types/recursive-types.ts';
+import type {
+  AnonymousStructType,
+  DeclaredAliasUse,
+  FunctionType,
+  LiteralType,
+  NominalDeclaration,
+  TupleType,
+  Type,
+  UnionType,
+} from '../checker/types/type.ts';
 import { parameterText, typeText } from '../checker/types/type-text.ts';
 import { optionalInner } from '../checker/types/unions.ts';
-import { type ModuleId, programModule } from '../program/program.ts';
+import { isStdModule, type ModuleId, programModule } from '../program/program.ts';
 import type {
   ExternConstantDeclaration,
   FunctionDeclaration,
@@ -110,11 +122,20 @@ export function keyOf(
     module: moduleName(checker, checker.moduleOf(declaration)),
     name: nameOf(declaration),
     parameters: parameters.map((parameter) => ({
-      type: keyType(checker, parameter.type),
+      type: keyType(externSpelling(checker), parameter.type),
       passing: passingOf(parameter),
     })),
   };
   return externKey(signature);
+}
+
+/** An extern's key spells a recursive type by the alias its signature writes (`Spelling`). */
+function externSpelling(checker: Checker): Spelling {
+  return {
+    checker,
+    recursiveName: (type) =>
+      type.alias?.kind === 'alias' ? type.alias : preferredAlias(checker, type),
+  };
 }
 
 function passingOf(parameter: KeyedParameter): 'value' | 'reference' | 'rest' {
@@ -124,9 +145,24 @@ function passingOf(parameter: KeyedParameter): 'value' | 'reference' | 'rest' {
   return parameter.node?.isRest === true ? 'rest' : 'value';
 }
 
+/**
+ * How a recursive type is spelled (§3.17): its key's preferred alias, the one every spelling of that
+ * type in a Definition's tables shares (`preferredAlias`); or, in an extern's key, the alias its
+ * signature writes, which no alias written elsewhere changes.
+ */
+interface Spelling {
+  readonly checker: Checker;
+  readonly recursiveName: (type: RecursiveType) => DeclaredAliasUse | undefined;
+}
+
 /** `type` spelled as keys spell it: module-qualified, without sugar (`prelude.Optional<Int>`). */
 export function spelledType(checker: Checker, type: Type): string {
-  return keyTypeText(keyType(checker, type));
+  return keyTypeText(keyType(tableSpelling(checker), type));
+}
+
+/** The spelling of the type table: every recursive type by its key's preferred alias. */
+function tableSpelling(checker: Checker): Spelling {
+  return { checker, recursiveName: (type) => preferredAlias(checker, type) };
 }
 
 /**
@@ -137,9 +173,10 @@ export function unionName(
   checker: Checker,
   type: UnionType,
 ): { readonly name: string; readonly arguments: readonly Type[] } {
-  const named = namedUnionOf(checker, type);
+  const spelling = tableSpelling(checker);
+  const named = namedUnionOf(spelling, type);
   return named === undefined
-    ? { name: keyTypeText(unionKey(checker, type)), arguments: [] }
+    ? { name: keyTypeText(unionKey(spelling, type)), arguments: [] }
     : named;
 }
 
@@ -148,14 +185,15 @@ export function unionName(
  * among them, or `prelude.Optional` for `T | None` with its one `T`; undefined for any other.
  */
 function namedUnionOf(
-  checker: Checker,
+  spelling: Spelling,
   type: UnionType,
 ): { readonly name: string; readonly arguments: readonly Type[] } | undefined {
-  const { recursion } = type;
-  if (recursion !== undefined && recursion.declaration.kind === 'TypeAliasDeclaration') {
+  const recursive = folded(type);
+  const alias = recursive.kind === 'recursive' ? spelling.recursiveName(recursive) : undefined;
+  if (alias !== undefined) {
     return {
-      name: qualifiedNameOf(checker, recursion.declaration),
-      arguments: recursion.arguments,
+      name: qualifiedNameOf(spelling.checker, alias.declaration),
+      arguments: alias.arguments,
     };
   }
   const inner = optionalOfOne(type);
@@ -164,30 +202,115 @@ function namedUnionOf(
     : { name: qualifiedName(wellKnown.optional), arguments: [inner] };
 }
 
+/** How the type table names the recursive type `type`'s entry: by its preferred alias, else its text. */
+export function recursiveName(
+  checker: Checker,
+  type: RecursiveType,
+): { readonly name: string; readonly arguments: readonly Type[] } {
+  const alias = preferredAlias(checker, type);
+  return alias === undefined
+    ? { name: spelledType(checker, type), arguments: [] }
+    : { name: qualifiedNameOf(checker, alias.declaration), arguments: alias.arguments };
+}
+
 /**
- * A literal type as keys spell it, by its text, and a recursive alias's use, through its alias, as
- * `prelude.Optional<T>` is (§3.17).
+ * The alias the type table names the recursive type `type` by (§3.17): of the program's recursive
+ * aliases taking no type arguments whose type it is, a std module's first, then by module name,
+ * then by name; for one no such alias is, the alias its graph labels its node with, if any.
  */
-function spelledKeyType(checker: Checker, type: LiteralType | RecursiveType): KeyType {
-  return type.kind === 'recursive' && type.declaration.kind === 'TypeAliasDeclaration'
-    ? {
-        kind: 'named',
-        name: qualifiedNameOf(checker, type.declaration),
-        arguments: type.arguments.map((argument) => keyType(checker, argument)),
+function preferredAlias(checker: Checker, type: RecursiveType): DeclaredAliasUse | undefined {
+  const preferred = preferredAliases(checker).get(checker.typeKeys.typeKey(type));
+  return preferred === undefined
+    ? type.graph.labels[type.node]
+    : { kind: 'alias', declaration: preferred, arguments: [] };
+}
+
+/** Each program's preferred alias of each recursive type key (`preferredAlias`). */
+const preferredByProgram = new WeakMap<Checker, ReadonlyMap<string, TypeAliasDeclaration>>();
+
+function preferredAliases(checker: Checker): ReadonlyMap<string, TypeAliasDeclaration> {
+  return memo(preferredByProgram, checker, () => {
+    const { program } = checker;
+    const ranked = [...program.modules].flatMap(([module, loaded]) =>
+      loaded.tree.root.items.flatMap((item) =>
+        item.kind === 'TypeAliasDeclaration' && item.typeParameters.length === 0
+          ? [{ item, std: isStdModule(program, module), module: loaded.name }]
+          : [],
+      ),
+    );
+    ranked.sort(
+      (first, second) =>
+        Number(second.std) - Number(first.std) ||
+        compareOrdered(first.module, second.module) ||
+        compareOrdered(first.item.name.text, second.item.name.text),
+    );
+    const preferred = new Map<string, TypeAliasDeclaration>();
+    for (const { item } of ranked) {
+      const type = checker.aliasedType(item);
+      const key = type.kind === 'recursive' ? checker.typeKeys.typeKey(type) : undefined;
+      if (key !== undefined && !preferred.has(key)) {
+        preferred.set(key, item);
       }
-    : { kind: 'literal', text: typeText(type) };
+    }
+    return preferred;
+  });
+}
+
+/**
+ * A literal type as keys spell it, by its text, and a recursive type, through the alias `spelling`
+ * names it by, as `prelude.Optional<T>` is (§3.17), by its text where no alias wrote it.
+ */
+function spelledKeyType(spelling: Spelling, type: LiteralType | RecursiveType): KeyType {
+  const alias = type.kind === 'recursive' ? spelling.recursiveName(type) : undefined;
+  if (alias === undefined) {
+    return { kind: 'literal', text: typeText(type) };
+  }
+  return {
+    kind: 'named',
+    name: qualifiedNameOf(spelling.checker, alias.declaration),
+    arguments: alias.arguments.map((argument) => keyType(spelling, argument)),
+  };
 }
 
 /** A union as keys spell it (`unionName`). */
-function unionKey(checker: Checker, type: UnionType): KeyType {
-  const named = namedUnionOf(checker, type);
+function unionKey(spelling: Spelling, type: UnionType): KeyType {
+  const named = namedUnionOf(spelling, type);
   return named === undefined
-    ? { kind: 'union', members: type.members.map((member) => keyType(checker, member)) }
+    ? { kind: 'union', members: type.members.map((member) => keyType(spelling, member)) }
     : {
         kind: 'named',
         name: named.name,
-        arguments: named.arguments.map((argument) => keyType(checker, argument)),
+        arguments: named.arguments.map((argument) => keyType(spelling, argument)),
       };
+}
+
+/** A tuple, a shape or a function type as keys spell it: by its parts. */
+function structureKeyType(
+  spelling: Spelling,
+  type: TupleType | AnonymousStructType | FunctionType,
+): KeyType {
+  switch (type.kind) {
+    case 'tuple':
+      return {
+        kind: 'tuple',
+        elements: type.elements.map((element) => keyType(spelling, element)),
+      };
+    case 'anonymous':
+      return {
+        kind: 'anonymous',
+        fields: type.fields.map((field) => ({
+          name: field.name,
+          type: keyType(spelling, field.type),
+        })),
+      };
+    default:
+      return {
+        kind: 'function',
+        async: type.isAsync,
+        parameters: type.parameters.map((parameter) => keyType(spelling, parameter.type)),
+        result: keyType(spelling, type.result),
+      };
+  }
 }
 
 /** `T` of a union `T | None` whose `T` is one member; undefined for any other union. */
@@ -196,7 +319,13 @@ function optionalOfOne(type: UnionType): Type | undefined {
   return inner?.kind === 'union' ? undefined : inner;
 }
 
-function keyType(checker: Checker, type: Type): KeyType {
+/**
+ * `given` as keys spell it, a type equal to a recursive alias's spelled as that alias (`folded`),
+ * so every spelling of one type is one key, whichever of them a table meets first.
+ */
+function keyType(spelling: Spelling, given: Type): KeyType {
+  const { checker } = spelling;
+  const type = folded(given);
   switch (type.kind) {
     case 'primitive':
       return { kind: 'primitive', name: type.name };
@@ -211,7 +340,7 @@ function keyType(checker: Checker, type: Type): KeyType {
         traits: type.constraints.map(({ trait, arguments: typeArguments }) => ({
           kind: 'named',
           name: qualifiedNameOf(checker, trait),
-          arguments: typeArguments.map((argument) => keyType(checker, argument)),
+          arguments: typeArguments.map((argument) => keyType(spelling, argument)),
         })),
       };
     case 'nominal': {
@@ -219,31 +348,26 @@ function keyType(checker: Checker, type: Type): KeyType {
       return {
         kind: 'named',
         name: qualifiedNameOf(checker, declaration),
-        arguments: type.arguments.map((argument) => keyType(checker, argument)),
+        arguments: type.arguments.map((argument) => keyType(spelling, argument)),
       };
     }
     case 'tuple':
-      return { kind: 'tuple', elements: type.elements.map((element) => keyType(checker, element)) };
     case 'anonymous':
-      return {
-        kind: 'anonymous',
-        fields: type.fields.map((field) => ({
-          name: field.name,
-          type: keyType(checker, field.type),
-        })),
-      };
     case 'function':
-      return {
-        kind: 'function',
-        async: type.isAsync,
-        parameters: type.parameters.map((parameter) => keyType(checker, parameter.type)),
-        result: keyType(checker, type.result),
-      };
+      return structureKeyType(spelling, type);
     case 'literal':
     case 'recursive':
-      return spelledKeyType(checker, type);
+      return spelledKeyType(spelling, type);
+    case 'recursiveMatch':
+      return type.declaration.kind === 'TypeAliasDeclaration'
+        ? {
+            kind: 'named',
+            name: qualifiedNameOf(checker, type.declaration),
+            arguments: type.arguments.map((argument) => keyType(spelling, argument)),
+          }
+        : { kind: 'literal', text: typeText(type) };
     case 'union':
-      return unionKey(checker, type);
+      return unionKey(spelling, type);
     case 'associated':
     case 'field':
     case 'keys':

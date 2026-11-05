@@ -164,7 +164,7 @@ export class ProgramChecker implements CheckerContext {
     });
     this.#aliases = new Aliases(this, (alias) => this.#aliasModuleOf(alias));
     this.#layouts = new Layouts(this);
-    const rules = programTypeRules(this, { layouts: this.#layouts, aliases: this.#aliases });
+    const rules = programTypeRules(this, { layouts: this.#layouts });
     this.typeRules = rules.typeRules;
     this.fitting = rules.fitting;
     this.#functions = new FunctionChecks({

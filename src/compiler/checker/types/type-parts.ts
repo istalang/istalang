@@ -5,67 +5,24 @@
  */
 
 import { sameItems } from '../../../structures/equality.ts';
-import { type ComputedType, isComputed, isMatchAlias, type MappedParts } from './computed-types.ts';
+import { type ComputedType, isComputed, type MappedParts } from './computed-types.ts';
 import { withPack } from './function-types.ts';
+import { mapRecursive } from './recursive-types.ts';
 import {
   type AnyType,
   aliasedAs,
   type Constraint,
   type ErrorType,
-  isUnfoldable,
   type NominalType,
   type ParameterKey,
   type RecursiveUse,
-  recursionOf,
   type Type,
   type UnionType,
 } from './type.ts';
+import { typeChildren } from './type-children.ts';
 import { typeKeys } from './type-keys.ts';
 import type { TypeRules } from './type-rules.ts';
 import { unionOf, unionOfNormalized } from './unions.ts';
-
-/** The types `type` is built from, one level down. */
-export function typeChildren(type: Type): readonly Type[] {
-  switch (type.kind) {
-    case 'nominal':
-      return type.arguments;
-    case 'anonymous':
-      return type.fields.map((field) => field.type);
-    case 'tuple':
-      return type.elements;
-    case 'function':
-      return [
-        ...type.parameters.map((parameter) => parameter.type),
-        ...(type.pack === undefined ? [] : [type.pack]),
-        type.result,
-      ];
-    case 'any':
-      return type.constraints.flatMap((constraint) => constraint.arguments);
-    case 'union':
-      return type.members;
-    case 'associated':
-      return [type.of];
-    case 'field':
-      return [type.of, type.key];
-    case 'keys':
-      return [type.of];
-    case 'mapped':
-      return [...type.named.map((field) => field.type), type.keys, type.value];
-    case 'match':
-    case 'recursive':
-      return type.arguments;
-    case 'parameter':
-      return type.within === undefined ? [] : [type.within];
-    case 'literal':
-    case 'primitive':
-    case 'error':
-      return [];
-    default: {
-      const unhandled: never = type;
-      return unhandled;
-    }
-  }
-}
 
 /**
  * Whether two types are alike in every part: their spelled keys are equal (type-keys.ts), so they
@@ -173,16 +130,6 @@ export function mapChildren(type: Type, map: (child: Type) => Type, rules: TypeR
   return rebuilt === undefined ? mapParts(type as Exclude<Type, Rebuilt>, map) : rebuilt;
 }
 
-/**
- * The use `use` with `typeArguments`, built again: a type `match` alias's use reduced by `rules`,
- * which finds it recursive still or not; any other alias's use recursive whatever its arguments.
- */
-function recursiveUseOf(use: RecursiveUse, typeArguments: readonly Type[], rules: TypeRules): Type {
-  return isMatchAlias(use.declaration)
-    ? rules.matchType(use.declaration, typeArguments)
-    : { kind: 'recursive', declaration: use.declaration, arguments: typeArguments };
-}
-
 /** The types a program's rules build: a union, normalized, and the types computed from others. */
 type Rebuilt = UnionType | ComputedType;
 
@@ -193,11 +140,6 @@ type Rebuilt = UnionType | ComputedType;
  */
 function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Type | undefined {
   const rebuilt = (): Type | undefined => {
-    const use = recursionOf(type);
-    if (use !== undefined) {
-      // What a recursive use unfolds to is that use, built again from its own arguments.
-      return recursiveUseOf(use, use.arguments.map(map), rules);
-    }
     switch (type.kind) {
       case 'union':
         return unionOf(type.members.map(map), rules);
@@ -212,9 +154,14 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
           ? rules.mappedType(mappedParts(type, map))
           : rules.matchType(type.recursion.declaration, type.recursion.arguments.map(map));
       case 'match':
+      case 'recursiveMatch':
+        // A type `match` use is reduced again, which finds it recursive still or not.
         return rules.matchType(type.declaration, type.arguments.map(map));
-      case 'recursive':
-        return recursiveUseOf(type, type.arguments.map(map), rules);
+      case 'anonymous':
+        // The shape a recursive type `match` use stands for is that use, built again.
+        return type.recursion === undefined
+          ? undefined
+          : rules.matchType(type.recursion.declaration, type.recursion.arguments.map(map));
       default:
         return undefined;
     }
@@ -228,23 +175,15 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
  * gives, still of its kind; its alias comes along, as `mapChildren` says. Building one of these
  * takes no rule of the program: only a union normalizes its members, and only a computed type
  * reduces, which `mapChildren` does. A computed type kept as it is, its parts respelled
- * (`unaliased`), stays of its kind here, and what a recursive use unfolds to keeps that use, its
- * arguments mapped alike.
+ * (`unaliased`), stays of its kind here, and the shape a recursive type `match` use stands for
+ * keeps that use, its arguments mapped alike. A recursive type's graph closes again from its parts
+ * mapped (recursive-types.ts).
  */
 export function mapParts<Mapped extends Exclude<Type, UnionType>>(
   type: Mapped,
   map: (child: Type) => Type,
 ): Mapped;
 export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => Type): Type {
-  const mapped = mapKindParts(type, map);
-  const use = recursionOf(type);
-  return use !== undefined && isUnfoldable(mapped)
-    ? { ...mapped, recursion: mappedRecursion(use, map) }
-    : mapped;
-}
-
-/** `type`'s own parts mapped, as `mapParts` says, apart from the recursive use it unfolds. */
-function mapKindParts(type: Exclude<Type, UnionType>, map: (child: Type) => Type): Type {
   switch (type.kind) {
     case 'associated':
       return { ...type, of: map(type.of) };
@@ -259,8 +198,10 @@ function mapKindParts(type: Exclude<Type, UnionType>, map: (child: Type) => Type
         recursion: mappedRecursion(type.recursion, map),
       };
     case 'match':
-    case 'recursive':
+    case 'recursiveMatch':
       return { ...type, arguments: type.arguments.map(map) };
+    case 'recursive':
+      return mapRecursive(type, map);
     case 'parameter':
       return type.within === undefined ? type : { ...type, within: map(type.within) };
     case 'literal':
@@ -270,7 +211,11 @@ function mapKindParts(type: Exclude<Type, UnionType>, map: (child: Type) => Type
     case 'nominal':
       return { ...type, arguments: type.arguments.map(map) };
     case 'anonymous':
-      return { ...type, fields: type.fields.map((field) => ({ ...field, type: map(field.type) })) };
+      return {
+        ...type,
+        fields: type.fields.map((field) => ({ ...field, type: map(field.type) })),
+        recursion: mappedRecursion(type.recursion, map),
+      };
     case 'tuple':
       return { ...type, elements: type.elements.map(map) };
     case 'function':

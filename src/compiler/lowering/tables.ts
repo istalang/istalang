@@ -34,6 +34,7 @@ import type { SyntaxTree } from '../syntax/tree.ts';
 import { nestedSpanOf } from './bodies.ts';
 import { type ClosedCall, type Dispatch, takingPassed } from './closed-calls.ts';
 import { annotationValues } from './constants.ts';
+import { laidOutAs } from './holdings.ts';
 import {
   type AsyncFit,
   asyncFitKey,
@@ -317,7 +318,8 @@ export class DefinitionTables {
   }
 
   /** How many types a closing entry switches over: an `any` type's so far, a union's members. */
-  #variantsOf(type: Type): number {
+  #variantsOf(given: Type): number {
+    const type = laidOutAs(given);
     if (type.kind === 'any') {
       return this.types.anyMembers(type).length;
     }

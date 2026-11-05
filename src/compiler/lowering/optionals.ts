@@ -27,7 +27,7 @@ import {
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Label } from './code-writer.ts';
 import type { CodeContext } from './context.ts';
-import { jumpIfHeld, type TypedValue } from './holdings.ts';
+import { jumpIfHeld, laidOutAs, type TypedValue } from './holdings.ts';
 import { intoUnion, oneValueIn, outOfUnion } from './unions.ts';
 
 /** A value of the optional type `type` in `register`, read as `to` where it isn't `none`. */
@@ -95,7 +95,8 @@ export function presentOr(
  * `type`, an optional the checker made sure of, not collapsed into `None`: a union holding it, or
  * the `any` type an instantiation collapsed it into.
  */
-function optionalType(type: Type): UnionType | AnyType {
+function optionalType(given: Type): UnionType | AnyType {
+  const type = laidOutAs(given);
   if (type.kind !== 'union' && type.kind !== 'any') {
     unreachable(`Expected an optional, not a ${type.kind} type; the checker should have said so.`);
   }

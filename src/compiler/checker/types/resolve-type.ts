@@ -23,6 +23,9 @@
  * - A `{…}` type is a shape (§3.1), or a mapped struct type, and `keyof S` and `S[K]` are key
  *   types (key-types.ts).
  * - A trait names no type of its own; after `any` it names the traits of one (§3.10).
+ * - A recursive alias's group closes from its bodies resolved apart (`resolveClosing`): a node
+ *   writing a use of the group resolves afresh, that use a placeholder, and reports and notes
+ *   nothing its own resolution doesn't again; any other node resolves as the checker resolves it.
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
@@ -71,6 +74,15 @@ import {
 interface Resolution {
   readonly checker: CheckerContext;
   readonly module: ModuleId;
+  /** The group whose bodies are closing, its uses placeholders; undefined anywhere else. */
+  readonly closing?: ClosingGroup | undefined;
+}
+
+/** A recursive alias group whose bodies are resolved to close it (declarations/recursive-bodies.ts). */
+export interface ClosingGroup {
+  readonly aliases: ReadonlySet<TypeAliasDeclaration>;
+  /** Whether `node` writes a use of one of `aliases`, at any depth. */
+  readonly writesUse: (node: TypeNode) => boolean;
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -83,7 +95,8 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
   TupleType: (resolution, node) =>
     tupleType(node.elements.map((element) => resolve(resolution, element))),
   FunctionType: (resolution, node) => functionType(resolution, node),
-  StructType: (resolution, node) => structWritten(resolution, node),
+  StructType: (resolution, node) =>
+    structWritten(resolution, node, (each) => resolve(resolution, each)),
   AnyType: ({ checker, module }, node) => checker.anyTypeOf(module, node.traits),
   UnionType: (resolution, node) => unionTypeOf(resolution, node),
   LiteralType: (_resolution, node) => writtenLiteral(node.value) ?? errorType,
@@ -107,13 +120,29 @@ export function resolveTypeNode(checker: CheckerContext, module: ModuleId, node:
   return handlerOf(typeHandlers, node)({ checker, module }, node);
 }
 
+/**
+ * The type `node`, part of a body of `group`, closes from (the banner): each use of the group's
+ * aliases a placeholder standing for that alias.
+ */
+export function resolveClosing(
+  checker: CheckerContext,
+  module: ModuleId,
+  node: TypeNode,
+  group: ClosingGroup,
+): Type {
+  return handlerOf(typeHandlers, node)({ checker, module, closing: group }, node);
+}
+
 /** The type a type parameter (or a trait's `Self`) stands for inside its declaration. */
 export function parameterType(declaration: ParameterKey): Type {
   return { kind: 'parameter', declaration };
 }
 
-function resolve({ checker, module }: Resolution, node: TypeNode): Type {
-  return checker.resolveType(module, node);
+function resolve(resolution: Resolution, node: TypeNode): Type {
+  const { checker, module, closing } = resolution;
+  return closing?.writesUse(node) === true
+    ? handlerOf(typeHandlers, node)(resolution, node)
+    : checker.resolveType(module, node);
 }
 
 function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
@@ -171,6 +200,13 @@ function namedType(resolution: Resolution, node: NamedType): Type {
   const members = node.path.slice(named);
   if (name === undefined || entity === undefined || members.some(isMissingName)) {
     return errorType;
+  }
+  if (
+    entity.kind === 'type' &&
+    entity.declaration.kind === 'TypeAliasDeclaration' &&
+    resolution.closing?.aliases.has(entity.declaration) === true
+  ) {
+    return parameterType(entity.declaration);
   }
   const written = members.length === 0 ? node : { ...node, typeArguments: [] };
   const argumentsFor = (declaration: NominalDeclaration | TypeAliasDeclaration) =>
@@ -293,10 +329,13 @@ function argumentsOf(
     return undefined;
   }
   const complete = { ...list, types: typeArguments };
-  if (inCasePattern(resolution, node)) {
-    noteConstraints(checker, module, complete);
-  } else {
-    constrainArguments(checker, module, complete);
+  // A closing body's node resolves again as written, which notes its checks with closed types.
+  if (resolution.closing === undefined) {
+    if (inCasePattern(resolution, node)) {
+      noteConstraints(checker, module, complete);
+    } else {
+      constrainArguments(checker, module, complete);
+    }
   }
   return typeArguments;
 }

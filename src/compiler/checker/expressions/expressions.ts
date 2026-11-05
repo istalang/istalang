@@ -183,7 +183,7 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
 
 /**
  * Which parameter types `node` can take when the call it is passed to decides its type; undefined
- * when it has a type of its own. A recursive use takes it as what it unfolds to, and a union of
+ * when it has a type of its own. A recursive type takes it as what it unfolds to, and a union of
  * which the value can be built as one member takes it too, as it is then built (§2,
  * types/expected.ts `memberBuilt`).
  */
@@ -353,7 +353,7 @@ const buildsHandlers: Handlers<BodyContext, Expression, [PartReader], Accepts | 
  */
 /**
  * The types `node`'s items, as `read` reads them, can build it as instead of its own (§3.7), and,
- * as every `Accepts` taken apart does, a recursive use or a union it is built as one member of
+ * as every `Accepts` taken apart does, a recursive type or a union it is built as one member of
  * (types/expected.ts `takingUnfolded`).
  */
 function buildsOf(context: BodyContext, node: Expression, read: PartReader): Accepts | undefined {

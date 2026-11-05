@@ -6,8 +6,9 @@
  * written through an alias stays written through it, its arguments substituted alike (type.ts).
  * The types substitution builds are built by the program's rules (type-rules.ts), so a union
  * reached through it is normalized as one written with its arguments in place: `T | any Stringable`
- * with `T = String` is `any Stringable`. A recursive use's unfolding is what its substituted use
- * unfolds to, decided again by the rules, never a verdict carried over.
+ * with `T = String` is `any Stringable`. The shape a recursive type `match` use stands for is what
+ * its substituted use stands for, decided again by the rules, never a verdict carried over; a
+ * recursive type's graph closes again from its parts substituted (recursive-types.ts).
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
@@ -25,7 +26,7 @@ import {
   type UnionType,
 } from './type.ts';
 import { mapChildren, mapParts } from './type-parts.ts';
-import type { TypeRules } from './type-rules.ts';
+import { type TypeRules, unfolded } from './type-rules.ts';
 
 /** Type parameters mapped to the types that replace them. */
 export type Substitution = ReadonlyMap<ParameterKey, Type>;
@@ -123,8 +124,8 @@ export function substituteKept<
 }
 
 /**
- * What a recursive use unfolds to (§3.17), with `substitution` applied: what the substituted use
- * unfolds to, whether the rules find it recursive still or not, of the same kind.
+ * The shape a recursive type `match` use stands for (§3.17), with `substitution` applied: what the
+ * substituted use stands for, whether the rules find it recursive still or not, a shape.
  */
 function substitutedUnfolding<Kept extends Type>(
   type: Kept,
@@ -132,10 +133,10 @@ function substitutedUnfolding<Kept extends Type>(
   rules: TypeRules,
 ): Kept {
   const substituted = substitute(type, substitution, rules);
-  const unfolding = substituted.kind === 'recursive' ? rules.unfold(substituted) : substituted;
+  const unfolding = unfolded(substituted, rules);
   return unfolding.kind === type.kind
     ? (unfolding as Kept)
-    : unreachable('A recursive use unfolds to a type of one kind whatever its arguments.');
+    : unreachable('A recursive type match use unfolds to a shape whatever its arguments.');
 }
 
 /** `substituted`, written through the alias `type` was written through, if any, substituted. */

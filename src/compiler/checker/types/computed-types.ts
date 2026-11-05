@@ -1,22 +1,22 @@
 /**
  * Types computed from others (§3.1, §3.5, §3.17), opaque until what they are built from is known:
  * an associated type, a field's type, a struct's keys, a mapped struct type and a type `match`'s
- * use, each reduced by the program's rules (type-rules.ts) once an instantiation allows; and a
- * recursive alias use, which is known, standing for what it unfolds to: an alias's body, or the
- * shape a type `match` reduces to, with the use inside it again.
+ * use, each reduced by the program's rules (type-rules.ts) once an instantiation allows; and the
+ * recursive types, which are known: a node of a cyclic graph (§3.17), and a type `match` use
+ * reached again while it reduces, standing for the shape it reduces to.
  */
 
 import type { AliasDeclaration, AssociatedType, TypeParameter } from '../../syntax/declarations.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
 import type { StructType } from '../../syntax/types.ts';
-import {
-  type FieldMember,
-  isUnfoldable,
-  type NominalType,
-  type RecursiveUse,
-  type Type,
-  type TypeParameterType,
-  type WrittenThrough,
+import type {
+  DeclaredAliasUse,
+  FieldMember,
+  NominalType,
+  RecursiveUse,
+  Type,
+  TypeParameterType,
+  WrittenThrough,
 } from './type.ts';
 
 /**
@@ -116,14 +116,44 @@ export function isOpaque(type: Type): type is TypeParameterType | ComputedType {
 }
 
 /**
- * A use of an alias that reaches itself (§3.17), as a recursive struct refers to itself: one type,
- * known, its identity the alias and its arguments (iso-recursive). It stands for what it unfolds to
- * (type-rules.ts `unfold`): the alias's body with this use inside it again, or the shape a type
- * `match` alias reduces to. What it unfolds to carries the same identity (`Unfolding`), whatever
- * its kind, so the two are one type; no fold or unfold is ever written.
+ * A recursive type (§3.17): a node of an immutable, minimized cyclic graph whose nodes are ordinary
+ * types, a recursive type of the same graph standing wherever a node is reached again. Its identity
+ * is its structure (equi-recursive): two graphs whose nodes unfold alike are one type, whatever
+ * aliases wrote them, so its key is its graph's canonical spelling (type-keys.ts). It stands for
+ * what it unfolds to, its node's body (`unfoldRecursive`); no fold or unfold is ever written. Only
+ * closing a group of bodies builds one (recursive-types.ts `closeRecursive`).
  */
 export interface RecursiveType extends WrittenThrough {
   readonly kind: 'recursive';
+  readonly graph: RecursiveGraph;
+  readonly node: number;
+}
+
+/**
+ * The nodes of a recursive type's graph: each one's body, the node as a recursive type (`types`,
+ * the one object standing for it inside every body), and the alias it reads as, which messages and
+ * hovers print and which identifies nothing; a node no alias wrote has none.
+ */
+export interface RecursiveGraph {
+  readonly nodes: readonly Type[];
+  readonly types: readonly RecursiveType[];
+  readonly labels: readonly (DeclaredAliasUse | undefined)[];
+}
+
+/** What the recursive type `type` stands for (§3.17): its node's body. */
+export function unfoldRecursive(type: RecursiveType): Type {
+  return type.graph.nodes[type.node] ?? type;
+}
+
+/**
+ * A use of a type `match` alias reached again while it reduces (§3.17), standing for the shape it
+ * reduces to, with itself inside again: one type, known, its identity the alias and its arguments,
+ * and the shape it unfolds to carries that identity (`AnonymousStructType.recursion`). Recursive
+ * aliases close into graphs instead (`RecursiveType`); these join them once type `match` reductions
+ * close through the same constructor (docs/work/proposals/p5-equi-recursive-identity.md, stage 2).
+ */
+export interface RecursiveMatchType extends WrittenThrough {
+  readonly kind: 'recursiveMatch';
   readonly declaration: AliasDeclaration;
   readonly arguments: readonly Type[];
 }
@@ -131,12 +161,4 @@ export interface RecursiveType extends WrittenThrough {
 /** Whether `declaration`'s body is a type `match`, whose uses reduce rather than unfold (§3.17). */
 export function isMatchAlias(declaration: AliasDeclaration): boolean {
   return declaration.type.kind === 'TypeMatch';
-}
-
-/**
- * What `body` stands for as the unfolding of `use`: the body with the use's identity. Every body a
- * guarded alias has is of a kind that carries it (alias-recursion.ts); the error type stays itself.
- */
-export function withRecursion(body: Type, use: RecursiveUse): Type {
-  return isUnfoldable(body) ? { ...body, recursion: use } : body;
 }

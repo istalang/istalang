@@ -30,6 +30,7 @@ import {
   type UnionType,
 } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
+import { unfolded } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { hasOneValue, membersOf } from '../types/unions.ts';
 import { arrayElement } from '../types/well-known.ts';
@@ -66,9 +67,9 @@ function constructorsOf(
   checker: ShapeChecker,
   type: Type,
 ): readonly ConstructorOf<Type>[] | undefined {
-  if (type.kind === 'recursive') {
-    // A recursive alias use is made of what it unfolds to (§3.17).
-    return constructorsOf(checker, checker.typeRules.unfold(type));
+  if (type.kind === 'recursive' || type.kind === 'recursiveMatch') {
+    // A recursive type is made of what it unfolds to (§3.17).
+    return constructorsOf(checker, unfolded(type, checker.typeRules));
   }
   const union = isMemberParameter(type) ? checker.fitting.memberUnionOf(type) : undefined;
   if (union === undefined) {

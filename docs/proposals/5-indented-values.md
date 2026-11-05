@@ -3,8 +3,8 @@ description: proposal 5 of docs/proposals, for indented values — struct, map a
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-05
-last_updated: 2026-11-05
+last_verified: 2026-11-06
+last_updated: 2026-11-06
 tags: [proposal, language, syntax, types, stdlib, json]
 ---
 
@@ -110,15 +110,13 @@ type List = { head: Int, tail: List? }
   A reference standing as the whole body, or as a member of the body's union, names no type, and stays a compile error: `type A = A | Int`, `type A = A?`. An alias whose body is a type `match` keeps its own rules (§3.17).
 - **Finite values.** The rule of §3.1 holds: `type List = { head: Int, tail: List? }` checks, while `tail: List` is an error at the field.
 - **Regular.** Each reference passes the alias's own type parameters, in order. `type W<T> = T | Array<W<Array<T>>>` would need endlessly many types: that is the compile error of §3.5.
-- **Identity.** A use of a recursive alias is a type of its own, keyed by its alias and its arguments (`json.Json`, `Tree<Int>`), as a recursive type `match` use already is (§3.17).
-  - It stands for its body with itself substituted, unfolded where it is used. Its members, fields, patterns, conversions and exhaustiveness are its body's.
+- **Identity is structural (equi-recursive), the human's decision of 2026-11-06.** Two recursive types whose unfoldings are equal are one type, whatever aliases wrote them, as a shape is one type wherever written (`2-structural-types.md`): `type A = Int | Array<A>` and `type B = Int | Array<B>` mix, inside containers too. Structs and enums stay nominal.
+  - A use stands for its body with itself substituted, unfolded where it is used. Its members, fields, patterns, conversions and exhaustiveness are its body's.
   - No fold or unfold is ever written: `1` converts into a `Tree<Int>`, and `case Array<Tree<Int>> as xs` selects a member.
-  - So identity is nominal by alias (iso-recursive), and use is structural.
-- **Why not equi-recursive.** Making `type A = Int | Array<A>` and `type B = Int | Array<B>` one type would need `typeKey` (`2-structural-types.md`, note 1) to be a canonical form of a cyclic type graph, minimized for every key. That cost falls on every type comparison, and it would be a second identity rule beside the one recursive type `match` uses keep.
-  - Keyed by alias and arguments, a key stays a finite string. Messages print the alias.
-  - The loss: two equal recursive aliases written apart don't mix inside containers. The standard library's one `Json` makes that rare.
-- **In a union.** A use stands as one member, never flattened. A member its body already holds merges into it, as into an `any` member (§2), so `Json | Int` and `Json?` are both `Json`.
-- **Spelled** as its alias in messages, hovers and extern keys. A static function declared on it belongs to it.
+  - **Why:** the form builder's generated data flows into domain modules that write the shapes they consume; with iso-recursion one self-reference (a category tree) made a structural shape nominal. Plan and evidence: `docs/work/proposals/p5-equi-recursive-identity.md`.
+  - **How:** a recursive type is a node of a minimized cyclic graph, built by one constructor that closes a group of alias bodies, and its key is the graph's canonical spelling (`checker/types/recursive-types.ts`, `recursive-terms.ts`).
+- **In a union** its members join the union, flattened as a union member's are (§2): `Json | Int` and `Json?` are both `Json`, and with `type Forest = Tree | Array<Forest>`, `Forest` is `Tree`.
+- **Spelled** as the alias it was written through in messages, hovers and extern keys; a compiled program names it by its preferred alias, which identifies nothing. A static function declared on it belongs to the type.
 
 ### 3. `json.Json` as a recursive union
 
@@ -286,6 +284,8 @@ import a, b as bee from 'x'
 | `type Tree = Int \| Array<Tree>` | error 5106: the alias refers to itself | a recursive union |
 | `type List = { head: Int, tail: List? }` | error 5106 (written with `;`) | a recursive shape |
 | `type A = A \| Int` | error 5106 | still an error |
+| `type B = Int \| Array<B>` beside `type Tree = Int \| Array<Tree>` | error 5106 at both | one type with `Tree`: a value of either goes where the other is expected |
+| `type Forest = Tree \| Array<Forest>` | error 5106 | `Tree`'s members join it, so it is `Tree`, and `const b: Forest = [1]` builds the one array member |
 | a `Json` literal | `Object{fields: ["a": Integer{value: 1}, "b": List{items: [Boolean{value: true}, Null]}]}`; `["a": 1, …]` is error 5304 | `["a": 1, "b": [true, none]]` |
 | `case Text{value}` on a `Json` | binds the String | gone: `case String as value` |
 | `Json?` | holds `none` apart from the `Null` variant | `Json` |
@@ -331,7 +331,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
 - **YAML syntax left out:** block scalars `|` and `>` (multi-line templates serve), `null` and `~`, anchors and aliases in source (spreads serve), and unquoted String values.
 - **Where an indented value can't go:** inside brackets; as a body's last line, which is a label; with anything after it, such as a method call after its block.
 - **Indented forms left out:** maps whose keys aren't Strings; nested items on one line (`- - 1`); items at their key's own column, as YAML allows.
-- **Recursion left out:** equi-recursive identity, so two aliases with equal bodies stay two types; and recursive aliases that aren't regular.
+- **Recursion left out:** recursive aliases that aren't regular, and a reference where what it names must be known first (`keyof A`, `A.Data`, inside an `any` type's traits).
 - **Patterns left out of parameters:** refutable patterns, which would be overloading by pattern, patterns behind `&`, and patterns as rest parameters.
 
 **Lost.**
@@ -362,7 +362,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
   - **Trailing commas:** a list broken over lines needs none.
   - New paragraph **Indented values**, from §1 above, after **Literals**. The literal list gains a bullet for it.
   - **What each kind of bracket means:** a block below `=`, `return`, a key or `-` builds a value. Where a union holds both an array type and a map type, `[]` is the array and `[:]` the map.
-  - **Unions:** a recursive alias stands as one member, taking whole the members its body holds.
+  - **Unions:** a recursive alias's members join the union; a union equal to a recursive alias is that alias.
 - **§3.** A top-level `const`'s "in any literal form" covers indented values.
 - **§3.1.**
   - Construction gains the indented form after the brace form.
@@ -383,7 +383,6 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
 - **§4.** `return` may end its line, with an indented value below. **Labels:** a body's line `Name:` with a block below it is a label, never a value.
 - **§9.** The mapping table's `json.Json` row is the union.
 - **§14 Future work.** Additions:
-  - equi-recursive identity, if equal recursive aliases from two libraries must mix;
   - indented maps with keys other than Strings.
 
 ## Implementation notes
@@ -409,11 +408,11 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
    - semantic tokens: a map's bare key is a String, a struct's a field (`src/language-service/semantic-tokens/`);
    - the VS Code grammar (`.vscode/extensions/ista/syntaxes/`) gains `- ` items.
 6. **Recursive aliases.**
-   - `checker/declarations/aliases.ts` reports 5106 only for an unguarded reference or an irregular one. A guarded cycle makes the `RecursiveType` of `checker/types/computed-types.ts`, which recursive type `match` uses already are.
-   - It is keyed as `recursionKeyOf` keys them (`types/type-keys.ts`) and unfolded on demand.
-   - `types/unions.ts`, through `unionOf`, keeps it as one member and merges the members its body holds.
-   - `types/finiteness.ts` already walks `RecursiveType`.
-   - `src/compiler/lowering/type-table.ts` gives it one entry per key, with its body (an enum for a union, a struct for a shape) referring to that entry.
+   - `checker/declarations/aliases.ts` reports 5106 only for an unguarded, blocking or irregular reference. A guarded group closes through `closeRecursive` (`checker/types/recursive-types.ts`) into the `RecursiveType` of `checker/types/computed-types.ts`: a node of a minimized graph, the bodies resolved with placeholders (`declarations/recursive-bodies.ts`).
+   - It is keyed by its graph's canonical spelling (`types/recursive-terms.ts`, `types/type-keys.ts`) and unfolds to its node's body.
+   - `types/unions.ts`, through `unionOf`, flattens it and folds a union equal to it back into it.
+   - `types/finiteness.ts` walks `RecursiveType`.
+   - `src/compiler/lowering/type-table.ts` gives it one entry per key, with its body (an enum for a union, a struct for a shape) referring to that entry, named by the preferred alias.
 7. **`Json`.**
    - `src/stdlib/json/json.ista` declares the alias. Its codecs match members (`case Int as value`), and `natives.ts` builds maps and arrays.
    - `src/definition/json-values.ts` finds each member's variant in the union's layout (`unionLayout`, `src/language/well-known.ts`), not by variant name, and `jsonVariants` goes.

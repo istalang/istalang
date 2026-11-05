@@ -1,9 +1,9 @@
 /**
  * Recursive type aliases (proposal 5 §2, notes 6 and 11): guarded vs unguarded self-reference
- * (5106), finiteness (5211), regularity, iso-recursive identity keyed by alias and arguments
- * ('typeKey' equal iff 'sameType', 'Tree<T>' instantiated with 'Int' equal to 'Tree<Int>', two
- * aliases with equal bodies distinct), union absorption ('Tree<Int> | Int' is 'Tree<Int>'),
- * unfolding without fold/unfold, exhaustive pattern matching, static functions, and 'typeText'.
+ * (5106), finiteness (5211), regularity, equi-recursive identity ('typeKey' equal iff 'sameType',
+ * 'Tree<T>' instantiated with 'Int' equal to 'Tree<Int>', two aliases with equal bodies one type),
+ * flattening in a union ('Tree<Int> | Int' is 'Tree<Int>'), unfolding without fold/unfold,
+ * exhaustive pattern matching, static functions, and 'typeText'.
  */
 
 import fc from 'fast-check';
@@ -11,8 +11,9 @@ import { describe, expect, it } from 'vitest';
 import { reportedNothing, reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
+import { compiledDefinition } from '../../compile.test-kit.ts';
 import { lines } from '../../parser/parse.test-kit.ts';
-import { idOf } from '../../program/program.test-kit.ts';
+import { type Files, idOf } from '../../program/program.test-kit.ts';
 import { programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import { reported } from '../check.test-kit.ts';
@@ -114,10 +115,24 @@ describe('finiteness and regularity rules (§2, §3.1, §3.5)', () => {
     );
   });
 
-  it('reports an alias naming itself in a union inside its own union body (5106)', () => {
-    expect(reported('type R = Int | Array<R?>').codes).toContain(
-      checkerDiagnostics.aliasCycle.code,
+  it('closes an alias naming itself in a union inside its own union body, which flattens', () => {
+    const declarations = lines(
+      'type R = Int | Array<R?>',
+      'fn count(r: R) -> Int:',
+      '  match r:',
+      '    case Int as n: return n',
+      '    case Array<R?> as items: return items.length()',
     );
+    expect(reported(declarations)).toEqual(reportedNothing);
+    expect(mainGives('Int', 'return count([1, none, [2]]) + count(4)', declarations)).toBe(7);
+  });
+
+  it('refuses an alias reached again where it must be known first, guarded or not (5106)', () => {
+    for (const body of ['{ k: keyof A }', '{ f: any Shows<A> }']) {
+      expect(reported(`trait Shows<T>:\n  fn show(self) -> T\ntype A = ${body}`).codes).toContain(
+        checkerDiagnostics.aliasCycle.code,
+      );
+    }
   });
 
   it('accepts a multi-parameter recursive alias that passes its parameters in order', () => {
@@ -146,7 +161,7 @@ describe('identity, typeKey, sameType, substitution and union absorption (§2, n
     expect(typeKeys.typeKey(instantiated)).toBe(typeKeys.typeKey(concreteTree));
   });
 
-  it('keeps two recursive aliases with equal bodies as distinct types (iso-recursive), while equal uses are one type', () => {
+  it('makes two recursive aliases with equal bodies one type (equi-recursive), inside containers too', () => {
     const { types } = parameterTypesOf(
       lines(
         'type A = Int | Array<A>',
@@ -159,18 +174,50 @@ describe('identity, typeKey, sameType, substitution and union absorption (§2, n
       throw new Error('Expected three parameter types');
     }
     expect(sameType(a1, a2)).toBe(true);
-    expect(typeKeys.typeKey(a1)).toBe(typeKeys.typeKey(a2));
-    expect(sameType(a1, b)).toBe(false);
-    expect(typeKeys.typeKey(a1)).not.toBe(typeKeys.typeKey(b));
+    expect(sameType(a1, b)).toBe(true);
+    expect(typeKeys.typeKey(a1)).toBe(typeKeys.typeKey(b));
+    expect(typeText(b)).toBe('B');
+    const mixed = lines(
+      'type A = Int | Array<A>',
+      'type B = Int | Array<B>',
+      'fn mix(xs: Array<A>) -> Array<B>: xs',
+    );
+    expect(reported(mixed)).toEqual(reportedNothing);
+    expect(mainGives('Int', 'return mix([1, [2]]).length()', mixed)).toBe(2);
+  });
+
+  it('passes recursive form data into a domain function written with its own alias', () => {
+    const declarations = lines(
+      'type FormCategory = { name: String, children: Array<FormCategory> }',
+      'type CrmCategory = { name: String, children: Array<CrmCategory> }',
+      'fn saveTree(c: CrmCategory) -> Int: c.children.length()',
+      'fn submitted() -> FormCategory:',
+      '  return FormCategory{name: "a", children: [FormCategory{name: "b", children: []}]}',
+    );
+    expect(reported(declarations)).toEqual(reportedNothing);
+    expect(mainGives('Int', 'return saveTree(submitted())', declarations)).toBe(1);
+  });
+
+  it('builds a literal against an alias flattening another as the one member it fits', () => {
+    const declarations = lines(
+      'type Tree = Int | Array<Tree>',
+      'type Forest = Tree | Array<Forest>',
+      'fn size(f: Forest) -> Int:',
+      '  match f:',
+      '    case Int: return 1',
+      '    case Array<Tree> as items: return items.length()',
+      'fn same(t: Tree) -> Forest: t',
+      'fn one() -> Int:',
+      '  const b: Forest = [1]',
+      '  return size(b)',
+      'fn two() -> Int:',
+      '  const b: Forest = [1, [2]]',
+      '  return size(b)',
+    );
+    expect(reported(declarations)).toEqual(reportedNothing);
     expect(
-      reported(
-        lines(
-          'type A = Int | Array<A>',
-          'type B = Int | Array<B>',
-          'fn mix(xs: Array<A>) -> Array<B>: xs',
-        ),
-      ).codes,
-    ).toContain(checkerDiagnostics.typeMismatch.code);
+      mainGives('Int', 'return size(same([1, 2, 3])) * 100 + one() * 10 + two()', declarations),
+    ).toBe(312);
   });
 
   it('absorbs members that a recursive union alias already holds (Tree<Int> | Int is Tree<Int>)', () => {
@@ -188,15 +235,24 @@ describe('identity, typeKey, sameType, substitution and union absorption (§2, n
     expect(sameType(t, tOrArr)).toBe(true);
   });
 
-  it('keeps a member its body does not hold beside it: Tree<Int> | String is a union of two', () => {
+  it('flattens a recursive union in a union: Tree<Int> | String holds its members and String', () => {
     const { types } = parameterTypesOf(
       lines(
+        "import Json from 'json'",
         'type Tree<T> = T | Array<Tree<T>>',
-        'fn check(t: Tree<Int>, u: Tree<Int> | String): ()',
+        'fn check(t: Tree<Int>, u: Tree<Int> | String, j: Json | Int, o: Json?, k: Json): ()',
       ),
     );
-    const [t, u] = types;
-    expect(u?.kind === 'union' && u.members.length === 2 && t !== undefined).toBe(true);
+    const [t, u, j, o, k] = types;
+    expect(u?.kind === 'union' && u.members.length === 3 && t !== undefined).toBe(true);
+    expect(j !== undefined && o !== undefined && k !== undefined).toBe(true);
+    expect(
+      [j, o].map((each) => each !== undefined && k !== undefined && sameType(each, k)),
+    ).toEqual([true, true]);
+    expect([j, o].map((each) => (each === undefined ? '' : typeText(each)))).toEqual([
+      'Json',
+      'Json',
+    ]);
   });
 
   it('spells a recursive alias by its alias name in typeText and supports static functions on it', () => {
@@ -307,5 +363,38 @@ describe('using recursive aliases without fold/unfold: conversions, fields and e
       '    case Int as n: n',
     );
     expect(reported(nonExhaustive).codes).toContain(checkerDiagnostics.nonExhaustiveMatch.code);
+  });
+});
+
+describe('a recursive type in a compiled program (docs/arch/definition.md)', () => {
+  const entryNames = (main: string, others: Files = {}) =>
+    compiledDefinition(stdProgramOf({ 'main.ista': main, ...others }), 'main.ista').types.map(
+      (entry) => entry.name,
+    );
+  const program = lines(
+    "import Tree from 'a.ista'",
+    'type Forest = Tree | Array<Forest>',
+    'fn size(f: Forest) -> Int:',
+    '  match f:',
+    '    case Int as n: return n',
+    '    case _: return 2',
+    'async fn main() -> Future<Int>:',
+    '  const f: Forest = [1, [2]]',
+    '  return size(f)',
+  );
+
+  it('names one entry for equal recursive types by the preferred alias, whichever was written', () => {
+    const names = entryNames(program, { 'a.ista': 'type Tree = Int | Array<Tree>' });
+    expect(names.filter((name) => name === 'a.ista.Tree')).toHaveLength(1);
+    expect(names.filter((name) => name?.endsWith('Forest') === true)).toEqual([]);
+  });
+
+  it('keeps every entry when an alias of the same type is added in another module', () => {
+    const before = entryNames(program, { 'a.ista': 'type Tree = Int | Array<Tree>' });
+    const after = entryNames(program, {
+      'a.ista': 'type Tree = Int | Array<Tree>',
+      'b.ista': 'type Nest = Int | Array<Nest>',
+    });
+    expect(after).toEqual(before);
   });
 });

@@ -91,7 +91,7 @@ export interface ValuePart<Step extends PartStep = PartStep> {
 }
 
 /**
- * The `count` elements of `part`, a tuple of that many or a recursive use unfolding to one
+ * The `count` elements of `part`, a tuple of that many or a recursive type unfolding to one
  * (§3.17), at `span`; each of the error type, after a report, when it is anything else.
  */
 export function elementParts<Step extends PartStep>(

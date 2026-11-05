@@ -159,6 +159,7 @@ const checkerSurface = [
   'types/fit.ts',
   'types/expected.ts',
   'types/unions.ts',
+  'types/recursive-types.ts',
   'types/type-keys.ts',
   'types/type-text.ts',
   'types/instantiation.ts',

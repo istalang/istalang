@@ -8,8 +8,9 @@
 
 import type { CheckerContext } from '../context.ts';
 import type { Type } from './type.ts';
+import { typeChildren } from './type-children.ts';
 import { TypeCycle } from './type-cycle.ts';
-import { typeChildren } from './type-parts.ts';
+import { unfolded } from './type-rules.ts';
 
 /** The first type `type` holds, itself first, that `picks` picks; undefined when none is. */
 export function heldType(
@@ -47,7 +48,8 @@ export function heldParts(
 ): readonly Type[] {
   switch (type.kind) {
     case 'recursive':
-      return heldParts(checker, checker.typeRules.unfold(type));
+    case 'recursiveMatch':
+      return heldParts(checker, unfolded(type, checker.typeRules));
     case 'tuple':
     case 'anonymous':
     case 'union':

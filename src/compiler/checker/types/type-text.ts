@@ -4,13 +4,15 @@
  *
  * Nominal types print their declared name without a module: inside a message the source location
  * already says where. A type written through an alias reads as the alias, with its arguments
- * (§3.17), as the programmer wrote it; any other shape reads as its fields, never as a key.
+ * (§3.17), as the programmer wrote it; any other shape reads as its fields, never as a key. A
+ * recursive type reads as the alias it was written through, else as its node's label.
  */
 
 import { selfType } from '../../../language/well-known.ts';
-import type { TypeParameter } from '../../syntax/declarations.ts';
+import type { TypeAliasDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
-import type { MappedParts } from './computed-types.ts';
+import { type MappedParts, type RecursiveType, unfoldRecursive } from './computed-types.ts';
+import { folded } from './recursive-types.ts';
 import {
   type AliasUse,
   type AnonymousStructType,
@@ -24,6 +26,24 @@ import {
   type TypeParameterType,
   type UnionType,
 } from './type.ts';
+import { holdsRecursion } from './type-children.ts';
+
+/** The unlabelled recursive types being printed as their bodies, each `…` where reached again. */
+const printing = new Set<RecursiveType>();
+
+/** A recursive type no alias wrote, read as its body, itself `…` inside it. */
+function unlabelledText(type: RecursiveType): string {
+  const node = type.graph.types[type.node] ?? type;
+  if (printing.has(node)) {
+    return '…';
+  }
+  printing.add(node);
+  try {
+    return typeText(unfoldRecursive(node));
+  } finally {
+    printing.delete(node);
+  }
+}
 
 /** `of.name`, an associated type as written (§3.1). */
 function associatedText(of: Type, name: string): string {
@@ -58,7 +78,9 @@ export function writtenAndNamedText(type: Type): string {
  * `type` as source would spell it. Extern keys spell types too (definition/extern-key.ts), but
  * apart on purpose: they are a persisted identity, and must never follow a change of wording here.
  */
-export function typeText(type: Type): string {
+export function typeText(given: Type): string {
+  // A type equal to a recursive alias, as what one unfolds to is, reads as that alias.
+  const type = given.alias === undefined && holdsRecursion(given) ? folded(given) : given;
   const { alias } = type;
   if (alias !== undefined) {
     return spellingText(alias);
@@ -74,7 +96,11 @@ export function typeText(type: Type): string {
       return nominalTypeText(type);
     case 'anonymous':
       return anonymousText(type);
-    case 'recursive':
+    case 'recursive': {
+      const label = type.graph.labels[type.node];
+      return label === undefined ? unlabelledText(type) : spellingText(label);
+    }
+    case 'recursiveMatch':
       return parameterizedText(type.declaration.name.text, type.arguments);
     case 'tuple':
       return `(${type.elements.map(typeText).join(', ')}${type.elements.length === 1 ? ',' : ''})`;
@@ -212,9 +238,10 @@ export function parameterText(type: TypeParameterType): string {
 
 /**
  * The name a parameter a declaration or a mapped type binds is written with; a struct pattern's
- * rest binds one for its keys unwritten, read as a mapped entry's conventional `F` (§3.11).
+ * rest binds one for its keys unwritten, read as a mapped entry's conventional `F` (§3.11); a
+ * recursive alias's placeholder reads as the alias.
  */
-function boundName(declaration: TypeParameter | RestPattern): string {
+function boundName(declaration: TypeParameter | RestPattern | TypeAliasDeclaration): string {
   return declaration.kind === 'RestPattern' ? 'F' : declaration.name.text;
 }
 

@@ -14,6 +14,7 @@ import { idOf } from '../../program/program.test-kit.ts';
 import { programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import { checkProgram } from '../check.ts';
+import { unfoldRecursive } from './computed-types.ts';
 import { sameType } from './identity.ts';
 import { typeKeys } from './type-keys.ts';
 
@@ -98,7 +99,7 @@ describe('a recursive use and what it unfolds to', () => {
       if (use?.kind !== 'recursive' || array?.kind !== 'nominal') {
         throw new Error(`Expected a recursive use and an array of it for ${body}`);
       }
-      const unfolding = checker.typeRules.unfold(use);
+      const unfolding = unfoldRecursive(use);
       expect(sameType(unfolding, use)).toBe(true);
       expect(typeKeys.typeKey(unfolding)).toBe(typeKeys.typeKey(use));
       const ofUnfolding = { ...array, arguments: [unfolding] };

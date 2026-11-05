@@ -16,7 +16,7 @@
  */
 
 import type { AliasDeclaration } from '../../syntax/declarations.ts';
-import type { MappedParts, RecursiveType } from './computed-types.ts';
+import { type MappedParts, type RecursiveMatchType, unfoldRecursive } from './computed-types.ts';
 import type { AnyType, ParameterKey, Type } from './type.ts';
 
 /** The rules of the program building a type that types/ sits below. */
@@ -57,24 +57,25 @@ export interface TypeRules {
    */
   readonly matchType: (declaration: AliasDeclaration, typeArguments: readonly Type[]) => Type;
   /**
-   * What the recursive use `type` stands for (§3.17): its alias's body with its arguments, or the
-   * shape a type `match` alias reduces to, the use itself inside it where it is reached again. A
-   * shape or a union carries the use's identity (`withRecursion`).
+   * The shape the recursive type `match` use `type` stands for (§3.17), the use itself inside it
+   * where it is reached again, carrying the use's identity.
    */
-  readonly unfold: (type: RecursiveType) => Type;
-  /**
-   * The members of the union the recursive use `type` unfolds to, which a union holding it takes
-   * whole (unions.ts); undefined where it unfolds to no union, its alias's body left unresolved.
-   */
-  readonly unfoldedMembers: (type: RecursiveType) => readonly Type[] | undefined;
+  readonly unfold: (type: RecursiveMatchType) => Type;
   /** Whether every key `key` may be names a field of `of`, as a written `S[K]` must (§3.1). */
   readonly isKeyOf: (key: Type, of: Type) => boolean;
 }
 
 /**
- * `type`, as a value of it is built and taken apart: what a recursive use unfolds to (§3.17), the
- * same type by identity (`Unfolding`); any other type as it is.
+ * `type`, as a value of it is built and taken apart: what a recursive type unfolds to (§3.17), the
+ * same type by identity; any other type as it is.
  */
 export function unfolded(type: Type, rules: TypeRules): Type {
-  return type.kind === 'recursive' ? rules.unfold(type) : type;
+  switch (type.kind) {
+    case 'recursive':
+      return unfoldRecursive(type);
+    case 'recursiveMatch':
+      return rules.unfold(type);
+    default:
+      return type;
+  }
 }

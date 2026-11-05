@@ -30,9 +30,11 @@ import {
   kindMembers,
   literalMembers,
   membersNamed,
+  membersOfType,
   patternTypeOf,
   variantOwners,
 } from '../types/named-types.ts';
+import { typeOfEntity } from '../types/resolve-type.ts';
 import { floatType, noneType, type Type, type UnionType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import {
@@ -312,22 +314,35 @@ function namedMembers(
     );
     return undefined;
   }
-  return written.typeArguments.length === 0 ? named : instanceNamed(scope, entity, written, named);
+  return written.typeArguments.length === 0
+    ? named
+    : instanceNamed(scope, entity, written, { named, members });
 }
 
 /**
  * The instance of the generic type `entity` names that `written`'s type arguments give, among
- * `named`; undefined after reporting arguments the type doesn't take, or naming a type in error.
+ * `named`, or among `members` the type a generic alias stands for with them; undefined after
+ * reporting arguments the type doesn't take, or naming a type in error.
  */
 function instanceNamed(
   scope: PatternScope,
   entity: Entity,
   written: WrittenName,
-  named: readonly Type[],
+  { named, members }: { readonly named: readonly Type[]; readonly members: readonly Type[] },
 ): readonly Type[] | undefined {
   const pattern = patternTypeOf(scope, entity);
-  const declared = pattern.kind === 'generic' ? pattern.declaration.typeParameters.length : 0;
+  const declared =
+    pattern.kind === 'generic' || pattern.kind === 'genericAlias'
+      ? pattern.declaration.typeParameters.length
+      : 0;
   const { typeArguments } = written;
+  if (pattern.kind === 'genericAlias' && typeArguments.length === declared) {
+    const given = typeArguments.map((argument) => scope.resolveType(argument));
+    const type = typeOfEntity(scope, entity, () => given);
+    return type === undefined || type.kind === 'error'
+      ? undefined
+      : membersOfType(scope, type, members);
+  }
   if (pattern.kind !== 'generic' || typeArguments.length !== declared) {
     const { text } = lastName(written.path);
     scope.report(

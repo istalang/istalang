@@ -9,12 +9,12 @@
  * - A name in a value's place gives no type arguments, so it names a generic type only as a whole:
  *   against a value of that type it matches every instance, but against an `any` value, whose own
  *   type is one instance, it names none. A generic alias stands for no one type, so it names none
- *   either.
+ *   either, recursive or not: a recursive alias's uses are their structure (§3.17).
  * - An alias names the type it stands for; a trait, a type parameter, `Self` and `Never`, which no
  *   value has, name no type a value is tested for.
- * - Static functions are declared on a nominal type's declaration, a primitive, or a shape (§3.17),
- *   whichever alias names it; a generic alias of a shape names the family its parameters make,
- *   keyed by them, so its static functions are reached through it.
+ * - Static functions are declared on a nominal type's declaration, a primitive, a shape or a
+ *   recursive type (§3.17), whichever alias names it; a generic alias of a shape names the family
+ *   its parameters make, keyed by them, so its static functions are reached through it.
  * - An `any` type holds a type whose values convert into it (types/fit.ts), the conversion's own
  *   rule, so what a pattern may name there and what may be converted in agree.
  * - Against an `any` value, a variant qualified by its enum names the enum, whose value is then
@@ -31,6 +31,7 @@ import { type Entity, typeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration, TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { Checker } from '../check.ts';
+import { unfoldRecursive } from './computed-types.ts';
 import { sameType } from './identity.ts';
 import { typeOfEntity } from './resolve-type.ts';
 import {
@@ -43,7 +44,7 @@ import {
 } from './type.ts';
 import { type ShapeKey, typeKeys } from './type-keys.ts';
 import { type TypeRules, unfolded } from './type-rules.ts';
-import { absorbingMember, baseOf, hasMember, holdingMember, optionalInner } from './unions.ts';
+import { absorbingMember, baseOf, hasMember, optionalInner } from './unions.ts';
 import { arrayElement } from './well-known.ts';
 
 type Aliases = Pick<Checker, 'aliasedType' | 'typeRules'>;
@@ -64,7 +65,7 @@ const optionalOwner = 'T?';
 
 /**
  * What static functions are declared on (§3.7, §3.17): a nominal type's declaration, a primitive's
- * name, a shape's or a recursive alias use's key, which no primitive's name is, or every optional.
+ * name, a shape's or a recursive type's key, which no primitive's name is, or every optional.
  */
 export type StaticOwner = NominalDeclaration | PrimitiveName | ShapeKey | typeof optionalOwner;
 
@@ -82,6 +83,8 @@ export function staticOwnerOf(type: Type | undefined): StaticOwner | undefined {
     case 'anonymous':
       return typeKeys.shapeKey(type);
     case 'recursive':
+      return typeKeys.typeKey(type) as ShapeKey;
+    case 'recursiveMatch':
       return typeKeys.recursionKey(type);
     case 'union':
       return optionalInner(type) === undefined ? undefined : optionalOwner;
@@ -104,18 +107,15 @@ export function declaredOwnerOf(
     : staticOwnerOf(entityType(checker, checker.bindings.entityOf(module, declaration.owner)));
 }
 
-/** A generic type a pattern names: a nominal one, or a recursive alias, whose uses are types (§3.17). */
-export type GenericDeclaration = NominalDeclaration | TypeAliasDeclaration;
+/** A generic type a pattern names: a nominal one. */
+export type GenericDeclaration = NominalDeclaration;
 
 /** The type a pattern naming an entity tests a value for. */
 export type PatternType =
   | { readonly kind: 'type'; readonly type: Type }
-  /**
-   * A generic type, named without the type arguments a pattern can't give: a nominal type, or a
-   * recursive alias, each of whose uses is a type of its own (§3.17).
-   */
+  /** A generic nominal type, named without the type arguments a pattern can't give. */
   | { readonly kind: 'generic'; readonly declaration: GenericDeclaration }
-  /** A generic alias of no recursion, which stands for no one type without its type arguments. */
+  /** A generic alias, which stands for no one type without its type arguments. */
   | { readonly kind: 'genericAlias'; readonly declaration: TypeAliasDeclaration }
   | { readonly kind: 'none' };
 
@@ -135,8 +135,7 @@ export function patternTypeOf(checker: Aliases, entity: Entity): PatternType {
     declaration.kind !== 'RequiredAssociatedType' &&
     declaration.typeParameters.length > 0;
   if (isGeneric) {
-    return declaration.kind === 'TypeAliasDeclaration' &&
-      checker.aliasedType(declaration).kind !== 'recursive'
+    return declaration.kind === 'TypeAliasDeclaration'
       ? { kind: 'genericAlias', declaration }
       : { kind: 'generic', declaration };
   }
@@ -201,11 +200,12 @@ type MemberNaming = Pick<Checker, 'aliasedType' | 'typeRules' | 'variantsOf'>;
 /**
  * The members of a union a pattern naming `entity` selects (§3.11): the enums declaring a variant
  * it names, bare or qualified; the member of a type it names, else the members of a union it names
- * where the union holds them all (`case Status as s` against `Status | Int`), else every literal
- * member of that base (`case String as s` against `Status | Int`), else the type itself where an
- * `any` or a recursive member took it whole (`case Int` against `Plain | any Shows`, or against
- * `Tree | String`), a downcast through that member; every member instantiating a generic type it
- * names. Anything else, a constant's name among them, selects none here.
+ * where the union holds them all (`case Status as s` against `Status | Int`, `case Tree as t`
+ * against `Tree | String`, whose members are `Tree`'s and `String`), else every literal member of
+ * that base (`case String as s` against `Status | Int`), else the type itself where an `any`
+ * member took it whole (`case Int` against `Plain | any Shows`), a downcast through that member;
+ * every member instantiating a generic type it names. Anything else, a constant's name among them,
+ * selects none here.
  */
 export function membersNamed(
   checker: MemberNaming,
@@ -240,28 +240,41 @@ export function variantOwners(
 function typeMembers(checker: Aliases, entity: Entity, members: readonly Type[]): readonly Type[] {
   const named = patternTypeOf(checker, entity);
   switch (named.kind) {
-    case 'type': {
-      const own = members.filter((member) => sameType(member, named.type));
-      if (own.length > 0) {
-        return own;
-      }
-      const inside = members.filter((member) => hasMember(named.type, member));
-      if (named.type.kind === 'union' && inside.length === named.type.members.length) {
-        return inside;
-      }
-      const literals = members.filter(
-        (member) => member.kind === 'literal' && sameType(baseOf(member), named.type),
-      );
-      if (literals.length > 0) {
-        return literals;
-      }
-      return takenWhole(members, named.type, checker.typeRules) ? [named.type] : [];
-    }
+    case 'type':
+      return membersOfType(checker, named.type, members);
     case 'generic':
       return members.filter((member) => instanceOf(member, named.declaration) !== undefined);
     default:
       return [];
   }
+}
+
+/**
+ * The members of a union a pattern naming `type` selects (`membersNamed`): its own member, else
+ * the members of the union it is where the union holds them all, else every literal member of its
+ * base, else `type` itself where an `any` member took it whole.
+ */
+export function membersOfType(
+  checker: Pick<Checker, 'typeRules'>,
+  type: Type,
+  members: readonly Type[],
+): readonly Type[] {
+  const own = members.filter((member) => sameType(member, type));
+  if (own.length > 0) {
+    return own;
+  }
+  const union = unfolded(type, checker.typeRules);
+  const inside = members.filter((member) => hasMember(union, member));
+  if (union.kind === 'union' && inside.length === union.members.length) {
+    return inside;
+  }
+  const literals = members.filter(
+    (member) => member.kind === 'literal' && sameType(baseOf(member), type),
+  );
+  if (literals.length > 0) {
+    return literals;
+  }
+  return takenWhole(members, type, checker.typeRules) ? [type] : [];
 }
 
 /**
@@ -280,23 +293,19 @@ export function instancesWith(
 }
 
 /**
- * The type arguments `type` instantiates the generic `declaration` with: a nominal type's, or a
- * recursive alias use's, whether used or unfolded (§3.17), which a nominal type it unfolds to is an
- * instance of as well; undefined when it instantiates `declaration` in neither way.
+ * The type arguments `type` instantiates the generic `declaration` with, a nominal type's, or what
+ * a recursive type it is unfolds to (§3.17); undefined when it instantiates `declaration` in neither.
  */
 function instanceOf(type: Type, declaration: GenericDeclaration): readonly Type[] | undefined {
-  const use = type.kind === 'recursive' ? type : recursionOf(type);
-  if (use?.declaration === declaration) {
-    return use.arguments;
-  }
-  return type.kind === 'nominal' && type.entity.declaration === declaration
-    ? type.arguments
+  const value = type.kind === 'recursive' ? unfoldRecursive(type) : type;
+  return value.kind === 'nominal' && value.entity.declaration === declaration
+    ? value.arguments
     : undefined;
 }
 
 /**
  * The members a literal of type `literal` selects: its own literal type's, else its base's, else
- * the literal itself through the `any` or recursive member that took it whole (§2), as `rules`
+ * the literal itself through the `any` member that took it whole (§2), as `rules`
  * say: the value inside that member is the literal's own.
  */
 export function literalMembers(
@@ -313,15 +322,9 @@ export function literalMembers(
   return based.length === 0 && takenWhole(members, literal, rules) ? [literal] : based;
 }
 
-/**
- * Whether an `any` or a recursive member among `members` took `type` whole (§2, §3.17), so a value
- * of it sits inside that member's.
- */
+/** Whether an `any` member among `members` took `type` whole (§2), so a value of it sits inside. */
 function takenWhole(members: readonly Type[], type: Type, rules: TypeRules): boolean {
-  return (
-    absorbingMember(members, type, rules) !== undefined ||
-    holdingMember(members, type, rules) !== undefined
-  );
+  return absorbingMember(members, type, rules) !== undefined;
 }
 
 /**
@@ -336,7 +339,7 @@ export type PatternKind =
 
 /**
  * The members a pattern of `pattern`'s kind selects, as `PatternKind` says, each read as what it
- * unfolds to where it is a recursive alias use (§3.17).
+ * unfolds to where it is a recursive type (§3.17).
  */
 export function kindMembers(
   checker: Pick<Checker, 'wellKnownType' | 'typeRules'>,

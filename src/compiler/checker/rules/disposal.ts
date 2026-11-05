@@ -61,6 +61,7 @@ export function isDisposable(checker: CheckerContext, type: Type): boolean {
     case 'mapped':
     case 'match':
     case 'recursive':
+    case 'recursiveMatch':
     case 'anonymous':
     case 'tuple':
     case 'function':

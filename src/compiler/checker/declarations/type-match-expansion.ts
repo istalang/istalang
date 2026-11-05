@@ -32,8 +32,9 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type ArgumentEdge, endlessEdgesFrom } from '../types/expansion-edges.ts';
 import { sameType } from '../types/identity.ts';
 import type { ParameterKey, Type } from '../types/type.ts';
+import { typeChildren } from '../types/type-children.ts';
 import type { CasePatternForm, InferVariable, TypeMatchQueries } from '../types/type-match.ts';
-import { parametersIn, typeChildren } from '../types/type-parts.ts';
+import { parametersIn } from '../types/type-parts.ts';
 
 interface ReductionEdge extends ArgumentEdge {
   readonly declaration: AliasDeclaration;

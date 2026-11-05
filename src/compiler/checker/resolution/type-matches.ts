@@ -20,7 +20,7 @@
  *   entry, and no use is answered with a type spelled at another's nodes. Which uses are under way
  *   or recursive is a matter of type identity, so those are kept by type key. One reaching a use whose
  *   reduction is under way repeats it: a recursive type, which a struct holds (§3.1). The uses on
- *   that cycle whose case gives a struct type stand for themselves (`RecursiveType`), their shape
+ *   that cycle whose case gives a struct type stand for themselves (`RecursiveMatchType`), their shape
  *   derived on demand with each such use inside it, as a recursive struct's fields refer to it.
  * - Whether a use stands for itself, or would be itself with no struct type on its cycle, is an
  *   entry too, found before it is reduced by reducing it once in a scope of its own and keeping
@@ -37,7 +37,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { AliasDeclaration } from '../../syntax/declarations.ts';
 import { type StructType, unparenthesizedType } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
-import { isOpaque, type RecursiveType } from '../types/computed-types.ts';
+import { isOpaque, type RecursiveMatchType } from '../types/computed-types.ts';
 import { substituteStructConstraint } from '../types/struct-constraint.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import {
@@ -96,7 +96,7 @@ interface Reducing {
 export class TypeMatchReductions {
   readonly #checker: CheckerContext;
   readonly #reductions: EntryTable<CheckerNote, string, Type, MatchUse>;
-  readonly #shapes: EntryTable<CheckerNote, string, AnonymousStructType, RecursiveType>;
+  readonly #shapes: EntryTable<CheckerNote, string, AnonymousStructType, RecursiveMatchType>;
   readonly #recursion: EntryTable<CheckerNote, string, Recursion, MatchUse>;
   /** The reductions under way, innermost last: a finding reduces in a scope of its own. */
   readonly #scopes: Reducing[] = [{ underWay: new Map(), found: undefined }];
@@ -109,7 +109,7 @@ export class TypeMatchReductions {
     });
     this.#shapes = checker.entries.table({
       name: 'recursive type match shapes',
-      compute: (_key, type: RecursiveType) => this.#shapeOf(type),
+      compute: (_key, type: RecursiveMatchType) => this.#shapeOf(type),
     });
     this.#recursion = checker.entries.table({
       name: 'type match recursion',
@@ -119,11 +119,11 @@ export class TypeMatchReductions {
   }
 
   /** The shape the recursive use `type` stands for (the banner). */
-  recursiveShape(type: RecursiveType): AnonymousStructType {
+  recursiveShape(type: RecursiveMatchType): AnonymousStructType {
     return this.#shapes.get(typeKeys.spelledKey(type), type);
   }
 
-  #shapeOf(type: RecursiveType): AnonymousStructType {
+  #shapeOf(type: RecursiveMatchType): AnonymousStructType {
     const use = { declaration: type.declaration, typeArguments: type.arguments };
     const key = typeKeys.typeKey(matchUse(use.declaration, use.typeArguments));
     const body = this.#reduced(use);
@@ -328,9 +328,9 @@ function unreducedUse(
   return { kind: 'error', unreduced: { use: { declaration, arguments: typeArguments }, cause } };
 }
 
-/** The use `use` standing for itself (`RecursiveType`). */
-function recursiveUse({ declaration, typeArguments }: MatchUse): RecursiveType {
-  return { kind: 'recursive', declaration, arguments: typeArguments };
+/** The use `use` standing for itself (`RecursiveMatchType`). */
+function recursiveUse({ declaration, typeArguments }: MatchUse): RecursiveMatchType {
+  return { kind: 'recursiveMatch', declaration, arguments: typeArguments };
 }
 
 /** A case's pattern with its declaration's parameters given their arguments. */

@@ -85,6 +85,7 @@ function sendable(checker: CheckerContext, type: Type, deciding: TypeCycle): boo
     case 'nominal':
       return nominalSendable(checker, type, deciding);
     case 'recursive':
+    case 'recursiveMatch':
       return deciding.enter(type, true, () =>
         heldParts(checker, type).every((part) => sendable(checker, part, deciding)),
       );
