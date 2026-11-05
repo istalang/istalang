@@ -8,8 +8,10 @@
  *   meets (`type Data is C`); on a known type it is that type's own associated type, an alias
  *   substituted for the type's arguments. Inside a trait, `Self` meets the trait itself. A union or
  *   an `any` type has none: only a type's own declaration declares one. One whose body is no type
- *   `match` and reaches itself again while substituted can't be a type (§3.1): the error type
- *   carrying it, which its written use reports, where it would otherwise expand without end.
+ *   `match` and reaches itself again while expanded can't be a type (§3.1): it and every one on
+ *   the cycle back to it is the error type carrying it, where it would otherwise expand without
+ *   end, however it is reached (types/substitution.ts), which each instantiation reaching it
+ *   reports (resolution/reduction-requirements.ts).
  * - `S["meta"]` (§3.5) meets what the entries of `S`'s struct constraints ask of that field; on a
  *   known struct it is the field's type, and an entry asking an exact type gives that type.
  * - A requirement on a type parameter or an `any` type is numbered by constraint and function
@@ -191,7 +193,7 @@ export function associatedTypeOf(
   checker: CheckerContext,
   of: Type,
   name: string,
-  underWay: string[],
+  underWay: Expansion[],
 ): Type {
   if (of.kind === 'error') {
     return of;
@@ -206,14 +208,33 @@ export function associatedTypeOf(
   const substitution = substitutionFor(of.entity.declaration.typeParameters, of.arguments);
   const aliased = checker.aliasedType(declared);
   const instance = () => aliasInstance(declared, aliased, substitution, checker.typeRules);
-  const key = `${typeKeys.typeKey(of)}.${name}`;
-  if (underWay.includes(key)) {
-    const use = { declaration: declared, arguments: of.arguments };
-    return { kind: 'error', unreduced: { use, cause: 'itself' } };
+  const use = { kind: 'associated', of, name } as const;
+  if (isMatchAlias(declared)) {
+    // A type `match` body finds its own recursion as it reduces (resolution/type-matches.ts).
+    return aliasedAs(instance(), use);
   }
-  // A type `match` body finds its own recursion as it reduces (resolution/type-matches.ts).
-  const type = isMatchAlias(declared) ? instance() : withPushed(underWay, key, instance);
-  return aliasedAs(type, { kind: 'associated', of, name });
+  const failure: Type = { kind: 'error', unreduced: { use, cause: 'expandsItself' } };
+  const key = `${typeKeys.typeKey(of)}.${name}`;
+  const again = underWay.findIndex((each) => each.key === key);
+  if (again >= 0) {
+    for (const each of underWay.slice(again)) {
+      each.reachesItself = true;
+    }
+    return failure;
+  }
+  const expansion: Expansion = { key, reachesItself: false };
+  const type = withPushed(underWay, expansion, instance);
+  return expansion.reachesItself ? failure : aliasedAs(type, use);
+}
+
+/**
+ * An associated type being expanded (§3.1), by owner and name, and whether expanding it reached it
+ * again: each one expanded between its two uses is on that cycle, so none of them is a type, while
+ * one that only holds them is, an error type in place of each.
+ */
+export interface Expansion {
+  readonly key: string;
+  reachesItself: boolean;
 }
 
 /**

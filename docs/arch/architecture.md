@@ -91,8 +91,9 @@ src/
                                                                  witnesses, the traits the compiler derives (derived-traits.ts: one table),
                                                                  the calls a construct makes, a type or variant named as a value, a type
                                                                  `match`'s use reduced (type-matches.ts) and its cases matched (type-match-patterns.ts),
-                                                                 and the type `match`es an instantiation reaches, checked to reduce to a
-                                                                 type whose values end where it is written (match-requirements.ts)
+                                                                 and the type `match`es and associated types an instantiation reaches,
+                                                                 checked to name a type whose values end where it is written
+                                                                 (reduction-requirements.ts)
       calls/                                                     a call in a body: arguments checked against the chosen function, operators,
                                                                  the places a call or an assignment changes
       patterns/ flow/                                            one walk for every pattern, the member of a union each selects (members.ts),

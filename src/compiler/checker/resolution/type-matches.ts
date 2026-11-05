@@ -10,7 +10,7 @@
  *   distribute, and `Never`, no member, would give `Never` whatever the cases. Otherwise the use
  *   stays unreduced, opaque, and an instantiation reduces it.
  * - A use matching no case is the error type, carrying the use: the check of the instantiation
- *   reaching it reports it there (match-requirements.ts), so nothing else reports it again. So
+ *   reaching it reports it there (reduction-requirements.ts), so nothing else reports it again. So
  *   is one whose reduction reaches the use itself with no struct type holding it on the way
  *   (`case _: A<T>`, `case _: A<T> | Int`): it would be itself, as an alias can't be (§3.17).
  * - An alias reducing to itself with a type built from its own parameter never ends (§3.5); its

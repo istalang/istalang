@@ -11,8 +11,9 @@
  */
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
+import { withEmptied } from '../../../structures/stack.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
-import { associatedTypeOf } from '../traits/known-constraints.ts';
+import { associatedTypeOf, type Expansion } from '../traits/known-constraints.ts';
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../traits/struct-keys.ts';
 import { unfolded } from '../types/computed-types.ts';
 import type { Fitting } from '../types/fit.ts';
@@ -51,8 +52,8 @@ export function programTypeRules(
     cyclic: { standIn: () => false },
   });
   const reductions = new TypeMatchReductions(checker);
-  // The associated types being substituted, by owner and name: what is under way, the only state.
-  const associating: string[] = [];
+  // The associated types being expanded: what is under way, the only state.
+  const associating: Expansion[] = [];
   const typeRules: TypeRules = {
     absorbs: (target, member) =>
       absorbed.get(JSON.stringify([typeKeys.typeKey(target), typeKeys.typeKey(member)]), {
@@ -63,7 +64,10 @@ export function programTypeRules(
     fieldType: (of, key) => fieldTypeOf(checker, unfolded(of), key),
     keysOf: (of, without) => keysOf(checker, unfolded(of), without),
     mappedType: (parts, outer) => mappedTypeOf(checker, parts, outer),
-    matchType: (declaration, typeArguments) => reductions.reduce(declaration, typeArguments),
+    // A type `match` closes what its reduction reaches again into a recursive type (§3.17), so an
+    // associated type expanded around it, reached inside, is no cycle of expansions.
+    matchType: (declaration, typeArguments) =>
+      withEmptied(associating, () => reductions.reduce(declaration, typeArguments)),
     isKeyOf: (key, of) => isKeyWithin(checker, key, checker.typeRules.keysOf(of, [])),
   };
   const fitting: Fitting = {

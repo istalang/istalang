@@ -1,19 +1,22 @@
 /**
- * The type `match`es an instantiation reaches, every one of which must reduce (§3.5, §3.17): no
- * case matching is a compile error where the alias is used, and a generic declaration's uses are
- * used where an instantiation gives its parameters their arguments.
+ * The type `match`es and associated types an instantiation reaches, every one of which must name a
+ * type (§3.1, §3.5, §3.17): no case matching, or an associated type expanding itself, is a compile
+ * error where the alias is used, and a generic declaration's uses are used where an instantiation
+ * gives its parameters their arguments.
  *
- * - A declaration's requirements are the types it holds that a type `match` use with arguments
- *   not known yet stands in: its fields, variants and associated types, an alias's body, and a
- *   function's written types, signature and body alike, with the type arguments its calls give and
- *   their callees' requirements, read through those arguments; a struct's or variant's field
- *   defaults bring what their calls reach alike. A function reached again while its
- *   requirements are found adds none: the cycle's own uses are among the others'.
+ * - A declaration's requirements are the types it holds that a type `match` use or an associated
+ *   type with arguments not known yet stands in: its fields, variants and associated types, an
+ *   alias's body, and a function's written types, signature and body alike, with the type
+ *   arguments its calls give and their callees' requirements, read through those arguments; a
+ *   struct's or variant's field defaults bring what their calls reach alike. A function reached
+ *   again while its requirements are found adds none: the cycle's own uses are among the others'.
  * - An instantiation substitutes them, and any use whose arguments are then all known reduces:
  *   one naming no type (matching no case, being itself, or recursive with values that would hold
- *   themselves, types/finiteness.ts), the error type carrying it, is reported where the
- *   instantiation is written. A nominal type reached on the way brings its declaration's
- *   requirements, through its own arguments, and a recursive type what it unfolds to, each once.
+ *   themselves, types/finiteness.ts; an associated type on a cycle of expansions,
+ *   traits/known-constraints.ts), the error type carrying it, is reported where the
+ *   instantiation is written, its arguments written or inferred alike. A nominal type reached on
+ *   the way brings its declaration's requirements, through its own arguments, and a recursive type
+ *   what it unfolds to, each once.
  * - A std function writes no type `match` use, and what its type arguments bring is the caller's
  *   to check, so its code is never checked for one.
  * - A use no case matches, written as such, is reported where it is written, by its own
@@ -40,23 +43,24 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { functionCallsWithin } from '../resolved-call.ts';
 import { unfoldRecursive } from '../types/computed-types.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
-import type { Type, UnreducedUse } from '../types/type.ts';
+import type { RecursiveUse, Type, UnreducedUse } from '../types/type.ts';
 import { typeChildren } from '../types/type-children.ts';
 import { typeKeys } from '../types/type-keys.ts';
 import { aliasInstance, matchUse } from '../types/type-match.ts';
 import { isKnown, sameTypeSpelled } from '../types/type-parts.ts';
-import { typeText } from '../types/type-text.ts';
+import { spellingText, typeText } from '../types/type-text.ts';
 
 /** The diagnostic reporting `failure` at `at`, where the instantiation reaching it is written. */
 export function failureDiagnostic(at: AnchoredSpan, failure: UnreducedUse) {
-  const use = typeText(matchUse(failure.use.declaration, failure.use.arguments));
   switch (failure.cause) {
     case 'unmatched':
-      return checkerDiagnostics.noCaseMatches(at, use);
+      return checkerDiagnostics.noCaseMatches(at, matchUseText(failure.use));
     case 'itself':
-      return checkerDiagnostics.aliasCycle(at, use);
+      return checkerDiagnostics.aliasCycle(at, matchUseText(failure.use));
     case 'holdsItself':
-      return checkerDiagnostics.recursiveField(at, use, failure.field);
+      return checkerDiagnostics.recursiveField(at, matchUseText(failure.use), failure.field);
+    case 'expandsItself':
+      return checkerDiagnostics.associatedItself(at, spellingText(failure.use));
     default: {
       const unhandled: never = failure;
       return unhandled;
@@ -64,14 +68,19 @@ export function failureDiagnostic(at: AnchoredSpan, failure: UnreducedUse) {
   }
 }
 
-export class MatchRequirements {
+/** A type `match` use as written. */
+function matchUseText(use: RecursiveUse): string {
+  return typeText(matchUse(use.declaration, use.arguments));
+}
+
+export class ReductionRequirements {
   readonly #checker: CheckerContext;
   readonly #requirements: EntryTable<CheckerNote, Instantiable, readonly Type[]>;
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
     this.#requirements = checker.entries.table({
-      name: 'type match requirements',
+      name: 'reduction requirements',
       compute: (declaration) => this.#found(declaration),
       equal: sameItems(sameTypeSpelled),
       cyclic: { standIn: () => [] },
@@ -209,9 +218,13 @@ export class MatchRequirements {
       );
   }
 
-  /** Whether a type `match` use stands in `type`, or a nominal type whose declaration has some. */
+  /**
+   * Whether a use that may name no type once its arguments are known stands in `type`: a type
+   * `match` use, an associated type read through a type not known yet, or a nominal type whose
+   * declaration has some.
+   */
   #standsIn(type: Type): boolean {
-    if (type.kind === 'match') {
+    if (type.kind === 'match' || type.kind === 'associated') {
       return true;
     }
     if (type.kind === 'nominal' && this.#requirements.get(type.entity.declaration).length > 0) {

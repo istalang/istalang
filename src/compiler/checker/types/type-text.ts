@@ -239,7 +239,7 @@ function boundName(declaration: TypeParameter | RestPattern | TypeAliasDeclarati
 }
 
 /** A spelling as source writes it: an alias with its arguments, an associated type, or keys. */
-function spellingText(alias: AliasUse): string {
+export function spellingText(alias: AliasUse): string {
   switch (alias.kind) {
     case 'alias':
       return parameterizedText(alias.declaration.name.text, alias.arguments);

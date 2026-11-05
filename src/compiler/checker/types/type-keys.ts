@@ -48,6 +48,7 @@ import type {
   ParameterKey,
   RecursiveUse,
   Type,
+  UnreducedUse,
 } from './type.ts';
 import { holdsRecursion } from './type-children.ts';
 
@@ -201,6 +202,13 @@ function useKeyOf(use: RecursiveUse, key: (type: Type) => string): string {
   return `match:${identityOf(use.declaration)}<${use.arguments.map(key).join(',')}>`;
 }
 
+/** The key of a use naming no type, with why: a type `match`'s or an associated type's. */
+function unreducedKeyOf(unreduced: UnreducedUse, key: (type: Type) => string): string {
+  return unreduced.cause === 'expandsItself'
+    ? `${unreduced.cause}${key(unreduced.use.of)}.${unreduced.use.name}`
+    : `${unreduced.cause}${useKeyOf(unreduced.use, key)}`;
+}
+
 function spelledKey(type: Type): string {
   return memo(spelledKeys, type, () => `${spelledKindKey(type)}${aliasKeyOf(type.alias)}`);
 }
@@ -226,9 +234,7 @@ function spelledKindKey(type: Type): string {
     case 'parameter':
       return structureKeyOf(type, undefined, key);
     case 'error':
-      return type.unreduced === undefined
-        ? '?'
-        : `?${type.unreduced.cause}${useKeyOf(type.unreduced.use, key)}`;
+      return type.unreduced === undefined ? '?' : `?${unreducedKeyOf(type.unreduced, key)}`;
     case 'anonymous':
       return `{@${identityOf(type.origin)}:${type.fields.map(spelledFieldKey).join(',')}}`;
     case 'any': {

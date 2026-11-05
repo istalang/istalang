@@ -17,7 +17,7 @@
  *   constraints imply it (`entailed`).
  */
 
-import type { TypeParameter } from '../../syntax/declarations.ts';
+import type { RequiredAssociatedType, TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
@@ -104,25 +104,47 @@ export function associatedShortfall(
       return `an associated type '${name}', which a union never has, each member having its own`;
     }
     const associated = checker.typeRules.associatedType(type, name);
-    if (associated.kind === 'error') {
+    if (associated.kind === 'error' && associated.unreduced === undefined) {
       return `an associated type '${name}'`;
     }
-    const bounds = checker.associatedBoundsOf(requirement);
-    const rules = checker.typeRules;
-    const unmet = bounds.traits.find(
-      (bound) => !meets(associated, substituteConstraint(bound, substitution, rules)),
-    );
-    const structs = bounds.structs.map((each) =>
-      substituteStructConstraint(each, substitution, rules),
-    );
-    if (
-      unmet !== undefined ||
-      structs.some((struct) => structShortfall(checker, associated, struct, meets) !== undefined)
-    ) {
-      return `its associated type '${name}' (${typeText(associated)}) to be ${constraintSetText(bounds)}`;
+    // One naming no type is the type's own, reported where an instantiation reaching it is written.
+    const unmet =
+      associated.kind === 'error'
+        ? undefined
+        : boundShortfall(checker, { requirement, associated, substitution }, meets);
+    if (unmet !== undefined) {
+      return unmet;
     }
   }
   return undefined;
+}
+
+/** The bound of a requirement `associated`, a type's own associated type, doesn't meet, as said. */
+function boundShortfall(
+  checker: CheckerContext,
+  {
+    requirement,
+    associated,
+    substitution,
+  }: {
+    readonly requirement: RequiredAssociatedType;
+    readonly associated: Type;
+    readonly substitution: Substitution;
+  },
+  meets: Meets,
+): string | undefined {
+  const bounds = checker.associatedBoundsOf(requirement);
+  const rules = checker.typeRules;
+  const unmet = bounds.traits.find(
+    (bound) => !meets(associated, substituteConstraint(bound, substitution, rules)),
+  );
+  const structs = bounds.structs.map((each) =>
+    substituteStructConstraint(each, substitution, rules),
+  );
+  return unmet !== undefined ||
+    structs.some((struct) => structShortfall(checker, associated, struct, meets) !== undefined)
+    ? `its associated type '${requirement.name.text}' (${typeText(associated)}) to be ${constraintSetText(bounds)}`
+    : undefined;
 }
 
 /**

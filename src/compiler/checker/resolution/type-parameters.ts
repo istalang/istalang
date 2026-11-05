@@ -2,7 +2,7 @@
  * Type parameters across the program (§3.5): where each is declared, its constraints resolved
  * there once, and the arguments given for those constraints, checked once the module that gave
  * them is checked (types/resolve-type.ts explains why later, and why every check is noted by then),
- * with the type `match`es an instantiation reaches, which must all reduce (match-requirements.ts).
+ * with the type `match`es an instantiation reaches, which must all reduce (reduction-requirements.ts).
  *
  * A check is noted in the entry that resolved the arguments, so the module's check finds each
  * one among what it read, whatever was asked before. Each is keyed by where it was written, so it
@@ -34,7 +34,7 @@ import { sameConstraintSpelled } from '../types/type-parts.ts';
 import { useSite } from '../use-site.ts';
 import { meets, silentMeets } from './conformance.ts';
 import { impliedConstraints } from './implied-constraints.ts';
-import { failureDiagnostic, MatchRequirements } from './match-requirements.ts';
+import { failureDiagnostic, ReductionRequirements } from './reduction-requirements.ts';
 import { meetsStructConstraints } from './shortfalls.ts';
 
 export class TypeParameters {
@@ -46,7 +46,7 @@ export class TypeParameters {
     readonly StructConstraintModel[]
   >;
   readonly #bounds: EntryTable<CheckerNote, RequiredAssociatedType, ConstraintSet>;
-  readonly #requirements: MatchRequirements;
+  readonly #requirements: ReductionRequirements;
 
   /**
    * `moduleOf` answers the module declaring a parameter, a local one's (a local function's, a mapped
@@ -57,7 +57,7 @@ export class TypeParameters {
     moduleOf: (node: TypeParameter | RequiredAssociatedType) => ModuleId | undefined,
   ) {
     this.#checker = checker;
-    this.#requirements = new MatchRequirements(checker);
+    this.#requirements = new ReductionRequirements(checker);
     this.#constraints = checker.entries.table({
       name: 'constraints',
       compute: (parameter) => {

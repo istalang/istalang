@@ -6,7 +6,7 @@
  *   its alias's parameters open, and a use substitutes them.
  * - `infer` stands only in a case's pattern; anywhere else it is reported.
  * - A use no case matches is the error type carrying it: the check noted for its instantiation
- *   reports it where it is written, as for any it reaches (resolution/match-requirements.ts).
+ *   reports it where it is written, as for any it reaches (resolution/reduction-requirements.ts).
  * - The subject written as a type parameter, in the type of a `case struct …:`, stands for a member
  *   meeting that constraint, so its keys and fields are known there as a constrained parameter's.
  */

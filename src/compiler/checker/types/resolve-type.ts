@@ -43,7 +43,7 @@ import {
 } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { isMatchAlias, ownAssociatedType } from './computed-types.ts';
+import { ownAssociatedType } from './computed-types.ts';
 import { isPack, withPack } from './function-types.ts';
 import { fieldWritten, keysWritten, structWritten } from './key-types.ts';
 import { substitutionFor } from './substitution.ts';
@@ -55,14 +55,12 @@ import {
   type PackType,
   type ParameterKey,
   primitiveType,
-  type RecursiveUse,
   type Type,
   tupleType,
   unitType,
 } from './type.ts';
 import { constrainArguments, noteConstraints, typeArgumentsFor } from './type-arguments.ts';
 import { aliasInstance } from './type-match.ts';
-import { errorIn } from './type-parts.ts';
 import { typeText } from './type-text.ts';
 import { optionalOf, unionOf, writtenLiteral } from './unions.ts';
 import {
@@ -238,19 +236,6 @@ function namedType(resolution: Resolution, node: NamedType): Type {
   return members.reduce((owner, member) => associatedAt(resolution, owner, member), type);
 }
 
-/**
- * The use of an associated type whose body is no type `match` that `type` reached again while it
- * was substituted (traits/known-constraints.ts), which its written use reports (§3.1).
- */
-function selfReferenceIn(type: Type): RecursiveUse | undefined {
-  const failure = errorIn(type)?.unreduced;
-  return failure?.cause === 'itself' &&
-    failure.use.declaration.kind === 'AssociatedType' &&
-    !isMatchAlias(failure.use.declaration)
-    ? failure.use
-    : undefined;
-}
-
 /** The associated type `name` names on `owner` (§3.1), reported when it has none. */
 function associatedAt(resolution: Resolution, owner: Type, name: Identifier): Type {
   const { checker, module } = resolution;
@@ -259,12 +244,6 @@ function associatedAt(resolution: Resolution, owner: Type, name: Identifier): Ty
     return unreduced;
   }
   const type = checker.typeRules.associatedType(owner, name.text);
-  const itself = selfReferenceIn(type);
-  const spelled = itself && checker.typeMatches.spellingOf(itself.declaration, itself.arguments);
-  if (spelled?.kind === 'associated') {
-    const use = `${typeText(spelled.of)}.${spelled.name}`;
-    checker.report(module, checkerDiagnostics.associatedItself(name.span, use));
-  }
   const declared =
     owner.kind === 'nominal'
       ? ownAssociatedType(owner, name.text) !== undefined

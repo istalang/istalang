@@ -284,17 +284,20 @@ interface StructCaseConstraint {
 }
 
 /**
- * A use of a type `match` that names no type (§3.17): no case matches its subject, its reduction
- * reaches the use itself before any struct type holds it, so it would be itself, or it is
- * recursive and its values would hold themselves through `field` (§3.1).
+ * A use that names no type: one of a type `match` (§3.17), when no case matches its subject, its
+ * reduction reaches the use itself before any struct type holds it, so it would be itself, or it is
+ * recursive and its values would hold themselves through `field` (§3.1); or an associated type
+ * whose body is no type `match`, when expanding it reaches an associated type being expanded
+ * again (§3.1), which only a type `match` closes into a recursive type.
  */
 export type UnreducedUse =
   | { readonly use: RecursiveUse; readonly cause: 'unmatched' | 'itself' }
-  | { readonly use: RecursiveUse; readonly cause: 'holdsItself'; readonly field: string };
+  | { readonly use: RecursiveUse; readonly cause: 'holdsItself'; readonly field: string }
+  | { readonly use: AssociatedUse; readonly cause: 'expandsItself' };
 
 /**
- * A type a diagnostic explains. A use of a type `match` naming no type is one, carrying that use
- * and why, which the check of the instantiation reaching it reports (resolution/match-requirements.ts).
+ * A type a diagnostic explains. A use naming no type is one, carrying that use and why, which the
+ * check of each instantiation reaching it reports (resolution/reduction-requirements.ts).
  */
 export interface ErrorType extends WrittenThrough {
   readonly kind: 'error';
