@@ -319,9 +319,12 @@ describe('a checker made after an earlier one', () => {
     );
   });
 
-  /** A revision's and a fresh checker's answers after `lib` is edited from `before` to `after`. */
-  const afterLibEdit = (main: string, before: string, after: string) => {
-    const files = { 'main.ista': main, lib: before };
+  /**
+   * A revision's and a fresh checker's answers after `lib` is edited from `before` to `after`,
+   * `beside` modules left as they are.
+   */
+  const afterLibEdit = (main: string, before: string, after: string, beside: Files = {}) => {
+    const files = { 'main.ista': main, lib: before, ...beside };
     const first = stdProgramOf(files);
     const second = stdProgramOf({ ...files, lib: after }, first);
     const previous = checkedApart(first);
@@ -366,8 +369,24 @@ describe('a checker made after an earlier one', () => {
       before: 'type Id = Int\n',
       after: '# the alias, declared again\ntype Id = Int\n',
     },
-  ])('answers $name as a checker made afresh', ({ main, before, after }) => {
-    const { incremental, fresh } = afterLibEdit(main, before, after);
+    {
+      name: 'uses of a type match whose recursion an edit of a third module takes away',
+      main: [
+        "import Tree from 'tree'",
+        'type DataOf<D> = match D:',
+        '  case Int: Int',
+        '  case Array<infer R>: Array<DataOf<R>>',
+        '  case struct: { [F in keyof D]: DataOf<D[F]> }',
+        'fn first(x: DataOf<Tree>) -> DataOf<Tree>: x',
+        'fn second(x: DataOf<Tree>) -> { next: { items: Int }; value: Int }: x',
+        '',
+      ].join('\n'),
+      before: 'struct Node<T> { items: Array<T> }\n',
+      after: 'struct Node<T> { items: Int }\n',
+      beside: { tree: "import Node from 'lib'\nstruct Tree { value: Int; next: Node<Tree> }\n" },
+    },
+  ])('answers $name as a checker made afresh', ({ main, before, after, beside }) => {
+    const { incremental, fresh } = afterLibEdit(main, before, after, beside);
     expect(incremental).toEqual(fresh);
   });
 

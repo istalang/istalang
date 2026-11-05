@@ -10,9 +10,8 @@ import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../../compile.test-kit.ts';
 import { idOf } from '../../program/program.test-kit.ts';
-import { reported } from '../check.test-kit.ts';
+import { checkedApart, reported } from '../check.test-kit.ts';
 import { checkProgram } from '../check.ts';
-import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { intType, stringType } from '../types/type.ts';
 import { callWithTypes } from './silent-choice.ts';
@@ -287,7 +286,7 @@ describe('declared witness constraints and typed calls', () => {
     const program = stdProgramOf({
       'main.ista': ['fn pick<T>(a: T) -> T: a', 'fn pick<T, U>(a: T, b: U) -> U: b'].join('\n'),
     });
-    const checker = checkProgram(program) as CheckerContext;
+    const checker = checkedApart(program);
     const entity = checker.bindings.exportsOf(idOf('main.ista')).get('pick');
     const overloads = entity?.kind === 'functions' ? entity.overloads : [];
     const candidates = overloads.map((declaration) => ({ declaration }));

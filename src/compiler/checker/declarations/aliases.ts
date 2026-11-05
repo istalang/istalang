@@ -10,7 +10,7 @@
  */
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
-import { type ModuleId, programModule } from '../../program/program.ts';
+import type { ModuleId } from '../../program/program.ts';
 import {
   type AliasBody,
   type AliasDeclaration,
@@ -146,7 +146,7 @@ export class Aliases implements TypeMatchQueries {
     if (alias.kind === 'TypeAliasDeclaration') {
       return alias.typeParameters;
     }
-    const { tree } = programModule(this.#checker.program, this.#moduleOf(alias));
+    const tree = this.#checker.inputs.treeOf(this.#moduleOf(alias));
     const owner = parentOf(tree, alias);
     return owner !== undefined && 'typeParameters' in owner ? owner.typeParameters : [];
   }

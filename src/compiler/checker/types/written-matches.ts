@@ -11,7 +11,7 @@
  */
 
 import type { Entity } from '../../binder/entities.ts';
-import { type ModuleId, programModule } from '../../program/program.ts';
+import type { ModuleId } from '../../program/program.ts';
 import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import { matchPlaceOf } from '../../syntax/type-matches.ts';
@@ -104,5 +104,5 @@ function typeMatchAliasOf(entity: Entity): TypeAliasDeclaration | undefined {
 }
 
 function treeOf({ checker, module }: Written) {
-  return programModule(checker.program, module).tree;
+  return checker.inputs.treeOf(module);
 }

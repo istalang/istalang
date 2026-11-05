@@ -22,11 +22,15 @@
  *   reduction is under way repeats it: a recursive type, which a struct holds (§3.1). The uses on
  *   that cycle whose case gives a struct type stand for themselves (`RecursiveType`), their shape
  *   derived on demand with each such use inside it, as a recursive struct's fields refer to it.
- *   Which uses those are doesn't depend on where reducing started: before a use is first reduced,
- *   reducing it once without keeping anything finds them, so no kept reduction holds a stand-in.
+ * - Whether a use stands for itself is an entry too, found before it is reduced by reducing it once
+ *   in a scope of its own and keeping nothing but those verdicts (`#recursionOf`): it depends on the
+ *   use alone, never on what was reduced before it, and every reduction reading it records that, so
+ *   a later revision takes over no verdict its program no longer gives. What is under way is the
+ *   only state beside the entries, and it lasts as long as the reduction it describes.
  */
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
+import { withPushed } from '../../../structures/stack.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { AliasDeclaration } from '../../syntax/declarations.ts';
 import { type StructType, unparenthesizedType } from '../../syntax/types.ts';
@@ -66,18 +70,25 @@ type MemberReduction = Type | 'undecided' | 'unmatched';
 /** How deep reductions may nest before one is taken as endless, which declarations report. */
 const deepestReduction = 256;
 
+/** The uses found to stand for themselves (the banner), by type key, and the struct type each case writes. */
+type Recursion = ReadonlyMap<string, StructType | undefined>;
+
+/**
+ * Reductions under way: the uses being reduced, in order, by type key; and, while finding which
+ * uses stand for themselves, what was found so far, kept nowhere else (`#recursionOf`).
+ */
+interface Reducing {
+  readonly underWay: Map<string, MatchUse>;
+  readonly found: Map<string, StructType | undefined> | undefined;
+}
+
 export class TypeMatchReductions {
   readonly #checker: CheckerContext;
   readonly #reductions: EntryTable<CheckerNote, string, Type, MatchUse>;
   readonly #shapes: EntryTable<CheckerNote, string, AnonymousStructType, RecursiveType>;
-  /** The uses whose reductions are under way, in order, by type key: each removed once done. */
-  readonly #reducing = new Map<string, MatchUse>();
-  /** The uses found to stand for themselves (the banner), and the struct type each case writes. */
-  readonly #recursive = new Map<string, StructType | undefined>();
-  /** The uses reduced once already, or found while one was: they need no finding again. */
-  readonly #found = new Set<string>();
-  /** The use being reduced to find recursive uses, keeping nothing (`#find`); none otherwise. */
-  readonly #finding = new Set<string>();
+  readonly #recursion: EntryTable<CheckerNote, string, Recursion, MatchUse>;
+  /** The reductions under way, innermost last: a finding reduces in a scope of its own. */
+  readonly #scopes: Reducing[] = [{ underWay: new Map(), found: undefined }];
 
   constructor(checker: CheckerContext) {
     this.#checker = checker;
@@ -89,6 +100,11 @@ export class TypeMatchReductions {
       name: 'recursive type match shapes',
       compute: (_key, type: RecursiveType) => this.#shapeOf(type),
     });
+    this.#recursion = checker.entries.table({
+      name: 'type match recursion',
+      compute: (key, use: MatchUse) => this.#recursionOf(key, use),
+      equal: sameRecursion,
+    });
   }
 
   /** The shape the recursive use `type` stands for (the banner). */
@@ -97,14 +113,15 @@ export class TypeMatchReductions {
   }
 
   #shapeOf(type: RecursiveType): AnonymousStructType {
-    const key = typeKeys.typeKey(type);
     const use = { declaration: type.declaration, typeArguments: type.arguments };
+    const key = typeKeys.typeKey(matchUse(use.declaration, use.typeArguments));
     const body = this.#reduced(use);
     const recursion = { declaration: use.declaration, arguments: use.typeArguments };
     if (body.kind === 'anonymous') {
       return { ...body, recursion };
     }
-    const origin = this.#recursive.get(key) ?? unreachable('A recursive use gives a struct type.');
+    const origin =
+      this.#recursion.get(key, use).get(key) ?? unreachable('A recursive use gives a struct type.');
     return { kind: 'anonymous', origin, fields: [], recursion };
   }
 
@@ -116,43 +133,36 @@ export class TypeMatchReductions {
     }
     const use = { declaration, typeArguments };
     const key = typeKeys.typeKey(matchUse(declaration, typeArguments));
-    if (this.#reducing.has(key)) {
-      return this.#reachedAgain(key, use);
+    const scope = this.#scope();
+    if (scope.underWay.has(key)) {
+      return this.#reachedAgain(scope, key, use);
     }
-    if (this.#reducing.size >= deepestReduction) {
+    if (scope.underWay.size >= deepestReduction) {
       return errorType;
     }
-    if (this.#finding.size === 0 && !this.#found.has(key)) {
-      this.#find(key, use);
-    }
-    if (this.#recursive.has(key)) {
+    const { found } = scope;
+    if ((found ?? this.#recursion.get(key, use)).has(key)) {
       return recursiveUse(use);
     }
     const spelled = typeKeys.spelledKey(matchUse(declaration, typeArguments));
-    return this.#reducingWith(key, use, () =>
-      this.#finding.size > 0 ? this.#reduced(use) : this.#reductions.get(spelled, use),
+    return reducingWith(scope, key, use, () =>
+      found === undefined ? this.#reductions.get(spelled, use) : this.#reduced(use),
     );
   }
 
-  /** What `reduce` gives, with `use` under way meanwhile. */
-  #reducingWith(key: string, use: MatchUse, reduce: () => Type): Type {
-    this.#found.add(key);
-    this.#reducing.set(key, use);
-    try {
-      return reduce();
-    } finally {
-      this.#reducing.delete(key);
-    }
+  /** The reductions under way now. */
+  #scope(): Reducing {
+    return this.#scopes.at(-1) ?? unreachable('No scope holds the reductions under way.');
   }
 
-  /** Reduces `use` once, keeping nothing, to find the uses that stand for themselves (the banner). */
-  #find(key: string, use: MatchUse): void {
-    this.#finding.add(key);
-    try {
-      this.#reducingWith(key, use, () => this.#reduced(use));
-    } finally {
-      this.#finding.delete(key);
-    }
+  /**
+   * Which uses stand for themselves (the banner), found by reducing `use` once in a scope of its
+   * own, keeping nothing else.
+   */
+  #recursionOf(key: string, use: MatchUse): Recursion {
+    const scope: Reducing = { underWay: new Map(), found: new Map() };
+    withPushed(this.#scopes, scope, () => reducingWith(scope, key, use, () => this.#reduced(use)));
+    return scope.found ?? new Map();
   }
 
   /**
@@ -161,15 +171,20 @@ export class TypeMatchReductions {
    * its way back to itself: it would be itself, no type (§3.17), unless the cycle's struct is
    * elsewhere, a stand-in only finding reaches, which it drops.
    */
-  #reachedAgain(key: string, use: MatchUse): Type {
-    const cycle = [...this.#reducing].slice([...this.#reducing.keys()].indexOf(key));
-    for (const [each, eachUse] of cycle) {
-      const origin = this.#structCaseOf(eachUse);
-      if (origin !== undefined) {
-        this.#recursive.set(each, origin);
+  #reachedAgain(scope: Reducing, key: string, use: MatchUse): Type {
+    const { underWay, found } = scope;
+    if (found !== undefined) {
+      const cycle = [...underWay].slice([...underWay.keys()].indexOf(key));
+      for (const [each, eachUse] of cycle) {
+        const origin = this.#structCaseOf(eachUse);
+        if (origin !== undefined) {
+          found.set(each, origin);
+        }
       }
     }
-    return this.#recursive.has(key) ? recursiveUse(use) : unreducedUse(use, 'itself');
+    return (found ?? this.#recursion.get(key, use)).has(key)
+      ? recursiveUse(use)
+      : unreducedUse(use, 'itself');
   }
 
   /** The struct type the case `use` picks writes, when it writes one and no union distributes. */
@@ -257,6 +272,24 @@ export class TypeMatchReductions {
     }
     return 'unmatched';
   }
+}
+
+/** What `reduce` gives, with `use` under way in `scope` meanwhile. */
+function reducingWith(scope: Reducing, key: string, use: MatchUse, reduce: () => Type): Type {
+  scope.underWay.set(key, use);
+  try {
+    return reduce();
+  } finally {
+    scope.underWay.delete(key);
+  }
+}
+
+/** Whether two findings found the same uses standing for themselves, each writing one struct type. */
+function sameRecursion(first: Recursion, second: Recursion): boolean {
+  return (
+    first.size === second.size &&
+    [...first].every(([key, origin]) => second.has(key) && second.get(key) === origin)
+  );
 }
 
 /** The error type carrying `use`, which names no type for `cause`. */

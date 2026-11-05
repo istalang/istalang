@@ -100,8 +100,12 @@ export interface ProgramInputs {
   ) => VariantEntity | undefined;
 }
 
-/** The program-wide services, beyond what later phases read (check.ts). */
-export interface CheckerContext extends Checker {
+/**
+ * The program-wide services, beyond what later phases read (check.ts). A checker unit reads its
+ * program only through `inputs`, which records each read in the entry making it, so the program
+ * itself is no member here.
+ */
+export interface CheckerContext extends Omit<Checker, 'program'> {
   /**
    * The tables every program-wide result is kept in, each entry with what it read and reported,
    * so an answer never depends on what was asked before it.

@@ -11,7 +11,7 @@
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
-import { type ModuleId, programModule } from '../../program/program.ts';
+import type { ModuleId } from '../../program/program.ts';
 import type {
   RequiredAssociatedType,
   TraitDeclaration,
@@ -36,11 +36,6 @@ import { meets } from './conformance.ts';
 import { impliedConstraints } from './implied-constraints.ts';
 import { failureDiagnostic, MatchRequirements } from './match-requirements.ts';
 import { meetsStructConstraints } from './shortfalls.ts';
-
-/** The tree of `module`, whose nodes a parameter's place is read from. */
-function treeOf(checker: CheckerContext, module: ModuleId) {
-  return programModule(checker.program, module).tree;
-}
 
 export class TypeParameters {
   readonly #checker: CheckerContext;
@@ -71,7 +66,7 @@ export class TypeParameters {
           ? []
           : [
               ...resolveConstraints(checker, module, parameter),
-              ...impliedConstraints(checker, treeOf(checker, module), parameter).traits,
+              ...impliedConstraints(checker, checker.inputs.treeOf(module), parameter).traits,
             ];
       },
       equal: sameItems(sameConstraint),
@@ -84,7 +79,7 @@ export class TypeParameters {
           ? []
           : [
               ...resolveStructConstraints(checker, module, parameter),
-              ...impliedConstraints(checker, treeOf(checker, module), parameter).structs,
+              ...impliedConstraints(checker, checker.inputs.treeOf(module), parameter).structs,
             ];
       },
       equal: sameItems(sameStructConstraint),

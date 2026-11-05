@@ -21,7 +21,6 @@
  */
 
 import { compareOrdered } from '../../../language/order.ts';
-import { programModule } from '../../program/program.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { FieldHeader } from '../../syntax/expressions/index.ts';
 import { parentOf } from '../../syntax/tree.ts';
@@ -138,7 +137,7 @@ export function memberUnionOf(checker: CheckerContext, parameter: TypeParameter)
   }
   const module = checker.moduleOf(parameter);
   const union = checker.resolveType(module, parameter.memberOf);
-  const { tree } = programModule(checker.program, module);
+  const tree = checker.inputs.treeOf(module);
   const entry = parentOf(tree, parameter);
   const holding = entry?.kind === 'MappedField' ? parentOf(tree, entry) : undefined;
   return holding?.kind === 'StructType' ? mappedKeys(checker, holding, union) : union;
