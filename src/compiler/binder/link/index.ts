@@ -75,6 +75,7 @@ export function link(program: Program): Bindings {
     candidatesOf: ({ name }) => linker.variantsNamed(name),
     ownCallOf: (module, node) => linker.local(module)?.ownCalls.get(node),
     topLevelNamed: (module, name) => linker.topLevelNamed(module, name),
+    aliasOf: (module, name) => linker.aliasOf(module, name),
     diagnosticsOf: (module) => linker.diagnosticsOf(module),
   };
 }
@@ -126,6 +127,14 @@ class Linker {
 
   moduleOf(entity: Entity): ModuleId | undefined {
     return this.#owners.get(entity);
+  }
+
+  aliasOf(module: ModuleId, name: Identifier): Identifier | undefined {
+    const local = this.#locals.get(module)?.entities.get(name);
+    if (local?.kind !== 'import' || local.imported.name === name) {
+      return undefined;
+    }
+    return local.imported.alias;
   }
 
   isTopLevel(entity: Entity): boolean {
@@ -196,7 +205,7 @@ class Linker {
     for (const placeholder of local.imports) {
       const module = this.#program.modules.get(id)?.imports.get(placeholder.declaration);
       const entity =
-        module === undefined ? undefined : this.#exported(module, placeholder.name, links);
+        module === undefined ? undefined : this.#exported(module, placeholder.imported.name, links);
       if (entity !== undefined) {
         links.imports.set(placeholder, entity);
       }

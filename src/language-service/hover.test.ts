@@ -7,6 +7,8 @@ import { describe, expect, it } from 'vitest';
 import { hoverAt } from './hover.ts';
 import { programAt } from './language-service.test-kit.ts';
 
+const namesDuration = /Duration/u;
+
 function hover(...lines: readonly string[]) {
   const { program, module, offset } = programAt(...lines);
   return hoverAt(program, module, offset);
@@ -32,6 +34,14 @@ describe('hover', () => {
     );
     expect(shown?.code).toEqual(['fn twice(n: Int, by: Int = …) -> Int']);
     expect(shown?.doc).toBe('Doubles `n`.');
+  });
+
+  it('shows the export a renaming import binds, at its alias, its uses and its exported name', () => {
+    expect(hover("import (Dura‸tion as Span) from 'time'")?.code?.[0]).toMatch(namesDuration);
+    expect(hover("import (Duration as Sp‸an) from 'time'")?.code?.[0]).toMatch(namesDuration);
+    expect(
+      hover("import Duration as Span from 'time'", 'fn f(s: Sp‸an) -> Int: s.value')?.code?.[0],
+    ).toMatch(namesDuration);
   });
 
   it('shows the field and the variable a shorthand names', () => {

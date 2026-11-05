@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { type DocumentSymbol, DocumentSymbolRequest } from 'vscode-languageserver/node';
-import type { Declaration } from '../../compiler/syntax/declarations.ts';
+import { boundName, type Declaration, importedNames } from '../../compiler/syntax/declarations.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
 import { targetNames } from '../../compiler/syntax/patterns.ts';
 import { type AnchoredSpan, spanIn } from '../../compiler/syntax/positions.ts';
@@ -28,7 +28,7 @@ function declaredBy(declaration: Declaration): readonly Declared[] {
     return declaration.targets.flatMap(targetNames).map(leaf);
   }
   if (declaration.kind === 'NamedImport') {
-    return declaration.names.map(leaf);
+    return importedNames(declaration).map(boundName).map(leaf);
   }
   if (declaration.kind === 'NamespaceImport') {
     return [leaf(declaration.alias)];

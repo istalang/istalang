@@ -35,6 +35,17 @@ describe('the declarations a name denotes', () => {
     ]);
   });
 
+  it("are the export's, at a renaming import's alias, its uses and its exported name", () => {
+    const { program, named } = navigable({
+      main: "import (\n  tally as count\n) from 'lib'\nfn main() -> Int: count(1)\n",
+      lib: 'fn tally(x: Int) -> Int: x\n',
+    });
+    const declaring = [placeOf(program, named('lib', 'tally'))];
+    expect(declaredAt(program, named('main', 'tally'))).toEqual(declaring);
+    expect(declaredAt(program, named('main', 'count'))).toEqual(declaring);
+    expect(declaredAt(program, named('main', 'count', 1))).toEqual(declaring);
+  });
+
   it("are a field's, read or named in a literal or a pattern", () => {
     const { program, named } = navigable({
       main: `${pair}fn f(p: Pair) -> Int:\n  match Pair{first: p.first, second: 2}:\n    case Pair{first == 1}: 1\n    case Pair{first as x}: x\n`,

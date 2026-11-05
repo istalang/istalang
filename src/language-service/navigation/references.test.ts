@@ -31,6 +31,26 @@ describe('the references of a declaration', () => {
     }
   });
 
+  it("are an alias's own and its uses, apart from the export's", () => {
+    const { program, named } = navigable({
+      main: "import tally as count, tally from 'lib'\nfn main() -> Int: count(1) + tally(2)\n",
+      lib: 'fn tally(x: Int) -> Int: x\n',
+    });
+    const placesAt = (use: NamePlace) =>
+      referencesAt(program, use.module, spanOfUse(program, use).start).map((each) =>
+        placeOf(program, each),
+      );
+    const alias = [named('main', 'count'), named('main', 'count', 1)].map((each) =>
+      placeOf(program, each),
+    );
+    const exported = [
+      named('lib', 'tally'),
+      ...[0, 1, 2].map((nth) => named('main', 'tally', nth)),
+    ].map((each) => placeOf(program, each));
+    expect(new Set(placesAt(named('main', 'count', 1)))).toEqual(new Set(alias));
+    expect(new Set(placesAt(named('lib', 'tally')))).toEqual(new Set(exported));
+  });
+
   it("are a method's declaration and its calls", () => {
     const { program, named } = navigable({
       main: 'struct Box:\n  value: Int\nfn get(self: Box) -> Int: self.value\nfn f(b: Box) -> Int: b.get() + get(b)\n',

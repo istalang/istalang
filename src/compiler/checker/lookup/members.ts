@@ -17,7 +17,12 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import { declaredFunctions, type FunctionDeclaration } from '../../syntax/declarations.ts';
+import {
+  boundName,
+  declaredFunctions,
+  type FunctionDeclaration,
+  importedNames,
+} from '../../syntax/declarations.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { CheckerContext } from '../context.ts';
 import type { TypeMembers } from '../denotation.ts';
@@ -151,7 +156,7 @@ function methodNames(checker: CheckerContext, module: ModuleId, type: Type): Rea
   return new Set([
     ...declaredFunctions({ items }).map(({ name }) => name.text),
     ...items.flatMap((item) =>
-      item.kind === 'NamedImport' ? item.names.map(({ text }) => text) : [],
+      item.kind === 'NamedImport' ? importedNames(item).map((each) => boundName(each).text) : [],
     ),
     ...exporting.flatMap((each) => [...bindings.exportsOf(each).keys()]),
     ...knownConstraints(checker, type).flatMap(({ trait }) =>

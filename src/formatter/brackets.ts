@@ -18,8 +18,8 @@ import { childrenOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax
  * - `outside` its parent's delimiters, standing as its parent does: a call's callee, an index's
  *   target, a struct literal's or pattern's type, a function's result and body, any child of a
  *   node with no delimiters;
- * - in `brackets`, `()`, `[]` or a struct literal's or pattern's `{}`, where a line break may stand
- *   inside an item;
+ * - in `brackets`, `()`, `[]` or a struct literal's or pattern's `{}`, an import's parenthesized
+ *   names among them, where a line break may stand inside an item;
  * - in `braces` that hold lines again: a braced block's `{}`, a field list's, a template's `${…}`;
  * - on a block's `lines`, with no delimiters around them, where line breaks count again.
  */
@@ -61,15 +61,20 @@ export function standingIn(parent: SyntaxNode, child: SyntaxNode): Standing {
       return child === parent.key ? 'brackets' : 'outside';
     case 'MappedField':
       return child === parent.parameter ? 'brackets' : 'outside';
+    case 'NamedImport':
+      return listedIn(parent.isParenthesized ? parent.names : [], child);
     case 'Lambda':
     case 'FunctionDeclaration':
-    case 'FunctionType': {
-      const parameters: readonly SyntaxNode[] = parent.parameters;
-      return parameters.includes(child) ? 'brackets' : 'outside';
-    }
+    case 'FunctionType':
+      return listedIn(parent.parameters, child);
     default:
       return 'outside';
   }
+}
+
+/** In the brackets around `list` for a child it lists; outside them for any other child. */
+function listedIn(list: readonly SyntaxNode[], child: SyntaxNode): Standing {
+  return list.includes(child) ? 'brackets' : 'outside';
 }
 
 /** Whether a child standing so stands in brackets, given whether its parent does. */

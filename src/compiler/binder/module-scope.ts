@@ -7,21 +7,25 @@
  * - Any other name defined twice is an error. The message says which rule was broken: a name
  *   imported twice, an import clashing with a declaration (§3.13), or a plain duplicate.
  * - A named import is a placeholder until the program is linked; a namespace import is already
- *   its entity, since the program records which module its path loaded. A module's exports are
- *   its own declarations whose names don't start with `_`; imported names are never re-exported.
+ *   its entity, since the program records which module its path loaded. A renamed import binds
+ *   its alias alone; the export's own name in it denotes the export too, so tools reach it there.
+ * - A module's exports are its own declarations whose names don't start with `_`; imported names
+ *   are never re-exported.
  * - Each enum's variants get their entities here, so a qualified variant (`Decision.Expired`) and
  *   a bare one chosen by expected type resolve to the same entity.
  */
 
 import { type Convention, isPrivate } from '../../language/naming.ts';
 import {
+  boundName,
   type Declaration,
   declaredFunctions,
   type EnumDeclaration,
   type FunctionDeclaration,
+  importedNames,
   type Module,
 } from '../syntax/declarations.ts';
-import type { Identifier } from '../syntax/node.ts';
+import { type Identifier, isMissingName } from '../syntax/node.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import {
@@ -89,9 +93,13 @@ class TopLevelDefiner {
   defineItem(item: Declaration): void {
     switch (item.kind) {
       case 'NamedImport':
-        for (const name of item.names) {
-          const placeholder = importPlaceholder(name, item);
-          if (this.#define(name, placeholder, 'import', undefined)) {
+        for (const imported of importedNames(item)) {
+          const placeholder = importPlaceholder(imported, item);
+          // A renamed export's own name binds nothing, but denotes the export as the alias does.
+          if (imported.alias !== undefined && !isMissingName(imported.name)) {
+            this.#binder.record(imported.name, placeholder);
+          }
+          if (this.#define(boundName(imported), placeholder, 'import', undefined)) {
             this.imports.push(placeholder);
           }
         }

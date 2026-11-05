@@ -177,7 +177,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
 
 - **Indentation** uses spaces only: a tab in a line's leading whitespace is a compile error. Any consistent width works.
 - **Line breaks** are `\n`, `\r\n` or a lone `\r`. A byte order mark at the start of a file is ignored.
-- **Continuation.** Inside a bracketed list a line break separates two items, as `,` does, where the item before it could end there and the next line's first token can start an item; anywhere else in brackets it is ignored, so an item spans lines. The lists are the items of `(…)`, `[…]` and `<…>`, a struct literal's and a struct pattern's braces, and the braces that list fields or variants, as in `{ sku: String, qty: Int }`. There is no backslash continuation.
+- **Continuation.** Inside a bracketed list a line break separates two items, as `,` does, where the item before it could end there and the next line's first token can start an item; anywhere else in brackets it is ignored, so an item spans lines. The lists are the items of `(…)`, `[…]` and `<…>`, an import's parenthesized names among them, a struct literal's and a struct pattern's braces, and the braces that list fields or variants, as in `{ sku: String, qty: Int }`. An import's bare names stay on its line (§3.13). There is no backslash continuation.
   - **What starts an item:** a name, a literal, a template, `true`, `false` or `none`; an opening bracket; `fn`, `async`, `if`, `struct`, `new`, `not`, `await`, `for`, `...` or `@`; and `-`, `*`, `&`, `..` or `..=` glued to its operand (`-1`, `*x`, `&x`, `..5`).
   - **What continues the item:** a binary operator, `not in` among them; `-`, `*`, `&`, `..` or `..=` followed by a space (`- 1`); `.`, `?.`, `->`, `?->`, `!`, `?`; and `else`, `elif`, `in`, `is`, `as`, `by`, `=`, `:`. So does any line ending where the item can't end: after an operator, `.`, `:`, `=`, `->`, an opening bracket or a prefix.
   - **A postfix bracket stands on its operand's line:** a call's `(`, an index's `[`, a struct literal's `{` and type arguments' `<`, as a tagged template's tag does. On the next line each starts an item, or for `<`, continues as the operator.
@@ -989,6 +989,12 @@ A program is made of modules, one per file; source files use the `.ista` extensi
 
 ```python
 import approve, Verdict from 'purchase/approve'
+import (
+    approvePurchaseRequest
+    rejectPurchaseRequest
+    PurchaseVerdict
+    notifyReviewers as notify             # bound as `notify`
+) from 'purchase/requests'
 import * as runtime from 'runtime'
 
 fn _normalize(id: String) -> String:     # private to this module
@@ -996,14 +1002,14 @@ fn _normalize(id: String) -> String:     # private to this module
 ```
 
 - **Exports.** Every top-level declaration is exported, except names starting with `_`, which only a test module (§10) may also name, from the modules it imports. There are no default exports, and imported names are not re-exported.
-- **Imports.** `import a, b from 'path'` brings named exports into scope. `import * as m from 'path'` binds them under a namespace, used as `m.name`. A name imported twice, or clashing with a local declaration, is a compile error.
+- **Imports.** `import a, b from 'path'` brings named exports into scope, its names on the import's line. In parentheses, `import (a, b) from 'path'`, they are a list (§2), which may span lines, one name per line with no `,`. In either form `name as alias` binds the export `name` as `alias`, and only the alias is in scope, so one export may be bound under several names. `import * as m from 'path'` binds them under a namespace, used as `m.name`. A name bound twice, or clashing with a local declaration, is a compile error.
 - **Paths.** Each path must name exactly one module: a path that names none, or several, is a compile error. Which module a path names is decided by the module loaders of whatever runs the compiler, much as a bundler resolves imports, so a host may use its own paths and its own module store.
 - **The toolchain's paths.** The `ista` toolchain resolves a path as names separated by `/`, with the `.ista` extension implied. A path starting with `./` or `../` is relative to the importing file. Any other path names a standard-library module, or a module under the project root: the directory holding `ista.json` (§11), or the directory the toolchain runs in when there is none. A path that matches both a standard-library module and a project file is therefore an error.
 - **Project sources.** Without explicit files, `ista check` checks every `.ista` file under the project root, skipping the project's `vendor/` folder (§11), every `node_modules/` folder and hidden directories.
 - **Cycles.** Modules contain only declarations, never top-level code, so import cycles are allowed.
 - **Argument-dependent lookup.** A function is also found through the modules that declare its arguments' types. `a + b` on two `Duration`s finds `add` in `Duration`'s module without an explicit import. Only the arguments' own types count, not their type arguments, so `Inbox<T>`, a handle the `inbox` module declares (§3.18), finds that module's functions, while an `Array<Duration>` doesn't find `Duration`'s. Only exported functions are found this way, and a call through a namespace (`m.f(x)`) looks only in `m`. A shape (§3.1) or a union (§2) has no module, so argument-dependent lookup finds nothing for it: its functions are found as any function is, by import.
 - **Externs** are bound by module-qualified name, so two modules can declare externs with the same short name.
-- **The prelude** is imported implicitly into every module. A module's top-level declarations and imports can't reuse a prelude name, with one exception: a top-level function, declared or imported, joins the prelude's overloads of its name, as `fn add(left: Time, right: Duration)` does (§3.9).
+- **The prelude** is imported implicitly into every module. A module's top-level declarations and the names its imports bind can't reuse a prelude name, with one exception: a top-level function, declared or imported under its own name, joins the prelude's overloads of its name, as `fn add(left: Time, right: Duration)` does (§3.9). A function imported under another name joins nothing, so an alias can't take a prelude name.
 
 ### 3.14 Function types and closures
 

@@ -17,7 +17,7 @@ import { isMissingName } from '../../compiler/syntax/node.ts';
 import { nodesUnder, type SyntaxNode } from '../../compiler/syntax/tree.ts';
 import { memo } from '../../structures/memo.ts';
 import {
-  declarationsOf,
+  actedOnBy,
   isSamePlace,
   type NamePlace,
   nameAt,
@@ -65,7 +65,7 @@ function indexOf(program: Program): ReadonlyMap<PlaceKey, readonly NamePlace[]> 
   const denoting = [...program.modules].flatMap(([module, { tree }]) =>
     nodesUnder(tree, tree.root).flatMap((name) =>
       isName(program, module, name)
-        ? declarationsOf(checker, module, name).map(({ at }) => ({
+        ? actedOnBy(checker, module, name).map(({ at }) => ({
             declaring: placeKeyOf(program, at),
             module,
             name,

@@ -55,7 +55,8 @@ src/
       expressions/ patterns types statements declarations        by construct (parselet tables by token kind in expressions/, patterns.ts, types.ts)
     program/            Program snapshot, module graph, the ModuleLoader seam; imposes no path syntax
     binder/             entities, scopes, imports/exports, name resolution; link/ resolves across modules (qualifiers.ts: what a
-                        qualified name's next part is found through, an alias of an enum as the enum)
+                        qualified name's next part is found through, an alias of an enum as the enum); an imported name is a
+                        placeholder per name until linked, bound as its alias where renamed (`aliasOf`)
     checker/            check.ts is the entry and the surface later phases read
       context.ts body-context.ts program-checker.ts body-checker.ts  contexts and the classes that wire them; body-records.ts: what a
                                                                  body records of its nodes, per pass, and the CheckedBody read through them

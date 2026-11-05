@@ -1,5 +1,5 @@
 ---
-description: proposal 5 of docs/proposals, for indented values — struct, map and array values written as indented blocks, the value-side mirror of the indented field block — with recursive aliases, `json.Json` redefined as a recursive union, `,` as the one list separator, with `;` only between statements, patterns as parameters, and line breaks separating the items of every bracketed list; the decided rules, what changes in behaviour and power, the spec edits and implementation notes; fifth in order, after the unions, literal types and computed types it builds on; read before specifying or implementing any of them
+description: proposal 5 of docs/proposals, for indented values — struct, map and array values written as indented blocks, the value-side mirror of the indented field block — with recursive aliases, `json.Json` redefined as a recursive union, `,` as the one list separator, with `;` only between statements, patterns as parameters, and line breaks separating the items of every bracketed list, with parenthesized import lists and import renames; the decided rules, what changes in behaviour and power, the spec edits and implementation notes; fifth in order, after the unions, literal types and computed types it builds on; read before specifying or implementing any of them
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -10,7 +10,7 @@ tags: [proposal, language, syntax, types, stdlib, json]
 
 # Proposal: indented values
 
-A struct, map or array value may be written as an indented block, as a struct declaration's fields already are (§3.1): `key: value` lines build a struct or a map, and `- item` lines build an array. The block parses the same everywhere; the type it is built as decides what it means. With it come two more changes. Aliases may refer to themselves. `json.Json` becomes such an alias, a union, so JSON of any shape is written as plain literals. Three more changes stand on their own. `,` becomes the one separator in every list, and `;` stays only between statements. A parameter may be a pattern that can't fail, which takes its argument apart. Inside any bracketed list, a line break separates items as `,` does. Section numbers refer to `docs/spec.md`.
+A struct, map or array value may be written as an indented block, as a struct declaration's fields already are (§3.1): `key: value` lines build a struct or a map, and `- item` lines build an array. The block parses the same everywhere; the type it is built as decides what it means. With it come two more changes. Aliases may refer to themselves. `json.Json` becomes such an alias, a union, so JSON of any shape is written as plain literals. Three more changes stand on their own. `,` becomes the one separator in every list, and `;` stays only between statements. A parameter may be a pattern that can't fail, which takes its argument apart. Inside any bracketed list, a line break separates items as `,` does. An import's names may stand in parentheses, as such a list, and any imported name may be renamed. Section numbers refer to `docs/spec.md`.
 
 ```python
 import Json from 'json'
@@ -255,6 +255,24 @@ retry(
 - **Inside `${…}`** a line break stays ignored, since its one expression is no list.
 - **The formatter's canonical form:** a list on one line keeps `,`. A list broken over lines puts one item per line and no `,` at line ends, as the field lists of declarations already are.
 
+### 7. Parenthesized import lists
+
+```python
+import (
+    approve
+    Verdict
+    decide as decidePurchase
+) from 'purchase/approve'
+import a, b as bee from 'x'
+```
+
+- **Two forms.** An import's names stand bare, `import a, b from 'x'`, on one line, or in parentheses, `import (a, b, c as see) from './lib'`.
+- **The parenthesized form is a bracketed list.** It follows the line-break rule of §6 above: it may span lines, one name per line with no `,`, and `,` and line breaks mix as in any list. A trailing `,` is allowed, as in any list.
+- **The bare form stays on one line.** A line break after its `,` ends the import, as today: a list too long for its line is written in parentheses.
+- **Renames, in both forms.** `name as alias` imports the export `name` and binds it as `alias`. Only the alias is in scope; clashes, a name imported twice, and the prelude rule (§3.13) are checked on the names bound, so `import a as x, b as x` clashes, and `import a, a as b` binds two names to one export. A function joins the prelude's overloads by its own name only, so one renamed to a prelude name (`import f as add`) clashes. `import * as m` keeps its form.
+- **Tools.** Hover and go-to-definition on either name reach the export; rename of the export renames `name`, and rename of the alias renames the alias and its uses. Completion inside the parentheses offers the module's exports, as after `import`.
+- **The formatter** prints an import on one line when it fits, bare as written or in parentheses as written, and a parenthesized import too long for its line one name per line. A bare import too long for its line is printed in parentheses, broken: the one change of form the formatter makes, since the bare form has no broken shape.
+
 ## What changes in behaviour
 
 | Code | Today | Proposed |
@@ -285,6 +303,10 @@ retry(
 | `[a` with `-1]` on the next line | `a - 1` | two items, `a` and `-1` |
 | `[a` with `- 1]` on the next line | `a - 1` | still `a - 1` |
 | `ista fmt` on a list too long for its line | one item per line, each ending in `,` | one item per line, no `,` |
+| `import (a, b) from 'x'`, or `(` over the lines `a` and `b`, then `) from 'x'` | error 2001 | imports `a` and `b` |
+| `import a,` with `b from 'x'` on the next line | error 2001 | still an error: the bare form is one line |
+| `import a as x from 'x'` | error 2001 | binds the export `a` as `x` |
+| `ista fmt` on a bare import too long for its line | left on one line | parenthesized, one name per line |
 
 Two kinds of program that compile today change meaning, both inside brackets and both unlike formatted code:
 - a postfix bracket put on the line after its operand;
@@ -302,6 +324,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
 - One separator, `,`, for every list: fields, variants, trait members, entries, arguments, elements and type arguments. `;` is left with one meaning, between statements.
 - Parameters that take their argument apart, in lambdas and declared functions, with no destructuring line in the body.
 - One line-break rule for every list: the items of a literal, a call or a type broken over lines need no `,`, as fields over lines in a declaration already need none.
+- Imports of many names broken over lines, and imported names renamed, so two modules' exports of one name can meet in one module without a namespace.
 
 **Not gained.**
 - **YAML-compatible source.** An Istalang file is no YAML document, and a YAML document is no Istalang. In declarations the right side of `:` is a type, values hold names, and YAML's indicator characters are Istalang operators.
@@ -333,6 +356,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
   - **Continuation:** "A line break is ignored inside `(…)`, `[…]` and the braces of a struct literal" becomes the rule of §6 above.
     - A line break inside a bracketed list, a field or variant list included, separates items where the item could end and the next line can start one; anywhere else it is ignored.
     - A postfix bracket stands on its operand's line.
+    - An import's parenthesized names are such a list; its bare names stay on one line.
     - An indented value is the one expression that continues past a line break outside brackets.
   - **Templates:** "Inside `${…}` line breaks are ignored, as inside brackets" becomes "line breaks are ignored".
   - **Trailing commas:** a list broken over lines needs none.
@@ -349,6 +373,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
   - **Arguments:** a call broken over lines needs no `,` (§2).
   - **Named arguments:** a destructured parameter is named only by its `as` name.
 - **§3.4.** A `const`, a `let` and an assignment may end their line at `=`, with an indented value below.
+- **§3.13 Imports:** the two forms, bare on one line and parenthesized as a list (§2), and `name as alias` in both, with clashes checked on the names bound. The example gains a parenthesized import broken over lines and a rename.
 - **§3.7.** A method's first parameter is named `self`, or is a pattern `… as self`.
 - **§3.8.** The `json` row: `Json` is the recursive union.
 - **§3.11.** Variants are built by `Name:` too.
@@ -421,7 +446,12 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
     - **Spacing.** Tokens already carry `firstOnLine` (`syntax/tokens.ts`). Their spans tell whether `-`, `*`, `&` or `..` is glued to the next token, so the scanner needs no change.
     - **Formatter.** `src/formatter/lists.ts` and `brackets.ts` print a broken list one item per line without `,`; `literals.ts` follows.
     - **Completion.** The places in `src/language-service/completion/places/` that find "the next item" after a `,` find it after a separating break too.
-11. **Tests** (fast-check, beside the code):
+11. **Parenthesized imports and renames.**
+    - **Syntax.** `NamedImport` holds imported names, each an exported name and an optional alias, and whether they were parenthesized, which the formatter keeps.
+    - **Parser** (`parser/declarations/imports.ts`): `(` reads the names through `parseDelimited`, so §6's rule and recovery come with it; the bare form reads `,`-separated names on one line, as today.
+    - **Binder.** An import binds each alias, or the name where there is none, to the export it names; clashes and the prelude rule read the bound names.
+    - **Language service:** hover, definition, references and rename on both names; completion of exports inside the parentheses; semantic tokens for the alias as for the name; the VS Code grammar already reads `as` as a keyword and `from` before a path, so it needs no change.
+12. **Tests** (fast-check, beside the code):
     - an indented value and its brace or bracket literal check and run to equal values over generated nested values, a commutation property (`test/AGENTS.md`);
     - one parse whatever the expected type;
     - recursive aliases: `typeKey` equal exactly when `sameType` holds; `Tree<T>` instantiated with `Int` equals `Tree<Int>`; finiteness and regularity refusals;
@@ -433,4 +463,5 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
     - in a generated list, replacing any `,` between items with a line break gives the same tree;
     - breaking an item at any point the rule says continues gives the same tree;
     - the formatter's output reparses to the tree it printed, broken lists included;
-    - hostile inputs: operators at line starts, glued and spaced, and comments and blank lines between items.
+    - hostile inputs: operators at line starts, glued and spaced, and comments and blank lines between items;
+    - imports: both forms and renames bind the same names as the equivalent one-line import; a parenthesized import broken over lines parses as on one line; the formatter's import output reparses to the same bindings.

@@ -8,6 +8,10 @@
  * type, `Self` and a field of a struct literal's own type have no declaring name, so nothing can
  * go to them, find them or rename them. A declaring name is told apart by where it stands, not by
  * its node: an async function's own call, a variable, is declared by a copy of the function's name.
+ *
+ * A renaming import's alias (§3.13) binds a name of its own to the export: going to a definition
+ * reaches the export, while finding references and renaming act on the alias, declared at the
+ * alias, so renaming either leaves the other's names alone (`actedOnBy`).
  */
 
 import { type Checker, checkProgram } from '../../compiler/checker/check.ts';
@@ -49,7 +53,7 @@ export interface DeclaredAt {
  * The declarations `name` of `module` denotes, each once: two for a shorthand, the field a key names
  * for a String literal, none for nothing.
  */
-export function declarationsOf(
+function declarationsOf(
   checker: Checker,
   module: ModuleId,
   name: WrittenName,
@@ -64,6 +68,29 @@ export function declarationsOf(
   });
   return found.filter(
     ({ at }, index) => found.findIndex((other) => isSamePlace(other.at, at)) === index,
+  );
+}
+
+/**
+ * The declarations finding references and renaming act on through `name`: those it denotes, each
+ * once, an export reached through a renaming import declared at that import's alias. A field a
+ * shorthand names beside it is never imported, so it keeps its own declaring name.
+ */
+export function actedOnBy(
+  checker: Checker,
+  module: ModuleId,
+  name: WrittenName,
+): readonly DeclaredAt[] {
+  const declarations = declarationsOf(checker, module, name);
+  const alias = name.kind === 'Identifier' ? checker.bindings.aliasOf(module, name) : undefined;
+  if (alias === undefined) {
+    return declarations;
+  }
+  const aliased = declarations.map((each) =>
+    each.declared.kind === 'field' ? each : { ...each, at: { module, name: alias } },
+  );
+  return aliased.filter(
+    ({ at }, index) => aliased.findIndex((other) => isSamePlace(other.at, at)) === index,
   );
 }
 
@@ -101,11 +128,14 @@ export function nameAt(program: Program, module: ModuleId, offset: number): Name
   if (name === undefined) {
     return undefined;
   }
-  const declarations = declarationsOf(checkProgram(program), module, name);
+  const checker = checkProgram(program);
+  const declarations = declarationsOf(checker, module, name);
   if (name.kind === 'StringLiteral' && declarations.length === 0) {
     return undefined;
   }
-  const spelled = declarations.filter(({ at }) => spelledName(at.name) === spelledName(name));
+  const spelled = actedOnBy(checker, module, name).filter(
+    ({ at }) => spelledName(at.name) === spelledName(name),
+  );
   const values = spelled.filter(({ declared }) => declared.kind !== 'field');
   return { name, declarations, targets: values.length > 0 ? values : spelled };
 }

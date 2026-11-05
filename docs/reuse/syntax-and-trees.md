@@ -15,6 +15,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - scan a `SourceText` into tokens, comments and diagnostics → `scan` (`src/compiler/scanner/scan.ts`)
 - parse a `SourceText` and `ScanResult` into a `SyntaxTree`, keeping a previous tree's nodes for every segment an edit left alike → `parse` (`src/compiler/parser/parse.ts`)
 - print a `SyntaxTree`, a `SourceText` or a text in the canonical format, refusing one with syntax errors → `formatTree`, `formatSource`, `formatText` (`src/formatter/format.ts`)
+- print a list in brackets, on one line or one item per line with no `,` → `bracketed` (`src/formatter/lists.ts`); a list whose brackets only its broken form needs, as a bare import's names → `bracketedWhenBroken`; which children stand in brackets → `standingIn` (`src/formatter/brackets.ts`)
 - read a tree's tokens again, all of them or only its code's, or the bracket closing each opening one → `allTokensOf`, `codeTokensOf`, `closingBracketsOf` (`src/language-service/tokens.ts`)
 - pair a token list's brackets as the parser does, and find where each one left open ends → `pairBrackets` (`src/compiler/parser/brackets.ts`)
 - check whether a word is a reserved or contextual keyword → `isKeyword`, `isContextualWord`, `keywords`, `punctuators` (`src/compiler/syntax/tokens.ts`)

@@ -9,8 +9,10 @@
  */
 
 import {
+  boundName,
   type Declaration,
   type DeclaredField,
+  importedNames,
   isMethod,
   type Variant,
 } from '../compiler/syntax/declarations.ts';
@@ -98,7 +100,9 @@ const struct = (
 const symbolsOfDeclaration: SymbolsOf = {
   NamedImport: (declaration) => {
     const { path } = declaration;
-    const names = declaration.names.flatMap((name) => symbol(name, 'imported', name));
+    const names = importedNames(declaration).flatMap((imported) =>
+      symbol(boundName(imported), 'imported', imported),
+    );
     return path.kind === 'StringLiteral' && path.value !== ''
       ? [{ name: path.value, kind: 'module', node: declaration, nameNode: path, children: names }]
       : names;

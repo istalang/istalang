@@ -35,6 +35,24 @@ describe('renaming', () => {
     });
   });
 
+  it('renames an export by its name in a renaming import, and an alias with its uses alone', () => {
+    const { program, named } = navigable({
+      main: "import tally as count from 'lib'\nfn main() -> Int: count(1) + count(2)\n",
+      lib: 'fn tally(x: Int) -> Int: x\n',
+    });
+    const exportRenamed = {
+      main: "import total as count from 'lib'\nfn main() -> Int: count(1) + count(2)\n",
+      lib: 'fn total(x: Int) -> Int: x\n',
+    };
+    expect(renamed(program, named('lib', 'tally'), 'total')).toEqual(exportRenamed);
+    expect(renamed(program, named('main', 'tally'), 'total')).toEqual(exportRenamed);
+    const aliasRenamed = {
+      main: "import tally as sum from 'lib'\nfn main() -> Int: sum(1) + sum(2)\n",
+    };
+    expect(renamed(program, named('main', 'count'), 'sum')).toEqual(aliasRenamed);
+    expect(renamed(program, named('main', 'count', 2), 'sum')).toEqual(aliasRenamed);
+  });
+
   it("spells a literal's shorthand out, for its field or its variable", () => {
     const { program, named } = navigable({
       main: `${pair}fn f(first: Int) -> Pair: Pair{first, second: 2}\n`,

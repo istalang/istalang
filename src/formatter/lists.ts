@@ -48,6 +48,24 @@ export function bracketed(
 }
 
 /**
+ * `items` comma-separated on one line when they fit, else broken between `open` and `close` as
+ * `bracketed` breaks them: a list whose brackets only a broken form needs, as a bare import's
+ * names, which a line break would end (spec §3.13).
+ */
+export function bracketedWhenBroken(
+  printer: Printer,
+  owner: SyntaxNode,
+  [open, close]: readonly [string, string],
+  items: readonly SyntaxNode[],
+): builders.Doc {
+  return commaList(printer, owner, items, {
+    open: ifBreak(open),
+    close: ifBreak(close),
+    trailingComma: '',
+  });
+}
+
+/**
  * A tuple's elements in parentheses, of a value, a type or a pattern: one element keeps its comma,
  * broken or not, since without it `(x)` only groups `x`.
  */
@@ -62,8 +80,8 @@ export function tupleList(
 
 /** What a comma list stands between, and what follows its last item. */
 interface ListEnds {
-  readonly open: string;
-  readonly close: string;
+  readonly open: builders.Doc;
+  readonly close: builders.Doc;
   readonly trailingComma: string;
 }
 

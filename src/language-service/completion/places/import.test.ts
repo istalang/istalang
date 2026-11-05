@@ -43,6 +43,21 @@ describe('completion in an import', () => {
     expect(names("import a ‸ from 'time'")).toEqual([]);
   });
 
+  it('offers the exports in parentheses, on a line of their own too, by export name', () => {
+    expect(names("import (‸) from 'time'")).toContain('Duration');
+    const listed = names('import (', '  Duration as Span', '  ‸', ") from 'time'");
+    expect(listed).toContain('Time');
+    expect(listed).not.toContain('Duration');
+    expect(names("import (Time, ‸) from 'time'")).not.toContain('Time');
+  });
+
+  it('offers nothing for an alias, which is a new name, and `from` after the parentheses', () => {
+    expect(names("import Duration as ‸ from 'time'")).toEqual([]);
+    expect(names("import (Duration as ‸) from 'time'")).toEqual([]);
+    expect(names('import (Duration) ‸')).toEqual(['from']);
+    expect(names('import Duration as Span ‸')).toEqual(['from']);
+  });
+
   it('offers the exports at a name spelled as a keyword so far', () => {
     expect(names("import in‸ from 'inbox'")).not.toHaveLength(0);
   });

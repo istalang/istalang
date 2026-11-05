@@ -277,5 +277,12 @@ export interface Bindings {
    * since nothing binds it in the tree.
    */
   readonly topLevelNamed: (module: ModuleId, name: string) => Entity | undefined;
+  /**
+   * The alias of the renaming import (§3.13) through which `name` of `module` denotes its entity:
+   * for the alias and each of its uses; undefined for any other name, the export's own name in the
+   * import among them. The alias declares a name of its own, which tools rename apart from the
+   * export.
+   */
+  readonly aliasOf: (module: ModuleId, name: Identifier) => Identifier | undefined;
   readonly diagnosticsOf: (module: ModuleId) => readonly Diagnostic[];
 }

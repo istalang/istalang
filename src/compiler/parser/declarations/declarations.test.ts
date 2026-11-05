@@ -30,7 +30,11 @@ describe('imports', () => {
   it.each([
     [
       "import approve, Verdict from 'purchase/approve'",
-      '(NamedImport [approve Verdict] "purchase/approve")',
+      '(NamedImport [(ImportedName approve _) (ImportedName Verdict _)] "purchase/approve")',
+    ],
+    [
+      "import (approve, decide as decidePurchase) from 'purchase/approve'",
+      '(NamedImport [(ImportedName approve _) (ImportedName decide decidePurchase)] isParenthesized "purchase/approve")',
     ],
     ["import * as time from 'time'", '(NamespaceImport time "time")'],
   ])('parses %s', (text, tree) => {
@@ -48,9 +52,12 @@ describe('imports', () => {
   });
 
   it.each([
-    ["import from 'time'", '(NamedImport [<missing name>] "time")'],
-    ["import a, from 'time'", '(NamedImport [a <missing name>] "time")'],
-    ["import in from 'time'", '(NamedImport [<missing name>] "time")'],
+    ["import from 'time'", '(NamedImport [(ImportedName <missing name> _)] "time")'],
+    [
+      "import a, from 'time'",
+      '(NamedImport [(ImportedName a _) (ImportedName <missing name> _)] "time")',
+    ],
+    ["import in from 'time'", '(NamedImport [(ImportedName <missing name> _)] "time")'],
   ])('reads the path of %s, whose name is still being written', (text, tree) => {
     expect(dumpOf(parseAs('module', text))).toBe(moduleOf(tree));
   });

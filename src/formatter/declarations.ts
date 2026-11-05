@@ -22,11 +22,11 @@ import {
 import type { Identifier } from '../compiler/syntax/node.ts';
 import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './bodies.ts';
-import { angled, bracketed, fieldList, itemLines } from './lists.ts';
+import { angled, bracketed, bracketedWhenBroken, fieldList, itemLines } from './lists.ts';
 import type { Printer, Printers } from './printer.ts';
 import { constraintsAfterIs } from './types.ts';
 
-const { group, hardline, join } = builders;
+const { group, hardline } = builders;
 
 type DeclarationKind =
   | Exclude<Declaration | DeclarationPart, { kind: 'VariableDeclaration' | 'Docstring' }>
@@ -130,16 +130,23 @@ export const declarationPrinters: Printers<DeclarationKind> = {
       ' = ',
       printer.print(node.type),
     ]),
+  // Bare names have no broken form, a line break ending them, so a long import breaks in `()`.
   NamedImport: (printer, node) =>
     annotated(printer, node, [
       'import ',
-      join(
-        ', ',
-        node.names.map((name) => printer.print(name)),
+      (node.isParenthesized ? bracketed : bracketedWhenBroken)(
+        printer,
+        node,
+        ['(', ')'],
+        node.names,
       ),
       ' from ',
       printer.print(node.path),
     ]),
+  ImportedName: (printer, node) =>
+    node.alias === undefined
+      ? printer.print(node.name)
+      : [printer.print(node.name), ' as ', printer.print(node.alias)],
   NamespaceImport: (printer, node) =>
     annotated(printer, node, [
       'import * as ',
