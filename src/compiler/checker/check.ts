@@ -47,7 +47,7 @@ import type {
 } from '../syntax/statements.ts';
 import type { AnnotationQueries } from './checked-annotation.ts';
 import type { FieldRead, FieldReading } from './checked-field.ts';
-import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
+import type { CheckedPattern, TargetBinding, TargetOwner, TargetStep } from './checked-pattern.ts';
 import type { ConstantForm } from './constant-form.ts';
 import type { LookupQueries } from './denotation.ts';
 import type { JsonFormQueries } from './json-form.ts';
@@ -136,12 +136,13 @@ export interface ChainLink {
 }
 
 /**
- * A place an assignment writes, and the part of the assigned value it gets (§3.15): its positions
- * in the value, its type, and how it is converted to fit the place (§2, §3.10, §3.14).
+ * A place an assignment writes, and the part of the assigned value it gets (§3.15): the steps to
+ * it in the value (tuple positions and struct fields), its type, and how it is converted to fit
+ * the place (§2, §3.10, §3.14).
  */
 export interface AssignedPart {
   readonly target: Expression;
-  readonly path: readonly number[];
+  readonly path: readonly TargetStep[];
   readonly type: Type;
   readonly fit: Fit;
 }

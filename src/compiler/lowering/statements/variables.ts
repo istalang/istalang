@@ -225,7 +225,7 @@ export function lowerAssignment(context: FunctionContext, node: Assignment): voi
   }
   for (const part of parts) {
     const place = enterAssigned(context, part.target);
-    const read = context.code.readPath(value, part.path, node.span);
+    const read = readPartAlong(context, value, part.path, node.span);
     place.write(writtenPart(context, read, part), node.span);
   }
 }

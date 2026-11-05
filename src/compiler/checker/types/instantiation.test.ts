@@ -77,7 +77,13 @@ describe('an instantiated body', () => {
 
   it("reads a member's value as the part itself where its union collapses", () => {
     const stepRead = (step: PartStep) => {
-      if (typeof step === 'number' || step.kind !== 'member') {
+      if (typeof step === 'number') {
+        return step;
+      }
+      if (step.kind === 'field') {
+        return `.${step.name}`;
+      }
+      if (step.kind !== 'member') {
         return step;
       }
       return step.union.kind === 'union' ? 'into its member' : 'the part itself';
@@ -110,11 +116,11 @@ describe('an instantiated body', () => {
           narrowed: narrowedFrom !== undefined,
         }));
     expect(read(stringType)).toEqual([
-      { path: ['into its member', 0], narrowed: false },
+      { path: ['into its member', '.value'], narrowed: false },
       { path: ['into its member'], narrowed: false },
     ]);
     expect(read(intType)).toEqual([
-      { path: ['the part itself', 0], narrowed: false },
+      { path: ['the part itself', '.value'], narrowed: false },
       { path: ['the part itself'], narrowed: false },
     ]);
   });

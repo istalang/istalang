@@ -15,6 +15,7 @@ import type {
   PatternTest,
   StructStep,
   TargetBinding,
+  TargetStep,
 } from '../checked-pattern.ts';
 import type { Fit } from './fit.ts';
 import { sameType } from './identity.ts';
@@ -54,9 +55,12 @@ export function instantiatedBody(
     targetsOf: (owner) =>
       body.targetsOf(owner).map((binding) => instantiatedTarget(binding, substitution, checker)),
     assignedOf: (assignment) =>
-      body
-        .assignedOf(assignment)
-        .map((part) => ({ ...part, type: concrete(part.type), fit: concreteFit(part.fit) })),
+      body.assignedOf(assignment).map((part) => ({
+        ...part,
+        path: instantiatedTargetPath(part.path, substitution, checker.typeRules),
+        type: concrete(part.type),
+        fit: concreteFit(part.fit),
+      })),
     inCell: body.inCell,
     functionOf: (node) =>
       mapDefined(body.functionOf(node), (checked) =>
@@ -126,10 +130,19 @@ function instantiatedTarget(
   return {
     ...binding,
     type: substitute(binding.type, substitution, rules),
-    path: binding.path.map((step) =>
-      typeof step === 'number' ? step : instantiatedStructStep(step, substitution, rules),
-    ),
+    path: instantiatedTargetPath(binding.path, substitution, rules),
   };
+}
+
+/** A target's or an assignment's path as one instantiation sees it: its struct steps' types substituted. */
+function instantiatedTargetPath(
+  path: readonly TargetStep[],
+  substitution: Substitution,
+  rules: TypeRules,
+): readonly TargetStep[] {
+  return path.map((step) =>
+    typeof step === 'number' ? step : instantiatedStructStep(step, substitution, rules),
+  );
 }
 
 /** `f(value)`, or undefined for an undefined value: a table's answer, read through `f`. */

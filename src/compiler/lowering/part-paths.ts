@@ -3,8 +3,8 @@
  * pattern tests and binds, and what a declaration's or loop's targets bind (§3.11, §3.15).
  *
  * - Fields, tuple elements and what a union's or an `any`'s variant holds are read as a place, by
- *   position: a field the checker named, of a struct it didn't know the fields of yet, at the
- *   position its instantiated struct gives the name (§3.1 "Field order").
+ *   position: a field the checker named at the position its struct type, as instantiated, gives
+ *   the name (§3.1 "Field order"); a tuple's element or a variant's field at its own.
  * - An array's item or rest is what the call the checker made at its pattern gives, and a struct
  *   pattern's rest a struct built anew from the fields it takes (`rebuiltAs`): what follows such a
  *   step reads that new value.
@@ -69,8 +69,8 @@ function builtAt(
 }
 
 /**
- * The positions `step` reads as a place: a field's or element's own, a named field's in the struct
- * an instantiation made, the one field of the variant an `any`'s value is held in, or where a union
+ * The positions `step` reads as a place: an element's or variant field's own, a named field's in
+ * the struct an instantiation made, the one field of the variant an `any`'s value is held in, or where a union
  * holds its member's value as an instantiation made it (holdings.ts): none where the union
  * collapsed into that one type (§3.5), inside the `any` type that took the member whole.
  */

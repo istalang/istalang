@@ -1,11 +1,11 @@
 /**
- * What a struct pattern takes of a struct whose layout no position can name yet, and its rest
+ * What a struct pattern takes of a struct whose fields aren't known yet, and its rest
  * (§3.11, §3.15).
  *
  * - A struct whose fields aren't known yet, a type parameter with a struct constraint or a computed
  *   struct over one (§3.5), gives a pattern the fields its constraints name, each typed as they say,
- *   and reached by its name (`StructStep`), since each instantiation decides where it lies. Any
- *   other field is unknown to the pattern, as to a field read.
+ *   and reached by its name, as every struct's field is (`StructStep`). Any other field is unknown
+ *   to the pattern, as to a field read.
  * - A rest is the mapped struct type of the keys the pattern leaves, each to its field's type:
  *   `{ [F in keyof S except "title"]: S[F] }`. Built through the program's type rules, it is the
  *   shape of those fields for a struct whose fields are known, and opaque until an instantiation
@@ -22,7 +22,7 @@ import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalType } from '../types/unions.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
-import type { PatternScope, ValuePart } from './parts.ts';
+import { type PatternScope, structFieldStep, type ValuePart } from './parts.ts';
 import type { Taking } from './taking.ts';
 
 /** Whether a pattern takes `type` apart by its fields' names: a struct whose fields aren't known. */
@@ -47,14 +47,11 @@ export function takeFieldsByName<Target>(
   const shapes = items.map((item) => {
     const type =
       item.name === undefined ? errorType : fieldTypeNamed(taking.scope, part, item.name);
-    const path = item.name === undefined ? part.path : [...part.path, fieldStep(part, item.name)];
+    const path =
+      item.name === undefined ? part.path : [...part.path, structFieldStep(part, item.name.text)];
     return taking.take(item.target, { type, path });
   });
   return shapes.every((shape) => shape === anyShape) ? anyShape : undefined;
-}
-
-function fieldStep(part: ValuePart, name: Identifier) {
-  return { kind: 'field', of: part.type, name: name.text } as const;
 }
 
 /** The type of the field `name` names in `part`'s struct; reported and the error type when none. */

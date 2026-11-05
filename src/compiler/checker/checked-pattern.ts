@@ -23,15 +23,16 @@ import type { AnyType, Type } from './types/type.ts';
 export type TargetOwner = VariableDeclaration | For | FieldHeader | Comprehension | SelectCase;
 
 /**
- * A step from a value to one of its parts (§3.11, §3.15): a field or tuple element by position;
- * the value of `member` a part of `union` holds, past a member test, which an instantiation may
- * leave as the part itself, where the union collapsed into one type, or inside the `any` member
- * that took it whole (§2, §3.5; lowering derives which); the value a part of an `any`
- * type holds, past a downcast (§3.10); or what an array pattern reads of an array, through the
- * prelude calls the checker made at `site`: its length, the item `offset` from its start, or from
- * its end when negative, and the items between the first `before` and the last `after`. A target
- * never reads an array, since its length can fail, nor tests a member, so its parts are positions
- * and the struct steps below (`TargetBinding`).
+ * A step from a value to one of its parts (§3.11, §3.15): a struct's field by its name
+ * (`StructStep`), whose position each struct type, as an instantiation makes it, decides (§3.1
+ * "Field order"); a tuple's element or a variant's field by position; the value of `member` a part
+ * of `union` holds, past a member test, which an instantiation may leave as the part itself, where
+ * the union collapsed into one type, or inside the `any` member that took it whole (§2, §3.5;
+ * lowering derives which); the value a part of an `any` type holds, past a downcast (§3.10); or
+ * what an array pattern reads of an array, through the prelude calls the checker made at `site`:
+ * its length, the item `offset` from its start, or from its end when negative, and the items
+ * between the first `before` and the last `after`. A target never reads an array, since its length
+ * can fail, nor tests a member, so its parts are positions and struct steps (`TargetStep`).
  */
 export type PartStep =
   | number
@@ -41,17 +42,24 @@ export type PartStep =
   | StructStep;
 
 /**
- * A step into a struct that names its field rather than its position: a field of `of`, a struct
- * whose fields aren't known yet (a type parameter with a struct constraint, §3.5), whose position
- * each instantiation decides; or a rest (§3.11), the struct `to` of the fields of `from` that the
- * pattern doesn't name, built anew from them by name. A struct whose fields are known is read by
- * position, the layout its fields are in (name order, §3.1), which no instantiation changes.
+ * A step into a struct: its field `name`, of the struct type `of`; or a rest (§3.11), the struct
+ * `to` of the fields of `from` that the pattern doesn't name, built anew from them by name. A field
+ * is named, never placed: where it lies is the concrete struct type's to say (§3.1 "Field order"),
+ * which a struct whose fields aren't known yet (a type parameter with a struct constraint, §3.5)
+ * only has once instantiated.
  */
 export type StructStep =
-  | { readonly kind: 'field'; readonly of: Type; readonly name: string }
+  | FieldStep
   | { readonly kind: 'fieldRest'; readonly from: Type; readonly to: Type };
 
-/** A step a target's part is reached by: a field's or an element's position, or a struct step. */
+/** A step into a struct's field by its name (`StructStep`). */
+export interface FieldStep {
+  readonly kind: 'field';
+  readonly of: Type;
+  readonly name: string;
+}
+
+/** A step a target's part is reached by: a tuple element's position, or a struct step. */
 export type TargetStep = number | StructStep;
 
 /** A step an array pattern takes through a prelude call (`PartStep`). */
@@ -69,7 +77,7 @@ export type ArrayStep =
 export interface TargetBinding {
   readonly name: Identifier;
   readonly type: Type;
-  /** Field or tuple element positions, or struct steps, from the whole value, outermost first. */
+  /** Tuple element positions and struct steps from the whole value, outermost first. */
   readonly path: readonly TargetStep[];
 }
 

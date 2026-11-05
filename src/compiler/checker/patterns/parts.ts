@@ -1,6 +1,7 @@
 /**
- * The parts of a value a pattern takes apart (§3.11, §3.15): each part's type, and the positions
- * leading to it from the whole value, which lowering reads along.
+ * The parts of a value a pattern takes apart (§3.11, §3.15): each part's type, and the steps
+ * leading to it from the whole value, which lowering reads along: a struct's field by its name, a
+ * tuple's element or a variant's field by position.
  *
  * - A tuple pattern takes a tuple of exactly its size; a struct pattern a struct value, its own
  *   type named or taken with `struct{…}`, as a `struct{…}` literal takes the expected type (§3.1).
@@ -16,7 +17,7 @@ import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { NamedType, TypeNode } from '../../syntax/types.ts';
 import type { Checker } from '../check.ts';
-import type { PartStep } from '../checked-pattern.ts';
+import type { FieldStep, PartStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { itemField } from '../struct-items.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
@@ -74,7 +75,7 @@ export function bodyScope(
 
 /**
  * A part of a value being taken apart: its type, and the steps to it from the whole value; `Step`
- * narrows them to positions where nothing reads an array's items (taking.ts).
+ * narrows them where nothing reads an array's items or tests a member (taking.ts).
  */
 export interface ValuePart<Step extends PartStep = PartStep> {
   readonly type: Type;
@@ -158,16 +159,42 @@ export function otherTypeNamed(
     : checkerDiagnostics.typeMismatch(span, typeText(type), name.text);
 }
 
+/** The step into the field `name` of `part`'s struct, by its name (checked-pattern.ts). */
+export function structFieldStep(part: ValuePart<PartStep>, name: string): FieldStep {
+  return { kind: 'field', of: part.type, name };
+}
+
+/** How the fields a struct or variant pattern takes are stepped into: a struct's by name. */
+export type FieldStepper<Step extends PartStep> = (
+  part: ValuePart<Step>,
+  field: FieldMember,
+  index: number,
+) => Step;
+
+/** A variant's fields are reached by position, its payload's layout. */
+export const variantFieldStep: FieldStepper<PartStep> = (_part, _field, index) => index;
+
+/**
+ * The fields a struct or variant pattern takes, none known after a report, and how each is
+ * stepped into.
+ */
+export interface TakenFields<Step extends PartStep> {
+  readonly members: readonly FieldMember[] | undefined;
+  readonly stepTo: FieldStepper<Step>;
+}
+
 /**
  * The part of a struct or variant value of `part` that the field `item` gives holds, among
- * `fields` (../struct-items.ts); an item giving none is reported, and its part has the error type.
+ * `taken`'s fields (../struct-items.ts); an item giving none is reported, and its part has the
+ * error type.
  */
 export function fieldPart<Step extends PartStep>(
   scope: Pick<PatternScope, 'report' | 'recordField'>,
-  fields: readonly FieldMember[] | undefined,
+  taken: TakenFields<Step>,
   item: { readonly name: Identifier | undefined; readonly span: AnchoredSpan },
-  part: ValuePart<Step | number>,
-): { readonly index: number; readonly part: ValuePart<Step | number> } {
+  part: ValuePart<Step>,
+): { readonly index: number; readonly part: ValuePart<Step> } {
+  const { members: fields, stepTo } = taken;
   const index = fields === undefined ? -1 : itemField(item.name, fields);
   const field = fields?.[index];
   if (field !== undefined && item.name !== undefined) {
@@ -181,5 +208,6 @@ export function fieldPart<Step extends PartStep>(
         : checkerDiagnostics.unknownField(item.name.span, type, item.name.text),
     );
   }
-  return { index, part: { type: field?.type ?? errorType, path: [...part.path, index] } };
+  const path = field === undefined ? part.path : [...part.path, stepTo(part, field, index)];
+  return { index, part: { type: field?.type ?? errorType, path } };
 }

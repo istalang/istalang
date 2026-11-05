@@ -42,6 +42,7 @@ import {
   severalKeyedFields,
 } from '../calls/places.ts';
 import type { AssignedPart } from '../check.ts';
+import type { FieldStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';
@@ -166,9 +167,12 @@ function writtenFit(context: BodyContext, target: Expression, { type, place, at 
 
 /**
  * Taking an assigned value apart (patterns/taking.ts): where the places written are collected. Its
- * parts are positions, since an assignment's targets read no array's items.
+ * parts are tuple positions and struct fields, since an assignment's targets read no array's items.
  */
-interface Assigning extends Taking<PreparedTarget, number> {
+/** A step an assignment's part is reached by: a tuple position or a struct's field. */
+type AssignedStep = number | FieldStep;
+
+interface Assigning extends Taking<PreparedTarget, AssignedStep> {
   readonly parts: AssignedPart[];
   readonly valueSpan: AnchoredSpan;
 }
@@ -191,7 +195,7 @@ function assignPart(
   context: BodyContext,
   assigning: Assigning,
   target: PreparedTarget,
-  part: ValuePart<number>,
+  part: ValuePart<AssignedStep>,
 ): Shape | undefined {
   switch (target.kind) {
     case 'destructuring':

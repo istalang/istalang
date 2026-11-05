@@ -42,7 +42,7 @@ import { partSelected, sameNames } from './alternatives.ts';
 import { takeArray } from './arrays.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
 import { literalTypeOf } from './members.ts';
-import type { PatternScope, ValuePart } from './parts.ts';
+import { type PatternScope, type ValuePart, variantFieldStep } from './parts.ts';
 import type { Leaf, PatternTests } from './pattern-tests.ts';
 import { selectionOf } from './selections.ts';
 import { isStructNotKnown, restBinding, takeFieldsByName } from './struct-fields.ts';
@@ -326,11 +326,12 @@ function takeStruct(walk: Walk, node: StructPattern, part: ValuePart): Shape | u
   const variant = walk.tests.variant(node, named, part);
   takeRest(walk, node, part);
   if (variant === undefined) {
-    takeFields(walk, items, undefined, part);
+    takeFields(walk, items, { members: undefined, stepTo: variantFieldStep }, part);
     return anyShape;
   }
   walk.found.push(variant.test);
-  return constructed(variant.key, takeFields(walk, items, variant.fields, part));
+  const taken = { members: variant.fields, stepTo: variantFieldStep };
+  return constructed(variant.key, takeFields(walk, items, taken, part));
 }
 
 /** Binds a struct pattern's rest, if it has one, to the struct of the fields its items leave. */
