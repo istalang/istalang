@@ -2,8 +2,8 @@
   "id": "order",
   "version": "1.4.0",
   "imports": {
-    "geo": "geo",
-    "approvals": "approvals",
+    "geo": "./geo",
+    "approvals": "./approvals",
     "logic": "./order"
   },
   "params": {
@@ -40,7 +40,7 @@
           "from": "await geo.countries(ctx.params.region)",
           "value": "row.id",
           "label": "row.name",
-          "resolve": "(await geo.countries(ctx.params.region)).any(fn c: c.id == data.country)"
+          "resolve": "(await geo.countries(ctx.params.region)).some(fn c: c.id == data.country)"
         },
         "constraints": {
           "rules": [
@@ -63,7 +63,7 @@
           "from": "await geo.cities(data.country ?? \"\")",
           "value": "row.id",
           "label": "row.name",
-          "resolve": "(await geo.cities(data.country ?? \"\")).any(fn c: c.id == data.city)"
+          "resolve": "(await geo.cities(data.country ?? \"\")).some(fn c: c.id == data.city)"
         }
       },
       {

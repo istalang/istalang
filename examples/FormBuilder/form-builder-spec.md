@@ -1,18 +1,29 @@
+---
+description: specification and Istalang implementation design of the schema-based form builder — schema, code generator, generic runtime, and acceptance scenarios
+owner: tech-lead
+status: active
+applies_to: examples/FormBuilder
+last_verified: 2026-11-05
+last_updated: 2026-11-05
+tags: [form-builder, specification, istalang]
+---
+
 # Form Builder: Specification and Istalang Implementation
 
 This document specifies a form builder whose forms are data, edited by people in a drag-and-drop editor and by agents, and run as Istalang code. It covers the problem, the form schema, how a form becomes Istalang, the runtime that runs every form, and the language features the design relies on. It is written for the agent implementing Istalang, and doubles as an end-to-end test of the language's expressiveness: the two example forms exercise every part of the design, and §9 gives acceptance scenarios.
 
-**Status of the companion code.** The TypeScript files (`form-spec.ts`, `form-spec.test.ts`, `generate.ts`) compile under `tsc --strict`, the spec tests pass, and the generator produces the two `.gen.py` files from the two `.form.json` files. The Istalang files (`forms.py`, `*.gen.py`, `order.py`, `supplier.py`; named `.py` for editor support) are design sketches: they have not been compiled. Where they rely on syntax the language guide doesn't show, §8 lists it.
+**Status of the companion code.** The TypeScript files (`form-spec.ts`, `form-spec.test.ts`, `generate.ts`) compile under `tsc --strict`, the spec tests pass, and the generator produces the two `.gen.ista` files from the two `.form.json` files. The Istalang files (`forms.ista`, `*.gen.ista`, `order.ista`, `supplier.ista`) are checked against the Istalang compiler; see `ista-alignment.md` for the alignment report.
 
 | File | What it is |
 | --- | --- |
 | `form-builder-spec.md` | This document |
+| `ista-alignment.md` | Alignment of the prototype with the Istalang specification and compiler |
 | `form-spec.ts` | The form schema as TypeScript types (also in §4.8) |
 | `form-spec.test.ts` | Type tests: both example forms, and 14 forms that must be rejected |
 | `generate.ts` | The generator: form JSON → Istalang module |
-| `forms.py` | The runtime: the `forms` Istalang module every form uses |
-| `order.form.json`, `order.gen.py`, `order.py` | A small example: schema, generated module, hand-written logic (also in Appendix A) |
-| `supplier.form.json`, `supplier.gen.py`, `supplier.py` | A full example using every feature of the schema |
+| `forms.ista` | The runtime: the `forms` Istalang module every form uses |
+| `order.form.json`, `order.gen.ista`, `order.ista` | A small example: schema, generated module, hand-written logic (also in Appendix A) |
+| `supplier.form.json`, `supplier.gen.ista`, `supplier.ista` | A full example using every feature of the schema |
 
 ---
 
@@ -303,7 +314,7 @@ Pass 1 walks the tree and builds the model from the paths. It first creates the 
 | A `types` entry | its declared type |
 | Intermediate path segments | `Group<{ … }>` |
 | A repeat | `List<Row>`, where `Row` is `Group<{ … }>`, a single `Field<T>` (an item whose path is the variable), or a mounted form |
-| A variant | `Variant<Cases>`, `Cases` a struct of case-name → struct of nodes; its tag is `Field<"card" \| "wire">` |
+| A variant | `Variant<Cases>`, `Cases` a struct of case-name → `Group<{ … }>`; its tag is `Field<"card" \| "wire">` |
 | A static ref | the def's or catalog form's `Group<Model>` |
 | A dynamic ref | `Dynamic` |
 | `store: "none"` | `Local<N>`: seen by expressions, validated, not output |
@@ -322,29 +333,29 @@ Pass 2 walks the tree again and emits a view node per schema node.
 | repeat | `new RepeatView<Sc, Row>`, whose `item` builds a row's view from the row's node and key |
 | variant | `VariantView<Sc, Cases>` with a `CaseView` per case |
 | static ref | `ScopedView` into the mounted form's own scope, built from its params |
-| dynamic ref | `DynamicView` |
+| dynamic ref | `new DynamicView<Sc>` |
 
 Its rules:
 
-- **Props.** A literal becomes `Prop.Fixed{…}`. An expression becomes `Prop.Computed{eval: fn({data, ctx}): <expr>}`. If the expression contains `await`, it becomes `forms.awaited(Pending.X, async fn(...): <expr>)` instead, which owns a task.
+- **Props.** A literal becomes `Prop.Fixed{…}` (or bare `Fixed{…}` inside check calls). An expression becomes `Prop.Computed{eval: fn(sc: Sc): { const struct{data, ctx} = sc; <expr> }}`. If the expression contains `await`, it becomes `forms.awaited(Pending.X, async fn(sc: Sc): { const struct{data, ctx} = sc; <expr> })` instead, which owns a task.
 - **Widgets.** The widget and its ui props become one prop: `Prop.Fixed{FieldWidget.Select{placeholder: none}}`. If any ui prop is computed, so is the whole widget value.
-- **Lambdas.** A lambda's parameter destructures its scope (`fn({data, ctx, item}): …`), so pasted expressions read bare names. A lambda whose body spans several lines encloses it in `{ }`.
+- **Lambdas.** A lambda takes its typed scope `sc: Sc` and destructures it with `const struct{data, ctx, item} = sc` inside a block expression, so pasted expressions read bare names.
 - **Scopes.** A repeat row, a variant case and a mount each get a wider scope: the outer variables plus the new one. Drawing moves into it through a `ScopedView`, whose `scope` builds it, for example `fn(sc): OrderScope1{data: sc.data, ctx: sc.ctx, item: r1.seen()}`. Inside the wider scope, view nodes are typed by it.
 - **Keys.** Nodes are numbered in tree order: `n1`, `n2`… A key inside a repeat row adds the row's key (`n6@r1`; nested rows `n9@r1@r2`), and inside a mounted def its mount's key (`n4/n2`). Keys are stable within a version.
 - **Checks.**
   - Every stored field without a default or computed value gets `forms.answered()`.
-  - Each constraint becomes a helper call with prop arguments (`forms.maxLength(Prop.Fixed{120})`), including those from the path's `types` entry.
+  - Each constraint becomes a helper call with prop arguments (`forms.maxLength(Fixed{120})`), including those from the path's `types` entry.
   - A rule becomes `forms.rule(check, message)`.
   - A rule with `pending` becomes `forms.later(test, pendingText)`.
 - **Options.**
   - Static options become `Options.Items`.
   - Options from rows become `Options.Rows`, where `from` is `[for row in <from>: Choice{value: <value>, label: <label>}]`.
-  - With a search widget they become `Options.Search`, whose `from` takes the typed text and widens `ctx` with it.
-- **Templates.** A message template becomes a template literal. If the form translates it, it becomes ``forms.t(translations, ctx.user.lang, "<original>", `<rendered>`, [String(arg0), …])``. A string literal that has a translation (a label, a section title) becomes such a call too.
+  - With a search widget they become `Options.Search`, whose `from` takes the typed text and widens `ctx` with `const ctx = struct{search, for k, v in ...sc.ctx: [k]: v}`.
+- **Templates.** A message template becomes a template literal with each `${…}` wrapped in `forms.text(…)`. If the form translates it, it becomes ``forms.t(translations, ctx.user.lang, "<original>", `<rendered>`, [forms.text(arg0), …])``. A string literal that has a translation (a label, a section title) becomes such a call too.
 
 ## 6. The runtime
 
-`forms.py` is the runtime; this section summarizes it.
+`forms.ista` is the runtime; this section summarizes it.
 
 ### 6.1 The model
 
@@ -353,9 +364,9 @@ Every model node implements `FormNode`, with associated types `Data` and `Seen` 
 | Node | Data | Seen | Notes |
 | --- | --- | --- | --- |
 | `Field<T>` (shared) | `T` | `T?` | Holds the value, `touched`, `edited`, `parseError` |
-| `Group<S>` | `{ [F in keyof S]: S[F].Data }` | the same, with `Seen` | |
+| `Group<S>` | `{ [F in keyof S]: S[F].Data }` (via `type match`) | the same, with `Seen` | |
 | `List<R>` (shared) | `Array<R.Data>` | `Array<R.Seen>` | Rows created from `make`; `sync` matches rows from data by key |
-| `Variant<C>` | `{ [K in keyof C]: { case: K; value: Group<C[K]>.Data } }[keyof C]` | the active case's value | The tag is a `Field<keyof C>` |
+| `Variant<C>` | `{ tag: keyof C; value: { [K in keyof C]: C[K].Data? } }` | `{ tag: (keyof C)?; value: { [K in keyof C]: C[K].Seen? } }` | The tag is a `Field<keyof C>` |
 | `Hidden<N>` (shared) | `N.Data?` | `N.Seen?` | Drawing sets `shown` when any writer is drawn |
 | `Local<N>` (shared) | `None` | `N.Seen` | Kept out of the output |
 | `Dynamic` (shared) | `String` (JSON) | `None` | A mounted dynamic form's data, opaque |
@@ -419,7 +430,7 @@ The frontend draws it with a generic recursive component and sends events by key
 | The model holds values; the view holds everything else | Multiple writers and tag writers fall out as shared handles, and the model's types stay free of cycles |
 | `Data` and `Seen` are computed types | The form's result type is derived from its definition, never written or generated separately |
 | Hidden nodes don't exist | Hidden values can't silently affect expressions, validation or output |
-| Output shape is free (`{ case, value }` for variants) | Istalang owns the data; no external JSON contract constrains it |
+| Output shape is free (`{ tag, value }` for variants) | Istalang owns the data; no external JSON contract constrains it |
 | One generic loop, redrawing the whole tree | Simpler than dependency tracking, and React plus the bridge's stable references make redraws cheap |
 | Server replays events on submit | One code path; the server's result is authoritative |
 | Awaited props re-run only when their scope changes | Sources cache, so no dependency declarations are needed and no redraw loop can occur |
@@ -490,7 +501,7 @@ Params: `{region: "eu"}`. User: `{id: "u1", name: "Ana", lang: "de", role: "buye
 1. `Set n3 "ber"`, `Set n9 "card"`, `Set n10 "1234"`, `Submit`: the form returns
    ```
    OrderData{country: "de", city: "ber", items: [{sku: "A1", qty: 60}],
-             payment: {case: "card", value: {last4: "1234"}}, note: none}
+             payment: {tag: "card", value: {card: {last4: "1234"}, wire: none}}, note: none}
    ```
 2. Typing: the value has type `Group<OrderModel>.Data`, and assigning it to a variable annotated with the expected shape compiles.
 
@@ -556,8 +567,8 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
   "id": "order",
   "version": "1.4.0",
   "imports": {
-    "geo": "geo",
-    "approvals": "approvals",
+    "geo": "./geo",
+    "approvals": "./approvals",
     "logic": "./order"
   },
   "params": {
@@ -594,7 +605,7 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
           "from": "await geo.countries(ctx.params.region)",
           "value": "row.id",
           "label": "row.name",
-          "resolve": "(await geo.countries(ctx.params.region)).any(fn c: c.id == data.country)"
+          "resolve": "(await geo.countries(ctx.params.region)).some(fn c: c.id == data.country)"
         },
         "constraints": {
           "rules": [
@@ -617,7 +628,7 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
           "from": "await geo.cities(data.country ?? \"\")",
           "value": "row.id",
           "label": "row.name",
-          "resolve": "(await geo.cities(data.country ?? \"\")).any(fn c: c.id == data.city)"
+          "resolve": "(await geo.cities(data.country ?? \"\")).some(fn c: c.id == data.city)"
         }
       },
       {
@@ -719,22 +730,23 @@ The supplier form (`supplier.form.json`) is the full test. It compiles only if e
 }
 ```
 
-### A.2 `order.gen.py`, generated by `generate.ts`
+### A.2 `order.gen.ista`, generated by `generate.ts`
 
 ```python
-# order.gen.py — generated from order.form.json 1.4.0. Do not edit. (Istalang)
+# order.gen.ista — generated from order.form.json 1.4.0. Do not edit.
 #
 # The generated part of a form: per form and per local def, a model (one node per path), its
 # factory, its scope types, and a view whose expressions are lambdas. forms.run does the rest.
 # Expressions are pasted from the schema verbatim.
 
-import * as forms from 'forms'
-import Field, Group, List, Variant, Hidden, Local, Dynamic, Scope, Prop, Pending, Check, Recompute from 'forms'
-import Options, Item, Choice, Format, FieldView, RepeatView, VariantView, CaseView, LayoutView from 'forms'
-import ScopedView, DynamicView, View, FormEvent, Node, User from 'forms'
-import FieldWidget, RepeatWidget, VariantWidget, LayoutWidget, ParentUi, LabelStyle, Orientation, Gap from 'forms'
-import * as geo from 'geo'
-import * as approvals from 'approvals'
+import Inbox from 'inbox'
+import * as forms from './forms'
+import Field, Group, List, Variant, Hidden, Local, Dynamic, Scope, Prop, Pending, Check, Recompute from './forms'
+import Options, Item, Choice, Format, FieldView, RepeatView, VariantView, CaseView, LayoutView from './forms'
+import ScopedView, DynamicView, View, FormEvent, Node, User from './forms'
+import FieldWidget, RepeatWidget, VariantWidget, LayoutWidget, ParentUi, LabelStyle, Orientation, Gap from './forms'
+import * as geo from './geo'
+import * as approvals from './approvals'
 import * as logic from './order'
 
 const translations: Map<String, Map<String, String>> = [
@@ -758,7 +770,7 @@ struct OrderModel:
     note: Hidden<Field<String>>
 
 type OrderItemsRow = Group<{ sku: Field<String>; qty: Field<Int> }>
-type OrderPaymentCases = { card: { last4: Field<String> }; wire: { iban: Field<String> } }
+type OrderPaymentCases = { card: Group<{ last4: Field<String> }>; wire: Group<{ iban: Field<String> }> }
 
 # Computed, not declared: what submit returns, and what expressions see.
 type OrderData = Group<OrderModel>.Data
@@ -768,14 +780,14 @@ fn orderModel() -> Group<OrderModel>:
     Group{fields: OrderModel{
         country: new Field<String>{},
         city: new Hidden<Field<String>>{node: new Field<String>{}},
-        items: new List<OrderItemsRow>{make: fn(): Group{fields: { sku: new Field<String>{}, qty: new Field<Int>{} }}},
-        payment: Variant{tag: new Field<"card" | "wire">{}, cases: { card: Group{fields: { last4: new Field<String>{} }}, wire: Group{fields: { iban: new Field<String>{} }} }},
+        items: new List<OrderItemsRow>{make: fn(): Group{fields: struct{sku: new Field<String>{}, qty: new Field<Int>{}}}},
+        payment: Variant{tag: new Field<"card" | "wire">{}, cases: struct{card: Group{fields: struct{last4: new Field<String>{}}}, wire: Group{fields: struct{iban: new Field<String>{}}}}},
         note: new Hidden<Field<String>>{node: new Field<String>{}},
     }}
 
 type OrderScope1 = { data: Group<OrderModel>.Seen; ctx: OrderCtx; item: OrderItemsRow.Seen }
-type OrderScope2 = { data: Group<OrderModel>.Seen; ctx: OrderCtx; p: Group<OrderPaymentCases["card"]>.Seen }
-type OrderScope3 = { data: Group<OrderModel>.Seen; ctx: OrderCtx; p: Group<OrderPaymentCases["wire"]>.Seen }
+type OrderScope2 = { data: Group<OrderModel>.Seen; ctx: OrderCtx; p: OrderPaymentCases["card"].Seen }
+type OrderScope3 = { data: Group<OrderModel>.Seen; ctx: OrderCtx; p: OrderPaymentCases["wire"].Seen }
 
 fn orderView(m: OrderModel) -> any View<OrderScope>:
     LayoutView<OrderScope>{
@@ -784,11 +796,12 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
         widget: Prop.Fixed{LayoutWidget.Section{title: "Order", description: none, collapsible: none, labels: none}},
         checks: [
             forms.later(
-                async fn({data, ctx}): {
+                async fn(sc: OrderScope) -> Future<String?>: {
+                    const struct{data, ctx} = sc
                     if logic.totalQty(data.items) <= 500 or await approvals.ask(ctx.user.id, logic.totalQty(data.items)): none
                     else: `The order was not approved`
                 },
-                fn({data, ctx}): `Waiting for approval of a large order`,
+                fn(sc: OrderScope): { const struct{data, ctx} = sc; `Waiting for approval of a large order` },
             ),
         ],
         children: [
@@ -800,17 +813,17 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 label: Prop.Fixed{"Country"},
                 checks: [
                     forms.answered(),
-                    forms.rule(fn({data, ctx}): not logic.isBlocked(data.country), fn({data, ctx}): forms.t(translations, ctx.user.lang, "We don't ship to ${data.country}", `We don't ship to ${data.country}`, [String(data.country)])),
+                    forms.rule(fn(sc: OrderScope): { const struct{data, ctx} = sc; not logic.isBlocked(data.country) }, fn(sc: OrderScope): { const struct{data, ctx} = sc; forms.t(translations, ctx.user.lang, "We don't ship to ${data.country}", `We don't ship to ${forms.text(data.country)}`, [forms.text(data.country)]) }),
                 ],
                 options: Options.Rows{
-                    from: forms.awaited(Pending.Form, async fn({data, ctx}): [for row in await geo.countries(ctx.params.region): Choice{value: (row.id), label: (row.name)}]),
-                    resolve: forms.awaited(Pending.Form, async fn({data, ctx}): (await geo.countries(ctx.params.region)).any(fn c: c.id == data.country)),
+                    from: forms.awaited(Pending.Form, async fn(sc: OrderScope): { const struct{data, ctx} = sc; [for row in await geo.countries(ctx.params.region): Choice{value: (row.id), label: (row.name)}] }),
+                    resolve: forms.awaited(Pending.Form, async fn(sc: OrderScope): { const struct{data, ctx} = sc; (await geo.countries(ctx.params.region)).some(fn c: c.id == data.country) }),
                 },
             },
             new FieldView<OrderScope, String>{
                 key: "n3",
                 parent: none,
-                when: Prop.Computed{eval: fn({data, ctx}): data.country != none},
+                when: Prop.Computed{eval: fn(sc: OrderScope): { const struct{data, ctx} = sc; data.country != none }},
                 field: m.city->node,
                 hide: m.city,
                 widget: Prop.Fixed{FieldWidget.Select{placeholder: none}},
@@ -819,8 +832,8 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                     forms.answered(),
                 ],
                 options: Options.Rows{
-                    from: forms.awaited(Pending.Node, async fn({data, ctx}): [for row in await geo.cities(data.country ?? ""): Choice{value: (row.id), label: (row.name)}]),
-                    resolve: forms.awaited(Pending.Node, async fn({data, ctx}): (await geo.cities(data.country ?? "")).any(fn c: c.id == data.city)),
+                    from: forms.awaited(Pending.Node, async fn(sc: OrderScope): { const struct{data, ctx} = sc; [for row in await geo.cities(data.country ?? ""): Choice{value: (row.id), label: (row.name)}] }),
+                    resolve: forms.awaited(Pending.Node, async fn(sc: OrderScope): { const struct{data, ctx} = sc; (await geo.cities(data.country ?? "")).some(fn c: c.id == data.city) }),
                 },
             },
             new RepeatView<OrderScope, OrderItemsRow>{
@@ -830,7 +843,7 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 widget: Prop.Fixed{RepeatWidget.Table{addLabel: none}},
                 label: Prop.Fixed{"Items"},
                 checks: [
-                    forms.minItems(Prop.Fixed{1}),
+                    forms.minItems(Fixed{1}),
                 ],
                 canAdd: true,
                 item: fn(r1, row1): ScopedView<OrderScope, OrderScope1>{
@@ -848,7 +861,7 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                                 label: Prop.Fixed{"SKU"},
                                 checks: [
                                     forms.answered(),
-                                    forms.required(Prop.Fixed{true}),
+                                    forms.required(Fixed{true}),
                                 ],
                             },
                             new FieldView<OrderScope1, Int>{
@@ -859,7 +872,7 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                                 label: Prop.Fixed{"Qty"},
                                 checks: [
                                     forms.answered(),
-                                    forms.min(Prop.Fixed{1}),
+                                    forms.min(Fixed{1}),
                                 ],
                             },
                         ],
@@ -872,7 +885,7 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 field: none,
                 widget: Prop.Fixed{FieldWidget.Input{placeholder: none}},
                 label: Prop.Fixed{"Total quantity"},
-                value: Prop.Computed{eval: fn({data, ctx}): logic.totalQty(data.items)},
+                value: Prop.Computed{eval: fn(sc: OrderScope): { const struct{data, ctx} = sc; logic.totalQty(data.items) }},
                 checks: [],
             },
             VariantView<OrderScope, OrderPaymentCases>{
@@ -881,7 +894,7 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 variant: m.payment,
                 widget: Prop.Fixed{VariantWidget.Inline},
                 label: Prop.Fixed{"Payment"},
-                cases: {
+                cases: struct{
                     card: CaseView<OrderScope>{label: Prop.Fixed{"Credit card"}, body: ScopedView<OrderScope, OrderScope2>{
                             scope: fn(sc): OrderScope2{data: sc.data, ctx: sc.ctx, p: m.payment.cases.card.seen()},
                             view: new FieldView<OrderScope2, String>{
@@ -892,7 +905,7 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                                 label: Prop.Fixed{"Last 4 digits"},
                                 checks: [
                                     forms.answered(),
-                                    forms.pattern(Prop.Fixed{"^[0-9]{4}$"}),
+                                    forms.pattern(Fixed{"^[0-9]{4}$"}),
                                 ],
                             },
                         }},
@@ -914,10 +927,10 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
             new FieldView<OrderScope, String>{
                 key: "n12",
                 parent: none,
-                when: Prop.Computed{eval: fn({data, ctx}): logic.totalQty(data.items) > 100},
+                when: Prop.Computed{eval: fn(sc: OrderScope): { const struct{data, ctx} = sc; logic.totalQty(data.items) > 100 }},
                 field: m.note->node,
                 hide: m.note,
-                widget: Prop.Computed{eval: fn({data, ctx}): FieldWidget.Textarea{rows: (if logic.totalQty(data.items) > 1000: 6 else: 3)}},
+                widget: Prop.Computed{eval: fn(sc: OrderScope): { const struct{data, ctx} = sc; FieldWidget.Textarea{rows: (if logic.totalQty(data.items) > 1000: 6 else: 3)} }},
                 label: Prop.Fixed{"Delivery note"},
                 checks: [
                     forms.answered(),
@@ -934,10 +947,10 @@ async fn orderForm(params: OrderParams, user: User,
     await forms.run(m, orderView(m.fields), OrderCtx{params, user}, translations, events, views)
 ```
 
-### A.3 `order.py`, hand-written
+### A.3 `order.ista`, hand-written
 
 ```python
-# order.py — hand-written logic, called from the form's expressions. Edited by people.
+# order.ista — hand-written logic, called from the form's expressions. Edited by people.
 # Istalang.
 
 fn isBlocked(country: String?) -> Bool:

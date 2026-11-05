@@ -4,8 +4,8 @@ const order = {
   id: 'order',
   version: '1.4.0',
   imports: {
-    geo: 'geo',
-    approvals: 'approvals',
+    geo: './geo',
+    approvals: './approvals',
     logic: './order',
   },
   params: {
@@ -43,7 +43,7 @@ const order = {
           from: 'await geo.countries(ctx.params.region)',
           value: 'row.id',
           label: 'row.name',
-          resolve: '(await geo.countries(ctx.params.region)).any(fn c: c.id == data.country)',
+          resolve: '(await geo.countries(ctx.params.region)).some(fn c: c.id == data.country)',
         },
         constraints: {
           rules: [
@@ -66,7 +66,7 @@ const order = {
           from: 'await geo.cities(data.country ?? "")',
           value: 'row.id',
           label: 'row.name',
-          resolve: '(await geo.cities(data.country ?? "")).any(fn c: c.id == data.city)',
+          resolve: '(await geo.cities(data.country ?? "")).some(fn c: c.id == data.city)',
         },
       },
       {
@@ -171,10 +171,10 @@ const supplier = {
   id: 'supplier',
   version: '2.0.0',
   imports: {
-    geo: 'geo',
-    crm: 'crm',
-    approvals: 'approvals',
-    formsCatalog: 'forms-catalog',
+    geo: './geo',
+    crm: './crm',
+    approvals: './approvals',
+    formsCatalog: './forms-catalog',
     logic: './supplier',
   },
   params: {
@@ -430,7 +430,7 @@ const supplier = {
                   value: 'row.id',
                   label: 'row.name',
                   resolve:
-                    '(await geo.countries(ctx.params.region)).any(fn c: c.id == data.company.country)',
+                    '(await geo.countries(ctx.params.region)).some(fn c: c.id == data.company.country)',
                 },
               },
               {
@@ -454,7 +454,7 @@ const supplier = {
                   value: 'row.id',
                   label: 'row.name',
                   resolve:
-                    '(await geo.cities(data.company.country ?? "")).any(fn c: c.id == data.company.city)',
+                    '(await geo.cities(data.company.country ?? "")).some(fn c: c.id == data.company.city)',
                 },
               },
             ],
@@ -501,7 +501,7 @@ const supplier = {
             rowKey: 'price.sku',
             recomputeUntil: 'rows-edited',
             default: {
-              expr: '[for p in ctx.params.products: { sku: p.sku, name: p.name, amount: none, regions: [] }]',
+              expr: '[for p in ctx.params.products: struct{sku: p.sku, name: p.name, amount: none, regions: []}]',
             },
             item: {
               node: 'layout',
@@ -550,7 +550,7 @@ const supplier = {
                       from: 'await geo.regions()',
                       value: 'row.code',
                       label: 'row.name',
-                      resolve: '(await geo.regions()).any(fn r: r.code == region)',
+                      resolve: '(await geo.regions()).some(fn r: r.code == region)',
                     },
                   },
                 },
@@ -870,7 +870,7 @@ const supplier = {
             constraints: {
               rules: [
                 {
-                  check: 'data.contacts.any(fn c: c.primary == true)',
+                  check: 'data.contacts.some(fn c: c.primary == true)',
                   message: 'Mark one contact as primary',
                 },
                 {

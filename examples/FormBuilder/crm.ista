@@ -1,0 +1,12 @@
+# crm.ista — external CRM source for the supplier form.
+
+struct User:
+  id: String
+  name: String
+
+type Order = { note: String? }
+
+extern fn users(search: String) -> Future<Array<User>>
+extern fn user(id: String) -> Future<User?>
+extern fn creditLimit(vatId: String) -> Future<Int?>
+extern fn orders(vatId: String) -> Future<Array<Order>>

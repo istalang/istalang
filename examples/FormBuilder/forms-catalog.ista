@@ -1,0 +1,11 @@
+# forms-catalog.ista — external form catalog source for dynamic form refs.
+
+import FormSnapshot from './forms'
+
+struct Entry:
+  id: String
+  title: String
+  schema: FormSnapshot
+
+extern fn list(region: String) -> Future<Array<Entry>>
+extern fn get(id: String) -> Future<Entry?>

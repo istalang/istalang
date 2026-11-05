@@ -123,22 +123,30 @@ const indent = (s: string, n: number) =>
     .join('\n');
 const istaString = (s: string) => JSON.stringify(s);
 
-/** A JSON literal as an Istalang literal. Objects become anonymous structs. */
+/** A JSON literal as an Istalang literal. Objects become anonymous structs (`struct{…}`). */
 function lit(v: Json): string {
   if (v === null) return 'none';
   if (typeof v === 'string') return istaString(v);
   if (typeof v === 'number' || typeof v === 'boolean') return String(v);
   if (Array.isArray(v)) return `[${v.map(lit).join(', ')}]`;
-  return `{ ${Object.entries(v)
+  return `struct{${Object.entries(v)
     .map(([k, x]) => `${k}: ${lit(x)}`)
-    .join(', ')} }`;
+    .join(', ')}}`;
+}
+
+/** A JSON literal where Istalang expects a Float: whole JSON numbers get `.0`. */
+function litFloat(v: Json): string {
+  if (typeof v === 'number') return Number.isInteger(v) ? `${v}.0` : String(v);
+  return lit(v);
 }
 
 /** The ${…} spans of a Template, in order (brace-balanced; \${ is literal). */
-function templateArgs(t: string): string[] {
-  const out: string[] = [];
+function templateSpans(t: string): { rendered: string; args: string[] } {
+  const args: string[] = [];
+  let rendered = '';
   for (let i = 0; i < t.length; i++) {
     if (t[i] === '\\') {
+      rendered += t.slice(i, i + 2);
       i++;
       continue;
     }
@@ -150,11 +158,15 @@ function templateArgs(t: string): string[] {
         else if (t[j] === '}') depth--;
         j++;
       }
-      out.push(t.slice(i + 2, j - 1));
+      const expr = t.slice(i + 2, j - 1);
+      args.push(expr);
+      rendered += `\${forms.text(${expr})}`;
       i = j - 1;
+      continue;
     }
+    rendered += t[i];
   }
-  return out;
+  return { rendered: `\`${rendered}\``, args };
 }
 
 const FIELD_TYPES: Record<string, string> = {
@@ -207,11 +219,14 @@ interface Bound {
 class Unit {
   model = group();
   keyCount = 0;
-  constructor(
-    public name: string,
-    public def: FormDef,
-    public doc: FormDocument,
-  ) {}
+  name: string;
+  def: FormDef;
+  doc: FormDocument;
+  constructor(name: string, def: FormDef, doc: FormDocument) {
+    this.name = name;
+    this.def = def;
+    this.doc = doc;
+  }
 }
 
 /** Resolves a path to the model node it names, creating groups (and, via `make`, the last node). */
@@ -270,7 +285,8 @@ function collect(u: Unit, units: Map<string, Unit>, doc: FormDocument) {
         return;
       case 'field': {
         if (phase !== 'fields' || !n.path) return;
-        const items: string[] | undefined = n.options?.items?.map((it: any) => lit(it.value));
+        const asLit = n.type === 'number' ? litFloat : lit;
+        const items: string[] | undefined = n.options?.items?.map((it: any) => asLit(it.value));
         const snapshot = n.store === 'snapshot';
         const r = resolve(u, n.path, env, () => ({
           k: 'field',
@@ -318,8 +334,9 @@ function collect(u: Unit, units: Map<string, Unit>, doc: FormDocument) {
         const inner = new Map(env).set(n.as, { node: l.row, canon });
         if (l.row.k === 'field') {
           if (phase === 'fields') {
+            const asLit = item.type === 'number' ? litFloat : lit;
             const items: string[] | undefined = item.options?.items?.map((it: any) =>
-              lit(it.value),
+              asLit(it.value),
             );
             l.row.type =
               l.row.type ||
@@ -414,7 +431,7 @@ function sortModel(n: MNode, canon: string, order: Map<string, number>) {
   else if (n.k === 'variant') for (const [id, g] of n.cases) sortModel(g, `${canon}.${id}`, order);
 }
 
-function mountNode(n: AnyNode, units: Map<string, Unit>, doc: FormDocument): MNode {
+function mountNode(n: AnyNode, _units: Map<string, Unit>, doc: FormDocument): MNode {
   const ref: string = n.form;
   if (ref.startsWith('#')) {
     const d = ref.slice(1);
@@ -430,9 +447,9 @@ function mountNode(n: AnyNode, units: Map<string, Unit>, doc: FormDocument): MNo
   return { k: 'mount', type: `Group<${alias}.Model>`, factory: `${alias}.model()`, w: writers() };
 }
 const catalogAlias = (ref: string) => camel(ref.replace(/^catalog:/u, '').replace(/@.*$/u, ''));
-const catalogPath = (ref: string) => 'catalog/' + ref.replace(/^catalog:/u, '');
+const catalogPath = (ref: string) => './catalog/' + ref.replace(/^catalog:/u, '');
 
-/** The Istalang type of a model node; `named` gives a name to anonymous row and case types. */
+/** The Istalang type of a model node; `aliases` gives a name to anonymous row and case types. */
 function modelType(u: Unit, n: MNode, canon: string, aliases: string[]): string {
   const wrap = (t: string) => {
     let x = t;
@@ -463,7 +480,7 @@ function modelType(u: Unit, n: MNode, canon: string, aliases: string[]): string 
     case 'variant': {
       const name = `${pascal(u.name)}${pascal(canon.replace(/^data\./u, ''))}Cases`;
       const cases = [...n.cases]
-        .map(([id, g]) => `${id}: ${structType(u, g, `${canon}.${id}`, aliases)}`)
+        .map(([id, g]) => `${id}: Group<${structType(u, g, `${canon}.${id}`, aliases)}>`)
         .join('; ');
       aliases.push(`type ${name} = { ${cases} }`);
       return wrap(`Variant<${name}>`);
@@ -510,7 +527,10 @@ function factory(u: Unit, n: MNode, canon: string, aliases: string[]): string {
         .map(([id, g]) => `${id}: Group{fields: ${groupLiteral(u, g, `${canon}.${id}`, aliases)}}`)
         .join(', ');
       const name = `${pascal(u.name)}${pascal(canon.replace(/^data\./u, ''))}Cases`;
-      return wrap(`Variant{tag: new Field<${tagType}>{}, cases: { ${cases} }}`, `Variant<${name}>`);
+      return wrap(
+        `Variant{tag: new Field<${tagType}>{}, cases: struct{${cases}}}`,
+        `Variant<${name}>`,
+      );
     }
     case 'mount':
       return wrap(n.factory, n.type);
@@ -524,7 +544,7 @@ function groupLiteral(
   canon: string,
   aliases: string[],
 ): string {
-  return `{ ${[...g.fields].map(([k, f]) => `${k}: ${factory(u, f, `${canon}.${k}`, aliases)}`).join(', ')} }`;
+  return `struct{${[...g.fields].map(([k, f]) => `${k}: ${factory(u, f, `${canon}.${k}`, aliases)}`).join(', ')}}`;
 }
 
 // ═══════════ The view ═══════════
@@ -545,10 +565,12 @@ class ViewGen {
   scopes: string[] = []; // type aliases for nested scopes
   scopeCount = 0;
   catalogs = new Set<string>();
-  constructor(
-    public u: Unit,
-    public doc: FormDocument,
-  ) {}
+  u: Unit;
+  doc: FormDocument;
+  constructor(u: Unit, doc: FormDocument) {
+    this.u = u;
+    this.doc = doc;
+  }
 
   key(rowKeys: string[]): string {
     const k = `n${++this.u.keyCount}`;
@@ -558,23 +580,34 @@ class ViewGen {
       : istaString(k);
   }
 
-  /** A lambda over the scope. Multi-line bodies are enclosed in { }. */
-  lam(sc: Scope, body: string, extra: string[] = []): string {
-    const params = [`{${sc.vars.join(', ')}}`, ...extra].join(', ');
-    const head = awaits(body) ? `async fn(${params})` : `fn(${params})`;
-    return body.includes('\n') ? `${head}: {\n    ${indent(body, 4)}\n}` : `${head}: ${body}`;
+  /** A lambda over the scope. Destructures the scope in a block expression. */
+  lam(sc: Scope, body: string, extra: string[] = [], ret?: string): string {
+    const params = [`sc: ${sc.type}`, ...extra].join(', ');
+    const isAsync = awaits(body);
+    const retAnn = ret ? ` -> ${isAsync ? `Future<${ret}>` : ret}` : '';
+    const head = isAsync ? `async fn(${params})${retAnn}` : `fn(${params})${retAnn}`;
+    const bind = `const struct{${sc.vars.join(', ')}} = sc`;
+    return body.includes('\n')
+      ? `${head}: {\n    ${bind}\n    ${indent(body, 4)}\n}`
+      : `${head}: { ${bind}; ${body} }`;
   }
 
   /** A Template as an expression yielding the text, localized when the form has a translation. */
   template(t: string): string {
-    const rendered = '`' + t + '`';
+    const { rendered, args } = templateSpans(t);
     if (!this.doc.localization?.[t]) return rendered;
-    const args = templateArgs(t).map((a) => `String(${a})`);
-    return `forms.t(translations, ctx.user.lang, ${istaString(t)}, ${rendered}, [${args.join(', ')}])`;
+    const textArgs = args.map((a) => `forms.text(${a})`);
+    return `forms.t(translations, ctx.user.lang, ${istaString(t)}, ${rendered}, [${textArgs.join(', ')}])`;
   }
 
   /** A prop: a literal, a lambda, or an awaited lambda with the node's pending behaviour. */
-  prop(sc: Scope, v: AnyProp, pending: string, asLiteral: (j: Json) => string = lit): string {
+  prop(
+    sc: Scope,
+    v: AnyProp,
+    pending: string,
+    asLiteral: (j: Json) => string = lit,
+    fixedVariant = 'Prop.Fixed',
+  ): string {
     if (isExpr(v)) {
       return awaits(v.expr)
         ? `forms.awaited(${pending}, ${this.lam(sc, v.expr)})`
@@ -582,7 +615,7 @@ class ViewGen {
     }
     if (typeof v === 'string' && this.doc.localization?.[v])
       return `Prop.Computed{eval: ${this.lam(sc, `forms.t(translations, ctx.user.lang, ${istaString(v)}, ${istaString(v)}, [])`)}}`;
-    return `Prop.Fixed{${asLiteral(v as Json)}}`;
+    return `${fixedVariant}{${asLiteral(v as Json)}}`;
   }
 
   /** The widget with its ui props, as one prop: fixed if every ui prop is, else computed. */
@@ -595,7 +628,7 @@ class ViewGen {
       if (typeof v === 'string' && ENUM_PROPS[name]) return `${ENUM_PROPS[name]}.${pascal(v)}`;
       if (typeof v === 'string' && this.doc.localization?.[v])
         return `forms.t(translations, ctx.user.lang, ${istaString(v)}, ${istaString(v)}, [])`;
-      return lit(v as Json);
+      return info.ui[name]?.startsWith('Float') ? litFloat(v as Json) : lit(v as Json);
     };
     const props = Object.keys(info.ui);
     const translated = (p: string) =>
@@ -617,7 +650,9 @@ class ViewGen {
     const info = WIDGETS[parentWidget];
     const props = Object.keys(info.childUi ?? {});
     const anyExpr = props.some((k) => isExpr(p[k]));
-    const body = `ParentUi.${info.variant}{${props.map((k) => `${k}: ${p[k] === undefined ? 'none' : isExpr(p[k]) ? `(${p[k].expr})` : lit(p[k])}`).join(', ')}}`;
+    const asLit = (k: string, val: Json) =>
+      info.childUi?.[k]?.startsWith('Float') ? litFloat(val) : lit(val);
+    const body = `ParentUi.${info.variant}{${props.map((k) => `${k}: ${p[k] === undefined ? 'none' : isExpr(p[k]) ? `(${p[k].expr})` : asLit(k, p[k])}`).join(', ')}}`;
     if (!anyExpr) return `Prop.Fixed{${body}}`;
     return awaits(body)
       ? `forms.awaited(${pending}, ${this.lam(sc, body)})`
@@ -665,7 +700,15 @@ class ViewGen {
         ? Object.fromEntries(Object.entries(declared).filter(([k]) => k !== 'type'))
         : {};
     const c = { ...fromTypes, ...(n.constraints ?? {}) };
-    const P = (v: AnyProp) => this.prop(sc, v, this.pending(n));
+    const isFloatField = kind === 'field' && n.type === 'number';
+    const P = (v: AnyProp, k: string) =>
+      this.prop(
+        sc,
+        v,
+        this.pending(n),
+        (isFloatField && (k === 'min' || k === 'max')) || k === 'multipleOf' ? litFloat : lit,
+        'Fixed',
+      );
     if (kind === 'field' && n.path && n.default === undefined && n.computed === undefined)
       out.push('forms.answered()');
     for (const [k, v] of Object.entries<any>(c)) {
@@ -674,15 +717,15 @@ class ViewGen {
       else if (k === 'accept') out.push(`forms.accept(${lit(v)})`);
       else if (k === 'maxBytes') out.push(`forms.maxBytes(${lit(v)})`);
       else if (k === 'required')
-        out.push(kind === 'items' ? `forms.someItems(${P(v)})` : `forms.required(${P(v)})`);
-      else out.push(`forms.${k}(${P(v)})`);
+        out.push(kind === 'items' ? `forms.someItems(${P(v, k)})` : `forms.required(${P(v, k)})`);
+      else out.push(`forms.${k}(${P(v, k)})`);
     }
     for (const r of c.rules ?? []) {
       if (r.pending === undefined) {
         out.push(`forms.rule(${this.lam(sc, r.check)}, ${this.lam(sc, this.template(r.message))})`);
       } else {
         out.push(
-          `forms.later(\n    ${indent(this.lam(sc, `if ${r.check}: none\nelse: ${this.template(r.message)}`), 4)},\n    ${indent(this.lam(sc, this.template(r.pending)), 4)},\n)`,
+          `forms.later(\n    ${indent(this.lam(sc, `if ${r.check}: none\nelse: ${this.template(r.message)}`, [], 'String?'), 4)},\n    ${indent(this.lam(sc, this.template(r.pending)), 4)},\n)`,
         );
       }
     }
@@ -739,6 +782,7 @@ class ViewGen {
         if (field && hidden) field += '->node';
         if (field && local) field += '->node';
         const valueType = this.fieldValueType(n, node);
+        const defaultLit = valueType === 'Float' ? litFloat : lit;
         return this.struct(`new FieldView<${sc.type}, ${valueType}>`, [
           ...common(),
           ['field', field ?? 'none'],
@@ -750,7 +794,10 @@ class ViewGen {
             'value',
             n.computed === undefined ? undefined : this.prop(sc, { expr: n.computed }, pend),
           ],
-          ['default', n.default === undefined ? undefined : this.prop(sc, n.default, pend)],
+          [
+            'default',
+            n.default === undefined ? undefined : this.prop(sc, n.default, pend, defaultLit),
+          ],
           [
             'checks',
             this.list(this.checks(sc, n, 'field', n.path ? this.canonOf(n.path, env) : undefined)),
@@ -828,7 +875,7 @@ class ViewGen {
             type: this.newScope(
               sc,
               n.as,
-              `Group<${pascal(this.u.name)}${pascal(canon.replace(/^data\./u, ''))}Cases[${istaString(id)}]>.Seen`,
+              `${pascal(this.u.name)}${pascal(canon.replace(/^data\./u, ''))}Cases[${istaString(id)}].Seen`,
             ),
             vars: [...sc.vars, n.as],
           };
@@ -862,14 +909,14 @@ class ViewGen {
               'tagValue',
               n.computed === undefined ? undefined : this.prop(sc, { expr: n.computed }, pend),
             ],
-            ['cases', `{\n    ${cases.map((c) => indent(c, 4)).join(',\n    ')},\n}`],
+            ['cases', `struct{\n    ${cases.map((c) => indent(c, 4)).join(',\n    ')},\n}`],
           ],
         );
       }
       case 'ref': {
         const { node, expr } = this.access(n.path, env, root);
         if (n.schema) {
-          return this.struct(`DynamicView<${sc.type}>`, [
+          return this.struct(`new DynamicView<${sc.type}>`, [
             ...common(),
             ['value', isHidden(node) ? `${expr}->node` : expr],
             ['hide', isHidden(node) ? expr : undefined],
@@ -897,8 +944,8 @@ class ViewGen {
   mount(
     n: AnyNode,
     sc: Scope,
-    env: Map<string, Access>,
-    root: string,
+    _env: Map<string, Access>,
+    _root: string,
     rowKeys: string[],
     parentWidget: string | undefined,
     modelExpr: string,
@@ -923,16 +970,20 @@ class ViewGen {
     const params = Object.entries<any>(n.params ?? {})
       .map(([k, v]) => `${k}: ${isExpr(v) ? `(${v.expr})` : lit(v)}`)
       .join(', ');
-    void paramsDecl;
+    const emptyStruct = ref.startsWith('#') && Object.keys(paramsDecl).length === 0 && !params;
+    const paramsVal = emptyStruct ? paramsType : `${paramsType}{${params}}`;
     const viewFn = ref.startsWith('#') ? `${prefix}View` : `${prefix}.view`;
-    const scopeFn = `fn({${sc.vars.join(', ')}}): Scope{data: ${modelExpr}.seen(), ctx: ${ctxType}{params: ${paramsType}{${params}}, user: ctx.user}}`;
+    const scopeFn = this.lam(
+      sc,
+      `Scope{data: ${modelExpr}.seen(), ctx: ${ctxType}{params: ${paramsVal}, user: ctx.user}}`,
+    );
     return this.struct(`ScopedView<${sc.type}, ${scopeType}>`, [
       ['key', key],
       ['parent', this.parent(sc, parentWidget, n.ui, pend)],
       ['when', n.when ? this.prop(sc, { expr: n.when }, pend) : undefined],
       ['hide', hideExpr],
       ['label', n.label === undefined ? undefined : this.prop(sc, n.label, pend)],
-      ['scope', awaits(scopeFn) ? scopeFn.replace(/^fn/u, 'async fn') : scopeFn],
+      ['scope', scopeFn],
       ['view', `${viewFn}(${modelExpr}.fields, ${key})`],
     ]);
   }
@@ -941,8 +992,9 @@ class ViewGen {
     const o = n.options;
     const pend = this.pending(n);
     if (o.items) {
+      const itemLit = valueType === 'Float' ? litFloat : lit;
       const items = o.items.map(
-        (it: any) => `Item{value: ${lit(it.value)}, label: ${this.prop(sc, it.label, pend)}}`,
+        (it: any) => `Item{value: ${itemLit(it.value)}, label: ${this.prop(sc, it.label, pend)}}`,
       );
       return `Options.Items{items: ${this.list(items)}}`;
     }
@@ -952,7 +1004,7 @@ class ViewGen {
     const provides = WIDGETS[n.widget].provides ?? [];
     if (provides.includes('search')) {
       // The widget adds ctx.search: widen ctx for this lambda only.
-      const body = `const ctx = { ...sc.ctx, search }\n${sc.vars
+      const body = `const ctx = struct{search, for k, v in ...sc.ctx: [k]: v}\n${sc.vars
         .filter((v) => v !== 'ctx')
         .map((v) => `const ${v} = sc.${v}`)
         .join('\n')}\n${rowsBody}`;
@@ -1023,7 +1075,7 @@ export function generate(doc: FormDocument, sourceName: string): string {
   for (const u of unitList) collect(u, units, doc);
 
   const out: string[] = [];
-  const header = `# ${doc.id}.gen.py — generated from ${sourceName} ${doc.version}. Do not edit. (Istalang)
+  const header = `# ${doc.id}.gen.ista — generated from ${sourceName} ${doc.version}. Do not edit.
 #
 # The generated part of a form: per form and per local def, a model (one node per path), its
 # factory, its scope types, and a view whose expressions are lambdas. forms.run does the rest.
@@ -1031,11 +1083,12 @@ export function generate(doc: FormDocument, sourceName: string): string {
   out.push(header, '');
 
   const imports = [
-    "import * as forms from 'forms'",
-    "import Field, Group, List, Variant, Hidden, Local, Dynamic, Scope, Prop, Pending, Check, Recompute from 'forms'",
-    "import Options, Item, Choice, Format, FieldView, RepeatView, VariantView, CaseView, LayoutView from 'forms'",
-    "import ScopedView, DynamicView, View, FormEvent, Node, User from 'forms'",
-    "import FieldWidget, RepeatWidget, VariantWidget, LayoutWidget, ParentUi, LabelStyle, Orientation, Gap from 'forms'",
+    "import Inbox from 'inbox'",
+    "import * as forms from './forms'",
+    "import Field, Group, List, Variant, Hidden, Local, Dynamic, Scope, Prop, Pending, Check, Recompute from './forms'",
+    "import Options, Item, Choice, Format, FieldView, RepeatView, VariantView, CaseView, LayoutView from './forms'",
+    "import ScopedView, DynamicView, View, FormEvent, Node, User from './forms'",
+    "import FieldWidget, RepeatWidget, VariantWidget, LayoutWidget, ParentUi, LabelStyle, Orientation, Gap from './forms'",
     ...Object.entries(doc.imports ?? {}).map(
       ([alias, path]) => `import * as ${alias} from '${path}'`,
     ),
@@ -1072,10 +1125,7 @@ export function generate(doc: FormDocument, sourceName: string): string {
       `# ═══════════ ${u === main ? `form "${doc.id}"` : `def "#${u.name}"`} ═══════════`,
       '',
     );
-    out.push(
-      params.length ? `struct ${P}Params:\n${params.join('\n')}` : `struct ${P}Params {}`,
-      '',
-    );
+    out.push(params.length ? `struct ${P}Params:\n${params.join('\n')}` : `struct ${P}Params`, '');
     out.push(`struct ${P}Ctx:\n    params: ${P}Params\n    user: User`, '');
     out.push(`struct ${P}Model:\n${modelFields.join('\n')}`, '');
     out.push(...aliases.map((a) => a), '');
@@ -1124,8 +1174,8 @@ export function generate(doc: FormDocument, sourceName: string): string {
   return out.join('\n').replace(/\n{3,}/gu, '\n\n');
 }
 
-// ═══════════ CLI: node generate.js form.json > form.gen.py ═══════════
-declare const require: any, process: any;
+// ═══════════ CLI: node generate.ts form.json > form.gen.ista ═══════════
+declare const require: any, process: any, module: any;
 if (typeof require !== 'undefined' && require.main === module) {
   const fs = require('fs');
   const file = process.argv[2];
@@ -1133,4 +1183,3 @@ if (typeof require !== 'undefined' && require.main === module) {
     generate(JSON.parse(fs.readFileSync(file, 'utf8')), require('path').basename(file)),
   );
 }
-declare const module: any;
