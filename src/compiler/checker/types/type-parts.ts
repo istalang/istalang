@@ -6,7 +6,6 @@
 
 import { type ComputedType, isComputed, type MappedParts } from './computed-types.ts';
 import { withPack } from './function-types.ts';
-import { sameType } from './identity.ts';
 import {
   type AnyType,
   aliasedAs,
@@ -16,6 +15,7 @@ import {
   type Type,
   type UnionType,
 } from './type.ts';
+import { typeKeys } from './type-keys.ts';
 import type { TypeRules } from './type-rules.ts';
 import { unionOf, unionOfNormalized } from './unions.ts';
 
@@ -63,101 +63,13 @@ export function typeChildren(type: Type): readonly Type[] {
 }
 
 /**
- * Whether two types are alike in every part: `sameType` at every level, alias arguments included,
- * with the same alias by its declaration, an `any`'s constraints in the same order, a shape
- * written at the same node and an error type carrying the same type `match` use, which `sameType`
- * overlooks. A checker result computed again is the one before only if its types are alike so
- * (incremental-checking.md §1), since a taken-over result keeps every node its types name.
+ * Whether two types are alike in every part: their spelled keys are equal (type-keys.ts), so they
+ * are the same type, written alike at every level, at the same nodes. A checker result computed
+ * again is the one before only if its types are alike so (incremental-checking.md §1), since a
+ * taken-over result keeps every node its types name.
  */
 export function sameTypeSpelled(first: Type, second: Type): boolean {
-  const pending: [Type, Type][] = [[first, second]];
-  for (let pair = pending.pop(); pair !== undefined; pair = pending.pop()) {
-    const [one, other] = pair;
-    const parts = spelledParts(one);
-    const others = spelledParts(other);
-    const alike =
-      one === other ||
-      (sameType(one, other) &&
-        sameAliasWritten(one, other) &&
-        sameConstraintOrder(one, other) &&
-        sameOrigin(one, other) &&
-        sameUnmatched(one, other) &&
-        parts.length === others.length);
-    if (!alike) {
-      return false;
-    }
-    if (one !== other) {
-      pending.push(...parts.map((part, index) => [part, others[index] ?? part] as [Type, Type]));
-    }
-  }
-  return true;
-}
-
-/**
- * The types `type` is spelled with, one level down: its parts, its alias's arguments, then, for
- * the error type a type `match` no case matches is, that use's arguments.
- */
-function spelledParts(type: Type): readonly Type[] {
-  const unmatched = type.kind === 'error' ? (type.unmatched?.arguments ?? []) : [];
-  return [...typeChildren(type), ...aliasParts(type), ...unmatched];
-}
-
-/** Whether two error types carry the same type `match`'s use no case matches, or none alike. */
-function sameUnmatched(one: Type, other: Type): boolean {
-  const first = one.kind === 'error' ? one.unmatched?.declaration : undefined;
-  const second = other.kind === 'error' ? other.unmatched?.declaration : undefined;
-  return first === second;
-}
-
-/** The types the alias `type` is written through is spelled with: its arguments, or its owner. */
-function aliasParts(type: Type): readonly Type[] {
-  const { alias } = type;
-  if (alias === undefined) {
-    return [];
-  }
-  return alias.kind === 'alias' ? alias.arguments : [alias.of];
-}
-
-/** Whether two types are written through the same alias, the same owner's associated type, or keys. */
-function sameAliasWritten(one: Type, other: Type): boolean {
-  const [first, second] = [one.alias, other.alias];
-  if (first === undefined || second === undefined) {
-    return first === second;
-  }
-  switch (first.kind) {
-    case 'alias':
-      return second.kind === 'alias' && first.declaration === second.declaration;
-    case 'associated':
-      return second.kind === 'associated' && first.name === second.name;
-    case 'keys':
-      return second.kind === 'keys';
-    default: {
-      const unhandled: never = first;
-      return unhandled;
-    }
-  }
-}
-
-/** Whether two types that are `any` types name their constraints' traits in one order. */
-function sameConstraintOrder(one: Type, other: Type): boolean {
-  return (
-    one.kind !== 'any' ||
-    (other.kind === 'any' &&
-      one.constraints.every(
-        (constraint, index) => constraint.trait === other.constraints[index]?.trait,
-      ))
-  );
-}
-
-/**
- * Whether two types that are shapes, or mapped struct types, were written at the same node, which
- * tools locate them by and a mapped type's parameter belongs to.
- */
-function sameOrigin(one: Type, other: Type): boolean {
-  if (one.kind === 'mapped') {
-    return other.kind === 'mapped' && one.origin === other.origin;
-  }
-  return one.kind !== 'anonymous' || (other.kind === 'anonymous' && one.origin === other.origin);
+  return first === second || typeKeys.spelledKey(first) === typeKeys.spelledKey(second);
 }
 
 /**

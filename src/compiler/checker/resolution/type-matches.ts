@@ -13,7 +13,10 @@
  *   reaching it reports it there (match-requirements.ts), so nothing else reports it again.
  * - An alias reducing to itself with a type built from its own parameter never ends (§3.5); its
  *   declaration reports it (declarations/type-match-expansion.ts), and its uses are the error type.
- * - Each reduction is an entry of the checker's, by the use's type key. One reaching a use whose
+ * - Each reduction is an entry of the checker's, by the use's spelled key (type-keys.ts): what it
+ *   gives is spelled with the use's own arguments, so another spelling of the same type is another
+ *   entry, and no use is answered with a type spelled at another's nodes. Which uses are under way
+ *   or recursive is a matter of type identity, so those are kept by type key. One reaching a use whose
  *   reduction is under way repeats it: a recursive type, which a struct holds (§3.1). The uses on
  *   that cycle whose case gives a struct type stand for themselves (`RecursiveType`), their shape
  *   derived on demand with each such use inside it, as a recursive struct's fields refer to it.
@@ -63,7 +66,7 @@ const deepestReduction = 256;
 export class TypeMatchReductions {
   readonly #checker: CheckerContext;
   readonly #reductions: EntryTable<CheckerNote, string, Type, MatchUse>;
-  readonly #shapes: EntryTable<CheckerNote, string, AnonymousStructType, MatchUse>;
+  readonly #shapes: EntryTable<CheckerNote, string, AnonymousStructType, RecursiveType>;
   /** The uses whose reductions are under way, in order, by type key: each removed once done. */
   readonly #reducing = new Map<string, MatchUse>();
   /** The uses found to stand for themselves (the banner), and the struct type each case writes. */
@@ -81,17 +84,18 @@ export class TypeMatchReductions {
     });
     this.#shapes = checker.entries.table({
       name: 'recursive type match shapes',
-      compute: (key, use: MatchUse) => this.#shapeOf(key, use),
+      compute: (_key, type: RecursiveType) => this.#shapeOf(type),
     });
   }
 
   /** The shape the recursive use `type` stands for (the banner). */
   recursiveShape(type: RecursiveType): AnonymousStructType {
-    const use = { declaration: type.declaration, typeArguments: type.arguments };
-    return this.#shapes.get(typeKeys.typeKey(type), use);
+    return this.#shapes.get(typeKeys.spelledKey(type), type);
   }
 
-  #shapeOf(key: string, use: MatchUse): AnonymousStructType {
+  #shapeOf(type: RecursiveType): AnonymousStructType {
+    const key = typeKeys.typeKey(type);
+    const use = { declaration: type.declaration, typeArguments: type.arguments };
     const body = this.#reduced(use);
     const recursion = { declaration: use.declaration, arguments: use.typeArguments };
     if (body.kind === 'anonymous') {
@@ -121,8 +125,9 @@ export class TypeMatchReductions {
     if (this.#recursive.has(key)) {
       return recursiveUse(use);
     }
+    const spelled = typeKeys.spelledKey(matchUse(declaration, typeArguments));
     return this.#reducingWith(key, use, () =>
-      this.#finding.size > 0 ? this.#reduced(use) : this.#reductions.get(key, use),
+      this.#finding.size > 0 ? this.#reduced(use) : this.#reductions.get(spelled, use),
     );
   }
 

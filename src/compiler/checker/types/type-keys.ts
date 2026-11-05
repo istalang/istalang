@@ -22,12 +22,21 @@
  *   up to the names of their type parameters (rules/clashes.ts) keys each of those parameters by
  *   its position, which is the same as substituting canonical parameters, without building them;
  *   such keys are computed afresh.
+ * - A type's spelled key (`spelledKey`) is its key with everything it is spelled with: the alias,
+ *   associated type or keys it was written through, the node each shape, mapped type and field was
+ *   written at, an `any`'s constraints and a union's members in written order, and the type
+ *   `match` use an error type carries. Two types are alike in every part (`sameTypeSpelled`)
+ *   exactly when their spelled keys are equal. A result computed from a type's spelling, such as a
+ *   type `match`'s reduction, is kept by this key, never by the type's, so it never answers one
+ *   spelling with another's: a later revision would otherwise keep nodes an earlier tree made.
  */
 
 import { memo } from '../../../structures/memo.ts';
 import type { MappedParts } from './computed-types.ts';
 import type {
+  AliasUse,
   AnonymousStructType,
+  FieldMember,
   FunctionType,
   ParameterKey,
   Type,
@@ -41,6 +50,9 @@ let numbered = 0;
 /** Each type's own key, with no parameter keyed by position. */
 const ownKeys = new WeakMap<Type, string>();
 
+/** Each type's spelled key. */
+const spelledKeys = new WeakMap<Type, string>();
+
 /** Keys for types, and the numbers for identities they are made of. */
 export interface TypeKeys {
   /** A number for `object`'s identity, the same every time it is asked for. */
@@ -49,6 +61,8 @@ export interface TypeKeys {
   readonly typeKey: (type: Type, positions?: ReadonlyMap<ParameterKey, number>) => string;
   /** The key of a shape, `typeKey`'s, which starts with `{`, as no other type's does. */
   readonly shapeKey: (type: AnonymousStructType) => ShapeKey;
+  /** The key of `type` with everything it is spelled with (the banner). */
+  readonly spelledKey: (type: Type) => string;
 }
 
 /** A shape's key (`TypeKeys.shapeKey`). */
@@ -67,8 +81,15 @@ function typeKey(type: Type, positions?: ReadonlyMap<ParameterKey, number>): str
     : keyOf(type, positions);
 }
 
-function keyOf(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefined): string {
-  const key = (each: Type): string => typeKey(each, positions);
+/**
+ * `type`'s key, its parts keyed by `key`: their own keys, or their spelled keys for the kinds whose
+ * spelling is their parts' alone (`spelledKindKey`).
+ */
+function keyOf(
+  type: Type,
+  positions: ReadonlyMap<ParameterKey, number> | undefined,
+  key: (each: Type) => string = (each) => typeKey(each, positions),
+): string {
   switch (type.kind) {
     case 'primitive':
       return type.name;
@@ -174,9 +195,87 @@ function recursionKeyOf(use: TypeMatchUse, key: (type: Type) => string): ShapeKe
   return `{~${identityOf(use.declaration)}<${use.arguments.map(key).join(',')}>}`;
 }
 
+function spelledKey(type: Type): string {
+  return memo(spelledKeys, type, () => `${spelledKindKey(type)}${aliasKeyOf(type.alias)}`);
+}
+
+/** `type`'s spelled key without the alias it was written through. */
+function spelledKindKey(type: Type): string {
+  const key = spelledKey;
+  const keys = (types: readonly Type[]) => types.map(key).join(',');
+  switch (type.kind) {
+    case 'primitive':
+    case 'literal':
+    case 'nominal':
+    case 'tuple':
+    case 'function':
+    case 'associated':
+    case 'field':
+    case 'keys':
+    case 'match':
+    case 'recursive':
+    case 'parameter':
+      return keyOf(type, undefined, key);
+    case 'error':
+      return type.unmatched === undefined ? '?' : `?${useKeyOf(type.unmatched, key)}`;
+    case 'anonymous': {
+      const recursion = type.recursion === undefined ? '' : useKeyOf(type.recursion, key);
+      const fields = type.fields.map(spelledFieldKey).join(',');
+      return `{@${identityOf(type.origin)}${recursion}:${fields}}`;
+    }
+    case 'any': {
+      const constraints = type.constraints.map(
+        ({ trait, arguments: typeArguments }) => `${identityOf(trait)}<${keys(typeArguments)}>`,
+      );
+      return `any{${constraints.join('&')}}`;
+    }
+    case 'union':
+      return `|<${keys(type.members)}>`;
+    case 'mapped': {
+      const named = type.named.map(spelledFieldKey).join(',');
+      const written = `@${identityOf(type.origin)}'${identityOf(type.parameter)}`;
+      return `*{${written}:${named}[${key(type.keys)}]:${key(type.value)}}`;
+    }
+    default: {
+      const unhandled: never = type;
+      return unhandled;
+    }
+  }
+}
+
+/** A field's spelled key: its name and type, and where it is declared, with its type there. */
+function spelledFieldKey(field: FieldMember): string {
+  const { declared } = field;
+  const where =
+    declared === undefined
+      ? ''
+      : `@${identityOf(declared.node)}/${declared.module}:${spelledKey(declared.type)}`;
+  return `${field.name}${where}:${spelledKey(field.type)}`;
+}
+
+/** What a type is written through, spelled: an alias with its arguments, an owner, or keys. */
+function aliasKeyOf(alias: AliasUse | undefined): string {
+  if (alias === undefined) {
+    return '';
+  }
+  switch (alias.kind) {
+    case 'alias':
+      return ` as ${identityOf(alias.declaration)}<${alias.arguments.map(spelledKey).join(',')}>`;
+    case 'associated':
+      return ` as ${spelledKey(alias.of)}.${alias.name}`;
+    case 'keys':
+      return ` as keyof ${spelledKey(alias.of)}`;
+    default: {
+      const unhandled: never = alias;
+      return unhandled;
+    }
+  }
+}
+
 /** The one numbering of identities every checker keys types by. */
 export const typeKeys: TypeKeys = {
   identityOf,
   typeKey,
   shapeKey: (type) => memo(ownKeys, type, () => shapeKeyOf(type, undefined)) as ShapeKey,
+  spelledKey,
 };
