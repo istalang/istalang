@@ -95,6 +95,20 @@ export const patternTemplates = {
     message: (variant: string) =>
       `A rest takes a struct's other fields, as a struct of their own; the variant '${variant}' is no struct, so name the fields it reads (§3.11).`,
   },
+  decidedCondition: {
+    code: 5421,
+    severity: 'warning',
+    message: (always: boolean) =>
+      always
+        ? "This condition is always true, by its operands' types: what follows it never runs (§4)."
+        : "This condition is always false, by its operands' types: its branch never runs (§4).",
+  },
+  heldNoValue: {
+    code: 5422,
+    severity: 'warning',
+    message: () =>
+      "No value reaches this case: its subject's type can't hold this literal, so it never runs (§4).",
+  },
   insideOptional: {
     code: 5409,
     message: (found: string, operator: string) =>

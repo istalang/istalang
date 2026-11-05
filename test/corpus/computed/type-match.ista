@@ -1,4 +1,4 @@
-# outcome: "10:int:str|7|bool"
+# outcome: "10:union:str|7|bool"
 # Type match (§3.17): a repeated infer, a constrained infer, a struct case binding an infer from a
 # field, a literal matching its base type, union distribution, and a tuple subject matched whole.
 
@@ -29,5 +29,5 @@ async fn main() -> Future<String>:
   const d2: Describe<Box<Int> | { tag: String; extra: Bool }> = "str"
   const d3: WholeTuple<Int | String> = "union"
   const d4: Describe<true> = "bool"
-  const label = if d3 == "union": "int" else: "other"
+  const label: "union" = d3
   `${d1}:${label}:${d2}|${unwrap(Box{value: 7})}|${d4}`

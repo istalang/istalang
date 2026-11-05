@@ -7,6 +7,9 @@
  * - It must be exhaustive: the cases without a guard must cover every value of the subject's type
  *   (patterns/exhaustiveness.ts). A comparison other than `==` against a literal or variant acts
  *   as a guard there (§3.11). A case no value can reach, given the cases before it, is warned of.
+ * - A case whose literal pattern its subject's type can't hold, as a field loop's key in another
+ *   field's pass (§4), is ruled out (rules/decided-conditions.ts): its guard and body are neither
+ *   checked nor lowered.
  * - `x is Pattern` is a boolean; the binder decides where its bindings are visible, and the names
  *   are declared here with their parts' types.
  */
@@ -22,6 +25,7 @@ import { checkPattern } from '../patterns/matching.ts';
 import { remainingType } from '../patterns/remaining.ts';
 import { signatureOf, witnessText } from '../patterns/shapes.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
+import { patternRuledOut } from '../rules/decided-conditions.ts';
 import { boolType, type Type } from '../types/type.ts';
 
 export function checkMatch(context: BodyContext, node: Match, expected: Type | undefined): Type {
@@ -31,7 +35,8 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
   for (const matchCase of casesOf(node)) {
     const remaining = remainingType(context.checker, subject, cases);
     const { shape } = checkPattern(context, matchCase.pattern, subject, remaining);
-    if (matchCase.guard !== undefined) {
+    const ruledOut = patternRuledOut(context, matchCase.pattern, remaining);
+    if (matchCase.guard !== undefined && !ruledOut) {
       context.expect(matchCase.guard, boolType);
     }
     cases.push({
@@ -39,7 +44,12 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
       guarded: matchCase.guard !== undefined || shape === undefined,
       at: matchCase.pattern.span,
     });
-    branches.add(matchCase.body);
+    if (ruledOut) {
+      context.report(checkerDiagnostics.heldNoValue(matchCase.pattern.span));
+      context.ruleOut(matchCase.body);
+    } else {
+      branches.add(matchCase.body);
+    }
   }
   if (subject.kind !== 'error') {
     reportCoverage(context, node, subject, cases);

@@ -112,8 +112,8 @@ export class Passes {
 
   /**
    * What the passes of one loop report, once each: every diagnostic a pass made since they were
-   * last settled, except one about a case no value reaches, which holds of the loop only when every
-   * pass made it (§4): a case one field's pass never reaches, another's may.
+   * last settled, except one about code that never runs, which holds of the loop only when every
+   * pass made it (§4): a case or a branch one field's pass never reaches, another's may.
    */
   settled(passes: readonly Pass[]): readonly Diagnostic<AnchoredSpan>[] {
     const made = passes.map((pass) => this.#held.get(pass) ?? []);
@@ -123,7 +123,7 @@ export class Passes {
     const kept: Diagnostic<AnchoredSpan>[] = [];
     for (const diagnostic of made.flat()) {
       const holds =
-        diagnostic.code !== unreachableCase ||
+        !neverRunCodes.has(diagnostic.code) ||
         made.every((each) => each.some((other) => sameDiagnostic(other, diagnostic)));
       if (holds && !kept.some((other) => sameDiagnostic(other, diagnostic))) {
         kept.push(diagnostic);
@@ -133,8 +133,15 @@ export class Passes {
   }
 }
 
-/** The code of a case no value reaches, which a loop reports only when every pass does. */
-const unreachableCase = checkerDiagnostics.unreachableCase.code;
+/**
+ * The codes of code that never runs, a case no value reaches or a branch a decided condition rules
+ * out, which a loop reports only when every pass does.
+ */
+const neverRunCodes = new Set<number>([
+  checkerDiagnostics.unreachableCase.code,
+  checkerDiagnostics.decidedCondition.code,
+  checkerDiagnostics.heldNoValue.code,
+]);
 
 /** Whether two diagnostics say one thing: their code and message, at one place. */
 function sameDiagnostic(one: Diagnostic<AnchoredSpan>, other: Diagnostic<AnchoredSpan>): boolean {

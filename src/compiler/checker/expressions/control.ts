@@ -1,26 +1,43 @@
 /**
  * `if` as an expression (§4): its branches agree on its type (rules/branches.ts). An `if` without
  * `else` produces nothing, so its branches must be `Unit`.
+ *
+ * A condition its operands' types decide (rules/decided-conditions.ts) rules out the branch that
+ * never runs: its own when always false, every one after it when always true. A branch ruled out is
+ * neither checked nor lowered, and doesn't take part in the `if`'s type; the condition is warned of.
  */
 
 import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
-import type { If } from '../../syntax/expressions/index.ts';
+import type { Expression, If } from '../../syntax/expressions/index.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
+import { decidedValue } from '../rules/decided-conditions.ts';
 import { isAssignable } from '../types/identity.ts';
 import { boolType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 export function checkIf(context: BodyContext, node: If, expected: Type | undefined): Type {
   const branches = new Branches(context, expected);
+  let decidedTrue = false;
   for (const branch of node.branches) {
-    context.expect(branch.condition, boolType);
-    branches.add(branch.body);
+    const decided: boolean | undefined = decidedTrue
+      ? false
+      : checkCondition(context, branch.condition);
+    if (decided === false) {
+      context.ruleOut(branch.body);
+    } else {
+      branches.add(branch.body);
+    }
+    decidedTrue ||= decided === true;
   }
   const elseBody = node.elseClause?.body;
-  if (elseBody !== undefined) {
+  if (elseBody !== undefined && decidedTrue) {
+    context.ruleOut(elseBody);
+  } else if (elseBody !== undefined) {
     branches.add(elseBody);
+  }
+  if (elseBody !== undefined) {
     return branches.agreedType();
   }
   for (const { type, span } of branches.produced) {
@@ -29,6 +46,17 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
     }
   }
   return unitType;
+}
+
+/** Checks `condition`, recording and warning of the value its operands' types fix, if any. */
+function checkCondition(context: BodyContext, condition: Expression): boolean | undefined {
+  context.expect(condition, boolType);
+  const decided = decidedValue(context, condition);
+  if (decided !== undefined) {
+    context.decide(condition, decided);
+    context.report(checkerDiagnostics.decidedCondition(condition.span, decided));
+  }
+  return decided;
 }
 
 /** An `if` with `else` takes what its branches agree on; one without has a type of its own. */

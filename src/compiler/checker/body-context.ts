@@ -129,6 +129,13 @@ export interface BodyContext {
   /** Records that `node` calls a function value (§3.14). */
   readonly recordValueCall: (node: Call) => void;
   /**
+   * Records that `body`, a branch or a case, never runs: a condition decided by types rules it
+   * out (rules/decided-conditions.ts), so it is neither checked nor lowered.
+   */
+  readonly ruleOut: (body: Block) => void;
+  /** Records the value `condition` always has, by its operands' types (rules/decided-conditions.ts). */
+  readonly decide: (condition: Expression, value: boolean) => void;
+  /**
    * Runs `check` once per pass of the field loop `header` heads (§4), each pass's records of nodes
    * kept apart (passes.ts), so the body reads as each pass checked it; what is decided of every
    * pass together is then recorded back in each (`CheckedPasses`).

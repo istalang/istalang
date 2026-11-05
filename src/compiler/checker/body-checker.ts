@@ -111,6 +111,8 @@ export class BodyChecker implements BodyContext {
   readonly #candidates = this.#passes.table<ResolvedSite, readonly FunctionDeclaration[]>();
   readonly #namedFields = this.#passes.table<Identifier, FieldMember>();
   readonly #chosenVariants = this.#passes.table<Identifier, VariantEntity>();
+  readonly #ruledOut = this.#passes.table<Block, true>();
+  readonly #decided = this.#passes.table<Expression, boolean>();
   readonly #fits = this.#passes.table<ValueSite, Fit>();
   readonly #fieldPasses = this.#passes.table<FieldHeader, readonly CheckedPass[]>();
   /** The body's own result, which only the body's own function returns into. */
@@ -342,6 +344,14 @@ export class BodyChecker implements BodyContext {
     this.#chosenVariants.set(name, variant);
   }
 
+  ruleOut(body: Block): void {
+    this.#ruledOut.set(body, true);
+  }
+
+  decide(condition: Expression, value: boolean): void {
+    this.#decided.set(condition, value);
+  }
+
   /** The CheckedBody of what was checked as `pass` sees it, producing `result`. */
   #checkedAt(pass: Pass, result: Type): CheckedBody {
     const { variables, literals, implicit, functions, labels } = this;
@@ -371,6 +381,8 @@ export class BodyChecker implements BodyContext {
       declaredTypeOf: (name) => variables.declaredTypeOf(name, pass),
       namedFieldOf: (name) => this.#namedFields.get(name, pass),
       chosenVariantOf: (name) => this.#chosenVariants.get(name, pass),
+      isRuledOut: (body) => this.#ruledOut.has(body, pass),
+      decidedOf: (condition) => this.#decided.get(condition, pass),
       candidatesAt: (site) => this.#candidates.get(site, pass) ?? [],
       labels,
       passesOf: (header) =>

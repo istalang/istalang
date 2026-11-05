@@ -85,6 +85,8 @@ export function instantiatedBody(
     candidatesAt: body.candidatesAt,
     labels: body.labels,
     passesOf: (header) => instantiatedPasses(body.passesOf(header), substitution, checker),
+    isRuledOut: body.isRuledOut,
+    decidedOf: body.decidedOf,
     result: concrete(body.result),
   };
 }

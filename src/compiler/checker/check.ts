@@ -262,6 +262,13 @@ export interface CheckedBody {
    * (passes.ts). Each pass reads the body as that pass checked it.
    */
   readonly passesOf: (header: FieldHeader) => readonly FieldPass[];
+  /**
+   * Whether `body`, a branch or a case, never runs: a condition its operands' types decide rules
+   * it out (§4), so nothing of it was checked and nothing is lowered.
+   */
+  readonly isRuledOut: (body: Block) => boolean;
+  /** The value an `if`'s condition always has, by its operands' types; undefined when not fixed. */
+  readonly decidedOf: (condition: Expression) => boolean | undefined;
   /** What the body produces: `T` for an async function returning `Future<T>`. */
   readonly result: Type;
 }
