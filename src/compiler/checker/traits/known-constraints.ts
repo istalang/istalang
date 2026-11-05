@@ -7,7 +7,9 @@
  * - `T.Data` (§3.1) is one type, meeting the bound of every requirement of `Data` among what `T`
  *   meets (`type Data is C`); on a known type it is that type's own associated type, an alias
  *   substituted for the type's arguments. Inside a trait, `Self` meets the trait itself. A union or
- *   an `any` type has none: only a type's own declaration declares one.
+ *   an `any` type has none: only a type's own declaration declares one. One whose body is no type
+ *   `match` and reaches itself again while substituted can't be a type (§3.1): the error type
+ *   carrying it, which its written use reports, where it would otherwise expand without end.
  * - `S["meta"]` (§3.5) meets what the entries of `S`'s struct constraints ask of that field; on a
  *   known struct it is the field's type, and an entry asking an exact type gives that type.
  * - A requirement on a type parameter or an `any` type is numbered by constraint and function
@@ -15,6 +17,7 @@
  *   chosen once an instantiation makes the type known (`ComputedRequirement`).
  */
 
+import { withPushed } from '../../../structures/stack.ts';
 import type {
   AssociatedType,
   RequiredAssociatedType,
@@ -22,7 +25,7 @@ import type {
 } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import type { RequirementOrigin } from '../resolved-call.ts';
-import { type ComputedType, isOpaque } from '../types/computed-types.ts';
+import { type ComputedType, isMatchAlias, isOpaque } from '../types/computed-types.ts';
 import { inFieldOrder } from '../types/field-order.ts';
 import { sameConstraint, sameType } from '../types/identity.ts';
 import { parameterType } from '../types/resolve-type.ts';
@@ -40,6 +43,7 @@ import {
   isPrimitive,
   type Type,
 } from '../types/type.ts';
+import { typeKeys } from '../types/type-keys.ts';
 import { aliasInstance } from '../types/type-match.ts';
 import { parametersIn } from '../types/type-parts.ts';
 import { literalType, membersOf, unionOf } from '../types/unions.ts';
@@ -183,7 +187,12 @@ export function requirementsNamed(
  * substituted for the type's arguments and written through it; on a type not known yet, the opaque
  * type naming it when one of its constraints requires it; else the error type.
  */
-export function associatedTypeOf(checker: CheckerContext, of: Type, name: string): Type {
+export function associatedTypeOf(
+  checker: CheckerContext,
+  of: Type,
+  name: string,
+  underWay: string[],
+): Type {
   if (of.kind === 'error') {
     return of;
   }
@@ -196,7 +205,14 @@ export function associatedTypeOf(checker: CheckerContext, of: Type, name: string
   }
   const substitution = substitutionFor(of.entity.declaration.typeParameters, of.arguments);
   const aliased = checker.aliasedType(declared);
-  const type = aliasInstance(declared, aliased, substitution, checker.typeRules);
+  const instance = () => aliasInstance(declared, aliased, substitution, checker.typeRules);
+  const key = `${typeKeys.typeKey(of)}.${name}`;
+  if (underWay.includes(key)) {
+    const use = { declaration: declared, arguments: of.arguments };
+    return { kind: 'error', unreduced: { use, cause: 'itself' } };
+  }
+  // A type `match` body finds its own recursion as it reduces (resolution/type-matches.ts).
+  const type = isMatchAlias(declared) ? instance() : withPushed(underWay, key, instance);
   return aliasedAs(type, { kind: 'associated', of, name });
 }
 

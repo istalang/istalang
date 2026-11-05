@@ -51,13 +51,15 @@ export function programTypeRules(
     cyclic: { standIn: () => false },
   });
   const reductions = new TypeMatchReductions(checker);
+  // The associated types being substituted, by owner and name: what is under way, the only state.
+  const associating: string[] = [];
   const typeRules: TypeRules = {
     absorbs: (target, member) =>
       absorbed.get(JSON.stringify([typeKeys.typeKey(target), typeKeys.typeKey(member)]), {
         target,
         member,
       }),
-    associatedType: (of, name) => associatedTypeOf(checker, of, name),
+    associatedType: (of, name) => associatedTypeOf(checker, of, name, associating),
     fieldType: (of, key) => fieldTypeOf(checker, unfolded(of), key),
     keysOf: (of, without) => keysOf(checker, unfolded(of), without),
     mappedType: (parts, outer) => mappedTypeOf(checker, parts, outer),

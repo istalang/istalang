@@ -167,6 +167,11 @@ export const genericTemplates = {
     message: (parameter: string, union: string, found: string) =>
       `'${parameter}' stands for one member of ${union}, which ${found} isn't (§3.5).`,
   },
+  associatedItself: {
+    code: 5136,
+    message: (use: string) =>
+      `'${use}' refers to itself: an associated type may name itself only when its body is a type 'match', whose recursive uses close into a recursive type (§3.1, §3.17).`,
+  },
   memberOfMemberParameter: {
     code: 5135,
     message: (parameter: string) =>
