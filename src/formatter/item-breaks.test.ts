@@ -7,33 +7,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { dump } from '../compiler/syntax/tree.test-kit.ts';
-import { commentTexts, parseText, unexplainedLongLines } from './format.test-kit.ts';
-import { formatText, formatTree } from './format.ts';
-
-const lines = (...text: readonly string[]): string => `${text.join('\n')}\n`;
-
-function roundTripOf(text: string) {
-  const tree = parseText(text);
-  const formatted = formatTree(tree) ?? '';
-  const reparsed = parseText(formatted);
-  return {
-    formatted,
-    reparsed,
-    actual: {
-      diagnostics: reparsed.diagnostics,
-      tree: dump(reparsed, reparsed.root),
-      comments: commentTexts(reparsed),
-      formattedAgain: formatTree(reparsed),
-    },
-    expected: {
-      diagnostics: [],
-      tree: dump(tree, tree.root),
-      comments: commentTexts(tree),
-      formattedAgain: formatted,
-    },
-  };
-}
+import { lines, roundTripOf, unexplainedLongLines } from './format.test-kit.ts';
+import { formatText } from './format.ts';
 
 describe('lists on one line vs broken across lines (§4, §6)', () => {
   it('prints short field, constraint and mapped struct types on one line with ", "', () => {

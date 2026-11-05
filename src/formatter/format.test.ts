@@ -6,52 +6,25 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { printType, typeTree } from '../compiler/parser/type-precedence.test-kit.ts';
-import { dump } from '../compiler/syntax/tree.test-kit.ts';
 import {
-  commentTexts,
   formattableInputs,
+  lines,
   parseText,
+  roundTripOf,
   unexplainedLongLines,
 } from './format.test-kit.ts';
 import { formatText, formatTree } from './format.ts';
-
-const lines = (...text: readonly string[]): string => `${text.join('\n')}\n`;
 
 describe('formatting every corpus file and spec example', () => {
   it.each(formattableInputs)(
     '$name keeps its tree and comments, and formats once and for all within the width',
     ({ text }) => {
-      const { actual, expected, reparsed } = acceptanceOf(text);
+      const { actual, expected, reparsed } = roundTripOf(text);
       expect(actual).toEqual(expected);
       expect(unexplainedLongLines(reparsed)).toEqual([]);
     },
   );
 });
-
-/**
- * Acceptance 1–3 for `text`: what its format re-parses to (diagnostics, tree, comments) and formats
- * to again, beside what each must be.
- */
-function acceptanceOf(text: string) {
-  const tree = parseText(text);
-  const formatted = formatTree(tree) ?? '';
-  const reparsed = parseText(formatted);
-  return {
-    reparsed,
-    actual: {
-      diagnostics: reparsed.diagnostics,
-      tree: dump(reparsed, reparsed.root),
-      comments: commentTexts(reparsed),
-      formattedAgain: formatTree(reparsed),
-    },
-    expected: {
-      diagnostics: [],
-      tree: dump(tree, tree.root),
-      comments: commentTexts(tree),
-      formattedAgain: formatted,
-    },
-  };
-}
 
 describe('a body whose one statement is a braced block', () => {
   const headers = ['fn f():', 'fn f(): # on f', 'if a:', 'for x in xs:', 'while a:'];
@@ -77,7 +50,7 @@ describe('a body whose one statement is a braced block', () => {
             ...statements.map((statement) => `${depth}    ${statement}`),
             `${depth}  }`,
           );
-          const { actual, expected } = acceptanceOf(text);
+          const { actual, expected } = roundTripOf(text);
           expect(actual).toEqual(expected);
         },
       ),
@@ -96,14 +69,14 @@ describe('unions, literal types, member parameters and generic patterns (§2, §
       '    case _: f(a<1>(b), a<b | c>(d))',
     );
     expect(formatText(text)).toBe(text);
-    const { actual, expected } = acceptanceOf(text);
+    const { actual, expected } = roundTripOf(text);
     expect(actual).toEqual(expected);
   });
 
   it('keeps Acceptance 1–3 for any type made of unions, literals, optionals and function types', () => {
     fc.assert(
       fc.property(typeTree, (tree) => {
-        const { actual, expected } = acceptanceOf(lines(`type T = ${printType(tree)}`));
+        const { actual, expected } = roundTripOf(lines(`type T = ${printType(tree)}`));
         expect(actual).toEqual(expected);
       }),
     );
@@ -118,7 +91,7 @@ describe('key types and mapped struct types (§3.1)', () => {
       'fn read<S is struct, K in keyof S>(s: S, k: K) -> S[K]: s[k]',
     );
     expect(formatText(text)).toBe(text);
-    const { actual, expected } = acceptanceOf(text);
+    const { actual, expected } = roundTripOf(text);
     expect(actual).toEqual(expected);
   });
 
@@ -149,7 +122,7 @@ describe('comprehensions over fields (§3.1, §4)', () => {
     const broken = formatText(long) ?? '';
     expect(broken).toContain('\n  for key, value in ...s.rest: [key]: compute(value, 3)\n}');
     expect(formatText(broken)).toBe(broken);
-    const { actual, expected } = acceptanceOf(text);
+    const { actual, expected } = roundTripOf(text);
     expect(actual).toEqual(expected);
   });
 });
@@ -162,7 +135,7 @@ describe('field loops (§4)', () => {
       '    for _, value in ...*shared: continue outer',
     );
     expect(formatText(text)).toBe(text);
-    const { actual, expected } = acceptanceOf(text);
+    const { actual, expected } = roundTripOf(text);
     expect(actual).toEqual(expected);
   });
 });
@@ -183,7 +156,7 @@ describe('type `match` (§3.17)', () => {
       '    case _: Unit',
     );
     expect(formatText(text)).toBe(text);
-    const { actual, expected } = acceptanceOf(text);
+    const { actual, expected } = roundTripOf(text);
     expect(actual).toEqual(expected);
   });
 

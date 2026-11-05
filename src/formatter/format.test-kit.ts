@@ -7,13 +7,18 @@ import { corpusFiles } from '../../test/corpus/programs.ts';
 import { specExamples } from '../../test/corpus/spec-examples.ts';
 import { parse } from '../compiler/parser/parse.ts';
 import { scan } from '../compiler/scanner/scan.ts';
+import { dump } from '../compiler/syntax/tree.test-kit.ts';
 import { extentIn, nodesUnder, type SyntaxTree } from '../compiler/syntax/tree.ts';
 import { lineMapOf, splitLines } from '../text/line-map.ts';
 import { createSourceText } from '../text/source-text.ts';
 import { textOf } from '../text/span.ts';
 import { nodesInBrackets } from './brackets.ts';
+import { formatTree } from './format.ts';
 
 const printWidth = 100;
+
+/** Lines joined into a module's text, ending in a line break as a formatted module does. */
+export const lines = (...text: readonly string[]): string => `${text.join('\n')}\n`;
 
 export function parseText(text: string): SyntaxTree {
   const source = createSourceText('formatted.ista', text);
@@ -29,6 +34,32 @@ export const formattableInputs: readonly { readonly name: string; readonly text:
   ...specExamples.map(({ document, line, code }) => ({ name: `${document}:${line}`, text: code })),
 ].filter(({ text }) => parseText(text).diagnostics.length === 0);
 
+/**
+ * Acceptance 1–3 for `text` (formatter.md): what its format re-parses to (diagnostics, tree,
+ * comments) and formats to again, beside what each must be.
+ */
+export function roundTripOf(text: string) {
+  const tree = parseText(text);
+  const formatted = formatTree(tree) ?? '';
+  const reparsed = parseText(formatted);
+  return {
+    formatted,
+    reparsed,
+    actual: {
+      diagnostics: reparsed.diagnostics,
+      tree: dump(reparsed, reparsed.root),
+      comments: commentTexts(reparsed),
+      formattedAgain: formatTree(reparsed),
+    },
+    expected: {
+      diagnostics: [],
+      tree: dump(tree, tree.root),
+      comments: commentTexts(tree),
+      formattedAgain: formatted,
+    },
+  };
+}
+
 /** The text of each comment of `tree`, in order. */
 export function commentTexts(tree: SyntaxTree): readonly string[] {
   return tree.comments.map(({ span }) => textOf(tree.source, span));
@@ -36,9 +67,9 @@ export function commentTexts(tree: SyntaxTree): readonly string[] {
 
 /** The lines `tree` spans from `start` to `end`, zero-based. */
 function linesOf(tree: SyntaxTree, start: number, end: number): readonly number[] {
-  const lines = lineMapOf(tree.source);
-  const first = lines.positionAt(start).line;
-  const last = lines.positionAt(end).line;
+  const lineMap = lineMapOf(tree.source);
+  const first = lineMap.positionAt(start).line;
+  const last = lineMap.positionAt(end).line;
   return Array.from({ length: last - first + 1 }, (_, index) => first + index);
 }
 

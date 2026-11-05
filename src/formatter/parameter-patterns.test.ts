@@ -4,25 +4,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { dump } from '../compiler/syntax/tree.test-kit.ts';
-import { commentTexts, parseText } from './format.test-kit.ts';
-import { formatText, formatTree } from './format.ts';
-
-const lines = (...text: readonly string[]): string => `${text.join('\n')}\n`;
-
-function roundTripOf(text: string) {
-  const tree = parseText(text);
-  const formatted = formatTree(tree) ?? '';
-  const reparsed = parseText(formatted);
-  return {
-    actual: {
-      diagnostics: reparsed.diagnostics,
-      tree: dump(reparsed, reparsed.root),
-      comments: commentTexts(reparsed),
-    },
-    expected: { diagnostics: [], tree: dump(tree, tree.root), comments: commentTexts(tree) },
-  };
-}
+import { lines, roundTripOf } from './format.test-kit.ts';
+import { formatText } from './format.ts';
 
 describe('parameter patterns (§5)', () => {
   it('prints parameter patterns as written', () => {

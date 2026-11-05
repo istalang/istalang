@@ -6,9 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { dump } from '../compiler/syntax/tree.test-kit.ts';
-import { commentTexts, parseText } from './format.test-kit.ts';
-import { formatText } from './format.ts';
+import { parseText, roundTripOf } from './format.test-kit.ts';
 
 const inputs = [
   'fn f(): g(# c\n)\n',
@@ -34,14 +32,9 @@ const inputs = [
 
 describe('a comment where the corpus has none', () => {
   it.each(inputs)('%j formats once and for all, keeping tree and comment', (input) => {
-    const tree = parseText(input);
-    expect(tree.diagnostics).toEqual([]);
-    const once = formatText(input) ?? '';
-    const reparsed = parseText(once);
-    expect(reparsed.diagnostics).toEqual([]);
-    expect(dump(reparsed, reparsed.root)).toBe(dump(tree, tree.root));
-    expect(commentTexts(reparsed)).toEqual(commentTexts(tree));
-    expect(formatText(once)).toBe(once);
+    expect(parseText(input).diagnostics).toEqual([]);
+    const { actual, expected } = roundTripOf(input);
+    expect(actual).toEqual(expected);
   });
 });
 
@@ -53,13 +46,8 @@ const unusualPlaces = [
 
 describe('a comment in an unusual place', () => {
   it.each(unusualPlaces)('%j keeps its comments apart and formats once and for all', (input) => {
-    const tree = parseText(input);
-    expect(tree.diagnostics).toEqual([]);
-    const once = formatText(input) ?? '';
-    const reparsed = parseText(once);
-    expect(reparsed.diagnostics).toEqual([]);
-    expect(dump(reparsed, reparsed.root)).toBe(dump(tree, tree.root));
-    expect(commentTexts(reparsed)).toEqual(commentTexts(tree));
-    expect(formatText(once)).toBe(once);
+    expect(parseText(input).diagnostics).toEqual([]);
+    const { actual, expected } = roundTripOf(input);
+    expect(actual).toEqual(expected);
   });
 });
