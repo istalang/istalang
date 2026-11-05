@@ -104,13 +104,14 @@ export function leadingDocs(comments: readonly PlacedComment[]): builders.Doc[] 
 /**
  * Comments printed after their node, `doc`, at the end of its line or on lines of their own. An
  * end-of-line one goes on a line of its own where `doc` or a comment before it already ends that
- * line with one, as `a: # c\n 1, # d` printed as `a: 1 # c` leaves `# d` to the next line.
+ * line with one, as `a: # c\n 1, # d` printed as `a: 1 # c` leaves `# d` to the next line. Only
+ * `doc`'s last line counts: a comment on an earlier item of a body ends its own line.
  */
 export function trailingDocs(
   comments: readonly PlacedComment[],
   doc: builders.Doc,
 ): builders.Doc[] {
-  let lineTaken = utils.findInDoc(doc, (part) => (isLineSuffix(part) ? true : undefined), false);
+  let lineTaken = suffixWaitsAfter(doc, false);
   return comments.map((comment) => {
     if (comment.ownLine || lineTaken) {
       return ownLineAfterDoc(comment);
@@ -118,6 +119,48 @@ export function trailingDocs(
     lineTaken = true;
     return endOfLineDoc(comment);
   });
+}
+
+/**
+ * Whether a line suffix waits for the line to end after `doc` is printed, given whether one waited
+ * before it: one printed after the last line break `doc` is sure to print, which flushes those
+ * before it. Of the parts printed one way or another (`ifBreak`, a conditional group's states),
+ * any holding a suffix counts, and no line break in them is sure.
+ */
+function suffixWaitsAfter(doc: builders.Doc, waiting: boolean): boolean {
+  if (typeof doc === 'string') {
+    return waiting;
+  }
+  if (Array.isArray(doc)) {
+    return doc.reduce<boolean>((before, part) => suffixWaitsAfter(part, before), waiting);
+  }
+  switch (doc.type) {
+    case 'line-suffix':
+      return true;
+    case 'line-suffix-boundary':
+      return false;
+    case 'line':
+      return doc.hard === true ? false : waiting;
+    case 'group':
+      return doc.expandedStates === undefined || doc.expandedStates.length === 0
+        ? suffixWaitsAfter(doc.contents, waiting)
+        : waiting || holdsLineSuffix(doc);
+    case 'fill':
+      return suffixWaitsAfter(doc.parts, waiting);
+    case 'align':
+    case 'indent':
+    case 'label':
+      return suffixWaitsAfter(doc.contents, waiting);
+    case 'if-break':
+    case 'indent-if-break':
+      return waiting || holdsLineSuffix(doc);
+    default:
+      return waiting;
+  }
+}
+
+function holdsLineSuffix(doc: builders.Doc): boolean {
+  return utils.findInDoc(doc, (part) => (isLineSuffix(part) ? true : undefined), false) === true;
 }
 
 function isLineSuffix(part: builders.Doc): boolean {

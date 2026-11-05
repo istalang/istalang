@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-11-05
+last_updated: 2026-11-06
 tags: [plan, m6, formatter]
 ---
 
@@ -42,6 +42,7 @@ Where the language demands a form, the printer follows it:
   - Each comment gets its enclosing, preceding and following node.
   - It counts as own-line, end-of-line or remaining.
   - It prints as leading, trailing or dangling.
+  - An end-of-line comment stays at the end of the line of the code it followed, even when that code ends an indented list its node encloses. It moves to a line of its own only where printing joins its line with one already ending in a comment.
   - A comment no printer emits throws.
   - Docstrings are `doc` nodes, not comments.
 - **What text alone records.** A `Block` doesn't say whether it was indented, one-line or braced, and a struct doesn't say brace or indent, nor `;` or newline. The canonical style decides these, except where the parser requires a form.
