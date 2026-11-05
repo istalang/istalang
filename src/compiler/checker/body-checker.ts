@@ -12,10 +12,11 @@
  * - A node is checked once. A literal of items each with a type of its own, checked before the type
  *   it is built as is decided (§3.7: a call's argument, a producer agreeing with others), is built
  *   again as that type (`rebuild`): its own literals are checked again as their parts, and every
- *   other item keeps what it was checked to have, fitted to its part. So is a tuple or struct
+ *   other item keeps what it was checked to have, fitted to its part, as an item an argument literal
+ *   checked ahead of it does (expressions/literal-items.ts). So is a tuple or struct
  *   literal whose items' types only checking tells, and a collection literal an `any` member might
  *   take whole, where its own type doesn't go into the union expected: as the one member its checked
- *   items build it as (§2, types/expected.ts `memberBuilt`). Any other collection literal is built
+ *   items build it as (§2, expressions/built-members.ts). Any other collection literal is built
  *   as its member before its items are checked, so they agree on that member's item.
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. What they record of a
@@ -57,6 +58,7 @@ import { inferLambda } from './closures/lambdas.ts';
 import { declareOwnCall } from './closures/own-calls.ts';
 import { blockTail, ReturnScope } from './closures/returns.ts';
 import type { CheckerContext } from './context.ts';
+import { builtAsChecked, builtMember } from './expressions/built-members.ts';
 import { CollectionForms } from './expressions/collections.ts';
 import {
   acceptedPartOf,
@@ -64,8 +66,8 @@ import {
   checkedPartOf,
   expressionHandlers,
   isBuiltLiteral,
-  openBuildsOf,
 } from './expressions/expressions.ts';
+import { argumentPartOf } from './expressions/literal-items.ts';
 import { StructLiterals } from './expressions/literal-sources.ts';
 import { FieldReads } from './expressions/member-access.ts';
 import { OptionalChains } from './expressions/optionals.ts';
@@ -83,7 +85,6 @@ import { checkTestingCalls } from './rules/testing-calls.ts';
 import { LabelTargets } from './statements/loops.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
-import { memberBuilt } from './types/expected.ts';
 import { exactFit, type Fit, isExact } from './types/fit.ts';
 import { keysOwner } from './types/key-types.ts';
 import { misfitOf } from './types/misfit.ts';
@@ -130,6 +131,8 @@ export class BodyChecker implements BodyContext {
   readonly #result: ReturnScope;
   /** The literals being built again as another type (`rebuild`), their items kept. */
   readonly #rebuilt: Expression[] = [];
+  /** Items checked ahead of the argument literal holding them (`argumentPart`), kept as checked. */
+  readonly #checkedAhead = new Set<Expression>();
 
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
@@ -204,50 +207,17 @@ export class BodyChecker implements BodyContext {
         this.recordKey(node, keysOwner(this.checker.fitting, expected));
       }
     }
-    const checked =
-      this.#rebuilt.length > 0 && !isBuiltLiteral(node) ? this.#records.types.get(node) : undefined;
+    const kept = this.#rebuilt.length > 0 || this.#checkedAhead.has(node);
+    const checked = kept && !isBuiltLiteral(node) ? this.#records.types.get(node) : undefined;
     if (checked !== undefined) {
       return checked;
     }
     const guide =
       expected === undefined
         ? undefined
-        : this.#memberBuilt(node, expected, () => this.acceptedPart(node));
+        : builtMember(this, node, expected, () => this.acceptedPart(node));
     const type = this.#record(node, handlerOf(expressionHandlers, node)(this, node, guide));
-    return guide?.kind === 'union' ? this.#builtAsChecked(node, type, guide) : type;
-  }
-
-  /**
-   * The type a value read as `part` is built as where `expected` is expected (`memberBuilt`), as
-   * it is taken apart (`unfolded`): a member that is a union again, a recursive one's, gives the
-   * member of it the value is built as, at any depth.
-   */
-  #memberBuilt(node: Expression, expected: Type, part: () => AcceptedPart): Type {
-    const member = unfolded(
-      memberBuilt(expected, node, {
-        checker: this.checker,
-        part,
-        openBuilds: () => openBuildsOf(this, node),
-        fits: (type) => this.checker.fitOf(type, expected) !== undefined,
-      }),
-      this.checker.typeRules,
-    );
-    return member !== expected && member.kind === 'union'
-      ? this.#memberBuilt(node, member, part)
-      : member;
-  }
-
-  /**
-   * `node`, checked as `type` where the union `expected` decided no member before checking, built
-   * again as the member its checked items build it as, where its own type doesn't go in (the
-   * banner); `type` otherwise.
-   */
-  #builtAsChecked(node: Expression, type: Type, expected: Type): Type {
-    if (!isBuiltLiteral(node) || this.checker.fitOf(type, expected) !== undefined) {
-      return type;
-    }
-    const member = this.#memberBuilt(node, expected, () => this.checkedPart(node));
-    return member === expected ? type : this.rebuild(node, member);
+    return guide?.kind === 'union' ? builtAsChecked(this, node, type, guide) : type;
   }
 
   accepts(node: Expression): Accepts | undefined {
@@ -260,6 +230,13 @@ export class BodyChecker implements BodyContext {
 
   checkedPart(node: Expression | undefined) {
     return checkedPartOf(this, node);
+  }
+
+  argumentPart(node: Expression): AcceptedPart {
+    return argumentPartOf(this, node, (item) => {
+      this.expression(item);
+      this.#checkedAhead.add(item);
+    });
   }
 
   inferLambda(node: Expression, parameters: Pick<FunctionType, 'parameters' | 'pack'>): Type {
@@ -279,7 +256,11 @@ export class BodyChecker implements BodyContext {
   }
 
   typeOf(node: Expression): Type {
-    return this.#records.types.get(node) ?? errorType;
+    return this.checkedTypeOf(node) ?? errorType;
+  }
+
+  checkedTypeOf(node: Expression): Type | undefined {
+    return this.#records.types.get(node);
   }
 
   callAt(site: ResolvedSite): ResolvedCall | undefined {

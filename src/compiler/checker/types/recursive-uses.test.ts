@@ -130,6 +130,74 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
   });
 
   it.each([
+    ['a call beside a String', '[t(), "a"]', '[3, "a"]'],
+    ['a map of a call beside a String', '["a": t(), "b": "s"]', '{"a": 3, "b": "s"}'],
+    ['a call beside an array of arithmetic', '[t(), [1 + 1]]', '[3, [2]]'],
+    ['mixed items two levels down', '[["a": [t(), "b"]], 1 + 1]', '[{"a": [3, "b"]}, 2]'],
+  ])(
+    'passes %s as an argument built as Json, as it builds after return',
+    (_name, literal, text) => {
+      const declarations = lines(
+        "import * as json from 'json'",
+        "import Json from 'json'",
+        'fn t() -> Int: 3',
+        'fn take(j: Json) -> Json: j',
+        `fn passed() -> Json: take(${literal})`,
+        `fn returned() -> Json: ${literal}`,
+        'fn parsed() -> Json:',
+        `  match json.parse<Json>(${JSON.stringify(text)}):`,
+        '    case Ok{value}: value',
+        '    case Err{error}: panic(error.message)',
+      );
+      expect(reported(declarations)).toEqual(reportedNothing);
+      expect(
+        mainGives('Bool', 'return passed() == parsed() and returned() == parsed()', declarations),
+      ).toBe(true);
+    },
+  );
+
+  it('chooses among overloads a literal of mixed items as one of plain items chooses', () => {
+    const declarations = lines(
+      "import Json from 'json'",
+      tree,
+      'fn t() -> Int: 3',
+      'fn g(j: Json) -> Int: 1',
+      'fn g(x: Int) -> Int: 2',
+      'fn k(t: Tree) -> Int: 10',
+      'fn k(s: String) -> Int: 20',
+    );
+    expect(mainGives('Int', 'return g([t(), "a"]) + k([t(), [1 + 1]])', declarations)).toBe(11);
+  });
+
+  it('calls a choice of two overloads both building a literal of mixed items ambiguous', () => {
+    const source = lines(
+      "import Json from 'json'",
+      'fn t() -> Int: 3',
+      'fn a(j: Json) -> Int: 1',
+      'fn a(xs: Array<String | Int>) -> Int: 2',
+      'fn f() -> Int: a([t(), "a"])',
+    );
+    expect(reported(source).codes).toEqual([5003]);
+  });
+
+  it('keeps the type of its own a literal of items agreeing once checked, choosing and inferring by it', () => {
+    const declarations = lines(
+      'fn t() -> Int: 3',
+      'fn f(xs: Array<Int>) -> Int: 1',
+      'fn f(xs: Array<String>) -> Int: 2',
+      'fn first<T>(xs: Array<T>) -> T: xs[0]',
+      'fn same<T>(a: T, b: T) -> Int: if a == b: 1 else: 0',
+    );
+    expect(
+      mainGives(
+        'Int',
+        'return f([t(), 1 + 1]) + first([t(), t()]) + same((t(), 1), (t(), 1))',
+        declarations,
+      ),
+    ).toBe(5);
+  });
+
+  it.each([
     ['an array of arithmetic', 'type U = Int | Array<U>\nfn f() -> U: [1 + 1]'],
     ['an array argument', `${tree}\nfn g(t: Tree) -> Int: 1\nfn f() -> Int: g([1])`],
     [

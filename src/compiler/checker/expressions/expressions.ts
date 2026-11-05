@@ -10,7 +10,8 @@
  *   literal or branching expression holding one, unless what it agrees on is decided by a part with
  *   a type of its own. A part still to be inferred can be anything.
  * - Own type (`knownTypeHandlers`): for a sibling inside a composite argument, the type it has on
- *   its own without running expression checking or reporting (`acceptedPartOf`).
+ *   its own without running expression checking or reporting (`acceptedPartOf`); an item already
+ *   checked, as an argument literal's may be (literal-items.ts), has the type it was checked to have.
  * - Building (`buildsHandlers`): a literal of items each with a type of its own has that type when
  *   choosing, and, where its own type doesn't fit, is built as a parameter's type its items fit
  *   (§3.7): a struct, tuple, array or map literal.
@@ -375,8 +376,10 @@ export function openBuildsOf(context: BodyContext, node: Expression): Accepts | 
   return builds === undefined ? undefined : takingUnfolded(builds, context.checker.typeRules);
 }
 
+/** The type `node` has on its own: as checked, for an item checked already, else as written. */
 function knownTypeOf(context: BodyContext, node: Expression): Type | undefined {
-  return handlerOf(knownTypeHandlers, node)(context, node);
+  const checked = isBuiltLiteral(node) ? undefined : context.checkedTypeOf(node);
+  return checked ?? handlerOf(knownTypeHandlers, node)(context, node);
 }
 
 /**
@@ -384,7 +387,7 @@ function knownTypeOf(context: BodyContext, node: Expression): Type | undefined {
  * entries make (`untypedForm`), as a bracket or `struct{…}` literal has its own type and builds;
  * undefined for one naming its type, which builds that type alone, as a literal naming it does.
  */
-function untypedLiteral(node: IndentedValue): Expression | undefined {
+export function untypedLiteral(node: IndentedValue): Expression | undefined {
   return node.type === undefined ? literalOf(node, untypedForm(node)) : undefined;
 }
 

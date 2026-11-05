@@ -72,6 +72,11 @@ export interface BodyContext {
   readonly accepts: (node: Expression) => Accepts | undefined;
   /** How `node` takes part in a composite argument's `Accepts` check (expressions.ts). */
   readonly acceptedPart: (node: Expression | undefined) => AcceptedPart;
+  /**
+   * How `node`, passed to a call, takes part in choosing it (§3.7): as `acceptedPart` reads it, a
+   * literal's items whose types only checking tells checked first (expressions/literal-items.ts).
+   */
+  readonly argumentPart: (node: Expression) => AcceptedPart;
   /** How `node`, already checked, takes part in building a literal as another type (§3.7). */
   readonly checkedPart: (node: Expression | undefined) => TypedPart;
   /**
@@ -84,6 +89,8 @@ export interface BodyContext {
   ) => Type;
   /** The type `node` was checked to have; the error type for a node not checked yet. */
   readonly typeOf: (node: Expression) => Type;
+  /** The type `node` was checked to have; undefined for a node not checked yet. */
+  readonly checkedTypeOf: (node: Expression) => Type | undefined;
   /** The call recorded at `site`; undefined for one not checked yet or that couldn't be made. */
   readonly callAt: (site: ResolvedSite) => ResolvedCall | undefined;
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */

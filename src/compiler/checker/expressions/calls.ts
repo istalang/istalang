@@ -104,8 +104,9 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
  * An argument as written: `&x` passes the place `x`, checked as a place that may change; a spread,
  * its items, as an array literal's spread gives them (§2), or a pack's value, as it is (§3.5); any
  * other is a value, checked now unless the chosen function decides its type, a literal with its
- * literal type beside, which it has where its parameter expects one (§2). A named argument is its
- * value, named.
+ * literal type beside, which it has where its parameter expects one (§2), and a literal of items
+ * read once those whose types only checking tells are checked (`argumentPart`). A named argument
+ * is its value, named.
  */
 function writtenArgument(context: BodyContext, argument: CallArgument): WrittenArgument {
   switch (argument.kind) {
@@ -128,7 +129,7 @@ function valueArgument(context: BodyContext, argument: Expression): WrittenArgum
     const type = checkChangedPlace(context, argument.expression, 'referenced');
     return { node: argument, passing: 'reference', type };
   }
-  const part = context.acceptedPart(argument);
+  const part = context.argumentPart(argument);
   const literal = writtenLiteral(unparenthesized(argument));
   if (part.kind === 'decided') {
     return { node: argument, passing: 'value', type: undefined, literal, accepts: part.accepts };

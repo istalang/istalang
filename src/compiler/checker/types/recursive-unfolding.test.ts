@@ -125,7 +125,7 @@ describe('a recursive use and what it unfolds to', () => {
     );
   });
 
-  it('build a literal mixing items only checking types with items of other types, either way', () => {
+  it('build a literal mixing items only checking types with items of other types, wherever it goes', () => {
     fc.assert(
       fc.property(mixedItems, (literal) => {
         const declarations = lines(
@@ -142,9 +142,15 @@ describe('a recursive use and what it unfolds to', () => {
           '      return total',
           `fn asAlias() -> R: ${literal.text}`,
           `fn asBody() -> Int | String | Array<R>: ${literal.text}`,
+          'fn passed(r: R) -> R: r',
+          `fn asArgument() -> R: passed(${literal.text})`,
+          'fn asConstant() -> R:',
+          `  const r: R = ${literal.text}`,
+          '  return r',
         );
-        expect(mainGives('Int', 'return weight(asAlias())', declarations)).toBe(literal.weight);
-        expect(mainGives('Int', 'return weight(asBody())', declarations)).toBe(literal.weight);
+        for (const built of ['asAlias()', 'asBody()', 'asArgument()', 'asConstant()']) {
+          expect(mainGives('Int', `return weight(${built})`, declarations)).toBe(literal.weight);
+        }
       }),
       { numRuns: 24 },
     );
