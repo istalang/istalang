@@ -38,14 +38,14 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - classify operators or unwrap a compound assignment's operator → `isAssignmentOperator`, `compoundOperator` (`src/compiler/syntax/operators.ts`)
 - test whether a token kind is a comparison or chaining operator, or one calling `compare`/`includes` → `isComparisonOperator`, `isChainingOperator`, `isImplicitOperator` (`src/compiler/syntax/operators.ts`)
 - compute precedence levels for operator parsing and printing → `tighterLevel`, `rightOperandLevel`, `bindingPower` (`src/compiler/syntax/operators.ts`)
-- strip outer parentheses from an `Expression` → `unparenthesized` (`src/compiler/syntax/expressions/index.ts`)
+- strip outer parentheses from an `Expression` → `unparenthesized` (`src/compiler/syntax/expressions/readings.ts`)
 - strip outer parentheses from a `Pattern` → `unparenthesizedPattern` (`src/compiler/syntax/patterns.ts`)
 - strip outer parentheses from a `TypeNode` before asking its kind → `unparenthesizedType` (`src/compiler/syntax/types.ts`)
 - check whether a node writes a type, a function type's rest included, never by a list of kinds of your own → `isWrittenType` (`src/compiler/syntax/types.ts`)
-- read a `QualifiedName` from an `Identifier` or non-optional `MemberAccess` chain → `qualifiedPath` (`src/compiler/syntax/expressions/index.ts`)
-- read the value or field name of a struct literal's `FieldItem` → `itemValue`, `itemName` (`src/compiler/syntax/expressions/index.ts`)
+- read a `QualifiedName` from an `Identifier` or non-optional `MemberAccess` chain → `qualifiedPath` (`src/compiler/syntax/expressions/readings.ts`)
+- read the value or field name of a struct literal's `FieldItem` → `itemValue`, `itemName` (`src/compiler/syntax/expressions/readings.ts`)
 - read the number a literal writes, negated or not (`-5`, `-(5)`), as one signed value → `signedNumberOf` (`src/compiler/syntax/expressions/numbers.ts`)
-- list valid `MatchCase`s of a `Match`, or `SelectCase`s of a `Select` → `casesOf`, `selectCasesOf` (`src/compiler/syntax/expressions/index.ts`); never filter `node.cases` by kind
+- list valid `MatchCase`s of a `Match`, or `SelectCase`s of a `Select` → `casesOf`, `selectCasesOf` (`src/compiler/syntax/expressions/readings.ts`); never filter `node.cases` by kind
 - list the blocks whose tails give an `if`, `match` or `select` its value → `valueBranchesOf` (`src/compiler/syntax/expressions/branches.ts`)
 - unwrap a `CallArgument`'s expression or find an out-of-order argument → `argumentValue`, `misplacedArgument` (`src/compiler/syntax/expressions/arguments.ts`)
 - inspect an optional chain step, or spell a link form's operator, optional or not → `chainStepOf`, `isOptionalStep`, `linkOperator`, `optionalOperatorOf` (`src/compiler/syntax/expressions/chains.ts`)
