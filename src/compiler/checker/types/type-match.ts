@@ -112,11 +112,11 @@ export function structCaseOf(
 }
 
 /**
- * `type`, as a value of it is built and taken apart: the shape a recursive type `match` use stands
- * for (§3.17), the same type by identity; any other type as it is.
+ * `type`, as a value of it is built and taken apart: what a recursive use unfolds to (§3.17), a
+ * shape or a union the same type by identity; any other type as it is.
  */
 export function unfolded(type: Type, rules: TypeRules): Type {
-  return type.kind === 'recursive' ? rules.recursiveShape(type) : type;
+  return type.kind === 'recursive' ? rules.unfold(type) : type;
 }
 
 /**

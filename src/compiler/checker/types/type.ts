@@ -187,12 +187,15 @@ export interface AnonymousStructType extends WrittenThrough {
   readonly kind: 'anonymous';
   readonly origin: StructType | StructLiteral | DeclaredStruct | RestPattern;
   readonly fields: readonly FieldMember[];
-  /** The recursive type `match` use it is the shape of, whose identity it has (`RecursiveType`). */
-  readonly recursion?: TypeMatchUse | undefined;
+  /** The recursive use it is the shape of, whose identity it has (`RecursiveType`). */
+  readonly recursion?: RecursiveUse | undefined;
 }
 
-/** A use of an alias whose body is a type `match`: the alias, and its arguments (§3.17). */
-export interface TypeMatchUse {
+/**
+ * A use of an alias that reaches itself (§3.17): one whose body refers to it, or whose type `match`
+ * reduces to it again; the alias, and its arguments. Its identity is that of the use.
+ */
+export interface RecursiveUse {
   readonly declaration: AliasDeclaration;
   readonly arguments: readonly Type[];
 }
@@ -277,7 +280,7 @@ interface StructCaseConstraint {
  * reduction reaches the use itself before any struct type holds it, so it would be itself.
  */
 export interface UnreducedUse {
-  readonly use: TypeMatchUse;
+  readonly use: RecursiveUse;
   readonly cause: 'unmatched' | 'itself';
 }
 
@@ -303,6 +306,11 @@ export interface LiteralType extends WrittenThrough {
 export interface UnionType extends WrittenThrough {
   readonly kind: 'union';
   readonly members: readonly Type[];
+  /**
+   * The recursive alias use it is the body of (§3.17), whose identity it has (`RecursiveType`):
+   * as a member of another union it stands whole, never flattened (unions.ts).
+   */
+  readonly recursion?: RecursiveUse | undefined;
 }
 
 /** A type a struct value can have: a declared struct or an anonymous one. */

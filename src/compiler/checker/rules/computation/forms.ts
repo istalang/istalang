@@ -1,9 +1,10 @@
 /**
  * What compile time computes values as (constant-form.ts), and how the walk (index.ts) reports a
  * part of an initializer: computed, refused, or already in error. The implicit conversions compile
- * time makes are here too (§2): taken into or out of a one-element tuple (§3.15), and a struct's
- * value rebuilt as its shape, its fields in the shape's name order (§3.1); the others need the
- * runtime, so they are refused.
+ * time makes are here too (§2): taken into or out of a one-element tuple (§3.15), a struct's value
+ * rebuilt as its shape, its fields in the shape's name order (§3.1), and a value put into a union
+ * as one of its members, as a `Json` literal is at any depth; the others, a union widened member
+ * by member and a value into an `any` type, need the runtime, so they are refused.
  */
 
 import { unreachable } from '../../../../structures/unreachable.ts';
@@ -35,9 +36,22 @@ export function fittedForm(
   { conversion, into }: Fit,
   checker: Pick<CheckerContext, 'fieldsOf'>,
 ): ConstantForm | undefined {
-  if (into !== undefined) {
-    return undefined;
+  const converted = convertedForm(form, conversion, checker);
+  if (into === undefined || converted === undefined) {
+    return converted;
   }
+  const { union, member } = into;
+  return union.kind === 'union' && member !== undefined
+    ? { kind: 'member', union, member, value: converted }
+    : undefined;
+}
+
+/** `form` converted as `conversion` says; undefined for a conversion only the runtime makes. */
+function convertedForm(
+  form: ConstantForm,
+  conversion: Fit['conversion'],
+  checker: Pick<CheckerContext, 'fieldsOf'>,
+): ConstantForm | undefined {
   switch (conversion.kind) {
     case 'none':
     case 'base':

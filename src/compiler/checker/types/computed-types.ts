@@ -2,7 +2,8 @@
  * Types computed from others (§3.1, §3.5, §3.17), opaque until what they are built from is known:
  * an associated type, a field's type, a struct's keys, a mapped struct type and a type `match`'s
  * use, each reduced by the program's rules (type-rules.ts) once an instantiation allows; and a
- * recursive type `match` use, which is known, standing for the shape it reduces to.
+ * recursive alias use, which is known, standing for what it unfolds to: an alias's body, or the
+ * shape a type `match` reduces to, with the use inside it again.
  */
 
 import type { AliasDeclaration, AssociatedType, TypeParameter } from '../../syntax/declarations.ts';
@@ -11,8 +12,8 @@ import type { StructType } from '../../syntax/types.ts';
 import type {
   FieldMember,
   NominalType,
+  RecursiveUse,
   Type,
-  TypeMatchUse,
   TypeParameterType,
   WrittenThrough,
 } from './type.ts';
@@ -76,7 +77,7 @@ export interface MappedType extends WrittenThrough {
   readonly keys: Type;
   readonly value: Type;
   /** The type `match` use that reduced to this mapped type while its arguments were opaque. */
-  readonly recursion?: TypeMatchUse | undefined;
+  readonly recursion?: RecursiveUse | undefined;
 }
 
 /**
@@ -114,13 +115,24 @@ export function isOpaque(type: Type): type is TypeParameterType | ComputedType {
 }
 
 /**
- * A use of a type `match` alias whose reduction reaches itself again (§3.17), as a recursive struct
- * refers to itself: one type, known, its identity the alias and its arguments. It stands for the
- * shape it reduces to, which the program's rules give (type-rules.ts `recursiveShape`) with this
- * use inside it again, and which carries the same identity (`AnonymousStructType.recursion`).
+ * A use of an alias that reaches itself (§3.17), as a recursive struct refers to itself: one type,
+ * known, its identity the alias and its arguments (iso-recursive). It stands for what it unfolds to
+ * (type-rules.ts `unfold`): the alias's body with this use inside it again, or the shape a type
+ * `match` alias reduces to. A shape or a union it unfolds to carries the same identity
+ * (`recursion`), so the two are one type; no fold or unfold is ever written.
  */
 export interface RecursiveType extends WrittenThrough {
   readonly kind: 'recursive';
   readonly declaration: AliasDeclaration;
   readonly arguments: readonly Type[];
+}
+
+/** Whether `declaration`'s body is a type `match`, whose uses reduce rather than unfold (§3.17). */
+export function isMatchAlias(declaration: AliasDeclaration): boolean {
+  return declaration.type.kind === 'TypeMatch';
+}
+
+/** What `body` stands for as the unfolding of `use`: a shape or a union with its identity. */
+export function withRecursion(body: Type, use: RecursiveUse): Type {
+  return body.kind === 'anonymous' || body.kind === 'union' ? { ...body, recursion: use } : body;
 }

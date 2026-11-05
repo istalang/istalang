@@ -145,6 +145,10 @@ function checkType(context: Context, type: TypeDefinition, path: Path): void {
     }
     return;
   }
+  if (type.kind === 'alias') {
+    inRange(context, { types: typesIn(type.type) }, [...path, 'type']);
+    return;
+  }
   const fieldLists =
     type.kind === 'struct'
       ? [{ fields: type.fields, at: [...path, 'fields'] }]

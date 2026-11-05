@@ -16,6 +16,11 @@
  * whatever they are instantiated with. A shape (an anonymous struct type) has no name: it has one
  * entry however many places write it, its fields in name order (spec §3.1).
  *
+ * A recursive alias whose values are tuples or functions (spec §3.17, `type Step = fn(Int) ->
+ * Step`) has an entry of its own, which stands for the type it unfolds to: a reference holding it
+ * would otherwise never end. Any other recursive alias is the entry of what it unfolds to, a
+ * union's enum, a shape's struct or a declared type's, whose layout refers back to it.
+ *
  * Only extern entries can be disposable (spec §7), and each says how: not at all, by the runtime
  * itself (futures, slots), or by calling a declared `dispose`, as `fn dispose(self: Lease)` makes a
  * handle `Lease` disposable (§3.18), and the inbox module's every `Revertible<T>`.
@@ -144,7 +149,21 @@ const external = z.strictObject({
 
 export type ExternRole = z.output<typeof externRole>;
 
-export const typeDefinition = z.discriminatedUnion('kind', [struct, enumeration, external]);
+/** A recursive alias that unfolds to a structural type: `type` is that type, which refers to it. */
+const recursiveAlias = z.strictObject({
+  kind: z.literal('alias'),
+  ...identity,
+  get type() {
+    return typeReference;
+  },
+});
+
+export const typeDefinition = z.discriminatedUnion('kind', [
+  struct,
+  enumeration,
+  external,
+  recursiveAlias,
+]);
 
 export type TypeDefinition = z.output<typeof typeDefinition>;
 

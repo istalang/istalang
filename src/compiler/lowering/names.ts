@@ -22,7 +22,8 @@ import { staticName } from '../../language/static-names.ts';
 import { qualifiedName, wellKnown } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
-import type { NominalDeclaration, Type, UnionType } from '../checker/types/type.ts';
+import type { RecursiveType } from '../checker/types/computed-types.ts';
+import type { LiteralType, NominalDeclaration, Type, UnionType } from '../checker/types/type.ts';
 import { parameterText, typeText } from '../checker/types/type-text.ts';
 import { optionalInner } from '../checker/types/unions.ts';
 import { type ModuleId, programModule } from '../program/program.ts';
@@ -30,6 +31,7 @@ import type {
   ExternConstantDeclaration,
   FunctionDeclaration,
   TraitDeclaration,
+  TypeAliasDeclaration,
 } from '../syntax/declarations.ts';
 import type { Parameter } from '../syntax/expressions/index.ts';
 import { isFieldsFunction } from '../syntax/field-defaults.ts';
@@ -61,6 +63,7 @@ type NamedDeclaration =
   | FunctionDeclaration
   | NominalDeclaration
   | TraitDeclaration
+  | TypeAliasDeclaration
   | VariableDeclaration
   | ExternConstantDeclaration;
 
@@ -134,21 +137,56 @@ export function unionName(
   checker: Checker,
   type: UnionType,
 ): { readonly name: string; readonly arguments: readonly Type[] } {
+  const named = namedUnionOf(checker, type);
+  return named === undefined
+    ? { name: keyTypeText(unionKey(checker, type)), arguments: [] }
+    : named;
+}
+
+/**
+ * The declaration a union is named for: a recursive alias's, whose body it is (§3.17), `json.Json`
+ * among them, or `prelude.Optional` for `T | None` with its one `T`; undefined for any other.
+ */
+function namedUnionOf(
+  checker: Checker,
+  type: UnionType,
+): { readonly name: string; readonly arguments: readonly Type[] } | undefined {
+  const { recursion } = type;
+  if (recursion !== undefined && recursion.declaration.kind === 'TypeAliasDeclaration') {
+    return {
+      name: qualifiedNameOf(checker, recursion.declaration),
+      arguments: recursion.arguments,
+    };
+  }
   const inner = optionalOfOne(type);
   return inner === undefined
-    ? { name: keyTypeText(unionKey(checker, type)), arguments: [] }
+    ? undefined
     : { name: qualifiedName(wellKnown.optional), arguments: [inner] };
+}
+
+/**
+ * A literal type as keys spell it, by its text, and a recursive alias's use, through its alias, as
+ * `prelude.Optional<T>` is (§3.17).
+ */
+function spelledKeyType(checker: Checker, type: LiteralType | RecursiveType): KeyType {
+  return type.kind === 'recursive' && type.declaration.kind === 'TypeAliasDeclaration'
+    ? {
+        kind: 'named',
+        name: qualifiedNameOf(checker, type.declaration),
+        arguments: type.arguments.map((argument) => keyType(checker, argument)),
+      }
+    : { kind: 'literal', text: typeText(type) };
 }
 
 /** A union as keys spell it (`unionName`). */
 function unionKey(checker: Checker, type: UnionType): KeyType {
-  const inner = optionalOfOne(type);
-  return inner === undefined
+  const named = namedUnionOf(checker, type);
+  return named === undefined
     ? { kind: 'union', members: type.members.map((member) => keyType(checker, member)) }
     : {
         kind: 'named',
-        name: qualifiedName(wellKnown.optional),
-        arguments: [keyType(checker, inner)],
+        name: named.name,
+        arguments: named.arguments.map((argument) => keyType(checker, argument)),
       };
 }
 
@@ -203,7 +241,7 @@ function keyType(checker: Checker, type: Type): KeyType {
       };
     case 'literal':
     case 'recursive':
-      return { kind: 'literal', text: typeText(type) };
+      return spelledKeyType(checker, type);
     case 'union':
       return unionKey(checker, type);
     case 'associated':

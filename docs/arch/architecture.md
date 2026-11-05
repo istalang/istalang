@@ -74,7 +74,8 @@ src/
                                                                  name names in a value's place or a pattern (named-types.ts); unions and
                                                                  literal types built normalized (unions.ts), `T?` being `T | None`, and what
                                                                  a value built from an expected type takes of it (expected.ts); types computed
-                                                                 from others (computed-types.ts) and type `match`es resolved, given, placed and
+                                                                 from others (computed-types.ts), recursive alias uses unfolded where used, and
+                                                                 type `match`es resolved, given, placed and
                                                                  unfolded (type-match.ts, written-matches.ts); the rules
                                                                  building a type needs of the program (type-rules.ts), which the checker
                                                                  implements once and every type-building path takes

@@ -45,7 +45,10 @@ describe('recursive type `match` uses under substitution', () => {
     }
     const rules = checker.typeRules;
     const substitution = new Map([[typeParameter, intType]]);
-    const shape = rules.recursiveShape(parameter.type);
+    const shape = rules.unfold(parameter.type);
+    if (shape.kind !== 'anonymous') {
+      throw new Error('A recursive type match use stands for a shape.');
+    }
     expect(typeKeys.typeKey(substituteKept(shape, substitution, rules))).toBe(
       typeKeys.typeKey(substitute(parameter.type, substitution, rules)),
     );

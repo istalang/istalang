@@ -10,6 +10,7 @@ import type { Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
 import type { ConstantForm } from '../checker/constant-form.ts';
+import { hasOneValue } from '../checker/types/unions.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { CodeWriter } from './code-writer.ts';
 import type { DefinitionTables } from './tables.ts';
@@ -49,6 +50,14 @@ export function constantValue(tables: DefinitionTables, form: ConstantForm): Val
           constantValue(tables, key),
           constantValue(tables, value),
         ]),
+      };
+    case 'member':
+      // A union is an enum with a variant per member, a member of one value its tag (type-table.ts).
+      return {
+        kind: 'variant',
+        type: tables.types.index(form.union),
+        variant: tables.types.unionVariant(form.union, form.member),
+        fields: hasOneValue(form.member) ? [] : [constantValue(tables, form.value)],
       };
     case 'function':
       return {

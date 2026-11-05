@@ -196,7 +196,7 @@ function instantiatedPattern(
         return {
           ...patternTest,
           path: path(patternTest.path),
-          union: concrete(patternTest.union),
+          union: unfolded(concrete(patternTest.union), rules),
           members: patternTest.members.flatMap((member) => membersOf(concrete(member))),
         };
       case 'or':
@@ -242,7 +242,7 @@ function instantiatedStep(step: PartStep, substitution: Substitution, rules: Typ
     case 'member':
       return {
         kind: 'member',
-        union: substitute(step.union, substitution, rules),
+        union: unfolded(substitute(step.union, substitution, rules), rules),
         member: substitute(step.member, substitution, rules),
       };
     case 'field':
@@ -289,7 +289,8 @@ function substitutedFit(
   if (into === undefined) {
     return { conversion: substituted };
   }
-  const union = substitute(into.union, substitution, rules);
+  // A recursive union substituted is its use again (§3.17); the value goes into what it unfolds to.
+  const union = unfolded(substitute(into.union, substitution, rules), rules);
   const member =
     into.member === undefined ? undefined : substitute(into.member, substitution, rules);
   if (union.kind === 'union' || union.kind === 'any') {

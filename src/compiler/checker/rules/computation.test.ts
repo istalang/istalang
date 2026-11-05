@@ -135,8 +135,25 @@ describe('computed constants', () => {
     });
   });
 
+  it('put a value into a union as one of its members, at any depth', () => {
+    const main = [
+      'const wrapped: Int? = 1',
+      'const missing: Int? = none',
+      'const mixed: Array<Int | String> = [1, "a"]',
+      '',
+      'async fn main() -> Future<Bool>:',
+      '  const localWrapped: Int? = 1',
+      '  const localMissing: Int? = none',
+      '  const localMixed: Array<Int | String> = [1, "a"]',
+      '  (wrapped, missing, mixed) == (localWrapped, localMissing, localMixed)',
+    ].join('\n');
+    expect(startToEnd(testRuntime(), compiledText(main))).toEqual({
+      kind: 'finished',
+      outcome: 'true',
+    });
+  });
+
   it.each([
-    ['an optional wrap', 'const x: Int? = 1', '1'],
     ['an enum variant literal', 'const x: Result<Int> = Ok{value: 1}', 'Ok{value: 1}'],
     ['a plain function made async', 'const f: async fn() -> Int = fn(): 1', 'fn(): 1'],
     ['a value converted into an any type', 'trait Named {}\nconst a: any Named = 1', '1'],

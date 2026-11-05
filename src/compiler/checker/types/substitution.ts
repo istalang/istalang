@@ -6,8 +6,8 @@
  * written through an alias stays written through it, its arguments substituted alike (type.ts).
  * The types substitution builds are built by the program's rules (type-rules.ts), so a union
  * reached through it is normalized as one written with its arguments in place: `T | any Stringable`
- * with `T = String` is `any Stringable`. A recursive type `match` use's shape is the shape its
- * substituted use stands for, decided again by the rules, never a verdict carried over.
+ * with `T = String` is `any Stringable`. A recursive use's unfolding is what its substituted use
+ * unfolds to, decided again by the rules, never a verdict carried over.
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
@@ -123,8 +123,8 @@ export function substituteKept<
 }
 
 /**
- * The shape a recursive type `match` use stands for (§3.17), with `substitution` applied: the
- * shape the substituted use stands for, whether the rules find it recursive still or not.
+ * The shape a recursive use stands for (§3.17), with `substitution` applied: the shape the
+ * substituted use stands for, whether the rules find it recursive still or not.
  */
 function substitutedShape(
   type: AnonymousStructType,
@@ -132,10 +132,10 @@ function substitutedShape(
   rules: TypeRules,
 ): AnonymousStructType {
   const substituted = substitute(type, substitution, rules);
-  const shape = substituted.kind === 'recursive' ? rules.recursiveShape(substituted) : substituted;
+  const shape = substituted.kind === 'recursive' ? rules.unfold(substituted) : substituted;
   return shape.kind === 'anonymous'
     ? shape
-    : unreachable('A recursive type match use stands for a struct type.');
+    : unreachable('A recursive shape stands for a struct type whatever its arguments.');
 }
 
 /** `substituted`, written through the alias `type` was written through, if any, substituted. */

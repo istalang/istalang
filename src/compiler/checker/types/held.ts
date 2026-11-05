@@ -47,7 +47,7 @@ export function heldParts(
 ): readonly Type[] {
   switch (type.kind) {
     case 'recursive':
-      return typeChildren(checker.typeRules.recursiveShape(type));
+      return heldParts(checker, checker.typeRules.unfold(type));
     case 'tuple':
     case 'anonymous':
     case 'union':

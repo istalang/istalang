@@ -86,7 +86,9 @@ export function typeText(type: Type): string {
     case 'literal':
       return typeof type.value === 'string' ? JSON.stringify(type.value) : String(type.value);
     case 'union':
-      return unionText(type);
+      return type.recursion === undefined
+        ? unionText(type)
+        : parameterizedText(type.recursion.declaration.name.text, type.recursion.arguments);
     case 'associated':
       return associatedText(type.of, type.name);
     case 'field':

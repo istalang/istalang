@@ -224,13 +224,17 @@ function intoMember(member: Type, expected: UnionType, rules: ConversionRules): 
 /**
  * The member of `expected` that is `found`'s own type: one written without a type parameter, else
  * one written with one that takes it, so inference binds a parameter only to what the others
- * don't take (§3.5).
+ * don't take (§3.5). A recursive alias use is what it unfolds to, a tuple or a function type
+ * carrying no identity of its own (§3.17).
  */
 function ownMember(found: Type, expected: UnionType, rules: ConversionRules): Type | undefined {
   const isGeneric = (member: Type) => parametersIn(member).length > 0;
+  const isOwn = (member: Type) =>
+    rules.exact(member, found) ||
+    (member.kind === 'recursive' && rules.exact(unfolded(member, rules), found));
   return (
-    expected.members.find((member) => !isGeneric(member) && rules.exact(member, found)) ??
-    expected.members.find((member) => isGeneric(member) && rules.exact(member, found))
+    expected.members.find((member) => !isGeneric(member) && isOwn(member)) ??
+    expected.members.find((member) => isGeneric(member) && isOwn(member))
   );
 }
 

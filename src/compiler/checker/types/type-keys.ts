@@ -39,8 +39,8 @@ import type {
   FieldMember,
   FunctionType,
   ParameterKey,
+  RecursiveUse,
   Type,
-  TypeMatchUse,
 } from './type.ts';
 
 /** Every identity numbered so far; an object no longer reachable lets its number go. */
@@ -59,8 +59,13 @@ export interface TypeKeys {
   readonly identityOf: (object: object) => number;
   /** The key of `type`. Type parameters in `positions` are keyed by their position there. */
   readonly typeKey: (type: Type, positions?: ReadonlyMap<ParameterKey, number>) => string;
-  /** The key of a shape, `typeKey`'s, which starts with `{`, as no other type's does. */
+  /**
+   * The key of a shape, `typeKey`'s, which starts with `{`, as no other type's does but a
+   * recursive alias use's, which a shape it unfolds to shares.
+   */
   readonly shapeKey: (type: AnonymousStructType) => ShapeKey;
+  /** The key of the recursive use `use`, and of the shape or union it unfolds to (§3.17). */
+  readonly recursionKey: (use: RecursiveUse) => ShapeKey;
   /** The key of `type` with everything it is spelled with (the banner). */
   readonly spelledKey: (type: Type) => string;
 }
@@ -124,7 +129,10 @@ function keyOf(
     case 'literal':
       return `=${typeof type.value === 'string' ? JSON.stringify(type.value) : String(type.value)}`;
     case 'union':
-      return `|<${type.members.map(key).sort().join(',')}>`;
+      // The body a recursive alias use unfolds to is that use, by identity (§3.17).
+      return type.recursion === undefined
+        ? `|<${type.members.map(key).sort().join(',')}>`
+        : recursionKeyOf(type.recursion, key);
     case 'associated':
       return `${key(type.of)}.${type.name}`;
     case 'field':
@@ -183,15 +191,15 @@ function functionKeyOf(type: FunctionType, key: (type: Type) => string): string 
 }
 
 /** The key of an unreduced use of a type `match` alias (§3.17). */
-function useKeyOf(use: TypeMatchUse, key: (type: Type) => string): string {
+function useKeyOf(use: RecursiveUse, key: (type: Type) => string): string {
   return `match:${identityOf(use.declaration)}<${use.arguments.map(key).join(',')}>`;
 }
 
 /**
- * The key of a recursive use of a type `match` alias, and of the shape it stands for, which no
- * other shape's key can be: no field's name holds `~`.
+ * The key of a recursive alias use, and of the shape or union it unfolds to, which no other
+ * shape's key can be: no field's name holds `~`.
  */
-function recursionKeyOf(use: TypeMatchUse, key: (type: Type) => string): ShapeKey {
+function recursionKeyOf(use: RecursiveUse, key: (type: Type) => string): ShapeKey {
   return `{~${identityOf(use.declaration)}<${use.arguments.map(key).join(',')}>}`;
 }
 
@@ -231,8 +239,10 @@ function spelledKindKey(type: Type): string {
       );
       return `any{${constraints.join('&')}}`;
     }
-    case 'union':
-      return `|<${keys(type.members)}>`;
+    case 'union': {
+      const recursion = type.recursion === undefined ? '' : useKeyOf(type.recursion, key);
+      return `|<${recursion}${keys(type.members)}>`;
+    }
     case 'mapped': {
       const named = type.named.map(spelledFieldKey).join(',');
       const written = `@${identityOf(type.origin)}'${identityOf(type.parameter)}`;
@@ -279,5 +289,6 @@ export const typeKeys: TypeKeys = {
   identityOf,
   typeKey,
   shapeKey: (type) => memo(ownKeys, type, () => shapeKeyOf(type, undefined)) as ShapeKey,
+  recursionKey: (use) => recursionKeyOf(use, (type) => typeKey(type)),
   spelledKey,
 };

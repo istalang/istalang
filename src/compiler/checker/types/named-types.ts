@@ -41,6 +41,7 @@ import {
   tupleElements,
 } from './type.ts';
 import { type ShapeKey, typeKeys } from './type-keys.ts';
+import { unfolded } from './type-match.ts';
 import type { TypeRules } from './type-rules.ts';
 import { absorbingMember, baseOf, hasMember, optionalInner } from './unions.ts';
 import { arrayElement } from './well-known.ts';
@@ -63,7 +64,7 @@ const optionalOwner = 'T?';
 
 /**
  * What static functions are declared on (§3.7, §3.17): a nominal type's declaration, a primitive's
- * name, a shape's key, which no primitive's name is, or every optional.
+ * name, a shape's or a recursive alias use's key, which no primitive's name is, or every optional.
  */
 export type StaticOwner = NominalDeclaration | PrimitiveName | ShapeKey | typeof optionalOwner;
 
@@ -76,7 +77,12 @@ export function staticOwnerOf(type: Type | undefined): StaticOwner | undefined {
       return type.entity.declaration;
     case 'anonymous':
       return typeKeys.shapeKey(type);
+    case 'recursive':
+      return typeKeys.recursionKey(type);
     case 'union':
+      if (type.recursion !== undefined) {
+        return typeKeys.recursionKey(type.recursion);
+      }
       return optionalInner(type) === undefined ? undefined : optionalOwner;
     default:
       return undefined;
@@ -295,22 +301,34 @@ export type PatternKind =
   | { readonly kind: 'array' }
   | { readonly kind: 'shape'; readonly fields: readonly string[] };
 
-/** The members a pattern of `pattern`'s kind selects, as `PatternKind` says. */
+/**
+ * The members a pattern of `pattern`'s kind selects, as `PatternKind` says, each read as what it
+ * unfolds to where it is a recursive alias use (§3.17).
+ */
 export function kindMembers(
-  checker: Pick<Checker, 'wellKnownType'>,
+  checker: Pick<Checker, 'wellKnownType' | 'typeRules'>,
   pattern: PatternKind,
   members: readonly Type[],
 ): readonly Type[] {
+  return members.filter((member) =>
+    isOfKind(checker, pattern, unfolded(member, checker.typeRules)),
+  );
+}
+
+function isOfKind(
+  checker: Pick<Checker, 'wellKnownType'>,
+  pattern: PatternKind,
+  member: Type,
+): boolean {
   switch (pattern.kind) {
     case 'tuple':
-      return members.filter((member) => tupleElements(member)?.length === pattern.count);
+      return tupleElements(member)?.length === pattern.count;
     case 'array':
-      return members.filter((member) => arrayElement(checker, member) !== undefined);
+      return arrayElement(checker, member) !== undefined;
     default:
-      return members.filter(
-        (member) =>
-          member.kind === 'anonymous' &&
-          pattern.fields.every((name) => member.fields.some((field) => field.name === name)),
+      return (
+        member.kind === 'anonymous' &&
+        pattern.fields.every((name) => member.fields.some((field) => field.name === name))
       );
   }
 }

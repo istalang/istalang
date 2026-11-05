@@ -70,6 +70,43 @@ describe('proposal 5 behaviour table: row by row', () => {
     expect(mainGivesLines('String', body, decls)).toBe('1:prod');
   });
 
+  it('row 7: "type Tree = Int | Array<Tree>" is a recursive union', () => {
+    const decls = lines(
+      'type Tree = Int | Array<Tree>',
+      'fn total(t: Tree) -> Int:',
+      '  match t:',
+      '    case Int as n: return n',
+      '    case Array<Tree> as xs:',
+      '      let s = 0',
+      '      for x in xs:',
+      '        s += total(x)',
+      '      return s',
+    );
+    expect(mainGives('Int', 'total([1, [2, [3, 4]]])', decls)).toBe(10);
+  });
+
+  it('row 8: "type List = { head: Int, tail: List? }" is a recursive shape', () => {
+    const decls = 'type List = { head: Int, tail: List? }';
+    const body = lines(
+      'const l: List =',
+      '  head: 7',
+      '  tail:',
+      '    head: 8',
+      '    tail: none',
+      'l.head + (l.tail?.head ?? 0)',
+    );
+    expect(mainGivesLines('Int', body, decls)).toBe(15);
+  });
+
+  it('row 9: "type A = A | Int" is still error 5106', () => {
+    expect(reported('type A = A | Int').codes).toEqual([checkerDiagnostics.aliasCycle.code]);
+  });
+
+  it('row 13: "[]" where "Array<Int> | Map<String, Int>" is expected builds the empty array', () => {
+    const body = lines('const x: Array<Int> | Map<String, Int> = []', 'x is Array<Int>');
+    expect(mainGivesLines('Bool', body)).toBe(true);
+  });
+
   it('row 14: "{ sku: String, qty: Int }", "struct R { id: Int, value: String }", "enum Color { Red, Green }" build the shape, struct and enum', () => {
     const decls = lines(
       'type Item = { sku: String, qty: Int }',

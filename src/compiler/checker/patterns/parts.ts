@@ -28,6 +28,7 @@ import {
   type Type,
   type UnionType,
 } from '../types/type.ts';
+import { unfolded } from '../types/type-match.ts';
 import { typeText } from '../types/type-text.ts';
 
 /** What a pattern reads and where it reports, in a body or in a top-level constant. */
@@ -90,16 +91,16 @@ export interface ValuePart<Step extends PartStep = PartStep> {
 }
 
 /**
- * The `count` elements of `part`, a tuple of that many, at `span`; each of the error type, after
- * a report, when it is anything else.
+ * The `count` elements of `part`, a tuple of that many or a recursive use unfolding to one
+ * (§3.17), at `span`; each of the error type, after a report, when it is anything else.
  */
 export function elementParts<Step extends PartStep>(
-  scope: Pick<PatternScope, 'report'>,
+  scope: Pick<PatternScope, 'report' | 'typeRules'>,
   part: ValuePart<Step | number>,
   count: number,
   span: AnchoredSpan,
 ): readonly ValuePart<Step | number>[] {
-  const { type } = part;
+  const type = unfolded(part.type, scope.typeRules);
   const fits = type.kind === 'error' || (type.kind === 'tuple' && type.elements.length === count);
   if (!fits) {
     scope.report(checkerDiagnostics.tupleArity(span, count, typeText(type)));

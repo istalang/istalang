@@ -9,6 +9,9 @@
  *   (checker/rules/disposal.ts).
  * - A shape is a struct entry without a name, one per shape: every place writing equal fields
  *   shares it (§3.1), its fields in the name order the shape keeps.
+ * - A recursive alias use (§3.17) is the entry of what it unfolds to, whose layout refers back to
+ *   it through the table; one unfolding to a tuple or a function type, which have no entry of their
+ *   own, has an alias entry standing for it, numbered first for the same reason.
  * - A union (§2) is an enum, one variant per member, in the order of their spelled names, which
  *   no numbering of identities changes: a member's value is the variant's one field, and a member
  *   with one value only, a literal type or `None`, is a variant without fields, its tag. A literal
@@ -36,6 +39,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker, Disposal } from '../checker/check.ts';
 import type { CheckedAnnotation } from '../checker/checked-annotation.ts';
 import { isHostExtern } from '../checker/host-externs.ts';
+import type { RecursiveType } from '../checker/types/computed-types.ts';
 import { sameType } from '../checker/types/identity.ts';
 import type {
   AnonymousStructType,
@@ -130,8 +134,12 @@ export class TypeTable {
       case 'nominal':
       case 'anonymous':
         return { kind: 'named', type: this.#typeEntry(type) };
-      case 'recursive':
-        return this.reference(this.#checker.typeRules.recursiveShape(type));
+      case 'recursive': {
+        const unfolded = this.#checker.typeRules.unfold(type);
+        return unfolded.kind === 'tuple' || unfolded.kind === 'function'
+          ? { kind: 'named', type: this.#aliasEntry(type, unfolded) }
+          : this.reference(unfolded);
+      }
       case 'tuple':
         return {
           kind: 'tuple',
@@ -235,6 +243,29 @@ export class TypeTable {
     this.#indexes.set(key, index);
     this.#entries.push({ kind: 'struct', name: '', arguments: [], fields: [] });
     this.#entries[index] = this.#layout(type);
+    return index;
+  }
+
+  /** The alias entry of the recursive use `type`, standing for `unfolded`, numbered first. */
+  #aliasEntry(type: RecursiveType, unfolded: Type): TypeId {
+    const key = this.#checker.typeKeys.typeKey(type);
+    const known = this.#indexes.get(key);
+    if (known !== undefined) {
+      return known;
+    }
+    const index = this.#entries.length;
+    this.#indexes.set(key, index);
+    this.#entries.push({ kind: 'struct', name: '', arguments: [], fields: [] });
+    const { declaration } = type;
+    this.#entries[index] = {
+      kind: 'alias',
+      name:
+        declaration.kind === 'TypeAliasDeclaration'
+          ? qualifiedNameOf(this.#checker, declaration)
+          : unreachable('Only a top-level alias refers to itself (§3.17).'),
+      arguments: type.arguments.map((argument) => this.reference(argument)),
+      type: this.reference(unfolded),
+    };
     return index;
   }
 

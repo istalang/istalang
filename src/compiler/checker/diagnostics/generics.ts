@@ -43,7 +43,13 @@ export const genericTemplates = {
   },
   aliasCycle: {
     code: 5106,
-    message: (name: string) => `The alias '${name}' refers to itself; use a struct or an enum.`,
+    message: (name: string) =>
+      `The alias '${name}' refers to itself where it would have to be known first: a recursive alias names itself only inside a type built from others (a type argument, a field, a tuple element, a function's parameter or result) (§3.17).`,
+  },
+  irregularAlias: {
+    code: 5128,
+    message: (name: string, named: string) =>
+      `The recursive alias '${name}' must pass its own type parameters, in order, where it names '${named}': other type arguments would need endlessly many types (§3.17).`,
   },
   bareVariant: {
     code: 5107,

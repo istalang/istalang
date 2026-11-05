@@ -106,6 +106,9 @@ class Computation {
       case 'StringLiteral':
       case 'BooleanLiteral':
         return computed({ kind: 'primitive', value: node.value });
+      case 'NoneLiteral':
+        // `none` is the one value of `None`, written as `null`, as `Unit`'s is (§2).
+        return computed({ kind: 'primitive', value: null });
       case 'TemplateLiteral': {
         const text = constantTextOf(node);
         return text === undefined ? refused(node) : computed({ kind: 'primitive', value: text });

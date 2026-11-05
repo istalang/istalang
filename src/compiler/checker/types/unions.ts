@@ -7,6 +7,9 @@
  * - No value sits in two members: a literal merges into its base where the base is a member,
  *   `true | false` is `Bool`, and an `any` member takes whole every member meeting its traits, or
  *   whose literals' base does, as the program's rules say (type-rules.ts).
+ * - A recursive alias use (§3.17) stands as one member, never flattened, however it is spelled:
+ *   the union it unfolds to is the use. A member its body already holds merges into it, as into an
+ *   `any` member, so `Json | Int` and `Json?` are `Json`.
  * - The error type makes the whole union the error type: a diagnostic already explained it.
  * - `unionOf` is the one constructor of a union from types, written, substituted (type-parts.ts:
  *   `T | Int` with `T = Int` collapses, `T | any Stringable` with `T = String` too), joined or made
@@ -67,11 +70,42 @@ export function baseOf(type: Type): Type {
  * members.
  */
 export function unionOf(members: readonly Type[], rules: TypeRules): Type {
-  const flat = members.flatMap((member) => (member.kind === 'union' ? member.members : [member]));
+  const flat = members.flatMap(memberTypesOf);
   if (flat.some((member) => member.kind === 'error')) {
     return flat.find((member) => member.kind === 'error') ?? neverType;
   }
-  return unionOfNormalized(withoutAbsorbed(mergedLiterals(distinctMembers(flat)), rules));
+  const normalized = withoutAbsorbed(mergedLiterals(distinctMembers(flat)), rules);
+  return unionOfNormalized(withoutHeld(normalized, rules));
+}
+
+/** The members `type` gives a union: a union's own, but a recursive use's union stands whole. */
+function memberTypesOf(type: Type): readonly Type[] {
+  if (type.kind !== 'union') {
+    return [type];
+  }
+  const { recursion } = type;
+  return recursion === undefined
+    ? type.members
+    : [{ kind: 'recursive', declaration: recursion.declaration, arguments: recursion.arguments }];
+}
+
+/** `members` without each one a recursive member's union already holds (the banner). */
+function withoutHeld(members: readonly Type[], rules: TypeRules): readonly Type[] {
+  const holders = members.flatMap((member) => {
+    const held = member.kind === 'recursive' ? rules.unfoldedMembers(member) : undefined;
+    return held === undefined ? [] : [{ member, held }];
+  });
+  if (holders.length === 0) {
+    return members;
+  }
+  const isHeld = (member: Type) =>
+    holders.some(
+      ({ member: holder, held }) =>
+        holder !== member &&
+        withoutAbsorbed(mergedLiterals(distinctMembers([...held, member])), rules).length ===
+          held.length,
+    );
+  return members.filter((member) => !isHeld(member));
 }
 
 /**

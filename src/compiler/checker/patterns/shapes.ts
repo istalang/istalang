@@ -39,7 +39,10 @@ import type { ConstructorOf, Shape, Signature, WitnessShape } from './exhaustive
  * What shapes read of the checker: a type's fields, variants, whether it is an `Array`, and the union
  * a member parameter stands for one member of.
  */
-export type ShapeChecker = Pick<Checker, 'fieldsOf' | 'variantsOf' | 'wellKnownType'> &
+export type ShapeChecker = Pick<
+  Checker,
+  'fieldsOf' | 'variantsOf' | 'wellKnownType' | 'typeRules'
+> &
   Pick<CheckerContext, 'fitting'>;
 
 /** The key of the one constructor of a struct value, and of a tuple. */
@@ -63,6 +66,10 @@ function constructorsOf(
   checker: ShapeChecker,
   type: Type,
 ): readonly ConstructorOf<Type>[] | undefined {
+  if (type.kind === 'recursive') {
+    // A recursive alias use is made of what it unfolds to (§3.17).
+    return constructorsOf(checker, checker.typeRules.unfold(type));
+  }
   const union = isMemberParameter(type) ? checker.fitting.memberUnionOf(type) : undefined;
   if (union === undefined) {
     return ownConstructors(type) ?? declaredConstructors(checker, type);

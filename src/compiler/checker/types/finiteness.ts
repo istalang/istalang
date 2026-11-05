@@ -4,37 +4,42 @@
  * such as an optional, or a collection, a value may be absent, so the chain ends there; so does an
  * enum, an extern type, a shared struct (a handle, §3.18) or a type not known yet.
  *
- * The same rule holds a struct declaration's values and a recursive type `match` use's (§3.17):
- * a struct declaration is reached by its declaration, whatever its arguments, and a recursive use
- * by its type key, which its shape shares, so the use holding itself through its shape is found
- * either way. Its guard is a set of what was reached, not `TypeCycle`: a generic struct's
+ * The same rule holds a struct declaration's values and a recursive alias use's (§3.17), whatever
+ * its alias unfolds to: a struct declaration is reached by its declaration, whatever its
+ * arguments, and a recursive use by its type key, which its shape or union shares, so the use
+ * holding itself through what it unfolds to is found either way. Its guard is a set of what was reached, not `TypeCycle`: a generic struct's
  * arguments may grow along its fields (`A<T>` holding `A<Array<T>>`), so the walk must end at a
  * declaration whatever its arguments, where a guard keyed by whole types would never repeat.
  */
 
 import type { StructDeclaration } from '../../syntax/declarations.ts';
 import type { RecursiveType } from './computed-types.ts';
-import type { AnonymousStructType, FieldMember, Type } from './type.ts';
+import type { FieldMember, Type } from './type.ts';
 import { typeKeys } from './type-keys.ts';
 
 /** What a value must never hold by value: a struct declaration's values, or a recursive use's. */
 export type SelfHolding = StructDeclaration | RecursiveType;
 
-/** How a struct type's fields are read: a declared struct's, and a recursive use's shape. */
+/** How a struct type's fields are read: a declared struct's, and what a recursive use unfolds to. */
 export interface StructFieldReader {
   readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
-  readonly recursiveShape: (type: RecursiveType) => AnonymousStructType;
+  readonly unfold: (type: RecursiveType) => Type;
 }
 
 /** The reader of `checker`'s struct types. */
 export function fieldReaderOf(checker: {
   readonly fieldsOf: StructFieldReader['fieldsOf'];
-  readonly typeRules: Pick<StructFieldReader, 'recursiveShape'>;
+  readonly typeRules: Pick<StructFieldReader, 'unfold'>;
 }): StructFieldReader {
   return {
     fieldsOf: (type) => checker.fieldsOf(type),
-    recursiveShape: (type) => checker.typeRules.recursiveShape(type),
+    unfold: (type) => checker.typeRules.unfold(type),
   };
+}
+
+/** Whether a value of `type` holds a value of `target` by value, at any depth. */
+export function holdsItself(reader: StructFieldReader, type: Type, target: SelfHolding): boolean {
+  return holds(reader, type, target, new Set());
 }
 
 /** The first of `fields` whose type makes a value of `target` hold another; undefined for none. */
@@ -67,7 +72,7 @@ function holds(
         return false;
       }
       seen.add(key);
-      return fieldsHold(reader, reader.recursiveShape(type).fields, target, seen);
+      return holds(reader, reader.unfold(type), target, seen);
     }
     case 'nominal': {
       const { declaration } = type.entity;

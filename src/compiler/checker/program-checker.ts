@@ -130,7 +130,6 @@ export class ProgramChecker implements CheckerContext {
   readonly #layouts: Layouts;
   readonly #parameters: Parameters;
   readonly #aliases: Aliases;
-  readonly typeMatches: TypeMatchQueries;
   readonly #statics: StaticFunctions;
   readonly #typeParameters: TypeParameters;
   readonly #moduleChecks: ModuleChecks;
@@ -160,10 +159,11 @@ export class ProgramChecker implements CheckerContext {
     this.#disposals = entries.table({
       name: 'disposals',
       compute: (_key, type) => disposalOf(this, type),
-      equal: (first, second) =>
-        first === second || (first.kind !== 'function' && first.kind === second.kind),
+      equal: sameDisposal,
     });
-    const rules = programTypeRules(this, (type) => this.#layouts.nominalShapeOf(type));
+    this.#aliases = new Aliases(this, (alias) => this.#aliasModuleOf(alias));
+    this.#layouts = new Layouts(this);
+    const rules = programTypeRules(this, { layouts: this.#layouts, aliases: this.#aliases });
     this.typeRules = rules.typeRules;
     this.fitting = rules.fitting;
     this.#functions = new FunctionChecks({
@@ -176,13 +176,10 @@ export class ProgramChecker implements CheckerContext {
       checkConstant: (module, declaration, declared) =>
         this.#valueBody(module, declared).checkConstant(declaration),
     });
-    this.#layouts = new Layouts(this);
     this.#parameters = new Parameters({
       checker: this,
       defaultsBody: (declaration) => this.#defaultsBody(declaration),
     });
-    this.#aliases = new Aliases(this, (alias) => this.#aliasModuleOf(alias));
-    this.typeMatches = this.#aliases;
     this.#statics = new StaticFunctions(this);
     this.#typeParameters = new TypeParameters(this, (node) =>
       node.kind === 'TypeParameter' ? declaring.moduleOf(node) : this.#itemModuleOf(node),
@@ -308,6 +305,10 @@ export class ProgramChecker implements CheckerContext {
       : (this.#itemModuleOf(alias) ?? unreachable("An associated type is an item's part."));
   }
 
+  get typeMatches(): TypeMatchQueries {
+    return this.#aliases;
+  }
+
   aliasedType(alias: AliasDeclaration): Type {
     return this.#aliases.aliasedType(alias);
   }
@@ -392,4 +393,9 @@ export class ProgramChecker implements CheckerContext {
     const id = this.inputs.role(module);
     return id === undefined ? undefined : this.bindings.topLevelNamed(id, name);
   }
+}
+
+/** Whether two disposals are alike: a declared `dispose`'s by its call, the others by kind. */
+function sameDisposal(first: Disposal, second: Disposal): boolean {
+  return first === second || (first.kind !== 'function' && first.kind === second.kind);
 }

@@ -39,9 +39,10 @@ import type { CheckedBody } from '../check.ts';
 import type { CheckerContext, CheckerNote, Instantiable } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { functionCallsWithin } from '../resolved-call.ts';
-import { fieldReaderOf, selfHoldingField } from '../types/finiteness.ts';
+import type { RecursiveType } from '../types/computed-types.ts';
+import { fieldReaderOf, type StructFieldReader, selfHoldingField } from '../types/finiteness.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
-import type { Type, TypeMatchUse, UnreducedUse } from '../types/type.ts';
+import type { RecursiveUse, Type, UnreducedUse } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
 import { aliasInstance, matchUse } from '../types/type-match.ts';
 import { isKnown, sameTypeSpelled, typeChildren } from '../types/type-parts.ts';
@@ -53,7 +54,7 @@ import { typeText } from '../types/type-text.ts';
  */
 export type MatchFailure =
   | UnreducedUse
-  | { readonly use: TypeMatchUse; readonly cause: 'holdsItself'; readonly field: string };
+  | { readonly use: RecursiveUse; readonly cause: 'holdsItself'; readonly field: string };
 
 /** The diagnostic reporting `failure` at `at`, where the instantiation reaching it is written. */
 export function failureDiagnostic(at: AnchoredSpan, failure: MatchFailure) {
@@ -102,16 +103,10 @@ export class MatchRequirements {
         return type.unreduced;
       }
       const key = typeKeys.typeKey(type);
-      if (type.kind === 'recursive' && !seen.has(key)) {
-        const field = selfHoldingField(
-          reader,
-          this.#checker.typeRules.recursiveShape(type).fields,
-          type,
-        );
-        if (field !== undefined) {
-          const use = { declaration: type.declaration, arguments: type.arguments };
-          return { use, cause: 'holdsItself', field: field.name };
-        }
+      const holding =
+        type.kind === 'recursive' && !seen.has(key) ? this.#holding(type, reader) : undefined;
+      if (holding !== undefined) {
+        return holding;
       }
       if (type.kind !== 'error' && !seen.has(key)) {
         seen.add(key);
@@ -121,11 +116,25 @@ export class MatchRequirements {
     return undefined;
   }
 
+  /** The failure of the recursive use `type` whose shape's values would hold another; else none. */
+  #holding(type: RecursiveType, reader: StructFieldReader): MatchFailure | undefined {
+    const unfolded = this.#checker.typeRules.unfold(type);
+    const fields = unfolded.kind === 'anonymous' ? unfolded.fields : [];
+    const field = selfHoldingField(reader, fields, type);
+    return field === undefined
+      ? undefined
+      : {
+          use: { declaration: type.declaration, arguments: type.arguments },
+          cause: 'holdsItself',
+          field: field.name,
+        };
+  }
+
   /** What `type` leads on to: its parts, a recursive use's shape, a nominal's requirements. */
   #reached(type: Type): readonly Type[] {
     const parts = typeChildren(type);
     if (type.kind === 'recursive') {
-      return [this.#checker.typeRules.recursiveShape(type), ...parts];
+      return [this.#checker.typeRules.unfold(type), ...parts];
     }
     return type.kind === 'nominal' && type.arguments.length > 0
       ? [...this.#through(type.entity.declaration, type.arguments), ...parts]

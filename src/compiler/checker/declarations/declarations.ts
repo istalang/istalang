@@ -40,7 +40,7 @@ import { checkHostBoundary, crossesToHost } from '../rules/host-boundary.ts';
 import { checkSuite } from '../rules/suites.ts';
 import type { GenericDeclaration } from '../types/type-arguments.ts';
 import { futureArgument } from '../types/well-known.ts';
-import { checkFiniteFields } from './struct-rules.ts';
+import { checkFiniteAlias, checkFiniteFields } from './struct-rules.ts';
 
 /**
  * Resolves the constraints, unions and defaults of `declaration`'s type parameters where they are
@@ -150,6 +150,9 @@ function checkAssociatedTypes(
  */
 function checkAlias(checker: CheckerContext, alias: AliasDeclaration): void {
   checker.aliasedType(alias);
+  if (alias.kind === 'TypeAliasDeclaration') {
+    checkFiniteAlias(checker, alias);
+  }
   const { typeMatches } = checker;
   for (const { node } of typeMatches.typeMatchOf(alias)?.cases ?? []) {
     typeMatches.caseTypeOf(alias, node);

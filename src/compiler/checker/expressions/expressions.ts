@@ -26,6 +26,7 @@ import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import type { AcceptedPart, Accepts, BodyContext, PartReader, TypedPart } from '../body-context.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
 import { blockAccepts } from '../rules/branches.ts';
+import { takingUnfolded } from '../types/expected.ts';
 import {
   boolType,
   errorType,
@@ -178,11 +179,17 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
 
 /**
  * Which parameter types `node` can take when the call it is passed to decides its type; undefined
- * when it has a type of its own.
+ * when it has a type of its own. A recursive use takes it as what it unfolds to, and a union of
+ * which the value can be built as one member takes it too, as it is then built (§2,
+ * types/expected.ts `memberBuilt`).
  */
 export function acceptsOf(context: BodyContext, node: Expression): Accepts | undefined {
   const accepts = handlerOf(acceptsHandlers, node)(context, node);
-  return accepts && ((expected, isOpen) => isOpen(expected) || accepts(expected, isOpen));
+  if (accepts === undefined) {
+    return undefined;
+  }
+  const taking = takingUnfolded(accepts, context.checker.typeRules);
+  return (expected, isOpen) => isOpen(expected) || taking(expected, isOpen);
 }
 
 /** A kind whose value depends on checking or on the expected type. */
@@ -238,10 +245,16 @@ export function acceptedPartOf(context: BodyContext, node: Expression | undefine
     return { kind: 'typed', type: undefined };
   }
   const accepts = context.accepts(node);
+  if (accepts !== undefined) {
+    return { kind: 'decided', accepts };
+  }
   const read: PartReader = (part) => acceptedPartOf(context, part);
-  return accepts === undefined
-    ? { kind: 'typed', type: knownTypeOf(context, node), builds: buildsOf(context, node, read) }
-    : { kind: 'decided', accepts };
+  const type = knownTypeOf(context, node);
+  const builds = buildsOf(context, node, read);
+  // A literal whose items agree on no one type has none of its own: where it goes decides it.
+  return type === undefined && builds !== undefined
+    ? { kind: 'decided', accepts: takingUnfolded(builds, context.checker.typeRules) }
+    : { kind: 'typed', type, builds };
 }
 
 /**

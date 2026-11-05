@@ -11,13 +11,14 @@ import type { VariableDeclaration } from '../syntax/statements.ts';
 import type { TargetStep } from './checked-pattern.ts';
 import { laidOut, namedValues } from './types/field-order.ts';
 import { sameType } from './types/identity.ts';
-import type { FieldMember, NominalType, StructValueType, Type } from './types/type.ts';
+import type { FieldMember, NominalType, StructValueType, Type, UnionType } from './types/type.ts';
 import { sameTypeSpelled } from './types/type-parts.ts';
 
 /**
  * A primitive (`Unit` is `null`), a struct of a struct type with its fields in declaration order,
- * a tuple, an array, a map with its entries in order and no two keys equal, or a lambda that
- * captures nothing (§3.14), with the constant whose value checked it (`Checker.constantBodyOf`).
+ * a tuple, an array, a map with its entries in order and no two keys equal, a value put into a
+ * union as one of its members (§2), or a lambda that captures nothing (§3.14), with the constant
+ * whose value checked it (`Checker.constantBodyOf`).
  */
 export type ConstantForm =
   | { readonly kind: 'primitive'; readonly value: null | boolean | string | bigint | number }
@@ -29,6 +30,12 @@ export type ConstantForm =
   | { readonly kind: 'tuple'; readonly elements: readonly ConstantForm[] }
   | { readonly kind: 'array'; readonly elements: readonly ConstantForm[] }
   | MapOf<ConstantForm>
+  | {
+      readonly kind: 'member';
+      readonly union: UnionType;
+      readonly member: Type;
+      readonly value: ConstantForm;
+    }
   | { readonly kind: 'function'; readonly lambda: Lambda; readonly constant: VariableDeclaration };
 
 /** What a duration literal is (§2): a `time.Duration`, whose one field is its milliseconds. */
@@ -99,6 +106,9 @@ export const formSemantics = new ValueSemantics<ConstantForm>({
     if (first.kind === 'function' && second.kind === 'function') {
       return first.lambda === second.lambda;
     }
+    if (first.kind === 'member' && second.kind === 'member') {
+      return sameType(first.union, second.union) && sameType(first.member, second.member);
+    }
     return first.kind === second.kind;
   },
   headKey: (form) => form.kind,
@@ -138,6 +148,12 @@ function sameHeads(left: ConstantForm, right: ConstantForm): boolean {
         left.lambda === right.lambda &&
         left.constant === right.constant
       );
+    case 'member':
+      return (
+        right.kind === 'member' &&
+        sameTypeSpelled(left.union, right.union) &&
+        sameTypeSpelled(left.member, right.member)
+      );
     default:
       return left.kind === right.kind;
   }
@@ -151,6 +167,8 @@ function partsOf(form: ConstantForm): readonly ConstantForm[] {
     case 'tuple':
     case 'array':
       return form.elements;
+    case 'member':
+      return [form.value];
     default:
       return [];
   }

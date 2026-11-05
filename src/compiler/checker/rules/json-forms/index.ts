@@ -176,10 +176,8 @@ export class JsonForms implements JsonCodecs {
         return { kind: 'tuple', type };
       case 'anonymous':
         return this.#record(type, type.fields);
-      case 'recursive': {
-        const shape = this.#seams.checker.typeRules.recursiveShape(type);
-        return this.#record(shape, shape.fields);
-      }
+      case 'recursive':
+        return this.#form(this.#seams.checker.typeRules.unfold(type));
       case 'nominal':
         return this.#nominal(type);
       case 'function':

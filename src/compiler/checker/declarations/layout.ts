@@ -105,7 +105,7 @@ export class Layouts {
       return type.fields;
     }
     if (type.kind === 'recursive') {
-      return this.#checker.typeRules.recursiveShape(type).fields;
+      return this.fieldsOf(this.#checker.typeRules.unfold(type));
     }
     if (type.kind !== 'nominal') {
       return undefined;
