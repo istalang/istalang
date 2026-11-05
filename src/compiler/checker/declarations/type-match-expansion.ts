@@ -5,10 +5,15 @@
  * The expansion graph (types/expansion-edges.ts) takes its edges from cases' types here, as it
  * takes a generic type's from its fields (type-expansion.ts): each use of a type `match` alias in a
  * case's type gives that alias's parameters arguments built from the declaring alias's own. An
- * `infer` variable stands for a part of the subject, so it counts as each parameter the subject is
- * built from, and a part of a parameter (`D[F]`, `D.Data`, `keyof D`) counts as the whole of it:
- * neither is bigger than what it is taken from. A case's type resolves with the uses in it left
- * unreduced (types/type-match.ts), so the graph is read without reducing anything.
+ * argument is measured against the subject its case matched:
+ * - an `infer` variable is a part of the subject, so it counts as the parameters the part of the
+ *   subject it was bound in is built from (a tuple subject's element, or the whole subject);
+ * - an argument rebuilding what the case's pattern matched (`Node<T>` from `case Node<infer T>`)
+ *   is that subject again, so `Data<Node<T>>` is a finite recursion, not a bigger argument;
+ * - a part of a parameter (`D[F]`, `D.Data`, `keyof D`) counts as the whole of it.
+ * None of these is bigger than what it is taken from; anything built around one is. A case's type
+ * resolves with the uses in it left unreduced (types/type-match.ts), so the graph is read without
+ * reducing anything.
  *
  * The verdict is like any judged by the expansion graph: by the uses written, whichever case a
  * subject would pick, as a generic function calling itself is judged by its calls.
@@ -25,8 +30,9 @@ import {
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type ArgumentEdge, endlessEdgesFrom } from '../types/expansion-edges.ts';
+import { sameType } from '../types/identity.ts';
 import type { ParameterKey, Type } from '../types/type.ts';
-import type { TypeMatchQueries } from '../types/type-match.ts';
+import type { CasePatternForm, InferVariable, TypeMatchQueries } from '../types/type-match.ts';
 import { parametersIn, typeChildren } from '../types/type-parts.ts';
 
 interface ReductionEdge extends ArgumentEdge {
@@ -89,13 +95,8 @@ function reductionEdges(
     return [];
   }
   const own = new Set<ParameterKey>(typeParametersOf(form.parameters));
-  const subjectParts = parametersIn(form.subject).filter((each): each is TypeParameter =>
-    own.has(each),
-  );
-  return form.cases.flatMap(({ node, variables }) => {
-    const sources = new Map<ParameterKey, readonly TypeParameter[]>(
-      variables.map(({ parameter }) => [parameter, subjectParts]),
-    );
+  return form.cases.flatMap(({ node, pattern, variables }) => {
+    const reading = caseReading(own, form.subject, pattern, variables);
     return usesIn(matches.caseTypeOf(alias, node)).flatMap((use) => {
       const reached = use.declaration;
       const parameters = typeParametersOf(matches.typeMatchOf(reached)?.parameters ?? []);
@@ -103,36 +104,97 @@ function reductionEdges(
         const argument = use.arguments[index];
         return argument === undefined
           ? []
-          : parametersIn(argument).flatMap((part) =>
-              (own.has(part) ? [part as TypeParameter] : (sources.get(part) ?? [])).map((from) => ({
-                from,
-                to,
-                expanding: !isWholeOf(argument, part),
-                declaration: alias,
-                reached,
-              })),
-            );
+          : partsOf(argument, reading, true).map(({ from, whole }) => ({
+              from,
+              to,
+              expanding: !whole,
+              declaration: alias,
+              reached,
+            }));
       });
     });
   });
+}
+
+/** What a case's pattern matched of the subject: the parts it rebuilds, and its variables' sources. */
+interface CaseReading {
+  readonly own: ReadonlySet<ParameterKey>;
+  /** Each type the pattern matched, the whole of it or a tuple subject's element, with that subject. */
+  readonly rebuilt: readonly Matched[];
+  /** The declaring alias's parameters the part of the subject an `infer` variable was bound in is built from. */
+  readonly sources: ReadonlyMap<ParameterKey, readonly TypeParameter[]>;
+}
+
+interface Matched {
+  readonly pattern: Type;
+  readonly subject: Type;
+}
+
+/** A type parameter an argument is built from, and whether the argument is no bigger than it. */
+interface ArgumentPart {
+  readonly from: TypeParameter;
+  readonly whole: boolean;
+}
+
+function caseReading(
+  own: ReadonlySet<ParameterKey>,
+  subject: Type,
+  pattern: CasePatternForm,
+  variables: readonly InferVariable[],
+): CaseReading {
+  const rebuilt = pattern.kind === 'type' ? matchedParts(pattern.type, subject) : [];
+  const ownIn = (type: Type) =>
+    parametersIn(type).filter((each): each is TypeParameter => own.has(each));
+  const sources = new Map<ParameterKey, readonly TypeParameter[]>(
+    variables.map(({ parameter }) => {
+      const innermost = rebuilt.findLast((each) => parametersIn(each.pattern).includes(parameter));
+      return [parameter, ownIn(innermost?.subject ?? subject)];
+    }),
+  );
+  return { own, rebuilt, sources };
+}
+
+/** `pattern` matched against `subject`, then, for a tuple subject, each element against its own. */
+function matchedParts(pattern: Type, subject: Type): readonly Matched[] {
+  const elements =
+    pattern.kind === 'tuple' &&
+    subject.kind === 'tuple' &&
+    pattern.elements.length === subject.elements.length
+      ? pattern.elements.flatMap((element, index) =>
+          matchedParts(element, subject.elements[index] ?? element),
+        )
+      : [];
+  return [{ pattern, subject }, ...elements];
+}
+
+/**
+ * The declaring alias's parameters `argument` is built from, measured against the subject (the
+ * banner): `whole` while nothing is built around the part read so far.
+ */
+function partsOf(argument: Type, reading: CaseReading, whole: boolean): readonly ArgumentPart[] {
+  const matched = reading.rebuilt.find((each) => sameType(each.pattern, argument));
+  if (matched !== undefined && matched.subject !== argument) {
+    return partsOf(matched.subject, reading, whole);
+  }
+  switch (argument.kind) {
+    case 'parameter': {
+      const { declaration } = argument;
+      const from = reading.own.has(declaration)
+        ? [declaration as TypeParameter]
+        : (reading.sources.get(declaration) ?? []);
+      return from.map((each) => ({ from: each, whole }));
+    }
+    case 'field':
+    case 'associated':
+    case 'keys':
+      return partsOf(argument.of, reading, whole);
+    default:
+      return typeChildren(argument).flatMap((child) => partsOf(child, reading, false));
+  }
 }
 
 /** The uses of type `match` aliases `type` is or is built from, outermost first. */
 function usesIn(type: Type): readonly Extract<Type, { readonly kind: 'match' }>[] {
   const inner = typeChildren(type).flatMap(usesIn);
   return type.kind === 'match' ? [type, ...inner] : inner;
-}
-
-/** Whether `argument` is the parameter `part` itself, or a part of it no bigger (the banner). */
-function isWholeOf(argument: Type, part: ParameterKey): boolean {
-  switch (argument.kind) {
-    case 'parameter':
-      return argument.declaration === part;
-    case 'field':
-    case 'associated':
-    case 'keys':
-      return isWholeOf(argument.of, part);
-    default:
-      return false;
-  }
 }
