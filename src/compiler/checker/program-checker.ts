@@ -53,7 +53,7 @@ import type {
   SignatureParameter,
   VariantMember,
 } from './check.ts';
-import type { CheckerContext, CheckerNote, ProgramInputs } from './context.ts';
+import type { CheckerContext, CheckerNote, ConstraintCheck, ProgramInputs } from './context.ts';
 import { Aliases } from './declarations/aliases.ts';
 import { ConstantChecks } from './declarations/constants.ts';
 import { FunctionChecks } from './declarations/functions.ts';
@@ -78,7 +78,6 @@ import { type Fit, type Fitting, fitOf } from './types/fit.ts';
 import type { StaticOwner } from './types/named-types.ts';
 import { resolveTypeNode } from './types/resolve-type.ts';
 import type { ConstraintSet, StructConstraintModel } from './types/struct-constraint.ts';
-import type { Substitution } from './types/substitution.ts';
 import {
   type AnonymousStructType,
   type AnyType,
@@ -292,13 +291,8 @@ export class ProgramChecker implements CheckerContext {
     return memberUnionOf(this, parameter);
   }
 
-  constrainLater(
-    module: ModuleId,
-    at: AnchoredSpan,
-    parameter: TypeParameter,
-    typeArguments: Substitution,
-  ): void {
-    this.#typeParameters.constrainLater(module, at, parameter, typeArguments);
+  constrainLater(module: ModuleId, check: ConstraintCheck): void {
+    this.#typeParameters.constrainLater(module, check);
   }
 
   staticFunctionsIn(module: ModuleId, owner: StaticOwner): readonly FunctionDeclaration[] {

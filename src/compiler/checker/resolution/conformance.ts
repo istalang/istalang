@@ -48,6 +48,7 @@ import {
   meetsStructConstraints,
 } from './shortfalls.ts';
 import { type MembersMeeting, membersCall, membersShortfall } from './union-traits.ts';
+import type { ConformanceOutcome } from './witness-outcomes.ts';
 import { type Failure, isFailure, maximumDepth, type WitnessOutcome } from './witness-outcomes.ts';
 
 /** A chosen function, complete: its type arguments, and the witnesses of its constraints. */
@@ -59,7 +60,7 @@ export interface Instantiation {
 
 /**
  * Completes `application`: open type parameters from `expected`, then their defaults, then every
- * constraint met. Undefined after reporting at the use site why it can't be.
+ * constraint met, its type `match`es noted to reduce. Undefined after reporting why it can't be.
  */
 export function instantiate(
   site: UseSite,
@@ -67,7 +68,11 @@ export function instantiate(
   expected: Type | undefined,
 ): Instantiation | undefined {
   const instantiation = instantiateAt(site, application, expected, 0);
-  return isFailure(instantiation) ? undefined : instantiation;
+  if (isFailure(instantiation)) {
+    return undefined;
+  }
+  site.instantiates(application.signature.declaration, instantiation.substitution);
+  return instantiation;
 }
 
 /** `instantiate`, within witness searches nested `depth` deep. */
@@ -155,12 +160,6 @@ export function callWitnessesFor(
   const witnesses = conform({ site, type, constraint, onValues: true }, 0);
   return isFailure(witnesses) ? undefined : witnesses;
 }
-
-/** What searching for a constraint's witnesses found, distinguishing an undeclared function from a failure. */
-export type ConformanceOutcome =
-  | { readonly kind: 'met'; readonly witnesses: readonly ResolvedCall[] }
-  | { readonly kind: 'undeclared' }
-  | { readonly kind: 'failed' };
 
 /**
  * The witnesses of `constraint` for `type`: `undeclared` without reporting when a required

@@ -240,8 +240,13 @@ interface StructCaseConstraint {
   readonly constraint: StructConstraintModel;
 }
 
+/**
+ * A type a diagnostic explains. A use of a type `match` no case matches (§3.17) is one, carrying
+ * that use, which the check of the instantiation reaching it reports (resolution/match-requirements.ts).
+ */
 export interface ErrorType extends WrittenThrough {
   readonly kind: 'error';
+  readonly unmatched?: TypeMatchUse | undefined;
 }
 
 /** The value of a literal type: an `Int`'s, a `String`'s or a `Bool`'s. */

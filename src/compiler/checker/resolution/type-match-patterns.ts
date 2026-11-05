@@ -3,7 +3,9 @@
  *
  * - Matching is exact: the pattern's form and the type's are one, part by part, after aliases
  *   resolve, with no conversion into a union and no one-element tuple. The one exception: a
- *   literal type matches a pattern naming its base type.
+ *   literal type matched whole, as the subject or the member a union distributes, matches a
+ *   pattern naming its base type when it doesn't match exactly. Inside another type it is a part
+ *   of a different type: `Box<"a">` is no `Box<String>`.
  * - A variable binds the part standing where it is written; standing again, it must be that part.
  *   One standing beside other members of a union pattern (`infer T | None`) binds what the type's
  *   union has beyond them.
@@ -72,7 +74,7 @@ function matchPattern(matching: Matching, pattern: CasePatternForm, type: Type):
     case 'any':
       return 'match';
     case 'type':
-      return matchType(matching, unaliased(pattern.type), unaliased(type));
+      return matchWhole(matching, unaliased(pattern.type), unaliased(type));
     case 'struct':
       return matchStruct(matching, pattern.constraint, unaliased(type));
     default: {
@@ -80,6 +82,23 @@ function matchPattern(matching: Matching, pattern: CasePatternForm, type: Type):
       return unhandled;
     }
   }
+}
+
+/**
+ * Whether `pattern` matches `type`, the type matched whole: a literal by its base too, once it
+ * fails exactly, what the failed try bound undone (the banner).
+ */
+function matchWhole(matching: Matching, pattern: Type, type: Type): Outcome {
+  const before = new Map(matching.bound);
+  const outcome = matchType(matching, pattern, type);
+  if (outcome !== 'fail' || type.kind !== 'literal') {
+    return outcome;
+  }
+  matching.bound.clear();
+  for (const [variable, bound] of before) {
+    matching.bound.set(variable, bound);
+  }
+  return matchType(matching, pattern, baseOf(type));
 }
 
 /** Whether the type `pattern` matches `type`, both written through no alias (the banner). */
@@ -95,9 +114,6 @@ function matchType(matching: Matching, pattern: Type, type: Type): Outcome {
   }
   if (isOpaque(type) || isOpaque(pattern)) {
     return sameType(pattern, type) ? 'match' : 'undecided';
-  }
-  if (pattern.kind === 'primitive' && type.kind === 'literal') {
-    return sameType(pattern, baseOf(type)) ? 'match' : 'fail';
   }
   if (pattern.kind === 'union') {
     return matchUnion(matching, pattern.members, type);

@@ -6,12 +6,15 @@
  * written through an alias stays written through it, its arguments substituted alike (type.ts).
  * The types substitution builds are built by the program's rules (type-rules.ts), so a union
  * reached through it is normalized as one written with its arguments in place: `T | any Stringable`
- * with `T = String` is `any Stringable`.
+ * with `T = String` is `any Stringable`. A recursive type `match` use's shape is the shape its
+ * substituted use stands for, decided again by the rules, never a verdict carried over.
  */
 
+import { unreachable } from '../../../structures/unreachable.ts';
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
 import type { ComputedType, MappedParts } from './computed-types.ts';
 import {
+  type AnonymousStructType,
   type AnyType,
   aliasedAs,
   type Constraint,
@@ -108,12 +111,31 @@ export function substituteAny(
 export function substituteKept<
   Kept extends Exclude<Type, TypeParameterType | UnionType | ComputedType>,
 >(type: Kept, substitution: Substitution, rules: TypeRules): Kept {
+  if (type.kind === 'anonymous' && type.recursion !== undefined) {
+    return substitutedShape(type, substitution, rules) as Kept;
+  }
   return asWritten(
     type,
     mapParts(type, (child) => substitute(child, substitution, rules)),
     substitution,
     rules,
   );
+}
+
+/**
+ * The shape a recursive type `match` use stands for (§3.17), with `substitution` applied: the
+ * shape the substituted use stands for, whether the rules find it recursive still or not.
+ */
+function substitutedShape(
+  type: AnonymousStructType,
+  substitution: Substitution,
+  rules: TypeRules,
+): AnonymousStructType {
+  const substituted = substitute(type, substitution, rules);
+  const shape = substituted.kind === 'recursive' ? rules.recursiveShape(substituted) : substituted;
+  return shape.kind === 'anonymous'
+    ? shape
+    : unreachable('A recursive type match use stands for a struct type.');
 }
 
 /** `substituted`, written through the alias `type` was written through, if any, substituted. */

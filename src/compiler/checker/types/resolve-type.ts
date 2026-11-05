@@ -354,7 +354,11 @@ function argumentsOf(
   return typeArguments;
 }
 
-/** Notes every argument of a constrained parameter in a complete list for its constraints. */
+/**
+ * Notes every argument of a constrained parameter in a complete list for its constraints, and the
+ * instantiation for the type `match`es it reaches (§3.5, §3.17): a generic declaration's, or a
+ * type `match` alias's, whose every use reduces.
+ */
 export function constrainArguments(
   checker: CheckerContext,
   module: ModuleId,
@@ -366,7 +370,17 @@ export function constrainArguments(
     (each) => each.constraints.length > 0 || each.memberOf !== undefined,
   );
   for (const parameter of checked) {
-    checker.constrainLater(module, at, parameter, substitution);
+    checker.constrainLater(module, { kind: 'meets', at, parameter, typeArguments: substitution });
+  }
+  const isMatchAlias =
+    declaration.kind === 'TypeAliasDeclaration' && declaration.type.kind === 'TypeMatch';
+  if (declaration.kind !== 'TraitDeclaration' && (parameters.length > 0 || isMatchAlias)) {
+    checker.constrainLater(module, {
+      kind: 'reduces',
+      at,
+      declaration,
+      typeArguments: substitution,
+    });
   }
 }
 

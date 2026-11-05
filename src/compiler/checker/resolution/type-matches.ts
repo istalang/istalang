@@ -7,9 +7,9 @@
  * - A use whose arguments hold types not known yet reduces only when its first case that could
  *   match matches whatever they become (type-match-patterns.ts): a subject that may itself become
  *   a union, a type parameter or a type computed from one, decides nothing, since it would
- *   distribute. Otherwise the use stays unreduced, opaque, and an instantiation reduces it.
- * - A use matching no case stays unreduced too, its arguments all known: where it is written, that
- *   is the compile error (types/resolve-type.ts), and a call instantiating it is refused alike.
+ *   distribute, and `Never`, no member, would give `Never` whatever the cases. Otherwise the use stays unreduced, opaque, and an instantiation reduces it.
+ * - A use matching no case is the error type, carrying the use: the check of the instantiation
+ *   reaching it reports it there (match-requirements.ts), so nothing else reports it again.
  * - An alias reducing to itself with a type built from its own parameter never ends (§3.5); its
  *   declaration reports it (declarations/type-match-expansion.ts), and its uses are the error type.
  * - Each reduction is an entry of the checker's, by the use's type key. One reaching a use whose
@@ -43,7 +43,7 @@ import {
   rebuilt,
   type TypeMatchForm,
 } from '../types/type-match.ts';
-import { mentionsError } from '../types/type-parts.ts';
+import { errorIn } from '../types/type-parts.ts';
 import { unionOf } from '../types/unions.ts';
 import { matchCase } from './type-match-patterns.ts';
 
@@ -102,8 +102,9 @@ export class TypeMatchReductions {
 
   /** The use of `declaration` with `typeArguments`, reduced as far as they allow (the banner). */
   reduce(declaration: AliasDeclaration, typeArguments: readonly Type[]): Type {
-    if (typeArguments.some(mentionsError)) {
-      return errorType;
+    const failed = typeArguments.map(errorIn).find((each) => each !== undefined);
+    if (failed !== undefined) {
+      return failed;
     }
     const use = { declaration, typeArguments };
     const key = typeKeys.typeKey(matchUse(declaration, typeArguments));
@@ -201,10 +202,14 @@ export class TypeMatchReductions {
     const reduced: Type[] = [];
     for (const member of members) {
       const each = this.#memberReduced(declaration, form, substitution, member);
-      if (typeof each === 'string') {
+      if (each === 'undecided') {
         return matchUse(declaration, typeArguments);
       }
-      reduced.push(each);
+      reduced.push(
+        each === 'unmatched'
+          ? { kind: 'error', unmatched: { declaration, arguments: typeArguments } }
+          : each,
+      );
     }
     return unionOf(reduced, checker.typeRules);
   }

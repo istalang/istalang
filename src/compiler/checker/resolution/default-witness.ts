@@ -10,7 +10,8 @@ import type { ResolvedCall } from '../resolved-call.ts';
 import { wellKnownConstraint } from '../traits/constraints.ts';
 import type { Constraint, Type } from '../types/type.ts';
 import type { UseSite } from '../use-site.ts';
-import { type ConformanceOutcome, conformWitnesses, witnessesFor } from './conformance.ts';
+import { conformWitnesses, witnessesFor } from './conformance.ts';
+import type { ConformanceOutcome } from './witness-outcomes.ts';
 
 /** The call giving `type`'s default, Default's witness; undefined after `site` reports why not. */
 export function defaultWitness(site: UseSite, type: Type): ResolvedCall | undefined {

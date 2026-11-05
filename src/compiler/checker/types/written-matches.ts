@@ -4,7 +4,8 @@
  * - Inside a type `match`, a use of a type `match` alias stays unreduced (type-match.ts): a case's
  *   type is resolved once with its alias's parameters open, and a use substitutes them.
  * - `infer` stands only in a case's pattern; anywhere else it is reported.
- * - A use no case matches, its arguments all known, is the compile error where it is written.
+ * - A use no case matches is the error type carrying it: the check noted for its instantiation
+ *   reports it where it is written, as for any it reaches (resolution/match-requirements.ts).
  * - The subject written as a type parameter, in the type of a `case struct …:`, stands for a member
  *   meeting that constraint, so its keys and fields are known there as a constrained parameter's.
  */
@@ -18,8 +19,6 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { aliasedAs, errorType, type NominalDeclaration, type Type } from './type.ts';
 import { matchPlaceOf, matchUse, structCaseOf } from './type-match.ts';
-import { isKnown } from './type-parts.ts';
-import { typeText } from './type-text.ts';
 
 /** Where a type is written: the checker resolving it, and its module. */
 interface Written {
@@ -49,21 +48,14 @@ export function unreducedUse(
 }
 
 /**
- * `type`, which `node` names, as written where it stands: a use no case matches reported, and the
- * error type for it; a struct case's subject meeting its constraint (the banner).
+ * `type`, which `node` names, as written where it stands: a struct case's subject meeting its
+ * constraint (the banner).
  */
 export function asWrittenInMatch(
   written: Written,
   node: NamedType,
   type: Type | undefined,
 ): Type | undefined {
-  if (type?.kind === 'match' && type.arguments.every(isKnown)) {
-    written.checker.report(
-      written.module,
-      checkerDiagnostics.noCaseMatches(node.span, typeText(type)),
-    );
-    return errorType;
-  }
   if (type?.kind !== 'parameter' || type.declaration.kind !== 'TypeParameter') {
     return type;
   }

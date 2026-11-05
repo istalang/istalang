@@ -3,13 +3,15 @@
  * stands at, and whether values cross to the host there. What a check searches never depends on
  * where it is used (witnesses are coherent, §3.10); only crossing to the host spares a codec the
  * Sendable its traits imply (`toHost`). A search whose failure its caller reports as a whole, or
- * that can't fail, searches through a site that reports nothing.
+ * that can't fail, searches through a site that reports nothing, and whose instantiations it notes
+ * for no check.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { CheckerContext } from './context.ts';
+import type { CheckerContext, Instantiable } from './context.ts';
+import type { Substitution } from './types/substitution.ts';
 
 export interface UseSite {
   readonly checker: CheckerContext;
@@ -22,6 +24,11 @@ export interface UseSite {
    * host takes it back, so only its codecs matter here.
    */
   readonly toHost: boolean;
+  /**
+   * Notes that the instantiation made here gives `declaration` `typeArguments`, every type `match`
+   * it reaches reducing for them (§3.17), checked with the site's module; a silent site notes none.
+   */
+  readonly instantiates: (declaration: Instantiable, typeArguments: Substitution) => void;
 }
 
 /** A use site at `at` in `module`, reporting through the module's checker. */
@@ -30,12 +37,14 @@ export function useSite(checker: CheckerContext, module: ModuleId, at: AnchoredS
     checker,
     report: (diagnosticAt) => checker.report(module, diagnosticAt(at)),
     toHost: false,
+    instantiates: (declaration, typeArguments) =>
+      checker.constrainLater(module, { kind: 'reduces', at, declaration, typeArguments }),
   };
 }
 
 /** A site that only searches, reporting nothing. */
 export function searchSite(checker: CheckerContext): UseSite {
-  return { checker, report: () => undefined, toHost: false };
+  return { checker, report: () => undefined, toHost: false, instantiates: () => undefined };
 }
 
 /** The same site, where values cross to the host. */
@@ -45,5 +54,5 @@ export function hostSite(site: UseSite): UseSite {
 
 /** The same site, reporting nothing. */
 export function silent(site: UseSite): UseSite {
-  return { ...site, report: () => undefined };
+  return { ...site, report: () => undefined, instantiates: () => undefined };
 }

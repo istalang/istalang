@@ -23,6 +23,7 @@ import type {
   EnumDeclaration,
   FunctionDeclaration,
   RequiredAssociatedType,
+  TypeAliasDeclaration,
   TypeParameter,
 } from '../syntax/declarations.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
@@ -36,15 +37,30 @@ import type { Fit, Fitting } from './types/fit.ts';
 import type { StaticOwner } from './types/named-types.ts';
 import type { ConstraintSet, StructConstraintModel } from './types/struct-constraint.ts';
 import type { Substitution } from './types/substitution.ts';
-import type { Constraint, FieldMember, Type } from './types/type.ts';
+import type { Constraint, FieldMember, NominalDeclaration, Type } from './types/type.ts';
 import type { TypeMatchQueries } from './types/type-match.ts';
 
-/** That `typeArguments` gives `parameter` an argument at `at`, which must meet its constraints. */
-export interface ConstraintCheck {
-  readonly at: AnchoredSpan;
-  readonly parameter: TypeParameter;
-  readonly typeArguments: Substitution;
-}
+/** A declaration an instantiation gives type arguments: a function, a nominal type or an alias. */
+export type Instantiable = FunctionDeclaration | NominalDeclaration | TypeAliasDeclaration;
+
+/**
+ * What an instantiation at `at` must pass once its module is checked (§3.5): `typeArguments`
+ * giving `parameter` an argument meeting its constraints, or giving `declaration` arguments every
+ * type `match` it reaches reduces for (§3.17).
+ */
+export type ConstraintCheck =
+  | {
+      readonly kind: 'meets';
+      readonly at: AnchoredSpan;
+      readonly parameter: TypeParameter;
+      readonly typeArguments: Substitution;
+    }
+  | {
+      readonly kind: 'reduces';
+      readonly at: AnchoredSpan;
+      readonly declaration: Instantiable;
+      readonly typeArguments: Substitution;
+    };
 
 /**
  * What an entry notes while it computes (structures/entries/): a diagnostic reported in a
@@ -145,18 +161,13 @@ export interface CheckerContext extends Checker {
   /** Annotations, as later phases read them and as declarations check them (§3.16). */
   readonly annotations: AnnotationChecks;
   /**
-   * Notes that the argument `typeArguments` gives `parameter` at `at` in `module` must meet the
-   * parameter's constraints (§3.5), which may name the declaration's other parameters. Types
-   * resolve while signatures are still being resolved, and meeting a constraint looks at
-   * signatures, so the check runs once the module's declarations are checked: it is noted in the
-   * entry computing now, which that module's check reads.
+   * Notes `check`, an instantiation's in `module`: an argument meeting its parameter's constraints,
+   * which may name the declaration's other parameters, or the type `match`es it reaches reducing
+   * (§3.5). Types resolve while signatures are still being resolved, and either check looks at
+   * signatures, so it runs once the module's declarations are checked: it is noted in the entry
+   * computing now, which that module's check reads.
    */
-  readonly constrainLater: (
-    module: ModuleId,
-    at: AnchoredSpan,
-    parameter: TypeParameter,
-    typeArguments: Substitution,
-  ) => void;
+  readonly constrainLater: (module: ModuleId, check: ConstraintCheck) => void;
 }
 
 /** What declarations ask of annotations beyond later phases' queries (rules/annotations.ts). */

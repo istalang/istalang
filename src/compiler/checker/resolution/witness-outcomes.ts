@@ -32,3 +32,9 @@ export type WitnessOutcome =
   | { readonly kind: 'wrongResult'; readonly required: Type; readonly given: Type }
   | { readonly kind: 'failed' }
   | { readonly kind: 'endless' };
+
+/** What searching for a constraint's witnesses found, distinguishing an undeclared function from a failure. */
+export type ConformanceOutcome =
+  | { readonly kind: 'met'; readonly witnesses: readonly ResolvedCall[] }
+  | { readonly kind: 'undeclared' }
+  | { readonly kind: 'failed' };

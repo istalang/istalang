@@ -1,0 +1,30 @@
+# error: 5170 at 28:3
+# error: 5170 at 28:22
+# error: 5170 at 28:39
+# error: 5170 at 30:17
+# error: 5170 at 30:35
+# error: 5170 at 30:54
+# A type match no case matches is refused where an instantiation reaching it is written, however
+# it is reached: a call's type arguments, a generic struct's field, an alias's body, a type match's
+# case, a generic body's own written type, and a generic function calling another (§3.5, §3.17).
+
+struct Field<T> { value: T }
+struct Repeat<R> { row: R }
+
+type DataOf<D> = match D:
+  case Field<infer T>: T
+  case Repeat<infer R>: Array<DataOf<R>>
+
+struct Holds<D> { data: DataOf<D> }
+type Rows<D> = Array<DataOf<D>>
+
+fn takes<D>(x: DataOf<D>?) -> Int: 0
+fn writes<D>(x: D) -> Int:
+  const kept: DataOf<D>? = none
+  0
+fn passes<E>(x: E) -> Int: takes<E>(none)
+
+fn calls() -> Int:
+  takes<Int>(none) + writes<Int>(1) + passes<String>("a")
+
+fn types(holds: Holds<Int>, rows: Rows<Int>, nested: DataOf<Repeat<Int>>): ()

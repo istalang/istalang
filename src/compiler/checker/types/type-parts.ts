@@ -10,6 +10,7 @@ import { sameType } from './identity.ts';
 import {
   type AnyType,
   aliasedAs,
+  type ErrorType,
   type NominalType,
   type ParameterKey,
   type Type,
@@ -63,8 +64,9 @@ export function typeChildren(type: Type): readonly Type[] {
 
 /**
  * Whether two types are alike in every part: `sameType` at every level, alias arguments included,
- * with the same alias by its declaration, an `any`'s constraints in the same order and a shape
- * written at the same node, which `sameType` overlooks. A checker result computed again is the one before only if its types are alike so
+ * with the same alias by its declaration, an `any`'s constraints in the same order, a shape
+ * written at the same node and an error type carrying the same type `match` use, which `sameType`
+ * overlooks. A checker result computed again is the one before only if its types are alike so
  * (incremental-checking.md §1), since a taken-over result keeps every node its types name.
  */
 export function sameTypeSpelled(first: Type, second: Type): boolean {
@@ -79,6 +81,7 @@ export function sameTypeSpelled(first: Type, second: Type): boolean {
         sameAliasWritten(one, other) &&
         sameConstraintOrder(one, other) &&
         sameOrigin(one, other) &&
+        sameUnmatched(one, other) &&
         parts.length === others.length);
     if (!alike) {
       return false;
@@ -90,9 +93,20 @@ export function sameTypeSpelled(first: Type, second: Type): boolean {
   return true;
 }
 
-/** The types `type` is spelled with, one level down: its parts, then its alias's arguments. */
+/**
+ * The types `type` is spelled with, one level down: its parts, its alias's arguments, then, for
+ * the error type a type `match` no case matches is, that use's arguments.
+ */
 function spelledParts(type: Type): readonly Type[] {
-  return [...typeChildren(type), ...aliasParts(type)];
+  const unmatched = type.kind === 'error' ? (type.unmatched?.arguments ?? []) : [];
+  return [...typeChildren(type), ...aliasParts(type), ...unmatched];
+}
+
+/** Whether two error types carry the same type `match`'s use no case matches, or none alike. */
+function sameUnmatched(one: Type, other: Type): boolean {
+  const first = one.kind === 'error' ? one.unmatched?.declaration : undefined;
+  const second = other.kind === 'error' ? other.unmatched?.declaration : undefined;
+  return first === second;
 }
 
 /** The types the alias `type` is written through is spelled with: its arguments, or its owner. */
@@ -199,7 +213,21 @@ export function isKnown(type: Type): boolean {
 
 /** Whether `type` is, or is built from, the error type. */
 export function mentionsError(type: Type): boolean {
-  return type.kind === 'error' || typeChildren(type).some(mentionsError);
+  return errorIn(type) !== undefined;
+}
+
+/** The error type `type` is, or the first it is built from; undefined for none. */
+export function errorIn(type: Type): ErrorType | undefined {
+  if (type.kind === 'error') {
+    return type;
+  }
+  for (const child of typeChildren(type)) {
+    const found = errorIn(child);
+    if (found !== undefined) {
+      return found;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -282,7 +310,14 @@ export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => T
     case 'nominal':
       return { ...type, arguments: type.arguments.map(map) };
     case 'anonymous':
-      return { ...type, fields: type.fields.map((field) => ({ ...field, type: map(field.type) })) };
+      return {
+        ...type,
+        fields: type.fields.map((field) => ({ ...field, type: map(field.type) })),
+        recursion:
+          type.recursion === undefined
+            ? undefined
+            : { ...type.recursion, arguments: type.recursion.arguments.map(map) },
+      };
     case 'tuple':
       return { ...type, elements: type.elements.map(map) };
     case 'function':

@@ -26,6 +26,7 @@ import type { NamedType } from '../../syntax/types.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import type { FieldSource } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { partsAccept } from '../rules/agreement.ts';
 import { builtFrom } from '../types/expected.ts';
 import { inFieldOrder } from '../types/field-order.ts';
 import {
@@ -239,12 +240,38 @@ function checkValuesAlone(context: BodyContext, node: FieldsLiteral): void {
   }
 }
 
-/** Which types a literal of a bare variant (`Rejected{by: "legal"}`) can take: its enums. */
+/**
+ * Which types a literal the call it is passed to decides can take (§3.5): a bare variant's
+ * (`Rejected{by: "legal"}`) its enums; a `struct{…}`, once a value it gives needs the type expected
+ * of it, a struct type with a field of each name it gives, each value taking that field's type.
+ */
 export function structLiteralAccepts(
   context: BodyContext,
   node: StructLiteral,
 ): Accepts | undefined {
-  return node.type === undefined
-    ? undefined
-    : variantsAccepted(context, context.entityOf(lastName(node.type.path)));
+  if (node.type !== undefined) {
+    return variantsAccepted(context, context.entityOf(lastName(node.type.path)));
+  }
+  const named = node.items.flatMap((item) => (item.kind === 'FieldInitializer' ? [item] : []));
+  const values =
+    named.length === node.items.length
+      ? partsAccept(
+          context,
+          named.map((item) => context.acceptedPart(itemValue(item))),
+        )
+      : undefined;
+  if (values === undefined) {
+    return undefined;
+  }
+  return (expected, isOpen) => {
+    const target = builtFrom(expected);
+    const fields = target === undefined ? undefined : context.checker.fieldsOf(target);
+    return (
+      fields !== undefined &&
+      named.every((item, index) => {
+        const field = fields.find(({ name }) => name === item.name.text);
+        return field !== undefined && (values[index]?.(field.type, isOpen) ?? true);
+      })
+    );
+  };
 }
