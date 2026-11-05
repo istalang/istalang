@@ -9,6 +9,8 @@
  *   sendable` by `struct` (§3.6).
  * - A method's first parameter may be the receiver, `self`: a top-level or a trait's function,
  *   never a static or a local one (§3.7).
+ * - A struct's, an enum's or a trait's member may be an associated type instead, `type Data = T`
+ *   (§3.1, §3.10), and a trait's a function.
  */
 
 import { entityType, staticOwnerOf } from '../../../compiler/checker/types/named-types.ts';
@@ -38,6 +40,13 @@ export function offerDeclaredName(
       return wordCandidates(externWords);
     case 'ExternStructDeclaration':
       return followsSendable(cursor) ? wordCandidates(['struct']) : [];
+    case 'DeclaredField':
+    case 'Variant':
+      return declaring.name === name ? wordCandidates(['type']) : [];
+    case 'FieldDeclaration':
+      return declaring.name === name && holder?.kind === 'TraitDeclaration'
+        ? wordCandidates(['type', 'fn'])
+        : [];
     case 'Parameter':
       return holder?.kind === 'FunctionDeclaration' &&
         holder.parameters[0] === declaring &&

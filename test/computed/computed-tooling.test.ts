@@ -116,6 +116,46 @@ describe('the language service', () => {
     expect(completionNamesAt(...field, 'fn f(x: Field<Int>.‸) -> Int: 0')).toContain('Data');
   });
 
+  it('shows the field a key names, and the type variables computed types bind', () => {
+    const settings = ['struct Settings { retries: Int; region: String }'];
+    expect(hoverCodeAt(...settings, 'fn f(x: Settings["retri‸es"]) -> Int: x')).toEqual([
+      '(field) retries: Int',
+    ]);
+    expect(hoverCodeAt(...settings, 'fn f(s: Settings) -> String: s["regi‸on"]')).toEqual([
+      '(field) region: String',
+    ]);
+    const match = ['struct Field<T> { value: T }', 'type D<X> = match X:'];
+    expect(hoverCodeAt(...match, '  case Field<infer T>: T‸', '  case _: Never')).toEqual([
+      '(type) T',
+    ]);
+    expect(declaredPlacesAt(...match, '  case Field<infer T>: T‸', '  case _: Never')).toEqual([
+      'main:69',
+    ]);
+    expect(
+      declaredPlacesAt(...settings, 'fn f(x: { [K in keyof Settings]: Array<K‸> }) -> Int: 0'),
+    ).toEqual(['main:60']);
+  });
+
+  it('offers associated types, the keys a struct is indexed by, and `type` in bodies', () => {
+    const decls = [
+      'trait FormNode:',
+      '  type Data',
+      'struct Settings { retries: Int; region: String }',
+    ];
+    expect(completionNamesAt(...decls, 'fn f<T is FormNode>(x: T.‸) -> Int: 0')).toEqual(['Data']);
+    expect(
+      completionNamesAt(...decls, 'fn f(s: Settings) -> Int:', '  _ = s[‸]', '  0').filter((name) =>
+        name.startsWith('"'),
+      ),
+    ).toEqual(['"region"', '"retries"']);
+    expect(completionNamesAt('struct A:', '  x: Int', '  ‸')).toEqual(['type']);
+    expect(completionNamesAt('enum E:', '  A', '  ‸')).toEqual(['type']);
+    expect(completionNamesAt('trait T:', '  fn f(self: Self) -> Int', '  ‸')).toEqual([
+      'type',
+      'fn',
+    ]);
+  });
+
   it('still names things `infer` and `keyof`', () => {
     expect(
       codesOf(

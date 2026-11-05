@@ -11,7 +11,7 @@
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
-import { expectedVariants, isBareVariant } from '../expected.ts';
+import { expectedLiterals, expectedVariants, isBareVariant } from '../expected.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 import { visibleNames } from '../visible.ts';
 import { type Surroundings, surroundingsOf } from './surroundings.ts';
@@ -32,6 +32,7 @@ export function operandCandidates(
   return [
     ...visibleNames(cursor, namesValue).filter((candidate) => !isBareVariant(candidate)),
     ...expectedVariants(cursor, place),
+    ...expectedLiterals(cursor, place),
     ...wordCandidates(operandWordsIn(surroundings)),
   ];
 }

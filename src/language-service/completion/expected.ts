@@ -19,6 +19,8 @@ import type { Entity } from '../../compiler/binder/entities.ts';
 import { checkProgram } from '../../compiler/checker/check.ts';
 import { enumsExpected, sameNominal } from '../../compiler/checker/types/expected.ts';
 import type { Type } from '../../compiler/checker/types/type.ts';
+import { typeText } from '../../compiler/checker/types/type-text.ts';
+import { membersOf } from '../../compiler/checker/types/unions.ts';
 import type { ModuleId, Program } from '../../compiler/program/program.ts';
 import type { Expression } from '../../compiler/syntax/expressions/index.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
@@ -67,6 +69,20 @@ export function expectedVariants(cursor: Cursor, place: Place): readonly Candida
   });
   return candidates.filter(
     ({ name }, index) => candidates.findIndex((each) => each.name === name) === index,
+  );
+}
+
+/**
+ * The literals of the literal types a value expected at `place` may be (§2), a key naming a field
+ * among them (§3.1 Key types): the expected type's own, or its union members', each spelled as
+ * source writes it. `true` and `false` are words already offered.
+ */
+export function expectedLiterals(cursor: Cursor, place: Place): readonly Candidate[] {
+  const expected = expectedTypeAt(cursor, place);
+  return (expected === undefined ? [] : membersOf(expected)).flatMap((member): Candidate[] =>
+    member.kind === 'literal' && typeof member.value !== 'boolean'
+      ? [{ name: typeText(member), subject: { kind: 'literal', type: member } }]
+      : [],
   );
 }
 

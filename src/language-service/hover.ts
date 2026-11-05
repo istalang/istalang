@@ -5,7 +5,8 @@
  * type or a struct's keys, shows what it names beside it (`writtenAndNamedText`).
  *
  * A name is answered through the identifier query (checker denotation.ts), as going to its
- * definition is, so the two never disagree. A shorthand, `Pair{first}`, names a field and a
+ * definition is, so the two never disagree; a String literal naming a field as its key (§3.1),
+ * through the key query, as the field it names. A shorthand, `Pair{first}`, names a field and a
  * variable, and shows both. A function shows its signature, which spells its type with its
  * parameters' names.
  */
@@ -15,7 +16,7 @@ import type { Denotation } from '../compiler/checker/denotation.ts';
 import type { Type } from '../compiler/checker/types/type.ts';
 import { writtenAndNamedText } from '../compiler/checker/types/type-text.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
-import type { Expression } from '../compiler/syntax/expressions/index.ts';
+import type { Expression, StringLiteral } from '../compiler/syntax/expressions/index.ts';
 import type { Identifier } from '../compiler/syntax/node.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
 import { nodesAt, type SyntaxNode } from '../compiler/syntax/tree.ts';
@@ -63,7 +64,7 @@ function nodeHover(checked: CheckedModule, node: SyntaxNode): Hover | undefined 
   if (node.kind === 'Dereference' && node.operator === '->') {
     return undefined;
   }
-  const named = node.kind === 'Identifier' ? nameHover(checked, node) : undefined;
+  const named = isName(node) ? nameHover(checked, node) : undefined;
   const type = named === undefined ? typeAt(checked, node) : undefined;
   return (
     named ??
@@ -75,14 +76,27 @@ function nodeHover(checked: CheckedModule, node: SyntaxNode): Hover | undefined 
   );
 }
 
-function nameHover({ checker, module, tree }: CheckedModule, name: Identifier): Hover | undefined {
-  const denotations = checker.lookup.denotationsOf(module, name);
+/** Whether `node` may name a declaration: an identifier, or a String literal naming a field as its key. */
+function isName(node: SyntaxNode): node is Identifier | StringLiteral {
+  return node.kind === 'Identifier' || node.kind === 'StringLiteral';
+}
+
+/** What `name` denotes, as code: an identifier's denotations, or the field a key names (§3.1). */
+function nameHover(
+  { checker, module, tree }: CheckedModule,
+  name: Identifier | StringLiteral,
+): Hover | undefined {
+  const denotations =
+    name.kind === 'Identifier'
+      ? checker.lookup.denotationsOf(module, name)
+      : checker.lookup.keyDenotationsOf(module, name);
   if (denotations.length === 0) {
     return undefined;
   }
+  const text = name.kind === 'Identifier' ? name.text : name.value;
   return {
     span: spanIn(tree, name.span),
-    code: denotations.flatMap((denotation) => denotationLines(checker, name, denotation)),
+    code: denotations.flatMap((denotation) => denotationLines(checker, text, denotation)),
     doc: denotations
       .map(({ declared }) => docstringOf(checker, declared))
       .find((doc) => doc !== undefined),
@@ -108,20 +122,20 @@ function typeAt({ checker, module }: CheckedModule, node: SyntaxNode): Type | un
  */
 function denotationLines(
   checker: Checker,
-  name: Identifier,
+  name: string,
   { declared, type }: Denotation,
 ): readonly string[] {
   const typed = (kind: string) =>
-    `(${kind}) ${name.text}${type === undefined ? '' : `: ${writtenAndNamedText(type)}`}`;
+    `(${kind}) ${name}${type === undefined ? '' : `: ${writtenAndNamedText(type)}`}`;
   switch (declared.kind) {
     case 'function': {
       const signature = signatureOf(checker, declared.declaration).label;
       return type === undefined ? [signature] : [signature, writtenAndNamedText(type)];
     }
     case 'type':
-      return [`(type) ${type === undefined ? name.text : writtenAndNamedText(type)}`];
+      return [`(type) ${type === undefined ? name : writtenAndNamedText(type)}`];
     case 'namespace':
-      return [`(module) ${importedModule(checker, declared.entity)?.name ?? name.text}`];
+      return [`(module) ${importedModule(checker, declared.entity)?.name ?? name}`];
     default:
       return [typed(declared.kind)];
   }

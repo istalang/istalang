@@ -140,6 +140,7 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
       ...constructed(presenting, name, variant.fields.length > 0),
     };
   },
+  literal: (_presenting, { type }) => ({ kind: 'constant', detail: typeText(type), gives: [type] }),
   modulePath: (_presenting, { to }) =>
     to === 'module' ? { kind: 'module' } : { kind: 'folder', next: 'completion' },
   label: () => ({ kind: 'label' }),

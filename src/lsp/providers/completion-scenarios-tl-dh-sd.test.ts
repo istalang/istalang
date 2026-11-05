@@ -190,7 +190,7 @@ const scenarios: readonly Scenario[] = [
     title: 'Field name in a struct body',
     src: ['struct S:\n  ‸', 'struct S:\n  a: Int\n  ‸', 'struct S { a: Int; ‸'],
     where: 'top',
-    expect: { none: true },
+    expect: { has: ['type'], lacks: ['Int', 'S', 'fn'] },
   },
   {
     id: 'SD-02',
@@ -209,7 +209,7 @@ const scenarios: readonly Scenario[] = [
     title: 'Variant name',
     src: ['enum E:\n  ‸', 'enum E { A; ‸', 'enum E:\n  A\n  ‸'],
     where: 'top',
-    expect: { none: true },
+    expect: { has: ['type'], lacks: ['Int', 'E', 'fn'] },
   },
   {
     id: 'SD-03b',

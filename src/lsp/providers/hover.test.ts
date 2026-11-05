@@ -1,6 +1,6 @@
 /**
  * Hovers over every corpus and std module, through the protocol. Every name the identifier query
- * answers, every node checking typed and every written type is shown somewhere: where it is the
+ * answers, every key the key query does, every node checking typed and every written type is shown somewhere: where it is the
  * innermost node holding the offset that has a name or a type, or, for a written type, at its last
  * name. There, a name shows each of its types, and any other node its own. A node holding no
  * offset (a `Missing` one) has nothing to hover over, and the `x->` of `x->f` is the member read's
@@ -38,13 +38,21 @@ beforeAll(async () => {
   client = await corpusClient();
 });
 
+/** What `node` denotes: an identifier's denotations, or the field a key names (§3.1). */
+function denotationsAt(module: ModuleId, node: SyntaxNode) {
+  if (node.kind === 'Identifier') {
+    return checker.lookup.denotationsOf(module, node);
+  }
+  return node.kind === 'StringLiteral' ? checker.lookup.keyDenotationsOf(module, node) : [];
+}
+
 /** The types a hover over `node` must show; undefined for a node with neither a name nor a type. */
 function shownTypes(module: ModuleId, node: SyntaxNode): readonly string[] | undefined {
   const isLink = node.kind === 'Dereference' && node.operator === '->';
   if (isLink || node.span.from === node.span.to) {
     return undefined;
   }
-  const denotations = node.kind === 'Identifier' ? checker.lookup.denotationsOf(module, node) : [];
+  const denotations = denotationsAt(module, node);
   if (denotations.length > 0) {
     return denotations.flatMap(({ type }) => (type === undefined ? [] : typeText(type)));
   }

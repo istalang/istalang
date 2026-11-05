@@ -435,9 +435,9 @@ struct S:
 struct S { a: int; ‸
 ```
 - **Where / trigger:** top level; invoked, or typing on
-- **Offer:** Nothing: the field's name is declared (`@` annotation lines aside, AN-01).
-- **Not:** Everything.
-- **Basis:** declaring position.
+- **Offer:** `type`, which declares an associated type there instead (§3.1); else nothing: the field's name is declared (`@` annotation lines aside, AN-01).
+- **Not:** Everything else.
+- **Basis:** declaring position; spec §3.1 Associated types.
 
 ### SD-02 · Field default · P2 · ✅ pass
 
@@ -467,8 +467,8 @@ enum E:
   ‸
 ```
 - **Where / trigger:** top level; invoked, or typing on
-- **Offer:** Nothing: the variant is declared.
-- **Not:** Everything.
+- **Offer:** `type`, which declares an associated type there instead (§3.1); else nothing: the variant is declared.
+- **Not:** Everything else.
 - **Basis:** declaring position, spec §3.11.
 
 ### SD-03b · Variant payload field · P1 · ✅ pass
