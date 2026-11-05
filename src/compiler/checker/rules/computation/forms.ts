@@ -4,7 +4,9 @@
  * time makes are here too (§2): taken into or out of a one-element tuple (§3.15), a struct's value
  * rebuilt as its shape, its fields in the shape's name order (§3.1), and a value put into a union
  * as one of its members, as a `Json` literal is at any depth; the others, a union widened member
- * by member and a value into an `any` type, need the runtime, so they are refused.
+ * by member and a value into an `any` type, need the runtime, so they are refused. A value of a
+ * member a recursive member's union holds (§2, §3.17) goes in through that member, inside the
+ * union it unfolds to (`holdingMember`), so every member a form names is its union's own.
  */
 
 import { unreachable } from '../../../../structures/unreachable.ts';
@@ -13,6 +15,9 @@ import type { ConstantForm } from '../../constant-form.ts';
 import type { CheckerContext } from '../../context.ts';
 import { laidOut, namedValues } from '../../types/field-order.ts';
 import type { Fit } from '../../types/fit.ts';
+import type { Type, UnionType } from '../../types/type.ts';
+import type { TypeRules } from '../../types/type-rules.ts';
+import { holdingMember } from '../../types/unions.ts';
 
 /** How computing a part of an initializer went: computed, refused (`form` or `endless`), or already in error. */
 export type Outcome =
@@ -34,7 +39,7 @@ export function refused(part: NodeOf<string>): Outcome {
 export function fittedForm(
   form: ConstantForm,
   { conversion, into }: Fit,
-  checker: Pick<CheckerContext, 'fieldsOf'>,
+  checker: Pick<CheckerContext, 'fieldsOf' | 'typeRules'>,
 ): ConstantForm | undefined {
   const converted = convertedForm(form, conversion, checker);
   if (into === undefined || converted === undefined) {
@@ -42,8 +47,28 @@ export function fittedForm(
   }
   const { union, member } = into;
   return union.kind === 'union' && member !== undefined
-    ? { kind: 'member', union, member, value: converted }
+    ? memberForm(union, member, converted, checker.typeRules)
     : undefined;
+}
+
+/**
+ * `value`, of `member`, in `union`: as that member, or, where a recursive member's union holds it,
+ * as that recursive member holding it in the union it unfolds to, at any depth.
+ */
+function memberForm(
+  union: UnionType,
+  member: Type,
+  value: ConstantForm,
+  rules: TypeRules,
+): ConstantForm {
+  const holder = holdingMember(union.members, member, rules);
+  if (holder === undefined) {
+    return { kind: 'member', union, member, value };
+  }
+  const held = rules.unfold(holder);
+  return held.kind === 'union'
+    ? { kind: 'member', union, member: holder, value: memberForm(held, member, value, rules) }
+    : unreachable('A recursive member holds a member only through the union it unfolds to.');
 }
 
 /** `form` converted as `conversion` says; undefined for a conversion only the runtime makes. */

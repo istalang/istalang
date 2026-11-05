@@ -85,6 +85,30 @@ describe('a member a recursive member of a union holds', () => {
     expect(mainGives('Bool', 'return isTree()', declarations)).toBe(true);
     expect(mainGives('Int', 'return widened()', declarations)).toBe(42);
   });
+
+  it('goes into a top-level constant through that member', () => {
+    const declarations = lines(
+      tree,
+      'const c: Tree | String = 42',
+      'const d: Tree | String = [42]',
+      'fn weight(t: Tree) -> Int:',
+      '  match t:',
+      '    case Int as n: return n',
+      '    case Array<Tree> as items: return items.length()',
+      'fn read(x: Tree | String) -> Int:',
+      '  match x:',
+      '    case Tree as t: return weight(t)',
+      '    case String: return 0',
+    );
+    expect(reported(declarations)).toEqual(reportedNothing);
+    expect(
+      mainGives(
+        'Int',
+        'return read(c) + read(d) + (if c is Tree and d is Tree: 100 else: 0)',
+        declarations,
+      ),
+    ).toBe(143);
+  });
 });
 
 describe('a literal built as a recursive use, at any depth, with any items', () => {
