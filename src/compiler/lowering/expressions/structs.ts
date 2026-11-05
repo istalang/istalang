@@ -14,12 +14,11 @@
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { FieldSource } from '../../checker/check.ts';
-import {
-  type AnonymousStructType,
-  laidOut,
-  type NominalType,
-  namedValues,
-  type StructValueType,
+import { laidOut, namedValues } from '../../checker/types/field-order.ts';
+import type {
+  AnonymousStructType,
+  NominalType,
+  StructValueType,
 } from '../../checker/types/type.ts';
 import {
   type Expression,

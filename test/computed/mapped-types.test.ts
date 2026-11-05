@@ -128,4 +128,25 @@ describe('mapped struct types (§3)', () => {
       ).length,
     ).toBeGreaterThan(0);
   });
+
+  it('keeps the keys a mapped entry ranges over through substitution, so a generic mapped type checks writes by key', () => {
+    const copy = [
+      'type Copy<S is struct> = { [F in keyof S]: S[F] }',
+      'type Labels<S is struct> = { [F in keyof S]: Entry<S, F> }',
+      'struct Entry<S is struct, K in keyof S> { key: K }',
+    ];
+    const generic = (body: string, type = 'Copy<T>') => [
+      ...copy,
+      `fn g<T is struct { a: Int; [_]: String }>(x: ${type}, k: keyof T) -> ${type}:`,
+      '  let y = x',
+      `  ${body}`,
+      '  y',
+    ];
+    const mismatch = new Set([checkerDiagnostics.typeMismatch.code]);
+    expect(new Set(codesOf(...generic('y[k] = true')))).toEqual(mismatch);
+    expect(new Set(codesOf(...generic('y[k] = true', 'Copy<Copy<T>>')))).toEqual(mismatch);
+    expect(codesOf(...generic('y.a = 1'))).toEqual([]);
+    expect(codesOf(...generic('y.a = Entry{key: "a"}', 'Labels<T>'))).toEqual([]);
+    expect(codesOf(...generic('y.a = Entry{key: k}', 'Labels<T>')).length).toBeGreaterThan(0);
+  });
 });

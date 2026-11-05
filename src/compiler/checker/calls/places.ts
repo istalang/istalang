@@ -146,9 +146,7 @@ export function severalKeyedFields(
 function isSingleKey(checker: CheckerContext, key: Type): boolean {
   return (
     (key.kind === 'literal' && typeof key.value === 'string') ||
-    (key.kind === 'parameter' &&
-      key.declaration.kind === 'TypeParameter' &&
-      checker.memberUnionOf(key.declaration) !== undefined)
+    (key.kind === 'parameter' && checker.fitting.memberUnionOf(key) !== undefined)
   );
 }
 

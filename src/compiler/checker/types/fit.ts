@@ -29,8 +29,8 @@ import {
   type AnonymousStructType,
   type AnyType,
   isPrimitive,
-  type ParameterKey,
   type Type,
+  type TypeParameterType,
   type UnionType,
 } from './type.ts';
 import { parametersIn } from './type-parts.ts';
@@ -82,7 +82,8 @@ export const exactFit: Fit = { conversion: { kind: 'none' } };
 export interface Fitting extends TypeRules {
   readonly meetsAny: (found: Type, target: AnyType) => boolean;
   readonly shapeOf: (found: Type) => AnonymousStructType | undefined;
-  readonly memberUnionOf: (parameter: ParameterKey) => Type | undefined;
+  /** The union a member parameter type stands for one member of: the one it carries, or its declared one. */
+  readonly memberUnionOf: (parameter: TypeParameterType) => Type | undefined;
 }
 
 /** How `matchConversion` compares leaf types and checks `any` conformance. */
@@ -136,7 +137,7 @@ function ownConversion(found: Type, expected: Type, rules: ConversionRules): Fit
  * itself, which each instantiation makes the member it stands for; else as its union converts.
  */
 function memberParameterFit(found: Type, expected: Type, rules: ConversionRules): Fit | undefined {
-  const union = found.kind === 'parameter' ? rules.memberUnionOf(found.declaration) : undefined;
+  const union = found.kind === 'parameter' ? rules.memberUnionOf(found) : undefined;
   if (union === undefined) {
     return undefined;
   }

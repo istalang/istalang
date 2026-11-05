@@ -35,12 +35,12 @@ import type { Invalid } from '../../syntax/node.ts';
 import type { VariantMember } from '../check.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { declaredFields } from '../types/declared-fields.ts';
+import { inFieldOrder } from '../types/field-order.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import {
   type AnonymousStructType,
   errorType,
   type FieldMember,
-  inFieldOrder,
   type NominalType,
   shapeType,
   type Type,

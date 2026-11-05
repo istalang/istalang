@@ -61,8 +61,9 @@ export function programTypeRules(
     ...typeRules,
     meetsAny: (type, target) => meetsAny(checker, type, target),
     shapeOf,
-    memberUnionOf: (parameter) =>
-      parameter.kind === 'TypeParameter' ? checker.memberUnionOf(parameter) : undefined,
+    memberUnionOf: ({ declaration, within }) =>
+      within ??
+      (declaration.kind === 'TypeParameter' ? checker.memberUnionOf(declaration) : undefined),
   };
   return { typeRules, fitting };
 }

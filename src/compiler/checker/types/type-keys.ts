@@ -69,7 +69,11 @@ function keyOf(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefi
       return '?';
     case 'parameter': {
       const position = positions?.get(type.declaration);
-      return position === undefined ? `'${identityOf(type.declaration)}` : `$${position}`;
+      if (position !== undefined) {
+        return `$${position}`;
+      }
+      const ranging = type.within === undefined ? '' : `in ${key(type.within)}`;
+      return `'${identityOf(type.declaration)}${ranging}`;
     }
     case 'nominal':
       return `#${identityOf(type.entity)}<${type.arguments.map(key).join(',')}>`;

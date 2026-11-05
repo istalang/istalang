@@ -27,10 +27,10 @@ import type { Accepts, BodyContext } from '../body-context.ts';
 import type { FieldSource } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { builtFrom } from '../types/expected.ts';
+import { inFieldOrder } from '../types/field-order.ts';
 import {
   errorType,
   type FieldMember,
-  inFieldOrder,
   type NominalEntity,
   type NominalType,
   shapeType,

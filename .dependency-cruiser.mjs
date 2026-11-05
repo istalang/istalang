@@ -150,6 +150,7 @@ const checkerSurface = [
   'host-externs.ts',
   'types/type.ts',
   'types/function-types.ts',
+  'types/field-order.ts',
   'types/identity.ts',
   'types/named-types.ts',
   'types/substitution.ts',

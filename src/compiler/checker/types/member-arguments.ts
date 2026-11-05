@@ -25,7 +25,7 @@ export function isOneMember(
   if (hasMember(union, type)) {
     return true;
   }
-  const own = type.kind === 'parameter' ? memberUnionOf(type.declaration) : undefined;
+  const own = type.kind === 'parameter' ? memberUnionOf(type) : undefined;
   return (
     own !== undefined && membersOf(own).every((member) => isOneMember(union, member, memberUnionOf))
   );

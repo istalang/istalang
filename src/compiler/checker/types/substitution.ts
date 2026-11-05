@@ -49,7 +49,10 @@ export function substitute(type: Type, substitution: Substitution, rules: TypeRu
     return type;
   }
   if (type.kind === 'parameter') {
-    return asWritten(type, substitution.get(type.declaration) ?? type, substitution, rules);
+    const replaced =
+      substitution.get(type.declaration) ??
+      mapChildren(type, (child) => substitute(child, substitution, rules), rules);
+    return asWritten(type, replaced, substitution, rules);
   }
   if (type.kind === 'any') {
     return substituteAny(type, substitution, rules);

@@ -10,8 +10,8 @@ import { unreachable } from '../../../../structures/unreachable.ts';
 import type { NodeOf } from '../../../syntax/node.ts';
 import type { ConstantForm } from '../../constant-form.ts';
 import type { CheckerContext } from '../../context.ts';
+import { laidOut, namedValues } from '../../types/field-order.ts';
 import type { Fit } from '../../types/fit.ts';
-import { laidOut, namedValues } from '../../types/type.ts';
 
 /** How computing a part of an initializer went: computed, refused (`form` or `endless`), or already in error. */
 export type Outcome =

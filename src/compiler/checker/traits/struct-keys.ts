@@ -157,8 +157,8 @@ export function isKeyWithin(checker: CheckerContext, key: Type, keys: Type): boo
           each.without.every((name) => member.without.includes(name)),
       );
     }
-    if (member.kind === 'parameter' && member.declaration.kind === 'TypeParameter') {
-      const union = checker.memberUnionOf(member.declaration);
+    if (member.kind === 'parameter') {
+      const union = checker.fitting.memberUnionOf(member);
       return (
         among.some((each) => typeKeys.typeKey(each) === typeKeys.typeKey(member)) ||
         (union !== undefined && isKeyWithin(checker, union, keys))
@@ -192,13 +192,13 @@ export function fieldTypeOf(checker: CheckerContext, of: Type, key: Type): Type 
     return namedFieldType(checker, of, name);
   }
   const keys = keysOf(checker, of, []);
-  if (keys.kind === 'error' || !(isOpaque(key) || isKeyWithin(checker, key, keys))) {
+  if (keys.kind === 'error' || !isKeyWithin(checker, key, keys)) {
     return errorType;
   }
   if (of.kind === 'mapped' && key.kind === 'parameter' && isKeyWithin(checker, key, of.keys)) {
     return mappedFieldType(checker, of, key);
   }
-  return { kind: 'field', of, key };
+  return opaqueFieldType(checker, of, key) ?? { kind: 'field', of, key };
 }
 
 /** The type of the field `name` names in `of`, as `fieldTypeOf` says. */
@@ -215,16 +215,22 @@ function namedFieldType(checker: CheckerContext, of: Type, name: string): Type {
       ? mappedFieldType(checker, of, literalType(name))
       : errorType;
   }
-  if (!isOpaque(of)) {
-    return errorType;
-  }
-  const opaque: Type = { kind: 'field', of, key: literalType(name) };
+  return (isOpaque(of) && opaqueFieldType(checker, of, literalType(name))) || errorType;
+}
+
+/**
+ * The type of the field `key` names in `of`, a struct not known yet: the exact type its struct
+ * constraints give it, else the opaque field meeting what they ask; undefined when they ask
+ * nothing of it, so it may not be there.
+ */
+function opaqueFieldType(checker: CheckerContext, of: Type, key: Type): Type | undefined {
+  const opaque: Type = { kind: 'field', of, key };
   const rules = entryRules(checker, opaque);
   const exact = rules.find((rule) => rule.kind === 'type');
   if (exact !== undefined) {
     return exact.type;
   }
-  return rules.length === 0 ? errorType : opaque;
+  return rules.length === 0 ? undefined : opaque;
 }
 
 /**

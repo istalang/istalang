@@ -47,9 +47,10 @@ export function typeChildren(type: Type): readonly Type[] {
       return [type.of];
     case 'mapped':
       return [...type.named.map((field) => field.type), type.keys, type.value];
+    case 'parameter':
+      return type.within === undefined ? [] : [type.within];
     case 'literal':
     case 'primitive':
-    case 'parameter':
     case 'error':
       return [];
     default: {
@@ -256,9 +257,10 @@ export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => T
       return { ...type, of: map(type.of) };
     case 'mapped':
       return { ...type, ...mappedParts(type, map) };
+    case 'parameter':
+      return type.within === undefined ? type : { ...type, within: map(type.within) };
     case 'literal':
     case 'primitive':
-    case 'parameter':
     case 'error':
       return type;
     case 'nominal':

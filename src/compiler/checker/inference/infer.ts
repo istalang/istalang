@@ -310,7 +310,7 @@ export class Inference {
    * several members noted as such.
    */
   #filling(parameter: ParameterKey, given: Type): Type | undefined {
-    const declared = this.#fitting.memberUnionOf(parameter);
+    const declared = this.#fitting.memberUnionOf({ kind: 'parameter', declaration: parameter });
     if (declared === undefined || given.kind === 'error' || isPrimitive(given, 'Never')) {
       return given;
     }
@@ -330,7 +330,7 @@ export class Inference {
 
   /** The union `type` stands for one member of, when it is a member parameter. */
   #memberUnionOf(type: Type): Type | undefined {
-    return type.kind === 'parameter' ? this.#fitting.memberUnionOf(type.declaration) : undefined;
+    return type.kind === 'parameter' ? this.#fitting.memberUnionOf(type) : undefined;
   }
 
   /**

@@ -41,10 +41,10 @@ import { type ConstantForm, durationForm, formSemantics } from '../../constant-f
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { FunctionCall } from '../../resolved-call.ts';
+import { laidOut } from '../../types/field-order.ts';
 import { isExact } from '../../types/fit.ts';
 import { instantiatedBody } from '../../types/instantiation.ts';
 import { type Substitution, substitute, substitutionFor } from '../../types/substitution.ts';
-import { laidOut } from '../../types/type.ts';
 import { computed, fittedForm, itemsOf, type Outcome, pairOf, refused, unknown } from './forms.ts';
 
 /** What the walk reads: layouts, field defaults, the constant or annotation checked, and others. */

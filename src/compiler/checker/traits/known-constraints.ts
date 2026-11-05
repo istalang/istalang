@@ -46,9 +46,11 @@ import {
   type Constraint,
   errorType,
   isOpaque,
+  isPrimitive,
   type Type,
 } from '../types/type.ts';
-import { literalType, membersOf } from '../types/unions.ts';
+import { parametersIn } from '../types/type-parts.ts';
+import { literalType, membersOf, unionOf } from '../types/unions.ts';
 import {
   constraintOn,
   constraintSubstitution,
@@ -103,9 +105,58 @@ export function structConstraintsOn(
       return entryRules(checker, type).flatMap((rule) =>
         rule.kind === 'meets' ? rule.structs : [],
       );
+    case 'mapped':
+      return [mappedStructConstraint(checker, type)];
     default:
       return [];
   }
+}
+
+/**
+ * The struct constraint a mapped struct type whose keys aren't known yet meets by its shape
+ * (§3.1): it is a struct type, each field its braces or a known key name has that field's type,
+ * and each other field has its value for one of the keys not known yet: that type, or what it is
+ * known to meet, unless the value differs from key to key in a way known only per instantiation.
+ */
+function mappedStructConstraint(
+  checker: CheckerContext,
+  type: Extract<Type, { readonly kind: 'mapped' }>,
+): StructConstraintModel {
+  const rules = checker.typeRules;
+  const keys = membersOf(type.keys);
+  const names = keys.flatMap((key) =>
+    key.kind === 'literal' && typeof key.value === 'string' ? [key.value] : [],
+  );
+  const named = [
+    ...type.named.map((field) => ({ name: field.name, rule: fieldRule(checker, field.type) })),
+    ...names.map((name) => ({
+      name,
+      rule: fieldRule(checker, rules.fieldType(type, literalType(name))),
+    })),
+  ];
+  const otherKeys = unionOf(
+    keys.filter((key) => !(key.kind === 'literal' && typeof key.value === 'string')),
+    rules,
+  );
+  if (isPrimitive(otherKeys, 'Never')) {
+    return { named, others: undefined };
+  }
+  const { parameter } = type;
+  const oneOther: Type = { kind: 'parameter', declaration: parameter, within: otherKeys };
+  const value = substitute(type.value, new Map([[parameter, oneOther]]), rules);
+  const varies = parametersIn(value).includes(parameter) && !isOpaque(value);
+  return { named, others: varies ? undefined : fieldRule(checker, value) };
+}
+
+/** What a field of type `type` meets: that type, or, not known yet, what it is known to meet. */
+function fieldRule(checker: CheckerContext, type: Type): EntryRule {
+  return isOpaque(type)
+    ? {
+        kind: 'meets',
+        traits: knownConstraints(checker, type),
+        structs: structConstraintsOn(checker, type),
+      }
+    : { kind: 'type', type };
 }
 
 /**
@@ -241,10 +292,7 @@ function keyedFieldTypes(
  */
 export function keyMembers(checker: CheckerContext, key: Type): readonly Type[] {
   return membersOf(key).flatMap((member) => {
-    const union =
-      member.kind === 'parameter' && member.declaration.kind === 'TypeParameter'
-        ? checker.memberUnionOf(member.declaration)
-        : undefined;
+    const union = member.kind === 'parameter' ? checker.fitting.memberUnionOf(member) : undefined;
     return union === undefined ? [member] : keyMembers(checker, union);
   });
 }
@@ -281,7 +329,11 @@ export function entryRules(checker: CheckerContext, type: Type): readonly EntryR
       return models.flatMap((model) => model.others ?? []);
     }
     const members = keyMembers(checker, key);
-    return members.length === 1 && members[0] === key ? [] : commonRules(members.map(rulesOf));
+    const [only] = members;
+    if (members.length === 1 && only !== undefined) {
+      return only === key ? [] : rulesOf(only);
+    }
+    return commonRules(members.map(rulesOf));
   };
   return rulesOf(type.key);
 }

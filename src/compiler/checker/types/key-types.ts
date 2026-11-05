@@ -19,7 +19,8 @@ import type { IndexedType, MappedField, StructType, TypeNode } from '../../synta
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { declaredFields } from './declared-fields.ts';
-import { errorType, shapeType, type Type } from './type.ts';
+import { substitute } from './substitution.ts';
+import { errorType, type ParameterKey, shapeType, type Type } from './type.ts';
 import { typeText } from './type-text.ts';
 import { membersOf } from './unions.ts';
 
@@ -76,16 +77,15 @@ export function structWritten(written: Written, node: StructType): Type {
     checker.report(module, checkerDiagnostics.severalMappedEntries(extra.span));
   }
   const keys = mappedKeysWritten(written, entry);
-  const value = checker.resolveType(module, entry.type);
-  return keys.kind === 'error'
-    ? keys
-    : checker.typeRules.mappedType({
-        origin: node,
-        named,
-        parameter: entry.parameter,
-        keys,
-        value,
-      });
+  if (keys.kind === 'error') {
+    return keys;
+  }
+  const { parameter } = entry;
+  const ranging = new Map<ParameterKey, Type>([
+    [parameter, { kind: 'parameter', declaration: parameter, within: keys }],
+  ]);
+  const value = substitute(checker.resolveType(module, entry.type), ranging, checker.typeRules);
+  return checker.typeRules.mappedType({ origin: node, named, parameter, keys, value });
 }
 
 /** A mapped entry's keys, each reported that names no field; the error type after a report. */
@@ -123,10 +123,7 @@ function isKey(checker: CheckerContext, key: Type): boolean {
     case 'primitive':
       return key.name === 'Never';
     case 'parameter':
-      return (
-        key.declaration.kind === 'TypeParameter' &&
-        checker.memberUnionOf(key.declaration) !== undefined
-      );
+      return checker.fitting.memberUnionOf(key) !== undefined;
     default:
       return false;
   }

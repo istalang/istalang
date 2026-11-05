@@ -18,13 +18,14 @@ import { isMissingName } from '../../syntax/node.ts';
 import type { ConstraintNode, FieldEntry, StructConstraint } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { inFieldOrder } from '../types/field-order.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import type {
   ConstraintSet,
   EntryRule,
   StructConstraintModel,
 } from '../types/struct-constraint.ts';
-import { type Constraint, inFieldOrder } from '../types/type.ts';
+import type { Constraint } from '../types/type.ts';
 import { type ConstraintSite, resolveConstraint } from './constraints.ts';
 
 /** The struct constraints after `is` on `parameter`, resolved in `module`, where it is declared. */

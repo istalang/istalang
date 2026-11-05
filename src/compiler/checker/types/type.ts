@@ -43,7 +43,6 @@
  *   with the implicit conversions needs to know which type is `Optional`, so it lives in fit.ts.
  */
 
-import { compareOrdered } from '../../../language/order.ts';
 import type { PrimitiveName } from '../../../language/primitives.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { TypeEntity } from '../../binder/entities.ts';
@@ -59,6 +58,7 @@ import type {
 } from '../../syntax/declarations.ts';
 import type { StructLiteral } from '../../syntax/expressions/index.ts';
 import type { StructType } from '../../syntax/types.ts';
+import { inFieldOrder } from './field-order.ts';
 
 /** The alias a type was written through, with the arguments it was given there (§3.17). */
 interface DeclaredAliasUse {
@@ -165,44 +165,6 @@ export interface AnonymousStructType extends WrittenThrough {
   readonly fields: readonly FieldMember[];
 }
 
-/**
- * `fields` in the one order every struct lays its fields out in, nominal or shape: by name, as JSON
- * orders keys (§3.1 "Field order", §9). Declaration order is what evaluation follows, and only it:
- * a default sees the fields declared before it, and a literal evaluates its fields as written.
- */
-export function inFieldOrder<Named extends { readonly name: string }>(
-  fields: readonly Named[],
-): readonly Named[] {
-  return fields.toSorted((first, second) => compareOrdered(first.name, second.name));
-}
-
-/**
- * The values of a struct's `fields`, in its layout, each taken by its field's name from `named`:
- * how a value given field by field in another order, a literal's in declaration order or another
- * struct type's, takes its own type's layout (§3.1).
- */
-export function laidOut<Value>(
-  fields: readonly FieldMember[],
-  named: ReadonlyMap<string, Value>,
-): Value[] {
-  return fields.map(
-    ({ name }) => named.get(name) ?? unreachable(`No value is given for the field '${name}'.`),
-  );
-}
-
-/** The values of a struct laid out as `fields`, each by its field's name: `laidOut`'s inverse. */
-export function namedValues<Value>(
-  fields: readonly FieldMember[],
-  values: readonly Value[],
-): ReadonlyMap<string, Value> {
-  return new Map(
-    values.map((value, index) => [
-      fields[index]?.name ?? unreachable(`No field is laid out at position ${index}.`),
-      value,
-    ]),
-  );
-}
-
 /** The shape of `fields`, written at `origin`: its fields in name order (§3.1). */
 export function shapeType(
   origin: AnonymousStructType['origin'],
@@ -237,10 +199,17 @@ export type PackType = TypeParameterType | ErrorType;
 /** What a type parameter is keyed by: its declaration, or a trait standing for its `Self`. */
 export type ParameterKey = TypeParameter | TraitDeclaration;
 
-/** A type parameter, opaque inside the declaration that introduces it (§3.5). */
+/**
+ * A type parameter, opaque inside the declaration that introduces it (§3.5). A mapped entry's binds
+ * it within the type (§3.1), whose keys a substitution from outside changes, so its occurrences
+ * carry the keys it ranges over (`within`), substituted with them, never read again from where
+ * it is written. Its key holds them (type-keys.ts): what is known of one field of several keys
+ * isn't what is known of one of fewer, and results kept by a type's key must tell them apart.
+ */
 export interface TypeParameterType extends WrittenThrough {
   readonly kind: 'parameter';
   readonly declaration: ParameterKey;
+  readonly within?: Type | undefined;
 }
 
 export interface ErrorType extends WrittenThrough {
