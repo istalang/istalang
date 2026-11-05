@@ -15,6 +15,7 @@ import {
   type NominalType,
   type ParameterKey,
   type Type,
+  type TypeMatchUse,
   type UnionType,
 } from './type.ts';
 import { typeKeys } from './type-keys.ts';
@@ -190,7 +191,9 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
       case 'keys':
         return rules.keysOf(map(type.of), type.without);
       case 'mapped':
-        return rules.mappedType(mappedParts(type, map));
+        return type.recursion === undefined
+          ? rules.mappedType(mappedParts(type, map))
+          : rules.matchType(type.recursion.declaration, type.recursion.arguments.map(map));
       case 'match':
       case 'recursive':
         return rules.matchType(type.declaration, type.arguments.map(map));
@@ -226,7 +229,11 @@ export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => T
     case 'keys':
       return { ...type, of: map(type.of) };
     case 'mapped':
-      return { ...type, ...mappedParts(type, map) };
+      return {
+        ...type,
+        ...mappedParts(type, map),
+        recursion: mappedRecursion(type.recursion, map),
+      };
     case 'match':
     case 'recursive':
       return { ...type, arguments: type.arguments.map(map) };
@@ -242,10 +249,7 @@ export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => T
       return {
         ...type,
         fields: type.fields.map((field) => ({ ...field, type: map(field.type) })),
-        recursion:
-          type.recursion === undefined
-            ? undefined
-            : { ...type.recursion, arguments: type.recursion.arguments.map(map) },
+        recursion: mappedRecursion(type.recursion, map),
       };
     case 'tuple':
       return { ...type, elements: type.elements.map(map) };
@@ -274,6 +278,15 @@ export function mapParts(type: Exclude<Type, UnionType>, map: (child: Type) => T
       return unhandled;
     }
   }
+}
+
+function mappedRecursion(
+  recursion: TypeMatchUse | undefined,
+  map: (child: Type) => Type,
+): TypeMatchUse | undefined {
+  return recursion === undefined
+    ? undefined
+    : { ...recursion, arguments: recursion.arguments.map(map) };
 }
 
 /** A mapped struct type's parts, each type it is built from replaced by what `map` gives. */

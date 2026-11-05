@@ -59,7 +59,7 @@ export function substitute(type: Type, substitution: Substitution, rules: TypeRu
   if (type.kind === 'any') {
     return substituteAny(type, substitution, rules);
   }
-  if (type.kind === 'mapped') {
+  if (type.kind === 'mapped' && type.recursion === undefined) {
     return asWritten(type, substituteMapped(type, substitution, rules), substitution, rules);
   }
   return asWritten(

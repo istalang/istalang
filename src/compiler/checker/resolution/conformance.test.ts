@@ -1,14 +1,17 @@
 /**
- * Meeting constraints (§3.10): a required field is met by a struct's field of the same name and
- * type, a required function by a function declared beside the type or the trait, with the
- * required result, the same wherever the constraint is met, and Sendable is derived from what a
- * type holds (§3.1).
+ * Meeting constraints (§3.5, §3.10): a required field is met by a struct's field of the same name
+ * and type, a required function by a function declared beside the type or the trait, with the
+ * required result, the same wherever the constraint is met, Sendable is derived from what a type
+ * holds (§3.1), and a recursive struct or union meets a struct constraint or member trait
+ * coinductively while non-contractive witness cycles report 5114.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { decodeJson } from '../../../definition/codec.ts';
+import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { diagnosedAt } from '../../compile.test-kit.ts';
+import { compiledText, diagnosedAt } from '../../compile.test-kit.ts';
 import { idOf } from '../../program/program.test-kit.ts';
 import { checkedApart, reported } from '../check.test-kit.ts';
 import { checkProgram } from '../check.ts';
@@ -16,12 +19,8 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { intType, stringType } from '../types/type.ts';
 import { callWithTypes } from './silent-choice.ts';
 
-const { notConforming } = checkerDiagnostics;
+const { endlessConformance, notConforming, unmetStructConstraint } = checkerDiagnostics;
 
-/**
- * Whether checking `text`, beside `others`, reports a constraint not met; throws when it reports
- * anything else, so a case that is met is met cleanly.
- */
 function unmet(text: string, others: Readonly<Record<string, string>> = {}): boolean {
   const { codes } = reported(text, others);
   if (codes.some((code) => code !== notConforming.code)) {
@@ -30,7 +29,11 @@ function unmet(text: string, others: Readonly<Record<string, string>> = {}): boo
   return codes.length > 0;
 }
 
-/** Field types, each with a value of that type. */
+function runSource(source: string): unknown {
+  const state = startToEnd(testRuntime(), compiledText(source));
+  return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
+}
+
 const fieldTypes = [
   ['Int', '1'],
   ['String', '"a"'],
@@ -111,9 +114,7 @@ describe('a required function', () => {
 
   it('is met through the module declaring the trait, without importing the functions', () => {
     const lib = [
-      'trait Named:',
-      '  fn name(self: Self) -> String',
-      '  fn Self.anonymous() -> Self',
+      'trait Named { fn name(self: Self) -> String, fn Self.anonymous() -> Self }',
       'fn name(self: Int) -> String: "int"',
       'fn Int.anonymous() -> Int: 0',
     ].join('\n');
@@ -172,13 +173,10 @@ describe('a required static function', () => {
       const placed = (module: string) => (declaredIn === module ? from : '');
       const dec = `import Money from 'money'\nstruct Dec { units: Int }\n${placed('dec')}`;
       const main = [
-        "import Money from 'money'",
-        "import Dec from 'dec'",
+        "import Money from 'money'\nimport Dec from 'dec'",
         placed('main'),
         'fn convert<T is Convertible<Dec>>(value: Dec) -> T: T(value)',
-        'fn main() -> Int:',
-        '  const money: Money = convert(Dec{units: 2})',
-        '  money.cents',
+        'fn main() -> Int: { const money: Money = convert(Dec{units: 2}); money.cents }',
       ].join('\n');
       expect(unmet(main, { money: 'struct Money { cents: Int }', dec })).toBe(isUnmet);
     },
@@ -218,7 +216,6 @@ describe('Sendable', () => {
 });
 
 describe('a derived trait', () => {
-  /** What checking `text`, after an import of the json module, says each unmet constraint needs. */
   function needs(text: string): readonly string[] {
     const main = `import * as json from "json"\n${text}`;
     const { diagnostics } = diagnosedAt(stdProgramOf({ 'main.ista': main }), 'main.ista');
@@ -270,10 +267,8 @@ describe('declared witness constraints and typed calls', () => {
       'import * as json from "json"',
       'struct Point { x: Int, y: Int }',
       'struct Box<T> { value: T }',
-      'fn toJson<T is Stringable>(self: Box<T>) -> json.Json:',
-      '  json.encodeText(self.value)',
-      'fn main() -> String:',
-      '  json.stringify(Box{value: Point{x: 1, y: 2}})',
+      'fn toJson<T is Stringable>(self: Box<T>) -> json.Json: json.encodeText(self.value)',
+      'fn main() -> String: json.stringify(Box{value: Point{x: 1, y: 2}})',
     ].join('\n');
     const diagnostics = stdProgramOf({ 'main.ista': text });
     const checked = checkProgram(diagnostics).diagnosticsOf(idOf('main.ista'));
@@ -292,5 +287,100 @@ describe('declared witness constraints and typed calls', () => {
     const candidates = overloads.map((declaration) => ({ declaration }));
     const chosen = callWithTypes(checker, candidates, [intType, stringType]);
     expect(chosen?.function).toBe(overloads[1]);
+  });
+});
+
+describe('coinductive struct-constraint and union-member conformance', () => {
+  const formBuilderBase = [
+    'trait FormNode { type Data, type Seen, fn seen(self: Self) -> Self.Seen, fn read(self: Self) -> Result<Self.Data>, fn load(self: Self, v: Self.Seen) }',
+    'shared struct Field<T> { value: T? = none, type Data = T, type Seen = T? }',
+    'fn seen<T>(self: Field<T>) -> T?: self->value',
+    'fn read<T>(self: Field<T>) -> Result<T>:',
+    '  match self->value:',
+    '    case None: Err{Error{message: "unanswered", code: "unanswered"}}',
+    '    case v: Ok{(v)}',
+    'fn load<T>(self: Field<T>, v: T?): self->value = v',
+    'struct ListRow<R is FormNode> { key: String, node: R }',
+    'shared struct List<R is FormNode> { rows: Array<ListRow<R>> = [], make: fn() -> R, count: Int = 0, type Data = Array<R.Data>, type Seen = Array<R.Seen> }',
+    'fn seen<R is FormNode>(self: List<R>) -> Array<R.Seen>: [for row in self->rows: row.node.seen()]',
+    'fn read<R is FormNode>(self: List<R>) -> Result<Array<R.Data>>:',
+    '  let out: Array<R.Data> = []',
+    '  for row in self->rows: out.push(row.node.read()?)',
+    '  Ok{(out)}',
+    'fn load<R is FormNode>(self: List<R>, v: Array<R.Seen>):',
+    '  self->rows = []',
+    '  for x in v: { self->count += 1; const row = ListRow{key: `r${self->count}`, node: self->make()}; row.node.load(x); self->rows.push(row) }',
+    'struct Group<S is struct { [_] is FormNode }>:',
+    '  fields: S',
+    '  type Data = match S:',
+    '    case _: { [F in keyof S]: S[F].Data }',
+    '  type Seen = match S:',
+    '    case _: { [F in keyof S]: S[F].Seen }',
+    'fn seen<S is struct { [_] is FormNode }>(self: Group<S>) -> Group<S>.Seen: struct{for f, node in ...self.fields: [f]: node.seen()}',
+    'fn read<S is struct { [_] is FormNode }>(self: Group<S>) -> Result<Group<S>.Data>: Ok{struct{for f, node in ...self.fields: [f]: node.read()?}}',
+    'fn load<S is struct { [_] is FormNode }>(self: Group<S>, v: Group<S>.Seen):',
+    '  for f, node in ...self.fields: node.load(v[f])',
+    'struct CategoryModel { name: Field<String>, children: List<Group<CategoryModel>> }',
+    'fn categoryModel() -> Group<CategoryModel>:',
+    '  Group{fields: CategoryModel{name: new Field<String>{}, children: new List<Group<CategoryModel>>{make: fn(): categoryModel()}}}',
+  ].join('\n');
+
+  it('checks and runs recursive CategoryModel through List<Group<CategoryModel>> and struct { [_] is FormNode }', () => {
+    const source = [
+      formBuilderBase,
+      'async fn main() -> Future<String>:',
+      '  const root = categoryModel()',
+      '  root.load(struct{name: "Hardware", children: [struct{name: "Bolts", children: []}]})',
+      '  match root.read():',
+      '    case Ok{value as d}: `${d.name}:${d.children.length()}`',
+      '    case Err{error}: error.message',
+    ].join('\n');
+    expect(reported(source).codes).toEqual([]);
+    expect(runSource(source)).toBe('Hardware:1');
+  });
+
+  it('checks and runs a recursive union meeting a user trait through its members', () => {
+    const source = [
+      'trait Pretty { fn pretty(self: Self) -> String }',
+      'fn pretty(self: String) -> String: self',
+      'fn pretty(self: None) -> String: "none"',
+      'struct Group<S is struct { [_] is Pretty }> { fields: S }',
+      'fn pretty<S is struct { [_] is Pretty }>(self: Group<S>) -> String:',
+      '  `{${[for k, v in ...self.fields: `${k}=${v.pretty()}`].join(",")}}`',
+      'struct Node { label: String, next: Group<Node> | None }',
+      'fn showUnion(u: Group<Node> | None) -> String: u.pretty()',
+      'async fn main() -> Future<String>:',
+      '  const leaf: Group<Node> | None = Group{fields: Node{label: "b", next: none}}',
+      '  const root: Group<Node> | None = Group{fields: Node{label: "a", next: leaf}}',
+      '  showUnion(root)',
+    ].join('\n');
+    expect(reported(source).codes).toEqual([]);
+    expect(runSource(source)).toBe('{label=a,next={label=b,next=none}}');
+  });
+
+  it('still refuses blanket, mutual-blanket and expanding witness cycles with 5114, and reports 5134 on a truly failing field', () => {
+    const single =
+      'trait Bad { fn act(self: Self) -> Int }\nfn act<T is Bad>(self: T) -> Int: self.act()\nfn main() -> Int: 1.act()';
+    const mutual =
+      'trait A { fn a(self: Self) -> Int }\ntrait B { fn b(self: Self) -> Int }\nfn a<T is B>(self: T) -> Int: self.b()\nfn b<T is A>(self: T) -> Int: self.a()\nfn main() -> Int: 1.a()';
+    const expanding =
+      'trait Bad<U> { fn act(self: Self, u: U) -> Int }\nstruct Box<T> { value: T }\nfn act<T, U is Bad<Box<U>>>(self: Box<T>, u: U) -> Int: u.act(Box{value: u})\nfn main() -> Int: Box{value: 1}.act(Box{value: 2})';
+    const endlessInStruct =
+      'trait Show { fn show(self: Self) -> String }\nstruct Badge { label: String }\nfn show<T is Show>(self: T) -> String: "?"\nstruct Group<S is struct { [_] is Show }> { fields: S }\nfn main(g: Group<{ badge: Badge }>) -> Int: 0';
+    expect(reported(single).codes).toEqual([endlessConformance.code]);
+    expect(reported(mutual).codes).toEqual([endlessConformance.code]);
+    expect(reported(expanding).codes).toEqual([endlessConformance.code]);
+    expect(reported(endlessInStruct).codes).toEqual([endlessConformance.code]);
+    fc.assert(
+      fc.property(fc.constantFrom('Field<Int>', 'Int'), (extraType) => {
+        const { codes } = reported(
+          `${formBuilderBase}\nstruct Rec { children: List<Group<Rec>>, extra: ${extraType} }\nfn check(g: Group<Rec>): ()`,
+        );
+        expect(codes).toEqual(
+          extraType === 'Field<Int>' ? [] : expect.arrayContaining([unmetStructConstraint.code]),
+        );
+      }),
+      { numRuns: 4 },
+    );
   });
 });

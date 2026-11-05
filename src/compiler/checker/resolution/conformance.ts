@@ -14,6 +14,9 @@
  * - A trait the compiler derives (derived-traits.ts) asks what its rule asks of every type first,
  *   and a required function no function is declared for is met by the witness it derives. On a
  *   union, any other trait's is met through its members (union-traits.ts, §6).
+ * - Struct-constraint field checks (shortfalls.ts) and union-member checks (`throughMembers`) are
+ *   coinductive on the active search stack for concrete types: a `(struct, struct constraint)` or
+ *   `(union, constraint)` goal already active counts as met (`silentMeets`).
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
  * - The required result is what the call is expected to give, so a type parameter no argument
@@ -22,7 +25,7 @@
  * - A witness search that fails is reported once, as the constraint not met, so searching itself
  *   reports nothing (`UseSite.report`). A search can recurse without end, when a witness needs
  *   the same constraint again for a type as large or larger; it is bounded, and one that reaches
- *   the bound is reported as such, at every level up to the use site.
+ *   the bound is reported as such at the root use site.
  */
 
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
@@ -48,8 +51,18 @@ import {
   meetsStructConstraints,
 } from './shortfalls.ts';
 import { type MembersMeeting, membersCall, membersShortfall } from './union-traits.ts';
-import type { ConformanceOutcome } from './witness-outcomes.ts';
-import { type Failure, isFailure, maximumDepth, type WitnessOutcome } from './witness-outcomes.ts';
+import {
+  type ConformanceOutcome,
+  deeper,
+  endlessAt,
+  type Failure,
+  isFailure,
+  maximumDepth,
+  meetsWith,
+  type Search,
+  startSearch,
+  type WitnessOutcome,
+} from './witness-outcomes.ts';
 
 /** A chosen function, complete: its type arguments, and the witnesses of its constraints. */
 export interface Instantiation {
@@ -68,7 +81,7 @@ export function instantiate(
   application: Application,
   expected: Type | undefined,
 ): Instantiation | undefined {
-  const instantiation = instantiateAt(site, application, expected, 0);
+  const instantiation = instantiateAt(site, application, expected, startSearch());
   if (isFailure(instantiation)) {
     return undefined;
   }
@@ -77,12 +90,12 @@ export function instantiate(
   return instantiation;
 }
 
-/** `instantiate`, within witness searches nested `depth` deep. */
+/** `instantiate`, within `search`. */
 function instantiateAt(
   site: UseSite,
   application: Application,
   expected: Type | undefined,
-  depth: number,
+  search: Search,
 ): Instantiation | Failure {
   const { checker } = site;
   const { signature, inference } = application;
@@ -97,7 +110,7 @@ function instantiateAt(
     return 'failed';
   }
   const { typeArguments, substitution } = completion;
-  const witnesses = witnessesOf(site, typeParameters, completion, depth);
+  const witnesses = witnessesOf(site, typeParameters, completion, search);
   return isFailure(witnesses) ? witnesses : { typeArguments, substitution, witnesses };
 }
 
@@ -106,20 +119,20 @@ function witnessesOf(
   site: UseSite,
   parameters: readonly TypeParameter[],
   { typeArguments, substitution }: Extract<Completion, { kind: 'complete' }>,
-  depth: number,
+  search: Search,
 ): Witnesses | Failure {
   const witnesses = new Map<TypeParameter, readonly (readonly ResolvedCall[])[]>();
   for (const [index, parameter] of parameters.entries()) {
     const argument = typeArguments[index] ?? errorType;
     const given = { argument, substitution };
-    const struct = () => meetsStructConstraints(site, parameter, given, silentMeets(site, depth));
+    const struct = () => meetsStructConstraints(site, parameter, given, silentMeets(site, search));
     if (!(standsForMember(site, parameter, argument, substitution) && struct())) {
-      return 'failed';
+      return search.endless === undefined ? 'failed' : 'endless';
     }
     const met: (readonly ResolvedCall[])[] = [];
     for (const constraint of site.checker.constraintsOf(parameter)) {
       const mapped = substituteConstraint(constraint, substitution, site.checker.typeRules);
-      const witnessesOfConstraint = conform({ site, type: argument, constraint: mapped }, depth);
+      const witnessesOfConstraint = conform({ site, type: argument, constraint: mapped }, search);
       if (isFailure(witnessesOfConstraint)) {
         return witnessesOfConstraint;
       }
@@ -135,31 +148,27 @@ export function meets(site: UseSite, type: Type, constraint: Constraint): boolea
   return witnessesFor(site, type, constraint) !== undefined;
 }
 
-/**
- * The witness of every function `constraint` requires of `type` at the use site; undefined after
- * reporting there why it isn't met.
- */
+/** The witness of every function `constraint` requires of `type` at `site`, or undefined. */
 export function witnessesFor(
   site: UseSite,
   type: Type,
   constraint: Constraint,
 ): readonly ResolvedCall[] | undefined {
-  const witnesses = conform({ site, type, constraint }, 0);
+  const witnesses = conform({ site, type, constraint }, startSearch());
   return isFailure(witnesses) ? undefined : witnesses;
 }
 
 /**
  * The witnesses a call through `constraint`'s trait on a value of `type`, a union, runs (§6): its
- * required functions, through its members or declared for it whole. A union has no associated type
- * (§3.1), each member its own, which such a call never reads of the union itself. Undefined after
- * reporting at `site` why it can't be called so.
+ * required functions, through its members or declared for it whole, with no associated type of the
+ * union itself. Undefined after reporting at `site` why it can't be called so.
  */
 export function callWitnessesFor(
   site: UseSite,
   type: Type,
   constraint: Constraint,
 ): readonly ResolvedCall[] | undefined {
-  const witnesses = conform({ site, type, constraint, onValues: true }, 0);
+  const witnesses = conform({ site, type, constraint, onValues: true }, startSearch());
   return isFailure(witnesses) ? undefined : witnesses;
 }
 
@@ -174,7 +183,7 @@ export function conformWitnesses(
   constraint: Constraint,
 ): ConformanceOutcome {
   let undeclared = false;
-  const witnesses = conform({ site, type, constraint }, 0, () => {
+  const witnesses = conform({ site, type, constraint }, startSearch(), () => {
     undeclared = true;
     return 'failed';
   });
@@ -186,12 +195,11 @@ export function conformWitnesses(
 
 /**
  * The witness of every function `constraint` requires of `type`; one no function is declared for
- * is `unmet`'s, by default the one a derived trait derives, else reported missing. A type already
- * in error was reported, so it fails silently.
+ * is `unmet`'s, by default the one a derived trait derives, else reported missing.
  */
 function conform(
   meeting: Meeting,
-  depth: number,
+  search: Search,
   unmet?: (declaration: FunctionDeclaration) => ResolvedCall | Failure,
 ): readonly ResolvedCall[] | Failure {
   const { site, type, constraint } = meeting;
@@ -205,17 +213,20 @@ function conform(
     fieldShortfall(checker, type, constraint) ??
     (meeting.onValues === true
       ? undefined
-      : associatedShortfall(checker, type, constraint, silentMeets(site, depth)));
+      : associatedShortfall(checker, type, constraint, silentMeets(site, search)));
   if (missing !== undefined) {
-    return lacks(meeting, missing);
+    return search.endless === undefined
+      ? lacks(meeting, missing)
+      : endlessAt(site, search, type, constraint);
   }
-  return functionWitnesses(meeting, depth, unmet ?? undeclaredWitness(meeting, derivation, depth));
+  return functionWitnesses(
+    meeting,
+    search,
+    unmet ?? undeclaredWitness(meeting, derivation, search),
+  );
 }
 
-/**
- * A constraint being met by a type at a use site, for reporting why it isn't; `onValues` when only
- * calls on its values need it met, as by a union's members (`callWitnessesFor`).
- */
+/** A constraint being met by a type at a use site, `onValues` when only calls on its values need it. */
 interface Meeting {
   readonly site: UseSite;
   readonly type: Type;
@@ -223,10 +234,11 @@ interface Meeting {
   readonly onValues?: boolean;
 }
 
-/** Whether a type meets a constraint, searched `depth` deep, reporting nothing. */
-function silentMeets(site: UseSite, depth: number): Meets {
-  return (type, constraint) =>
-    !isFailure(conform({ site: silent(site), type, constraint }, depth + 1));
+/** How a search judges traits and active goals (`Meets`, shortfalls.ts) without reporting unmet ones. */
+export function silentMeets(site: UseSite, search: Search = startSearch()): Meets {
+  return meetsWith(site, search, (type, constraint) =>
+    conform({ site: silent(site), type, constraint }, deeper(search)),
+  );
 }
 
 /** Reports that the type lacks `missing` to meet the constraint. */
@@ -236,22 +248,17 @@ function lacks({ site, type, constraint }: Meeting, missing: string): Failure {
   return 'failed';
 }
 
-/**
- * What meets a required function no function is declared for: the witness `derivation` derives
- * for the type; on a union, where no rule derives the trait, the function of whichever member a
- * value is; or else nothing, reported as what the type lacks to have one, by default the function
- * itself.
- */
+/** What meets a required function no function is declared for: derived, union members, or missing. */
 function undeclaredWitness(
   meeting: Meeting,
   derivation: Derivation | undefined,
-  depth: number,
+  search: Search,
 ): (declaration: FunctionDeclaration) => ResolvedCall | Failure {
   const { site, type, constraint } = meeting;
   return (declaration) => {
     if (type.kind === 'union' && derivation?.derive === undefined) {
       const through = traitAsAny(constraint, type);
-      return throughMembers(meeting, { union: type, through, declaration }, depth);
+      return throughMembers(meeting, { union: type, through, declaration }, search);
     }
     const derived = derivation?.derive?.(site, type);
     if (derived?.kind === 'derived') {
@@ -262,39 +269,36 @@ function undeclaredWitness(
   };
 }
 
-/**
- * The witness of a required function a union meets through its members: the function itself,
- * called on whichever member a value is; reported as what the union lacks when it can't.
- */
+/** The witness of a required function a union meets through its members (`enter` is coinductive). */
 function throughMembers(
   meeting: Meeting,
   members: MembersMeeting,
-  depth: number,
+  search: Search,
 ): ResolvedCall | Failure {
   const { site, type, constraint } = meeting;
   const { checker } = site;
-  const memberMeets = (member: Type, met: Constraint) =>
-    !isFailure(conform({ site: silent(site), type: member, constraint: met }, depth + 1));
-  const shortfall = membersShortfall(checker, members, memberMeets);
+  const memberMeets = silentMeets(site, search);
+  const shortfall = memberMeets.enter(members.union, constraint, () =>
+    membersShortfall(checker, members, memberMeets),
+  );
   if (shortfall !== undefined) {
-    return lacks(meeting, shortfall);
+    return search.endless === undefined ? lacks(meeting, shortfall) : 'endless';
   }
   const { union, through, declaration } = members;
   const index = requiredFunctions(constraint.trait).indexOf(declaration);
   const signature = signatureOf(checker, declaration, constraintSubstitution(constraint, type));
   const candidate = membersCall(checker.typeRules, union, through, { declaration, member: index });
   const choice = chooseWitnessAmong(checker, [candidate], signature);
-  const witness = witnessChosen(site, choice, signature, depth);
-  return witness.kind === 'call' ? witness.call : 'failed';
+  const witness = witnessChosen(site, choice, signature, search);
+  if (witness.kind === 'call') {
+    return witness.call;
+  }
+  return isFailure(witness.kind) ? witness.kind : 'failed';
 }
 
-/**
- * The witness of every function the constraint requires; one no function is declared for is
- * `unmet`'s.
- */
 function functionWitnesses(
   meeting: Meeting,
-  depth: number,
+  search: Search,
   unmet: (declaration: FunctionDeclaration) => ResolvedCall | Failure,
 ): readonly ResolvedCall[] | Failure {
   const { site, type, constraint } = meeting;
@@ -303,7 +307,7 @@ function functionWitnesses(
   for (const declaration of requiredFunctions(constraint.trait)) {
     const required = { declaration, substitution };
     const witness: WitnessOutcome =
-      depth < maximumDepth ? witnessOf(site, type, required, depth) : { kind: 'endless' };
+      search.depth < maximumDepth ? witnessOf(site, type, required, search) : { kind: 'endless' };
     switch (witness.kind) {
       case 'call':
         witnesses.push(witness.call);
@@ -311,7 +315,7 @@ function functionWitnesses(
       case 'none': {
         const met = unmet(declaration);
         if (isFailure(met)) {
-          return met;
+          return met === 'endless' ? endlessAt(site, search, type, constraint) : met;
         }
         witnesses.push(met);
         break;
@@ -326,13 +330,8 @@ function functionWitnesses(
         const [wanted, given] = [typeText(witness.required), typeText(witness.given)];
         return lacks(meeting, `'${name}' giving ${wanted}, where the one declared gives ${given}`);
       }
-      case 'endless': {
-        if (depth === 0) {
-          const trait = constraint.trait.name.text;
-          site.report((at) => checkerDiagnostics.endlessConformance(at, typeText(type), trait));
-        }
-        return 'endless';
-      }
+      case 'endless':
+        return endlessAt(site, search, type, constraint);
       case 'failed':
         return 'failed';
       default: {
@@ -344,36 +343,26 @@ function functionWitnesses(
   return witnesses;
 }
 
-/** A function a trait requires, mapped for the type that must meet it. */
 interface RequiredFunction {
   readonly declaration: FunctionDeclaration;
   readonly substitution: Substitution;
 }
 
-/**
- * The witness meeting `required` for `type`, or why none does: `none` only when no candidate is
- * declared, so a declared candidate whose own constraints fail reports them at `site`.
- */
 function witnessOf(
   site: UseSite,
   type: Type,
   required: RequiredFunction,
-  depth: number,
+  search: Search,
 ): WitnessOutcome {
   const signature = signatureOf(site.checker, required.declaration, required.substitution);
-  return witnessChosen(site, chooseWitness(site.checker, type, signature), signature, depth);
+  return witnessChosen(site, chooseWitness(site.checker, type, signature), signature, search);
 }
 
-/**
- * The witness `choice` found for the required function `signature`, instantiated, or why there is
- * none. A required result of the error type, explained already or standing for any type (a call
- * on a union probing a trait for arguments it infers later, trait-calls.ts), takes any result.
- */
 function witnessChosen(
   site: UseSite,
   choice: Choice,
   signature: Signature,
-  depth: number,
+  search: Search,
 ): WitnessOutcome {
   if (choice.kind === 'none') {
     return { kind: 'none' };
@@ -382,7 +371,7 @@ function witnessChosen(
     return { kind: 'ambiguous' };
   }
   const { application } = choice;
-  const instantiation = instantiateAt(site, application, signature.result(), depth + 1);
+  const instantiation = instantiateAt(site, application, signature.result(), deeper(search));
   if (isFailure(instantiation)) {
     return { kind: instantiation };
   }

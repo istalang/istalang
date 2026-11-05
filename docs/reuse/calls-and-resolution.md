@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 ---
 
@@ -29,7 +29,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - fill uninferred type parameters from declared defaults → `completeInference` (`src/compiler/checker/inference/complete.ts`)
 - choose the best candidate among overloads → `choose`, `chooseAsValue`, `signatureOf` (`src/compiler/checker/resolution/choice.ts`)
 - instantiate a chosen candidate and resolve its witnesses → `instantiate` (`src/compiler/checker/resolution/conformance.ts`)
-- check trait conformance or find constraint witnesses → `meets`, `witnessesFor`, `conformWitnesses`; the witnesses a call through a trait on a union's value runs, which need no associated type of the union → `callWitnessesFor` (`src/compiler/checker/resolution/conformance.ts`); what a search finds → `WitnessOutcome`, `Failure` (`witness-outcomes.ts`)
+- check trait conformance or find constraint witnesses → `meets`, `witnessesFor`, `conformWitnesses`, `silentMeets`; the witnesses a call through a trait on a union's value runs, which need no associated type of the union → `callWitnessesFor` (`src/compiler/checker/resolution/conformance.ts`); what a search finds and the active coinductive goals it threads → `WitnessOutcome`, `Failure`, `Search`, `meetsWith` (`witness-outcomes.ts`)
 - check for or choose a declared witness for a trait requirement → `declaresWitness`, `chooseWitness`, `chooseWitnessAmong` for given candidates (`src/compiler/checker/resolution/declared-witness.ts`)
 - derive a trait by a rule over a type's form where no witness is declared (`Sendable`, `Encodable`, `Decodable`) → one `Derivation` in the table `derivationOf` reads (`src/compiler/checker/resolution/derived-traits.ts`), never a branch in `conform`; a new kind of type is a case in each derivation's rule
 - resolve a type's `Default` witness (`default()`) → `defaultWitness`, `resolveDefault` (`src/compiler/checker/resolution/default-witness.ts`); what an `@JsonSkip` field reads back as, for its form and for where the annotation may stand alike → `CheckerContext.json.skippedDefaultOf` (`src/compiler/checker/json-form.ts`, decided in `rules/json-forms/`)

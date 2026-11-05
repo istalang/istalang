@@ -21,6 +21,7 @@ import type { Fit } from './fit.ts';
 import { sameType } from './identity.ts';
 import { type Substitution, substitute, substituteAny, substituteKept } from './substitution.ts';
 import type { FieldMember, Type } from './type.ts';
+import { unfolded } from './type-match.ts';
 import type { TypeRules } from './type-rules.ts';
 import { membersOf } from './unions.ts';
 
@@ -35,7 +36,8 @@ export function instantiatedBody(
   substitution: Substitution,
   checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
 ): CheckedBody {
-  const concrete = (type: Type) => substitute(type, substitution, checker.typeRules);
+  const concrete = (type: Type) =>
+    unfolded(substitute(type, substitution, checker.typeRules), checker.typeRules);
   const concreteFit = (fit: Fit) => substitutedFit(fit, substitution, checker.typeRules);
   const concreteField = (field: FieldMember) => ({ ...field, type: concrete(field.type) });
   const concreteRead = (read: FieldRead): FieldRead => instantiatedRead(checker, read, concrete);

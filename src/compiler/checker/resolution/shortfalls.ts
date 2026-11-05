@@ -1,8 +1,9 @@
 /**
  * What a type lacks to meet a constraint beyond its functions, in words a diagnostic finishes ("it
  * needs …"): the fields and associated types a trait requires (§3.10), and the entries of a struct
- * constraint (§3.5). Each judgment is pure; whether a type meets a trait is the caller's to say
- * (`Meets`, conformance.ts), so these rules sit beside conformance without a cycle.
+ * constraint (§3.5). Each judgment is pure; whether a type meets a trait and which goals are active
+ * on the search stack is the caller's to say (`Meets`, conformance.ts), so these rules sit beside
+ * conformance without a cycle.
  *
  * - A required field is met by a struct field of the same name and type, or through a constraint
  *   requiring it too. A required associated type is met by the type's own (§3.1), which meets the
@@ -10,8 +11,10 @@
  *   (conformance.ts `callWitnessesFor`).
  * - Only a struct type meets a struct constraint: a struct declaration, not a shared or extern
  *   one, or a shape. Each named entry needs its field, of exactly its type or meeting its
- *   constraints; the others' entry holds for every field the constraint doesn't name. A type known
- *   only per instantiation meets one when its own struct constraints imply it (`entailed`).
+ *   constraints; the others' entry holds for every field the constraint doesn't name. A concrete
+ *   struct already active on the search stack for the same struct constraint counts as meeting it
+ *   (coinductive, §3.5). A type known only per instantiation meets one when its own struct
+ *   constraints imply it (`entailed`).
  */
 
 import type { TypeParameter } from '../../syntax/declarations.ts';
@@ -39,12 +42,33 @@ import {
 } from '../types/struct-constraint.ts';
 import { type Substitution, substituteConstraint } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type.ts';
+import { unfolded } from '../types/type-match.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalType } from '../types/unions.ts';
 import type { UseSite } from '../use-site.ts';
 
-/** Whether `type` meets the trait `constraint` names, as the caller judges it. */
-export type Meets = (type: Type, constraint: Constraint) => boolean;
+/**
+ * Whether `type` meets the trait `constraint` names, as the caller judges it (`conformance.ts`),
+ * with the goals active on the search stack (`enter`) and whether a search reached the depth bound
+ * (`reportEndless`).
+ */
+export interface Meets {
+  (type: Type, constraint: Constraint): boolean;
+  /**
+   * Runs `step` with `(type, goal)` marked active; returns `undefined` (no shortfall) when
+   * `(type, goal)` is reached again while still active.
+   */
+  readonly enter: (
+    type: Type,
+    goal: Constraint | StructConstraintModel,
+    step: () => string | undefined,
+  ) => string | undefined;
+  /**
+   * Whether a trait search reached the depth bound (5114), reporting it at the root use site when
+   * so.
+   */
+  readonly reportEndless: () => boolean;
+}
 
 /** The first field `constraint`'s trait requires that `type` lacks, said as it lacks it. */
 export function fieldShortfall(
@@ -104,7 +128,7 @@ export function associatedShortfall(
 /**
  * Why `type` doesn't meet the struct constraint `model`, as a clause leading the diagnostic (the
  * field and what it doesn't meet, §3.5); undefined when it meets it. Traits an entry asks for are
- * met as `meets` says.
+ * met as `meets` says, with `(type, model)` active on the stack while its fields are checked.
  */
 export function structShortfall(
   checker: CheckerContext,
@@ -118,10 +142,20 @@ export function structShortfall(
   if (isOpaque(type)) {
     return opaqueShortfall(checker, type, model, meets);
   }
-  if (!isStructType(type)) {
+  const target = unfolded(type, checker.typeRules);
+  if (!isStructType(target)) {
     return `${typeText(type)} is no struct type`;
   }
-  const fields = checker.fieldsOf(type) ?? [];
+  return meets.enter(target, model, () => fieldsShortfall(checker, { type, target }, model, meets));
+}
+
+function fieldsShortfall(
+  checker: CheckerContext,
+  { type, target }: { readonly type: Type; readonly target: Type },
+  model: StructConstraintModel,
+  meets: Meets,
+): string | undefined {
+  const fields = checker.fieldsOf(target) ?? [];
   for (const entry of model.named) {
     const field = fields.find((each) => each.name === entry.name);
     if (field === undefined) {
@@ -339,10 +373,12 @@ export function meetsStructConstraints(
     const mapped = substituteStructConstraint(model, substitution, checker.typeRules);
     const shortfall = structShortfall(checker, argument, mapped, meets);
     if (shortfall !== undefined) {
-      const constraint = structConstraintText(mapped);
-      site.report((at) =>
-        checkerDiagnostics.unmetStructConstraint(at, shortfall, typeText(argument), constraint),
-      );
+      if (!meets.reportEndless()) {
+        const constraint = structConstraintText(mapped);
+        site.report((at) =>
+          checkerDiagnostics.unmetStructConstraint(at, shortfall, typeText(argument), constraint),
+        );
+      }
       return false;
     }
   }

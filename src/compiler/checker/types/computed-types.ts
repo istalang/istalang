@@ -8,7 +8,14 @@
 import type { AliasDeclaration, AssociatedType, TypeParameter } from '../../syntax/declarations.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
 import type { StructType } from '../../syntax/types.ts';
-import type { FieldMember, NominalType, Type, TypeParameterType, WrittenThrough } from './type.ts';
+import type {
+  FieldMember,
+  NominalType,
+  Type,
+  TypeMatchUse,
+  TypeParameterType,
+  WrittenThrough,
+} from './type.ts';
 
 /**
  * `T.Data` (§3.1): the associated type `name` of `of`, a type not known yet, a type parameter or
@@ -68,6 +75,8 @@ export interface MappedType extends WrittenThrough {
   readonly parameter: TypeParameter | RestPattern;
   readonly keys: Type;
   readonly value: Type;
+  /** The type `match` use that reduced to this mapped type while its arguments were opaque. */
+  readonly recursion?: TypeMatchUse | undefined;
 }
 
 /**
@@ -83,7 +92,7 @@ export interface MatchType extends WrittenThrough {
 }
 
 /** What a mapped struct type is built from (`MappedType`), reduced or not. */
-export type MappedParts = Omit<MappedType, 'kind' | 'alias'>;
+export type MappedParts = Omit<MappedType, 'kind' | 'alias' | 'recursion'>;
 
 /** A type computed from others, opaque until they are known (§3.5): reduced by TypeRules. */
 export type ComputedType = AssociatedOfType | FieldOfType | KeysType | MappedType | MatchType;

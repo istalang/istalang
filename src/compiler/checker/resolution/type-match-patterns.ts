@@ -29,7 +29,7 @@ import type { CasePatternForm, InferVariable } from '../types/type-match.ts';
 import { isKnown, parametersIn, typeChildren, unaliased } from '../types/type-parts.ts';
 import { baseOf, membersOf, unionOf } from '../types/unions.ts';
 import { searchSite } from '../use-site.ts';
-import { meets } from './conformance.ts';
+import { silentMeets } from './conformance.ts';
 import { type Meets, structShortfall } from './shortfalls.ts';
 
 /** What matching found: a match, none whatever is substituted, or none decided yet (the banner). */
@@ -57,7 +57,7 @@ export function matchCase(
     checker,
     variables: new Map(variables.map((variable) => [variable.parameter, variable])),
     bound: new Map(),
-    meets: (each, constraint) => meets(searchSite(checker), each, constraint),
+    meets: silentMeets(searchSite(checker)),
   };
   const outcome = all([
     () => matchPattern(matching, pattern, type),

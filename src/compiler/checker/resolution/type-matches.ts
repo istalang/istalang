@@ -252,7 +252,10 @@ export class TypeMatchReductions {
         each === 'unmatched' ? unreducedUse({ declaration, typeArguments }, 'unmatched') : each,
       );
     }
-    return unionOf(reduced, checker.typeRules);
+    const result = unionOf(reduced, checker.typeRules);
+    return result.kind === 'mapped'
+      ? { ...result, recursion: { declaration, arguments: typeArguments } }
+      : result;
   }
 
   /** The type the first case matching `member` gives, or why there is none (the banner). */

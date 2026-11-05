@@ -31,8 +31,8 @@ import {
 import { substituteConstraint } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type.ts';
 import { sameConstraintSpelled } from '../types/type-parts.ts';
-import { silent, useSite } from '../use-site.ts';
-import { meets } from './conformance.ts';
+import { useSite } from '../use-site.ts';
+import { meets, silentMeets } from './conformance.ts';
 import { impliedConstraints } from './implied-constraints.ts';
 import { failureDiagnostic, MatchRequirements } from './match-requirements.ts';
 import { meetsStructConstraints } from './shortfalls.ts';
@@ -179,7 +179,7 @@ export class TypeParameters {
       site,
       parameter,
       { argument, substitution: typeArguments },
-      (type, met) => meets(silent(site), type, met),
+      silentMeets(site),
     );
     for (const constraint of this.constraintsOf(parameter)) {
       meets(
