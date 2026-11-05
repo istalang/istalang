@@ -14,10 +14,10 @@ import type {
   RangePattern,
   StructPattern,
 } from '../../syntax/patterns.ts';
-import type { PatternTest } from '../checked-pattern.ts';
-import type { AnyType, FieldMember, Type } from '../types/type.ts';
+import { neverTest, type PatternTest } from '../checked-pattern.ts';
+import { type AnyType, type FieldMember, neverType, type Type } from '../types/type.ts';
 import type { Downcast } from './downcasts.ts';
-import type { Shape } from './exhaustiveness.ts';
+import { nothingShape, type Shape } from './exhaustiveness.ts';
 import type { ValuePart } from './parts.ts';
 
 /** What a refutable construct gives the walk: its tests, and its shape (undefined: a guard). */
@@ -25,6 +25,9 @@ export interface Leaf {
   readonly tests: readonly PatternTest[];
   readonly shape: Shape | undefined;
 }
+
+/** A construct its part's type rules out (§3.11): it never matches, so it covers nothing. */
+export const ruledOutLeaf: Leaf = { tests: [neverTest], shape: nothingShape };
 
 /** What an array pattern tests of its part, an array: its length, and the type of its items. */
 export interface ArrayPart {
@@ -51,6 +54,19 @@ export interface Selection {
   readonly shapeOf: (inside: Shape | undefined) => Shape | undefined;
 }
 
+/**
+ * A selection its part's type rules out (§3.11): the pattern never matches there, so nothing past
+ * it is taken apart, and what it binds has no value.
+ */
+export function ruledOutSelection(part: ValuePart): Selection {
+  return {
+    test: neverTest,
+    part: { type: neverType, path: part.path },
+    decided: true,
+    shapeOf: () => nothingShape,
+  };
+}
+
 /** How the constructs that could fail to match are checked, where a pattern may fail. */
 export interface PatternTests {
   /** `case 0:`, `case "cfo":`, `case none:`. */
@@ -69,9 +85,12 @@ export interface PatternTests {
   readonly array: (node: ArrayPattern, part: ValuePart) => ArrayPart | undefined;
   /** `1..=5`, `..0` on an int part. */
   readonly range: (node: RangePattern, part: ValuePart) => Leaf;
-  /** The downcast a struct pattern or referring name makes of an `any` part; undefined for none. */
+  /**
+   * The downcast a struct pattern or referring name makes of an `any` part: `ruledOut` for a type
+   * never inside it; undefined for none.
+   */
   readonly downcast: (
     node: StructPattern | NamePattern,
     part: ValuePart & { readonly type: AnyType },
-  ) => Downcast | undefined;
+  ) => Downcast | 'ruledOut' | undefined;
 }

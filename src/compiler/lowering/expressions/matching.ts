@@ -9,7 +9,8 @@
  *   fails. The subject's temporaries end once a case's body is entered (§7).
  * - `x is P` writes whether the tests passed, declaring the bindings on the passing path, where
  *   the binder lets them be read.
- * - A case the checker ruled out never matches (§4), so it isn't written.
+ * - A case the checker ruled out never matches (§3.11, §4), so it isn't written, and an `is` whose
+ *   pattern its subject can't match is `false`, its subject still evaluated.
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -60,6 +61,10 @@ export function lowerMatch(context: FunctionContext, node: Match): Register {
 }
 
 export function lowerIs(context: FunctionContext, node: Is): Register {
+  if (context.body.decidedOf(node) === false) {
+    context.expression(node.subject);
+    return context.constant(false, node.span);
+  }
   const matching = {
     subject: context.expression(node.subject),
     pattern: context.patternOf(node.pattern),

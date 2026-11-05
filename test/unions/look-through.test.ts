@@ -36,7 +36,7 @@ describe('a pattern on a union with an `any` member', () => {
     ).toEqual(['int:3', 'point:2', 'plain', 'other']);
   });
 
-  it('refuses a type the member never holds', () => {
+  it('rules out a type the member never holds', () => {
     expect(
       codesOf(
         ...declarations,
@@ -45,7 +45,7 @@ describe('a pattern on a union with an `any` member', () => {
         '    case Bool: 1',
         '    case _: 0',
       ),
-    ).toContain(checkerDiagnostics.noMemberMatched.code);
+    ).toEqual([checkerDiagnostics.heldNoValue.code]);
   });
 });
 

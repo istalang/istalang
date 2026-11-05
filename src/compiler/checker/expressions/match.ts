@@ -7,9 +7,9 @@
  * - It must be exhaustive: the cases without a guard must cover every value of the subject's type
  *   (patterns/exhaustiveness.ts). A comparison other than `==` against a literal or variant acts
  *   as a guard there (§3.11). A case no value can reach, given the cases before it, is warned of.
- * - A case whose literal pattern its subject's type can't hold, as a field loop's key in another
- *   field's pass (§4), is ruled out (rules/decided-conditions.ts): its guard and body are neither
- *   checked nor lowered.
+ * - A case whose pattern its subject's type can't hold, as a field loop's value or key in another
+ *   field's pass (§4), never matches (`cantMatch`, §3.11): it is warned of, and its guard and body
+ *   are neither checked nor lowered.
  * - `x is Pattern` is a boolean; the binder decides where its bindings are visible, and the names
  *   are declared here with their parts' types.
  */
@@ -20,13 +20,14 @@ import { casesOf } from '../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
+import { cantMatch } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { analyze, anyShape, type CaseShape } from '../patterns/exhaustiveness.ts';
 import { checkPattern } from '../patterns/matching.ts';
 import { remainingType } from '../patterns/remaining.ts';
 import { signatureOf, witnessText } from '../patterns/shapes.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
-import { patternRuledOut } from '../rules/decided-conditions.ts';
+import { decideComparison } from '../rules/decided-conditions.ts';
 import { boolType, type Type } from '../types/type.ts';
 
 export function checkMatch(context: BodyContext, node: Match, expected: Type | undefined): Type {
@@ -35,8 +36,8 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
   const cases: CoveringCase[] = [];
   for (const matchCase of casesOf(node)) {
     const remaining = remainingType(context.checker, subject, cases);
-    const { shape } = checkPattern(context, matchCase.pattern, subject, remaining);
-    const ruledOut = patternRuledOut(context, matchCase.pattern, remaining);
+    const { shape, tests } = checkPattern(context, matchCase.pattern, subject, remaining);
+    const ruledOut = cantMatch(tests);
     if (matchCase.guard !== undefined && !ruledOut) {
       context.expect(matchCase.guard, boolType);
     }
@@ -64,10 +65,18 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
   return branches.agreedType();
 }
 
+/** `x is P`: a pattern the subject's type rules out decides it false, warned of there (§4). */
 export function checkIs(context: BodyContext, node: Is): Type {
   const subject = context.expression(node.subject);
-  checkPattern(context, node.pattern, subject);
-  return stoppedOperation(context, node, [{ node: node.subject, type: subject }]) ?? boolType;
+  const { tests } = checkPattern(context, node.pattern, subject);
+  const stopped = stoppedOperation(context, node, [{ node: node.subject, type: subject }]);
+  if (stopped !== undefined) {
+    return stopped;
+  }
+  if (cantMatch(tests)) {
+    decideComparison(context, node, false);
+  }
+  return boolType;
 }
 
 /** A case as exhaustiveness sees it, and where its pattern is written. */

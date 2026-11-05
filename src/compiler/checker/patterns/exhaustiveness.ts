@@ -65,6 +65,9 @@ interface ArrayShape {
 
 export const anyShape: AnyShape = { kind: 'any' };
 
+/** The shape matching no value: of a pattern its part's type rules out (§3.11). */
+export const nothingShape: Shape = { kind: 'or', alternatives: [] };
+
 /** The key of the constructor of arrays of `length` items, or `length` and more when `orMore`. */
 export function lengthKey(length: number, orMore = false): LengthKey {
   return { length, orMore };

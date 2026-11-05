@@ -355,6 +355,10 @@ export class BodyChecker implements BodyContext {
     this.#decided.set(condition, value);
   }
 
+  decidedAt(node: Expression): boolean | undefined {
+    return this.#decided.get(node);
+  }
+
   /** The CheckedBody of what was checked as `pass` sees it, producing `result`. */
   #checkedAt(pass: Pass, result: Type): CheckedBody {
     const { variables, literals, implicit, functions, labels } = this;

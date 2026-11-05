@@ -137,6 +137,8 @@ export interface BodyContext {
   readonly stopAt: (operation: Expression | Assignment, operands: readonly Expression[]) => void;
   /** Records the value `condition` always has, by its operands' types (rules/decided-conditions.ts). */
   readonly decide: (condition: Expression, value: boolean) => void;
+  /** The value `node`, a comparison, `is` or condition, was decided to always have; else undefined. */
+  readonly decidedAt: (node: Expression) => boolean | undefined;
   /**
    * Runs `check` once per pass of the field loop `header` heads (§4), each pass's records of nodes
    * kept apart (passes.ts), so the body reads as each pass checked it; what is decided of every

@@ -12,6 +12,7 @@
  *   optional for one of them; the first and the last may be, as in a single comparison.
  * - `==` and `!=` are built in for every type and can't be overloaded (types/equality.ts). The
  *   left side's type is what the right one is expected to have, so `x == none` reads naturally.
+ *   One whose sides' types fix its value is decided (rules/decided-conditions.ts).
  * - `and`, `or` and `not` take and give `Bool`; they short-circuit, so they are never calls.
  * - `??` works on optionals (optionals.ts).
  */
@@ -41,7 +42,7 @@ import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/o
 import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type ImplicitOperand, implicitOperatorCall } from '../resolution/implicit.ts';
-import { checkEqualSides } from '../types/equality.ts';
+import { checkEquality } from '../rules/decided-conditions.ts';
 import { boolType, isPrimitive, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalOrBase, writtenLiteral } from '../types/unions.ts';
@@ -123,7 +124,8 @@ function checkComparisons(
     if (isImplicitOperator(operator)) {
       checkLinkCall(context, link, operator, [wrappable(left), wrappable(right)]);
     } else {
-      checkEqualSides(context, wrappable(left), wrappable(right), {
+      checkEquality(context, wrappable(left), wrappable(right), {
+        comparison: links.length === 1 ? comparison : undefined,
         span: linkSpan(link),
         operator,
       });

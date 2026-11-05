@@ -76,10 +76,6 @@ export const patternTemplates = {
     message: (name: string) =>
       `'${name}' is a generic alias, which stands for no one type without its type arguments, and a pattern gives none; name the type it stands for.`,
   },
-  noMemberMatched: {
-    code: 5417,
-    message: (union: string) => `This pattern matches no member of ${union} (§3.11).`,
-  },
   severalMembers: {
     code: 5418,
     message: (union: string, members: readonly string[], telling: string) =>
@@ -100,14 +96,14 @@ export const patternTemplates = {
     severity: 'warning',
     message: (always: boolean) =>
       always
-        ? "This condition is always true, by its operands' types: what follows it never runs (§4)."
-        : "This condition is always false, by its operands' types: its branch never runs (§4).",
+        ? "This is always true, by its operands' types: a branch it guards always runs (§4)."
+        : "This is always false, by its operands' types: a branch it guards never runs (§4).",
   },
   heldNoValue: {
     code: 5422,
     severity: 'warning',
     message: () =>
-      "No value reaches this case: its subject's type can't hold this literal, so it never runs (§4).",
+      "No value reaches this case: its subject's type can't hold what the pattern matches, so it never runs (§3.11).",
   },
   insideOptional: {
     code: 5409,

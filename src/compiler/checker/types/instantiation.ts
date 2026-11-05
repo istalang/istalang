@@ -206,6 +206,8 @@ function instantiatedPattern(
       case 'equal':
       case 'compare':
         return { ...patternTest, path: path(patternTest.path) };
+      case 'never':
+        return patternTest;
       default: {
         const unhandled: never = patternTest;
         return unhandled;

@@ -111,7 +111,10 @@ export interface PartBinding {
  *   name, or an array pattern's fixed item count; `negated` for `!=`.
  * - `compare`: `compare(part, value)`, the implicit call recorded at `site`, is in `relation`: a
  *   struct pattern's field ordering, a range pattern's bound, or an array pattern's rest length.
- * - `or`: one of the alternatives matches, the first that does deciding what the names bind.
+ * - `or`: one of the alternatives matches, the first that does deciding what the names bind. An
+ *   alternative its part's type rules out is left out of it.
+ * - `never`: the part's type can't hold what the pattern matches there (§3.11), so the pattern
+ *   never matches (`cantMatch`): a case is ruled out, an `is` always false.
  */
 export type PatternTest =
   | {
@@ -144,7 +147,21 @@ export type PatternTest =
       readonly value: PatternValue;
       readonly relation: Relation;
     }
-  | { readonly kind: 'or'; readonly alternatives: readonly CheckedPattern[] };
+  | { readonly kind: 'or'; readonly alternatives: readonly CheckedPattern[] }
+  | { readonly kind: 'never' };
+
+/** The test of a part whose type can't hold what the pattern matches there (§3.11). */
+export const neverTest: PatternTest = { kind: 'never' };
+
+/** Whether no value passes `tests`: one is `never`, or an `or` none of whose alternatives can. */
+export function cantMatch(tests: readonly PatternTest[]): boolean {
+  return tests.some(
+    (each) =>
+      each.kind === 'never' ||
+      (each.kind === 'or' &&
+        each.alternatives.every((alternative) => cantMatch(alternative.tests))),
+  );
+}
 
 /** What an `equal` or `compare` test compares the part with. */
 export type PatternValue =

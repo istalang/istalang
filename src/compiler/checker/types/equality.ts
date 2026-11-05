@@ -9,12 +9,9 @@
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../body-context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { sameType } from './identity.ts';
 import { isMemberParameter, isPrimitive, type Type } from './type.ts';
-import { typeText } from './type-text.ts';
 import { baseOf, membersOf } from './unions.ts';
 
 /**
@@ -63,19 +60,6 @@ function comparableAsMembers(context: BodyContext, first: Type, second: Type): b
 export interface EqualitySide {
   readonly type: Type;
   readonly node: Expression | undefined;
-}
-
-/** Checks that `left` and `right` compare by `operator`, reporting at `at` when they can't. */
-export function checkEqualSides(
-  context: BodyContext,
-  left: EqualitySide,
-  right: EqualitySide,
-  at: { readonly span: AnchoredSpan; readonly operator: string },
-): void {
-  if (!fitEqualSides(context, left, right)) {
-    const types = [typeText(left.type), typeText(right.type)];
-    context.report(checkerDiagnostics.operatorTypes(at.span, at.operator, types));
-  }
 }
 
 /**

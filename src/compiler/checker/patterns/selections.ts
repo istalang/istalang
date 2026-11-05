@@ -6,6 +6,9 @@
  *
  * - A name that binds selects nothing, nor does a name naming the part's own type, which matches
  *   every value of it: an `any` type's, or a union's through its alias.
+ * - A pattern selecting nothing its part's type holds, a union member or, on a known type of no
+ *   union, another type or another enum's variant, is ruled out (§3.11): it never matches, a
+ *   `never` test (checked-pattern.ts), and its case never runs.
  * - A literal against an `any` type that took it whole selects it as a union's member is, as a
  *   downcast does its type.
  * - A literal leaves its literal type to what binds it, and type arguments are written only where a
@@ -25,12 +28,18 @@ import type {
 import { spanAcross } from '../../syntax/positions.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { sameType } from '../types/identity.ts';
-import { literalMembers, namesOwnType } from '../types/named-types.ts';
-import type { AnyType } from '../types/type.ts';
+import { isKnown } from '../types/known-literals.ts';
+import {
+  literalMembers,
+  namesOwnType,
+  patternTypeOf,
+  variantOwners,
+} from '../types/named-types.ts';
+import type { AnyType, Type } from '../types/type.ts';
 import { baseOf } from '../types/unions.ts';
 import { literalTypeOf, memberTaken, selectsMember, unionPart } from './members.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
-import type { PatternTests, Selection } from './pattern-tests.ts';
+import { type PatternTests, ruledOutSelection, type Selection } from './pattern-tests.ts';
 
 /**
  * What `node`, a pattern that may fail and doesn't bind, selects of `part`: a selection, `refused`
@@ -52,10 +61,40 @@ export function selectionOf(
       : undefined;
   }
   const union = unionPart(part);
-  if (union === undefined || !selectsMember(scope, node, part)) {
+  if (union === undefined) {
+    return namesOtherType(scope, node, type) ? ruledOutSelection(part) : undefined;
+  }
+  if (!selectsMember(scope, node, part)) {
     return undefined;
   }
   return memberTaken(scope, node, part, union) ?? 'refused';
+}
+
+/**
+ * Whether `node` names a type, or a variant, that no value of `type` is, so the part's type rules
+ * the pattern out (§3.11): `type` must be known where the pattern is checked, not only per
+ * instantiation (types/known-literals.ts `isKnown`). A generic alias names no one type, which is
+ * reported where the pattern stands, not ruled out.
+ */
+function namesOtherType(scope: PatternScope, node: Pattern | PatternPart, type: Type): boolean {
+  const named = namedIn(node);
+  const entity = named === undefined ? undefined : scope.entityOf(lastName(named.path));
+  if (entity === undefined || !isKnown(type)) {
+    return false;
+  }
+  switch (entity.kind) {
+    case 'variant':
+      return !(type.kind === 'nominal' && type.entity.declaration === entity.enum);
+    case 'variants':
+      return variantOwners(scope, [type], entity.name).length === 0;
+    case 'type':
+    case 'primitive': {
+      const naming = patternTypeOf(scope, entity).kind;
+      return (naming === 'type' || naming === 'generic') && !namesOwnType(scope, entity, type);
+    }
+    default:
+      return false;
+  }
 }
 
 /**
@@ -74,6 +113,18 @@ function isDowncasting(
   return entity === undefined || !namesOwnType(scope, entity, type);
 }
 
+/** The name a type or variant pattern names its type or variant by; undefined for another. */
+function namedIn(node: Pattern | PatternPart): NamePattern | StructPattern['type'] {
+  switch (node.kind) {
+    case 'StructPattern':
+      return node.type;
+    case 'NamePattern':
+      return node;
+    default:
+      return undefined;
+  }
+}
+
 /**
  * A downcast, then the rest of the pattern against the value of the type it names; a guard for
  * exhaustiveness, since the types inside an `any` type are an open set.
@@ -84,6 +135,9 @@ function downcastSelection(
   part: ValuePart & { readonly type: AnyType },
 ): Selection | 'refused' {
   const downcast = tests.downcast(node, part);
+  if (downcast === 'ruledOut') {
+    return ruledOutSelection(part);
+  }
   return downcast === undefined
     ? 'refused'
     : { ...downcast, decided: false, shapeOf: () => undefined };

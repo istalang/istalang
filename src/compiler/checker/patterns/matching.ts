@@ -5,7 +5,8 @@
  *
  * - A literal is compared with `==`, so it has the part's own type. On a union's value it first
  *   selects its member (members.ts), so `case 1` against an `Int?` compares the `Int` held, and
- *   `case none` selects `None`.
+ *   `case none` selects `None`. One the part's type can't hold is ruled out (§3.11), a `never`
+ *   test (checked-pattern.ts), and so is a field's `==` its type fixes to fail.
  * - A field compared with `==` or `!=` follows `==`'s rule (types/equality.ts); any other
  *   comparison calls `compare`. Compared with `==` with a value fitting the field's type, it
  *   counts as a pattern for exhaustiveness (`opt == none` takes an optional's `None`).
@@ -44,7 +45,8 @@ import type { Pass, Passes, PassTable } from '../passes.ts';
 import { implicitOperatorCall, preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, nameNodeOf } from '../resolution/named.ts';
 import type { ImplicitRole } from '../resolved-call.ts';
-import { checkEqualSides, comparable, fitEqualSides } from '../types/equality.ts';
+import { comparable, fitEqualSides } from '../types/equality.ts';
+import { decidedEquality, isKnown } from '../types/known-literals.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
 import {
   errorType,
@@ -61,7 +63,13 @@ import { arrayElement } from '../types/well-known.ts';
 import { downcastOf } from './downcasts.ts';
 import { anyShape } from './exhaustiveness.ts';
 import { bodyScope, otherTypeNamed, type ValuePart } from './parts.ts';
-import type { ArrayPart, Leaf, PatternTests, VariantPart } from './pattern-tests.ts';
+import {
+  type ArrayPart,
+  type Leaf,
+  type PatternTests,
+  ruledOutLeaf,
+  type VariantPart,
+} from './pattern-tests.ts';
 import { subjectPart } from './remaining.ts';
 import { literalShape, memberShape, nullaryShape } from './shapes.ts';
 import { type WalkedPattern, walkPattern } from './walk.ts';
@@ -207,19 +215,38 @@ const compareFunction = binaryOperators['<'].meaning.function;
 /** Nothing to test, after a report; a guard for exhaustiveness. */
 const failed: Leaf = { tests: [], shape: undefined };
 
+/**
+ * A literal compared with its part by `==`; ruled out where the part's type can't hold it
+ * (types/known-literals.ts): `none` where no value of a known type is `none`.
+ */
 function literal(context: BodyContext, node: LiteralPattern, part: ValuePart): Leaf {
   const { value } = node;
   if (value.kind === 'NoneLiteral') {
+    if (isKnown(part.type) && context.checker.fitOf(noneType, part.type) === undefined) {
+      return ruledOutLeaf;
+    }
     context.expect(value, part.type);
     return isPrimitive(part.type, 'None') ? { tests: [], shape: anyShape } : failed;
   }
-  const type = context.expression(value, part.type);
-  if (!fitEqualSides(context, { type: part.type, node: undefined }, { type, node: value })) {
-    context.report(checkerDiagnostics.typeMismatch(node.span, typeText(part.type), typeText(type)));
+  const compared = { type: context.expression(value, part.type), node: value };
+  const whole = { type: part.type, node: undefined };
+  const compare = fitEqualSides(context, whole, compared);
+  const { memberUnionOf } = context.checker.fitting;
+  if (decidedEquality(whole, compared, compare, memberUnionOf) === false) {
+    return ruledOutLeaf;
+  }
+  if (!compare) {
+    context.report(
+      checkerDiagnostics.typeMismatch(node.span, typeText(part.type), typeText(compared.type)),
+    );
   }
   return { tests: [equalTest(part, value, false)], shape: valueShape(context, value, part) };
 }
 
+/**
+ * A field compared by an operator: an ordering through `compare`, `==` and `!=` built in, ruled
+ * out where the part's type fixes it to fail, and testing nothing where it fixes it to pass.
+ */
 function comparison(context: BodyContext, item: CompareFieldPattern, part: ValuePart): Leaf {
   const { operator, value } = item;
   if (isImplicitOperator(operator)) {
@@ -246,7 +273,18 @@ function comparison(context: BodyContext, item: CompareFieldPattern, part: Value
   }
   const { negated } = binaryOperators[operator].meaning;
   const type = context.expression(value, part.type);
-  checkEqualSides(context, { type: part.type, node: undefined }, { type, node: value }, item);
+  const whole = { type: part.type, node: undefined };
+  const compare = fitEqualSides(context, whole, { type, node: value });
+  const { memberUnionOf } = context.checker.fitting;
+  const equal = decidedEquality(whole, { type, node: value }, compare, memberUnionOf);
+  if (equal !== undefined) {
+    return equal === negated ? ruledOutLeaf : { tests: [], shape: undefined };
+  }
+  if (!compare) {
+    context.report(
+      checkerDiagnostics.operatorTypes(item.span, operator, [typeText(part.type), typeText(type)]),
+    );
+  }
   const counts = !negated && context.checker.fitOf(type, part.type) !== undefined;
   return {
     tests: [equalTest(part, value, negated)],

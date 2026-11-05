@@ -3,9 +3,10 @@
  * resolved by looking it up in scope, the name is offered, unless checking rejects it as no
  * annotation, which an annotation's place doesn't offer; at every member the identifier query
  * answers, after its `.`, `?.`, `->` or `?->`, or as a qualified name's later segment in a type or
- * a pattern, the member is offered. A name inside an error the checker reports is aside: completion
- * offers what fits where it is written, as a pattern offers what its subject may hold, not a type
- * the subject can't be.
+ * a pattern, the member is offered. A name inside an error the checker reports, or inside a
+ * pattern or comparison its operands' types rule out (§3.11, §4), is aside: completion offers what
+ * fits where it is written, as a pattern offers what its subject may hold, not a type the subject
+ * can't be.
  */
 
 import { pathToFileURL } from 'node:url';
@@ -33,6 +34,10 @@ import { connectedClient, type TestClient } from '../server.test-kit.ts';
 
 const checker = checkProgram(program);
 
+/** Whether `diagnostic` warns of code its operands' types rule out (§3.11, §4). */
+const ruledOut = ({ code }: { readonly code: number }) =>
+  code === checkerDiagnostics.heldNoValue.code || code === checkerDiagnostics.decidedCondition.code;
+
 let client: TestClient;
 
 beforeAll(async () => {
@@ -57,7 +62,7 @@ describe('completion over the corpus', () => {
         return node.kind === 'NamedType' || node.kind === 'NamePattern' ? node.path.slice(1) : [];
       })
       .filter((member) => checker.lookup.denotationsOf(module, member).length > 0);
-    const errors = checker.diagnosticsOf(module).filter(isError);
+    const errors = checker.diagnosticsOf(module).filter((each) => isError(each) || ruledOut(each));
     const inError = (name: Identifier) => {
       const { start, end } = spanIn(tree, name.span);
       return errors.some(({ span }) => span.start <= start && end <= span.end);

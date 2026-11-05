@@ -14,7 +14,9 @@
  * - Tests come out in the order lowering runs them: a variant is tested before its fields are read.
  * - An or-pattern walks each alternative on its own, into one `or` test. Its alternatives bind the
  *   first's variables (binder), so a binding is named by its variable's declaring name, and the
- *   alternatives must agree on the names and their types (alternatives.ts).
+ *   alternatives must agree on the names and their types (alternatives.ts). An alternative its
+ *   part's type rules out (a `never` test, §3.11) is left out; with none left, the pattern never
+ *   matches.
  * - What a pattern selects of its part comes first (selections.ts): a downcast of an `any` value,
  *   or the members of a union's. Type arguments are written only there, on a union's members.
  * - A shape is undefined when the pattern acts as a guard for exhaustiveness: it compares by more
@@ -33,14 +35,20 @@ import type {
 } from '../../syntax/patterns.ts';
 import { targetNames, unparenthesizedPattern } from '../../syntax/patterns.ts';
 import { type AnchoredSpan, spanAcross } from '../../syntax/positions.ts';
-import type { PartBinding, PatternTest, TargetBinding } from '../checked-pattern.ts';
+import {
+  cantMatch,
+  neverTest,
+  type PartBinding,
+  type PatternTest,
+  type TargetBinding,
+} from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { errorType, isPrimitive, neverType, type Type } from '../types/type.ts';
 import { partSelected, sameNames } from './alternatives.ts';
 import { takeArray } from './arrays.ts';
-import { anyShape, type Shape } from './exhaustiveness.ts';
+import { anyShape, nothingShape, type Shape } from './exhaustiveness.ts';
 import { type PatternScope, type ValuePart, variantFieldStep } from './parts.ts';
-import type { Leaf, PatternTests } from './pattern-tests.ts';
+import type { Leaf, PatternTests, Selection } from './pattern-tests.ts';
 import { literalPart, refuseTypeArguments, selectionOf } from './selections.ts';
 import { isStructNotKnown, restBinding, takeFieldsByName } from './struct-fields.ts';
 import { constructed, type Taking, takeApart, takeFields, takeTargets } from './taking.ts';
@@ -196,6 +204,13 @@ function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart
     const shape = handlerOf(patternHandlers, node)(walk, node, part);
     return { shape: part.type.kind === 'error' ? anyShape : shape, part: literalPart(node, part) };
   }
+  return selection.test.kind === 'never'
+    ? takeRuledOut(walk, node, part)
+    : takeSelected(walk, node, selection);
+}
+
+/** `node` past what it selected: the selection's test, then the rest of it against the selection. */
+function takeSelected(walk: Walk, node: Pattern | PatternPart, selection: Selection): Matched {
   if (selection.test.kind !== 'member') {
     refuseTypeArguments(walk.scope, node);
   }
@@ -203,11 +218,15 @@ function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart
   const inside = selection.decided
     ? anyShape
     : handlerOf(patternHandlers, node)(walk, node, selection.part);
-  return {
-    shape: selection.shapeOf(inside),
-    part: literalPart(node, selection.part),
-    selected: selection.test,
-  };
+  const part = literalPart(node, selection.part);
+  return { shape: selection.shapeOf(inside), part, selected: selection.test };
+}
+
+/** `node`, its part's type ruling it out (§3.11): a `never` test, covering nothing, binding `Never`. */
+function takeRuledOut(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Matched {
+  walk.found.push(neverTest);
+  bindAt(walk, node, part, neverType);
+  return { shape: nothingShape, part: { type: neverType, path: part.path } };
 }
 
 /**
@@ -241,22 +260,27 @@ function takeAlternatives(walk: Walk, node: OrPattern, part: ValuePart): Matched
     }));
     return { span: alternative.span, shape, selected, tests: own.found, bindings };
   });
-  const [first, ...others] = alternatives;
+  // An alternative its part's type rules out never runs, so it neither binds nor covers anything.
+  const live = alternatives.filter((alternative) => !cantMatch(alternative.tests));
+  const [first, ...others] = live;
+  if (first === undefined) {
+    return takeRuledOut(walk, node, part);
+  }
   for (const other of others) {
-    if (first !== undefined && !sameNames(first.bindings, other.bindings)) {
+    if (!sameNames(first.bindings, other.bindings)) {
       walk.scope.report(checkerDiagnostics.differentAlternatives(other.span));
     }
   }
   walk.found.push({
     kind: 'or',
-    alternatives: alternatives.map(({ tests: own, bindings }) => ({ tests: own, bindings })),
+    alternatives: live.map(({ tests: own, bindings }) => ({ tests: own, bindings })),
   });
-  const shapes = alternatives.flatMap(({ shape }) => (shape === undefined ? [] : [shape]));
+  const shapes = live.flatMap(({ shape }) => (shape === undefined ? [] : [shape]));
   return {
-    shape: shapes.length === alternatives.length ? { kind: 'or', alternatives: shapes } : undefined,
+    shape: shapes.length === live.length ? { kind: 'or', alternatives: shapes } : undefined,
     part: partSelected(
       part,
-      alternatives.map(({ selected }) => selected),
+      live.map(({ selected }) => selected),
       walk.scope.typeRules,
     ),
   };

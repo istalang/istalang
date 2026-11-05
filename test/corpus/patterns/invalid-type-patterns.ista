@@ -1,22 +1,16 @@
-# error: 5153 at 31:8
-# error: 5153 at 34:8
-# error: 5154 at 37:8
-# error: 5001 at 41:10
-# error: 5001 at 46:10
-# error: 5155 at 50:8
-# error: 5212 at 53:8
-# error: 5416 at 59:10
-# error: 5154 at 63:8
-# error: 5155 at 68:8
-# error: 4000 at 70:15
-# error: 5155 at 79:8
-# error: 5153 at 82:8
-# error: 5416 at 88:10
-# A type pattern names a type the value can hold (§3.10, §3.11): against an `any` value, one
-# meeting its traits, never a generic one, which a pattern can't give type arguments; against any
-# other value, its own type only. Never, holding no value, and an alias of an `any` type, whose
-# values have their own types, name no type to test; a generic alias stands for no one type; and
-# braces take a struct's fields only.
+# error: 5154 at 25:8
+# error: 5155 at 28:8
+# error: 5212 at 31:8
+# error: 5416 at 37:10
+# error: 5154 at 41:8
+# error: 5155 at 46:8
+# error: 4000 at 48:15
+# error: 5155 at 56:8
+# error: 5416 at 62:10
+# A type pattern names a type to test (§3.10, §3.11): never a generic one against an `any` value,
+# which a pattern can't give type arguments. Never, holding no value, and an alias of an `any`
+# type, whose values have their own types, name no type to test; a generic alias stands for no one
+# type; and braces take a struct's fields only. A type the value can't hold is only warned of.
 
 trait Named:
   fn name(self: Self) -> String
@@ -27,24 +21,8 @@ struct Box<T> { value: T }
 fn name(self: Email) -> String: self.to
 fn name<T>(self: Box<T>) -> String: "box"
 
-fn primitive(x: any Named) -> Bool:
-  x is Int
-
-fn unit(x: any Named) -> Bool:
-  x is Unit
-
 fn generic(x: any Named) -> Bool:
   x is Box
-
-fn other(n: Int) -> String:
-  match n:
-    case String: "never"
-    case _: "int"
-
-fn email(e: Email) -> Bool:
-  match e:
-    case Int: true
-    case _: false
 
 fn never(x: any Named) -> Bool:
   x is Never
@@ -73,13 +51,9 @@ fn broken(n: Int) -> Bool:
   n is Broken
 
 type Bottom = Never
-type OneNamed = (any Named,)
 
 fn bottom(x: any Named) -> Bool:
   x is Bottom
-
-fn oneNamed(x: any Named) -> Bool:
-  x is OneNamed
 
 type BoxOf<T> = Box<T>
 

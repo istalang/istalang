@@ -79,6 +79,8 @@ function lowerTests(context: FunctionContext, tests: readonly PatternTest[], run
   for (const test of tests) {
     if (test.kind === 'or') {
       lowerAlternatives(context, test, run);
+    } else if (test.kind === 'never') {
+      context.code.jump(run.fail, run.span);
     } else {
       const part = readPartAlong(context, run.subject, test.path, run.span);
       const pass = context.code.newLabel();
@@ -119,7 +121,7 @@ interface Branch {
 
 function lowerTest(
   context: FunctionContext,
-  test: Exclude<PatternTest, { kind: 'or' }>,
+  test: Exclude<PatternTest, { kind: 'or' | 'never' }>,
   part: Register,
   { matched, otherwise, span }: Branch,
 ): void {
@@ -183,7 +185,7 @@ function heldOrJump(
 /** A register holding whether `part` passes a comparing test. */
 function passed(
   context: FunctionContext,
-  test: Exclude<PatternTest, { kind: 'variant' | 'downcast' | 'member' | 'or' }>,
+  test: Exclude<PatternTest, { kind: 'variant' | 'downcast' | 'member' | 'or' | 'never' }>,
   part: Register,
   span: AnchoredSpan,
 ): Register {

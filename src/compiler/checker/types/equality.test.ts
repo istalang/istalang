@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { reported } from '../check.test-kit.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 
-const { operatorTypes } = checkerDiagnostics;
+const { decidedCondition, operatorTypes } = checkerDiagnostics;
 
 /** The codes reported for `comparison` between the parameters of a function. */
 function comparing(comparison: string): readonly number[] {
@@ -22,8 +22,8 @@ describe('== with a union on a side', () => {
     ['name != s', []],
     ['u == 1', []],
     ['w == u', []],
-    ['u == none', [operatorTypes.code]],
-    ['u == true', [operatorTypes.code]],
+    ['u == none', [decidedCondition.code]],
+    ['u == true', [decidedCondition.code]],
     ['u == v', [operatorTypes.code]],
   ])('%s reports %j', (comparison, codes) => {
     expect(comparing(comparison)).toEqual(codes);

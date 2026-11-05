@@ -14,11 +14,6 @@ export const traitObjectTemplates = {
     code: 5151,
     message: (trait: string) => `${trait} is already among this 'any' type's traits.`,
   },
-  downcastNever: {
-    code: 5153,
-    message: (type: string, any: string) =>
-      `This never matches: ${type} doesn't meet ${any}, so no value of it is ever inside one.`,
-  },
   genericDowncast: {
     code: 5154,
     message: (name: string) =>

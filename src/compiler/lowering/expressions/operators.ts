@@ -7,7 +7,8 @@
  *   `includes(c, item)`, its operands evaluated as written.
  * - A chain compares each operand with the next, evaluating each once, in order, and stops at the
  *   first comparison that fails, as `and` would.
- * - `==` and `!=` are the built-in `equal`, `not` its own instruction.
+ * - `==` and `!=` are the built-in `equal`, `not` its own instruction. One whose sides' types fix
+ *   its value (§4) is that value, its sides still run.
  * - `and` and `or` short-circuit through `branch`, so their right side runs only when needed;
  *   `??` through a `switch` (nullish.ts).
  */
@@ -33,6 +34,12 @@ import { lowerNullish } from './nullish.ts';
 
 export function lowerBinary(context: FunctionContext, node: Binary): Register {
   const link = comparisonLinkOf(node);
+  const decided = context.body.decidedOf(node);
+  if (link !== undefined && decided !== undefined) {
+    // Its sides' types fix its value (§4): they run for what they do, and nothing compares them.
+    operands(context, node);
+    return context.constant(decided, node.span);
+  }
   if (link !== undefined) {
     return compared(context, link, operands(context, node));
   }

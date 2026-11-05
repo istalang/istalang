@@ -4,7 +4,7 @@
  *
  * A condition its operands' types decide (rules/decided-conditions.ts) rules out the branch that
  * never runs: its own when always false, every one after it when always true. A branch ruled out is
- * neither checked nor lowered, and doesn't take part in the `if`'s type; the condition is warned of.
+ * neither checked nor lowered, and doesn't take part in the `if`'s type.
  */
 
 import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
@@ -48,13 +48,15 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
   return unitType;
 }
 
-/** Checks `condition`, recording and warning of the value its operands' types fix, if any. */
+/**
+ * Checks `condition`, recording the value its operands' types fix, if any; the comparison or `is`
+ * deciding it warned of it where it stands (rules/decided-conditions.ts).
+ */
 function checkCondition(context: BodyContext, condition: Expression): boolean | undefined {
   context.expect(condition, boolType);
   const decided = decidedValue(context, condition);
   if (decided !== undefined) {
     context.decide(condition, decided);
-    context.report(checkerDiagnostics.decidedCondition(condition.span, decided));
   }
   return decided;
 }

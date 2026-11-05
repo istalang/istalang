@@ -1,11 +1,9 @@
-# error: 5400 at 21:9
-# error: 5153 at 26:8
-# error: 5154 at 29:8
-# error: 5001 at 32:8
-# error: 5155 at 35:8
-# Matching an `any` value against what its value can't be (§3.10): a type not meeting its traits,
-# a generic one, which a pattern can't give type arguments, a literal or an anonymous struct; and
-# a `match` that covers only some of its types, an open set, without `case _`.
+# error: 5400 at 19:9
+# error: 5154 at 24:8
+# error: 5155 at 27:8
+# Matching an `any` value against what no pattern names (§3.10): a generic type, which a pattern
+# can't give type arguments, or an anonymous struct; and a `match` that covers only some of its
+# types, an open set, without `case _`. A type never inside it is only warned of (§3.11).
 
 trait Named:
   fn name(self: Self) -> String
@@ -22,14 +20,8 @@ fn describe(x: any Named) -> String:
     case Email{to}:
       to
 
-fn never(x: any Named) -> Bool:
-  x is Plain{}
-
 fn generic(x: any Named) -> Bool:
   x is Box{}
-
-fn literal(x: any Named) -> Bool:
-  x is "a"
 
 fn anonymous(x: any Named) -> Bool:
   x is struct{to}

@@ -1,15 +1,11 @@
-# error: 5001 at 12:8
-# error: 4003 at 17:3
-# error: 4004 at 21:5
-# `x is Pattern` tests a value against a pattern of its own type (§3.11), and its bindings exist
-# only where the match is known to have succeeded: never after the `if`, and never through `or`.
+# error: 4003 at 13:3
+# error: 4004 at 17:5
+# `x is Pattern`'s bindings exist only where the match is known to have succeeded (§3.11): never
+# after the `if`, and never through `or`.
 
 enum Shape:
   Circle { radius: Int }
   Square { side: Int }
-
-fn literal(n: Int) -> Bool:
-  n is "one"
 
 fn afterIf(shape: Shape) -> Int:
   if shape is Circle{radius}:

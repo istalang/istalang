@@ -230,7 +230,7 @@ describe('a member parameter compared with a literal no member is', () => {
       'fn typoEquals<K in "a" | "b">(k: K) -> Bool:',
       '  k == "c"',
     ];
-    expect(codesOf(...declarations)).toEqual([5422]);
+    expect(codesOf(...declarations)).toEqual([5422, 5421]);
     expect(runMain('String', '`${typo("a")}|${typoEquals("b")}`', declarations)).toBe(
       'other|false',
     );

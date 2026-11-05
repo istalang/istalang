@@ -7,8 +7,8 @@
  *
  * - A type pattern, or a literal selecting its own literal member or `None`, says all there is to
  *   match. Any other pattern takes one member's value apart, so it must select exactly one.
- * - A pattern selecting no member is refused, and so is one selecting several where it must name
- *   one: a variant several member enums declare is qualified, a generic type several members
+ * - A pattern selecting no member never matches, a case its union rules out (§3.11). One selecting
+ *   several where it must name one is refused: a variant several member enums declare is qualified, a generic type several members
  *   instantiate is given its type arguments, written in full, since the member names them all
  *   (`case Box<Int>{value}`), and several shapes having the fields are named through their
  *   aliases (`case Point as p`). A type's name a member enum's variant shares is qualified too.
@@ -45,7 +45,7 @@ import {
 } from '../types/unions.ts';
 import { anyShape } from './exhaustiveness.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
-import type { Selection } from './pattern-tests.ts';
+import { ruledOutSelection, type Selection } from './pattern-tests.ts';
 import { memberShape } from './shapes.ts';
 
 /**
@@ -77,6 +77,9 @@ export function memberTaken(
   const selected = selectedMembers(scope, node, union, !isTypePattern);
   if (selected === undefined) {
     return undefined;
+  }
+  if (selected.length === 0) {
+    return ruledOutSelection(part);
   }
   const test: PatternTest = { kind: 'member', path: part.path, union, members: selected };
   const [only] = selected;
@@ -177,8 +180,9 @@ function namesType(scope: PatternScope, node: NamePattern): boolean {
 }
 
 /**
- * The members of `union` that `node`, a pattern that could fail, selects; undefined after
- * reporting that it selects none, or several where it must select one (`single`).
+ * The members of `union` that `node`, a pattern that could fail, selects, none when the union
+ * rules it out; undefined after reporting that it selects several where it must select one
+ * (`single`).
  */
 function selectedMembers(
   scope: PatternScope,
@@ -191,10 +195,6 @@ function selectedMembers(
     return undefined;
   }
   const text = typeText(union);
-  if (members.length === 0) {
-    scope.report(checkerDiagnostics.noMemberMatched(node.span, text));
-    return undefined;
-  }
   if (single && members.length > 1) {
     const texts = members.map(typeText);
     scope.report(checkerDiagnostics.severalMembers(node.span, text, texts, telling(node, texts)));
