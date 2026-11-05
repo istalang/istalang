@@ -34,4 +34,4 @@ fn error<F is Encodable>(message: String, fields: F):
   write(Level.Error, message, json.encode(fields))
 
 # A record without fields has an empty object, so a host reads every record's fields one way.
-fn _noFields() -> json.Json: json.Json.Object{fields: [:]}
+fn _noFields() -> json.Json: [:]

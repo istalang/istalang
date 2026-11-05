@@ -56,18 +56,6 @@ export const int = argumentOf('bigint');
 export const float = argumentOf('number');
 export const text = argumentOf('string');
 
-/** Element `index` of a tuple argument. */
-export function elementOf(value: Value | undefined, index: number): Value {
-  const element =
-    value !== undefined && isComposite(value) && value.kind === 'tuple'
-      ? value.elements[index]
-      : undefined;
-  if (element === undefined) {
-    unreachable(`Expected a tuple with an element ${index}.`);
-  }
-  return element;
-}
-
 /** The type entry the extern's declared result names: a struct, an enum or an extern type. */
 export function declaredResult(context: NativeContext): TypeId {
   return context.resultType ?? unreachable(`${context.name} returns no named type.`);

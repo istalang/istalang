@@ -166,17 +166,6 @@ export const disposeFunction = 'dispose';
  */
 export const unionLayout = { noneVariant: 'None', valueField: 'value' } as const;
 
-/** The variants of `json.Json` (§9): JSON held as a value, by its kind. */
-export const jsonVariants = {
-  null: 'Null',
-  boolean: 'Boolean',
-  integer: 'Integer',
-  number: 'Number',
-  text: 'Text',
-  list: 'List',
-  object: 'Object',
-} as const;
-
 /** The variants of `Result` (§3.12): `?` passes on an `Err` and takes the `Ok` value. */
 export const resultVariants = { ok: 'Ok', err: 'Err' } as const;
 

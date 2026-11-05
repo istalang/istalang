@@ -5,10 +5,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reportedNothing } from '../../diagnostics/diagnostic.test-kit.ts';
+import { reportedNothing, reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../../stdlib/prelude/prelude.test-kit.ts';
 import { lines } from '../parser/parse.test-kit.ts';
 import { reported } from './check.test-kit.ts';
+import { checkerDiagnostics } from './diagnostics/index.ts';
 
 describe('comma-separated declarations, constraints and mapped types (§4)', () => {
   it('checks and runs all declaration and type forms from §4 written with ","', () => {
@@ -39,5 +40,31 @@ describe('comma-separated declarations, constraints and mapped types (§4)', () 
     expect(mainGives('String', body.split('\n').join('\n  '), decls)).toBe(
       'form:ok:12:6:true:true',
     );
+  });
+});
+
+describe('empty [] and [:] literals against union types (§3)', () => {
+  it('selects Array<T> for [] and Map<K, V> for [:] when a union holds both', () => {
+    const body = lines(
+      'const a: Array<Int> | Map<String, Int> = []',
+      'const m: Array<Int> | Map<String, Int> = [:]',
+      '(a is Array<Int>, m is Map<String, Int>)',
+    );
+    expect(mainGives('(Bool, Bool)', body.split('\n').join('\n  '))).toEqual([true, true]);
+  });
+
+  it('still reports 5300 when [] or [:] has no expected type or fits multiple array/map members', () => {
+    expect(reported('fn f():\n  const xs = []')).toEqual(
+      reportedOnce(checkerDiagnostics.emptyCollection.code, '[]'),
+    );
+    expect(reported('fn f():\n  const m = [:]')).toEqual(
+      reportedOnce(checkerDiagnostics.emptyCollection.code, '[:]'),
+    );
+    expect(reported('fn f():\n  const xs: Array<Int> | Array<String> = []').codes).toContain(
+      checkerDiagnostics.emptyCollection.code,
+    );
+    expect(
+      reported('fn f():\n  const m: Map<String, Int> | Map<String, Bool> = [:]').codes,
+    ).toContain(checkerDiagnostics.emptyCollection.code);
   });
 });

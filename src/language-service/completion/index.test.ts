@@ -96,13 +96,13 @@ describe('completion', () => {
     expect(names(json, 'fn f() -> Int:', '  let j: json.‸ = 1', '  1')).toContain('Json');
   });
 
-  it("offers a namespace's type's statics and variants after its `.`", () => {
+  it("offers a namespace's type's statics after its `.`, an alias's too", () => {
     expect(names(time, 'fn f():', '  const d = time.Duration.‸', '  1')).toContain('parse');
     const json = "import * as json from 'json'";
-    expect(names(json, 'fn f():', '  const j = json.Json.‸', '  1')).toContain('Null');
+    expect(names(json, 'fn f():', '  const j = json.Json.‸', '  1')).toContain('fromJson');
   });
 
-  it("offers a namespace's types after its `.` in a pattern, and their variants after theirs", () => {
+  it("offers a namespace's types after its `.` in a pattern, and a type's variants after its own", () => {
     const json = "import * as json from 'json'";
     const matching = (path: string) => [
       json,
@@ -114,7 +114,15 @@ describe('completion', () => {
     ];
     expect(names(...matching('json.'))).toContain('Json');
     expect(names(...matching('json.'))).not.toContain('parse');
-    expect(names(...matching('json.Json.'))).toContain('Null');
+    const level = [
+      "import * as log from 'log'",
+      'fn f(l: log.Level) -> Int:',
+      '  match l:',
+      '    case log.Level.‸:',
+      '      1',
+      '    case _: 2',
+    ];
+    expect(names(...level)).toContain('Debug');
   });
 
   it('offers no variant after a type `new` builds', () => {

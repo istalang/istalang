@@ -12,7 +12,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 
 ## Units
 
-- encode/decode canonical JSON text, measure depth, or SHA-256 hash → `encodeJson`, `decodeJson`, `jsonDepth`, `contentHash` (`src/definition/codec.ts`)
+- encode/decode canonical JSON text (written from sorted entries, so keys spelling array indexes sort as strings too), refuse text nesting too deeply before it is parsed (`decodeJson(text, deepest)`, `NestingError`), measure a value's depth, or SHA-256 hash → `encodeJson`, `decodeJson`, `jsonDepth`, `contentHash` (`src/definition/codec.ts`)
 - define a versioned format `{ format, version, body }` with depth/zod validation → `defineFormat`, `Format`, `FormatError` (`src/definition/format.ts`)
 - read or write a persisted `Definition` text → `definitionFormat` (`src/definition/definition.ts`); read a text together with its canonical text and hash, never as a `read` then a `write` → `Format.readCanonical` (`src/definition/format.ts`)
 - read or write a persisted `Snapshot` text → `snapshotFormat` (`src/runtime/snapshot/snapshot.ts`)

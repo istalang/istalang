@@ -87,7 +87,7 @@ describe('endless instantiation', () => {
       'fn leaf<T is Sendable>(x: T) -> Box<T>: Box{value: x}',
       'fn toJson<T is Sendable>(self: Box<T>) -> Json:',
       '  drop spawn leaf(self)',
-      '  Json.Null',
+      '  none',
       'async fn main(): { drop spawn leaf(1); 0 }',
     ].join('\n');
     const { diagnostics } = diagnosedAt(stdProgramOf({ main }), 'main');

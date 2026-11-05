@@ -13,11 +13,12 @@
  * and writing validates too: invalid content fails as the same FormatError reading gives.
  *
  * The codecs recurse on the host's stack, so a body nesting deeper than any valid one can is
- * refused before either runs (`maximumTextDepth`), whether it is read or written.
+ * refused before either runs (`maximumTextDepth`), whether it is read, on its text before it is
+ * parsed, or written.
  */
 
 import { z } from 'zod';
-import { contentHash, decodeJson, encodeJson, jsonDepth } from './codec.ts';
+import { contentHash, decodeJson, encodeJson, jsonDepth, NestingError } from './codec.ts';
 import { maximumDepth } from './values.ts';
 
 /** How many levels a value's own level takes at most: a map's entry pair, its entry list, the map. */
@@ -79,7 +80,6 @@ export function defineFormat<Body extends z.ZodType>(
           `${name} version ${String(found)} is not supported; this reader knows version ${version}.`,
         );
       }
-      requireShallow(name, contents);
       const result = body.safeParse(contents);
       if (!result.success) {
         throw invalid(name, result.error);
@@ -103,7 +103,7 @@ export function defineFormat<Body extends z.ZodType>(
   return persisted;
 }
 
-/** Refuses a body nesting deeper than `maximumTextDepth`, which the codecs can't walk. */
+/** Refuses a body to be written nesting deeper than `maximumTextDepth`, which the codecs can't walk. */
 function requireShallow(name: string, contents: unknown): void {
   if (jsonDepth(contents) > maximumTextDepth) {
     throw new FormatError(`Invalid ${name} body: it nests deeper than ${maximumTextDepth} levels.`);
@@ -118,9 +118,12 @@ function invalid(name: string, error: z.ZodError): FormatError {
 function readEnvelope(text: string, name: string): z.output<typeof envelope> {
   let json: unknown;
   try {
-    json = decodeJson(text);
+    // The body sits one level inside the envelope.
+    json = decodeJson(text, maximumTextDepth + 1);
   } catch (error) {
-    throw new FormatError(`Not a ${name} text: it isn't JSON.`, { cause: error });
+    throw error instanceof NestingError
+      ? new FormatError(`Invalid ${name} body: it nests deeper than ${maximumTextDepth} levels.`)
+      : new FormatError(`Not a ${name} text: it isn't JSON.`, { cause: error });
   }
   const result = envelope.safeParse(json);
   if (!result.success) {

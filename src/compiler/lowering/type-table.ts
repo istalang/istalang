@@ -104,7 +104,10 @@ const externRoles = {
   instance: wellKnown.instance,
 } as const satisfies Record<Exclude<ExternRole, 'shared'>, WellKnownDeclaration>;
 
-/** The std type each role of an enum entry is (definition/types.ts). */
+/**
+ * The std type each role of an enum entry is (definition/types.ts): `json.Json`, a recursive
+ * alias whose union is an enum entry (§3.17).
+ */
 const enumRoles = {
   json: wellKnown.json,
 } as const satisfies Record<EnumRole, WellKnownDeclaration>;
@@ -298,7 +301,7 @@ export class TypeTable {
           fields: this.#fields(this.#checker.fieldsOf(type) ?? []),
         };
       case 'EnumDeclaration': {
-        const role = this.#roleOf(enumRoles, type.entity);
+        const role = this.#roleOf(enumRoles, declaration);
         return {
           kind: 'enum',
           name,
@@ -311,7 +314,7 @@ export class TypeTable {
         };
       }
       case 'ExternStructDeclaration': {
-        const role = this.#roleOf(externRoles, type.entity);
+        const role = this.#roleOf(externRoles, declaration);
         return {
           kind: 'extern',
           name,
@@ -338,17 +341,26 @@ export class TypeTable {
     }));
     const named = unionName(this.#checker, type);
     const typeArguments = named.arguments.map((argument) => this.reference(argument));
-    return { kind: 'enum', name: named.name, arguments: typeArguments, variants };
+    const declaration = type.recursion?.declaration;
+    const role = declaration === undefined ? undefined : this.#roleOf(enumRoles, declaration);
+    return {
+      kind: 'enum',
+      name: named.name,
+      arguments: typeArguments,
+      variants,
+      ...(role === undefined ? {} : { role }),
+    };
   }
 
-  /** Which of `roles` the type `entity` declares has: what the runtime makes of its values. */
+  /** Which of `roles` the type `declaration` declares has: what the runtime makes of its values. */
   #roleOf<Role extends string>(
     roles: Readonly<Record<Role, WellKnownDeclaration>>,
-    entity: NominalType['entity'],
+    declaration: object,
   ): Role | undefined {
-    return (Object.keys(roles) as Role[]).find(
-      (role) => this.#checker.wellKnownEntity(roles[role]) === entity,
-    );
+    return (Object.keys(roles) as Role[]).find((role) => {
+      const entity = this.#checker.wellKnownEntity(roles[role]);
+      return entity !== undefined && 'declaration' in entity && entity.declaration === declaration;
+    });
   }
 
   /**

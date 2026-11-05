@@ -54,6 +54,6 @@ async fn main() -> Future<Order>:
     big: 123456789012345678901234567890,
     ratio: 0.0 / 0.0,
     price: Money{cents: 1250, currency: "EUR"},
-    raw: Object{fields: ["keep": List{items: [Integer{value: 1}, Text{value: "two"}, Null]}]},
+    raw: ["keep": [1, "two", none]],
     cache: ["unused": 1],
   }

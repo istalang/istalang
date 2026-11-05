@@ -19,6 +19,7 @@ import type { FunctionId, Register } from '../../../definition/operands.ts';
 import { wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
+import { entityType } from '../../checker/types/named-types.ts';
 import type { Type } from '../../checker/types/type.ts';
 import { futureArgument } from '../../checker/types/well-known.ts';
 import type { ExternConstantDeclaration, FunctionDeclaration } from '../../syntax/declarations.ts';
@@ -126,7 +127,8 @@ export function constantNativeEntry(
 /** What every native of `declaration` is made of: its header, and JSON for what crosses. */
 function nativeParts(lowering: Lowering, declaration: HostExternDeclaration) {
   const { checker, tables } = lowering;
-  const jsonType = checker.wellKnownType(wellKnown.json);
+  // `Json` is a recursive alias (§3.17), so it is the type its entity names, not a nominal one.
+  const jsonType = entityType(checker, checker.wellKnownEntity(wellKnown.json));
   if (jsonType === undefined) {
     unreachable('A host extern was lowered in a program without the json module.');
   }

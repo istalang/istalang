@@ -34,7 +34,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - tell whether a constant computed again has the form lowering emits alike (map order and lambdas by identity) → `sameForm` (`src/compiler/checker/constant-form.ts`)
 - define `==` and structural map hashing over a value representation → `ValueSemantics` (`src/language/values.ts`)
 - order two `bigint`s or UTF-16 `string`s → `compareOrdered` (`src/language/order.ts`)
-- find the `json.Json` type entry or test if a `Value` is `Json` → `jsonTypeIn`, `jsonTypeOf`, `isJsonValue` (`src/definition/json-values.ts`)
+- find the `json.Json` type entry, the variant each of its union's members is (found by what the variant holds), or test if a `Value` is `Json` → `jsonTypeIn`, `jsonTypeOf`, `isJsonValue` (`src/definition/json-values.ts`)
 - convert between `json.Json` values, JSON text, and host JS values → `jsonText`, `jsonOfText`, `plainOfJson`, `jsonOfPlain` (`src/definition/json-values.ts`)
 
 ## One-way rules

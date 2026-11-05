@@ -21,7 +21,7 @@ const declarations = [
   '  Circle { radius: Float }',
   '  Dot',
   'struct Label { text: String }',
-  'fn toJson(self: Label) -> Json: Text{value: self.text}',
+  'fn toJson(self: Label) -> Json: self.text',
   'struct Tagged { label: Label }',
   'fn writes<T is Encodable>() -> Int: 1',
   'fn reads<T is Decodable>() -> Int: 1',
@@ -86,7 +86,7 @@ describe('a codec found only by import', () => {
     const codecs = [
       "import Json from 'json'",
       "import Point from 'main.ista'",
-      'fn toJson(self: Point) -> Json: Null',
+      'fn toJson(self: Point) -> Json: none',
     ].join('\n');
     expect(reported(main, { 'codecs.ista': codecs }).codes).toEqual([]);
   });

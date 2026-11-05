@@ -17,7 +17,9 @@ doc says where each part of that lives and why.
 
 A type crosses through its codecs, `toJson` and `fromJson`: what `Encodable` and `Decodable`
 require, declared in the `json` module (a language module, loaded with every program) beside
-`Json`, the enum holding any JSON. Codecs are program code, found as every trait's witnesses are,
+`Json`, the recursive union holding any JSON (`None | Bool | Int | Float | String | Array<Json> |
+Map<String, Json>`, spec §3.17), whose values are the language's own and whose codecs are the
+identity. Codecs are program code, found as every trait's witnesses are,
 so the runtime never calls program code from inside a native (D-A removed the re-entrant call
 path):
 
@@ -56,7 +58,9 @@ path):
   gave.
 - What is left to natives is leaf work with no program code in it (`stdlib/json/natives.ts`,
   `definition/json-values.ts`): JSON text to `Json` and back (lossless-json, integers exact, nesting
-  bounded by `maximumDepth`), a float's finiteness, sorting an object's entries.
+  bounded by `maximumDepth` on the text before it is parsed, written as canonical JSON,
+  `definition/codec.ts`), a float's finiteness. A `Json` value's member is found in its union's
+  layout by what each variant holds, never by a variant's name.
 
 ## Externs a host implements
 

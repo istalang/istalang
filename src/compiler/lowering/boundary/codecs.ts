@@ -14,7 +14,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { DerivedForm, JsonDirection } from '../../checker/json-form.ts';
 import { substitute } from '../../checker/types/substitution.ts';
-import type { NominalType } from '../../checker/types/type.ts';
+import type { Type } from '../../checker/types/type.ts';
 import { type FunctionInstance, substitutionOf } from '../instances.ts';
 import { SynthesizedCode } from '../synthesized-code.ts';
 import type { DefinitionTables } from '../tables.ts';
@@ -31,10 +31,14 @@ export interface CodecLowering {
 /** How each way's body is written from a form, into `code` giving `result`: a Json, or a Result. */
 const bodyWriters = {
   write: (code, result, form) => new Encoder(code, result).write(form),
-  read: (code, result, form) => new Decoder(code, result).read(form),
+  read: (code, result, form) =>
+    new Decoder(
+      code,
+      result.kind === 'nominal' ? result : unreachable('A decoder returns a Result.'),
+    ).read(form),
 } as const satisfies Record<
   JsonDirection,
-  (code: SynthesizedCode, result: NominalType, form: DerivedForm) => void
+  (code: SynthesizedCode, result: Type, form: DerivedForm) => void
 >;
 
 /**
@@ -70,9 +74,6 @@ export function derivedCodecEntry(lowering: CodecLowering, direction: JsonDirect
     substitutionOf(instance),
     checker.typeRules,
   );
-  if (result.kind !== 'nominal') {
-    unreachable('A codec returns a Json or a Result.');
-  }
   bodyWriters[direction](code, result, checker.json.formOf(type));
   return code.entry(tables.entryHeader(instance), false);
 }

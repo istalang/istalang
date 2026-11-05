@@ -3,17 +3,16 @@
  * codecs that need JavaScript's view of a number or the host's own JSON. Everything that walks a
  * typed value is compiled code (docs/arch/boundary.md), so nothing here runs program code.
  *
- * - A float JSON can't hold, NaN or an infinity, is written as `null`, as `JSON.stringify` does.
- * - Two keys of an object that write the same text keep the later value; whoever writes the
- *   object sorts its keys (definition/json-values.ts).
+ * - `Json` is a union of the language's own values (json.ista), so building one is compiled code;
+ *   writing it is definition/json-values.ts's, which writes a float JSON can't hold, NaN or an
+ *   infinity, as `null`, as `JSON.stringify` does, and sorts an object's keys.
  * - A host type's value is whatever JSON its host gave it, handed back unchanged (§9). A host type
  *   a `dispose` makes disposable keeps that JSON in a resource, made as the value arrives (§7).
  * - Text that isn't JSON is an `Err` saying why, never a panic: it comes from outside. The json
  *   module makes it the `Error` every failed read gives.
  */
 
-import { mapOf } from '../../definition/equality.ts';
-import { parameterKey, primitiveKey } from '../../definition/extern-key.ts';
+import { parameterKey } from '../../definition/extern-key.ts';
 import {
   JsonError,
   jsonOfPlain,
@@ -23,21 +22,12 @@ import {
   plainOfJson,
 } from '../../definition/json-values.ts';
 import { isResourceType } from '../../definition/types.ts';
-import { elementsOf, handleTarget, type Value } from '../../definition/values.ts';
-import { codecHelpers, jsonVariants, wellKnown } from '../../language/well-known.ts';
+import { handleTarget, type Value } from '../../definition/values.ts';
+import { codecHelpers, wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithResources } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import {
-  elementOf,
-  externPayloadOf,
-  float,
-  given,
-  resultErr,
-  resultOk,
-  resultVariant,
-  text,
-} from '../native-values.ts';
+import { externPayloadOf, given, resultErr, resultOk, text } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 /** The JSON a host gave a value of one of its types: the value itself, or its resource's (§7). */
@@ -64,18 +54,6 @@ export const jsonNatives = (keys: NativeKeys): Natives<NativeContext & WithResou
   },
   [keys.of('_refuse', 'String')]: ([message]) => {
     throw new Refusal('unfitJson', text(message));
-  },
-  [keys.of('toJson', 'Float')]: ([value], context) =>
-    jsonOfPlain(Number.isFinite(float(value)) ? float(value) : null, jsonTypeOf(context.types)),
-  [keys.of(
-    '_object',
-    knownTypeKey(wellKnown.array, { kind: 'tuple', elements: [primitiveKey('String'), json] }),
-  )]: ([fields], context) => {
-    const entries = elementsOf(fields).map((pair): [string, Value] => [
-      text(elementOf(pair, 0)),
-      elementOf(pair, 1),
-    ]);
-    return resultVariant(context, jsonVariants.object, { fields: mapOf(entries) });
   },
   [keys.of(codecHelpers.encodeHandle, parameterKey('T'))]: ([value], context) =>
     jsonOfPlain(hostPayloadOf(given(value), context), jsonTypeOf(context.types)),

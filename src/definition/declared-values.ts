@@ -115,7 +115,7 @@ function variantFieldType(
 }
 
 /** Where enum entry `type` has variant `name`, with its declared fields. */
-export function variantShape(types: readonly TypeDefinition[], type: TypeId, name: string) {
+function variantShape(types: readonly TypeDefinition[], type: TypeId, name: string) {
   const declared = types[type];
   const variants = declared?.kind === 'enum' ? declared.variants : [];
   const variant = variants.findIndex((each) => each.name === name);

@@ -17,7 +17,7 @@ fn suite() -> Array<Test>: [
     log.info("i")
     log.warn("w")
     log.error("e")
-    const empty = json.Json.Object{fields: [:]}
+    const empty: json.Json = [:]
     assertEq(calls(written), [
       (Level.Debug, "d", empty)
       (Level.Info, "i", empty)

@@ -63,7 +63,7 @@ interface KeyParameter {
 }
 
 /** A primitive type, as a key spells it. */
-export function primitiveKey(name: PrimitiveName): KeyType {
+function primitiveKey(name: PrimitiveName): KeyType {
   return { kind: 'primitive', name };
 }
 

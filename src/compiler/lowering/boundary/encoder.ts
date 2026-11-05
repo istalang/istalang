@@ -3,29 +3,33 @@
  * A struct is an object of its fields, `@JsonSkip` ones left out, whose keys are sorted when it is
  * written; an enum the same, with its variant's tag; a tuple an array; a host type the JSON its host
  * gave, through the json module's helper; a literal its base's value, a union of literals' the tag's
- * literal (§2). Each part is written by its own type's codec, and a literal by its base's.
+ * literal (§2). Each part is written by its own type's codec, and a literal by its base's. `Json`
+ * is a recursive union (§3.17), so what is built goes into it as the member it is: an array of
+ * `Json`, a map of `Json` by `String`, or a `String`.
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import { codecHelpers, jsonVariants } from '../../../language/well-known.ts';
+import { codecHelpers, wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
-import type { NominalType, Type } from '../../checker/types/type.ts';
+import { isPrimitive, type Type, type UnionType } from '../../checker/types/type.ts';
 import { baseOf } from '../../checker/types/unions.ts';
+import { arrayElement, wellKnownArguments } from '../../checker/types/well-known.ts';
 import { closeCall } from '../closed-calls.ts';
 import type { TypedValue } from '../holdings.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
-import { eachMember } from '../unions.ts';
+import { eachMember, intoUnion } from '../unions.ts';
 import { codecCall } from './codec-calls.ts';
 
 /** The body of `_toJson<T>`, written into `code`. */
 export class Encoder {
   readonly #code: SynthesizedCode;
-  readonly #json: NominalType;
+  readonly #json: UnionType;
 
-  constructor(code: SynthesizedCode, json: NominalType) {
+  constructor(code: SynthesizedCode, json: Type) {
     this.#code = code;
-    this.#json = json;
+    const union = json.kind === 'recursive' ? code.checker.typeRules.unfold(json) : json;
+    this.#json = union.kind === 'union' ? union : unreachable('Json is a union.');
   }
 
   write(form: DerivedForm): void {
@@ -47,7 +51,7 @@ export class Encoder {
         const items = form.type.elements.map((element, index) =>
           code.call(this.#codec(element), [code.field(value, index)]),
         );
-        code.return(this.#variant(jsonVariants.list, [code.array(items)]));
+        code.return(this.#list(code.array(items)));
         return;
       }
       case 'enum':
@@ -90,7 +94,10 @@ export class Encoder {
       const label = labels[index];
       if (label !== undefined) {
         code.code.place(label);
-        const tag = this.#variant(jsonVariants.text, [code.constant(variant.name)]);
+        const tag = this.#member(
+          (member) => isPrimitive(member, 'String'),
+          code.constant(variant.name),
+        );
         code.return(
           this.#object(variant.fields, (field) => code.field(value, field), [
             [code.constant(variantTagKey), tag],
@@ -120,10 +127,22 @@ export class Encoder {
         return [[code.constant(field.key), code.call(encode, [read(index)])]];
       }),
     ];
-    return this.#variant(jsonVariants.object, [code.map(entries)]);
+    const { checker } = code;
+    return this.#member(
+      (member) => wellKnownArguments(checker, wellKnown.map, member) !== undefined,
+      code.map(entries),
+    );
   }
 
-  #variant(name: string, fields: readonly Register[]): Register {
-    return this.#code.variant(this.#json, name, fields);
+  /** The `Json` of `items`, an array of `Json`. */
+  #list(items: Register): Register {
+    const { checker } = this.#code;
+    return this.#member((member) => arrayElement(checker, member) !== undefined, items);
+  }
+
+  /** `value`, of the member of `Json` that `isMember` picks, as a `Json`. */
+  #member(isMember: (member: Type) => boolean, value: Register): Register {
+    const member = this.#json.members.find(isMember) ?? unreachable('Json has no such member.');
+    return intoUnion(this.#code, { register: value, type: member }, this.#json, this.#code.span);
   }
 }

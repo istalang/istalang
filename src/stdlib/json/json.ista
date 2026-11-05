@@ -6,15 +6,13 @@
 # for a struct, an enum, a tuple or a host type that declares neither, the two the compiler derives
 # (`_toJson`, `_fromJson`, docs/arch/boundary.md), since a derived form reads a type's fields and
 # annotations. What reads or writes JSON text is natives.
+#
+# `Json` is a recursive union (§3.17), so JSON of any nesting is written as plain values, which go
+# into it by the conversion every union has, and taken apart by type patterns (`case Int as n`).
+# A JSON number is an `Int` where it is whole, else a `Float`; `null` is `none`, so `Json?` is
+# `Json`, and only `has(k)` tells a missing key from a stored `null`.
 
-enum Json:
-  Null
-  Boolean { value: Bool }
-  Integer { value: Int }
-  Number { value: Float }
-  Text { value: String }
-  List { items: Array<Json> }
-  Object { fields: Map<String, Json> }
+type Json = None | Bool | Int | Float | String | Array<Json> | Map<String, Json>
 
 # Each implies Sendable (§3.10): a value read from JSON is a copy, so it may go anywhere.
 trait Encodable:
@@ -45,11 +43,11 @@ fn parse<T is Decodable>(text: String) -> Result<T>:
 
 # The codecs of a type that crosses as the text its toString writes, read back through its parse,
 # such as `Time` and `Duration`: a type declares its own as one call to each.
-fn encodeText<T is Stringable>(value: T) -> Json: Text{value: value.toString()}
+fn encodeText<T is Stringable>(value: T) -> Json: value.toString()
 
 fn decodeText<T is Parsable>(json: Json, path: String) -> Result<T>:
   match json:
-    case Text{value}: _parsed(T.parse(value), path)
+    case String as value: _parsed(T.parse(value), path)
     case _: _mismatch(json, path, "a string")
 
 # The two the compiler writes, per type, for a struct, an enum, a tuple or a host type. A host type
@@ -81,72 +79,75 @@ extern fn _read(text: String) -> Result<Json, String>
 
 # Writing. A float JSON can't hold, NaN or an infinity, is written as null, as JavaScript does; an
 # object's keys are sorted when it is written, so equal values give the same JSON.
-fn toJson(self: Int) -> Json: Integer{value: self}
+fn toJson(self: Int) -> Json: self
 
-extern fn toJson(self: Float) -> Json
+fn toJson(self: Float) -> Json: self
 
-fn toJson(self: Bool) -> Json: Boolean{value: self}
+fn toJson(self: Bool) -> Json: self
 
-fn toJson(self: String) -> Json: Text{value: self}
+fn toJson(self: String) -> Json: self
 
-fn toJson(self: Unit) -> Json: Null
+fn toJson(self: Unit) -> Json: none
 
 # A `none` given for a `T?` leaves `T` unknown (§3.5), so `None` writes its own `null`.
-fn toJson(self: None) -> Json: Null
+fn toJson(self: None) -> Json: self
 
 fn toJson(self: Json) -> Json: self
 
 # A function giving `Never` gives no value, so its outcome is never written, yet it has a codec.
 fn toJson(self: Never) -> Json: self
 
-fn toJson<T is Encodable>(self: Array<T>) -> Json: List{items: [for each in self: each.toJson()]}
+fn toJson<T is Encodable>(self: Array<T>) -> Json:
+  const items: Array<Json> = [for each in self: each.toJson()]
+  items
 
 fn toJson<T is Encodable>(self: T?) -> Json:
   match self:
-    case None: Null
+    case None: none
     case value: value.toJson()
 
 fn toJson<K is Stringable, V is Encodable>(self: Map<K, V>) -> Json:
-  _object([for key, each in self: (key.toString(), each.toJson())])
+  let fields: Map<String, Json> = [:]
+  for key, each in self:
+    fields[key.toString()] = each.toJson()
+  fields
 
-extern fn _object(fields: Array<(String, Json)>) -> Json
-
-fn _encodeBigInt(value: Int) -> Json: Text{value: String(value)}
+fn _encodeBigInt(value: Int) -> Json: String(value)
 
 extern fn _encodeHandle<T>(value: T) -> Json
 
 # Reading. Each takes the path of the JSON it reads, which a failure names: `$.items[2].amount`.
 fn Int.fromJson(json: Json, path: String) -> Result<Int>:
   match json:
-    case Integer{value}: Ok{(value)}
+    case Int as value: Ok{(value)}
     case _: _mismatch(json, path, "an integer")
 
 fn Float.fromJson(json: Json, path: String) -> Result<Float>:
   match json:
-    case Integer{value}: Ok{(Float(value))}
-    case Number{value}: Ok{(value)}
+    case Int as value: Ok{(Float(value))}
+    case Float as value: Ok{(value)}
     case _: _mismatch(json, path, "a number")
 
 fn Bool.fromJson(json: Json, path: String) -> Result<Bool>:
   match json:
-    case Boolean{value}: Ok{(value)}
+    case Bool as value: Ok{(value)}
     case _: _mismatch(json, path, "a boolean")
 
 fn String.fromJson(json: Json, path: String) -> Result<String>:
   match json:
-    case Text{value}: Ok{(value)}
+    case String as value: Ok{(value)}
     case _: _mismatch(json, path, "a string")
 
 fn Unit.fromJson(json: Json, path: String) -> Result<Unit>:
   match json:
-    case Null: Ok{(())}
+    case None: Ok{(())}
     case _: _mismatch(json, path, "null")
 
 fn Json.fromJson(json: Json, path: String) -> Result<Json>: Ok{(json)}
 
 fn Array.fromJson<T is Decodable>(json: Json, path: String) -> Result<Array<T>>:
   match json:
-    case List{items}:
+    case Array<Json> as items:
       let decoded: Array<T> = []
       for each in items: decoded.push(T.fromJson(each, _elementPath(path, decoded.length()))?)
       Ok{(decoded)}
@@ -154,12 +155,12 @@ fn Array.fromJson<T is Decodable>(json: Json, path: String) -> Result<Array<T>>:
 
 fn Optional.fromJson<T is Decodable>(json: Json, path: String) -> Result<T?>:
   match json:
-    case Null: Ok{(none)}
+    case None: Ok{(none)}
     case _: Ok{(T.fromJson(json, path)?)}
 
 fn Map.fromJson<K is Parsable, V is Decodable>(json: Json, path: String) -> Result<Map<K, V>>:
   match json:
-    case Object{fields}:
+    case Map<String, Json> as fields:
       let decoded: Map<K, V> = [:]
       for key, each in fields:
         const at = _fieldPath(path, key)
@@ -169,8 +170,8 @@ fn Map.fromJson<K is Parsable, V is Decodable>(json: Json, path: String) -> Resu
 
 fn _decodeBigInt(json: Json, path: String) -> Result<Int>:
   match json:
-    case Integer{value}: Ok{(value)}
-    case Text{value}: _parsed(Int.parse(value), path)
+    case Int as value: Ok{(value)}
+    case String as value: _parsed(Int.parse(value), path)
     case _: _mismatch(json, path, "an integer")
 
 extern fn _decodeHandle<T>(json: Json, path: String) -> Result<T>
@@ -178,15 +179,15 @@ extern fn _decodeHandle<T>(json: Json, path: String) -> Result<T>
 # The parts derived codecs of structs, enums, tuples and literals are made of.
 fn _fields(json: Json, path: String) -> Result<Map<String, Json>>:
   match json:
-    case Object{fields}: Ok{(fields)}
+    case Map<String, Json> as fields: Ok{(fields)}
     case _: _mismatch(json, path, "an object")
 
+# `Json?` is `Json`, so a missing field and a stored `null` look alike but to `has`.
 fn _field(fields: Map<String, Json>, name: String, path: String) -> Result<Json>:
-  match fields.get(name):
-    case None: _failure(_fieldPath(path, name), "missing")
-    case value: Ok{(value)}
+  if fields.has(name): Ok{(fields.get(name))}
+  else: _failure(_fieldPath(path, name), "missing")
 
-fn _optionalField(fields: Map<String, Json>, name: String) -> Json: fields.get(name) ?? Null
+fn _optionalField(fields: Map<String, Json>, name: String) -> Json: fields.get(name)
 
 fn _tag(fields: Map<String, Json>, key: String, path: String) -> Result<String>:
   String.fromJson(_field(fields, key, path)?, _fieldPath(path, key))
@@ -200,7 +201,7 @@ fn _notAmong<T>(json: Json, path: String, literals: String) -> Result<T>:
 
 fn _elements(json: Json, path: String, count: Int) -> Result<Array<Json>>:
   match json:
-    case List{items}:
+    case Array<Json> as items:
       if items.length() == count: Ok{(items)}
       else: _failure(path, "expected " + count + " elements, found " + items.length())
     case _: _mismatch(json, path, "an array")
@@ -228,10 +229,10 @@ fn _error(message: String) -> Error: Error{message: message, code: "json"}
 
 fn _kind(json: Json) -> String:
   match json:
-    case Null: "null"
-    case Boolean{}: "a boolean"
-    case Integer{}: "an integer"
-    case Number{}: "a number"
-    case Text{}: "a string"
-    case List{}: "an array"
-    case Object{}: "an object"
+    case None: "null"
+    case Bool: "a boolean"
+    case Int: "an integer"
+    case Float: "a number"
+    case String: "a string"
+    case Array<Json>: "an array"
+    case Map<String, Json>: "an object"

@@ -183,8 +183,12 @@ export function isCellType(types: readonly TypeDefinition[], type: number): bool
   return hasRole(types, type, 'shared') || hasRole(types, type, 'cell');
 }
 
-/** Whether type entry `type` of `types` has `role`. */
-export function hasRole(types: readonly TypeDefinition[], type: number, role: ExternRole): boolean {
+/** Whether type entry `type` of `types` has `role`, an extern type's or an enum's. */
+export function hasRole(
+  types: readonly TypeDefinition[],
+  type: number,
+  role: ExternRole | EnumRole,
+): boolean {
   const entry = types[type];
-  return entry?.kind === 'extern' && entry.role === role;
+  return (entry?.kind === 'extern' || entry?.kind === 'enum') && entry.role === role;
 }

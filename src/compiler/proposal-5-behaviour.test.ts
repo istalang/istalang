@@ -9,14 +9,32 @@
 import { describe, expect, it } from 'vitest';
 import { formatText } from '../formatter/format.ts';
 import { mainGives } from '../stdlib/prelude/prelude.test-kit.ts';
+import { stdProgramOf } from './binder/bind.test-kit.ts';
+import { binderDiagnostics } from './binder/diagnostics.ts';
 import { reported } from './checker/check.test-kit.ts';
+import { checkProgram } from './checker/check.ts';
 import { checkerDiagnostics } from './checker/diagnostics/index.ts';
+import { sameType } from './checker/types/identity.ts';
+import type { Type } from './checker/types/type.ts';
 import { parserDiagnostics } from './parser/diagnostics.ts';
 import { dumpClean, lines } from './parser/parse.test-kit.ts';
+import { idOf } from './program/program.test-kit.ts';
+import { programModule } from './program/program.ts';
+import type { FunctionDeclaration } from './syntax/declarations.ts';
 
 /** `main`'s body written over several lines, each indented under `main`: `mainGives` indents its first. */
 function mainGivesLines(result: string, body: string, declarations?: string): unknown {
   return mainGives(result, body.trimEnd().split('\n').join('\n  '), declarations);
+}
+
+/** The parameter types of the first function `source` declares, as checked. */
+function parameterTypesOf(source: string): { readonly types: readonly Type[] } {
+  const program = stdProgramOf({ 'main.ista': source });
+  const checker = checkProgram(program);
+  const fn = programModule(program, idOf('main.ista')).tree.root.items.find(
+    (item): item is FunctionDeclaration => item.kind === 'FunctionDeclaration',
+  );
+  return { types: fn === undefined ? [] : checker.parametersOf(fn).map(({ type }) => type) };
 }
 
 describe('proposal 5 behaviour table: row by row', () => {
@@ -100,6 +118,37 @@ describe('proposal 5 behaviour table: row by row', () => {
 
   it('row 9: "type A = A | Int" is still error 5106', () => {
     expect(reported('type A = A | Int').codes).toEqual([checkerDiagnostics.aliasCycle.code]);
+  });
+
+  it('row 10: a Json literal is written ["a": 1, "b": [true, none]] without variant wrappers', () => {
+    const decls = "import * as json from 'json'\nimport Json from 'json'";
+    const body = lines('const j: Json = ["a": 1, "b": [true, none]]', 'json.stringify(j)');
+    expect(mainGivesLines('String', body, decls)).toBe('{"a":1,"b":[true,null]}');
+  });
+
+  it('row 11: "case Text{value}" on a Json is gone; "case String as value" binds the String', () => {
+    const decls = "import Json from 'json'";
+    const oldPattern = lines(
+      decls,
+      'fn f(j: Json) -> String:',
+      '  match j:',
+      '    case Text{value}: value',
+      '    case _: ""',
+    );
+    expect(reported(oldPattern).codes).toContain(binderDiagnostics.undeclared.code);
+    const newPattern = lines(
+      'const j: Json = "hello"',
+      'match j:',
+      '  case String as value: value',
+      '  case _: ""',
+    );
+    expect(mainGivesLines('String', newPattern, decls)).toBe('hello');
+  });
+
+  it('row 12: "Json?" is "Json"', () => {
+    const { types } = parameterTypesOf("import Json from 'json'\nfn check(a: Json, b: Json?): ()");
+    const [plain, optional] = types;
+    expect(plain !== undefined && optional !== undefined && sameType(plain, optional)).toBe(true);
   });
 
   it('row 13: "[]" where "Array<Int> | Map<String, Int>" is expected builds the empty array', () => {

@@ -6,7 +6,6 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { jsonVariants } from '../language/well-known.ts';
 import { valuesEqual } from './equality.ts';
 import {
   JsonError,
@@ -17,18 +16,52 @@ import {
   jsonTypeIn,
   plainOfJson,
 } from './json-values.ts';
+import type { TypeDefinition, TypeReference } from './types.ts';
 import { maximumDepth } from './values.ts';
 
-/** Where a program's types hold `Json`, as lowering lays out the json module's. */
+/** A std container's extern entry, as the type table holds one. */
+function externEntry(name: string, typeArguments: TypeReference[]): TypeDefinition {
+  return {
+    kind: 'extern',
+    name,
+    arguments: typeArguments,
+    sendable: true,
+    disposal: { kind: 'none' },
+  };
+}
+
+/** A variant of `Json`'s union holding a value of `type`, as lowering lays one out. */
+function memberVariant(name: string, type: TypeReference) {
+  return { name, fields: [{ name: 'value', type, annotations: [] }] };
+}
+
+/**
+ * Where a program's types hold `Json`, as lowering lays out the json module's union: a variant per
+ * member in the order of their spelled names, `None` holding nothing, and the array and map
+ * entries its members name.
+ */
 const shape: JsonType = (() => {
+  const primitive = (name: 'Bool' | 'Int' | 'Float' | 'String') =>
+    ({ kind: 'primitive', name }) as const;
+  const json = { kind: 'named', type: 0 } as const;
   const found = jsonTypeIn([
     {
       kind: 'enum',
       name: 'json.Json',
       arguments: [],
-      variants: Object.values(jsonVariants).map((name) => ({ name, fields: [] })),
+      variants: [
+        memberVariant('Array<json.Json>', { kind: 'named', type: 1 }),
+        memberVariant('Bool', primitive('Bool')),
+        memberVariant('Float', primitive('Float')),
+        memberVariant('Int', primitive('Int')),
+        memberVariant('Map<String, json.Json>', { kind: 'named', type: 2 }),
+        { name: 'None', fields: [] },
+        memberVariant('String', primitive('String')),
+      ],
       role: 'json',
     },
+    externEntry('prelude.Array', [json]),
+    externEntry('prelude.Map', [primitive('String'), json]),
   ]);
   if (found === undefined) {
     throw new Error('No Json type in the table.');

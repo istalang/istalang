@@ -1,46 +1,46 @@
 /**
- * JSON as values of the json module's `Json` enum (spec §9), and the two forms JSON takes outside
+ * JSON as values of the json module's `Json` (spec §9), the recursive union `None | Bool | Int |
+ * Float | String | Array<Json> | Map<String, Json>` (§3.17), and the two forms JSON takes outside
  * an instance: text, and the JavaScript values a host works with. The compiled codecs turn typed
  * values into `Json` and back (docs/arch/boundary.md); this module only moves `Json` across, for
  * the json module's natives and the runtime's host boundary alike.
  *
- * - Text is written as JavaScript's `JSON.stringify` writes it, except that an integer keeps every
- *   digit at any size and an object's entries are sorted by key, in UTF-16 order as JavaScript
- *   sorts strings: a `Json` object is a map, whose order is no part of its value, so equal values
- *   always give the same text (§9). Text is read with
- *   integers kept exact (lossless-json); a key given twice with different values is refused rather
- *   than resolved by position, since the two readers of such text could disagree.
+ * - A `Json` value is its union's enum's variant (definition/types.ts): each member's variant is
+ *   found in the entry by what its one field holds, `None` by holding nothing, never by a variant's
+ *   name, which is the member as the compiler spells it.
  * - A host sees what `JSON.parse` of the text would give it, except that every integer is a
  *   `bigint`, so none loses digits and a host can tell an `Int` from a `Float`. Coming back, a
- *   bigint or a whole number is an `Integer`, any other number a `Number`, so a host need not say
- *   which it means; and `undefined` reads as `JSON.stringify` writes it, `null`, or a field left
- *   out of an object, so a host function returning nothing gives `Unit` or `none`.
+ *   bigint or a whole number is an `Int`, any other number a `Float`, so a host need not say which
+ *   it means; and `undefined` reads as `JSON.stringify` writes it, `null`, or a field left out of
+ *   an object, so a host function returning nothing gives `Unit` or `none`.
+ * - Text is that JavaScript value in the canonical form (definition/codec.ts): an integer keeps
+ *   every digit at any size and an object's entries are sorted by key, so equal values always give
+ *   the same text (§9). A float JSON can't hold, NaN or an infinity, is `null`, as
+ *   `JSON.stringify` writes it. A key given twice with different values is refused rather than
+ *   resolved by position, since the two readers of such text could disagree.
  * - `Json` nests no deeper than a persisted value may (`maximumDepth`), checked before either
  *   form is walked, so deep input is refused instead of overflowing the host's stack.
  */
 
-import { compareOrdered } from '../language/order.ts';
-import { jsonVariants } from '../language/well-known.ts';
+import { qualifiedName, wellKnown } from '../language/well-known.ts';
 import { memo } from '../structures/memo.ts';
 import { unreachable } from '../structures/unreachable.ts';
-import { decodeJson } from './codec.ts';
-import { variantShape } from './declared-values.ts';
+import { decodeJson, encodeJson, NestingError } from './codec.ts';
 import { mapOf } from './equality.ts';
 import type { TypeId } from './operands.ts';
-import type { TypeDefinition } from './types.ts';
-import { childValues, isComposite, maximumDepth, type Value } from './values.ts';
+import { hasRole, type TypeDefinition, type TypeReference } from './types.ts';
+import { elementsOf, isComposite, mapValueOf, maximumDepth, type Value } from './values.ts';
 
-/** The type entry the program's `Json` has, and the index of each of its variants. */
+/** A member of `Json`, by what its values are. */
+type JsonMember = 'None' | 'Bool' | 'Int' | 'Float' | 'String' | 'Array' | 'Map';
+
+/** The type entry the program's `Json` has, and the variant each member's values are. */
 export interface JsonType {
   readonly type: TypeId;
-  readonly variants: Readonly<Record<JsonVariant, number>>;
+  readonly variants: Readonly<Record<JsonMember, number>>;
+  /** Each variant's member, by its index: the inverse of `variants`. */
+  readonly members: readonly JsonMember[];
 }
-
-type JsonVariant = (typeof jsonVariants)[keyof typeof jsonVariants];
-
-/** A JSON string, escapes included, and what isn't a bracket: what nesting depth skips. */
-const jsonStrings = /"(?:[^"\\]|\\.)*"/gu;
-const notBrackets = /[^[\]{}]/gu;
 
 const jsonTypes = new WeakMap<readonly TypeDefinition[], JsonType | undefined>();
 
@@ -59,16 +59,41 @@ export function jsonTypeOf(types: readonly TypeDefinition[]): JsonType {
 }
 
 function findJsonType(types: readonly TypeDefinition[]): JsonType | undefined {
-  const index = types.findIndex(
-    (candidate) => candidate.kind === 'enum' && candidate.role === 'json',
-  );
-  if (index < 0) {
+  const type = types.findIndex((_entry, index) => hasRole(types, index, 'json'));
+  const entry = types[type];
+  if (entry?.kind !== 'enum') {
     return undefined;
   }
-  const variants = Object.fromEntries(
-    Object.values(jsonVariants).map((name) => [name, variantShape(types, index, name).variant]),
-  ) as Record<JsonVariant, number>;
-  return { type: index, variants };
+  const members = entry.variants.map(({ fields: [field] }) => memberHolding(types, field?.type));
+  const variants = Object.fromEntries(members.map((member, index) => [member, index]));
+  return { type, variants: variants as Record<JsonMember, number>, members };
+}
+
+/** The member whose variant's one field has the type `reference`; `None`'s holds nothing. */
+function memberHolding(
+  types: readonly TypeDefinition[],
+  reference: TypeReference | undefined,
+): JsonMember {
+  switch (reference?.kind) {
+    case undefined:
+      return 'None';
+    case 'primitive':
+      if (reference.name === 'Bool' || reference.name === 'Int' || reference.name === 'Float') {
+        return reference.name;
+      }
+      return reference.name === 'String' ? 'String' : unreachable('Json holds no such primitive.');
+    case 'named': {
+      const name = types[reference.type]?.name;
+      if (name === qualifiedName(wellKnown.array)) {
+        return 'Array';
+      }
+      return name === qualifiedName(wellKnown.map)
+        ? 'Map'
+        : unreachable('Json holds no such type.');
+    }
+    default:
+      return unreachable('Json holds no structural type.');
+  }
 }
 
 /** Why JSON couldn't be read or written. */
@@ -78,43 +103,53 @@ export class JsonError extends Error {
 
 /** `json` as JSON text. */
 export function jsonText(json: Value, shape: JsonType): string {
-  return written(json, shape, 0);
+  return encodeJson(plainOfJson(json, shape));
 }
 
 /** The `Json` value JSON text holds; a JsonError for text that isn't JSON or nests too deeply. */
 export function jsonOfText(text: string, shape: JsonType): Value {
-  if (textDepth(text) > maximumDepth) {
-    throw new JsonError(`JSON nests deeper than ${maximumDepth} levels.`);
-  }
   let parsed: unknown;
   try {
-    parsed = decodeJson(text);
+    parsed = decodeJson(text, maximumDepth);
   } catch (error) {
-    throw new JsonError(error instanceof Error ? error.message : String(error), { cause: error });
+    throw new JsonError(unreadMessage(error), { cause: error });
   }
   return jsonOfPlain(parsed, shape);
 }
 
+/** Why JSON text couldn't be read, as `decodeJson` refused it. */
+function unreadMessage(error: unknown): string {
+  if (error instanceof NestingError) {
+    return `JSON nests deeper than ${maximumDepth} levels.`;
+  }
+  return error instanceof Error ? error.message : String(error);
+}
+
 /** `json` as the JavaScript value a host works with: `JSON.parse` of its text, integers as bigints. */
 export function plainOfJson(json: Value, shape: JsonType, depth = 0): unknown {
-  const [variant, field] = partsOf(json, shape, depth);
-  switch (variant) {
-    case 'Null':
+  const [member, value] = partsOf(json, shape, depth);
+  switch (member) {
+    case 'None':
       return null;
-    case 'Boolean':
-    case 'Integer':
-    case 'Text':
-      return field;
-    case 'Number':
-      return typeof field === 'number' && Number.isFinite(field) ? field : null;
-    case 'List':
-      return listItems(field).map((item) => plainOfJson(item, shape, depth + 1));
-    case 'Object':
+    case 'Bool':
+    case 'Int':
+    case 'String':
+      return value;
+    case 'Float':
+      return typeof value === 'number' && Number.isFinite(value) ? value : null;
+    case 'Array':
+      return elementsOf(value).map((item) => plainOfJson(item, shape, depth + 1));
+    case 'Map':
       return Object.fromEntries(
-        objectEntries(field).map(([key, item]) => [key, plainOfJson(item, shape, depth + 1)]),
+        mapValueOf(value).entries.map(([key, item]) => [
+          String(key),
+          plainOfJson(item, shape, depth + 1),
+        ]),
       );
-    default:
-      unreachable(`Json has no variant ${variant}.`);
+    default: {
+      const unhandled: never = member;
+      return unhandled;
+    }
   }
 }
 
@@ -123,43 +158,42 @@ export function jsonOfPlain(plain: unknown, shape: JsonType, depth = 0): Value {
   if (depth > maximumDepth) {
     throw new JsonError(`JSON nests deeper than ${maximumDepth} levels.`);
   }
-  const variant = (name: JsonVariant, fields: Value[]): Value => ({
+  const of = (member: JsonMember, value?: Value): Value => ({
     kind: 'variant',
     type: shape.type,
-    variant: shape.variants[name],
-    fields,
+    variant: shape.variants[member],
+    fields: value === undefined ? [] : [value],
   });
   switch (typeof plain) {
     case 'boolean':
-      return variant('Boolean', [plain]);
+      return of('Bool', plain);
     case 'string':
-      return variant('Text', [plain]);
+      return of('String', plain);
     case 'undefined':
-      return variant('Null', []);
+      return of('None');
     case 'bigint':
-      return variant('Integer', [plain]);
+      return of('Int', plain);
     case 'number':
       if (!Number.isFinite(plain)) {
         throw new JsonError(`JSON can't hold the number ${plain}.`);
       }
-      return Number.isInteger(plain)
-        ? variant('Integer', [BigInt(plain)])
-        : variant('Number', [plain]);
+      return Number.isInteger(plain) ? of('Int', BigInt(plain)) : of('Float', plain);
     case 'object':
       if (plain === null) {
-        return variant('Null', []);
+        return of('None');
       }
       if (Array.isArray(plain)) {
         const items = plain.map((item: unknown) => jsonOfPlain(item, shape, depth + 1));
-        return variant('List', [{ kind: 'array', elements: items }]);
+        return of('Array', { kind: 'array', elements: items });
       }
-      return variant('Object', [
+      return of(
+        'Map',
         mapOf(
           Object.entries(plain)
             .filter(([, item]) => item !== undefined)
             .map(([key, item]) => [key, jsonOfPlain(item, shape, depth + 1)]),
         ),
-      ]);
+      );
     default:
       throw new JsonError(`JSON can't hold a ${typeof plain}.`);
   }
@@ -175,72 +209,18 @@ export function isJsonValue(
   );
 }
 
-/** The variant `json` is, and its one field: what walking it reads at each level. */
+/** The member `json` is a value of, and that value: what walking it reads at each level. */
 function partsOf(
   json: Value,
   shape: JsonType,
   depth: number,
-): readonly [JsonVariant | undefined, Value | undefined] {
+): readonly [JsonMember, Value | undefined] {
   if (depth > maximumDepth) {
     throw new JsonError(`JSON nests deeper than ${maximumDepth} levels.`);
   }
   if (!isJsonValue(json, shape)) {
     unreachable('Expected a Json value.');
   }
-  const variant = (Object.keys(shape.variants) as JsonVariant[]).find(
-    (name) => shape.variants[name] === json.variant,
-  );
-  return [variant, childValues(json)[0]];
-}
-
-function written(json: Value, shape: JsonType, depth: number): string {
-  const [variant, field] = partsOf(json, shape, depth);
-  switch (variant) {
-    case 'Null':
-      return 'null';
-    case 'Boolean':
-    case 'Integer':
-      return String(field);
-    case 'Number':
-      return typeof field === 'number' && Number.isFinite(field) ? JSON.stringify(field) : 'null';
-    case 'Text':
-      return JSON.stringify(field);
-    case 'List':
-      return `[${listItems(field)
-        .map((item) => written(item, shape, depth + 1))
-        .join(',')}]`;
-    case 'Object':
-      return `{${objectEntries(field)
-        .map(([key, item]) => `${JSON.stringify(key)}:${written(item, shape, depth + 1)}`)
-        .join(',')}}`;
-    default:
-      unreachable(`Json has no variant ${variant}.`);
-  }
-}
-
-function listItems(field: Value | undefined): readonly Value[] {
-  if (field === undefined || field === null || !isComposite(field) || field.kind !== 'array') {
-    unreachable('Expected the items of a Json list.');
-  }
-  return field.elements;
-}
-
-function objectEntries(field: Value | undefined): readonly (readonly [string, Value])[] {
-  if (field === undefined || field === null || !isComposite(field) || field.kind !== 'map') {
-    unreachable('Expected the fields of a Json object.');
-  }
-  return field.entries
-    .map(([key, item]): [string, Value] => [String(key), item])
-    .sort(([left], [right]) => compareOrdered(left, right));
-}
-
-/** How deeply JSON text nests, counting brackets outside strings, without parsing it. */
-function textDepth(text: string): number {
-  let depth = 0;
-  let deepest = 0;
-  for (const bracket of text.replace(jsonStrings, '').replace(notBrackets, '')) {
-    depth += bracket === '[' || bracket === '{' ? 1 : -1;
-    deepest = Math.max(deepest, depth);
-  }
-  return deepest;
+  const member = shape.members[json.variant] ?? unreachable('Json has no such variant.');
+  return [member, json.fields[0]];
 }
