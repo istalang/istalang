@@ -54,7 +54,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - check and record how a body value fits an expected type → `BodyContext.expect`, `BodyContext.fit` (`src/compiler/checker/body-context.ts`)
 - check and record how an assignment or spread fits an expected type → `BodyContext.fitWritten`, `BodyContext.fitUnwrapped` (`src/compiler/checker/body-context.ts`)
 - agree on one type across producers → `agreedType`, `settleAgreement`, `decidedSoFar`, `fitProduced` (`src/compiler/checker/rules/agreement.ts`)
-- combine `Accepts` predicates across composite parts or producers → `partsAccept`, `agreedAccepts` (`src/compiler/checker/rules/agreement.ts`)
+- combine `Accepts` predicates across composite parts or producers → `partsAccept`, `agreedAccepts`; for a literal of items with types of their own, what it can be built as instead (§3.7) → `partsBuild`, `agreedBuilds` (`src/compiler/checker/rules/agreement.ts`), each literal's `…Builds` beside its `…Accepts` (`expressions/tuples.ts`, `structs.ts`, `collection-accepts.ts`), read through `AcceptedPart.builds`; a chosen call checks such an argument again as its parameter's type in `fitArguments` (`resolution/argument-fit.ts`)
 - collect and agree on branch bodies (`if`, `match`, `select`) → `Branches`, `branchesAccepts`, `blockAccepts` (`src/compiler/checker/rules/branches.ts`)
 - check `==` / `!=` operands, either fitting the other's type → `comparable`, `checkEqualSides` (`src/compiler/checker/types/equality.ts`)
 - hint `?.`, `?.[`, `?.(` or `?->` when a step of a link's form fails on `T?` → `insideOptional` (`src/compiler/checker/types/inside-optional.ts`)

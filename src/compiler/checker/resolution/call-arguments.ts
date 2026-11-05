@@ -48,6 +48,11 @@ export interface CallArgument {
   readonly passing: Passing;
   readonly accepts?: Accepts | undefined;
   /**
+   * For a literal of items each with a type of its own, which parameter types its items can build
+   * it as where its own type doesn't fit one (§3.7).
+   */
+  readonly builds?: Accepts | undefined;
+  /**
    * Whether it fits only a parameter of its type exactly, with no conversion: a witness's (§3.10),
    * or a spread's items, which are copied or iterated as they are (§3.3).
    */

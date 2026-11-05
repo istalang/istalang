@@ -23,7 +23,7 @@
  *   values are checked on their own there, since `setIndex` is chosen by their types.
  * - An expected `T?` guides a literal like an expected `T`; fitting it then wraps the value (§2).
  * - Passed to a call, a literal whose own items don't decide its type, or an empty one, has the
- *   type the call decides (§3.5), so it takes what each item can take.
+ *   type the call decides (§3.5), so it takes what each item can take (collection-accepts.ts).
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
@@ -38,19 +38,13 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { AcceptedPart, Accepts, BodyContext, CollectionRecord } from '../body-context.ts';
+import type { BodyContext, CollectionRecord } from '../body-context.ts';
 import { writeElement } from '../calls/collection-functions.ts';
 import type { CollectionForm } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { resolveDefault } from '../resolution/default-witness.ts';
 import { preludeCall } from '../resolution/implicit.ts';
-import {
-  agreedAccepts,
-  allProducersAccept,
-  decidedSoFar,
-  type Produced,
-  settleAgreement,
-} from '../rules/agreement.ts';
+import { decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
 import { checkIterated, iteratedItem } from '../rules/iteration.ts';
 import { collectionTarget } from '../types/expected.ts';
 import { isExact } from '../types/fit.ts';
@@ -157,71 +151,6 @@ function entriesOf(
     }
   }
   return { keys, values };
-}
-
-/**
- * What a spread's items have before the call is chosen: an array's elements when its type is known;
- * any other spread's are left open, its items known only once it is checked.
- */
-function spreadAcceptedPart(context: BodyContext, spread: Spread): AcceptedPart {
-  const part = context.acceptedPart(spread.expression);
-  const type = part.kind === 'typed' ? part.type : undefined;
-  return {
-    kind: 'typed',
-    type: type === undefined ? undefined : arrayElement(context.checker, type),
-  };
-}
-
-/** Which types an array literal the call decides can take: what `[]` builds, or an array. */
-export function arrayAccepts(context: BodyContext, node: ArrayLiteral): Accepts | undefined {
-  if (node.elements.length === 0) {
-    return (expected) => collectionTarget(context.checker, expected) !== undefined;
-  }
-  const items = agreedAccepts(
-    context,
-    node.elements.map((element) =>
-      element.kind === 'Spread'
-        ? spreadAcceptedPart(context, element)
-        : context.acceptedPart(element),
-    ),
-  );
-  if (items === undefined) {
-    return undefined;
-  }
-  return (expected, isOpen) => {
-    const target = collectionTarget(context.checker, expected);
-    return target?.kind === 'array' && items(target.item, isOpen);
-  };
-}
-
-/** Which types a map literal the call decides can take: what `[:]` builds, or a `Map`. */
-export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | undefined {
-  if (node.entries.length === 0) {
-    return (expected) => {
-      const kind = collectionTarget(context.checker, expected)?.kind;
-      return kind === 'map' || kind === 'declared';
-    };
-  }
-  const entries = node.entries.map((entry) => (entry.kind === 'MapEntry' ? entry : undefined));
-  const keyParts = entries.map((entry) => context.acceptedPart(entry?.key));
-  const valueParts = entries.map((entry) => context.acceptedPart(entry?.value));
-  const keysNeed = agreedAccepts(context, keyParts);
-  const valuesNeed = agreedAccepts(context, valueParts);
-  if (keysNeed === undefined && valuesNeed === undefined) {
-    return undefined;
-  }
-  const keys = keysNeed ?? allProducersAccept(context, keyParts);
-  const values = valuesNeed ?? allProducersAccept(context, valueParts);
-  return (expected, isOpen) => {
-    const target = collectionTarget(context.checker, expected);
-    if (target?.kind !== 'map') {
-      return false;
-    }
-    const [key, value] = target.arguments;
-    return (
-      (key === undefined || keys(key, isOpen)) && (value === undefined || values(value, isOpen))
-    );
-  };
 }
 
 /**

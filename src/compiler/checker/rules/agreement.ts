@@ -162,7 +162,8 @@ function partAccepts(
   return (
     part.type === undefined ||
     isOpen(expected) ||
-    context.checker.fitOf(part.type, expected) !== undefined
+    context.checker.fitOf(part.type, expected) !== undefined ||
+    part.builds?.(expected, isOpen) === true
   );
 }
 
@@ -173,14 +174,34 @@ function partAccepts(
 export function partsAccept(
   context: BodyContext,
   parts: readonly AcceptedPart[],
-): readonly ((expected: Type, isOpen: (part: Type) => boolean) => boolean)[] | undefined {
-  if (!parts.some((part) => part.kind === 'decided')) {
-    return undefined;
-  }
+): readonly Accepts[] | undefined {
+  return parts.some((part) => part.kind === 'decided')
+    ? eachPartAccepts(context, parts)
+    : undefined;
+}
+
+/**
+ * Which parameter types `parts`, each at its own position, can build their literal as instead of
+ * its own type (§3.7) when every part has a type of its own known before checking; undefined
+ * otherwise.
+ */
+export function partsBuild(
+  context: BodyContext,
+  parts: readonly AcceptedPart[],
+): readonly Accepts[] | undefined {
+  return parts.every(hasKnownType) ? eachPartAccepts(context, parts) : undefined;
+}
+
+function eachPartAccepts(context: BodyContext, parts: readonly AcceptedPart[]): readonly Accepts[] {
   return parts.map(
     (part) => (expected: Type, isOpen: (part: Type) => boolean) =>
       partAccepts(context, part, expected, isOpen),
   );
+}
+
+/** Whether `part` has a type of its own, known before checking. */
+function hasKnownType(part: AcceptedPart): boolean {
+  return part.kind === 'typed' && part.type !== undefined;
 }
 
 /**
@@ -215,6 +236,17 @@ export function agreedAccepts(
     return undefined;
   }
   return allProducersAccept(context, producers);
+}
+
+/**
+ * Which types `producers` of one value can agree on when their literal is built as a parameter's
+ * type instead of its own (§3.7); undefined unless each has a type of its own known before checking.
+ */
+export function agreedBuilds(
+  context: BodyContext,
+  producers: readonly AcceptedPart[],
+): Accepts | undefined {
+  return producers.every(hasKnownType) ? allProducersAccept(context, producers) : undefined;
 }
 
 /** Which types `producers` of one value can all take, once their literal needs an expected type. */

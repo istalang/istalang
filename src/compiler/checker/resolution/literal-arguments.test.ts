@@ -1,0 +1,104 @@
+/**
+ * A literal argument of items with types of their own (§3.7): it has its own type when choosing,
+ * and, where that doesn't fit a parameter whose type is known while its items do, it is built as
+ * the parameter's type, as a declaration's expected type builds it: `f(struct{c: 3})` for
+ * `f(x: { c: Int? })`, `g((3,))` for `g(x: (Int?,))`, `h([3])` for `h(x: Array<Int?>)`, nested
+ * too. A function taking it as its own type beats one building it, and building never infers.
+ */
+
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
+import { decodeJson } from '../../../definition/codec.ts';
+import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
+import { compiledText } from '../../compile.test-kit.ts';
+import { reported } from '../check.test-kit.ts';
+
+/** What `async fn main() -> Future<String>: body` gives after `declarations`. */
+function outcome(declarations: readonly string[], body: string): unknown {
+  const source = [...declarations, 'async fn main() -> Future<String>:', `  ${body}`].join('\n');
+  const state = startToEnd(testRuntime(), compiledText(source));
+  return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
+}
+
+const takers = [
+  'fn f(x: { c: Int? }) -> String: `f:${x.c ?? 0}`',
+  'fn g(x: (Int?,)) -> String: `g:${x.0 ?? 0}`',
+  'fn h(x: Array<Int?>) -> String: `h:${x.length()}`',
+  'fn m(x: Map<String, Int?>) -> String: `m:${x.size()}`',
+  'fn n(x: { inner: (Int?, Array<String?>) }) -> String: `n:${x.inner.1.length()}`',
+];
+
+describe('a literal argument of items with types of their own', () => {
+  it('is built as the parameter type its items fit', () => {
+    expect(
+      outcome(
+        takers,
+        '`${f(struct{c: 3})} ${g((3,))} ${h([3, 4])} ${m(["a": 1])} ${n(struct{inner: (1, ["x"])})}`',
+      ),
+    ).toBe('f:3 g:3 h:2 m:1 n:1');
+  });
+
+  it('still refuses a parameter its items don`t fit', () => {
+    expect(
+      reported([...takers, 'fn main() -> String: f(struct{c: "x"})'].join('\n')).codes,
+    ).toEqual([5001]);
+  });
+
+  it('goes to the overload its items fit', () => {
+    expect(
+      outcome(
+        [
+          'fn pick(x: { c: Int? }) -> String: "optional"',
+          'fn pick(x: { c: String }) -> String: "string"',
+        ],
+        '`${pick(struct{c: 3})} ${pick(struct{c: "a"})}`',
+      ),
+    ).toBe('optional string');
+  });
+
+  it('prefers the overload taking it as its own type', () => {
+    expect(
+      outcome(
+        [
+          'fn pick(x: Array<Int>) -> String: "own"',
+          'fn pick(x: Array<Int?>) -> String: "built"',
+          'fn pair(x: (Int, String)) -> String: "own"',
+          'fn pair(x: (Int?, String)) -> String: "built"',
+        ],
+        '`${pick([1])} ${pick([1, none])} ${pair((1, "a"))} ${pair((none, "a"))}`',
+      ),
+    ).toBe('own built own built');
+  });
+
+  it('infers type arguments from its own type, never by building', () => {
+    expect(
+      outcome(
+        [
+          'fn first<T>(x: Array<T>) -> String: `${x.length()}`',
+          'fn same<T>(a: T, b: { c: T? }) -> String: "same"',
+        ],
+        '`${first([struct{c: 3}])} ${same(1, struct{c: 2})}`',
+      ),
+    ).toBe('1 same');
+  });
+
+  it('agrees with the literal written where the parameter type is expected', () => {
+    const items = fc.array(fc.integer({ min: -9, max: 9 }), { minLength: 1, maxLength: 4 });
+    fc.assert(
+      fc.property(items, (values) => {
+        const written = values.join(', ');
+        const declarations = [
+          'fn total(x: Array<Int?>) -> Int:',
+          '  let sum = 0',
+          '  for v in x:',
+          '    sum += v ?? 0',
+          '  sum',
+        ];
+        expect(outcome(declarations, `\`\${total([${written}])}\``)).toEqual(
+          outcome(declarations, `const xs: Array<Int?> = [${written}]\n  \`\${total(xs)}\``),
+        );
+      }),
+      { numRuns: 15 },
+    );
+  });
+});

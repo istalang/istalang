@@ -25,6 +25,7 @@ import type { Binding } from '../resolved-call.ts';
 import { reshapes } from '../types/fit.ts';
 import { fillsPack } from '../types/function-types.ts';
 import { errorType, type ParameterKey, type ParameterSlot, type Type } from '../types/type.ts';
+import { parametersIn } from '../types/type-parts.ts';
 import { argumentSlotsOf, type Binder, isBinding } from './binding.ts';
 import type { CallArgument, Inapplicability, Misfit, Takes } from './call-arguments.ts';
 import { packInapplicability, packItems } from './packs.ts';
@@ -84,7 +85,7 @@ export function takenBy(
     }
     const expected = inference.substituted(slot.type);
     const fit = checker.fitOf(argument.type, expected);
-    return fit !== undefined && reshapes(fit);
+    return fit === undefined ? argument.builds !== undefined : reshapes(fit);
   });
   return { inference, binding, reshapes: reshaped };
 }
@@ -193,18 +194,24 @@ function judgedArgument(
 /**
  * Whether an argument with a type fits `slot`, matching it for inference. A reference's type is
  * its parameter's exactly, as an exact argument's is: no wrap into `T?` reaches the caller's place.
+ * A literal of items with types of their own fits a parameter whose type is known, which its own
+ * type doesn't fit, when its items can build it as that type (§3.7); inference never goes through
+ * building, so a parameter type still to be found is matched with the literal's own.
  */
 function typedFits(
   slot: ParameterSlot,
   argument: CallArgument & { readonly type: Type },
   inference: Inference,
 ): boolean {
-  const { literal } = argument;
+  const { literal, builds } = argument;
   const given =
     literal === undefined ? argument.type : inference.literalType(literal.value, slot.type);
-  return argument.exact === true || isByReference(slot, argument)
-    ? inference.matchExactly(slot.type, given)
-    : inference.match(slot.type, given);
+  if (argument.exact === true || isByReference(slot, argument)) {
+    return inference.matchExactly(slot.type, given);
+  }
+  const expected = inference.substituted(slot.type);
+  const known = !parametersIn(expected).some((each) => inference.isUnknown(each));
+  return inference.match(slot.type, given) || (known && builds?.(expected, () => false) === true);
 }
 
 /** Whether `argument` reaches `slot` by reference: written `&`, or a receiver `&self` takes (§3.7). */

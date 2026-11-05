@@ -127,14 +127,17 @@ function valueArgument(context: BodyContext, argument: Expression): WrittenArgum
     const type = checkChangedPlace(context, argument.expression, 'referenced');
     return { node: argument, passing: 'reference', type };
   }
-  const accepts = context.accepts(argument);
-  return {
-    node: argument,
-    passing: 'value',
-    type: accepts === undefined ? context.expression(argument) : undefined,
-    literal: writtenLiteral(unparenthesized(argument)),
-    accepts,
-  };
+  const part = context.acceptedPart(argument);
+  const literal = writtenLiteral(unparenthesized(argument));
+  return part.kind === 'decided'
+    ? { node: argument, passing: 'value', type: undefined, literal, accepts: part.accepts }
+    : {
+        node: argument,
+        passing: 'value',
+        type: context.expression(argument),
+        literal,
+        builds: part.builds,
+      };
 }
 
 /**

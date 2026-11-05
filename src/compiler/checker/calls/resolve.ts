@@ -48,7 +48,8 @@ import { changeReceiver, checkReferencedPlaces } from './places.ts';
 
 /**
  * An argument as written: its node, how it is passed, and its type, undefined when the chosen
- * function decides it, with which parameter types it can take (resolution/choice.ts); its name
+ * function decides it, with which parameter types it can take (resolution/choice.ts), or, for a
+ * literal of items with types of their own, which it can be built as instead (§3.7); its name
  * when named. A spread's node is what it spreads, its type that of its items, which fit the rest
  * parameter's element exactly: the items are copied or iterated as they are (§3.3).
  */
@@ -58,6 +59,7 @@ export interface WrittenArgument {
   readonly type: Type | undefined;
   readonly literal?: LiteralType | undefined;
   readonly accepts?: Accepts | undefined;
+  readonly builds?: Accepts | undefined;
   readonly name?: Identifier | undefined;
   readonly isSpread?: boolean | undefined;
 }
@@ -124,8 +126,17 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
 
 /** A written argument as choosing sees it. */
 export function callArgumentOf(argument: WrittenArgument): CallArgument {
-  const { type, literal, passing, accepts, name, isSpread } = argument;
-  return { type, literal, passing, accepts, name: name?.text, isSpread, exact: isSpread === true };
+  const { type, literal, passing, accepts, builds, name, isSpread } = argument;
+  return {
+    type,
+    literal,
+    passing,
+    accepts,
+    builds,
+    name: name?.text,
+    isSpread,
+    exact: isSpread === true,
+  };
 }
 
 /** A chosen function, instantiated, at the site calling it or naming it as a value. */

@@ -23,10 +23,10 @@ import {
 import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
-import type { Accepts, BodyContext } from '../body-context.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import type { FieldSource } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { partsAccept } from '../rules/agreement.ts';
+import { partsAccept, partsBuild } from '../rules/agreement.ts';
 import { builtFrom } from '../types/expected.ts';
 import { inFieldOrder } from '../types/field-order.ts';
 import {
@@ -252,10 +252,55 @@ export function structLiteralAccepts(
   if (node.type !== undefined) {
     return variantsAccepted(context, context.entityOf(lastName(node.type.path)));
   }
+  return fieldsTaking(context, node, partsAccept);
+}
+
+/**
+ * Which struct types a `struct{…}` literal of values each with a type of its own can be built as
+ * instead of its shape (§3.7): those with a field of each name it gives, each value fitting it.
+ */
+export function structLiteralBuilds(
+  context: BodyContext,
+  node: StructLiteral,
+): Accepts | undefined {
+  return node.type === undefined ? fieldsTaking(context, node, partsBuild) : undefined;
+}
+
+/**
+ * The shape a `struct{…}` literal has on its own, when each value it gives has a type of its own
+ * known before checking: the type checking it with nothing expected gives.
+ */
+export function structLiteralKnownType(
+  context: BodyContext,
+  node: StructLiteral,
+): Type | undefined {
+  if (node.type !== undefined) {
+    return undefined;
+  }
+  const fields: FieldMember[] = [];
+  for (const item of node.items) {
+    if (item.kind !== 'FieldInitializer' || fields.some(({ name }) => name === item.name.text)) {
+      return undefined;
+    }
+    const part = context.acceptedPart(itemValue(item));
+    if (part.kind !== 'typed' || part.type === undefined) {
+      return undefined;
+    }
+    fields.push({ name: item.name.text, type: part.type });
+  }
+  return shapeType(node, fields);
+}
+
+/** The struct types whose field of each name `node` gives the value read by `read` takes. */
+function fieldsTaking(
+  context: BodyContext,
+  node: StructLiteral,
+  read: (context: BodyContext, parts: readonly AcceptedPart[]) => readonly Accepts[] | undefined,
+): Accepts | undefined {
   const named = node.items.flatMap((item) => (item.kind === 'FieldInitializer' ? [item] : []));
   const values =
     named.length === node.items.length
-      ? partsAccept(
+      ? read(
           context,
           named.map((item) => context.acceptedPart(itemValue(item))),
         )

@@ -155,11 +155,17 @@ export type Accepts = (expected: Type, isOpen: (part: Type) => boolean) => boole
 
 /**
  * What one part of a composite argument has before the call is chosen: the parameter types it can
- * take when the call decides its type, or its own type when known without side effects.
+ * take when the call decides its type, or its own type when known without side effects, with, for
+ * a literal of items each with a type of its own, the types its items can build it as instead
+ * (§3.7).
  */
 export type AcceptedPart =
   | { readonly kind: 'decided'; readonly accepts: Accepts }
-  | { readonly kind: 'typed'; readonly type: Type | undefined };
+  | {
+      readonly kind: 'typed';
+      readonly type: Type | undefined;
+      readonly builds?: Accepts | undefined;
+    };
 
 /** A body's variables: types, uses, and what targets take (statements/variables.ts). */
 export interface Variables {

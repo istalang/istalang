@@ -11,12 +11,16 @@
  *   a type of its own. A part still to be inferred can be anything.
  * - Own type (`knownTypeHandlers`): for a sibling inside a composite argument, the type it has on
  *   its own without running expression checking or reporting (`acceptedPartOf`).
+ * - Building (`buildsHandlers`): a literal of items each with a type of its own has that type when
+ *   choosing, and, where its own type doesn't fit, is built as a parameter's type its items fit
+ *   (§3.7): a struct, tuple, array or map literal.
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { localFunctionOf } from '../../binder/entities.ts';
 import type { Expression, Reference } from '../../syntax/expressions/index.ts';
+import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
@@ -37,11 +41,13 @@ import { checkAwait } from './await.ts';
 import { checkCall } from './calls.ts';
 import {
   arrayAccepts,
-  checkArrayLiteral,
-  checkMapLiteral,
-  checkRange,
+  arrayBuilds,
+  arrayKnownType,
   mapAccepts,
-} from './collections.ts';
+  mapBuilds,
+  mapKnownType,
+} from './collection-accepts.ts';
+import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections.ts';
 import { checkComprehension } from './comprehensions.ts';
 import { checkIf, ifAccepts } from './control.ts';
 import { checkDereference } from './dereference.ts';
@@ -55,9 +61,15 @@ import { checkUnwrap } from './optionals.ts';
 import { checkPropagate } from './propagate.ts';
 import { checkSelect, selectAccepts } from './select.ts';
 import { checkSpawn } from './spawn.ts';
-import { checkNamedLiteral, checkStructLiteral, structLiteralAccepts } from './structs.ts';
+import {
+  checkNamedLiteral,
+  checkStructLiteral,
+  structLiteralAccepts,
+  structLiteralBuilds,
+  structLiteralKnownType,
+} from './structs.ts';
 import { checkTemplate } from './templates.ts';
-import { checkTuple, checkTupleElement, tupleAccepts } from './tuples.ts';
+import { checkTuple, checkTupleElement, tupleAccepts, tupleBuilds } from './tuples.ts';
 import { checkNone, noneAccepted } from './variants.ts';
 
 /** Missing and invalid nodes were reported by the parser. */
@@ -180,9 +192,9 @@ const knownTypeHandlers: Handlers<BodyContext, Expression, [], Type | undefined>
   BooleanLiteral: () => boolType,
   Parenthesized: (context, node) => knownTypeOf(context, node.expression),
   Binary: unknownType,
-  Unary: unknownType,
+  Unary: (_context, node) => signedNumberType(node),
   Call: unknownType,
-  StructLiteral: unknownType,
+  StructLiteral: structLiteralKnownType,
   NewStructLiteral: unknownType,
   MemberAccess: unknownType,
   TupleElement: unknownType,
@@ -190,8 +202,8 @@ const knownTypeHandlers: Handlers<BodyContext, Expression, [], Type | undefined>
   If: unknownType,
   DurationLiteral: (context) => wellKnownOf(context.checker, wellKnown.duration),
   NoneLiteral: unknownType,
-  ArrayLiteral: unknownType,
-  MapLiteral: unknownType,
+  ArrayLiteral: arrayKnownType,
+  MapLiteral: mapKnownType,
   Comprehension: unknownType,
   Tuple: (context, node) => tupleKnownType(context, node.elements),
   Lambda: unknownType,
@@ -220,12 +232,77 @@ export function acceptedPartOf(context: BodyContext, node: Expression | undefine
   }
   const accepts = context.accepts(node);
   return accepts === undefined
-    ? { kind: 'typed', type: knownTypeOf(context, node) }
+    ? { kind: 'typed', type: knownTypeOf(context, node), builds: buildsOf(context, node) }
     : { kind: 'decided', accepts };
+}
+
+/** A kind that is no literal of items, or one whose items can't be built as another type. */
+const builtAsItIs = (): undefined => undefined;
+
+// biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
+const buildsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined> = {
+  Identifier: builtAsItIs,
+  IntegerLiteral: builtAsItIs,
+  FloatLiteral: builtAsItIs,
+  StringLiteral: builtAsItIs,
+  BooleanLiteral: builtAsItIs,
+  Parenthesized: (context, node) => buildsOf(context, node.expression),
+  Binary: builtAsItIs,
+  Unary: builtAsItIs,
+  Call: builtAsItIs,
+  StructLiteral: structLiteralBuilds,
+  NewStructLiteral: builtAsItIs,
+  MemberAccess: builtAsItIs,
+  TupleElement: builtAsItIs,
+  BlockExpression: builtAsItIs,
+  If: builtAsItIs,
+  DurationLiteral: builtAsItIs,
+  NoneLiteral: builtAsItIs,
+  ArrayLiteral: arrayBuilds,
+  MapLiteral: mapBuilds,
+  Comprehension: builtAsItIs,
+  Tuple: tupleBuilds,
+  Lambda: builtAsItIs,
+  Reference: builtAsItIs,
+  Index: builtAsItIs,
+  Propagate: builtAsItIs,
+  Spawn: builtAsItIs,
+  Unwrap: builtAsItIs,
+  ChainedComparison: builtAsItIs,
+  TemplateLiteral: builtAsItIs,
+  Dereference: builtAsItIs,
+  Await: builtAsItIs,
+  Is: builtAsItIs,
+  Range: builtAsItIs,
+  Match: builtAsItIs,
+  Select: builtAsItIs,
+  Missing: builtAsItIs,
+  Invalid: builtAsItIs,
+};
+// biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
+
+/**
+ * Which parameter types a literal of items each with a type of its own can be built as instead of
+ * its own (§3.7); undefined for any other expression.
+ */
+function buildsOf(context: BodyContext, node: Expression): Accepts | undefined {
+  return handlerOf(buildsHandlers, node)(context, node);
 }
 
 function knownTypeOf(context: BodyContext, node: Expression): Type | undefined {
   return handlerOf(knownTypeHandlers, node)(context, node);
+}
+
+/** A negated number written in place has its literal's type (syntax/expressions/numbers.ts). */
+function signedNumberType(node: Expression): Type | undefined {
+  switch (signedNumberOf(node)?.kind) {
+    case 'IntegerLiteral':
+      return intType;
+    case 'FloatLiteral':
+      return floatType;
+    default:
+      return undefined;
+  }
 }
 
 function blockKnownType(context: BodyContext, block: Block): Type | undefined {

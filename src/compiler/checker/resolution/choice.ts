@@ -6,8 +6,9 @@
  * - A function taking a union whole beats a call on it through a trait (§6); among the rest, when
  *   concrete candidates apply, only they are chosen among: a concrete function beats a
  *   generic one (§3.7); then a function without a rest parameter beats one with (§3.3); then one
- *   taking every argument as it is beats one making a plain function async (§3.14) or converting
- *   between a one-element tuple and its element (§3.15), so a pair taking `fn(A)` and
+ *   taking every argument as it is beats one making a plain function async (§3.14), converting
+ *   between a one-element tuple and its element (§3.15) or a struct's value into its shape, or
+ *   building a literal argument as a type other than its own (§3.7), so a pair taking `fn(A)` and
  *   `async fn(A)` keeps each function its own type. Written type arguments
  *   consider only generic candidates. Any other tie is ambiguous.
  *
@@ -54,8 +55,9 @@ export interface Application {
   readonly inference: Inference;
   readonly binding: Binding;
   /**
-   * Whether it takes an argument only reshaped: a plain function made async (§3.14), or converted
-   * between a one-element tuple and its element (§3.15).
+   * Whether it takes an argument only reshaped: a plain function made async (§3.14), converted
+   * between a one-element tuple and its element (§3.15), or a literal built as a type other than
+   * its own (§3.7).
    */
   readonly reshapes: boolean;
 }

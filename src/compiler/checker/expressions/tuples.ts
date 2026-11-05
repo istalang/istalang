@@ -6,13 +6,14 @@
  * by the implicit wrap into `T?` included (§2), takes the guide's type: `(1, none)` is an
  * `(Int?, Int?)` where one is expected. Whether the whole fits is the receiver's to judge, as for
  * any value, so an element that doesn't fit keeps its own type. A tuple holding an element a call
- * decides (§3.5) is decided with it.
+ * decides (§3.5) is decided with it; one whose elements each have a type of their own is built as
+ * the parameter's type where they fit it and its own type doesn't (§3.7).
  */
 
 import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext } from '../body-context.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { partsAccept } from '../rules/agreement.ts';
+import { partsAccept, partsBuild } from '../rules/agreement.ts';
 import { expectedTuple } from '../types/expected.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type, unitType } from '../types/type.ts';
@@ -59,10 +60,23 @@ export function checkTupleElement(context: BodyContext, node: TupleElement): Typ
 
 /** Which tuple types `node` can take: its size, each element taking its own, if one has none. */
 export function tupleAccepts(context: BodyContext, node: Tuple): Accepts | undefined {
-  const elements = partsAccept(
-    context,
-    node.elements.map((element) => context.acceptedPart(element)),
-  );
+  return tupleTaking(partsAccept(context, elementParts(context, node)));
+}
+
+/**
+ * Which tuple types `node`, of elements each with a type of its own, can be built as instead of
+ * its own (§3.7): its size, each element fitting its own.
+ */
+export function tupleBuilds(context: BodyContext, node: Tuple): Accepts | undefined {
+  return tupleTaking(partsBuild(context, elementParts(context, node)));
+}
+
+function elementParts(context: BodyContext, node: Tuple): readonly AcceptedPart[] {
+  return node.elements.map((element) => context.acceptedPart(element));
+}
+
+/** The tuple types of `elements`' size whose each element the element at its position takes. */
+function tupleTaking(elements: readonly Accepts[] | undefined): Accepts | undefined {
   if (elements === undefined) {
     return undefined;
   }
