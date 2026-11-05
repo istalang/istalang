@@ -19,6 +19,7 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import {
   type AnyType,
+  isMemberParameter,
   isPrimitive,
   type LiteralType,
   type LiteralValue,
@@ -214,14 +215,17 @@ export function writtenLiteral(node: Expression): LiteralType | undefined {
 
 /**
  * The type a literal of `value` has where `expected` is expected (§2): its literal type where a
- * literal type of its base is expected, or a union holding one, else its base, as
- * `const s = "draft"` makes a `String`.
+ * literal type of its base is expected, or a union holding one, or a member parameter, each of
+ * whose instantiations is one member (§3.5), else its base, as `const s = "draft"` makes a
+ * `String`.
  */
 export function literalOrBase(value: LiteralValue, expected: Type | undefined): Type {
   const literal = literalType(value);
   const base = baseOf(literal);
   const literalExpected = membersOf(expected ?? base).some(
-    (member) => member.kind === 'literal' && literalBase(member.value) === literalBase(value),
+    (member) =>
+      isMemberParameter(member) ||
+      (member.kind === 'literal' && literalBase(member.value) === literalBase(value)),
   );
   return literalExpected ? literal : base;
 }

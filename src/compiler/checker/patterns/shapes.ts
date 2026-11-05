@@ -5,8 +5,10 @@
  * - A union is made of its members (§3.11), each holding its value, and a literal member or `None`
  *   nothing beside its tag.
  * - An enum is made of its variants, `Bool` of `true` and `false`, and a tuple, a struct, `Unit`
- *   and a literal type of one constructor each, the literal's being its value; an array of its lengths (exhaustiveness.ts). Any other type
- *   (`Int`, `String`, a handle, a type parameter) has no finite set, so only a pattern taking
+ *   and a literal type of one constructor each, the literal's being its value; an array of its
+ *   lengths (exhaustiveness.ts). A member parameter (§3.5) is made of what its union's members are
+ *   made of, since each instantiation makes its value one member's, with no tag around it. Any other
+ *   type (`Int`, `String`, a handle, a type parameter) has no finite set, so only a pattern taking
  *   anything covers it.
  * - `==` against a literal counts as a pattern, but only a literal of `Bool`, `Int`, `Float` or
  *   `String` has a shape of its own; any other literal acts as a guard.
@@ -18,8 +20,10 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import type { Checker } from '../check.ts';
+import type { CheckerContext } from '../context.ts';
 import {
   type FieldMember,
+  isMemberParameter,
   isPrimitive,
   type LiteralValue,
   type Type,
@@ -27,12 +31,16 @@ import {
 } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
 import { typeText } from '../types/type-text.ts';
-import { hasOneValue } from '../types/unions.ts';
+import { hasOneValue, membersOf } from '../types/unions.ts';
 import { arrayElement } from '../types/well-known.ts';
 import type { ConstructorOf, Shape, Signature, WitnessShape } from './exhaustiveness.ts';
 
-/** What shapes read of the checker: a type's fields, variants, and whether it is an `Array`. */
-type ShapeChecker = Pick<Checker, 'fieldsOf' | 'variantsOf' | 'wellKnownType'>;
+/**
+ * What shapes read of the checker: a type's fields, variants, whether it is an `Array`, and the union
+ * a member parameter stands for one member of.
+ */
+export type ShapeChecker = Pick<Checker, 'fieldsOf' | 'variantsOf' | 'wellKnownType'> &
+  Pick<CheckerContext, 'fitting'>;
 
 /** The key of the one constructor of a struct value, and of a tuple. */
 export const structKey = 'struct';
@@ -42,10 +50,27 @@ export const tupleKey = 'tuple';
 export function signatureOf(checker: ShapeChecker): Signature<Type> {
   return (type) => {
     const items = arrayElement(checker, type);
-    return items === undefined
-      ? (ownConstructors(type) ?? declaredConstructors(checker, type))
-      : { items };
+    return items === undefined ? constructorsOf(checker, type) : { items };
   };
+}
+
+/**
+ * The constructors of a type that is no array: its own kind's or its declaration's, or a member
+ * parameter's members' together, each instantiation's value being one member's; undefined when
+ * some member has no finite set.
+ */
+function constructorsOf(
+  checker: ShapeChecker,
+  type: Type,
+): readonly ConstructorOf<Type>[] | undefined {
+  const union = isMemberParameter(type) ? checker.fitting.memberUnionOf(type) : undefined;
+  if (union === undefined) {
+    return ownConstructors(type) ?? declaredConstructors(checker, type);
+  }
+  const each = membersOf(union).map((member) =>
+    arrayElement(checker, member) === undefined ? constructorsOf(checker, member) : undefined,
+  );
+  return each.every((constructors) => constructors !== undefined) ? each.flat() : undefined;
 }
 
 /**

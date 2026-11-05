@@ -13,9 +13,9 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { sameType } from './identity.ts';
-import { isPrimitive, type Type } from './type.ts';
+import { isMemberParameter, isPrimitive, type Type } from './type.ts';
 import { typeText } from './type-text.ts';
-import { baseOf } from './unions.ts';
+import { baseOf, membersOf } from './unions.ts';
 
 /**
  * Whether `==` and `!=` compare values of these types as they are (§3.9): one type on both sides,
@@ -25,12 +25,47 @@ import { baseOf } from './unions.ts';
  * produce a value has.
  */
 export function comparable(first: Type, second: Type): boolean {
-  const unchecked = (type: Type) => type.kind === 'error' || isPrimitive(type, 'Never');
   const literals =
-    first.kind === 'literal' &&
-    second.kind === 'literal' &&
-    sameType(baseOf(first), baseOf(second));
+    isLiteralLike(first) && isLiteralLike(second) && sameType(baseOf(first), baseOf(second));
   return unchecked(first) || unchecked(second) || literals || sameType(first, second);
+}
+
+/** Whether `type` compares with anything, a mistake reported once or a side giving no value. */
+function unchecked(type: Type): boolean {
+  return type.kind === 'error' || isPrimitive(type, 'Never');
+}
+
+/** A literal type, or the keys of a struct not known yet, each instantiation a String literal (§3.1). */
+function isLiteralLike(type: Type): boolean {
+  return type.kind === 'literal' || type.kind === 'keys';
+}
+
+/**
+ * Whether two sides compare as they are where a member parameter stands on either (§3.5): each
+ * instantiation makes it one member of its union, so every member must compare with every member
+ * of the other side as it is, with nothing to convert, and one of them may equal it. A literal no
+ * member equals is a mistake, as it is against the union itself; the keys of a struct not known
+ * yet may be any field's name.
+ */
+function comparableAsMembers(context: BodyContext, first: Type, second: Type): boolean {
+  const unionOf = (type: Type) =>
+    isMemberParameter(type) ? context.checker.fitting.memberUnionOf(type) : undefined;
+  const [firstUnion, secondUnion] = [unionOf(first), unionOf(second)];
+  if (firstUnion === undefined && secondUnion === undefined) {
+    return false;
+  }
+  const firsts = membersOf(firstUnion ?? first);
+  const seconds = membersOf(secondUnion ?? second);
+  const mayEqual = (one: Type, other: Type) =>
+    unchecked(one) ||
+    unchecked(other) ||
+    one.kind === 'keys' ||
+    other.kind === 'keys' ||
+    sameType(one, other);
+  return (
+    firsts.every((one) => seconds.every((other) => comparable(one, other))) &&
+    firsts.some((one) => seconds.some((other) => mayEqual(one, other)))
+  );
 }
 
 /** A side of `==`: its type, and the expression giving it, if one does. */
@@ -61,7 +96,7 @@ export function fitEqualSides(
   left: EqualitySide,
   right: EqualitySide,
 ): boolean {
-  if (comparable(left.type, right.type)) {
+  if (comparable(left.type, right.type) || comparableAsMembers(context, left.type, right.type)) {
     return true;
   }
   for (const [side, other] of [

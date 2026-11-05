@@ -238,6 +238,19 @@ export interface TypeParameterType extends WrittenThrough {
   readonly meeting?: StructCaseConstraint | undefined;
 }
 
+/**
+ * Whether `type` stands for exactly one member of a union (§3.5): a member parameter, `K in U`, or
+ * a key a mapped type or a field loop ranges over (`within`). Each instantiation makes it a value
+ * of one member, never of the union around it.
+ */
+export function isMemberParameter(type: Type): type is TypeParameterType {
+  return (
+    type.kind === 'parameter' &&
+    (type.within !== undefined ||
+      (type.declaration.kind === 'TypeParameter' && type.declaration.memberOf !== undefined))
+  );
+}
+
 /** The struct constraint of the case a type `match`'s subject is written in (§3.17). */
 interface StructCaseConstraint {
   readonly pattern: StructConstraint;

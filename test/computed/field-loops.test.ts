@@ -81,6 +81,26 @@ describe('a field loop', () => {
     expect(runText(lines, declarations)).toBe('a,title,z|country: missing');
   });
 
+  it('matches its key by literal patterns in every pass, the others pass too', () => {
+    const declarations = [
+      ...formDeclarations,
+      'fn tags<S is struct { title: String; [_] is FormNode }>(form: S) -> Array<String>:',
+      '  let out: Array<String> = []',
+      '  for k, _ in ...form:',
+      '    match k:',
+      '      case "title": out.push("T")',
+      '      case "region": out.push("R")',
+      '      case _: out.push(k)',
+      '    if k == "a": out.push("=a")',
+      '  out',
+    ];
+    const lines = [
+      'const form = struct{title: "t", region: Field<String>{value: "eu"}, a: Field<Int>{value: 1}}',
+      'tags(form).join(",")',
+    ];
+    expect(runText(lines, declarations)).toBe('a,=a,R,T');
+  });
+
   it('runs over no field of an empty struct, and over the value behind a shared struct', () => {
     const declarations = ['struct Empty', 'shared struct SharedPair { b: Int; a: Int }'];
     const lines = [

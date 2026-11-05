@@ -1,0 +1,23 @@
+# outcome: "A|other|true|false|A|B|true"
+# A literal pattern and `==` on a member parameter (§3.5, §3.11) compare it as the one member of its
+# union each instantiation makes it: two literals of one base, with nothing converted.
+
+fn describe<K in "a" | "b">(k: K) -> String:
+  match k:
+    case "a": "A"
+    case _: "other"
+
+fn equalsA<K in "a" | "b">(k: K) -> Bool:
+  k == "a"
+
+fn both<K in "a" | "b">(k: K) -> String:
+  match k:
+    case "a": "A"
+    case "b": "B"
+
+fn reversed<K in "a" | "b">(k: K) -> Bool:
+  "b" == k
+
+async fn main() -> Future<String>:
+  const results = [describe("a"), describe("b"), `${equalsA("a")}`, `${equalsA("b")}`]
+  `${results.join("|")}|${both("a")}|${both("b")}|${reversed("b")}`
