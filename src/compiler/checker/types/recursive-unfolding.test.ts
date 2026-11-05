@@ -124,4 +124,54 @@ describe('a recursive use and what it unfolds to', () => {
       { numRuns: 24 },
     );
   });
+
+  it('build a literal mixing items only checking types with items of other types, either way', () => {
+    fc.assert(
+      fc.property(mixedItems, (literal) => {
+        const declarations = lines(
+          'type R = Int | String | Array<R>',
+          'fn one() -> Int: 1',
+          'fn weight(r: R) -> Int:',
+          '  match r:',
+          '    case Int as n: return n',
+          '    case String: return 1',
+          '    case Array<R> as items:',
+          '      let total = 0',
+          '      for item in items:',
+          '        total += weight(item)',
+          '      return total',
+          `fn asAlias() -> R: ${literal.text}`,
+          `fn asBody() -> Int | String | Array<R>: ${literal.text}`,
+        );
+        expect(mainGives('Int', 'return weight(asAlias())', declarations)).toBe(literal.weight);
+        expect(mainGives('Int', 'return weight(asBody())', declarations)).toBe(literal.weight);
+      }),
+      { numRuns: 24 },
+    );
+  });
 });
+
+/** A literal of `R = Int | String | Array<R>` as written, and what `weight` counts of its value. */
+interface Mixed {
+  readonly text: string;
+  readonly weight: number;
+}
+
+/**
+ * Arrays nesting items of every kind: a literal Int or String, which have types of their own, and
+ * arithmetic or a call, whose types only checking tells, side by side at any depth.
+ */
+const mixedItems: fc.Arbitrary<Mixed> = fc.letrec<{ item: Mixed; array: Mixed }>((tie) => ({
+  item: fc.oneof(
+    { depthSize: 'small', withCrossShrink: true },
+    fc.constant({ text: '2', weight: 2 }),
+    fc.constant({ text: '"s"', weight: 1 }),
+    fc.constant({ text: '1 + 1', weight: 2 }),
+    fc.constant({ text: 'one()', weight: 1 }),
+    tie('array'),
+  ),
+  array: fc.array(tie('item'), { minLength: 1, maxLength: 3 }).map((items) => ({
+    text: `[${items.map((item) => item.text).join(', ')}]`,
+    weight: items.reduce((total, item) => total + item.weight, 0),
+  })),
+})).array;

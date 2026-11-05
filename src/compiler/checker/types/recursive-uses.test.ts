@@ -103,6 +103,33 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
   });
 
   it.each([
+    ['arithmetic beside a String', '[1 + 1, "a"]', '[2, "a"]'],
+    ['arithmetic beside an array', '[1 + 1, [2]]', '[2, [2]]'],
+    ['an array beside arithmetic', '[[2], 1 + 1]', '[[2], 2]'],
+    ['a call beside a map', '[t(), ["k": 1]]', '[3, {"k": 1}]'],
+    ['a map of arithmetic beside a String', '["a": 1 + 1, "b": "x"]', '{"a": 2, "b": "x"}'],
+    ['mixed items two levels down', '[["a": [t(), "b"]], 1 + 1]', '[{"a": [3, "b"]}, 2]'],
+  ])('builds %s into Json, each item against Json', (_name, literal, text) => {
+    const declarations = lines(
+      "import * as json from 'json'",
+      "import Json from 'json'",
+      'fn t() -> Int: 3',
+      `fn built() -> Json: ${literal}`,
+      'fn parsed() -> Json:',
+      `  match json.parse<Json>(${JSON.stringify(text)}):`,
+      '    case Ok{value}: value',
+      '    case Err{error}: panic(error.message)',
+    );
+    expect(reported(declarations)).toEqual(reportedNothing);
+    expect(mainGives('Bool', 'return built() == parsed()', declarations)).toBe(true);
+  });
+
+  it('builds arithmetic beside a nested array into a recursive alias of its own', () => {
+    const declarations = lines(tree, 'fn f() -> Tree: [1 + 1, [2]]');
+    expect(reported(declarations)).toEqual(reportedNothing);
+  });
+
+  it.each([
     ['an array of arithmetic', 'type U = Int | Array<U>\nfn f() -> U: [1 + 1]'],
     ['an array argument', `${tree}\nfn g(t: Tree) -> Int: 1\nfn f() -> Int: g([1])`],
     [

@@ -22,6 +22,7 @@ import { localFunctionOf } from '../../binder/entities.ts';
 import { literalOf, untypedForm } from '../../syntax/expressions/indented-values.ts';
 import type { Expression, IndentedValue, Reference } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
+import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import type { AcceptedPart, Accepts, BodyContext, PartReader, TypedPart } from '../body-context.ts';
@@ -45,6 +46,7 @@ import {
   arrayAccepts,
   arrayBuilds,
   arrayKnownType,
+  collectionOpenBuilds,
   mapAccepts,
   mapBuilds,
   mapKnownType,
@@ -355,6 +357,21 @@ const buildsHandlers: Handlers<BodyContext, Expression, [PartReader], Accepts | 
  */
 function buildsOf(context: BodyContext, node: Expression, read: PartReader): Accepts | undefined {
   const builds = handlerOf(buildsHandlers, node)(context, node, read);
+  return builds === undefined ? undefined : takingUnfolded(builds, context.checker.typeRules);
+}
+
+/**
+ * The types `node` can be built as while its own type is known only through checking (§2,
+ * types/expected.ts `memberBuilt`): a collection literal's by its shape, maybe parenthesized or
+ * written as an indented value naming no type; undefined for any other expression.
+ */
+export function openBuildsOf(context: BodyContext, node: Expression): Accepts | undefined {
+  const inner = unparenthesized(node);
+  const literal = inner.kind === 'IndentedValue' ? untypedLiteral(inner) : inner;
+  const builds =
+    literal?.kind === 'ArrayLiteral' || literal?.kind === 'MapLiteral'
+      ? collectionOpenBuilds(context, literal)
+      : undefined;
   return builds === undefined ? undefined : takingUnfolded(builds, context.checker.typeRules);
 }
 

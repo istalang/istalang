@@ -9,6 +9,9 @@
  *   declaration's expected type would build it: `[3]` passed where an `Array<Int?>` is expected.
  *   Items of different types agree only through checking, so such a literal has no type known
  *   before it, and a spread's items are known only from an array's type.
+ * - Where a union is expected, a literal with an item whose type only checking tells is built by
+ *   its shape before its items are checked (types/expected.ts `memberBuilt`): as the arrays or maps
+ *   whose items, keys and values take each item with a type of its own, the others taking any.
  */
 
 import { wellKnown } from '../../../language/well-known.ts';
@@ -93,6 +96,31 @@ function arrayTaking(context: BodyContext, items: Accepts | undefined): Accepts 
     const target = collectionTarget(context.checker, expected);
     return target?.kind === 'array' && items(target.item, isOpen);
   };
+}
+
+/**
+ * Which types a collection literal can be built as while an item's type is known only through
+ * checking (the banner): undefined for an empty one, which builds what its brackets say.
+ */
+export function collectionOpenBuilds(
+  context: BodyContext,
+  node: ArrayLiteral | MapLiteral,
+): Accepts | undefined {
+  const read = beforeChecking(context);
+  if (node.kind === 'ArrayLiteral') {
+    return node.elements.length === 0
+      ? undefined
+      : arrayTaking(context, allProducersAccept(context, elementParts(context, node, read)));
+  }
+  if (node.entries.length === 0) {
+    return undefined;
+  }
+  const { keyParts, valueParts } = entryParts(node, read);
+  return mapTaking(
+    context,
+    allProducersAccept(context, keyParts),
+    allProducersAccept(context, valueParts),
+  );
 }
 
 /** Which types a map literal the call decides can take: what `[:]` builds, or a `Map`. */

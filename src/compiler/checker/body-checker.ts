@@ -12,9 +12,11 @@
  * - A node is checked once. A literal of items each with a type of its own, checked before the type
  *   it is built as is decided (§3.7: a call's argument, a producer agreeing with others), is built
  *   again as that type (`rebuild`): its own literals are checked again as their parts, and every
- *   other item keeps what it was checked to have, fitted to its part. So is a literal whose items'
- *   types only checking tells, where its own type doesn't go into the union expected: as the one
- *   member its checked items build it as (§2, types/expected.ts `memberBuilt`).
+ *   other item keeps what it was checked to have, fitted to its part. So is a tuple or struct
+ *   literal whose items' types only checking tells, and a collection literal an `any` member might
+ *   take whole, where its own type doesn't go into the union expected: as the one member its checked
+ *   items build it as (§2, types/expected.ts `memberBuilt`). Any other collection literal is built
+ *   as its member before its items are checked, so they agree on that member's item.
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. What they record of a
  *   node is kept per pass of a field loop (passes.ts), so the body reads as each pass checked it.
@@ -62,6 +64,7 @@ import {
   checkedPartOf,
   expressionHandlers,
   isBuiltLiteral,
+  openBuildsOf,
 } from './expressions/expressions.ts';
 import { StructLiterals } from './expressions/literal-sources.ts';
 import { FieldReads } from './expressions/member-access.ts';
@@ -224,6 +227,7 @@ export class BodyChecker implements BodyContext {
       memberBuilt(expected, node, {
         checker: this.checker,
         part,
+        openBuilds: () => openBuildsOf(this, node),
         fits: (type) => this.checker.fitOf(type, expected) !== undefined,
       }),
       this.checker.typeRules,

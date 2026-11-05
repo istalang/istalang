@@ -7,9 +7,13 @@
  *   it (`memberBuilt`, which every expression's check goes through), then goes into the union:
  *   `[]` where an `Array<Int>?` is expected builds an empty `Array<Int>`. So is a literal whose own
  *   type doesn't go into the union, as one member its items can build it as: `[1, [2]]` where a
- *   `Json` is expected builds an `Array<Json>`, each item against `Json`. Where an array and a map
- *   member both take an empty literal, `[]` is the array and `[:]` the map. A construct reading the
- *   expected type itself sees past `None` (`builtFrom`).
+ *   `Json` is expected builds an `Array<Json>`, each item against `Json`. So is a collection literal
+ *   whose own type only checking tells, before its items are checked, so each is checked against
+ *   the member's item: `[1 + 1, "a"]` builds an `Array<Json>` too, an item with no type known yet
+ *   taking any member's item. Where an `any` member might take the literal's own type whole, it is
+ *   checked first and built as a member only if its type doesn't go in (body-checker.ts). Where an
+ *   array and a map member both take an empty literal, `[]` is the array and `[:]` the map. A
+ *   construct reading the expected type itself sees past `None` (`builtFrom`).
  * - A struct, tuple, array or map literal and a lambda each read one part of it: the struct the
  *   expected type is, a tuple's element types, a collection's item or entry types, a function's
  *   parameters.
@@ -35,6 +39,7 @@ import {
   type NominalType,
   nominalType,
   type Type,
+  type UnionType,
 } from './type.ts';
 import { typeArgumentsFor } from './type-arguments.ts';
 import { type TypeRules, unfolded } from './type-rules.ts';
@@ -52,19 +57,37 @@ export interface MemberChoice {
   readonly checker: Expecting;
   /** The value as a part of a literal is read before checking (body-context.ts). */
   readonly part: () => AcceptedPart;
+  /**
+   * Which types the value can be built as while its own type is known only through checking: a
+   * collection literal's, its items with types of their own fitting, the others taking any.
+   */
+  readonly openBuilds: () => Accepts | undefined;
   /** Whether a value of its own type goes into the expected union as it is. */
   readonly fits: (type: Type) => boolean;
 }
 
 /**
  * Which types a value read as `part` can be built as, where its own type doesn't go into the
- * expected union as it is; undefined where it does, or where nothing builds it.
+ * expected union as it is; undefined where it does, or where nothing builds it. A value whose own
+ * type only checking tells is built by its shape, unless a member might take that type whole.
  */
-function acceptedBy(part: AcceptedPart, choice: MemberChoice): Accepts | undefined {
+function acceptedBy(
+  part: AcceptedPart,
+  choice: MemberChoice,
+  expected: UnionType,
+): Accepts | undefined {
   if (part.kind === 'decided') {
     return part.accepts;
   }
-  return part.type !== undefined && choice.fits(part.type) ? undefined : part.builds;
+  if (part.type === undefined) {
+    return mightTakeWhole(expected) ? undefined : choice.openBuilds();
+  }
+  return choice.fits(part.type) ? undefined : part.builds;
+}
+
+/** Whether a member of `union` takes values whose types it can't know before they are checked. */
+function mightTakeWhole(union: UnionType): boolean {
+  return union.members.some((member) => member.kind === 'any');
 }
 
 /**
@@ -78,7 +101,7 @@ export function memberBuilt(expected: Type, node: Expression, choice: MemberChoi
   if (expected.kind !== 'union' || !builtKinds.has(node.kind)) {
     return expected;
   }
-  const accepted = acceptedBy(choice.part(), choice);
+  const accepted = acceptedBy(choice.part(), choice, expected);
   if (accepted === undefined) {
     return expected;
   }
