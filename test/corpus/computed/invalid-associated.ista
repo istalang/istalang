@@ -3,7 +3,7 @@
 # error: 5150 at 34:27
 # error: 5132 at 36:25
 # error: 5133 at 38:38
-# error: 5101 at 41:3
+# error: 5134 at 41:3
 # error: 5100 at 42:7
 # Invalid associated types and struct constraints (§3.1, §3.5): an associated type referring to
 # itself, one named as a variant, a trait using `Self.Data` after `any`, an associated type a

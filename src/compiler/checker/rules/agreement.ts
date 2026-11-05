@@ -7,15 +7,26 @@
  * Without an expected type, a producer that doesn't fit is reported by the caller's own
  * diagnostic, which names what disagrees; with one, or when it fits only by the implicit wrap into
  * `T?` (§2), it is fitted, which reports the mismatch or records the wrap.
+ *
+ * A literal type inside another one is a value a container holds, which no conversion reaches
+ * (types/widening.ts), so producers holding different ones can't agree on any of their types as
+ * they are: `(k, 1)` and `(k2, 2)` for keys `"a"` and `"b"`. A producer that is a literal built
+ * from parts each with a type of its own can be built as another type its parts convert into,
+ * though (§3.7), so such producers agree on the first one's type with every literal type in it
+ * widened, and each is built again as that type. A later producer is likewise expected to have
+ * what those before it agree on with the literal types inside it widened, since they constrain
+ * nothing a part could convert into.
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import type { ValueSite } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { type Fit, isExact } from '../types/fit.ts';
 import { isPrimitive, type Type } from '../types/type.ts';
+import { mapChildren } from '../types/type-parts.ts';
 import { literalsBase } from '../types/unions.ts';
 import { sendableWidened, widened } from '../types/widening.ts';
 
@@ -28,6 +39,27 @@ export interface Produced {
   readonly type: Type;
   readonly span: AnchoredSpan;
   readonly site: ValueSite | undefined;
+  /** The producer as a literal of parts each typed, which may be built as another type (§3.7). */
+  readonly literal?: BuiltLiteral | undefined;
+}
+
+/** A literal of parts each with a type of its own, and whether it can be built as a type (§3.7). */
+interface BuiltLiteral {
+  readonly node: Expression;
+  readonly builds: (type: Type) => boolean;
+}
+
+/** What the expression `node` produced, `type`, and what it can be built as instead (§3.7). */
+export function producedBy(context: BodyContext, node: Expression, type: Type): Produced {
+  const part = context.acceptedPart(node);
+  const builds = part.kind === 'typed' ? part.builds : undefined;
+  return {
+    type,
+    span: node.span,
+    site: node,
+    literal:
+      builds === undefined ? undefined : { node, builds: (built) => builds(built, () => false) },
+  };
 }
 
 export interface Agreement {
@@ -57,13 +89,66 @@ export function agreedType(
     expected === undefined
       ? (type: Type) => agreeingWidened(type, checker)
       : (type: Type) => sendableWidened(type, rules);
-  const decided =
+  const agreed =
     target === undefined ? undefined : firstOrWidened(target, produced, checker, widen);
+  const decided =
+    agreed === undefined || expected !== undefined
+      ? agreed
+      : rebuiltAgreement(agreed, produced, checker);
   return {
     decided,
     disagreeing:
       decided === undefined ? [] : produced.filter(({ type }) => !agrees(checker, type, decided)),
   };
+}
+
+/**
+ * `decided`, or, when some producer disagrees with it and every producer agrees with or builds its
+ * type with the literal types inside widened, that type (the banner).
+ */
+function rebuiltAgreement(decided: Type, produced: readonly Produced[], checker: Agreeing): Type {
+  if (produced.every(({ type }) => agrees(checker, type, decided))) {
+    return decided;
+  }
+  const inside = insideWidened(decided, checker);
+  return produced.every(
+    ({ type, literal }) => agrees(checker, type, inside) || literal?.builds(inside) === true,
+  )
+    ? inside
+    : decided;
+}
+
+/**
+ * `decided`, with every literal type in it widened as agreeing widens one, when every producer
+ * agrees with or builds that type, else widened as a whole (`agreeingWidened`): what producers
+ * whose literal types never decide their own agree on, such as a field comprehension's elements,
+ * whatever fields they visit (§4).
+ */
+export function wholeWidened(
+  decided: Type,
+  produced: readonly Produced[],
+  checker: Agreeing,
+): Type {
+  const deep = deeplyWidened(decided, checker);
+  return produced.every(
+    ({ type, literal }) => agrees(checker, type, deep) || literal?.builds(deep) === true,
+  )
+    ? deep
+    : agreeingWidened(decided, checker);
+}
+
+/**
+ * `type` with every literal type inside it widened as agreeing widens one (`agreeingWidened`); a
+ * union's members are its own values, not values it holds, so a union is left whole.
+ */
+function insideWidened(type: Type, checker: Agreeing): Type {
+  return type.kind === 'union'
+    ? type
+    : mapChildren(type, (child) => deeplyWidened(child, checker), checker.typeRules);
+}
+
+function deeplyWidened(type: Type, checker: Agreeing): Type {
+  return agreeingWidened(insideWidened(type, checker), checker);
 }
 
 /** Whether a producer of `type` agrees with `decided` as it is, or once widened. */
@@ -78,7 +163,7 @@ function agrees(checker: Agreeing, type: Type, decided: Type): boolean {
  * a field loop's key (§4), to that base, which each such producer is then converted to, and a
  * sendable function type to a plain one.
  */
-export function agreeingWidened(type: Type, checker: Agreeing): Type {
+function agreeingWidened(type: Type, checker: Agreeing): Type {
   return literalsBase(type) ?? memberBase(type, checker) ?? widened(type, checker.typeRules);
 }
 
@@ -148,6 +233,11 @@ export function settleProduced(context: BodyContext, produced: Produced, agreed:
   if (agrees(context.checker, produced.type, decided)) {
     return;
   }
+  const { literal } = produced;
+  if (literal?.builds(decided) === true) {
+    context.expect(literal.node, decided);
+    return;
+  }
   if (expected === undefined && context.checker.fitOf(produced.type, decided) === undefined) {
     context.report(mismatch(produced.span, decided, produced.type));
   } else {
@@ -165,12 +255,16 @@ export function fitProduced(context: BodyContext, produced: Produced, expected: 
   }
 }
 
-/** What `produced` agree on so far, which a later producer is expected to have (§3.1). */
+/**
+ * What `produced` agree on so far, which a later producer is expected to have (§3.1), with the
+ * literal types inside it widened (the banner).
+ */
 export function decidedSoFar(
   context: BodyContext,
   produced: readonly Produced[],
 ): Type | undefined {
-  return agreedType(produced, context.checker).decided;
+  const { decided } = agreedType(produced, context.checker);
+  return decided === undefined ? undefined : insideWidened(decided, context.checker);
 }
 
 /** Whether `part` can take a parameter of `expected`. */

@@ -255,7 +255,7 @@ export function keyMembers(checker: CheckerContext, key: Type): readonly Type[] 
 }
 
 /** What declares the associated type `name` of `of` (§3.1); undefined when it has none. */
-export function associatedDeclarationOf(
+function associatedDeclarationOf(
   checker: CheckerContext,
   of: Type,
   name: string,
@@ -296,10 +296,20 @@ export function entryRules(checker: CheckerContext, type: Type): readonly EntryR
 }
 
 /**
- * The traits each of several fields' rules asks, as one rule: a field any of them gives an exact
- * type, or asks a struct constraint of, meets nothing known here beside them.
+ * What each of several fields' rules asks, as one rule: the exact type every one of them gives, when
+ * they all give the same one, so a key naming any of them reads and writes that type (§3.1 Key
+ * types); else the traits each asks, as a field any of them gives an exact type, or asks a struct
+ * constraint of, meets nothing known here beside them.
  */
 function commonRules(each: readonly (readonly EntryRule[])[]): readonly EntryRule[] {
+  const exact = each.map((rules) => rules.find((rule) => rule.kind === 'type'));
+  const [shared] = exact;
+  if (
+    shared !== undefined &&
+    exact.every((rule) => rule !== undefined && sameType(rule.type, shared.type))
+  ) {
+    return [shared];
+  }
   const sets = each.map((rules) =>
     rules.every((rule) => rule.kind === 'meets' && rule.structs.length === 0)
       ? rules.flatMap((rule) => (rule.kind === 'meets' ? rule.traits : []))

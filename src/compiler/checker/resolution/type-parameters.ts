@@ -19,7 +19,6 @@ import type {
 } from '../../syntax/declarations.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CheckerContext, CheckerNote, ConstraintCheck, Instantiable } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { resolveConstraints } from '../traits/constraints.ts';
 import { resolveConstraintSet, resolveStructConstraints } from '../traits/struct-constraints.ts';
 import { standsForMember } from '../types/member-arguments.ts';
@@ -31,13 +30,11 @@ import {
 } from '../types/struct-constraint.ts';
 import { substituteConstraint } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type.ts';
-import { matchUse } from '../types/type-match.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
-import { typeText } from '../types/type-text.ts';
 import { silent, useSite } from '../use-site.ts';
 import { meets } from './conformance.ts';
 import { impliedConstraints } from './implied-constraints.ts';
-import { MatchRequirements } from './match-requirements.ts';
+import { failureDiagnostic, MatchRequirements } from './match-requirements.ts';
 import { meetsStructConstraints } from './shortfalls.ts';
 
 /** The tree of `module`, whose nodes a parameter's place is read from. */
@@ -171,10 +168,9 @@ export class TypeParameters {
   #check(module: ModuleId, check: ConstraintCheck): void {
     const site = useSite(this.#checker, module, check.at);
     if (check.kind === 'reduces') {
-      const unmatched = this.#requirements.unmatched(check.declaration, check.typeArguments);
-      if (unmatched !== undefined) {
-        const use = matchUse(unmatched.declaration, unmatched.arguments);
-        site.report((at) => checkerDiagnostics.noCaseMatches(at, typeText(use)));
+      const failure = this.#requirements.failure(check.declaration, check.typeArguments);
+      if (failure !== undefined) {
+        site.report((at) => failureDiagnostic(at, failure));
       }
       return;
     }

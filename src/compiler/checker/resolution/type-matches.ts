@@ -10,7 +10,9 @@
  *   distribute, and `Never`, no member, would give `Never` whatever the cases. Otherwise the use
  *   stays unreduced, opaque, and an instantiation reduces it.
  * - A use matching no case is the error type, carrying the use: the check of the instantiation
- *   reaching it reports it there (match-requirements.ts), so nothing else reports it again.
+ *   reaching it reports it there (match-requirements.ts), so nothing else reports it again. So
+ *   is one whose reduction reaches the use itself with no struct type holding it on the way
+ *   (`case _: A<T>`, `case _: A<T> | Int`): it would be itself, as an alias can't be (§3.17).
  * - An alias reducing to itself with a type built from its own parameter never ends (§3.5); its
  *   declaration reports it (declarations/type-match-expansion.ts), and its uses are the error type.
  * - Each reduction is an entry of the checker's, by the use's spelled key (type-keys.ts): what it
@@ -38,6 +40,7 @@ import {
   isPrimitive,
   neverType,
   type Type,
+  type UnreducedUse,
 } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
 import {
@@ -154,8 +157,9 @@ export class TypeMatchReductions {
 
   /**
    * A use reached while its own reduction is under way: each use on that cycle whose case writes a
-   * struct type stands for itself from now on; this one too, or else a stand-in only finding
-   * reaches, which it drops.
+   * struct type stands for itself from now on. This one too, or else no struct type holds it on
+   * its way back to itself: it would be itself, no type (§3.17), unless the cycle's struct is
+   * elsewhere, a stand-in only finding reaches, which it drops.
    */
   #reachedAgain(key: string, use: MatchUse): Type {
     const cycle = [...this.#reducing].slice([...this.#reducing.keys()].indexOf(key));
@@ -165,7 +169,7 @@ export class TypeMatchReductions {
         this.#recursive.set(each, origin);
       }
     }
-    return this.#recursive.has(key) ? recursiveUse(use) : errorType;
+    return this.#recursive.has(key) ? recursiveUse(use) : unreducedUse(use, 'itself');
   }
 
   /** The struct type the case `use` picks writes, when it writes one and no union distributes. */
@@ -212,9 +216,7 @@ export class TypeMatchReductions {
         return matchUse(declaration, typeArguments);
       }
       reduced.push(
-        each === 'unmatched'
-          ? { kind: 'error', unmatched: { declaration, arguments: typeArguments } }
-          : each,
+        each === 'unmatched' ? unreducedUse({ declaration, typeArguments }, 'unmatched') : each,
       );
     }
     return unionOf(reduced, checker.typeRules);
@@ -255,6 +257,14 @@ export class TypeMatchReductions {
     }
     return 'unmatched';
   }
+}
+
+/** The error type carrying `use`, which names no type for `cause`. */
+function unreducedUse(
+  { declaration, typeArguments }: MatchUse,
+  cause: UnreducedUse['cause'],
+): Type {
+  return { kind: 'error', unreduced: { use: { declaration, arguments: typeArguments }, cause } };
 }
 
 /** The use `use` standing for itself (`RecursiveType`). */

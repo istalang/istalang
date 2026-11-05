@@ -217,7 +217,9 @@ function spelledKindKey(type: Type): string {
     case 'parameter':
       return keyOf(type, undefined, key);
     case 'error':
-      return type.unmatched === undefined ? '?' : `?${useKeyOf(type.unmatched, key)}`;
+      return type.unreduced === undefined
+        ? '?'
+        : `?${type.unreduced.cause}${useKeyOf(type.unreduced.use, key)}`;
     case 'anonymous': {
       const recursion = type.recursion === undefined ? '' : useKeyOf(type.recursion, key);
       const fields = type.fields.map(spelledFieldKey).join(',');

@@ -327,12 +327,12 @@ describe('struct constraints (§2)', () => {
         '  _ = anyStruct(n)',
       ),
     ).toEqual([
-      checkerDiagnostics.notConforming.code,
-      checkerDiagnostics.notConforming.code,
-      checkerDiagnostics.notConforming.code,
-      checkerDiagnostics.notConforming.code,
-      checkerDiagnostics.notConforming.code,
-      checkerDiagnostics.notConforming.code,
+      checkerDiagnostics.unmetStructConstraint.code,
+      checkerDiagnostics.unmetStructConstraint.code,
+      checkerDiagnostics.unmetStructConstraint.code,
+      checkerDiagnostics.unmetStructConstraint.code,
+      checkerDiagnostics.unmetStructConstraint.code,
+      checkerDiagnostics.unmetStructConstraint.code,
     ]);
 
     expect(
@@ -344,9 +344,9 @@ describe('struct constraints (§2)', () => {
         '  _ = allInts(struct{a: 1, b: "two"})',
       ),
     ).toEqual([
-      checkerDiagnostics.notConforming.code,
-      checkerDiagnostics.notConforming.code,
-      checkerDiagnostics.notConforming.code,
+      checkerDiagnostics.unmetStructConstraint.code,
+      checkerDiagnostics.unmetStructConstraint.code,
+      checkerDiagnostics.unmetStructConstraint.code,
     ]);
   });
 

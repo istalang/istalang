@@ -140,6 +140,22 @@ describe('the language service', () => {
     expect(completionNamesAt(...field, 'fn f(x: Field<Int>.‸) -> Int: 0')).toContain('Data');
   });
 
+  it('follows `R.Data` and `Self.Data` to every trait requirement declaring it', () => {
+    const traits = [
+      'trait Fn:',
+      '  type Data',
+      'trait Gn:',
+      '  type Data',
+      '  fn g(self: Self, d: Self.Da‸ta)',
+    ];
+    expect(declaredPlacesAt(...traits)).toEqual(['main:39']);
+    const both = ['trait Fn:', '  type Data', 'trait Gn:', '  type Data'];
+    expect(declaredPlacesAt(...both, 'fn f<R is Fn & Gn>(x: R.Da‸ta): ()')).toEqual([
+      'main:17',
+      'main:39',
+    ]);
+  });
+
   it('shows the field a key names, and the type variables computed types bind', () => {
     const settings = ['struct Settings { retries: Int; region: String }'];
     expect(hoverCodeAt(...settings, 'fn f(x: Settings["retri‸es"]) -> Int: x')).toEqual([

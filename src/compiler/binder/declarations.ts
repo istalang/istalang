@@ -227,6 +227,9 @@ function bindTrait(binder: LocalBinder, node: TraitDeclaration, scope: Scope): v
     'type',
   );
   for (const member of associated) {
+    // A requirement is reached through `Self` or a parameter, never by its bare name, so it is
+    // recorded as its name's entity, the tree's own, without standing in a scope.
+    binder.record(member.name, typeEntity(member));
     binder.annotations(member, inner);
     bindConstraints(binder, member.constraints, inner);
   }

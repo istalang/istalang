@@ -68,6 +68,12 @@ export interface LiteralShape {
   readonly defaults?: FunctionDeclaration | undefined;
   /** The type arguments already decided, written or expected. */
   readonly known: readonly Type[] | undefined;
+  /**
+   * The type expected of the literal, when it is a union with members of the literal's own type
+   * none of which the literal takes: a literal that can't infer its type arguments then doesn't fit
+   * it, which is what is reported.
+   */
+  readonly expected?: Type | undefined;
   readonly fields: readonly FieldMember[];
   readonly typeOf: (typeArguments: readonly Type[]) => Type;
   /** The type a spread gives when not the literal's own: a shared struct's value (§3.18). */
@@ -231,14 +237,21 @@ function spreadOf(shape: LiteralShape, typeArguments: readonly Type[]): Type {
 function complete(
   context: BodyContext,
   node: FieldsLiteral,
-  { owner }: LiteralShape,
+  shape: LiteralShape,
   inference: Inference,
 ): { typeArguments: readonly Type[]; substitution: Substitution } | undefined {
+  const { owner, expected } = shape;
   if (owner === undefined) {
     return { typeArguments: [], substitution: new Map() };
   }
   const parameters = typeParametersOf(owner.typeParameters);
   const completion = completeInference(context.checker, owner, parameters, inference);
+  if (completion.kind === 'open' && expected !== undefined) {
+    const found = inference.substitution();
+    const given = shape.typeOf(parameters.map((parameter) => found.get(parameter) ?? errorType));
+    context.report(checkerDiagnostics.typeMismatch(node.span, typeText(expected), typeText(given)));
+    return undefined;
+  }
   if (completion.kind === 'open') {
     const parameter = completion.parameter.name.text;
     context.report(checkerDiagnostics.cannotInfer(node.span, owner.name.text, parameter));

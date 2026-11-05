@@ -99,7 +99,10 @@ export function checkNamedLiteral(
   if (built.kind === 'shape') {
     return checkLiteralFields(context, node, built.shape, leadingSpread(node));
   }
-  const shape = declaredShape(context, built.entity, built.known);
+  const shape = {
+    ...declaredShape(context, built.entity, built.known),
+    expected: unionHolding(expected, built.entity),
+  };
   if (shape.fields.length === 0 && built.struct.kind === 'StructDeclaration') {
     context.report(checkerDiagnostics.bareStruct(node.span, name.text));
     checkValuesAlone(context, node);
@@ -169,6 +172,18 @@ function shapeOf(context: BodyContext, type: Type): LiteralShape | undefined {
     return declaredShape(context, type.entity, type.arguments);
   }
   return undefined;
+}
+
+/**
+ * `expected`, when it is a union with a member of `entity`'s type: none of them took the literal,
+ * or it would be expected alone (types/expected.ts), so a literal inferring no type arguments of its
+ * own doesn't fit it.
+ */
+function unionHolding(expected: Type | undefined, entity: NominalEntity): Type | undefined {
+  return expected?.kind === 'union' &&
+    expected.members.some((member) => member.kind === 'nominal' && member.entity === entity)
+    ? expected
+    : undefined;
 }
 
 /** How a literal builds the declared struct `entity` names, from its declared fields. */

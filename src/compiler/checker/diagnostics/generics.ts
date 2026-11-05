@@ -14,6 +14,11 @@ export const genericTemplates = {
     message: (type: string, trait: string, missing: string) =>
       `${type} doesn't satisfy ${trait}: it needs ${missing}.`,
   },
+  unmetStructConstraint: {
+    code: 5134,
+    message: (reason: string, type: string, constraint: string) =>
+      `${reason[0]?.toUpperCase() ?? ''}${reason.slice(1)}, so ${type} doesn't meet ${constraint} (§3.5).`,
+  },
   notTrait: {
     code: 5102,
     message: (keyword: string) => `Only a trait can follow '${keyword}'.`,

@@ -32,7 +32,7 @@ import type { CheckerContext } from '../context.ts';
 import type { Denotation } from '../denotation.ts';
 import { declaredOutsideBodies } from '../expressions/names.ts';
 import { namedType } from '../resolution/named.ts';
-import { associatedDeclarationOf } from '../traits/known-constraints.ts';
+import { associatedDeclarationsOn } from '../traits/known-constraints.ts';
 import { declaredFieldOf } from '../types/declared-fields.ts';
 import { entityType } from '../types/named-types.ts';
 import { parameterType } from '../types/resolve-type.ts';
@@ -191,17 +191,17 @@ function namingAt({ checker, module }: NameSite) {
 
 /**
  * The associated type `type` is (§3.1): opaque, or a known type's own, written through it, with
- * what declares it; none for any other type.
+ * what declares it: its type's own, or every requirement of it among the traits it meets; none
+ * for any other type.
  */
 function associatedNamed(checker: CheckerContext, type: Type | undefined): readonly Denotation[] {
   const spelled = type?.kind === 'associated' ? type : type?.alias;
   if (spelled?.kind !== 'associated') {
     return [];
   }
-  const declaration = associatedDeclarationOf(checker, spelled.of, spelled.name);
-  return declaration === undefined
-    ? []
-    : [{ declared: { kind: 'type', entity: typeEntity(declaration) }, type }];
+  return associatedDeclarationsOn(checker, spelled.of)
+    .filter((declaration) => declaration.name.text === spelled.name)
+    .map((declaration) => ({ declared: { kind: 'type', entity: typeEntity(declaration) }, type }));
 }
 
 /**

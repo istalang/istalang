@@ -9,8 +9,9 @@
  *   their callees' requirements, read through those arguments. A function reached again while its
  *   requirements are found adds none: the cycle's own uses are among the others'.
  * - An instantiation substitutes them, and any use whose arguments are then all known reduces:
- *   one matching no case, the error type carrying it, is reported where the instantiation is
- *   written. A nominal type reached
+ *   one naming no type (matching no case, or being itself), the error type carrying it, is
+ *   reported where the instantiation is written, and so is a recursive one whose values would hold
+ *   themselves (types/finiteness.ts, the rule a struct declaration keeps). A nominal type reached
  *   on the way brings its declaration's requirements, through its own arguments, and a recursive
  *   use its shape, each once.
  * - A std function writes no type `match` use, and what its type arguments bring is the caller's
@@ -29,15 +30,44 @@ import {
   type TypeAliasDeclaration,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { nodesUnder } from '../../syntax/tree.ts';
 import { isWrittenType } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote, Instantiable } from '../context.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { functionCallsWithin } from '../resolved-call.ts';
+import { fieldReaderOf, selfHoldingField } from '../types/finiteness.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
-import type { Type, TypeMatchUse } from '../types/type.ts';
+import type { Type, TypeMatchUse, UnreducedUse } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
-import { aliasInstance } from '../types/type-match.ts';
+import { aliasInstance, matchUse } from '../types/type-match.ts';
 import { isKnown, sameTypeSpelled, typeChildren } from '../types/type-parts.ts';
+import { typeText } from '../types/type-text.ts';
+
+/**
+ * Why a use of a type `match` an instantiation reaches fails: it names no type (`UnreducedUse`), or
+ * its values would hold themselves through `field`, never ending (§3.1).
+ */
+export type MatchFailure =
+  | UnreducedUse
+  | { readonly use: TypeMatchUse; readonly cause: 'holdsItself'; readonly field: string };
+
+/** The diagnostic reporting `failure` at `at`, where the instantiation reaching it is written. */
+export function failureDiagnostic(at: AnchoredSpan, failure: MatchFailure) {
+  const use = typeText(matchUse(failure.use.declaration, failure.use.arguments));
+  switch (failure.cause) {
+    case 'unmatched':
+      return checkerDiagnostics.noCaseMatches(at, use);
+    case 'itself':
+      return checkerDiagnostics.aliasCycle(at, use);
+    case 'holdsItself':
+      return checkerDiagnostics.recursiveField(at, use, failure.field);
+    default: {
+      const unhandled: never = failure;
+      return unhandled;
+    }
+  }
+}
 
 export class MatchRequirements {
   readonly #checker: CheckerContext;
@@ -54,20 +84,32 @@ export class MatchRequirements {
   }
 
   /**
-   * The first use of a type `match` no case matches that `declaration`, instantiated by
-   * `typeArguments`, reaches (the banner); undefined when every one reduces.
+   * The first use of a type `match` naming no type, or naming a type whose values never end, that
+   * `declaration`, instantiated by `typeArguments`, reaches (the banner); undefined for none.
    */
-  unmatched(declaration: Instantiable, typeArguments: Substitution): TypeMatchUse | undefined {
+  failure(declaration: Instantiable, typeArguments: Substitution): MatchFailure | undefined {
     if (!isGenericDeclaration(declaration) && declaration.kind !== 'TypeAliasDeclaration') {
       return undefined;
     }
     const seen = new Set<string>();
+    const reader = fieldReaderOf(this.#checker);
     const pending = this.#instantiated(declaration, typeArguments);
     for (let type = pending.pop(); type !== undefined; type = pending.pop()) {
-      if (type.kind === 'error' && type.unmatched !== undefined) {
-        return type.unmatched;
+      if (type.kind === 'error' && type.unreduced !== undefined) {
+        return type.unreduced;
       }
       const key = typeKeys.typeKey(type);
+      if (type.kind === 'recursive' && !seen.has(key)) {
+        const field = selfHoldingField(
+          reader,
+          this.#checker.typeRules.recursiveShape(type).fields,
+          type,
+        );
+        if (field !== undefined) {
+          const use = { declaration: type.declaration, arguments: type.arguments };
+          return { use, cause: 'holdsItself', field: field.name };
+        }
+      }
       if (type.kind !== 'error' && !seen.has(key)) {
         seen.add(key);
         pending.push(...this.#reached(type));

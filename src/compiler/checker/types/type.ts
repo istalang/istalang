@@ -273,12 +273,21 @@ interface StructCaseConstraint {
 }
 
 /**
- * A type a diagnostic explains. A use of a type `match` no case matches (§3.17) is one, carrying
- * that use, which the check of the instantiation reaching it reports (resolution/match-requirements.ts).
+ * A use of a type `match` that names no type (§3.17): no case matches its subject, or its
+ * reduction reaches the use itself before any struct type holds it, so it would be itself.
+ */
+export interface UnreducedUse {
+  readonly use: TypeMatchUse;
+  readonly cause: 'unmatched' | 'itself';
+}
+
+/**
+ * A type a diagnostic explains. A use of a type `match` naming no type is one, carrying that use
+ * and why, which the check of the instantiation reaching it reports (resolution/match-requirements.ts).
  */
 export interface ErrorType extends WrittenThrough {
   readonly kind: 'error';
-  readonly unmatched?: TypeMatchUse | undefined;
+  readonly unreduced?: UnreducedUse | undefined;
 }
 
 /** The value of a literal type: an `Int`'s, a `String`'s or a `Bool`'s. */

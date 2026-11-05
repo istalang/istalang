@@ -16,7 +16,13 @@ import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { neverType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { agreedAccepts, decidedSoFar, type Produced, settleAgreement } from './agreement.ts';
+import {
+  agreedAccepts,
+  decidedSoFar,
+  type Produced,
+  producedBy,
+  settleAgreement,
+} from './agreement.ts';
 
 export class Branches {
   readonly #context: BodyContext;
@@ -37,11 +43,13 @@ export class Branches {
   add(body: Block): void {
     const context = this.#context;
     const expected = this.#expected ?? decidedSoFar(context, this.#produced);
-    this.#produced.push({
-      type: context.block(body, expected),
-      span: tailNodeOf(body).span,
-      site: tailExpressionOf(body) ?? body,
-    });
+    const type = context.block(body, expected);
+    const tail = tailExpressionOf(body);
+    this.#produced.push(
+      tail === undefined
+        ? { type, span: tailNodeOf(body).span, site: body }
+        : { ...producedBy(context, tail, type), span: tailNodeOf(body).span },
+    );
   }
 
   /** The type every branch agrees on, after reporting the branches that don't fit it. */

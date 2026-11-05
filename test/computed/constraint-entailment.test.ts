@@ -31,7 +31,7 @@ function passing(given: string, needed: string): readonly number[] {
   );
 }
 
-const refused = [checkerDiagnostics.notConforming.code];
+const refused = [checkerDiagnostics.unmetStructConstraint.code];
 
 describe('a struct constraint implied by another', () => {
   it.each([

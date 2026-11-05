@@ -183,12 +183,18 @@ export class BodyChecker implements BodyContext {
   }
 
   expression(node: Expression, given?: Type): Type {
-    const expected = given === undefined ? undefined : unfolded(given, this.checker.typeRules);
+    const { typeRules } = this.checker;
+    const expected = given === undefined ? undefined : unfolded(given, typeRules);
     if (expected !== undefined) {
       this.#expected.set(node, expected);
     }
     const guide =
-      expected === undefined ? undefined : memberBuilt(expected, node, () => this.accepts(node));
+      expected === undefined
+        ? undefined
+        : unfolded(
+            memberBuilt(expected, node, () => this.accepts(node)),
+            typeRules,
+          );
     return this.#record(node, handlerOf(expressionHandlers, node)(this, node, guide));
   }
 

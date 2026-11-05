@@ -54,6 +54,38 @@ describe('an array comprehension over fields', () => {
   });
 });
 
+describe('elements holding keys', () => {
+  it('agree as an array literal of the same values does, each built as the widened type', () => {
+    const declarations = ['struct P { b: Int; a: Int }'];
+    const lines = [
+      'const pairs = [for k, v in ...P{b: 1, a: 2}: (k, v)]',
+      'const ka: "a" = "a"',
+      'const kb: "b" = "b"',
+      'const written = [(ka, 2), (kb, 1)]',
+      'const both: Array<(String, Int)> = [...pairs, ...written]',
+      'both.map(fn pair: `${pair.0}${pair.1}`).join(",")',
+    ];
+    expect(runText(lines, declarations)).toBe('a2,b1,a2,b1');
+  });
+
+  it('agree over any struct, as the array literal written out per field', () => {
+    fc.assert(
+      fc.property(generatedFieldsArbitrary, (fields) => {
+        const struct = `struct S { ${fields.map(({ name, type }) => `${name}: ${type}`).join('; ')} }`;
+        const literal = `S{${fields.map(({ name, value }) => `${name}: ${value}`).join(', ')}}`;
+        const names = fields.map(({ name }) => name).sort();
+        const keys = names.map((name) => `const key${name}: "${name}" = "${name}"`);
+        const written = `[${names.map((name) => `(key${name}, 1)`).join(', ')}]`;
+        const join = '.map(fn pair: `${pair.0}${pair.1}`).join(",")';
+        const expected = names.map((name) => `${name}1`).join(',');
+        expect(runText([`[for k, _ in ...${literal}: (k, 1)]${join}`], [struct])).toBe(expected);
+        expect(runText([...keys, `${written}${join}`], [struct])).toBe(expected);
+      }),
+      { numRuns: 20 },
+    );
+  });
+});
+
 describe('a struct comprehension', () => {
   it('builds structs with and without an expected type, evaluating named fields first', () => {
     const declarations = [

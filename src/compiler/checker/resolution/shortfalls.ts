@@ -101,8 +101,9 @@ export function associatedShortfall(
 }
 
 /**
- * What `type` lacks to meet the struct constraint `model`; undefined when it meets it. Traits an
- * entry asks for are met as `meets` says.
+ * Why `type` doesn't meet the struct constraint `model`, as a clause leading the diagnostic (the
+ * field and what it doesn't meet, §3.5); undefined when it meets it. Traits an entry asks for are
+ * met as `meets` says.
  */
 export function structShortfall(
   checker: CheckerContext,
@@ -117,13 +118,13 @@ export function structShortfall(
     return opaqueShortfall(checker, type, model, meets);
   }
   if (!isStructType(type)) {
-    return 'to be a struct type';
+    return `${typeText(type)} is no struct type`;
   }
   const fields = checker.fieldsOf(type) ?? [];
   for (const entry of model.named) {
     const field = fields.find((each) => each.name === entry.name);
     if (field === undefined) {
-      return `a field '${entry.name}'`;
+      return `${typeText(type)} has no field '${entry.name}'`;
     }
     const shortfall = ruleShortfall(checker, field, entry.rule, meets);
     if (shortfall !== undefined) {
@@ -144,28 +145,28 @@ export function structShortfall(
   return undefined;
 }
 
-/** What a field, by its name and type, lacks to meet an entry's `rule`. */
+/** Why a field, by its name and type, doesn't meet an entry's `rule`, as `structShortfall` says. */
 function ruleShortfall(
   checker: CheckerContext,
   { name, type: fieldType }: { readonly name: string; readonly type: Type },
   rule: EntryRule,
   meets: Meets,
 ): string | undefined {
-  const field = `its field '${name}: ${typeText(fieldType)}'`;
+  const field = `field '${name}: ${typeText(fieldType)}'`;
   if (rule.kind === 'type') {
-    return sameType(fieldType, rule.type) ? undefined : `${field} to be ${typeText(rule.type)}`;
+    return sameType(fieldType, rule.type) ? undefined : `${field} isn't ${typeText(rule.type)}`;
   }
   const rules = checker.typeRules;
   const unmet = rule.traits.find(
     (trait) => !meets(fieldType, constraintOn(trait, fieldType, rules)),
   );
   if (unmet !== undefined) {
-    return `${field} to meet ${unmet.trait.name.text}`;
+    return `${field} doesn't meet ${unmet.trait.name.text}`;
   }
   for (const struct of rule.structs) {
     const shortfall = structShortfall(checker, fieldType, struct, meets);
     if (shortfall !== undefined) {
-      return `${field} ${shortfall}`;
+      return `in ${field}, ${shortfall}`;
     }
   }
   return undefined;
@@ -185,17 +186,17 @@ function opaqueShortfall(
 ): string | undefined {
   const known = knownFields(structConstraintsOn(checker, type));
   if (known === undefined) {
-    return 'to be a struct type';
+    return `${typeText(type)} is no struct type`;
   }
   const field = (name: string) =>
-    `its field '${name}: ${typeText(checker.typeRules.fieldType(type, literalType(name)))}'`;
+    `field '${name}: ${typeText(checker.typeRules.fieldType(type, literalType(name)))}'`;
   for (const entry of model.named) {
     const rules = known.named.get(entry.name);
     if (rules === undefined) {
-      return `a field '${entry.name}'`;
+      return `${typeText(type)} has no field '${entry.name}'`;
     }
     if (!entailed(checker, rules, entry.rule, meets)) {
-      return `${field(entry.name)} to be ${ruleText(entry.rule)}`;
+      return `${field(entry.name)} isn't known to be ${ruleText(entry.rule)}`;
     }
   }
   const { others } = model;
@@ -205,12 +206,12 @@ function opaqueShortfall(
   const named = new Set(model.named.map((entry) => entry.name));
   for (const [name, rules] of known.named) {
     if (!(named.has(name) || entailed(checker, rules, others, meets))) {
-      return `${field(name)} to be ${ruleText(others)}`;
+      return `${field(name)} isn't known to be ${ruleText(others)}`;
     }
   }
   return entailed(checker, known.others, others, meets)
     ? undefined
-    : `every other field to be ${ruleText(others)}`;
+    : `${typeText(type)}'s other fields aren't known to be ${ruleText(others)}`;
 }
 
 /**
@@ -330,7 +331,7 @@ export function meetsStructConstraints(
     if (shortfall !== undefined) {
       const constraint = structConstraintText(mapped);
       site.report((at) =>
-        checkerDiagnostics.notConforming(at, typeText(argument), constraint, shortfall),
+        checkerDiagnostics.unmetStructConstraint(at, shortfall, typeText(argument), constraint),
       );
       return false;
     }

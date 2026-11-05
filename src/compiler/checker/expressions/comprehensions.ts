@@ -18,10 +18,11 @@ import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
   agreedType,
-  agreeingWidened,
   decidedSoFar,
   type Produced,
+  producedBy,
   settleProduced,
+  wholeWidened,
 } from '../rules/agreement.ts';
 import { checkedFieldPasses, inFieldPasses } from '../rules/field-passes.ts';
 import { checkLoopOver } from '../rules/iteration.ts';
@@ -56,7 +57,7 @@ export function checkFieldComprehension(
   const passes = checkedFieldPasses(context, node.header);
   const checked = inFieldPasses(context, node.header, passes, ({ visits }) => {
     const type = context.expression(node.body, expectedElement ?? decidedSoFar(context, produced));
-    const element = { type, span: node.body.span, site: node.body };
+    const element = producedBy(context, node.body, type);
     // A pass visiting no field gives no element: its body never runs.
     byPass.push(visits.kind === 'none' ? undefined : element);
     if (visits.kind !== 'none') {
@@ -83,8 +84,9 @@ export function checkFieldComprehension(
 
 /**
  * What a field comprehension's elements agree on: with nothing expected, widened as producers
- * that disagree widen, so a key is a String whichever and however many fields it names (§4), and
- * a generic comprehension has, instantiated, the type it has over the struct substituted.
+ * that disagree widen, a key inside an element built from it too, so a key is a String whichever
+ * and however many fields it names (§4), and a generic comprehension has, instantiated, the type
+ * it has over the struct substituted.
  */
 function agreedElement(
   context: BodyContext,
@@ -93,6 +95,6 @@ function agreedElement(
 ): Type | undefined {
   const { decided } = agreedType(produced, context.checker, expected);
   return expected === undefined && decided !== undefined
-    ? agreeingWidened(decided, context.checker)
+    ? wholeWidened(decided, produced, context.checker)
     : decided;
 }

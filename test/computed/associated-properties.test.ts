@@ -79,7 +79,7 @@ function reportedFor(constraint: string, fields: readonly GeneratedField[]): rea
   return codesOf(`fn needs<S is ${constraint}>(s: S): ()`, `fn use(): needs(${literalOf(fields)})`);
 }
 
-const notMet = [checkerDiagnostics.notConforming.code];
+const notMet = [checkerDiagnostics.unmetStructConstraint.code];
 
 describe('meeting a struct constraint (§2)', () => {
   it('holds exactly when every field the others entry covers meets it', () => {

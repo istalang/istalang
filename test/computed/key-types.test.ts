@@ -141,6 +141,48 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
     ).toBeGreaterThan(0);
   });
 
+  it('reads and writes `S[K]` for a key of several fields as their one exact type, else opaque', () => {
+    const declarations = [
+      'trait Shown:',
+      '  fn show(self: Self) -> String',
+      'fn member<T is struct { a: Int; [_]: Int }, K in keyof T>(t: &T, k: K) -> Int:',
+      '  t[k] += 1',
+      '  t[k]',
+      'fn union<T is struct { a: Int; [_]: Int }>(t: T, k: keyof T) -> Int:',
+      '  t[k]',
+    ];
+    expect(codesOf(...declarations)).toEqual([]);
+    expect(
+      runMain('Int', 'both(P{a: 1, b: 5})', [
+        ...declarations,
+        'struct P { a: Int; b: Int }',
+        'fn both(given: P) -> Int:',
+        '  let p = given',
+        '  member(&p, "b") + union(p, "a")',
+      ]),
+    ).toBe(7);
+    expect(
+      codesOf(
+        ...declarations,
+        'fn opaque<T is struct { a: Int; [_] is Shown }, K in keyof T>(t: T, k: K) -> Int:',
+        '  t[k]',
+      ),
+    ).toEqual([5001]);
+  });
+
+  it('reports an entry no member of `AnyEntry` takes as not fitting it, once', () => {
+    expect(
+      codesOf(
+        'struct Settings { retries: Int; region: String }',
+        'struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }',
+        'type AnyEntry<S is struct> = { [K in keyof S]: Entry<S, K> }[keyof S]',
+        'fn f() -> Int:',
+        '  const c: AnyEntry<Settings> = Entry{key: "region", value: 3}',
+        '  1',
+      ),
+    ).toEqual([5001]);
+  });
+
   it('runs the `Entry` / `AnyEntry` example: a union of entries applies through the trait its members meet', () => {
     expect(
       runMain(

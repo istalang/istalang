@@ -45,7 +45,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
 import { resolveDefault } from '../resolution/default-witness.ts';
 import { preludeCall } from '../resolution/implicit.ts';
-import { decidedSoFar, type Produced, settleAgreement } from '../rules/agreement.ts';
+import { decidedSoFar, type Produced, producedBy, settleAgreement } from '../rules/agreement.ts';
 import { checkIterated, iteratedItem } from '../rules/iteration.ts';
 import { collectionTarget } from '../types/expected.ts';
 import { isExact } from '../types/fit.ts';
@@ -316,7 +316,7 @@ function producedValue(
   node: Expression,
   expected: Type | undefined,
 ): Produced {
-  return { type: context.expression(node, expected), span: node.span, site: node };
+  return producedBy(context, node, context.expression(node, expected));
 }
 
 /** What a literal's `part`s agree on, reporting those that don't fit it. */
