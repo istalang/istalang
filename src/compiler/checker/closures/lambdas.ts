@@ -33,9 +33,9 @@ import type { TypeNode } from '../../syntax/types.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import type { NestedFunction, SignatureParameter } from '../check.ts';
 import {
-  checkWrittenType,
+  checkPatternParameter,
   declaredBodyResult,
-  wholeTypeNamedByPattern,
+  wholeWrittenTypeOf,
   writtenByReference,
   writtenTypeOf,
 } from '../declarations/signatures.ts';
@@ -56,19 +56,26 @@ import { blockTail, ReturnScope } from './returns.ts';
  * takes an async function type too, which it fits made async (§3.14).
  */
 export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | undefined {
+  const { checker, module } = context;
   const parameters = node.parameters.filter((parameter) => parameter.kind === 'Parameter');
-  if (parameters.every((parameter) => parameter.type !== undefined)) {
+  if (
+    parameters.every((parameter) => wholeWrittenTypeOf(checker, module, parameter) !== undefined)
+  ) {
     return undefined;
   }
   const fixed = parameters.filter((parameter) => !parameter.isRest).length;
   const hasRest = fixed < parameters.length;
   return (expected) => {
-    const shape = expectedFunction(context.checker, expected);
+    const shape = expectedFunction(checker, expected);
     return (
       shape !== undefined &&
       (shape.isAsync || !node.isAsync) &&
       shape.parameters.length === fixed &&
-      (shape.pack !== undefined) === hasRest
+      (shape.pack !== undefined) === hasRest &&
+      parameters.every(
+        (parameter, index) =>
+          parameter.pattern === undefined || shape.parameters[index]?.reference !== true,
+      )
     );
   };
 }
@@ -222,12 +229,12 @@ function nestedParameters(
     if (node.defaultValue !== undefined) {
       context.report(checkerDiagnostics.nestedFunctionForm(site.span, 'default values'));
     }
-    checkWrittenType(context, node);
     const { checker, module } = context;
     const parameter =
-      typedAs(context, node, node.type ?? wholeTypeNamedByPattern(checker, module, node)) ??
+      typedAs(context, node, wholeWrittenTypeOf(checker, module, node)) ??
       expectedSlot(node, index, slots) ??
       typedAs(context, node, writtenTypeOf(checker, module, node));
+    checkPatternParameter(context, node, parameter?.reference === true);
     if (node.isRest && parameter !== undefined && !fillsRest(parameter.type)) {
       const form = "an array's rest parameter";
       context.report(checkerDiagnostics.nestedFunctionForm(site.span, form));

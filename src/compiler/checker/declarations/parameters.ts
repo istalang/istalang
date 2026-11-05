@@ -15,6 +15,7 @@ import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
+import { writesType } from '../../syntax/parameters.ts';
 import type { CheckedBody, SignatureParameter } from '../check.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
@@ -141,12 +142,12 @@ function defaultValuesOf(declaration: FunctionDeclaration): readonly Expression[
   );
 }
 
-/** Whether a parameter takes its type from its default, having no annotation. */
+/** Whether a parameter takes its type from its default, writing none (`writesType`). */
 function typesWaitOnDefaults(declaration: FunctionDeclaration): boolean {
   return declaration.parameters.some(
     (parameter) =>
       parameter.kind === 'Parameter' &&
       parameter.defaultValue !== undefined &&
-      parameter.type === undefined,
+      !writesType(parameter),
   );
 }

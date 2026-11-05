@@ -30,6 +30,11 @@ export function patternNamedType(parameter: Parameter): NamedType | undefined {
   return typingPattern(parameter)?.type;
 }
 
+/** Whether `parameter` writes its type: an annotation, or a pattern naming one. */
+export function writesType(parameter: Parameter): boolean {
+  return parameter.type !== undefined || patternNamedType(parameter) !== undefined;
+}
+
 /**
  * The struct pattern heading `parameter`'s pattern, parentheses aside, which names the parameter's
  * type when it is written with one.

@@ -56,7 +56,12 @@ export function declaredParameters(
     if (node.kind === 'Invalid') {
       return [];
     }
-    checkWrittenType({ checker, module, report: (found) => checker.report(module, found) }, node);
+    const site = {
+      checker,
+      module,
+      report: (found: Diagnostic<AnchoredSpan>) => checker.report(module, found),
+    };
+    checkPatternParameter(site, node, writtenByReference(node));
     const written = writtenTypeOf(checker, module, node);
     const declared = written === undefined ? undefined : checker.resolveType(module, written);
     if (node.isRest) {
@@ -142,10 +147,22 @@ function namedByPattern(
 }
 
 /**
+ * The type a nested function's parameter `node` is written with whole: its annotation, or the type
+ * its pattern names with its type arguments; undefined where it is left to its place.
+ */
+export function wholeWrittenTypeOf(
+  checker: CheckerContext,
+  module: ModuleId,
+  node: Parameter,
+): TypeNode | undefined {
+  return node.type ?? wholeTypeNamedByPattern(checker, module, node);
+}
+
+/**
  * The type `node`'s pattern names whole: with its type arguments, or one that takes none. A
  * generic one named bare is left to what the parameter's place gives, a lambda's expected type.
  */
-export function wholeTypeNamedByPattern(
+function wholeTypeNamedByPattern(
   checker: CheckerContext,
   module: ModuleId,
   node: Parameter,
@@ -159,7 +176,7 @@ export function wholeTypeNamedByPattern(
   return generic ? undefined : named;
 }
 
-/** Where a parameter's written type is checked: its module, and where what it finds goes. */
+/** Where a parameter's form is checked: its module, and where what it finds goes. */
 export interface ParameterSite {
   readonly checker: CheckerContext;
   readonly module: ModuleId;
@@ -168,20 +185,23 @@ export interface ParameterSite {
 
 /**
  * Reports a type written twice, as an annotation beside a pattern naming it, and a pattern taking
- * apart what `&` passes, a place (§3.3, §3.7). A declared function's and a nested one's parameters
- * are held to both alike.
+ * apart what `&` passes, a place (§3.3, §3.7), whether the parameter is `byReference` as written or
+ * as the function type a lambda is expected as gives it. A declared function's and a nested one's
+ * parameters are held to both alike.
  */
-export function checkWrittenType(
-  { checker, module, report }: ParameterSite,
+export function checkPatternParameter(
+  site: ParameterSite,
   node: Parameter,
+  byReference: boolean,
 ): void {
+  const { checker, module } = site;
   const named = namedByPattern(checker, module, node);
   if (node.type !== undefined && named !== undefined) {
     const type = typeText(checker.resolveType(module, named));
-    report(checkerDiagnostics.patternTypeTwice(node.type.span, type));
+    site.report(checkerDiagnostics.patternTypeTwice(node.type.span, type));
   }
-  if (node.pattern !== undefined && writtenByReference(node)) {
-    report(checkerDiagnostics.patternByReference(node.pattern.span));
+  if (node.pattern !== undefined && byReference) {
+    site.report(checkerDiagnostics.patternByReference(node.pattern.span));
   }
 }
 

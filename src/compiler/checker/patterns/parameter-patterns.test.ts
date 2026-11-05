@@ -240,8 +240,56 @@ describe('parameter pattern refusals (§5)', () => {
       typeMismatch.code,
       'fn(Pair<Int, Bool>{first, second}): first',
     ],
+    [
+      'lambda pattern naming its type and annotated with it too',
+      lines(
+        point,
+        'fn main() -> Int:',
+        '  const f = fn(Point{x, y}: Point): x',
+        '  f(Point{x: 1, y: 2})',
+      ),
+      patternTypeTwice.code,
+      'Point',
+    ],
+    [
+      "lambda pattern at a '&' slot of the expected function type",
+      lines(
+        point,
+        'fn apply(cb: fn(&Point) -> Int, p: &Point) -> Int: cb(&p)',
+        'fn main() -> Int:',
+        '  let p = Point{x: 1, y: 2}',
+        '  apply(fn({x, y}): x + y, &p)',
+      ),
+      patternByReference.code,
+      '{x, y}',
+    ],
   ])('refuses invalid parameter pattern: %s', (_name, code, expected, at) => {
     expect(reported(code)).toEqual(reportedOnce(expected, at));
+  });
+});
+
+describe('a pattern naming its type types its parameter, as an annotation does (§5)', () => {
+  const shapes = lines(
+    'struct Point { x: Float, y: Float }',
+    'struct Rect { w: Float, h: Float }',
+    'fn apply(f: fn(Point) -> Float) -> Float: f(Point{x: 1.0, y: 2.0})',
+    'fn apply(f: fn(Rect) -> Float) -> Float: f(Rect{w: 3.0, h: 4.0})',
+    'fn applyOnly<T>(f: fn(T) -> Float, value: T) -> Float: f(value)',
+  );
+
+  it("chooses an overload and infers a type argument by a lambda's pattern-named type", () => {
+    const body =
+      '(apply(fn(Point{x, y}): x + y), applyOnly(fn(Rect{w, h}): w * h, Rect{w: 2.0, h: 5.0}))';
+    expect(mainGives('(Float, Float)', body, shapes)).toEqual([3, 10]);
+  });
+
+  it('reads a default of a parameter whose pattern names its type as one of an annotated parameter', () => {
+    const calling = (parameter: string) =>
+      lines(
+        'struct Point { x: Int, y: Int }',
+        `fn f(${parameter} = f(Point{x: 0, y: 0})) -> Point: Point{x: 1, y: 2}`,
+      );
+    expect(reported(calling('Point{x, y}'))).toEqual(reported(calling('p: Point')));
   });
 });
 
