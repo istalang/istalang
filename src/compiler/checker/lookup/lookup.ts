@@ -6,7 +6,7 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type { MemberAccess } from '../../syntax/expressions/index.ts';
+import type { MemberAccess, StringLiteral } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types.ts';
@@ -16,6 +16,7 @@ import type { Denotation, LookupQueries, TypeMembers } from '../denotation.ts';
 import type { Type } from '../types/type.ts';
 import { denotationsOf } from './denotations.ts';
 import { bodyHolding, itemHolding } from './holders.ts';
+import { keyDenotationsOf } from './key-denotations.ts';
 import { membersOf } from './members.ts';
 
 export class Lookup implements LookupQueries {
@@ -27,6 +28,10 @@ export class Lookup implements LookupQueries {
 
   denotationsOf(module: ModuleId, name: Identifier): readonly Denotation[] {
     return denotationsOf(this.#itemChecked(module, name), module, name);
+  }
+
+  keyDenotationsOf(module: ModuleId, literal: StringLiteral): readonly Denotation[] {
+    return keyDenotationsOf(this.#itemChecked(module, literal), module, literal);
   }
 
   bodyHolding(module: ModuleId, node: SyntaxNode): CheckedBody | undefined {

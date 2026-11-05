@@ -88,8 +88,20 @@ interface AssociatedUse {
   readonly name: string;
 }
 
-/** How a type was written where it isn't spelled as itself: through an alias or an associated type. */
-export type AliasUse = DeclaredAliasUse | AssociatedUse;
+/**
+ * The keys of the struct `of` a union of String literals was written as, `keyof Settings` (§3.1
+ * Key types): the same type as the union, whose literals name `of`'s fields, which tools read.
+ */
+interface KeysUse {
+  readonly kind: 'keys';
+  readonly of: Type;
+}
+
+/**
+ * How a type was written where it isn't spelled as itself: through an alias, an associated type or
+ * a struct's keys.
+ */
+export type AliasUse = DeclaredAliasUse | AssociatedUse | KeysUse;
 
 /** What every type carries beside its kind: the alias it was written through, if any. */
 export interface WrittenThrough {

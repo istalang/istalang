@@ -3,7 +3,7 @@
  * read.
  *
  * The names are found by asking the identifier query of every identifier in every module, std
- * modules included: fields, methods and statics are resolved by type, so only the checker knows
+ * modules included, and the key query of every String literal outside std (§3.1 Key types): fields, methods and statics are resolved by type, so only the checker knows
  * which names reach them, and asking one query of every name keeps references, renaming and going
  * to a definition in agreement. This is the program's one index of the names denoting each
  * declaration. The answer
@@ -12,11 +12,18 @@
  */
 
 import { checkProgram } from '../../compiler/checker/check.ts';
-import type { ModuleId, Program } from '../../compiler/program/program.ts';
+import { isStdModule, type ModuleId, type Program } from '../../compiler/program/program.ts';
 import { isMissingName } from '../../compiler/syntax/node.ts';
-import { nodesUnder } from '../../compiler/syntax/tree.ts';
+import { nodesUnder, type SyntaxNode } from '../../compiler/syntax/tree.ts';
 import { memo } from '../../structures/memo.ts';
-import { declarationsOf, isSamePlace, type NamePlace, nameAt, spanOfUse } from './declarations.ts';
+import {
+  declarationsOf,
+  isSamePlace,
+  type NamePlace,
+  nameAt,
+  spanOfUse,
+  type WrittenName,
+} from './declarations.ts';
 
 /** A name denoting a declaration. */
 export interface Reference extends NamePlace {
@@ -57,7 +64,7 @@ function indexOf(program: Program): ReadonlyMap<PlaceKey, readonly NamePlace[]> 
   const checker = checkProgram(program);
   const denoting = [...program.modules].flatMap(([module, { tree }]) =>
     nodesUnder(tree, tree.root).flatMap((name) =>
-      name.kind === 'Identifier' && !isMissingName(name)
+      isName(program, module, name)
         ? declarationsOf(checker, module, name).map(({ at }) => ({
             declaring: placeKeyOf(program, at),
             module,
@@ -73,4 +80,16 @@ function indexOf(program: Program): ReadonlyMap<PlaceKey, readonly NamePlace[]> 
       uses.map(({ module, name }) => ({ module, name })),
     ]),
   );
+}
+
+/**
+ * Whether `node` may name a declaration: an identifier, or a String literal outside std, which may be
+ * a key naming a field (§3.1 Key types). A std module can name no field of the program's own, and
+ * reading its literals would check each of its bodies.
+ */
+function isName(program: Program, module: ModuleId, node: SyntaxNode): node is WrittenName {
+  if (node.kind === 'Identifier') {
+    return !isMissingName(node);
+  }
+  return node.kind === 'StringLiteral' && !isStdModule(program, module);
 }

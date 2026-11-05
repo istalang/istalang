@@ -31,6 +31,7 @@ import type { CheckerContext } from '../context.ts';
 import { isOpaque, type MappedParts } from '../types/computed-types.ts';
 import { substitute } from '../types/substitution.ts';
 import {
+  aliasedAs,
   errorType,
   neverType,
   type ParameterKey,
@@ -68,10 +69,11 @@ export function keysOf(checker: CheckerContext, of: Type, without: readonly stri
   }
   if (isStructType(of)) {
     const fields = (checker.fieldsOf(of) ?? []).filter((field) => left(field.name));
-    return unionOf(
+    const keys = unionOf(
       fields.map((field) => literalType(field.name)),
       rules,
     );
+    return without.length === 0 ? aliasedAs(keys, { kind: 'keys', of }) : keys;
   }
   if (of.kind === 'mapped') {
     const named = of.named.filter((field) => left(field.name));

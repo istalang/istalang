@@ -5,7 +5,7 @@ import { checkProgram } from '../../compiler/checker/check.ts';
 import type { Program } from '../../compiler/program/program.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
 import { findProjectSources, loadProject } from '../../project/project.ts';
-import { isSamePlace, type NamePlace, nameAt, spanOfUse } from './declarations.ts';
+import { isSamePlace, type NamePlace, nameAt, spanOfUse, spelledName } from './declarations.ts';
 import { navigable, placeOf } from './navigation.test-kit.ts';
 import { namesDenoting, referencesAt } from './references.ts';
 
@@ -83,7 +83,7 @@ function missedUses(
   const isFound = (use: NamePlace) => found.some((each) => isSamePlace(each, use));
   return (byEntity.get(declaring.declared.entity) ?? [])
     .filter((use) => !isFound(use))
-    .map((use) => `${use.module}:${spanOfUse(program, use).start} ${use.name.text}`);
+    .map((use) => `${use.module}:${spanOfUse(program, use).start} ${spelledName(use.name)}`);
 }
 
 describe('the names denoting a declaration across the corpus', () => {

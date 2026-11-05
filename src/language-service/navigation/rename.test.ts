@@ -64,25 +64,49 @@ describe('renaming', () => {
     expect(refusalOf(program, named('main', 'width'))).toBeUndefined();
   });
 
-  it('refuses a field a String literal names as a key, and a new name one spells (§3.1)', () => {
+  it('renames the String literals that name a field as its key, and only those (§3.1)', () => {
     const { program, named } = navigable({
       main: [
-        'struct Settings { retries: Int; region: String; zone: String; mode: String }',
+        'struct Settings { retries: Int; region: String; zone: String }',
         'type Retries = Settings["retries"]',
+        'struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }',
+        'type AnyEntry<S is struct> = { [K in keyof S]: Entry<S, K> }[keyof S]',
+        'fn pick<S is struct, K in keyof S>(s: S, k: K) -> S[K]: s[k]',
         'fn read(s: Settings) -> String:',
         '  const which: keyof Settings = "region"',
         '  const label = "zone"',
-        '  `${s[which]}${s.mode}${label}`',
+        '  const e: AnyEntry<Settings> = Entry{key: "region", value: "eu"}',
+        '  `${s[which]}${s["zone"]}${label}${e.key}${pick(s, "region")}`',
         '',
       ].join('\n'),
     });
-    expect(refusalOf(program, named('main', 'retries'))).toContain('key');
-    expect(refusalOf(program, named('main', 'region'))).toContain('key');
-    expect(refusalOf(program, named('main', 'zone'))).toBeUndefined();
-    expect(renamed(program, named('main', 'mode'), 'region')).toMatchObject({ kind: 'refused' });
-    expect(renamed(program, named('main', 'mode'), 'kind')).toMatchObject({
-      main: expect.any(String),
+    expect(renamed(program, named('main', 'retries'), 'tries')).toEqual({
+      main: expect.stringContaining('type Retries = Settings["tries"]'),
     });
+    const regionRenamed = renamed(program, named('main', 'region'), 'area');
+    for (const renamedUse of ['keyof Settings = "area"', 'Entry{key: "area"', 'pick(s, "area")']) {
+      expect(regionRenamed).toEqual({ main: expect.stringContaining(renamedUse) });
+    }
+    const zoneRenamed = renamed(program, named('main', 'zone'), 'place');
+    for (const spelled of ['s["place"]', 'const label = "zone"']) {
+      expect(zoneRenamed).toEqual({ main: expect.stringContaining(spelled) });
+    }
+  });
+
+  it('refuses an associated type a trait requires by its name', () => {
+    const { program, named } = navigable({
+      main: [
+        'trait Keyed:',
+        '  type Key',
+        'struct User:',
+        '  id: Int',
+        '  type Key = Int',
+        '  type Other = String',
+        '',
+      ].join('\n'),
+    });
+    expect(refusalOf(program, named('main', 'Key', 1))).toContain('trait');
+    expect(refusalOf(program, named('main', 'Other'))).toBeUndefined();
   });
 
   it('refuses a field a shared struct and a struct share, the one spreading into the other (§3.18)', () => {

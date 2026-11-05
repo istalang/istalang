@@ -118,16 +118,24 @@ function aliasParts(type: Type): readonly Type[] {
   return alias.kind === 'alias' ? alias.arguments : [alias.of];
 }
 
-/** Whether two types are written through the same alias, or the same owner's associated type. */
+/** Whether two types are written through the same alias, the same owner's associated type, or keys. */
 function sameAliasWritten(one: Type, other: Type): boolean {
   const [first, second] = [one.alias, other.alias];
   if (first === undefined || second === undefined) {
     return first === second;
   }
-  if (first.kind === 'alias') {
-    return second.kind === 'alias' && first.declaration === second.declaration;
+  switch (first.kind) {
+    case 'alias':
+      return second.kind === 'alias' && first.declaration === second.declaration;
+    case 'associated':
+      return second.kind === 'associated' && first.name === second.name;
+    case 'keys':
+      return second.kind === 'keys';
+    default: {
+      const unhandled: never = first;
+      return unhandled;
+    }
   }
-  return second.kind === 'associated' && first.name === second.name;
 }
 
 /** Whether two types that are `any` types name their constraints' traits in one order. */

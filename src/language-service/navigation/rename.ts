@@ -1,5 +1,6 @@
 /**
- * Renaming a declaration: every name denoting it, in every module, spelled anew.
+ * Renaming a declaration: every name denoting it, in every module, spelled anew, a key naming a
+ * field among them (§3.1 Key types).
  *
  * A shorthand names a field and a variable at once (`Pair{first}`, `case Pair{first}:`), so
  * renaming either spells the shorthand out (`first: renamed`, `first as renamed`). What renaming at
@@ -10,15 +11,14 @@
  * - a declaration of a std module, which the toolchain ships;
  * - a declaration some name denotes together with another of that name, as an import names every
  *   overload of a function: renaming one alone would part them;
- * - a function or field named like a member of a trait, or like a function the language calls by
- *   name (`main`, the JSON codecs): a type meets a trait through such names (§3.10), so renaming
- *   one could change which traits a type meets; and a parameter named `self`, which makes its
- *   function a method (§3.7). A new name of that kind is refused for the same reason;
+ * - a function, field or associated type named like a member of a trait, or like a function the
+ *   language calls by name (`main`, the JSON codecs): a type meets a trait through such names
+ *   (§3.10), so renaming one could change which traits a type meets; and a parameter named
+ *   `self`, which makes its function a method (§3.7). A new name of that kind is refused for the
+ *   same reason;
  * - a field of a shape, which is one type with every shape of its fields wherever written (§3.1),
  *   and a field of a struct or shared struct whose field names another writer of that shape has,
  *   which its value or `*x` may fit (§3.18): renaming one place would part it from the others;
- * - a field whose name, old or new, a String literal of a literal type spells, as a key naming a
- *   field does (§3.1, key-literals.ts): nothing records which field such a literal names;
  * - a new name that isn't one, is the unnamed `_` or a built-in type's (§2), or changes the old
  *   name's privacy (§3.13) or case (§2), which also decides what a bare name in a pattern does
  *   (§3.11).
@@ -32,7 +32,7 @@ import {
 } from '../../compiler/program/program.ts';
 import { identifierRunEnd, isIdentifierStart } from '../../compiler/scanner/characters.ts';
 import type { Field } from '../../compiler/syntax/declarations.ts';
-import type { Identifier, Invalid } from '../../compiler/syntax/node.ts';
+import type { Invalid } from '../../compiler/syntax/node.ts';
 import { isKeyword } from '../../compiler/syntax/tokens.ts';
 import { childrenOf, parentOf, type SyntaxNode } from '../../compiler/syntax/tree.ts';
 import {
@@ -48,13 +48,20 @@ import { codecFunctions, entryFunction, receiverParameter } from '../../language
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { memo } from '../../structures/memo.ts';
 import type { Span } from '../../text/span.ts';
-import { type DeclaredAt, isSamePlace, type NamePlace, nameAt, spanOfUse } from './declarations.ts';
-import { keyLiterals } from './key-literals.ts';
+import {
+  type DeclaredAt,
+  isSamePlace,
+  type NamePlace,
+  nameAt,
+  spanOfUse,
+  spelledName,
+  type WrittenName,
+} from './declarations.ts';
 import { namesDenoting } from './references.ts';
 
 /** What renaming a name renames, or why it can't be renamed. */
 export type Renaming =
-  | { readonly kind: 'renamable'; readonly name: Identifier; readonly target: DeclaredAt }
+  | { readonly kind: 'renamable'; readonly name: WrittenName; readonly target: DeclaredAt }
   | Refusal;
 
 /** Why a rename can't be made, as the editor's user reads it. */
@@ -93,8 +100,8 @@ export function renamingAt(
   if (target === undefined || others.length > 0) {
     return refused(
       target === undefined
-        ? `\`${name.text}\` names no declaration that can be renamed.`
-        : `\`${name.text}\` names several declarations here; rename one where it is declared.`,
+        ? `\`${spelledName(name)}\` names no declaration that can be renamed.`
+        : `\`${spelledName(name)}\` names several declarations here; rename one where it is declared.`,
     );
   }
   const declared = asDeclared(program, target);
@@ -141,7 +148,7 @@ function refused(reason: string): Refusal {
 }
 
 function targetRefusal(program: Program, { declared, at }: DeclaredAt): string | undefined {
-  const { text } = at.name;
+  const text = spelledName(at.name);
   if (isStdModule(program, at.module)) {
     return `\`${text}\` is declared in \`${at.module}\`, which the toolchain ships.`;
   }
@@ -150,9 +157,6 @@ function targetRefusal(program: Program, { declared, at }: DeclaredAt): string |
   }
   if (declared.kind === 'field' && sharesShape(program, at)) {
     return `\`${text}\` names a field of a shape, which is one type wherever its fields are written (§3.1); renaming it here would part this place from the others.`;
-  }
-  if (declared.kind === 'field' && keyLiterals(program).has(text)) {
-    return keyRefusal(text);
   }
   const isNamedWithOthers = namesDenoting(program, at).some(
     (use) => (nameAt(program, use.module, spanOfUse(program, use).start)?.targets.length ?? 0) > 1,
@@ -169,7 +173,7 @@ function newNameRefusal(
   { declared, at }: DeclaredAt,
   newName: string,
 ): string | undefined {
-  const old = at.name.text;
+  const old = spelledName(at.name);
   if (!isName(newName) || isUnnamed(newName)) {
     return `\`${newName}\` is not a name a declaration can have.`;
   }
@@ -178,9 +182,6 @@ function newNameRefusal(
   }
   if (meansMore(program, declared, newName)) {
     return meaningRefusal(newName);
-  }
-  if (declared.kind === 'field' && keyLiterals(program).has(newName)) {
-    return keyRefusal(newName);
   }
   if (isPrivate(old) !== isPrivate(newName)) {
     return `A leading \`_\` makes a name private (§3.13); \`${newName}\` would change whether \`${old}\` is.`;
@@ -191,17 +192,6 @@ function newNameRefusal(
   return keepsCase
     ? undefined
     : `\`${newName}\` is cased unlike \`${old}\`, and case decides what a name is (§2, §3.11).`;
-}
-
-/** Whether `text` scans as one identifier and nothing else. */
-function isName(text: string): boolean {
-  return (
-    isIdentifierStart(text[0]) && identifierRunEnd(text, 0) === text.length && !isKeyword(text)
-  );
-}
-
-function keyRefusal(name: string): string {
-  return `A String literal of a literal type spells \`${name}\`, as a key naming a field does (§3.1); renaming the field would part it from that literal.`;
 }
 
 function meaningRefusal(name: string): string {
@@ -224,9 +214,21 @@ const meansMoreAs: Handlers<Naming, DeclaredAt['declared'], [], boolean> = {
   function: ({ program, name }) => namesCalledByName(program).has(name),
   field: ({ program, name }) => namesCalledByName(program).has(name),
   variant: () => false,
-  type: () => false,
+  type: ({ program, name }, { entity }) =>
+    isAssociated(entity) && namesCalledByName(program).has(name),
   namespace: () => false,
 };
+
+/** Whether `entity` is an associated type (§3.1), by whose name a type meets a trait's requirement. */
+function isAssociated(
+  entity: Extract<DeclaredAt['declared'], { kind: 'type' }>['entity'],
+): boolean {
+  return (
+    entity.kind === 'type' &&
+    (entity.declaration.kind === 'AssociatedType' ||
+      entity.declaration.kind === 'RequiredAssociatedType')
+  );
+}
 
 function meansMore(program: Program, declared: DeclaredAt['declared'], name: string): boolean {
   return handlerOf(meansMoreAs, declared)({ program, name }, declared);
@@ -341,13 +343,26 @@ function namesKey(names: readonly string[]): string {
   return names.toSorted(compareOrdered).join(',');
 }
 
-/** How `use` is spelled once its target is renamed to `newName`: a shorthand spelled out. */
+/** Whether `text` scans as one identifier and nothing else. */
+function isName(text: string): boolean {
+  return (
+    isIdentifierStart(text[0]) && identifierRunEnd(text, 0) === text.length && !isKeyword(text)
+  );
+}
+
+/**
+ * How `use` is spelled once its target is renamed to `newName`: a shorthand spelled out, a key
+ * naming a field as the String literal of the new name (§3.1 Key types).
+ */
 function spelledAnew(
   program: Program,
   use: NamePlace,
   { declared }: DeclaredAt,
   newName: string,
 ): string {
+  if (use.name.kind === 'StringLiteral') {
+    return JSON.stringify(newName);
+  }
   const old = use.name.text;
   const holder = parentOf(programModule(program, use.module).tree, use.name);
   const isField = declared.kind === 'field';

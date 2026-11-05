@@ -6,16 +6,18 @@ import {
   type Position,
   ReferencesRequest,
 } from 'vscode-languageserver/node';
+import type { StringLiteral } from '../../compiler/syntax/expressions/index.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
 import { nodesUnder, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import type { TestClient } from '../server.test-kit.ts';
 
-/** Every name written in `tree`. */
-export function namesOf(tree: SyntaxTree): readonly Identifier[] {
+/** Every name written in `tree`, and every String literal, which names a field where it is a key. */
+export function namesOf(tree: SyntaxTree): readonly (Identifier | StringLiteral)[] {
   return nodesUnder(tree, tree.root).filter(
-    (node): node is Identifier => node.kind === 'Identifier' && !isMissingName(node),
+    (node): node is Identifier | StringLiteral =>
+      (node.kind === 'Identifier' && !isMissingName(node)) || node.kind === 'StringLiteral',
   );
 }
 

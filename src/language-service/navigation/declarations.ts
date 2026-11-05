@@ -13,18 +13,30 @@
 import { type Checker, checkProgram } from '../../compiler/checker/check.ts';
 import type { Denotation } from '../../compiler/checker/denotation.ts';
 import { type ModuleId, type Program, programModule } from '../../compiler/program/program.ts';
+import type { StringLiteral } from '../../compiler/syntax/expressions/index.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
 import { spanIn, startTogether } from '../../compiler/syntax/positions.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { Span } from '../../text/span.ts';
-import { identifierAt } from '../identifier-at.ts';
+import { identifierAt, stringLiteralAt } from '../identifier-at.ts';
 
 type Declared = Denotation['declared'];
+
+/**
+ * A name as written: an identifier, or a String literal naming a field as its key (§3.1 Key types),
+ * which a field's references and renaming reach as any name of it.
+ */
+export type WrittenName = Identifier | StringLiteral;
+
+/** What `name` spells. */
+export function spelledName(name: WrittenName): string {
+  return name.kind === 'Identifier' ? name.text : name.value;
+}
 
 /** A name, and the module it stands in. */
 export interface NamePlace {
   readonly module: ModuleId;
-  readonly name: Identifier;
+  readonly name: WrittenName;
 }
 
 /** A declaration a name denotes, and the name declaring it. */
@@ -33,13 +45,20 @@ export interface DeclaredAt {
   readonly at: NamePlace;
 }
 
-/** The declarations `name` of `module` denotes, each once: two for a shorthand, none for nothing. */
+/**
+ * The declarations `name` of `module` denotes, each once: two for a shorthand, the field a key names
+ * for a String literal, none for nothing.
+ */
 export function declarationsOf(
   checker: Checker,
   module: ModuleId,
-  name: Identifier,
+  name: WrittenName,
 ): readonly DeclaredAt[] {
-  const found = checker.lookup.denotationsOf(module, name).flatMap(({ declared }) => {
+  const denotations =
+    name.kind === 'Identifier'
+      ? checker.lookup.denotationsOf(module, name)
+      : checker.lookup.keyDenotationsOf(module, name);
+  const found = denotations.flatMap(({ declared }) => {
     const at = handlerOf(declaringNames, declared)(checker, declared);
     return at === undefined ? [] : [{ declared, at }];
   });
@@ -60,7 +79,7 @@ export function spanOfUse(program: Program, { module, name }: NamePlace): Span {
 
 /** A name, and what it denotes. */
 export interface NameAt {
-  readonly name: Identifier;
+  readonly name: WrittenName;
   /** Every declaration the name denotes. */
   readonly declarations: readonly DeclaredAt[];
   /**
@@ -72,15 +91,21 @@ export interface NameAt {
   readonly targets: readonly DeclaredAt[];
 }
 
-/** The name at `offset` of `module`, and what it denotes; undefined where no name stands. */
+/**
+ * The name at `offset` of `module`, and what it denotes; undefined where no name stands. A String
+ * literal there is a name only where it is a key naming a field.
+ */
 export function nameAt(program: Program, module: ModuleId, offset: number): NameAt | undefined {
   const tree = program.modules.get(module)?.tree;
-  const name = tree && identifierAt(tree, offset);
+  const name = tree && (identifierAt(tree, offset) ?? stringLiteralAt(tree, offset));
   if (name === undefined) {
     return undefined;
   }
   const declarations = declarationsOf(checkProgram(program), module, name);
-  const spelled = declarations.filter(({ at }) => at.name.text === name.text);
+  if (name.kind === 'StringLiteral' && declarations.length === 0) {
+    return undefined;
+  }
+  const spelled = declarations.filter(({ at }) => spelledName(at.name) === spelledName(name));
   const values = spelled.filter(({ declared }) => declared.kind !== 'field');
   return { name, declarations, targets: values.length > 0 ? values : spelled };
 }

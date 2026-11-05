@@ -109,7 +109,7 @@ describe('matching on unions and literal types (§3, §5)', () => {
       '    case Status as ‸s: s',
       '    case Int as n: String(n)',
     ];
-    expect(hoverCodeAt(...lines)).toEqual(['(variable) s: Status']);
+    expect(hoverCodeAt(...lines)).toEqual(['(variable) s: Status = "draft" | "sent" | "failed"']);
   });
 
   it('matches bare variants through enum members, and requires qualification when ambiguous', () => {

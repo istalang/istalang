@@ -90,13 +90,13 @@ describe('the language service', () => {
   it('hovers a computed type as what it is', () => {
     const hover = (...lines: readonly string[]) => hoverCodeAt(...declarations, ...lines);
     expect(hover('fn f(x: Field<Int>.Data):', '  const ‸a = x', '  _ = a')).toEqual([
-      '(variable) a: Field<Int>.Data',
+      '(variable) a: Field<Int>.Data = Int',
     ]);
     expect(hover('fn f(k: keyof Settings):', '  const ‸a = k', '  _ = a')).toEqual([
-      '(variable) a: "region" | "retries"',
+      '(variable) a: keyof Settings = "region" | "retries"',
     ]);
     expect(hover('fn f(d: DataOf<Field<String>>):', '  const ‸a = d', '  _ = a')).toEqual([
-      '(variable) a: DataOf<Field<String>>',
+      '(variable) a: DataOf<Field<String>> = String',
     ]);
     expect(
       hover('fn f(s: Settings):', '  const struct{retries, ...re‸st} = s', '  _ = (retries, rest)'),

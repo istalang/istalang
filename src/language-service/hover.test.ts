@@ -127,13 +127,13 @@ describe('hover', () => {
     ).toEqual(['(variant) Some: Opt<T>']);
   });
 
-  it('shows unions, literal types and `None` as written, and the type a case leaves', () => {
+  it('shows unions, literal types and `None` as written, an alias with what it names, and the type a case leaves', () => {
     const status = ['type Status = "draft" | "sent"', ''];
     expect(hover(...status, 'fn f(x: Int?, s: Status) -> Int?: x‸')?.code).toEqual([
       '(variable) x: Int?',
     ]);
     expect(hover(...status, 'fn f(x: Int?, s: Status) -> Status: s‸')?.code).toEqual([
-      '(variable) s: Status',
+      '(variable) s: Status = "draft" | "sent"',
     ]);
     expect(hover('fn f(x: "a" | 1 | true) -> Int:', '  const y‸ = x', '  0')?.code).toEqual([
       '(variable) y: "a" | 1 | true',

@@ -17,7 +17,11 @@ import { spanIn } from '../../compiler/syntax/positions.ts';
 import { parentOf } from '../../compiler/syntax/tree.ts';
 import { isError } from '../../diagnostics/diagnostic.ts';
 import type { NamePlace } from '../../language-service/navigation/declarations.ts';
-import { isSamePlace, nameAt } from '../../language-service/navigation/declarations.ts';
+import {
+  isSamePlace,
+  nameAt,
+  spelledName,
+} from '../../language-service/navigation/declarations.ts';
 import { namesDenoting } from '../../language-service/navigation/references.ts';
 import { renamingAt } from '../../language-service/navigation/rename.ts';
 import { lineMapOf } from '../../text/line-map.ts';
@@ -61,7 +65,7 @@ function hasShorthand(declaring: NamePlace): boolean {
 }
 
 const writtenNames = new Set(
-  [...corpusProgram.modules.values()].flatMap(({ tree }) => namesOf(tree).map(({ text }) => text)),
+  [...corpusProgram.modules.values()].flatMap(({ tree }) => namesOf(tree).map(spelledName)),
 );
 
 /** A program's diagnostics, each as its module, line, code and message, the names in it as `spell` spells them. */
@@ -116,7 +120,7 @@ async function renamingProblems(declaring: NamePlace): Promise<readonly string[]
   const { source } = tree;
   const declaringAt = spanIn(tree, declaring.name.span);
   const position = positionOf(source, declaringAt.start);
-  const old = declaring.name.text;
+  const old = spelledName(declaring.name);
   const newName = `${old}Renamed`;
   const prepared = await client.connection.sendRequest(PrepareRenameRequest.type, {
     textDocument: { uri },
@@ -161,10 +165,8 @@ describe('renaming across the corpus', () => {
     );
   }, 120_000);
 
-  it('keeps what a program reading fields by key means, renaming each field it may', async () => {
-    const keyed = renamable.filter(({ module }) =>
-      module.endsWith('computed/keys-and-entries.ista'),
-    );
+  it('keeps what a program of computed types means, renaming each name it may', async () => {
+    const keyed = renamable.filter(({ module }) => module.includes('/computed/'));
     expect(keyed.length).toBeGreaterThan(0);
     const problems = await Promise.all(keyed.map(renamingProblems));
     expect(problems.flat()).toEqual([]);

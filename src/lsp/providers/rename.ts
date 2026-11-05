@@ -13,6 +13,7 @@ import {
 } from 'vscode-languageserver/node';
 import type { Program } from '../../compiler/program/program.ts';
 import { programModule } from '../../compiler/program/program.ts';
+import { spelledName } from '../../language-service/navigation/declarations.ts';
 import {
   type NameEdit,
   type Refusal,
@@ -47,7 +48,10 @@ function answerPreparing(connection: Connection, workspace: Workspace): void {
       return failed(renaming);
     }
     const { name } = renaming;
-    return { range: locationOf(program, at.module, name.span).range, placeholder: name.text };
+    return {
+      range: locationOf(program, at.module, name.span).range,
+      placeholder: spelledName(name),
+    };
   });
 }
 

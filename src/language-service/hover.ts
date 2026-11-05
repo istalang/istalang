@@ -1,7 +1,8 @@
 /**
  * What an editor shows for the spot under a pointer: for a name, what it denotes there, each
  * declaration as a line of code with its type, and the docstring of what it names; for any other
- * expression or written type, its type.
+ * expression or written type, its type. A type written through a spelling, an alias, an associated
+ * type or a struct's keys, shows what it names beside it (`writtenAndNamedText`).
  *
  * A name is answered through the identifier query (checker denotation.ts), as going to its
  * definition is, so the two never disagree. A shorthand, `Pair{first}`, names a field and a
@@ -12,7 +13,7 @@
 import type { Checker } from '../compiler/checker/check.ts';
 import type { Denotation } from '../compiler/checker/denotation.ts';
 import type { Type } from '../compiler/checker/types/type.ts';
-import { typeText } from '../compiler/checker/types/type-text.ts';
+import { writtenAndNamedText } from '../compiler/checker/types/type-text.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import type { Expression } from '../compiler/syntax/expressions/index.ts';
 import type { Identifier } from '../compiler/syntax/node.ts';
@@ -66,7 +67,11 @@ function nodeHover(checked: CheckedModule, node: SyntaxNode): Hover | undefined 
   const type = named === undefined ? typeAt(checked, node) : undefined;
   return (
     named ??
-    (type && { span: spanIn(checked.tree, node.span), code: [typeText(type)], doc: undefined })
+    (type && {
+      span: spanIn(checked.tree, node.span),
+      code: [writtenAndNamedText(type)],
+      doc: undefined,
+    })
   );
 }
 
@@ -107,14 +112,14 @@ function denotationLines(
   { declared, type }: Denotation,
 ): readonly string[] {
   const typed = (kind: string) =>
-    `(${kind}) ${name.text}${type === undefined ? '' : `: ${typeText(type)}`}`;
+    `(${kind}) ${name.text}${type === undefined ? '' : `: ${writtenAndNamedText(type)}`}`;
   switch (declared.kind) {
     case 'function': {
       const signature = signatureOf(checker, declared.declaration).label;
-      return type === undefined ? [signature] : [signature, typeText(type)];
+      return type === undefined ? [signature] : [signature, writtenAndNamedText(type)];
     }
     case 'type':
-      return [`(type) ${type === undefined ? name.text : typeText(type)}`];
+      return [`(type) ${type === undefined ? name.text : writtenAndNamedText(type)}`];
     case 'namespace':
       return [`(module) ${importedModule(checker, declared.entity)?.name ?? name.text}`];
     default:

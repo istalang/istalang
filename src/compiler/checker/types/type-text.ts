@@ -12,6 +12,7 @@ import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
 import type { MappedParts } from './computed-types.ts';
 import {
+  type AliasUse,
   type AnonymousStructType,
   type Constraint,
   type FunctionType,
@@ -38,15 +39,28 @@ function ownerText(type: Type): string {
 }
 
 /**
+ * `type` as written and, when it was written through an alias, an associated type or a struct's
+ * keys, what that names, `keyof Settings = "region" | "retries"`: what a tool shows of a type, so a
+ * spelling never hides what it stands for (§3.17). A spelling naming only itself, an unreduced one,
+ * shows once.
+ */
+export function writtenAndNamedText(type: Type): string {
+  const written = typeText(type);
+  if (type.alias === undefined) {
+    return written;
+  }
+  const named = typeText({ ...type, alias: undefined });
+  return named === written ? written : `${written} = ${named}`;
+}
+
+/**
  * `type` as source would spell it. Extern keys spell types too (definition/extern-key.ts), but
  * apart on purpose: they are a persisted identity, and must never follow a change of wording here.
  */
 export function typeText(type: Type): string {
   const { alias } = type;
   if (alias !== undefined) {
-    return alias.kind === 'alias'
-      ? parameterizedText(alias.declaration.name.text, alias.arguments)
-      : associatedText(alias.of, alias.name);
+    return spellingText(alias);
   }
   switch (type.kind) {
     case 'primitive':
@@ -198,4 +212,20 @@ export function parameterText(type: TypeParameterType): string {
  */
 function boundName(declaration: TypeParameter | RestPattern): string {
   return declaration.kind === 'RestPattern' ? 'F' : declaration.name.text;
+}
+
+/** A spelling as source writes it: an alias with its arguments, an associated type, or keys. */
+function spellingText(alias: AliasUse): string {
+  switch (alias.kind) {
+    case 'alias':
+      return parameterizedText(alias.declaration.name.text, alias.arguments);
+    case 'associated':
+      return associatedText(alias.of, alias.name);
+    case 'keys':
+      return `keyof ${ownerText(alias.of)}`;
+    default: {
+      const unhandled: never = alias;
+      return unhandled;
+    }
+  }
 }

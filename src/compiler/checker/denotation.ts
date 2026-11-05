@@ -17,7 +17,7 @@ import type {
   FunctionDeclaration,
   RequiredAssociatedType,
 } from '../syntax/declarations.ts';
-import type { MemberAccess } from '../syntax/expressions/index.ts';
+import type { MemberAccess, StringLiteral } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
@@ -68,6 +68,11 @@ export interface LookupQueries {
    * for a shorthand, `Pair{first}` or `case Pair{first}`, which names a field and a variable.
    */
   readonly denotationsOf: (module: ModuleId, name: Identifier) => readonly Denotation[];
+  /**
+   * What `literal`, a String literal of `module`, denotes as a key (§3.1 Key types): the field of
+   * the struct it is a key of; nothing for a literal that is no key.
+   */
+  readonly keyDenotationsOf: (module: ModuleId, literal: StringLiteral) => readonly Denotation[];
   /**
    * The checked body holding `node` of `module`: a function's, its parameters' defaults, a
    * struct's or variant's field defaults, a constant's, or an annotation's; undefined outside them.
