@@ -11,7 +11,8 @@ import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { CheckerContext, Instantiable } from './context.ts';
-import type { Substitution } from './types/substitution.ts';
+import { type Witnesses, witnessCallsOf } from './resolved-call.ts';
+import { type Substitution, substitutionFor } from './types/substitution.ts';
 
 export interface UseSite {
   readonly checker: CheckerContext;
@@ -25,10 +26,15 @@ export interface UseSite {
    */
   readonly toHost: boolean;
   /**
-   * Notes that the instantiation made here gives `declaration` `typeArguments`, every type `match`
-   * it reaches reducing for them (§3.17), checked with the site's module; a silent site notes none.
+   * Notes that the instantiation made here gives `declaration` `typeArguments` and passes it
+   * `witnesses`, each run instantiated with what it is passed for: every type `match` they reach
+   * reduces for them (§3.17), checked with the site's module; a silent site notes none.
    */
-  readonly instantiates: (declaration: Instantiable, typeArguments: Substitution) => void;
+  readonly instantiates: (
+    declaration: Instantiable,
+    typeArguments: Substitution,
+    witnesses?: Witnesses,
+  ) => void;
 }
 
 /** A use site at `at` in `module`, reporting through the module's checker. */
@@ -37,8 +43,17 @@ export function useSite(checker: CheckerContext, module: ModuleId, at: AnchoredS
     checker,
     report: (diagnosticAt) => checker.report(module, diagnosticAt(at)),
     toHost: false,
-    instantiates: (declaration, typeArguments) =>
-      checker.constrainLater(module, { kind: 'reduces', at, declaration, typeArguments }),
+    instantiates: (declaration, typeArguments, witnesses = new Map()) => {
+      checker.constrainLater(module, { kind: 'reduces', at, declaration, typeArguments });
+      for (const witness of witnessCallsOf(witnesses)) {
+        checker.constrainLater(module, {
+          kind: 'reduces',
+          at,
+          declaration: witness.function,
+          typeArguments: substitutionFor(witness.function.typeParameters, witness.typeArguments),
+        });
+      }
+    },
   };
 }
 

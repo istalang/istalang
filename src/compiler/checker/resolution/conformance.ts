@@ -60,7 +60,8 @@ export interface Instantiation {
 
 /**
  * Completes `application`: open type parameters from `expected`, then their defaults, then every
- * constraint met, its type `match`es noted to reduce. Undefined after reporting why it can't be.
+ * constraint met, its type `match`es and its witnesses' noted to reduce. Undefined after reporting
+ * why it can't be.
  */
 export function instantiate(
   site: UseSite,
@@ -71,7 +72,8 @@ export function instantiate(
   if (isFailure(instantiation)) {
     return undefined;
   }
-  site.instantiates(application.signature.declaration, instantiation.substitution);
+  const { substitution, witnesses } = instantiation;
+  site.instantiates(application.signature.declaration, substitution, witnesses);
   return instantiation;
 }
 

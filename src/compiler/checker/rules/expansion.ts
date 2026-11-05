@@ -28,7 +28,7 @@ import { functionsOf } from '../../syntax/field-defaults.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { FunctionCall, ResolvedCall } from '../resolved-call.ts';
+import { functionCallsWithin } from '../resolved-call.ts';
 import { type ArgumentEdge, argumentEdges, endlessEdgesFrom } from '../types/expansion-edges.ts';
 import type { ParameterKey } from '../types/type.ts';
 
@@ -128,7 +128,7 @@ function sitedEdges(checker: CheckerContext, caller: FunctionDeclaration): reado
   const bodies = [checker.bodyOf(caller), checker.defaultsOf(caller)];
   const calls = bodies.flatMap((body) => body?.madeCalls() ?? []);
   return calls.flatMap(({ site, call }) =>
-    callsWithin(call).flatMap((each) =>
+    functionCallsWithin(call).flatMap((each) =>
       argumentEdges(own, each.function.typeParameters, each.typeArguments).map((edge) => ({
         ...edge,
         caller,
@@ -137,13 +137,4 @@ function sitedEdges(checker: CheckerContext, caller: FunctionDeclaration): reado
       })),
     ),
   );
-}
-
-/** A function call, and every call its witnesses make, as calls of declared functions. */
-function callsWithin(call: ResolvedCall): readonly FunctionCall[] {
-  if (call.kind !== 'function') {
-    return [];
-  }
-  const witnessCalls = [...call.witnesses.values()].flat(2).flatMap(callsWithin);
-  return [call, ...witnessCalls];
 }

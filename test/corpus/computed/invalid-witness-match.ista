@@ -1,0 +1,24 @@
+# error: 5170 at 24:3
+# A witness an instantiation passes is instantiated with it (§3.5, §3.17): a generic witness whose
+# own code reaches a type match no case matches for the type it is passed for is refused where the
+# call passing it is written, as a call of the witness itself would be.
+
+struct Field<T> { value: T }
+struct Wrap<T> { inner: T }
+
+type DataOf<D> = match D:
+  case Field<infer T>: T
+
+trait Shows:
+  fn show(self: Self) -> String
+
+fn show<T>(self: Wrap<T>) -> String:
+  const kept: DataOf<T>? = none
+  "wrap"
+
+fn display<S is Shows>(x: S) -> String: x.show()
+
+fn fine() -> String: display(Wrap{inner: Field{value: 1}})
+
+fn refused() -> String:
+  display(Wrap{inner: 1})

@@ -150,6 +150,16 @@ export interface MadeCall {
  */
 export type Witnesses = ReadonlyMap<TypeParameter, readonly (readonly ResolvedCall[])[]>;
 
+/** A call of a declared function, and every such call its witnesses make, nested ones included. */
+export function functionCallsWithin(call: ResolvedCall): readonly FunctionCall[] {
+  return call.kind === 'function' ? [call, ...witnessCallsOf(call.witnesses)] : [];
+}
+
+/** Every call of a declared function `witnesses` make, nested ones included. */
+export function witnessCallsOf(witnesses: Witnesses): readonly FunctionCall[] {
+  return [...witnesses.values()].flat(2).flatMap(functionCallsWithin);
+}
+
 /**
  * Nodes the checker resolves to a function: the nodes a call can be written as, a call, an
  * operator that calls a function (§3.9), indexing, which calls `index`, an assignment, whose

@@ -32,7 +32,7 @@ import {
 import { nodesUnder } from '../../syntax/tree.ts';
 import { isWrittenType } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote, Instantiable } from '../context.ts';
-import type { ResolvedCall } from '../resolved-call.ts';
+import { functionCallsWithin } from '../resolved-call.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import type { Type, TypeMatchUse } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
@@ -160,7 +160,7 @@ export class MatchRequirements {
     });
     const called = bodies
       .flatMap((body) => body?.madeCalls() ?? [])
-      .flatMap(({ call }) => functionCallsIn(call))
+      .flatMap(({ call }) => functionCallsWithin(call))
       .flatMap((call) =>
         call.function.typeParameters.length === 0
           ? []
@@ -189,16 +189,6 @@ function associated(
   return declaration.associatedTypes.map((each) =>
     aliasInstance(each, checker.aliasedType(each), new Map(), checker.typeRules),
   );
-}
-
-/** A call of a declared function, and every such call its witnesses make. */
-function functionCallsIn(
-  call: ResolvedCall,
-): readonly Extract<ResolvedCall, { kind: 'function' }>[] {
-  if (call.kind !== 'function') {
-    return [];
-  }
-  return [call, ...[...call.witnesses.values()].flat(2).flatMap(functionCallsIn)];
 }
 
 /** Whether `declaration` has type parameters, which an instantiation gives arguments. */
