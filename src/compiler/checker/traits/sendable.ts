@@ -17,7 +17,8 @@
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
 import type { CheckerContext } from '../context.ts';
 import { heldParts } from '../types/held.ts';
-import type { NominalType, Type } from '../types/type.ts';
+import { sameConstraint } from '../types/identity.ts';
+import type { Constraint, NominalType, Type } from '../types/type.ts';
 import { TypeCycle } from '../types/type-cycle.ts';
 import { isWellKnownTrait } from '../types/well-known.ts';
 import { knownConstraints } from './known-constraints.ts';
@@ -31,6 +32,29 @@ const sendableTraits: readonly WellKnownDeclaration[] = [
   wellKnown.encodable,
   wellKnown.decodable,
 ];
+
+/**
+ * Whether a type meeting every one of `given` meets `needed` too, whatever the type: `needed` is
+ * one of them, or it is Sendable and one of them implies it. Traits declare no supertraits, so
+ * this is all constraints imply of one another.
+ */
+export function constraintsImply(
+  checker: CheckerContext,
+  given: readonly Constraint[],
+  needed: Constraint,
+): boolean {
+  return (
+    given.some((each) => sameConstraint(each, needed)) ||
+    (isWellKnownTrait(checker, needed.trait, wellKnown.sendable) && impliesSendable(checker, given))
+  );
+}
+
+/** Whether a type meeting `given` is sendable by them. */
+function impliesSendable(checker: CheckerContext, given: readonly Constraint[]): boolean {
+  return given.some(({ trait }) =>
+    sendableTraits.some((each) => isWellKnownTrait(checker, trait, each)),
+  );
+}
 
 /** Whether values of `type` may leave an instance for another. */
 export function isSendable(checker: CheckerContext, type: Type): boolean {
@@ -57,9 +81,7 @@ function sendable(checker: CheckerContext, type: Type, deciding: TypeCycle): boo
     case 'field':
     case 'match':
     case 'any':
-      return knownConstraints(checker, type).some(({ trait }) =>
-        sendableTraits.some((each) => isWellKnownTrait(checker, trait, each)),
-      );
+      return impliesSendable(checker, knownConstraints(checker, type));
     case 'nominal':
       return nominalSendable(checker, type, deciding);
     case 'recursive':

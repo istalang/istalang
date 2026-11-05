@@ -6,6 +6,7 @@
  * has (`[_]`, `name is C`) met there is read with `parseConstraintEntry`, then reported.
  */
 
+import { isUnnamed } from '../../../language/naming.ts';
 import type {
   ConstraintNode,
   EntryField,
@@ -58,7 +59,7 @@ function parseEntryField(parser: Parser): EntryField {
     return parser.identifier('a field name');
   }
   const underscore = parser.identifier("'_'");
-  if (underscore.text !== '_') {
+  if (!isUnnamed(underscore.text)) {
     parser.reportExpected("'_'");
   }
   parser.expect(']');

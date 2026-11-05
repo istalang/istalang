@@ -23,7 +23,8 @@ import type {
 import type { CheckerContext } from '../context.ts';
 import type { RequirementOrigin } from '../resolved-call.ts';
 import { type ComputedType, isOpaque } from '../types/computed-types.ts';
-import { sameType } from '../types/identity.ts';
+import { inFieldOrder } from '../types/field-order.ts';
+import { sameConstraint, sameType } from '../types/identity.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import {
   type EntryRule,
@@ -119,13 +120,13 @@ function mappedStructConstraint(
   const names = keys.flatMap((key) =>
     key.kind === 'literal' && typeof key.value === 'string' ? [key.value] : [],
   );
-  const named = [
+  const named = inFieldOrder([
     ...type.named.map((field) => ({ name: field.name, rule: fieldRule(checker, field.type) })),
     ...names.map((name) => ({
       name,
       rule: fieldRule(checker, rules.fieldType(type, literalType(name))),
     })),
-  ];
+  ]);
   const otherKeys = unionOf(
     keys.filter((key) => !(key.kind === 'literal' && typeof key.value === 'string')),
     rules,
@@ -323,17 +324,6 @@ function commonRules(each: readonly (readonly EntryRule[])[]): readonly EntryRul
     others.every((set) => set?.some((other) => sameConstraint(other, trait))),
   );
   return traits.length === 0 ? [] : [{ kind: 'meets', traits, structs: [] }];
-}
-
-function sameConstraint(one: Constraint, other: Constraint): boolean {
-  return (
-    one.trait === other.trait &&
-    one.arguments.length === other.arguments.length &&
-    one.arguments.every((argument, index) => {
-      const second = other.arguments[index];
-      return second !== undefined && sameType(argument, second);
-    })
-  );
 }
 
 /** A trait's requirement of an associated type, as a constraint on the type requiring it states it. */

@@ -32,6 +32,7 @@ import { substitute } from '../types/substitution.ts';
 import {
   aliasedAs,
   errorType,
+  isPrimitive,
   neverType,
   type ParameterKey,
   type StructValueType,
@@ -150,7 +151,7 @@ export function memberUnionOf(checker: CheckerContext, parameter: TypeParameter)
 export function isKeyWithin(checker: CheckerContext, key: Type, keys: Type): boolean {
   const among = membersOf(keys);
   return membersOf(key).every((member) => {
-    if (member.kind === 'error' || isNever(member)) {
+    if (member.kind === 'error' || isPrimitive(member, 'Never')) {
       return true;
     }
     if (member.kind === 'keys') {
@@ -188,7 +189,7 @@ export function fieldTypeOf(checker: CheckerContext, of: Type, key: Type): Type 
       ? errorType
       : unionOf(types, checker.typeRules);
   }
-  if (key.kind === 'primitive' && key.name === 'Never') {
+  if (isPrimitive(key, 'Never')) {
     return neverType;
   }
   const name = keyName(key);
@@ -266,7 +267,7 @@ export function mappedTypeOf(
   if (keys.some((key) => key.kind === 'error')) {
     return errorType;
   }
-  if (!keys.every((key) => keyName(key) !== undefined || isNever(key))) {
+  if (!keys.every((key) => keyName(key) !== undefined || isPrimitive(key, 'Never'))) {
     const value = substitute(parts.value, outer, checker.typeRules);
     return { kind: 'mapped', ...parts, value };
   }
@@ -289,14 +290,14 @@ export function fieldPassesOver(
   subject: Type,
   header: FieldHeader,
 ): readonly FieldPassType[] | undefined {
-  if (isNever(subject)) {
+  if (isPrimitive(subject, 'Never')) {
     return [noFieldPass];
   }
   const keys = keysOf(checker, subject, []);
   if (keys.kind === 'error') {
     return undefined;
   }
-  const members = membersOf(keys).filter((member) => !isNever(member));
+  const members = membersOf(keys).filter((member) => !isPrimitive(member, 'Never'));
   if (members.length === 0) {
     return [noFieldPass];
   }
@@ -327,7 +328,3 @@ export function fieldPassesOver(
  * report nothing (calls/stopped-operations.ts).
  */
 const noFieldPass: FieldPassType = { visits: { kind: 'none' }, key: neverType, value: neverType };
-
-function isNever(type: Type): boolean {
-  return type.kind === 'primitive' && type.name === 'Never';
-}

@@ -40,13 +40,14 @@ import type { Identifier } from '../../syntax/node.ts';
 import { diagnosticIn } from '../../syntax/positions.ts';
 import { bindModule, type ModuleBindings } from '../bind-module.ts';
 import { binderDiagnostics } from '../diagnostics.ts';
-import type {
-  Bindings,
-  Entity,
-  FunctionsEntity,
-  NamespaceEntity,
-  Qualifier,
-  VariantEntity,
+import {
+  type Bindings,
+  type Entity,
+  type FunctionsEntity,
+  type NamespaceEntity,
+  namesType,
+  type Qualifier,
+  type VariantEntity,
 } from '../entities.ts';
 import type { FreeName, QualifiedPath } from '../local-binder.ts';
 import { undeclaredName } from '../naming.ts';
@@ -387,11 +388,6 @@ class Linker {
       ? undefined
       : this.#program.modules.get(importer)?.imports.get(namespace.declaration);
   }
-}
-
-/** Whether `entity` names a type, whose path's next parts are its associated types (§3.1). */
-function namesType(entity: Entity): boolean {
-  return entity.kind === 'type' || entity.kind === 'primitive' || entity.kind === 'self';
 }
 
 /** Whether the enum `declaration` declares an associated type named as `part` (§3.1). */

@@ -30,7 +30,7 @@ import {
 } from '../types/struct-constraint.ts';
 import { substituteConstraint } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type.ts';
-import { sameTypeSpelled } from '../types/type-parts.ts';
+import { sameConstraintSpelled } from '../types/type-parts.ts';
 import { silent, useSite } from '../use-site.ts';
 import { meets } from './conformance.ts';
 import { impliedConstraints } from './implied-constraints.ts';
@@ -69,7 +69,7 @@ export class TypeParameters {
               ...impliedConstraints(checker, checker.inputs.treeOf(module), parameter).traits,
             ];
       },
-      equal: sameItems(sameConstraint),
+      equal: sameItems(sameConstraintSpelled),
     });
     this.#structConstraints = checker.entries.table({
       name: 'struct constraints',
@@ -101,7 +101,7 @@ export class TypeParameters {
         return resolveConstraintSet(checker, module, requirement.constraints, () => self);
       },
       equal: (first, second) =>
-        sameItems(sameConstraint)(first.traits, second.traits) &&
+        sameItems(sameConstraintSpelled)(first.traits, second.traits) &&
         sameItems(sameStructConstraint)(first.structs, second.structs),
     });
   }
@@ -196,13 +196,6 @@ type Checked = TypeParameter | Instantiable;
 
 function checkedBy(check: ConstraintCheck): Checked {
   return check.kind === 'meets' ? check.parameter : check.declaration;
-}
-
-/** Whether two trait constraints name one trait with alike arguments. */
-function sameConstraint(first: Constraint, second: Constraint): boolean {
-  return (
-    first.trait === second.trait && sameItems(sameTypeSpelled)(first.arguments, second.arguments)
-  );
 }
 
 /** The trait of `module` requiring `requirement` among its members. */

@@ -8,9 +8,9 @@
 import { sameItems } from '../../../structures/equality.ts';
 import { type Substitution, substitute, substituteConstraint } from './substitution.ts';
 import type { Constraint, Type } from './type.ts';
-import { sameTypeSpelled } from './type-parts.ts';
+import { sameConstraintSpelled, sameTypeSpelled } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
-import { typeText } from './type-text.ts';
+import { constraintText, typeText } from './type-text.ts';
 
 /** A struct constraint, resolved (§3.5): its named fields' rules, in name order, and the others'. */
 export interface StructConstraintModel {
@@ -71,10 +71,7 @@ export function sameStructConstraint(
     }
     return (
       other.kind === 'meets' &&
-      sameItems(
-        (a: Constraint, b: Constraint) =>
-          a.trait === b.trait && sameItems(sameTypeSpelled)(a.arguments, b.arguments),
-      )(one.traits, other.traits) &&
+      sameItems(sameConstraintSpelled)(one.traits, other.traits) &&
       sameItems(sameStructConstraint)(one.structs, other.structs)
     );
   };
@@ -104,7 +101,5 @@ function ruleText(rule: EntryRule): string {
 
 /** A constraint set as `A & struct { … }` writes it. */
 export function constraintSetText({ traits, structs }: ConstraintSet): string {
-  return [...traits.map(({ trait }) => trait.name.text), ...structs.map(structConstraintText)].join(
-    ' & ',
-  );
+  return [...traits.map(constraintText), ...structs.map(structConstraintText)].join(' & ');
 }

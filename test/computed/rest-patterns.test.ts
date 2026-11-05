@@ -124,6 +124,18 @@ describe('a rest over a type parameter with a struct constraint', () => {
       ),
     ).toEqual([5167]);
   });
+
+  it('guards on a field taken twice, as a known struct does', () => {
+    const constrained = 'fn f<S is struct { title: String }>(s: S) -> String:';
+    const twice = (subject: string) =>
+      codesOf(
+        subject,
+        '  match s:',
+        '    case struct{title as t, title as u}: t',
+        '    case _: "other"',
+      );
+    expect(twice(constrained)).toEqual(twice('fn f(s: { title: String }) -> String:'));
+  });
 });
 
 describe('where a rest stands', () => {

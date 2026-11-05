@@ -17,7 +17,7 @@ import type { RestPattern } from '../../syntax/patterns.ts';
 import type { FieldTarget } from '../../syntax/statements.ts';
 import type { PartBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { errorType, type Type, type TypeParameterType } from '../types/type.ts';
+import type { Type, TypeParameterType } from '../types/type.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalType } from '../types/unions.ts';
@@ -36,22 +36,24 @@ export function isStructNotKnown(scope: PatternScope, type: Type): boolean {
 
 /**
  * Takes the fields `items` name of `part`, a struct whose fields aren't known yet, each by its
- * name; an item naming a field its constraints don't is reported. Matches whatever its items do:
- * anything when they all do, else it guards, as no shape can list fields it doesn't know.
+ * name (a pattern's items always name theirs); an item naming a field its constraints don't is
+ * reported. Matches whatever its items do: anything when they all do, else it guards, as no shape
+ * can list fields it doesn't know; a field two items take guards, as for a known struct (taking.ts).
  */
 export function takeFieldsByName<Target>(
   taking: Taking<Target>,
-  items: readonly FieldTarget<Target>[],
+  items: readonly (FieldTarget<Target> & { readonly name: Identifier })[],
   part: ValuePart,
 ): Shape | undefined {
-  const shapes = items.map((item) => {
-    const type =
-      item.name === undefined ? errorType : fieldTypeNamed(taking.scope, part, item.name);
-    const path =
-      item.name === undefined ? part.path : [...part.path, structFieldStep(part, item.name.text)];
-    return taking.take(item.target, { type, path });
+  const names = new Set<string>();
+  let takenTwice = false;
+  const shapes = items.map(({ name, target }) => {
+    takenTwice ||= names.has(name.text);
+    names.add(name.text);
+    const type = fieldTypeNamed(taking.scope, part, name);
+    return taking.take(target, { type, path: [...part.path, structFieldStep(part, name.text)] });
   });
-  return shapes.every((shape) => shape === anyShape) ? anyShape : undefined;
+  return !takenTwice && shapes.every((shape) => shape === anyShape) ? anyShape : undefined;
 }
 
 /** The type of the field `name` names in `part`'s struct; reported and the error type when none. */

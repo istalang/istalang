@@ -7,7 +7,9 @@
  * The same rule holds a struct declaration's values and a recursive type `match` use's (§3.17):
  * a struct declaration is reached by its declaration, whatever its arguments, and a recursive use
  * by its type key, which its shape shares, so the use holding itself through its shape is found
- * either way.
+ * either way. Its guard is a set of what was reached, not `TypeCycle`: a generic struct's
+ * arguments may grow along its fields (`A<T>` holding `A<Array<T>>`), so the walk must end at a
+ * declaration whatever its arguments, where a guard keyed by whole types would never repeat.
  */
 
 import type { StructDeclaration } from '../../syntax/declarations.ts';

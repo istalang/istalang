@@ -4,11 +4,13 @@
  * the error type.
  */
 
+import { sameItems } from '../../../structures/equality.ts';
 import { type ComputedType, isComputed, type MappedParts } from './computed-types.ts';
 import { withPack } from './function-types.ts';
 import {
   type AnyType,
   aliasedAs,
+  type Constraint,
   type ErrorType,
   type NominalType,
   type ParameterKey,
@@ -70,6 +72,13 @@ export function typeChildren(type: Type): readonly Type[] {
  */
 export function sameTypeSpelled(first: Type, second: Type): boolean {
   return first === second || typeKeys.spelledKey(first) === typeKeys.spelledKey(second);
+}
+
+/** Whether two trait constraints are one trait with arguments alike in every part (`sameTypeSpelled`). */
+export function sameConstraintSpelled(first: Constraint, second: Constraint): boolean {
+  return (
+    first.trait === second.trait && sameItems(sameTypeSpelled)(first.arguments, second.arguments)
+  );
 }
 
 /**

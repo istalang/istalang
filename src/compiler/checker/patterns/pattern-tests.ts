@@ -26,6 +26,9 @@ export interface Leaf {
   readonly shape: Shape | undefined;
 }
 
+/** Nothing to test, after a report; a guard for exhaustiveness. */
+export const failed: Leaf = { tests: [], shape: undefined };
+
 /** A construct its part's type rules out (§3.11): it never matches, so it covers nothing. */
 export const ruledOutLeaf: Leaf = { tests: [neverTest], shape: nothingShape };
 

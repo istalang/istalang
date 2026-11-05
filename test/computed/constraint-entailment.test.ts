@@ -8,7 +8,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
+import { diagnosedAt } from '../../src/compiler/compile.test-kit.ts';
 import { codesOf } from './computed.test-kit.ts';
 
 const traits = [
@@ -113,5 +115,57 @@ describe('implying a struct constraint', () => {
       ),
       { numRuns: 60 },
     );
+  });
+});
+
+describe('a trait implied by another', () => {
+  it('meets Sendable through Encodable or Decodable, in an entry and in a case variable', () => {
+    expect(
+      codesOf(
+        "import Encodable, Decodable from 'json'",
+        'fn needSendable<S is struct { a is Sendable }>(s: S): ()',
+        'fn fromEncodable<S is struct { a is Encodable }>(s: S): needSendable(s)',
+        'fn fromDecodable<S is struct { a is Decodable }>(s: S): needSendable(s)',
+      ),
+    ).toEqual([]);
+    expect(
+      codesOf(
+        "import Encodable from 'json'",
+        'struct Box<T> { v: T }',
+        'type UnboxSendable<D> = match D:',
+        '  case Box<infer T is Sendable>: T',
+        '  case _: Never',
+        'fn f<T is Encodable>(x: UnboxSendable<Box<T>>) -> T: x',
+      ),
+    ).toEqual([]);
+  });
+
+  it('names a trait with its arguments when one is missing', () => {
+    const lines = [
+      'trait Holds<T>:',
+      '  fn held(self: Self) -> T',
+      'fn needs<S is struct { [_] is Holds<Int> }>(s: S): ()',
+      'fn gives<S is struct { [_] is Holds<String> }>(s: S): needs(s)',
+    ];
+    const { diagnostics } = diagnosedAt(
+      stdProgramOf({ 'main.ista': lines.join('\n') }),
+      'main.ista',
+    );
+    expect(diagnostics.map((each) => each.message).join('\n')).toContain('Holds<Int>');
+  });
+});
+
+describe('a mapped struct type whose keys are not known yet', () => {
+  it('states its named fields in name order, so the first one short is the first by name', () => {
+    const lines = [
+      ...traits,
+      'fn needs<S is struct { [_] is Show }>(s: S): ()',
+      'fn gives<S is struct { [_]: Int }>(s: { zeta: Bool; [F in "alpha" | keyof S]: Bool }): needs(s)',
+    ];
+    const { diagnostics } = diagnosedAt(
+      stdProgramOf({ 'main.ista': lines.join('\n') }),
+      'main.ista',
+    );
+    expect(diagnostics.map((each) => each.message).join('\n')).toContain("'alpha: Bool'");
   });
 });

@@ -15,6 +15,7 @@
  * only a struct constraint has (`[_]: T`, `name is C`): a type gives each field a type (§3.5).
  */
 
+import { isUnnamed } from '../../../language/naming.ts';
 import type { DeclaredField, TypeParameter } from '../../syntax/declarations.ts';
 import type { Invalid, Missing } from '../../syntax/node.ts';
 import type { FieldDeclaration, MappedField, StructType } from '../../syntax/types.ts';
@@ -102,7 +103,7 @@ function parseFieldEntry(parser: Parser): FieldDeclaration | MappedField | Inval
 function startsConstraintEntry(parser: Parser): boolean {
   const { cursor } = parser;
   if (cursor.at('[')) {
-    return cursor.kindAt(2) === ']' && parser.textOf(cursor.peek(1)) === '_';
+    return cursor.kindAt(2) === ']' && isUnnamed(parser.textOf(cursor.peek(1)));
   }
   return cursor.at('identifier') && cursor.kindAt(1) === 'is';
 }

@@ -26,6 +26,7 @@ import {
 } from '../traits/constraints.ts';
 import { structConstraintsOn } from '../traits/known-constraints.ts';
 import { fieldOf } from '../traits/known-fields.ts';
+import { constraintsImply } from '../traits/sendable.ts';
 import { isStructType } from '../traits/struct-keys.ts';
 import { isOpaque } from '../types/computed-types.ts';
 import { sameType } from '../types/identity.ts';
@@ -174,9 +175,7 @@ function ruleShortfall(
 
 /**
  * What a type known only per instantiation lacks to meet `model`, judged by what its own struct
- * constraints imply (`knownFields`): each field `model` names must be one they name, with rules
- * implying its entry's; and, when `model` constrains its other fields, every field they name beyond
- * `model`'s, and every field they leave to their own others' entries, must meet that rule.
+ * constraints imply (`knownShortfall`).
  */
 function opaqueShortfall(
   checker: CheckerContext,
@@ -190,13 +189,44 @@ function opaqueShortfall(
   }
   const field = (name: string) =>
     `field '${name}: ${typeText(checker.typeRules.fieldType(type, literalType(name)))}'`;
+  return knownShortfall(checker, model, meets, {
+    known,
+    absent: (name) => `${typeText(type)} has no field '${name}'`,
+    field,
+    others: `${typeText(type)}'s other fields`,
+  });
+}
+
+/**
+ * The fields a struct is known to have, for `knownShortfall`, and how it names what it finds: a
+ * field `model` names that is absent, a field, the others.
+ */
+interface DescribedFields {
+  readonly known: KnownFields;
+  readonly absent: (name: string) => string;
+  readonly field: (name: string) => string;
+  readonly others: string;
+}
+
+/**
+ * What a struct the fields `known` describe lacks to meet `model`: each field `model` names must be one
+ * `known` names, with rules implying its entry's; and, when `model` constrains its other fields,
+ * every field `known` names beyond `model`'s, and every field it leaves to its others' entries,
+ * must meet that rule.
+ */
+function knownShortfall(
+  checker: CheckerContext,
+  model: StructConstraintModel,
+  meets: Meets,
+  { known, ...words }: DescribedFields,
+): string | undefined {
   for (const entry of model.named) {
     const rules = known.named.get(entry.name);
     if (rules === undefined) {
-      return `${typeText(type)} has no field '${entry.name}'`;
+      return words.absent(entry.name);
     }
     if (!entailed(checker, rules, entry.rule, meets)) {
-      return `${field(entry.name)} isn't known to be ${ruleText(entry.rule)}`;
+      return `${words.field(entry.name)} isn't known to be ${ruleText(entry.rule)}`;
     }
   }
   const { others } = model;
@@ -206,12 +236,12 @@ function opaqueShortfall(
   const named = new Set(model.named.map((entry) => entry.name));
   for (const [name, rules] of known.named) {
     if (!(named.has(name) || entailed(checker, rules, others, meets))) {
-      return `${field(name)} isn't known to be ${ruleText(others)}`;
+      return `${words.field(name)} isn't known to be ${ruleText(others)}`;
     }
   }
   return entailed(checker, known.others, others, meets)
     ? undefined
-    : `${typeText(type)}'s other fields aren't known to be ${ruleText(others)}`;
+    : `${words.others} aren't known to be ${ruleText(others)}`;
 }
 
 /**
@@ -250,7 +280,7 @@ function ruleText(rule: EntryRule): string {
 /**
  * Whether every field meeting all of `given` meets `needed` too: an exact type among them decides
  * it, as that type meets `needed` or not; otherwise `needed` can't ask an exact type, each trait it
- * asks is one they ask (traits have no supertraits), and each struct constraint it asks is implied
+ * asks is one they imply (`constraintsImply`), and each struct constraint it asks is implied
  * by theirs, all met at once.
  */
 function entailed(
@@ -270,7 +300,7 @@ function entailed(
   const traits = sets.flatMap((set) => set.traits);
   const structs = sets.flatMap((set) => set.structs);
   return (
-    needed.traits.every((trait) => traits.some((each) => sameConstraint(each, trait))) &&
+    needed.traits.every((trait) => constraintsImply(checker, traits, trait)) &&
     needed.structs.every((struct) => structEntailed(checker, structs, struct, meets))
   );
 }
@@ -283,34 +313,14 @@ function structEntailed(
   meets: Meets,
 ): boolean {
   const known = knownFields(given);
-  if (known === undefined) {
-    return false;
-  }
-  const namedMet = needed.named.every((entry) => {
-    const rules = known.named.get(entry.name);
-    return rules !== undefined && entailed(checker, rules, entry.rule, meets);
-  });
-  const { others } = needed;
-  if (!namedMet || others === undefined) {
-    return namedMet;
-  }
-  const named = new Set(needed.named.map((entry) => entry.name));
   return (
-    [...known.named].every(
-      ([name, rules]) => named.has(name) || entailed(checker, rules, others, meets),
-    ) && entailed(checker, known.others, others, meets)
-  );
-}
-
-/** Whether two trait constraints are one: the same trait, with the same arguments. */
-function sameConstraint(one: Constraint, other: Constraint): boolean {
-  return (
-    one.trait === other.trait &&
-    one.arguments.length === other.arguments.length &&
-    one.arguments.every((argument, index) => {
-      const each = other.arguments[index];
-      return each !== undefined && sameType(argument, each);
-    })
+    known !== undefined &&
+    knownShortfall(checker, needed, meets, {
+      known,
+      absent: (name) => name,
+      field: (name) => name,
+      others: '',
+    }) === undefined
   );
 }
 

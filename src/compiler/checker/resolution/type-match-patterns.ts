@@ -20,11 +20,10 @@
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { constraintOn } from '../traits/constraints.ts';
-import { knownConstraints } from '../traits/known-constraints.ts';
 import { isStructType } from '../traits/struct-keys.ts';
 import { isOpaque } from '../types/computed-types.ts';
 import { sameType } from '../types/identity.ts';
-import type { ConstraintSet, StructConstraintModel } from '../types/struct-constraint.ts';
+import type { StructConstraintModel } from '../types/struct-constraint.ts';
 import type { Type } from '../types/type.ts';
 import type { CasePatternForm, InferVariable } from '../types/type-match.ts';
 import { isKnown, parametersIn, typeChildren, unaliased } from '../types/type-parts.ts';
@@ -256,39 +255,16 @@ function variableMeets(
     return 'fail';
   }
   const { checker } = matching;
-  if (isOpaque(type)) {
-    return impliedBy(matching, type, constraints) ? 'match' : 'undecided';
-  }
   const traitsMet = constraints.traits.every((trait) =>
     matching.meets(type, constraintOn(trait, type, checker.typeRules)),
   );
   const structsMet = constraints.structs.every(
     (model) => structShortfall(checker, type, model, matching.meets) === undefined,
   );
-  return traitsMet && structsMet ? 'match' : 'fail';
-}
-
-/** Whether a type not known yet meets `constraints` whatever it becomes: its own imply them. */
-function impliedBy(matching: Matching, type: Type, constraints: ConstraintSet): boolean {
-  const { checker } = matching;
-  const known = knownConstraints(checker, type);
-  return (
-    constraints.traits.every((trait) => {
-      const needed = constraintOn(trait, type, checker.typeRules);
-      return known.some(
-        (own) =>
-          own.trait === needed.trait &&
-          own.arguments.length === needed.arguments.length &&
-          own.arguments.every((argument, index) => {
-            const other = needed.arguments[index];
-            return other !== undefined && sameType(argument, other);
-          }),
-      );
-    }) &&
-    constraints.structs.every(
-      (model) => structShortfall(checker, type, model, matching.meets) === undefined,
-    )
-  );
+  if (traitsMet && structsMet) {
+    return 'match';
+  }
+  return isOpaque(type) ? 'undecided' : 'fail';
 }
 
 function mentionsVariable(matching: Matching, type: Type): boolean {
