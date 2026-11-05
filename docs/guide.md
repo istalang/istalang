@@ -11,19 +11,13 @@ tags: [language, guide]
 # Istalang, level by level
 
 Read top to bottom and stop anywhere: each level is a complete picture, only coarser than the next.
-
-- **Level 0**: what the language is, in one paragraph.
-- **Level 1**: the eight ideas that shape every program.
-- **Level 2**: each idea with code.
-- **Level 3**: the rules that surprise people.
-
 The spec, `docs/spec.md`, is the source of truth; `§` numbers point into it.
 
 ---
 
 ## Level 0: what it is
 
-Istalang is a Python-shaped, statically typed language for **durable workflows**: programs that wait for days on a person, a timer or another system, and survive restarts while they wait. At every `await` the runtime saves the program's whole state, so it can resume from that line later, even on another machine. The program reaches the outside world only through functions the host provides, declared `extern`.
+Istalang is a Python-shaped, statically typed language for **durable workflows**: programs that wait for days on a person, a timer or another system, and survive restarts while they wait. At every `await` the runtime saves the program's whole state, so it can resume from that line later, even on another machine. The program reaches the outside world only through host functions declared `extern`.
 
 ```python
 async fn remindLater(role: String):
@@ -35,14 +29,14 @@ async fn remindLater(role: String):
 
 ## Level 1: the eight ideas
 
-1. **Python syntax, strict types.** Indentation, `#` comments, no `any`, no implicit conversions. Locals and return types are inferred; parameters and fields are annotated.
-2. **Values are copied.** Structs, arrays, maps and tuples are copied whenever they are assigned, passed, returned or sent. To change a caller's data you pass `&x`, or share a *handle*, whose copies all point at one thing.
-3. **Everything that branches is an expression.** `if`, `match`, `select` and `{ … }` blocks produce values. A function returns its last expression.
-4. **Errors are values; bugs panic.** A function that can fail returns `Result`, and `?` passes the error up. A bug, such as an index out of range, panics and freezes the instance for an operator.
-5. **`await` is the save point.** The code between two `await`s is one atomic *segment*: it commits at the next `await`, or, after a crash, never happened. Only an `async fn` may `await`.
-6. **Concurrency without threads.** An `async fn` called without `await` starts running alongside its caller. Executions coordinate through futures, `select`, slots and inboxes. `spawn` starts a separate, independent instance.
-7. **Lifetimes follow blocks.** When a block ends, whatever it alone holds is disposed: unfinished calls stop, timers are cancelled and unread revertible messages are retracted. This always happens at a line you can point to.
-8. **The host is the only I/O.** `extern` functions, constants and types are implemented by the host, and values cross as JSON. A deploy freezes the code: each instance runs to the end on the version it started with.
+1. **Python syntax, strict types.** Indentation, `#` comments, no implicit numeric or boolean conversions. Locals and return types are inferred; parameters and fields are annotated.
+2. **Values are copied.** Structs, arrays, maps and tuples are copied on assignment, argument pass, return or send. Mutate caller data via `&x`, or share a *handle* (`Shared`, `shared struct`, `Slot`, `Inbox`).
+3. **Everything that branches is an expression.** `if`, `match`, `select` and `{ … }` blocks produce values; all branches must agree on one type. A function returns its last expression.
+4. **Errors are values; bugs panic.** Fallible functions return `Result<T, E = Error>`, and `?` propagates `Err`. Bugs (out-of-bounds index, division by zero) panic and freeze the instance for an operator.
+5. **`await` is the save point.** Code between two `await`s is one atomic *segment*: it commits at the next `await`, or rolls back on crash. Only an `async fn` may `await`.
+6. **Concurrency without threads.** Calling an `async fn` without `await` starts it alongside the caller. Coordinate with futures, `select`, slots and inboxes; `spawn` starts an independent instance.
+7. **Lifetimes follow blocks.** When a block ends, resources it alone holds are deterministically disposed: pending calls stop, timers cancel and unread revertible messages retract.
+8. **The host is the only I/O.** `extern` functions, constants and types cross the host boundary as JSON. Deploys freeze code: each instance finishes on the version it started with.
 
 ---
 
@@ -77,7 +71,7 @@ async fn purchase(req: PurchaseRequest) -> Future<String>:
         case Err{error}: "failed: " + error.message
 ```
 
-`Queue` and its `receive` are host declarations as well (spec §12.1). A file holds only declarations: no top-level statements and no top-level variables, though a `const` computable at compile time is allowed.
+A file holds only declarations: imports, `struct`, `shared struct`, `enum`, `trait`, `type`, `fn`, `extern`, and compile-time `const` (no top-level statements or mutable globals).
 
 ### 2.2 Syntax, types, variables (§2, §3.4)
 
@@ -90,18 +84,19 @@ const a, b = (1, "x")          # destructuring
 
 | Type | Notes |
 | --- | --- |
-| `Int` `Float` `Bool` `String` | `Int` never overflows; `String` counts Unicode code points |
-| `Unit`, `Never` | `Unit` is `()`, the type of statements; `Never` is the type of `return` and `panic` |
-| `T?` | optional: `T \| None`, empty is `none`; a `T` goes into a `T?` automatically |
-| `(A, B)` | tuple: `t.0`, `t.1` |
-| `Array<T>`, `Map<K, V>`, `Range` | values, copied like structs |
-| `fn(A) -> R`, `async fn(A) -> R` | function values |
-| `Future<T>` `Slot<T>` `Inbox<T>` `Shared<T>` `WeakRef<T>` | **handles**: a copy points at the same thing |
-| `Time`, `Duration`, `Decimal` | from the standard library |
+| `Int` `Float` `Bool` `String` `None` | `Int` is arbitrary precision; `Float` is IEEE 754 (`0` never converts to `0.0` implicitly); `None`'s one value is `none` |
+| `Unit`, `Never` | `Unit` is `()`, the type of statements and loops; `Never` is the bottom type (`return`, `break`, `continue`, `panic`) |
+| `A \| B`, `"a" \| "b"`, `42`, `true` | unions and literal types (`Bool` is `true \| false`); a value converts into a union expecting it, and a literal union fits its base type |
+| `T?` | sugar for `T \| None` (like TS `T \| null`, **not** Rust's `Option` — there is no `Some`) |
+| `(A, B)`, `{ a: Int; b: String }` | tuples (`t.0`, `t.1`) and anonymous struct types (structural shapes) |
+| `Array<T>`, `Map<K, V>`, `Range` | value collections, copied like structs |
+| `fn(A) -> R`, `async fn(A) -> R`, `sendable fn(A) -> R` | function types; plain `fn(A) -> R` converts to `async fn(A) -> R`, and `sendable` to plain |
+| `any Trait`, `any A & B` | existential trait object (`Array<any View<Sc>>`, `(any Showable)?`) |
+| `Future<T>` `Slot<T>` `Inbox<T>` `Shared<T>` `WeakRef<T>` `Instance<T>` | **handles**: copying copies the handle, and `==` compares identity |
 
-Literals: `"a"` `'a'` `42` `1_000` `0x1F` `3.14` `true` `none` `500ms` `30s` `15m` `2h` `5d` `[1, 2]` `["k": 1]` `[:]` `[...xs, 3]` `(1, "x")` `0..10` (excludes 10) `0..=10`.
-
-Names: types are `PascalCase` and everything else is `camelCase`, and the compiler enforces both. A top-level name starting with `_` is private to its module.
+- **Literals:** `"a"` `'a'` `` `x=${x}` `` `42` `1_000` `0x1F` `0b1010` `3.14` `true` `none` `500ms` `30s` `15m` `2h` `5d` `[1, 2]` `["k": 1]` `[:]` `[...xs, 3]` `(1, "x")` `(x,)` `0..10` `0..=10` `0..10 by 2`.
+- **Names:** types, traits and variants are `PascalCase`; functions, variables and fields are `camelCase` (both compiler-enforced). Leading `_` on a top-level declaration makes it module-private.
+- **Keywords:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none`, `as` are reserved everywhere (never field or variable names). `type`, `shared`, `new`, `from`, `sendable`, `any`, `keyof`, `infer`, `hold` and `by` are contextual and may name fields or functions.
 
 ### 2.3 Data: structs, enums, optionals (§3.1, §3.11, §3.18)
 
@@ -122,11 +117,14 @@ enum Decision:
     Expired
 ```
 
-- **Unions** `A | B` hold a value of one member; `"draft" | "sent"` is a union of literal types. **Optional** `T?` is `T | None`: match it with `case None:` then `case v:`, read through it with `user?.name`, and supply a fallback with `name ?? "anon"`.
-- **Result** `Result<T>` is the enum `Ok{value}` or `Err{error}`, where `error` is an `Error{message, code, trace}`.
-- **Collections** use JavaScript's method names: `length()`, `push`, `pop`, `map`, `filter`, `indexOf`, `slice`. `xs[i]` panics when out of range, and `xs.at(i)` returns a `T?` and accepts negative indexes. On maps, `m[k]` panics for a missing key and `m.get(k)` returns a `V?`.
+- **Empty structs:** declared `struct Marker` (or `struct Marker {}`); constructed bare as `Marker` (`Marker{}` in an expression is a compile error).
+- **Optionals (`T?`):** `T | None`. Match with `case None:` then `case v:` (which narrows `v` to `T`), chain with `user?.name`, `a?->b`, `f?.(x)`, `xs?.[i]`, or fallback with `name ?? "anon"`.
+- **Result & Error:** `Result<T, E = Error>` has variants `Ok{value: T}` and `Err{error: E}`. `Error` requires **both** `message: String` and `code: String` (`trace: String = _trace()` is defaulted): `Err{Error{message: "unanswered", code: "unanswered"}}`.
+- **Collection methods (exact set):**
+  - `Array<T>`: `length()`, `push(x)`, `pop()`, `at(i)`, `slice(start = 0, end = none)`, `indexOf(x)`, `lastIndexOf(x)`, `includes(x)`, `reverse()`, `flat()`, `join(sep)`, `map(f)`, `filter(f)`, `flatMap(f)`, `find(f)`, `findLast(f)`, `findIndex(f)`, `findLastIndex(f)`, `some(f)`, `every(f)`, `reduce(f, init)`, `sort()`, `sort(order)` (JS names: use `.some`, not Python's `.any`; no `.forEach`, `.concat`, or `.unique`).
+  - `Map<K, V>`: write entries with `m[k] = v` (**no** `.set`, unlike JS `Map`), read with `m[k]` (panics if absent) or `m.get(k)` (`V?`), plus `size()`, `has(k)`, `includes(k)`, `delete(k)`, `keys()`, `values()`, `entries()`, `Map.groupBy(items, keyFn)`.
 
-**Shared structs** are how you get identity. Their values are handles to one cell, built with `new`, read and written through `->`:
+**Shared structs** give mutable identity in instance memory: built with `new`, read and written with `->`, dereferenced as a whole copy with `*`:
 
 ```python statements
 shared struct Lease:
@@ -142,7 +140,7 @@ lease.renew()                    # alias->renewals is now 1
 const snapshot = *lease          # a plain copy of the fields
 ```
 
-`Shared<T>` is the ready-made one: `new Shared{value: v}`, then `x->value`.
+`Shared<T>` is the built-in one-field shared struct: `new Shared{value: v}`, read/written as `x->value`.
 
 ### 2.4 Functions (§3.3, §3.7, §3.14)
 
@@ -155,8 +153,8 @@ fn Duration.zero() -> Duration: …                 # static function, called Du
 async fn fetch(id: String) -> Future<User>: …     # may await; inside it, return a User
 ```
 
-- **Overloading.** Functions are told apart by parameter types, never by return type.
-- **References.** A caller writes `&x` to let a function change its variable. A reference lives only for the call: it can't be stored or returned.
+- **Overloading.** Functions overload by parameter types and arity, never by return type.
+- **References (`&T`).** `&` is implicit only on a method's receiver (`s.push(x)`). Every other `&T` argument must be written `&x` at the call site, including when forwarding a `&T` parameter (`helper(&out)`). References cannot be stored in variables or fields, captured by closures, or returned.
 
   ```python statements
   fn bump(n: &Int): n += 1
@@ -164,8 +162,9 @@ async fn fetch(id: String) -> Future<User>: …     # may await; inside it, retu
   bump(&x)                 # x is 2
   ```
 
-- **Lambdas.** `fn(x): x * 2` and `fn x: x > 0`; several statements go in a block, `fn(m): { log(m); save(m) }`. A closure shares the `let`s it captures and copies the `const`s.
-- **Conversions.** `Float(3)`, `Int(3.7)` (3) and `String(42)` can't fail. Fallible ones return a `Result`, such as `Int.parse("42")`.
+- **Lambdas & closures.** `fn(x): x * 2`, `fn x: x > 0`, `async fn(x): await f(x)`; multi-statement bodies use a block `fn(m): { log(m); save(m) }`. Captured `const`s are copied; captured `let`s share a mutable cell.
+- **Async declarations vs. async function types.** A declared `async fn` (or a lambda with an explicit `->`) writes `-> Future<R>` while its body returns `R`, but the **function type** is written `async fn(A) -> R` (not `fn(A) -> Future<R>`). Calling an `async fn(A) -> R` returns `Future<R>`, and a plain `fn(A) -> R` converts implicitly where `async fn(A) -> R` is expected.
+- **Conversions.** Infallible conversions use `T(x)` (`Float(3)`, `Int(3.7)`, `String(42)` for any `Stringable`), backed by `fn T.from(v)`. Fallible parsing uses `T.parse(s) -> Result<T>`.
 
 ### 2.5 Generics, traits, operators (§3.5, §3.9, §3.10)
 
@@ -182,11 +181,16 @@ fn sum<T is Monoid>(xs: Array<T>) -> T:
     total
 ```
 
-- **Traits only constrain type parameters.** They are never the type of a variable. A type satisfies a trait just by having the functions, with no `impl` blocks.
-- **Operators are functions.** `a + b` calls `add(a, b)`, so declaring `fn add(left: Money, right: Money) -> Money` gives `Money` a `+`. `<`, `>`, `<=` and `>=` all go through one `compare`, `x[k]` through `index`, and `for` through `iterate`.
-- **`==` is built in.** It compares values structurally and handles by identity, and it can't be overloaded.
+- **Traits & `any Trait`.** Traits constrain type parameters (`T is Sendable & Comparable`), and `any Trait` types heterogeneous values (`Array<any View<Sc>>`, `(any Showable)?`) when the trait is object-safe (every required function takes `Self` first, uses `Self` nowhere else, and is not static). Conformance is structural like Go and TypeScript (**never** Rust's `impl Trait for Type:`): declare top-level functions beside the type or the trait.
+- **Operators are functions.** `a + b` calls `add`, `<`/`>`/`<=`/`>=` call `compare`, `x[k]` calls `index`, `x[k] = v` calls `setIndex`, `for x in c` calls `iterate`, `x in c` calls `includes`, and `T(x)` calls `T.from`. `==` and `!=` are built in (structural on values, identity on handles) and cannot be overloaded.
+- **Packs & member parameters.** `<...A>` is a tuple pack (`fn(...args: A) -> R`); `<K in U>` stands for a single member of union `U` per instantiation (`struct Entry<S is struct, K in keyof S>`).
 
-Types can be computed from other types (§3.1, §3.5, §3.17): a struct names an **associated type** (`type Data = T`) that a trait may require, a **struct constraint** states a struct's fields (`S is struct { [_] is FormNode }`), a **mapped struct type** gives a field per key (`{ [F in keyof S]: S[F].Data }`), and a **field loop** runs once per field (`for field, node in ...s:`), checked once for every field it may reach.
+**Computed types and field loops (§3.1, §3.5, §3.17, §4):**
+- **Associated types:** `type Data = T` inside a `struct` or `enum`, required in a trait with `type Data`, read as `N.Data`.
+- **Struct constraints:** `S is struct { title: String; [_] is FormNode }` (met by nominal `struct`s and anonymous shapes, not `shared` or `extern` structs).
+- **Mapped struct types:** `{ [F in keyof S]: S[F].Data }` (a structural shape with one field per key of `S`; named fields alongside `[F in …]` override/skip those keys).
+- **Field loops & comprehensions:** `for f, node in ...s:` (or `...*s` on a shared struct) checks and runs once per field in name order; `[for f, v in ...s: …]` builds an array; `struct{id, for f, v in ...s: [f]: g(v)}` builds a struct field by field.
+- **`keyof S`, `s[k]`, and `type match`:** `keyof S` is the union of `S`'s field names as string literal types; `S[K]` is the field type (or union of field types), and `s[k]` reads/writes it. `type Out<D> = match D: case Field<infer T>: T case _: D` computes a type by pattern matching.
 
 ```python
 trait FormNode:
@@ -209,8 +213,6 @@ fn check<S is struct { [_] is FormNode }>(self: Group<S>, data: Group<S>.Data) -
     true
 ```
 
-- **`keyof S` and `s[k]`.** `keyof S` is the union of `S`'s field names as literal types, and `s[k]` reads the field `k` names; a type `match` (`case Field<infer T>: T`) computes a type case by case.
-
 ### 2.6 Control flow and patterns (§4, §3.11)
 
 ```python statements
@@ -232,7 +234,7 @@ const text = match decision:          # must cover every variant, or end with ca
 if r is Ok{value as y} and y > 0: use(y)                  # a pattern outside match
 ```
 
-Inside a pattern's braces: `field` binds it, `field as name` renames it, `field == expr` compares it, and `field is Pattern` nests a pattern. A bare type name tests a value's type: `case Int as n` takes the ints out of an `any Stringable`.
+Patterns: `field`, `field as name`, `field == expr`, `field is Pattern`, `...rest` (on structs and arrays: `const struct{title, ...rest} = form`, `case [first, ...rest]:`), alternatives `A | B`, int ranges `0..=59`, and type patterns `case Int as n:` (on unions and `any` values).
 
 ### 2.7 Errors (§3.12)
 
@@ -242,16 +244,14 @@ async fn pay(req: Req) -> Future<Result<String>>:
     Ok{(receipt)}
 ```
 
-- **A `Result` must be used.** Match it, `?` it, store it, or `drop` it (`drop audit.record(e)`).
-- **`panic("msg")`** commits nothing and freezes the instance at its last save, with nothing disposed. An operator then retries it or terminates it.
+- **Must-use:** Futures, `Result`s, disposables and unions holding one cannot be ignored. Consume with `await`, `match` or `?`, bind to `_ =` / `hold _ =`, or discard with `drop expr`.
+- **`panic("msg")` -> `Never`:** discards the uncommitted segment and freezes the instance at its last snapshot.
 
 ### 2.8 Persistence (§5)
 
-- **Every `await` commits**, even on a future that has already resolved. To commit without waiting, write `await runtime.commit()`.
-- **A segment is atomic.** Its state changes, messages and disposals all commit together, or none of them do.
-- **Execution is deterministic.** `now()` returns the time its segment started, and extern results are recorded in the snapshot.
-- **Extern calls are not transactional.** A segment discarded by a crash re-runs, and calls its externs again, so make them idempotent.
-- **Versions are frozen.** An instance runs its whole life on the code it started with, while a deploy starts the new version's `main`.
+- **Every `await` commits**, even on an already-resolved future (`await runtime.commit()` commits without waiting).
+- **Atomic segments:** state mutations, slot operations and disposals between two `await`s commit together or roll back together.
+- **Deterministic:** `time.now()` is fixed per segment, `random` draws from the snapshot's seed, and `extern fn` results are recorded in the snapshot. Extern side effects are not rolled back on crash, so make externs idempotent.
 
 ### 2.9 Concurrency (§6, §8, §9)
 
@@ -261,7 +261,7 @@ const b = fetchB()
 const both = (await a, await b)
 ```
 
-- **`select`** waits for the first of several futures. Every losing case is disposed, so a call that lost is stopped and a `receive` that lost consumes nothing.
+- **`select`** waits for the first ready future (`await select:`) or polls synchronously (`select:` with `else:`). Losing cases release and dispose what their case expressions created (aborting losing calls and dropping losing `receive`s without consuming).
 
   ```python statements
   const deadline = time.delay(5d)           # create once, reuse in every iteration
@@ -271,15 +271,13 @@ const both = (await a, await b)
           case deadline: break
   ```
 
-  A `select` without `await` never waits and needs an `else:` case.
-- **Slots** are the one primitive. A `Slot<T>` is empty or full, and its `put(v)`, `take()` and `read()` each return a future.
-- **Inboxes** are queues built on slots: `Inbox.create<T>()`, then `box.send(m)` (durable), `_ = box.sendRevertible(m)` (retracted if unread when its holder goes) and `await box.receive()`.
-- **The library** builds the rest: `futures` (`all`, `any`, `race`, `timeout`, `retry`, `quorum`), `rpc` for request and response, and `fanout` for broadcast.
-- **`spawn f(args)`** starts a new, independent instance and doesn't wait. Its arguments must be *sendable*, meaning plain data: no handles, and no closures unless typed `sendable fn`.
+- **Slots & Inboxes:** `Slot.create<T>()` offers `put(v)`, `take()` and `read()`. `Inbox.create<T>()` (from `'inbox'`) offers `send(m)`, `sendRevertible(m)` (retracted if unread when its `Revertible<T>` holder is disposed), `receive()` and `pending()`.
+- **Library concurrency:** `'futures'` (`first`, `all`, `allSettled`, `race`, `any`, `quorum`, `timeout`, `retry`), `'rpc'`, `'fanout'`.
+- **`spawn f(args)`** starts a new instance returning `Instance<R>` (`await inst.result()` waits for its `Result<R>`). `f` and `args` must be `Sendable`.
 
 ### 2.10 Lifetimes and disposal (§7)
 
-The runtime disposes a resource, such as an unfinished call's future, a slot, an inbox, a timer or a revertible message, when its **last holder** lets go. Holders are variables, fields, elements and captures, and a block releases its variables when it ends.
+Resources (pending futures, slots, inboxes, revertible sends, and shared/extern structs with `fn dispose(self: T)`) are disposed synchronously when their last holder ends.
 
 ```python statements
 _ = startJob()              # held until this block ends
@@ -297,10 +295,8 @@ async fn approve(req: Req, roles: Array<String>) -> Future<String>:
     # when approve returns by any path, every unread review request is retracted
 ```
 
-- **Storing or returning** a resource keeps it alive. There is no escape rule.
-- **Graceful stop.** Inside `async fn worker`, a `case worker.disposing():` in a `select` runs synchronous cleanup when the call is being disposed.
-- **Watching without holding.** A `WeakRef(x)` refers to `x` without keeping it alive. `w.deref()` returns an optional, and `w.disposed()` is a future that resolves when `x` goes.
-- **Custom resources.** Only a shared struct or an extern type can be disposable, by declaring `fn dispose(self: T)` beside it.
+- **Graceful stop:** Inside `async fn worker`, `case worker.disposing():` in `select` runs synchronous cleanup (cannot `await`) when `worker`'s future is disposed.
+- **Weak references:** `WeakRef(x)` watches a disposable without holding it (`w.deref() -> T?`, `w.disposed() -> Future<Unit>`).
 
 ### 2.11 Modules, host, JSON, tools (§3.6, §3.13, §9, §11)
 
@@ -310,21 +306,15 @@ import * as time from 'time'                      # a standard-library module
 import helper from './helper'                     # relative to this file
 ```
 
-- **Modules.** Every top-level name is exported unless it starts with `_`. Import cycles are fine, and the prelude (`Optional`, `Result`, `Array`, `panic`, …) needs no import.
-- **Standard library modules:** `time`, `math`, `decimal`, `strings`, `json`, `regex`, `crypto`, `random`, `log`, `runtime`, `inbox`, `collections`, `futures`, `rpc`, `fanout` and `testing`. None of them touches files, the network or the environment.
-- **Externs.** `extern fn`, `extern name: Type` and `extern struct` are implemented by the host. Their values cross as JSON: a struct becomes an object, an enum an object with a `"type"` field, `none` becomes `null` or a missing field, and `@JsonName{"user_id"}` or `@JsonSkip` adjust a field. Inbound JSON is validated before the program sees it.
-- **JSON in code.** `json.parse<T>(s)` returns a `Result<T>`, and `json.stringify(v)` goes the other way.
-- **Tools:**
-
-  | Command | Does |
-  | --- | --- |
-  | `ista check` | type-checks every `.ista` file |
-  | `ista run main.ista` | runs `main` and prints its outcome |
-  | `ista run --store <dir>`, `--resume <id>` | runs with saves kept on disk, then resumes from them |
-  | `ista run --host host.js` | implements the externs in JavaScript |
-  | `ista vendor`, `ista verify` | copy dependencies into `vendor/`, then check them |
-
-  Packages are Git repositories, pinned in `ista.json` and vendored.
+- **Prelude (no import needed):** `Int`, `Float`, `Bool`, `String`, `None`, `Unit`, `Never`, `Optional`, `Result`/`Ok`/`Err`, `Error`, `Step`, `Range`, `Array`, `Map`, `Slot`, `Future`, `WeakRef`, `Instance`, `Shared`, `Waypoint`, `panic`, and built-in traits (`Sendable`, `Disposable`, `Iterable`, `Container`, `Indexable`, `IndexAssignable`, `Convertible`, `Default`, `Stringable`, `Parsable`, `Comparable`, arithmetic/bitwise traits).
+- **Standard library (must be imported):**
+  - `'inbox'`: `Inbox`, `Revertible`
+  - `'strings'`: `indexOf`, `lastIndexOf`, `startsWith`, `endsWith`, `slice`, `split`, `trim`, `trimStart`, `trimEnd`, `padStart`, `padEnd`, `repeat`, `replace`, `replaceAll`, `toUpperCase`, `toLowerCase`, `format`, `graphemes`, `utf16Length` (import a function by name to call it as a `String` method: `s.replaceAll(a, b)`)
+  - `'json'`: `Json`, `Encodable`, `Decodable`, `parse<T>(s) -> Result<T>`, `stringify(v)`, `encode`, `decode`, `encodeText`, `decodeText`, `JsonName`, `JsonSkip`, `JsonBigInt`
+  - `'regex'`: `Regex{pattern}`, `Regex.parse(s)`, `Match`, `test`, `find`, `findAll`, `replace`, `replaceAll`, `split`, `escape`
+  - `'time'`, `'math'`, `'decimal'`, `'crypto'`, `'random'`, `'log'`, `'runtime'`, `'collections'` (`WeakMap`), `'futures'`, `'rpc'`, `'fanout'`, `'testing'`
+- **JSON codecs:** Derived automatically for structs, shapes, enums (tagged by `"type"`), tuples, literal types, and **unions of literals** (`"a" | "b"`). General non-literal unions (other than `T?`) do not derive `Encodable`/`Decodable`. Generic code calling `json.parse<T>` or `json.stringify` must constrain `T is Decodable` / `T is Encodable`.
+- **CLI:** `ista check`, `ista fmt`, `ista run <entry> [--store <dir>] [--resume <id>] [--host <js>]`, `ista test`.
 
 ### 2.12 Testing (§10)
 
@@ -340,70 +330,32 @@ fn suite() -> Array<Test>: [
 ]
 ```
 
-- **Isolation.** Each test runs in a fresh instance, and only `*.test.ista` files may import `testing`.
-- **Mocks.** `hold _ = mock(chargeCard, fakeCharge)` replaces a function while the mock is held, and `FakeClock` controls time by mocking `time.now` and `time.at`.
-- **Crash testing.** `testing.spawnCrashingEveryAwait(f)` re-runs every segment once before committing it, which catches extern calls that aren't idempotent.
-- **Waypoints.** `@Waypoint{"approval"}` on an `await` names the spot, for `t.reaches("approval")` and for operators.
+Only `*.test.ista` files may import `'testing'` (`Suite`, `Test`, `test`, `group`, `skip`, `only`, `mock`, `FakeClock`, `FakeQueue`, `handle`, `spawnCrashingEveryAwait`, `idle`, `reaches`, `waitingAt`, `state`, `assert`, `assertEq`, `expectPanic`).
 
 ---
 
 ## Level 3: rules that bite
 
-**Syntax**
-- Indent with spaces only; a tab is an error.
-- `if x: a; b` is an error, since readers would expect both in the body. Write `if x: { a; b }`.
-- `??` mixed with `and` or `or` needs parentheses.
-- `f<A>(x)` parses as type arguments, so a comparison that looks like one needs parentheses: `(a < b) > c`.
-- These are missing in v0.1: `try`/`catch`, force-unwrap `!` and top-level statements. Strings interpolate with templates: `` `id: ${id}` ``.
+**Syntax & literals**
+- **Braces in expressions are blocks, never object literals (unlike JS/TS).** Write `struct{a: 1}` for an anonymous struct literal and `struct{for k, v in ...s: [k]: v}` for a struct comprehension. In type positions, `{ a: Int }` and `struct { a: Int }` are identical. A one-line block needs `;` (`if x: { a(); b() }`); `if x: a(); b()` is a compile error.
+- **No parameter destructuring (unlike JS/TS).** Parameters are plain names (`fn({a, b})` is a syntax error). Destructure inside the body: `fn(sc): { const struct{data, ctx} = sc; … }` or `const a, b = pair`.
+- **Single-field positional construction:** `Ok{v}` means `Ok{v: v}` (field shorthand for a field named `v`), **never** the variable `v` passed to `Ok.value`. Wrap a variable in parentheses to pass it positionally: `Ok{(v)}`, or write `Ok{value: v}`. Patterns never take positional fields: `case Ok{value as v}`.
+- **Struct spread does not add new fields (unlike TS `{ ...ctx, search }`).** `Req{...r, a: 2}` and `struct{...r, a: 2}` only override existing fields of `r`'s own type. To build a wider shape with an extra field, use a struct comprehension: `struct{search, for k, v in ...ctx: [k]: v}`.
+- **Template interpolation of optionals:** `${x}` and `String(x)` require `x is Stringable`. `None` is not `Stringable`, so `x: T?` fails to interpolate directly; write `${x ?? ""}` or convert through a helper taking `T?`.
+- **`while true:` has type `Unit`, not `Never`.** A value-returning function whose body ends in a `while true:` loop (returning inside the loop) must follow the loop with `panic("unreachable")`.
+- **Operator & call traps:** Indent with spaces only. `??` mixed with `and`/`or` needs parentheses. `a < b > (c)` parses as generic type arguments; parenthesize comparisons as `(a < b) > c`.
 
-**Values and mutation**
-- A `const` is deeply immutable (`const xs = []; xs.push(1)` is an error), but a handle behind it still changes: `const u = new Lease{…}; u->name = "x"` is fine.
-- Parameters are immutable. To change the caller's data, take a `&T` parameter.
-- `&` stands only before a whole call argument. `f(&xs[i], &xs[j])` is an error.
-- Passing an element (`&xs[i]`) or a shared struct's part (`&u->items`) to an **async** function is an error. Copy it into a `let`, pass that, and assign it back.
-- `a[1..3]` is a copy, and `for x in c` iterates over a copy.
-- A shared struct's fields are reached only with `->`; `x.field` is an error. `new` builds only shared structs, and shared structs only with `new`.
-- Two anonymous structs with the same fields are one type, their shape (§3.1); a declared struct is a type of its own, which converts into its shape.
-- A field whose type is its own struct must be optional (`next: Node?`) or sit inside a collection.
+**Types, unions, and generics**
+- **No implicit `Int` → `Float` conversion.** `0` is `Int`, not `Float` (unlike TS `number`); write `0.0` or `Float(n)` where `Float` or `Float?` is expected. `/` yields `Float`; `//` and `%` are integer division/remainder (panicking on 0). `1.5h` is an error; write `90m`.
+- **Unions are never inferred.** `if c: 1 else: "a"` or `if c: none else: "err"` is a compile error unless the expected type (`Int | String`, `String?`) is known from a type annotation or return type.
+- **Generic variant literals as call arguments:** In `min(Prop.Fixed{1})` where `Prop<Sc, T>.Fixed` does not mention `Sc`, qualified `Prop.Fixed{1}` is checked before `min` is chosen and fails with `Can't infer 'Sc'`. Write the bare variant `min(Fixed{1})` (which defers to the parameter's expected type) or give explicit type arguments `Prop.Fixed<Sc, Int>{1}`.
+- **Lambdas passed to generic functions:** A lambda with an untyped parameter `fn(sc): …` needs the call's parameter type to already know `Sc`. When `Sc` only comes from the enclosing return context, annotate the lambda parameter (`fn(sc: OrderScope): …`).
+- **Indexing `s[k]` with a union key in generic code:** For `k: keyof C`, `self.cases[k]` has the union of field types, which has no associated types (`Self.Data`). Use `for k, g in ...self.cases:` or `struct{for k, g in ...self.cases: [k]: …}` so each pass checks `g` at its own key `k`.
+- **Recursive associated types & traits:** An alias or associated type can refer to itself only when its body is a `type match` (`type Data = match S: case _: { [F in keyof S]: S[F].Data }`). User-trait conformance is inductive, not coinductive, so recursive structs cannot satisfy a user trait through a cycle of generic wrappers.
+- **Coherence:** A type meets a trait only through functions declared in the trait's module or the type's own module (never a third module, and only by the outer type, not its type arguments).
 
-**Construction and patterns**
-- `Ok{value}` means *the field named `value`*, never "the variable `value` positionally". Write `Ok{(value)}` or `Ok{value: value}`. Patterns have no positional form at all: `case Ok{value as receipt}`.
-- A bare variant needs an expected enum type. Otherwise qualify it: `Decision.Expired`.
-- An empty `[]` or `[:]` needs an expected type: `let xs: Array<Int> = []`.
-- In a pattern, a bare camelCase name **binds** a new variable, and a PascalCase one refers to a variant or a type. To compare against a constant, use a guard (`case n if n == limit`).
-- A union is never inferred: `if c: 1 else: "a"` is an error unless an `Int | String` is expected. Take a union apart with `match` or `is` (`case Int as n`), or call through a trait its members meet.
-
-**Numbers**
-- `/` always yields a `Float`; `//` is integer floor division. `x // 0` and `x % 0` panic, while `x / 0` gives an infinity.
-- `Int(3.7)` is 3, and `Int` of NaN or an infinity panics.
-- `1.5h` is an error; write `90m`.
-
-**Functions**
-- A lambda or local `fn` can't be generic or have defaults or a rest parameter.
-- An untyped lambda parameter needs an expected function type to infer it from.
-- A method isn't a value: `s.push` without a call is an error, so wrap it as `fn x: s.push(x)`. An overloaded function named as a value needs an expected type to pick the overload.
-- A recursive function declares its return type.
-- Local functions aren't hoisted, so declare one before using it.
-- `fn f(self: S)` and `fn f(self: &S)` can't coexist.
-
-**Async and persistence**
-- A future or a `Result` left as a bare statement is a compile error, which catches a forgotten `await`. Await it, keep it in `_ =`, or `drop` it.
-- Calling an async function runs it at once, inside your segment, until its first `await`.
-- Extern calls may run twice after a crash. Test with `crashEveryAwait`.
-- `select` evaluates its cases top to bottom, and the first case wins a tie. A case without `as` discards its value, so a future of a `Result` needs `as`.
-- A timer created inside a loop restarts every iteration. Create a deadline once, outside it.
-- An `await` inside a `disposing()` case aborts the call; the compiler warns about it.
-
-**Lifetimes**
-- `_ = q.sendRevertible(m)` **inside a loop** retracts the message at the end of each iteration. Use `hold _` to keep it until the function returns.
-- `_ = slowCall()` stops that call when the block ends, unless it has finished by then.
-- Temporaries are released at the end of their statement, and an `if` or `while` condition's temporaries before its body runs.
-- When `main`, or any instance's root function, returns, everything it holds is disposed.
-- A panic disposes nothing and runs no `defer`.
-- A variable can't be used after `drop x`, unless a `let` is assigned again first.
-
-**Crossing boundaries**
-- `spawn` arguments and extern types must be sendable. Handles, plain closures and anything containing them are compile errors. A `sendable fn` may be spawned but never crosses to the host.
-- A function with a `&` parameter can't be spawned.
-- A JSON field is required even when the struct gives it a default, a float NaN is written as `null` and can't be read back, and an enum variant can't have a field named `type`.
-- A map compares keys with `==`, so a key containing NaN is stored but never found again, and map iteration order is unspecified.
+**Mutation, references, and lifetimes**
+- **`const` is deeply immutable** (`const xs = [1]; xs.push(2)` is an error), stopping only at handles (`const u = new Lease{…}; u->renewals += 1` is valid). Shared struct fields use `->` (`u.renewals` is an error); `new` is used if and only if constructing a `shared struct`.
+- **Reference rules:** `&` stands only before a call argument (`&x`). Passing two element/shared-field references in one call (`f(&xs[i], &xs[j])`, `f(&u->a, &w->b)`) or passing `&xs[i]` / `&u->a` to an `async fn` is a compile error (copy into a local `let`, pass `&local`, and assign back).
+- **Loop lifetimes:** `_ = q.sendRevertible(m)` or `_ = asyncCall()` inside a loop disposes at the end of **each iteration**; use `hold _ = …` to keep it alive until the enclosing function returns.
+- **Boundaries:** Handles and plain `fn` values are not `Sendable` and cannot cross `spawn` or `extern`. `sendable fn` can be passed to `spawn` (when all captures are sendable) but has no JSON form and cannot cross `extern` or `json`.
