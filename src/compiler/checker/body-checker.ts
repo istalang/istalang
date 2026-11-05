@@ -29,6 +29,7 @@ import type { Entity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Call, Expression, FieldHeader } from '../syntax/expressions/index.ts';
+import { unparenthesized } from '../syntax/expressions/readings.ts';
 import type { Identifier, Invalid } from '../syntax/node.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Assignment, Block, Statement, VariableDeclaration } from '../syntax/statements.ts';
@@ -71,6 +72,7 @@ import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
 import { memberBuilt } from './types/expected.ts';
 import { exactFit, type Fit, isExact } from './types/fit.ts';
+import { keysOwner } from './types/key-types.ts';
 import { misfitOf } from './types/misfit.ts';
 import {
   errorType,
@@ -185,6 +187,9 @@ export class BodyChecker implements BodyContext {
     const expected = given === undefined ? undefined : unfolded(given, typeRules);
     if (expected !== undefined) {
       this.#records.expected.set(node, expected);
+      if (node.kind === 'StringLiteral') {
+        this.recordKey(node, keysOwner(this.checker.fitting, expected));
+      }
     }
     const checked =
       this.#rebuilt.length > 0 && !isBuiltLiteral(node) ? this.#records.types.get(node) : undefined;
@@ -354,6 +359,13 @@ export class BodyChecker implements BodyContext {
 
   recordField(name: Identifier, field: FieldMember): void {
     this.#records.namedFields.set(name, field);
+  }
+
+  recordKey(value: Expression, owner: Type | undefined): void {
+    const literal = unparenthesized(value);
+    if (owner !== undefined && literal.kind === 'StringLiteral') {
+      this.#records.keyOwners.set(literal, owner);
+    }
   }
 
   recordVariant(name: Identifier, variant: VariantEntity): void {

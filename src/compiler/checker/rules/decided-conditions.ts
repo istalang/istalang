@@ -18,6 +18,7 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { keyOwnerOfValue } from '../traits/struct-keys.ts';
 import { type EqualitySide, fitEqualSides } from '../types/equality.ts';
 import { decidedEquality } from '../types/known-literals.ts';
 import { typeText } from '../types/type-text.ts';
@@ -63,6 +64,14 @@ export function checkEquality(
   at: EqualityAt,
 ): void {
   const compare = fitEqualSides(context, left, right);
+  for (const [side, other] of [
+    [left, right],
+    [right, left],
+  ] as const) {
+    if (side.node !== undefined && other.node !== undefined) {
+      context.recordKey(side.node, keyOwnerOfValue(context, other.node));
+    }
+  }
   const { memberUnionOf } = context.checker.fitting;
   const equal = decidedEquality(left, right, compare, memberUnionOf);
   if (!compare && (equal === undefined || at.comparison === undefined)) {

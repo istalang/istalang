@@ -93,6 +93,7 @@ function joined(outer: CheckedBody, header: FieldHeader, rules: TypeRules): Chec
     chainOf: firstOf((pass) => pass.chainOf),
     fieldReadOf: firstOf((pass) => pass.fieldReadOf),
     namedFieldOf: firstOf((pass) => pass.namedFieldOf),
+    keyOwnerOf: firstOf((pass) => pass.keyOwnerOf),
     chosenVariantOf: firstOf((pass) => pass.chosenVariantOf),
     candidatesAt: (site) =>
       passes.find((pass) => pass.candidatesAt(site).length > 0)?.candidatesAt(site) ?? [],

@@ -120,6 +120,52 @@ describe('renaming', () => {
     }
   });
 
+  it('renames a key in a union of keys, compared with a loop key, `is` it, or given for an explicit member', () => {
+    const { program, named } = navigable({
+      main: [
+        'struct Settings { retries: Int; region: String }',
+        'fn pick<S is struct, K in keyof S>(s: S, k: K) -> S[K]: s[k]',
+        'fn either(x: Settings["retries" | "region"]) -> Settings["retries" | "region"]: x',
+        'fn kinds(s: Settings) -> Int:',
+        '  let n = 0',
+        '  for k, _ in ...s:',
+        '    if k == "region": n += 1',
+        '    if k is "region": n += 2',
+        '  n + pick<Settings, "retries">(s, "retries")',
+        '',
+      ].join('\n'),
+    });
+    const regionRenamed = renamed(program, named('main', 'region'), 'area');
+    for (const renamedUse of ['"retries" | "area"]', 'k == "area"', 'k is "area"']) {
+      expect(regionRenamed).toEqual({ main: expect.stringContaining(renamedUse) });
+    }
+    const retriesRenamed = renamed(program, named('main', 'retries'), 'tries');
+    expect(retriesRenamed).toEqual({ main: expect.stringContaining('(s, "tries")') });
+  });
+
+  it('renames a key given as a type argument to a struct literal, a call or an alias', () => {
+    const { program, named } = navigable({
+      main: [
+        'struct Settings { retries: Int; region: String }',
+        'struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }',
+        'type Of<S is struct, K in keyof S> = Entry<S, K>',
+        'fn pick<S is struct, K in keyof S>(s: S, k: K) -> S[K]: s[k]',
+        'fn kinds(s: Settings, o: Of<Settings, "region">) -> String:',
+        '  const e = Entry<Settings, "region">{key: "region", value: "eu"}',
+        '  `${e.value}${pick<Settings, "region">(s, "region")}${o.value}`',
+        '',
+      ].join('\n'),
+    });
+    const regionRenamed = renamed(program, named('main', 'region'), 'area');
+    for (const renamedUse of [
+      'Of<Settings, "area">',
+      'Entry<Settings, "area">{key: "area"',
+      'pick<Settings, "area">(s, "area")',
+    ]) {
+      expect(regionRenamed).toEqual({ main: expect.stringContaining(renamedUse) });
+    }
+  });
+
   it('refuses an associated type a trait requires by its name', () => {
     const { program, named } = navigable({
       main: [

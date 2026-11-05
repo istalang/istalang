@@ -133,6 +133,11 @@ export interface BodyContext {
   ) => void;
   /** Records the field `name` names in a struct literal, a pattern or an assignment's target. */
   readonly recordField: (name: Identifier, field: FieldMember) => void;
+  /**
+   * Records that `value`, when it is a String literal, is a key of the struct `owner` (§3.1 Key
+   * types): where checking decides it, so tools read it as a name of that struct's field.
+   */
+  readonly recordKey: (value: Expression, owner: Type | undefined) => void;
   /** Records the variant the bare name `name` chose (resolution/named.ts). */
   readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
   /** Records that `node` calls a function value (§3.14). */

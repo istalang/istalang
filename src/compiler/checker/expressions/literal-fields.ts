@@ -47,6 +47,7 @@ import { Inference } from '../inference/infer.ts';
 import { callWithTypes } from '../resolution/silent-choice.ts';
 import type { FunctionCall } from '../resolved-call.ts';
 import { itemField } from '../struct-items.ts';
+import { givenKeysOwner } from '../types/key-types.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import { errorType, type FieldMember, type ParameterKey, type Type } from '../types/type.ts';
@@ -170,6 +171,10 @@ function fitItems(
   for (const value of given.values()) {
     const declared = substitute(value.declared, substitution, context.checker.typeRules);
     context.fit(value.type, declared, value.node);
+    context.recordKey(
+      value.node,
+      givenKeysOwner(context.checker.fitting, value.declared, substitution),
+    );
   }
 }
 

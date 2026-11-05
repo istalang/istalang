@@ -22,12 +22,16 @@
 
 import { compareOrdered } from '../../../language/order.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';
-import type { FieldHeader } from '../../syntax/expressions/index.ts';
+import type { Expression, FieldHeader } from '../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../syntax/expressions/readings.ts';
+import type { Pattern } from '../../syntax/patterns.ts';
 import { parentOf } from '../../syntax/tree.ts';
 import type { StructType } from '../../syntax/types.ts';
+import type { BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import type { FieldPassType } from '../passes.ts';
 import { isOpaque, type MappedParts } from '../types/computed-types.ts';
+import { keysOwner } from '../types/key-types.ts';
 import { substitute } from '../types/substitution.ts';
 import {
   aliasedAs,
@@ -328,3 +332,54 @@ export function fieldPassesOver(
  * report nothing (calls/stopped-operations.ts).
  */
 const noFieldPass: FieldPassType = { visits: { kind: 'none' }, key: neverType, value: neverType };
+
+/**
+ * The struct the value of `value` is a key of, as checked: its type a struct's keys, or a member
+ * parameter within them, or a field loop's key, a name of the struct it runs over (§4); else
+ * undefined. A String literal compared with it is a key of that struct too (§3.1).
+ */
+export function keyOwnerOfValue(
+  context: Pick<BodyContext, 'checker' | 'entityOf' | 'typeOf'>,
+  value: Expression,
+): Type | undefined {
+  const bare = unparenthesized(value);
+  const entity = bare.kind === 'Identifier' ? context.entityOf(bare) : undefined;
+  if (entity?.kind === 'variable' && entity.owner.kind === 'FieldHeader') {
+    const { key, subject } = entity.owner;
+    const inKey =
+      key.span.segment === entity.name.span.segment &&
+      key.span.from <= entity.name.span.from &&
+      entity.name.span.to <= key.span.to;
+    return inKey ? context.typeOf(subject) : undefined;
+  }
+  return keysOwner(context.checker.fitting, context.typeOf(value));
+}
+
+/**
+ * Records each String literal `pattern` compares the whole subject with, through `|` and `as`, as
+ * a key of the struct `owner` (§3.1).
+ */
+export function recordPatternKeys(
+  context: Pick<BodyContext, 'recordKey'>,
+  pattern: Pattern,
+  owner: Type | undefined,
+): void {
+  if (owner === undefined) {
+    return;
+  }
+  switch (pattern.kind) {
+    case 'LiteralPattern':
+      context.recordKey(pattern.value, owner);
+      return;
+    case 'OrPattern':
+      for (const alternative of pattern.alternatives) {
+        recordPatternKeys(context, alternative, owner);
+      }
+      return;
+    case 'AsPattern':
+      recordPatternKeys(context, pattern.pattern, owner);
+      return;
+    default:
+      return;
+  }
+}

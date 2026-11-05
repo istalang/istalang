@@ -32,6 +32,7 @@ import type {
   Spread,
   StructComprehension,
 } from '../syntax/expressions/index.ts';
+import type { StringLiteral } from '../syntax/expressions/literals.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type {
@@ -259,6 +260,8 @@ export interface CheckedBody {
   readonly declaredTypeOf: (name: Identifier) => Type | undefined;
   /** The field a field's name in a struct literal, a pattern or an assignment's target names. */
   readonly namedFieldOf: (name: Identifier) => FieldMember | undefined;
+  /** The struct whose key a String literal of this body was checked as (§3.1); else undefined. */
+  readonly keyOwnerOf: (literal: StringLiteral) => Type | undefined;
   /** The variant a bare variant name chose by the type expected of it (§3.11). */
   readonly chosenVariantOf: (name: Identifier) => VariantEntity | undefined;
   /** The functions a call site chose among, in the order considered; none where nothing was. */

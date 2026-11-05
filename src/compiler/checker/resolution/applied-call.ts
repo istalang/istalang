@@ -24,7 +24,7 @@ import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
-import { argumentListText, filledTypes, fitArguments } from './argument-fit.ts';
+import { argumentListText, filledTypes, fitArguments, recordArgumentKeys } from './argument-fit.ts';
 import type { CallArgument, Inapplicability } from './call-arguments.ts';
 import type { Candidate } from './candidates.ts';
 import { type Application, choose } from './choice.ts';
@@ -96,6 +96,7 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
     request.arguments,
     filledTypes(checker.typeRules, application, instantiation, count),
   );
+  recordArgumentKeys(context, request.arguments, { application, instantiation });
   return {
     application: { ...application, candidate: closed.candidate },
     instantiation: closed.instantiation,

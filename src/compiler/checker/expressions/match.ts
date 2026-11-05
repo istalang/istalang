@@ -28,6 +28,7 @@ import { remainingType } from '../patterns/remaining.ts';
 import { signatureOf, witnessText } from '../patterns/shapes.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { decideComparison } from '../rules/decided-conditions.ts';
+import { keyOwnerOfValue, recordPatternKeys } from '../traits/struct-keys.ts';
 import { boolType, type Type } from '../types/type.ts';
 
 export function checkMatch(context: BodyContext, node: Match, expected: Type | undefined): Type {
@@ -37,6 +38,7 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
   for (const matchCase of casesOf(node)) {
     const remaining = remainingType(context.checker, subject, cases);
     const { shape, tests } = checkPattern(context, matchCase.pattern, subject, remaining);
+    recordPatternKeys(context, matchCase.pattern, keyOwnerOfValue(context, node.subject));
     const ruledOut = cantMatch(tests);
     if (matchCase.guard !== undefined && !ruledOut) {
       context.expect(matchCase.guard, boolType);
@@ -69,6 +71,7 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
 export function checkIs(context: BodyContext, node: Is): Type {
   const subject = context.expression(node.subject);
   const { tests } = checkPattern(context, node.pattern, subject);
+  recordPatternKeys(context, node.pattern, keyOwnerOfValue(context, node.subject));
   const stopped = stoppedOperation(context, node, [{ node: node.subject, type: subject }]);
   if (stopped !== undefined) {
     return stopped;

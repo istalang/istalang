@@ -19,7 +19,8 @@ import type { IndexedType, MappedField, StructType, TypeNode } from '../../synta
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { declaredFields } from './declared-fields.ts';
-import { substitute } from './substitution.ts';
+import type { Fitting } from './fit.ts';
+import { type Substitution, substitute } from './substitution.ts';
 import { errorType, type ParameterKey, shapeType, type Type } from './type.ts';
 import { typeText } from './type-text.ts';
 import { membersOf } from './unions.ts';
@@ -132,4 +133,39 @@ function isKey(checker: CheckerContext, key: Type): boolean {
 /** Whether `name` can name a field, as a key a mapped entry makes one of (§2, §3.1). */
 function isFieldName(name: string): boolean {
   return !(isUnnamed(name) || isKeyword(name)) && followsConvention(name, 'value');
+}
+
+/**
+ * The struct `type` is a key of: one whose keys it is, `keyof S` reduced (spelled so) or not yet,
+ * or a member parameter within them, its member union read through `fitting`; else undefined. A
+ * String literal checked as such a type names that struct's field (lookup/key-denotations.ts).
+ */
+export function keysOwner(
+  fitting: Pick<Fitting, 'memberUnionOf'>,
+  type: Type | undefined,
+): Type | undefined {
+  if (type?.alias?.kind === 'keys') {
+    return type.alias.of;
+  }
+  if (type?.kind === 'keys') {
+    return type.of;
+  }
+  const union = type?.kind === 'parameter' ? fitting.memberUnionOf(type) : undefined;
+  return union === undefined ? undefined : keysOwner(fitting, union);
+}
+
+/**
+ * The struct a value given where `declared` stands is a key of, the instantiation giving
+ * `substitution`: a member parameter's union, or the declared type itself, read through it, so a
+ * literal given for `K in keyof S` names a field of the struct `S` becomes.
+ */
+export function givenKeysOwner(
+  fitting: Fitting,
+  declared: Type,
+  substitution: Substitution,
+): Type | undefined {
+  const union = declared.kind === 'parameter' ? fitting.memberUnionOf(declared) : declared;
+  return union === undefined
+    ? undefined
+    : keysOwner(fitting, substitute(union, substitution, fitting));
 }

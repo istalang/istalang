@@ -11,6 +11,7 @@
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
+import { givenKeysOwner } from '../types/key-types.ts';
 import { substitute } from '../types/substitution.ts';
 import type { LiteralType, Type } from '../types/type.ts';
 import type { TypeRules } from '../types/type-rules.ts';
@@ -46,6 +47,25 @@ export function filledTypes(
     return slot === undefined
       ? undefined
       : substitute(slot.type, instantiation.substitution, rules);
+  });
+}
+
+/**
+ * Records each String literal argument given for a parameter whose type is a struct's keys, or a
+ * member parameter within them, as a key of the struct the instantiation makes it (§3.1).
+ */
+export function recordArgumentKeys(
+  context: BodyContext,
+  argumentList: readonly FittedArgument[],
+  { application, instantiation }: { application: Application; instantiation: Instantiation },
+): void {
+  const slots = argumentSlotsOf(application.signature.parameters, application.binding);
+  argumentList.forEach(({ node }, index) => {
+    const slot = slots.get(index);
+    if (node !== undefined && slot !== undefined) {
+      const { fitting } = context.checker;
+      context.recordKey(node, givenKeysOwner(fitting, slot.type, instantiation.substitution));
+    }
   });
 }
 
