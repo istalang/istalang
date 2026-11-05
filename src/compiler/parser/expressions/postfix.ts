@@ -34,6 +34,7 @@ import { isPlace } from '../../syntax/expressions/places.ts';
 import { qualifiedPath } from '../../syntax/expressions/readings.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
+import { atPostfix } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
 import { namedTypeFrom } from '../parts/names.ts';
 import { spreadOpener } from '../parts/spreads.ts';
@@ -51,12 +52,12 @@ export function parseTypeApplication(parser: Parser, left: Expression): Expressi
   }
   const typeArguments = parser.speculate(() => {
     const parsed = parser.typeArguments();
-    return parser.cursor.at('(') || parser.cursor.at('{') ? parsed : undefined;
+    return atPostfix(parser, '(') || atPostfix(parser, '{') ? parsed : undefined;
   });
   if (typeArguments === undefined) {
     return undefined;
   }
-  if (parser.cursor.at('(')) {
+  if (atPostfix(parser, '(')) {
     return parseCall(parser, left, false, typeArguments);
   }
   return parseStructLiteralBody(

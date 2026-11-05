@@ -14,6 +14,7 @@ import type {
   StructConstraint,
 } from '../../syntax/types.ts';
 import { type ItemRules, parseItemEntries } from '../layout/index.ts';
+import { atPostfix, eatContinuing } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
 
 /** What follows `is` (§3.5): a struct constraint at `struct`, a trait's type otherwise. */
@@ -24,7 +25,7 @@ function parseConstraint(parser: Parser): ConstraintNode {
 /** `A & B` after `is`: each constraint `&` joins, at least one. */
 export function parseConstraints(parser: Parser): ConstraintNode[] {
   const constraints = [parseConstraint(parser)];
-  while (parser.cursor.eat('&') !== undefined) {
+  while (eatContinuing(parser, '&') !== undefined) {
     constraints.push(parseConstraint(parser));
   }
   return constraints;
@@ -33,7 +34,7 @@ export function parseConstraints(parser: Parser): ConstraintNode[] {
 /** `struct`, or `struct { title: String, [_] is FormNode }`, at `struct`. */
 export function parseStructConstraint(parser: Parser): StructConstraint {
   const { start } = parser.cursor.advance().span;
-  const entries = parser.cursor.at('{') ? parseItemEntries(parser, entryRules).value : [];
+  const entries = atPostfix(parser, '{') ? parseItemEntries(parser, entryRules).value : [];
   return { kind: 'StructConstraint', span: parser.spanFrom(start), entries };
 }
 

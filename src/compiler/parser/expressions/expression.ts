@@ -240,12 +240,13 @@ const listItemOpeners: ReadonlySet<CursorKind> = new Set([spreadOpener, structCo
 /**
  * Whether a token of `kind`, first on its line inside a list, starts an item rather than
  * continuing the one before (§2), as the item parsers and the tables say: what opens an item only
- * a list holds starts one, and so does a token only the prefix table has. One both tables have starts one where it applies to an operand only on the operand's line
- * (a postfix bracket or a template); where it is a word, unless it spells a binary operator with
- * the `next` token (`not in`); and where it is a symbol `glued` to the next token, as `-1` is and
- * `- 1` isn't.
+ * a list holds starts one, and so does a token only the prefix table has. One both tables have
+ * starts one where it applies to an operand only on the operand's line (a postfix bracket or a
+ * template); where it is a word, unless it spells a binary operator with the `next` token
+ * (`not in`); and where it is a symbol no space parts from the rest of its line (`spaced`), as
+ * `-1` and a lone `..` aren't, and `- 1` is.
  */
-export function startsItemOnNewLine(kind: CursorKind, next: CursorKind, glued: boolean): boolean {
+export function startsItemOnNewLine(kind: CursorKind, next: CursorKind, spaced: boolean): boolean {
   if (listItemOpeners.has(kind)) {
     return true;
   }
@@ -256,5 +257,5 @@ export function startsItemOnNewLine(kind: CursorKind, next: CursorKind, glued: b
   if (infix === undefined || infix.level === 'postfix') {
     return true;
   }
-  return isKeyword(kind) ? !(`${kind} ${next}` in binaryOperators) : glued;
+  return isKeyword(kind) ? !(`${kind} ${next}` in binaryOperators) : !spaced;
 }

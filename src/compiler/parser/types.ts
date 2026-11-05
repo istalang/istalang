@@ -32,7 +32,7 @@ import type {
 } from '../syntax/types.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
-import { atPostfix } from './layout/item-breaks.ts';
+import { atPostfix, eatContinuing } from './layout/item-breaks.ts';
 import type { Parser } from './parser.ts';
 import { parseConstraints, parseStructConstraint } from './parts/constraints.ts';
 import { parseFunctionKeyword } from './parts/functions.ts';
@@ -258,10 +258,9 @@ function parseRestType(parser: Parser): RestType {
  * `any T` or `any A & B`, at `any`; `?` after it applies to the whole, so `any T?` is `(any T)?`.
  */
 function parseAnyType(parser: Parser): TypeNode {
-  const { cursor } = parser;
-  const { start } = cursor.advance().span;
+  const { start } = parser.cursor.advance().span;
   const traits = [parseAnyTrait(parser)];
-  while (cursor.eat('&') !== undefined) {
+  while (eatContinuing(parser, '&') !== undefined) {
     traits.push(parseAnyTrait(parser));
   }
   return { kind: 'AnyType', span: parser.spanFrom(start), traits };

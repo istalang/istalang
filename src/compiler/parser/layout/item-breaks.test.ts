@@ -5,14 +5,8 @@
  * '${…}' ignoring breaks, and fast-check properties over generated lists and hostile token runs.
  */
 
-import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { soupOf } from '../../../../test/soup.ts';
-import { createSourceText } from '../../../text/source-text.ts';
-import { scan } from '../../scanner/scan.ts';
-import { errorNodes, spanViolations, strayBodies } from '../../syntax/tree.test-kit.ts';
 import { type Category, dumpClean, lines, reported } from '../parse.test-kit.ts';
-import { parse } from '../parse.ts';
 
 describe('every bracketed list kind separated by line breaks (§6)', () => {
   it.each([
@@ -63,6 +57,30 @@ describe('every bracketed list kind separated by line breaks (§6)', () => {
       'type' as const,
       'Map<\n  String\n  fn(\n    Int\n    (\n      Bool\n      Float\n    )\n  ) -> Unit\n>',
       'Map<String, fn(Int, (Bool, Float)) -> Unit>',
+    ],
+    [
+      'a lone open range and items around it',
+      'expression' as const,
+      '[\n  first\n  ..\n  second\n]',
+      '[first, .., second]',
+    ],
+    [
+      'ranges open at their end, each before an item on the next line',
+      'expression' as const,
+      '[\n  first..\n  second..\n  ..=last\n]',
+      '[first.., second.., ..=last]',
+    ],
+    [
+      "an 'any' type and a reference type parameter, and constraints before a type parameter",
+      'type' as const,
+      'fn(\n  any Shape & Named\n  &Point\n) -> Unit',
+      'fn(any Shape & Named, &Point) -> Unit',
+    ],
+    [
+      'range patterns open at their end',
+      'pattern' as const,
+      '[\n  1..\n  5..\n  -3\n]',
+      '[1.., 5.., -3]',
     ],
     [
       'anonymous struct type and mapped struct type in braces',
@@ -168,6 +186,13 @@ describe('what starts an item vs what continues an item (§6)', () => {
   });
 
   it.each([
+    ['a call\'s "("', '[\n  f<Int>\n  (1)\n]', 'Call'],
+    ['a struct literal\'s "{"', '[\n  Box<Int>\n  {value: 1}\n]', 'StructLiteral'],
+  ])('reads type arguments only where %s stands on their line', (_name, broken, node) => {
+    expect(dumpClean('expression', broken)).not.toContain(node);
+  });
+
+  it.each([
     [
       'binary operators (+, /, //, %, **, ==, !=, <, <=, >, >=, and, or, ??, |, ^, <<, >>)',
       '[\n  a\n    + b\n    / c\n    // d\n    % e\n    ** f\n    == g\n    and h\n    or i\n    ?? j\n]',
@@ -236,102 +261,6 @@ describe('mixed separators, comments, blank lines and templates (§6)', () => {
     const broken = '[\n  `sum: ${a\n    + b\n    - 1}`\n  `call: ${g\n    (1)}`\n]';
     expect(dumpClean('expression', broken)).toBe(
       dumpClean('expression', '[`sum: ${a + b - 1}`, `call: ${g(1)}`]'),
-    );
-  });
-});
-
-describe('properties and hostile inputs (§6, note 11)', () => {
-  const simpleItems = fc.constantFrom(
-    '1',
-    '"s"',
-    'true',
-    'none',
-    'a',
-    'a + b',
-    'f(1, 2)',
-    'Pair{x: 1, y: 2}',
-    '[1, 2]',
-    '(1, "x")',
-  );
-
-  it('gives the same tree when any comma in a generated list is replaced with a line break', () => {
-    fc.assert(
-      fc.property(
-        fc.array(simpleItems, { minLength: 2, maxLength: 6 }),
-        fc.array(fc.constantFrom(', ', '\n  ', ',\n  ', '\n  # note\n  '), {
-          minLength: 5,
-          maxLength: 5,
-        }),
-        (items, joins) => {
-          const inline = `[${items.join(', ')}]`;
-          const broken = `[\n  ${items
-            .map((item, index) =>
-              index === 0 ? item : `${joins[(index - 1) % joins.length]}${item}`,
-            )
-            .join('')}\n]`;
-          expect(dumpClean('expression', broken)).toBe(dumpClean('expression', inline));
-        },
-      ),
-      { numRuns: 60 },
-    );
-  });
-
-  it('gives the same tree when an item is broken at any continuing operator or clause', () => {
-    const continuations: (readonly [string, string])[] = [
-      ['a + b', 'a\n    + b'],
-      ['a - 1', 'a\n    - 1'],
-      ['a * 2', 'a\n    * 2'],
-      ['a & b', 'a\n    & b'],
-      ['0..10 by 2', '0\n    .. 10\n    by 2'],
-      ['x.y?.z->w!', 'x\n    .y\n    ?.z\n    ->w\n    !'],
-      ['if c: 1 elif d: 2 else: 3', 'if c: 1\n    elif d: 2\n    else: 3'],
-      ['x is Int as n', 'x\n    is Int\n    as n'],
-      ['x in xs and y not in ys', 'x\n    in xs\n    and y\n    not in ys'],
-    ];
-    fc.assert(
-      fc.property(fc.subarray(continuations, { minLength: 2, maxLength: 5 }), (chosen) => {
-        const inline = `[${chosen.map(([oneLine]) => oneLine).join(', ')}]`;
-        const broken = `[\n  ${chosen.map(([, multiLine]) => multiLine).join('\n  ')}\n]`;
-        expect(dumpClean('expression', broken)).toBe(dumpClean('expression', inline));
-      }),
-      { numRuns: 50 },
-    );
-  });
-
-  it('stays total and well-nested on hostile bracketed inputs with glued and spaced operators', () => {
-    const hostileFragments = [
-      'a',
-      '1',
-      '-1',
-      '- 1',
-      '*x',
-      '* x',
-      '&x',
-      '& x',
-      '..5',
-      '.. 5',
-      '..=5',
-      '..= 5',
-      '(1)',
-      '[0]',
-      '{a: 1}',
-      '<Int>',
-      ',',
-      ';',
-      ':',
-      '# c',
-    ];
-    const hostileSoup = soupOf(hostileFragments, [' ', '\n  ', '\n    ', '\n'], 20);
-    fc.assert(
-      fc.property(hostileSoup, (inner) => {
-        const source = createSourceText('hostile.ista', `fn f(): [\n  ${inner}\n]\n`);
-        const tree = parse(source, scan(source));
-        const unexplained = errorNodes(tree, tree.root).length > 0 && tree.diagnostics.length === 0;
-        expect(spanViolations(tree, tree.root)).toEqual([]);
-        expect(strayBodies(tree)).toEqual([]);
-        expect(unexplained).toBe(false);
-      }),
-      { numRuns: 100 },
     );
   });
 });

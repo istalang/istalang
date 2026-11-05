@@ -139,6 +139,10 @@ describe('property: formatting generated short and broken lists reparses to the 
     'a + b * c',
     '-1',
     '(1, "two")',
+    '..',
+    'firstVeryLongVariableName___________________________..',
+    '..=lastVeryLongVariableName__________________________',
+    'a..b',
   );
 
   it('round-trips generated array, tuple, call and struct literal lists to the identical tree and fixpoint', () => {
@@ -157,6 +161,24 @@ describe('property: formatting generated short and broken lists reparses to the 
           expect(unexplainedLongLines(reparsed)).toEqual([]);
         },
       ),
+      { numRuns: 50 },
+    );
+  });
+
+  it("round-trips generated function types whose parameters end in an optional part ('& B', a reference)", () => {
+    const parameterArb = fc.constantFrom(
+      'any VeryLongTraitName_____________________________',
+      'any Shape & Named',
+      '&VeryLongTypeName_________________________________',
+      'Map<String, Int>',
+      'fn(Int) -> Unit',
+    );
+    fc.assert(
+      fc.property(fc.array(parameterArb, { minLength: 1, maxLength: 5 }), (parameters) => {
+        const text = lines(`type F = fn(${parameters.join(', ')}) -> Unit`);
+        const { actual, expected } = roundTripOf(text);
+        expect(actual).toEqual(expected);
+      }),
       { numRuns: 50 },
     );
   });

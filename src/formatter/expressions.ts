@@ -16,6 +16,7 @@ import type {
   ExpressionPart,
 } from '../compiler/syntax/expressions/index.ts';
 import { childrenOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
+import { opened } from './indented-values.ts';
 import { angled, bracketed, enclosed, hasComments, hugging, oneLine, tupleList } from './lists.ts';
 import type { Printer, Printers } from './printer.ts';
 
@@ -233,7 +234,7 @@ export const expressionPrinters: Printers<ExpressionKind> = {
   FieldInitializer: (printer, node) =>
     node.value === undefined
       ? printer.print(node.name)
-      : [printer.print(node.name), ': ', printer.print(node.value)],
+      : [printer.print(node.name), opened(printer, ':', node.value)],
   PositionalInitializer: (printer, node) => printer.print(node.value),
   Parameter: (printer, node) => [
     node.isRest ? '...' : '',

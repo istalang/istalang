@@ -17,6 +17,7 @@ import type {
 import type { SyntaxNode } from '../compiler/syntax/tree.ts';
 import { annotated, body, indentedBlock } from './bodies.ts';
 import { ifChain } from './branches.ts';
+import { opened } from './indented-values.ts';
 import { itemLines } from './lists.ts';
 import type { Printer, Printers } from './printer.ts';
 
@@ -48,7 +49,7 @@ function label(printer: Printer, name: Identifier | undefined): builders.Doc {
 }
 
 function jump(printer: Printer, keyword: string, target: SyntaxNode | undefined): builders.Doc {
-  return target === undefined ? keyword : [keyword, ' ', printer.print(target)];
+  return target === undefined ? keyword : opened(printer, keyword, target);
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
@@ -71,8 +72,8 @@ export const statementPrinters: Printers<StatementKind> = {
         node.targets.map((target) => printer.print(target)),
       ),
       node.type === undefined ? '' : [': ', printer.print(node.type)],
-      ' = ',
-      printer.print(node.initializer),
+      ' ',
+      opened(printer, '=', node.initializer),
     ]),
   Hold: (printer, node) =>
     // `hold(` takes no line break (parser), so no comment can stand in it, and it never breaks.
@@ -83,8 +84,8 @@ export const statementPrinters: Printers<StatementKind> = {
         ', ',
         node.targets.map((target) => printer.print(target)),
       ),
-      ` ${node.operator} `,
-      printer.print(node.value),
+      ' ',
+      opened(printer, node.operator, node.value),
     ]),
   Return: (printer, node) => annotated(printer, node, jump(printer, 'return', node.value)),
   Break: (printer, node) => annotated(printer, node, jump(printer, 'break', node.label)),

@@ -239,6 +239,13 @@ describe('entries, items, alignment and continuation (§1)', () => {
     expect(moduleProblems(text)).toEqual([]);
   });
 
+  it("reads '- name:' over a block as a key, and '- Name:' as the value's type, by the name's case", () => {
+    const keyed = initializerDump('const xs =', lines('  - nested:', '      a: 1', '    b: 2'));
+    expect(keyed.startsWith(':')).toBe(true);
+    expect(keyed).not.toContain('NamedType');
+    expect(initializerDump('const xs =', lines('  - Point:', '      x: 1'))).toContain('NamedType');
+  });
+
   it('ends the indented value at the first line at or left of the opening line', () => {
     const text = lines(
       'fn f() -> Int:',

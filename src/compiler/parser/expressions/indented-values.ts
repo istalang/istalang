@@ -13,12 +13,15 @@
  *   `...value`, a struct comprehension, and `- item`, whose `-` starts its line and is followed by
  *   a space or the line's end, so `- -1` is the item −1 and a line starting `-1` holds no entry.
  * - An item's value is an expression, a spread, the anonymous keyed value `- key: value` whose
- *   other entries line up with `key`, or a value on the lines below a `-` or a `- T:`. An item's
- *   expression can't itself start with `- `, which would read as a nested item on one line.
+ *   other entries line up with `key`, or a value on the lines below a `-` or a `- T:`. A name
+ *   whose `:` ends the item's line is told by its case, as a pattern's bare name is (naming.ts):
+ *   `- Point:` names the value's type, `- nested:` is a key whose value is the block below. An
+ *   item's expression can't itself start with `- `, which would read as a nested item on one line.
  * - Nothing follows a value: entries after its `T:` on that line are reported, so are lines after
  *   its block by the block they stand in.
  */
 
+import { bindsInPattern } from '../../../language/naming.ts';
 import type {
   Expression,
   IndentedEntry,
@@ -228,17 +231,20 @@ function parseItemValue(parser: Parser, dash: number): IndentedItem['value'] {
 
 /**
  * Whether `key: value` follows an item's `-`: a name or a String, then `:`. A name whose `:` ends
- * the line is the `T:` of a value below instead, as `- Point:` is.
+ * the line is the `T:` of a value below where its case names a type, as `- Point:` does, and a key
+ * whose value is the block below where it binds as a pattern's bare name would (`- nested:`).
  */
 function startsKeyedValue(parser: Parser): boolean {
   const { cursor } = parser;
   if (cursor.kindAt(1) !== ':') {
     return false;
   }
+  if (cursor.at('string')) {
+    return true;
+  }
   const after = cursor.kindAt(2);
-  return (
-    cursor.at('string') || (cursor.at('identifier') && after !== 'lineBreak' && after !== 'end')
-  );
+  const opensBlock = after === 'lineBreak' || after === 'end';
+  return cursor.at('identifier') && (!opensBlock || bindsInPattern(parser.textOf(cursor.token)));
 }
 
 /** `key: value` after an item's `-`, with the entries below it lined up with `key`. */

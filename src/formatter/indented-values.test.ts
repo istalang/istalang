@@ -92,6 +92,45 @@ describe('formatting indented values as written (§1, note 4)', () => {
     expect(actual).toEqual(expected);
   });
 
+  it('keeps entries written on one line on that line, and each line of entries as written', () => {
+    const text = lines(
+      'const x: R =',
+      '  a: 1, b: 2',
+      '  c: 3',
+      '',
+      '  d: 4, e: 5 # trailing',
+      'const api = Service:',
+      '  retry: Retry:',
+      '    times: 3, backoffMs: 200',
+      '  ports:',
+      '    - 80',
+      '    - key: "k", count: 3',
+    );
+    expect(formatText(text)).toBe(text);
+    const { actual, expected } = roundTripOf(text);
+    expect(actual).toEqual(expected);
+  });
+
+  it("keeps a comment on an item's '-' line with the item, and one space before a comment after an opening", () => {
+    const text = lines(
+      'const xs =',
+      '  - # nested items',
+      '    - 1',
+      '    - 2',
+      'const c: Config = # after the =',
+      '  retries: 3',
+      'fn f() -> Config:',
+      '  return # after return',
+      '    retries: 3',
+      'const d: Config =',
+      '  retry: # after the key',
+      '    times: 3',
+    );
+    expect(formatText(text)).toBe(text);
+    const { actual, expected } = roundTripOf(text);
+    expect(actual).toEqual(expected);
+  });
+
   it('never turns brace/bracket literals into indented values or indented values into braces/brackets', () => {
     const braced = lines('const a = Service{name: "api", ports: [80, 443]}');
     expect(formatText(braced)).toBe(braced);
@@ -113,6 +152,9 @@ describe('formatting indented values as written (§1, note 4)', () => {
       '  ...spreadVal',
       '  nested:\n    # nested comment\n    inner: 42',
       '  items:\n    - 1\n    - -2\n    - key: "k"\n      count: 3',
+      '  items:\n    - # nested\n      - 1\n      - 2',
+      '  opened: # after the key\n    inner: 1',
+      '  a: 1, b: 2',
     );
     fc.assert(
       fc.property(fc.array(entryArb, { minLength: 1, maxLength: 5 }), (entries) => {

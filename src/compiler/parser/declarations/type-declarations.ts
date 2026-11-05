@@ -33,6 +33,7 @@ import { parserDiagnostics } from '../diagnostics.ts';
 import { documentedBy, type WithDocstring } from '../docstrings.ts';
 import { parseDocstringBelow, parseDocumentedMembers } from '../layout/bodies.ts';
 import { type ItemRules, type Items, parseItemEntries } from '../layout/index.ts';
+import { atPostfix } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
 import { parseConstraints } from '../parts/constraints.ts';
 import { declaredFieldRules, parseField } from '../parts/structs.ts';
@@ -199,7 +200,7 @@ function parseMembers<Item extends DeclaredField | Variant | AssociatedType | Tr
 /** `Expired`, or `Rejected { by: String, reason: String }`. */
 function parseVariant(parser: Parser): Variant {
   const name = parser.identifier('a variant name');
-  const fields = parser.cursor.at('{') ? parseItemEntries(parser, declaredFieldRules).value : [];
+  const fields = atPostfix(parser, '{') ? parseItemEntries(parser, declaredFieldRules).value : [];
   return { kind: 'Variant', span: parser.spanFrom(parser.startOf(name)), name, fields };
 }
 

@@ -22,6 +22,7 @@ import {
 import type { Identifier } from '../compiler/syntax/node.ts';
 import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './bodies.ts';
+import { opened } from './indented-values.ts';
 import { angled, bracketed, bracketedWhenBroken, fieldList, itemLines } from './lists.ts';
 import type { Printer, Printers } from './printer.ts';
 import { constraintsAfterIs } from './types.ts';
@@ -165,7 +166,7 @@ export const declarationPrinters: Printers<DeclarationKind> = {
     annotated(printer, node, [
       printer.print(node.name),
       node.type === undefined ? '' : [': ', printer.print(node.type)],
-      node.defaultValue === undefined ? '' : [' = ', printer.print(node.defaultValue)],
+      node.defaultValue === undefined ? '' : [' ', opened(printer, '=', node.defaultValue)],
     ]),
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.

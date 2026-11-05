@@ -65,10 +65,10 @@ export interface Grammar {
   readonly value: (parser: Parser, opener: number) => Expression;
   /**
    * Whether a token of `kind`, first on its line inside a list, starts an item rather than
-   * continuing the one before (layout/item-breaks.ts), given the `next` token's kind, and `glued`
-   * when nothing stands between the two.
+   * continuing the one before (layout/item-breaks.ts), given the `next` token's kind, and `spaced`
+   * when a space parts the two on one line.
    */
-  readonly startsItemOnNewLine: (kind: CursorKind, next: CursorKind, glued: boolean) => boolean;
+  readonly startsItemOnNewLine: (kind: CursorKind, next: CursorKind, spaced: boolean) => boolean;
   readonly type: (parser: Parser) => TypeNode;
   /** A parameter's type, the one place `&T` is allowed (§3.7). */
   readonly parameterType: (parser: Parser) => TypeNode;
@@ -299,8 +299,8 @@ export class Parser implements SegmentBases {
   }
 
   /** The grammar's `startsItemOnNewLine`. */
-  startsItemOnNewLine(kind: CursorKind, next: CursorKind, glued: boolean): boolean {
-    return this.#grammar.startsItemOnNewLine(kind, next, glued);
+  startsItemOnNewLine(kind: CursorKind, next: CursorKind, spaced: boolean): boolean {
+    return this.#grammar.startsItemOnNewLine(kind, next, spaced);
   }
 
   type(): TypeNode {

@@ -29,6 +29,7 @@ import {
   unaryOperators,
 } from '../../syntax/operators.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
+import { continues } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
 import { parseSelectFrom } from './branches.ts';
 import type { InfixParselet, PrefixParselet } from './parselet.ts';
@@ -150,9 +151,12 @@ function parseRangeRest(
   return { kind: 'Range', span: parser.spanFrom(start), start: first, isInclusive, end, step };
 }
 
-/** A range's end, unless `by` follows the `..` at once: `by` is a word only a range reads. */
+/**
+ * A range's end, unless `by` follows the `..` at once (`by` is a word only a range reads), or an
+ * item of the enclosing list starts on the next line.
+ */
 function parseRangeEnd(parser: Parser, isInclusive: boolean): Expression | undefined {
-  if (parser.startsExpression() && !parser.atWord('by')) {
+  if (continues(parser) && parser.startsExpression() && !parser.atWord('by')) {
     return parser.expression(tighterLevel(operatorLevels.range));
   }
   return isInclusive ? parser.missing('the end of an inclusive range') : undefined;

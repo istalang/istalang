@@ -38,7 +38,7 @@ import type {
 import type { TypeNode } from '../syntax/types.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
-import { atPostfix } from './layout/item-breaks.ts';
+import { atPostfix, continues } from './layout/item-breaks.ts';
 import { nested } from './nesting.ts';
 import type { Parser } from './parser.ts';
 import { type LeveledParselet, leveledGrammar } from './parts/levels.ts';
@@ -203,12 +203,13 @@ function parseOpenRangePattern(parser: Parser): Pattern {
 }
 
 /**
- * A range pattern's end: a literal, which only an exclusive range open at its end may leave out.
+ * A range pattern's end: a literal, which only an exclusive range open at its end may leave out,
+ * and does where an item of the enclosing list starts on the next line.
  */
 function parseRangeBound(parser: Parser, required: boolean): LiteralPattern | undefined {
   const { kind } = parser.cursor;
   const startsLiteral = kind === '-' || literalFrom(parser, parser.cursor.token) !== undefined;
-  if (!startsLiteral) {
+  if (!(startsLiteral && (required || continues(parser)))) {
     if (required) {
       parser.reportExpected('a literal');
     }
