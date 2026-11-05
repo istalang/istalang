@@ -5,7 +5,9 @@
  * with the arguments in place, for arguments that meet the traits, that don't, and that collapse
  * the union into one member. Generic code then runs on values of the members an `any` member took
  * whole: put into the union, tested by a pattern, carried into a wider union, and an optional
- * collapsed into an `any` type that took `None` too.
+ * collapsed into an `any` type that took `None` too. Written for the type an instantiation makes,
+ * the same code compiles and gives the same, a type pattern and `??` looking through the `any`
+ * member as the instantiation does.
  */
 
 import fc from 'fast-check';
@@ -236,6 +238,49 @@ describe('generic code on values of members an `any` member took whole (§2, §3
         expect(runMain('Array<String>', body.join('\n  '), [...declarations, ...generic])).toEqual(
           all.map(([, expected]) => expected),
         );
+      }),
+      { numRuns: 30 },
+    );
+  });
+});
+
+/**
+ * The generic functions written for `type`: each `T` the type itself, each name its own, so a
+ * program holds both.
+ */
+function writtenFor(type: string): readonly string[] {
+  const functions = generic.slice(generic.findIndex((line) => line.startsWith('fn tagG')));
+  return functions.map((line) => line.replace(genericOwn, 'W').replace(typeParameter, type));
+}
+
+/** A generic function's name and its type parameter, as its declaration and calls write them. */
+const genericOwn = /G<T>/gu;
+const typeParameter = /\bT\b/gu;
+/** A call of a generic function with its type argument written, one level of brackets inside. */
+const genericCall = /G<[^>]*(?:<[^>]*>)?[^>]*>\(/u;
+
+describe('commutation: generic code instantiated, or written for the type it is instantiated with', () => {
+  it('compiles alike and gives the same', () => {
+    fc.assert(
+      fc.property(valuedArgument, ({ text, values }) => {
+        const type = `(${text})`;
+        const all = [
+          ...values.flatMap((value, index) => callsOn(type, `a${index}`, value)),
+          ...fixedCalls(type),
+        ].map(([call]) => call);
+        const written = all.map((call) => call.replace(genericCall, 'W('));
+        const body = [
+          ...values.map((value, index) => `const a${index}: ${type} = ${value}`),
+          `[${[...all, ...written].join(', ')}]`,
+        ];
+        const results = runMain('Array<String>', body.join('\n  '), [
+          ...declarations,
+          ...generic,
+          ...writtenFor(type),
+        ]);
+        const given = Array.isArray(results) ? results : [];
+        expect(given.slice(all.length)).toEqual(given.slice(0, all.length));
+        expect(given).toHaveLength(all.length * 2);
       }),
       { numRuns: 30 },
     );

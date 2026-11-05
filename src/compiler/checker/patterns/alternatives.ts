@@ -5,21 +5,29 @@
  *
  * - Alternatives selecting members of the part's union select the union of those members: `case
  *   Int | String as v` binds `v: Int | String`, as far as earlier cases left them (members.ts
- *   `leftOf`). Where one selects nothing, the whole part is bound.
+ *   `leftOf`). Alternatives downcasting a part of an `any` type, or selecting literals through it,
+ *   select the union of what they select (`case Int | String as v`). Where one selects nothing,
+ *   the whole part is bound.
  */
 
 import type { PartBinding, PatternTest } from '../checked-pattern.ts';
 import { sameType } from '../types/identity.ts';
-import type { Type } from '../types/type.ts';
-import { leftOf } from './members.ts';
+import type { AnyType, Type } from '../types/type.ts';
+import type { TypeRules } from '../types/type-rules.ts';
+import { unionOf } from '../types/unions.ts';
+import { leftOf, unionPart } from './members.ts';
 import type { ValuePart } from './parts.ts';
 
 /** What of `part` alternatives selecting by `selected`, each its test, select between them. */
 export function partSelected(
   part: ValuePart,
   selected: readonly (PatternTest | undefined)[],
+  rules: TypeRules,
 ): ValuePart {
-  const union = part.narrowedFrom ?? (part.type.kind === 'union' ? part.type : undefined);
+  if (part.type.kind === 'any' && part.narrowedFrom === undefined) {
+    return castSelected({ ...part, type: part.type }, selected, rules);
+  }
+  const union = unionPart(part);
   const members: Type[] = [];
   for (const test of selected) {
     if (union === undefined || test?.kind !== 'member' || test.union !== union) {
@@ -31,6 +39,29 @@ export function partSelected(
   return union === undefined || sameType(type, part.type)
     ? part
     : { type, path: part.path, narrowedFrom: union };
+}
+
+/**
+ * What of a part of an `any` type alternatives select between them where each downcasts it or
+ * selects a literal through it: the union of the types they select, read out of the `any` value;
+ * else the whole part.
+ */
+function castSelected(
+  part: ValuePart & { readonly type: AnyType },
+  selected: readonly (PatternTest | undefined)[],
+  rules: TypeRules,
+): ValuePart {
+  const types: Type[] = [];
+  for (const test of selected) {
+    if (test?.kind === 'downcast' && test.from === part.type) {
+      types.push(test.to);
+    } else if (test?.kind === 'member' && test.union === part.type) {
+      types.push(...test.members);
+    } else {
+      return part;
+    }
+  }
+  return { type: unionOf(types, rules), path: part.path, narrowedFrom: part.type };
 }
 
 /**

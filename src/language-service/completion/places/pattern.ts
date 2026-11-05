@@ -82,7 +82,11 @@ function patternStarts(
       ),
   );
   const words = Object.entries(startWordLiterals).flatMap(([name, literal]) =>
-    !known || literal === undefined || literalMembers(members, literal).length > 0 ? [name] : [],
+    !known ||
+    literal === undefined ||
+    literalMembers(members, literal, checker.typeRules).length > 0
+      ? [name]
+      : [],
   );
   return [...variants, ...referringNames(cursor, type), ...wordCandidates(words)];
 }

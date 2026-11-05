@@ -173,6 +173,22 @@ export function optionalInner(type: Type): Type | undefined {
     : undefined;
 }
 
+/**
+ * What a value of `type` is where it isn't `none`, when `type` may hold `none` (§2, §4), as `??`,
+ * `?.`, `!` and `case none` test it: a union holding `None`, without it; `Never` for `None`
+ * itself, whose one value is `none`; or, where an `any` member took `None` whole, `type` itself,
+ * `none` being one of the values that member holds. Undefined for a type never holding `none`.
+ */
+export function presentType(type: Type, rules: TypeRules): Type | undefined {
+  if (isPrimitive(type, 'None')) {
+    return neverType;
+  }
+  return (
+    optionalInner(type) ??
+    (absorbingMember(membersOf(type), noneType, rules) === undefined ? undefined : type)
+  );
+}
+
 /** Whether `member` has one value only, a literal's or `none`, so a union's tag alone says it. */
 export function hasOneValue(member: Type): boolean {
   return member.kind === 'literal' || isPrimitive(member, 'None');

@@ -41,7 +41,8 @@ import {
   tupleElements,
 } from './type.ts';
 import { type ShapeKey, typeKeys } from './type-keys.ts';
-import { baseOf, hasMember, optionalInner } from './unions.ts';
+import type { TypeRules } from './type-rules.ts';
+import { absorbingMember, baseOf, hasMember, optionalInner } from './unions.ts';
 import { arrayElement } from './well-known.ts';
 
 type Aliases = Pick<Checker, 'aliasedType' | 'typeRules'>;
@@ -187,8 +188,10 @@ type MemberNaming = Pick<Checker, 'aliasedType' | 'typeRules' | 'variantsOf'>;
  * The members of a union a pattern naming `entity` selects (§3.11): the enums declaring a variant
  * it names, bare or qualified; the member of a type it names, else the members of a union it names
  * where the union holds them all (`case Status as s` against `Status | Int`), else every literal
- * member of that base (`case String as s` against `Status | Int`); every member instantiating a
- * generic type it names. Anything else, a constant's name among them, selects none here.
+ * member of that base (`case String as s` against `Status | Int`), else the type itself where an
+ * `any` member took it whole (`case Int` against `Plain | any Shows`), a downcast through that
+ * member; every member instantiating a generic type it names. Anything else, a constant's name
+ * among them, selects none here.
  */
 export function membersNamed(
   checker: MemberNaming,
@@ -229,11 +232,18 @@ function typeMembers(checker: Aliases, entity: Entity, members: readonly Type[])
         return own;
       }
       const inside = members.filter((member) => hasMember(named.type, member));
-      return named.type.kind === 'union' && inside.length === named.type.members.length
-        ? inside
-        : members.filter(
-            (member) => member.kind === 'literal' && sameType(baseOf(member), named.type),
-          );
+      if (named.type.kind === 'union' && inside.length === named.type.members.length) {
+        return inside;
+      }
+      const literals = members.filter(
+        (member) => member.kind === 'literal' && sameType(baseOf(member), named.type),
+      );
+      if (literals.length > 0) {
+        return literals;
+      }
+      return absorbingMember(members, named.type, checker.typeRules) === undefined
+        ? []
+        : [named.type];
     }
     case 'generic':
       return members.filter(
@@ -254,14 +264,25 @@ export function instancesWith(
   );
 }
 
-/** The members a literal of type `literal` selects: its own literal type's, else its base's. */
-export function literalMembers(members: readonly Type[], literal: Type): readonly Type[] {
+/**
+ * The members a literal of type `literal` selects: its own literal type's, else its base's, else
+ * the literal itself through the `any` member that took it whole (§2), as `rules` say: the value
+ * inside that member is the literal's own.
+ */
+export function literalMembers(
+  members: readonly Type[],
+  literal: Type,
+  rules: TypeRules,
+): readonly Type[] {
   const own = members.find((member) => sameType(member, literal));
   if (own !== undefined) {
     return [own];
   }
   const base = baseOf(literal);
-  return members.filter((member) => sameType(member, base));
+  const based = members.filter((member) => sameType(member, base));
+  return based.length === 0 && absorbingMember(members, literal, rules) !== undefined
+    ? [literal]
+    : based;
 }
 
 /**

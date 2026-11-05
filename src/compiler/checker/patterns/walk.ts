@@ -283,6 +283,7 @@ function takeAlternatives(walk: Walk, node: OrPattern, part: ValuePart): Matched
     part: partSelected(
       part,
       alternatives.map(({ selected }) => selected),
+      walk.scope.typeRules,
     ),
   };
 }

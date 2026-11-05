@@ -13,7 +13,8 @@
  * - `a!` is the value inside `a`, and panics on none through the prelude's `panic`. A chain before
  *   it is unwrapped whole: `a?.b!` is `(a?.b)!`. It is a warning wherever it is written, since
  *   `??`, `is` or `match` handles the none it would panic on.
- * - All three take an optional; anything else is reported.
+ * - All three take a type that may hold `none` (`presentType`): an optional, or a type whose `any`
+ *   member took `None` whole, such as `any Sendable`; anything else is reported.
  */
 
 import { panicFunction } from '../../../language/well-known.ts';
@@ -26,7 +27,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { preludeCall } from '../resolution/implicit.ts';
 import { errorType, stringType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { optionalInner, optionalOf } from '../types/unions.ts';
+import { optionalOf, presentType } from '../types/unions.ts';
 
 /**
  * The links of optional chains in one body: what each one's step works on, and the value it
@@ -73,7 +74,7 @@ export class OptionalChains implements Chains {
     }
     this.#carried.set(node, value);
     this.#links.set(node, { base, carried: value });
-    return value.kind === 'error' || optionalInner(value) !== undefined
+    return value.kind === 'error' || presentType(value, context.checker.typeRules) !== undefined
       ? value
       : optionalOf(value, context.checker.typeRules);
   }
@@ -87,7 +88,7 @@ export class OptionalChains implements Chains {
     if (!isOptionalStep(step) || carried.kind === 'error') {
       return carried;
     }
-    const inner = optionalInner(carried);
+    const inner = presentType(carried, context.checker.typeRules);
     if (inner === undefined) {
       context.report(
         checkerDiagnostics.needsOptional(step.target.span, step.operator, typeText(carried)),
@@ -105,7 +106,7 @@ export function checkUnwrap(context: BodyContext, node: Unwrap, expected: Type |
     expected === undefined ? undefined : optionalOf(expected, context.checker.typeRules),
   );
   context.report(checkerDiagnostics.forceUnwrap(node.span));
-  const inner = optionalInner(operand);
+  const inner = presentType(operand, context.checker.typeRules);
   if (inner === undefined) {
     if (operand.kind !== 'error') {
       context.report(checkerDiagnostics.needsOptional(node.operand.span, '!', typeText(operand)));
@@ -128,7 +129,7 @@ export function checkNullish(context: BodyContext, node: Binary, expected: Type 
     node.left,
     expected === undefined ? undefined : optionalOf(expected, checker.typeRules),
   );
-  const inner = optionalInner(left);
+  const inner = presentType(left, checker.typeRules);
   if (inner === undefined) {
     if (left.kind !== 'error') {
       context.report(checkerDiagnostics.needsOptional(node.left.span, '??', typeText(left)));

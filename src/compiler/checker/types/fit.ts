@@ -35,7 +35,7 @@ import {
 } from './type.ts';
 import { parametersIn } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
-import { baseOf, hasMember, membersOf } from './unions.ts';
+import { absorbingMember, baseOf, hasMember, membersOf } from './unions.ts';
 
 /**
  * What converts a value itself, before it goes into a union: nothing, the conversion into an `any`
@@ -198,11 +198,18 @@ function intoAnyMember(
     : { conversion: { kind: 'any', to: only }, into: { union: expected, member: only } };
 }
 
-/** A member of `expected` that `member`, a member of a union found, goes into; or undefined. */
+/**
+ * A member of `expected` that `member`, a member of a union found, goes into: its own, its
+ * literal's base, or the `any` member that takes it whole (§2), which holds it as its own type; or
+ * undefined.
+ */
 function intoMember(member: Type, expected: UnionType, rules: ConversionRules): Type | undefined {
   return (
     ownMember(member, expected, rules) ??
-    (member.kind === 'literal' && hasMember(expected, baseOf(member)) ? baseOf(member) : undefined)
+    (member.kind === 'literal' && hasMember(expected, baseOf(member))
+      ? baseOf(member)
+      : undefined) ??
+    absorbingMember(expected.members, member, rules)
   );
 }
 

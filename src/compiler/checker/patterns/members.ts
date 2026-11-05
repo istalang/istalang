@@ -54,7 +54,11 @@ import { memberShape } from './shapes.ts';
  * still selects among all the members, and one selecting only those taken is unreachable.
  */
 export function unionPart(part: ValuePart): UnionType | undefined {
-  return part.narrowedFrom ?? (part.type.kind === 'union' ? part.type : undefined);
+  const from = part.narrowedFrom;
+  if (from?.kind === 'union') {
+    return from;
+  }
+  return from === undefined && part.type.kind === 'union' ? part.type : undefined;
 }
 
 /**
@@ -226,10 +230,10 @@ function candidates(
   const { members } = union;
   switch (node.kind) {
     case 'LiteralPattern':
-      return literalSelected(members, node.value);
+      return literalSelected(scope, members, node.value);
     case 'RangePattern': {
       const bound = node.start ?? node.end;
-      return bound === undefined ? [] : literalSelected(members, bound.value);
+      return bound === undefined ? [] : literalSelected(scope, members, bound.value);
     }
     case 'TuplePattern':
       return kindMembers(scope, { kind: 'tuple', count: node.elements.length }, members);
@@ -252,9 +256,13 @@ function candidates(
 }
 
 /** The members a literal pattern's value selects (types/named-types.ts `literalMembers`). */
-function literalSelected(members: readonly Type[], value: Expression): readonly Type[] {
+function literalSelected(
+  scope: PatternScope,
+  members: readonly Type[],
+  value: Expression,
+): readonly Type[] {
   const type = literalTypeOf(value);
-  return type === undefined ? [] : literalMembers(members, type);
+  return type === undefined ? [] : literalMembers(members, type, scope.typeRules);
 }
 
 /** The type a literal pattern's value has as a literal type, `None` for `none`, `Float` for a float. */

@@ -20,7 +20,13 @@ import type { PartStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { itemField } from '../struct-items.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
-import { errorType, type FieldMember, type Type, type UnionType } from '../types/type.ts';
+import {
+  type AnyType,
+  errorType,
+  type FieldMember,
+  type Type,
+  type UnionType,
+} from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 /** What a pattern reads and where it reports, in a body or in a top-level constant. */
@@ -75,9 +81,11 @@ export interface ValuePart<Step extends PartStep = PartStep> {
   readonly path: readonly Step[];
   /**
    * The union the value at `path` is of, when `type` is only some of its members, which earlier
-   * cases or a pattern left (§3.11): what tests a member and what a name binds read the union.
+   * cases or a pattern left (§3.11), or the `any` type it is of, when `type` is only some of the
+   * types it holds, which a pattern selected through it: what tests a member and what a name binds
+   * read it.
    */
-  readonly narrowedFrom?: UnionType | undefined;
+  readonly narrowedFrom?: UnionType | AnyType | undefined;
 }
 
 /**
