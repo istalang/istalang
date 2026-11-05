@@ -4,7 +4,7 @@
 # A type argument nothing decides can't be inferred (§3.5), a bare variant needs a type to be
 # expected (§3.11), and an alias of a union has no variants to qualify.
 
-enum Color { Red; Green }
+enum Color { Red, Green }
 
 fn empty<T>() -> T?:
   none

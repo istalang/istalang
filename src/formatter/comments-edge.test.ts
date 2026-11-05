@@ -17,7 +17,7 @@ const inputs = [
   'const x = [\n  # c\n]\n',
   'fn f(): foo( # c\n  a, b)\n',
   'struct S { # c\n  a: Int }\n',
-  'enum E { # c\n  A; B }\n',
+  'enum E { # c\n  A, B }\n',
   'fn f(): g( # c\n  1, fn(): {\n    a\n    b\n  })\n',
   '# only\n\n# comments\n',
   '@Suite{"s"}\n# comment\nfn f(): 1\n',

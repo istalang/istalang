@@ -4,7 +4,7 @@
  *
  * - Matching is exact, except at the top of a match, where a `T` may fill a `T?` (§2), a plain
  *   function an async one (§3.14), a one-element tuple and its element each other (§3.15), and a
- *   nominal struct's fields a shape, `T` of `{ x: T; y: T }` bound to `Int` by a `Pixel` (§3.1, §3.5):
+ *   nominal struct's fields a shape, `T` of `{ x: T, y: T }` bound to `Int` by a `Pixel` (§3.1, §3.5):
  *   a conversion applies to a whole value, never inside a collection or a function type.
  * - A type argument written is taken as given: what is matched has it in place before matching, so
  *   `f<Int?>(o)` for `fn f<T>(x: T?)` matches `Int?` against `Int?`, never `T` against what `None`

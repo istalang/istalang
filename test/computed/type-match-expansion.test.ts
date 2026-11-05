@@ -15,9 +15,9 @@ const endless = checkerDiagnostics.endlessTypeMatch('' as never, '').code;
 
 describe('a type match rebuilding its subject', () => {
   const rebuilt = [
-    'struct Node<T> { value: T; next: Array<Node<T>> }',
+    'struct Node<T> { value: T, next: Array<Node<T>> }',
     'type Data<D> = match D:',
-    '  case Node<infer T>: { value: T; next: Array<Data<Node<T>>> }',
+    '  case Node<infer T>: { value: T, next: Array<Data<Node<T>>> }',
     '  case _: D',
   ];
 
@@ -80,12 +80,12 @@ describe('a type match growing its subject', () => {
     ).toEqual([endless]);
     expect(
       codesOf(
-        'struct Node<T> { value: T; next: Array<Node<T>> }',
+        'struct Node<T> { value: T, next: Array<Node<T>> }',
         'type Even<D> = match D:',
-        '  case Node<infer T>: { value: T; next: Array<Odd<Node<T>>> }',
+        '  case Node<infer T>: { value: T, next: Array<Odd<Node<T>>> }',
         '  case _: D',
         'type Odd<D> = match D:',
-        '  case Node<infer T>: { value: T; next: Array<Even<Node<T>>> }',
+        '  case Node<infer T>: { value: T, next: Array<Even<Node<T>>> }',
         '  case _: D',
         'fn probe(x: Even<Node<Int>>): ()',
       ),
@@ -107,7 +107,7 @@ describe('an associated type whose body is a type `match`', () => {
       '  value: T',
       '  type Flat = match T:',
       '    case Box<infer U>: Box<U>.Flat',
-      '    case _: { leaf: T; next: Array<Flat> }',
+      '    case _: { leaf: T, next: Array<Flat> }',
       'fn f(x: Box<Box<Int>>.Flat) -> Int: x.leaf + x.next.length()',
     ];
     expect(runMain('Int', 'f(struct{leaf: 3, next: []})', flat)).toBe(3);

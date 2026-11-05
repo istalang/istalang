@@ -291,12 +291,12 @@ For the form and for each local def `d`, the generator emits:
 
 | Generated | Example (order form) |
 | --- | --- |
-| Params and ctx structs | `struct OrderParams: region: String`, `struct OrderCtx: params: OrderParams; user: User` |
-| The model struct: one node per top-level path | `struct OrderModel: country: Field<String>; city: Hidden<Field<String>>; items: List<OrderItemsRow>; …` |
-| Aliases for row and case types | `type OrderItemsRow = Group<{ sku: Field<String>; qty: Field<Int> }>` |
+| Params and ctx structs | `struct OrderParams: region: String`, `struct OrderCtx { params: OrderParams, user: User }` |
+| The model struct: one node per top-level path | `struct OrderModel { country: Field<String>, city: Hidden<Field<String>>, items: List<OrderItemsRow>, … }` |
+| Aliases for row and case types | `type OrderItemsRow = Group<{ sku: Field<String>, qty: Field<Int> }>` |
 | The data and scope types, computed | `type OrderData = Group<OrderModel>.Data`, `type OrderScope = Scope<Group<OrderModel>.Seen, OrderCtx>` |
 | The factory | `fn orderModel() -> Group<OrderModel>` |
-| Nested scope types | `type OrderScope1 = { data: …; ctx: OrderCtx; item: OrderItemsRow.Seen }` |
+| Nested scope types | `type OrderScope1 = { data: …, ctx: OrderCtx, item: OrderItemsRow.Seen }` |
 | The view | `fn orderView(m: OrderModel) -> any View<OrderScope>`; for a def, `fn addressView(m: AddressModel, k: String)`, with `k` prefixing its keys |
 | For the form only, the entry point | `async fn orderForm(params, user, events, views) -> Future<OrderData>` |
 
@@ -366,7 +366,7 @@ Every model node implements `FormNode`, with associated types `Data` and `Seen` 
 | `Field<T>` (shared) | `T` | `T?` | Holds the value, `touched`, `edited`, `parseError` |
 | `Group<S>` | `{ [F in keyof S]: S[F].Data }` (via `type match`) | the same, with `Seen` | |
 | `List<R>` (shared) | `Array<R.Data>` | `Array<R.Seen>` | Rows created from `make`; `sync` matches rows from data by key |
-| `Variant<C>` | `{ tag: keyof C; value: { [K in keyof C]: C[K].Data? } }` | `{ tag: (keyof C)?; value: { [K in keyof C]: C[K].Seen? } }` | The tag is a `Field<keyof C>` |
+| `Variant<C>` | `{ tag: keyof C, value: { [K in keyof C]: C[K].Data? } }` | `{ tag: (keyof C)?, value: { [K in keyof C]: C[K].Seen? } }` | The tag is a `Field<keyof C>` |
 | `Hidden<N>` (shared) | `N.Data?` | `N.Seen?` | Drawing sets `shown` when any writer is drawn |
 | `Local<N>` (shared) | `None` | `N.Seen` | Kept out of the output |
 | `Dynamic` (shared) | `String` (JSON) | `None` | A mounted dynamic form's data, opaque |
@@ -442,7 +442,7 @@ The design uses Istalang as the guide describes it: structs, enums, generics, tr
 | # | Feature | Used for | Example | Fallback |
 | --- | --- | --- | --- | --- |
 | 1 | Mapped struct literal: build a value field by field | `Group.seen()`, `read()` | `{ for f, node in ...self.fields: [f]: node.seen() }` | None found: needed to stay generic |
-| 2 | A mapped type indexed by the union of its keys yields a union | `Variant<C>.Data` | `{ [K in keyof C]: { case: K; value: … } }[keyof C]` | A struct `{ case: keyof C; value: { [K in keyof C]: …? } }` |
+| 2 | A mapped type indexed by the union of its keys yields a union | `Variant<C>.Data` | `{ [K in keyof C]: { case: K, value: … } }[keyof C]` | A struct `{ case: keyof C, value: { [K in keyof C]: …? } }` |
 | 3 | Reading a struct field with a union-typed key value | `Variant.read()` | `self.cases[k]` where `k: keyof C` | A field loop with `if f == k` |
 | 4 | Indexed access on a type by a literal key | Variant case scopes | `Group<OrderPaymentCases["card"]>.Seen` | Generate a named alias per case |
 | 5 | Top-level type aliases, including generic ones | Row, case, data and scope types | `type OrderData = Group<OrderModel>.Data` | Associated types on a generated struct |
@@ -455,7 +455,7 @@ The design uses Istalang as the guide describes it: structs, enums, generics, tr
 | 12 | Structural `==` on structs and computed types | A task re-runs when its scope changes; the loop stops redrawing when `data` stops changing | `if task->sc != sc: …` | Compare JSON strings |
 | 13 | Parsing JSON into literal unions and computed types | Events set a tag; snapshots | `json.parse<"card" \| "wire">(v)` | Parse a string, then match |
 | 14 | Recursive types through generic containers | A def mounting itself | `struct CategoryModel: children: List<Group<CategoryModel>>` | None needed if supported |
-| 15 | Struct constraints satisfied by nested anonymous structs of generic nodes | `Group<{ a: Field<String>; b: Hidden<Field<Int>> }>` | `S is struct { [_] is FormNode }` | None found |
+| 15 | Struct constraints satisfied by nested anonymous structs of generic nodes | `Group<{ a: Field<String>, b: Hidden<Field<Int>> }>` | `S is struct { [_] is FormNode }` | None found |
 | 16 | Implicit conversion of a shared struct to `any Trait` it implements | `hide: m.city` into `(any Showable)?` | | An explicit conversion call |
 | 17 | Empty struct declarations | Params of a def with none | `struct CategoryParams {}` | A `Unit` field |
 | 18 (nice to have) | Lambda parameter types inferred from the expected type | Shorter generated code | | Already spelled out |
@@ -769,8 +769,8 @@ struct OrderModel:
     payment: Variant<OrderPaymentCases>
     note: Hidden<Field<String>>
 
-type OrderItemsRow = Group<{ sku: Field<String>; qty: Field<Int> }>
-type OrderPaymentCases = { card: Group<{ last4: Field<String> }>; wire: Group<{ iban: Field<String> }> }
+type OrderItemsRow = Group<{ sku: Field<String>, qty: Field<Int> }>
+type OrderPaymentCases = { card: Group<{ last4: Field<String> }>, wire: Group<{ iban: Field<String> }> }
 
 # Computed, not declared: what submit returns, and what expressions see.
 type OrderData = Group<OrderModel>.Data
@@ -785,9 +785,9 @@ fn orderModel() -> Group<OrderModel>:
         note: new Hidden<Field<String>>{node: new Field<String>{}},
     }}
 
-type OrderScope1 = { data: Group<OrderModel>.Seen; ctx: OrderCtx; item: OrderItemsRow.Seen }
-type OrderScope2 = { data: Group<OrderModel>.Seen; ctx: OrderCtx; p: OrderPaymentCases["card"].Seen }
-type OrderScope3 = { data: Group<OrderModel>.Seen; ctx: OrderCtx; p: OrderPaymentCases["wire"].Seen }
+type OrderScope1 = { data: Group<OrderModel>.Seen, ctx: OrderCtx, item: OrderItemsRow.Seen }
+type OrderScope2 = { data: Group<OrderModel>.Seen, ctx: OrderCtx, p: OrderPaymentCases["card"].Seen }
+type OrderScope3 = { data: Group<OrderModel>.Seen, ctx: OrderCtx, p: OrderPaymentCases["wire"].Seen }
 
 fn orderView(m: OrderModel) -> any View<OrderScope>:
     LayoutView<OrderScope>{
@@ -956,7 +956,7 @@ async fn orderForm(params: OrderParams, user: User,
 fn isBlocked(country: String?) -> Bool:
     country == "kp" or country == "ir"
 
-fn totalQty(items: Array<{ sku: String?; qty: Int? }>) -> Int:
+fn totalQty(items: Array<{ sku: String?, qty: Int? }>) -> Int:
     let total = 0
     for item in items: total += item.qty ?? 0
     total

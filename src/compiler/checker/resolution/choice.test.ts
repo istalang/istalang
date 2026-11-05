@@ -125,7 +125,7 @@ const cases: readonly ChoiceCase[] = [
   {
     rule: 'a bare variant fits an optional enum parameter',
     overloads: [
-      'enum Color { Red; Blue }\nfn f(a: Color?) -> Bool: true',
+      'enum Color { Red, Blue }\nfn f(a: Color?) -> Bool: true',
       'fn f(a: Int?) -> String: "c"',
     ],
     call: 'f(Red)',

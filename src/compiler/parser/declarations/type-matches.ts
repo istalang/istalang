@@ -63,9 +63,14 @@ function parseCasePattern(parser: Parser): CasePattern {
   return cursor.at('struct') ? parseStructConstraint(parser) : parser.type();
 }
 
-const typeCaseRules: ItemRules<TypeCase> = { parseItem: parseTypeCase, annotate: undefined };
+const typeCaseRules: ItemRules<TypeCase> = {
+  parseItem: parseTypeCase,
+  separator: 'lineBreak',
+  annotate: undefined,
+};
 
 const caseTypeRules: ItemRules<TypeNode> = {
   parseItem: (parser) => parser.type(),
+  separator: 'lineBreak',
   annotate: undefined,
 };

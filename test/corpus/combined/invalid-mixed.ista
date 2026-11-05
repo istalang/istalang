@@ -5,7 +5,7 @@
 # capturing a `&`, and an unused Result.
 enum Shape:
   Circle { r: Int }
-  Rect { w: Int; h: Int }
+  Rect { w: Int, h: Int }
 
 fn area(s: Shape) -> Int:
   match s:

@@ -19,8 +19,8 @@ struct Wrapped<T>:
 
 enum Chain<T>:
   End
-  Link { head: T; tail: Chain<T> }
-  Deeper { head: T; tail: Chain<Array<T>> }
+  Link { head: T, tail: Chain<T> }
+  Deeper { head: T, tail: Chain<Array<T>> }
 
 struct Ping<T>:
   pong: Pong<T>?

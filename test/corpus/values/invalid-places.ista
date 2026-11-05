@@ -18,7 +18,7 @@
 # callee takes a reference, of exactly its type (a receiver `&self` takes too), and only as an
 # argument.
 
-struct Point { x: Int; y: Int }
+struct Point { x: Int, y: Int }
 
 fn grow(self: &Point, by: Int):
   self.x += by

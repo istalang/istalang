@@ -7,8 +7,8 @@ import { expectedTypeAt, expectedVariants } from './expected.ts';
 import { placeAt } from './place.ts';
 
 const declarations = [
-  'enum Color { Red; Green }',
-  'struct Cfg { color: Color; n: Int; note: String }',
+  'enum Color { Red, Green }',
+  'struct Cfg { color: Color, n: Int, note: String }',
   'fn paint(c: Color, n: Int) -> Int: n',
   'fn show(cfg: Cfg) -> Int: cfg.n',
   '',

@@ -20,7 +20,7 @@ import {
 describe('a rest through a union member an instantiation collapses', () => {
   it('reads the member’s value whether the union collapsed or not', () => {
     const declarations = [
-      'struct Pair { first: Int; second: Int; third: Int }',
+      'struct Pair { first: Int, second: Int, third: Int }',
       'fn matchRestG<T>(x: T | Pair) -> Int:',
       '  match x:',
       '    case Pair{first, ...rest}: first + rest.second + rest.third',
@@ -49,7 +49,7 @@ describe('a rest through a union member an instantiation collapses', () => {
 describe('a struct that is also iterable', () => {
   it('iterates with `for x in s` and loops over its fields with `for k, v in ...s`', () => {
     const declarations = [
-      'struct Pairs { b: (Int, String); a: (Int, String) }',
+      'struct Pairs { b: (Int, String), a: (Int, String) }',
       'fn iterate(self: Pairs) -> fn() -> Step<Int>:',
       '  let done = false',
       '  fn next() -> Step<Int>:',
@@ -84,8 +84,8 @@ describe('every computed construct over a generated struct', () => {
         const sorted = [...fields].sort((one, other) => compareOrdered(one.name, other.name));
         const spelled = (field: (typeof fields)[number]) => `${field.name}: ${field.type}`;
         const declarations = [
-          `struct Gen { ${fields.map(spelled).join('; ')} }`,
-          `type ShapeGen = { ${fields.toReversed().map(spelled).join('; ')} }`,
+          `struct Gen { ${fields.map(spelled).join(', ')} }`,
+          `type ShapeGen = { ${fields.toReversed().map(spelled).join(', ')} }`,
           'type MappedGen = { [K in keyof Gen]: Gen[K] }',
         ];
         const keys = sorted.map((field) => `"${field.name}"`).join(' | ');
@@ -139,8 +139,8 @@ describe('generic code over computed types, instantiated', () => {
           line.replace('$', 'M').replaceAll(/\bT\b/gu, `(${type})`),
         );
         const declarations = [
-          'struct Box<V> { v: V; type Data = V }',
-          'struct Pair<V> { b: V; a: Int }',
+          'struct Box<V> { v: V, type Data = V }',
+          'struct Pair<V> { b: V, a: Int }',
           'type Unbox<D> = match D:',
           '  case Box<infer V>: V',
           '  case _: Never',

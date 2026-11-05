@@ -35,7 +35,7 @@ fn badObjectSafety(x: any FormNode): ()
 
 fn noSuch(x: Field<Int>.Missing): ()
 
-fn twoOthers<S is struct { [_]: Int; [_]: Int }>(s: S): ()
+fn twoOthers<S is struct { [_]: Int, [_]: Int }>(s: S): ()
 
 fn badUses():
   needStruct(123)

@@ -40,7 +40,7 @@ type OnlyField<D> = match D:
 type Endless<T> = match T:
   case _: Endless<Array<T>>
 
-struct Settings { retries: Int; region: String }
+struct Settings { retries: Int, region: String }
 
 fn needStruct<S is struct { [_] is FormNode }>(s: S): ()
 fn inferAssoc<T>(x: Field<T>.Data) -> T: x

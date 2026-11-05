@@ -7,7 +7,7 @@
 # a container and its element, or an element and its own container as `&self`. Places of different
 # variables, and one variable twice without elements, are fine.
 
-struct Point { x: Int; y: Int }
+struct Point { x: Int, y: Int }
 
 fn swap(first: &Int, second: &Int):
   const kept = first

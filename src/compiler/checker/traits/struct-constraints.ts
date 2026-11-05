@@ -1,5 +1,5 @@
 /**
- * Struct constraints (§3.5): `struct { title: String; [_] is FormNode }` after `is`, resolved
+ * Struct constraints (§3.5): `struct { title: String, [_] is FormNode }` after `is`, resolved
  * where it is written into what it asks of a struct's fields (types/struct-constraint.ts).
  *
  * - A constraint is open: it states the fields its entries name, in name order as every struct's

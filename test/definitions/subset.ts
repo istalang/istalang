@@ -17,7 +17,7 @@ import {
   valueArgument as v,
 } from './fixture-kit.ts';
 
-export const subsetSource = `struct Point { x: Int; y: Int }
+export const subsetSource = `struct Point { x: Int, y: Int }
 
 fn fib(n: Int) -> Int:
   if n < 2:

@@ -16,11 +16,11 @@
 # function's name before `?.(` or `->` is its value, never the call of an enclosing async fn,
 # which only a `.` reads (§7).
 
-struct Address { city: String; tags: Array<String> }
+struct Address { city: String, tags: Array<String> }
 
 struct Person { address: Address? }
 
-shared struct Node { value: Int; next: Node? = none }
+shared struct Node { value: Int, next: Node? = none }
 
 fn rename(self: &Address, city: String):
   self.city = city

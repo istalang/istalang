@@ -4,7 +4,7 @@
 import * as time from 'time'
 import * as runtime from 'runtime'
 
-struct Acc { items: Array<Int>; seen: Map<String, Int> }
+struct Acc { items: Array<Int>, seen: Map<String, Int> }
 
 fn makeCounter(start: Int) -> fn() -> Int:
   let count = start

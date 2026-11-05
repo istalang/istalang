@@ -31,6 +31,7 @@ const {
   expectedIndentedBlock,
   semicolonAfterInlineBody,
   blockWithoutSemicolon,
+  commaBetweenStatements,
   topLevelStatement,
   declarationInBlock,
   danglingAnnotation,
@@ -106,10 +107,7 @@ describe('if chains (§4)', () => {
 
   it('keeps a line it crossed to when speculation fails', () => {
     const text = lines('fn f():', '    x, if c: a', '    else: b');
-    expect(reported('module', text)).toEqual({
-      codes: [expected.code, expected.code],
-      spanTexts: [',', 'else'],
-    });
+    expect(reported('module', text)).toEqual(reportedOnce(commaBetweenStatements.code, ','));
   });
 
   it('leaves an else at another column to the enclosing block', () => {

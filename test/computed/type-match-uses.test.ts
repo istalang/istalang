@@ -17,10 +17,10 @@ import { codesOf, resolveWrittenTypes, runMain, spelledTypeOf } from './computed
 
 /** `Data<D>` is recursive for a `Node`, which holds nodes, and plain for a `Leaf`. */
 const dataDecls = [
-  'struct Node<T> { value: T; next: Array<Node<T>> }',
+  'struct Node<T> { value: T, next: Array<Node<T>> }',
   'struct Leaf<T> { value: T }',
   'type Data<D> = match D:',
-  '  case Node<infer T>: { value: T; next: Array<Data<D>> }',
+  '  case Node<infer T>: { value: T, next: Array<Data<D>> }',
   '  case Leaf<infer T>: { value: T }',
 ];
 
@@ -131,7 +131,7 @@ describe('a `struct{…}` literal passed as a call argument', () => {
       runMain(
         'Int',
         'g(struct{a: [], b: struct{c: none}}) + g(struct{a: [1, 2], b: struct{c: none}})',
-        ['fn g(x: { a: Array<Int>; b: { c: Int? } }) -> Int: x.a.length() + (x.b.c ?? 1)'],
+        ['fn g(x: { a: Array<Int>, b: { c: Int? } }) -> Int: x.a.length() + (x.b.c ?? 1)'],
       ),
     ).toBe(4);
   });
@@ -144,7 +144,7 @@ describe('a `struct{…}` literal passed as a call argument', () => {
       '  case Field<infer T>: T',
       '  case Many<infer R>: Array<TreeOf<R>>',
       '  case struct: { [F in keyof D]: TreeOf<D[F]> }',
-      'struct Tree { label: Field<String>; children: Many<Tree> }',
+      'struct Tree { label: Field<String>, children: Many<Tree> }',
       'fn count(t: TreeOf<Tree>) -> Int:',
       '  let total = 1',
       '  for child in t.children:',
@@ -170,7 +170,7 @@ describe('a `struct{…}` literal passed as a call argument', () => {
           selector: ([name]) => name,
         }),
         (fields) => {
-          const shape = `{ ${fields.map(([name, f]) => `${name}: ${f.type}`).join('; ')} }`;
+          const shape = `{ ${fields.map(([name, f]) => `${name}: ${f.type}`).join(', ')} }`;
           const literal = `struct{${fields.map(([name, f]) => `${name}: ${f.literal}`).join(', ')}}`;
           const total = fields.map(([name, f]) => f.length.replace('x.f', `x.${name}`)).join(' + ');
           const decls = [`fn g(x: ${shape}) -> Int: ${total}`];

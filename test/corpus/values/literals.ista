@@ -2,7 +2,7 @@
 # Struct literals in every form (§3.1): named, shorthand, positional, a spread update, struct{…}
 # taking the expected type or making a type of its own, and a struct without fields written bare.
 
-struct Point { x: Int; y: Int }
+struct Point { x: Int, y: Int }
 
 struct UserId { value: String }
 

@@ -49,7 +49,7 @@ describe('completion', () => {
   });
 
   it("offers an alias's statics and variants, and an alias of a shape as a static's owner (§3.17)", () => {
-    const point = ['type Point = { x: Int; y: Int }', 'type Spot = { y: Int; x: Int }', ''];
+    const point = ['type Point = { x: Int, y: Int }', 'type Spot = { y: Int, x: Int }', ''];
     const origin = 'fn Point.origin() -> Point: Point{x: 0, y: 0}';
     expect(names(...point, origin, 'fn f() -> Spot: Spot.or‸igin()')).toContain('origin');
     const color = ['enum Color:', '  Red', '  Green', 'type Hue = Color', ''];
@@ -212,7 +212,7 @@ describe('completion', () => {
     const decision = [
       'enum Decision:',
       '  Approved { by: String }',
-      '  Rejected { by: String; reason: String }',
+      '  Rejected { by: String, reason: String }',
       '',
     ];
     expect(fields(...decision, 'fn f() -> Decision: Rejected{by: "x", ‸}')).toEqual(['reason']);

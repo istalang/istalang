@@ -5,8 +5,8 @@
 trait Sized:
   size: Int
 
-struct Box { label: String; size: Int }
-struct Pair { size: Int; first: String }
+struct Box { label: String, size: Int }
+struct Pair { size: Int, first: String }
 
 fn sizeOf<T is Sized>(value: T) -> Int:
   value.size

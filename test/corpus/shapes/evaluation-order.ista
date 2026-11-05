@@ -3,13 +3,13 @@
 # a literal evaluates its values as written, whichever order the shape or struct lists its fields,
 # and a struct's value converted into its shape keeps each value with its field's name.
 
-struct Late { z: Int; a: Int }
+struct Late { z: Int, a: Int }
 
 fn next(counter: &Int) -> Int:
   counter += 1
   counter
 
-fn keys(p: { a: Int; z: Int }) -> String:
+fn keys(p: { a: Int, z: Int }) -> String:
   "" + p.a + " " + p.z
 
 async fn main():

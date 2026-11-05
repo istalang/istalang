@@ -5,10 +5,10 @@
 # error union, and type-parameter inference against a union.
 
 type Status = "draft" | "sent" | "failed"
-type Point = { x: Int; y: Int }
-struct Pixel { x: Int; y: Int }
+type Point = { x: Int, y: Int }
+struct Pixel { x: Int, y: Int }
 struct Email { to: String }
-enum Color { Red; Green }
+enum Color { Red, Green }
 struct NotFound { id: String }
 struct Timeout { ms: Int }
 

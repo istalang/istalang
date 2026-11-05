@@ -69,7 +69,7 @@ describe('typeText', () => {
 
   describe('a type written through an alias (§3.17)', () => {
     const aliases = [
-      'struct Pair<A, B> { first: A; second: B }',
+      'struct Pair<A, B> { first: A, second: B }',
       'type Cents = Int',
       'type Labeled<T> = Pair<String, T>',
       'type Job = sendable fn() -> Int',

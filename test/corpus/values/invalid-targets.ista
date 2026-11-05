@@ -13,9 +13,9 @@
 # target names a struct of the value's own type, and fields it has. An assignment writes each
 # place once: not twice, nor whole and in part, through a handle as on a variable (§3.18).
 
-struct Point { x: Int; y: Int }
-struct Pair { first: Int; second: Int }
-shared struct Cell { a: Int; b: Int }
+struct Point { x: Int, y: Int }
+struct Pair { first: Int, second: Int }
+shared struct Cell { a: Int, b: Int }
 
 fn subject(n: Int, o: Int?):
   const 1 = n

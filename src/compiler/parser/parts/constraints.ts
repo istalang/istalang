@@ -30,14 +30,18 @@ export function parseConstraints(parser: Parser): ConstraintNode[] {
   return constraints;
 }
 
-/** `struct`, or `struct { title: String; [_] is FormNode }`, at `struct`. */
+/** `struct`, or `struct { title: String, [_] is FormNode }`, at `struct`. */
 export function parseStructConstraint(parser: Parser): StructConstraint {
   const { start } = parser.cursor.advance().span;
   const entries = parser.cursor.at('{') ? parseItemEntries(parser, entryRules).value : [];
   return { kind: 'StructConstraint', span: parser.spanFrom(start), entries };
 }
 
-const entryRules: ItemRules<FieldEntry> = { parseItem: parseConstraintEntry, annotate: undefined };
+const entryRules: ItemRules<FieldEntry> = {
+  parseItem: parseConstraintEntry,
+  separator: ',',
+  annotate: undefined,
+};
 
 /** `name: Type`, `name is C`, `[_]: Type` or `[_] is C`. */
 export function parseConstraintEntry(parser: Parser): FieldEntry {

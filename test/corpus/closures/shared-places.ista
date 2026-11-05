@@ -3,7 +3,7 @@
 # passed by `&`, or changed by a method taking `&self`, it is copied in and written back when the
 # call returns. A whole `*x` is written alone, assigned on its own or among other targets.
 
-struct Counter { n: Int; items: Array<String> }
+struct Counter { n: Int, items: Array<String> }
 
 fn bump(n: &Int):
   n += 1

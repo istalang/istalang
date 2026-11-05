@@ -5,7 +5,7 @@
  * matter, `parseEnclosedIn`), so trailing commas (§2), line-break rules (§2) and recovery
  * behave the same everywhere. A caller names only the opener; its closer comes from `openers`
  * (brackets.ts). The closer is consumed inside the construct's own region, so a closer on a line of
- * its own still closes it. Lists of items separated by `;` or line breaks are layout's (layout.ts).
+ * its own still closes it. Blocks, whose items line breaks separate, are layout's (layout/index.ts).
  *
  * Recovery:
  * - It skips to the next separator, the construct's closer, or a line break.
@@ -128,12 +128,12 @@ export function parseCommaSeparated<Item>(
     const before = cursor.index;
     const reported = parser.diagnostics.length;
     items.push(parseItem());
-    if (!(cursor.at(',') || atRegionEnd(parser))) {
+    if (!(atListSeparator(parser) || atRegionEnd(parser))) {
       items.push(
-        ...skipUnexpected(parser, reported, `',' or ${describeCloser(cursor.closer)}`, [',']),
+        ...skipUnexpected(parser, reported, `',' or ${describeCloser(cursor.closer)}`, [',', ';']),
       );
     }
-    if (cursor.eat(',') === undefined || cursor.index === before) {
+    if (!eatListSeparator(parser) || cursor.index === before) {
       break;
     }
     separated = true;
@@ -141,16 +141,48 @@ export function parseCommaSeparated<Item>(
   return { items, separated };
 }
 
+/** Whether a `,` comes next, or a `;` read as one where it stands between a list's items (§2). */
+function atListSeparator(parser: Parser): boolean {
+  return parser.cursor.at(',') || parser.cursor.at(';');
+}
+
+/** Consumes a `,`, or a `;` in its place, reported once: `;` separates only statements (§2). */
+function eatListSeparator(parser: Parser): boolean {
+  const semicolon = parser.cursor.eat(';');
+  if (semicolon !== undefined) {
+    parser.report(parserDiagnostics.semicolonBetweenItems(semicolon.span));
+    return true;
+  }
+  return parser.cursor.eat(',') !== undefined;
+}
+
 /**
- * After an item of a `;`- or line-separated list: reports and skips whatever stands before the
- * next `;` or the end of the region, unless an error since `reported` already explains it.
+ * What separates two items of a block on one line (layout/index.ts): `;` between statements, `,`
+ * between a list's items, and only a line break between cases (§2).
  */
-export function skipToSeparator(parser: Parser, reported: number): Invalid[] {
-  if (parser.cursor.at(';') || atRegionEnd(parser)) {
+export type ItemSeparator = ';' | ',' | 'lineBreak';
+
+/**
+ * After an item of a block (layout/index.ts): reports and skips whatever stands before the next
+ * separator or the end of the region, unless an error since `reported` already explains it.
+ * Where `separator` separates items, the other kind stops the skip too: layout reports it as
+ * misplaced, so one wrong separator costs one diagnostic.
+ */
+export function skipToSeparator(
+  parser: Parser,
+  reported: number,
+  separator: ItemSeparator,
+): Invalid[] {
+  const stops: readonly CursorKind[] = separator === 'lineBreak' ? [] : [';', ','];
+  if (stops.includes(parser.cursor.kind) || atRegionEnd(parser)) {
     return [];
   }
-  const expected = `';', a line break or ${describeCloser(parser.cursor.closer)}`;
-  return skipUnexpected(parser, reported, expected, [';']);
+  const closer = describeCloser(parser.cursor.closer);
+  const expected =
+    separator === 'lineBreak'
+      ? `a line break or ${closer}`
+      : `'${separator}', a line break or ${closer}`;
+  return skipUnexpected(parser, reported, expected, stops);
 }
 
 /** Whether the next token ends the current region: its closer, an enclosing closer, a line break, or the end. */

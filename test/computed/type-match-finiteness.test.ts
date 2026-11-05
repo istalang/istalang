@@ -74,7 +74,7 @@ describe('a recursive type match use', () => {
   it('ending in an optional or a collection checks and runs', () => {
     const declarations = [
       'type Q<T> = match T:',
-      '  case _: { a: Q<T>?; rest: Array<Q<T>> }',
+      '  case _: { a: Q<T>?, rest: Array<Q<T>> }',
       'fn depth(q: Q<Int>) -> Int:',
       '  match q.a:',
       '    case none: 1',

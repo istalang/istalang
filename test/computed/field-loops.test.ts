@@ -44,14 +44,14 @@ describe('a field loop', () => {
       '  order.push(`${k}=${v}`)',
       'order.join(",")',
     ];
-    const declarations = ['struct Misordered { z: Int; a: Int; m: Int }'];
+    const declarations = ['struct Misordered { z: Int, a: Int, m: Int }'];
     expect(runText(visit('Misordered{z: 1, a: 2, m: 3}'), declarations)).toBe('a=2,m=3,z=1');
     expect(runText(visit('struct{z: 1, a: 2, m: 3}'), declarations)).toBe('a=2,m=3,z=1');
   });
 
   it("checks its body once per field, each pass choosing that field's overload", () => {
     const declarations = [
-      'struct Mixed { s: String; n: Int }',
+      'struct Mixed { s: String, n: Int }',
       'fn show(x: Int) -> String: `int ${x}`',
       'fn show(x: String) -> String: `str ${x}`',
     ];
@@ -67,7 +67,7 @@ describe('a field loop', () => {
   it('runs over a constrained type parameter: its named entries, then the others', () => {
     const declarations = [
       ...formDeclarations,
-      'fn names<S is struct { title: String; [_] is FormNode }>(form: S) -> Array<String>:',
+      'fn names<S is struct { title: String, [_] is FormNode }>(form: S) -> Array<String>:',
       '  let out: Array<String> = []',
       '  for k, _ in ...form:',
       '    out.push(k)',
@@ -84,7 +84,7 @@ describe('a field loop', () => {
   it('matches its key by literal patterns in every pass, the others pass too', () => {
     const declarations = [
       ...formDeclarations,
-      'fn tags<S is struct { title: String; [_] is FormNode }>(form: S) -> Array<String>:',
+      'fn tags<S is struct { title: String, [_] is FormNode }>(form: S) -> Array<String>:',
       '  let out: Array<String> = []',
       '  for k, _ in ...form:',
       '    match k:',
@@ -102,7 +102,7 @@ describe('a field loop', () => {
   });
 
   it('runs over no field of an empty struct, and over the value behind a shared struct', () => {
-    const declarations = ['struct Empty', 'shared struct SharedPair { b: Int; a: Int }'];
+    const declarations = ['struct Empty', 'shared struct SharedPair { b: Int, a: Int }'];
     const lines = [
       'let count: Int = 0',
       'for _, _ in ...Empty:',
@@ -119,7 +119,7 @@ describe('a field loop', () => {
   it('is a loop: break, continue, labels, await and a destructured value', () => {
     const declarations = [
       "import * as runtime from 'runtime'",
-      'struct Pairs { c: (Int, String); b: (Int, String); a: (Int, String) }',
+      'struct Pairs { c: (Int, String), b: (Int, String), a: (Int, String) }',
     ];
     const lines = [
       'const pairs = Pairs{c: (3, "three"), b: (2, "two"), a: (1, "one")}',
@@ -137,7 +137,7 @@ describe('a field loop', () => {
   });
 
   it('makes a lambda per pass, capturing that pass key and value', () => {
-    const declarations = ['struct Pair { b: String; a: Int }'];
+    const declarations = ['struct Pair { b: String, a: Int }'];
     const lines = [
       'let made: Array<fn() -> String> = []',
       'for k, v in ...Pair{b: "x", a: 1}:',
@@ -149,7 +149,7 @@ describe('a field loop', () => {
 
   it("has a single key: y[key] reads and writes the field it names in y's type", () => {
     const declarations = [
-      'struct Counts { b: Int; a: Int }',
+      'struct Counts { b: Int, a: Int }',
       'fn doubled<S is struct { [_]: Int }>(s: S) -> S:',
       '  let out = s',
       '  for k, v in ...s:',
@@ -177,7 +177,7 @@ describe('a field loop', () => {
   });
 
   it('reports an `if` in its header once, in a loop and in each comprehension alike', () => {
-    const struct = 'struct P { a: Int; b: Int }';
+    const struct = 'struct P { a: Int, b: Int }';
     expect(codesOf(struct, 'fn f(p: P):', '  for k, v in ...p if v > 1:', '    ()')).toEqual([
       2037,
     ]);
@@ -191,7 +191,7 @@ describe('a field loop', () => {
 
   it('reports a mistake every pass makes alike once', () => {
     const lines = [
-      'struct P { b: Int; a: String }',
+      'struct P { b: Int, a: String }',
       'fn needs<T is Encodable>(t: T): ()',
       'fn f(p: P, made: fn() -> Int):',
       '  for _, _ in ...p:',
@@ -202,7 +202,7 @@ describe('a field loop', () => {
   });
 
   it("compares and matches its key with any field's name, warning of a case no pass reaches", () => {
-    const declarations = ['struct P { b: Int; a: Int }'];
+    const declarations = ['struct P { b: Int, a: Int }'];
     const lines = [
       'let out = ""',
       'for k, v in ...P{b: 2, a: 1}:',
@@ -214,7 +214,7 @@ describe('a field loop', () => {
     ];
     expect(runText(lines, declarations)).toBe('first;second!;');
     const unreached = [
-      'struct P { b: Int; a: Int }',
+      'struct P { b: Int, a: Int }',
       'fn f(p: P) -> Int:',
       '  let total = 0',
       '  for k, _ in ...p:',
@@ -230,7 +230,7 @@ describe('a field loop', () => {
 describe('a field loop in an editor', () => {
   it("hovers its key and value as every pass's, joined", () => {
     const loop = (cursor: string) => [
-      'struct P { b: String; a: Int }',
+      'struct P { b: String, a: Int }',
       'fn f(p: P):',
       '  for k, v in ...p:',
       `    _ = ${cursor}`,
@@ -244,7 +244,7 @@ describe('the commute law of a field loop', () => {
   it('agrees: generic and instantiated, over the concrete struct, and written out by hand', () => {
     fc.assert(
       fc.property(generatedFieldsArbitrary, (fields) => {
-        const declared = fields.map((field) => `${field.name}: ${field.type}`).join('; ');
+        const declared = fields.map((field) => `${field.name}: ${field.type}`).join(', ');
         const value = `Generated{${fields.map((field) => `${field.name}: ${field.value}`).join(', ')}}`;
         const byHand = fields
           .map((field) => field.name)

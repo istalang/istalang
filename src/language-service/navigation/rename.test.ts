@@ -61,7 +61,7 @@ describe('renaming', () => {
 
   it("refuses a shape's field, and a struct's whose field names a shape has (§3.1)", () => {
     const { program, named } = navigable({
-      main: 'type Point = { x: Int; y: Int }\nstruct Pixel { y: Int; x: Int }\nshared struct Lease { name: String }\nfn f(v: { name: String }) -> String: v.name\nstruct Size { width: Int }\n',
+      main: 'type Point = { x: Int, y: Int }\nstruct Pixel { y: Int, x: Int }\nshared struct Lease { name: String }\nfn f(v: { name: String }) -> String: v.name\nstruct Size { width: Int }\n',
     });
     for (const use of [named('main', 'x'), named('main', 'x', 1), named('main', 'name')]) {
       expect(refusalOf(program, use)).toContain('shape');
@@ -72,9 +72,9 @@ describe('renaming', () => {
   it('renames the String literals that name a field as its key, and only those (§3.1)', () => {
     const { program, named } = navigable({
       main: [
-        'struct Settings { retries: Int; region: String; zone: String }',
+        'struct Settings { retries: Int, region: String, zone: String }',
         'type Retries = Settings["retries"]',
-        'struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }',
+        'struct Entry<S is struct, K in keyof S> { key: K, value: S[K] }',
         'type AnyEntry<S is struct> = { [K in keyof S]: Entry<S, K> }[keyof S]',
         'fn pick<S is struct, K in keyof S>(s: S, k: K) -> S[K]: s[k]',
         'fn read(s: Settings) -> String:',
@@ -101,8 +101,8 @@ describe('renaming', () => {
   it('renames a key given as a type argument, and one a literal pattern matches (§3.1, §4)', () => {
     const { program, named } = navigable({
       main: [
-        'struct Settings { retries: Int; region: String }',
-        'struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }',
+        'struct Settings { retries: Int, region: String }',
+        'struct Entry<S is struct, K in keyof S> { key: K, value: S[K] }',
         'fn kinds(s: Settings) -> String:',
         '  const e: Entry<Settings, "region"> = Entry{key: "region", value: "eu"}',
         '  let out = e.value',
@@ -123,7 +123,7 @@ describe('renaming', () => {
   it('renames a key in a union of keys, compared with a loop key, `is` it, or given for an explicit member', () => {
     const { program, named } = navigable({
       main: [
-        'struct Settings { retries: Int; region: String }',
+        'struct Settings { retries: Int, region: String }',
         'fn pick<S is struct, K in keyof S>(s: S, k: K) -> S[K]: s[k]',
         'fn either(x: Settings["retries" | "region"]) -> Settings["retries" | "region"]: x',
         'fn kinds(s: Settings) -> Int:',
@@ -146,8 +146,8 @@ describe('renaming', () => {
   it('renames a key given as a type argument to a struct literal, a call or an alias', () => {
     const { program, named } = navigable({
       main: [
-        'struct Settings { retries: Int; region: String }',
-        'struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }',
+        'struct Settings { retries: Int, region: String }',
+        'struct Entry<S is struct, K in keyof S> { key: K, value: S[K] }',
         'type Of<S is struct, K in keyof S> = Entry<S, K>',
         'fn pick<S is struct, K in keyof S>(s: S, k: K) -> S[K]: s[k]',
         'fn kinds(s: Settings, o: Of<Settings, "region">) -> String:',
@@ -189,7 +189,7 @@ describe('renaming', () => {
         '  title: String',
         '  body: String',
         '  id: Int',
-        'fn show<S is struct { title: String; [_] is Stringable }>(s: S) -> String: s.title',
+        'fn show<S is struct { title: String, [_] is Stringable }>(s: S) -> String: s.title',
         'type IdOf<D> = match D:',
         '  case struct { id: infer K }: K',
         '',
@@ -253,13 +253,13 @@ describe('renaming', () => {
   });
 
   it("refuses a built-in type's name for a type or a variant", () => {
-    const { program, named } = navigable({ main: 'struct Foo {}\nenum Shade { Dark; Light }\n' });
+    const { program, named } = navigable({ main: 'struct Foo {}\nenum Shade { Dark, Light }\n' });
     for (const newName of ['Int', 'Never', 'Self']) {
       expect(renamed(program, named('main', 'Foo'), newName)).toMatchObject({ kind: 'refused' });
     }
     expect(renamed(program, named('main', 'Dark'), 'Bool')).toMatchObject({ kind: 'refused' });
     expect(renamed(program, named('main', 'Foo'), 'Bar')).toEqual({
-      main: 'struct Bar {}\nenum Shade { Dark; Light }\n',
+      main: 'struct Bar {}\nenum Shade { Dark, Light }\n',
     });
   });
 

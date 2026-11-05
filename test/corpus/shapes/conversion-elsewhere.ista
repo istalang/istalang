@@ -6,10 +6,10 @@ shared struct Lease:
   name: String
   renewals: Int = 0
 
-struct Plain { renewals: Int; name: String }
+struct Plain { renewals: Int, name: String }
 
-type Pt = { x: Int; y: Int }
-struct Px { y: Int; x: Int }
+type Pt = { x: Int, y: Int }
+struct Px { y: Int, x: Int }
 
 fn norm(p: Pt) -> Int: p.x * 10 + p.y
 

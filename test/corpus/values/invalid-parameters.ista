@@ -6,7 +6,7 @@
 # changed in part, passed by `&`, or the receiver of a method taking `&self`. A reference
 # parameter changes the caller's place, wholly or in part.
 
-struct Point { x: Int; y: Int }
+struct Point { x: Int, y: Int }
 fn grow(self: &Point, by: Int):
   self.x += by
 fn bump(n: &Int):

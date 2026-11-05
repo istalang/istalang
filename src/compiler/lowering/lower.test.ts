@@ -69,7 +69,7 @@ describe('default entries', () => {
   it("mark exactly the entries giving a parameter's or a field's default", () => {
     const program = stdProgramOf({
       main: [
-        'struct Retry { tries: Int = 3; backoff: Int = tries * 2 }',
+        'struct Retry { tries: Int = 3, backoff: Int = tries * 2 }',
         'fn wait(retry: Retry = Retry{}, times: Int = 1) -> Int: retry.backoff * times',
         'async fn main() -> Future<Int>:',
         '  wait()',
@@ -102,7 +102,7 @@ describe('extern keys', () => {
         'extern fn now() -> Int',
         'extern fn log(level: String, ...parts: Array<String>)',
       ].join('\n'),
-      geometry: 'struct Point { x: Int; y: Int }\nextern fn place(at: Point) -> Int',
+      geometry: 'struct Point { x: Int, y: Int }\nextern fn place(at: Point) -> Int',
     });
     expect(externKeys(program, 'shop/main')).toEqual([
       'shop/main.place(geometry.Point)',
@@ -136,7 +136,7 @@ describe('lowering', () => {
   it('lays out every kind of type a struct holds, extern types disposed as their dispose says', () => {
     const program = stdProgramOf({
       main: [
-        'struct Box { size: Int?; items: Array<Int>; next: Slot<Int> }',
+        'struct Box { size: Int?, items: Array<Int>, next: Slot<Int> }',
         'async fn main(): { const b = Box{size: panic("x"), items: panic("y"), next: panic("z")}; 1 }',
       ].join('\n'),
     });

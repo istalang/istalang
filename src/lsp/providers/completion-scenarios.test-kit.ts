@@ -49,11 +49,11 @@ shared struct Lease:
   name: String
   renewals: Int = 0
 
-enum Color { Red; Green; Blue }
+enum Color { Red, Green, Blue }
 
 enum Decision:
   Approved { by: String }
-  Rejected { by: String; reason: String }
+  Rejected { by: String, reason: String }
   Expired
 
 struct Cfg:
@@ -80,7 +80,7 @@ async fn work(n: Int) -> Future<Int>: n
 fn logAll(level: String, ...parts: Array<String>): 1
 fn _hidden() -> Int: 1
 type Id = String
-struct Opts { zeta: Int; alpha: Int = 1 }
+struct Opts { zeta: Int, alpha: Int = 1 }
 
 `;
 

@@ -3,21 +3,21 @@
 # visitation on nominal structs and shapes, ...*shared, evaluation order of named fields before
 # struct comprehension, and ...rest in declaration targets, match cases, and constrained generics.
 
-struct Misordered { z: Int; a: Int; m: Int }
-shared struct SharedCounters { b: Int; a: Int }
+struct Misordered { z: Int, a: Int, m: Int }
+shared struct SharedCounters { b: Int, a: Int }
 
 fn record(log: &Array<String>, step: String, v: Int) -> Int:
   log.push(step)
   v
 
-fn collect<S is struct { title: String; [_]: Int }>(form: S, data: { [F in keyof S]: S[F] }) -> String:
+fn collect<S is struct { title: String, [_]: Int }>(form: S, data: { [F in keyof S]: S[F] }) -> String:
   let out: Array<String> = []
   for k, _ in ...form:
     out.push(`${k}`)
   _ = data
   out.join(",")
 
-fn formatRest<S is struct { title: String; [_]: Int }>(s: S) -> String:
+fn formatRest<S is struct { title: String, [_]: Int }>(s: S) -> String:
   const struct{title, ...rest} = s
   const parts = [for k, v in ...rest: `${k}=${v}`]
   `${title}:${parts.join(",")}`

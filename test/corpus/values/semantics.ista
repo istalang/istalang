@@ -4,9 +4,9 @@
 # the caller's place: a variable, a field of one, or a tuple element. A copy of a top-level
 # constant changes without changing the constant.
 
-struct Point { x: Int; y: Int }
+struct Point { x: Int, y: Int }
 
-struct Box { point: Point; label: String }
+struct Box { point: Point, label: String }
 
 const origin = Point{x: 1, y: 1}
 

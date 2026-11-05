@@ -4,9 +4,9 @@
 # any member absorbed into it, nominal and shape kept apart, T? as T | None, T?? as T?, and collapse
 # after generic substitution.
 
-type Point = { x: Int; y: Int }
-struct Pixel { x: Int; y: Int }
-struct Chain { value: Int; rest: Chain | Int }
+type Point = { x: Int, y: Int }
+struct Pixel { x: Int, y: Int }
+struct Chain { value: Int, rest: Chain | Int }
 
 fn asIntOrString(x: String | Int | Never | Int) -> Int | String:
   x

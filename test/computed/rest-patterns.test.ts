@@ -36,7 +36,7 @@ function runText(lines: readonly string[], declarations: readonly string[]): unk
 describe('a rest over a struct whose fields are known', () => {
   it('binds the shape of the fields left, in targets, cases and `is`, in name order', () => {
     const declarations = [
-      'struct Page { views: Int; title: String; draft: Bool }',
+      'struct Page { views: Int, title: String, draft: Bool }',
       'fn summarize(p: Page) -> String:',
       '  match p:',
       '    case Page{title == "", ...rest}: `untitled:${rest.views}:${rest.draft}`',
@@ -66,7 +66,7 @@ describe('a rest over a struct whose fields are known', () => {
   it('is a shape: equal to the literal of its fields, sent as JSON, and taken by a loop target', () => {
     const declarations = [
       "import * as json from 'json'",
-      'struct Settings { retries: Int; region: String; debug: Bool }',
+      'struct Settings { retries: Int, region: String, debug: Bool }',
       'const struct{debug, ...base} = Settings{retries: 2, region: "eu", debug: true}',
       'fn total(xs: Array<Settings>) -> Int:',
       '  let n = 0',
@@ -77,7 +77,7 @@ describe('a rest over a struct whose fields are known', () => {
     const lines = [
       'const same = base == struct{region: "eu", retries: 2}',
       'const s = Settings{retries: 1, region: "us", debug: false}',
-      'const copy: { region: String; retries: Int } = struct{for k, v in ...base: [k]: v}',
+      'const copy: { region: String, retries: Int } = struct{for k, v in ...base: [k]: v}',
       '`${same}|${json.stringify(base)}|${total([s, s])}|${copy.region}|${debug}`',
     ];
     expect(runText(lines, declarations)).toBe('true|{"region":"eu","retries":2}|2|eu|true');
@@ -88,14 +88,14 @@ describe('a rest over a type parameter with a struct constraint', () => {
   it('takes the named fields by name and loops, comprehends and keys over the rest', () => {
     const declarations = [
       ...formDeclarations,
-      'fn fieldNames<S is struct { title: String; [_] is FormNode }>(form: S) -> Array<String>:',
+      'fn fieldNames<S is struct { title: String, [_] is FormNode }>(form: S) -> Array<String>:',
       '  const struct{title, ...rest} = form',
       '  [for field, _ in ...rest: `${title}.${field}`]',
-      'fn checked<S is struct { title: String; [_] is FormNode }>(form: S) -> Int:',
+      'fn checked<S is struct { title: String, [_] is FormNode }>(form: S) -> Int:',
       '  match form:',
       '    case struct{title == "", ...rest}: -1',
       '    case struct{...rest}: [for k, _ in ...rest: k].length()',
-      'fn viaKeys<S is struct { id: Int; [_]: Int }>(s: S) -> Int:',
+      'fn viaKeys<S is struct { id: Int, [_]: Int }>(s: S) -> Int:',
       '  const struct{id, ...rest} = s',
       '  let sum = id',
       '  for k, _ in ...rest:',
@@ -140,7 +140,7 @@ describe('a rest over a type parameter with a struct constraint', () => {
 
 describe('where a rest stands', () => {
   it('is the last item and the only one, and no variant takes one', () => {
-    const page = 'struct Page { title: String; body: String }';
+    const page = 'struct Page { title: String, body: String }';
     expect(
       codesOf(page, 'fn f(p: Page) -> String:', '  const Page{...rest, title} = p', '  title'),
     ).toEqual([2034]);
@@ -149,7 +149,7 @@ describe('where a rest stands', () => {
     ).toEqual([2034]);
     expect(
       codesOf(
-        'enum Shape { Circle { radius: Int }; Square { side: Int } }',
+        'enum Shape { Circle { radius: Int }, Square { side: Int } }',
         'fn f(s: Shape) -> Int:',
         '  match s:',
         '    case Circle{...rest}: 1',
@@ -160,7 +160,7 @@ describe('where a rest stands', () => {
 
   it('formats as written, last in its braces', () => {
     const source = [
-      'fn f(p: { a: Int; b: Int }) -> Int:',
+      'fn f(p: { a: Int, b: Int }) -> Int:',
       '  const struct{a,   ...rest} = p',
       '  match p:',
       '    case struct{b == 1, ..._}: a',
@@ -175,7 +175,7 @@ describe('where a rest stands', () => {
 
 /** The type each generated field is spelled with in a struct declaration. */
 function declared(fields: readonly GeneratedField[]): string {
-  return fields.map((field) => `${field.name}: ${field.type}`).join('; ');
+  return fields.map((field) => `${field.name}: ${field.type}`).join(', ');
 }
 
 /** The fields in name order, as every struct visits them (§3.1). */
@@ -209,7 +209,7 @@ describe('the commute law for rests', () => {
         ];
         const declarations = [
           `struct Generated { ${declared(fields)} }`,
-          `fn generic<S is struct { ${named.name}: ${named.type}; [_] is Stringable }>(s: S) -> String:`,
+          `fn generic<S is struct { ${named.name}: ${named.type}, [_] is Stringable }>(s: S) -> String:`,
           ...body('s'),
           'fn concrete(g: Generated) -> String:',
           ...body('g'),

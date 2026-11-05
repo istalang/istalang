@@ -25,7 +25,7 @@ const warnings = new Set([heldNoValue.code, decidedCondition.code, unreachableCa
 describe('a field loop over fields of different types', () => {
   it('matches each field by its type and its key, with nothing reported', () => {
     const declarations = [
-      'struct Mixed { a: Int; b: String; c: Bool }',
+      'struct Mixed { a: Int, b: String, c: Bool }',
       'fn describe(m: Mixed) -> String:',
       '  let out = ""',
       '  for k, v in ...m:',
@@ -206,7 +206,7 @@ describe('the commute law for ruled-out cases', () => {
 });
 
 function fieldList(fields: readonly GeneratedField[]): string {
-  return fields.map((f) => `${f.name}: ${f.type}`).join('; ');
+  return fields.map((f) => `${f.name}: ${f.type}`).join(', ');
 }
 
 function structOf(fields: readonly GeneratedField[]): string {

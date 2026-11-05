@@ -13,10 +13,10 @@ import { codesOf, hoverCodeAt, runMain } from './unions.test-kit.ts';
 
 const baseDecls = [
   'type Status = "draft" | "sent" | "failed"',
-  'type Point = { x: Int; y: Int }',
-  'struct Pixel { x: Int; y: Int }',
+  'type Point = { x: Int, y: Int }',
+  'struct Pixel { x: Int, y: Int }',
   'struct Email { to: String }',
-  'enum Color { Red; Green }',
+  'enum Color { Red, Green }',
   'fn toString(self: Email) -> String: "mail:" + self.to',
 ];
 

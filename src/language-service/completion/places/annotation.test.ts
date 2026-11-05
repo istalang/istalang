@@ -14,7 +14,7 @@ const declarations = [
   '  second: Int',
   'shared struct Lease:',
   '  name: String',
-  'enum Color { Red; Green }',
+  'enum Color { Red, Green }',
   'fn plus(a: Int) -> Int: a',
   '',
 ];

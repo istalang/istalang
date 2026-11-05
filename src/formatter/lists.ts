@@ -4,7 +4,7 @@
  * - items of a block, one per line, keeping one blank line where the source had any;
  * - comma lists in brackets, `()`, `[]` and a struct literal's `{}`, where line breaks mean nothing
  *   (spec §2): on one line when they fit, else one item per line with a trailing comma;
- * - field lists in braces, where a line break separates entries as `;` does.
+ * - field lists in braces, where a line break separates entries as `,` does.
  * Everywhere else a line break would end the construct, so nothing else here breaks a line.
  */
 
@@ -110,7 +110,7 @@ export function enclosed(
   ]);
 }
 
-/** Fields in braces: `{ a: Int; b: Int }` on one line, else one field per line. */
+/** Fields in braces: `{ a: Int, b: Int }` on one line, else one field per line. */
 export function fieldList(
   printer: Printer,
   owner: SyntaxNode,
@@ -126,7 +126,7 @@ export function fieldList(
       inside,
       line,
       join(
-        [ifBreak('', ';'), line],
+        [ifBreak('', ','), line],
         fields.map((field) => printer.print(field)),
       ),
     ]),

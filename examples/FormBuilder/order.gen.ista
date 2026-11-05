@@ -34,7 +34,7 @@ struct OrderModel:
   payment: Variant<OrderPaymentCases>
   note: Hidden<Field<String>>
 
-type OrderItemsRow = Group<{ sku: Field<String>; qty: Field<Int> }>
+type OrderItemsRow = Group<{ sku: Field<String>, qty: Field<Int> }>
 type OrderPaymentCases = {
   card: Group<{ last4: Field<String> }>
   wire: Group<{ iban: Field<String> }>
@@ -62,7 +62,7 @@ fn orderModel() -> Group<OrderModel>: Group{
   },
 }
 
-type OrderScope1 = { data: Group<OrderModel>.Seen; ctx: OrderCtx; item: OrderItemsRow.Seen }
+type OrderScope1 = { data: Group<OrderModel>.Seen, ctx: OrderCtx, item: OrderItemsRow.Seen }
 type OrderScope2 = {
   data: Group<OrderModel>.Seen
   ctx: OrderCtx

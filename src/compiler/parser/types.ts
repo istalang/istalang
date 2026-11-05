@@ -17,7 +17,7 @@
  * it is reported. Expressions follow the same rule for `&x` in call arguments.
  *
  * `T??` arrives as one `??` token and means `T?` twice. Fields of an anonymous struct are
- * separated by `;` or line breaks (§2). A function type without `->` returns unit, as
+ * separated by `,` or line breaks (§2). A function type without `->` returns unit, as
  * `Setup<E> = async fn(async fn(E))` in §10 shows.
  */
 
@@ -278,7 +278,7 @@ function parseAnyTrait(parser: Parser): TypeNode {
   return parser.placeholder();
 }
 
-/** `{ a: A; b: B }`, or the same after `struct`. */
+/** `{ a: A, b: B }`, or the same after `struct`. */
 function parseStructType(parser: Parser): TypeNode {
   const { start } = parser.cursor.token.span;
   return afterStructKeyword(parser, () => {

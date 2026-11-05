@@ -12,7 +12,7 @@ import { codesOf, compareWrittenTypes, runMain, sameComputedType } from './compu
 describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)', () => {
   const keyDecls = [
     'struct Empty',
-    'struct Settings { retries: Int; region: String }',
+    'struct Settings { retries: Int, region: String }',
     'struct Nested { inner: Settings }',
   ];
 
@@ -72,9 +72,9 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
 
   it('treats `s[k]` with a single key as a place (write, `+=`, `&s[k]` including to async fns, and `&self` methods), and supports multi-key writes', () => {
     const decls = [
-      'struct Lists { a: Array<Int>; b: Array<Int> }',
-      'struct Widened { a: Int?; b: Int | String }',
-      'struct Counts { x: Int; y: Int }',
+      'struct Lists { a: Array<Int>, b: Array<Int> }',
+      'struct Widened { a: Int?, b: Int | String }',
+      'struct Counts { x: Int, y: Int }',
       'async fn bumpAsync(target: &Int):',
       '  await runtime.commit()',
       '  target += 10',
@@ -115,7 +115,7 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
 
     expect(
       codesOf(
-        'struct Lists { a: Array<Int>; b: Array<Int> }',
+        'struct Lists { a: Array<Int>, b: Array<Int> }',
         'fn badMethodRef(s: Lists, k: keyof Lists):',
         '  let m = s',
         '  m[k].push(1)',
@@ -145,17 +145,17 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
     const declarations = [
       'trait Shown:',
       '  fn show(self: Self) -> String',
-      'fn member<T is struct { a: Int; [_]: Int }, K in keyof T>(t: &T, k: K) -> Int:',
+      'fn member<T is struct { a: Int, [_]: Int }, K in keyof T>(t: &T, k: K) -> Int:',
       '  t[k] += 1',
       '  t[k]',
-      'fn union<T is struct { a: Int; [_]: Int }>(t: T, k: keyof T) -> Int:',
+      'fn union<T is struct { a: Int, [_]: Int }>(t: T, k: keyof T) -> Int:',
       '  t[k]',
     ];
     expect(codesOf(...declarations)).toEqual([]);
     expect(
       runMain('Int', 'both(P{a: 1, b: 5})', [
         ...declarations,
-        'struct P { a: Int; b: Int }',
+        'struct P { a: Int, b: Int }',
         'fn both(given: P) -> Int:',
         '  let p = given',
         '  member(&p, "b") + union(p, "a")',
@@ -164,7 +164,7 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
     expect(
       codesOf(
         ...declarations,
-        'fn opaque<T is struct { a: Int; [_] is Shown }, K in keyof T>(t: T, k: K) -> Int:',
+        'fn opaque<T is struct { a: Int, [_] is Shown }, K in keyof T>(t: T, k: K) -> Int:',
         '  t[k]',
       ),
     ).toEqual([5001]);
@@ -173,8 +173,8 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
   it('reports an entry no member of `AnyEntry` takes as not fitting it, once', () => {
     expect(
       codesOf(
-        'struct Settings { retries: Int; region: String }',
-        'struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }',
+        'struct Settings { retries: Int, region: String }',
+        'struct Entry<S is struct, K in keyof S> { key: K, value: S[K] }',
         'type AnyEntry<S is struct> = { [K in keyof S]: Entry<S, K> }[keyof S]',
         'fn f() -> Int:',
         '  const c: AnyEntry<Settings> = Entry{key: "region", value: 3}',
@@ -197,7 +197,7 @@ describe('key types: `keyof S`, `S[K]`, `s[k]`, and `Entry` / `AnyEntry` (§8)',
         ].join('\n  '),
         [
           ...keyDecls,
-          'struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }',
+          'struct Entry<S is struct, K in keyof S> { key: K, value: S[K] }',
           'type AnyEntry<S is struct> = { [K in keyof S]: Entry<S, K> }[keyof S]',
           'trait Applies<S>:',
           '  fn apply(self: Self, target: &S)',

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-11-04
+last_updated: 2026-11-05
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
 
@@ -71,6 +71,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - Node fields hold only nodes, node arrays, optional nodes/arrays, a span or primitives, so `childrenOf` (`tree.ts`) derives traversal automatically.
 - A node's span is anchored to its segment (`AnchoredSpan`, `positions.ts`): offsets of different segments never compare, and text positions come only through the tree (`spanIn`, `extentIn`). A function's own span covers its header alone, as does a top-level trait's whose members stand on lines of their own; use `extentIn` for all a node covers.
 - In `src/compiler/parser/`, bracketed lists use `parseEnclosed` / `parseDelimited` (`recovery.ts`) and recursive entries use `nested` (`nesting.ts`).
+- What separates a block's items on one line is its `ItemRules.separator` (`ItemSeparator`, `recovery.ts`; spec §2): `;` for statements and a module's declarations, `,` for every list (fields, variants, trait members, constraint entries), `'lineBreak'` for cases. Layout (`layout/index.ts`) reads either separator and reports the wrong one once (2038, 2039), as `parseCommaSeparated` reports a `;` between bracketed items; no other site tests for a separator.
 - A word a grammar position starts with is listed once, in `src/compiler/syntax/grammar-words.ts`: the parser's table for that position `satisfies StartParselets` (keywords) and `WordParselets` (contextual words) of the list, and completion offers the list, never one of its own (`language-service/completion/grammar/words.ts` names only the words that need surroundings, `wordNeeds`).
 
 ## Recipes

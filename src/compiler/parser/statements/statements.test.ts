@@ -170,7 +170,7 @@ describe('declarations only the top level allows', () => {
   it.each([
     ['import a from "m"'],
     ['struct S { a: Int }'],
-    ['enum E { A; B }'],
+    ['enum E { A, B }'],
     ['trait T { value: Int }'],
     ['extern x: Int'],
     ['type Id = String'],

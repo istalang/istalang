@@ -88,7 +88,7 @@ describe('binding reports, once and at the name', () => {
       d.duplicateDeclaration,
       'a',
     ],
-    ['a repeated field', 'struct P { x: Int; x: Int }', d.duplicateDeclaration, 'x'],
+    ['a repeated field', 'struct P { x: Int, x: Int }', d.duplicateDeclaration, 'x'],
     [
       'a repeated top-level type',
       'struct A { x: Int }\nstruct A { y: Int }',
@@ -117,13 +117,13 @@ describe('binding reports, once and at the name', () => {
     ],
     [
       'a name after a variant, in a type',
-      'enum C { A; B }\nfn f(c: C.A.B): c',
+      'enum C { A, B }\nfn f(c: C.A.B): c',
       d.qualifiesNothing,
       'B',
     ],
     [
       'a name after a generic alias of an enum, in a pattern (§3.17)',
-      'enum Color { Red; Green }\ntype Id<Color> = Color\nfn f(c: Color) -> Int:\n  match c:\n    case Id.Green: 1\n    case _: 2',
+      'enum Color { Red, Green }\ntype Id<Color> = Color\nfn f(c: Color) -> Int:\n  match c:\n    case Id.Green: 1\n    case _: 2',
       d.qualifiesNothing,
       'Green',
     ],
@@ -153,11 +153,11 @@ describe('binding reports, once and at the name', () => {
     ],
     ['a lowercase type', 'struct point { x: Int }', d.typeNameConvention, 'point'],
     ['a lowercase type parameter', 'fn f<t>(x: t): x', d.typeNameConvention, 't'],
-    ['a lowercase variant', 'enum Color { red; Green }', d.typeNameConvention, 'red'],
+    ['a lowercase variant', 'enum Color { red, Green }', d.typeNameConvention, 'red'],
     ['a struct named as a primitive', 'struct String { x: Int }', d.builtInTypeName, 'String'],
     ['an alias named Self', 'type Self = Int', d.builtInTypeName, 'Self'],
     ['a type parameter named as a primitive', 'fn f<Bool>(): 1', d.builtInTypeName, 'Bool'],
-    ['a variant named as a primitive', 'enum Json { Bool; Text }', d.builtInTypeName, 'Bool'],
+    ['a variant named as a primitive', 'enum Json { Bool, Text }', d.builtInTypeName, 'Bool'],
     ['a PascalCase function', 'fn Compute(): 1', d.valueNameConvention, 'Compute'],
     ['a PascalCase field', 'struct Point { X: Int }', d.valueNameConvention, 'X'],
     ['a snake_case variable', 'fn f():\n  const user_id = 1', d.valueNameConvention, 'user_id'],
@@ -258,7 +258,7 @@ describe('valid programs bind without diagnostics', () => {
 
   it('a static function of an enum, which only the checker can tell from a variant', () => {
     const text =
-      'enum Color { Red; Green }\nfn Color.default() -> Color: Color.Red\nfn f() -> Color: Color.default()';
+      'enum Color { Red, Green }\nfn Color.default() -> Color: Color.Red\nfn f() -> Color: Color.default()';
     expect(boundReport({ main: text })).toEqual(reportedNothing);
   });
 

@@ -3,8 +3,8 @@
 # against an `any` value it matches one whose own type is that shape, while a nominal value inside
 # keeps its own type, so the shape's pattern doesn't match it.
 
-type Point = { x: Int; y: Int }
-struct Pixel { x: Int; y: Int }
+type Point = { x: Int, y: Int }
+struct Pixel { x: Int, y: Int }
 
 fn sum(p: Point) -> Int:
   match p:

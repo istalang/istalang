@@ -5,16 +5,16 @@
 
 enum Decision:
   Approved { by: String }
-  Rejected { by: String; reason: String }
+  Rejected { by: String, reason: String }
   Expired
 
-struct Verdict { role: String; ok: Bool }
+struct Verdict { role: String, ok: Bool }
 
-struct Point { x: Int; y: Int }
+struct Point { x: Int, y: Int }
 
-enum Status { Pending; Shipped; Lost }
+enum Status { Pending, Shipped, Lost }
 
-struct Order { id: Int; status: Status }
+struct Order { id: Int, status: Status }
 
 fn describe(decision: Decision) -> String:
   match decision:

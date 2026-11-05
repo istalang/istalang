@@ -3,8 +3,8 @@
 # comprehension's fields in name order, the named fields evaluated as written before the
 # comprehension, and `...*x` over the value behind a shared struct.
 
-struct Misordered { z: Int; a: Int; m: Int }
-shared struct SharedCounters { b: Int; a: Int }
+struct Misordered { z: Int, a: Int, m: Int }
+shared struct SharedCounters { b: Int, a: Int }
 
 fn record(log: &Array<String>, step: String, v: Int) -> Int:
   log.push(step)

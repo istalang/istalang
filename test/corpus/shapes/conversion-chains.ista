@@ -5,18 +5,18 @@
 # (§3.18), and a struct's spread into a generic literal infers its type arguments through the
 # conversion (§3.5).
 
-type Point = { a: String; z: Int }
-struct Pixel { z: Int; a: String }
+type Point = { a: String, z: Int }
+struct Pixel { z: Int, a: String }
 struct Holder { p: Pixel }
 
 fn norm(self: Point) -> String:
   self.a + self.z
 
-shared struct Counter { z: Int; a: String }
+shared struct Counter { z: Int, a: String }
 
-type Pair<A, B> = { a: A; z: B }
-struct Boxed { z: String; a: Int }
-shared struct SharedBox<A, B> { a: A; z: B }
+type Pair<A, B> = { a: A, z: B }
+struct Boxed { z: String, a: Int }
+shared struct SharedBox<A, B> { a: A, z: B }
 
 async fn main():
   const p: Pixel? = Pixel{z: 10, a: "hi"}

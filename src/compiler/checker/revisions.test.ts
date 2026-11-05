@@ -378,12 +378,12 @@ describe('a checker made after an earlier one', () => {
         '  case Array<infer R>: Array<DataOf<R>>',
         '  case struct: { [F in keyof D]: DataOf<D[F]> }',
         'fn first(x: DataOf<Tree>) -> DataOf<Tree>: x',
-        'fn second(x: DataOf<Tree>) -> { next: { items: Int }; value: Int }: x',
+        'fn second(x: DataOf<Tree>) -> { next: { items: Int }, value: Int }: x',
         '',
       ].join('\n'),
       before: 'struct Node<T> { items: Array<T> }\n',
       after: 'struct Node<T> { items: Int }\n',
-      beside: { tree: "import Node from 'lib'\nstruct Tree { value: Int; next: Node<Tree> }\n" },
+      beside: { tree: "import Node from 'lib'\nstruct Tree { value: Int, next: Node<Tree> }\n" },
     },
   ])('answers $name as a checker made afresh', ({ main, before, after, beside }) => {
     const { incremental, fresh } = afterLibEdit(main, before, after, beside);

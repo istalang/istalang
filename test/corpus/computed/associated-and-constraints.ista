@@ -7,7 +7,7 @@ trait Keyed:
   type Key is Stringable & Default
   fn key(self: Self) -> Self.Key
 
-struct Cell<T> { value: T; type Data = T }
+struct Cell<T> { value: T, type Data = T }
 
 struct Token<T>:
   type: String
@@ -39,7 +39,7 @@ fn defaultAndFormat<K is Keyed>(item: K) -> String:
 
 fn countAnyStruct<S is struct>(s: S) -> Int: 1
 fn sumIntFields<S is struct { [_]: Int }>(s: S) -> Int: 2
-fn updateTitle<S is struct { title: String; [_]: Int }>(s: &S, next: String) -> String:
+fn updateTitle<S is struct { title: String, [_]: Int }>(s: &S, next: String) -> String:
   const old = s.title
   s.title = next
   old

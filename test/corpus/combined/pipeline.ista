@@ -1,9 +1,9 @@
 # outcome: "bb,ccc|6,80,100|100,6,6,0|1,2,333-2cccx2"
 # M3 group e2e (§2, §3.8, §3.11, §3.12, §3.14, §4): comprehensions that filter, destructure and build closures over map entries; a closure counting through a comprehension; `?` in a loop; guarded and plain `match` cases; `?.`/`??` on `at`.
-struct P { name: String; age: Int }
+struct P { name: String, age: Int }
 enum Shape:
   Circle { r: Int }
-  Rect { w: Int; h: Int }
+  Rect { w: Int, h: Int }
   Empty
 
 fn parse(s: String) -> Result<Int>:

@@ -37,26 +37,26 @@ const refused = [checkerDiagnostics.unmetStructConstraint.code];
 
 describe('a struct constraint implied by another', () => {
   it.each([
-    ['struct { a is Show; [_] is Show & Size }', 'struct { [_] is Show }'],
-    ['struct { a: Int; [_] is Show }', 'struct { a is Show & Size; [_] is Show }'],
-    ['struct { a: Int } & struct { [_] is Show }', 'struct { a: Int; [_] is Show }'],
+    ['struct { a is Show, [_] is Show & Size }', 'struct { [_] is Show }'],
+    ['struct { a: Int, [_] is Show }', 'struct { a is Show & Size, [_] is Show }'],
+    ['struct { a: Int } & struct { [_] is Show }', 'struct { a: Int, [_] is Show }'],
     ['struct { [_] is struct { x: Int } }', 'struct { [_] is struct { x: Int } }'],
     [
-      'struct { [_] is struct { x: Int; [_] is Show } }',
+      'struct { [_] is struct { x: Int, [_] is Show } }',
       'struct { [_] is struct { [_] is Show } }',
     ],
-    ['struct { a is struct { x: Int; y: Bool } }', 'struct { a is struct { y: Bool } }'],
-    ['struct { a: Int; b: String }', 'struct'],
+    ['struct { a is struct { x: Int, y: Bool } }', 'struct { a is struct { y: Bool } }'],
+    ['struct { a: Int, b: String }', 'struct'],
   ])('%s meets %s', (given, needed) => {
     expect(passing(given, needed)).toEqual([]);
   });
 
   it.each([
     ['struct { a is Show }', 'struct { a is Size }'],
-    ['struct { a: Bool; [_] is Show }', 'struct { [_] is Show }'],
-    ['struct { a: Int }', 'struct { a: Int; b: Int }'],
+    ['struct { a: Bool, [_] is Show }', 'struct { [_] is Show }'],
+    ['struct { a: Int }', 'struct { a: Int, b: Int }'],
     ['struct { a: Int }', 'struct { [_] is Show }'],
-    ['struct { [_] is struct { x: Int } }', 'struct { [_] is struct { x: Int; [_] is Show } }'],
+    ['struct { [_] is struct { x: Int } }', 'struct { [_] is struct { x: Int, [_] is Show } }'],
     ['struct { a is struct { x: Int } }', 'struct { a is struct { x: String } }'],
   ])('%s is refused where %s is expected', (given, needed) => {
     expect(passing(given, needed)).toEqual(refused);
@@ -79,7 +79,7 @@ const constraintArbitrary = fc
       ...(b === undefined ? [] : [`b${b}`]),
       ...(others === undefined ? [] : [`[_]${others}`]),
     ];
-    return entries.length === 0 ? 'struct' : `struct { ${entries.join('; ')} }`;
+    return entries.length === 0 ? 'struct' : `struct { ${entries.join(', ')} }`;
   });
 
 /** A struct value over fields `a`, `b` and `c`, each of a few types. */
@@ -160,7 +160,7 @@ describe('a mapped struct type whose keys are not known yet', () => {
     const lines = [
       ...traits,
       'fn needs<S is struct { [_] is Show }>(s: S): ()',
-      'fn gives<S is struct { [_]: Int }>(s: { zeta: Bool; [F in "alpha" | keyof S]: Bool }): needs(s)',
+      'fn gives<S is struct { [_]: Int }>(s: { zeta: Bool, [F in "alpha" | keyof S]: Bool }): needs(s)',
     ];
     const { diagnostics } = diagnosedAt(
       stdProgramOf({ 'main.ista': lines.join('\n') }),

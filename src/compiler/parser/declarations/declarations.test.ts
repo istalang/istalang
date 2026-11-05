@@ -60,7 +60,7 @@ describe('type declarations', () => {
   it.each([
     ['struct Marker', '(StructDeclaration Marker [] [] [])'],
     [
-      'struct Req { id: Int; value: String }',
+      'struct Req { id: Int, value: String }',
       `(StructDeclaration Req [] [${declaredField('id', int)} ${declaredField('value', string)}] [])`,
     ],
     [
@@ -82,7 +82,7 @@ describe('type declarations', () => {
       `(EnumDeclaration Decision [] [(Variant Approved [${declaredField('by', string)}]) (Variant Expired [])] [])`,
     ],
     [
-      'enum Color { Red; Green; Blue }',
+      'enum Color { Red, Green, Blue }',
       '(EnumDeclaration Color [] [(Variant Red []) (Variant Green []) (Variant Blue [])] [])',
     ],
     [

@@ -3,7 +3,7 @@
 # own: a part a destructuring assignment writes, a compound assignment's result, the unit of a
 # bare `return`, and the unit of a block ending in a statement.
 
-struct Pair { first: Int?; second: Int }
+struct Pair { first: Int?, second: Int }
 
 struct Count { n: Int }
 

@@ -175,7 +175,7 @@ describe('pattern completion offers what fits the matched value', () => {
 const decision = [
   'enum Decision:',
   '  Approved { by: String }',
-  '  Rejected { by: String; reason: String }',
+  '  Rejected { by: String, reason: String }',
   '  Expired',
   '',
 ];
@@ -298,7 +298,7 @@ describe('a pattern place', () => {
       '  first: Int',
       '  second: Int',
       '',
-      'enum Color { Red; Green }',
+      'enum Color { Red, Green }',
     ];
     const cases = [...struct, ...decision, 'fn f(p: Pair, d: Decision) -> Int:'];
     expect(labelsAt(...cases, '  match p:', '    case Wrong{‸')).toEqual([]);
@@ -317,8 +317,8 @@ describe('a pattern place', () => {
       'trait HasId:',
       '  id: String',
       '',
-      'struct User { id: String; name: String }',
-      'struct Box<T> { id: String; value: T }',
+      'struct User { id: String, name: String }',
+      'struct Box<T> { id: String, value: T }',
       ...decision,
       'fn f(x: any HasId) -> Int:',
       '  match x:',

@@ -245,7 +245,7 @@ describe("a struct's value where its shape is expected (§3.1)", () => {
       }),
     );
   const listed = (written: readonly (readonly [string, string])[]) =>
-    written.map(([name, spelled]) => `${name}: ${spelled}`).join('; ');
+    written.map(([name, spelled]) => `${name}: ${spelled}`).join(', ');
 
   it('converts, whatever order the struct and the shape write the fields in', () => {
     fc.assert(
@@ -268,7 +268,7 @@ describe("a struct's value where its shape is expected (§3.1)", () => {
         const declared = `struct S { ${listed(written)} }`;
         const shape = `{ ${listed(written)} }`;
         const [first, ...rest] = written;
-        const annotated = `struct A { ${[`${first?.[0]}: ${first?.[1]} @Mark`, ...rest.map(([name, type]) => `${name}: ${type}`)].join('; ')} }`;
+        const annotated = `struct A { ${[`${first?.[0]}: ${first?.[1]} @Mark`, ...rest.map(([name, type]) => `${name}: ${type}`)].join(', ')} }`;
         const text = [
           'struct Mark',
           declared,

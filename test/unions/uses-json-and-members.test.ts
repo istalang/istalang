@@ -243,7 +243,7 @@ describe('member type parameters `T in U` (§7)', () => {
     const memberDecls = [
       ...commonDecls,
       'fn describeStatus<S in Status>(s: S) -> String: `status:${s}`',
-      'struct Entry<V, K in Status> { key: K; value: V }',
+      'struct Entry<V, K in Status> { key: K, value: V }',
       'type AnyEntry = Entry<Int, "draft"> | Entry<String, "sent">',
     ];
     expect(

@@ -22,6 +22,6 @@ export function parseCase<Case>(
     return parseRest(keyword.span.start);
   }
   const at = parser.cursor.previousEnd;
-  const [skipped] = skipToSeparator(parser, reported);
+  const [skipped] = skipToSeparator(parser, reported, 'lineBreak');
   return skipped ?? { kind: 'Invalid', span: parser.anchor({ start: at, end: at }) };
 }

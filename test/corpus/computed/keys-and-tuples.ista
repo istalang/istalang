@@ -3,7 +3,7 @@
 # widen (§4, §5); under `[_]: Int` a member-parameter key reads and writes as an Int, every field
 # being one (§8).
 
-struct P { b: Int; a: Int }
+struct P { b: Int, a: Int }
 
 fn bump<T is struct { [_]: Int }, K in keyof T>(t: &T, k: K) -> Int:
   t[k] += 1

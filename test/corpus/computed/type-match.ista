@@ -3,7 +3,7 @@
 # field, a literal matching its base type, union distribution, and a tuple subject matched whole.
 
 struct Box<T> { value: T }
-struct Pair<A, B> { first: A; second: B }
+struct Pair<A, B> { first: A, second: B }
 
 type Describe<T> = match T:
   case Pair<infer X, X>: X
@@ -26,7 +26,7 @@ fn unwrap<T>(box: Box<T>) -> Unwrapped<Box<T>>:
 
 async fn main() -> Future<String>:
   const d1: Describe<Pair<Int, Int>> = 10
-  const d2: Describe<Box<Int> | { tag: String; extra: Bool }> = "str"
+  const d2: Describe<Box<Int> | { tag: String, extra: Bool }> = "str"
   const d3: WholeTuple<Int | String> = "union"
   const d4: Describe<true> = "bool"
   const label: "union" = d3

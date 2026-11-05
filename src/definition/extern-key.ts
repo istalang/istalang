@@ -188,7 +188,7 @@ export function keyTypeText(type: KeyType): string {
     case 'tuple':
       return `(${type.elements.map(keyTypeText).join(', ')}${type.elements.length === 1 ? ',' : ''})`;
     case 'anonymous':
-      return `struct { ${type.fields.map((field) => `${field.name}: ${keyTypeText(field.type)}`).join('; ')} }`;
+      return `struct { ${type.fields.map((field) => `${field.name}: ${keyTypeText(field.type)}`).join(', ')} }`;
     case 'function':
       return `${type.async ? 'async ' : ''}fn(${type.parameters.map(keyTypeText).join(', ')}) -> ${keyTypeText(type.result)}`;
     case 'any':

@@ -32,11 +32,11 @@ const assocDecls = [
   '  type Data = T',
   'fn validate<T>(self: Field<T>, data: T) -> Array<String>:',
   '  if self.value == none: ["missing"] else: []',
-  'struct Cell<T> { value: T; type Data = T }',
+  'struct Cell<T> { value: T, type Data = T }',
   'enum Outcome<T>:',
   '  type Payload = T',
   '  type Tag = "ok" | "err"',
-  '  Done { value: Payload; tag: Tag }',
+  '  Done { value: Payload, tag: Tag }',
   '  Failed { reason: String }',
 ];
 
@@ -138,7 +138,7 @@ describe('associated types on structs, enums, and traits (§1)', () => {
   it('treats `T.Data` on a constrained type parameter as opaque, equal only to itself and meeting its bound', () => {
     const decls = [
       ...assocDecls,
-      'struct User { id: Int; type Key = Int }',
+      'struct User { id: Int, type Key = Int }',
       'fn key(self: User) -> Int: self.id',
       'fn sameOpaque<A is Keyed>(x: A.Key) -> A.Key: x',
       'fn formatKey<A is Keyed>(item: A) -> String: `${item.key()}`',
@@ -227,13 +227,13 @@ describe('associated types on structs, enums, and traits (§1)', () => {
     // Self-referential associated type
     expect(codesOf('struct Cyc { type A = A }').length).toBeGreaterThan(0);
     // Mutual cycle between associated types
-    expect(codesOf('struct Mutual { type A = B; type B = A }').length).toBeGreaterThan(0);
+    expect(codesOf('struct Mutual { type A = B, type B = A }').length).toBeGreaterThan(0);
     // Associated type clashing with an enum variant name
-    expect(codesOf('enum Clash { Red; type Red = Int }').length).toBeGreaterThan(0);
+    expect(codesOf('enum Clash { Red, type Red = Int }').length).toBeGreaterThan(0);
     // Associated type with type parameters
     expect(codesOf('struct GenericAssoc { type Box<T> = Array<T> }').length).toBeGreaterThan(0);
     // Associated type on an anonymous struct type
-    expect(codesOf('type BadShape = { x: Int; type Data = Int }').length).toBeGreaterThan(0);
+    expect(codesOf('type BadShape = { x: Int, type Data = Int }').length).toBeGreaterThan(0);
     // Reading an associated type on a shape, union, extern struct, or primitive
     expect(
       codesOf(
@@ -248,7 +248,7 @@ describe('associated types on structs, enums, and traits (§1)', () => {
         ...assocDecls,
         'struct NoKey { id: Int }',
         'fn key(self: NoKey) -> Int: self.id',
-        'struct BadKey { s: Slot<Int>; type Key = Slot<Int> }',
+        'struct BadKey { s: Slot<Int>, type Key = Slot<Int> }',
         'fn key(self: BadKey) -> Slot<Int>: self.s',
         'fn useKey<T is Keyed>(x: T): ()',
         'fn test(a: NoKey, b: BadKey):',
@@ -263,15 +263,15 @@ describe('struct constraints (§2)', () => {
   const constraintDecls = [
     ...assocDecls,
     'struct Empty',
-    'struct NamedOnly { title: String; count: Int }',
-    'struct FormWithTitle { title: String; age: Field<Int>; name: Field<String> }',
-    'struct IntFields { a: Int; b: Int }',
+    'struct NamedOnly { title: String, count: Int }',
+    'struct FormWithTitle { title: String, age: Field<Int>, name: Field<String> }',
+    'struct IntFields { a: Int, b: Int }',
     'shared struct SharedCounter { title: String }',
     'extern struct HostStruct',
-    'enum Choice { One; Two }',
+    'enum Choice { One, Two }',
     'fn anyStruct<S is struct>(s: S) -> Int: 1',
     'fn allFormNodes<S is struct { [_] is FormNode }>(s: S) -> Int: 2',
-    'fn titleAndNodes<S is struct { title: String; [_] is FormNode }>(s: S) -> String: s.title',
+    'fn titleAndNodes<S is struct { title: String, [_] is FormNode }>(s: S) -> String: s.title',
     'fn hasTitle<S is struct { title: String }>(s: S) -> String: s.title',
     'fn allInts<S is struct { [_]: Int }>(s: S) -> Int: 5',
   ];
@@ -296,7 +296,7 @@ describe('struct constraints (§2)', () => {
   it('supports reading and writing named fields on a constrained type parameter, nested struct constraints, and `&` inside and outside braces', () => {
     const decls = [
       ...assocDecls,
-      'fn renameTitle<S is struct { title: String; meta is struct { tag: String }; [_] is FormNode & Sendable } & Sendable>(form: &S, next: String) -> String:',
+      'fn renameTitle<S is struct { title: String, meta is struct { tag: String }, [_] is FormNode & Sendable } & Sendable>(form: &S, next: String) -> String:',
       '  const old = form.title + ":" + form.meta.tag',
       '  form.title = next',
       '  old',
@@ -360,7 +360,7 @@ describe('struct constraints (§2)', () => {
     expect(codesOf('fn badTypePos2(x: struct { [_]: Int }): ()').length).toBeGreaterThan(0);
     expect(codesOf('fn badAny(x: any struct { title: String }): ()').length).toBeGreaterThan(0);
     expect(
-      codesOf('fn badTwoWildcards<S is struct { [_]: Int; [_]: Int }>(s: S): ()').length,
+      codesOf('fn badTwoWildcards<S is struct { [_]: Int, [_]: Int }>(s: S): ()').length,
     ).toBeGreaterThan(0);
   });
 

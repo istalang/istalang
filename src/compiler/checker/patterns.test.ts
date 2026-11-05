@@ -12,11 +12,11 @@ import { reported } from './check.test-kit.ts';
 import { checkerDiagnostics as reports } from './diagnostics/index.ts';
 
 const shapes = [
-  'enum Color { Red; Green; Blue }',
+  'enum Color { Red, Green, Blue }',
   'enum Shape:',
   '  Circle { radius: Int }',
   '  Square { side: Int }',
-  'struct Point { x: Int; y: Int }',
+  'struct Point { x: Int, y: Int }',
   'struct Box { opt: Int? }',
   '',
 ].join('\n');
@@ -165,7 +165,7 @@ describe('a Result that must be used', () => {
 
 describe('optional operators', () => {
   const chained = [
-    'struct Inner { zip: Int?; code: Int }',
+    'struct Inner { zip: Int?, code: Int }',
     'struct Outer { inner: Inner? }',
     'struct Plain { inner: Inner }',
     'fn f(outer: Outer?, plain: Plain?):',
@@ -269,7 +269,7 @@ describe('comparison and membership resolution', () => {
 describe("an Error's trace", () => {
   it('may be left out of an Error only', () => {
     const text = [
-      'struct Note { message: String; trace: String }',
+      'struct Note { message: String, trace: String }',
       'fn f():',
       '  const e = Error{message: "m", code: "c"}',
       '  const n = Note{message: "m"}',

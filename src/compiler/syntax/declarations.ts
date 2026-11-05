@@ -205,7 +205,7 @@ export function membersAsWritten(
   );
 }
 
-/** `Expired`, or `Rejected { by: String; reason: String }`. */
+/** `Expired`, or `Rejected { by: String, reason: String }`. */
 export interface Variant extends NodeOf<'Variant'>, Annotatable {
   readonly name: Identifier;
   readonly fields: readonly (DeclaredField | Invalid)[];

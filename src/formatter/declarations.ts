@@ -1,6 +1,6 @@
 /**
  * Declarations and the module (spec §3). Every declaration with members prints them indented
- * under its `:`, one per line, so the braced form `struct Req { id: Int; value: String }` reads as
+ * under its `:`, one per line, so the braced form `struct Req { id: Int, value: String }` reads as
  * the indented one: the tree doesn't record which was written, and one canonical form is the
  * point. A variant's fields have only the braced form.
  *

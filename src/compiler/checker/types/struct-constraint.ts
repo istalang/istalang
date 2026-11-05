@@ -89,7 +89,7 @@ export function structConstraintText(model: StructConstraintModel): string {
     ...model.named.map((entry) => `${entry.name}${ruleText(entry.rule)}`),
     ...(model.others === undefined ? [] : [`[_]${ruleText(model.others)}`]),
   ];
-  return entries.length === 0 ? 'struct' : `struct { ${entries.join('; ')} }`;
+  return entries.length === 0 ? 'struct' : `struct { ${entries.join(', ')} }`;
 }
 
 function ruleText(rule: EntryRule): string {

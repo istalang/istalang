@@ -129,18 +129,18 @@ describe('anonymous struct types', () => {
   const skuQty = `(StructType [${field('sku', named('String'))} ${field('qty', int)}])`;
 
   it.each([
-    '{ sku: String; qty: Int }',
-    'struct { sku: String; qty: Int }',
-    '{ sku: String; qty: Int; }',
+    '{ sku: String, qty: Int }',
+    'struct { sku: String, qty: Int }',
+    '{ sku: String, qty: Int, }',
     '{\n  sku: String\n  qty: Int\n}',
-    '{\n  sku: String;\n\n  qty: Int\n}',
+    '{\n  sku: String,\n\n  qty: Int\n}',
   ])('parses %j, separated by semicolons or line breaks (§2)', (text) => {
     expect(dumpClean('type', text)).toBe(skuQty);
   });
 
   it('parses an empty struct and one nested in type arguments', () => {
     expect(dumpClean('type', '{}')).toBe('(StructType [])');
-    expect(dumpClean('type', 'Array<{ sku: String; qty: Int }>')).toBe(
+    expect(dumpClean('type', 'Array<{ sku: String, qty: Int }>')).toBe(
       `(NamedType [Array] [${skuQty}])`,
     );
   });
@@ -175,7 +175,7 @@ describe('malformed types', () => {
 describe('a struct constraint where a type stands (§3.5)', () => {
   it.each([
     ['struct { [_]: Int }', '[_]: Int'],
-    ['{ a: Int; [_] is X & Y }', '[_] is X & Y'],
+    ['{ a: Int, [_] is X & Y }', '[_] is X & Y'],
     ['struct { a is Stringable }', 'a is Stringable'],
     ['{ a is struct { [_]: Int } }', 'a is struct { [_]: Int }'],
   ])('reports the entry of %j once, keeping the fields beside it', (text, spanText) => {
@@ -186,7 +186,7 @@ describe('a struct constraint where a type stands (§3.5)', () => {
     expect(reported('type', 'any struct { a: Int }')).toEqual(
       reportedOnce(structConstraintAfterAny.code, 'struct { a: Int }'),
     );
-    expect(dumpOf(parseAs('type', '{ a: Int; [_]: Int }'))).toBe(
+    expect(dumpOf(parseAs('type', '{ a: Int, [_]: Int }'))).toBe(
       `(StructType [${field('a', int)} !])`,
     );
   });

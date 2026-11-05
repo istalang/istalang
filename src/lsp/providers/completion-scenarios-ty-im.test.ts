@@ -60,7 +60,7 @@ const scenarios: readonly Scenario[] = [
     id: 'TY-04',
     place: 'type',
     title: 'Struct field type',
-    src: ['struct S:\n  a: ‸', 'struct S { a: Int; b: ‸'],
+    src: ['struct S:\n  a: ‸', 'struct S { a: Int, b: ‸'],
     where: 'top',
     expect: { has: ['Int', 'Pair', 'Array'], lacks: ['plus', 'Red', 'let'] },
   },
@@ -87,7 +87,7 @@ const scenarios: readonly Scenario[] = [
     id: 'TY-07',
     place: 'type',
     title: 'Anonymous struct type',
-    src: ['  let x: { sku: ‸', '  let x: struct { sku: ‸', '  let x: Array<{ sku: String; qty: ‸'],
+    src: ['  let x: { sku: ‸', '  let x: struct { sku: ‸', '  let x: Array<{ sku: String, qty: ‸'],
     expect: { has: ['Int', 'Pair'], lacks: ['xs', 'plus', 'let'] },
   },
   {

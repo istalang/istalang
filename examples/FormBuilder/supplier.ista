@@ -7,7 +7,7 @@ fn zipPattern(country: String) -> String:
     case _: "^.+$"
 
 fn catalogValue(
-  prices: Array<{ sku: String?; name: String?; amount: Float?; regions: Array<String?> }>,
+  prices: Array<{ sku: String?, name: String?, amount: Float?, regions: Array<String?> }>,
 ) -> Float:
   let total = 0.0
   for p in prices: total += p.amount ?? 0.0

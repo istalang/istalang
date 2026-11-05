@@ -4,7 +4,7 @@ import { intType, stringType, tupleType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { checkedMain } from './lookup.test-kit.ts';
 
-const text = `struct Pair { first: Int; second: Int }
+const text = `struct Pair { first: Int, second: Int }
 fn Pair.zero() -> Pair: Pair{first: 0, second: 0}
 fn total(self: Pair) -> Int: self.first + self.second
 fn sum(a: Int, b: Int = 1) -> Int: a + b

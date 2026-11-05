@@ -10,9 +10,13 @@
  * - shallower, but still deeper than the enclosing block: an inconsistent dedent, reported and
  *   kept in this block
  * - otherwise the block ends, and the enclosing construct carries on.
- * Within a line, items are separated by `;`. A module is the block at column 0, so its first line
- * is held to that column too. Entries in braces (`struct Req { id: Int; value: String }`) are the
- * same list without a column: every line continues it until the `}`.
+ * Within a line, the block's kind names what separates its items (§2): `;` between statements and
+ * a module's declarations, `,` between the items of every list (fields, variants, trait members,
+ * constraint entries), and nothing between cases, which stand one per line. The other separator
+ * is reported as misplaced and read as the right one, so one slip costs one diagnostic. A module
+ * is the block at column 0, so its first line is held to that column too. Entries in braces
+ * (`struct Req { id: Int, value: String }`) are the same list without a column: every line
+ * continues it until the `}`.
  *
  * `elif` and `else` continue an `if` on its line, or first on a later line at the column where the
  * `if`'s line starts (§4). A dangling `else` therefore binds to the nearest `if` whose line it
@@ -40,14 +44,16 @@ import type { Parser } from '../parser.ts';
 import {
   atRegionEnd,
   type Enclosed,
+  type ItemSeparator,
   parseEnclosedIn,
   skipToSeparator,
   skipUntil,
 } from '../recovery.ts';
 
-/** How to parse one kind of item, and how it takes annotations. */
+/** How to parse one kind of item, what separates two of them, and how they take annotations. */
 export interface ItemRules<Item extends SyntaxNode> {
   readonly parseItem: (parser: Parser) => Item | Invalid;
+  readonly separator: ItemSeparator;
   /**
    * Whether each item standing on lines of its own heads a segment of the text (syntax/
    * positions.ts), its annotations included: a module's items and a trait's members do.
@@ -65,7 +71,7 @@ export interface Lines<Item> {
   readonly items: Items<Item>;
   /** Whether its items head segments of their own (`ItemRules.headsSegments`). */
   readonly headedSegments: boolean;
-  /** Whether any `;` separated two items, which a block on one line needs (§4). */
+  /** Whether a separator stood between two items, which a block on one line needs (§4). */
   readonly separated: boolean;
 }
 
@@ -111,7 +117,7 @@ export function parseBlockBraces<Item extends SyntaxNode>(
   return parseEnclosedIn(parser, '{', enter, () => parseLines(parser, rules));
 }
 
-/** `{ a: Int; b: Int }`: `rules` items separated by `;` or line breaks, at any column. */
+/** `{ a: Int, b: Int }`: `rules` items separated by `,` or line breaks, at any column. */
 export function parseItemEntries<Item extends SyntaxNode>(
   parser: Parser,
   rules: ItemRules<Item>,
@@ -152,7 +158,7 @@ function parseLinesOf<Item extends SyntaxNode>(
     const step = parseLine(parser, rules, pending, headsSegments);
     items.push(...step.items);
     ({ pending } = step);
-    separated = skipSemicolons(parser) || separated;
+    separated = skipSeparators(parser, rules.separator) || separated;
     if (cursor.index === before) {
       break;
     }
@@ -180,7 +186,8 @@ function parseLine<Item extends SyntaxNode>(
   return parser.cursor.onOneLine(() => {
     const reported = parser.diagnostics.length;
     const step = parseLineItem(parser, rules, pending, headsSegment);
-    return { ...step, items: [...step.items, ...skipToSeparator(parser, reported)] };
+    const skipped = skipToSeparator(parser, reported, rules.separator);
+    return { ...step, items: [...step.items, ...skipped] };
   });
 }
 
@@ -195,7 +202,7 @@ function parseLineItem<Item extends SyntaxNode>(
   headsSegment: boolean,
 ): LineItem<Item> {
   const before = parseAnnotations(parser);
-  if (before.length > 0 && (parser.cursor.at(';') || atRegionEnd(parser))) {
+  if (before.length > 0 && (atSeparator(parser, rules.separator) || atRegionEnd(parser))) {
     return { items: [], pending: [...pending, ...before] };
   }
   if (headsSegment) {
@@ -230,10 +237,29 @@ function annotate<Item extends SyntaxNode>(
 
 const { danglingAnnotation, misplacedAnnotation } = parserDiagnostics;
 
-/** Consumes any `;`, since empty items are allowed (`{ a: Int; }`); whether there was one. */
-function skipSemicolons(parser: Parser): boolean {
+/**
+ * Whether a `;` or a `,` comes next where `separator` separates items on a line: either is read
+ * as one, the wrong one reported. Between cases nothing is, so recovery skips either.
+ */
+function atSeparator(parser: Parser, separator: ItemSeparator): boolean {
+  const { kind } = parser.cursor;
+  return separator !== 'lineBreak' && (kind === ';' || kind === ',');
+}
+
+/**
+ * Consumes any separators, since empty items are allowed (`{ a: Int, }`); whether there was one.
+ * The other kind's separator is reported and consumed as this kind's.
+ */
+function skipSeparators(parser: Parser, separator: ItemSeparator): boolean {
+  const { cursor } = parser;
   let skipped = false;
-  while (parser.cursor.eat(';') !== undefined) {
+  while (atSeparator(parser, separator)) {
+    const token = cursor.advance();
+    if (token.kind === ';' && separator === ',') {
+      parser.report(parserDiagnostics.semicolonBetweenItems(token.span));
+    } else if (token.kind === ',' && separator === ';') {
+      parser.report(parserDiagnostics.commaBetweenStatements(token.span));
+    }
     skipped = true;
   }
   return skipped;

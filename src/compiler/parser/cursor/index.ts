@@ -9,7 +9,7 @@
  *   Python statement does.
  * - In a list of items, a line break separates items, one or more to a line. A block's lines must
  *   start at its column, and layout decides from the next line's column whether the block goes on
- *   (layout.ts). Entries in braces, `{ a: Int; b: Int }`, have no column: every line continues.
+ *   (layout.ts). Entries in braces, `{ a: Int, b: Int }`, have no column: every line continues.
  * Regions nest. A region also records the closer that ends it, so recovery knows which closing
  * brackets belong to enclosing constructs and must not be consumed. A region without a closer of
  * its own keeps the closer of the region it sits in, since that closer also ends it. A bracket no
@@ -266,7 +266,7 @@ export class Cursor {
     );
   }
 
-  /** Runs `parse` inside `{…}` whose entries are separated by `;` or line breaks, at any column. */
+  /** Runs `parse` inside `{…}` whose entries are separated by `,` or line breaks, at any column. */
   withinEntryBraces<Result>(parse: () => Result): Result {
     return this.#inLineRegion(entryBracesRegion(this.#unclosedEnds.get(this.#index)), parse);
   }

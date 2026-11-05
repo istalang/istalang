@@ -44,7 +44,7 @@ describe('ista run', () => {
   });
 
   it('prints a struct outcome as an object keyed by field name', async () => {
-    const text = 'struct P { x: Int; y: String }\nasync fn main(): P{y: "b", x: 1}\n';
+    const text = 'struct P { x: Int, y: String }\nasync fn main(): P{y: "b", x: 1}\n';
     const run = await ista(project({ 'main.ista': text }), 'run', 'main.ista');
     expect(run).toEqual({ code: 0, out: '{"x":1,"y":"b"}\n', err: '' });
   });

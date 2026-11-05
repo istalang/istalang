@@ -15,6 +15,7 @@ import { parseBlockItem } from './items.ts';
 
 export const statementRules: ItemRules<Statement> = {
   parseItem: parseBlockItem,
+  separator: ';',
   annotate: attachAnnotations,
 };
 

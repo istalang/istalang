@@ -3,7 +3,7 @@
 # `default()` and assigns each entry with its `setIndex`, a spread's items included; `for` runs the
 # cursor its `iterate` gives; and its elements are places, also inside an array of them.
 
-struct Bag { keys: Array<String>; values: Array<Int> }
+struct Bag { keys: Array<String>, values: Array<Int> }
 
 fn Bag.default() -> Bag:
   Bag{keys: [], values: []}

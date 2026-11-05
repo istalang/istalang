@@ -3,11 +3,11 @@
 # multi-key writes converting into each field's type, compound assignment across uniform keys, and
 # the Entry<S, K> / AnyEntry<S> pattern.
 
-struct Settings { retries: Int; region: String }
-struct Counts { x: Int; y: Int }
-struct Widened { a: Int?; b: Int | String }
+struct Settings { retries: Int, region: String }
+struct Counts { x: Int, y: Int }
+struct Widened { a: Int?, b: Int | String }
 
-struct Entry<S is struct, K in keyof S> { key: K; value: S[K] }
+struct Entry<S is struct, K in keyof S> { key: K, value: S[K] }
 type AnyEntry<S is struct> = { [K in keyof S]: Entry<S, K> }[keyof S]
 
 trait Applies<S>:

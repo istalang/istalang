@@ -7,7 +7,7 @@
 
 struct Box<T> { value: T }
 type IntBox = Box<Int>
-enum Color { Red; Green }
+enum Color { Red, Green }
 type Id<Color> = Color
 
 fn box() -> Box<Int>: IntBox{value: 1}

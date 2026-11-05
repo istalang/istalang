@@ -6,12 +6,12 @@
 
 import * as json from 'json'
 
-type Point = { x: Int; y: Int }
+type Point = { x: Int, y: Int }
 type Spot = Point
-type Pair<A, B> = { first: A; second: B }
+type Pair<A, B> = { first: A, second: B }
 
-struct Pixel { y: Int; x: Int }
-struct Duo<T> { second: T; first: Int }
+struct Pixel { y: Int, x: Int }
+struct Duo<T> { second: T, first: Int }
 
 trait Area:
   fn area(self: Self) -> Int

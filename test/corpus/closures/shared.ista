@@ -5,9 +5,9 @@
 # `let` lives in a cell of its own, but a Shared value captured by a `const` is still one handle
 # (§3.14).
 
-struct User { name: String; email: String }
+struct User { name: String, email: String }
 
-struct Pair { first: Int; second: Int }
+struct Pair { first: Int, second: Int }
 
 fn rename(user: Shared<User>, name: String):
   user->value.name = name

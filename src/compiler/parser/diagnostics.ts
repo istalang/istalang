@@ -165,6 +165,16 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: () =>
       "'[_]' and 'name is C' entries belong to a struct constraint, which stands only after 'is'; a struct type gives each field its type (§3.5).",
   },
+  semicolonBetweenItems: {
+    code: 2038,
+    message: () =>
+      "';' separates only statements: write ',' between the items of a list (fields, variants, members, entries) (§2).",
+  },
+  commaBetweenStatements: {
+    code: 2039,
+    message: () =>
+      "',' separates the items of a list: write ';' between statements on one line, or put each on its own line (§2).",
+  },
   fieldLoopCondition: {
     code: 2037,
     message: () =>

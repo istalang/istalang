@@ -4,8 +4,8 @@
 # is `none` as a whole. Each skipped part panics, so running it fails the program. `is` bindings
 # flow through a `while` condition and its `and` into the body.
 
-struct Inner { v: Int; name: String? }
-struct Outer { inner: Inner?; n: Int }
+struct Inner { v: Int, name: String? }
+struct Outer { inner: Inner?, n: Int }
 
 fn boom() -> Int:
   panic("right side evaluated")

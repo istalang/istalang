@@ -6,7 +6,7 @@
 # collapse after substitution keeping the first matching arm.
 
 type Status = "draft" | "sent" | "failed"
-type Point = { x: Int; y: Int }
+type Point = { x: Int, y: Int }
 struct Email { to: String }
 struct Sms { number: String }
 type Contact = Email | Sms
@@ -15,8 +15,8 @@ enum Decision:
   Approved { by: String }
   Expired
 
-enum First { Shared; OnlyFirst }
-enum Second { Shared; OnlySecond }
+enum First { Shared, OnlyFirst }
+enum Second { Shared, OnlySecond }
 
 struct Box<T> { value: T }
 

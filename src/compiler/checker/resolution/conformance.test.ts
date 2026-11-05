@@ -268,7 +268,7 @@ describe('declared witness constraints and typed calls', () => {
   it('reports the unmet constraint on a declared witness instead of reporting the witness missing', () => {
     const text = [
       'import * as json from "json"',
-      'struct Point { x: Int; y: Int }',
+      'struct Point { x: Int, y: Int }',
       'struct Box<T> { value: T }',
       'fn toJson<T is Stringable>(self: Box<T>) -> json.Json:',
       '  json.encodeText(self.value)',

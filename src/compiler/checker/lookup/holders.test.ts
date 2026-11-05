@@ -8,7 +8,7 @@ import { checkedMain } from './lookup.test-kit.ts';
 const text = `const zero = 0
 const two = zero + 2
 struct Tag { text: String }
-struct Point { x: Int; y: Int = zero }
+struct Point { x: Int, y: Int = zero }
 enum Shape:
   Dot { size: Int = zero }
 const label = "x"

@@ -33,10 +33,10 @@ const computedSource = [
   '',
   'type DataOf<D> = match D:',
   '  case Field<infer T is Sendable>: T',
-  '  case struct { title: String; [_] is FormNode }: { [F in keyof D]: DataOf<D[F]> }',
+  '  case struct { title: String, [_] is FormNode }: { [F in keyof D]: DataOf<D[F]> }',
   '  case _: Never',
   '',
-  'fn copyAll<S is struct { title: String; [_]: Int }>(s: S) -> String:',
+  'fn copyAll<S is struct { title: String, [_]: Int }>(s: S) -> String:',
   '  const struct{title, ...rest} = s',
   '  const clone = struct{title, for k, v in ...rest: [k]: v}',
   '  for k, v in ...clone:',
@@ -80,8 +80,8 @@ describe('the formatter', () => {
 
 describe('the language service', () => {
   const declarations = [
-    'struct Field<T> { value: T?; type Data = T }',
-    'struct Settings { retries: Int; region: String }',
+    'struct Field<T> { value: T?, type Data = T }',
+    'struct Settings { retries: Int, region: String }',
     'type DataOf<D> = match D:',
     '  case Field<infer T>: T',
     '  case _: Never',
@@ -157,7 +157,7 @@ describe('the language service', () => {
   });
 
   it('shows the field a key names, and the type variables computed types bind', () => {
-    const settings = ['struct Settings { retries: Int; region: String }'];
+    const settings = ['struct Settings { retries: Int, region: String }'];
     expect(hoverCodeAt(...settings, 'fn f(x: Settings["retri‸es"]) -> Int: x')).toEqual([
       '(field) retries: Int',
     ]);
@@ -180,7 +180,7 @@ describe('the language service', () => {
     const decls = [
       'trait FormNode:',
       '  type Data',
-      'struct Settings { retries: Int; region: String }',
+      'struct Settings { retries: Int, region: String }',
     ];
     expect(completionNamesAt(...decls, 'fn f<T is FormNode>(x: T.‸) -> Int: 0')).toEqual(['Data']);
     expect(
@@ -216,7 +216,7 @@ describe('the language service', () => {
   it('still names things `infer` and `keyof`', () => {
     expect(
       codesOf(
-        'struct Words { infer: Int; keyof: String }',
+        'struct Words { infer: Int, keyof: String }',
         'fn infer(keyof: Int) -> Int: keyof + 1',
         'fn useWords() -> Int:',
         '  const w = Words{infer: 2, keyof: "k"}',

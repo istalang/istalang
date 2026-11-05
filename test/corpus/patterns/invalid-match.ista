@@ -6,7 +6,7 @@
 
 enum Decision:
   Approved { by: String }
-  Rejected { by: String; reason: String }
+  Rejected { by: String, reason: String }
   Expired
 
 fn missing(decision: Decision) -> String:

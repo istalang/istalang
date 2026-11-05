@@ -10,8 +10,8 @@
 # and of the literal's own type, a struct without fields written bare, and a fresh `struct{…}`
 # with named, distinct fields, a type of its own.
 
-struct Point { x: Int; y: Int }
-struct Pair { first: Int; second: Int }
+struct Point { x: Int, y: Int }
+struct Pair { first: Int, second: Int }
 struct Empty
 
 fn subject(n: Int):

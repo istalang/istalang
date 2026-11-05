@@ -125,7 +125,7 @@ describe('an instantiated body', () => {
     const text = [
       'trait Sized:',
       '  size: Int',
-      'struct Box { label: String; size: Int }',
+      'struct Box { label: String, size: Int }',
       'fn sizeOf<T is Sized>(value: T) -> Int:',
       '  value.size',
       'fn kinds(box: Box, sized: any Sized):',

@@ -41,7 +41,7 @@ export function blockBracesRegion(column: number, until: number | undefined): Li
   return { lineBreaks: 'separate', closer: '}', ownsCloser: true, column, until };
 }
 
-/** `{…}` whose entries are separated by `;` or line breaks, at any column, up to `}` or `until`. */
+/** `{…}` whose entries are separated by `,` or line breaks, at any column, up to `}` or `until`. */
 export function entryBracesRegion(until: number | undefined): LineRegionShape {
   return { lineBreaks: 'separate', closer: '}', ownsCloser: true, column: undefined, until };
 }

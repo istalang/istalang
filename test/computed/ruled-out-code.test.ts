@@ -101,7 +101,7 @@ describe('a value of type Never', () => {
   });
 });
 
-const mixed = ['struct Mixed { count: Int; name: String; size: Int }'];
+const mixed = ['struct Mixed { count: Int, name: String, size: Int }'];
 
 describe('a condition decided by types', () => {
   it("rules out a field loop pass's branch, so each field's code is checked where it runs", () => {
@@ -149,13 +149,13 @@ describe('a condition decided by types', () => {
 
   it("is decided false over the others' key for a name the constraint lists", () => {
     const declarations = [
-      'fn sizes<S is struct { title: String; [_]: Int }>(s: S) -> Int:',
+      'fn sizes<S is struct { title: String, [_]: Int }>(s: S) -> Int:',
       '  let total = 0',
       '  for k, v in ...s:',
       '    if k != "title":',
       '      total += v',
       '  total',
-      'struct Doc { title: String; pages: Int; notes: Int }',
+      'struct Doc { title: String, pages: Int, notes: Int }',
     ];
     const body = 'sizes(Doc{title: "t", pages: 3, notes: 4})';
     expect(codesOf(...declarations)).toEqual([]);
@@ -184,7 +184,7 @@ describe('the commute law for decided conditions', () => {
       fc.property(fieldsAndTarget, ([fields, name]) => {
         const targetType = fields.find((f) => f.name === name)?.type ?? 'Int';
         const code = (v: string) => onlyFor(targetType, v);
-        const constraint = fields.map((f) => `${f.name}: ${f.type}`).join('; ');
+        const constraint = fields.map((f) => `${f.name}: ${f.type}`).join(', ');
         const value = `Gen{${fields.map((f) => `${f.name}: ${f.value}`).join(', ')}}`;
         const declarations = [
           `struct Gen { ${constraint} }`,

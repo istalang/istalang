@@ -121,16 +121,18 @@ function parseMisplacedConstraintEntry(parser: Parser): Invalid {
 /** Fields nest through their indented blocks, so each descends a level (nesting.ts). */
 const fieldRules: ItemRules<FieldDeclaration | MappedField | Invalid> = {
   parseItem: (parser) => nested(parser, () => parseFieldEntry(parser)),
+  separator: ',',
   annotate: attachAnnotations,
 };
 
 /** The fields of a struct's or a variant's declaration, which may have defaults. */
 export const declaredFieldRules: ItemRules<DeclaredField> = {
   parseItem: (parser) => nested(parser, () => parseDeclaredField(parser)),
+  separator: ',',
   annotate: attachAnnotations,
 };
 
-/** `{ a: A; b: B }`, the fields separated by `;` or line breaks; the cursor must be at the `{`. */
+/** `{ a: A, b: B }`, the fields separated by `,` or line breaks; the cursor must be at the `{`. */
 export function parseFieldEntries(parser: Parser): Enclosed<StructType['fields']> {
   return parseItemEntries(parser, fieldRules);
 }

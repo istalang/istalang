@@ -195,7 +195,7 @@ const scenarios: readonly Scenario[] = [
     id: 'LI-20',
     place: 'literalField',
     title: 'Anonymous struct literal',
-    src: ['  struct{‸}', '  const b: { sku: String; qty: Int } = struct{‸}', '  struct{...p, ‸}'],
+    src: ['  struct{‸}', '  const b: { sku: String, qty: Int } = struct{‸}', '  struct{...p, ‸}'],
     trigger: '{',
     expect: { lacks: ['xs', 'plus', 'let'] },
   },

@@ -119,8 +119,8 @@ fn sync<R is FormNode>(self: List<R>, v: Array<R.Seen>, key: fn(R.Seen) -> Strin
 struct Variant<C is struct { [_] is FormNode }>:
   tag: Field<keyof C> # a literal union of the case ids
   cases: C
-  type Data = { tag: keyof C; value: { [K in keyof C]: C[K].Data? } }
-  type Seen = { tag: (keyof C)?; value: { [K in keyof C]: C[K].Seen? } }
+  type Data = { tag: keyof C, value: { [K in keyof C]: C[K].Data? } }
+  type Seen = { tag: (keyof C)?, value: { [K in keyof C]: C[K].Seen? } }
 
 fn seen<C is struct { [_] is FormNode }>(self: Variant<C>) -> Variant<C>.Seen:
   const active = self.tag.seen()
@@ -209,7 +209,7 @@ fn hide<N is FormNode>(self: Hidden<N>): self->shown = false
 enum Prop<Sc, T>:
   Fixed { value: T }
   Computed { eval: fn(Sc) -> T }
-  Awaited { pending: Pending; eval: async fn(Sc) -> T; task: Task<Sc, T> }
+  Awaited { pending: Pending, eval: async fn(Sc) -> T, task: Task<Sc, T> }
 
 enum Pending:
   Form # awaited inline: the whole form waits
@@ -273,7 +273,7 @@ struct Scope<D, C>:
 
 enum Check<Sc, T>:
   Now { test: fn(Sc, T?) -> String? } # an error message, or none; on every draw
-  Later { test: async fn(Sc) -> String?; pending: fn(Sc) -> String; task: Task<Sc, String?> }
+  Later { test: async fn(Sc) -> String?, pending: fn(Sc) -> String, task: Task<Sc, String?> }
   # a rule with `pending` (an approval): its own task once the user submits; submit waits
 
 fn later<Sc, T>(test: async fn(Sc) -> String?, pending: fn(Sc) -> String) -> Check<Sc, T>:
@@ -445,7 +445,7 @@ struct Choice<T>:
 
 enum Options<Sc, T>:
   Items { items: Array<Item<Sc, T>> }
-  Rows { from: Prop<Sc, Array<Choice<T>>>; resolve: Prop<Sc, Bool> }
+  Rows { from: Prop<Sc, Array<Choice<T>>>, resolve: Prop<Sc, Bool> }
   # The widget provides ctx.search: `from` takes the typed text. `same` tells whether two values
   # are the same choice (a snapshot is a whole row, compared by id).
   Search {
@@ -935,21 +935,21 @@ enum FieldWidget:
 enum RepeatWidget:
   Multiselect { placeholder: String? }
   Checkboxes { orientation: Orientation? }
-  List { addLabel: String?; reorderable: Bool? }
+  List { addLabel: String?, reorderable: Bool? }
   Table { addLabel: String? }
-  Cards { addLabel: String?; title: String? }
+  Cards { addLabel: String?, title: String? }
 
 enum VariantWidget:
   Inline # a case picker that writes the tag, and the case
   Panel { title: String? } # the active case only
 
 enum LayoutWidget:
-  Section { title: String?; description: String?; collapsible: Bool?; labels: LabelStyle? }
+  Section { title: String?, description: String?, collapsible: Bool?, labels: LabelStyle? }
   Labeled { labels: LabelStyle? }
   Money # a control: amount and currency as one input
-  Hstack { gap: Gap?; labels: LabelStyle? }
+  Hstack { gap: Gap?, labels: LabelStyle? }
   Wizard
-  Step { title: String; labels: LabelStyle? }
+  Step { title: String, labels: LabelStyle? }
   Tablerow
   Markdown { markdown: String }
   Errors
@@ -1007,8 +1007,8 @@ enum Node:
     body: Node?
     errors: Array<String>
   }
-  Mount { key: String; parent: ParentUi?; label: String?; form: FormSnapshot } # a dynamic ref
-  Loading { key: String; label: String? }
+  Mount { key: String, parent: ParentUi?, label: String?, form: FormSnapshot } # a dynamic ref
+  Loading { key: String, label: String? }
 
 struct Row:
   key: String
@@ -1017,10 +1017,10 @@ struct Row:
 # ═════════════════════════ Events and the loop ═════════════════════════
 
 enum FormEvent:
-  Set { key: String; value: String } # value JSON; a key names its row: n6@r1
-  Search { key: String; text: String } # typed into a search widget
+  Set { key: String, value: String } # value JSON; a key names its row: n6@r1
+  Search { key: String, text: String } # typed into a search widget
   AddRow { key: String }
-  RemoveRow { key: String; row: String }
+  RemoveRow { key: String, row: String }
   Submit
   Resolved # a task finished: draw again
 

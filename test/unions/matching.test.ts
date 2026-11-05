@@ -15,7 +15,7 @@ import { codesOf, hoverCodeAt, runMain } from './unions.test-kit.ts';
 
 const matchDecls = [
   'type Status = "draft" | "sent" | "failed"',
-  'type Point = { x: Int; y: Int }',
+  'type Point = { x: Int, y: Int }',
   'struct Email { to: String }',
   'struct Sms { number: String }',
   'type Contact = Email | Sms',
@@ -124,7 +124,7 @@ describe('matching on unions and literal types (§3, §5)', () => {
       ]),
     ).toBe('legal:exp:9');
 
-    const twoEnums = ['enum First { Shared; OnlyFirst }', 'enum Second { Shared; OnlySecond }'];
+    const twoEnums = ['enum First { Shared, OnlyFirst }', 'enum Second { Shared, OnlySecond }'];
     expect(
       runMain('String', 'pick(First.Shared) + ":" + pick(Second.Shared)', [
         ...twoEnums,
@@ -184,7 +184,7 @@ describe('matching on unions and literal types (§3, §5)', () => {
         'String',
         'byField(struct{a: 5}) + ":" + byField(struct{b: "ok"}) + ":" + byAlias(struct{x: 1, y: 2})',
         [
-          'type Point = { x: Int; y: Int }',
+          'type Point = { x: Int, y: Int }',
           'fn byField(x: { a: Int } | { b: String }) -> String:',
           '  match x:',
           '    case struct{a}: String(a)',
@@ -199,7 +199,7 @@ describe('matching on unions and literal types (§3, §5)', () => {
 
     expect(
       codesOf(
-        'fn ambiguousShape(x: { id: Int; a: Int } | { id: Int; b: String }) -> Int:',
+        'fn ambiguousShape(x: { id: Int, a: Int } | { id: Int, b: String }) -> Int:',
         '  match x:',
         '    case struct{id}: id',
         '    case _: 0',

@@ -73,7 +73,11 @@ function parseMatchCase(parser: Parser): MatchCase | Invalid {
   });
 }
 
-const matchCaseRules: ItemRules<MatchCase> = { parseItem: parseMatchCase, annotate: undefined };
+const matchCaseRules: ItemRules<MatchCase> = {
+  parseItem: parseMatchCase,
+  separator: 'lineBreak',
+  annotate: undefined,
+};
 
 /** `select:`, which never waits (§8). */
 export function parseSelect(parser: Parser): Expression {
@@ -118,6 +122,7 @@ function parseSelectLine(parser: Parser): SelectCase | ElseClause | Invalid {
 
 const selectLineRules: ItemRules<SelectCase | ElseClause> = {
   parseItem: parseSelectLine,
+  separator: 'lineBreak',
   annotate: undefined,
 };
 

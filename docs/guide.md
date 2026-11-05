@@ -47,8 +47,8 @@ async fn remindLater(role: String):
 ```python
 import * as time from 'time'
 
-struct PurchaseRequest { id: String; amount: Int }
-struct Verdict { role: String; ok: Bool }
+struct PurchaseRequest { id: String, amount: Int }
+struct Verdict { role: String, ok: Bool }
 
 extern purchaseRequests: Queue<PurchaseRequest>          # provided by the host
 extern fn verdicts(id: String) -> Queue<Verdict>
@@ -88,7 +88,7 @@ const a, b = (1, "x")          # destructuring
 | `Unit`, `Never` | `Unit` is `()`, the type of statements and loops; `Never` is the bottom type (`return`, `break`, `continue`, `panic`) |
 | `A \| B`, `"a" \| "b"`, `42`, `true` | unions and literal types (`Bool` is `true \| false`); a value converts into a union expecting it, and a literal union fits its base type |
 | `T?` | sugar for `T \| None` (like TS `T \| null`, **not** Rust's `Option` — there is no `Some`) |
-| `(A, B)`, `{ a: Int; b: String }` | tuples (`t.0`, `t.1`) and anonymous struct types (structural shapes) |
+| `(A, B)`, `{ a: Int, b: String }` | tuples (`t.0`, `t.1`) and anonymous struct types (structural shapes) |
 | `Array<T>`, `Map<K, V>`, `Range` | value collections, copied like structs |
 | `fn(A) -> R`, `async fn(A) -> R`, `sendable fn(A) -> R` | function types; plain `fn(A) -> R` converts to `async fn(A) -> R`, and `sendable` to plain |
 | `any Trait`, `any A & B` | existential trait object (`Array<any View<Sc>>`, `(any Showable)?`) |
@@ -103,7 +103,7 @@ const a, b = (1, "x")          # destructuring
 ```python
 struct Order:
     id: String
-    items: Array<{ sku: String; qty: Int }>     # anonymous struct type
+    items: Array<{ sku: String, qty: Int }>     # anonymous struct type
     retries: Int = 3                            # field default
 
 const o = Order{id: "o1", items: [struct{sku: "a", qty: 2}]}
@@ -113,7 +113,7 @@ const o3 = Order{id, items: []}                 # id is short for id: id
 
 enum Decision:
     Approved { by: String }
-    Rejected { by: String; reason: String }
+    Rejected { by: String, reason: String }
     Expired
 ```
 
@@ -187,7 +187,7 @@ fn sum<T is Monoid>(xs: Array<T>) -> T:
 
 **Computed types and field loops (§3.1, §3.5, §3.17, §4):**
 - **Associated types:** `type Data = T` inside a `struct` or `enum`, required in a trait with `type Data`, read as `N.Data`.
-- **Struct constraints:** `S is struct { title: String; [_] is FormNode }` (met by nominal `struct`s and anonymous shapes, not `shared` or `extern` structs).
+- **Struct constraints:** `S is struct { title: String, [_] is FormNode }` (met by nominal `struct`s and anonymous shapes, not `shared` or `extern` structs).
 - **Mapped struct types:** `{ [F in keyof S]: S[F].Data }` (a structural shape with one field per key of `S`; named fields alongside `[F in …]` override/skip those keys).
 - **Field loops & comprehensions:** `for f, node in ...s:` (or `...*s` on a shared struct) checks and runs once per field in name order; `[for f, v in ...s: …]` builds an array; `struct{id, for f, v in ...s: [f]: g(v)}` builds a struct field by field.
 - **`keyof S`, `s[k]`, and `type match`:** `keyof S` is the union of `S`'s field names as string literal types; `S[K]` is the field type (or union of field types), and `s[k]` reads/writes it. `type Out<D> = match D: case Field<infer T>: T case _: D` computes a type by pattern matching.

@@ -28,7 +28,7 @@ const schemaDecls = [
   'fn validate<S is struct { [_] is FormNode }>(self: Group<S>, data: Group<S>.Data) -> Array<String>: []',
   'struct OrderForm:',
   '  country: Field<String>',
-  '  items: Repeat<Group<{ sku: Field<String>; qty: Field<Int> }>>',
+  '  items: Repeat<Group<{ sku: Field<String>, qty: Field<Int> }>>',
 ];
 
 describe('mapped struct types (§3)', () => {
@@ -36,13 +36,13 @@ describe('mapped struct types (§3)', () => {
     expect(
       compareWrittenTypes(
         'Group<OrderForm>.Data',
-        '{ items: Array<{ qty: Int; sku: String }>; country: String }',
+        '{ items: Array<{ qty: Int, sku: String }>, country: String }',
         schemaDecls,
       ),
     ).toEqual(sameComputedType);
 
     expect(
-      compareWrittenTypes('{ [K in "retries" | "region"]: Int }', '{ region: Int; retries: Int }'),
+      compareWrittenTypes('{ [K in "retries" | "region"]: Int }', '{ region: Int, retries: Int }'),
     ).toEqual(sameComputedType);
 
     expect(compareWrittenTypes('{ [K in "only"]: Bool }', '{ only: Bool }')).toEqual(
@@ -55,19 +55,19 @@ describe('mapped struct types (§3)', () => {
   it('allows named entries before and after the mapped entry, skipping keys already named in the braces', () => {
     const decls = [
       ...schemaDecls,
-      'struct WithTitle { title: String; count: Field<Int>; active: Field<Bool> }',
+      'struct WithTitle { title: String, count: Field<Int>, active: Field<Bool> }',
       // `title` in WithTitle is a plain String (not a FormNode), but naming `title: String` in the
       // braces skips `title` in `[F in keyof S]: S[F].Data`!
-      'type MappedWithTitle<S is struct { title: String; [_] is FormNode }> = {',
-      '  id: Int;',
-      '  [F in keyof S]: S[F].Data;',
+      'type MappedWithTitle<S is struct { title: String, [_] is FormNode }> = {',
+      '  id: Int,',
+      '  [F in keyof S]: S[F].Data,',
       '  title: String',
       '}',
     ];
     expect(
       compareWrittenTypes(
         'MappedWithTitle<WithTitle>',
-        '{ id: Int; title: String; count: Int; active: Bool }',
+        '{ id: Int, title: String, count: Int, active: Bool }',
         decls,
       ),
     ).toEqual(sameComputedType);
@@ -75,13 +75,13 @@ describe('mapped struct types (§3)', () => {
 
   it('provides `K` as the field’s literal type and `S[F]` as the field’s type inside `T`', () => {
     const decls = [
-      'struct Settings { retries: Int; region: String }',
+      'struct Settings { retries: Int, region: String }',
       'type Tagged<S is struct> = { [F in keyof S]: (F, S[F]) }',
     ];
     expect(
       compareWrittenTypes(
         'Tagged<Settings>',
-        '{ region: ("region", String); retries: ("retries", Int) }',
+        '{ region: ("region", String), retries: ("retries", Int) }',
         decls,
       ),
     ).toEqual(sameComputedType);
@@ -94,7 +94,7 @@ describe('mapped struct types (§3)', () => {
       '  id: Int = 10 @json.JsonName{"custom_id"}',
       '  name: String = "anon"',
       '}',
-      'struct Plain { id: Int; name: String }',
+      'struct Plain { id: Int, name: String }',
       'type Cloned = { [F in keyof Annotated]: Annotated[F] }',
       'fn takeCloned(c: Cloned) -> String: json.stringify(c)',
     ];
@@ -119,12 +119,12 @@ describe('mapped struct types (§3)', () => {
     expect(codesOf('type Bad4 = { [K in "not-valid"]: Int }').length).toBeGreaterThan(0);
     expect(codesOf('type Bad5 = { [K in "PascalField"]: Int }').length).toBeGreaterThan(0);
     // Two mapped entries in one `{ … }`
-    expect(codesOf('type Bad6 = { [A in "a"]: Int; [B in "b"]: Int }').length).toBeGreaterThan(0);
+    expect(codesOf('type Bad6 = { [A in "a"]: Int, [B in "b"]: Int }').length).toBeGreaterThan(0);
     // Constrained `S` where a named entry of the constraint isn't overridden and lacks `.Data`
     expect(
       codesOf(
         ...schemaDecls,
-        'type Bad7<S is struct { title: String; [_] is FormNode }> = { [F in keyof S]: S[F].Data }',
+        'type Bad7<S is struct { title: String, [_] is FormNode }> = { [F in keyof S]: S[F].Data }',
       ).length,
     ).toBeGreaterThan(0);
   });
@@ -137,7 +137,7 @@ describe('mapped struct types (§3)', () => {
     ];
     const generic = (body: string, type = 'Copy<T>') => [
       ...copy,
-      `fn g<T is struct { a: Int; [_]: String }>(x: ${type}, k: keyof T) -> ${type}:`,
+      `fn g<T is struct { a: Int, [_]: String }>(x: ${type}, k: keyof T) -> ${type}:`,
       '  let y = x',
       `  ${body}`,
       '  y',

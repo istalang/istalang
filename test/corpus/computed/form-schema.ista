@@ -39,7 +39,7 @@ fn validate<S is struct { [_] is FormNode }>(self: Group<S>, data: Group<S>.Data
 
 struct OrderForm:
   country: Field<String>
-  items: Repeat<Group<{ sku: Field<String>; qty: Field<Int> }>>
+  items: Repeat<Group<{ sku: Field<String>, qty: Field<Int> }>>
 
 type Order = Group<OrderForm>.Data
 

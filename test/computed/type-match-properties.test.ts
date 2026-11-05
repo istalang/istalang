@@ -48,8 +48,8 @@ describe('a type match under instantiation', () => {
     const schema = [
       'struct Field<T> { value: T? }',
       'struct Repeat<Row> { rows: Array<Row> }',
-      'struct Item { sku: Field<String>; qty: Field<Int> }',
-      'struct OrderForm { country: Field<String>; items: Repeat<Item> }',
+      'struct Item { sku: Field<String>, qty: Field<Int> }',
+      'struct OrderForm { country: Field<String>, items: Repeat<Item> }',
       'type DataOf<D> = match D:',
       '  case Field<infer T>: T',
       '  case Repeat<infer R>: Array<DataOf<R>>',
@@ -58,7 +58,7 @@ describe('a type match under instantiation', () => {
     expect(
       compareWrittenTypes(
         'DataOf<OrderForm>',
-        '{ items: Array<{ qty: Int; sku: String }>; country: String }',
+        '{ items: Array<{ qty: Int, sku: String }>, country: String }',
         schema,
       ),
     ).toEqual(sameComputedType);

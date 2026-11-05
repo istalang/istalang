@@ -8,9 +8,9 @@
 
 import JsonName from 'json'
 
-type Point = { x: Int; y: Int }
-struct Pixel { x: Int; y: Int }
-struct Named { x: Int @JsonName{"X"}; y: Int }
+type Point = { x: Int, y: Int }
+struct Pixel { x: Int, y: Int }
+struct Named { x: Int @JsonName{"X"}, y: Int }
 struct Outer { p: Pixel }
 
 fn all(points: Array<Point>) -> Int: points.length()

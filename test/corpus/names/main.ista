@@ -22,7 +22,7 @@ struct Money { cents: Int }
 
 enum Verdict:
   Approved { by: String }
-  Rejected { by: String; reason: String }
+  Rejected { by: String, reason: String }
   Expired
 
 trait Zero:

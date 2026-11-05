@@ -28,7 +28,7 @@ const schemaDecls = [
   'fn validate<S is struct { [_] is FormNode }>(self: Group<S>, data: Group<S>.Data) -> Array<String>: []',
   'struct OrderForm:',
   '  country: Field<String>',
-  '  items: Repeat<Group<{ sku: Field<String>; qty: Field<Int> }>>',
+  '  items: Repeat<Group<{ sku: Field<String>, qty: Field<Int> }>>',
 ];
 
 describe('type `match` (§4 and pre-P4 debt #1)', () => {
@@ -60,7 +60,7 @@ describe('type `match` (§4 and pre-P4 debt #1)', () => {
 
   it('matches tuple subjects `match (A, B):`, repeated `infer T`, and constrained `infer T is C`', () => {
     const decls = [
-      'struct Pair<A, B> { first: A; second: B }',
+      'struct Pair<A, B> { first: A, second: B }',
       'struct Box<T> { value: T }',
       'type SamePair<P> = match P:',
       '  case Pair<infer T, T>: Array<T>',
@@ -92,7 +92,7 @@ describe('type `match` (§4 and pre-P4 debt #1)', () => {
 
   it('matches `case struct { … }:` openly (extracting `infer`), while `case { … }:` matches the exact shape only', () => {
     const decls = [
-      'struct NominalId { id: Int; extra: String }',
+      'struct NominalId { id: Int, extra: String }',
       'type IdOf<T> = match T:',
       '  case struct { id: infer K }: K',
       '  case _: None',
@@ -102,7 +102,7 @@ describe('type `match` (§4 and pre-P4 debt #1)', () => {
       '  case _: "other"',
     ];
     expect(compareWrittenTypes('IdOf<NominalId>', 'Int', decls)).toEqual(sameComputedType);
-    expect(compareWrittenTypes('IdOf<{ id: String; count: Int }>', 'String', decls)).toEqual(
+    expect(compareWrittenTypes('IdOf<{ id: String, count: Int }>', 'String', decls)).toEqual(
       sameComputedType,
     );
     expect(compareWrittenTypes('IdOf<Int>', 'None', decls)).toEqual(sameComputedType);
@@ -111,7 +111,7 @@ describe('type `match` (§4 and pre-P4 debt #1)', () => {
       sameComputedType,
     );
     expect(
-      compareWrittenTypes('ExactShape<{ id: Int; extra: Bool }>', '"open-struct"', decls),
+      compareWrittenTypes('ExactShape<{ id: Int, extra: Bool }>', '"open-struct"', decls),
     ).toEqual(sameComputedType);
     expect(
       compareWrittenTypes('ExactShape<OnlyId>', '"open-struct"', [

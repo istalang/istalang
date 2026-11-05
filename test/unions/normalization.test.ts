@@ -20,8 +20,8 @@ import {
 } from './unions.test-kit.ts';
 
 const sharedDecls = [
-  'type Point = { x: Int; y: Int }',
-  'struct Pixel { x: Int; y: Int }',
+  'type Point = { x: Int, y: Int }',
+  'struct Pixel { x: Int, y: Int }',
   'struct Email { to: String }',
   'struct Plain { id: Int }',
   'trait Notifier:',
@@ -161,7 +161,7 @@ describe('union normalization (§1, §3, §4)', () => {
   it('allows a recursive struct whose self-reference is guarded by a union, and rejects recursive aliases', () => {
     expect(
       codesOf(
-        'struct Chain { value: Int; rest: Chain | Int }',
+        'struct Chain { value: Int, rest: Chain | Int }',
         'fn head(c: Chain) -> Int: c.value',
       ),
     ).toEqual([]);
@@ -186,8 +186,8 @@ type Atom =
   | 'false'
   | 'None'
   | 'Never'
-  | '{ x: Int; y: Int }'
-  | '{ y: Int; x: Int }'
+  | '{ x: Int, y: Int }'
+  | '{ y: Int, x: Int }'
   | 'Pixel';
 
 /** Canonical set of members after Proposal 3 §1 normalization. */
@@ -196,7 +196,7 @@ function canonicalMembers(atoms: readonly Atom[]): ReadonlySet<string> {
   for (const atom of atoms) {
     if (atom !== 'Never') {
       set.add(
-        atom === '{ x: Int; y: Int }' || atom === '{ y: Int; x: Int }' ? '{x:Int,y:Int}' : atom,
+        atom === '{ x: Int, y: Int }' || atom === '{ y: Int, x: Int }' ? '{x:Int,y:Int}' : atom,
       );
     }
   }
@@ -236,8 +236,8 @@ const atomArbitrary: fc.Arbitrary<Atom> = fc.constantFrom(
   'false',
   'None',
   'Never',
-  '{ x: Int; y: Int }',
-  '{ y: Int; x: Int }',
+  '{ x: Int, y: Int }',
+  '{ y: Int, x: Int }',
   'Pixel',
 );
 

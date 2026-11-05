@@ -175,7 +175,7 @@ fn categoryView(m: CategoryModel, k: String) -> any View<CategoryScope>: LayoutV
 struct SupplierParams:
   region: String
   tier: "basic" | "gold"
-  products: Array<{ sku: String; name: String }>
+  products: Array<{ sku: String, name: String }>
   owner: crm.User
 
 struct SupplierCtx:
@@ -231,8 +231,8 @@ type SupplierCertificationsRow = Field<"iso9001" | "iso14001">
 type SupplierCategoriesRow = Group<CategoryModel>
 type SupplierHistoryRow = Group<{ note: Field<String> }>
 type SupplierPaymentCases = {
-  card: Group<{ holder: Field<String>; last4: Field<String> }>
-  wire: Group<{ deposit: Group<{ amount: Field<Float>; currency: Field<"EUR" | "USD"> }> }>
+  card: Group<{ holder: Field<String>, last4: Field<String> }>
+  wire: Group<{ deposit: Group<{ amount: Field<Float>, currency: Field<"EUR" | "USD"> }> }>
   invoice: Group<{ terms: Field<Int> }>
 }
 type SupplierDeliveryCases = {

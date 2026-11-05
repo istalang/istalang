@@ -30,7 +30,7 @@ function runText(lines: readonly string[], declarations: readonly string[]): unk
 
 describe('an array comprehension over fields', () => {
   it('gives one element per field in name order, agreeing on one type', () => {
-    const declarations = ['struct Misordered { z: Int; a: Int; m: Int }', 'struct Empty'];
+    const declarations = ['struct Misordered { z: Int, a: Int, m: Int }', 'struct Empty'];
     const lines = [
       'const s = Misordered{z: 1, a: 2, m: 3}',
       'const keys = [for k, _ in ...s: k]',
@@ -45,7 +45,7 @@ describe('an array comprehension over fields', () => {
   it('refuses elements that agree on no type, with nothing expected', () => {
     expect(
       codesOf(
-        'struct Mixed { s: String; n: Int }',
+        'struct Mixed { s: String, n: Int }',
         'fn f(m: Mixed) -> Int:',
         '  const xs = [for _, v in ...m: v]',
         '  xs.length()',
@@ -56,7 +56,7 @@ describe('an array comprehension over fields', () => {
 
 describe('elements holding keys', () => {
   it('agree as an array literal of the same values does, each built as the widened type', () => {
-    const declarations = ['struct P { b: Int; a: Int }'];
+    const declarations = ['struct P { b: Int, a: Int }'];
     const lines = [
       'const pairs = [for k, v in ...P{b: 1, a: 2}: (k, v)]',
       'const ka: "a" = "a"',
@@ -69,7 +69,7 @@ describe('elements holding keys', () => {
   });
 
   it('agree whatever expressions give the other items, checked once', () => {
-    const declarations = ['struct P { b: Int; a: Int }', 'fn twice(n: Int) -> Int: n * 2'];
+    const declarations = ['struct P { b: Int, a: Int }', 'fn twice(n: Int) -> Int: n * 2'];
     const lines = [
       'const p = P{b: 1, a: 2}',
       'const sums = [for k, v in ...p: (k, v + 1)]',
@@ -87,7 +87,7 @@ describe('elements holding keys', () => {
   it('agree over any struct, as the array literal written out per field', () => {
     fc.assert(
       fc.property(generatedFieldsArbitrary, (fields) => {
-        const struct = `struct S { ${fields.map(({ name, type }) => `${name}: ${type}`).join('; ')} }`;
+        const struct = `struct S { ${fields.map(({ name, type }) => `${name}: ${type}`).join(', ')} }`;
         const literal = `S{${fields.map(({ name, value }) => `${name}: ${value}`).join(', ')}}`;
         const names = fields.map(({ name }) => name).sort();
         const keys = names.map((name) => `const key${name}: "${name}" = "${name}"`);
@@ -106,8 +106,8 @@ describe('a struct comprehension', () => {
   it('builds structs with and without an expected type, evaluating named fields first', () => {
     const declarations = [
       ...formDeclarations,
-      'struct SettingsForm { retries: Field<Int>; region: Field<String> }',
-      'struct Defaults { retries: Int; region: String }',
+      'struct SettingsForm { retries: Field<Int>, region: Field<String> }',
+      'struct Defaults { retries: Int, region: String }',
       'fn current(s: SettingsForm) -> { [F in keyof SettingsForm]: SettingsForm[F].Data? }:',
       '  struct{for field, node in ...s: [field]: node.value}',
       'fn withExpected(d: Defaults) -> Defaults:',
@@ -151,7 +151,7 @@ describe('a struct comprehension', () => {
 
   it('refuses fields given twice, unknown or missing, and fields not all known without a type', () => {
     const lines = [
-      'struct Defaults { retries: Int; region: String }',
+      'struct Defaults { retries: Int, region: String }',
       'struct Other { a: Int }',
       'fn noExpected<S is struct>(s: S):',
       '  const out = struct{for k, v in ...s: [k]: v}',
@@ -171,7 +171,7 @@ describe('a struct comprehension', () => {
   it('refuses brackets naming anything but its key', () => {
     expect(
       codesOf(
-        'struct Defaults { retries: Int; region: String }',
+        'struct Defaults { retries: Int, region: String }',
         'fn wrongKey(d: Defaults) -> Defaults:',
         '  Defaults{for k, v in ...d: [v]: v}',
       ),
@@ -183,7 +183,7 @@ describe('the commute law of a struct comprehension', () => {
   it('agrees: generic and instantiated, over the concrete struct, and written out by hand', () => {
     fc.assert(
       fc.property(generatedFieldsArbitrary, (fields) => {
-        const declared = fields.map((field) => `${field.name}: ${field.type}`).join('; ');
+        const declared = fields.map((field) => `${field.name}: ${field.type}`).join(', ');
         const value = `Generated{${fields.map((field) => `${field.name}: ${field.value}`).join(', ')}}`;
         const byHand = fields.map((field) => `${field.name}: s.${field.name}`).join(', ');
         const declarations = [

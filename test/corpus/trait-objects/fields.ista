@@ -4,8 +4,8 @@
 trait Sized:
   size: Int
 
-struct Box { size: Int; label: String }
-struct Pair { first: String; size: Int }
+struct Box { size: Int, label: String }
+struct Pair { first: String, size: Int }
 
 async fn main():
   const items: Array<any Sized> = [Box{size: 1, label: "a"}, Pair{first: "b", size: 2}]

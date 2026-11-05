@@ -3,7 +3,7 @@
  * traits and type aliases.
  *
  * Structs, enums and traits list their members the same way: an indented block after `:`, or
- * braces on one line (`struct Req { id: Int; value: String }`, `enum Color { Red; Green }`). A
+ * braces on one line (`struct Req { id: Int, value: String }`, `enum Color { Red, Green }`). A
  * struct may also have no member list at all. One helper reads all three, with each declaration
  * supplying how a member is parsed.
  *
@@ -93,6 +93,7 @@ function withAssociatedTypes<Item extends DeclaredField | Variant>(
   return {
     parseItem: (parser) =>
       declaresType(parser) ? parseAssociatedType(parser) : rules.parseItem(parser),
+    separator: rules.separator,
     annotate: attachAnnotations,
   };
 }
@@ -195,14 +196,18 @@ function parseMembers<Item extends DeclaredField | Variant | AssociatedType | Tr
   return { value: items, doc: parseDocstringBelow(parser, headerStart), segmentsStart: undefined };
 }
 
-/** `Expired`, or `Rejected { by: String; reason: String }`. */
+/** `Expired`, or `Rejected { by: String, reason: String }`. */
 function parseVariant(parser: Parser): Variant {
   const name = parser.identifier('a variant name');
   const fields = parser.cursor.at('{') ? parseItemEntries(parser, declaredFieldRules).value : [];
   return { kind: 'Variant', span: parser.spanFrom(parser.startOf(name)), name, fields };
 }
 
-const variantRules: ItemRules<Variant> = { parseItem: parseVariant, annotate: attachAnnotations };
+const variantRules: ItemRules<Variant> = {
+  parseItem: parseVariant,
+  separator: ',',
+  annotate: attachAnnotations,
+};
 
 /** A required function, whose body may be omitted, a required field or associated type. */
 function parseTraitMember(parser: Parser): TraitMember | Invalid {
@@ -215,5 +220,6 @@ function parseTraitMember(parser: Parser): TraitMember | Invalid {
 
 const traitMemberRules: ItemRules<TraitMember> = {
   parseItem: parseTraitMember,
+  separator: ',',
   annotate: attachAnnotations,
 };

@@ -12,7 +12,7 @@ import { diagnosedAt } from '../compile.test-kit.ts';
 import { inFunction, reported } from './check.test-kit.ts';
 import { checkerDiagnostics as reports } from './diagnostics/index.ts';
 
-const pair = 'struct Pair { first: Int; second: Int }';
+const pair = 'struct Pair { first: Int, second: Int }';
 const apartFromChanging = /apart from the names that change/u;
 const one = 'struct Id { value: String }';
 const methods = [
@@ -73,7 +73,7 @@ describe('values accept', () => {
     ],
     [
       'an anonymous struct type taking a literal',
-      'const v: { a: Int; b: String } = struct{a: 1, b: s}\nconst w = v.b',
+      'const v: { a: Int, b: String } = struct{a: 1, b: s}\nconst w = v.b',
     ],
     [
       'destructuring at any depth',

@@ -103,7 +103,7 @@ describe('meeting a struct constraint (§2)', () => {
         );
         const othersInts = fields.every((field) => field.name === 'alpha' || field.type === 'Int');
         const alpha = fields.some((field) => field.name === 'alpha');
-        expect(reportedFor('struct { alpha: String; [_]: Int }', fields)).toEqual(
+        expect(reportedFor('struct { alpha: String, [_]: Int }', fields)).toEqual(
           alpha && othersInts ? [] : notMet,
         );
       }),
@@ -113,8 +113,8 @@ describe('meeting a struct constraint (§2)', () => {
 
   it('is met by a constrained type parameter whose own constraint states as much', () => {
     const declarations = [
-      'fn inner<S is struct { title: String; [_]: Int }>(s: S) -> String: s.title',
-      'fn outer<S is struct { title: String; count: Int; [_]: Int }>(s: S) -> String: inner(s)',
+      'fn inner<S is struct { title: String, [_]: Int }>(s: S) -> String: s.title',
+      'fn outer<S is struct { title: String, count: Int, [_]: Int }>(s: S) -> String: inner(s)',
       'fn wider<S is struct { title: String }>(s: S) -> String: inner(s)',
     ];
     expect(codesOf(...declarations.slice(0, 2))).toEqual([]);

@@ -188,7 +188,7 @@ function declType(d: any): string {
   if (d.type === 'object')
     return `{ ${Object.entries(d.properties)
       .map(([k, t]) => `${k}: ${declType(t)}`)
-      .join('; ')} }`;
+      .join(', ')} }`;
   return FIELD_TYPES[d.type];
 }
 
@@ -481,7 +481,7 @@ function modelType(u: Unit, n: MNode, canon: string, aliases: string[]): string 
       const name = `${pascal(u.name)}${pascal(canon.replace(/^data\./u, ''))}Cases`;
       const cases = [...n.cases]
         .map(([id, g]) => `${id}: Group<${structType(u, g, `${canon}.${id}`, aliases)}>`)
-        .join('; ');
+        .join(', ');
       aliases.push(`type ${name} = { ${cases} }`);
       return wrap(`Variant<${name}>`);
     }
@@ -492,7 +492,7 @@ function modelType(u: Unit, n: MNode, canon: string, aliases: string[]): string 
   }
 }
 function structType(u: Unit, g: MNode & { k: 'group' }, canon: string, aliases: string[]): string {
-  return `{ ${[...g.fields].map(([k, f]) => `${k}: ${modelType(u, f, `${canon}.${k}`, aliases)}`).join('; ')} }`;
+  return `{ ${[...g.fields].map(([k, f]) => `${k}: ${modelType(u, f, `${canon}.${k}`, aliases)}`).join(', ')} }`;
 }
 
 /** The factory expression creating a model node. */
@@ -1043,7 +1043,7 @@ class ViewGen {
   newScope(sc: Scope, name: string, type: string): string {
     const t = `${pascal(this.u.name)}Scope${++this.scopeCount}`;
     const outer = sc.vars.map((v) => `${v}: ${this.varType(sc, v)}`);
-    this.scopes.push(`type ${t} = { ${[...outer, `${name}: ${type}`].join('; ')} }`);
+    this.scopes.push(`type ${t} = { ${[...outer, `${name}: ${type}`].join(', ')} }`);
     this.scopeTypes.set(
       t,
       new Map([...sc.vars.map((v) => [v, this.varType(sc, v)] as [string, string]), [name, type]]),

@@ -19,7 +19,7 @@ describe('a write through a key of several names', () => {
     ];
     expect(runMain('Int', 'let s = Solo{a: none}\n  reset(&s, "a")\n  s.a ?? 7', generic)).toBe(0);
     const member = [
-      'struct P2 { a: Int?; b: Int? }',
+      'struct P2 { a: Int?, b: Int? }',
       'fn reset<K in "a" | "b">(s: &P2, k: "a" | K):',
       '  s[k] = 0',
     ];
@@ -30,7 +30,7 @@ describe('a write through a key of several names', () => {
   it('reaches the part of whichever field it names through the steps past it', () => {
     const declarations = [
       'struct Item { count: Int }',
-      'struct Pair { left: Item; right: Item }',
+      'struct Pair { left: Item, right: Item }',
       'fn setCount(p: &Pair, k: keyof Pair):',
       '  p[k].count = 1',
       'fn bump(p: &Pair, k: keyof Pair):',
@@ -49,8 +49,8 @@ describe('a write through a key of several names', () => {
 
   it('reaches a field of a field when two keys of several names read the place', () => {
     const declarations = [
-      'struct Inner { x: Int?; y: Int? }',
-      'struct Outer { first: Inner; second: Inner }',
+      'struct Inner { x: Int?, y: Int? }',
+      'struct Outer { first: Inner, second: Inner }',
       'fn set(o: &Outer, k: keyof Outer, j: keyof Inner):',
       '  o[k][j] = 4',
     ];
@@ -64,7 +64,7 @@ describe('a write through a key of several names', () => {
 
   it("refuses an element written past it, whose setIndex takes the place by '&'", () => {
     const codes = codesOf(
-      'struct Pair { left: Array<Int>; right: Array<Int> }',
+      'struct Pair { left: Array<Int>, right: Array<Int> }',
       'fn setFirst(p: &Pair, k: keyof Pair):',
       '  p[k][0] = 1',
     );
@@ -83,7 +83,7 @@ describe('writes through a generic key commute with the substituted program', ()
         (fields, pick) => {
           const written = fields[pick % fields.length] ?? 'delta';
           const declarations = [
-            `struct Gen { ${fields.map((name) => `${name}: Int?`).join('; ')} }`,
+            `struct Gen { ${fields.map((name) => `${name}: Int?`).join(', ')} }`,
             'fn generic<S is struct { [_]: Int? }>(s: &S, k: keyof S):',
             '  s[k] = 3',
             'fn concrete(s: &Gen, k: keyof Gen):',

@@ -72,6 +72,7 @@ export function parseModule(parser: Parser): Module {
 
 const moduleRules: ItemRules<Declaration> = {
   parseItem: parseModuleItem,
+  separator: ';',
   annotate: attachAnnotations,
   headsSegments: true,
 };

@@ -62,8 +62,8 @@ interface AnyType extends NodeOf<'AnyType'> {
 }
 
 /**
- * An anonymous struct: `{ sku: String; qty: Int }` or `struct { … }`. One entry may map a union of
- * keys to fields (`{ id: String; [F in keyof S]: S[F]? }`, §3.1), which makes it a mapped struct
+ * An anonymous struct: `{ sku: String, qty: Int }` or `struct { … }`. One entry may map a union of
+ * keys to fields (`{ id: String, [F in keyof S]: S[F]? }`, §3.1), which makes it a mapped struct
  * type: still an anonymous struct type, its fields the named ones and one per key no named entry
  * names.
  */
@@ -153,7 +153,7 @@ interface MemberType extends NodeOf<'MemberType'> {
 }
 
 /**
- * `struct`, `struct { title: String; [_] is FormNode }`: a constraint on a struct's fields (§3.5),
+ * `struct`, `struct { title: String, [_] is FormNode }`: a constraint on a struct's fields (§3.5),
  * met only by a struct type. It is a constraint, never a type, so it stands only where one does:
  * after `is`. Bare `struct` and `struct {}` are the same constraint, any struct.
  */

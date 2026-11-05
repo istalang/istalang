@@ -68,12 +68,12 @@ describe('a literal argument of items with types of their own', () => {
   it('is built only as a struct type it gives every field of, but those with a default', () => {
     const declarations = [
       'fn pick(x: { a: Int? }) -> String: "one"',
-      'fn pick(x: { a: Int?; b: String }) -> String: "two"',
-      'struct Defaulted { a: Int?; b: String = "b" }',
+      'fn pick(x: { a: Int?, b: String }) -> String: "two"',
+      'struct Defaulted { a: Int?, b: String = "b" }',
       'fn fill(x: Defaulted) -> String: x.b',
     ];
     const body = [
-      'const u: { a: Int? } | { a: Int?; b: String } = struct{a: none}',
+      'const u: { a: Int? } | { a: Int?, b: String } = struct{a: none}',
       '`${pick(struct{a: 3})} ${pick(struct{a: none})} ${pick(struct{a: 3, b: "x"})} ${fill(struct{a: 1})}`',
     ].join('\n  ');
     expect(outcome(declarations, body)).toBe('one one two b');

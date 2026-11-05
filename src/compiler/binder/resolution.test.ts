@@ -19,7 +19,7 @@ import { bindProgram } from './bind.ts';
 import { bindModule } from './bind-module.ts';
 import type { Entity } from './entities.ts';
 
-const lib = 'struct Shape { radius: Int }\nfn helper(): 1\nenum Color { Red; Green }';
+const lib = 'struct Shape { radius: Int }\nfn helper(): 1\nenum Color { Red, Green }';
 
 interface Case {
   readonly source: string;
@@ -178,7 +178,7 @@ const cases: Readonly<Record<string, Case>> = {
     declaredAt: 0,
   },
   'a qualified variant': {
-    source: 'enum Light { Red; Amber }\nfn f() -> Light: Light.Amber',
+    source: 'enum Light { Red, Amber }\nfn f() -> Light: Light.Amber',
     name: 'Amber',
     use: 1,
     declaredAt: 0,
@@ -272,7 +272,7 @@ describe('what a name denotes', () => {
 
   it('keeps every entity of an unchanged module across snapshots', () => {
     const files = {
-      main: 'struct Book { title: String }\nfn read(self: Book) -> String: self.title\nenum V { A; B }\nfn g() -> V: A',
+      main: 'struct Book { title: String }\nfn read(self: Book) -> String: self.title\nenum V { A, B }\nfn g() -> V: A',
       other: 'fn x() -> Int: 1',
     };
     const before = preludeProgramOf(files);

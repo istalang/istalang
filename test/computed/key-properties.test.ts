@@ -22,11 +22,11 @@ describe('keys and mapped types of generated structs', () => {
       fc.property(generatedFieldsArbitrary, (fields) => {
         const sorted = fields.toSorted((a, b) => compareOrdered(a.name, b.name));
         const declarations = [
-          `struct Gen { ${fields.map((f) => `${f.name}: ${f.type}`).join('; ')} }`,
+          `struct Gen { ${fields.map((f) => `${f.name}: ${f.type}`).join(', ')} }`,
           `type ShapeGen = { ${fields
             .toReversed()
             .map((f) => `${f.name}: ${f.type}`)
-            .join('; ')} }`,
+            .join(', ')} }`,
           'type Copy<S is struct> = { [K in keyof S]: S[K] }',
         ];
         const keys = sorted.map((f) => `"${f.name}"`).join(' | ');
@@ -54,7 +54,7 @@ describe('keys and mapped types of generated structs', () => {
           return;
         }
         const declarations = [
-          `struct Gen { ${fields.map((f) => `${f.name}: ${f.type}`).join('; ')} }`,
+          `struct Gen { ${fields.map((f) => `${f.name}: ${f.type}`).join(', ')} }`,
           'fn readAt<S is struct, K in keyof S>(s: S, k: K) -> S[K]: s[k]',
           'fn writeAt<S is struct, K in keyof S>(s: &S, k: K, v: S[K]):',
           '  s[k] = v',

@@ -67,10 +67,10 @@ describe('struct layout', () => {
   it("lists a declared struct's fields in name order, as its shape's entry does (§3.1)", () => {
     const program = stdProgramOf({
       main: [
-        'struct P { y: Int; x: Int; aZ: Int }',
+        'struct P { y: Int, x: Int, aZ: Int }',
         'async fn main() -> Future<Int>:',
         '  const p = P{y: 1, x: 2, aZ: 3}',
-        '  const shape: { y: Int; x: Int; aZ: Int } = p',
+        '  const shape: { y: Int, x: Int, aZ: Int } = p',
         '  p.x + shape.y',
       ].join('\n'),
     });
@@ -87,7 +87,7 @@ describe('struct layout', () => {
     const text = compiledText(
       [
         "import * as json from 'json'",
-        'struct Late { b: Int; a: Int }',
+        'struct Late { b: Int, a: Int }',
         'async fn main() -> Future<String>:',
         '  match json.parse<Late>("{}"):',
         '    case Ok{value}: "parsed"',
@@ -111,7 +111,7 @@ describe('struct layout', () => {
       fc.property(declaredFields, (fields) => {
         const reads = fields.map(({ name }) => `s.${name}`).join(', ');
         const shapeReads = fields.map(({ name }) => `shape.${name}`).join(', ');
-        const shapeType = fields.map(({ name }) => `${name}: Int`).join('; ');
+        const shapeType = fields.map(({ name }) => `${name}: Int`).join(', ');
         const main = [
           declaration(fields),
           'async fn main() -> Future<(Array<Int>, Array<Int>)>:',

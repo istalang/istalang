@@ -63,18 +63,18 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 
 ### 2. `Variant<C>.Data` representation and reserved word `case` (spec §8 #2) — **Rewritten**
 
-- **Assumption:** `Variant<C>` declares `type Data = { [K in keyof C]: { case: K; value: Group<C[K]>.Data } }[keyof C]`.
+- **Assumption:** `Variant<C>` declares `type Data = { [K in keyof C]: { case: K, value: Group<C[K]>.Data } }[keyof C]`.
 - **Spec (`docs/spec.md` §2, §3.1, §9):**
   1. `case` is a reserved word (§2) and cannot name a struct field.
-  2. While `{ [K in keyof C]: … }[keyof C]` is a valid indexed mapped type (§3.1), inside generic `Variant.read<C>` it remains an unreduced `FieldType` (`of[keyof C]`), and Istalang's fitting rules (`fit.ts`) do not convert a struct `{ tag: k; value: … }` built with a field-loop key `k: K in keyof C` into that unreduced `FieldType`.
+  2. While `{ [K in keyof C]: … }[keyof C]` is a valid indexed mapped type (§3.1), inside generic `Variant.read<C>` it remains an unreduced `FieldType` (`of[keyof C]`), and Istalang's fitting rules (`fit.ts`) do not convert a struct `{ tag: k, value: … }` built with a field-loop key `k: K in keyof C` into that unreduced `FieldType`.
   3. In Istalang v0.1, general unions of structs do not derive `Encodable` or `Decodable` (§9, §14), which would prevent any form result containing a `Variant` from crossing the host/JSON boundary.
 - **Alternative used:** Renamed `case` to `tag` (matching `Variant.tag` and the schema's `tag` property), simplified `Variant<C is struct { [_] is FormNode }>` so `cases: C` holds each case's `Group<…>` directly, and used `form-builder-spec.md` §8 #2's fallback struct:
   ```python
   struct Variant<C is struct { [_] is FormNode }>:
       tag: Field<keyof C>
       cases: C
-      type Data = { tag: keyof C; value: { [K in keyof C]: C[K].Data? } }
-      type Seen = { tag: (keyof C)?; value: { [K in keyof C]: C[K].Seen? } }
+      type Data = { tag: keyof C, value: { [K in keyof C]: C[K].Data? } }
+      type Seen = { tag: (keyof C)?, value: { [K in keyof C]: C[K].Seen? } }
   ```
   Both `keyof C` (a union of string literals) and `{ [K in keyof C]: C[K].Data? }` derive `Encodable` and `Decodable` (§9).
 
@@ -103,7 +103,7 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 
 ### 6. Constructing a value by an alias of an anonymous struct type (spec §8 #6) — **Fixed**
 
-- **Assumption:** `OrderScope1{data: sc.data, ctx: sc.ctx, item: r1.seen()}` where `OrderScope1` is an alias for `{ data: …; ctx: …; item: … }`.
+- **Assumption:** `OrderScope1{data: sc.data, ctx: sc.ctx, item: r1.seen()}` where `OrderScope1` is an alias for `{ data: …, ctx: …, item: … }`.
 - **Spec (`docs/spec.md` §3.17):** An alias of a shape may stand before `{` to construct a value of that shape.
 
 ### 7. Async lambdas and async function types (spec §8 #7) — **Fixed**
@@ -156,7 +156,7 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 
 ### 14. Recursive types through generic containers (spec §8 #14) — **Needs a language change**
 
-- **Assumption:** A local form definition `#category` mounting itself inside a repeat (`struct CategoryModel: name: Field<String>; children: List<Group<CategoryModel>>`) works with generic `Group<S>` and `List<R>`.
+- **Assumption:** A local form definition `#category` mounting itself inside a repeat (`struct CategoryModel { name: Field<String>, children: List<Group<CategoryModel>> }`) works with generic `Group<S>` and `List<R>`.
 - **What works after fixing `Group<S>`:**
   - In `forms.ista`, `Group<S>` originally wrote `type Data = { [F in keyof S]: S[F].Data }` and `type Seen = { [F in keyof S]: S[F].Seen }`. Per `docs/spec.md` §3.1 and §3.17, only an alias or associated type whose body is a `type match` may refer to itself; a non-`match` associated type on a recursive struct caused a stack overflow in `substituteMapped`.
   - Wrapping `Group<S>`'s associated types in a `type match` (`type Data = match S: case _: { [F in keyof S]: S[F].Data }` and `type Seen = match S: case _: { [F in keyof S]: S[F].Seen }`) fixes the stack overflow and resolves `Group<CategoryModel>.Data` and `Group<CategoryModel>.Seen` to recursive shapes (§3.17).
@@ -171,7 +171,7 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 
 ### 15. Struct constraints satisfied by nested anonymous structs (spec §8 #15) — **Fixed**
 
-- **Assumption:** `Group<{ sku: Field<String>; qty: Field<Int> }>` satisfies `S is struct { [_] is FormNode }`.
+- **Assumption:** `Group<{ sku: Field<String>, qty: Field<Int> }>` satisfies `S is struct { [_] is FormNode }`.
 - **Spec (`docs/spec.md` §3.5):** Both nominal `struct` declarations and anonymous struct types (shapes) satisfy `struct { … }` constraints when their fields meet the entries. Once anonymous struct literals in `generate.ts` were written `struct{…}`, this compiled without changes.
 
 ### 16. Implicit conversion of a shared struct to `any Trait` (spec §8 #16) — **Fixed**

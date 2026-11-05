@@ -7,9 +7,9 @@
 # `a ?? b` is the value inside `a`, else `b`, which runs only then; with a `T?` on the right it
 # gives a `T?`, so `a ?? b ?? c` reads left to right.
 
-struct Address { city: String; zip: Int? }
+struct Address { city: String, zip: Int? }
 
-struct Person { name: String; address: Address? }
+struct Person { name: String, address: Address? }
 
 struct Verdict { role: String }
 

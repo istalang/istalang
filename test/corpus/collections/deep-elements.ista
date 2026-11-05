@@ -2,7 +2,7 @@
 # A program's own `index` and `setIndex` may recurse through elements as deep as any other
 # function: each element step is an ordinary call (§3.9).
 
-struct Tree { children: Array<Tree>; value: Int }
+struct Tree { children: Array<Tree>, value: Int }
 
 fn index(self: Tree, depth: Int) -> Int:
   if depth == 0: self.value else: self.children[0][depth - 1]

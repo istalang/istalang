@@ -142,7 +142,7 @@ describe('checking reports', () => {
     ],
     [
       'a type with too few type arguments',
-      'struct Pair<A, B> { first: A; second: B }\nfn f(p: Pair<Int>): 1',
+      'struct Pair<A, B> { first: A, second: B }\nfn f(p: Pair<Int>): 1',
       reports.typeArgumentCount,
       'Pair<Int>',
     ],
@@ -217,7 +217,7 @@ describe('checking accepts', () => {
     ['a duration literal without importing time', 'fn f() -> Int:\n  const d = 5d\n  d.value'],
     [
       'top-level constants used by functions and by each other',
-      'struct P { x: Int; y: Int }\nconst origin = P{x: zero, y: -1}\nconst zero = 0\nfn f() -> Int: origin.x + origin.y',
+      'struct P { x: Int, y: Int }\nconst origin = P{x: zero, y: -1}\nconst zero = 0\nfn f() -> Int: origin.x + origin.y',
     ],
     [
       "a duration literal typed as time's Duration",

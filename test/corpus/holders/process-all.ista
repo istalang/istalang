@@ -6,7 +6,7 @@
 import Inbox from 'inbox'
 import * as time from 'time'
 
-struct Job { id: Int; wait: time.Duration }
+struct Job { id: Int, wait: time.Duration }
 
 fn note(log: Shared<Array<String>>, text: String):
   log->value = [...log->value, text]

@@ -114,7 +114,7 @@ describe('key types and mapped struct types (§3.1)', () => {
   it('prints each as written', () => {
     const text = lines(
       'type Keys<S is struct> = keyof S | keyof S["meta"]',
-      'type Mapped<S is struct> = { id: String; [F in keyof S]: S[F]?; tag: (keyof S)? }',
+      'type Mapped<S is struct> = { id: String, [F in keyof S]: S[F]?, tag: (keyof S)? }',
       'fn read<S is struct, K in keyof S>(s: S, k: K) -> S[K]: s[k]',
     );
     expect(formatText(text)).toBe(text);
@@ -173,7 +173,7 @@ describe('type `match` (§3.17)', () => {
       'type DataOf<D> = match D:',
       '  case Field<infer T is Encodable & Sendable>: T',
       '  case Pair<infer T, T>: Array<T>',
-      '  case struct { id: infer K; [_] is Sendable }: K',
+      '  case struct { id: infer K, [_] is Sendable }: K',
       '  case struct: { [F in keyof D]: DataOf<D[F]> }',
       '  case _: Never',
       'struct Wrapper<D>:',
@@ -193,7 +193,7 @@ describe('type `match` (§3.17)', () => {
     const long = lines(
       'type Long<T> = match T:',
       '  case Field<infer Value>:',
-      '    { identifier: String; description: String; annotation: Value; other: Array<Value> }',
+      '    { identifier: String, description: String, annotation: Value, other: Array<Value> }',
     );
     expect(formatText(long)).toBe(long);
   });
@@ -248,7 +248,7 @@ describe('the canonical style', () => {
   });
 
   it('prints struct declarations indented, and anonymous struct types in braces', () => {
-    expect(formatText('struct Req { id: Int; data: struct { v: Int } }\n')).toBe(
+    expect(formatText('struct Req { id: Int, data: struct { v: Int } }\n')).toBe(
       lines('struct Req:', '  id: Int', '  data: { v: Int }'),
     );
   });

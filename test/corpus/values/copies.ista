@@ -5,9 +5,9 @@
 # variable leaves the copy as it was at the call; nested tuples copy deeply; top-level constants
 # destructure into constants of their own.
 
-struct P { x: Int; y: Int }
+struct P { x: Int, y: Int }
 
-struct W { p: P; n: (Int, Int) }
+struct W { p: P, n: (Int, Int) }
 
 const base = (1, P{x: 2, y: 3})
 

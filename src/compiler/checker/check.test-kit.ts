@@ -21,7 +21,7 @@ export function reported(text: string, others: Readonly<Record<string, string>> 
 
 /** `body` as the body of a function taking `c: Bool`, `n: Int` and `s: String`, after `Point`. */
 export function inFunction(body: string): string {
-  return `struct Point { x: Int; y: Int }\n\nfn subject(c: Bool, n: Int, s: String):\n${body
+  return `struct Point { x: Int, y: Int }\n\nfn subject(c: Bool, n: Int, s: String):\n${body
     .split('\n')
     .map((line) => `  ${line}`)
     .join('\n')}\n`;

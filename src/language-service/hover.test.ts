@@ -101,9 +101,9 @@ describe('hover', () => {
   });
 
   it("shows a variant's enum wherever the variant is named", () => {
-    const color = ['enum Color { Red; Green }', ''];
+    const color = ['enum Color { Red, Green }', ''];
     const shown = '(variant) Red: Color';
-    expect(hover('enum Color { R‸ed; Green }')?.code).toEqual([shown]);
+    expect(hover('enum Color { R‸ed, Green }')?.code).toEqual([shown]);
     expect(hover(...color, 'fn f() -> Color: Color.R‸ed')?.code).toEqual([shown]);
     expect(
       hover(

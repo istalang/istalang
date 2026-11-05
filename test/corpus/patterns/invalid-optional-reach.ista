@@ -16,7 +16,7 @@ shared struct Counter { count: Int }
 
 struct Pair { a: Int }
 
-struct Box { c: Counter?; t: (Int, Int)?; xs: Array<Int>?; f: (fn(Int) -> Int)?; p: Pair? }
+struct Box { c: Counter?, t: (Int, Int)?, xs: Array<Int>?, f: (fn(Int) -> Int)?, p: Pair? }
 
 fn size(self: Pair) -> Int:
   1
