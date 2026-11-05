@@ -7,6 +7,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
+import { binderDiagnostics } from '../../binder/diagnostics.ts';
 import { diagnosedAt } from '../../compile.test-kit.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 
@@ -142,5 +143,24 @@ describe('member parameters (§3.5)', () => {
       `  _ = ${call}`,
     ].join('\n');
     expect(reportedErrors(main)).toEqual(codes);
+  });
+});
+
+describe('a parameter the error type met', () => {
+  it.each([
+    ["inside a method's receiver", 'rows().length()', 1],
+    ["inside a function's argument", 'first(rows())', 1],
+    ["as a function's argument", 'same(missing, missing)', 3],
+  ])('is the error type, which reports nothing more, for %s', (_case, call, undeclared) => {
+    const main = [
+      'fn rows() -> Array<Missing>: []',
+      'fn first<T>(xs: Array<T>) -> T: xs[0]',
+      'fn same<T>(a: T, b: T) -> T: a',
+      'async fn main():',
+      `  drop ${call}`,
+    ].join('\n');
+    expect(reportedErrors(main)).toEqual(
+      Array.from({ length: undeclared }, () => binderDiagnostics.undeclared.code),
+    );
   });
 });

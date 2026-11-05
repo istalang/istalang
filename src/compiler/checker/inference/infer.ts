@@ -26,10 +26,12 @@
  *   holds literals of its base (`literalType`), a literal type of a member's base gives that base,
  *   and a value of several members fills nothing, which is noted (`severalMembers`): the caller
  *   narrows it first. A union is never found otherwise than from what is given.
- * - The error type fits anything and binds nothing, so one mistake is reported once. `Never` fits
- *   anything too and binds nothing while matching; a parameter it alone met where a value must
- *   have its type exactly is `Never` only once the expected result and defaults have had their say
- *   (complete.ts, `bindNeverWhereOpen`), as `expectPanic(fn(): panic("x"))` needs.
+ * - The error type fits anything and binds nothing while matching, so one mistake is reported
+ *   once: a parameter it met and nothing else bound is the error type once the expected result and
+ *   defaults have had their say (complete.ts, `bindErrorWhereOpen`), never one inference failed for.
+ *   `Never` fits anything too and binds nothing while matching; a parameter it alone met where a
+ *   value must have its type exactly is `Never` only once the expected result and defaults have had
+ *   their say (`bindNeverWhereOpen`), as `expectPanic(fn(): panic("x"))` needs.
  */
 
 import { type Fitting, fitOf, matchConversion } from '../types/fit.ts';
@@ -41,6 +43,7 @@ import { type Substitution, substitute } from '../types/substitution.ts';
 import {
   type AnonymousStructType,
   type AnyType,
+  errorType,
   type FunctionType,
   isPrimitive,
   type LiteralValue,
@@ -63,6 +66,8 @@ export class Inference {
   readonly #conflicts = new Set<ParameterKey>();
   /** The parameters `Never` met where a value must have its type exactly. */
   readonly #metNever = new Set<ParameterKey>();
+  /** The parameters the error type met. */
+  readonly #metError = new Set<ParameterKey>();
   readonly #severalMembers = new Map<ParameterKey, Type>();
   /** The type arguments written for some of the parameters, in place in whatever is matched. */
   readonly #written: Substitution;
@@ -79,6 +84,7 @@ export class Inference {
 
   /** Matches a declared type against a given one, binding what it can; whether they fit. */
   match(declared: Type, given: Type): boolean {
+    this.#meetError(declared, given);
     return (
       matchConversion(given, substitute(declared, this.#written, this.#fitting), {
         ...this.#fitting,
@@ -102,10 +108,7 @@ export class Inference {
 
   /** Matches `declared` against a type `given` must equal, as an expected result. */
   matchExactly(declared: Type, given: Type): boolean {
-    return (
-      given.kind === 'error' ||
-      this.#matchExact(substitute(declared, this.#written, this.#fitting), given)
-    );
+    return this.#matchExact(substitute(declared, this.#written, this.#fitting), given);
   }
 
   /** Whether `parameter` is one this inference is finding. */
@@ -122,6 +125,13 @@ export class Inference {
   bindIfOpen(parameter: ParameterKey, type: Type): void {
     if (!this.#bound.has(parameter)) {
       this.#bound.set(parameter, type);
+    }
+  }
+
+  /** Binds the error type to each parameter it met, once nothing else is left to bind it. */
+  bindErrorWhereOpen(): void {
+    for (const parameter of this.#metError) {
+      this.bindIfOpen(parameter, errorType);
     }
   }
 
@@ -179,6 +189,7 @@ export class Inference {
   }
 
   #matchExact(declared: Type, given: Type): boolean {
+    this.#meetError(declared, given);
     if (given.kind === 'error' || givesNothing(declared)) {
       return true;
     }
@@ -297,6 +308,17 @@ export class Inference {
         return other !== undefined && this.#matchExact(type, other);
       })
     );
+  }
+
+  /** Notes the parameters to find that `declared` mentions when `given` is the error type. */
+  #meetError(declared: Type, given: Type): void {
+    if (given.kind === 'error') {
+      for (const parameter of parametersIn(declared)) {
+        if (this.#unknowns.has(parameter)) {
+          this.#metError.add(parameter);
+        }
+      }
+    }
   }
 
   /** Binds `parameter` where `given` converts into it: it fits the type bound, a conversion included. */
