@@ -2,7 +2,8 @@
  * What follows `is` (§3.5, §3.10): a trait, as a type names it, or a struct constraint, several
  * joined by `&`. Type parameters, a trait's associated types and a struct constraint's entries
  * all take constraints this way. A struct constraint is read only here, so it never stands where a
- * type does; `struct { … }` in a type is the shape it spells (§3.1).
+ * type does; `struct { … }` in a type is the shape it spells (§3.1), and an entry only a constraint
+ * has (`[_]`, `name is C`) met there is read with `parseConstraintEntry`, then reported.
  */
 
 import type {
@@ -35,10 +36,10 @@ export function parseStructConstraint(parser: Parser): StructConstraint {
   return { kind: 'StructConstraint', span: parser.spanFrom(start), entries };
 }
 
-const entryRules: ItemRules<FieldEntry> = { parseItem: parseFieldEntry, annotate: undefined };
+const entryRules: ItemRules<FieldEntry> = { parseItem: parseConstraintEntry, annotate: undefined };
 
 /** `name: Type`, `name is C`, `[_]: Type` or `[_] is C`. */
-function parseFieldEntry(parser: Parser): FieldEntry {
+export function parseConstraintEntry(parser: Parser): FieldEntry {
   const field = parseEntryField(parser);
   const start = parser.startOf(field);
   if (parser.cursor.eat('is') !== undefined) {

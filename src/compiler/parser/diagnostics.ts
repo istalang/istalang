@@ -160,6 +160,21 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: () =>
       "A struct pattern's rest is its last item, and its only one: it takes the fields no item names (§3.11).",
   },
+  constraintEntryInType: {
+    code: 2035,
+    message: () =>
+      "'[_]' and 'name is C' entries belong to a struct constraint, which stands only after 'is'; a struct type gives each field its type (§3.5).",
+  },
+  fieldLoopCondition: {
+    code: 2037,
+    message: () =>
+      "A field loop visits every field, so its header takes no 'if': test inside its body or value instead (§4).",
+  },
+  structConstraintAfterAny: {
+    code: 2036,
+    message: () =>
+      "'any' takes traits; a struct constraint states a struct's fields, so it stands only after 'is' (§3.5).",
+  },
   memberParameterAlone: {
     code: 2027,
     message: () =>

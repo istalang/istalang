@@ -11,7 +11,13 @@ import { parserDiagnostics } from './diagnostics.ts';
 import { dumpClean, dumpOf, field, int, named, parseAs, reported } from './parse.test-kit.ts';
 import { printType, typeShapeOf, typeTree } from './type-precedence.test-kit.ts';
 
-const { expected, misplacedReference, unclosedBracket } = parserDiagnostics;
+const {
+  constraintEntryInType,
+  expected,
+  misplacedReference,
+  structConstraintAfterAny,
+  unclosedBracket,
+} = parserDiagnostics;
 
 describe('type forms', () => {
   it.each([
@@ -163,6 +169,26 @@ describe('malformed types', () => {
     ['(A, B', unclosedBracket.code, '('],
   ])('reports %j once', (text, code, spanText) => {
     expect(reported('type', text)).toEqual(reportedOnce(code, spanText));
+  });
+});
+
+describe('a struct constraint where a type stands (§3.5)', () => {
+  it.each([
+    ['struct { [_]: Int }', '[_]: Int'],
+    ['{ a: Int; [_] is X & Y }', '[_] is X & Y'],
+    ['struct { a is Stringable }', 'a is Stringable'],
+    ['{ a is struct { [_]: Int } }', 'a is struct { [_]: Int }'],
+  ])('reports the entry of %j once, keeping the fields beside it', (text, spanText) => {
+    expect(reported('type', text)).toEqual(reportedOnce(constraintEntryInType.code, spanText));
+  });
+
+  it("reports one after 'any' once", () => {
+    expect(reported('type', 'any struct { a: Int }')).toEqual(
+      reportedOnce(structConstraintAfterAny.code, 'struct { a: Int }'),
+    );
+    expect(dumpOf(parseAs('type', '{ a: Int; [_]: Int }'))).toBe(
+      `(StructType [${field('a', int)} !])`,
+    );
   });
 });
 

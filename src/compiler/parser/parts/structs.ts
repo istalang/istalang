@@ -11,11 +11,12 @@
  * is the checker's to judge, as a struct's repeated field names are.
  *
  * Only a struct's or a variant's declaration gives its fields defaults (§3.1); a default anywhere
- * else is read, so recovery goes on past it, then reported and left out of the tree.
+ * else is read, so recovery goes on past it, then reported and left out of the tree. So is an entry
+ * only a struct constraint has (`[_]: T`, `name is C`): a type gives each field a type (§3.5).
  */
 
 import type { DeclaredField, TypeParameter } from '../../syntax/declarations.ts';
-import type { Missing } from '../../syntax/node.ts';
+import type { Invalid, Missing } from '../../syntax/node.ts';
 import type { FieldDeclaration, MappedField, StructType } from '../../syntax/types.ts';
 import { attachAnnotations } from '../annotations.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
@@ -24,6 +25,7 @@ import { type ItemRules, parseItemEntries } from '../layout/index.ts';
 import { nested } from '../nesting.ts';
 import type { Parser } from '../parser.ts';
 import { type Enclosed, parseEnclosed } from '../recovery.ts';
+import { parseConstraintEntry } from './constraints.ts';
 
 /**
  * What `parseBraced` parses after an optional `struct`, which must be followed by `{`: a missing
@@ -89,12 +91,34 @@ function parseMappedParameter(parser: Parser): TypeParameter {
 }
 
 /** An anonymous struct type's entry: a field, or a mapped entry, at its `[`. */
-function parseFieldEntry(parser: Parser): FieldDeclaration | MappedField {
+function parseFieldEntry(parser: Parser): FieldDeclaration | MappedField | Invalid {
+  if (startsConstraintEntry(parser)) {
+    return parseMisplacedConstraintEntry(parser);
+  }
   return parser.cursor.at('[') ? parseMappedField(parser) : parseField(parser);
 }
 
+/** Whether the next entry is one only a struct constraint has: `[_] …` or `name is C` (§3.5). */
+function startsConstraintEntry(parser: Parser): boolean {
+  const { cursor } = parser;
+  if (cursor.at('[')) {
+    return cursor.kindAt(2) === ']' && parser.textOf(cursor.peek(1)) === '_';
+  }
+  return cursor.at('identifier') && cursor.kindAt(1) === 'is';
+}
+
+/**
+ * A struct constraint's entry where a type's field stands: read whole, so recovery goes on past
+ * it, then reported once and left out of the tree, as a misplaced default is.
+ */
+function parseMisplacedConstraintEntry(parser: Parser): Invalid {
+  const entry = parseConstraintEntry(parser);
+  parser.report(parserDiagnostics.constraintEntryInType(parser.textSpanOf(entry.span)));
+  return { kind: 'Invalid', span: entry.span };
+}
+
 /** Fields nest through their indented blocks, so each descends a level (nesting.ts). */
-const fieldRules: ItemRules<FieldDeclaration | MappedField> = {
+const fieldRules: ItemRules<FieldDeclaration | MappedField | Invalid> = {
   parseItem: (parser) => nested(parser, () => parseFieldEntry(parser)),
   annotate: attachAnnotations,
 };

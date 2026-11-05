@@ -176,6 +176,19 @@ describe('a field loop', () => {
     ).toEqual([2031]);
   });
 
+  it('reports an `if` in its header once, in a loop and in each comprehension alike', () => {
+    const struct = 'struct P { a: Int; b: Int }';
+    expect(codesOf(struct, 'fn f(p: P):', '  for k, v in ...p if v > 1:', '    ()')).toEqual([
+      2037,
+    ]);
+    expect(
+      codesOf(struct, 'fn f(p: P) -> Int:', '  [for k, v in ...p if v > 1: v].length()'),
+    ).toEqual([2037]);
+    expect(codesOf(struct, 'fn f(p: P) -> P:', '  P{for k, v in ...p if v > 1: [k]: v}')).toEqual([
+      2037,
+    ]);
+  });
+
   it('reports a mistake every pass makes alike once', () => {
     const lines = [
       'struct P { b: Int; a: String }',

@@ -13,6 +13,8 @@ import type { Parser } from '../parser.ts';
  * A field loop's header from its `...` on, the targets before `in` parsed: exactly a key, a name or
  * `_`, and a value; more or fewer are reported, and a target left out, empty where the written
  * targets end, or a key that is neither, reads as `_`, so nothing after the parser reports it again.
+ * A field loop visits every field, so its header takes no `if`: one written is read, so recovery
+ * goes on past it, then reported once and left out of the tree.
  */
 export function parseFieldHeaderAfter(
   parser: Parser,
@@ -22,6 +24,11 @@ export function parseFieldHeaderAfter(
   parser.expect('...');
   const subject = parser.expression();
   const span = parser.spanFrom(start);
+  const condition = parser.cursor.eat('if');
+  if (condition !== undefined) {
+    parser.expression();
+    parser.report(parserDiagnostics.fieldLoopCondition(parser.textSpanFrom(condition.span.start)));
+  }
   const [key, value] = targets;
   if (targets.length !== 2 || key === undefined || value === undefined) {
     parser.report(parserDiagnostics.fieldLoopTargets(parser.textSpanFrom(start)));

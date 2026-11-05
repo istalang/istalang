@@ -33,7 +33,7 @@ import type {
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import type { Parser } from './parser.ts';
-import { parseConstraints } from './parts/constraints.ts';
+import { parseConstraints, parseStructConstraint } from './parts/constraints.ts';
 import { parseFunctionKeyword } from './parts/functions.ts';
 import { type LeveledParselet, leveledGrammar } from './parts/levels.ts';
 import { type Negatable, parseLiteral, parseNegativeLiteral } from './parts/literals.ts';
@@ -83,7 +83,10 @@ const typeParselets: Partial<Record<CursorKind, TypeParselet>> = {
 const wordParselets = {
   sendable: (parser) =>
     followsModifier(parser, 'sendable') ? parseFunctionType(parser) : undefined,
-  any: (parser) => (parser.cursor.kindAt(1) === 'identifier' ? parseAnyType(parser) : undefined),
+  any: (parser) =>
+    parser.cursor.kindAt(1) === 'identifier' || parser.cursor.kindAt(1) === 'struct'
+      ? parseAnyType(parser)
+      : undefined,
   keyof: (parser) =>
     typeParselets[parser.cursor.kindAt(1)] === undefined ? undefined : parseKeyofType(parser),
   infer: (parser) =>
@@ -255,11 +258,24 @@ function parseRestType(parser: Parser): RestType {
 function parseAnyType(parser: Parser): TypeNode {
   const { cursor } = parser;
   const { start } = cursor.advance().span;
-  const traits = [parseNamedType(parser)];
+  const traits = [parseAnyTrait(parser)];
   while (cursor.eat('&') !== undefined) {
-    traits.push(parseNamedType(parser));
+    traits.push(parseAnyTrait(parser));
   }
   return { kind: 'AnyType', span: parser.spanFrom(start), traits };
+}
+
+/**
+ * A trait `any` takes. A struct constraint there is read whole, so recovery goes on past it, then
+ * reported once, and stands as a placeholder, which nothing reports again.
+ */
+function parseAnyTrait(parser: Parser): TypeNode {
+  if (!parser.cursor.at('struct')) {
+    return parseNamedType(parser);
+  }
+  const constraint = parseStructConstraint(parser);
+  parser.report(parserDiagnostics.structConstraintAfterAny(parser.textSpanOf(constraint.span)));
+  return parser.placeholder();
 }
 
 /** `{ a: A; b: B }`, or the same after `struct`. */
