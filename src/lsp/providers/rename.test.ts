@@ -161,6 +161,15 @@ describe('renaming across the corpus', () => {
     );
   }, 120_000);
 
+  it('keeps what a program reading fields by key means, renaming each field it may', async () => {
+    const keyed = renamable.filter(({ module }) =>
+      module.endsWith('computed/keys-and-entries.ista'),
+    );
+    expect(keyed.length).toBeGreaterThan(0);
+    const problems = await Promise.all(keyed.map(renamingProblems));
+    expect(problems.flat()).toEqual([]);
+  }, 120_000);
+
   it('spells shorthands out, keeping what they mean', async () => {
     const shorthands = renamable.filter(hasShorthand);
     expect(shorthands.length).toBeGreaterThan(0);

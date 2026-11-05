@@ -17,6 +17,8 @@
  * - a field of a shape, which is one type with every shape of its fields wherever written (§3.1),
  *   and a field of a struct or shared struct whose field names another writer of that shape has,
  *   which its value or `*x` may fit (§3.18): renaming one place would part it from the others;
+ * - a field whose name, old or new, a String literal of a literal type spells, as a key naming a
+ *   field does (§3.1, key-literals.ts): nothing records which field such a literal names;
  * - a new name that isn't one, is the unnamed `_` or a built-in type's (§2), or changes the old
  *   name's privacy (§3.13) or case (§2), which also decides what a bare name in a pattern does
  *   (§3.11).
@@ -47,6 +49,7 @@ import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { memo } from '../../structures/memo.ts';
 import type { Span } from '../../text/span.ts';
 import { type DeclaredAt, isSamePlace, type NamePlace, nameAt, spanOfUse } from './declarations.ts';
+import { keyLiterals } from './key-literals.ts';
 import { namesDenoting } from './references.ts';
 
 /** What renaming a name renames, or why it can't be renamed. */
@@ -148,6 +151,9 @@ function targetRefusal(program: Program, { declared, at }: DeclaredAt): string |
   if (declared.kind === 'field' && sharesShape(program, at)) {
     return `\`${text}\` names a field of a shape, which is one type wherever its fields are written (§3.1); renaming it here would part this place from the others.`;
   }
+  if (declared.kind === 'field' && keyLiterals(program).has(text)) {
+    return keyRefusal(text);
+  }
   const isNamedWithOthers = namesDenoting(program, at).some(
     (use) => (nameAt(program, use.module, spanOfUse(program, use).start)?.targets.length ?? 0) > 1,
   );
@@ -173,6 +179,9 @@ function newNameRefusal(
   if (meansMore(program, declared, newName)) {
     return meaningRefusal(newName);
   }
+  if (declared.kind === 'field' && keyLiterals(program).has(newName)) {
+    return keyRefusal(newName);
+  }
   if (isPrivate(old) !== isPrivate(newName)) {
     return `A leading \`_\` makes a name private (§3.13); \`${newName}\` would change whether \`${old}\` is.`;
   }
@@ -189,6 +198,10 @@ function isName(text: string): boolean {
   return (
     isIdentifierStart(text[0]) && identifierRunEnd(text, 0) === text.length && !isKeyword(text)
   );
+}
+
+function keyRefusal(name: string): string {
+  return `A String literal of a literal type spells \`${name}\`, as a key naming a field does (§3.1); renaming the field would part it from that literal.`;
 }
 
 function meaningRefusal(name: string): string {

@@ -64,6 +64,27 @@ describe('renaming', () => {
     expect(refusalOf(program, named('main', 'width'))).toBeUndefined();
   });
 
+  it('refuses a field a String literal names as a key, and a new name one spells (§3.1)', () => {
+    const { program, named } = navigable({
+      main: [
+        'struct Settings { retries: Int; region: String; zone: String; mode: String }',
+        'type Retries = Settings["retries"]',
+        'fn read(s: Settings) -> String:',
+        '  const which: keyof Settings = "region"',
+        '  const label = "zone"',
+        '  `${s[which]}${s.mode}${label}`',
+        '',
+      ].join('\n'),
+    });
+    expect(refusalOf(program, named('main', 'retries'))).toContain('key');
+    expect(refusalOf(program, named('main', 'region'))).toContain('key');
+    expect(refusalOf(program, named('main', 'zone'))).toBeUndefined();
+    expect(renamed(program, named('main', 'mode'), 'region')).toMatchObject({ kind: 'refused' });
+    expect(renamed(program, named('main', 'mode'), 'kind')).toMatchObject({
+      main: expect.any(String),
+    });
+  });
+
   it('refuses a field a shared struct and a struct share, the one spreading into the other (§3.18)', () => {
     const { program, named } = navigable({
       main: 'shared struct Lease { name: String }\nstruct Plain { name: String }\nstruct Other { size: Int }\nshared struct Cell { size: Int }\nshared struct Lone { count: Int }\n',
