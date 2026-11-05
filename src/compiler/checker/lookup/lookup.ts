@@ -14,7 +14,8 @@ import type { TypeNode } from '../../syntax/types.ts';
 import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation, LookupQueries, TypeMembers } from '../denotation.ts';
-import type { Type } from '../types/type.ts';
+import { knownConstraints } from '../traits/known-constraints.ts';
+import type { Constraint, Type } from '../types/type.ts';
 import { denotationsOf } from './denotations.ts';
 import { bodyHolding, itemHolding } from './holders.ts';
 import { keyDenotationsOf } from './key-denotations.ts';
@@ -45,6 +46,10 @@ export class Lookup implements LookupQueries {
 
   membersOf(module: ModuleId, type: Type, access?: MemberAccess): TypeMembers {
     return membersOf(this.#checker, module, type, access);
+  }
+
+  constraintsOf(type: Type): readonly Constraint[] {
+    return knownConstraints(this.#checker, type);
   }
 
   /** The checker, with the item of `module` holding `node` checked whole. */

@@ -110,6 +110,30 @@ describe('the language service', () => {
     ).toEqual(['(variable) rest: { [F in keyof S except "id"]: S[F] }']);
   });
 
+  it('hovers an opaque type with the bounds it is known by', () => {
+    const traits = [
+      'trait Shown:',
+      '  fn shown(self: Self) -> String',
+      'trait Holds:',
+      '  type Data is Shown & Encodable',
+      'import Encodable from "json"',
+    ];
+    expect(
+      hoverCodeAt(...traits, 'fn f<H is Holds>(d: H.Data):', '  const ‸a = d', '  _ = a'),
+    ).toEqual(['(variable) a: H.Data is Shown & Encodable']);
+    expect(hoverCodeAt(...traits, 'fn f<H is Holds>(h: H):', '  const ‸a = h', '  _ = a')).toEqual([
+      '(variable) a: H is Holds',
+    ]);
+    expect(
+      hoverCodeAt(
+        ...traits,
+        'fn f<S is struct { [_] is Shown }>(s: S):',
+        '  for _, ‸v in ...s:',
+        '    _ = v',
+      ),
+    ).toEqual(['(variable) v: S[keyof S] is Shown']);
+  });
+
   it('follows `.Data` to its declaration and offers associated types after `Type.`', () => {
     const field = ['struct Field<T>:', '  value: T?', '  type Data = T'];
     expect(declaredPlacesAt(...field, 'fn f(x: Field<Int>.Da‸ta) -> Int: x')).toEqual(['main:36']);
@@ -148,6 +172,23 @@ describe('the language service', () => {
         name.startsWith('"'),
       ),
     ).toEqual(['"region"', '"retries"']);
+    const inQuotes = (text: string) =>
+      completionNamesAt(...decls, 'fn f(s: Settings) -> Int:', `  _ = s[${text}]`, '  0');
+    expect(inQuotes('"‸"')).toEqual(['region', 'retries']);
+    expect(inQuotes('"re‸"')).toEqual(['region', 'retries']);
+    expect(completionNamesAt('fn f(x: "a" | "b") -> Int: 0', 'const y = f("‸")')).toEqual([
+      'a',
+      'b',
+    ]);
+    expect(completionNamesAt('const greeting = "hel‸lo"')).toEqual([]);
+    expect(completionNamesAt('fn f(x: ‸) -> Int: 0')).not.toContain('infer');
+    const typeMatch = ['struct Field<T> { value: T }', 'type D<X> = match X:'];
+    expect(completionNamesAt(...typeMatch, '  case Field<‸>: Int', '  case _: Never')).toContain(
+      'infer',
+    );
+    expect(completionNamesAt(...typeMatch, '  case Field<infer T>: Array<‸>')).not.toContain(
+      'infer',
+    );
     expect(completionNamesAt('struct A:', '  x: Int', '  ‸')).toEqual(['type']);
     expect(completionNamesAt('enum E:', '  A', '  ‸')).toEqual(['type']);
     expect(completionNamesAt('trait T:', '  fn f(self: Self) -> Int', '  ‸')).toEqual([

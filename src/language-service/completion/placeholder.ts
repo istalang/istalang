@@ -15,7 +15,8 @@
  * (only `fn` follows, where the parser reads a lambda's parameter), a line opening with `import` or
  * `@`, and a `<` touching a callee (type arguments, not a comparison).
  *
- * The text of strings, docstrings and numbers takes nothing, as a comment does (place.ts).
+ * The text of templates, docstrings and numbers takes nothing, as a comment does (place.ts); a
+ * String literal's text takes the literals a value expected there may be (places/string-text.ts).
  */
 
 import { parse } from '../../compiler/parser/parse.ts';
@@ -31,6 +32,7 @@ import type { Cursor } from './cursor.ts';
 /** The places this reading decides with code around them: all but a member's and a literal field's. */
 type ParsedPlaceKind =
   | 'grammar'
+  | 'stringText'
   | 'type'
   | 'declaredName'
   | 'callArgument'
@@ -44,7 +46,7 @@ type ParsedPlaceKind =
  * around it. Its nodes are not the checked tree's: one a checker query needs is found there by
  * position, which is the same before the cursor.
  */
-interface PlaceholderParse {
+export interface PlaceholderParse {
   readonly tree: SyntaxTree;
   /** The nodes holding the placeholder, from the root to the innermost. */
   readonly chain: readonly SyntaxNode[];
@@ -79,6 +81,9 @@ function kindAt(cursor: Cursor, parsed: PlaceholderParse): ParsedPlaceKind | 'no
   if (chain.some(isImport) || lineOpensWith(cursor, 'import')) {
     return 'import';
   }
+  if (chain.at(-1)?.kind === 'StringLiteral') {
+    return 'stringText';
+  }
   if (isLiteralText(chain.at(-1)) || touchesNumber(cursor)) {
     return 'nothing';
   }
@@ -110,11 +115,9 @@ function isImport(node: SyntaxNode): boolean {
   return node.kind === 'NamedImport' || node.kind === 'NamespaceImport';
 }
 
-/** The placeholder fell inside a string's, a template's or a docstring's text, not in code. */
+/** The placeholder fell inside a template's or a docstring's text, not in code. */
 function isLiteralText(node: SyntaxNode | undefined): boolean {
-  return (
-    node?.kind === 'StringLiteral' || node?.kind === 'TemplateText' || node?.kind === 'Docstring'
-  );
+  return node?.kind === 'TemplateText' || node?.kind === 'Docstring';
 }
 
 const numbers: ReadonlySet<string> = new Set(['integer', 'float', 'duration']);

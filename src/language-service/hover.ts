@@ -2,7 +2,8 @@
  * What an editor shows for the spot under a pointer: for a name, what it denotes there, each
  * declaration as a line of code with its type, and the docstring of what it names; for any other
  * expression or written type, its type. A type written through a spelling, an alias, an associated
- * type or a struct's keys, shows what it names beside it (`writtenAndNamedText`).
+ * type or a struct's keys, shows what it names beside it (`writtenAndNamedText`); one known only by
+ * its bounds, an opaque type, shows them: `T.Data is Encodable` (`shownText`).
  *
  * A name is answered through the identifier query (checker denotation.ts), as going to its
  * definition is, so the two never disagree; a String literal naming a field as its key (§3.1),
@@ -13,8 +14,9 @@
 
 import type { Checker } from '../compiler/checker/check.ts';
 import type { Denotation } from '../compiler/checker/denotation.ts';
+import { isOpaque } from '../compiler/checker/types/computed-types.ts';
 import type { Type } from '../compiler/checker/types/type.ts';
-import { writtenAndNamedText } from '../compiler/checker/types/type-text.ts';
+import { constraintText, writtenAndNamedText } from '../compiler/checker/types/type-text.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import type { Expression } from '../compiler/syntax/expressions/index.ts';
 import type { StringLiteral } from '../compiler/syntax/expressions/literals.ts';
@@ -61,6 +63,13 @@ export function hoverAt(program: Program, module: ModuleId, offset: number): Hov
   return ending && nameHover(checked, ending);
 }
 
+/** `type` as hover shows it: as written and what it names, and, opaque, the bounds it is known by. */
+function shownText(checker: Checker, type: Type): string {
+  const text = writtenAndNamedText(type);
+  const bounds = isOpaque(type) ? checker.lookup.constraintsOf(type) : [];
+  return bounds.length === 0 ? text : `${text} is ${bounds.map(constraintText).join(' & ')}`;
+}
+
 function nodeHover(checked: CheckedModule, node: SyntaxNode): Hover | undefined {
   if (node.kind === 'Dereference' && node.operator === '->') {
     return undefined;
@@ -71,7 +80,7 @@ function nodeHover(checked: CheckedModule, node: SyntaxNode): Hover | undefined 
     named ??
     (type && {
       span: spanIn(checked.tree, node.span),
-      code: [writtenAndNamedText(type)],
+      code: [shownText(checked.checker, type)],
       doc: undefined,
     })
   );
@@ -127,14 +136,14 @@ function denotationLines(
   { declared, type }: Denotation,
 ): readonly string[] {
   const typed = (kind: string) =>
-    `(${kind}) ${name}${type === undefined ? '' : `: ${writtenAndNamedText(type)}`}`;
+    `(${kind}) ${name}${type === undefined ? '' : `: ${shownText(checker, type)}`}`;
   switch (declared.kind) {
     case 'function': {
       const signature = signatureOf(checker, declared.declaration).label;
-      return type === undefined ? [signature] : [signature, writtenAndNamedText(type)];
+      return type === undefined ? [signature] : [signature, shownText(checker, type)];
     }
     case 'type':
-      return [`(type) ${type === undefined ? name : writtenAndNamedText(type)}`];
+      return [`(type) ${type === undefined ? name : shownText(checker, type)}`];
     case 'namespace':
       return [`(module) ${importedModule(checker, declared.entity)?.name ?? name}`];
     default:

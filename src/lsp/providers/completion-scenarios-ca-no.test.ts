@@ -111,7 +111,7 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'NO-02',
-    place: 'nothing',
+    place: 'stringText',
     title: 'Inside a string',
     src: ['  const s = "ab‸"', "  const s = 'ab‸'", '  const s = "ab‸', '  const s = "a\\n‸"'],
     expect: { none: true },

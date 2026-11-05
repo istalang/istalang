@@ -14,11 +14,12 @@ import type { Entity } from '../../binder/entities.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
+import { matchPlaceOf } from '../../syntax/type-matches.ts';
 import type { InferType, NamedType } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { aliasedAs, errorType, type NominalDeclaration, type Type } from './type.ts';
-import { matchPlaceOf, matchUse, structCaseOf } from './type-match.ts';
+import { matchUse, structCaseOf } from './type-match.ts';
 
 /** Where a type is written: the checker resolving it, and its module. */
 interface Written {

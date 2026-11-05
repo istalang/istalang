@@ -21,7 +21,8 @@ import { type LiteralFieldPlace, literalFieldPlaceAt } from './places/literal-fi
 import { type MemberPlace, memberPlaceAt } from './places/member.ts';
 
 /**
- * - `nothing`: a comment, or the text of a string or a number;
+ * - `nothing`: a comment, or the text of a template, a docstring or a number;
+ * - `stringText`: inside a String literal, which may write a literal a value expected there is;
  * - `grammar`: where the grammar admits a declaration, a statement or an expression to start, or
  *   an operand to go on: keywords and visible names;
  * - `type`: a type is written;

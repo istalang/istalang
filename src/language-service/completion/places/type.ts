@@ -2,15 +2,17 @@
  * What a `type` place offers: the visible names of types, with namespaces, which qualify one
  * (`time.Duration`), and the words a type starts with (`typeWords`, syntax/grammar-words.ts, which
  * the parser's type tables are keyed by). An anonymous struct type is written `{…}`, as the
- * formatter prints it, so `struct` before its brace is not offered.
+ * formatter prints it, so `struct` before its brace is not offered; `infer` is offered only in a
+ * type `match` case's pattern.
  *
  * A trait is no type of its own, so a trait is offered only where one is asked for: after `is`
  * (`T is ‸`, `type Key is ‸`, `[_] is ‸`) and after `any`. After `new`, only a shared struct is built (§3.18).
  */
 
 import { type Entity, namesType } from '../../../compiler/binder/entities.ts';
-import { typeWords } from '../../../compiler/syntax/grammar-words.ts';
+import { type TypeWord, typeWords } from '../../../compiler/syntax/grammar-words.ts';
 import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
+import { matchPlaceOf } from '../../../compiler/syntax/type-matches.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import { holderIn } from '../grammar/chain.ts';
@@ -30,11 +32,19 @@ export function offerType(
   }
   return [
     ...namesWhere(cursor, (entity) => namesType(entity) && !isDeclared(entity, 'TraitDeclaration')),
-    ...wordCandidates(offeredTypeWords),
+    ...wordCandidates(offeredTypeWords(parsed)),
   ];
 }
 
-const offeredTypeWords = typeWords.filter((word) => word !== 'struct');
+/**
+ * The words a type starts with, as written here: `infer` only in a type `match` case's pattern,
+ * where its variable is bound (`matchPlaceOf`), the one place it may stand.
+ */
+function offeredTypeWords({ chain, tree }: ParsedPlace['parsed']): readonly TypeWord[] {
+  const placeholder = chain.at(-1);
+  const inPattern = placeholder !== undefined && matchPlaceOf(tree, placeholder) === 'pattern';
+  return typeWords.filter((word) => word !== 'struct' && (word !== 'infer' || inPattern));
+}
 
 /** The visible names `keeps`, with the namespaces, which may qualify one. */
 function namesWhere(cursor: Cursor, keeps: (entity: Entity) => boolean): readonly Candidate[] {

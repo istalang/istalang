@@ -23,7 +23,7 @@ import type { Identifier } from '../syntax/node.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
 import type { CheckedBody, VariantMember } from './check.ts';
-import type { FieldMember, Type } from './types/type.ts';
+import type { Constraint, FieldMember, Type } from './types/type.ts';
 
 /** What names a type: a declared one, a primitive, or `Self` inside a trait. */
 type TypeNaming = Extract<Entity, { readonly kind: 'type' | 'primitive' | 'self' }>;
@@ -89,4 +89,10 @@ export interface LookupQueries {
    * call through it may choose (a method taking `&self` needs a place, §3.7).
    */
   readonly membersOf: (module: ModuleId, type: Type, access?: MemberAccess) => TypeMembers;
+  /**
+   * The traits a value of `type` is known to meet by what it is: a type parameter's constraints,
+   * an associated type's bounds (§3.10), a field's `[_] is` or named `is` entry (§3.5); none for
+   * any other type.
+   */
+  readonly constraintsOf: (type: Type) => readonly Constraint[];
 }

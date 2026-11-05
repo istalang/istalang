@@ -88,24 +88,6 @@ export function aliasInstance(
   return substitute(aliased, substitution, rules);
 }
 
-/** Where a node stands among type `match`es: in a case's pattern, elsewhere inside one, or outside. */
-export type MatchPlace = 'pattern' | 'match' | 'outside';
-
-/** Where `node` stands in `tree` among type `match`es (the banner). */
-export function matchPlaceOf(tree: SyntaxTree, node: SyntaxNode): MatchPlace {
-  let child = node;
-  for (let parent = parentOf(tree, node); parent !== undefined; parent = parentOf(tree, parent)) {
-    if (parent.kind === 'TypeCase' && parent.pattern === child) {
-      return 'pattern';
-    }
-    if (parent.kind === 'TypeMatch') {
-      return 'match';
-    }
-    child = parent;
-  }
-  return 'outside';
-}
-
 /**
  * The case of a type `match` whose type `node` stands in, when its pattern is a struct constraint,
  * with its type `match` and the alias it is the body of (§3.17); else undefined.

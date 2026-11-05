@@ -42,9 +42,9 @@ Positions with no valid completion: the list is empty, whatever opened it. (An e
   const s = "a\n‸"
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
-- **Offer:** Nothing.
+- **Offer:** Nothing: a String literal's text offers only the String literals a value expected there may be, unquoted (a key of a struct, `s["‸"]`, §3.1), and none is expected here.
 - **Not:** Everything.
-- **Basis:** spec §2; VS Code's `editor.quickSuggestions.strings` is off, but invoked/trigger requests reach the server.
+- **Basis:** spec §2, §3.1 Key types; VS Code's `editor.quickSuggestions.strings` is off, but invoked/trigger requests reach the server.
 
 ### NO-03 · Inside a number · P2 · ✅ pass
 

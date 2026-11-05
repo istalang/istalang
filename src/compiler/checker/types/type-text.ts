@@ -132,10 +132,11 @@ export function slotText({ type, reference }: ParameterSlot): string {
 }
 
 /**
- * A constraint of an `any` type as written: its trait's own `Self`, standing for each value's own
- * type, is the default it came from, so trailing ones are left out (`Iterable<Int>`).
+ * A constraint as written, of an `any` type or a type known by its bounds: its trait's own `Self`,
+ * standing for each value's own type, is the default it came from, so trailing ones are left out
+ * (`Iterable<Int>`).
  */
-function constraintText({ trait, arguments: typeArguments }: Constraint): string {
+export function constraintText({ trait, arguments: typeArguments }: Constraint): string {
   const isOwnSelf = (type: Type | undefined) =>
     type?.kind === 'parameter' && type.declaration === trait;
   let written = typeArguments.length;

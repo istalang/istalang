@@ -34,7 +34,7 @@ import type { Candidate } from './candidate.ts';
 import type { Cursor } from './cursor.ts';
 import { holderIn } from './grammar/chain.ts';
 import type { Place } from './place.ts';
-import type { ParsedPlace } from './placeholder.ts';
+import type { ParsedPlace, PlaceholderParse } from './placeholder.ts';
 import { matchedTypeOf, patternStartedBy } from './places/matched-type.ts';
 import { visibleNames } from './visible.ts';
 
@@ -105,6 +105,7 @@ const nothingExpected = () => undefined;
  */
 const expecters: Handlers<Cursor, Place, [], Type | undefined> = {
   grammar: expectedOfValue,
+  stringText: expectedOfString,
   callArgument: expectedOfValue,
   member: nothingExpected,
   literalField: nothingExpected,
@@ -132,9 +133,30 @@ function expectedOfValue(cursor: Cursor, { parsed }: ParsedPlace): Type | undefi
     written === undefined
       ? expectedOfPlaceholder(cursor, parsed.tree, value)
       : expectedOfWritten(cursor, written);
+  return checked ?? parameterGiven(cursor, parsed, value);
+}
+
+/** What the checker expects of the String literal the cursor writes in, a key of a struct among it. */
+function expectedOfString(cursor: Cursor, { parsed }: ParsedPlace): Type | undefined {
+  const literal = parsed.chain.at(-1);
+  return literal?.kind === 'StringLiteral'
+    ? (expectedOfPlaceholder(cursor, parsed.tree, literal) ??
+        parameterGiven(cursor, parsed, literal))
+    : undefined;
+}
+
+/**
+ * Where `value` is a call's argument, the type of the parameter it gives: checking expects nothing
+ * of an argument it couldn't choose a function for, as one being written often is.
+ */
+function parameterGiven(
+  cursor: Cursor,
+  parsed: PlaceholderParse,
+  value: Expression,
+): Type | undefined {
   const holder = holderIn(parsed.chain, value);
   const isArgument = holder?.kind === 'Call' || holder?.kind === 'NamedArgument';
-  return checked ?? (isArgument ? argumentParameterAt(cursor, cursor.offset)?.type : undefined);
+  return isArgument ? argumentParameterAt(cursor, cursor.offset)?.type : undefined;
 }
 
 /** Where a pattern starts, the type it matches (places/matched-type.ts); its variants fit. */

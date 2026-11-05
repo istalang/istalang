@@ -52,6 +52,7 @@ describe('a typed trigger character', () => {
     ['@', '@‸'],
     ["'", "import x from '‸'"],
     ['"', 'import x from "‸"'],
+    ['"', '  const k: "a" | "b" = "‸"'],
     ['/', "import x from './‸'"],
   ])('%j opens a list at %j', (trigger, line) => {
     expect(opensIn(trigger, line)).toBe(true);
