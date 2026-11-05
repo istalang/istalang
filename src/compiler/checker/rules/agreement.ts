@@ -38,7 +38,7 @@ export interface Agreement {
 }
 
 /** What agreeing asks of the program: how a type fits the agreed one, and how types are built. */
-type Agreeing = Pick<CheckerContext, 'fitOf' | 'typeRules' | 'memberUnionOf'>;
+type Agreeing = Pick<CheckerContext, 'fitOf' | 'typeRules' | 'fitting'>;
 
 /**
  * The type `produced` agree on. `checker.fitOf` says how a type fits the agreed one; a producer
@@ -84,13 +84,7 @@ export function agreeingWidened(type: Type, checker: Agreeing): Type {
 
 /** The base a member parameter's union of literals has; undefined for any other type. */
 function memberBase(type: Type, checker: Agreeing): Type | undefined {
-  if (type.kind !== 'parameter') {
-    return undefined;
-  }
-  const { declaration, within } = type;
-  const union =
-    within ??
-    (declaration.kind === 'TypeParameter' ? checker.memberUnionOf(declaration) : undefined);
+  const union = type.kind === 'parameter' ? checker.fitting.memberUnionOf(type) : undefined;
   return union === undefined ? undefined : literalsBase(union);
 }
 
