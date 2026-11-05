@@ -83,6 +83,12 @@
       // source compiled in by the build) has nothing but a default export to declare.
       "includes": ["*.config.ts", ".dependency-cruiser.mjs", "src/**/*.d.ts"],
       "linter": { "rules": { "style": { "noDefaultExport": "off" } } }
+    },
+    {
+      // A prototype written outside the toolchain: formatted as the rest, but held to none of the
+      // package's lint rules.
+      "includes": ["examples/FormBuilder/**"],
+      "linter": { "enabled": false }
     }
   ]
 }

@@ -1,0 +1,16 @@
+# supplier.py — hand-written logic, called from the supplier form's expressions. Istalang.
+
+fn zipPattern(country: String) -> String:
+    match country:
+        case "de": "^[0-9]{5}$"
+        case "nl": "^[0-9]{4} ?[A-Z]{2}$"
+        case _: "^.+$"
+
+fn catalogValue(prices: Array<{ sku: String?; name: String?; amount: Float?; regions: Array<String?> }>) -> Float:
+    let total = 0.0
+    for p in prices: total += p.amount ?? 0.0
+    total
+
+fn score(employees: Int, certifications: Int) -> Int:
+    const base = if employees < 10: 60 elif employees < 250: 40 else: 20
+    base - certifications * 10

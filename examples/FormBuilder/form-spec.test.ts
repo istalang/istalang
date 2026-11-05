@@ -1,0 +1,1000 @@
+// Type tests for the spec: the two example forms, and forms that must fail.
+
+const order = {
+  id: 'order',
+  version: '1.4.0',
+  imports: {
+    geo: 'geo',
+    approvals: 'approvals',
+    logic: './order',
+  },
+  params: {
+    region: 'text',
+  },
+  localization: {
+    "We don't ship to ${data.country}": {
+      de: 'Wir liefern nicht nach $0',
+    },
+  },
+  root: {
+    node: 'layout',
+    widget: 'section',
+    ui: {
+      title: 'Order',
+    },
+    constraints: {
+      rules: [
+        {
+          check:
+            'logic.totalQty(data.items) <= 500 or await approvals.ask(ctx.user.id, logic.totalQty(data.items))',
+          message: 'The order was not approved',
+          pending: 'Waiting for approval of a large order',
+        },
+      ],
+    },
+    children: [
+      {
+        node: 'field',
+        path: 'data.country',
+        type: 'text',
+        widget: 'select',
+        label: 'Country',
+        options: {
+          from: 'await geo.countries(ctx.params.region)',
+          value: 'row.id',
+          label: 'row.name',
+          resolve: '(await geo.countries(ctx.params.region)).any(fn c: c.id == data.country)',
+        },
+        constraints: {
+          rules: [
+            {
+              check: 'not logic.isBlocked(data.country)',
+              message: "We don't ship to ${data.country}",
+            },
+          ],
+        },
+      },
+      {
+        node: 'field',
+        path: 'data.city',
+        type: 'text',
+        widget: 'select',
+        label: 'City',
+        when: 'data.country != none',
+        pending: 'node',
+        options: {
+          from: 'await geo.cities(data.country ?? "")',
+          value: 'row.id',
+          label: 'row.name',
+          resolve: '(await geo.cities(data.country ?? "")).any(fn c: c.id == data.city)',
+        },
+      },
+      {
+        node: 'repeat',
+        path: 'data.items',
+        as: 'item',
+        widget: 'table',
+        label: 'Items',
+        constraints: {
+          minItems: 1,
+        },
+        item: {
+          node: 'layout',
+          widget: 'tablerow',
+          children: [
+            {
+              node: 'field',
+              path: 'item.sku',
+              type: 'text',
+              widget: 'input',
+              label: 'SKU',
+              constraints: {
+                required: true,
+              },
+            },
+            {
+              node: 'field',
+              path: 'item.qty',
+              type: 'integer',
+              widget: 'input',
+              label: 'Qty',
+              constraints: {
+                min: 1,
+              },
+              ui: {
+                parent: {
+                  width: 80,
+                },
+              },
+            },
+          ],
+        },
+      },
+      {
+        node: 'field',
+        type: 'integer',
+        widget: 'input',
+        label: 'Total quantity',
+        computed: 'logic.totalQty(data.items)',
+      },
+      {
+        node: 'variant',
+        path: 'data.payment',
+        as: 'p',
+        tag: 'method',
+        widget: 'inline',
+        label: 'Payment',
+        cases: {
+          card: {
+            label: 'Credit card',
+            body: {
+              node: 'field',
+              path: 'p.last4',
+              type: 'text',
+              widget: 'input',
+              label: 'Last 4 digits',
+              constraints: {
+                pattern: '^[0-9]{4}$',
+              },
+            },
+          },
+          wire: {
+            label: 'Bank transfer',
+            body: {
+              node: 'field',
+              path: 'p.iban',
+              type: 'text',
+              widget: 'input',
+              label: 'IBAN',
+            },
+          },
+        },
+      },
+      {
+        node: 'field',
+        path: 'data.note',
+        type: 'text',
+        widget: 'textarea',
+        label: 'Delivery note',
+        when: 'logic.totalQty(data.items) > 100',
+        ui: {
+          rows: {
+            expr: 'if logic.totalQty(data.items) > 1000: 6 else: 3',
+          },
+        },
+      },
+    ],
+  },
+} as const satisfies FormDocument;
+
+const supplier = {
+  id: 'supplier',
+  version: '2.0.0',
+  imports: {
+    geo: 'geo',
+    crm: 'crm',
+    approvals: 'approvals',
+    formsCatalog: 'forms-catalog',
+    logic: './supplier',
+  },
+  params: {
+    region: 'text',
+    tier: { type: 'literal', values: ['basic', 'gold'] },
+    products: {
+      type: 'array',
+      items: { type: 'object', properties: { sku: 'text', name: 'text' } },
+    },
+    owner: { ista: 'crm.User' },
+  },
+  types: {
+    'data.company.vatId': { type: 'text', pattern: '^[A-Z]{2}[0-9]{6,12}$' },
+  },
+  localization: {
+    Company: { de: 'Unternehmen', fr: 'Entreprise' },
+    'Only ${data.company.employees} employees allowed for a ${data.company.size} company': {
+      de: 'Nur $0 Mitarbeitende für ein Unternehmen der Größe $1 erlaubt',
+    },
+    'Waiting for approval by ${ctx.params.owner.name}': { de: 'Warten auf Freigabe durch $0' },
+  },
+  defs: {
+    address: {
+      params: { country: 'text' },
+      root: {
+        node: 'layout',
+        widget: 'labeled',
+        ui: { labels: 'top' },
+        children: [
+          {
+            node: 'field',
+            path: 'data.street',
+            type: 'text',
+            widget: 'input',
+            label: 'Street',
+            constraints: { required: true, maxLength: 120 },
+          },
+          {
+            node: 'layout',
+            widget: 'hstack',
+            ui: { gap: 'sm' },
+            children: [
+              {
+                node: 'field',
+                path: 'data.zip',
+                type: 'text',
+                widget: 'input',
+                label: 'ZIP',
+                constraints: { pattern: { expr: 'logic.zipPattern(ctx.params.country)' } },
+                ui: { parent: { grow: 1 } },
+              },
+              {
+                node: 'field',
+                path: 'data.city',
+                type: 'text',
+                widget: 'input',
+                label: 'City',
+                ui: { parent: { grow: 3 } },
+              },
+            ],
+          },
+        ],
+      },
+    },
+    category: {
+      root: {
+        node: 'layout',
+        widget: 'section',
+        children: [
+          { node: 'field', path: 'data.name', type: 'text', widget: 'input', label: 'Category' },
+          {
+            node: 'repeat',
+            path: 'data.children',
+            as: 'child',
+            widget: 'list',
+            label: 'Subcategories',
+            ui: { addLabel: 'Add subcategory' },
+            item: { node: 'ref', form: '#category', path: 'child' },
+          },
+        ],
+      },
+    },
+  },
+  root: {
+    node: 'layout',
+    widget: 'wizard',
+    children: [
+      {
+        node: 'layout',
+        widget: 'step',
+        ui: { title: 'Company', labels: 'start' },
+        children: [
+          {
+            node: 'layout',
+            widget: 'markdown',
+            ui: {
+              markdown: { expr: '`Welcome, **${ctx.user.name}**. Tier: ${ctx.params.tier}.`' },
+            },
+          },
+          {
+            node: 'layout',
+            widget: 'section',
+            ui: { title: 'Company', description: 'Legal details', collapsible: false },
+            children: [
+              {
+                node: 'layout',
+                widget: 'hstack',
+                ui: { gap: 'md' },
+                children: [
+                  {
+                    node: 'field',
+                    path: 'data.company.name',
+                    type: 'text',
+                    widget: 'input',
+                    label: 'Name',
+                    help: 'As registered',
+                    ui: { placeholder: 'ACME Ltd.', parent: { grow: 2 } },
+                    constraints: { required: true, minLength: 2, maxLength: 100 },
+                  },
+                  {
+                    node: 'field',
+                    path: 'data.company.vatId',
+                    type: 'text',
+                    widget: 'input',
+                    label: 'VAT ID',
+                    ui: { parent: { grow: 1 } },
+                  },
+                ],
+              },
+              {
+                node: 'field',
+                path: 'data.company.email',
+                type: 'text',
+                widget: 'input',
+                label: 'Email',
+                constraints: { format: 'email' },
+              },
+              {
+                node: 'field',
+                path: 'data.confirmEmail',
+                type: 'text',
+                widget: 'input',
+                label: 'Confirm email',
+                store: 'none',
+                constraints: {
+                  rules: [
+                    {
+                      check: 'data.confirmEmail == data.company.email',
+                      message: 'The emails differ',
+                    },
+                  ],
+                },
+              },
+              {
+                node: 'field',
+                path: 'data.company.description',
+                type: 'text',
+                widget: 'textarea',
+                label: 'Description',
+                default: '',
+                ui: { rows: { expr: 'if ctx.params.tier == "gold": 8 else: 4' } },
+                constraints: { maxLength: 2000 },
+              },
+              {
+                node: 'field',
+                path: 'data.company.size',
+                type: 'text',
+                widget: 'select',
+                label: 'Size',
+                default: 'small',
+                options: {
+                  items: [
+                    { value: 'small', label: 'Small' },
+                    { value: 'medium', label: 'Medium' },
+                    {
+                      value: 'large',
+                      label: {
+                        expr: 'if ctx.params.tier == "gold": "Large (priority)" else: "Large"',
+                      },
+                    },
+                  ],
+                },
+              },
+              {
+                node: 'field',
+                path: 'data.company.legalForm',
+                type: 'text',
+                widget: 'radio',
+                label: 'Legal form',
+                ui: { orientation: 'horizontal' },
+                options: {
+                  items: [
+                    { value: 'llc', label: 'LLC' },
+                    { value: 'plc', label: 'PLC' },
+                    { value: 'sole', label: 'Sole trader' },
+                  ],
+                },
+              },
+              {
+                node: 'field',
+                path: 'data.company.capital',
+                type: 'number',
+                widget: 'input',
+                label: 'Share capital',
+                when: 'data.company.legalForm != "sole"',
+                constraints: { min: 0, multipleOf: 1000 },
+              },
+              {
+                node: 'field',
+                path: 'data.company.employees',
+                type: 'integer',
+                widget: 'input',
+                label: 'Employees',
+                constraints: {
+                  min: 1,
+                  max: {
+                    expr: 'if data.company.size == "small": 50 elif data.company.size == "medium": 250 else: 100000',
+                  },
+                  rules: [
+                    {
+                      check: 'data.company.size != "small" or (data.company.employees ?? 0) <= 50',
+                      message:
+                        'Only ${data.company.employees} employees allowed for a ${data.company.size} company',
+                    },
+                  ],
+                },
+              },
+              {
+                node: 'field',
+                path: 'data.company.founded',
+                type: 'date',
+                widget: 'datepicker',
+                label: 'Founded',
+                constraints: { min: '1800-01-01', max: { expr: 'ctx.user.today' } },
+              },
+              {
+                node: 'field',
+                path: 'data.company.logo',
+                type: 'file',
+                widget: 'upload',
+                label: 'Logo',
+                ui: { dropzone: true },
+                constraints: { accept: ['image/png', 'image/svg+xml'], maxBytes: 1_048_576 },
+              },
+              {
+                node: 'field',
+                path: 'data.company.country',
+                type: 'text',
+                widget: 'select',
+                label: 'Country',
+                options: {
+                  from: 'await geo.countries(ctx.params.region)',
+                  value: 'row.id',
+                  label: 'row.name',
+                  resolve:
+                    '(await geo.countries(ctx.params.region)).any(fn c: c.id == data.company.country)',
+                },
+              },
+              {
+                node: 'ref',
+                form: '#address',
+                path: 'data.company.address',
+                label: 'Address',
+                when: 'data.company.country != none',
+                params: { country: { expr: 'data.company.country ?? ""' } },
+              },
+              {
+                node: 'field',
+                path: 'data.company.city',
+                type: 'text',
+                widget: 'select',
+                label: 'Main city',
+                when: 'data.company.country != none',
+                pending: 'node',
+                options: {
+                  from: 'await geo.cities(data.company.country ?? "")',
+                  value: 'row.id',
+                  label: 'row.name',
+                  resolve:
+                    '(await geo.cities(data.company.country ?? "")).any(fn c: c.id == data.company.city)',
+                },
+              },
+            ],
+          },
+          {
+            node: 'field',
+            path: 'data.manager',
+            type: 'text',
+            widget: 'autocomplete',
+            label: 'Account manager',
+            store: 'snapshot',
+            ui: { placeholder: 'Type a name' },
+            options: {
+              from: 'await crm.users(ctx.search)',
+              value: 'row.id',
+              label: 'row.name',
+              rowType: 'crm.User',
+              resolve: '(await crm.user(data.manager?.id ?? "")) != none',
+            },
+          },
+          {
+            node: 'field',
+            path: 'data.creditLimit',
+            type: 'integer',
+            widget: 'input',
+            label: 'Credit limit',
+            pending: 'hidden',
+            default: { expr: '(await crm.creditLimit(data.company.vatId ?? "")) ?? 0' },
+          },
+        ],
+      },
+      {
+        node: 'layout',
+        widget: 'step',
+        ui: { title: 'Catalog' },
+        children: [
+          {
+            node: 'repeat',
+            path: 'data.prices',
+            as: 'price',
+            widget: 'table',
+            label: 'Prices',
+            editableCount: false,
+            rowKey: 'price.sku',
+            recomputeUntil: 'rows-edited',
+            default: {
+              expr: '[for p in ctx.params.products: { sku: p.sku, name: p.name, amount: none, regions: [] }]',
+            },
+            item: {
+              node: 'layout',
+              widget: 'tablerow',
+              children: [
+                {
+                  node: 'field',
+                  path: 'price.sku',
+                  type: 'text',
+                  widget: 'input',
+                  label: 'SKU',
+                  computed: 'price.sku ?? ""',
+                },
+                {
+                  node: 'field',
+                  path: 'price.name',
+                  type: 'text',
+                  widget: 'input',
+                  label: 'Product',
+                  default: '',
+                  ui: { parent: { width: 240 } },
+                },
+                {
+                  node: 'field',
+                  path: 'price.amount',
+                  type: 'number',
+                  widget: 'input',
+                  label: 'Price',
+                  constraints: { min: 0 },
+                  ui: { parent: { width: 100 } },
+                },
+                {
+                  node: 'repeat',
+                  path: 'price.regions',
+                  as: 'region',
+                  widget: 'multiselect',
+                  label: 'Regions',
+                  constraints: { required: true },
+                  item: {
+                    node: 'field',
+                    path: 'region',
+                    type: 'text',
+                    widget: 'choice',
+                    label: 'Region',
+                    options: {
+                      from: 'await geo.regions()',
+                      value: 'row.code',
+                      label: 'row.name',
+                      resolve: '(await geo.regions()).any(fn r: r.code == region)',
+                    },
+                  },
+                },
+              ],
+            },
+          },
+          {
+            node: 'repeat',
+            path: 'data.contacts',
+            as: 'contact',
+            widget: 'list',
+            label: 'Contacts',
+            ui: { addLabel: 'Add contact', reorderable: true },
+            constraints: {
+              minItems: 1,
+              maxItems: { expr: 'if ctx.params.tier == "gold": 10 else: 3' },
+            },
+            item: {
+              node: 'layout',
+              widget: 'section',
+              children: [
+                {
+                  node: 'field',
+                  path: 'contact.name',
+                  type: 'text',
+                  widget: 'input',
+                  label: 'Name',
+                  ui: { parent: { span: 1 } },
+                },
+                {
+                  node: 'field',
+                  path: 'contact.email',
+                  type: 'text',
+                  widget: 'input',
+                  label: 'Email',
+                  constraints: { format: 'email' },
+                  ui: { parent: { span: 1 } },
+                },
+                {
+                  node: 'field',
+                  path: 'contact.primary',
+                  type: 'boolean',
+                  widget: 'toggle',
+                  label: 'Primary contact',
+                  default: false,
+                },
+                {
+                  node: 'ref',
+                  form: 'catalog:contact-card@^1',
+                  path: 'contact.card',
+                  params: { name: { expr: 'contact.name ?? ""' } },
+                },
+              ],
+            },
+          },
+          {
+            node: 'repeat',
+            path: 'data.certifications',
+            as: 'cert',
+            widget: 'checkboxes',
+            label: 'Certifications',
+            ui: { orientation: 'vertical' },
+            item: {
+              node: 'field',
+              path: 'cert',
+              type: 'text',
+              widget: 'choice',
+              label: 'Certification',
+              options: {
+                items: [
+                  { value: 'iso9001', label: 'ISO 9001' },
+                  { value: 'iso14001', label: 'ISO 14001' },
+                ],
+              },
+            },
+          },
+          {
+            node: 'repeat',
+            path: 'data.categories',
+            as: 'cat',
+            widget: 'cards',
+            label: 'Categories',
+            ui: { title: 'Category', addLabel: 'Add category' },
+            item: { node: 'ref', form: '#category', path: 'cat' },
+          },
+          {
+            node: 'repeat',
+            path: 'data.history',
+            as: 'h',
+            widget: 'list',
+            label: 'Previous orders',
+            pending: 'hidden',
+            computed: 'await crm.orders(data.company.vatId ?? "")',
+            item: {
+              node: 'field',
+              path: 'h.note',
+              type: 'text',
+              widget: 'input',
+              label: 'Order',
+              computed: 'h.note ?? ""',
+            },
+          },
+        ],
+      },
+      {
+        node: 'layout',
+        widget: 'step',
+        ui: { title: 'Payment' },
+        children: [
+          {
+            node: 'field',
+            path: 'data.payment.method',
+            type: 'text',
+            widget: 'segmented',
+            label: 'Method',
+            options: {
+              items: [
+                { value: 'card', label: 'Card' },
+                { value: 'wire', label: 'Wire' },
+                { value: 'invoice', label: 'Invoice' },
+              ],
+            },
+          },
+          {
+            node: 'variant',
+            path: 'data.payment',
+            as: 'pay',
+            tag: 'method',
+            widget: 'panel',
+            label: 'Payment details',
+            ui: { title: 'Details' },
+            cases: {
+              card: {
+                label: 'Card',
+                body: {
+                  node: 'layout',
+                  widget: 'section',
+                  children: [
+                    {
+                      node: 'field',
+                      path: 'pay.holder',
+                      type: 'text',
+                      widget: 'input',
+                      label: 'Card holder',
+                    },
+                    {
+                      node: 'field',
+                      path: 'pay.last4',
+                      type: 'text',
+                      widget: 'input',
+                      label: 'Last 4 digits',
+                      constraints: { pattern: '^[0-9]{4}$' },
+                    },
+                  ],
+                },
+              },
+              wire: {
+                label: 'Wire',
+                body: {
+                  node: 'layout',
+                  widget: 'money',
+                  label: 'Deposit',
+                  children: [
+                    {
+                      node: 'field',
+                      path: 'pay.deposit.amount',
+                      type: 'number',
+                      widget: 'raw',
+                      label: 'Amount',
+                      constraints: { min: 0 },
+                    },
+                    {
+                      node: 'field',
+                      path: 'pay.deposit.currency',
+                      type: 'text',
+                      widget: 'choice',
+                      label: 'Currency',
+                      options: {
+                        items: [
+                          { value: 'EUR', label: '€' },
+                          { value: 'USD', label: '$' },
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+              invoice: {
+                label: 'Invoice',
+                body: {
+                  node: 'field',
+                  path: 'pay.terms',
+                  type: 'integer',
+                  widget: 'input',
+                  label: 'Payment terms (days)',
+                  default: 30,
+                  constraints: { min: 7, max: 90 },
+                },
+              },
+            },
+          },
+          {
+            node: 'variant',
+            path: 'data.delivery',
+            as: 'd',
+            tag: 'kind',
+            widget: 'inline',
+            label: 'Delivery',
+            default: 'standard',
+            cases: {
+              standard: {
+                label: 'Standard',
+                body: {
+                  node: 'field',
+                  path: 'd.window',
+                  type: 'text',
+                  widget: 'select',
+                  label: 'Time window',
+                  options: {
+                    items: [
+                      { value: 'am', label: 'Morning' },
+                      { value: 'pm', label: 'Afternoon' },
+                    ],
+                  },
+                },
+              },
+              express: {
+                label: 'Express',
+                body: {
+                  node: 'field',
+                  path: 'd.at',
+                  type: 'datetime',
+                  widget: 'datepicker',
+                  label: 'Deliver at',
+                },
+              },
+            },
+          },
+          {
+            node: 'field',
+            path: 'data.extraForm',
+            type: 'text',
+            widget: 'select',
+            label: 'Additional questionnaire',
+            store: 'snapshot',
+            options: {
+              from: 'await formsCatalog.list(ctx.params.region)',
+              value: 'row.id',
+              label: 'row.title',
+              rowType: 'formsCatalog.Entry',
+              resolve: '(await formsCatalog.get(data.extraForm?.id ?? "")) != none',
+            },
+          },
+          {
+            node: 'ref',
+            path: 'data.extra',
+            label: 'Questionnaire',
+            when: 'data.extraForm != none',
+            schema: 'data.extraForm?.schema',
+          },
+        ],
+      },
+      {
+        node: 'layout',
+        widget: 'step',
+        ui: { title: 'Review' },
+        children: [
+          {
+            node: 'layout',
+            widget: 'markdown',
+            ui: {
+              markdown: {
+                expr: '`Supplier **${data.company.name ?? "?"}**, ${data.prices.length()} prices.`',
+              },
+            },
+          },
+          {
+            node: 'field',
+            type: 'number',
+            widget: 'input',
+            label: 'Catalog value',
+            computed: 'logic.catalogValue(data.prices)',
+          },
+          {
+            node: 'field',
+            path: 'data.score',
+            type: 'integer',
+            widget: 'input',
+            label: 'Risk score',
+            computed: 'logic.score(data.company.employees ?? 0, data.certifications.length())',
+          },
+          {
+            node: 'field',
+            path: 'data.notes',
+            type: 'text',
+            widget: 'textarea',
+            label: {
+              expr: 'if ctx.params.tier == "gold": "Notes for your account manager" else: "Notes"',
+            },
+            default: '',
+            constraints: { required: { expr: '(data.score ?? 0) > 70' } },
+          },
+          {
+            node: 'field',
+            path: 'data.agree',
+            type: 'boolean',
+            widget: 'checkbox',
+            label: 'I accept the terms',
+            constraints: {
+              rules: [{ check: 'data.agree == true', message: 'Please accept the terms' }],
+            },
+          },
+          { node: 'layout', widget: 'divider' },
+          {
+            node: 'layout',
+            widget: 'errors',
+            constraints: {
+              rules: [
+                {
+                  check: 'data.contacts.any(fn c: c.primary == true)',
+                  message: 'Mark one contact as primary',
+                },
+                {
+                  check:
+                    '(data.score ?? 0) < 80 or await approvals.ask(ctx.params.owner.id, data.company.name ?? "")',
+                  message: 'The supplier was not approved',
+                  pending: 'Waiting for approval by ${ctx.params.owner.name}',
+                },
+              ],
+            },
+          },
+        ],
+      },
+    ],
+  },
+} as const satisfies FormDocument;
+
+const node = (x: Node) => x;
+// @ts-expect-error a prop is a literal or { expr }, nothing else
+node({ node: 'field', path: 'data.a', type: 'text', widget: 'input', label: { value: 'A' } });
+// @ts-expect-error a default literal must match the field type
+node({ node: 'field', path: 'data.a', type: 'integer', widget: 'input', label: 'A', default: '1' });
+// a default may be an expression
+node({
+  node: 'field',
+  path: 'data.a',
+  type: 'integer',
+  widget: 'input',
+  label: 'A',
+  default: { expr: 'ctx.params.count' },
+});
+// @ts-expect-error default and computed are exclusive
+node({
+  node: 'field',
+  path: 'data.a',
+  type: 'text',
+  widget: 'input',
+  label: 'A',
+  default: 'x',
+  computed: "'y'",
+});
+// @ts-expect-error a pathless field must be computed
+node({ node: 'field', type: 'text', widget: 'input', label: 'A' });
+// @ts-expect-error paths are rooted at data or a variable, never at "."
+node({ node: 'field', path: '.a', type: 'text', widget: 'input', label: 'A' });
+// @ts-expect-error row options need resolve
+node({
+  node: 'field',
+  path: 'data.a',
+  type: 'text',
+  widget: 'select',
+  label: 'A',
+  options: { from: 'x', value: 'row.id', label: 'row.name' },
+});
+// @ts-expect-error snapshot needs an options widget
+node({
+  node: 'field',
+  path: 'data.a',
+  type: 'text',
+  widget: 'input',
+  label: 'A',
+  store: 'snapshot',
+});
+// @ts-expect-error pending is form, node or hidden
+node({
+  node: 'field',
+  path: 'data.a',
+  type: 'text',
+  widget: 'input',
+  label: 'A',
+  pending: 'global',
+});
+// @ts-expect-error ui props are typed per widget, literal or expression
+node({
+  node: 'field',
+  path: 'data.a',
+  type: 'text',
+  widget: 'textarea',
+  label: 'A',
+  ui: { rows: '3' },
+});
+// @ts-expect-error ui.parent needs a parent that reads it
+node({
+  node: 'field',
+  path: 'data.a',
+  type: 'text',
+  widget: 'input',
+  label: 'A',
+  ui: { parent: { width: 1 } },
+});
+// @ts-expect-error a table's item is a tablerow
+node({
+  node: 'repeat',
+  path: 'data.r',
+  as: 'r',
+  widget: 'table',
+  item: { node: 'layout', widget: 'section', children: [] },
+});
+// @ts-expect-error a fixed row count needs a default
+node({
+  node: 'repeat',
+  path: 'data.r',
+  as: 'r',
+  widget: 'list',
+  editableCount: false,
+  item: { node: 'layout', widget: 'divider' },
+});
+// @ts-expect-error a control layout needs a label
+node({ node: 'layout', widget: 'money', children: [] });
+// @ts-expect-error constraint bounds are props of the bound's type
+node({
+  node: 'field',
+  path: 'data.a',
+  type: 'integer',
+  widget: 'input',
+  label: 'A',
+  constraints: { max: '10' },
+});
+// constraint bounds may come from data
+node({
+  node: 'field',
+  path: 'data.a',
+  type: 'integer',
+  widget: 'input',
+  label: 'A',
+  constraints: { max: { expr: 'data.budget ?? 0' } },
+});

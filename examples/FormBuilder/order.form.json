@@ -1,0 +1,165 @@
+{
+  "id": "order",
+  "version": "1.4.0",
+  "imports": {
+    "geo": "geo",
+    "approvals": "approvals",
+    "logic": "./order"
+  },
+  "params": {
+    "region": "text"
+  },
+  "localization": {
+    "We don't ship to ${data.country}": {
+      "de": "Wir liefern nicht nach $0"
+    }
+  },
+  "root": {
+    "node": "layout",
+    "widget": "section",
+    "ui": {
+      "title": "Order"
+    },
+    "constraints": {
+      "rules": [
+        {
+          "check": "logic.totalQty(data.items) <= 500 or await approvals.ask(ctx.user.id, logic.totalQty(data.items))",
+          "message": "The order was not approved",
+          "pending": "Waiting for approval of a large order"
+        }
+      ]
+    },
+    "children": [
+      {
+        "node": "field",
+        "path": "data.country",
+        "type": "text",
+        "widget": "select",
+        "label": "Country",
+        "options": {
+          "from": "await geo.countries(ctx.params.region)",
+          "value": "row.id",
+          "label": "row.name",
+          "resolve": "(await geo.countries(ctx.params.region)).any(fn c: c.id == data.country)"
+        },
+        "constraints": {
+          "rules": [
+            {
+              "check": "not logic.isBlocked(data.country)",
+              "message": "We don't ship to ${data.country}"
+            }
+          ]
+        }
+      },
+      {
+        "node": "field",
+        "path": "data.city",
+        "type": "text",
+        "widget": "select",
+        "label": "City",
+        "when": "data.country != none",
+        "pending": "node",
+        "options": {
+          "from": "await geo.cities(data.country ?? \"\")",
+          "value": "row.id",
+          "label": "row.name",
+          "resolve": "(await geo.cities(data.country ?? \"\")).any(fn c: c.id == data.city)"
+        }
+      },
+      {
+        "node": "repeat",
+        "path": "data.items",
+        "as": "item",
+        "widget": "table",
+        "label": "Items",
+        "constraints": {
+          "minItems": 1
+        },
+        "item": {
+          "node": "layout",
+          "widget": "tablerow",
+          "children": [
+            {
+              "node": "field",
+              "path": "item.sku",
+              "type": "text",
+              "widget": "input",
+              "label": "SKU",
+              "constraints": {
+                "required": true
+              }
+            },
+            {
+              "node": "field",
+              "path": "item.qty",
+              "type": "integer",
+              "widget": "input",
+              "label": "Qty",
+              "constraints": {
+                "min": 1
+              },
+              "ui": {
+                "parent": {
+                  "width": 80
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "node": "field",
+        "type": "integer",
+        "widget": "input",
+        "label": "Total quantity",
+        "computed": "logic.totalQty(data.items)"
+      },
+      {
+        "node": "variant",
+        "path": "data.payment",
+        "as": "p",
+        "tag": "method",
+        "widget": "inline",
+        "label": "Payment",
+        "cases": {
+          "card": {
+            "label": "Credit card",
+            "body": {
+              "node": "field",
+              "path": "p.last4",
+              "type": "text",
+              "widget": "input",
+              "label": "Last 4 digits",
+              "constraints": {
+                "pattern": "^[0-9]{4}$"
+              }
+            }
+          },
+          "wire": {
+            "label": "Bank transfer",
+            "body": {
+              "node": "field",
+              "path": "p.iban",
+              "type": "text",
+              "widget": "input",
+              "label": "IBAN"
+            }
+          }
+        }
+      },
+      {
+        "node": "field",
+        "path": "data.note",
+        "type": "text",
+        "widget": "textarea",
+        "label": "Delivery note",
+        "when": "logic.totalQty(data.items) > 100",
+        "ui": {
+          "rows": {
+            "expr": "if logic.totalQty(data.items) > 1000: 6 else: 3"
+          }
+        }
+      }
+    ]
+  }
+}

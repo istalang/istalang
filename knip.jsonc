@@ -4,5 +4,7 @@
   // no module at all and reports no violation, so the layer check would pass checking nothing.
   // `vscode` is the editor's own module, given to the VS Code client at run time (its types come
   // from @types/vscode), so no package can list it.
-  "ignoreDependencies": ["@swc/core", "vscode"]
+  "ignoreDependencies": ["@swc/core", "vscode"],
+  // The form builder prototype is run by hand, outside the package's entries.
+  "ignoreFiles": ["examples/FormBuilder/**"]
 }

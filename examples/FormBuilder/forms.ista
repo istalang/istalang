@@ -1,0 +1,526 @@
+# forms.py — the generic form runtime. Istalang; a design sketch, not compiled.
+#
+# Written once; every form uses it. A form contributes only its generated module (a model, its
+# factory, scope types and a view; see order.gen.py). This module does everything else: the loop,
+# drawing, validation, routing events, tasks for awaited expressions, and reading the result.
+#
+# Lines marked ASSUMES rely on a language feature the Istalang guide doesn't show yet; the design
+# doc lists them all. Two used throughout: async lambdas (async fn(x): …) and struct patterns as
+# lambda parameters (fn({data, ctx}): …).
+
+import * as json from 'json'
+import * as regex from 'regex'
+
+type Date = String                                   # ISO date; ASSUMES top-level type aliases
+type DateTime = String                               # RFC 3339
+type FileId = String                                 # an upload's id; the bytes travel separately
+
+# ═════════════════════════ The model: a form's data, holding its values ═════════════════════════
+# Data: what submit returns. Seen: what expressions see, none wherever something is unanswered or
+# hidden. Both are computed through the tree, so no form declares its data type.
+
+trait FormNode:
+    type Data
+    type Seen
+    fn seen(self: Self) -> Self.Seen
+    fn read(self: Self) -> Result<Self.Data>          # Err when something is unanswered
+    fn load(self: Self, v: Self.Seen)                  # fills from a value: default and computed rows
+
+# One value. Shared: the model and every view writing it hold the same handle.
+shared struct Field<T>:
+    value: T? = none
+    touched: Bool = false
+    parseError: String? = none
+    edited: Bool = false                              # set by the user: stops re-running a default
+    type Data = T
+    type Seen = T?
+
+fn seen<T>(self: Field<T>) -> T?: self->value
+fn read<T>(self: Field<T>) -> Result<T>:
+    match self->value:
+        case None: Err{Error{message: "unanswered"}}
+        case v: Ok{v}
+fn load<T>(self: Field<T>, v: T?): self->value = v
+
+# Fields by name: an object in the data.
+struct Group<S is struct { [_] is FormNode }>:
+    fields: S
+    type Data = { [F in keyof S]: S[F].Data }
+    type Seen = { [F in keyof S]: S[F].Seen }
+
+fn seen<S is struct { [_] is FormNode }>(self: Group<S>) -> Group<S>.Seen:
+    { for f, node in ...self.fields: [f]: node.seen() }                   # ASSUMES: mapped struct literal
+fn read<S is struct { [_] is FormNode }>(self: Group<S>) -> Result<Group<S>.Data>:
+    Ok{ { for f, node in ...self.fields: [f]: node.read()? } }
+fn load<S is struct { [_] is FormNode }>(self: Group<S>, v: Group<S>.Seen):
+    for f, node in ...self.fields: node.load(v[f])
+
+# A repeat. R is the row's node: a Group, a single Field (a multiselect's choice), or a mounted form.
+shared struct List<R is FormNode>:
+    rows: Array<ListRow<R>> = []
+    make: fn() -> R                                   # a new row's nodes
+    count: Int = 0
+    edited: Bool = false                              # rows added or removed by the user
+    type Data = Array<R.Data>
+    type Seen = Array<R.Seen>
+
+struct ListRow<R is FormNode>:
+    key: String                                       # from the instance (r1, r2…), or from rowKey
+    node: R
+
+fn seen<R is FormNode>(self: List<R>) -> Array<R.Seen>: [for row in self->rows: row.node.seen()]
+fn read<R is FormNode>(self: List<R>) -> Result<Array<R.Data>>:
+    let out: Array<R.Data> = []
+    for row in self->rows: out.push(row.node.read()?)
+    Ok{out}
+fn load<R is FormNode>(self: List<R>, v: Array<R.Seen>):
+    self->rows = []
+    for x in v: self.add(none).node.load(x)
+fn add<R is FormNode>(self: List<R>, key: String?) -> ListRow<R>:
+    self->count += 1
+    const row = ListRow{key: key ?? `r${self->count}`, node: self->make()}
+    self->rows.push(row)
+    row
+fn remove<R is FormNode>(self: List<R>, key: String):
+    self->rows = self->rows.filter(fn r: r.key != key)
+
+# Rows from data (a default or computed rows) keyed by rowKey: rows whose key stays keep their
+# nodes and so their filled-in values; rows whose key disappears are dropped with their data.
+fn sync<R is FormNode>(self: List<R>, v: Array<R.Seen>, key: fn(R.Seen) -> String) -> Result<Unit>:
+    const keys = [for x in v: key(x)]
+    if keys.length() != keys.unique().length(): return Err{Error{message: "Duplicate row keys"}}
+    let next: Array<ListRow<R>> = []
+    for x in v: {
+        const k = key(x)
+        match self->rows.filter(fn r: r.key == k).at(0):
+            case None: {
+                const row = ListRow{key: k, node: self->make()}
+                row.node.load(x)
+                next.push(row)
+            }
+            case row: next.push(row)
+    }
+    self->rows = next
+    Ok{()}
+
+# A variant: every case's fields, and a tag naming the active case. The tag is a Field, so the
+# variant's picker, any other field, or a computed value can write it.
+struct Variant<C is struct { [_] is struct { [_] is FormNode } }>:
+    tag: Field<keyof C>                               # a literal union of the case ids
+    cases: { [K in keyof C]: Group<C[K]> }
+    type Data = { [K in keyof C]: { case: K; value: Group<C[K]>.Data } }[keyof C]   # ASSUMES: a mapped type indexed by a union
+    type Seen = { case: (keyof C)?; value: { [K in keyof C]: Group<C[K]>.Seen? } }
+
+fn seen<C is struct { [_] is struct { [_] is FormNode } }>(self: Variant<C>) -> Variant<C>.Seen:
+    const active = self.tag.seen()
+    { case: active, value: { for k, g in ...self.cases: [k]: if active == k: g.seen() else: none } }
+fn read<C is struct { [_] is struct { [_] is FormNode } }>(self: Variant<C>) -> Result<Variant<C>.Data>:
+    const k = self.tag.read()?
+    Ok{{ case: k, value: self.cases[k].read()? }}                            # ASSUMES: s[k], k a union value
+fn load<C is struct { [_] is struct { [_] is FormNode } }>(self: Variant<C>, v: Variant<C>.Seen):
+    self.tag.load(v.case)
+    for k, g in ...self.cases: if v.value[k] is Some{value as x}: g.load(x)
+
+# A node `when` can hide. Drawing sets `shown` when any view writing it is drawn.
+shared struct Hidden<N is FormNode>:
+    node: N
+    shown: Bool = false
+    type Data = N.Data?
+    type Seen = N.Seen?
+
+fn seen<N is FormNode>(self: Hidden<N>) -> N.Seen?: if self->shown: self->node.seen() else: none
+fn read<N is FormNode>(self: Hidden<N>) -> Result<N.Data?>:
+    if self->shown: Ok{self->node.read()?} else: Ok{none}
+fn load<N is FormNode>(self: Hidden<N>, v: N.Seen?):
+    if v is Some{value as x}: self->node.load(x)
+
+# A value kept out of the output (store "none"): expressions see it, validation checks it.
+shared struct Local<N is FormNode>:
+    node: N
+    type Data = None
+    type Seen = N.Seen
+
+fn seen<N is FormNode>(self: Local<N>) -> N.Seen: self->node.seen()
+fn read<N is FormNode>(self: Local<N>) -> Result<None>:
+    self->node.read()?
+    Ok{none}
+fn load<N is FormNode>(self: Local<N>, v: N.Seen): self->node.load(v)
+
+# A mounted dynamic form: data no expression outside it reads. Validated by its own runtime.
+shared struct Dynamic:
+    form: FormSnapshot? = none
+    value: String? = none                             # JSON
+    type Data = String
+    type Seen = None
+
+struct FormSnapshot { id: String; version: String; module: String }   # a compiled form, loaded by the host
+
+# Lets drawing mark any Hidden as shown, whatever it wraps.
+trait Showable:
+    fn show(self: Self)
+fn show<N is FormNode>(self: Hidden<N>): self->shown = true
+
+# ═════════════════════════ Props, scopes and tasks ═════════════════════════
+
+# A prop: a literal, a lambda over the scope, or an awaited lambda run as the node's pending says.
+enum Prop<Sc, T>:
+    Fixed { value: T }
+    Computed { eval: fn(Sc) -> T }
+    Awaited { pending: Pending; eval: fn(Sc) -> Future<T>; task: Task<Sc, T> }
+
+enum Pending:
+    Form                                              # awaited inline: the whole form waits
+    Node                                              # its own task: the node shows Loading
+    Hidden                                            # its own task: the node stays hidden
+
+fn awaited<Sc, T>(pending: Pending, eval: fn(Sc) -> Future<T>) -> Prop<Sc, T>:
+    Prop.Awaited{pending, eval, task: new Task<Sc, T>{}}
+
+# An awaited expression's run. It starts again only when the scope it ran with changes, so a
+# finished task doesn't restart on the redraw it causes. Sources cache, so a rerun is cheap.
+shared struct Task<Sc, T>:
+    sc: Sc? = none
+    value: T? = none
+    running: Future<Unit>? = none                     # replacing it releases, and so stops, the old run
+
+# The value now, or none while pending (with pending Form, awaited inline instead).
+async fn get<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> Future<T?>:
+    match self:
+        case Fixed{value}: value
+        case Computed{eval}: eval(sc)
+        case Awaited{pending == Pending.Form, eval}: await eval(sc)
+        case Awaited{eval, task}: {
+            if task->sc != sc: {
+                task->sc = sc
+                task->value = none
+                task->running = _run(task, eval(sc), out.events)
+            }
+            task->value
+        }
+
+async fn _run<Sc, T>(task: Task<Sc, T>, call: Future<T>, events: Inbox<FormEvent>) -> Future<Unit>:
+    task->value = await call
+    events.send(FormEvent.Resolved)
+
+# The scope of a form's top level. Inside repeats, variants and mounts, generated code defines
+# wider scopes ({ data, ctx, item }) and moves into them through a ScopedView.
+struct Scope<D, C>:
+    data: D
+    ctx: C
+
+# ═════════════════════════ Checks ═════════════════════════
+
+enum Check<Sc, T>:
+    Now { test: fn(Sc, T?) -> String? }             # an error message, or none; on every draw
+    Later { test: fn(Sc) -> Future<String?>; pending: fn(Sc) -> String; task: Task<Sc, String?> }
+        # a rule with `pending` (an approval): its own task once the user submits; submit waits
+
+fn later<Sc, T>(test: fn(Sc) -> Future<String?>, pending: fn(Sc) -> String) -> Check<Sc, T>:
+    Check.Later{test, pending, task: new Task<Sc, String?>{}}
+
+enum Format:
+    Email
+    Uri
+    Uuid
+
+# One helper per constraint. The generator adds answered() to every stored field without a default
+# or computed value: everything must be answered. required() is the schema's `required`: non-empty.
+fn answered<Sc, T>() -> Check<Sc, T>:
+    Check.Now{test: fn(sc, v): if v == none: "Required" else: none}
+fn required<Sc>(on: Prop<Sc, Bool>) -> Check<Sc, String>: …                # "" fails while `on` holds
+fn someItems<Sc, T>(on: Prop<Sc, Bool>) -> Check<Sc, Array<T>>: …          # [] fails while `on` holds
+fn minLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: …
+fn maxLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: …
+fn pattern<Sc>(p: Prop<Sc, String>) -> Check<Sc, String>: …
+fn format<Sc>(f: Format) -> Check<Sc, String>: …
+fn min<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: …
+fn max<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: …
+fn multipleOf<Sc>(n: Prop<Sc, Float>) -> Check<Sc, Float>: …
+fn accept<Sc>(types: Array<String>) -> Check<Sc, FileId>: …
+fn maxBytes<Sc>(n: Int) -> Check<Sc, FileId>: …
+fn minItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: …
+fn maxItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: …
+fn rule<Sc, T>(check: fn(Sc) -> Bool, message: fn(Sc) -> String) -> Check<Sc, T>:
+    Check.Now{test: fn(sc, v): if check(sc): none else: message(sc)}
+
+# A Template in a language: its translation with $0…$n filled in, else the rendered original.
+fn t(table: Map<String, Map<String, String>>, lang: String, original: String,
+     rendered: String, args: Array<String>) -> String:
+    match table.get(original)?.get(lang):
+        case None: rendered
+        case tr: {
+            let out = tr
+            for i in 0..args.length(): out = out.replaceAll(`$${i}`, args[i])
+            out
+        }
+
+# ═════════════════════════ The view: a static tree, built once ═════════════════════════
+
+# A view node in scope Sc. It draws zero nodes when hidden, a Loading node while waiting, and
+# records in `out` what the loop needs: errors, inputs to route events to, rows to add.
+trait View<Sc>:
+    async fn draw(self: Self, sc: Sc, out: &Drawing) -> Future<Array<Node>>   # ASSUMES: async trait methods
+
+struct Item<Sc, T> { value: T; label: Prop<Sc, String> }    # a static option
+struct Choice<T> { value: T; label: String }                 # an option from rows
+
+enum Options<Sc, T>:
+    Items { items: Array<Item<Sc, T>> }
+    Rows { from: Prop<Sc, Array<Choice<T>>>; resolve: Prop<Sc, Bool> }
+    # The widget provides ctx.search: `from` takes the typed text. `same` tells whether two values
+    # are the same choice (a snapshot is a whole row, compared by id).
+    Search { from: fn(Sc, String) -> Future<Array<Choice<T>>>; resolve: Prop<Sc, Bool>; same: fn(T, T) -> Bool }
+
+enum Recompute:
+    RowsEdited
+    AnyEdit
+
+# A field, as drawn. One FieldView per writer: two views may hold one Field.
+shared struct FieldView<Sc, T>:
+    key: String                                       # n2; n6@r1 in a row; address/n2 in a mount
+    parent: Prop<Sc, ParentUi>?
+    when: Prop<Sc, Bool>? = none
+    field: Field<T>?                                  # none: pathless, shows `value` only
+    hide: (any Showable)? = none                      # the Hidden wrapping `field`, if `when` can hide it
+    widget: Prop<Sc, FieldWidget>
+    label: Prop<Sc, String>
+    help: Prop<Sc, String>? = none
+    value: Prop<Sc, T>? = none                        # computed: written on every draw, read-only
+    default: Prop<Sc, T>? = none                      # re-evaluated until the user edits the field
+    checks: Array<Check<Sc, T>> = []
+    options: Options<Sc, T>? = none
+    search: String = ""                               # the text typed into a search widget
+
+impl View<Sc> for FieldView<Sc, T>:                   # ASSUMES: trait impls for generic structs
+    async fn draw(self: FieldView<Sc, T>, sc: Sc, out: &Drawing) -> Future<Array<Node>>: {
+        # 1. Visibility. A hidden field draws nothing, and its Hidden stays unshown.
+        if self->when is Some{value as w}: match await w.get(sc, out):
+            case None: return [Node.Loading{key: self->key, label: none}]
+            case Some{value == false}: return []
+            case _: ()
+        if self->hide is Some{value as h}: h.show()
+        # 2. Computed and default values.
+        if self->value is Some{value as p}: if self->field is Some{value as f}: f.load(await p.get(sc, out))
+        if self->default is Some{value as p}: if self->field is Some{value as f}: if not f->edited:
+            f.load(await p.get(sc, out))
+        # 3. Options, then checks; then the node. Inputs register for events by key.
+        …
+        if self->field is Some{value as f}: out.inputs.set(self->key, f)
+        [Node.Field{…}]
+    }
+
+shared struct RepeatView<Sc, R is FormNode>:
+    key: String
+    parent: Prop<Sc, ParentUi>?
+    when: Prop<Sc, Bool>? = none
+    list: List<R>
+    hide: (any Showable)? = none
+    widget: Prop<Sc, RepeatWidget>
+    label: Prop<Sc, String>? = none
+    checks: Array<Check<Sc, Array<R.Data>>> = []
+    canAdd: Bool = true                               # false: editableCount false, or computed rows
+    rows: Prop<Sc, Array<R.Seen>>? = none             # a default, or computed rows
+    computedRows: Bool = false                        # rows always follow `rows`, read-only
+    rowKey: (fn(R.Seen) -> String)? = none
+    recomputeUntil: Recompute = Recompute.AnyEdit
+    item: fn(R, String) -> any View<Sc>               # a row's view, from its node and key
+    views: Map<String, any View<Sc>> = [:]            # built once per row, by row key
+
+# A variant. Each case body is wrapped by the generated code in a ScopedView that adds the
+# variable bound to that case's fields.
+struct VariantView<Sc, C is struct { [_] is struct { [_] is FormNode } }>:
+    key: String
+    parent: Prop<Sc, ParentUi>?
+    when: Prop<Sc, Bool>? = none
+    variant: Variant<C>
+    hide: (any Showable)? = none
+    widget: Prop<Sc, VariantWidget>
+    label: Prop<Sc, String>? = none
+    checks: Array<Check<Sc, Unit>> = []
+    default: Prop<Sc, keyof C>? = none                # the initial case
+    tagValue: Prop<Sc, keyof C>? = none               # a computed tag
+    cases: { [K in keyof C]: CaseView<Sc> }
+
+struct CaseView<Sc>:
+    label: Prop<Sc, String>
+    body: any View<Sc>
+
+struct LayoutView<Sc>:
+    key: String
+    parent: Prop<Sc, ParentUi>?
+    when: Prop<Sc, Bool>? = none
+    widget: Prop<Sc, LayoutWidget>
+    label: Prop<Sc, String>? = none                   # control layouts only
+    checks: Array<Check<Sc, Unit>> = []               # rules; an `errors` layout shows only these
+    children: Array<any View<Sc>> = []
+
+# Moves drawing into a wider or different scope: a repeat row ({ data, ctx, item }), a variant
+# case ({ data, ctx, pay }), or a mounted form (its own data, and its params as ctx).
+struct ScopedView<Sc, Sc2>:
+    key: String? = none
+    parent: Prop<Sc, ParentUi>? = none
+    when: Prop<Sc, Bool>? = none
+    hide: (any Showable)? = none
+    label: Prop<Sc, String>? = none
+    scope: fn(Sc) -> Sc2
+    view: any View<Sc2>
+
+# A mounted form chosen at run time. The host loads its compiled module; its data stays opaque.
+shared struct DynamicView<Sc>:
+    key: String
+    parent: Prop<Sc, ParentUi>?
+    when: Prop<Sc, Bool>? = none
+    value: Dynamic
+    hide: (any Showable)? = none
+    label: Prop<Sc, String>? = none
+    schema: Prop<Sc, FormSnapshot?>
+
+# ═════════════════════════ Widgets (generated from the widget registry) ═════════════════════════
+# One enum per node kind, one variant per widget, its ui props as fields.
+
+enum LabelStyle:
+    Top
+    Start
+    Hidden
+
+enum Orientation:
+    Horizontal
+    Vertical
+
+enum Gap:
+    Sm
+    Md
+    Lg
+
+enum FieldWidget:
+    Input { placeholder: String? }
+    Textarea { rows: Int? }
+    Select { placeholder: String? }
+    Autocomplete { placeholder: String? }             # provides ctx.search
+    Radio { orientation: Orientation? }
+    Segmented
+    Checkbox                                          # draws its own label
+    Toggle                                            # draws its own label
+    Datepicker
+    Upload { dropzone: Bool? }
+    Choice                                            # drawn by its repeat
+    Raw                                               # drawn by its repeat or control layout
+
+enum RepeatWidget:
+    Multiselect { placeholder: String? }
+    Checkboxes { orientation: Orientation? }
+    List { addLabel: String?; reorderable: Bool? }
+    Table { addLabel: String? }
+    Cards { addLabel: String?; title: String? }
+
+enum VariantWidget:
+    Inline                                            # a case picker that writes the tag, and the case
+    Panel { title: String? }                          # the active case only
+
+enum LayoutWidget:
+    Section { title: String?; description: String?; collapsible: Bool?; labels: LabelStyle? }
+    Labeled { labels: LabelStyle? }
+    Money                                             # a control: amount and currency as one input
+    Hstack { gap: Gap?; labels: LabelStyle? }
+    Wizard
+    Step { title: String; labels: LabelStyle? }
+    Tablerow
+    Markdown { markdown: String }
+    Errors
+    Divider
+
+# What a parent widget reads about a child (its ui.parent), by parent widget.
+enum ParentUi:
+    Section { span: Int? }
+    Hstack { grow: Float? }
+    Tablerow { width: Int? }
+
+# ═════════════════════════ The tree the frontend draws ═════════════════════════
+
+struct Option { value: String; label: String }       # value JSON-encoded
+
+enum Node:
+    Layout  { key: String; widget: LayoutWidget; parent: ParentUi?; label: String?
+              errors: Array<String>; waiting: Array<String>; children: Array<Node> }
+    Field   { key: String; widget: FieldWidget; parent: ParentUi?; label: String; help: String?
+              value: String?; options: Array<Option>; errors: Array<String>; readOnly: Bool }
+    Repeat  { key: String; widget: RepeatWidget; parent: ParentUi?; label: String?
+              rows: Array<Row>; canAdd: Bool; errors: Array<String> }
+    Variant { key: String; widget: VariantWidget; parent: ParentUi?; label: String?
+              cases: Array<Option>; active: String?; body: Node?; errors: Array<String> }
+    Mount   { key: String; parent: ParentUi?; label: String?; form: FormSnapshot }   # a dynamic ref
+    Loading { key: String; label: String? }
+
+struct Row { key: String; node: Node }
+
+# ═════════════════════════ Events and the loop ═════════════════════════
+
+enum FormEvent:
+    Set { key: String; value: String }               # value JSON; a key names its row: n6@r1
+    Search { key: String; text: String }             # typed into a search widget
+    AddRow { key: String }
+    RemoveRow { key: String; row: String }
+    Submit
+    Resolved                                          # a task finished: draw again
+
+# Anything an event can be routed to, whatever its type.
+trait Settable:
+    fn setJson(self: Self, value: String)
+
+fn setJson<T>(self: Field<T>, value: String):
+    self->touched = true
+    self->edited = true
+    match json.parse<T>(value):                       # ASSUMES: parsing into literal unions
+        case Ok{value as v}: { self->value = v; self->parseError = none }
+        case Err{error}: self->parseError = error.message
+
+trait Rows:
+    fn addRow(self: Self)
+    fn removeRow(self: Self, key: String)
+
+struct User:                                          # the person filling in the form; from the platform
+    id: String
+    name: String
+    lang: String
+    role: String
+    today: Date                                       # in the person's time zone
+
+# What one drawing pass collects.
+struct Drawing:
+    events: Inbox<FormEvent>
+    submitted: Bool
+    inputs: Map<String, any Settable> = [:]
+    lists: Map<String, any Rows> = [:]
+    valid: Bool = true                                 # no errors, nothing pending
+    shown: Array<any Showable> = []                    # Hiddens drawn this pass
+
+# Runs a form until a valid submit, and returns its data, typed Group<M>.Data.
+async fn run<M is struct { [_] is FormNode }, C>(
+        model: Group<M>, view: any View<Scope<Group<M>.Seen, C>>, ctx: C,
+        translations: Map<String, Map<String, String>>,
+        events: Inbox<FormEvent>, views: Inbox<Node>) -> Future<Group<M>.Data>:
+    let submitted = false
+    while true:
+        # Draw until visibility settles: a `when` may depend on another node's visibility.
+        let out = Drawing{events, submitted}
+        let tree: Array<Node> = []
+        let before = model.seen()
+        for _ in 0..5: {
+            out = Drawing{events, submitted}
+            tree = await view.draw(Scope{data: before, ctx}, &out)
+            const after = model.seen()
+            if after == before: break
+            before = after
+        }
+        if submitted and out.valid:
+            match model.read():
+                case Ok{value as d}: return d
+                case Err{}: ()
+        views.send(tree[0])
+        match await events.receive():
+            case Submit: submitted = true
+            case Resolved: ()
+            case Set{key, value}: if out.inputs.get(key) is Some{value as f}: f.setJson(value)
+            case Search{key, text}: …                 # stored on the FieldView; its `from` runs again
+            case AddRow{key}: if out.lists.get(key) is Some{value as l}: l.addRow()
+            case RemoveRow{key, row}: if out.lists.get(key) is Some{value as l}: l.removeRow(row)
