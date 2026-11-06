@@ -1,7 +1,7 @@
 /**
  * Lambdas passed as arguments (§3.5, §3.14). A lambda with an untyped parameter takes its types
  * from the parameter it is passed to, so the call decides it, as it decides `none`: choosing a
- * function looks only at whether the lambda's shape can fit (resolution/choice.ts).
+ * function looks only at whether the lambda's shape can fit (resolution/choosing/choice.ts).
  *
  * Once a function is chosen, such a lambda is checked after the other arguments, which have bound
  * what they can of the type parameters, and before the call is instantiated: its parameter types
@@ -17,7 +17,7 @@ import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import type { BodyContext } from '../body-context.ts';
 import type { Inference } from '../inference/infer.ts';
-import type { Application } from '../resolution/choice.ts';
+import type { Application } from '../resolution/choosing/choice.ts';
 import { collectionTarget, expectedFunction, expectedTuple } from '../types/fitting/expected.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
 import type { Type } from '../types/type/index.ts';

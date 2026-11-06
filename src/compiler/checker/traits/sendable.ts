@@ -7,7 +7,7 @@
  * parameter is when constrained `is Sendable`, or by a trait that implies it (`Encodable`,
  * `Decodable`). A recursive type is sendable unless something in its cycle isn't, so a type being
  * decided counts as sendable while its own fields are. Conformance meets Sendable by this rule
- * (resolution/derived-traits.ts).
+ * (resolution/conformance/derived-traits.ts).
  *
  * Code is sendable only to another instance of the same program; whether a value can go to the
  * host is whether it has a codec (rules/boundary/json-forms.ts), which no function type has. A host type a
@@ -25,7 +25,7 @@ import { knownConstraints } from './known-constraints.ts';
 
 /**
  * The traits a type parameter may be constrained by to be sendable: Sendable, and those that
- * imply it, which require it of every type meeting them (resolution/derived-traits.ts).
+ * imply it, which require it of every type meeting them (resolution/conformance/derived-traits.ts).
  */
 const sendableTraits: readonly WellKnownDeclaration[] = [
   wellKnown.sendable,

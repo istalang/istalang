@@ -9,14 +9,14 @@
  * conversion records no witnesses: lowering finds them again for each type a value converts from.
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { CheckerContext } from '../context.ts';
-import type { ResolvedCall } from '../surface/resolved-call.ts';
-import { constraintOn } from '../traits/constraints.ts';
-import { sameConstraint } from '../types/identity/identity.ts';
-import type { AnyType, Type } from '../types/type/index.ts';
-import { typeText } from '../types/type-text.ts';
-import { searchSite, type UseSite } from '../use-site.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { CheckerContext } from '../../context.ts';
+import type { ResolvedCall } from '../../surface/resolved-call.ts';
+import { constraintOn } from '../../traits/constraints.ts';
+import { sameConstraint } from '../../types/identity/identity.ts';
+import type { AnyType, Type } from '../../types/type/index.ts';
+import { typeText } from '../../types/type-text.ts';
+import { searchSite, type UseSite } from '../../use-site.ts';
 import { meets, witnessesFor } from './conformance.ts';
 
 /** Whether a value of `found` converts into `target` (§3.10). */

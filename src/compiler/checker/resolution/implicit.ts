@@ -32,9 +32,9 @@ import type { ImplicitRole, MadeCall, ResolvedCall } from '../surface/resolved-c
 import type { Type } from '../types/type/index.ts';
 import { typeText } from '../types/type-text.ts';
 import { applyCall } from './applied-call.ts';
-import type { CallArgument } from './call-arguments.ts';
 import { callMade } from './calls-made.ts';
-import { type Candidate, topLevelCandidates } from './candidates.ts';
+import type { CallArgument } from './choosing/call-arguments.ts';
+import { type Candidate, topLevelCandidates } from './choosing/candidates.ts';
 
 /** The implicit calls of one body, by construct and role. */
 export class ImplicitCalls implements ImplicitRecord {

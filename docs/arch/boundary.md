@@ -27,7 +27,7 @@ path):
   `Json`, `Array`, `T?` and `Map`, the containers' generic over their elements' codecs; a module
   declares them beside its own types (the `time` module's `Time` and `Duration`, through
   `encodeText` and `decodeText`). A trait's witness may be declared in the trait's own module
-  (`checker/resolution/candidates.ts`), which is how the `json` module's codecs are found from
+  (`checker/resolution/choosing/candidates.ts`), which is how the `json` module's codecs are found from
   every module without an import. `encode`, `decode`, `stringify` and `parse` are generic code
   over the traits.
 - A struct, an enum, a tuple, a host type, a literal type or a union of literals
@@ -40,7 +40,7 @@ path):
   witnesses are coherent (spec §3.10): found beside the types they take or the trait, never where
   they are asked for, so a derived codec belongs to its type alone. Conformance takes a derived
   codec when no declared one is found, as for every trait the compiler derives
-  (`checker/resolution/derived-traits.ts`): a call to the `json` module's
+  (`checker/resolution/conformance/derived-traits.ts`): a call to the `json` module's
   `_toJson<T>` or `_fromJson<T>`, externs whose bodies lowering writes per type
   (`language/well-known.ts`, `derivedCodecs`). A recursive type counts as meeting the trait while
   its own parts are decided.

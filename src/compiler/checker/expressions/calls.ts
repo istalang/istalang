@@ -19,11 +19,12 @@
  * - `worker.disposing()`, a method of the call an async function's own name is before a `.`
  *   (closures/own-calls.ts).
  *
- * An argument written `&x` passes the place `x` by reference, which must be a place that may
- * change (calls/places.ts). A named argument fills the parameter of its name, and a spread a rest
- * parameter (§3.3, resolution/binding.ts). An argument given by position after a named one was
- * reported by the parser, so it counts as the error type: the call still checks its arguments and
- * records the candidates a tool shows while the call is being written, and reports nothing more.
+ * An argument written `&x` passes the place `x` by reference, which must be a place that may change
+ * (calls/places.ts). A named argument fills the parameter of its name, and a spread a rest
+ * parameter (§3.3, resolution/choosing/binding.ts). An argument given by position after a named one
+ * was reported by the parser, so it counts as the error type: the call still checks its arguments
+ * and records the candidates a tool shows while the call is being written, and reports nothing
+ * more.
  */
 
 import { staticName } from '../../../language/static-names.ts';
@@ -50,7 +51,7 @@ import {
   staticCandidates,
   staticTargetOf,
   topLevelCandidates,
-} from '../resolution/candidates.ts';
+} from '../resolution/choosing/candidates.ts';
 import { namedType } from '../resolution/named.ts';
 import { fieldOf } from '../traits/known-fields.ts';
 import type { Type } from '../types/type/index.ts';

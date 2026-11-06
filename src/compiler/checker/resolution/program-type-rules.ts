@@ -27,8 +27,8 @@ import { sameTypeSpelled } from '../types/parts/type-parts.ts';
 import type { AnonymousStructType, AnyType, Type } from '../types/type/index.ts';
 import { errorType } from '../types/type/primitives.ts';
 import type { TypeRules } from '../types/type-rules.ts';
-import { meetsAny } from './trait-objects.ts';
-import { TypeMatchReductions } from './type-matches.ts';
+import { meetsAny } from './conformance/trait-objects.ts';
+import { TypeMatchReductions } from './type-matches/type-matches.ts';
 
 /** An associated type asked for: its owner and its name. */
 interface Associated {

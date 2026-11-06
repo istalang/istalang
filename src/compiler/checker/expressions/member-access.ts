@@ -26,7 +26,7 @@ import {
 } from '../closures/function-values.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
-import { topLevelCandidates } from '../resolution/candidates.ts';
+import { topLevelCandidates } from '../resolution/choosing/candidates.ts';
 import { namedType, nameNodeOf } from '../resolution/named.ts';
 import type { FieldRead, FieldReading, FoundField } from '../surface/checked-field.ts';
 import { fieldOf } from '../traits/known-fields.ts';

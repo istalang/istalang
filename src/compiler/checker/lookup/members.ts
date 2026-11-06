@@ -3,14 +3,14 @@
  * has them, a tuple's elements as fields named by position (`t.0`, §3.15), or the fields its
  * constraints require; the static functions a call through it may choose, and its methods.
  *
- * A method is found as a method call finds it (resolution/candidates.ts): by each name the module
- * sees at its top level, the type's own module exports, or its constraints require, with that
- * call's candidates kept where `self` takes a value of the type as a call's receiver
- * (resolution/applicability.ts), and the type parameters that decides meet their constraints. The
- * call's other arguments are aside, since completing a call needn't know them yet.
+ * A method is found as a method call finds it (resolution/choosing/candidates.ts): by each name the
+ * module sees at its top level, the type's own module exports, or its constraints require, with
+ * that call's candidates kept where `self` takes a value of the type as a call's receiver
+ * (resolution/choosing/applicability.ts), and the type parameters that decides meet their
+ * constraints. The call's other arguments are aside, since completing a call needn't know them yet.
  *
  * Read through a member access, a method taking `&self` counts only where the access is a place,
- * as for a call (resolution/candidates.ts `callableThrough`).
+ * as for a call (resolution/choosing/candidates.ts `callableThrough`).
  *
  * The error type has no members: what a value of it is isn't known, and a call on it resolves to
  * nothing, so offering any member would mislead.
@@ -32,9 +32,9 @@ import {
   staticFunctionsAmong,
   staticTargetOf,
   topLevelCandidates,
-} from '../resolution/candidates.ts';
-import { takesAsSelf } from '../resolution/receivers.ts';
-import { metThroughTraits } from '../resolution/trait-calls.ts';
+} from '../resolution/choosing/candidates.ts';
+import { takesAsSelf } from '../resolution/choosing/receivers.ts';
+import { metThroughTraits } from '../resolution/conformance/trait-calls.ts';
 import type { TypeMembers } from '../surface/denotation.ts';
 import { requiredFields, requiredFunctions } from '../traits/constraints.ts';
 import {

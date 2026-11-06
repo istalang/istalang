@@ -55,7 +55,8 @@ export function wellKnownConstraint(
  * A function a constraint requires, and how its trait's parameters and `Self` map. A call on a
  * union through a trait nothing names its arguments for (union-traits.ts) leaves the trait's
  * parameters without a default `inferred`: unmapped, found from the call's arguments as the
- * function's own type parameters are (resolution/choice.ts), then closed (applied-call.ts).
+ * function's own type parameters are (resolution/choosing/choice.ts), then closed
+ * (applied-call.ts).
  */
 export interface Requirement {
   readonly declaration: FunctionDeclaration;

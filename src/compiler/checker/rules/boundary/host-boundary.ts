@@ -18,7 +18,7 @@ import type {
 import type { NodeOf } from '../../../syntax/node.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { meets } from '../../resolution/conformance.ts';
+import { meets } from '../../resolution/conformance/conformance.ts';
 import { isHostExtern } from '../../surface/host-externs.ts';
 import { type JsonDirection, jsonTraits } from '../../surface/json-form.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';

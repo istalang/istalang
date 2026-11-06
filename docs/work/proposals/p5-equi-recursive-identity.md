@@ -54,7 +54,7 @@ fn saveTree(c: CrmCategory) -> Int: c.children.length()
 - **Finiteness**: `checker/types/properties/finiteness.ts` (5211) walks every body kind.
 - **Expected-type destructors** unfold: `builtFrom`, `expectedTuple`, `expectedFunction`, `collectionTarget`, `takingUnfolded` (`checker/types/fitting/expected.ts`); `presentType` (`unions.ts`); `aliasedShape` (`expressions/literal-types.ts`, `expressions/indented-values.ts`).
 - **Lowering type table**: `lowering/type-table.ts`. A recursive use is the entry of what it unfolds to (a union's enum named for the alias, e.g. `json.Json` with role `json`; a shape's struct), and a tuple- or function-bodied one gets an `alias` entry (`#aliasEntry`; `definition/types.ts` `kind: 'alias'`; `docs/arch/definition.md`).
-- **P4's recursive type `match`** (`checker/resolution/type-matches.ts`, `match-requirements.ts`) keys a reduction by its match use (`useKeyOf` in `type-keys.ts`, `match:<id><args>`).
+- **P4's recursive type `match`** (`checker/resolution/type-matches/type-matches.ts`, `match-requirements.ts`) keys a reduction by its match use (`useKeyOf` in `type-keys.ts`, `match:<id><args>`).
 
 ## Why a canonical key alone can't do it (the first hypothesis, refuted)
 
@@ -99,7 +99,7 @@ The first hypothesis was: since every consumer reads identity through `typeKey`,
 - **Union rules have one home** (`types/unions/union-members.ts`), used by `unionOf` and the graph. Refinement reads a union as the set of its members' classes; only nodes on a cycle become graph nodes. No union-find is needed.
 - **Recursive matching.** `matchCase` and inference match a recursive type through its unfolding, under one coinductive pair rule (`types/identity/unfolding-pairs.ts`). A known subject always reduces or fails. Structurally equal match results are one type (`T1<String>` is `T1<Int>` when they build the same structure).
 - **Labels.** A recursive type's label is the alias or associated-type use as written (`Group<CategoryModel>.Data`), and `typeText` is the one spelling. Lowering labels a type-table entry by the preferred alias among every alias, generic ones included, that closes to its key. Spelled keys spell a graph by its nodes and labels, so incremental checking reuses dependents of `Tree<Int>`.
-- **B32.** A non-`match` associated type reaching itself through instantiations is error 5136 (cause `expandsItself`), found by `resolution/reduction-requirements.ts` (formerly `match-requirements.ts`) at every instantiation, written or inferred, and reported per instantiation site. Every associated type on the cycle is the error type, and a type parameter only the error type met binds to it, so nothing reports twice.
+- **B32.** A non-`match` associated type reaching itself through instantiations is error 5136 (cause `expandsItself`), found by `resolution/type-matches/reduction-requirements.ts` (formerly `match-requirements.ts`) at every instantiation, written or inferred, and reported per instantiation site. Every associated type on the cycle is the error type, and a type parameter only the error type met binds to it, so nothing reports twice.
 
 The intermediate states don't pass verify, and the work exceeds one fork session (forks stop at 200 turns; resume them with a message). Hence the separate worktree branch.
 

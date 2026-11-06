@@ -28,17 +28,17 @@ import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { applyCall } from '../resolution/applied-call.ts';
 import { argumentListText } from '../resolution/argument-fit.ts';
-import type { BindingFailure } from '../resolution/binding.ts';
+import { callMade } from '../resolution/calls-made.ts';
+import type { BindingFailure } from '../resolution/choosing/binding.ts';
 import type {
   CallArgument,
   Inapplicability,
   Misfit,
   Passing,
-} from '../resolution/call-arguments.ts';
-import { callMade } from '../resolution/calls-made.ts';
-import type { Candidate } from '../resolution/candidates.ts';
-import type { Application } from '../resolution/choice.ts';
-import type { Instantiation } from '../resolution/conformance.ts';
+} from '../resolution/choosing/call-arguments.ts';
+import type { Candidate } from '../resolution/choosing/candidates.ts';
+import type { Application } from '../resolution/choosing/choice.ts';
+import type { Instantiation } from '../resolution/conformance/conformance.ts';
 import type { ResolvedSite } from '../surface/resolved-call.ts';
 import { misfitOf } from '../types/fitting/fit.ts';
 import type { LiteralType, Type } from '../types/type/index.ts';
@@ -49,8 +49,8 @@ import { changeReceiver, checkReferencedPlaces } from './places.ts';
 
 /**
  * An argument as written: its node, how it is passed, and its type, undefined when the chosen
- * function decides it, with which parameter types it can take (resolution/choice.ts), or, for a
- * literal of items with types of their own, which it can be built as instead (§3.7); its name
+ * function decides it, with which parameter types it can take (resolution/choosing/choice.ts), or,
+ * for a literal of items with types of their own, which it can be built as instead (§3.7); its name
  * when named. A spread's node is what it spreads, its type that of its items, which fit the rest
  * parameter's element exactly: the items are copied or iterated as they are (§3.3).
  */

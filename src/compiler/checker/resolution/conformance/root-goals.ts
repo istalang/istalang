@@ -19,12 +19,18 @@
  *   meanwhile (rules/boundary/json-forms.ts) is what ends that recursion.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { CheckerContext, CheckerNote, RootGoals, StructGoal, TraitGoal } from '../context.ts';
-import type { Type } from '../types/type/index.ts';
-import { searchSite, type UseSite } from '../use-site.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import type { EntryTable } from '../../../../structures/entries/index.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type {
+  CheckerContext,
+  CheckerNote,
+  RootGoals,
+  StructGoal,
+  TraitGoal,
+} from '../../context.ts';
+import type { Type } from '../../types/type/index.ts';
+import { searchSite, type UseSite } from '../../use-site.ts';
 import { goalKey } from './witness-outcomes.ts';
 
 /** The root goals of `checker`'s program, each kept from what `searches` finds for it. */

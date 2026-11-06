@@ -2,8 +2,8 @@
  * Relating two types as they unfold (§3.17), one of them recursive: a recursive type is what it
  * unfolds to, on either side, and a pair met again while it is related holds, as two unfoldings
  * alike so far stay alike, so relating them ends. One home for the rule, which matching a type
- * `match` case's pattern (resolution/type-match-patterns.ts) and inferring type arguments
- * (inference/infer.ts) both read recursive types by.
+ * `match` case's pattern (resolution/type-matches/type-match-patterns.ts) and inferring type
+ * arguments (inference/infer.ts) both read recursive types by.
  */
 
 import { unfolded } from '../computed-types.ts';

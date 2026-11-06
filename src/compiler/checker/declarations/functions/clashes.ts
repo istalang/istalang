@@ -12,7 +12,7 @@
  *   numbers of them never clash: written type arguments tell them apart (§3.7);
  * - a function with defaults is compared for every number of arguments a call by position may give
  *   it, a rest parameter taking its element's type at every position past the fixed ones (§3.3,
- *   resolution/binding.ts), a pack's taking any type by value (§3.5); a function with a rest
+ *   resolution/choosing/binding.ts), a pack's taking any type by value (§3.5); a function with a rest
  *   parameter never clashes with one without, since the one without wins a call both take (§3.7);
  * - a parameter's `fn(A) -> R` and `async fn(A) -> R` differ: a call fitting both takes the one that
  *   needs no plain function made async (§3.7, §3.14).
@@ -36,8 +36,8 @@ import {
 } from '../../../syntax/declarations.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { positionalCounts } from '../../resolution/binding.ts';
-import { signatureOf } from '../../resolution/choice.ts';
+import { positionalCounts } from '../../resolution/choosing/binding.ts';
+import { signatureOf } from '../../resolution/choosing/choice.ts';
 import type { RestSlot } from '../../types/function-types.ts';
 import { mentionsError } from '../../types/parts/type-parts.ts';
 import type { ParameterKey, Type } from '../../types/type/index.ts';

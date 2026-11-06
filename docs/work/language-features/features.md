@@ -34,7 +34,7 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
 ## F1 Rest parameters and spread (D67)
 
 - **Decided:** as §3.3 already specifies: `...xs: Array<T>` last, after defaults; `...xs` spreads at a call; fixed arity beats rest.
-- **Lands:** parsing exists (`Parameter.isRest`, `Spread`). Checker: the two `frontier` entries go; `resolution/choice.ts` gains the rest slot and a third tie-break tier after "concrete beats generic". Lowering: the caller builds an `array` instruction (spread items exist), so there is no IR change; `extern-key.ts` spells a rest type.
+- **Lands:** parsing exists (`Parameter.isRest`, `Spread`). Checker: the two `frontier` entries go; `resolution/choosing/choice.ts` gains the rest slot and a third tie-break tier after "concrete beats generic". Lowering: the caller builds an `array` instruction (spread items exist), so there is no IR change; `extern-key.ts` spells a rest type.
 - **Deletes:** `strings.format`'s 7 overloads and `_format` (D193).
 - **Gaps:** spread into a non-rest position (default: refused); rest in an `extern fn` (default: allowed, the host gets an array).
 
@@ -151,7 +151,7 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
   - `==` compares the type, then the value. JSON refuses `any`.
   - `case Email{to}` on an `any Notifier` downcasts, and needs `case _`.
 - **Lands:**
-  - **Checker:** a new `Type` kind. The silent `default`s over `Type` (`types/properties/held.ts`, `resolution/candidates.ts` `staticTargetOf`) become exhaustive first.
+  - **Checker:** a new `Type` kind. The silent `default`s over `Type` (`types/properties/held.ts`, `resolution/choosing/candidates.ts` `staticTargetOf`) become exhaustive first.
   - **Parser:** reuses the constraint list that type parameters parse (`A & B`).
   - **Lowering and Definition:** synthesized enum types in the types table. Variants are positional within one Definition, which is enough because snapshots are tied to their version.
   - **Spec:** §3.10 and its "no dynamic dispatch" paragraph are rewritten.

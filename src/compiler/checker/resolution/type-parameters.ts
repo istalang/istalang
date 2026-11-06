@@ -1,8 +1,9 @@
 /**
- * Type parameters across the program (§3.5): where each is declared, its constraints resolved
- * there once, and the arguments given for those constraints, checked once the module that gave
- * them is checked (types/written/resolve-type.ts explains why later, and why every check is noted by then),
- * with the type `match`es an instantiation reaches, which must all reduce (reduction-requirements.ts).
+ * Type parameters across the program (§3.5): where each is declared, its constraints resolved there
+ * once, and the arguments given for those constraints, checked once the module that gave them is
+ * checked (types/written/resolve-type.ts explains why later, and why every check is noted by then),
+ * with the type `match`es an instantiation reaches, which must all reduce
+ * (type-matches/reduction-requirements.ts).
  *
  * A check is noted in the entry that resolved the arguments, so the module's check finds each
  * one among what it read, whatever was asked before. Each runs once per site and what it checks;
@@ -42,10 +43,10 @@ import { substituteConstraint } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type/index.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
 import { useSite } from '../use-site.ts';
-import { meets } from './conformance.ts';
-import { impliedConstraints } from './implied-constraints.ts';
-import { failureDiagnostic, ReductionRequirements } from './reduction-requirements.ts';
-import { meetsStructConstraints } from './shortfalls.ts';
+import { meets } from './conformance/conformance.ts';
+import { meetsStructConstraints } from './conformance/shortfalls.ts';
+import { impliedConstraints } from './type-matches/implied-constraints.ts';
+import { failureDiagnostic, ReductionRequirements } from './type-matches/reduction-requirements.ts';
 
 export class TypeParameters {
   readonly #checker: CheckerContext;

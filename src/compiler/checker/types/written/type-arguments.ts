@@ -118,7 +118,7 @@ export function constrainArguments(checker: CheckerContext, module: ModuleId, li
 /**
  * Notes every argument of a constrained parameter in a complete list for its constraints: in a
  * type `match` case's pattern too, which must be a well-formed type, its `infer` variables meeting
- * what their places imply (resolution/implied-constraints.ts).
+ * what their places imply (resolution/type-matches/implied-constraints.ts).
  */
 export function noteConstraints(
   checker: CheckerContext,

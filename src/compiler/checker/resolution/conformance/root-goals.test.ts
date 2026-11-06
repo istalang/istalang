@@ -6,12 +6,12 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { type Files, idOf } from '../../program/program.test-kit.ts';
-import { checkedApart } from '../check.test-kit.ts';
-import { checkProgram } from '../check.ts';
-import type { ProgramChecker } from '../program/program-checker.ts';
-import { typeText } from '../types/type-text.ts';
+import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
+import { type Files, idOf } from '../../../program/program.test-kit.ts';
+import { checkedApart } from '../../check.test-kit.ts';
+import { checkProgram } from '../../check.ts';
+import type { ProgramChecker } from '../../program/program-checker.ts';
+import { typeText } from '../../types/type-text.ts';
 
 /** A program converting a `Box<Int>` into `any Shows` at `sites` sites, met through a generic witness. */
 function converting(sites: number, shown: string): string {

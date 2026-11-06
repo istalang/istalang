@@ -1,10 +1,11 @@
 /**
  * Calls the toolchain makes on its own to plain functions it knows (§3.9, §3.10), with no written
- * call to report at: a type's `dispose` (rules/disposal/disposal.ts), a json-module helper a codec calls
- * (rules/boundary/json-forms.ts), or the defaults a struct literal leaves fields to
+ * call to report at: a type's `dispose` (rules/disposal/disposal.ts), a json-module helper a codec
+ * calls (rules/boundary/json-forms.ts), or the defaults a struct literal leaves fields to
  * (expressions/literal-fields.ts). Each is chosen, instantiated and made as a written call is
- * (choice.ts, conformance.ts, calls-made.ts), its constraints' witnesses found as anywhere, but
- * nothing is reported: failing gives undefined, and each caller says what that means.
+ * (choosing/choice.ts, conformance/conformance.ts, calls-made.ts), its constraints' witnesses found
+ * as anywhere, but nothing is reported: failing gives undefined, and each caller says what that
+ * means.
  *
  * - The candidates are plain functions, never a type parameter's requirement, so the call made is
  *   always a function call.
@@ -17,11 +18,11 @@ import type { CheckerContext } from '../context.ts';
 import type { FunctionCall } from '../surface/resolved-call.ts';
 import type { Type } from '../types/type/index.ts';
 import { searchSite } from '../use-site.ts';
-import type { CallArgument } from './call-arguments.ts';
 import { callMade } from './calls-made.ts';
-import type { Candidate } from './candidates.ts';
-import { type Application, choose } from './choice.ts';
-import { instantiate } from './conformance.ts';
+import type { CallArgument } from './choosing/call-arguments.ts';
+import type { Candidate } from './choosing/candidates.ts';
+import { type Application, choose } from './choosing/choice.ts';
+import { instantiate } from './conformance/conformance.ts';
 
 /**
  * The call to the one function of `candidates` taking `callArguments`; undefined when none or

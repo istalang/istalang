@@ -9,36 +9,36 @@
  *   argument that is the union itself its trait's own `Self`. So the union and each member read it
  *   alike, and lowering finds each member's functions as it does for an `any` value's.
  * - A call on a union that no function takes whole calls the function of that name a trait
- *   visible at the call requires (candidates.ts), only one taking `Self` first. Nothing names the
+ *   visible at the call requires (choosing/candidates.ts), only one taking `Self` first. Nothing names the
  *   trait's arguments there, so a parameter with a default takes it, and one without is found from
  *   the call's arguments, as the function's own type parameters are (`Requirement.inferred`).
  *   Whether the union meets the trait is conformance's to say, where the call is chosen, or, for
- *   arguments found so, once they are (trait-calls.ts, applied-call.ts).
+ *   arguments found so, once they are (trait-calls.ts, ../applied-call.ts).
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
 import {
   type FunctionDeclaration,
   type TraitDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import type { CheckerContext } from '../context.ts';
-import type { MembersRequirement } from '../surface/resolved-call.ts';
+} from '../../../syntax/declarations.ts';
+import type { CheckerContext } from '../../context.ts';
+import type { MembersRequirement } from '../../surface/resolved-call.ts';
 import {
   constraintOn,
   constraintSubstitution,
   type Requirement,
   requiredFunctions,
-} from '../traits/constraints.ts';
-import { objectUnsafety } from '../traits/object-safety.ts';
-import { sameType } from '../types/identity/identity.ts';
-import { substitute } from '../types/substitution.ts';
-import type { AnyType, Constraint, ParameterKey, Type, UnionType } from '../types/type/index.ts';
-import type { TypeRules } from '../types/type-rules.ts';
-import { typeText } from '../types/type-text.ts';
-import { parameterType } from '../types/written/resolve-type.ts';
-import { defaultArgument } from '../types/written/type-arguments.ts';
+} from '../../traits/constraints.ts';
+import { objectUnsafety } from '../../traits/object-safety.ts';
+import { sameType } from '../../types/identity/identity.ts';
+import { substitute } from '../../types/substitution.ts';
+import type { AnyType, Constraint, ParameterKey, Type, UnionType } from '../../types/type/index.ts';
+import type { TypeRules } from '../../types/type-rules.ts';
+import { typeText } from '../../types/type-text.ts';
+import { parameterType } from '../../types/written/resolve-type.ts';
+import { defaultArgument } from '../../types/written/type-arguments.ts';
 
 /** A call through a union's trait, as a candidate: the required function, and how it is reached. */
 export interface MembersCall {

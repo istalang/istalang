@@ -42,7 +42,7 @@ import type { BodyContext, CollectionRecord } from '../body-context.ts';
 import { writeElement } from '../calls/collection-functions.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
-import { resolveDefault } from '../resolution/default-witness.ts';
+import { resolveDefault } from '../resolution/conformance/default-witness.ts';
 import { preludeCall } from '../resolution/implicit.ts';
 import { decidedSoFar, type Produced, producedBy, settleAgreement } from '../rules/agreement.ts';
 import { checkIterated, iteratedItem } from '../rules/loops/iteration.ts';

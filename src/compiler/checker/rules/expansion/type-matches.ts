@@ -65,7 +65,8 @@ export class TypeMatchExpansion {
     this.#endless = checker.entries.table({
       name: 'endless type matches',
       // A case's type may reduce a use of the alias its graph is being read from, which takes the
-      // alias as ending; a use never ending is still cut short (resolution/type-matches.ts).
+      // alias as ending; a use never ending is still cut short
+      // (resolution/type-matches/type-matches.ts).
       cyclic: { standIn: () => false },
       compute: (alias) => {
         const endless = endlessEdgesFrom(

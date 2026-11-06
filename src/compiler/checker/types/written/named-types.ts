@@ -1,10 +1,10 @@
 /**
- * The type a name names where a type is written in a value's place: as a static function's owner
- * or a conversion's target (§3.10), and as what a pattern names (pattern-types.ts reads it here);
- * and what static functions on a type are declared on (§3.7, §3.17). Its static functions
- * (declarations/statics.ts, declarations/functions/clashes.ts, resolution/candidates.ts) and the
- * editor's completion read the same rules here, so what a name may name and what it then means
- * can't drift apart.
+ * The type a name names where a type is written in a value's place: as a static function's owner or
+ * a conversion's target (§3.10), and as what a pattern names (pattern-types.ts reads it here); and
+ * what static functions on a type are declared on (§3.7, §3.17). Its static functions
+ * (declarations/statics.ts, declarations/functions/clashes.ts, resolution/choosing/candidates.ts)
+ * and the editor's completion read the same rules here, so what a name may name and what it then
+ * means can't drift apart.
  *
  * - A name in a value's place gives no type arguments, so it names a generic type only as a whole,
  *   with its own parameters where they are written.

@@ -33,7 +33,7 @@ The modules are project test modules over the shipped std. Each other open docum
   - the pending constraint checks of `TypeParameters.constrainLater`;
   - `Annotations`' checked bodies;
   - `Annotations.ofField`'s memo, which checks the type of whatever instance asked first, an order dependence.
-- **Conformance: root goals are entries, a search's inner goals aren't.** A goal asked at the root of a search depends on the program and `toHost` only, so it is an entry, kept by its spelling, searched through a site recording its reports, which each asking site makes again (`resolution/root-goals.ts`). Inside a search, goals rest on coinductive hypotheses, so one search judges each once (`resolution/witness-outcomes.ts` `SearchGoals`) and what it keeps lives as long as the search, never read across entries. A root goal reached again while its own entry computes is searched afresh, outside the entry.
+- **Conformance: root goals are entries, a search's inner goals aren't.** A goal asked at the root of a search depends on the program and `toHost` only, so it is an entry, kept by its spelling, searched through a site recording its reports, which each asking site makes again (`resolution/conformance/root-goals.ts`). Inside a search, goals rest on coinductive hypotheses, so one search judges each once (`resolution/conformance/witness-outcomes.ts` `SearchGoals`) and what it keeps lives as long as the search, never read across entries. A root goal reached again while its own entry computes is searched afresh, outside the entry.
 
 **What an entry records, while it computes:**
 - **Its reads**, each with the value it saw:

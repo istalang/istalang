@@ -100,13 +100,14 @@ src/
                                                                  what it is, computed types `T.Data` and `S["meta"]` among them, with
                                                                  their reductions (known-constraints.ts)
       resolution/                                                what a call or a name may mean (applied-call.ts: every call chosen, instantiated
-                                                                 and fitted in one place): candidates and ADL, choice, conformance and
-                                                                 witnesses, the traits the compiler derives (derived-traits.ts: one table),
-                                                                 the calls a construct makes, a type or variant named as a value, a type
-                                                                 `match`'s use reduced (type-matches.ts) and its cases matched (type-match-patterns.ts),
-                                                                 and the type `match`es and associated types an instantiation reaches,
-                                                                 checked to name a type whose values end where it is written
-                                                                 (reduction-requirements.ts)
+                                                                 and fitted in one place), the calls a construct makes, a type or variant
+                                                                 named as a value, type parameters and their constraints;
+                                                                 choosing/: candidates and ADL, how arguments bind, choice among overloads;
+                                                                 conformance/: witnesses and why there is none, the traits the compiler
+                                                                 derives (derived-traits.ts: one table), unions meeting traits through
+                                                                 their members; type-matches/: a type `match`'s use reduced and its cases
+                                                                 matched, and the type `match`es and associated types an instantiation
+                                                                 reaches, checked to name a type whose values end where it is written
       calls/                                                     a call in a body: arguments checked against the chosen function, operators,
                                                                  the places a call or an assignment changes
       patterns/ flow/                                            one walk for every pattern, the member of a union each selects (members.ts),

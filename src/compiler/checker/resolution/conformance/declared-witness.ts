@@ -1,8 +1,8 @@
 /**
  * Finding the function declared to meet a trait's requirement for a type (§3.10): chosen among the
- * witness candidates (candidates.ts) by the required parameter types, taken exactly, so a function
- * taking the type only once wrapped into an optional is one for the optional. Conformance builds
- * on it (conformance.ts); a derived codec or default may stand only where none is declared.
+ * witness candidates (choosing/candidates.ts) by the required parameter types, taken exactly, so a
+ * function taking the type only once wrapped into an optional is one for the optional. Conformance
+ * builds on it (conformance.ts); a derived codec or default may stand only where none is declared.
  *
  * A lone literal type's value is its base's (§2), so a parameter of a literal type taken by value
  * is taken as its base: `"draft"` meets `Stringable` with `String`'s `toString`. Through `&` a place
@@ -11,13 +11,13 @@
  * is no literal, so it isn't met that way either.
  */
 
-import type { CheckerContext } from '../context.ts';
-import { constraintSubstitution, requiredFunctions } from '../traits/constraints.ts';
-import type { Constraint, Type } from '../types/type/index.ts';
-import { baseOf } from '../types/unions/union-members.ts';
-import type { CallArgument } from './call-arguments.ts';
-import { type Candidate, witnessCandidates } from './candidates.ts';
-import { type Choice, chooseAsValue, type Signature, signatureOf } from './choice.ts';
+import type { CheckerContext } from '../../context.ts';
+import { constraintSubstitution, requiredFunctions } from '../../traits/constraints.ts';
+import type { Constraint, Type } from '../../types/type/index.ts';
+import { baseOf } from '../../types/unions/union-members.ts';
+import type { CallArgument } from '../choosing/call-arguments.ts';
+import { type Candidate, witnessCandidates } from '../choosing/candidates.ts';
+import { type Choice, chooseAsValue, type Signature, signatureOf } from '../choosing/choice.ts';
 
 /**
  * Whether a function declared for `type` meets one that `constraint` requires, whether or not its

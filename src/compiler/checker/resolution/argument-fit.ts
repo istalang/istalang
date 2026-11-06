@@ -16,9 +16,9 @@ import type { LiteralType, Type } from '../types/type/index.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { givenKeysOwner } from '../types/written/key-types.ts';
-import type { CallArgument } from './call-arguments.ts';
-import type { Application } from './choice.ts';
-import type { Instantiation } from './conformance.ts';
+import type { CallArgument } from './choosing/call-arguments.ts';
+import type { Application } from './choosing/choice.ts';
+import type { Instantiation } from './conformance/conformance.ts';
 
 /**
  * An argument as fitting sees it; its type is undefined when the chosen function decides it, and,

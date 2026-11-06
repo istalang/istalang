@@ -16,23 +16,23 @@
  * report about a failed call explains the reason it found.
  */
 
-import { receiverParameter } from '../../../language/well-known.ts';
-import { memo } from '../../../structures/memo.ts';
+import { receiverParameter } from '../../../../language/well-known.ts';
+import { memo } from '../../../../structures/memo.ts';
 import {
   type FunctionDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import type { SignatureParameter } from '../check.ts';
-import type { CheckerContext } from '../context.ts';
-import { noSubstitution, type Substitution, substitute } from '../types/substitution.ts';
-import type { Type } from '../types/type/index.ts';
-import type { TypeRules } from '../types/type-rules.ts';
+} from '../../../syntax/declarations.ts';
+import type { SignatureParameter } from '../../check.ts';
+import type { CheckerContext } from '../../context.ts';
+import { noSubstitution, type Substitution, substitute } from '../../types/substitution.ts';
+import type { Type } from '../../types/type/index.ts';
+import type { TypeRules } from '../../types/type-rules.ts';
+import { membersRequirementOf } from '../conformance/union-traits.ts';
 import { type Given, reshapesArguments, type Taken, takenBy } from './applicability.ts';
 import { bindArguments, bindValue } from './binding.ts';
 import type { CallArgument, Inapplicability, SignatureSlot } from './call-arguments.ts';
 import type { Candidate } from './candidates.ts';
-import { membersRequirementOf } from './union-traits.ts';
 
 /**
  * What a candidate takes and gives, with a requirement's trait mapped (traits/constraints.ts).
@@ -124,7 +124,7 @@ export function choose(
   return chosenAmong(checker, candidates, { callArguments, written, binder: bindArguments });
 }
 
-/** Chooses among `candidates` for a function value taking `callArguments` (resolution/binding.ts). */
+/** Chooses among `candidates` for a function value taking `callArguments` (resolution/choosing/binding.ts). */
 export function chooseAsValue(
   checker: CheckerContext,
   candidates: readonly Candidate[],

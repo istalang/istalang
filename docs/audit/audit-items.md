@@ -132,15 +132,15 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - `types/well-known.ts` defines `futureOf` and `futureArgument`, but has no `arrayOf` / `arrayElement` or `optionalArgument`. As a result, `wellKnownArguments(checker, wellKnown.array, type)?.[0]` is repeated at 7 sites across 6 files, `wellKnownOf(..., wellKnown.array, [T])` at 3 sites, and `wellKnownArguments(..., wellKnown.optional, ...)` at 2 sites alongside `optionalInner` at ~15 sites.
 
 #### 3.3 `src/compiler/checker/traits/`, `resolution/` & `calls/`
-- **Hard-coded derived-trait branches and three duplicate type-cycle guards (`src/compiler/checker/resolution/conformance.ts`, `traits/sendable.ts`, `rules/json-forms/index.ts`, `types/properties/held.ts`, Q7):**
-  - `conform` (`resolution/conformance.ts`) hard-codes an `if (isSendableTrait(...))` branch and an `if (direction !== undefined)` (`codecWitness`) branch before falling through to general trait conformance.
+- **Hard-coded derived-trait branches and three duplicate type-cycle guards (`src/compiler/checker/resolution/conformance/conformance.ts`, `traits/sendable.ts`, `rules/json-forms/index.ts`, `types/properties/held.ts`, Q7):**
+  - `conform` (`resolution/conformance/conformance.ts`) hard-codes an `if (isSendableTrait(...))` branch and an `if (direction !== undefined)` (`codecWitness`) branch before falling through to general trait conformance.
   - Meanwhile, coinductive cycle detection over `checker.typeKeys.typeKey(type)` ("a recursive type meets the property while its parts are being decided") is written three separate times: `deciding` in `traits/sendable.ts`, `#deciding` in `rules/json-forms/index.ts`, and `walked` in `types/properties/held.ts`.
-- **Conflated `'none'` outcome in `witnessOf` hiding inner constraint failures (`src/compiler/checker/resolution/conformance.ts`, `declared-witness.ts`, D173):**
+- **Conflated `'none'` outcome in `witnessOf` hiding inner constraint failures (`src/compiler/checker/resolution/conformance/conformance.ts`, `declared-witness.ts`, D173):**
   - `witnessOf` returns `'none'` both when no candidate matches (`choice.kind !== 'chosen'`) and when a chosen candidate's own constraints fail to instantiate (`isFailure(instantiation)`). Consequently, `declaresWitness` treats a declared-but-uninstantiable witness as declared (blocking derived fallback), and `conform` reports that the outer function is missing rather than reporting the unmet inner constraint on its type parameter.
-- **Redundant parameter/slot shapes and upward type-imports in `resolution/` (`src/compiler/checker/check.ts`, `types/type/index.ts`, `resolution/binding.ts`, `resolution/choice.ts`, D229, D230):**
-  - `signatureOf` (`resolution/choice.ts`) rebuilds `RestSlot` (`restSlotOf`) on every candidate of every call, re-extracting the `Array<T>` element type that `declarations/signatures.ts` already checked.
-  - `{ readonly type: Type; readonly reference: boolean }` is duplicated as `ParameterSlot` (`types/type/index.ts`) and `ArgumentSlot` (`resolution/binding.ts`).
-  - `CallArgument`, `Passing`, `Accepts`, and `Inapplicability` sit in `resolution/choice.ts`, forcing `applicability.ts` and `packs.ts` (which `choice.ts` calls) to type-import upward from `choice.ts`.
+- **Redundant parameter/slot shapes and upward type-imports in `resolution/` (`src/compiler/checker/check.ts`, `types/type/index.ts`, `resolution/choosing/binding.ts`, `resolution/choosing/choice.ts`, D229, D230):**
+  - `signatureOf` (`resolution/choosing/choice.ts`) rebuilds `RestSlot` (`restSlotOf`) on every candidate of every call, re-extracting the `Array<T>` element type that `declarations/signatures.ts` already checked.
+  - `{ readonly type: Type; readonly reference: boolean }` is duplicated as `ParameterSlot` (`types/type/index.ts`) and `ArgumentSlot` (`resolution/choosing/binding.ts`).
+  - `CallArgument`, `Passing`, `Accepts`, and `Inapplicability` sit in `resolution/choosing/choice.ts`, forcing `applicability.ts` and `packs.ts` (which `choice.ts` calls) to type-import upward from `choice.ts`.
 - **Incomplete target-typed lambda result inference (`src/compiler/checker/calls/lambda-arguments.ts`, `body-checker.ts`, D160):**
   - While `acceptsOf` recurses through `Tuple`, `ArrayLiteral`, `MapLiteral`, `If`, and `BlockExpression`, `checkDecidedLambdas` only inspects top-level `unparenthesized(node).kind === 'Lambda'`, and `BodyChecker.inferLambda` throws `unreachable` on any non-lambda expression.
 - **`callWithTypes` assumes all candidates share the first candidate's arity (`src/compiler/checker/resolution/typed-call.ts`, D122):**
@@ -312,7 +312,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 ### 2. Solutions Hard-Coded for Specific Types Instead of Generic Mechanisms
 
-1. **Derived Trait Conformance Hard-Coded for `Sendable`, `Encodable`, and `Decodable` (`src/compiler/checker/resolution/conformance.ts`, Q7):**
+1. **Derived Trait Conformance Hard-Coded for `Sendable`, `Encodable`, and `Decodable` (`src/compiler/checker/resolution/conformance/conformance.ts`, Q7):**
    - `conform` hard-codes `if (isSendableTrait(...))` and `if (direction !== undefined)` (`codecWitness`), while `Disposable` is resolved through a separate ad-hoc path in `rules/disposal.ts` (`runtimeDisposes` / `declaredDispose`). Replacing these with a derived-trait registry keyed by `WellKnownDeclaration` makes trait derivation uniform and extensible.
 2. **`@JsonBigInt` Hard-Coded to Bare `int` (`src/compiler/checker/rules/annotations.ts`, `rules/json-forms/index.ts`, Q9):**
    - `@JsonBigInt` is restricted to `place.type.kind === 'primitive' && place.type.name === 'int'`, even though `JsonField.codec` is already a general per-field `{ write: FunctionCall; read: FunctionCall }` override.
@@ -344,7 +344,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 2. **Time unit constants in Scanner and Stdlib (`src/compiler/scanner/numbers.ts` & `src/stdlib/time/iso.ts`):** Identical millisecond conversion constants; belongs in `src/language/`.
 3. **Ordered primitive comparator in Language and Stdlib (`src/language/values.ts` `compareCodeUnits` & `src/stdlib/prelude/natives.ts` `compareOrdered`):** Identical `<` / `===` comparator.
 4. **Canonical JSON & Versioned Format Envelope in `definition/` (`src/definition/codec.ts`, `format.ts`):** Generic persistence utilities used by `definition/`, `runtime/snapshot/`, and `runtime/boundary/extern-signatures.ts`.
-5. **Upward Type-Imports in Contracts (`src/compiler/checker/context.ts` [Q13], `src/compiler/checker/resolution/choice.ts` [D230], `src/runtime/natives.ts` [D179]):** Root contract modules importing types from upper implementation modules.
+5. **Upward Type-Imports in Contracts (`src/compiler/checker/context.ts` [Q13], `src/compiler/checker/resolution/choosing/choice.ts` [D230], `src/runtime/natives.ts` [D179]):** Root contract modules importing types from upper implementation modules.
 
 ### 6. Summary of DRY Violations & Double Standards
 
@@ -370,7 +370,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 - **Durable execution without replay non-determinism (vs. Temporal / Durable Functions):** Call frames, registers, and heap objects are serialized as data at every `await`; `now()` is pinned per segment; `random` uses a persisted HMAC-SHA-256 counter seed; extern constants are pinned on first read; maps preserve insertion order.
 - **Value semantics without hidden aliasing (vs. JS / Python / Go / Java):** Structs, arrays, maps, and tuples are deeply immutable values; mutation requires explicit `&` or `shared struct` (`*x`, `x->f`).
 - **Deterministic cycle-collecting resource disposal without GC finalizers or `Rc` leaks (vs. Rust `Rc`, Python/Go/JS):** Reachability-based orphan collection at every scope/statement release point using Tarjan SCC (`orphans.ts`) disposes cycles newest-first and holders before held objects.
-- **Coherent structural traits without orphan-instance incoherence (vs. Scala implicits / Haskell orphans):** Witness lookup (`resolution/candidates.ts` `witnessCandidates`) searches only functions declared beside the argument types or beside the trait, guaranteeing global coherence across modules.
+- **Coherent structural traits without orphan-instance incoherence (vs. Scala implicits / Haskell orphans):** Witness lookup (`resolution/choosing/candidates.ts` `witnessCandidates`) searches only functions declared beside the argument types or beside the trait, guaranteeing global coherence across modules.
 - **Lazy cursor iteration without eager array allocation (vs. M3 `iterate -> Array<T>`):** `Iterable<T>` returns a persistable closure cursor `fn() -> T?`, so `for i in 0..1_000_000_000` allocates $O(1)$ state in snapshots.
 - **Trait-based JSON boundary (`Encodable` / `Decodable`) with arbitrary-precision `int`:** No 53-bit `Number` truncation, canonical key sorting, and compiler-derived codecs for structs, enums, and tuples when none are declared.
 
@@ -397,5 +397,5 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | **9** | **Unify 5-step implicit conversion logic between `types/fitting/fit.ts` and `inference/infer.ts` (D222) + `never` return type assignability (D180):** Extract shared conversion matcher parameterized by leaf comparison. | Generalization / DRY | 3 files in `checker/` | M |
 | **10** | **Unify comparison & membership checking and lowering (`expressions/operators.ts`, `patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/patterns.ts`, D226):** One checker function and one lowering function over `ComparisonLink` and pattern ordering tests. | DRY / Generalization | 4 files in `compiler/` | M |
 | **11** | **Unify runtime `HeapObject` kind tables, `isRoot`, and `WeakSide` handle surface (`src/runtime/snapshot/holdings.ts`, `lifetimes/`, `scheduler/`, D115, D116, D165, D198):** One `isRoot(object)` in `holdings.ts`, `Handlers` for all kind tables, and consistent handle/id methods on `WeakSide`. | Architecture / DRY | 6 files in `runtime/` | M |
-| **12** | **Remove upward type-imports in contracts (`checker/context.ts` [Q13], `checker/resolution/choice.ts` [D230], `runtime/natives.ts` [D179]) and enable type-import cycle checking:** Move shared vocabularies to lower modules. | Layering / DIP | 8 files | M |
+| **12** | **Remove upward type-imports in contracts (`checker/context.ts` [Q13], `checker/resolution/choosing/choice.ts` [D230], `runtime/natives.ts` [D179]) and enable type-import cycle checking:** Move shared vocabularies to lower modules. | Layering / DIP | 8 files | M |
 

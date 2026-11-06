@@ -17,35 +17,35 @@
  *   constraints imply it (`entailed`).
  */
 
-import type { RequiredAssociatedType, TypeParameter } from '../../syntax/declarations.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { RequiredAssociatedType, TypeParameter } from '../../../syntax/declarations.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import {
   constraintOn,
   constraintSubstitution,
   requiredAssociatedTypes,
   requiredFields,
   requiredFieldType,
-} from '../traits/constraints.ts';
-import { structConstraintsOn } from '../traits/known-constraints.ts';
-import { fieldOf } from '../traits/known-fields.ts';
-import { constraintsImply } from '../traits/sendable.ts';
-import { isStructType } from '../traits/struct-keys.ts';
-import { isOpaque, unfolded } from '../types/computed-types.ts';
-import { sameType } from '../types/identity/identity.ts';
+} from '../../traits/constraints.ts';
+import { structConstraintsOn } from '../../traits/known-constraints.ts';
+import { fieldOf } from '../../traits/known-fields.ts';
+import { constraintsImply } from '../../traits/sendable.ts';
+import { isStructType } from '../../traits/struct-keys.ts';
+import { isOpaque, unfolded } from '../../types/computed-types.ts';
+import { sameType } from '../../types/identity/identity.ts';
 import {
   constraintSetText,
   type EntryRule,
   type StructConstraintModel,
   structConstraintText,
   substituteStructConstraint,
-} from '../types/struct-constraint.ts';
-import { type Substitution, substituteConstraint } from '../types/substitution.ts';
-import type { Constraint, Type } from '../types/type/index.ts';
+} from '../../types/struct-constraint.ts';
+import { type Substitution, substituteConstraint } from '../../types/substitution.ts';
+import type { Constraint, Type } from '../../types/type/index.ts';
 
-import { typeText } from '../types/type-text.ts';
-import { literalType } from '../types/unions/unions.ts';
-import type { UseSite } from '../use-site.ts';
+import { typeText } from '../../types/type-text.ts';
+import { literalType } from '../../types/unions/unions.ts';
+import type { UseSite } from '../../use-site.ts';
 
 /**
  * Whether `type` meets the trait `constraint` names, as the caller judges it (`conformance.ts`),

@@ -8,10 +8,10 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { decodeJson } from '../../../definition/codec.ts';
-import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
-import { compiledText } from '../../compile.test-kit.ts';
-import { reported } from '../check.test-kit.ts';
+import { decodeJson } from '../../../../definition/codec.ts';
+import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
+import { compiledText } from '../../../compile.test-kit.ts';
+import { reported } from '../../check.test-kit.ts';
 
 /** What `async fn main() -> Future<String>: body` gives after `declarations`. */
 function outcome(declarations: readonly string[], body: string): unknown {

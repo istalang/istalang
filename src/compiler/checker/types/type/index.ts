@@ -255,7 +255,8 @@ export type UnreducedUse =
 
 /**
  * A type a diagnostic explains. A use naming no type is one, carrying that use and why, which the
- * check of each instantiation reaching it reports (resolution/reduction-requirements.ts).
+ * check of each instantiation reaching it reports
+ * (resolution/type-matches/reduction-requirements.ts).
  */
 export interface ErrorType extends WrittenThrough {
   readonly kind: 'error';

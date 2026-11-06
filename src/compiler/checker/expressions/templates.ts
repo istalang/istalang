@@ -17,7 +17,7 @@ import { constantTextOf, isTagged, taggedCall } from '../../syntax/expressions/t
 import type { BodyContext } from '../body-context.ts';
 import { type StoppingOperand, stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { topLevelCandidates } from '../resolution/candidates.ts';
+import { topLevelCandidates } from '../resolution/choosing/candidates.ts';
 import { implicitCall, preludeCall } from '../resolution/implicit.ts';
 import { sameType } from '../types/identity/identity.ts';
 import type { Type } from '../types/type/index.ts';

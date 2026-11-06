@@ -207,8 +207,9 @@ export interface StructGoal {
 }
 
 /**
- * Goals asked at the root of a witness search (resolution/conformance.ts), each searched once per
- * program, since meeting is the same wherever it is asked (§3.10; resolution/root-goals.ts).
+ * Goals asked at the root of a witness search (resolution/conformance/conformance.ts), each
+ * searched once per program, since meeting is the same wherever it is asked (§3.10;
+ * resolution/conformance/root-goals.ts).
  */
 export interface RootGoals {
   /** The witness of every function `goal`'s trait requires; undefined after reporting why not. */

@@ -11,7 +11,7 @@
  *   `match` and reaches itself again while expanded can't be a type (§3.1): it and every one on
  *   the cycle back to it is the error type carrying it, where it would otherwise expand without
  *   end, however it is reached (types/substitution.ts), which each instantiation reaching it
- *   reports (resolution/reduction-requirements.ts).
+ *   reports (resolution/type-matches/reduction-requirements.ts).
  * - `S["meta"]` (§3.5) meets what the entries of `S`'s struct constraints ask of that field; on a
  *   known struct it is the field's type, and an entry asking an exact type gives that type.
  * - A requirement on a type parameter or an `any` type is numbered by constraint and function
@@ -205,7 +205,8 @@ export function associatedTypeOf(
   const instance = () => aliasInstance(declared, aliased, substitution, checker.typeRules);
   const use = { kind: 'associated', of, name } as const;
   if (isMatchAlias(declared)) {
-    // A type `match` body finds its own recursion as it reduces (resolution/type-matches.ts).
+    // A type `match` body finds its own recursion as it reduces
+    // (resolution/type-matches/type-matches.ts).
     return aliasedAs(instance(), use);
   }
   const failure: Type = { kind: 'error', unreduced: { use, cause: 'expandsItself' } };

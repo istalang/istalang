@@ -1,7 +1,7 @@
 /**
  * What a type mentions (its parameters, `any` types and computed types) is found once per type
  * object, which is immutable: overload resolution asks it of every argument for every candidate
- * (resolution/candidates.ts), so the same list is found again, never walked again.
+ * (resolution/choosing/candidates.ts), so the same list is found again, never walked again.
  */
 
 import { describe, expect, it } from 'vitest';

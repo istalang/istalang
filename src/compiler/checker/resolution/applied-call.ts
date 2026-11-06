@@ -1,14 +1,14 @@
 /**
  * A call applied: chosen among its candidates, instantiated with its constraints met, and its
- * arguments fitted to what they fill (§3.5, §3.7). Written calls (calls/resolve.ts) and the calls the
- * language makes (implicit.ts) apply through here, each saying how a call nothing takes is
+ * arguments fitted to what they fill (§3.5, §3.7). Written calls (calls/resolve.ts) and the calls
+ * the language makes (implicit.ts) apply through here, each saying how a call nothing takes is
  * reported and recording what it made; so choosing, ranking the implicit conversions
- * (choice.ts) and fitting an argument, its conversion and wraps included (argument-fit.ts), each
- * happen in one place for every call.
+ * (choosing/choice.ts) and fitting an argument, its conversion and wraps included
+ * (argument-fit.ts), each happen in one place for every call.
  *
  * - An argument of the error type was reported already, so the call reports nothing more.
  * - A call through a union's trait is a candidate only where the union meets the trait (§6,
- *   trait-calls.ts); one that inferred the trait's arguments is judged once they are, and closed
+ *   conformance/trait-calls.ts); one that inferred the trait's arguments is judged once they are, and closed
  *   with them, or made through the function declared for the union whole instead.
  * - A call several candidates take alike is ambiguous, named as `name` says; several traits a
  *   union meets requiring the function called on it are reported as such.
@@ -25,12 +25,12 @@ import type { Type } from '../types/type/index.ts';
 import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
 import { argumentListText, filledTypes, fitArguments, recordArgumentKeys } from './argument-fit.ts';
-import type { CallArgument, Inapplicability } from './call-arguments.ts';
-import type { Candidate } from './candidates.ts';
-import { type Application, choose } from './choice.ts';
-import { type Instantiation, instantiate } from './conformance.ts';
-import { closedThroughMembers, metThroughTraits } from './trait-calls.ts';
-import { membersRequirementOf, traitMetBy } from './union-traits.ts';
+import type { CallArgument, Inapplicability } from './choosing/call-arguments.ts';
+import type { Candidate } from './choosing/candidates.ts';
+import { type Application, choose } from './choosing/choice.ts';
+import { type Instantiation, instantiate } from './conformance/conformance.ts';
+import { closedThroughMembers, metThroughTraits } from './conformance/trait-calls.ts';
+import { membersRequirementOf, traitMetBy } from './conformance/union-traits.ts';
 
 /** A call to apply: where it stands, how reports name it, what it may call and is given. */
 export interface CallApplication {

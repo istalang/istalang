@@ -9,7 +9,7 @@
  * - Any other `dispose` runs as code, called with the value: `fn dispose(self: Lease)` makes a
  *   shared struct `Lease` disposable, and a host's extern type becomes disposable by a `dispose`
  *   declared beside it (§7). It is found the way an operator's function is, by argument-dependent
- *   lookup, so it lives beside the type it disposes (resolution/candidates.ts).
+ *   lookup, so it lives beside the type it disposes (resolution/choosing/candidates.ts).
  * - A `dispose` that runs as code is plain code that can't wait, and `self` can't escape it: it is
  *   used only as `*self` (or `self->f`) or passed to an extern, so a disposed value never becomes
  *   observable again (§7).
@@ -26,7 +26,7 @@ import type { BodyContext } from '../../body-context.ts';
 import type { Disposal } from '../../check.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { callCandidates, namedInModule } from '../../resolution/candidates.ts';
+import { callCandidates, namedInModule } from '../../resolution/choosing/candidates.ts';
 import { silentCall } from '../../resolution/silent-choice.ts';
 import { isHostExtern, isHostType } from '../../surface/host-externs.ts';
 import type { FunctionCall, ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';

@@ -25,31 +25,31 @@
  *   or the type reduces, whatever its arity: `Bad.Data` on a `struct Bad` reduces where it is used.
  */
 
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import { sameItems } from '../../../structures/equality.ts';
+import type { EntryTable } from '../../../../structures/entries/index.ts';
+import { sameItems } from '../../../../structures/equality.ts';
 import {
   type DeclaredStruct,
   type EnumDeclaration,
   type FunctionDeclaration,
   type TypeAliasDeclaration,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/field-defaults.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import { nodesUnder } from '../../syntax/tree.ts';
-import { isWrittenType } from '../../syntax/types.ts';
-import type { CheckerContext, CheckerNote, Instantiable } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { CheckedBody } from '../surface/checked-body.ts';
-import { functionCallsWithin } from '../surface/resolved-call.ts';
-import { unfoldRecursive } from '../types/computed-types.ts';
-import { typeKeys } from '../types/identity/type-keys.ts';
-import { typeChildren } from '../types/parts/type-children.ts';
-import { isKnown, sameTypeSpelled } from '../types/parts/type-parts.ts';
-import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
-import type { RecursiveUse, Type, UnreducedUse } from '../types/type/index.ts';
-import { spellingText, typeText } from '../types/type-text.ts';
-import { aliasInstance, type TypeMatchQueries } from '../types/written/type-match.ts';
+} from '../../../syntax/declarations.ts';
+import { type FieldsFunction, fieldsFunctionOf } from '../../../syntax/field-defaults.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import { nodesUnder } from '../../../syntax/tree.ts';
+import { isWrittenType } from '../../../syntax/types.ts';
+import type { CheckerContext, CheckerNote, Instantiable } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { CheckedBody } from '../../surface/checked-body.ts';
+import { functionCallsWithin } from '../../surface/resolved-call.ts';
+import { unfoldRecursive } from '../../types/computed-types.ts';
+import { typeKeys } from '../../types/identity/type-keys.ts';
+import { typeChildren } from '../../types/parts/type-children.ts';
+import { isKnown, sameTypeSpelled } from '../../types/parts/type-parts.ts';
+import { type Substitution, substitute, substitutionFor } from '../../types/substitution.ts';
+import type { RecursiveUse, Type, UnreducedUse } from '../../types/type/index.ts';
+import { spellingText, typeText } from '../../types/type-text.ts';
+import { aliasInstance, type TypeMatchQueries } from '../../types/written/type-match.ts';
 
 /**
  * The diagnostic reporting `failure` at `at`, where the instantiation reaching it is written, its

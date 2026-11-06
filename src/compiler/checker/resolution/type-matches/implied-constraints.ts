@@ -10,17 +10,17 @@
  * - A struct case's entries are walked alike: an exact type, or a trait an entry must meet.
  */
 
-import { type TypeParameter, typeParametersOf } from '../../syntax/declarations.ts';
-import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
-import type { CheckerContext } from '../context.ts';
-import { typeChildren } from '../types/parts/type-children.ts';
+import { type TypeParameter, typeParametersOf } from '../../../syntax/declarations.ts';
+import { parentOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree.ts';
+import type { CheckerContext } from '../../context.ts';
+import { typeChildren } from '../../types/parts/type-children.ts';
 import {
   type ConstraintSet,
   type StructConstraintModel,
   substituteStructConstraint,
-} from '../types/struct-constraint.ts';
-import { substituteConstraint, substitutionFor } from '../types/substitution.ts';
-import type { Constraint, Type } from '../types/type/index.ts';
+} from '../../types/struct-constraint.ts';
+import { substituteConstraint, substitutionFor } from '../../types/substitution.ts';
+import type { Constraint, Type } from '../../types/type/index.ts';
 
 /** A declaration's parameter list and the arguments a use gives it. */
 interface Use {

@@ -8,7 +8,7 @@
  *   arguments mention, so generic code calls `add(x, y)` on `T is Addable` like any other; and so
  *   for every `any` type they mention, whose value's own type decides the function (§3.10);
  * - for a call written in a module on a union, the functions of its name that the traits visible
- *   there require (union-traits.ts), which choosing tries only where no function takes the union
+ *   there require (../conformance/union-traits.ts), which choosing tries only where no function takes the union
  *   whole (§6): a union has no module, so argument-dependent lookup finds nothing for it.
  *
  * A static function (`Duration.zero()`, `T.zero()`) is chosen among those declared on its type
@@ -24,22 +24,22 @@
  * whose modules can't, such as primitives, and no caller has to import them.
  */
 
-import type { ModuleId } from '../../program/program.ts';
+import type { ModuleId } from '../../../program/program.ts';
 import type {
   FunctionDeclaration,
   TraitDeclaration,
   TypeParameter,
-} from '../../syntax/declarations.ts';
-import type { MemberAccess } from '../../syntax/expressions/index.ts';
-import { isPlace } from '../../syntax/expressions/places.ts';
-import type { CheckerContext } from '../context.ts';
-import type { Requirement } from '../traits/constraints.ts';
-import { requirementsNamed } from '../traits/known-constraints.ts';
-import { type ComputedType, isComputed } from '../types/computed-types.ts';
-import { anyTypesIn, computedTypesIn, parametersIn } from '../types/parts/type-parts.ts';
-import type { AnyType, Type } from '../types/type/index.ts';
-import { type StaticOwner, staticOwnerOf } from '../types/written/named-types.ts';
-import { traitCallsOn } from './union-traits.ts';
+} from '../../../syntax/declarations.ts';
+import type { MemberAccess } from '../../../syntax/expressions/index.ts';
+import { isPlace } from '../../../syntax/expressions/places.ts';
+import type { CheckerContext } from '../../context.ts';
+import type { Requirement } from '../../traits/constraints.ts';
+import { requirementsNamed } from '../../traits/known-constraints.ts';
+import { type ComputedType, isComputed } from '../../types/computed-types.ts';
+import { anyTypesIn, computedTypesIn, parametersIn } from '../../types/parts/type-parts.ts';
+import type { AnyType, Type } from '../../types/type/index.ts';
+import { type StaticOwner, staticOwnerOf } from '../../types/written/named-types.ts';
+import { traitCallsOn } from '../conformance/union-traits.ts';
 
 /** A function a call may mean; a requirement is one a constraint provides. */
 export interface Candidate {

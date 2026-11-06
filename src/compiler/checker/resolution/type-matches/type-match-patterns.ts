@@ -24,23 +24,23 @@
  *   again while it is matched holds, as two unfoldings equal so far stay equal, so matching ends.
  */
 
-import type { TypeParameter } from '../../syntax/declarations.ts';
-import type { CheckerContext } from '../context.ts';
-import { constraintOn } from '../traits/constraints.ts';
-import { isStructType } from '../traits/struct-keys.ts';
-import { isOpaque, unfolded } from '../types/computed-types.ts';
-import { sameType } from '../types/identity/identity.ts';
-import { UnfoldingPairs } from '../types/identity/unfolding-pairs.ts';
-import { typeChildren } from '../types/parts/type-children.ts';
-import { isKnown, parametersIn, unaliased } from '../types/parts/type-parts.ts';
-import type { StructConstraintModel } from '../types/struct-constraint.ts';
-import type { Type } from '../types/type/index.ts';
-import { baseOf } from '../types/unions/union-members.ts';
-import { membersOf, unionOf } from '../types/unions/unions.ts';
-import type { CasePatternForm, InferVariable } from '../types/written/type-match.ts';
-import { searchSite } from '../use-site.ts';
-import { silentMeets } from './conformance.ts';
-import { type Meets, structShortfall } from './shortfalls.ts';
+import type { TypeParameter } from '../../../syntax/declarations.ts';
+import type { CheckerContext } from '../../context.ts';
+import { constraintOn } from '../../traits/constraints.ts';
+import { isStructType } from '../../traits/struct-keys.ts';
+import { isOpaque, unfolded } from '../../types/computed-types.ts';
+import { sameType } from '../../types/identity/identity.ts';
+import { UnfoldingPairs } from '../../types/identity/unfolding-pairs.ts';
+import { typeChildren } from '../../types/parts/type-children.ts';
+import { isKnown, parametersIn, unaliased } from '../../types/parts/type-parts.ts';
+import type { StructConstraintModel } from '../../types/struct-constraint.ts';
+import type { Type } from '../../types/type/index.ts';
+import { baseOf } from '../../types/unions/union-members.ts';
+import { membersOf, unionOf } from '../../types/unions/unions.ts';
+import type { CasePatternForm, InferVariable } from '../../types/written/type-match.ts';
+import { searchSite } from '../../use-site.ts';
+import { silentMeets } from '../conformance/conformance.ts';
+import { type Meets, structShortfall } from '../conformance/shortfalls.ts';
 
 /** What matching found: a match, none whatever is substituted, or none decided yet (the banner). */
 export type Outcome = 'match' | 'fail' | 'undecided';

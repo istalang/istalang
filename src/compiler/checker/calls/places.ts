@@ -42,7 +42,7 @@ import type { Identifier } from '../../syntax/node.ts';
 import type { BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Passing } from '../resolution/call-arguments.ts';
+import type { Passing } from '../resolution/choosing/call-arguments.ts';
 import type { AssignedPart } from '../surface/checked-body.ts';
 import { keyMembers, structConstraintsOn } from '../traits/known-constraints.ts';
 import { isOpaque } from '../types/computed-types.ts';

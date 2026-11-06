@@ -28,7 +28,7 @@ import { inferTypesIn } from '../../syntax/type-matches.ts';
 import type { TypeCase, TypeMatch } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { matchCase } from '../resolution/type-match-patterns.ts';
+import { matchCase } from '../resolution/type-matches/type-match-patterns.ts';
 import { TypeMatchExpansion } from '../rules/expansion/type-matches.ts';
 import { resolveConstraintSet } from '../traits/struct-constraints.ts';
 import type { MatchType } from '../types/computed-types.ts';

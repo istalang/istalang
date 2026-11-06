@@ -34,9 +34,9 @@ import {
 import type { EntryTable } from '../../../../structures/entries/index.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
-import { witnessesFor } from '../../resolution/conformance.ts';
-import { declaresWitness } from '../../resolution/declared-witness.ts';
-import { defaultWitness } from '../../resolution/default-witness.ts';
+import { witnessesFor } from '../../resolution/conformance/conformance.ts';
+import { declaresWitness } from '../../resolution/conformance/declared-witness.ts';
+import { defaultWitness } from '../../resolution/conformance/default-witness.ts';
 import { callWithTypes } from '../../resolution/silent-choice.ts';
 import { isHostType } from '../../surface/host-externs.ts';
 import {

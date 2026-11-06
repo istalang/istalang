@@ -24,7 +24,7 @@ import type { Checker } from '../../check.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../../passes.ts';
 import { declareTargets } from '../../patterns/targets.ts';
-import { topLevelCandidates } from '../../resolution/candidates.ts';
+import { topLevelCandidates } from '../../resolution/choosing/candidates.ts';
 import { implicitCall } from '../../resolution/implicit.ts';
 import type { Iteration, IterationForm } from '../../surface/checked-body.ts';
 import type { Type } from '../../types/type/index.ts';

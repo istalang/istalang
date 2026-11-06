@@ -6,7 +6,7 @@
  * - Every type argument must meet its parameter's constraints. A type meets a trait with the same
  *   functions wherever it is met: those the trait requires must be declared beside the types they
  *   take or beside the trait, or be a requirement of a type parameter's own constraints
- *   (resolution/candidates.ts). Each is the function declared to meet it (declared-witness.ts),
+ *   (resolution/choosing/candidates.ts). Each is the function declared to meet it (declared-witness.ts),
  *   which must give the required result. The calls found are the witnesses the instantiation
  *   calls (check.ts).
  * - A required field or associated type, and a struct constraint's entries, are met as
@@ -31,22 +31,22 @@
  *   the bound is reported as such at the root use site.
  */
 
-import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
-import type { RootGoals } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { type Completion, completeInference } from '../inference/complete.ts';
-import type { ResolvedCall, Witnesses } from '../surface/resolved-call.ts';
-import { constraintSubstitution, requiredFunctions, traitAsAny } from '../traits/constraints.ts';
-import { standsForMember } from '../types/fitting/member-arguments.ts';
-import { sameType } from '../types/identity/identity.ts';
-import { mentionsError } from '../types/parts/type-parts.ts';
-import { type Substitution, substitute, substituteConstraint } from '../types/substitution.ts';
-import type { Constraint, Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { silent, type UseSite } from '../use-site.ts';
-import { callMade } from './calls-made.ts';
-import { type Application, type Choice, type Signature, signatureOf } from './choice.ts';
+import type { FunctionDeclaration, TypeParameter } from '../../../syntax/declarations.ts';
+import type { RootGoals } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { type Completion, completeInference } from '../../inference/complete.ts';
+import type { ResolvedCall, Witnesses } from '../../surface/resolved-call.ts';
+import { constraintSubstitution, requiredFunctions, traitAsAny } from '../../traits/constraints.ts';
+import { standsForMember } from '../../types/fitting/member-arguments.ts';
+import { sameType } from '../../types/identity/identity.ts';
+import { mentionsError } from '../../types/parts/type-parts.ts';
+import { type Substitution, substitute, substituteConstraint } from '../../types/substitution.ts';
+import type { Constraint, Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { silent, type UseSite } from '../../use-site.ts';
+import { callMade } from '../calls-made.ts';
+import { type Application, type Choice, type Signature, signatureOf } from '../choosing/choice.ts';
 import { chooseWitness, chooseWitnessAmong } from './declared-witness.ts';
 import { type Derivation, derivationOf } from './derived-traits.ts';
 import {

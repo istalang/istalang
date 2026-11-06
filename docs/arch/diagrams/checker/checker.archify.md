@@ -98,9 +98,9 @@ The checker's folders are layers too. Each folder imports only the folders liste
 | Stage | Module | What it decides |
 | --- | --- | --- |
 | Callee | `expressions/calls.ts` `checkCall` | Name, method on a receiver, static on a type, conversion `T(x)`, or a function value.[](source:calls) |
-| Candidates | `resolution/candidates.ts` | The binder's overload set with the prelude's, ADL on argument types, requirements of type-parameter constraints, traits a union meets |
-| Choice | `resolution/choice.ts`, `applicability.ts` | Each candidate binds the arguments and infers type parameters; concrete beats generic, no-rest beats rest, no conversion beats conversion; any other tie is ambiguous |
-| Instantiation | `resolution/conformance.ts` | Open parameters come from the expected type, then defaults; each constraint is met by a coherent witness |
+| Candidates | `resolution/choosing/candidates.ts` | The binder's overload set with the prelude's, ADL on argument types, requirements of type-parameter constraints, traits a union meets |
+| Choice | `resolution/choosing/choice.ts`, `applicability.ts` | Each candidate binds the arguments and infers type parameters; concrete beats generic, no-rest beats rest, no conversion beats conversion; any other tie is ambiguous |
+| Instantiation | `resolution/conformance/conformance.ts` | Open parameters come from the expected type, then defaults; each constraint is met by a coherent witness |
 | Fit | `resolution/argument-fit.ts` | Each argument is fitted to its parameter type, and its implicit conversion is recorded |
 | Record | `calls/resolve.ts` `recordChosen` | The `ResolvedCall` (function or requirement, type arguments, witnesses, binding, receiver) goes into the body's `resolved` table.[](source:resolve) |
 

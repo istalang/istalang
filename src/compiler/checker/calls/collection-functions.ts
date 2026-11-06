@@ -17,7 +17,7 @@ import type { NodeOf } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { topLevelCandidates } from '../resolution/candidates.ts';
+import { topLevelCandidates } from '../resolution/choosing/candidates.ts';
 import { implicitCall } from '../resolution/implicit.ts';
 import type { ImplicitRole, ResolvedCall } from '../surface/resolved-call.ts';
 import type { Type } from '../types/type/index.ts';

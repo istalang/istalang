@@ -8,7 +8,7 @@
  */
 
 import type { FunctionCall, ResolvedCall } from '../surface/resolved-call.ts';
-import type { Application } from './choice.ts';
+import type { Application } from './choosing/choice.ts';
 
 /** The call the application's candidate, instantiated, makes, binding its arguments as chosen. */
 export function callMade(

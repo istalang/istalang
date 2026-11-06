@@ -64,9 +64,9 @@ const noParameters: ReadonlySet<ParameterKey> = new Set();
 const noMembers: ReadonlyMap<ParameterKey, Type> = new Map();
 
 /**
- * Choosing builds an inference for every candidate (resolution/applicability.ts), and most never
- * note a pinned, conflicting or several-membered parameter, nor unfold a recursive type, so those
- * collections are made at their first item.
+ * Choosing builds an inference for every candidate (resolution/choosing/applicability.ts), and most
+ * never note a pinned, conflicting or several-membered parameter, nor unfold a recursive type, so
+ * those collections are made at their first item.
  */
 export class Inference {
   readonly #unknowns: ReadonlySet<ParameterKey>;

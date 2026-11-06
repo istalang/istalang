@@ -4,12 +4,12 @@
  * the same one wherever it is used.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
-import type { CheckerContext } from '../context.ts';
-import type { ResolvedCall } from '../surface/resolved-call.ts';
-import { wellKnownConstraint } from '../traits/constraints.ts';
-import type { Constraint, Type } from '../types/type/index.ts';
-import type { UseSite } from '../use-site.ts';
+import { wellKnown } from '../../../../language/well-known.ts';
+import type { CheckerContext } from '../../context.ts';
+import type { ResolvedCall } from '../../surface/resolved-call.ts';
+import { wellKnownConstraint } from '../../traits/constraints.ts';
+import type { Constraint, Type } from '../../types/type/index.ts';
+import type { UseSite } from '../../use-site.ts';
 import { conformWitnesses, witnessesFor } from './conformance.ts';
 import type { ConformanceOutcome } from './witness-outcomes.ts';
 
