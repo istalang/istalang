@@ -9,9 +9,9 @@ import { parameterKey } from '../../definition/extern-key.ts';
 import { conversionFunction } from '../../language/well-known/implicit-calls.ts';
 import { wellKnown } from '../../language/well-known/index.ts';
 import type { NativeContext, Natives, WithWeakSide } from '../../runtime/natives.ts';
-import { resultOptional } from '../native-results.ts';
-import { given } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { given } from '../values/arguments.ts';
+import { resultOptional } from '../values/results.ts';
 
 const referent = parameterKey('T');
 const weakRef = knownTypeKey(wellKnown.weakRef, referent);

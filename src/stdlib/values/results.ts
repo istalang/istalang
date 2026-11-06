@@ -6,7 +6,7 @@
  * where each field and variant sits, never the native.
  */
 
-import type { TypeId } from '../definition/operands.ts';
+import type { TypeId } from '../../definition/operands.ts';
 import {
   errOf,
   errorOf,
@@ -17,10 +17,10 @@ import {
   structOf,
   typeArgumentOf,
   variantOf,
-} from '../definition/values/declared-values.ts';
-import type { Value } from '../definition/values/values.ts';
-import type { NativeContext } from '../runtime/natives.ts';
-import { unreachable } from '../structures/unreachable.ts';
+} from '../../definition/values/declared-values.ts';
+import type { Value } from '../../definition/values/values.ts';
+import type { NativeContext } from '../../runtime/natives.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 
 /** The type entry the extern's declared result names: a struct, an enum or an extern type. */
 export function declaredResult(context: NativeContext): TypeId {

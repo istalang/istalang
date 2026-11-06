@@ -2,7 +2,7 @@
  * A prelude `Range`'s values (§3.8): which ints it reaches, for iteration, membership, slicing
  * (positions.ts) and random draws alike. One home, so they can't disagree.
  *
- * - A range is read through its declaration, by its fields' names (native-values.ts).
+ * - A range is read through its declaration, by its fields' names (values/arguments.ts).
  * - The step's sign is the direction, and the end is never reached: `..=` stored its end one past
  *   the written one in that direction. A range whose end lies the other way reaches nothing, as
  *   Python's `range` does. A step of 0 would reach its start forever, which is a bug in the
@@ -14,7 +14,7 @@
 import { fieldValueOf } from '../definition/values/declared-values.ts';
 import type { Value } from '../definition/values/values.ts';
 import { type NativeContext, Panic } from '../runtime/natives.ts';
-import { int, optionalInt } from './native-values.ts';
+import { int, optionalInt } from './values/arguments.ts';
 
 /** A range as natives read it: its ends, each undefined when open, and its step, never 0. */
 export interface RangeValue {

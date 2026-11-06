@@ -10,8 +10,8 @@
 
 import type { Value } from '../definition/values/values.ts';
 import { type Native, type NativeContext, type Natives, Panic } from '../runtime/natives.ts';
-import { float, int } from './native-values.ts';
 import type { NativeKeys } from './std-module.ts';
+import { float, int } from './values/arguments.ts';
 
 const numericPairs = [
   ['Int', 'Int'],

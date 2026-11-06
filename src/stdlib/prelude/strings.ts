@@ -14,11 +14,11 @@ import {
   codePointSlice,
   codePointsAt,
 } from '../../text/code-points.ts';
-import { resultOptional } from '../native-results.ts';
-import { int, text } from '../native-values.ts';
 import { atPosition, checkedIndex, selectionOf } from '../positions.ts';
 import { rangeOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { int, text } from '../values/arguments.ts';
+import { resultOptional } from '../values/results.ts';
 
 const range = knownTypeKey(wellKnown.range);
 const what = 'a string';

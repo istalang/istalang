@@ -24,9 +24,9 @@ import {
   codePoints,
   utf16Offset,
 } from '../../text/code-points.ts';
-import { arrayOf, int, optionalInt, text } from '../native-values.ts';
 import { sliceBounds } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { arrayOf, int, optionalInt, text } from '../values/arguments.ts';
 import { formatted } from './format.ts';
 
 const optionalIntKey = knownTypeKey(wellKnown.optional, 'Int');

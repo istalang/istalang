@@ -29,9 +29,9 @@ import {
   type WithSlots,
   type WithWeakSide,
 } from '../../runtime/natives.ts';
-import { float, int, text } from '../native-values.ts';
 import { divisionByZero, numeric } from '../numeric.ts';
 import type { NativeKeys } from '../std-module.ts';
+import { float, int, text } from '../values/arguments.ts';
 import { arrayNatives } from './arrays.ts';
 import { instanceNatives } from './instance-natives.ts';
 import { mapNatives } from './maps.ts';

@@ -49,10 +49,10 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - For an enum variant (`fieldsFunctionOf(enumDecl, variant)`), it sets `name: owner.name` (the variant's name) and `owner: undefined` (dropping the enum's name). Consequently, two enums in the same module that both have a variant `Circle { r: int = 1 }` collide on the lowered default function name `main.Circle/r`.
 
 #### 1.4 `src/definition/`
-- **Write-only struct helpers in `declared-values.ts` causing three different ways to read struct values (`src/definition/values/declared-values.ts`, `json-values.ts`, `src/stdlib/native-values.ts`, `src/runtime/testing/run-tests.ts`, Q16, Q17, D201):**
+- **Write-only struct helpers in `declared-values.ts` causing three different ways to read struct values (`src/definition/values/declared-values.ts`, `json-values.ts`, `src/stdlib/values/arguments.ts`, `src/runtime/testing/run-tests.ts`, Q16, Q17, D201):**
   - `declared-values.ts` states: *"Values built and read through their type entry's declaration: a struct's fields and an enum's variants by name, never by position."* However, `declared-values.ts` only provides constructors (`structOf`, `variantOf`) and type lookups (`fieldTypeOf`, `variantFieldType`), with **no `fieldValueOf(types, structValue, fieldName)` reader** and an unexported `variantShape`.
   - As a result, reading a struct or enum value happens three different ways:
-    1. `src/stdlib/native-values.ts` implements its own `fieldNamed(types, candidate, name)` (which looks up `declared.fields.findIndex`) AND positional `fieldOf(candidate, index)` (used by `regex/natives.ts` on `Regex`).
+    1. `src/stdlib/values/arguments.ts` implements its own `fieldNamed(types, candidate, name)` (which looks up `declared.fields.findIndex`) AND positional `fieldOf(candidate, index)` (used by `regex/natives.ts` on `Regex`).
     2. `src/runtime/testing/run-tests.ts` (`listedOf`) manually implements `entry.fields.findIndex((each) => each.name === name)` to read `Listed` structs.
     3. `src/definition/values/json-values.ts` (`findJsonType`) manually implements `entry.variants.findIndex((each) => each.name === name)` instead of using `declared-values.ts`.
   - Moving `fieldNamed` (as `fieldValueOf`) and exporting `variantShape` in `src/definition/values/declared-values.ts` gives all TypeScript-side reading and building of declared values a single home.
@@ -307,7 +307,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
    - Four modules walk composite/nominal `Type` graphs with their own visited-set cycle guards (`deciding`, `#deciding`, `walked`, `seen`). Extracting a cycle-safe type-graph reducer unifies all four.
 4. **Comparison & Membership Checking and Lowering (`src/compiler/checker/expressions/operators.ts`, `patterns/matching.ts`, `src/compiler/lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):**
    - Binary comparisons/memberships (`a < b`, `x in c`), chained comparisons (`a < b in c`), and pattern ordering tests (`amount > 1000`, `1..=5`, `[a, ...rest]`) are checked and lowered through three separate code paths. Unifying them into one `ComparisonLink` / ordering helper eliminates the triplication.
-5. **Declared-Value Field & Variant Readers (`src/definition/values/declared-values.ts` vs. `stdlib/native-values.ts`, `definition/values/json-values.ts`, `runtime/testing/run-tests.ts`, Q16, Q17, D201):**
+5. **Declared-Value Field & Variant Readers (`src/definition/values/declared-values.ts` vs. `stdlib/values/arguments.ts`, `definition/values/json-values.ts`, `runtime/testing/run-tests.ts`, Q16, Q17, D201):**
    - `declared-values.ts` builds structs and variants by declared name, but lacks `fieldValueOf` (reading a struct field by name) and keeps `variantShape` private, causing 3 other modules to re-implement field/variant index lookup.
 
 ### 2. Solutions Hard-Coded for Specific Types Instead of Generic Mechanisms
@@ -356,7 +356,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | Member-access chain → `QualifiedName` | `parser/parts/names.ts` (`qualifiedPath`) | `binder/constructs/expressions.ts` (`qualifiedPathOf`) |
 | Millisecond time unit constants | `scanner/numbers.ts` | `stdlib/time/iso.ts` |
 | `<` / `===` ordered comparator | `language/values.ts` (`compareCodeUnits`) | `stdlib/prelude/natives.ts` (`compareOrdered`) |
-| Reading a struct `Value`'s field by name | `stdlib/native-values.ts` (`fieldNamed`) | `runtime/testing/run-tests.ts` (`listedOf`), positional `fieldOf` in `regex/natives.ts` (Q16, Q17, D201) |
+| Reading a struct `Value`'s field by name | `stdlib/values/arguments.ts` (`fieldNamed`) | `runtime/testing/run-tests.ts` (`listedOf`), positional `fieldOf` in `regex/natives.ts` (Q16, Q17, D201) |
 | Narrowing a closure `Value` | `isComposite(v) && v.kind === 'closure'` at 7 sites | No `closureOf(v)` in `definition/values/values.ts` (Q15) |
 | `Instance<T>` extern payload construction/reading | `interpreter/instructions.ts` (`spawn`) | `stdlib/runtime/natives.ts`, `stdlib/testing/natives.ts`, `stdlib/prelude/instance-natives.ts` (Q18) |
 | Unpacking `Array<T>` element type in checker | `wellKnownArguments(checker, wellKnown.array, type)?.[0]` at 7 sites | No `arrayElement` helper in `checker/types/well-known.ts` (Q8) |

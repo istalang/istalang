@@ -214,7 +214,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - In `src/definition/extern-key.ts`, replace `reference: boolean; rest?: boolean` on `KeyParameter` with `passing: 'value' | 'reference' | 'rest'`.
 2. **Add `fieldValueOf` and export `variantShape` in `definition/values/declared-values.ts`, and `closureOf` in `definition/values/values.ts` (Q15, Q16, Q17, D201):**
    - Add `fieldValueOf(types, structValue, fieldName)` and export `variantShape` in `src/definition/values/declared-values.ts`.
-   - Use them in `src/stdlib/native-values.ts` (`fieldNamed`), `src/stdlib/regex/natives.ts` (reading `Regex.pattern` by name instead of `fieldOf(regex, 0)`), `src/definition/values/json-values.ts` (`findJsonType`), and `src/stdlib/json/natives.ts` (`_object`).
+   - Use them in `src/stdlib/values/arguments.ts` (`fieldNamed`), `src/stdlib/regex/natives.ts` (reading `Regex.pattern` by name instead of `fieldOf(regex, 0)`), `src/definition/values/json-values.ts` (`findJsonType`), and `src/stdlib/json/natives.ts` (`_object`).
    - Add `closureOf(value: Value | undefined)` in `src/definition/values/values.ts` and use it in `src/stdlib/testing/natives.ts`.
    - Make `valueProblems` in `src/definition/validation/references.ts` iterative (or bounded) and make `ValueSemantics.#sameKeys` in `src/language/values.ts` push onto `pending` or bound key depth (D100).
 3. **Deduplicate time-unit constants and `compareOrdered` (`language/`, `stdlib/prelude/natives.ts`, `stdlib/time/iso.ts`):**

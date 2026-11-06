@@ -5,9 +5,9 @@
  */
 
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
-import { float, int, variantEntry } from '../native-values.ts';
 import { asFloat } from '../numeric.ts';
 import type { NativeKeys } from '../std-module.ts';
+import { float, int, variantEntry } from '../values/arguments.ts';
 import { floatRoundings, roundingType } from './rounding.ts';
 
 export const mathNatives = (keys: NativeKeys): Natives<NativeContext> => ({

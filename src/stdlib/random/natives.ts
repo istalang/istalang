@@ -11,9 +11,9 @@
 
 import { wellKnown } from '../../language/well-known/index.ts';
 import { type NativeContext, type Natives, Panic, type WithRandom } from '../../runtime/natives.ts';
-import { given } from '../native-values.ts';
 import { bounded, countOf, rangeOf, textOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { given } from '../values/arguments.ts';
 
 const rangeType = knownTypeKey(wellKnown.range);
 const bitsPerByte = 8;

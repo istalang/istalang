@@ -8,8 +8,8 @@ import { jsonTypeOf, plainOfJson } from '../../definition/values/json-values.ts'
 import { wellKnown } from '../../language/well-known/index.ts';
 import type { LogLevel } from '../../runtime/instance-state.ts';
 import type { NativeContext, Natives, WithLogs } from '../../runtime/natives.ts';
-import { given, text, variantEntry } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { given, text, variantEntry } from '../values/arguments.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the enum's variant names.
 /** Each `log.Level` variant's level, by its declared name. */

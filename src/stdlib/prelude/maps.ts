@@ -14,10 +14,10 @@ import {
 import { mapValueOf, type Value } from '../../definition/values/values.ts';
 import { wellKnown } from '../../language/well-known/index.ts';
 import { type Native, type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
-import { resultOptional } from '../native-results.ts';
-import { arrayOf, int } from '../native-values.ts';
 import { checkedIndex } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { arrayOf, int } from '../values/arguments.ts';
+import { resultOptional } from '../values/results.ts';
 
 const keyType = parameterKey('K');
 const valueType = parameterKey('V');

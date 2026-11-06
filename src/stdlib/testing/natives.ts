@@ -20,9 +20,9 @@ import {
   type WithTesting,
 } from '../../runtime/natives.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { declaredResult, resultVariant } from '../native-results.ts';
-import { arrayOf, given, text } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { arrayOf, given, text } from '../values/arguments.ts';
+import { declaredResult, resultVariant } from '../values/results.ts';
 
 type Context = NativeContext & WithInstances & WithTesting;
 

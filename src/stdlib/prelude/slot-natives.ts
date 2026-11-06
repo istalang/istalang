@@ -7,8 +7,8 @@
 import { parameterKey } from '../../definition/extern-key.ts';
 import { wellKnown } from '../../language/well-known/index.ts';
 import type { NativeContext, Natives, WithSlots } from '../../runtime/natives.ts';
-import { given } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { given } from '../values/arguments.ts';
 
 const value = parameterKey('T');
 const slot = knownTypeKey(wellKnown.slot, value);

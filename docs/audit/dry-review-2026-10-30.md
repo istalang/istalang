@@ -101,7 +101,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 24. `src/compiler/compile.ts`
 - [x] 25. `src/runtime/` — core, values, snapshot, lifetimes & interpreter (`natives.ts`, `store.ts`, `refusal.ts`, `random.ts`, `instance-state.ts`, `instance-group.ts`, `settle.ts`, `host.ts`, `values/`, `snapshot/`, `lifetimes/`, `interpreter/`)
 - [x] 26. `src/runtime/scheduler/`, `src/runtime/boundary/` & `src/runtime/testing/`
-- [x] 27. `src/stdlib/` — infrastructure & prelude (`std-sources.ts`, `stdlib-loader.ts`, `std-module.ts`, `std-modules.ts`, `natives.ts`, `native-values.ts`, `numeric.ts`, `positions.ts`, `ranges.ts`, `prelude/`)
+- [x] 27. `src/stdlib/` — infrastructure & prelude (`std-sources.ts`, `stdlib-loader.ts`, `std-module.ts`, `std-modules.ts`, `natives.ts`, `values/arguments.ts`, `numeric.ts`, `positions.ts`, `ranges.ts`, `prelude/`)
 - [x] 28. `src/stdlib/` — standard library modules (`collections/`, `crypto/`, `decimal/`, `fanout/`, `futures/`, `inbox/`, `json/`, `log/`, `math/`, `random/`, `regex/`, `rpc/`, `runtime/`, `strings/`, `testing/`, `time/`)
 - [x] 29. `src/formatter/`
 - [x] 30. `src/project/`
@@ -396,17 +396,17 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 27. `src/stdlib/` — infrastructure & prelude
 
-- **`optionalValue` reads `Optional` by positional field index `0` (`src/stdlib/native-values.ts`, `src/definition/values/declared-values.ts`):**
+- **`optionalValue` reads `Optional` by positional field index `0` (`src/stdlib/values/arguments.ts`, `src/definition/values/declared-values.ts`):**
   - `optionalValue` returns `value.fields[0]` directly without checking the variant (`Some` vs. `None`) or field name, relying on `None` having no fields and `Some` having 1 field.
   - **Done** (`p3-unions`): it reads through `optionalValueOf` (`definition/values/declared-values.ts`), by the declared variant and field.
 - **Repeated optional `end` unwrapping in `arrayNatives.slice` and `stringsNatives.slice` (`src/stdlib/prelude/arrays.ts`, `src/stdlib/strings/natives.ts`, `src/stdlib/positions.ts`):**
   - Both natives unwrap `const last = optionalValue(end); ... last === undefined ? undefined : int(last)` before calling `sliced` / `sliceBounds`.
-  - **Done** (`p3-unions`): `optionalInt` (`stdlib/native-values.ts`) reads an optional `Int` argument, for both slices and a range's ends.
+  - **Done** (`p3-unions`): `optionalInt` (`stdlib/values/arguments.ts`) reads an optional `Int` argument, for both slices and a range's ends.
 
 ### 28. `src/stdlib/` — standard library modules
 
 - **Repeated `parseResult` native wrapper across `prelude/text-forms.ts`, `time/natives.ts`, `time/zones.ts`, and `decimal/natives.ts`:**
-  - Six `parse` natives (`int.parse`, `float.parse`, `bool.parse`, `Time.parse`, `Duration.parse`, `Zone.parse`, `DateTime.parse`, `Decimal.parse`) repeat `([source], context) => { const raw = text(source); ... return parseResult(context, raw, what, parsed); }`. Extracting `parsedNative(what, read)` in `src/stdlib/native-values.ts` gives all `Parsable` natives one home.
+  - Six `parse` natives (`int.parse`, `float.parse`, `bool.parse`, `Time.parse`, `Duration.parse`, `Zone.parse`, `DateTime.parse`, `Decimal.parse`) repeat `([source], context) => { const raw = text(source); ... return parseResult(context, raw, what, parsed); }`. Extracting `parsedNative(what, read)` in `src/stdlib/values/arguments.ts` gives all `Parsable` natives one home.
 - **Repeated `toJson` / `fromJson` forwarding pairs across `time.ista`, `decimal.ista`, and `regex.ista` (`src/stdlib/time/time.ista`, `decimal/decimal.ista`, `regex/regex.ista`):**
   - Six types (`Time`, `Duration`, `Zone`, `DateTime`, `Decimal`, `Regex`) repeat the identical `fn toJson(self: T) -> json.Json: json.encodeText(self)` and `fn T.fromJson(value: json.Json, path: string) -> Result<T>: json.decodeText(value, path)` pair.
   - **Kept, with reason** (`p5-indented`): what the pair does has one home already, `json.encodeText`/`decodeText`, which no longer wrap a `Text` now that `Json` is a union. The per-type pair is the declaration itself: a type's codecs live beside it (coherence, §3.10), and the language has no way to derive `Encodable` from `Stringable & Parsable` without a blanket conformance that every stringable type, `Int` among them, would then meet twice.

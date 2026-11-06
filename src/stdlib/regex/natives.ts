@@ -27,15 +27,15 @@ import type { Value } from '../../definition/values/values.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import { memo } from '../../structures/memo.ts';
 import { codePointPositions } from '../../text/code-points.ts';
+import type { NativeKeys } from '../std-module.ts';
+import { arrayOf, text } from '../values/arguments.ts';
 import {
   okStruct,
   parseFailure,
   resultOk,
   resultOptional,
   resultTypeArgument,
-} from '../native-results.ts';
-import { arrayOf, text } from '../native-values.ts';
-import type { NativeKeys } from '../std-module.ts';
+} from '../values/results.ts';
 import { split } from './split.ts';
 
 const regexTypeName = 'Regex';

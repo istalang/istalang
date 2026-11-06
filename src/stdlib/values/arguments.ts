@@ -3,16 +3,16 @@
  * number, a `String` a string, a struct its fields in declaration order, an array its elements, an
  * optional the variant of its declared union holding its member, or its `None` variant, told apart
  * by name (`optionalValueOf`), and a value of an extern type the runtime implements its type and a
- * payload. What a native returns is built as its declared result says (native-results.ts).
+ * payload. What a native returns is built as its declared result says (results.ts).
  *
  * An argument of another shape is a bug in lowering or loading, never in the program, so reading
  * one throws a TypeError rather than panicking.
  */
 
-import { optionalValueOf } from '../definition/values/declared-values.ts';
-import { isComposite, type Value } from '../definition/values/values.ts';
-import type { NativeContext } from '../runtime/natives.ts';
-import { unreachable } from '../structures/unreachable.ts';
+import { optionalValueOf } from '../../definition/values/declared-values.ts';
+import { isComposite, type Value } from '../../definition/values/values.ts';
+import type { NativeContext } from '../../runtime/natives.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 
 interface ArgumentTypes {
   readonly bigint: bigint;

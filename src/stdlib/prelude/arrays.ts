@@ -12,11 +12,11 @@ import { valuesEqual } from '../../definition/values/equality.ts';
 import { elementsOf } from '../../definition/values/values.ts';
 import { wellKnown } from '../../language/well-known/index.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
-import { resultOptional } from '../native-results.ts';
-import { arrayOf, int, optionalInt, text } from '../native-values.ts';
 import { atPosition, checkedIndex, replaced, selected, selectionOf, sliced } from '../positions.ts';
 import { rangeOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
+import { arrayOf, int, optionalInt, text } from '../values/arguments.ts';
+import { resultOptional } from '../values/results.ts';
 
 const item = parameterKey('T');
 const array = knownTypeKey(wellKnown.array, item);
