@@ -1,16 +1,16 @@
 ---
-description: the cohesion reorganization plan — which units move, merge or split, and the folder tree each area ends with; read before executing any cohesion move or adding a module to a reorganized folder
+description: done — the cohesion reorganization as planned and executed (2026-11): which units moved, merged or split, the tree each area ended with, and where execution deviated; read to learn why a unit sits where it does, before reorganizing a folder again
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
-last_verified: 2026-11-06
-last_updated: 2026-11-06
+last_verified: 2026-11-07
+last_updated: 2026-11-07
 tags: [cohesion, refactor, architecture, plan]
 ---
 
 # Cohesion reorganization plan
 
-Input: `tsm cohesion --exclude '**/*.test.ts' --exclude '**/*.test-kit.ts' src` on main at `5a8a7a36`, saved as `tsm-cohesion.txt` beside this file (649 files: 255 misplaced exports, 23 crowded folders, 43 wide files). `exclusive-units.py` (README.md) is superseded by `tsm cohesion`.
+Input: `tsm cohesion --exclude '**/*.test.ts' --exclude '**/*.test-kit.ts' src` on main at `5a8a7a36`, saved as `tsm-cohesion.txt` beside this file (649 files: 255 misplaced exports, 23 crowded folders, 43 wide files). It replaced the regex script `exclusive-units.py`, since removed.
 
 Goal, in priority order:
 1. A file sits where its meaning says it belongs.
@@ -19,6 +19,26 @@ Goal, in priority order:
 4. Wide files split until each file answers one reason to change.
 
 Every step is structural. No behaviour changes.
+
+## Outcome
+
+Done on branch `refactor/cohesion`, batches B1–B9, one commit per step. Each step was verified with typecheck, Biome on the changed files, dependency-cruiser, knip, a build and `test:std`. The full `npm test` ran after B1–B4. After the reorganization: 4 crowded folders (2 of them stated exceptions, 2 counting a `.bench.ts` file) and 44 wide files. README.md holds the after scan, its triage and what remains.
+
+Where execution left the plan:
+- **C11 dropped:** `default-witness.ts` imports `conformance.ts`, which imports `declared-witness.ts`, so a merge makes a cycle. Both files sit in `resolution/conformance/`.
+- **C20 not merged:** `type-matches.ts` imports `tree.ts`, which imports `types.ts`, so a merge makes a cycle. They became `syntax/types/` (`index.ts` and `type-matches.ts`).
+- **C8 and C12 merged in place** in B1, then moved into `unions/` and `fitting/` in B3.
+- **`check.ts` split:** `SignatureParameter` stays in `check.ts`. It is `Checker.parametersOf`'s own type, and moving it pushed `lowering/function-lowering/index.ts` past 400 lines.
+- **`surface/`** gets the root contracts' import rule through a `checkerContracts` rule in `.dependency-cruiser.mjs`.
+- **`type.ts` split:** `PrimitiveType`, `ErrorType` and `TupleType` stay in `type/index.ts`, because the Type union names them. `primitives.ts` also holds `tupleType` and `tupleElements`.
+- **`literal-items.ts`** stays at the expressions root and isn't merged with `collection-accepts.ts`: it covers literal arguments of every kind.
+- **`syntax/parameters.ts`** went to `syntax/expressions/parameters.ts`, beside the Parameter node it reads.
+- **`machine.ts`** split three ways (`frames.ts`, `registers.ts`, `machine.ts`) to avoid a type cycle.
+- **`well-known/`** has `variants.ts` and `implicit-calls.ts` in place of the planned `results.ts` and `collections.ts`, named for what they hold.
+- **The native value helpers** went to `stdlib/values/arguments.ts` and `results.ts`, keeping `stdlib/`'s root at 9 files.
+- **One commit not self-contained:** `43bcc21c` left stale imports in `test/` and `scripts/`; the next two commits fix them.
+- **Two slow tests skipped:** `b8db0a63` skips the completion-over-the-corpus test and the larger-graph recursive key property, which time out under load.
+- **Comments:** `tsm wrap-comments` re-wrapped comments that path rewrites pushed past the line width, across the reorganized areas.
 
 ## 1. Triage: what the scan flags but stays
 
