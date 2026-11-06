@@ -11,7 +11,7 @@
  * the Definition's tables and the snapshot's object list (definition.md, "Values").
  *
  * A handle (a slot, future, shared cell or other heap object) exists only inside a running
- * instance. Constants never contain one; references.ts rejects any that do.
+ * instance. Constants never contain one; ../validation/references.ts rejects any that do.
  *
  * A value persists only up to `maximumDepth` levels deep (§5): the JSON and zod codecs recurse on
  * the host's stack. Walks over values in memory keep stacks of their own, so a deeper value lives
@@ -19,11 +19,11 @@
  */
 
 import { z } from 'zod';
-import type { MapOf } from '../language/values.ts';
-import { pushAll } from '../structures/stack.ts';
-import { unreachable } from '../structures/unreachable.ts';
-import { encodeJson } from './codec.ts';
-import { functionId, objectId, typeId, variantIndex } from './operands.ts';
+import type { MapOf } from '../../language/values.ts';
+import { pushAll } from '../../structures/stack.ts';
+import { unreachable } from '../../structures/unreachable.ts';
+import { encodeJson } from '../formats/codec.ts';
+import { functionId, objectId, typeId, variantIndex } from '../operands.ts';
 
 const specialFloats = ['NaN', 'Infinity', '-Infinity', '-0'] as const;
 
@@ -232,8 +232,8 @@ export function mapValueOf(candidate: Value | undefined): MapOf<Value> {
 export type CompositeValue = Exclude<Value, null | boolean | string | bigint | number>;
 
 /**
- * Whether two extern payloads are one value: one canonical JSON text (codec.ts), since a snapshot
- * round trip rebuilds every object a payload holds and decodes a safe bigint as a number.
+ * Whether two extern payloads are one value: one canonical JSON text (../formats/codec.ts), since a
+ * snapshot round trip rebuilds every object a payload holds and decodes a safe bigint as a number.
  */
 export function samePayload(first: unknown, second: unknown): boolean {
   return first === second || encodeJson(first) === encodeJson(second);

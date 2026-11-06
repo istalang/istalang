@@ -18,7 +18,7 @@
  *   starts where it is built.
  */
 
-import type { Value } from '../../definition/values.ts';
+import type { Value } from '../../definition/values/values.ts';
 import { compareOrdered } from '../../language/order.ts';
 import { conversionFunction } from '../../language/well-known.ts';
 import {

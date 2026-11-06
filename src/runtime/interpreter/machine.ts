@@ -28,7 +28,7 @@ import type { Definition } from '../../definition/definition.ts';
 import type { CodeFunction } from '../../definition/functions.ts';
 import type { Argument, Place } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register, TypeId } from '../../definition/operands.ts';
-import { handleTarget, handleTo, type Value } from '../../definition/values.ts';
+import { handleTarget, handleTo, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';

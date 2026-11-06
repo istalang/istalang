@@ -5,8 +5,8 @@
  * json module's `Json`.
  *
  * - A host extern takes and gives JavaScript JSON values, what `JSON.parse` of the text gives but
- *   with every integer a `bigint` (definition/json-values.ts), so a host needs nothing of the
- *   runtime's value shapes.
+ *   with every integer a `bigint` (definition/values/json-values.ts), so a host needs nothing of
+ *   the runtime's value shapes.
  * - An extern returning a `Future` gives back what `call.pending(token)` gave it: the runtime
  *   creates the future, named by the host's token, and the host fills it later
  *   (`Runtime.fill`). Anything else it gives back is its result.
@@ -18,9 +18,14 @@
  *   host names each future by a token it can fill from anywhere.
  */
 
-import { JsonError, jsonOfPlain, jsonTypeOf, plainOfJson } from '../../definition/json-values.ts';
 import { hasRole } from '../../definition/types.ts';
-import type { Value } from '../../definition/values.ts';
+import {
+  JsonError,
+  jsonOfPlain,
+  jsonTypeOf,
+  plainOfJson,
+} from '../../definition/values/json-values.ts';
+import type { Value } from '../../definition/values/values.ts';
 import {
   type Native,
   type NativeContext,

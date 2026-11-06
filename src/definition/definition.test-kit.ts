@@ -10,7 +10,7 @@ import fc from 'fast-check';
 import { subsetDefinition } from '../../test/definitions/subset.ts';
 import { primitiveNames } from '../language/primitives.ts';
 import { type Definition, definitionFormat } from './definition.ts';
-import { type EditableText, editedText } from './format.test-kit.ts';
+import { type EditableText, editedText } from './formats/format.test-kit.ts';
 import { encoderProblem, type FunctionDefinition } from './functions.ts';
 import {
   index,
@@ -20,7 +20,7 @@ import {
   span,
 } from './instructions/instruction.test-kit.ts';
 import { type ExternRole, hasRole, type TypeDefinition, type TypeReference } from './types.ts';
-import { valueArbitrary } from './values.test-kit.ts';
+import { valueArbitrary } from './values/values.test-kit.ts';
 
 function typeReference(types: number): fc.Arbitrary<TypeReference> {
   return fc.letrec<{ reference: TypeReference }>((tie) => ({

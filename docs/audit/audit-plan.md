@@ -212,11 +212,11 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 1. **Unify `qualifiedName` across `language/`, `lowering/tables/names.ts`, and `definition/extern-key.ts` (D174) & make `KeyParameter` passing an enum (D219):**
    - Use `qualifiedName` from `src/language/well-known.ts` in `src/compiler/lowering/tables/names.ts` (`qualifiedNameOf`) and `src/definition/extern-key.ts` (`externKey`).
    - In `src/definition/extern-key.ts`, replace `reference: boolean; rest?: boolean` on `KeyParameter` with `passing: 'value' | 'reference' | 'rest'`.
-2. **Add `fieldValueOf` and export `variantShape` in `definition/declared-values.ts`, and `closureOf` in `definition/values.ts` (Q15, Q16, Q17, D201):**
-   - Add `fieldValueOf(types, structValue, fieldName)` and export `variantShape` in `src/definition/declared-values.ts`.
-   - Use them in `src/stdlib/native-values.ts` (`fieldNamed`), `src/stdlib/regex/natives.ts` (reading `Regex.pattern` by name instead of `fieldOf(regex, 0)`), `src/definition/json-values.ts` (`findJsonType`), and `src/stdlib/json/natives.ts` (`_object`).
-   - Add `closureOf(value: Value | undefined)` in `src/definition/values.ts` and use it in `src/stdlib/testing/natives.ts`.
-   - Make `valueProblems` in `src/definition/references.ts` iterative (or bounded) and make `ValueSemantics.#sameKeys` in `src/language/values.ts` push onto `pending` or bound key depth (D100).
+2. **Add `fieldValueOf` and export `variantShape` in `definition/values/declared-values.ts`, and `closureOf` in `definition/values/values.ts` (Q15, Q16, Q17, D201):**
+   - Add `fieldValueOf(types, structValue, fieldName)` and export `variantShape` in `src/definition/values/declared-values.ts`.
+   - Use them in `src/stdlib/native-values.ts` (`fieldNamed`), `src/stdlib/regex/natives.ts` (reading `Regex.pattern` by name instead of `fieldOf(regex, 0)`), `src/definition/values/json-values.ts` (`findJsonType`), and `src/stdlib/json/natives.ts` (`_object`).
+   - Add `closureOf(value: Value | undefined)` in `src/definition/values/values.ts` and use it in `src/stdlib/testing/natives.ts`.
+   - Make `valueProblems` in `src/definition/validation/references.ts` iterative (or bounded) and make `ValueSemantics.#sameKeys` in `src/language/values.ts` push onto `pending` or bound key depth (D100).
 3. **Deduplicate time-unit constants and `compareOrdered` (`language/`, `stdlib/prelude/natives.ts`, `stdlib/time/iso.ts`):**
    - Export `compareCodeUnits` / `compareOrdered` from `src/language/values.ts` and use it in `src/stdlib/prelude/natives.ts`.
    - Export time-unit millisecond constants from `src/language/well-known.ts` (or `src/language/time-units.ts`) and use them in `src/stdlib/time/iso.ts`.
@@ -240,8 +240,8 @@ These items touch shared phase contracts (`src/compiler/checker/check.ts`, `src/
 2. **Explicit function-value calls on `CheckedBody` & pure `entityOf` query (Q1, Q2):**
    - Record function-value calls explicitly in `CheckedBody` (`src/compiler/checker/check.ts`, `body-checker.ts`, `lowering/expressions/calls.ts`) and split `BodyChecker.entityOf` (pure query) from `useEntity` (which notes closure captures).
 3. **Wire Wave 1 foundation helpers across phase boundaries (Q15, Q16, Q17, Q18):**
-   - Use `closureOf` (`definition/values.ts`) across the 6 sites in `src/runtime/`.
-   - Use `fieldValueOf` (`definition/declared-values.ts`) in `src/runtime/testing/run-tests.ts` (`listedOf`), and derive `runnerArity` in `definition/references.ts`.
+   - Use `closureOf` (`definition/values/values.ts`) across the 6 sites in `src/runtime/`.
+   - Use `fieldValueOf` (`definition/values/declared-values.ts`) in `src/runtime/testing/run-tests.ts` (`listedOf`), and derive `runnerArity` in `definition/validation/references.ts`.
    - Give `Instance<T>` handle creation/reading one home (`Q18`) across `runtime/` and `stdlib/`.
    - Use the shared time-unit constants in `src/compiler/scanner/numbers.ts`.
 4. **Assert `docs/spec.md` and `docs/guide.md` non-elided module fences check clean (B2):**
@@ -256,7 +256,7 @@ These items touch shared phase contracts (`src/compiler/checker/check.ts`, `src/
 8. **Q12/Q19's rest:** record field positions and `any` field dispatches on `CheckedBody` (`check.ts`, `expressions/structs/structs.ts`); `requiredFields` through the checker surface (`.dependency-cruiser.mjs`).
 9. **Operator classification, one home:** export `BinaryOperatorOf` from `syntax/operators.ts`, write `ImplicitOperator = BinaryOperatorOf<'order' | 'membership'>`, move `isImplicitOperator` beside `isChainingOperator`; build a single binary's `ComparisonLink` in `syntax/expressions/comparisons.ts`; share `fitArguments`/`typesText` between `calls/resolve.ts` and `resolution/implicit.ts`.
 10. **`rules/iteration.ts`:** `iteratedItem`'s implicit call passes `span: iterable.span`, so 5101/5003 fall on the iterable.
-11. **Weak side:** remove `NativeWeakSide.whenDisposed`, switch `stdlib/prelude/weak-natives.ts` to `watch`, delete `nativeWeakSideOf`; a production `handleTo(id)` in `definition/values.ts` replaces the inline `{kind: 'handle', object}` literals.
+11. **Weak side:** remove `NativeWeakSide.whenDisposed`, switch `stdlib/prelude/weak-natives.ts` to `watch`, delete `nativeWeakSideOf`; a production `handleTo(id)` in `definition/values/values.ts` replaces the inline `{kind: 'handle', object}` literals.
 12. **Test modules:** one test-suffix predicate in `language/well-known.ts`, used by `cli/file-loader.ts` and `program.test-kit.ts`; `parse.test.ts` titles become `$document:$line`, and `section` drops its `${path} › ` prefix.
 
 ### Wave 2 groups

@@ -3,7 +3,7 @@
  * text, so `ista run`'s error stream and `ista test`'s failures read alike (§9, §10).
  */
 
-import { encodeJson } from '../definition/codec.ts';
+import { encodeJson } from '../definition/formats/codec.ts';
 import type { LogRecord } from '../runtime/instance-state.ts';
 import { timeText } from '../stdlib/time/iso.ts';
 

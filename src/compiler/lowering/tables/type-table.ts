@@ -33,7 +33,7 @@ import type {
   TypeDefinition,
   TypeReference,
 } from '../../../definition/types.ts';
-import type { Value } from '../../../definition/values.ts';
+import type { Value } from '../../../definition/values/values.ts';
 import { compareOrdered } from '../../../language/order.ts';
 import { unionLayout, type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';

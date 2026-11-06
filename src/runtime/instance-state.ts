@@ -13,7 +13,7 @@
  */
 
 import type { FunctionId } from '../definition/operands.ts';
-import type { Value } from '../definition/values.ts';
+import type { Value } from '../definition/values/values.ts';
 
 export type InstanceState =
   | { readonly kind: 'ready' }

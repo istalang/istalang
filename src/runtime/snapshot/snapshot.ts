@@ -28,10 +28,10 @@
  */
 
 import { z } from 'zod';
-import { contentHashText } from '../../definition/codec.ts';
-import { defineFormat } from '../../definition/format.ts';
+import { contentHashText } from '../../definition/formats/codec.ts';
+import { defineFormat } from '../../definition/formats/format.ts';
 import { count, functionId, objectId } from '../../definition/operands.ts';
-import { integer, value } from '../../definition/values.ts';
+import { integer, value } from '../../definition/values/values.ts';
 import { seedText } from '../random-seed.ts';
 import { referencedObjects } from './holdings.ts';
 import { heapObject } from './objects.ts';

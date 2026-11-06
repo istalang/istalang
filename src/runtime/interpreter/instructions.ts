@@ -7,11 +7,11 @@
  * read.
  */
 
-import { mapOf, valuesEqual } from '../../definition/equality.ts';
-import { instanceHandle } from '../../definition/instance-handles.ts';
 import type { Callee } from '../../definition/instructions/calls.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { FunctionId } from '../../definition/operands.ts';
+import { mapOf, valuesEqual } from '../../definition/values/equality.ts';
+import { instanceHandle } from '../../definition/values/instance-handles.ts';
 import {
   childValues,
   closureOf,
@@ -19,7 +19,7 @@ import {
   isComposite,
   mapValueOf,
   type Value,
-} from '../../definition/values.ts';
+} from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { isReference } from '../snapshot/objects.ts';

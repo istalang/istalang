@@ -4,7 +4,7 @@
  */
 
 import type { Definition } from '../../../definition/definition.ts';
-import { jsonOfPlain, jsonTypeOf } from '../../../definition/json-values.ts';
+import { jsonOfPlain, jsonTypeOf } from '../../../definition/values/json-values.ts';
 import { type Native, type Natives, Panic } from '../../natives.ts';
 
 /**

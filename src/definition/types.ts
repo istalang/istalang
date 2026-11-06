@@ -33,7 +33,7 @@
 import { z } from 'zod';
 import { primitiveNames } from '../language/primitives.ts';
 import { functionId, typeId } from './operands.ts';
-import { value } from './values.ts';
+import { value } from './values/values.ts';
 
 const primitive = z.strictObject({ kind: z.literal('primitive'), name: z.enum(primitiveNames) });
 

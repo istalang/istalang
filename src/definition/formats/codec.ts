@@ -12,14 +12,14 @@
  * - A reader may bound how deeply the text nests: that is checked on the text itself, before the
  *   parser, which recurses on the host's stack, walks it (`NestingError`).
  * - JSON has no float that differs from an integer. Schemas that need the distinction tag their
- *   floats (values.ts); this layer stays type-agnostic.
+ *   floats (values/values.ts); this layer stays type-agnostic.
  */
 
 import { createHash } from 'node:crypto';
 import { parse } from 'lossless-json';
 import { z } from 'zod';
-import { compareOrdered } from '../language/order.ts';
-import { unreachable } from '../structures/unreachable.ts';
+import { compareOrdered } from '../../language/order.ts';
+import { unreachable } from '../../structures/unreachable.ts';
 
 const integerSyntax = /^-?\d+$/u;
 

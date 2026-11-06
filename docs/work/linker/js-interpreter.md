@@ -29,7 +29,7 @@ Anything whose segments do little CPU work between commits, where store latency 
 
 ## Where it runs
 
-- **Dependencies:** pure JavaScript except `node:crypto`, used by `scheduler/random-source.ts`, `definition/codec.ts` (content hashes) and `stdlib/crypto/natives.ts`. Libraries: zod, lossless-json, decimal.js, re2js, temporal-polyfill, lru-cache.
+- **Dependencies:** pure JavaScript except `node:crypto`, used by `scheduler/random-source.ts`, `definition/formats/codec.ts` (content hashes) and `stdlib/crypto/natives.ts`. Libraries: zod, lossless-json, decimal.js, re2js, temporal-polyfill, lru-cache.
 - **No compiler needed at run time.** A host deploys the Definition's text.
 - **Seams:** `InstanceStore`, `Natives`, `now` and `seed` are the host's to give (architecture.md, Seams), and the store is synchronous.
 

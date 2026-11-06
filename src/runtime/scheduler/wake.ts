@@ -32,8 +32,8 @@
  *   a host's view of an instance comes from.
  */
 
-import { encodeJson } from '../../definition/codec.ts';
-import type { Value } from '../../definition/values.ts';
+import { encodeJson } from '../../definition/formats/codec.ts';
+import type { Value } from '../../definition/values/values.ts';
 import type { Advanced, InstanceState, LogRecord, SpawnOptions } from '../instance-state.ts';
 import type { HeapObject, Watch } from '../snapshot/objects.ts';
 import {

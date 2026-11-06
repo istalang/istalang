@@ -13,8 +13,8 @@ import {
   jsonText,
   jsonTypeIn,
   plainOfJson,
-} from '../../definition/json-values.ts';
-import type { Value } from '../../definition/values.ts';
+} from '../../definition/values/json-values.ts';
+import type { Value } from '../../definition/values/values.ts';
 import type { Finished } from '../instance-state.ts';
 import { Refusal } from '../refusal.ts';
 

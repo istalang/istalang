@@ -6,7 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Value } from '../../definition/values.ts';
+import type { Value } from '../../definition/values/values.ts';
 import { languageModules } from '../../language/well-known.ts';
 import { Panic } from '../../runtime/natives.ts';
 import { unusedContext } from '../../runtime/runtime.test-kit.ts';

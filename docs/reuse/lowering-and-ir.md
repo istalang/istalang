@@ -54,7 +54,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - inspect `Definition` function parameters or captures → `takesReference`, `capturesOf` (`src/definition/functions.ts`)
 - check an entry can encode an instance's outcome → `encoderProblem` (`src/definition/functions.ts`)
 - inspect `Definition` type references, roles, cell or resource types → `typesIn`, `isResourceType`, `isCellType`, `hasRole` (`src/definition/types.ts`)
-- validate `Definition` table references or value shapes → `checkReferences`, `valueProblems` (`src/definition/references.ts`)
+- validate `Definition` table references or value shapes → `checkReferences`, `valueProblems` (`src/definition/validation/references.ts`)
 
 ## One-way rules
 
@@ -67,6 +67,6 @@ tags: [reuse, lowering, definition, ir, instructions]
 ### Add a Definition instruction kind
 
 1. Define the schema with `defineInstruction` in `src/definition/instructions/` (`data.ts`, `calls.ts`, `control.ts`, `suspension.ts`, or `lifetimes.ts`).
-2. Add its handler to `operandsOf` (`instruction.ts`), `flow.ts`, and `instructionProblem` (`src/definition/instruction-rules.ts`).
+2. Add its handler to `operandsOf` (`instruction.ts`), `flow.ts`, and `instructionProblem` (`src/definition/validation/instruction-rules.ts`).
 3. Add its arbitrary to `src/definition/instructions/instruction.test-kit.ts`.
 4. Add its handler to `src/runtime/interpreter/instructions.ts` and snapshot holding/check rules if it waits or holds registers (`src/runtime/snapshot/`).

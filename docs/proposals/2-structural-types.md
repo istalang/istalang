@@ -113,7 +113,7 @@ Nominal structs, enums, shared structs as handles, argument-dependent lookup and
    - A new fit in `types/fitting/fit.ts`, nominal struct to shape, recorded once through `BodyContext.fit`.
    - `resolution/choosing/choice.ts` ranks it with the async and one-element tuple conversions, below taking an argument as it is.
    - Inference (`checker/inference/`) matches the nominal's substituted fields against a shape parameter.
-   - Lowering rebuilds the value under the shape's type id, matching fields by name. Struct values carry their type (`src/definition/values.ts`).
+   - Lowering rebuilds the value under the shape's type id, matching fields by name. Struct values carry their type (`src/definition/values/values.ts`).
 6. **Lowering's type table.** `src/compiler/lowering/tables/type-table.ts` keeps one entry per checker key, so equal shapes share an entry with no code change; its banner's "two never share an entry" goes. Type ids are per deploy, so snapshots need no migration.
 7. **Lookup and clashes.** `resolution/choosing/candidates.ts` already gives an anonymous type no owner module, so argument-dependent lookup and the trait coherence rule need no change. `rules/clashes.ts` compares through keys, so equal shapes clash with no change.
 8. **Literals through an alias.** The struct-literal check accepts a name resolving to an alias of a shape; the parser is unchanged, since a name before `{` already constructs.

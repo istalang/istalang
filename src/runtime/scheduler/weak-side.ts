@@ -17,7 +17,7 @@
  *   cleanup within the disposal (spec §7).
  */
 
-import { handleTo, type Value } from '../../definition/values.ts';
+import { handleTo, type Value } from '../../definition/values/values.ts';
 import type { NativeWeakSide } from '../natives.ts';
 import { type Futures, waitedOn } from './futures.ts';
 import { type Heap, handleObject, type LiveExecution, type LiveObjectOf } from './heap.ts';

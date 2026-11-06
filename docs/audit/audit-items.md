@@ -49,22 +49,22 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - For an enum variant (`fieldsFunctionOf(enumDecl, variant)`), it sets `name: owner.name` (the variant's name) and `owner: undefined` (dropping the enum's name). Consequently, two enums in the same module that both have a variant `Circle { r: int = 1 }` collide on the lowered default function name `main.Circle/r`.
 
 #### 1.4 `src/definition/`
-- **Write-only struct helpers in `declared-values.ts` causing three different ways to read struct values (`src/definition/declared-values.ts`, `json-values.ts`, `src/stdlib/native-values.ts`, `src/runtime/testing/run-tests.ts`, Q16, Q17, D201):**
+- **Write-only struct helpers in `declared-values.ts` causing three different ways to read struct values (`src/definition/values/declared-values.ts`, `json-values.ts`, `src/stdlib/native-values.ts`, `src/runtime/testing/run-tests.ts`, Q16, Q17, D201):**
   - `declared-values.ts` states: *"Values built and read through their type entry's declaration: a struct's fields and an enum's variants by name, never by position."* However, `declared-values.ts` only provides constructors (`structOf`, `variantOf`) and type lookups (`fieldTypeOf`, `variantFieldType`), with **no `fieldValueOf(types, structValue, fieldName)` reader** and an unexported `variantShape`.
   - As a result, reading a struct or enum value happens three different ways:
     1. `src/stdlib/native-values.ts` implements its own `fieldNamed(types, candidate, name)` (which looks up `declared.fields.findIndex`) AND positional `fieldOf(candidate, index)` (used by `regex/natives.ts` on `Regex`).
     2. `src/runtime/testing/run-tests.ts` (`listedOf`) manually implements `entry.fields.findIndex((each) => each.name === name)` to read `Listed` structs.
-    3. `src/definition/json-values.ts` (`findJsonType`) manually implements `entry.variants.findIndex((each) => each.name === name)` instead of using `declared-values.ts`.
-  - Moving `fieldNamed` (as `fieldValueOf`) and exporting `variantShape` in `src/definition/declared-values.ts` gives all TypeScript-side reading and building of declared values a single home.
-- **Missing `closureOf(value)` narrowing helper (`src/definition/values.ts`, Q15):**
+    3. `src/definition/values/json-values.ts` (`findJsonType`) manually implements `entry.variants.findIndex((each) => each.name === name)` instead of using `declared-values.ts`.
+  - Moving `fieldNamed` (as `fieldValueOf`) and exporting `variantShape` in `src/definition/values/declared-values.ts` gives all TypeScript-side reading and building of declared values a single home.
+- **Missing `closureOf(value)` narrowing helper (`src/definition/values/values.ts`, Q15):**
   - `values.ts` exports `elementsOf`, `mapValueOf`, `handleTarget`, and `isComposite`, but no `closureOf(candidate)`, leaving 7 sites across `runtime/` and `stdlib/` to repeat `isComposite(v) && v.kind === 'closure'`.
 - **Ambiguous `'cell'` role in `ExternRole` (`src/definition/types.ts`, Q4):**
   - `externRole = z.enum(['cell', 'future', 'instance'])` conflates user-declared `shared struct` handles with compiler-synthesized `_Cell<T>` mutable variable cells, forcing `isResourceType` to add `&& entry.role !== 'cell'`.
 - **Overlapping boolean flags in `KeyParameter` (`src/definition/extern-key.ts`, D219):**
   - `KeyParameter` has `{ readonly type: KeyType; readonly reference: boolean; readonly rest?: boolean }` instead of a mutually exclusive `passing?: 'reference' | 'rest'` union.
-- **Hard-coded test runner arity in `references.ts` (`src/definition/references.ts`, Q16):**
+- **Hard-coded test runner arity in `references.ts` (`src/definition/validation/references.ts`, Q16):**
   - `runnerArity = { list: 2, run: 4 }` duplicates the contract between `testing.ista` and `runtime/testing/run-tests.ts`.
-- **JS call-stack recursion in `valueProblems` (`src/definition/references.ts`):**
+- **JS call-stack recursion in `valueProblems` (`src/definition/validation/references.ts`):**
   - Unlike `values.ts` (`summaryOf`), `codec.ts` (`jsonDepth`), and `language/values.ts` (`equal`, `structuralKey`), which walk values iteratively on an explicit heap stack, `valueProblems` recurses on the JS stack for every nested child value.
 
 ---
@@ -256,7 +256,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - Instead of a null-object `TestWorld` for production runtimes, the scheduler checks `loaded.world !== undefined` across three modules.
 - **Upward type-imports in `runtime/natives.ts` (`src/runtime/natives.ts`, D179) & duplicate `namedType` in `native-calls.ts` (Q17):**
   - `runtime/natives.ts` (imported by every `stdlib/` module) type-imports `TestWatch` from `scheduler/futures.ts` and `Inspection` from `scheduler/inspect.ts`.
-  - `scheduler/native-calls.ts` defines a private `namedType(type: TypeReference): TypeId | undefined` beside `definition/declared-values.ts`'s throwing `namedType`.
+  - `scheduler/native-calls.ts` defines a private `namedType(type: TypeReference): TypeId | undefined` beside `definition/values/declared-values.ts`'s throwing `namedType`.
 - **Unbounded call-frame stack in the VM (`src/runtime/scheduler/segment/index.ts`, `limits.ts`, D155):**
   - Because `SegmentRunner.call` allocates frames on the heap (`execution.frames` and `#runStack`), unbounded recursion (`fn loop(): loop()`) grows the array until V8 crashes with out-of-memory instead of throwing a `Panic` at a maximum frame depth in `limits.ts` (the way `requireDepth` bounds value nesting at `maximumDepth`).
 - **Spawned instance outcomes lack JSON encoding for host inspection (`src/runtime/boundary/outbound.ts`, `compiler/lowering/expressions/calls.ts`, B4):**
@@ -307,7 +307,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
    - Four modules walk composite/nominal `Type` graphs with their own visited-set cycle guards (`deciding`, `#deciding`, `walked`, `seen`). Extracting a cycle-safe type-graph reducer unifies all four.
 4. **Comparison & Membership Checking and Lowering (`src/compiler/checker/expressions/operators.ts`, `patterns/matching.ts`, `src/compiler/lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):**
    - Binary comparisons/memberships (`a < b`, `x in c`), chained comparisons (`a < b in c`), and pattern ordering tests (`amount > 1000`, `1..=5`, `[a, ...rest]`) are checked and lowered through three separate code paths. Unifying them into one `ComparisonLink` / ordering helper eliminates the triplication.
-5. **Declared-Value Field & Variant Readers (`src/definition/declared-values.ts` vs. `stdlib/native-values.ts`, `definition/json-values.ts`, `runtime/testing/run-tests.ts`, Q16, Q17, D201):**
+5. **Declared-Value Field & Variant Readers (`src/definition/values/declared-values.ts` vs. `stdlib/native-values.ts`, `definition/values/json-values.ts`, `runtime/testing/run-tests.ts`, Q16, Q17, D201):**
    - `declared-values.ts` builds structs and variants by declared name, but lacks `fieldValueOf` (reading a struct field by name) and keeps `variantShape` private, causing 3 other modules to re-implement field/variant index lookup.
 
 ### 2. Solutions Hard-Coded for Specific Types Instead of Generic Mechanisms
@@ -343,7 +343,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 1. **`qualifiedPath` in Parser and Binder (`src/compiler/parser/parts/names.ts` & `src/compiler/binder/constructs/expressions.ts`):** Identical functions walking non-optional `MemberAccess` chains to an `Identifier`; belongs in `src/compiler/syntax/expressions/`.
 2. **Time unit constants in Scanner and Stdlib (`src/compiler/scanner/numbers.ts` & `src/stdlib/time/iso.ts`):** Identical millisecond conversion constants; belongs in `src/language/`.
 3. **Ordered primitive comparator in Language and Stdlib (`src/language/values.ts` `compareCodeUnits` & `src/stdlib/prelude/natives.ts` `compareOrdered`):** Identical `<` / `===` comparator.
-4. **Canonical JSON & Versioned Format Envelope in `definition/` (`src/definition/codec.ts`, `format.ts`):** Generic persistence utilities used by `definition/`, `runtime/snapshot/`, and `runtime/boundary/extern-signatures.ts`.
+4. **Canonical JSON & Versioned Format Envelope in `definition/` (`src/definition/formats/codec.ts`, `format.ts`):** Generic persistence utilities used by `definition/`, `runtime/snapshot/`, and `runtime/boundary/extern-signatures.ts`.
 5. **Upward Type-Imports in Contracts (`src/compiler/checker/context.ts` [Q13], `src/compiler/checker/resolution/choosing/choice.ts` [D230], `src/runtime/natives.ts` [D179]):** Root contract modules importing types from upper implementation modules.
 
 ### 6. Summary of DRY Violations & Double Standards
@@ -357,7 +357,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | Millisecond time unit constants | `scanner/numbers.ts` | `stdlib/time/iso.ts` |
 | `<` / `===` ordered comparator | `language/values.ts` (`compareCodeUnits`) | `stdlib/prelude/natives.ts` (`compareOrdered`) |
 | Reading a struct `Value`'s field by name | `stdlib/native-values.ts` (`fieldNamed`) | `runtime/testing/run-tests.ts` (`listedOf`), positional `fieldOf` in `regex/natives.ts` (Q16, Q17, D201) |
-| Narrowing a closure `Value` | `isComposite(v) && v.kind === 'closure'` at 7 sites | No `closureOf(v)` in `definition/values.ts` (Q15) |
+| Narrowing a closure `Value` | `isComposite(v) && v.kind === 'closure'` at 7 sites | No `closureOf(v)` in `definition/values/values.ts` (Q15) |
 | `Instance<T>` extern payload construction/reading | `interpreter/instructions.ts` (`spawn`) | `stdlib/runtime/natives.ts`, `stdlib/testing/natives.ts`, `stdlib/prelude/instance-natives.ts` (Q18) |
 | Unpacking `Array<T>` element type in checker | `wellKnownArguments(checker, wellKnown.array, type)?.[0]` at 7 sites | No `arrayElement` helper in `checker/types/well-known.ts` (Q8) |
 | What heap objects are roots | `scheduler/instance/index.ts` (`'execution' \| 'answer'`) | `lifetimes/holders.ts`, `lifetimes/orphans.ts`, `scheduler/heap.ts` (`'execution'` only) (D165, D198) |

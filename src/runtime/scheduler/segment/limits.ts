@@ -4,7 +4,7 @@
  *   whatever native or instruction builds one panics. The engine says so only with a RangeError
  *   and its message, so the messages are matched here, the one place that reads them; any other
  *   RangeError is a bug and propagates.
- * - A persisted value nests at most `maximumDepth` levels (definition/values.ts). A segment
+ * - A persisted value nests at most `maximumDepth` levels (definition/values/values.ts). A segment
  *   leaving a deeper value, where an execution can reach it or as its outcome, panics where it
  *   ended instead, so it commits nothing (§5).
  * - A segment has at most `maximumFrames` frames running at once across its run stack: enough for
@@ -12,7 +12,7 @@
  *   stopping unbounded recursion before it exhausts the host's memory.
  */
 
-import { maximumDepth } from '../../../definition/values.ts';
+import { maximumDepth } from '../../../definition/values/values.ts';
 import { Panic } from '../../natives.ts';
 
 /** What each limit's RangeError says, as V8 words it, and what the panic says instead. */

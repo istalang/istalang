@@ -9,6 +9,7 @@
  * one throws a TypeError rather than panicking.
  */
 
+import type { TypeId } from '../definition/operands.ts';
 import {
   errOf,
   errorOf,
@@ -20,9 +21,8 @@ import {
   structOf,
   typeArgumentOf,
   variantOf,
-} from '../definition/declared-values.ts';
-import type { TypeId } from '../definition/operands.ts';
-import { isComposite, type Value } from '../definition/values.ts';
+} from '../definition/values/declared-values.ts';
+import { isComposite, type Value } from '../definition/values/values.ts';
 import type { NativeContext } from '../runtime/natives.ts';
 import { unreachable } from '../structures/unreachable.ts';
 

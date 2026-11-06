@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { subsetDefinition, subsetOutcome } from '../../test/definitions/subset.ts';
 import { compiledText } from '../compiler/compile.test-kit.ts';
 import { definitionFormat } from '../definition/definition.ts';
-import { FormatError } from '../definition/format.ts';
+import { FormatError } from '../definition/formats/format.ts';
 import { stdNatives } from '../stdlib/natives.ts';
 import type { Finished, InstanceState } from './instance-state.ts';
 import { type Natives, Panic } from './natives.ts';

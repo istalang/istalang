@@ -202,4 +202,4 @@ match status:
     - `typeKey` is equal exactly when `sameType` holds, over generated unions;
     - exhaustiveness holds over generated member sets;
     - collapse after substitution keeps the first arm.
-13. **Optimization, later.** Wrapping a struct in a variant boxes it once per value. Struct values already carry their type id (`src/definition/values.ts`), so a union of nominal structs could skip the wrapper.
+13. **Optimization, later.** Wrapping a struct in a variant boxes it once per value. Struct values already carry their type id (`src/definition/values/values.ts`), so a union of nominal structs could skip the wrapper.

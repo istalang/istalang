@@ -7,9 +7,9 @@
  * it back through its context (runtime/natives.ts). Elements compare with the built-in `==`.
  */
 
-import { valuesEqual } from '../../definition/equality.ts';
 import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
-import { elementsOf } from '../../definition/values.ts';
+import { valuesEqual } from '../../definition/values/equality.ts';
+import { elementsOf } from '../../definition/values/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { arrayOf, int, optionalInt, resultOptional, text } from '../native-values.ts';

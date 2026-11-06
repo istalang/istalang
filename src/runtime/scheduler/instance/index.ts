@@ -27,7 +27,7 @@
  */
 
 import type { FunctionId } from '../../../definition/operands.ts';
-import { handlesIn, type Value } from '../../../definition/values.ts';
+import { handlesIn, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { LogRecord, SpawnOptions } from '../../instance-state.ts';
 import {

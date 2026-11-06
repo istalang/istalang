@@ -6,6 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import type { TypeDefinition, TypeReference } from '../types.ts';
 import { valuesEqual } from './equality.ts';
 import {
   JsonError,
@@ -16,7 +17,6 @@ import {
   jsonTypeIn,
   plainOfJson,
 } from './json-values.ts';
-import type { TypeDefinition, TypeReference } from './types.ts';
 import { maximumDepth } from './values.ts';
 
 /** A std container's extern entry, as the type table holds one. */

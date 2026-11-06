@@ -18,8 +18,8 @@
  */
 
 import { z } from 'zod';
+import { maximumDepth } from '../values/values.ts';
 import { contentHash, decodeJson, encodeJson, jsonDepth, NestingError } from './codec.ts';
-import { maximumDepth } from './values.ts';
 
 /** How many levels a value's own level takes at most: a map's entry pair, its entry list, the map. */
 const levelsPerValueLevel = 3;

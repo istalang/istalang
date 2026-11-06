@@ -13,13 +13,17 @@ import {
   broadcastFunctions,
   broadcastTypes,
 } from '../../../test/definitions/broadcast.ts';
-import { exactJson, looseText } from '../../definition/codec.test-kit.ts';
-import { decodeJson } from '../../definition/codec.ts';
 import { definitionFormat } from '../../definition/definition.ts';
-import { type EditableText, editedText, refusalOf } from '../../definition/format.test-kit.ts';
-import { FormatError } from '../../definition/format.ts';
-import { nested, valueArbitrary } from '../../definition/values.test-kit.ts';
-import { maximumDepth, type Value } from '../../definition/values.ts';
+import { exactJson, looseText } from '../../definition/formats/codec.test-kit.ts';
+import { decodeJson } from '../../definition/formats/codec.ts';
+import {
+  type EditableText,
+  editedText,
+  refusalOf,
+} from '../../definition/formats/format.test-kit.ts';
+import { FormatError } from '../../definition/formats/format.ts';
+import { nested, valueArbitrary } from '../../definition/values/values.test-kit.ts';
+import { maximumDepth, type Value } from '../../definition/values/values.ts';
 import { seedBytes, seedTextOf } from '../random-seed.ts';
 import { testSeed } from '../runtime.test-kit.ts';
 import type { HeapObject } from './objects.ts';

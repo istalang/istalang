@@ -1,7 +1,7 @@
 /** Running a program's `main` for what the prelude's functions give it. */
 
 import { compiledText } from '../../compiler/compile.test-kit.ts';
-import { decodeJson } from '../../definition/codec.ts';
+import { decodeJson } from '../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
 
 /**

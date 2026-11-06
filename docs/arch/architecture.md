@@ -169,8 +169,11 @@ src/
       expressions/ statements/ never-lowered.ts                  per-construct handlers, as in the checker; expressions/ groups them by the
                                                                  checker's families: structs/, collections/, control/, access/ (names, `??`, `!`)
     compile.ts          pipeline coordinator and public compiler API
-  definition/           contract: the compiled program (docs/arch/definition.md): canonical JSON codec,
-                        versioned formats, values and their `==` and map keys, types, instruction set
+  definition/           contract: the compiled program (docs/arch/definition.md): its tables, function table, types,
+                        operands and extern keys; values/ (persisted values, read through their declarations,
+                        JSON as values, their `==` and map keys, instance handles); formats/ (the canonical JSON
+                        codec and the versioned envelope every persisted text goes through); validation/ (what
+                        load checks beyond the shapes); instructions/ (the instruction set)
   runtime/
     values/ interpreter/ scheduler/ snapshot/ boundary/          parts of values along paths, the instruction table, segments and commits, the persisted instance, values crossing to the host
                         boundary/: host-natives.ts (host externs, against JSON, as natives), outbound.ts (an outcome's JSON),
@@ -224,7 +227,7 @@ language-service · formatter · packages tooling; language-service imports no N
 project                                 a project on disk: its sources and the loaders reading them
 compiler/compile ─▶ lowering ─▶ checker ─▶ binder ─▶ program ─▶ parser · scanner ─▶ syntax
 runtime ─▶ definition ◀─ lowering       runtime never imports compiler/
-stdlib ─▶ program (loader seam) · runtime native seam · definition values (==, map keys: definition/equality.ts)
+stdlib ─▶ program (loader seam) · runtime native seam · definition values (==, map keys: definition/values/equality.ts)
 text · diagnostics                      foundation; the runtime may use text/ for positions
 language · structures                   beneath every layer; they import nothing
 ```
@@ -319,7 +322,7 @@ Every analysis result is a memoized function of immutable inputs: text → token
 - **Positions are UTF-16 offsets**, the LSP default. They are converted only at the edges.
 - **Formatter layout algorithm comes from a library:** Prettier's doc printer (`prettier/doc`, pinned exactly), which formatter/ alone imports. The formatter supplies only the printers from tree to doc and the comment placement (formatter.md, Decisions).
 - **Runtime keeps frames as data.** The Definition is linear register code, so a frame is a function, a pc and registers, and any `await` can be persisted (spec §5). Code is untyped, and generics are compiled per instantiation. The chosen and rejected options are in definition.md, Decisions.
-- **One description per persisted format.** A zod schema validates, decodes and encodes it; texts are canonical JSON (lossless-json with sorted keys) nested in a `{format, version, body}` envelope, keyed by content hash. The codec and envelope live in `definition/` (`codec.ts`, `format.ts`), the lowest layer every persisted format already depends on; `runtime/` (snapshots, and from M3 the boundary) imports them from there. Values use `bigint` for `Int`.
+- **One description per persisted format.** A zod schema validates, decodes and encodes it; texts are canonical JSON (lossless-json with sorted keys) nested in a `{format, version, body}` envelope, keyed by content hash. The codec and envelope live in `definition/formats/` (`codec.ts`, `format.ts`), the lowest layer every persisted format already depends on; `runtime/` (snapshots, and from M3 the boundary) imports them from there. Values use `bigint` for `Int`.
 - **`Decimal` runs on decimal.js,** picked over big.js and bignumber.js because it rounds to significant digits, which `/` needs (34, decimal128's), and has every rounding mode. A `Decimal` is a value of an extern type the `decimal` module declares, whose payload is its canonical text: fields can't be private (spec §3.1), so a struct could be built in a second form, and `==` and map keys would compare forms, not numbers. `time.Zone` is an extern type for the same reason, its payload the zone's canonical IANA id.
 - **`regex` runs on re2js,** a pure JavaScript port of RE2: matching is linear in the text, so no pattern can make an instance hang, and RE2's syntax refuses backreferences and lookaround. A regex is its pattern's text, so its compiled program is derived from that text: memoized by it in one bounded, process-wide cache (`lru-cache`).
 - **A wait on another instance's end is read from the store** (spec §9). `inst.result()` is a watch future; at each segment start the scheduler resolves it from the watched instance's last commit (scheduler/instance-ends.ts), in every runtime, a test's included, while a test world answers only a test's own waits (`idle()`, `reaches()`), so an outcome is copied snapshot to snapshot and never passes through a host's JSON. What a host must do is only wake the watcher: a waiting `InstanceState` names the instances it watches, and `InstanceGroup` runs a watcher once one of them has ended, after any instance spawned and not yet run. `runtime.isolate` is a spawn with the `terminatesOnPanic` option, kept in the child's snapshot: its panic commits, then terminates it at once, keeping the panic for the `Err`.

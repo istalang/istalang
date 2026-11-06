@@ -6,8 +6,8 @@
  * the std natives alike, uses these.
  */
 
-import { type MapOf, ValueSemantics, type ValueView } from '../language/values.ts';
-import { encodeJson } from './codec.ts';
+import { type MapOf, ValueSemantics, type ValueView } from '../../language/values.ts';
+import { encodeJson } from '../formats/codec.ts';
 import {
   type CompositeValue,
   childValues,

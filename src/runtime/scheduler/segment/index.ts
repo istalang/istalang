@@ -32,7 +32,7 @@
 import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
-import { depthOf, handleTo, type Value } from '../../../definition/values.ts';
+import { depthOf, handleTo, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { runInstruction } from '../../interpreter/instructions.ts';
 import {

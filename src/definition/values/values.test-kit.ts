@@ -9,7 +9,7 @@
  */
 
 import fc from 'fast-check';
-import { exactJson } from './codec.test-kit.ts';
+import { exactJson } from '../formats/codec.test-kit.ts';
 import { handleTo, type Value } from './values.ts';
 
 export interface ValueOptions {

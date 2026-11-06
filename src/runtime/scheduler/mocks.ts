@@ -31,7 +31,7 @@ import {
   samePayload,
   type Value,
   withChildValues,
-} from '../../definition/values.ts';
+} from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { Panic } from '../natives.ts';
 import type { LiveExecution, LiveObjectOf } from './heap.ts';

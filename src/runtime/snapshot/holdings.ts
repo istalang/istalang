@@ -13,7 +13,7 @@
  *   one rule reads both, over what their registers hold.
  */
 
-import { handlesIn, type Value } from '../../definition/values.ts';
+import { handlesIn, type Value } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import {
   type Frame,

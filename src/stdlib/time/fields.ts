@@ -3,8 +3,8 @@
  * are declared with, so a reordered declaration can't swap two of them.
  */
 
-import { fieldValueOf } from '../../definition/declared-values.ts';
-import type { Value } from '../../definition/values.ts';
+import { fieldValueOf } from '../../definition/values/declared-values.ts';
+import type { Value } from '../../definition/values/values.ts';
 import type { NativeContext } from '../../runtime/natives.ts';
 import { int, okStruct, resultStruct } from '../native-values.ts';
 

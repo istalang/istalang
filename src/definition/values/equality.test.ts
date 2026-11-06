@@ -7,8 +7,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reverseKeys } from './codec.test-kit.ts';
-import { decodeJson, encodeJson } from './codec.ts';
+import { reverseKeys } from '../formats/codec.test-kit.ts';
+import { decodeJson, encodeJson } from '../formats/codec.ts';
 import {
   entryPosition,
   entryValue,

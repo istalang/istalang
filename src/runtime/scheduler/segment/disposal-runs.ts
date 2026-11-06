@@ -12,7 +12,7 @@
  * - A disposal's call is a call like any other to a mock that replaces it (§10).
  */
 
-import { handleTarget } from '../../../definition/values.ts';
+import { handleTarget } from '../../../definition/values/values.ts';
 import { type ActiveFrame, newFrame, releaseFrame } from '../../interpreter/machine.ts';
 import { resume } from '../../interpreter/suspension.ts';
 import type { Cleanup, DisposalCall, DisposalRun } from '../../lifetimes/disposal.ts';

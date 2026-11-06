@@ -12,14 +12,20 @@
  */
 
 import type { z } from 'zod';
-import { type CodeFunction, encoderProblem, type FunctionDefinition } from './functions.ts';
+import { type CodeFunction, encoderProblem, type FunctionDefinition } from '../functions.ts';
+import { terminates } from '../instructions/flow.ts';
+import { type Operands, operandsOf } from '../instructions/instruction.ts';
+import type { Tables } from '../tables.ts';
+import { runnerArity } from '../test-runner.ts';
+import { hasRole, type TypeDefinition, typesIn } from '../types.ts';
+import {
+  type CompositeValue,
+  childValues,
+  handlesIn,
+  isComposite,
+  type Value,
+} from '../values/values.ts';
 import { closureProblem, constructionProblem, instructionProblem } from './instruction-rules.ts';
-import { terminates } from './instructions/flow.ts';
-import { type Operands, operandsOf } from './instructions/instruction.ts';
-import type { Tables } from './tables.ts';
-import { runnerArity } from './test-runner.ts';
-import { hasRole, type TypeDefinition, typesIn } from './types.ts';
-import { type CompositeValue, childValues, handlesIn, isComposite, type Value } from './values.ts';
 
 type Path = readonly (string | number)[];
 

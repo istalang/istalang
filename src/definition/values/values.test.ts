@@ -7,9 +7,9 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { subsetDefinition } from '../../test/definitions/subset.ts';
-import { decodeJson, encodeJson } from './codec.ts';
-import { valueProblems } from './references.ts';
+import { subsetDefinition } from '../../../test/definitions/subset.ts';
+import { decodeJson, encodeJson } from '../formats/codec.ts';
+import { valueProblems } from '../validation/references.ts';
 import { nested, valueArbitrary } from './values.test-kit.ts';
 import {
   childValues,

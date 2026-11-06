@@ -7,7 +7,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { depthOf, handlesIn, handleTo } from '../../definition/values.ts';
+import { depthOf, handlesIn, handleTo } from '../../definition/values/values.ts';
 import { Heap, type LiveObject } from '../scheduler/heap.ts';
 import { frameValues, isRoot, valuesIn } from '../snapshot/holdings.ts';
 import { heldFrom, holdsOf } from './holders.ts';

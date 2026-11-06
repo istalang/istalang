@@ -11,7 +11,7 @@
  */
 
 import type { FunctionId } from '../../../definition/operands.ts';
-import type { Value } from '../../../definition/values.ts';
+import type { Value } from '../../../definition/values/values.ts';
 import { type ActiveFrame, type FrameEntry, passedValues } from '../../interpreter/machine.ts';
 import type { RegisterContents } from '../../snapshot/objects.ts';
 import type { Instance } from '../instance/index.ts';

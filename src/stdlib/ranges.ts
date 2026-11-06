@@ -11,8 +11,8 @@
  *   counted, and only one with a start can step by more than 1.
  */
 
-import { fieldValueOf } from '../definition/declared-values.ts';
-import type { Value } from '../definition/values.ts';
+import { fieldValueOf } from '../definition/values/declared-values.ts';
+import type { Value } from '../definition/values/values.ts';
 import { type NativeContext, Panic } from '../runtime/natives.ts';
 import { int, optionalInt } from './native-values.ts';
 

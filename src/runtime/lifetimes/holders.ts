@@ -19,7 +19,7 @@
  *   close by, by the frames running it, which the scheduler gives first.
  */
 
-import { depthOf, handlesIn, type Value } from '../../definition/values.ts';
+import { depthOf, handlesIn, type Value } from '../../definition/values/values.ts';
 import { pushAll } from '../../structures/stack.ts';
 import type { Heap, LiveObject } from '../scheduler/heap.ts';
 import {

@@ -8,8 +8,6 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { broadcastDefinition } from '../../test/definitions/broadcast.ts';
 import { subsetDefinition } from '../../test/definitions/subset.ts';
-import { looseText } from './codec.test-kit.ts';
-import { contentHash, decodeJson } from './codec.ts';
 import {
   at,
   definitionArbitrary,
@@ -18,9 +16,11 @@ import {
   type Json,
 } from './definition.test-kit.ts';
 import { type Definition, definitionFormat } from './definition.ts';
-import { type EditableText, refusalOf } from './format.test-kit.ts';
+import { looseText } from './formats/codec.test-kit.ts';
+import { contentHash, decodeJson } from './formats/codec.ts';
+import { type EditableText, refusalOf } from './formats/format.test-kit.ts';
 import { instruction as instructionSchema } from './instructions/instruction.ts';
-import { valueArbitrary } from './values.test-kit.ts';
+import { valueArbitrary } from './values/values.test-kit.ts';
 
 const fixtures = { subset: subsetDefinition, broadcast: broadcastDefinition };
 

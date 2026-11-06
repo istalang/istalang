@@ -13,22 +13,22 @@
  *   bigint or a whole number is an `Int`, any other number a `Float`, so a host need not say which
  *   it means; and `undefined` reads as `JSON.stringify` writes it, `null`, or a field left out of
  *   an object, so a host function returning nothing gives `Unit` or `none`.
- * - Text is that JavaScript value in the canonical form (definition/codec.ts): an integer keeps
- *   every digit at any size and an object's entries are sorted by key, so equal values always give
- *   the same text (§9). A float JSON can't hold, NaN or an infinity, is `null`, as
+ * - Text is that JavaScript value in the canonical form (definition/formats/codec.ts): an integer
+ *   keeps every digit at any size and an object's entries are sorted by key, so equal values always
+ *   give the same text (§9). A float JSON can't hold, NaN or an infinity, is `null`, as
  *   `JSON.stringify` writes it. A key given twice with different values is refused rather than
  *   resolved by position, since the two readers of such text could disagree.
  * - `Json` nests no deeper than a persisted value may (`maximumDepth`), checked before either
  *   form is walked, so deep input is refused instead of overflowing the host's stack.
  */
 
-import { qualifiedName, wellKnown } from '../language/well-known.ts';
-import { memo } from '../structures/memo.ts';
-import { unreachable } from '../structures/unreachable.ts';
-import { decodeJson, encodeJson, NestingError } from './codec.ts';
+import { qualifiedName, wellKnown } from '../../language/well-known.ts';
+import { memo } from '../../structures/memo.ts';
+import { unreachable } from '../../structures/unreachable.ts';
+import { decodeJson, encodeJson, NestingError } from '../formats/codec.ts';
+import type { TypeId } from '../operands.ts';
+import { hasRole, type TypeDefinition, type TypeReference } from '../types.ts';
 import { mapOf } from './equality.ts';
-import type { TypeId } from './operands.ts';
-import { hasRole, type TypeDefinition, type TypeReference } from './types.ts';
 import { elementsOf, isComposite, mapValueOf, maximumDepth, type Value } from './values.ts';
 
 /** A member of `Json`, by what its values are. */

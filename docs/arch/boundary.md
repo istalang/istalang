@@ -57,9 +57,9 @@ path):
   codecs and closes them within its instance, so a type parameter's codec is the witness its caller
   gave.
 - What is left to natives is leaf work with no program code in it (`stdlib/json/natives.ts`,
-  `definition/json-values.ts`): JSON text to `Json` and back (lossless-json, integers exact, nesting
+  `definition/values/json-values.ts`): JSON text to `Json` and back (lossless-json, integers exact, nesting
   bounded by `maximumDepth` on the text before it is parsed, written as canonical JSON,
-  `definition/codec.ts`), a float's finiteness. A `Json` value's member is found in its union's
+  `definition/formats/codec.ts`), a float's finiteness. A `Json` value's member is found in its union's
   layout by what each variant holds, never by a variant's name.
 
 ## Externs a host implements
@@ -89,7 +89,7 @@ its instance is numbered by, so its native sees only JSON:
 - Host natives (`runtime/boundary/host-natives.ts`) take and give JavaScript JSON, what
   `JSON.parse` of the text gives but with every integer a `bigint`, so none loses digits; what a
   host gives back is read as `JSON.stringify` would write it, `undefined` as `null` or a field
-  left out (definition/json-values.ts). The
+  left out (definition/values/json-values.ts). The
   runtime's API takes them as `(arguments, call)`, where one returning a future gives back
   `call.pending(token)` and is filled later by `fill`: a durable host names the future so it can
   fill it from another process, and a name a future still waiting on the host has panics the

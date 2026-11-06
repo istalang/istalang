@@ -16,18 +16,18 @@
  *   instance's JSON of its outcome is a `Json` value (§9)
  * - a cell is of a shared struct's type entry or a `_Cell<T>`'s, and a resource of an extern type
  * - every value held anywhere names types and functions the Definition has, and agrees with them,
- *   by the same check the Definition's own constants pass (definition/references.ts)
+ *   by the same check the Definition's own constants pass (definition/validation/references.ts)
  */
 
 import type { Definition } from '../../definition/definition.ts';
 import { encoderProblem, takesReference } from '../../definition/functions.ts';
 import { awaitedRegisters, waits } from '../../definition/instructions/flow.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
-import { isJsonValue, jsonTypeIn } from '../../definition/json-values.ts';
 import type { FunctionId } from '../../definition/operands.ts';
-import { valueProblems } from '../../definition/references.ts';
 import { isCellType } from '../../definition/types.ts';
-import { handleTarget } from '../../definition/values.ts';
+import { valueProblems } from '../../definition/validation/references.ts';
+import { isJsonValue, jsonTypeIn } from '../../definition/values/json-values.ts';
+import { handleTarget } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { Refusal } from '../refusal.ts';
 import { valuesIn } from './holdings.ts';

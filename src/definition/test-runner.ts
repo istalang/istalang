@@ -1,12 +1,12 @@
 /**
  * The calls `ista test` makes of the testing module's runner (testing.ista `_list`, `_run`, §10):
- * one home for their arguments, which the runtime builds and references.ts holds a test
+ * one home for their arguments, which the runtime builds and validation/references.ts holds a test
  * Definition's runner entries to. A suite is passed as a closure capturing nothing, since `@Suite`
  * functions are top-level.
  */
 
 import type { FunctionId } from './operands.ts';
-import type { Value } from './values.ts';
+import type { Value } from './values/values.ts';
 
 /** A test to run: its suite's function and title, and its own position and title in the listing. */
 export interface ListedTest {

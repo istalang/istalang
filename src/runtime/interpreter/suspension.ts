@@ -11,7 +11,7 @@
  */
 
 import type { Instruction } from '../../definition/instructions/instruction.ts';
-import type { Value } from '../../definition/values.ts';
+import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import {
   type ActiveFrame,

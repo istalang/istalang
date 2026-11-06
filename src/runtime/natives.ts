@@ -21,7 +21,7 @@
 
 import type { FunctionId, TypeId } from '../definition/operands.ts';
 import type { TypeDefinition } from '../definition/types.ts';
-import type { Value } from '../definition/values.ts';
+import type { Value } from '../definition/values/values.ts';
 import type { Inspection, LogRecord, SpawnOptions } from './instance-state.ts';
 import type { TestWatch } from './snapshot/objects.ts';
 

@@ -13,7 +13,7 @@
  *   operation that completes at once never jumps a waiter of its own kind.
  */
 
-import { handleTo, type Value } from '../../definition/values.ts';
+import { handleTo, type Value } from '../../definition/values/values.ts';
 import type { FutureState } from '../snapshot/objects.ts';
 import type { Futures } from './futures.ts';
 import { type Heap, handleObject, type LiveObjectOf } from './heap.ts';

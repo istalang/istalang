@@ -17,7 +17,7 @@ import { z } from 'zod';
 import { instruction } from './instructions/instruction.ts';
 import { count, moduleId, register, span, typeId } from './operands.ts';
 import { typeReference } from './types.ts';
-import { value } from './values.ts';
+import { value } from './values/values.ts';
 
 const common = {
   /** Qualified and instantiated, `inbox.send<Verdict>`: for traces, waypoints and messages. */

@@ -49,7 +49,7 @@ It is no use for I/O-bound work, and none on Workers: isolates run no OS binarie
 Everything `native-interpreter.md` lists, then:
 
 - **Register types and code-entry signatures in the Definition.** Each code entry gives each register's type entry, and its parameter and result types:
-  - the schema in `definition/functions.ts`, and validation in `definition/references.ts`;
+  - the schema in `definition/functions.ts`, and validation in `definition/validation/references.ts`;
   - a format version bump. A runtime refuses a version it doesn't know, so stored Definitions of the old version need a reader of their version or a migration;
   - lowering: `CodeWriter.allocate()` (`lowering/code-writer.ts`) becomes `allocate(type)`, at 60 call sites in 31 files. Most sites have the type at hand, as the checker's type of a node, a binding's or a parameter's;
   - `function-lowering/frames.ts` writes the signatures.

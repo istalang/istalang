@@ -48,8 +48,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - `enumTypeFor` (`expressions/structs/variants.ts:61–85`) unwraps optionals on `expected` (`sameEnum`) and fills default type arguments for bare generic enum variants, whereas `bareStructValue` (`expressions/access/names.ts:91–116`) neither unwraps optionals on `expected` nor fills default type arguments for bare fieldless generic structs.
    - **Fix:** Route `nominalTypeText` and all `Optional<T>` unwrapping through `optionalInner` (`types/fitting/fit.ts`), and share the expected-nominal/default-type-argument resolution between `bareStructValue` and `enumTypeFor`.
 
-7. **`[medium]` Duplicate JSON serialization, depth checks, and recursive `Value` walks in `definition/` and `runtime/` (`src/definition/json-values.ts:89`, `src/definition/format.ts:44`, `src/runtime/scheduler/mocks.ts:104`; widens `Q29`)**
-   - `written` and `plainOfJson` in `src/definition/json-values.ts:89–162` duplicate the recursive fold over `Json` variants, and `written` hand-rolls a second canonical JSON serializer alongside `encodeJson` (`src/definition/codec.ts:24`). `defineFormat.read` (`src/definition/format.ts:44`) checks nesting depth *after* `decodeJson`, whereas `jsonOfText` (`json-values.ts:65`) checks `textDepth` *before* `decodeJson`.
+7. **`[medium]` Duplicate JSON serialization, depth checks, and recursive `Value` walks in `definition/` and `runtime/` (`src/definition/values/json-values.ts:89`, `src/definition/formats/format.ts:44`, `src/runtime/scheduler/mocks.ts:104`; widens `Q29`)**
+   - `written` and `plainOfJson` in `src/definition/values/json-values.ts:89–162` duplicate the recursive fold over `Json` variants, and `written` hand-rolls a second canonical JSON serializer alongside `encodeJson` (`src/definition/formats/codec.ts:24`). `defineFormat.read` (`src/definition/formats/format.ts:44`) checks nesting depth *after* `decodeJson`, whereas `jsonOfText` (`json-values.ts:65`) checks `textDepth` *before* `decodeJson`.
    - In `src/runtime/scheduler/mocks.ts:104–144`, `asHostValue`, `leaving`, and `arriving` are three copies of the same recursive `withChildValues(value, childValues(value).map(...))` traversal on the JS call stack (violating the explicit-stack rule in `docs/reuse/structures-and-invariants.md`).
    - **Fix:** Serialize `Json` via `encodeJson(plainOfJson(...))`, run `textDepth` inside `decodeJson` (or `readEnvelope`) before `lossless-json` parses, and replace `asHostValue`/`leaving`/`arriving` with one iterative explicit-stack value mapper.
 
@@ -154,18 +154,18 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 5. `src/definition/` (including `instructions/`)
 
-- **Duplicate array/map narrowing and JSON serialization in `json-values.ts` (`src/definition/json-values.ts`, `values.ts`, `codec.ts`):**
-  - `listItems(field)` and `objectEntries(field)` in `src/definition/json-values.ts` duplicate `elementsOf(field)` and `mapValueOf(field).entries` from `src/definition/values.ts`.
-  - `written(json, shape, depth)` and `plainOfJson(json, shape, depth)` duplicate the recursive fold over `Json` variants (`Null`, `Bool`, `Integer`, `Number`, `Text`, `List`, `Object`). Furthermore, `written` hand-rolls a second canonical JSON serializer (formatting `bigint` digits, finite float checks, and sorting object keys with `compareOrdered`), when `encodeJson(plainOfJson(json, shape))` in `src/definition/codec.ts` already performs the exact same canonical serialization via `lossless-json`.
-  - `partsOf` in `src/definition/json-values.ts` linearly scans `(Object.keys(shape.variants) as JsonVariant[]).find((name) => shape.variants[name] === json.variant)` at every visited `Json` node instead of `JsonType` storing the inverse `variant → JsonVariant` array once in `findJsonType`.
-- **Double standard for JSON nesting-depth checks before vs. after `decodeJson` (`src/definition/format.ts`, `src/definition/json-values.ts`):**
-  - `defineFormat.read` (`src/definition/format.ts`) calls `decodeJson(text)` inside `readEnvelope` *before* checking `jsonDepth(contents) > maximumTextDepth` in `requireShallow` (so deeply nested input hits `lossless-json`'s recursive parser before the depth guard).
-  - By contrast, `jsonOfText` (`src/definition/json-values.ts`) runs a regex bracket scanner `textDepth(text) > maximumDepth` *before* `decodeJson(text)`, and then `jsonOfPlain` checks `depth > maximumDepth` again during conversion.
+- **Duplicate array/map narrowing and JSON serialization in `json-values.ts` (`src/definition/values/json-values.ts`, `values.ts`, `codec.ts`):**
+  - `listItems(field)` and `objectEntries(field)` in `src/definition/values/json-values.ts` duplicate `elementsOf(field)` and `mapValueOf(field).entries` from `src/definition/values/values.ts`.
+  - `written(json, shape, depth)` and `plainOfJson(json, shape, depth)` duplicate the recursive fold over `Json` variants (`Null`, `Bool`, `Integer`, `Number`, `Text`, `List`, `Object`). Furthermore, `written` hand-rolls a second canonical JSON serializer (formatting `bigint` digits, finite float checks, and sorting object keys with `compareOrdered`), when `encodeJson(plainOfJson(json, shape))` in `src/definition/formats/codec.ts` already performs the exact same canonical serialization via `lossless-json`.
+  - `partsOf` in `src/definition/values/json-values.ts` linearly scans `(Object.keys(shape.variants) as JsonVariant[]).find((name) => shape.variants[name] === json.variant)` at every visited `Json` node instead of `JsonType` storing the inverse `variant → JsonVariant` array once in `findJsonType`.
+- **Double standard for JSON nesting-depth checks before vs. after `decodeJson` (`src/definition/formats/format.ts`, `src/definition/values/json-values.ts`):**
+  - `defineFormat.read` (`src/definition/formats/format.ts`) calls `decodeJson(text)` inside `readEnvelope` *before* checking `jsonDepth(contents) > maximumTextDepth` in `requireShallow` (so deeply nested input hits `lossless-json`'s recursive parser before the depth guard).
+  - By contrast, `jsonOfText` (`src/definition/values/json-values.ts`) runs a regex bracket scanner `textDepth(text) > maximumDepth` *before* `decodeJson(text)`, and then `jsonOfPlain` checks `depth > maximumDepth` again during conversion.
   - **Done** (`p5-indented`): with `Json` a union, `json-values.ts` reads its members out of `elementsOf`/`mapValueOf`, has one fold (`plainOfJson`) and writes text as `encodeJson(plainOfJson(…))`, so no second serializer is left; `encodeJson` itself writes objects from sorted entries, since a JavaScript object puts keys spelling array indexes first whatever order it is given, which the old fold had papered over. `JsonType.members` is the inverse of `variants`, read by index. Nesting is checked on the text before any parse, in `decodeJson(text, deepest)`, for formats and `Json` alike (`NestingError`).
-- **`hasRole` narrowed to `ExternRole` only (`src/definition/types.ts`, `src/definition/json-values.ts`):**
-  - `hasRole(types, type, role)` only accepts `ExternRole` (`'shared' | 'cell' | 'future' | 'instance'`) and checks `entry?.kind === 'extern'`, forcing `findJsonType` (`src/definition/json-values.ts`) to hand-write `candidate.kind === 'enum' && candidate.role === 'json'` instead of calling `hasRole(types, index, 'json')`.
+- **`hasRole` narrowed to `ExternRole` only (`src/definition/types.ts`, `src/definition/values/json-values.ts`):**
+  - `hasRole(types, type, role)` only accepts `ExternRole` (`'shared' | 'cell' | 'future' | 'instance'`) and checks `entry?.kind === 'extern'`, forcing `findJsonType` (`src/definition/values/json-values.ts`) to hand-write `candidate.kind === 'enum' && candidate.role === 'json'` instead of calling `hasRole(types, index, 'json')`.
   - **Done** (`p5-indented`): `hasRole` takes an extern's role or an enum's, which `findJsonType` asks.
-- **Hard-coded variant/struct field names in `declared-values.ts` (`src/definition/declared-values.ts`, `src/language/well-known.ts`):**
+- **Hard-coded variant/struct field names in `declared-values.ts` (`src/definition/values/declared-values.ts`, `src/language/well-known.ts`):**
   - `optionalOf`, `okTypeOf`, `okOf`, `errOf`, and `errorOf` import `optionalVariants` and `resultVariants` from `src/language/well-known.ts`, but hard-code the field names `'value'` and `'error'` as string literals.
   - **Done** (`p3-unions`): `resultFields` and `optionalValueField` (`language/well-known.ts`) name the fields once; `optionalValueOf` (`declared-values.ts`) reads an optional by its declared variant and field.
 
@@ -235,7 +235,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 ### 12. `src/compiler/checker/` — root contracts, contexts & wiring
 
 - **Inconsistent `partsOf` and `headKey` in `ConstantForm` (`src/compiler/checker/constant-form.ts`):**
-  - Unlike `childValues(composite)` in `src/definition/values.ts` (which handles `'map'` via `composite.entries.flat()`), `partsOf(form)` in `constant-form.ts` omits `'map'`, forcing both `formAt` and `sameForm` to repeat `form.kind === 'map' ? form.entries.flat() : partsOf(form)`.
+  - Unlike `childValues(composite)` in `src/definition/values/values.ts` (which handles `'map'` via `composite.entries.flat()`), `partsOf(form)` in `constant-form.ts` omits `'map'`, forcing both `formAt` and `sameForm` to repeat `form.kind === 'map' ? form.entries.flat() : partsOf(form)`.
   - `formAt` recurses on the JS stack while `sameForm` in the same file uses an explicit stack.
   - `formSemantics` sets `headKey: (form) => form.kind`, giving every struct constant in a compile-time map key the identical head hash `'struct'` regardless of its nominal type.
 - **Why `DeclaringModules` duplicates `Bindings.moduleOf` (`src/compiler/checker/declaring-modules.ts`, `src/compiler/binder/link.ts`; widens `Q30`):**
@@ -353,7 +353,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 22. `src/compiler/lowering/boundary/` & `src/compiler/lowering/trait-objects/`
 
-- **`Encoder.#text` builds a `Json.Text` variant by positional array literal (`src/compiler/lowering/boundary/encoder.ts`, `src/definition/declared-values.ts`):**
+- **`Encoder.#text` builds a `Json.Text` variant by positional array literal (`src/compiler/lowering/boundary/encoder.ts`, `src/definition/values/declared-values.ts`):**
   - Violating the one-way rule in `docs/reuse/values-and-equality.md` (build variants by declared name, never by positional index), `Encoder.#text` constructs `{ kind: 'variant', type: tables.types.index(this.#json), variant: variantIndexOf(checker, this.#json, jsonVariants.text), fields: [name] }` directly.
   - **Done** (`p2-structural`): the tag is built by name, through the encoder's `#variant` (`SynthesizedCode.variant`); `#text` is gone.
 - **`DerivedForm` lacks its `Type`, and `derivedCodecEntry` dispatches on function name (`src/compiler/lowering/boundary/codecs.ts`, `encoder.ts`, `decoder.ts`; tracked as `Q9`).**
@@ -380,8 +380,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - In `src/runtime/host.ts`, `programBinder` calls `definitionFormat.read(text)` and then `definitionFormat.write(definition)` just to compute `hash` before consulting `memo(bound, hash, ...)`. Because `storedInstance` calls `bind(definition)` on every `wake`, `inspect`, `fill`, `retry`, and `terminate`, every host operation re-decodes, re-validates (`checkReferences`), and re-encodes the entire `Definition` JSON even when it was already bound! And on `deploy(text)`, `definitionFormat.write(program.definition)` is called a second time when `isNew` is true.
   - `runTests` (`src/runtime/testing/run-tests.ts`) repeats the same `definitionFormat.read(text)` + `definitionFormat.write(definition)` pair.
   - **Done** (`fast-wins`): See ranked summary #1.
-- **Duplicate `call` capture/argument validation in `callProblems` (`src/runtime/snapshot/check.ts`) vs. `instruction-rules.ts` (`src/definition/instruction-rules.ts`):**
-  - `callProblems` in `snapshot/check.ts` re-implements the capture-count, parameter-count, and `takesReference` checks already in `closureProblem` and `argumentsProblem` (`src/definition/instruction-rules.ts`).
+- **Duplicate `call` capture/argument validation in `callProblems` (`src/runtime/snapshot/check.ts`) vs. `instruction-rules.ts` (`src/definition/validation/instruction-rules.ts`):**
+  - `callProblems` in `snapshot/check.ts` re-implements the capture-count, parameter-count, and `takesReference` checks already in `closureProblem` and `argumentsProblem` (`src/definition/validation/instruction-rules.ts`).
 - **Repeated `closureOf(v) ?? unreachable(...)` unpacking across 4 runtime modules (`src/runtime/interpreter/instructions.ts`, `lifetimes/disposal.ts`, `scheduler/mocks.ts`, `scheduler/native-calls.ts`):**
   - `calledFunction` (`instructions.ts`), `callOf` (`disposal.ts`), `replacementOf` (`mocks.ts`), and `nativeInstancesOf.spawn` (`native-calls.ts`) each narrow a `Value` with `closureOf` and throw `unreachable` on non-closures.
 
@@ -396,9 +396,9 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 27. `src/stdlib/` — infrastructure & prelude
 
-- **`optionalValue` reads `Optional` by positional field index `0` (`src/stdlib/native-values.ts`, `src/definition/declared-values.ts`):**
+- **`optionalValue` reads `Optional` by positional field index `0` (`src/stdlib/native-values.ts`, `src/definition/values/declared-values.ts`):**
   - `optionalValue` returns `value.fields[0]` directly without checking the variant (`Some` vs. `None`) or field name, relying on `None` having no fields and `Some` having 1 field.
-  - **Done** (`p3-unions`): it reads through `optionalValueOf` (`definition/declared-values.ts`), by the declared variant and field.
+  - **Done** (`p3-unions`): it reads through `optionalValueOf` (`definition/values/declared-values.ts`), by the declared variant and field.
 - **Repeated optional `end` unwrapping in `arrayNatives.slice` and `stringsNatives.slice` (`src/stdlib/prelude/arrays.ts`, `src/stdlib/strings/natives.ts`, `src/stdlib/positions.ts`):**
   - Both natives unwrap `const last = optionalValue(end); ... last === undefined ? undefined : int(last)` before calling `sliced` / `sliceBounds`.
   - **Done** (`p3-unions`): `optionalInt` (`stdlib/native-values.ts`) reads an optional `Int` argument, for both slices and a range's ends.

@@ -6,8 +6,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { valueArbitrary } from '../../definition/values.test-kit.ts';
-import { childValues, isComposite, type Value } from '../../definition/values.ts';
+import { valueArbitrary } from '../../definition/values/values.test-kit.ts';
+import { childValues, isComposite, type Value } from '../../definition/values/values.ts';
 import { Unreachable } from '../../structures/unreachable.ts';
 import { partAt, withPart } from './parts.ts';
 

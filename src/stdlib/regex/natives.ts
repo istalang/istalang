@@ -12,6 +12,8 @@
 
 import { LRUCache } from 'lru-cache';
 import { RE2JS, RE2JSException } from 're2js';
+import type { TypeId } from '../../definition/operands.ts';
+import type { TypeDefinition } from '../../definition/types.ts';
 import {
   fieldTypeOf,
   fieldValueOf,
@@ -19,11 +21,9 @@ import {
   optionalOf,
   structOf,
   typeArgumentOf,
-} from '../../definition/declared-values.ts';
-import { mapOf } from '../../definition/equality.ts';
-import type { TypeId } from '../../definition/operands.ts';
-import type { TypeDefinition } from '../../definition/types.ts';
-import type { Value } from '../../definition/values.ts';
+} from '../../definition/values/declared-values.ts';
+import { mapOf } from '../../definition/values/equality.ts';
+import type { Value } from '../../definition/values/values.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import { memo } from '../../structures/memo.ts';
 import { codePointPositions } from '../../text/code-points.ts';

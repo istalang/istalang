@@ -17,7 +17,7 @@
 import type { CodeFunction } from '../../definition/functions.ts';
 import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
-import type { Value } from '../../definition/values.ts';
+import type { Value } from '../../definition/values/values.ts';
 import { resultVariants } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';

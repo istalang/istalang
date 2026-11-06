@@ -10,7 +10,7 @@
 
 import { z } from 'zod';
 import type { Definition } from '../../definition/definition.ts';
-import { defineFormat } from '../../definition/format.ts';
+import { defineFormat } from '../../definition/formats/format.ts';
 import { Refusal } from '../refusal.ts';
 import type { InstanceStore } from '../store.ts';
 

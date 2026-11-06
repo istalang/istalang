@@ -7,7 +7,7 @@
  */
 
 import type { KeyType, NativeParameter } from '../../definition/extern-key.ts';
-import type { Value } from '../../definition/values.ts';
+import type { Value } from '../../definition/values/values.ts';
 import { conversionFunction } from '../../language/well-known.ts';
 import type { Native, NativeContext, Natives } from '../../runtime/natives.ts';
 import { roundingType } from '../math/rounding.ts';

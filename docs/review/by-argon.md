@@ -18,7 +18,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 ### Established Reference Patterns Already in the Codebase
 
-- **`ValueSemantics<Value>` (`src/language/values.ts`)**: Parameterized by `ValueView<Value>` (`shapeOf`, `sameHead`, `headKey`), allowing runtime values (`src/definition/equality.ts`) and compile-time constant forms (`src/compiler/checker/constant-form.ts`) to share one implementation of `==`, structural hashing, and map-entry insertion ordering.
+- **`ValueSemantics<Value>` (`src/language/values.ts`)**: Parameterized by `ValueView<Value>` (`shapeOf`, `sameHead`, `headKey`), allowing runtime values (`src/definition/values/equality.ts`) and compile-time constant forms (`src/compiler/checker/constant-form.ts`) to share one implementation of `==`, structural hashing, and map-entry insertion ordering.
 - **Exhaustiveness Matrix (`src/compiler/checker/patterns/exhaustiveness/exhaustiveness.ts`)**: Maranget’s usefulness algorithm is parameterized over `Signature<T>` and `Shape`, free of AST or `Checker` types.
 - **Iterative Tarjan SCC (`src/structures/strongly-connected.ts`)**: Shared by the checker’s generic expansion check (`src/compiler/checker/rules/expansion.ts`) and the runtime’s cycle-aware orphan disposal (`src/runtime/lifetimes/orphans.ts`).
 - **Indentation & Separator Layout Engine (`src/compiler/parser/layout.ts`)**: Parameterized by `ItemRules<Item>`, handling module top-level items, statement blocks, struct fields, enum variants, trait members, match/select cases, one-line bodies, `{…}` block expressions, and `{ a: int; b: int }` entry braces in one loop.
@@ -123,7 +123,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 | **Reference-counting cycles & non-deterministic GC finalizers** (Rust `Rc` leaks, Python/Go/JS finalizers) | **Reachability-based deterministic disposal (`src/runtime/lifetimes/`)**: Disposables are collected at scope/statement release points; Tarjan SCC (`orphans.ts`) disposes cycles together newest-first; holders are disposed before what they hold. |
 | **Unhandled errors & forgotten `await`s** (Go ignored errors, JS floating promises) | **Transitive must-use (`src/compiler/checker/rules/must-use.ts`)**: `Future<T>`, `Result<T, E>`, and `Disposable` (and containers holding them) cannot be discarded without `drop expr` or `_ = expr`. |
 | **Channel cancellation races & lost messages** (Go channels, Tokio `select!`) | **Single `Slot<T>` primitive + `select` holdings (`src/runtime/scheduler/slots.ts`, `src/stdlib/inbox/inbox.ista`)**: Losing `select` cases release and dispose their created futures/holders, retracting `sendRevertible` messages and aborting losing async calls. |
-| **JSON precision loss & `NaN`/`Infinity` traps** (JS `Number` 53-bit truncation) | **`bigint` integers + canonical `lossless-json` (`src/definition/codec.ts`)**: Arbitrary-precision `int` end-to-end, sorted object keys, and compiled per-type JSON codecs (`src/compiler/lowering/boundary/`). |
+| **JSON precision loss & `NaN`/`Infinity` traps** (JS `Number` 53-bit truncation) | **`bigint` integers + canonical `lossless-json` (`src/definition/formats/codec.ts`)**: Arbitrary-precision `int` end-to-end, sorted object keys, and compiled per-type JSON codecs (`src/compiler/lowering/boundary/`). |
 | **Post-monomorphization template errors vs. trait-object serialization** (C++ templates, Rust `dyn Trait`) | **Checked-once generics + monomorphized witnesses (`src/compiler/checker/traits/`, `src/compiler/lowering/tables/instances.ts`)**: Generic bodies are type-checked once against trait constraints, and witnesses are resolved statically and monomorphized so snapshots never store vtables. |
 
 ### Pitfalls Istalang Currently Has Compared to Other Languages
@@ -152,7 +152,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
   - Binder: declaration, statement, expression, pattern, and type tables (`src/compiler/binder/`)
   - Checker: `expressionHandlers`, `statementHandlers`, `declarationHandlers`, `typeHandlers`, `patternHandlers`
   - Lowering: `expressionHandlers`, `statementHandlers`
-  - Definition & Runtime: `instructionRules` (`src/definition/instruction-rules.ts`), instruction `handlers` (`src/runtime/interpreter/instructions.ts`), disposal `kinds` (`src/runtime/lifetimes/disposal.ts`)
+  - Definition & Runtime: `instructionRules` (`src/definition/validation/instruction-rules.ts`), instruction `handlers` (`src/runtime/interpreter/instructions.ts`), disposal `kinds` (`src/runtime/lifetimes/disposal.ts`)
 
 ### Where Standalone Plugin Modularity Breaks Down
 
@@ -176,13 +176,13 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 ## 6. Cross-Module Dependencies That Should Be Extracted and Shared
 
-1. **Generic persistence envelope & canonical JSON codec inside `src/definition/` (`src/definition/codec.ts`, `src/definition/format.ts`)**
+1. **Generic persistence envelope & canonical JSON codec inside `src/definition/` (`src/definition/formats/codec.ts`, `src/definition/formats/format.ts`)**
    - `src/runtime/snapshot/snapshot.ts` and `src/runtime/boundary/extern-signatures.ts` import `defineFormat`, `FormatError`, and `contentHashText` from `src/definition/`.
    - `codec.ts` and `format.ts` are generic canonical-JSON (`lossless-json` + sorted keys + SHA-256 + `{format, version, body}` Zod envelope) persistence utilities with no dependency on bytecode Definitions.
-2. **Stdlib `json.Json` enum marshalling inside `src/definition/json-values.ts`**
-   - `src/definition/json-values.ts` hard-codes `wellKnown.json` (`'json.Json'`) and its 7 variant names (`Null`, `Bool`, `Integer`, `Number`, `Text`, `List`, `Object`), and is imported by both `src/stdlib/json/natives.ts` and `src/runtime/boundary/`.
-3. **Duplicate UTF-16 code-unit comparator in `src/language/values.ts` and `src/definition/codec.ts`**
-   - `byCodeUnits` (`src/language/values.ts`) and `compareCodeUnits` (`src/definition/codec.ts`) are identical functions (`definition` already lists `language` in `foundation` in `.dependency-cruiser.mjs`).
+2. **Stdlib `json.Json` enum marshalling inside `src/definition/values/json-values.ts`**
+   - `src/definition/values/json-values.ts` hard-codes `wellKnown.json` (`'json.Json'`) and its 7 variant names (`Null`, `Bool`, `Integer`, `Number`, `Text`, `List`, `Object`), and is imported by both `src/stdlib/json/natives.ts` and `src/runtime/boundary/`.
+3. **Duplicate UTF-16 code-unit comparator in `src/language/values.ts` and `src/definition/formats/codec.ts`**
+   - `byCodeUnits` (`src/language/values.ts`) and `compareCodeUnits` (`src/definition/formats/codec.ts`) are identical functions (`definition` already lists `language` in `foundation` in `.dependency-cruiser.mjs`).
 4. **Cross-feature imports inside `src/compiler/checker/`**
    - `patterns/matching.ts` imports `fieldlessStructOf` from `expressions/access/names.ts` and `chooseVariant`, `nameNodeOf` from `expressions/structs/variants.ts`.
    - `closures/function-values.ts` imports `namedType` from `expressions/structs/variants.ts` (resolving a type named in value position, unrelated to enum variants).
@@ -202,7 +202,7 @@ Ranked by **correctness impact × fan-in (root stability) × blast-radius reduct
 | Priority | Target & Location | Category | Blast Radius | Effort | Sequence / Prerequisite |
 | --- | --- | --- | --- | --- | --- |
 | **1** | **Fix `heldType` + `must-use` for declared structs/enums and `T is Disposable`** (`src/compiler/checker/types/properties/held.ts`, `src/compiler/checker/rules/must-use.ts` — **D108** + silent discard of structs holding `Future`/`Result`/`Disposable`) | Bug / Type-Graph Generalization | 2 files in `checker/` | S | Pass `CheckerContext` + cycle set into `heldType` so declared struct/enum fields and constrained type parameters are checked. |
-| **2** | **Deduplicate leaf helpers (`compareCodeUnits`, `staticName`, `preludeKey`)** (`src/language/values.ts`, `src/definition/codec.ts`, `src/definition/extern-key.ts`, `src/stdlib/prelude/` — **D79, D128**) | DRY | ~12 leaf files | S | Zero-dependency leaf cleanup. |
+| **2** | **Deduplicate leaf helpers (`compareCodeUnits`, `staticName`, `preludeKey`)** (`src/language/values.ts`, `src/definition/formats/codec.ts`, `src/definition/extern-key.ts`, `src/stdlib/prelude/` — **D79, D128**) | DRY | ~12 leaf files | S | Zero-dependency leaf cleanup. |
 | **3** | **Extract shared entity/type-lookup helpers in `checker/`** (`namedType`, `staticTargetOf`, `fieldlessStructOf`, `isChangeable`) out of `expressions/structs/variants.ts`, `traits/conformance.ts`, and `rules/places.ts` | Cohesion / Decoupling | 8 files in `checker/` | S | Removes cross-feature imports between `patterns/`, `closures/`, `expressions/`, and `traits/`. |
 | **4** | **Unify `HeapObject` kind table, Frame view, and Snapshot builder in `runtime/`** (`src/runtime/snapshot/objects.ts`, `snapshot.ts`, `scheduler/instance.ts`, `lifetimes/holders.ts` — **D110, D123, D126**) | Open/Closed Registry & DRY | 6 files in `runtime/` | M | Replaces 6 `switch (object.kind)` blocks and duplicate `frameValues`/`valuesOfFrame` with one `Handlers` table. |
 | **5** | **Generalize `@JsonSkip` to use the `Default` trait** (`src/compiler/checker/rules/annotations.ts`, `src/compiler/checker/rules/json-forms/`, `src/compiler/lowering/boundary/decoder.ts`) | Type Generalization | 4 files in `checker/` & `lowering/` | S | Resolve `Default` (plus `Optional`) in the checker and store the `FunctionCall` on `JsonField.skipped` for `Decoder` to call. |

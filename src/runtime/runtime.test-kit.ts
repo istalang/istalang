@@ -3,7 +3,7 @@
  * commit it was asked to write, and running an instance to its end by moving time to each timer.
  */
 
-import type { Value } from '../definition/values.ts';
+import type { Value } from '../definition/values/values.ts';
 import { stdNatives } from '../stdlib/natives.ts';
 import type { HostExterns } from './boundary/host-natives.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from './host.ts';

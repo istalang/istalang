@@ -6,15 +6,15 @@
  * refers to that hash for its whole life (docs/arch/architecture.md, InstanceStore).
  *
  * Validation covers more than shapes: every index must land inside its table, and every
- * construction must match its type (references.ts). The interpreter can then trust what it
- * reads, and a hand-edited or corrupted Definition is refused at load, never midway through an
+ * construction must match its type (validation/references.ts). The interpreter can then trust what
+ * it reads, and a hand-edited or corrupted Definition is refused at load, never midway through an
  * instance.
  */
 
 import type { z } from 'zod';
-import { defineFormat } from './format.ts';
-import { checkReferences } from './references.ts';
+import { defineFormat } from './formats/format.ts';
 import { tables } from './tables.ts';
+import { checkReferences } from './validation/references.ts';
 
 const definition = tables.superRefine(checkReferences);
 

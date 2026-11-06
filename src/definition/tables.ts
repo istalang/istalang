@@ -1,6 +1,6 @@
 /**
  * The tables a Definition is made of, as shapes only. definition.ts adds the checks that span
- * tables (references.ts), which need this shape without depending back on definition.ts.
+ * tables (validation/references.ts), which need this shape without depending back on definition.ts.
  *
  * A module carries its line starts because the runtime never sees source text or the compiler,
  * yet it must turn spans into locations: for `Error.trace` (spec §3.12), a panic's trace,
@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { functionDefinition } from './functions.ts';
 import { functionId, offset } from './operands.ts';
 import { typeDefinition } from './types.ts';
-import { value } from './values.ts';
+import { value } from './values/values.ts';
 
 const sourceModule = z.strictObject({
   /** The module id the resolver produced. */

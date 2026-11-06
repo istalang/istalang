@@ -5,7 +5,7 @@
  */
 
 import { parameterKey } from '../../definition/extern-key.ts';
-import { elementsOf } from '../../definition/values.ts';
+import { elementsOf } from '../../definition/values/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithFutures } from '../../runtime/natives.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';

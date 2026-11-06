@@ -9,7 +9,7 @@
  *   the instance finishes with both: the outcome, which `result()` copies, and its JSON.
  */
 
-import type { Value } from '../../../definition/values.ts';
+import type { Value } from '../../../definition/values/values.ts';
 import { type ActiveFrame, newFrame } from '../../interpreter/machine.ts';
 import type { Instance } from '../instance/index.ts';
 import { type Caller, startCall } from './calls.ts';

@@ -9,7 +9,7 @@
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
-import type { Value } from '../../definition/values.ts';
+import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Inspection } from '../instance-state.ts';
 import { Panic } from '../natives.ts';

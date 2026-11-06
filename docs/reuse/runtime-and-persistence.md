@@ -12,9 +12,9 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 
 ## Units
 
-- encode/decode canonical JSON text (written from sorted entries, so keys spelling array indexes sort as strings too), refuse text nesting too deeply before it is parsed (`decodeJson(text, deepest)`, `NestingError`), measure a value's depth, or SHA-256 hash → `encodeJson`, `decodeJson`, `jsonDepth`, `contentHash` (`src/definition/codec.ts`)
-- define a versioned format `{ format, version, body }` with depth/zod validation → `defineFormat`, `Format`, `FormatError` (`src/definition/format.ts`)
-- read or write a persisted `Definition` text → `definitionFormat` (`src/definition/definition.ts`); read a text together with its canonical text and hash, never as a `read` then a `write` → `Format.readCanonical` (`src/definition/format.ts`)
+- encode/decode canonical JSON text (written from sorted entries, so keys spelling array indexes sort as strings too), refuse text nesting too deeply before it is parsed (`decodeJson(text, deepest)`, `NestingError`), measure a value's depth, or SHA-256 hash → `encodeJson`, `decodeJson`, `jsonDepth`, `contentHash` (`src/definition/formats/codec.ts`)
+- define a versioned format `{ format, version, body }` with depth/zod validation → `defineFormat`, `Format`, `FormatError` (`src/definition/formats/format.ts`)
+- read or write a persisted `Definition` text → `definitionFormat` (`src/definition/definition.ts`); read a text together with its canonical text and hash, never as a `read` then a `write` → `Format.readCanonical` (`src/definition/formats/format.ts`)
 - read or write a persisted `Snapshot` text → `snapshotFormat` (`src/runtime/snapshot/snapshot.ts`)
 - validate a `Snapshot` against its `Definition` before restoring → `checkSnapshot` (`src/runtime/snapshot/check.ts`)
 - query what a `HeapObject` holds or watches → `isRoot`, `heldObjects`, `valuesIn`, `referencedObjects` (`src/runtime/snapshot/holdings.ts`)
@@ -49,7 +49,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 
 ## One-way rules
 
-- Persisted formats use `defineFormat` (`src/definition/format.ts`) and `encodeJson`/`decodeJson` (`codec.ts`), never `JSON.parse`/`JSON.stringify`.
+- Persisted formats use `defineFormat` (`src/definition/formats/format.ts`) and `encodeJson`/`decodeJson` (`codec.ts`), never `JSON.parse`/`JSON.stringify`.
 - Snapshots store only what cannot be derived: never store reference counts, holder lists, next object IDs or timer lists (`docs/arch/definition.md`).
 - Register changes go through `src/runtime/interpreter/machine.ts` and heap changes through `Heap` (`scheduler/heap.ts`) so released handles are noted.
 

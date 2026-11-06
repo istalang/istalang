@@ -8,7 +8,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { decodeJson } from '../../../../definition/codec.ts';
+import { decodeJson } from '../../../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { compiledText, diagnosedAt } from '../../../compile.test-kit.ts';

@@ -23,7 +23,7 @@
 
 import type { Definition } from '../../../definition/definition.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
-import type { Value } from '../../../definition/values.ts';
+import type { Value } from '../../../definition/values/values.ts';
 import { memo } from '../../../structures/memo.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { InstanceGroup } from '../../instance-group.ts';

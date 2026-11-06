@@ -15,7 +15,7 @@ import {
   isComposite,
   type Value,
   withChildValues,
-} from '../../definition/values.ts';
+} from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 
 /** The part of `value` at `path`. */

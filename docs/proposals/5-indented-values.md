@@ -417,7 +417,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
    - `src/compiler/lowering/tables/type-table.ts` gives it one entry per key, with its body (an enum for a union, a struct for a shape) referring to that entry, named by the preferred alias.
 7. **`Json`.**
    - `src/stdlib/json/json.ista` declares the alias. Its codecs match members (`case Int as value`), and `natives.ts` builds maps and arrays.
-   - `src/definition/json-values.ts` finds each member's variant in the union's layout (`unionLayout`, `src/language/well-known.ts`), not by variant name, and `jsonVariants` goes.
+   - `src/definition/values/json-values.ts` finds each member's variant in the union's layout (`unionLayout`, `src/language/well-known.ts`), not by variant name, and `jsonVariants` goes.
    - `lowering/boundary/encoder.ts` and `decoder.ts` build and read members.
    - `time`, `decimal`, `regex` and `log` in `src/stdlib/` drop their `Text{…}` wrappers.
 8. **`,` separates every list.**

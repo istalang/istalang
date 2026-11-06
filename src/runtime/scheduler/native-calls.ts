@@ -10,11 +10,11 @@
  * resources through the instance's heap (§7).
  */
 
-import { namedTypeOf } from '../../definition/declared-values.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
-import { instanceHandle } from '../../definition/instance-handles.ts';
 import type { FunctionId } from '../../definition/operands.ts';
-import { closureOf, handleTarget, handleTo, type Value } from '../../definition/values.ts';
+import { namedTypeOf } from '../../definition/values/declared-values.ts';
+import { instanceHandle } from '../../definition/values/instance-handles.ts';
+import { closureOf, handleTarget, handleTo, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { passedValues, writeReference } from '../interpreter/machine.ts';
 import type {

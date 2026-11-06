@@ -16,10 +16,10 @@
  */
 
 import { createHash } from 'node:crypto';
-import { fieldValueOf } from '../../definition/declared-values.ts';
 import { type Definition, definitionFormat } from '../../definition/definition.ts';
 import { listingArguments, runningArguments } from '../../definition/test-runner.ts';
-import { elementsOf, type Value } from '../../definition/values.ts';
+import { fieldValueOf } from '../../definition/values/declared-values.ts';
+import { elementsOf, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Natives } from '../natives.ts';
 import { seedFrom } from '../random-seed.ts';

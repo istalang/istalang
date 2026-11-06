@@ -25,7 +25,7 @@
 import { z } from 'zod';
 import { fieldPath } from '../../definition/instructions/places.ts';
 import { functionId, label, objectId, register, typeId } from '../../definition/operands.ts';
-import { integer, type Value, value } from '../../definition/values.ts';
+import { integer, type Value, value } from '../../definition/values/values.ts';
 
 /**
  * What a reference parameter's register holds: a cell and field positions into its value, the

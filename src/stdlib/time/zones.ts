@@ -16,8 +16,8 @@
  */
 
 import { Temporal } from 'temporal-polyfill';
-import { fieldValueOf, type NamedFields } from '../../definition/declared-values.ts';
-import type { Value } from '../../definition/values.ts';
+import { fieldValueOf, type NamedFields } from '../../definition/values/declared-values.ts';
+import type { Value } from '../../definition/values/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import {

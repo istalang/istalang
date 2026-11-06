@@ -17,7 +17,7 @@
  */
 
 import { awaitedRegisters } from '../../definition/instructions/flow.ts';
-import { handleTarget, handleTo, type Value } from '../../definition/values.ts';
+import { handleTarget, handleTo, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { readRegister } from '../interpreter/machine.ts';
 import { Panic } from '../natives.ts';

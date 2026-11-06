@@ -25,7 +25,7 @@
 
 import type { FunctionId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/types.ts';
-import { closureOf, handleTo, type Value } from '../../definition/values.ts';
+import { closureOf, handleTo, type Value } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Heap, LiveExecution, LiveObject, LiveObjectOf } from '../scheduler/heap.ts';

@@ -10,11 +10,11 @@
  */
 
 import { z } from 'zod';
-import { encodeJson } from '../../../definition/codec.ts';
+import { encodeJson } from '../../../definition/formats/codec.ts';
 import type { FunctionDefinition } from '../../../definition/functions.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
 import type { Tables } from '../../../definition/tables.ts';
-import { type Value, value } from '../../../definition/values.ts';
+import { type Value, value } from '../../../definition/values/values.ts';
 import { memo } from '../../../structures/memo.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { lineMapOf } from '../../../text/line-map.ts';

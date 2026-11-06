@@ -43,7 +43,7 @@ All of this is new code, sized by today's TypeScript (non-test lines):
 
 ## Changes to our code and design
 
-- **A conformance spec.** Export the zod schemas of the Definition and snapshot formats (`definition/format.ts`, `codec.ts`, `runtime/snapshot/`) as JSON Schema. Add golden vectors for canonical JSON, `language/values.ts`, and the text of `Int`, `Float`, `String` and `Decimal`.
+- **A conformance spec.** Export the zod schemas of the Definition and snapshot formats (`definition/formats/format.ts`, `codec.ts`, `runtime/snapshot/`) as JSON Schema. Add golden vectors for canonical JSON, `language/values.ts`, and the text of `Int`, `Float`, `String` and `Decimal`.
 - **Std semantics settled in the spec, not by JavaScript.** Today's text follows JavaScript in several places:
   - a primitive's text is `String(value)` (`stdlib/prelude/text-forms.ts`);
   - regex replacement expands `$1` "as JavaScript does";

@@ -6,8 +6,8 @@
 
 import { describe, expect, it } from 'vitest';
 import { compiledText } from '../../compiler/compile.test-kit.ts';
-import { FormatError } from '../../definition/format.ts';
-import type { Value } from '../../definition/values.ts';
+import { FormatError } from '../../definition/formats/format.ts';
+import type { Value } from '../../definition/values/values.ts';
 import { Refusal } from '../refusal.ts';
 import { recordingStore, runToEnd, testRuntime } from '../runtime.test-kit.ts';
 import { type Snapshot, snapshotFormat } from './snapshot.ts';

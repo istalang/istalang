@@ -4,8 +4,8 @@
  * typed value is compiled code (docs/arch/boundary.md), so nothing here runs program code.
  *
  * - `Json` is a union of the language's own values (json.ista), so building one is compiled code;
- *   writing it is definition/json-values.ts's, which writes a float JSON can't hold, NaN or an
- *   infinity, as `null`, as `JSON.stringify` does, and sorts an object's keys.
+ *   writing it is definition/values/json-values.ts's, which writes a float JSON can't hold, NaN or
+ *   an infinity, as `null`, as `JSON.stringify` does, and sorts an object's keys.
  * - A host type's value is whatever JSON its host gave it, handed back unchanged (§9). A host type
  *   a `dispose` makes disposable keeps that JSON in a resource, made as the value arrives (§7).
  * - Text that isn't JSON is an `Err` saying why, never a panic: it comes from outside. The json
@@ -13,6 +13,7 @@
  */
 
 import { parameterKey } from '../../definition/extern-key.ts';
+import { isResourceType } from '../../definition/types.ts';
 import {
   JsonError,
   jsonOfPlain,
@@ -20,9 +21,8 @@ import {
   jsonText,
   jsonTypeOf,
   plainOfJson,
-} from '../../definition/json-values.ts';
-import { isResourceType } from '../../definition/types.ts';
-import { handleTarget, type Value } from '../../definition/values.ts';
+} from '../../definition/values/json-values.ts';
+import { handleTarget, type Value } from '../../definition/values/values.ts';
 import { codecHelpers, wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithResources } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';

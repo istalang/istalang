@@ -1,6 +1,6 @@
 /**
- * The `InstanceStore` seam: where a runtime persists what outlives a process (§5). It keeps
- * texts, never objects, in the canonical forms definition/format.ts writes, so a store needs no
+ * The `InstanceStore` seam: where a runtime persists what outlives a process (§5). It keeps texts,
+ * never objects, in the canonical forms definition/formats/format.ts writes, so a store needs no
  * knowledge of their contents and any storage that keeps strings will do.
  *
  * - A Definition is kept once, by its content hash; every instance names the hash it runs.

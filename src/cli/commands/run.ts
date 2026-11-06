@@ -24,7 +24,7 @@ import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { compileProgram, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
-import { FormatError } from '../../definition/format.ts';
+import { FormatError } from '../../definition/formats/format.ts';
 import { loadProject } from '../../project/project.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from '../../runtime/host.ts';
 import type { Advanced } from '../../runtime/instance-state.ts';
