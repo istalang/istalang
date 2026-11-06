@@ -18,7 +18,7 @@
  */
 
 import { disposeFunction } from '../../../../language/well-known.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Parameter } from '../../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../../syntax/node.ts';
 import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree.ts';

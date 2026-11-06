@@ -22,7 +22,7 @@
 
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
 import type { VariableOwner } from '../../../binder/entities.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type {
   ArrayLiteral,
   Expression,
@@ -31,8 +31,8 @@ import type {
   Spread,
   StructLiteral,
 } from '../../../syntax/expressions/index.ts';
-import { signedNumberOf } from '../../../syntax/expressions/numbers.ts';
-import { constantTextOf } from '../../../syntax/expressions/templates.ts';
+import { signedNumberOf } from '../../../syntax/expressions/literals/numbers.ts';
+import { constantTextOf } from '../../../syntax/expressions/literals/templates.ts';
 import type { Identifier } from '../../../syntax/node.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { VariableDeclaration } from '../../../syntax/statements.ts';
@@ -231,7 +231,7 @@ class Computation {
     }
   }
 
-  /** The default `call` gives the field after `earlier` (syntax/field-defaults.ts). */
+  /** The default `call` gives the field after `earlier` (syntax/declarations/field-defaults.ts). */
   #default(call: FunctionCall, earlier: readonly ConstantForm[]): Outcome {
     const { checker } = this.#scope;
     const declaration = call.function;

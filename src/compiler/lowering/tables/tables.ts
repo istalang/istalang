@@ -28,7 +28,7 @@ import type {
   ConstantDeclaration,
   ExternConstantDeclaration,
   FunctionDeclaration,
-} from '../../syntax/declarations.ts';
+} from '../../syntax/declarations/index.ts';
 import { type AnchoredSpan, spanIn } from '../../syntax/positions.ts';
 import type { SyntaxTree } from '../../syntax/tree.ts';
 import { nestedSpanOf } from '../bodies.ts';

@@ -7,8 +7,8 @@
  * read, so the tree shows it, and reported once, over all of it.
  */
 
-import type { TypeParameter, TypeParameters } from '../../syntax/declarations.ts';
-import type { ConstraintNode } from '../../syntax/types.ts';
+import type { TypeParameter, TypeParameters } from '../../syntax/declarations/index.ts';
+import type { ConstraintNode } from '../../syntax/types/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 import { parseConstraints } from '../parts/constraints.ts';

@@ -6,9 +6,13 @@
  * reached again while it reduces, standing for the shape it reduces to.
  */
 
-import type { AliasDeclaration, AssociatedType, TypeParameter } from '../../syntax/declarations.ts';
+import type {
+  AliasDeclaration,
+  AssociatedType,
+  TypeParameter,
+} from '../../syntax/declarations/index.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
-import type { StructType } from '../../syntax/types.ts';
+import type { StructType } from '../../syntax/types/index.ts';
 import type { RecursiveLabel } from './type/alias-uses.ts';
 import type {
   FieldMember,

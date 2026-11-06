@@ -14,9 +14,9 @@ import type {
   Field,
   FunctionDeclaration,
   TraitDeclaration,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { Invalid } from '../../../syntax/node.ts';
-import type { StructType, TypeNode } from '../../../syntax/types.ts';
+import type { StructType, TypeNode } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../context.ts';
 import type { FieldMember, Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
@@ -61,8 +61,9 @@ export function declaredFieldOf(
  * The fields of a struct declaration, an enum variant or an anonymous struct type, their types
  * resolved in `module`, where they are written, but not substituted. A field whose default gives
  * its type has its parameter's in `defaults`, the function its declaration's fields read as
- * (syntax/field-defaults.ts), whose defaults are checked to infer it (§3.1, §3.3). Each written
- * type resolves through `resolve`, the checker's resolution unless a recursive group is closing.
+ * (syntax/declarations/field-defaults.ts), whose defaults are checked to infer it (§3.1, §3.3).
+ * Each written type resolves through `resolve`, the checker's resolution unless a recursive group
+ * is closing.
  */
 export function declaredFields(
   checker: CheckerContext,

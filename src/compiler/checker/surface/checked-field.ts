@@ -10,9 +10,9 @@
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { TraitDeclaration } from '../../syntax/declarations.ts';
+import type { TraitDeclaration } from '../../syntax/declarations/index.ts';
 import type { Index, MemberAccess } from '../../syntax/expressions/index.ts';
-import type { FieldDeclaration } from '../../syntax/types.ts';
+import type { FieldDeclaration } from '../../syntax/types/index.ts';
 import type { Checker } from '../check.ts';
 import { isOpaque } from '../types/computed-types.ts';
 import type { AnyType, FieldMember, Type } from '../types/type/index.ts';

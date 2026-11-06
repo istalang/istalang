@@ -24,7 +24,7 @@ import {
   type FunctionDeclaration,
   importedNames,
   type Module,
-} from '../syntax/declarations.ts';
+} from '../syntax/declarations/index.ts';
 import { type Identifier, isMissingName } from '../syntax/node.ts';
 import { targetNames } from '../syntax/patterns.ts';
 import { binderDiagnostics } from './diagnostics.ts';

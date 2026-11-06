@@ -8,8 +8,7 @@
  */
 
 import type { VariableEntity, VariantEntity } from '../../binder/entities.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { BuiltLiteral } from '../../syntax/expressions/indented-values.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type {
   ArrayLiteral,
   Call,
@@ -23,7 +22,8 @@ import type {
   Spread,
   StructComprehension,
 } from '../../syntax/expressions/index.ts';
-import type { StringLiteral } from '../../syntax/expressions/literals.ts';
+import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type {
@@ -77,8 +77,8 @@ export interface CapturedVariable {
  * Where a struct literal's field, named `field`, gets its value (§3.1): an expression of the
  * literal, the field of that position in its leading spread's value, or its default: `call`'s
  * default for that field, of the function the fields read as, computed from the fields before it
- * (syntax/field-defaults.ts). A literal's sources come in declaration order, the order evaluation
- * follows; its value takes its type's layout by the fields' names (`laidOut`). A struct
+ * (syntax/declarations/field-defaults.ts). A literal's sources come in declaration order, the order
+ * evaluation follows; its value takes its type's layout by the fields' names (`laidOut`). A struct
  * comprehension (§3.1) is the source of every field it gives, one per field of the struct each
  * instantiation runs it over, so it names none.
  */

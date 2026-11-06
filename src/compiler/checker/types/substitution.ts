@@ -13,7 +13,7 @@
  * (identity/recursive-types.ts).
  */
 
-import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
+import { type TypeParameters, typeParametersOf } from '../../syntax/declarations/index.ts';
 import type { ComputedType, MappedParts, RecursiveType } from './computed-types.ts';
 import { mapChildren, mapParts } from './parts/type-parts.ts';
 import { aliasedAs, mapAliasUse } from './type/alias-uses.ts';

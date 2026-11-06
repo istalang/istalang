@@ -14,7 +14,7 @@
  */
 
 import type { Checker, SignatureParameter } from '../../../compiler/checker/check.ts';
-import { type FunctionDeclaration, isMethod } from '../../../compiler/syntax/declarations.ts';
+import { type FunctionDeclaration, isMethod } from '../../../compiler/syntax/declarations/index.ts';
 import {
   argumentParameterAt,
   type CallAt,

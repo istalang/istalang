@@ -18,7 +18,7 @@ import type {
   TraitDeclaration,
   TypeAliasDeclaration,
   TypeParameter,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { Type } from '../type/index.ts';
 import { boolType, intType, neverType, stringType } from '../type/primitives.ts';
 import { noProgramRules } from '../type-rules.test-kit.ts';

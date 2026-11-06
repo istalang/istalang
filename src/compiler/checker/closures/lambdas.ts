@@ -24,12 +24,12 @@
  * - The type is recorded with the parameters and captures for lowering (`functionOf`).
  */
 
-import { type FunctionDeclaration, nestedFunctionSpan } from '../../syntax/declarations.ts';
+import { type FunctionDeclaration, nestedFunctionSpan } from '../../syntax/declarations/index.ts';
 import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
+import { parameterSite } from '../../syntax/expressions/parameters.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
-import { parameterSite } from '../../syntax/parameters.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { TypeNode } from '../../syntax/types.ts';
+import type { TypeNode } from '../../syntax/types/index.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import type { SignatureParameter } from '../check.ts';
 import {

@@ -12,7 +12,7 @@
  * before `struct` (§3.18).
  */
 
-import type { Declaration, Module } from '../../syntax/declarations.ts';
+import type { Declaration, Module } from '../../syntax/declarations/index.ts';
 import type { DeclarationWord } from '../../syntax/grammar-words.ts';
 import { attachAnnotations } from '../annotations.ts';
 import type { CursorKind } from '../cursor/index.ts';

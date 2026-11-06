@@ -5,7 +5,10 @@
  * cross is rules/boundary/host-boundary.ts's.
  */
 
-import type { ExternConstantDeclaration, FunctionDeclaration } from '../../syntax/declarations.ts';
+import type {
+  ExternConstantDeclaration,
+  FunctionDeclaration,
+} from '../../syntax/declarations/index.ts';
 import type { Checker } from '../check.ts';
 import type { NominalType, Type } from '../types/type/index.ts';
 

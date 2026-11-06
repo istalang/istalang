@@ -25,11 +25,11 @@ import type {
   RequiredAssociatedType,
   TypeAliasDeclaration,
   TypeParameter,
-} from '../syntax/declarations.ts';
+} from '../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Block } from '../syntax/statements.ts';
 import type { SyntaxTree } from '../syntax/tree.ts';
-import type { TypeNode } from '../syntax/types.ts';
+import type { TypeNode } from '../syntax/types/index.ts';
 import type { Checker, VariantMember } from './check.ts';
 import type { AnnotationQueries } from './surface/checked-annotation.ts';
 import type { JsonCodecs } from './surface/json-form.ts';

@@ -9,7 +9,7 @@
  * how a token finds its own.
  */
 
-import { isMethod } from '../../compiler/syntax/declarations.ts';
+import { isMethod } from '../../compiler/syntax/declarations/index.ts';
 import type { Expression } from '../../compiler/syntax/expressions/index.ts';
 import { type Identifier, isMissingName, type QualifiedName } from '../../compiler/syntax/node.ts';
 import { spanIn } from '../../compiler/syntax/positions.ts';

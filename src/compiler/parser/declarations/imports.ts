@@ -13,8 +13,8 @@
  * name, as one being typed may spell (`import in from 'm'`), is reported and passed over.
  */
 
-import type { ImportDeclaration, ImportedName } from '../../syntax/declarations.ts';
-import type { StringLiteral } from '../../syntax/expressions/literals.ts';
+import type { ImportDeclaration, ImportedName } from '../../syntax/declarations/index.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import { type Identifier, type Invalid, isMissingName, type Missing } from '../../syntax/node.ts';
 import { isKeyword } from '../../syntax/tokens.ts';
 import type { Parser } from '../parser.ts';

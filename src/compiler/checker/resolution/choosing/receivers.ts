@@ -7,8 +7,8 @@
  * A probe: it chooses nothing and reports nothing, so asking leaves no trace.
  */
 
-import type { TypeParameter } from '../../../syntax/declarations.ts';
-import { isMethod } from '../../../syntax/declarations.ts';
+import type { TypeParameter } from '../../../syntax/declarations/index.ts';
+import { isMethod } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../context.ts';
 import type { Inference } from '../../inference/infer.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';

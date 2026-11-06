@@ -30,7 +30,7 @@ import type {
   FunctionDeclaration,
   TraitDeclaration,
   TypeParameter,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import { isPlace } from '../../../syntax/expressions/places.ts';
 import type { CheckerContext } from '../../context.ts';

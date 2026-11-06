@@ -25,7 +25,7 @@ import {
 import type { Files } from '../program/program.test-kit.ts';
 import { idOf, moduleAt } from '../program/program.test-kit.ts';
 import { isStdModule, type ModuleId, type Program } from '../program/program.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { nodesUnder } from '../syntax/tree.ts';
 import { checkedApart } from './check.test-kit.ts';
 import { type Checker, checkProgram } from './check.ts';

@@ -6,7 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { TypeParameter } from '../../../syntax/declarations.ts';
+import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import { handMadeSpan } from '../../../syntax/tree.test-kit.ts';
 import { sameShape } from '../function-types.ts';
 import { sameType } from '../identity/identity.ts';

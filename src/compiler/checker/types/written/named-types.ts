@@ -16,7 +16,7 @@
 import type { PrimitiveName } from '../../../../language/primitives.ts';
 import type { Entity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Checker } from '../../check.ts';
 import { type ShapeKey, typeKeys } from '../identity/type-keys.ts';
 import type { NominalDeclaration, Type } from '../type/index.ts';

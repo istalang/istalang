@@ -24,7 +24,7 @@ import { type Convention, isUnnamed } from '../../language/naming.ts';
 import { memo, SequenceMemo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Annotatable } from '../syntax/annotations.ts';
-import type { FunctionDeclaration, Module } from '../syntax/declarations.ts';
+import type { FunctionDeclaration, Module } from '../syntax/declarations/index.ts';
 import type {
   Comprehension,
   Expression,
@@ -37,7 +37,7 @@ import type { Pattern } from '../syntax/patterns.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Block, For, VariableDeclaration } from '../syntax/statements.ts';
 import type { SyntaxNode, SyntaxTree } from '../syntax/tree.ts';
-import type { NamedType, TypeNode } from '../syntax/types.ts';
+import type { NamedType, TypeNode } from '../syntax/types/index.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 import {
   isAlias,

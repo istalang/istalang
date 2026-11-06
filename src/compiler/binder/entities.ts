@@ -36,7 +36,7 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
   Variant,
-} from '../syntax/declarations.ts';
+} from '../syntax/declarations/index.ts';
 import type {
   Comprehension,
   FieldHeader,

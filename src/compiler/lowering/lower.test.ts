@@ -19,7 +19,7 @@ import { compiledDefinition } from '../compile.test-kit.ts';
 import { compileProgram, diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import type { Program } from '../program/program.ts';
-import { declaredFunctions } from '../syntax/declarations.ts';
+import { declaredFunctions } from '../syntax/declarations/index.ts';
 import { keyOf } from './tables/names.ts';
 
 const specModules = specExamples

@@ -20,7 +20,7 @@ import { parserDiagnostics } from './parser/diagnostics.ts';
 import { dumpClean, lines } from './parser/parse.test-kit.ts';
 import { idOf } from './program/program.test-kit.ts';
 import { programModule } from './program/program.ts';
-import type { FunctionDeclaration } from './syntax/declarations.ts';
+import type { FunctionDeclaration } from './syntax/declarations/index.ts';
 
 /** The parameter types of the first function `source` declares, as checked. */
 function parameterTypesOf(source: string): { readonly types: readonly Type[] } {

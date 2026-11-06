@@ -15,7 +15,7 @@
  *   question reached again while it is answered takes a stand-in (structures/entries/).
  */
 
-import type { AliasDeclaration } from '../../syntax/declarations.ts';
+import type { AliasDeclaration } from '../../syntax/declarations/index.ts';
 import type { MappedParts } from './computed-types.ts';
 import type { AnyType, ParameterKey, Type } from './type/index.ts';
 

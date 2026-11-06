@@ -40,14 +40,14 @@ import type {
 import { parameterText, typeText } from '../../checker/types/type-text.ts';
 import { optionalInner } from '../../checker/types/unions/unions.ts';
 import { isStdModule, type ModuleId, programModule } from '../../program/program.ts';
+import { isFieldsFunction } from '../../syntax/declarations/field-defaults.ts';
 import type {
   ExternConstantDeclaration,
   FunctionDeclaration,
   TraitDeclaration,
   TypeAliasDeclaration,
-} from '../../syntax/declarations.ts';
+} from '../../syntax/declarations/index.ts';
 import type { Parameter } from '../../syntax/expressions/index.ts';
-import { isFieldsFunction } from '../../syntax/field-defaults.ts';
 import { targetNames } from '../../syntax/patterns.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 

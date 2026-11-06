@@ -22,7 +22,7 @@ import type { Checker } from '../../compiler/checker/check.ts';
 import { nominalType, type Type } from '../../compiler/checker/types/type/index.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
 import type { ModuleId } from '../../compiler/program/program.ts';
-import { isMethod } from '../../compiler/syntax/declarations.ts';
+import { isMethod } from '../../compiler/syntax/declarations/index.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { docstringOf } from '../docstrings.ts';
 import { importedModule } from '../namespaces.ts';

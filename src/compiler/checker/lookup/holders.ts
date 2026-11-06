@@ -8,8 +8,8 @@
 
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotation } from '../../syntax/annotations.ts';
-import type { Declaration, FunctionDeclaration } from '../../syntax/declarations.ts';
-import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/field-defaults.ts';
+import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/declarations/field-defaults.ts';
+import type { Declaration, FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import type { CheckerContext } from '../context.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';

@@ -12,7 +12,7 @@
 import type { Bindings, Entity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type { Identifier } from '../../../syntax/node.ts';
-import type { NamedType } from '../../../syntax/types.ts';
+import type { NamedType } from '../../../syntax/types/index.ts';
 
 /** A named type's path split: its name and what that denotes, and the associated types past it. */
 export interface NamedPath {

@@ -41,11 +41,11 @@ import type {
   RequiredAssociatedType,
   TypeAliasDeclaration,
   TypeParameter,
-} from '../../syntax/declarations.ts';
+} from '../../syntax/declarations/index.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
-import type { TypeNode } from '../../syntax/types.ts';
+import type { TypeNode } from '../../syntax/types/index.ts';
 import { BodyChecker, type BodyKind } from '../body/body-checker.ts';
 import type { CheckedConstant, Disposal, SignatureParameter, VariantMember } from '../check.ts';
 import type {

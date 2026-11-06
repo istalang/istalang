@@ -13,7 +13,7 @@
  */
 
 import { type WellKnownDeclaration, wellKnown } from '../../../../language/well-known.ts';
-import type { TraitDeclaration } from '../../../syntax/declarations.ts';
+import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../context.ts';
 import { type DerivedCodec, type JsonDirection, jsonTraits } from '../../surface/json-form.ts';
 import { isSendable } from '../../traits/sendable.ts';

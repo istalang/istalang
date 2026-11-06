@@ -11,8 +11,8 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
-import { unparenthesizedType } from '../../syntax/types.ts';
+import type { TypeAliasDeclaration } from '../../syntax/declarations/index.ts';
+import { unparenthesizedType } from '../../syntax/types/index.ts';
 import { type Entity, type NamespaceEntity, type Qualifier, qualifies } from '../entities.ts';
 
 /** What following an alias needs of the linker. */

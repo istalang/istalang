@@ -10,7 +10,7 @@ import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { compileProgram, diagnose } from '../../../compile.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { programModule } from '../../../program/program.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import { checkProgram } from '../../check.ts';
 import { computedTypesIn, errorIn } from '../../types/parts/type-parts.ts';
 import type { Type } from '../../types/type/index.ts';

@@ -14,7 +14,7 @@ import type { ModuleId } from '../../../program/program.ts';
 import type {
   ExternConstantDeclaration,
   FunctionDeclaration,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../syntax/node.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

@@ -22,7 +22,7 @@ import {
   type FunctionDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { CheckerContext } from '../../context.ts';
 import { noSubstitution, type Substitution, substitute } from '../../types/substitution.ts';

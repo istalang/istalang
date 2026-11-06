@@ -26,7 +26,11 @@
 
 import { primitiveNames } from '../../language/primitives.ts';
 import { memo } from '../../structures/memo.ts';
-import type { FunctionDeclaration, ImportedName, NamedImport } from '../syntax/declarations.ts';
+import type {
+  FunctionDeclaration,
+  ImportedName,
+  NamedImport,
+} from '../syntax/declarations/index.ts';
 import type { Lambda } from '../syntax/expressions/index.ts';
 import type { Entity, PrimitiveEntity } from './entities.ts';
 

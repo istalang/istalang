@@ -28,16 +28,19 @@
 import type { EntryTable } from '../../../../structures/entries/index.ts';
 import { sameItems } from '../../../../structures/equality.ts';
 import {
+  type FieldsFunction,
+  fieldsFunctionOf,
+} from '../../../syntax/declarations/field-defaults.ts';
+import {
   type DeclaredStruct,
   type EnumDeclaration,
   type FunctionDeclaration,
   type TypeAliasDeclaration,
   typeParametersOf,
-} from '../../../syntax/declarations.ts';
-import { type FieldsFunction, fieldsFunctionOf } from '../../../syntax/field-defaults.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import { nodesUnder } from '../../../syntax/tree.ts';
-import { isWrittenType } from '../../../syntax/types.ts';
+import { isWrittenType } from '../../../syntax/types/index.ts';
 import type { CheckerContext, CheckerNote, Instantiable } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';

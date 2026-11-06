@@ -15,9 +15,9 @@
 
 import { builders, utils } from 'prettier/doc';
 import { scan } from '../compiler/scanner/scan.ts';
-import type { Docstring } from '../compiler/syntax/declarations.ts';
+import type { Docstring } from '../compiler/syntax/declarations/index.ts';
 import type { TemplateLiteral } from '../compiler/syntax/expressions/index.ts';
-import type { Literal } from '../compiler/syntax/expressions/literals.ts';
+import type { Literal } from '../compiler/syntax/expressions/literals/literals.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
 import type { Token } from '../compiler/syntax/tokens.ts';
 import type { SyntaxNode, SyntaxTree } from '../compiler/syntax/tree.ts';

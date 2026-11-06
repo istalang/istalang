@@ -12,7 +12,7 @@ import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { lines } from '../../../parser/parse.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { programModule } from '../../../program/program.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import { checkProgram } from '../../check.ts';
 import { unfoldRecursive } from '../computed-types.ts';
 import { sameType } from './identity.ts';

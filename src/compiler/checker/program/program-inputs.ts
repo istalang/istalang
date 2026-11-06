@@ -12,11 +12,12 @@
  * - A bare variant is read as the one its expected type chooses, not as every variant so named, so
  *   an enum added elsewhere changes only the entries whose choice it changes.
  * - Which module declares each declaration is an input too (`DeclaringModules`): an item, a trait's
- *   member, a function the fields of an item read as (syntax/field-defaults.ts), which no tree
- *   holds, and the type parameters of each, whose constraints resolve there. What a tree declares
- *   is found once per tree, so a later Program reusing the tree reuses it; a Program's index joins
- *   its trees' the first time it is asked. A local declaration's module is the one whose tree holds
- *   it, found once on demand: only tools ask, since checking a body already knows its module.
+ *   member, a function the fields of an item read as (syntax/declarations/field-defaults.ts), which
+ *   no tree holds, and the type parameters of each, whose constraints resolve there. What a tree
+ *   declares is found once per tree, so a later Program reusing the tree reuses it; a Program's
+ *   index joins its trees' the first time it is asked. A local declaration's module is the one
+ *   whose tree holds it, found once on demand: only tools ask, since checking a body already knows
+ *   its module.
  */
 
 import type { LanguageModule } from '../../../language/well-known.ts';
@@ -27,13 +28,13 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { Bindings, VariantEntity } from '../../binder/entities.ts';
 import type { ModuleId, Program } from '../../program/program.ts';
 import { isStdModule, programModule } from '../../program/program.ts';
-import type { EnumDeclaration, FunctionDeclaration } from '../../syntax/declarations.ts';
+import { fieldsFunctionsOf } from '../../syntax/declarations/field-defaults.ts';
+import type { EnumDeclaration, FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import {
   type Declaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import { fieldsFunctionsOf } from '../../syntax/field-defaults.ts';
+} from '../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import { bodyOf, parentOf, type SyntaxTree } from '../../syntax/tree.ts';

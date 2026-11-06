@@ -5,7 +5,7 @@
  * two names never touch.
  */
 
-import type { StringLiteral } from '../compiler/syntax/expressions/literals.ts';
+import type { StringLiteral } from '../compiler/syntax/expressions/literals/literals.ts';
 import { type Identifier, isMissingName } from '../compiler/syntax/node.ts';
 import { nodesAt, type SyntaxTree } from '../compiler/syntax/tree.ts';
 

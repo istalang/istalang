@@ -35,7 +35,11 @@ import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { addToGroup } from '../../../structures/groups.ts';
 import { memo, SequenceMemo } from '../../../structures/memo.ts';
 import { isTestModule, type ModuleId, type Program, programModule } from '../../program/program.ts';
-import type { EnumDeclaration, FunctionDeclaration, Module } from '../../syntax/declarations.ts';
+import type {
+  EnumDeclaration,
+  FunctionDeclaration,
+  Module,
+} from '../../syntax/declarations/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { diagnosticIn } from '../../syntax/positions.ts';
 import { bindModule, type ModuleBindings } from '../bind-module.ts';

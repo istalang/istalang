@@ -23,7 +23,7 @@ import type { TypeKeys } from '../../checker/types/identity/type-keys.ts';
 import { type Substitution, substitutionFor } from '../../checker/types/substitution.ts';
 import type { FunctionType, Type } from '../../checker/types/type/index.ts';
 import { literalType } from '../../checker/types/unions/unions.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import { qualifiedNameOf, spelledType } from './names.ts';

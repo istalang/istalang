@@ -31,7 +31,7 @@
  *   the bound is reported as such at the root use site.
  */
 
-import type { FunctionDeclaration, TypeParameter } from '../../../syntax/declarations.ts';
+import type { FunctionDeclaration, TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { RootGoals } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { type Completion, completeInference } from '../../inference/complete.ts';

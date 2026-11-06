@@ -9,10 +9,10 @@
  * function type a lambda is expected as.
  */
 
-import type { Parameter } from './expressions/index.ts';
-import type { Identifier } from './node.ts';
-import { type Pattern, type StructPattern, targetNames } from './patterns.ts';
-import type { NamedType } from './types.ts';
+import type { Identifier } from '../node.ts';
+import { type Pattern, type StructPattern, targetNames } from '../patterns.ts';
+import type { NamedType } from '../types/index.ts';
+import type { Parameter } from './index.ts';
 
 /** What a diagnostic about `parameter` points at: its name, or else the pattern it is instead. */
 export function parameterSite(parameter: Parameter): Identifier | Pattern {

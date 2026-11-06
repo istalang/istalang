@@ -53,10 +53,10 @@ import type {
   TraitDeclaration,
   TypeAliasDeclaration,
   TypeParameter,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { FieldHeader, StructLiteral } from '../../../syntax/expressions/index.ts';
 import type { RestPattern } from '../../../syntax/patterns.ts';
-import type { StructConstraint, StructType } from '../../../syntax/types.ts';
+import type { StructConstraint, StructType } from '../../../syntax/types/index.ts';
 import type {
   AssociatedOfType,
   FieldOfType,

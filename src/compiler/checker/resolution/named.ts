@@ -6,7 +6,11 @@
  */
 
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
-import type { EnumDeclaration, StructDeclaration, Variant } from '../../syntax/declarations.ts';
+import type {
+  EnumDeclaration,
+  StructDeclaration,
+  Variant,
+} from '../../syntax/declarations/index.ts';
 import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';

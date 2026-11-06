@@ -31,7 +31,7 @@ import {
 } from '../../checker/types/substitution.ts';
 import type { AnyType, Type } from '../../checker/types/type/index.ts';
 import { typeText } from '../../checker/types/type-text.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import {
   type BodyOwner,
   type FunctionInstance,

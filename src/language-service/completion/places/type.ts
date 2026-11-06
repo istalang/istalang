@@ -12,7 +12,7 @@
 import { type Entity, namesType } from '../../../compiler/binder/entities.ts';
 import { type TypeWord, typeWords } from '../../../compiler/syntax/grammar-words.ts';
 import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
-import { matchPlaceOf } from '../../../compiler/syntax/type-matches.ts';
+import { matchPlaceOf } from '../../../compiler/syntax/types/type-matches.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import { holderIn } from '../grammar/chain.ts';

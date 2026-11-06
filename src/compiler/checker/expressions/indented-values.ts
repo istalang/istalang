@@ -1,7 +1,8 @@
 /**
  * Indented values (§2): what a block builds is decided by the type it is built as, then the block
- * is checked as the brace or bracket literal it reads as (syntax/expressions/indented-values.ts),
- * so every rule of literals keeps its one home (structs/structs.ts, collections/collections.ts).
+ * is checked as the brace or bracket literal it reads as
+ * (syntax/expressions/literals/indented-values.ts), so every rule of literals keeps its one home
+ * (structs/structs.ts, collections/collections.ts).
  *
  * - `T:` naming a struct, a variant, or an alias of a struct or a shape builds a struct, `T{…}`;
  *   naming any other type, a map or an array of that type, as `[…]` built where `T` is expected.
@@ -19,7 +20,8 @@
 
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
-import { isDeclaredStruct } from '../../syntax/declarations.ts';
+import { isDeclaredStruct } from '../../syntax/declarations/index.ts';
+import type { IndentedEntry, IndentedValue } from '../../syntax/expressions/index.ts';
 import {
   entriesLeftOut,
   isItem,
@@ -27,8 +29,7 @@ import {
   type LiteralForm,
   literalOf,
   untypedForm,
-} from '../../syntax/expressions/indented-values.ts';
-import type { IndentedEntry, IndentedValue } from '../../syntax/expressions/index.ts';
+} from '../../syntax/expressions/literals/indented-values.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

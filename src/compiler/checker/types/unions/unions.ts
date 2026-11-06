@@ -16,7 +16,7 @@
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import { signedNumberOf } from '../../../syntax/expressions/numbers.ts';
+import { signedNumberOf } from '../../../syntax/expressions/literals/numbers.ts';
 import { unfolded, unfoldRecursive } from '../computed-types.ts';
 import { folded } from '../identity/recursive-types.ts';
 import { typeKeys } from '../identity/type-keys.ts';

@@ -12,7 +12,7 @@
  */
 
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
-import { isMethod as isMethodDeclaration } from '../../../syntax/declarations.ts';
+import { isMethod as isMethodDeclaration } from '../../../syntax/declarations/index.ts';
 import { linkOperator } from '../../../syntax/expressions/chains.ts';
 import type { Expression, MemberAccess } from '../../../syntax/expressions/index.ts';
 import { isMissingName } from '../../../syntax/node.ts';

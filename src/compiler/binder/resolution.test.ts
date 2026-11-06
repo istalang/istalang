@@ -7,7 +7,7 @@ import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { type Files, idOf, moduleAt } from '../program/program.test-kit.ts';
 import type { Program } from '../program/program.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import {
   boundReport,
   declaringName,

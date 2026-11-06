@@ -28,8 +28,8 @@ import type {
   IndentedItem,
   IndentedValue,
 } from '../../syntax/expressions/index.ts';
-import type { StringLiteral } from '../../syntax/expressions/literals.ts';
-import type { NamedType } from '../../syntax/types.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
+import type { NamedType } from '../../syntax/types/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { parseBlockBelow } from '../layout/bodies.ts';
 import { type ItemRules, parseLines } from '../layout/index.ts';

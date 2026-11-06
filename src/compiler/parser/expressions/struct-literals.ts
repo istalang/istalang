@@ -21,7 +21,7 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { NamedType } from '../../syntax/types.ts';
+import type { NamedType } from '../../syntax/types/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { atPostfix, breakSeparatesItems } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';

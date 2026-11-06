@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
-import type { Module } from '../../syntax/declarations.ts';
+import type { Module } from '../../syntax/declarations/index.ts';
 import { spanIn } from '../../syntax/positions.ts';
 import { dump, handMadeSpan } from '../../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';

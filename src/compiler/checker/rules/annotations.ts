@@ -25,7 +25,7 @@ import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
-import type { Declaration, Field, FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { Declaration, Field, FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Invalid, NodeOf } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';

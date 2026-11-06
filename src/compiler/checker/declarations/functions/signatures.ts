@@ -7,24 +7,24 @@
  *   gives one, and a parameter with none of these is reported. `&T` takes a reference (§3.7), which
  *   a pattern can't take apart, since it passes a place.
  * - An async function declares its real result, `Future<T>`; its body produces the `T` (§3.3).
- * - A parameter's default (§3.3) is checked as part of one body per function, in which each
- *   default sees the parameters before it (`DefaultValues`). A parameter with a default may omit
- *   its type, which is then the default's. Every parameter after one with a default has one too,
- *   since a call gives its arguments in order; a struct's or a variant's fields, read as
- *   parameters (syntax/field-defaults.ts), are named in a literal, so any of them may have one.
+ * - A parameter's default (§3.3) is checked as part of one body per function, in which each default
+ *   sees the parameters before it (`DefaultValues`). A parameter with a default may omit its type,
+ *   which is then the default's. Every parameter after one with a default has one too, since a call
+ *   gives its arguments in order; a struct's or a variant's fields, read as parameters
+ *   (syntax/declarations/field-defaults.ts), are named in a literal, so any of them may have one.
  * - A rest parameter is the last, an `Array<T>` with no default (§3.3): a call it collects nothing
  *   into gives it an empty array.
  */
 
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import { isFieldsFunction } from '../../../syntax/declarations/field-defaults.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Expression, Parameter } from '../../../syntax/expressions/index.ts';
-import { isFieldsFunction } from '../../../syntax/field-defaults.ts';
+import { parameterSite, patternNamedType } from '../../../syntax/expressions/parameters.ts';
 import { lastName } from '../../../syntax/node.ts';
-import { parameterSite, patternNamedType } from '../../../syntax/parameters.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import { type NamedType, type TypeNode, unparenthesizedType } from '../../../syntax/types.ts';
+import { type NamedType, type TypeNode, unparenthesizedType } from '../../../syntax/types/index.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

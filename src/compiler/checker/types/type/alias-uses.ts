@@ -11,7 +11,7 @@
  */
 
 import { sameItems } from '../../../../structures/equality.ts';
-import type { TypeAliasDeclaration } from '../../../syntax/declarations.ts';
+import type { TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Type } from './index.ts';
 
 /** The alias a type was written through, with the arguments it was given there (§3.17). */

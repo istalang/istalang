@@ -15,7 +15,12 @@ import { followsConvention, isUnnamed } from '../../../../language/naming.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import { isKeyword } from '../../../syntax/tokens.ts';
-import type { IndexedType, MappedField, StructType, TypeNode } from '../../../syntax/types.ts';
+import type {
+  IndexedType,
+  MappedField,
+  StructType,
+  TypeNode,
+} from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Fitting } from '../fitting/fit.ts';

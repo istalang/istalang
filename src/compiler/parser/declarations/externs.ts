@@ -9,7 +9,7 @@ import type {
   ExternConstantDeclaration,
   ExternStructDeclaration,
   FunctionDeclaration,
-} from '../../syntax/declarations.ts';
+} from '../../syntax/declarations/index.ts';
 import { documentedBy } from '../docstrings.ts';
 import { parseDocstringBelow } from '../layout/bodies.ts';
 import type { Parser } from '../parser.ts';

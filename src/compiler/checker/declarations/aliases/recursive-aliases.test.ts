@@ -15,7 +15,7 @@ import { compiledDefinition } from '../../../compile.test-kit.ts';
 import { lines } from '../../../parser/parse.test-kit.ts';
 import { type Files, idOf } from '../../../program/program.test-kit.ts';
 import { programModule } from '../../../program/program.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import { reported } from '../../check.test-kit.ts';
 import { checkProgram } from '../../check.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

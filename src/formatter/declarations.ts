@@ -18,7 +18,7 @@ import {
   type Module,
   membersAsWritten,
   type TypeParameters,
-} from '../compiler/syntax/declarations.ts';
+} from '../compiler/syntax/declarations/index.ts';
 import type { Identifier } from '../compiler/syntax/node.ts';
 import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './bodies.ts';

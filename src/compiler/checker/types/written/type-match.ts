@@ -17,9 +17,9 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
   TypeParameters,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree.ts';
-import type { TypeCase } from '../../../syntax/types.ts';
+import type { TypeCase } from '../../../syntax/types/index.ts';
 import type { MatchType } from '../computed-types.ts';
 import { mapChildren } from '../parts/type-parts.ts';
 import type { ConstraintSet, StructConstraintModel } from '../struct-constraint.ts';

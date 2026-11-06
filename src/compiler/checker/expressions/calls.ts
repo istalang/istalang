@@ -30,7 +30,7 @@
 import { staticName } from '../../../language/static-names.ts';
 import { conversionFunction } from '../../../language/well-known.ts';
 import type { Entity } from '../../binder/entities.ts';
-import { isMethod } from '../../syntax/declarations.ts';
+import { isMethod } from '../../syntax/declarations/index.ts';
 import { misplacedArgument } from '../../syntax/expressions/arguments.ts';
 import type {
   Call,

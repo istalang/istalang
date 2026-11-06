@@ -1,6 +1,10 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { type DocumentSymbol, DocumentSymbolRequest } from 'vscode-languageserver/node';
-import { boundName, type Declaration, importedNames } from '../../compiler/syntax/declarations.ts';
+import {
+  boundName,
+  type Declaration,
+  importedNames,
+} from '../../compiler/syntax/declarations/index.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
 import { targetNames } from '../../compiler/syntax/patterns.ts';
 import { type AnchoredSpan, spanIn } from '../../compiler/syntax/positions.ts';

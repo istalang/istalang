@@ -39,8 +39,8 @@
 import type { EntryTable } from '../../../../structures/entries/index.ts';
 import { withPushed } from '../../../../structures/stack.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
-import type { AliasDeclaration } from '../../../syntax/declarations.ts';
-import { type StructType, unparenthesizedType } from '../../../syntax/types.ts';
+import type { AliasDeclaration } from '../../../syntax/declarations/index.ts';
+import { type StructType, unparenthesizedType } from '../../../syntax/types/index.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { isOpaque, type MatchType, unfoldRecursive } from '../../types/computed-types.ts';
 import { closeRecursive } from '../../types/identity/recursive-types.ts';

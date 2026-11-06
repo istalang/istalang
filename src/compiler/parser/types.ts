@@ -21,7 +21,7 @@
  * `Setup<E> = async fn(async fn(E))` in §10 shows.
  */
 
-import type { TypeParameter } from '../syntax/declarations.ts';
+import type { TypeParameter } from '../syntax/declarations/index.ts';
 import type { TypeWord } from '../syntax/grammar-words.ts';
 import type {
   FunctionType,
@@ -29,7 +29,7 @@ import type {
   ReferenceType,
   RestType,
   TypeNode,
-} from '../syntax/types.ts';
+} from '../syntax/types/index.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { atPostfix, eatContinuing } from './layout/item-breaks.ts';

@@ -9,7 +9,7 @@
  */
 
 import { selfType } from '../../../language/well-known.ts';
-import type { TypeAliasDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import type { TypeAliasDeclaration, TypeParameter } from '../../syntax/declarations/index.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
 import { type MappedParts, type RecursiveType, unfoldRecursive } from './computed-types.ts';
 import { folded } from './identity/recursive-types.ts';

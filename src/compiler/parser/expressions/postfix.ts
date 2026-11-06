@@ -32,7 +32,7 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import { isPlace } from '../../syntax/expressions/places.ts';
 import { qualifiedPath } from '../../syntax/expressions/readings.ts';
-import type { TypeNode } from '../../syntax/types.ts';
+import type { TypeNode } from '../../syntax/types/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { atPostfix } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';

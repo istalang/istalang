@@ -21,9 +21,9 @@
 import { wellKnown } from '../../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { localFunctionOf } from '../../binder/entities.ts';
-import { literalOf, untypedForm } from '../../syntax/expressions/indented-values.ts';
 import type { Expression, IndentedValue, Reference } from '../../syntax/expressions/index.ts';
-import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
+import { literalOf, untypedForm } from '../../syntax/expressions/literals/indented-values.ts';
+import { signedNumberOf } from '../../syntax/expressions/literals/numbers.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
@@ -392,7 +392,10 @@ export function untypedLiteral(node: IndentedValue): Expression | undefined {
   return node.type === undefined ? literalOf(node, untypedForm(node)) : undefined;
 }
 
-/** A negated number written in place has its literal's type (syntax/expressions/numbers.ts). */
+/**
+ * A negated number written in place has its literal's type
+ * (syntax/expressions/literals/numbers.ts).
+ */
 function signedNumberType(node: Expression): Type | undefined {
   switch (signedNumberOf(node)?.kind) {
     case 'IntegerLiteral':

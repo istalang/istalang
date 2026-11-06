@@ -20,15 +20,15 @@ import {
   type VariantEntity,
 } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
-import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
-import { literalNaming } from '../../syntax/expressions/built-types.ts';
-import { bareKeyOf } from '../../syntax/expressions/indented-values.ts';
+import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations/index.ts';
 import type { Call, FieldInitializer, MemberAccess } from '../../syntax/expressions/index.ts';
-import { isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
+import { literalNaming } from '../../syntax/expressions/literals/built-types.ts';
+import { bareKeyOf } from '../../syntax/expressions/literals/indented-values.ts';
+import { isTagged, taggedCall } from '../../syntax/expressions/literals/templates.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { Hold } from '../../syntax/statements.ts';
 import { nestsFunction, parentOf, type SyntaxNode } from '../../syntax/tree.ts';
-import type { NamedType } from '../../syntax/types.ts';
+import type { NamedType } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../context.ts';
 import { declaredOutsideBodies } from '../expressions/access/names.ts';
 import { namedType } from '../resolution/named.ts';

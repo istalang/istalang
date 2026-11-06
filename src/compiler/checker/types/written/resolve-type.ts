@@ -31,7 +31,7 @@
 import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
 import type { Entity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type { TypeAliasDeclaration } from '../../../syntax/declarations.ts';
+import type { TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';
 import { type Identifier, isMissingName } from '../../../syntax/node.ts';
 import {
   type FunctionType as FunctionTypeNode,
@@ -40,7 +40,7 @@ import {
   type TypeNode,
   type UnionType,
   unparenthesizedType,
-} from '../../../syntax/types.ts';
+} from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { ownAssociatedType } from '../computed-types.ts';

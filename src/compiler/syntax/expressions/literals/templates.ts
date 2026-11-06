@@ -9,9 +9,9 @@
  *   one node per template, memoized, so whatever one phase records for the call, the next finds.
  */
 
-import { memo } from '../../../structures/memo.ts';
-import { endOf, spanAcross } from '../positions.ts';
-import type { ArrayLiteral, Call, Expression, TemplateLiteral } from './index.ts';
+import { memo } from '../../../../structures/memo.ts';
+import { endOf, spanAcross } from '../../positions.ts';
+import type { ArrayLiteral, Call, Expression, TemplateLiteral } from '../index.ts';
 
 /** A template with a tag. */
 export type TaggedTemplate = TemplateLiteral & { readonly tag: Expression };

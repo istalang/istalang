@@ -10,7 +10,7 @@ import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { createSourceText } from '../../../text/source-text.ts';
 import { scan } from '../../scanner/scan.ts';
-import type { StructDeclaration } from '../../syntax/declarations.ts';
+import type { StructDeclaration } from '../../syntax/declarations/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import { dump, errorNodes, spanViolations, strayBodies } from '../../syntax/tree.test-kit.ts';
 import type { SyntaxTree } from '../../syntax/tree.ts';

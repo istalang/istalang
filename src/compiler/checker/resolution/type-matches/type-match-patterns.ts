@@ -25,7 +25,7 @@
  *   again while it is matched holds, as two unfoldings equal so far stay equal, so matching ends.
  */
 
-import type { TypeParameter } from '../../../syntax/declarations.ts';
+import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../context.ts';
 import { constraintOn } from '../../traits/constraints.ts';
 import { isStructType } from '../../traits/struct-keys.ts';

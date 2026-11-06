@@ -23,6 +23,7 @@ import { entryFunction } from '../../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable } from '../../syntax/annotations.ts';
+import { fieldsFunctionOf } from '../../syntax/declarations/field-defaults.ts';
 import {
   type AliasDeclaration,
   type AssociatingDeclaration,
@@ -31,10 +32,9 @@ import {
   type FunctionDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
+} from '../../syntax/declarations/index.ts';
+import { parameterSite } from '../../syntax/expressions/parameters.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import { parameterSite } from '../../syntax/parameters.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkHostBoundary, crossesToHost } from '../rules/boundary/host-boundary.ts';

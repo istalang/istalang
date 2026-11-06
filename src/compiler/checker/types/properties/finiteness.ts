@@ -13,7 +13,7 @@
  * never repeat.
  */
 
-import type { StructDeclaration } from '../../../syntax/declarations.ts';
+import type { StructDeclaration } from '../../../syntax/declarations/index.ts';
 import { type RecursiveType, unfolded } from '../computed-types.ts';
 import { typeKeys } from '../identity/type-keys.ts';
 import type { FieldMember, Type } from '../type/index.ts';

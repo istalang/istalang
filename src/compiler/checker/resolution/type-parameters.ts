@@ -20,7 +20,7 @@ import type {
   RequiredAssociatedType,
   TraitDeclaration,
   TypeParameter,
-} from '../../syntax/declarations.ts';
+} from '../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type {
   CheckerContext,

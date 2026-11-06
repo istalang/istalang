@@ -22,7 +22,7 @@
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { chainStepOf, isOptionallyChained } from '../../syntax/expressions/chains.ts';
 import type {
   Expression,

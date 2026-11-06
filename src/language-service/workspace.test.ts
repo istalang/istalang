@@ -3,7 +3,7 @@ import { checkProgram } from '../compiler/checker/check.ts';
 import { diagnoseModule } from '../compiler/compile.ts';
 import { type Files, idOf, programOf } from '../compiler/program/program.test-kit.ts';
 import type { Program } from '../compiler/program/program.ts';
-import type { FunctionDeclaration } from '../compiler/syntax/declarations.ts';
+import type { FunctionDeclaration } from '../compiler/syntax/declarations/index.ts';
 import { stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
 import { memo } from '../structures/memo.ts';
 import { completionsAt } from './completion/index.ts';

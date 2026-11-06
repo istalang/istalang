@@ -23,7 +23,7 @@ import type {
   ConstantDeclaration,
   Declaration,
   FunctionDeclaration,
-} from '../../syntax/declarations.ts';
+} from '../../syntax/declarations/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { writtenBodyOf } from '../bodies.ts';
 import { instanceLowering, nestedLowering, type StartEdges } from '../function-lowering/index.ts';

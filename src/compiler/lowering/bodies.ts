@@ -5,7 +5,7 @@
  */
 
 import { type ModuleId, type Program, programModule } from '../program/program.ts';
-import { type FunctionDeclaration, nestedFunctionSpan } from '../syntax/declarations.ts';
+import { type FunctionDeclaration, nestedFunctionSpan } from '../syntax/declarations/index.ts';
 import type { Lambda } from '../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Block } from '../syntax/statements.ts';

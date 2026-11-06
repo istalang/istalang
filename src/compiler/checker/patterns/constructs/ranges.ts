@@ -3,7 +3,7 @@
  * `compare` made at that bound, and acts as a guard for exhaustiveness; an empty range is reported.
  */
 
-import { signedNumberOf } from '../../../syntax/expressions/numbers.ts';
+import { signedNumberOf } from '../../../syntax/expressions/literals/numbers.ts';
 import { binaryOperators, type Relation } from '../../../syntax/operators.ts';
 import type { LiteralPattern, RangePattern } from '../../../syntax/patterns.ts';
 import type { BodyContext } from '../../body-context.ts';

@@ -12,7 +12,7 @@
 import { compareDiagnostics, type Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { Declaration } from '../../syntax/declarations.ts';
+import type { Declaration } from '../../syntax/declarations/index.ts';
 import { diagnosticIn, type SegmentBases } from '../../syntax/positions.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import type { TypeParameters } from '../resolution/type-parameters.ts';

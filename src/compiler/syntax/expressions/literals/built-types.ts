@@ -5,8 +5,8 @@
  * hover, rename) ask here, so every literal form that names its type is listed once.
  */
 
-import type { SyntaxNode } from '../tree.ts';
-import type { IndentedValue, NewStructLiteral, StructLiteral } from './index.ts';
+import type { SyntaxNode } from '../../tree.ts';
+import type { IndentedValue, NewStructLiteral, StructLiteral } from '../index.ts';
 
 /** A value literal naming its type: braces after it, or an indented value's `T:`. */
 export type NamingLiteral = StructLiteral | NewStructLiteral | IndentedValue;

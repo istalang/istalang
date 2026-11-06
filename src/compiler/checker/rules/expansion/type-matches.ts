@@ -26,7 +26,7 @@ import {
   type AliasDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { sameType } from '../../types/identity/identity.ts';

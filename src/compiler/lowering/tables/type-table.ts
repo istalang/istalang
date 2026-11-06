@@ -53,7 +53,7 @@ import type {
 } from '../../checker/types/type/index.ts';
 import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { closeFunctionCall } from '../calls/closed-calls.ts';
 import type { FunctionInstance } from './instances.ts';
 import { qualifiedNameOf, recursiveName, spelledType, unionName } from './names.ts';

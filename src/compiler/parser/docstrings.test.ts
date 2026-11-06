@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { reportedNothing, reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
-import type { Module } from '../syntax/declarations.ts';
+import type { Module } from '../syntax/declarations/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { lines, parseAs, reported } from './parse.test-kit.ts';
 

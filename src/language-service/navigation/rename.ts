@@ -33,9 +33,9 @@ import {
   programModule,
 } from '../../compiler/program/program.ts';
 import { spellsName } from '../../compiler/scanner/characters.ts';
-import type { Field } from '../../compiler/syntax/declarations.ts';
-import type { BuiltLiteral } from '../../compiler/syntax/expressions/indented-values.ts';
+import type { Field } from '../../compiler/syntax/declarations/index.ts';
 import type { FieldsLiteral, IndentedValue } from '../../compiler/syntax/expressions/index.ts';
+import type { BuiltLiteral } from '../../compiler/syntax/expressions/literals/indented-values.ts';
 import type { Invalid } from '../../compiler/syntax/node.ts';
 import { childrenOf, nodesUnder, parentOf, type SyntaxNode } from '../../compiler/syntax/tree.ts';
 import {

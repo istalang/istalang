@@ -22,7 +22,7 @@ import {
   type ImportDeclaration,
   importedNames,
   type NamedImport,
-} from '../../../compiler/syntax/declarations.ts';
+} from '../../../compiler/syntax/declarations/index.ts';
 import type { Identifier } from '../../../compiler/syntax/node.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
 import type { Token } from '../../../compiler/syntax/tokens.ts';

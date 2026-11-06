@@ -13,9 +13,9 @@
 
 import type { EntryTable } from '../../../../structures/entries/index.ts';
 import { sameItems } from '../../../../structures/equality.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import { writesType } from '../../../syntax/parameters.ts';
+import { writesType } from '../../../syntax/expressions/parameters.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

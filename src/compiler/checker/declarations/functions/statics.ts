@@ -9,7 +9,7 @@ import type { EntryTable } from '../../../../structures/entries/index.ts';
 import { sameEntries, sameItems } from '../../../../structures/equality.ts';
 import { addToGroup } from '../../../../structures/groups.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import { declaredFunctions, type FunctionDeclaration } from '../../../syntax/declarations.ts';
+import { declaredFunctions, type FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { declaredOwnerOf, type StaticOwner } from '../../types/written/named-types.ts';
 

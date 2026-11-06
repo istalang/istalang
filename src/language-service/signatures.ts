@@ -14,8 +14,11 @@ import type { Checker, SignatureParameter } from '../compiler/checker/check.ts';
 import type { FunctionType } from '../compiler/checker/types/type/index.ts';
 import { functionTypeParts, slotText, typeText } from '../compiler/checker/types/type-text.ts';
 import { programModule } from '../compiler/program/program.ts';
-import { type FunctionDeclaration, typeParametersOf } from '../compiler/syntax/declarations.ts';
-import { patternNamedType } from '../compiler/syntax/parameters.ts';
+import {
+  type FunctionDeclaration,
+  typeParametersOf,
+} from '../compiler/syntax/declarations/index.ts';
+import { patternNamedType } from '../compiler/syntax/expressions/parameters.ts';
 import type { Pattern } from '../compiler/syntax/patterns.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
 import type { SyntaxTree } from '../compiler/syntax/tree.ts';

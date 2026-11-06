@@ -13,8 +13,7 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import type { Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { BuiltLiteral } from '../syntax/expressions/indented-values.ts';
+import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import type {
   ArrayLiteral,
   Call,
@@ -24,6 +23,7 @@ import type {
   IndentedValue,
   MapLiteral,
 } from '../syntax/expressions/index.ts';
+import type { BuiltLiteral } from '../syntax/expressions/literals/indented-values.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
@@ -38,7 +38,7 @@ import type {
   Return,
   Statement,
 } from '../syntax/statements.ts';
-import type { TypeNode } from '../syntax/types.ts';
+import type { TypeNode } from '../syntax/types/index.ts';
 import type { SignatureParameter } from './check.ts';
 import type { CheckerContext } from './context.ts';
 import type { FieldPassType } from './passes.ts';

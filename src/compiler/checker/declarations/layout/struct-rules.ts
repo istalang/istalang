@@ -5,7 +5,10 @@
  * too). A recursive alias's shape is reported at the field, any other body at the alias.
  */
 
-import type { StructDeclaration, TypeAliasDeclaration } from '../../../syntax/declarations.ts';
+import type {
+  StructDeclaration,
+  TypeAliasDeclaration,
+} from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { unfoldRecursive } from '../../types/computed-types.ts';

@@ -3,8 +3,8 @@
  *
  * `if`, `match` and `select` are expressions (expressions.ts); written as statements they are
  * ExpressionStatements. A function declaration is both a statement (a local `fn`) and a top-level
- * declaration, so it lives in declarations.ts and is listed in both unions. A variable declaration
- * likewise serves as a top-level `const`.
+ * declaration, so it lives in declarations/index.ts and is listed in both unions. A variable
+ * declaration likewise serves as a top-level `const`.
  *
  * Every body is a Block: an indented block, a one-line body (one statement), or the inside of
  * `{…}`. So the checker has one notion of a block, its scope and its value. Which form was written
@@ -16,7 +16,7 @@
 
 import { isUnnamed } from '../../language/naming.ts';
 import type { Annotatable } from './annotations.ts';
-import type { FunctionDeclaration } from './declarations.ts';
+import type { FunctionDeclaration } from './declarations/index.ts';
 import type {
   Comprehension,
   Expression,
@@ -31,7 +31,7 @@ import type { Identifier, Invalid, NodeOf } from './node.ts';
 import type { AssignmentOperator } from './operators.ts';
 import type { Pattern } from './patterns.ts';
 import type { AnchoredSpan } from './positions.ts';
-import type { NamedType, TypeNode } from './types.ts';
+import type { NamedType, TypeNode } from './types/index.ts';
 
 export interface Block extends NodeOf<'Block'> {
   readonly statements: readonly (Statement | Invalid)[];

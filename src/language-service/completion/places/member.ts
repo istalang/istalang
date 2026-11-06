@@ -21,7 +21,7 @@
 import { type NamespaceEntity, namesType, typeEntity } from '../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../compiler/checker/check.ts';
 import type { Type } from '../../../compiler/checker/types/type/index.ts';
-import type { FunctionDeclaration } from '../../../compiler/syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../../compiler/syntax/declarations/index.ts';
 import { chainStepOf } from '../../../compiler/syntax/expressions/chains.ts';
 import type { Expression, MemberAccess } from '../../../compiler/syntax/expressions/index.ts';
 import { qualifiedPath } from '../../../compiler/syntax/expressions/readings.ts';
@@ -34,7 +34,7 @@ import {
   type SyntaxNode,
   type SyntaxTree,
 } from '../../../compiler/syntax/tree.ts';
-import type { NamedType, TypeNode } from '../../../compiler/syntax/types.ts';
+import type { NamedType, TypeNode } from '../../../compiler/syntax/types/index.ts';
 import { importedModule } from '../../namespaces.ts';
 import type { Candidate } from '../candidate.ts';
 import { type Cursor, touchingBefore } from '../cursor.ts';

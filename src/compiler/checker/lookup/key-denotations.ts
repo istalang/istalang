@@ -12,11 +12,11 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
-import { literalNaming } from '../../syntax/expressions/built-types.ts';
-import type { StringLiteral } from '../../syntax/expressions/literals.ts';
+import { type TypeParameters, typeParametersOf } from '../../syntax/declarations/index.ts';
+import { literalNaming } from '../../syntax/expressions/literals/built-types.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
-import type { LiteralType } from '../../syntax/types.ts';
+import type { LiteralType } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation } from '../surface/denotation.ts';
 import { substitutionFor } from '../types/substitution.ts';

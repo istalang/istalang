@@ -7,7 +7,7 @@
  * the rule `isOneMember` states.
  */
 
-import type { TypeParameter } from '../../../syntax/declarations.ts';
+import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { UseSite } from '../../use-site.ts';
 import { type Substitution, substitute } from '../substitution.ts';

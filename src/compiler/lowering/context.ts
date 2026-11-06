@@ -20,7 +20,7 @@ import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../checker/surfac
 import type { Fit } from '../checker/types/fitting/fit.ts';
 import type { Type } from '../checker/types/type/index.ts';
 import type { ModuleId } from '../program/program.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import type { Expression, FieldHeader, Lambda } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';

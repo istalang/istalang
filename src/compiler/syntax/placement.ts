@@ -13,7 +13,7 @@
  * a declaration's word, or a statement's whose items a module holds too (`statementWordPlaces`).
  */
 
-import type { Declaration } from './declarations.ts';
+import type { Declaration } from './declarations/index.ts';
 import {
   type DeclarationWord,
   declarationWords,

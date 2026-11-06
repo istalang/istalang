@@ -21,7 +21,7 @@ import {
   type DeclaredStruct,
   type EnumDeclaration,
   typeParametersOf,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { nominalsIn } from '../../types/parts/type-parts.ts';

@@ -6,7 +6,7 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type { TypeNode } from '../../syntax/types.ts';
+import type { TypeNode } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Constraint, Type } from '../types/type/index.ts';

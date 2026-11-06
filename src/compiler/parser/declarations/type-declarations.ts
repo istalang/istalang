@@ -25,7 +25,7 @@ import type {
   TraitMember,
   TypeAliasDeclaration,
   Variant,
-} from '../../syntax/declarations.ts';
+} from '../../syntax/declarations/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { spanAcross } from '../../syntax/positions.ts';
 import { attachAnnotations } from '../annotations.ts';

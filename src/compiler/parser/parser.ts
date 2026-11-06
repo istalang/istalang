@@ -30,7 +30,7 @@ import {
   type Declaration,
   type FunctionDeclaration,
   nestedFunctionSpan,
-} from '../syntax/declarations.ts';
+} from '../syntax/declarations/index.ts';
 import type { Expression } from '../syntax/expressions/index.ts';
 import type { Identifier, Invalid, Missing } from '../syntax/node.ts';
 import type { PrecedenceLevel } from '../syntax/operators.ts';
@@ -39,7 +39,7 @@ import { type AnchoredSpan, type Segment, type SegmentBases, spanIn } from '../s
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
-import type { TypeNode } from '../syntax/types.ts';
+import type { TypeNode } from '../syntax/types/index.ts';
 import { unclosedBracketEnds } from './brackets.ts';
 import { Cursor, type CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';

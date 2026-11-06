@@ -12,7 +12,7 @@
  * (syntax/positions.ts).
  */
 
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { Block } from '../../syntax/statements.ts';
 import { parserDiagnostics } from '../diagnostics.ts';

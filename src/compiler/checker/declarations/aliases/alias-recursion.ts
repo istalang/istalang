@@ -33,9 +33,9 @@ import {
   type TypeAliasDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../../syntax/declarations.ts';
-import { inferTypesIn } from '../../../syntax/type-matches.ts';
-import type { NamedType, TypeMatch, TypeNode } from '../../../syntax/types.ts';
+} from '../../../syntax/declarations/index.ts';
+import type { NamedType, TypeMatch, TypeNode } from '../../../syntax/types/index.ts';
+import { inferTypesIn } from '../../../syntax/types/type-matches.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { isMatchAlias } from '../../types/computed-types.ts';

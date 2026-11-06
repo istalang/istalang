@@ -11,7 +11,7 @@
  * each head a segment, so their list has no span of its own.
  */
 
-import type { Docstring } from '../../syntax/declarations.ts';
+import type { Docstring } from '../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { spanAcross } from '../../syntax/positions.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';

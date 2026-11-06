@@ -12,7 +12,7 @@ import type {
   EntryField,
   FieldEntry,
   StructConstraint,
-} from '../../syntax/types.ts';
+} from '../../syntax/types/index.ts';
 import { type ItemRules, parseItemEntries } from '../layout/index.ts';
 import { atPostfix, eatContinuing } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';

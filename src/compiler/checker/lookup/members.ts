@@ -22,7 +22,7 @@ import {
   declaredFunctions,
   type FunctionDeclaration,
   importedNames,
-} from '../../syntax/declarations.ts';
+} from '../../syntax/declarations/index.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { CheckerContext } from '../context.ts';
 import {

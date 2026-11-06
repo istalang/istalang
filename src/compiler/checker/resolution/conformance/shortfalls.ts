@@ -17,7 +17,7 @@
  *   constraints imply it (`entailed`).
  */
 
-import type { RequiredAssociatedType, TypeParameter } from '../../../syntax/declarations.ts';
+import type { RequiredAssociatedType, TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import {

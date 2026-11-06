@@ -8,7 +8,7 @@
  */
 
 import { pushAll } from '../../structures/stack.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import type { Block } from '../syntax/statements.ts';
 import { isNode, type SyntaxNode } from '../syntax/tree.ts';
 

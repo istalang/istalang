@@ -7,8 +7,8 @@
 
 import { typeText } from '../compiler/checker/types/type-text.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
+import { parameterNames } from '../compiler/syntax/expressions/parameters.ts';
 import { type Identifier, isMissingName } from '../compiler/syntax/node.ts';
-import { parameterNames } from '../compiler/syntax/parameters.ts';
 import { targetNames } from '../compiler/syntax/patterns.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
 import { declaredTargets } from '../compiler/syntax/statements.ts';

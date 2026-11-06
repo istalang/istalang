@@ -21,7 +21,7 @@ import {
   type SyntaxNode,
   type SyntaxTree,
 } from '../../compiler/syntax/tree.ts';
-import type { TypeNode } from '../../compiler/syntax/types.ts';
+import type { TypeNode } from '../../compiler/syntax/types/index.ts';
 import {
   corpusClient,
   programDocuments as documents,

@@ -21,7 +21,7 @@ import {
   type TypeParameter,
   type TypeParameters,
   typeParametersOf,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
 import type { ParameterKey, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';

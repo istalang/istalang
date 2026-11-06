@@ -13,9 +13,8 @@
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import type { AliasBody, Field } from '../syntax/declarations.ts';
+import type { AliasBody, Field } from '../syntax/declarations/index.ts';
 import type { Invalid } from '../syntax/node.ts';
-import { inferTypesIn } from '../syntax/type-matches.ts';
 import type {
   ConstraintNode,
   MappedField,
@@ -23,7 +22,8 @@ import type {
   StructType,
   TypeCase,
   TypeNode,
-} from '../syntax/types.ts';
+} from '../syntax/types/index.ts';
+import { inferTypesIn } from '../syntax/types/type-matches.ts';
 import { typeEntity } from './entities.ts';
 import { holdsNoNames, type LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';

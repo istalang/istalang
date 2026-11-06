@@ -34,7 +34,7 @@ import {
   declaredFunctions,
   type FunctionDeclaration,
   typeParametersOf,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { positionalCounts } from '../../resolution/choosing/binding.ts';

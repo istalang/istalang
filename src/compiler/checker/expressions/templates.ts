@@ -7,13 +7,17 @@
  *   are then joined by the prelude's `join`. A template without values is its text.
  * - A value converts to what its `toString` takes, as an argument does, so a union of literals is
  *   written by its base's (§2).
- * - A tagged template is the call it stands for (syntax/expressions/templates.ts), checked as any
- *   written call is, so the tag's parameters decide what its values must be.
+ * - A tagged template is the call it stands for (syntax/expressions/literals/templates.ts), checked
+ *   as any written call is, so the tag's parameters decide what its values must be.
  */
 
 import { templateFunctions } from '../../../language/well-known.ts';
 import type { TemplateLiteral } from '../../syntax/expressions/index.ts';
-import { constantTextOf, isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
+import {
+  constantTextOf,
+  isTagged,
+  taggedCall,
+} from '../../syntax/expressions/literals/templates.ts';
 import type { BodyContext } from '../body-context.ts';
 import { type StoppingOperand, stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

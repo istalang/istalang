@@ -33,7 +33,7 @@ import type {
   StructPattern,
 } from '../../../compiler/syntax/patterns.ts';
 import { nodesAt, parentOf, type SyntaxNode } from '../../../compiler/syntax/tree.ts';
-import type { NamedType } from '../../../compiler/syntax/types.ts';
+import type { NamedType } from '../../../compiler/syntax/types/index.ts';
 import { checkedTwinOf } from '../checked-twin.ts';
 import type { Cursor } from '../cursor.ts';
 import { holderIn } from '../grammar/chain.ts';

@@ -16,9 +16,9 @@
  */
 
 import { isUnnamed } from '../../../language/naming.ts';
-import type { DeclaredField, TypeParameter } from '../../syntax/declarations.ts';
+import type { DeclaredField, TypeParameter } from '../../syntax/declarations/index.ts';
 import type { Invalid, Missing } from '../../syntax/node.ts';
-import type { FieldDeclaration, MappedField, StructType } from '../../syntax/types.ts';
+import type { FieldDeclaration, MappedField, StructType } from '../../syntax/types/index.ts';
 import { attachAnnotations } from '../annotations.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { parseBody } from '../layout/bodies.ts';

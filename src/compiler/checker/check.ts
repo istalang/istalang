@@ -19,7 +19,7 @@ import type {
   FunctionDeclaration,
   TypeAliasDeclaration,
   TypeParameter,
-} from '../syntax/declarations.ts';
+} from '../syntax/declarations/index.ts';
 import type { Parameter } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements.ts';

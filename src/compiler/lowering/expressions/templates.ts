@@ -2,12 +2,16 @@
  * Templates (§2). An untagged template writes each value as text with the `toString` the checker
  * chose, in order, and joins its texts and those with the prelude's `join`, the texts that are
  * empty left out; one without values is its text. A tagged template is the call it stands for
- * (syntax/expressions/templates.ts), lowered as any written call is.
+ * (syntax/expressions/literals/templates.ts), lowered as any written call is.
  */
 
 import type { Register } from '../../../definition/operands.ts';
 import type { TemplateLiteral } from '../../syntax/expressions/index.ts';
-import { constantTextOf, isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
+import {
+  constantTextOf,
+  isTagged,
+  taggedCall,
+} from '../../syntax/expressions/literals/templates.ts';
 import { emitImplicitCall } from '../calls/emit-call.ts';
 import type { FunctionContext } from '../context.ts';
 

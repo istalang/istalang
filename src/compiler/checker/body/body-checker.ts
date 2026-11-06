@@ -32,20 +32,20 @@ import { withPushed } from '../../../structures/stack.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { BuiltLiteral } from '../../syntax/expressions/indented-values.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type {
   Call,
   Expression,
   FieldHeader,
   IndentedValue,
 } from '../../syntax/expressions/index.ts';
+import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Assignment, Block, Statement, VariableDeclaration } from '../../syntax/statements.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
-import type { TypeNode } from '../../syntax/types.ts';
+import type { TypeNode } from '../../syntax/types/index.ts';
 import type {
   AcceptedPart,
   Accepts,

@@ -11,7 +11,7 @@
  */
 
 import fc from 'fast-check';
-import type { TypeNode } from '../syntax/types.ts';
+import type { TypeNode } from '../syntax/types/index.ts';
 
 export type TypeTree =
   | { readonly atom: string }

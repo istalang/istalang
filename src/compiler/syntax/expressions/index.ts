@@ -22,8 +22,8 @@ import type { Identifier, Invalid, Missing, NodeOf } from '../node.ts';
 import type { BinaryOperator, ChainingOperator, UnaryOperator } from '../operators.ts';
 import type { Pattern } from '../patterns.ts';
 import type { Block } from '../statements.ts';
-import type { NamedType, TypeNode } from '../types.ts';
-import type { Literal, StringLiteral } from './literals.ts';
+import type { NamedType, TypeNode } from '../types/index.ts';
+import type { Literal, StringLiteral } from './literals/literals.ts';
 
 /** `...xs` inside an array, map, call or struct literal. */
 export interface Spread extends NodeOf<'Spread'> {
@@ -162,7 +162,7 @@ interface IndentedValueOf<Type extends NamedType | undefined> extends NodeOf<'In
  * A struct, map or array value written as an indented block (§2): after `T:` or `new T:`, which
  * name its type, or after a line ending in `=`, `return`, a key's `:` or an item's `-`, when it
  * takes its type from the expected one. It reads alike whatever it builds: the type it is built as
- * decides that (syntax/expressions/indented-values.ts), so it is one node for every block.
+ * decides that (syntax/expressions/literals/indented-values.ts), so it is one node for every block.
  */
 export type IndentedValue =
   | (IndentedValueOf<NamedType> & { readonly isNew: boolean })

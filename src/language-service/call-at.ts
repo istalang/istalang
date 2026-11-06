@@ -12,7 +12,7 @@
 
 import type { SignatureParameter } from '../compiler/checker/check.ts';
 import type { JoinedBody } from '../compiler/checker/surface/denotation.ts';
-import { type FunctionDeclaration, isMethod } from '../compiler/syntax/declarations.ts';
+import { type FunctionDeclaration, isMethod } from '../compiler/syntax/declarations/index.ts';
 import type { Call } from '../compiler/syntax/expressions/index.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
 import type { Token } from '../compiler/syntax/tokens.ts';

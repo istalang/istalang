@@ -8,12 +8,13 @@
  *   `"LOG_LEVEL"` and the shorthand `name` is `"name": name`.
  * - As an array: `[…]` of the items' values.
  *
- * Entries the literal can't hold are left out of it: the checker reports them (expressions/
- * indented-values.ts) and checks their values alone. Each literal is made once per value and form
- * and keeps the entries' own nodes, so what checking records of them, lowering and tools read.
+ * Entries the literal can't hold are left out of it: the checker reports them
+ * (expressions/literals/ indented-values.ts) and checks their values alone. Each literal is made
+ * once per value and form and keeps the entries' own nodes, so what checking records of them,
+ * lowering and tools read.
  */
 
-import { memo } from '../../../structures/memo.ts';
+import { memo } from '../../../../structures/memo.ts';
 import type {
   ArrayLiteral,
   FieldInitializer,
@@ -24,7 +25,7 @@ import type {
   NewStructLiteral,
   Spread,
   StructLiteral,
-} from './index.ts';
+} from '../index.ts';
 import type { StringLiteral } from './literals.ts';
 
 /** What an indented value is built as. */

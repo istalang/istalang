@@ -8,7 +8,7 @@
 
 import fc from 'fast-check';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { StructDeclaration } from '../../../syntax/declarations.ts';
+import type { StructDeclaration } from '../../../syntax/declarations/index.ts';
 import { handMadeSpan } from '../../../syntax/tree.test-kit.ts';
 import { holdsRecursion } from '../parts/type-children.ts';
 import { type NominalEntity, shapeType, type Type } from '../type/index.ts';

@@ -11,7 +11,7 @@
  *   after its own type and default are bound: its name, and the names its pattern binds, which
  *   the parameter owns, as a declaration owns its targets' (patterns.ts). A field's default may use the fields before it the
  *   same way (§3.1), as a parameter of the function the fields read as
- *   (syntax/field-defaults.ts).
+ *   (syntax/declarations/field-defaults.ts).
  * - A named lambda's name is visible only inside the lambda (§3.14).
  * - `Self` is defined in a trait's scope, and only there (§3.10).
  * - A static function's owner (`Duration` in `fn Duration.zero()`) is a type use in the scope
@@ -20,6 +20,7 @@
 
 import { selfType } from '../../language/well-known.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { fieldsFunctionOf } from '../syntax/declarations/field-defaults.ts';
 import {
   type AssociatingDeclaration,
   type Declaration,
@@ -32,9 +33,8 @@ import {
   type TypeParameters,
   typeParametersOf,
   type Variant,
-} from '../syntax/declarations.ts';
+} from '../syntax/declarations/index.ts';
 import type { Lambda, Parameter } from '../syntax/expressions/index.ts';
-import { fieldsFunctionOf } from '../syntax/field-defaults.ts';
 import type { Invalid } from '../syntax/node.ts';
 import { endOf } from '../syntax/positions.ts';
 import { bodyOf, type SyntaxNode } from '../syntax/tree.ts';

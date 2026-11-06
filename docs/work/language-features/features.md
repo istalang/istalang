@@ -41,7 +41,7 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
 ## F4 Named arguments; parameters as a struct
 
 - **Decided:** `f(times: 5, backoff: 2s)`, the struct-literal spelling. A function's parameters are modelled as a struct: fields with defaults, the rest parameter as one array field. Call syntax is sugar over it. Names filter overload candidates (Kotlin), and aren't part of a function's identity. Function values have no names, so only direct calls of declared functions take named arguments.
-- **One defaults mechanism:** a parameter default becomes what a field default already is (`syntax/field-defaults.ts`, `lowerFieldDefault`): one entry per defaulted parameter, computing it from the ones before. The caller fills each missing parameter, then calls the full entry. The per-arity `f/N` entries (`lowerDefaults`, `instanceKey`'s `/arity`) go. A named function used as a shorter function value keeps one synthesized entry.
+- **One defaults mechanism:** a parameter default becomes what a field default already is (`syntax/declarations/field-defaults.ts`, `lowerFieldDefault`): one entry per defaulted parameter, computing it from the ones before. The caller fills each missing parameter, then calls the full entry. The per-arity `f/N` entries (`lowerDefaults`, `instanceKey`'s `/arity`) go. A named function used as a shorter function value keeps one synthesized entry.
 - **Structural first:** one signature or slot model replaces the 5 separate arity computations (`choice.ts`, `rules/clashes.ts`, `closures/function-values.ts`, `closures/value-calls.ts`, `lowering/tables/instances.ts`).
 - **Gaps:**
   - positional after named (default: refused, as in Kotlin);

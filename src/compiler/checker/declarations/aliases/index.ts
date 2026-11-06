@@ -23,10 +23,10 @@ import {
   type TypeAliasDeclaration,
   type TypeParameters,
   typeParametersOf,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import { parentOf } from '../../../syntax/tree.ts';
-import { inferTypesIn } from '../../../syntax/type-matches.ts';
-import type { TypeCase, TypeMatch } from '../../../syntax/types.ts';
+import type { TypeCase, TypeMatch } from '../../../syntax/types/index.ts';
+import { inferTypesIn } from '../../../syntax/types/type-matches.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { matchCase } from '../../resolution/type-matches/type-match-patterns.ts';

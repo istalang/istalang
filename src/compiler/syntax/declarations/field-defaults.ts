@@ -13,7 +13,9 @@
  * entries are named after the struct or variant, not a static function's owner type.
  */
 
-import { memo } from '../../structures/memo.ts';
+import { memo } from '../../../structures/memo.ts';
+import type { Parameter } from '../expressions/index.ts';
+import type { Invalid } from '../node.ts';
 import {
   type Declaration,
   type DeclaredField,
@@ -24,14 +26,12 @@ import {
   hasDefault,
   type Module,
   type Variant,
-} from './declarations.ts';
-import type { Parameter } from './expressions/index.ts';
-import type { Invalid } from './node.ts';
+} from './index.ts';
 
 /**
  * Whose fields a fields function's parameters are: a struct's, or one variant's of an enum. It is
  * plain data with no `kind`, so a walk over the function's fields never takes it, or the owner it
- * holds, for a child node (tree.ts).
+ * holds, for a child node (../tree.ts).
  */
 type FieldsOwner =
   | { readonly struct: DeclaredStruct }

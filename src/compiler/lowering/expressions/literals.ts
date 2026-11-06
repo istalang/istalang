@@ -6,7 +6,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { durationForm } from '../../checker/surface/constant-form.ts';
-import type { DurationLiteral } from '../../syntax/expressions/literals.ts';
+import type { DurationLiteral } from '../../syntax/expressions/literals/literals.ts';
 import type { FunctionContext } from '../context.ts';
 import { constantValue } from '../tables/constants.ts';
 

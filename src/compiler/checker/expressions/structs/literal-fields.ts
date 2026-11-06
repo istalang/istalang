@@ -18,9 +18,9 @@
  *   (literal-sources.ts), so lowering and compile time read it rather than reading the items
  *   again. A literal with a mistake in its items has no record: nothing compiles it.
  * - A field left out with names alone takes its default (§3.1), from that field's default of the
- *   function the declaration's fields read as (syntax/field-defaults.ts), instantiated with the
- *   literal's type arguments, its constraints met where the literal is. A spread gives every
- *   field, so a literal with one runs no default.
+ *   function the declaration's fields read as (syntax/declarations/field-defaults.ts), instantiated
+ *   with the literal's type arguments, its constraints met where the literal is. A spread gives
+ *   every field, so a literal with one runs no default.
  */
 
 import {
@@ -30,7 +30,7 @@ import {
   hasDefault,
   type TypeAliasDeclaration,
   typeParametersOf,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import type {
   Expression,
   FieldItem,
@@ -39,7 +39,7 @@ import type {
 } from '../../../syntax/expressions/index.ts';
 import { itemName, itemValue, unparenthesized } from '../../../syntax/expressions/readings.ts';
 import { lastName } from '../../../syntax/node.ts';
-import type { NamedType } from '../../../syntax/types.ts';
+import type { NamedType } from '../../../syntax/types/index.ts';
 import type { BodyContext } from '../../body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { completeInference } from '../../inference/complete.ts';
@@ -397,7 +397,7 @@ export function declaresDefault(field: FieldMember | undefined): boolean {
 /**
  * By field position, for each field the literal leaves out, the call of `shape`'s defaults with the
  * literal's `typeArguments`, whose default for that field gives it. Its parameters are the fields
- * in order, so they are numbered as the shape's fields are (syntax/field-defaults.ts).
+ * in order, so they are numbered as the shape's fields are (syntax/declarations/field-defaults.ts).
  */
 function defaultCalls(
   context: BodyContext,

@@ -19,7 +19,7 @@ import { bindProgram } from './binder/bind.ts';
 import { checkProgram } from './checker/check.ts';
 import { lower, lowerTests } from './lowering/lower.ts';
 import { type ModuleId, type Program, programModule } from './program/program.ts';
-import type { FunctionDeclaration } from './syntax/declarations.ts';
+import type { FunctionDeclaration } from './syntax/declarations/index.ts';
 
 export interface ModuleDiagnostics {
   readonly source: SourceText;

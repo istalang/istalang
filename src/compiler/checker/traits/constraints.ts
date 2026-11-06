@@ -21,9 +21,13 @@ import type {
   RequiredAssociatedType,
   TraitDeclaration,
   TypeParameter,
-} from '../../syntax/declarations.ts';
+} from '../../syntax/declarations/index.ts';
 import { lastName } from '../../syntax/node.ts';
-import { type FieldDeclaration, type TypeNode, unparenthesizedType } from '../../syntax/types.ts';
+import {
+  type FieldDeclaration,
+  type TypeNode,
+  unparenthesizedType,
+} from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { RequirementOrigin } from '../surface/resolved-call.ts';

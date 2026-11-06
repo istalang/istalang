@@ -23,14 +23,14 @@
 import type { EntryTable } from '../../../../structures/entries/index.ts';
 import { sameItems } from '../../../../structures/equality.ts';
 import { memo } from '../../../../structures/memo.ts';
+import { fieldsFunctionOf } from '../../../syntax/declarations/field-defaults.ts';
 import type {
   DeclaredStruct,
   EnumDeclaration,
   Field,
   FunctionDeclaration,
   Variant,
-} from '../../../syntax/declarations.ts';
-import { fieldsFunctionOf } from '../../../syntax/field-defaults.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { Invalid } from '../../../syntax/node.ts';
 import type { VariantMember } from '../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';

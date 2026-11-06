@@ -6,7 +6,7 @@ import {
   type Position,
   ReferencesRequest,
 } from 'vscode-languageserver/node';
-import type { StringLiteral } from '../../compiler/syntax/expressions/literals.ts';
+import type { StringLiteral } from '../../compiler/syntax/expressions/literals/literals.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
 import { nodesUnder, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { lineMapOf } from '../../text/line-map.ts';

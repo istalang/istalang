@@ -12,7 +12,7 @@ import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { scan } from '../scanner/scan.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import type { Segment } from '../syntax/positions.ts';
 import type { Block } from '../syntax/statements.ts';
 import { dump } from '../syntax/tree.test-kit.ts';

@@ -14,11 +14,11 @@
 
 import type { Entity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type { AliasDeclaration, TypeAliasDeclaration } from '../../../syntax/declarations.ts';
+import type { AliasDeclaration, TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Identifier } from '../../../syntax/node.ts';
 import type { SyntaxNode } from '../../../syntax/tree.ts';
-import { matchPlaceOf } from '../../../syntax/type-matches.ts';
-import type { InferType, NamedType } from '../../../syntax/types.ts';
+import type { InferType, NamedType } from '../../../syntax/types/index.ts';
+import { matchPlaceOf } from '../../../syntax/types/type-matches.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { ownAssociatedType } from '../computed-types.ts';

@@ -24,7 +24,7 @@
  */
 
 import { wellKnown } from '../../../../language/well-known.ts';
-import { typeParametersOf } from '../../../syntax/declarations.ts';
+import { typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../../body-context.ts';

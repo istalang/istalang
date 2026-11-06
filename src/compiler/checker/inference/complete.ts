@@ -6,7 +6,7 @@
  * calls and literals report it alike.
  */
 
-import type { TypeParameter } from '../../syntax/declarations.ts';
+import type { TypeParameter } from '../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../context.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type/index.ts';

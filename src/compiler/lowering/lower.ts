@@ -15,7 +15,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/surface/host-externs.ts';
 import { substitute } from '../checker/types/substitution.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { writtenBodyOf } from './bodies.ts';
 import { derivedCodecDirection, derivedCodecEntry } from './boundary/codecs.ts';
 import {

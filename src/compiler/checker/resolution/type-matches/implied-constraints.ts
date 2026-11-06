@@ -10,7 +10,7 @@
  * - A struct case's entries are walked alike: an exact type, or a trait an entry must meet.
  */
 
-import { type TypeParameter, typeParametersOf } from '../../../syntax/declarations.ts';
+import { type TypeParameter, typeParametersOf } from '../../../syntax/declarations/index.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree.ts';
 import type { CheckerContext } from '../../context.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';

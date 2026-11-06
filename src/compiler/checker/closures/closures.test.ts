@@ -11,7 +11,7 @@ import { reportedNothing } from '../../../diagnostics/diagnostic.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { idOf } from '../../program/program.test-kit.ts';
 import { type Program, programModule } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Lambda } from '../../syntax/expressions/index.ts';
 import { nodesUnder } from '../../syntax/tree.ts';
 import { reported } from '../check.test-kit.ts';

@@ -14,12 +14,12 @@
  *   another (`new Inbox{...*box}`).
  */
 
-import { isDeclaredStruct } from '../../../syntax/declarations.ts';
+import { fieldsFunctionOf } from '../../../syntax/declarations/field-defaults.ts';
+import { isDeclaredStruct } from '../../../syntax/declarations/index.ts';
 import type { FieldsLiteral, StructLiteral } from '../../../syntax/expressions/index.ts';
 import { itemValue } from '../../../syntax/expressions/readings.ts';
-import { fieldsFunctionOf } from '../../../syntax/field-defaults.ts';
 import { lastName } from '../../../syntax/node.ts';
-import type { NamedType } from '../../../syntax/types.ts';
+import type { NamedType } from '../../../syntax/types/index.ts';
 import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../../body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { partsAccept, partsBuild } from '../../rules/agreement.ts';

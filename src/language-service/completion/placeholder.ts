@@ -21,7 +21,10 @@
 
 import { parse } from '../../compiler/parser/parse.ts';
 import { scan } from '../../compiler/scanner/scan.ts';
-import { buildsShared, literalNaming } from '../../compiler/syntax/expressions/built-types.ts';
+import {
+  buildsShared,
+  literalNaming,
+} from '../../compiler/syntax/expressions/literals/built-types.ts';
 import type { Identifier } from '../../compiler/syntax/node.ts';
 import {
   declaredTargets,
@@ -30,7 +33,7 @@ import {
 } from '../../compiler/syntax/statements.ts';
 import type { TokenKind } from '../../compiler/syntax/tokens.ts';
 import { extentIn, nodesAt, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
-import { isWrittenType } from '../../compiler/syntax/types.ts';
+import { isWrittenType } from '../../compiler/syntax/types/index.ts';
 import { createSourceText } from '../../text/source-text.ts';
 import { codeTokensOf } from '../tokens.ts';
 import type { Cursor } from './cursor.ts';

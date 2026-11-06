@@ -7,10 +7,10 @@
 
 import type { ModuleId } from '../../program/program.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
-import type { StringLiteral } from '../../syntax/expressions/literals.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
-import type { TypeNode } from '../../syntax/types.ts';
+import type { TypeNode } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation, JoinedBody, LookupQueries, TypeMembers } from '../surface/denotation.ts';
 import { knownConstraints } from '../traits/known-constraints.ts';

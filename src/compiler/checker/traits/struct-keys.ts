@@ -21,12 +21,12 @@
  */
 
 import { compareOrdered } from '../../../language/order.ts';
-import type { TypeParameter } from '../../syntax/declarations.ts';
+import type { TypeParameter } from '../../syntax/declarations/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import { parentOf } from '../../syntax/tree.ts';
-import type { StructType } from '../../syntax/types.ts';
+import type { StructType } from '../../syntax/types/index.ts';
 import type { BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import { isOpaque, type MappedParts } from '../types/computed-types.ts';

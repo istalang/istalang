@@ -25,14 +25,19 @@ import { memo, SequenceMemo } from '../../structures/memo.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import type { Span } from '../../text/span.ts';
 import type { Annotation } from './annotations.ts';
-import type { Declaration, DeclarationPart, FunctionDeclaration, Module } from './declarations.ts';
+import type {
+  Declaration,
+  DeclarationPart,
+  FunctionDeclaration,
+  Module,
+} from './declarations/index.ts';
 import type { Expression, ExpressionPart, Lambda } from './expressions/index.ts';
 import type { Identifier, Invalid, Missing } from './node.ts';
 import type { Pattern, PatternPart } from './patterns.ts';
 import { type SegmentBases, spanIn } from './positions.ts';
 import type { Block, Statement, StatementPart } from './statements.ts';
 import type { Comment } from './tokens.ts';
-import type { TypeNode, TypePart } from './types.ts';
+import type { TypeNode, TypePart } from './types/index.ts';
 
 export type SyntaxNode =
   | Identifier

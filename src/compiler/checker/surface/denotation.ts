@@ -26,12 +26,12 @@ import type {
   AssociatedType,
   FunctionDeclaration,
   RequiredAssociatedType,
-} from '../../syntax/declarations.ts';
+} from '../../syntax/declarations/index.ts';
 import type { Lambda, MemberAccess } from '../../syntax/expressions/index.ts';
-import type { StringLiteral } from '../../syntax/expressions/literals.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
-import type { TypeNode } from '../../syntax/types.ts';
+import type { TypeNode } from '../../syntax/types/index.ts';
 import type { VariantMember } from '../check.ts';
 import type { Constraint, FieldMember, Type } from '../types/type/index.ts';
 import type { BodyFacts, CheckedFunction } from './checked-body.ts';

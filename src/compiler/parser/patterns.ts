@@ -35,7 +35,7 @@ import type {
   StructPattern,
   WildcardPattern,
 } from '../syntax/patterns.ts';
-import type { TypeNode } from '../syntax/types.ts';
+import type { TypeNode } from '../syntax/types/index.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { atPostfix, continues } from './layout/item-breaks.ts';

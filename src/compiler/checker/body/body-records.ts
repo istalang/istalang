@@ -6,15 +6,15 @@
  */
 
 import type { VariantEntity } from '../../binder/entities.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { BuiltLiteral } from '../../syntax/expressions/indented-values.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type {
   Call,
   Expression,
   FieldHeader,
   IndentedValue,
 } from '../../syntax/expressions/index.ts';
-import type { StringLiteral } from '../../syntax/expressions/literals.ts';
+import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { Assignment, Block } from '../../syntax/statements.ts';
 import type { FieldPassType, Pass, Passes } from '../passes.ts';

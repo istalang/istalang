@@ -20,7 +20,7 @@
  *   taken once at its entry (`currentClosure`).
  * - A default's entry takes the parameters before its own, and gives its default (§3.1, §3.3);
  *   a struct's or variant's fields are parameters of a function of their own
- *   (syntax/field-defaults.ts), so a field's default is one too.
+ *   (syntax/declarations/field-defaults.ts), so a field's default is one too.
  * - A start entry (boundary/starts.ts) is a function's own body compiled once more with its
  *   arguments arriving as `Json`, each decoded into its parameter, so a host-started instance runs
  *   as one execution of the function.
@@ -47,7 +47,7 @@ import type { Fit } from '../../checker/types/fitting/fit.ts';
 import { substitute } from '../../checker/types/substitution.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Expression, FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';

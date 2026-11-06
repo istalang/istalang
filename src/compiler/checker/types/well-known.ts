@@ -6,7 +6,7 @@
  */
 
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
-import type { TraitDeclaration } from '../../syntax/declarations.ts';
+import type { TraitDeclaration } from '../../syntax/declarations/index.ts';
 import type { Checker } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Type } from './type/index.ts';

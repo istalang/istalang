@@ -12,7 +12,7 @@ import {
   type FunctionDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../../syntax/declarations.ts';
+} from '../../../syntax/declarations/index.ts';
 import type { Expression, Match, MemberAccess } from '../../../syntax/expressions/index.ts';
 import { casesOf } from '../../../syntax/expressions/readings.ts';
 import type { Pattern } from '../../../syntax/patterns.ts';
