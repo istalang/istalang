@@ -19,7 +19,7 @@ import type { IndexedType, MappedField, StructType, TypeNode } from '../../synta
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { declaredFields } from './declared-fields.ts';
-import type { Fitting } from './fit.ts';
+import type { Fitting } from './fitting/fit.ts';
 import { errorType } from './primitives.ts';
 import { type Substitution, substitute } from './substitution.ts';
 import { type ParameterKey, shapeType, type Type } from './type.ts';

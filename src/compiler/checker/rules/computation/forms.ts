@@ -14,7 +14,7 @@ import type { NodeOf } from '../../../syntax/node.ts';
 import type { CheckerContext } from '../../context.ts';
 import type { ConstantForm } from '../../surface/constant-form.ts';
 import { laidOut, namedValues } from '../../types/field-order.ts';
-import type { Fit } from '../../types/fit.ts';
+import type { Fit } from '../../types/fitting/fit.ts';
 
 /** How computing a part of an initializer went: computed, refused (`form` or `endless`), or already in error. */
 export type Outcome =

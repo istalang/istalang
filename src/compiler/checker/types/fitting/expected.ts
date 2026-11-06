@@ -23,15 +23,15 @@
  *   from the expected type, else from its declaration's defaults (`expectedNominal`).
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
-import { typeParametersOf } from '../../syntax/declarations.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { unfolded } from './computed-types.ts';
-import { errorType, expectsError } from './primitives.ts';
+import { wellKnown } from '../../../../language/well-known.ts';
+import { typeParametersOf } from '../../../syntax/declarations.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../../body-context.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { unfolded } from '../computed-types.ts';
+import { errorType, expectsError } from '../primitives.ts';
 import {
   type FunctionType,
   type NominalDeclaration,
@@ -40,10 +40,10 @@ import {
   nominalType,
   type Type,
   type UnionType,
-} from './type.ts';
-import { typeArgumentsFor } from './type-arguments.ts';
-import { membersOf, optionalInner } from './unions/unions.ts';
-import { arrayElement, wellKnownArguments } from './well-known.ts';
+} from '../type.ts';
+import { typeArgumentsFor } from '../type-arguments.ts';
+import { membersOf, optionalInner } from '../unions/unions.ts';
+import { arrayElement, wellKnownArguments } from '../well-known.ts';
 
 /**
  * What taking an expected type apart needs of the program: its well-known types, and its rules,

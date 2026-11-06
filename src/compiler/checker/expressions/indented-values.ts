@@ -7,7 +7,7 @@
  *   naming any other type, a map or an array of that type, as `[…]` built where `T` is expected.
  * - With no `T`, the expected type decides, as for `struct{…}` and `[…]`: a struct type builds a
  *   struct; a type a map literal builds, a map; an array type, an array. A union is built as the
- *   one member the value fits, which choosing found before (types/expected.ts). A value whose
+ *   one member the value fits, which choosing found before (types/fitting/expected.ts). A value whose
  *   type nothing decides builds what its entries say: items an array, a quoted key a map, names
  *   alone a shape.
  * - Entries the literal can't hold are reported, each once, and their values checked alone, so
@@ -32,7 +32,7 @@ import type { IndentedEntry, IndentedValue } from '../../syntax/expressions/inde
 import { lastName } from '../../syntax/node.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { builtFrom, collectionTarget } from '../types/expected.ts';
+import { builtFrom, collectionTarget } from '../types/fitting/expected.ts';
 import { errorType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
@@ -219,7 +219,7 @@ function checkValuesAlone(context: BodyContext, entries: readonly IndentedEntry[
 }
 
 /**
- * Which types `node` can be built as where a call or a union decides (types/expected.ts): for each,
+ * Which types `node` can be built as where a call or a union decides (types/fitting/expected.ts): for each,
  * whether the literal of the form that type asks for takes it, its entries all held there. A value
  * naming its type is taken as its literal is, a variant's by its enums.
  */

@@ -6,7 +6,7 @@
  *   inference), and reports against it only where the spec says a value must fit (`expect`, or
  *   `fit` for a type already checked). Every type mismatch is reported through `fit`.
  * - What lowering needs is recorded as checking goes: every expression's type, every call's
- *   target, and every value's implicit conversions (§2, types/fit.ts), which `fit` finds: on the
+ *   target, and every value's implicit conversions (§2, types/fitting/fit.ts), which `fit` finds: on the
  *   node giving the value, or, for a value an assignment writes, on its part
  *   (statements/assignments.ts). Nothing is recomputed later, so lowering sees what was checked.
  * - A node is checked once. A literal of items each with a type of its own, checked before the type
@@ -91,7 +91,7 @@ import { statementPlace } from '../surface/checked-annotation.ts';
 import type { CheckedBody, ValueSite } from '../surface/checked-body.ts';
 import type { ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
 import { unfolded } from '../types/computed-types.ts';
-import { exactFit, type Fit, isExact, misfitOf } from '../types/fit.ts';
+import { exactFit, type Fit, isExact, misfitOf } from '../types/fitting/fit.ts';
 import { keysOwner } from '../types/key-types.ts';
 import { errorType, unitType } from '../types/primitives.ts';
 import type { FieldMember, FunctionType, Type } from '../types/type.ts';

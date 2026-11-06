@@ -32,7 +32,7 @@ import type {
   TargetStep,
 } from '../../surface/checked-pattern.ts';
 import { unfolded } from '../../types/computed-types.ts';
-import type { Fit } from '../../types/fit.ts';
+import type { Fit } from '../../types/fitting/fit.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import {
   type Substitution,

@@ -32,7 +32,7 @@ import {
 import { type Application, chooseAsValue, signatureOf } from '../resolution/choice.ts';
 import { instantiate } from '../resolution/conformance.ts';
 import { namedType } from '../resolution/named.ts';
-import { expectedFunction } from '../types/expected.ts';
+import { expectedFunction } from '../types/fitting/expected.ts';
 import { withPack } from '../types/function-types.ts';
 import { errorType, expectsError } from '../types/primitives.ts';
 import { substitute } from '../types/substitution.ts';

@@ -13,7 +13,7 @@
  * Every refinement is dropped here, so a new one widens by adding its case. A sendable function type
  * widens to the plain function type of the same signature at any depth (§3.14), and a literal type
  * to its base (§2), but only as the whole type: a literal type inside another one is a value a
- * container holds, which no conversion reaches (../fit.ts), so `"a"` and `"b"` agree on `String`.
+ * container holds, which no conversion reaches (../fitting/fit.ts), so `"a"` and `"b"` agree on `String`.
  */
 
 import { sameType } from '../identity/identity.ts';

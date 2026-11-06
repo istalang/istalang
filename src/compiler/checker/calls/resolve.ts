@@ -40,7 +40,7 @@ import type { Candidate } from '../resolution/candidates.ts';
 import type { Application } from '../resolution/choice.ts';
 import type { Instantiation } from '../resolution/conformance.ts';
 import type { ResolvedSite } from '../surface/resolved-call.ts';
-import { misfitOf } from '../types/fit.ts';
+import { misfitOf } from '../types/fitting/fit.ts';
 import { errorType } from '../types/primitives.ts';
 import type { LiteralType, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

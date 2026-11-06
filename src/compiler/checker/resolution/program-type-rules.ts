@@ -3,7 +3,7 @@
  * (types/type-rules.ts: whether an `any` member of a union takes another member whole, what an
  * associated type, a field's type, a struct's keys or a mapped struct type of a known type reduce
  * to), and fitting a value to a type
- * (types/fit.ts), which adds conformance, the shapes of nominal structs and member parameters.
+ * (types/fitting/fit.ts), which adds conformance, the shapes of nominal structs and member parameters.
  *
  * An absorbing question is an entry of the checker's tables, keyed by both types' keys:
  * conformance may build the very union asking, so a question reached again while it is answered
@@ -21,7 +21,7 @@ import type { CheckerContext, CheckerNote } from '../context.ts';
 import { associatedTypeOf, type Expansion } from '../traits/known-constraints.ts';
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../traits/struct-keys.ts';
 import { unfolded } from '../types/computed-types.ts';
-import type { Fitting } from '../types/fit.ts';
+import type { Fitting } from '../types/fitting/fit.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { errorType } from '../types/primitives.ts';

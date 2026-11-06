@@ -16,7 +16,7 @@ import type { BodyContext } from '../body-context.ts';
 import { itemField } from '../surface/struct-items.ts';
 import { aliasedAs } from '../types/alias-uses.ts';
 import { unfolded } from '../types/computed-types.ts';
-import { builtFrom } from '../types/expected.ts';
+import { builtFrom } from '../types/fitting/expected.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
 import {
   type AnonymousStructType,

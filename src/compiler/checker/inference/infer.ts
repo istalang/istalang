@@ -9,7 +9,7 @@
  * - A type argument written is taken as given: what is matched has it in place before matching, so
  *   `f<Int?>(o)` for `fn f<T>(x: T?)` matches `Int?` against `Int?`, never `T` against what `None`
  *   leaves. Whether it stands for a member parameter is instantiation's to check
- *   (types/member-arguments.ts).
+ *   (types/fitting/member-arguments.ts).
  * - A pack binds only what can stand for one, a tuple, `Unit` or a pack (§3.5); a function type's
  *   pack binds to the parameters past the fixed ones (types/type.ts, `sameShape`).
  * - A shape matches a shape of the same field names, field by field, in the name order both keep.
@@ -37,11 +37,11 @@
  *   their say (`bindNeverWhereOpen`), as `expectPanic(fn(): panic("x"))` needs.
  */
 
-import { type Fitting, fitOf, matchConversion } from '../types/fit.ts';
+import { type Fitting, fitOf, matchConversion } from '../types/fitting/fit.ts';
+import { isOneMember } from '../types/fitting/member-arguments.ts';
 import { fillsPack, functionFits, isPack } from '../types/function-types.ts';
 import { sameType } from '../types/identity/identity.ts';
 import { UnfoldingPairs } from '../types/identity/unfolding-pairs.ts';
-import { isOneMember } from '../types/member-arguments.ts';
 import { typeChildren } from '../types/parts/type-children.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
 import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
@@ -356,7 +356,7 @@ export class Inference {
 
   /**
    * What `given` fills `parameter` with: itself, unless `parameter` is a member parameter (§3.5),
-   * which only one member of its union fills (types/member-arguments.ts `isOneMember`): `given`,
+   * which only one member of its union fills (types/fitting/member-arguments.ts `isOneMember`): `given`,
    * or a literal of a member's base as that base. Undefined when nothing fills it, `given` holding
    * several members noted as such.
    */

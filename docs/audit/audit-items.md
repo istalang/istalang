@@ -115,8 +115,8 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - `BodyChecker.entityOf` mutates closure capture state as a side effect of name lookup (`this.functions.noteUse(this, name, entity)`, Q2).
 
 #### 3.2 `src/compiler/checker/types/` & `src/compiler/checker/inference/`
-- **Duplicate 5-step implicit conversion hierarchy in `types/fit.ts` and `inference/infer.ts` (D222):**
-  - `fitOf` (`types/fit.ts`) and `Inference.match` (`inference/infer.ts`) implement the exact same 5-way implicit conversion sequence:
+- **Duplicate 5-step implicit conversion hierarchy in `types/fitting/fit.ts` and `inference/infer.ts` (D222):**
+  - `fitOf` (`types/fitting/fit.ts`) and `Inference.match` (`inference/infer.ts`) implement the exact same 5-way implicit conversion sequence:
     1. Exact / assignable match (`isAssignable` vs. `#matchExact`)
     2. Plain function → `async` function (`fitsAsync` vs. `#matchMadeAsync`)
     3. Value ↔ 1-element tuple (`singleConversion` vs. `#matchSingle`)
@@ -299,7 +299,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 ### 1. Narrow Solutions That Can Be Extracted, Generalized & Used on a Wider Scope
 
-1. **Unified Implicit-Conversion Matcher (`src/compiler/checker/types/fit.ts` & `src/compiler/checker/inference/infer.ts`, D222):**
+1. **Unified Implicit-Conversion Matcher (`src/compiler/checker/types/fitting/fit.ts` & `src/compiler/checker/inference/infer.ts`, D222):**
    - Both `fitOf` and `Inference.match` implement the exact same 5-step conversion hierarchy (exact/assignable → plain-to-async function → 1-tuple ↔ element → `any` trait object → `Optional` wrapping), differing only in how leaf types compare. Extracting one parameterized conversion matcher makes adding or changing an implicit conversion a single-file edit.
 2. **Whole-Body AST / Control-Flow Analysis (`src/compiler/checker/flow/forward.ts` vs. `rules/annotations.ts`, `rules/disposal.ts`, `rules/suites.ts`):**
    - `flow/forward.ts` models intra-function control flow (skipping nested functions via `nestsFunction`), while `waits` (`annotations.ts`), `checkSelfStays` (`disposal.ts`), and `firstEffect` (`suites.ts`) each hand-roll recursive AST walks over `childrenOf` / `bodyChildrenOf`.
@@ -350,7 +350,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 | Concept / Rule | Home 1 | Home 2 (+ others) |
 | --- | --- | --- |
-| 5-step implicit conversion (`Fit` vs. `Inference`) | `checker/types/fit.ts` (`fitOf`) | `checker/inference/infer.ts` (`Inference.match`) (D222) |
+| 5-step implicit conversion (`Fit` vs. `Inference`) | `checker/types/fitting/fit.ts` (`fitOf`) | `checker/inference/infer.ts` (`Inference.match`) (D222) |
 | Binary vs. chained vs. pattern comparisons | `checker/expressions/operators.ts` (`checkBinary`) & `lowering/expressions/operators.ts` (`lowerBinary`) | `checkChainedComparison` / `compared` & `patterns/matching.ts` / `lowering/patterns.ts` (D226) |
 | Module-qualified name `${module}.${name}` | `language/well-known.ts` (`qualifiedName`) | `lowering/names.ts` (`qualifiedNameOf`), `definition/extern-key.ts` (`externKey`) (D174) |
 | Member-access chain → `QualifiedName` | `parser/parts/names.ts` (`qualifiedPath`) | `binder/expressions.ts` (`qualifiedPathOf`) |
@@ -394,7 +394,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | **6** | **Fix case-less `select:` with `else:` (`src/compiler/lowering/expressions/select.ts`, D149) & stale `${name}$` in diagnostic 5702 (`src/compiler/checker/diagnostics/lifetimes.ts`):** Lower 0-case `select` directly to its `else` body; update 5702 message to `*${name}`. | Bug Fix (Lowering / Diagnostics) | 2 files | XS |
 | **7** | **Guard host process against VM frame-depth OOM, `[...s]` string-length OOM, and unbounded `decimal` places (`src/runtime/scheduler/segment/limits.ts`, `src/text/code-points.ts`, `src/stdlib/decimal/arithmetic.ts`, D155, D194, D195):** Enforce max frame depth in `SegmentRunner.call`, add $O(1)$-space `codePointCount`, and cap `decimal` places. | Resilience / Safety | 5 files | S |
 | **8** | **Leaf DRY extractions (`qualifiedName` [D174], `qualifiedPath`, time-unit constants, `compareOrdered`, `closureOf` [Q15], `fieldValueOf` in `declared-values.ts` [Q16, Q17, D201], `optionalInt` → `buildVariant`, `arrayElement` in `types/well-known.ts` [Q8]):** Deduplicate leaf helpers from foundation upward. | DRY | ~18 leaf files | S |
-| **9** | **Unify 5-step implicit conversion logic between `types/fit.ts` and `inference/infer.ts` (D222) + `never` return type assignability (D180):** Extract shared conversion matcher parameterized by leaf comparison. | Generalization / DRY | 3 files in `checker/` | M |
+| **9** | **Unify 5-step implicit conversion logic between `types/fitting/fit.ts` and `inference/infer.ts` (D222) + `never` return type assignability (D180):** Extract shared conversion matcher parameterized by leaf comparison. | Generalization / DRY | 3 files in `checker/` | M |
 | **10** | **Unify comparison & membership checking and lowering (`expressions/operators.ts`, `patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/patterns.ts`, D226):** One checker function and one lowering function over `ComparisonLink` and pattern ordering tests. | DRY / Generalization | 4 files in `compiler/` | M |
 | **11** | **Unify runtime `HeapObject` kind tables, `isRoot`, and `WeakSide` handle surface (`src/runtime/snapshot/holdings.ts`, `lifetimes/`, `scheduler/`, D115, D116, D165, D198):** One `isRoot(object)` in `holdings.ts`, `Handlers` for all kind tables, and consistent handle/id methods on `WeakSide`. | Architecture / DRY | 6 files in `runtime/` | M |
 | **12** | **Remove upward type-imports in contracts (`checker/context.ts` [Q13], `checker/resolution/choice.ts` [D230], `runtime/natives.ts` [D179]) and enable type-import cycle checking:** Move shared vocabularies to lower modules. | Layering / DIP | 8 files | M |

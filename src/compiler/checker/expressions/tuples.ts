@@ -15,7 +15,7 @@ import type { Accepts, BodyContext, PartReader } from '../body-context.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { partsAccept, partsBuild } from '../rules/agreement.ts';
-import { expectedTuple } from '../types/expected.ts';
+import { expectedTuple } from '../types/fitting/expected.ts';
 import { errorType, unitType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

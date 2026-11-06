@@ -44,7 +44,7 @@ import { declareParameter } from '../patterns/targets.ts';
 import type { Produced } from '../rules/agreement.ts';
 import type { NestedFunction } from '../surface/checked-body.ts';
 import { isSendable } from '../traits/sendable.ts';
-import { expectedFunction } from '../types/expected.ts';
+import { expectedFunction } from '../types/fitting/expected.ts';
 import { isPack, packRestSlot, type RestSlot, withPack } from '../types/function-types.ts';
 import { errorType, expectsError, unitType } from '../types/primitives.ts';
 import type { FunctionType, Type } from '../types/type.ts';

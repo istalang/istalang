@@ -43,7 +43,7 @@ import type { CheckedBody, FieldSource } from '../../surface/checked-body.ts';
 import { type ConstantForm, durationForm, formSemantics } from '../../surface/constant-form.ts';
 import type { FunctionCall } from '../../surface/resolved-call.ts';
 import { laidOut } from '../../types/field-order.ts';
-import { isExact } from '../../types/fit.ts';
+import { isExact } from '../../types/fitting/fit.ts';
 import { type Substitution, substitute, substitutionFor } from '../../types/substitution.ts';
 import { computed, fittedForm, itemsOf, type Outcome, pairOf, refused, unknown } from './forms.ts';
 

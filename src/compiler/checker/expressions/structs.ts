@@ -24,8 +24,8 @@ import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../body-con
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { partsAccept, partsBuild } from '../rules/agreement.ts';
 import type { FieldSource } from '../surface/checked-body.ts';
-import { builtFrom } from '../types/expected.ts';
 import { inFieldOrder } from '../types/field-order.ts';
+import { builtFrom } from '../types/fitting/expected.ts';
 import { errorType } from '../types/primitives.ts';
 import {
   type FieldMember,
@@ -181,7 +181,7 @@ function shapeOf(context: BodyContext, type: Type): LiteralShape | undefined {
 
 /**
  * `expected`, when it is a union with a member of `entity`'s type: none of them took the literal,
- * or it would be expected alone (types/expected.ts), so a literal inferring no type arguments of its
+ * or it would be expected alone (types/fitting/expected.ts), so a literal inferring no type arguments of its
  * own doesn't fit it.
  */
 function unionHolding(expected: Type | undefined, entity: NominalEntity): Type | undefined {

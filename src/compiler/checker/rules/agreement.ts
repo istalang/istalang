@@ -24,7 +24,7 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import type { ValueSite } from '../surface/checked-body.ts';
-import { type Fit, isExact } from '../types/fit.ts';
+import { type Fit, isExact } from '../types/fitting/fit.ts';
 import { mapChildren } from '../types/parts/type-parts.ts';
 import { isPrimitive } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';

@@ -17,7 +17,7 @@
 
 import type { Entity } from '../../compiler/binder/entities.ts';
 import { checkProgram } from '../../compiler/checker/check.ts';
-import { enumsExpected, sameNominal } from '../../compiler/checker/types/expected.ts';
+import { enumsExpected, sameNominal } from '../../compiler/checker/types/fitting/expected.ts';
 import type { Type } from '../../compiler/checker/types/type.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
 import { membersOf } from '../../compiler/checker/types/unions/unions.ts';

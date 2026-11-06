@@ -1,5 +1,5 @@
 /**
- * The member of an expected union a value is built as (§2, types/expected.ts `memberBuilt`), as
+ * The member of an expected union a value is built as (§2, types/fitting/expected.ts `memberBuilt`), as
  * every expression's check reads it (body-checker.ts `expression`): decided before checking from
  * what the value is known to take, and, for a literal whose own type turned out not to go into the
  * union, again from its checked items, which rebuilds it as that member.
@@ -11,7 +11,7 @@
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AcceptedPart, BodyContext } from '../body-context.ts';
 import { unfolded } from '../types/computed-types.ts';
-import { memberBuilt } from '../types/expected.ts';
+import { memberBuilt } from '../types/fitting/expected.ts';
 import type { Type } from '../types/type.ts';
 import { isBuiltLiteral, openBuildsOf } from './expressions.ts';
 

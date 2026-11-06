@@ -398,7 +398,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
 3. **The checker** dispatches an `IndentedValue` by its type to the checks that exist, so each rule keeps one home:
    - struct literals: `checker/expressions/structs.ts` and `literal-fields.ts`;
    - map and array literals: `checker/expressions/collections.ts` and `collection-accepts.ts`;
-   - building from an expected union: `checker/types/expected.ts`.
+   - building from an expected union: `checker/types/fitting/expected.ts`.
 
    One adapter reads the entries as those checks read items. The checked form is the literal's, so `src/compiler/lowering/` needs nothing.
 4. **The formatter** prints an indented value as it was written (`src/formatter/literals.ts`, `bodies.ts`), never turning braces into a block or back.

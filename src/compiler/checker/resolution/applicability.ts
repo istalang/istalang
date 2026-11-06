@@ -22,7 +22,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { CheckerContext } from '../context.ts';
 import { Inference } from '../inference/infer.ts';
 import type { Binding } from '../surface/resolved-call.ts';
-import { reshapes } from '../types/fit.ts';
+import { reshapes } from '../types/fitting/fit.ts';
 import { fillsPack } from '../types/function-types.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
 import { errorType } from '../types/primitives.ts';

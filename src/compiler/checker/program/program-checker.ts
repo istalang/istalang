@@ -78,7 +78,7 @@ import type { CheckedBody } from '../surface/checked-body.ts';
 import type { ResolvedCall } from '../surface/resolved-call.ts';
 import { resolveAnyType } from '../traits/any-types.ts';
 import { memberUnionOf } from '../traits/struct-keys.ts';
-import { type Fit, type Fitting, fitOf } from '../types/fit.ts';
+import { type Fit, type Fitting, fitOf } from '../types/fitting/fit.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
 import type { StaticOwner } from '../types/named-types.ts';
 import { sameTypeSpelled, unaliased } from '../types/parts/type-parts.ts';

@@ -9,7 +9,7 @@
  *   recursive or not: a recursive alias's uses are their structure (§3.17).
  * - An alias names the type it stands for; a trait, a type parameter, `Self` and `Never`, which no
  *   value has, name no type a value is tested for.
- * - An `any` type holds a type whose values convert into it (types/fit.ts), the conversion's own
+ * - An `any` type holds a type whose values convert into it (types/fitting/fit.ts), the conversion's own
  *   rule, so what a pattern may name there and what may be converted in agree.
  * - Against an `any` value, a variant qualified by its enum names the enum, whose value is then
  *   tested for the variant; a bare variant name is chosen by the expected enum, so it names none.

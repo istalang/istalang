@@ -43,7 +43,7 @@ import type {
   ResolvedCall,
   ResolvedSite,
 } from '../../checker/surface/resolved-call.ts';
-import type { Fit } from '../../checker/types/fit.ts';
+import type { Fit } from '../../checker/types/fitting/fit.ts';
 import { substitute } from '../../checker/types/substitution.ts';
 import type { Type } from '../../checker/types/type.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';

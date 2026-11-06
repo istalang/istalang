@@ -12,7 +12,7 @@ import type { Pass } from '../../passes.ts';
 import type { BodyFacts, CheckedBody } from '../../surface/checked-body.ts';
 import { type JoinedBody, type ListedFacts, listedFacts } from '../../surface/denotation.ts';
 import type { ResolvedCall } from '../../surface/resolved-call.ts';
-import { exactFit } from '../../types/fit.ts';
+import { exactFit } from '../../types/fitting/fit.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import type { TypeRules } from '../../types/type-rules.ts';
 import { type Instantiation, instantiationBy } from './instantiation.ts';

@@ -8,12 +8,12 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reported } from '../check.test-kit.ts';
+import { reported } from '../../check.test-kit.ts';
+import { boolType, errorType, intType, neverType, stringType, unitType } from '../primitives.ts';
+import type { Type } from '../type.ts';
+import { noProgramRules } from '../type-rules.test-kit.ts';
+import { optionalInner, optionalOf, unionOf } from '../unions/unions.ts';
 import { type Fit, fitOf } from './fit.ts';
-import { boolType, errorType, intType, neverType, stringType, unitType } from './primitives.ts';
-import type { Type } from './type.ts';
-import { noProgramRules } from './type-rules.test-kit.ts';
-import { optionalInner, optionalOf, unionOf } from './unions/unions.ts';
 
 /** Fitting in a program no `any` type is met in. */
 const fitting = {

@@ -28,7 +28,7 @@ import type { Identifier } from '../../syntax/node.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import type { AcceptedPart, Accepts, BodyContext, PartReader, TypedPart } from '../body-context.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
-import { takingUnfolded } from '../types/expected.ts';
+import { takingUnfolded } from '../types/fitting/expected.ts';
 import {
   boolType,
   errorType,
@@ -185,7 +185,7 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
  * Which parameter types `node` can take when the call it is passed to decides its type; undefined
  * when it has a type of its own. A recursive type takes it as what it unfolds to, and a union of
  * which the value can be built as one member takes it too, as it is then built (§2,
- * types/expected.ts `memberBuilt`).
+ * types/fitting/expected.ts `memberBuilt`).
  */
 export function acceptsOf(context: BodyContext, node: Expression): Accepts | undefined {
   const accepts = handlerOf(acceptsHandlers, node)(context, node);
@@ -354,7 +354,7 @@ const buildsHandlers: Handlers<BodyContext, Expression, [PartReader], Accepts | 
 /**
  * The types `node`'s items, as `read` reads them, can build it as instead of its own (§3.7), and,
  * as every `Accepts` taken apart does, a recursive type or a union it is built as one member of
- * (types/expected.ts `takingUnfolded`).
+ * (types/fitting/expected.ts `takingUnfolded`).
  */
 function buildsOf(context: BodyContext, node: Expression, read: PartReader): Accepts | undefined {
   const builds = handlerOf(buildsHandlers, node)(context, node, read);
@@ -363,7 +363,7 @@ function buildsOf(context: BodyContext, node: Expression, read: PartReader): Acc
 
 /**
  * The types `node` can be built as while its own type is known only through checking (§2,
- * types/expected.ts `memberBuilt`): a collection literal's by its shape, maybe parenthesized or
+ * types/fitting/expected.ts `memberBuilt`): a collection literal's by its shape, maybe parenthesized or
  * written as an indented value naming no type; undefined for any other expression.
  */
 export function openBuildsOf(context: BodyContext, node: Expression): Accepts | undefined {

@@ -18,7 +18,7 @@ import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import type { BodyContext } from '../body-context.ts';
 import type { Inference } from '../inference/infer.ts';
 import type { Application } from '../resolution/choice.ts';
-import { collectionTarget, expectedFunction, expectedTuple } from '../types/expected.ts';
+import { collectionTarget, expectedFunction, expectedTuple } from '../types/fitting/expected.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
 import type { Type } from '../types/type.ts';
 

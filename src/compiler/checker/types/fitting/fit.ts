@@ -29,18 +29,18 @@
  *   which makes no fit rather than a guess, or it doesn't fit at all.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { unfolded } from './computed-types.ts';
-import { isAssignable } from './identity/identity.ts';
-import { parametersIn } from './parts/type-parts.ts';
-import { isPrimitive } from './primitives.ts';
-import type { AnonymousStructType, AnyType, Type, TypeParameterType, UnionType } from './type.ts';
-import type { TypeRules } from './type-rules.ts';
-import { typeText } from './type-text.ts';
-import { absorbingMember, baseOf } from './unions/union-members.ts';
-import { hasMember, membersOf } from './unions/unions.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { unfolded } from '../computed-types.ts';
+import { isAssignable } from '../identity/identity.ts';
+import { parametersIn } from '../parts/type-parts.ts';
+import { isPrimitive } from '../primitives.ts';
+import type { AnonymousStructType, AnyType, Type, TypeParameterType, UnionType } from '../type.ts';
+import type { TypeRules } from '../type-rules.ts';
+import { typeText } from '../type-text.ts';
+import { absorbingMember, baseOf } from '../unions/union-members.ts';
+import { hasMember, membersOf } from '../unions/unions.ts';
 
 /**
  * What converts a value itself, before it goes into a union: nothing, the conversion into an `any`
@@ -80,7 +80,7 @@ interface IntoUnion {
 export const exactFit: Fit = { conversion: { kind: 'none' } };
 
 /**
- * What fitting needs of the program: the rules types are built by (type-rules.ts), whether a type
+ * What fitting needs of the program: the rules types are built by (../type-rules.ts), whether a type
  * meets an `any` type's constraints, the shape a nominal struct's value converts into, if any
  * (§3.1), and the union a member parameter stands for one member of (§3.5).
  */

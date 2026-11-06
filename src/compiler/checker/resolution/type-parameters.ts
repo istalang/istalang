@@ -30,8 +30,8 @@ import type {
 } from '../context.ts';
 import { resolveConstraint } from '../traits/constraints.ts';
 import { resolveConstraintSet, resolveStructConstraint } from '../traits/struct-constraints.ts';
+import { standsForMember } from '../types/fitting/member-arguments.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
-import { standsForMember } from '../types/member-arguments.ts';
 import { sameConstraintSpelled } from '../types/parts/type-parts.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import {

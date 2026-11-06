@@ -1,5 +1,5 @@
 /**
- * A value made to fit where the checker found it fits (§2, checker/types/fit.ts): converted once,
+ * A value made to fit where the checker found it fits (§2, checker/types/fitting/fit.ts): converted once,
  * into an `any` type, a struct's value rebuilt as its shape (§3.1), a plain function made async, or
  * between a one-element tuple and its element, or a literal taken as its base, then put into a
  * union where the fit says. The checker records the fit per value, so
@@ -9,7 +9,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { ValueSite } from '../../checker/surface/checked-body.ts';
-import { type Fit, singleElement } from '../../checker/types/fit.ts';
+import { type Fit, singleElement } from '../../checker/types/fitting/fit.ts';
 import type { FunctionType, StructValueType, Type } from '../../checker/types/type.ts';
 import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { membersOf } from '../../checker/types/unions/unions.ts';
