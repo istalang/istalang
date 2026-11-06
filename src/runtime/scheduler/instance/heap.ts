@@ -22,7 +22,7 @@
 import { handleTarget, type Value } from '../../../definition/values/values.ts';
 import { pushAll } from '../../../structures/stack.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { ActiveFrame } from '../../interpreter/machine.ts';
+import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { heldObjects } from '../../snapshot/holdings.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
 
@@ -57,7 +57,10 @@ function index<Kind extends LiveKind, Key>(
 }
 
 const indexes = {
-  /** Every execution, by the call future its return resolves: the root's, which has none, is undefined. */
+  /**
+   * Every execution, by the call future its return resolves: the root's, which has none, is
+   * undefined.
+   */
   executions: index('execution', (execution) => [execution.resolves]),
   /** Each weak reference, by its referent while it has one. */
   weakRefs: index('weakRef', (weak) => (typeof weak.target === 'number' ? [weak.target] : [])),
@@ -110,7 +113,10 @@ export class Heap {
     return object;
   }
 
-  /** Object `id`, which must be of `kind`: a handle of the wrong kind is a bug the checker rules out. */
+  /**
+   * Object `id`, which must be of `kind`: a handle of the wrong kind is a bug the checker rules
+   * out.
+   */
   of<Kind extends LiveKind>(id: number, kind: Kind): LiveObjectOf<Kind> {
     const object = this.#objects.get(id);
     if (object?.kind !== kind) {

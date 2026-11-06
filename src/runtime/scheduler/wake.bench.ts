@@ -2,10 +2,10 @@
  * Scheduler speed, measured with `npm run bench` and kept out of `npm run verify`, as the parser's
  * is (parse.bench.ts).
  *
- * The workload is the one the scheduler's costs were filed against (docs/work/tracker.md, the scheduler's commit cost):
- * many executions waiting on one inbox, each woken by a job of its own, with `main` awaiting every
- * result, so every result is a commit of a heap that holds every waiting worker. A run takes
- * seconds, so a few runs are measured.
+ * The workload is the one the scheduler's costs were filed against (docs/work/tracker.md, the
+ * scheduler's commit cost): many executions waiting on one inbox, each woken by a job of its own,
+ * with `main` awaiting every result, so every result is a commit of a heap that holds every waiting
+ * worker. A run takes seconds, so a few runs are measured.
  */
 
 import { test as it } from 'vitest';

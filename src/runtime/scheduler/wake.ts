@@ -295,7 +295,10 @@ function childrenOf(instance: Instance): readonly Snapshot[] {
     .map(({ name, call, ...beginning }) => unstarted(instance.loaded, name, call, beginning));
 }
 
-/** Writes `snapshot` through the store; the snapshot as it reads back, which the next segment restores. */
+/**
+ * Writes `snapshot` through the store; the snapshot as it reads back, which the next segment
+ * restores.
+ */
 function commit(store: InstanceStore, snapshot: Snapshot): Snapshot {
   const { text } = snapshotFormat.write(snapshot);
   store.writeSnapshot(snapshot.instance, text);

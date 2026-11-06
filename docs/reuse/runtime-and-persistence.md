@@ -50,7 +50,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 
 - Persisted formats use `defineFormat` (`src/definition/formats/format.ts`) and `encodeJson`/`decodeJson` (`codec.ts`), never `JSON.parse`/`JSON.stringify`.
 - Snapshots store only what cannot be derived: never store reference counts, holder lists, next object IDs or timer lists (`docs/arch/definition.md`).
-- Register changes go through `src/runtime/interpreter/machine.ts` and heap changes through `Heap` (`scheduler/instance/heap.ts`) so released handles are noted.
+- Register changes go through `src/runtime/interpreter/registers.ts` and heap changes through `Heap` (`scheduler/instance/heap.ts`) so released handles are noted.
 
 ## Recipes
 

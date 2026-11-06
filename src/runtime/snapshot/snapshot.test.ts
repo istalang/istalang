@@ -283,7 +283,9 @@ function holding(contents: Value): Snapshot {
   };
 }
 
-/** Maps of one entry, `depth` deep: the kind taking the most levels on disk per level of its own. */
+/**
+ * Maps of one entry, `depth` deep: the kind taking the most levels on disk per level of its own.
+ */
 function nestedMaps(depth: number): Value {
   let current: Value = 1n;
   for (let level = 0; level < depth; level += 1) {

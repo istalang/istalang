@@ -26,7 +26,10 @@ const event: fc.Arbitrary<Event> = fc.record({
   referent: fc.nat({ max: referents - 1 }),
 });
 
-/** Referents 0…n-1 and their weak references: 0 is a call, the others slots standing for any disposable. */
+/**
+ * Referents 0…n-1 and their weak references: 0 is a call, the others slots standing for any
+ * disposable.
+ */
 class Scene {
   readonly heap = new Heap([]);
   readonly futures = new Futures(this.heap, ignoredEvents);

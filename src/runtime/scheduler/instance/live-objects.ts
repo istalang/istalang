@@ -1,12 +1,13 @@
 /**
  * The two forms of a heap object: as a snapshot stores it, and as a running instance holds it. Only
- * an execution differs: its frames are live (interpreter/machine.ts), their registers a dense array
+ * an execution differs: its frames are live (interpreter/frames.ts), their registers a dense array
  * and their code resolved, and its call future is optional rather than absent.
  */
 
 import type { Definition } from '../../../definition/definition.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import { type ActiveFrame, type FrameHeap, newFrame } from '../../interpreter/machine.ts';
+import type { ActiveFrame, FrameHeap } from '../../interpreter/frames.ts';
+import { newFrame } from '../../interpreter/machine.ts';
 import type { Frame, HeapObject, RegisterContents } from '../../snapshot/objects.ts';
 import type { LiveObject } from './heap.ts';
 

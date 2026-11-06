@@ -1,7 +1,7 @@
 /**
  * The interpreter's table of instruction handlers, one per kind (architecture: Registries). A
  * handler runs one instruction of the top frame and moves its pc: to the next instruction, to a
- * jump's target, or, for a call, nowhere until the callee returns (machine.ts).
+ * jump's target, or, for a call, nowhere until the callee returns (frames.ts).
  *
  * Loading has already checked every index and every call's arity, so handlers trust what they
  * read.
@@ -23,19 +23,18 @@ import {
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { isReference } from '../snapshot/objects.ts';
+import type { ActiveFrame } from './frames.ts';
+import { currentClosure, type Machine } from './machine.ts';
 import {
-  type ActiveFrame,
   capturedContents,
   clearRegister,
-  currentClosure,
-  type Machine,
   newCell,
   readCell,
   readRegister,
   storeAt,
   writeCell,
   writeRegister,
-} from './machine.ts';
+} from './registers.ts';
 import { enterCase, resolvedCase } from './suspension.ts';
 
 const relations = {

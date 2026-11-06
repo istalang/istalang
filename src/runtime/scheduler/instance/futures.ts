@@ -19,7 +19,7 @@
 import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import { handleTarget, handleTo, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import { readRegister } from '../../interpreter/machine.ts';
+import { readRegister } from '../../interpreter/registers.ts';
 import { Panic } from '../../natives.ts';
 import type { FutureState, Watch } from '../../snapshot/objects.ts';
 import type { CallerFuture } from '../testing/test-world.ts';
@@ -109,7 +109,9 @@ export class Futures {
     }
   }
 
-  /** Gives `answer` the value its future resolved with, or has it wait on the future that value is. */
+  /**
+   * Gives `answer` the value its future resolved with, or has it wait on the future that value is.
+   */
   #answer(answer: LiveObjectOf<'answer'>): void {
     const value = this.#valueOf(answer.future);
     const next = handleTarget(value);
@@ -281,7 +283,9 @@ function isFirst(future: LiveObjectOf<'future'>): future is FirstFuture {
   return future.state.kind === 'first';
 }
 
-/** The futures `execution`'s top frame waits on, in the order its `await` or `select` names them. */
+/**
+ * The futures `execution`'s top frame waits on, in the order its `await` or `select` names them.
+ */
 export function waitedOn(execution: LiveExecution): readonly number[] {
   const frame = execution.frames.at(-1);
   const instruction = frame?.code.instructions[frame.pc];

@@ -10,7 +10,8 @@
  */
 
 import type { Value } from '../../../definition/values/values.ts';
-import { type ActiveFrame, newFrame } from '../../interpreter/machine.ts';
+import type { ActiveFrame } from '../../interpreter/frames.ts';
+import { newFrame } from '../../interpreter/machine.ts';
 import type { Instance } from '../instance/index.ts';
 import { type Caller, startCall } from './calls.ts';
 import type { RunStack } from './run-stack.ts';

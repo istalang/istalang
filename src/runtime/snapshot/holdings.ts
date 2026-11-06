@@ -9,7 +9,7 @@
  *   frame's reference the cell it names.
  * - It watches what it names without holding: a slot's queue of waiting operations, what a weak
  *   reference refers to, and an execution's own call future, which its caller holds.
- * - A frame holds the same whether it is live (interpreter/machine.ts) or stored (objects.ts), so
+ * - A frame holds the same whether it is live (interpreter/frames.ts) or stored (objects.ts), so
  *   one rule reads both, over what their registers hold.
  */
 
@@ -28,7 +28,10 @@ export interface HoldingFrame {
   readonly registers: readonly (RegisterContents | undefined)[];
 }
 
-/** Whether `object` is a root, kept for its own sake rather than held by another: an execution or an answer. */
+/**
+ * Whether `object` is a root, kept for its own sake rather than held by another: an execution or an
+ * answer.
+ */
 export function isRoot<Object extends { readonly kind: HeapObject['kind'] }>(
   object: Object,
 ): object is Extract<Object, { readonly kind: 'execution' | 'answer' }> {

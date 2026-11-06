@@ -13,13 +13,9 @@
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import {
-  type ActiveFrame,
-  clearRegister,
-  readRegister,
-  resumeAt,
-  writeRegister,
-} from './machine.ts';
+import type { ActiveFrame } from './frames.ts';
+import { resumeAt } from './machine.ts';
+import { clearRegister, readRegister, writeRegister } from './registers.ts';
 
 /** How a frame learns whether the future a handle names has resolved, and with what. */
 export type SettledOf = (handle: Value) => { readonly value: Value } | undefined;

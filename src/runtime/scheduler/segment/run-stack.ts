@@ -9,7 +9,7 @@
 
 import type { Definition } from '../../../definition/definition.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { ActiveFrame } from '../../interpreter/machine.ts';
+import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { callerTraceOf, traceOf } from '../../interpreter/trace.ts';
 import type { LiveExecution } from '../instance/heap.ts';
 import { requireFrameDepth } from './limits.ts';

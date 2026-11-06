@@ -34,16 +34,15 @@ import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
 import { depthOf, handleTo, type Value } from '../../../definition/values/values.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
+import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { runInstruction } from '../../interpreter/instructions.ts';
 import {
-  type ActiveFrame,
-  argumentContents,
   type Machine,
   newFrame,
-  readRegister,
   releaseFrame,
   resumeAfterCall,
 } from '../../interpreter/machine.ts';
+import { argumentContents, readRegister } from '../../interpreter/registers.ts';
 import { Collector } from '../../lifetimes/collector.ts';
 import type { Roots } from '../../lifetimes/holders.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';
@@ -363,7 +362,9 @@ class SegmentRunner implements Machine {
     };
   }
 
-  /** Collects until no disposal is left to run, while the instance ends: one that panics is let go. */
+  /**
+   * Collects until no disposal is left to run, while the instance ends: one that panics is let go.
+   */
   #collectEnding(): void {
     this.#collectFully(() => {
       try {

@@ -16,7 +16,7 @@ import { namedTypeOf } from '../../definition/values/declared-values.ts';
 import { instanceHandle } from '../../definition/values/instance-handles.ts';
 import { closureOf, handleTarget, handleTo, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { passedValues, writeReference } from '../interpreter/machine.ts';
+import { passedValues, writeReference } from '../interpreter/registers.ts';
 import type {
   FullNativeContext,
   Native,

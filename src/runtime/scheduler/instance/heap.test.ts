@@ -57,7 +57,9 @@ const changeArbitrary: fc.Arbitrary<Change> = fc.oneof(
     .map((each): Change => each),
 );
 
-/** Applies `step` to `heap`; a replace keeps its object's kind, so one of another kind is skipped. */
+/**
+ * Applies `step` to `heap`; a replace keeps its object's kind, so one of another kind is skipped.
+ */
 function apply(heap: Heap, step: Change): void {
   if (step.kind === 'add') {
     heap.add(step.make);

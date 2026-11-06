@@ -1,6 +1,6 @@
 /**
- * Another instance's end, as a wait on it sees it (§9): `inst.result()` resolves once the instance's
- * last commit says it has ended, with `Ok` of its outcome or `Err` of its panic.
+ * Another instance's end, as a wait on it sees it (§9): `inst.result()` resolves once the
+ * instance's last commit says it has ended, with `Ok` of its outcome or `Err` of its panic.
  *
  * - The first end counts: a panic, or the termination that followed one, which keeps it. A retry
  *   after it changes nothing for a wait already resolved.

@@ -57,7 +57,9 @@ export class WeakSide implements NativeWeakSide {
       : this.#futures.createHandle({ kind: 'disposed', weakRef: reference.id });
   }
 
-  /** Object `id` was disposed and is gone: its weak reference lets go of it, its watches resolve. */
+  /**
+   * Object `id` was disposed and is gone: its weak reference lets go of it, its watches resolve.
+   */
   disposed(id: number): void {
     this.#resolveWatches(id, 'disposed');
   }
@@ -85,7 +87,9 @@ export class WeakSide implements NativeWeakSide {
     return watches;
   }
 
-  /** Clears the weak reference to `target`, if it has one, marking why; the watches pending on it. */
+  /**
+   * Clears the weak reference to `target`, if it has one, marking why; the watches pending on it.
+   */
   #letGo(target: number, gone: 'disposed' | 'callEnded'): readonly number[] {
     const weak = this.#referenceTo(target);
     if (weak === undefined) {
