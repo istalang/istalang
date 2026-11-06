@@ -16,6 +16,7 @@
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
 import { aliasedAs, mapAliasUse } from './alias-uses.ts';
 import type { ComputedType, MappedParts, RecursiveType } from './computed-types.ts';
+import { mapChildren, mapParts } from './parts/type-parts.ts';
 import { errorType } from './primitives.ts';
 import type {
   AnyType,
@@ -25,7 +26,6 @@ import type {
   TypeParameterType,
   UnionType,
 } from './type.ts';
-import { mapChildren, mapParts } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
 
 /** Type parameters mapped to the types that replace them. */
@@ -128,7 +128,7 @@ export function substituteKept<
 
 /**
  * `substituted`, written through the alias `type` was written through, if any, substituted; `type`
- * itself when substituting changed neither (type-parts.ts keeps a type alike).
+ * itself when substituting changed neither (parts/type-parts.ts keeps a type alike).
  */
 function asWritten<Substituted extends Type>(
   type: Type,

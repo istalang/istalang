@@ -42,6 +42,8 @@ import { fillsPack, functionFits, isPack } from '../types/function-types.ts';
 import { sameType } from '../types/identity/identity.ts';
 import { UnfoldingPairs } from '../types/identity/unfolding-pairs.ts';
 import { isOneMember } from '../types/member-arguments.ts';
+import { typeChildren } from '../types/parts/type-children.ts';
+import { parametersIn } from '../types/parts/type-parts.ts';
 import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import { noSubstitution, type Substitution, substitute } from '../types/substitution.ts';
@@ -54,8 +56,6 @@ import type {
   Type,
   UnionType,
 } from '../types/type.ts';
-import { typeChildren } from '../types/type-children.ts';
-import { parametersIn } from '../types/type-parts.ts';
 import { baseOf } from '../types/union-members.ts';
 import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions.ts';
 

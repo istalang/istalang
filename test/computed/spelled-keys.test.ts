@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
 import { checkedApart } from '../../src/compiler/checker/check.test-kit.ts';
 import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts';
-import { sameTypeSpelled, unaliased } from '../../src/compiler/checker/types/type-parts.ts';
+import { sameTypeSpelled, unaliased } from '../../src/compiler/checker/types/parts/type-parts.ts';
 import { idOf } from '../../src/compiler/program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations.ts';
 import { resolveWrittenTypes } from './computed.test-kit.ts';

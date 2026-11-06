@@ -21,7 +21,7 @@ import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
 import type { RestSlot } from '../types/function-types.ts';
-import { sameTypeSpelled } from '../types/type-parts.ts';
+import { sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { type DefaultValues, declaredParameters, writtenParameters } from './signatures.ts';
 
 /** A body in which a function's defaults are checked, and what checking `values` found. */

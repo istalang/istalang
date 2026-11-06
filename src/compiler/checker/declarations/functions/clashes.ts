@@ -40,8 +40,8 @@ import { positionalCounts } from '../../resolution/binding.ts';
 import { signatureOf } from '../../resolution/choice.ts';
 import type { RestSlot } from '../../types/function-types.ts';
 import { declaredOwnerOf, type StaticOwner } from '../../types/named-types.ts';
+import { mentionsError } from '../../types/parts/type-parts.ts';
 import type { ParameterKey, Type } from '../../types/type.ts';
-import { mentionsError } from '../../types/type-parts.ts';
 import { baseOf } from '../../types/union-members.ts';
 import { membersOf } from '../../types/unions.ts';
 

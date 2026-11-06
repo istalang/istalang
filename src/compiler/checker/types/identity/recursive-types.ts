@@ -8,7 +8,7 @@
  *   (recursive-terms.ts), and each class holding a body, or a node of another graph a body reached,
  *   becomes a node: its body rebuilt from its representative term, a node's own type wherever a
  *   node is reached again, any other class rebuilt in place. So a graph refers to no other graph,
- *   and its parts hold no recursive type (../type-children.ts).
+ *   and its parts hold no recursive type (../parts/type-children.ts).
  * - A recursive alias in a union is flattened: its members join the union, as a union member's do.
  * - A computed type a body holds over a use of the group (a type `match` given it, say) stays
  *   unreduced while that use is a placeholder, which decides nothing. Once the group has closed,
@@ -28,9 +28,8 @@
 import { sameItems } from '../../../../structures/equality.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import { mapAliasUse, type RecursiveLabel } from '../alias-uses.ts';
-import { reducedComputed } from '../computed-reduction.ts';
 import { isComputed, type RecursiveGraph, type RecursiveType } from '../computed-types.ts';
-import type { ParameterKey, Type } from '../type.ts';
+import { reducedComputed } from '../parts/computed-reduction.ts';
 import {
   boundWithin,
   graphParts,
@@ -39,7 +38,8 @@ import {
   namesNodeOf,
   typeChildren,
   withTypeChildren,
-} from '../type-children.ts';
+} from '../parts/type-children.ts';
+import type { ParameterKey, Type } from '../type.ts';
 import type { TypeRules } from '../type-rules.ts';
 import { type Slot, TermGraph } from './recursive-terms.ts';
 import { typeKeys } from './type-keys.ts';
@@ -54,7 +54,7 @@ export interface RecursiveGroup {
   readonly labels: readonly (RecursiveLabel | undefined)[];
   /**
    * The rules of the program, which normalize unions the graph flattens (../union-members.ts) and
-   * reduce computed types built from its nodes (../computed-reduction.ts).
+   * reduce computed types built from its nodes (../parts/computed-reduction.ts).
    */
   readonly rules: TypeRules;
 }

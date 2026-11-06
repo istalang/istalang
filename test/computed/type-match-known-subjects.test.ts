@@ -9,7 +9,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { computedTypesIn, errorIn } from '../../src/compiler/checker/types/type-parts.ts';
+import { computedTypesIn, errorIn } from '../../src/compiler/checker/types/parts/type-parts.ts';
 import { codesOf, resolveWrittenTypes, runMain } from './computed.test-kit.ts';
 
 const declarations = [

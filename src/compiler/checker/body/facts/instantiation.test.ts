@@ -21,9 +21,9 @@ import { bodyOf, nodesUnder, type SyntaxNode } from '../../../syntax/tree.ts';
 import { checkProgram } from '../../check.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { namesBound, type PartStep } from '../../surface/checked-pattern.ts';
+import { parametersIn } from '../../types/parts/type-parts.ts';
 import { intType, stringType } from '../../types/primitives.ts';
 import { substitutionFor } from '../../types/substitution.ts';
-import { parametersIn } from '../../types/type-parts.ts';
 import { typeText } from '../../types/type-text.ts';
 
 describe('an instantiated body', () => {

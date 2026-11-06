@@ -23,8 +23,8 @@ import {
 } from '../../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { nominalsIn } from '../../types/parts/type-parts.ts';
 import type { ParameterKey } from '../../types/type.ts';
-import { nominalsIn } from '../../types/type-parts.ts';
 import { type ArgumentEdge, argumentEdges, endlessEdgesFrom } from './edges.ts';
 
 /** A declaration with fields of its own: a struct's, shared or not, or an enum's variants'. */

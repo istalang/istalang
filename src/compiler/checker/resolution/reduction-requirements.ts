@@ -44,11 +44,11 @@ import type { CheckedBody } from '../surface/checked-body.ts';
 import { functionCallsWithin } from '../surface/resolved-call.ts';
 import { unfoldRecursive } from '../types/computed-types.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
+import { typeChildren } from '../types/parts/type-children.ts';
+import { isKnown, sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import type { RecursiveUse, Type, UnreducedUse } from '../types/type.ts';
-import { typeChildren } from '../types/type-children.ts';
 import { aliasInstance, type TypeMatchQueries } from '../types/type-match.ts';
-import { isKnown, sameTypeSpelled } from '../types/type-parts.ts';
 import { spellingText, typeText } from '../types/type-text.ts';
 
 /**

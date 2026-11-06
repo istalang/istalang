@@ -28,9 +28,9 @@ import { computeConstant, refusalOf } from '../rules/computation/index.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
 import type { TargetBinding } from '../surface/checked-pattern.ts';
 import { formAt, sameForm } from '../surface/constant-form.ts';
+import { sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { errorType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
-import { sameTypeSpelled } from '../types/type-parts.ts';
 
 /** What ProgramChecker gives the unit: how to find a constant's module, and to check a value. */
 export interface ConstantSeams {

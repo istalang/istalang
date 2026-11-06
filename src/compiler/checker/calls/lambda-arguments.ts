@@ -19,8 +19,8 @@ import type { BodyContext } from '../body-context.ts';
 import type { Inference } from '../inference/infer.ts';
 import type { Application } from '../resolution/choice.ts';
 import { collectionTarget, expectedFunction, expectedTuple } from '../types/expected.ts';
+import { parametersIn } from '../types/parts/type-parts.ts';
 import type { Type } from '../types/type.ts';
-import { parametersIn } from '../types/type-parts.ts';
 
 /** An argument of a call being resolved: its node, and its type unless the call decides it. */
 interface Argument {

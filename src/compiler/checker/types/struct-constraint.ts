@@ -6,9 +6,9 @@
  */
 
 import { sameItems } from '../../../structures/equality.ts';
+import { sameConstraintSpelled, sameTypeSpelled } from './parts/type-parts.ts';
 import { type Substitution, substitute, substituteConstraint } from './substitution.ts';
 import type { Constraint, Type } from './type.ts';
-import { sameConstraintSpelled, sameTypeSpelled } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
 import { constraintText, typeText } from './type-text.ts';
 

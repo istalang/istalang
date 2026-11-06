@@ -14,6 +14,7 @@ import type { RestPattern } from '../../syntax/patterns.ts';
 import type { AliasUse } from './alias-uses.ts';
 import { type MappedParts, type RecursiveType, unfoldRecursive } from './computed-types.ts';
 import { folded } from './identity/recursive-types.ts';
+import { holdsRecursion } from './parts/type-children.ts';
 import { isPrimitive } from './primitives.ts';
 import {
   type AnonymousStructType,
@@ -26,7 +27,6 @@ import {
   type TypeParameterType,
   type UnionType,
 } from './type.ts';
-import { holdsRecursion } from './type-children.ts';
 
 /** The unlabelled recursive types being printed as their bodies, each `…` where reached again. */
 const printing = new Set<RecursiveType>();

@@ -1,22 +1,21 @@
 /**
- * What a type is built from (type.ts): the types one level down, a type with them replaced, and
+ * What a type is built from (../type.ts): the types one level down, a type with them replaced, and
  * what walking them finds, the type parameters, nominal and `any` types a type mentions and whether it holds
  * the error type.
  *
  * A type rebuilt with every part it is built from unchanged is the very type, never a copy, so
  * what is memoized per type object (identity/type-keys.ts, type-children.ts, here) stays found however often
  * a type is substituted or respelled. Only a type computed from others is built again whatever its
- * parts: a use left unreduced reduces once rebuilt (type-match.ts `rebuilt`).
+ * parts: a use left unreduced reduces once rebuilt (../type-match.ts `rebuilt`).
  */
 
-import { sameItems } from '../../../structures/equality.ts';
-import { memo } from '../../../structures/memo.ts';
-import { aliasedAs } from './alias-uses.ts';
-import { mappedParts, reducedComputed } from './computed-reduction.ts';
-import { type ComputedType, isComputed, type RecursiveType } from './computed-types.ts';
-import { withPack } from './function-types.ts';
-import { mapRecursive } from './identity/recursive-types.ts';
-import { typeKeys } from './identity/type-keys.ts';
+import { sameItems } from '../../../../structures/equality.ts';
+import { memo } from '../../../../structures/memo.ts';
+import { aliasedAs } from '../alias-uses.ts';
+import { type ComputedType, isComputed, type RecursiveType } from '../computed-types.ts';
+import { withPack } from '../function-types.ts';
+import { mapRecursive } from '../identity/recursive-types.ts';
+import { typeKeys } from '../identity/type-keys.ts';
 import type {
   AnyType,
   Constraint,
@@ -25,10 +24,11 @@ import type {
   ParameterKey,
   Type,
   UnionType,
-} from './type.ts';
+} from '../type.ts';
+import type { TypeRules } from '../type-rules.ts';
+import { unionOf, unionOfNormalized } from '../unions.ts';
+import { mappedParts, reducedComputed } from './computed-reduction.ts';
 import { boundParameters, typeChildren } from './type-children.ts';
-import type { TypeRules } from './type-rules.ts';
-import { unionOf, unionOfNormalized } from './unions.ts';
 
 /** Each type written through no alias at any level (`unaliased`). */
 const unaliasedTypes = new WeakMap<Type, Type>();
@@ -149,8 +149,8 @@ export function errorIn(type: Type): ErrorType | undefined {
 /**
  * `type` with each type it is built from, one level down, replaced by what `map` gives; `type`
  * itself when `map` changes none and it is no computed type (the banner). The alias `type` was
- * written through comes along: a caller changing what it wrote drops it (type.ts). A union is built
- * again by the program's `rules` (unions.ts), so its members may merge into fewer, or into one.
+ * written through comes along: a caller changing what it wrote drops it (../type.ts). A union is built
+ * again by the program's `rules` (../unions.ts), so its members may merge into fewer, or into one.
  */
 export function mapChildren(type: Type, map: (child: Type) => Type, rules: TypeRules): Type {
   const rebuilt = rebuiltBy(type, map, rules);
@@ -166,7 +166,7 @@ type Rebuilt = UnionType | RecursiveType | ComputedType;
 /**
  * `type` rebuilt by `rules` from its parts as `map` gives them, written through its alias, when
  * building it takes the rules: a union, whose members may merge, a recursive type, whose graph
- * closes again (identity/recursive-types.ts), or a computed type, which may reduce (type-rules.ts);
+ * closes again (identity/recursive-types.ts), or a computed type, which may reduce (../type-rules.ts);
  * undefined for any other type.
  */
 function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Type | undefined {

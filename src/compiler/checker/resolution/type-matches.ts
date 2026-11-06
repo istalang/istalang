@@ -45,6 +45,7 @@ import { isOpaque, type MatchType, unfoldRecursive } from '../types/computed-typ
 import { fieldReaderOf, selfHoldingField } from '../types/finiteness.ts';
 import { closeRecursive } from '../types/identity/recursive-types.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
+import { errorIn } from '../types/parts/type-parts.ts';
 import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
 import { substituteStructConstraint } from '../types/struct-constraint.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
@@ -56,7 +57,6 @@ import {
   rebuilt,
   type TypeMatchForm,
 } from '../types/type-match.ts';
-import { errorIn } from '../types/type-parts.ts';
 import { unionOf } from '../types/unions.ts';
 import { matchCase } from './type-match-patterns.ts';
 

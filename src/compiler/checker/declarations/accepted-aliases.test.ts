@@ -12,8 +12,8 @@ import { idOf } from '../../program/program.test-kit.ts';
 import { programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import { checkProgram } from '../check.ts';
+import { computedTypesIn, errorIn } from '../types/parts/type-parts.ts';
 import type { Type } from '../types/type.ts';
-import { computedTypesIn, errorIn } from '../types/type-parts.ts';
 
 /** Aliases to build `A`, `B` and `S.Data` from: transparent, forwarding, union-making and matching. */
 const helpers = [

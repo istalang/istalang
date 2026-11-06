@@ -5,9 +5,9 @@
  * through it, so a computed type reduces alike wherever its parts became known.
  */
 
-import type { ComputedType, MappedParts } from './computed-types.ts';
-import type { Type } from './type.ts';
-import type { TypeRules } from './type-rules.ts';
+import type { ComputedType, MappedParts } from '../computed-types.ts';
+import type { Type } from '../type.ts';
+import type { TypeRules } from '../type-rules.ts';
 
 /** What `rules` build `type` to from its parts as `map` gives them, reduced as far as they allow. */
 export function reducedComputed(

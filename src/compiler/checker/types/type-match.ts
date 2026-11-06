@@ -22,10 +22,10 @@ import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts
 import type { TypeCase } from '../../syntax/types.ts';
 import type { RecursiveLabel } from './alias-uses.ts';
 import type { MatchType } from './computed-types.ts';
+import { mapChildren } from './parts/type-parts.ts';
 import type { ConstraintSet, StructConstraintModel } from './struct-constraint.ts';
 import { type Substitution, substitute } from './substitution.ts';
 import { type NominalEntity, nominalType, type Type } from './type.ts';
-import { mapChildren } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
 
 /** A type `match`'s subject and cases, its declaration's parameters open. */

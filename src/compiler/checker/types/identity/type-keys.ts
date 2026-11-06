@@ -49,6 +49,7 @@ import { memo } from '../../../../structures/memo.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { AliasUse } from '../alias-uses.ts';
 import type { MappedParts, RecursiveGraph } from '../computed-types.ts';
+import { holdsRecursion } from '../parts/type-children.ts';
 import type {
   AnonymousStructType,
   FieldMember,
@@ -58,7 +59,6 @@ import type {
   Type,
   UnreducedUse,
 } from '../type.ts';
-import { holdsRecursion } from '../type-children.ts';
 import { canonicalKey } from './recursive-terms.ts';
 
 /** Every identity numbered so far; an object no longer reachable lets its number go. */

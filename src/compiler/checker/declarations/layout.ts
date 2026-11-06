@@ -38,6 +38,7 @@ import { type FieldedDeclaration, TypeExpansion } from '../rules/expansion/types
 import { unfolded } from '../types/computed-types.ts';
 import { declaredFields } from '../types/declared-fields.ts';
 import { inFieldOrder } from '../types/field-order.ts';
+import { sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { errorType } from '../types/primitives.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import {
@@ -47,7 +48,6 @@ import {
   shapeType,
   type Type,
 } from '../types/type.ts';
-import { sameTypeSpelled } from '../types/type-parts.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 
 /** Whether two lists of fields name, type and declare their fields alike, in order. */

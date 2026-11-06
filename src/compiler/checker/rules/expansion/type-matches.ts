@@ -30,10 +30,10 @@ import {
 import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { sameType } from '../../types/identity/identity.ts';
+import { typeChildren } from '../../types/parts/type-children.ts';
+import { parametersIn } from '../../types/parts/type-parts.ts';
 import type { ParameterKey, Type } from '../../types/type.ts';
-import { typeChildren } from '../../types/type-children.ts';
 import type { CasePatternForm, InferVariable, TypeMatchQueries } from '../../types/type-match.ts';
-import { parametersIn } from '../../types/type-parts.ts';
 import { type ArgumentEdge, endlessEdgesFrom } from './edges.ts';
 
 interface ReductionEdge extends ArgumentEdge {

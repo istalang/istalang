@@ -32,6 +32,7 @@ import { matchCase } from '../resolution/type-match-patterns.ts';
 import { TypeMatchExpansion } from '../rules/expansion/type-matches.ts';
 import { resolveConstraintSet } from '../traits/struct-constraints.ts';
 import type { MatchType } from '../types/computed-types.ts';
+import { sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { errorType } from '../types/primitives.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import { isNominalEntity, type Type } from '../types/type.ts';
@@ -42,7 +43,6 @@ import {
   type TypeMatchForm,
   type TypeMatchQueries,
 } from '../types/type-match.ts';
-import { sameTypeSpelled } from '../types/type-parts.ts';
 import { AliasRecursions } from './alias-recursion.ts';
 import { RecursiveBodies } from './recursive-bodies.ts';
 

@@ -25,9 +25,9 @@
 
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { RecursiveGraph } from '../computed-types.ts';
+import { holdsRecursion, typeChildren } from '../parts/type-children.ts';
 import { errorType, neverType } from '../primitives.ts';
 import type { Type } from '../type.ts';
-import { holdsRecursion, typeChildren } from '../type-children.ts';
 import { type MemberReading, type MemberRules, normalizedMembers } from '../union-members.ts';
 import { compareSignatures, refinedRanks, type Signature } from './term-signatures.ts';
 

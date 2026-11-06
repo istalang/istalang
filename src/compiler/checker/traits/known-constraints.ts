@@ -32,6 +32,7 @@ import { type ComputedType, isMatchAlias, isOpaque } from '../types/computed-typ
 import { inFieldOrder } from '../types/field-order.ts';
 import { sameConstraint, sameType } from '../types/identity/identity.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
+import { parametersIn } from '../types/parts/type-parts.ts';
 import { errorType, isPrimitive } from '../types/primitives.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import {
@@ -42,7 +43,6 @@ import {
 import { substitute, substituteConstraint, substitutionFor } from '../types/substitution.ts';
 import type { AnyType, Constraint, Type } from '../types/type.ts';
 import { aliasInstance } from '../types/type-match.ts';
-import { parametersIn } from '../types/type-parts.ts';
 import { literalType, membersOf, unionOf } from '../types/unions.ts';
 import {
   constraintOn,

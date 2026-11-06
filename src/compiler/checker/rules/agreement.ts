@@ -25,9 +25,9 @@ import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import type { ValueSite } from '../surface/checked-body.ts';
 import { type Fit, isExact } from '../types/fit.ts';
+import { mapChildren } from '../types/parts/type-parts.ts';
 import { isPrimitive } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
-import { mapChildren } from '../types/type-parts.ts';
 import { literalsBase } from '../types/unions.ts';
 import { sendableWidened, widened } from '../types/widening.ts';
 

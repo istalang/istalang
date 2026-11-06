@@ -8,8 +8,8 @@
 
 import type { CheckerContext } from '../context.ts';
 import { unfolded } from './computed-types.ts';
+import { typeChildren } from './parts/type-children.ts';
 import type { Type } from './type.ts';
-import { typeChildren } from './type-children.ts';
 import { TypeCycle } from './type-cycle.ts';
 
 /** The first type `type` holds, itself first, that `picks` picks; undefined when none is. */

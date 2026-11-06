@@ -17,8 +17,8 @@
  */
 
 import { sameType } from './identity/identity.ts';
+import { mapChildren } from './parts/type-parts.ts';
 import type { Type } from './type.ts';
-import { mapChildren } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
 import { baseOf } from './union-members.ts';
 
