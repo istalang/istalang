@@ -35,20 +35,20 @@
  *   may not be passed to one call at all, since two handles may be one.
  */
 
-import type { VariableEntity, VariableOwner } from '../../binder/entities.ts';
-import type { Dereference, Expression, Index } from '../../syntax/expressions/index.ts';
-import { type PlaceStep, placePath } from '../../syntax/expressions/places.ts';
-import type { Identifier } from '../../syntax/node.ts';
-import type { BodyContext } from '../contexts/body-context.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Passing } from '../resolution/choosing/call-arguments.ts';
-import type { AssignedPart } from '../surface/checked-body.ts';
-import { isOpaque } from '../types/computed-types.ts';
-import { keyMembers, structConstraintsOn } from '../types/traits/known-constraints.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
+import type { VariableEntity, VariableOwner } from '../../../binder/entities.ts';
+import type { Dereference, Expression, Index } from '../../../syntax/expressions/index.ts';
+import { type PlaceStep, placePath } from '../../../syntax/expressions/places.ts';
+import type { Identifier } from '../../../syntax/node.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { AssignedPart } from '../../surface/checked-body.ts';
+import { isOpaque } from '../../types/computed-types.ts';
+import { keyMembers, structConstraintsOn } from '../../types/traits/known-constraints.ts';
+import type { Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import type { Passing } from '../choosing/call-arguments.ts';
 import { runsAtOnce, writeElement } from './collection-functions.ts';
 
 /** Why a place is to change: assigned to, or passed by `&` (explicitly, or as `&self`). */

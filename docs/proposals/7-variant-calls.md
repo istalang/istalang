@@ -139,7 +139,7 @@ const ctx = struct{...sc.ctx, search}                         # sc.ctx's fields,
    - **Patterns:** call patterns are a new `VariantCallPattern` (callee, positional and named subpatterns, an optional `...`), parsed where a pattern's name is followed by `(` on its line (proposal 5's `atPostfix`).
    - **Declarations:** `parseVariant` (`parser/declarations/type-declarations.ts`) reads a variant's fields through `parseDelimited` at `(`, with the declared-field item (`parser/parts/structs.ts`), so separators, line breaks, recovery and annotations come with it. A rest field is a `DeclaredField` marked as rest, taken in a variant's list only. A `{` after a variant's name is read as today's list, then refused once, naming the parenthesized form.
 2. **Checker.**
-   - **Arguments:** binding a call's arguments to a variant's fields reuses the binding of arguments to parameters (`checker/calls/`, `takenBy`), fed the variant's fields as parameters. Defaults and rest come with it, and no second binding rule exists.
+   - **Arguments:** binding a call's arguments to a variant's fields reuses the binding of arguments to parameters (`checker/resolution/calls/`, `takenBy`), fed the variant's fields as parameters. Defaults and rest come with it, and no second binding rule exists.
    - **The value:** the built value is the brace literal's (`expressions/structs/variants.ts`).
    - **Patterns:** call patterns read the fields through `patterns/constructs/struct-fields.ts`, positions mapped to declared order.
 3. **Widening.**

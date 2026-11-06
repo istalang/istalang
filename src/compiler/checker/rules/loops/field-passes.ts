@@ -91,6 +91,6 @@ function fieldPassesOver(
 /**
  * The pass over a struct with no field: its body never runs, so it is checked once for the mistakes
  * that don't depend on a field, its key and value of type `Never` (`keyof {}`), whose operations
- * report nothing (calls/stopped-operations.ts).
+ * report nothing (resolution/calls/stopped-operations.ts).
  */
 const noFieldPass: FieldPassType = { visits: { kind: 'none' }, key: neverType, value: neverType };

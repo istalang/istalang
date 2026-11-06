@@ -18,32 +18,27 @@
  *   made (resolution/calls-made.ts).
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { primitiveOnceSpelled } from '../../../language/primitives.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
-import type { Identifier } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { Accepts, BodyContext } from '../contexts/body-context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { applyCall } from '../resolution/applied-call.ts';
-import { argumentListText } from '../resolution/argument-fit.ts';
-import { callMade } from '../resolution/calls-made.ts';
-import type { BindingFailure } from '../resolution/choosing/binding.ts';
-import type {
-  CallArgument,
-  Inapplicability,
-  Misfit,
-  Passing,
-} from '../resolution/choosing/call-arguments.ts';
-import type { Candidate } from '../resolution/choosing/candidates.ts';
-import type { Application } from '../resolution/choosing/choice.ts';
-import type { Instantiation } from '../resolution/conformance/conformance.ts';
-import type { ResolvedSite } from '../surface/resolved-call.ts';
-import { misfitOf } from '../types/fitting/fit.ts';
-import type { LiteralType, Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import { primitiveOnceSpelled } from '../../../../language/primitives.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import type { Identifier } from '../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { ResolvedSite } from '../../surface/resolved-call.ts';
+import { misfitOf } from '../../types/fitting/fit.ts';
+import type { LiteralType, Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { applyCall } from '../applied-call.ts';
+import { argumentListText } from '../argument-fit.ts';
+import { callMade } from '../calls-made.ts';
+import type { BindingFailure } from '../choosing/binding.ts';
+import type { CallArgument, Inapplicability, Misfit, Passing } from '../choosing/call-arguments.ts';
+import type { Candidate } from '../choosing/candidates.ts';
+import type { Application } from '../choosing/choice.ts';
+import type { Instantiation } from '../conformance/conformance.ts';
 import { checkDecidedLambdas } from './lambda-arguments.ts';
 import { changeReceiver, checkReferencedPlaces } from './places.ts';
 

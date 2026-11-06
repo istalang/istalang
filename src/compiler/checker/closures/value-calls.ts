@@ -1,7 +1,7 @@
 /**
- * Calling a function value (§3.14): a variable, a field or any expression of a function type.
- * Its type says everything: there is one function to call, so nothing is chosen, but its
- * arguments are judged, reported and fitted as a chosen function's are (calls/resolve.ts), as one
+ * Calling a function value (§3.14): a variable, a field or any expression of a function type. Its
+ * type says everything: there is one function to call, so nothing is chosen, but its arguments are
+ * judged, reported and fitted as a chosen function's are (resolution/calls/resolve.ts), as one
  * signature with no type parameters, so every argument rule has one home.
  *
  * - Calling an async function value starts it and yields its future, `Future<R>` for an
@@ -12,12 +12,12 @@
  */
 
 import type { Call, Expression } from '../../syntax/expressions/index.ts';
-import { checkReferencedPlaces } from '../calls/places.ts';
-import { callArgumentOf, explain, type WrittenArgument } from '../calls/resolve.ts';
-import { stoppedOperation } from '../calls/stopped-operations.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { fitArguments } from '../resolution/argument-fit.ts';
+import { checkReferencedPlaces } from '../resolution/calls/places.ts';
+import { callArgumentOf, explain, type WrittenArgument } from '../resolution/calls/resolve.ts';
+import { stoppedOperation } from '../resolution/calls/stopped-operations.ts';
 import { takenBy } from '../resolution/choosing/applicability.ts';
 import { bindArguments } from '../resolution/choosing/binding.ts';
 import { packRestSlot } from '../types/function-types.ts';

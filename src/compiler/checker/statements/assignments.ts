@@ -9,7 +9,7 @@
  *   field takes a positional target, as a literal takes a positional value (§3.1).
  * - Only a `let` is reassigned. A parameter is the function's own copy (§3.1), so it may be too;
  *   a `const`, and a binding a pattern or loop introduces, never is. Changing part of a variable is
- *   the rule of places (calls/places.ts).
+ *   the rule of places (resolution/calls/places.ts).
  * - A compound assignment `x += y` is `x = x + y` (§3.9): the operator's function is resolved for
  *   the place's type and recorded on the assignment, and its result must fit the place.
  * - A value written to an optional place is wrapped into it (§2), whether the whole value, a part
@@ -35,19 +35,19 @@ import {
   destructuringOf,
   isUnnamedTarget,
 } from '../../syntax/statements/targets.ts';
-import { binaryApplied, resolveOperator } from '../calls/operators.ts';
-import {
-  checkChangedPlace,
-  checkDistinctPlaces,
-  immutableKind,
-  severalKeyedFields,
-} from '../calls/places.ts';
-import { stoppedOperation } from '../calls/stopped-operations.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';
 import { type Taking, takeApart, takeTargets } from '../patterns/taking.ts';
+import { binaryApplied, resolveOperator } from '../resolution/calls/operators.ts';
+import {
+  checkChangedPlace,
+  checkDistinctPlaces,
+  immutableKind,
+  severalKeyedFields,
+} from '../resolution/calls/places.ts';
+import { stoppedOperation } from '../resolution/calls/stopped-operations.ts';
 import type { AssignedPart, WrittenFit } from '../surface/checked-body.ts';
 import type { FieldStep } from '../surface/checked-pattern.ts';
 import type { Type } from '../types/type/index.ts';

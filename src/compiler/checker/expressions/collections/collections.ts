@@ -19,8 +19,8 @@
  * - Where another declared type `C` is expected, a map literal, and an empty `[]`, starts from
  *   `C`'s default, Default's witness, and assigns each entry with `setIndex`, as `c[k] = v` would
  *   (§2). Those are calls the language makes (resolution/implicit.ts), which must run at once
- *   (calls/collection-functions.ts): Default's `default` gives its type, never a future. Keys and
- *   values are checked on their own there, since `setIndex` is chosen by their types.
+ *   (resolution/calls/collection-functions.ts): Default's `default` gives its type, never a future.
+ *   Keys and values are checked on their own there, since `setIndex` is chosen by their types.
  * - An expected `T?` guides a literal like an expected `T`; fitting it then wraps the value (§2).
  * - Passed to a call, a literal whose own items don't decide its type, or an empty one, has the
  *   type the call decides (§3.5), so it takes what each item can take (collection-accepts.ts).
@@ -39,11 +39,11 @@ import type {
 } from '../../../syntax/expressions/index.ts';
 import type { Invalid } from '../../../syntax/node.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import { writeElement } from '../../calls/collection-functions.ts';
 import type { BodyContext, CollectionRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { writeElement } from '../../resolution/calls/collection-functions.ts';
 import { resolveDefault } from '../../resolution/conformance/default-witness.ts';
 import { preludeCall } from '../../resolution/implicit.ts';
 import { decidedSoFar, type Produced, producedBy, settleAgreement } from '../../rules/agreement.ts';

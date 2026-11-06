@@ -36,10 +36,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - **Fix:** Give static-owner resolution one home in the checker (`staticTargetOf` / `StaticFunctions`) and route `checkClashes` and `declared-name.ts` through it.
    - **Done** (`p2-structural`): `staticOwnerOf` and `declaredOwnerOf` (`types/written/named-types.ts`) are the one home: `StaticFunctions`, `checkClashes` (grouping by owner, so an alias's statics clash with its type's), `staticTargetOf` and completion's declared names all read them. `typeOfEntity` (`types/written/resolve-type.ts`) is the one dispatch from a name to its type, which `namedType` and `entityType` share. An alias of a shape owns statics as the shape (§3.17).
 
-5. **`[medium]` Three parallel call-checking pipelines across `resolveCall`, `implicitCall`, and `checkValueCall` (`src/compiler/checker/calls/resolve.ts:103`, `src/compiler/checker/resolution/implicit.ts:69`, `src/compiler/checker/closures/value-calls.ts:28`)**
-   - `resolveCall` (`complete` in `calls/resolve.ts:103–153`) and `implicitCall` (`resolution/implicit.ts:69–114`) duplicate the post-candidate pipeline (`choose`, `ambiguousCall` with `argumentListText`, `instantiate`, `fitArguments`, `callMade`, and result `substitute`), while `checkValueCall` (`closures/value-calls.ts:28–75`) duplicates the single-callee argument binding (`takenBy`), error reporting (`explain`), `fitArguments`, and `checkReferencedPlaces`.
+5. **`[medium]` Three parallel call-checking pipelines across `resolveCall`, `implicitCall`, and `checkValueCall` (`src/compiler/checker/resolution/calls/resolve.ts:103`, `src/compiler/checker/resolution/implicit.ts:69`, `src/compiler/checker/closures/value-calls.ts:28`)**
+   - `resolveCall` (`complete` in `resolution/calls/resolve.ts:103–153`) and `implicitCall` (`resolution/implicit.ts:69–114`) duplicate the post-candidate pipeline (`choose`, `ambiguousCall` with `argumentListText`, `instantiate`, `fitArguments`, `callMade`, and result `substitute`), while `checkValueCall` (`closures/value-calls.ts:28–75`) duplicates the single-callee argument binding (`takenBy`), error reporting (`explain`), `fitArguments`, and `checkReferencedPlaces`.
    - Likewise in lowering, `lowerSpawn` (`src/compiler/lowering/expressions/calls.ts:69–113`) duplicates callee/argument preparation from `lowerCall` and `lowerValueCall` (`calls.ts:27–67, 115–136`).
-   - **Fix:** Extract a shared resolved-application completion step in `checker/calls/` and a shared call-lowering preparation helper in `lowering/expressions/calls.ts`.
+   - **Fix:** Extract a shared resolved-application completion step in `checker/resolution/calls/` and a shared call-lowering preparation helper in `lowering/expressions/calls.ts`.
    - **Done** (`p2-structural`): `applyCall` (`resolution/applied-call.ts`) chooses, reports an ambiguity or the caller's `none`, instantiates, fits the arguments and gives the result, for `resolveCall` and `implicitCall` alike, so P2's conversion is fitted (`fitArguments`) and ranked (`choice.ts`) in one place for every call; `checkValueCall`, which chooses nothing, fits through the same `fitArguments` and explains through the same `explain`. In lowering, `preparedCall` (`lowering/expressions/calls.ts`) evaluates the callee and arguments for `lowerCall` and `lowerSpawn` (which passes all by value).
 
 6. **`[medium]` Double standards in well-known type recognition and bare generic nominal values (`src/compiler/checker/types/type-text.ts:61`, `src/compiler/checker/types/well-known.ts:74`, `src/compiler/checker/expressions/access/names.ts:91`, `src/compiler/checker/expressions/structs/variants.ts:61`)**
@@ -90,7 +90,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 13. `src/compiler/checker/types/`
 - [x] 14. `src/compiler/checker/types/inference/` & `src/compiler/checker/types/traits/`
 - [x] 15. `src/compiler/checker/resolution/`
-- [x] 16. `src/compiler/checker/calls/`
+- [x] 16. `src/compiler/checker/resolution/calls/`
 - [x] 17. `src/compiler/checker/patterns/` & `src/compiler/checker/flow/`
 - [x] 18. `src/compiler/checker/rules/` (including `rules/json-forms/`)
 - [x] 19. `src/compiler/checker/declarations/` & `src/compiler/checker/closures/`
@@ -270,7 +270,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 15. `src/compiler/checker/resolution/`
 
-- **Duplicated call-completion pipeline between `implicitCall` (`src/compiler/checker/resolution/implicit.ts`) and `resolveCall` (`src/compiler/checker/calls/resolve.ts`):**
+- **Duplicated call-completion pipeline between `implicitCall` (`src/compiler/checker/resolution/implicit.ts`) and `resolveCall` (`src/compiler/checker/resolution/calls/resolve.ts`):**
   - `implicitCall` and `resolveCall` (`complete`) both check for `error` argument types, run `choose`, report `checkerDiagnostics.ambiguousCall(..., argumentListText(...))` on `'several'`, call `instantiate(useSite(...), application, expected)`, call `fitArguments(context, request.arguments, filledTypes(...))`, build `callMade(application, instantiation)`, and return `substitute(application.signature.result(), instantiation.substitution)`.
   - **Done** (`p2-structural`): see Ranked Summary item 5.
 - **Duplicate entity-to-type dispatch in `entityType` (`src/compiler/checker/resolution/named.ts`) vs. `namedType` (`src/compiler/checker/types/written/resolve-type.ts`):**
@@ -280,20 +280,20 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `conform` branches on `isSendableTrait`, then `jsonDirectionOf` (`codecWitness`), before checking trait fields and functions (`Q7`).
   - **Done** (`p3-unions`): the derived traits are one table (`derivationOf`, `resolution/conformance/derived-traits.ts`): each well-known trait's `Derivation` says what it asks of every type (`lacking`: Sendable's rule; the codecs' implied Sendable, except at the host, and the nested-optional refusal) and derives the witness of a required function none is declared for (`derive`). `conform` asks the table and branches on no trait; a form with nothing to derive from says nothing (`DerivedCodec.missing`), so a missing codec is reported as any missing function is. Each rule switches on the type's kind (`types/traits/sendable.ts`, `rules/json-forms/`), so a new kind of type is one case per rule. `isSendableTrait` is gone, and `types/traits/sendable.ts` no longer imports `json-form.ts`.
 
-### 16. `src/compiler/checker/calls/`
+### 16. `src/compiler/checker/resolution/calls/`
 
-- **Second recursive walk over composite expressions in `inferNestedLambdas` (`src/compiler/checker/calls/lambda-arguments.ts`):**
+- **Second recursive walk over composite expressions in `inferNestedLambdas` (`src/compiler/checker/resolution/calls/lambda-arguments.ts`):**
   - `inferNestedLambdas` and `branchBodiesOf` switch over `Lambda`, `BlockExpression`, `If`, `Match`, `Select`, `Tuple`, `ArrayLiteral`, and `MapLiteral`, duplicating the composite expected-type decomposition and branch collection already implemented for `Accepts` in `expressions/` and `rules/branches.ts`.
   - **Done** (`p3-unions`): `types/fitting/expected.ts` is the one home for taking an expected type apart (`builtFrom`, `expectedTuple`, `collectionTarget`, `expectedFunction`, `sameNominal`, `enumsExpected`), which the literals, lambdas, function values and `inferNestedLambdas` all read; `valueBranchesOf` (`syntax/expressions/branches.ts`) lists the blocks giving an `if`, `match` or `select` its value, for their `Accepts` and for the lambdas inferred in them.
-- **Repeated `operands.join(' and ')` formatting for `operatorTypes` (`src/compiler/checker/calls/resolve.ts`, `resolution/implicit.ts`, `types/unions/equality.ts`):**
-  - `explainNone` (`calls/resolve.ts`), `implicitOperatorCall` (`resolution/implicit.ts`), and `checkEqualSides` (`types/unions/equality.ts`) each format operand type lists with `.join(' and ')` at the call site instead of `checkerDiagnostics.operatorTypes` formatting an array of operand strings.
+- **Repeated `operands.join(' and ')` formatting for `operatorTypes` (`src/compiler/checker/resolution/calls/resolve.ts`, `resolution/implicit.ts`, `types/unions/equality.ts`):**
+  - `explainNone` (`resolution/calls/resolve.ts`), `implicitOperatorCall` (`resolution/implicit.ts`), and `checkEqualSides` (`types/unions/equality.ts`) each format operand type lists with `.join(' and ')` at the call site instead of `checkerDiagnostics.operatorTypes` formatting an array of operand strings.
   - **Done** (`fast-wins`): `operatorTypes` takes the operand list and joins it.
 
 ### 17. `src/compiler/checker/patterns/` & `src/compiler/checker/flow/`
 
 - **Manual `MatchCase` / `SelectCase` filtering in `FlowWalk` (`src/compiler/checker/flow/forward.ts`, `src/compiler/syntax/expressions/index.ts`):**
   - `constructs.Match` in `flow/forward.ts` writes `node.cases.filter((each) => each.kind === 'MatchCase')` instead of calling `casesOf(node)` (`src/compiler/syntax/expressions/index.ts`).
-  - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `flow/forward.ts`, `binder/constructs/expressions.ts`, `checker/calls/lambda-arguments.ts`, `checker/expressions/control/select.ts`, and `lowering/expressions/control/select.ts` each filter `each.kind === 'SelectCase'` by hand.
+  - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `flow/forward.ts`, `binder/constructs/expressions.ts`, `checker/resolution/calls/lambda-arguments.ts`, `checker/expressions/control/select.ts`, and `lowering/expressions/control/select.ts` each filter `each.kind === 'SelectCase'` by hand.
   - **Done** (`fast-wins`): `FlowWalk` calls `casesOf`; `selectCasesOf` beside it serves the five select sites.
 - **Three separate implementations of negative numeric literal unwrapping (`src/compiler/checker/patterns/matching.ts`, `patterns/exhaustiveness/shapes.ts`, `rules/computation.ts`):**
   - `intValueOf` (`patterns/matching.ts`), `literalKey` (`patterns/exhaustiveness/shapes.ts`), and `Computation.#own` / `isNumberLiteral` (`rules/computation.ts`) each inspect `Unary` with `operator === '-'` over numeric literals independently (and `literalKey` formats `-0` as `'-IntegerLiteral:0'` vs. `'IntegerLiteral:0'` for `0`, even though `-0 == 0`).
@@ -321,8 +321,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Duplicate reachable-edges graph walk in `Expansion` and `TypeExpansion` (`src/compiler/checker/rules/expansion.ts`, `declarations/type-expansion.ts`):**
   - `Expansion.#reachedFrom` and `TypeExpansion.#reachedFrom` implement the identical DFS worklist traversal (`visited`, `pending`, `edges`) before passing the collected edges to `endlessEdges` (`types/expansion-edges.ts`).
   - **Done** (`p4-computed`): `endlessEdgesFrom` (`types/expansion-edges.ts`) walks from the judged nodes through `edgesReachedFrom` (`structures/reachable.ts`); each user supplies its nodes' edges and the node an edge leads to.
-- **Third parallel call-checking pipeline in `checkValueCall` (`src/compiler/checker/closures/value-calls.ts`, `calls/resolve.ts`):**
-  - `checkValueCall` duplicates the error-argument guard, `takenBy` invocation, `explain` reporting, `fitArguments`, and `checkReferencedPlaces` of `resolveCall` (`calls/resolve.ts`).
+- **Third parallel call-checking pipeline in `checkValueCall` (`src/compiler/checker/closures/value-calls.ts`, `resolution/calls/resolve.ts`):**
+  - `checkValueCall` duplicates the error-argument guard, `takenBy` invocation, `explain` reporting, `fitArguments`, and `checkReferencedPlaces` of `resolveCall` (`resolution/calls/resolve.ts`).
   - **Done** (`p2-structural`): see Ranked Summary item 5; a value call has one callee and chooses nothing, so it takes `takenBy` directly and shares the rest by calling the same units.
 
 ### 20. `src/compiler/checker/expressions/`, `src/compiler/checker/statements/` & `src/compiler/checker/lookup/`
@@ -493,7 +493,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **Contradiction between §3.3 (`docs/spec.md:360`) and §3.7 (`docs/spec.md:457`) on whether a parameter can be referenced with `&`:**
   - §3.3 (`docs/spec.md:360`) states: *"Parameters are immutable, as if declared `const` (§3.4): a by-value parameter can't be reassigned, changed in part or passed by `&`. Only a reference parameter (`&T`, §3.7) changes..."*
-  - §3.7 (`docs/spec.md:457`) then states: *"What can be referenced. A `let` variable or a parameter, a field or tuple element path of one (`&self.items`, `&t.0`)..."* before saying two sentences later *"A reference parameter passed on with `&` passes the same reference."* Saying *"a parameter"* in the first sentence contradicts §3.3; it means *"a `&` parameter"* (as enforced by `src/compiler/checker/calls/places.ts`).
+  - §3.7 (`docs/spec.md:457`) then states: *"What can be referenced. A `let` variable or a parameter, a field or tuple element path of one (`&self.items`, `&t.0`)..."* before saying two sentences later *"A reference parameter passed on with `&` passes the same reference."* Saying *"a parameter"* in the first sentence contradicts §3.3; it means *"a `&` parameter"* (as enforced by `src/compiler/checker/resolution/calls/places.ts`).
   - **Done** (`fast-wins`): §3.7 says "a `&` parameter".
 - **Incomplete Built-in traits table in §3.10 (`docs/spec.md:694–713`) vs. §3.9 (`docs/spec.md:571–587`, `616`) and `prelude.ista`:**
   - §3.9's operator table (`docs/spec.md:571–587`) lists `Powerable`, `Bitwise`, `Shiftable`, and `Container`, but §3.10's Built-in traits summary table (`docs/spec.md:694–713`) omits all four (`Container` is absent from the table, and the operator row at `docs/spec.md:713` lists only `Addable, Subtractable, Multipliable, Divisible, FloorDivisible, Negatable, Comparable`).

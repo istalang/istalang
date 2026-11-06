@@ -30,7 +30,7 @@ Use a phase or feature folder only through its entry module. Upward imports and 
 - `docs/reuse/modules-and-names.md`: looking up well-known declarations/functions, spelling static/qualified/extern names, loading modules, or reading bound entities.
 - `docs/reuse/types-and-fitting.md`: building, comparing, substituting, printing or fitting checker `Type`s, well-known types, trait constraints, patterns, or body data flow.
 - `docs/reuse/calls-and-resolution.md`: finding call/witness candidates, resolving overloads, inferring type arguments, or making implicit/prelude calls.
-- `docs/reuse/lowering-and-ir.md`: lowering expressions/statements to Definition IR, interning tables, closing function instances, emitting calls/loops/places, or writing synthesized code.
+- `docs/reuse/lowering-and-ir.md`: lowering expressions/statements to Definition IR, interning tables, closing function instances, emitting resolution/calls/loops/places, or writing synthesized code.
 - `docs/reuse/values-and-equality.md`: building, narrowing or reading language `Value`s, structs, variants, closures, maps or JSON from TypeScript, or comparing values with `==`.
 - `docs/reuse/stdlib-and-natives.md`: adding or editing a std module, native function, sequence index/slice/range helper, text parser/formatter, or `.ista` test helper.
 - `docs/reuse/runtime-and-persistence.md`: changing persisted formats, canonical JSON codecs, snapshots, heap objects, disposal, scheduler wakes, or the host API.

@@ -1,8 +1,8 @@
 /**
  * Indexing and slicing (§3.9): `x[k]` calls `index(x, k)`, found like an operator's function, so
  * any type with an `index` can be indexed, and slicing is indexing with a `Range`. Writing an
- * element is the rule of places (calls/places.ts). An index can be a link of an optional chain
- * (expressions/access/optionals.ts), as in `a?.items[0]`.
+ * element is the rule of places (resolution/calls/places.ts). An index can be a link of an optional
+ * chain (expressions/access/optionals.ts), as in `a?.items[0]`.
  *
  * A struct is indexed by its keys first (§3.1, §3.9): `s[k]` with `k` within `keyof S` reads the
  * field `k` names, typed `S[K]`, before any `index`. Where `S` declares no `index` of its own, the
@@ -12,9 +12,9 @@
 
 import { collectionFunctions } from '../../../../language/well-known/implicit-calls.ts';
 import type { Index } from '../../../syntax/expressions/index.ts';
-import { resolveCall } from '../../calls/resolve.ts';
-import { stoppedOperation } from '../../calls/stopped-operations.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
+import { resolveCall } from '../../resolution/calls/resolve.ts';
+import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
 import { topLevelCandidates } from '../../resolution/choosing/candidates.ts';
 import { takesAsSelf } from '../../resolution/choosing/receivers.ts';
 import { keyedFieldRead } from '../../surface/checked-field.ts';

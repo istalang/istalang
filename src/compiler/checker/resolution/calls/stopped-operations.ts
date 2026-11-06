@@ -13,11 +13,11 @@
  * stopping operand in evaluation order decides which.
  */
 
-import type { Expression } from '../../syntax/expressions/index.ts';
-import type { Assignment } from '../../syntax/statements/index.ts';
-import type { BodyContext } from '../contexts/body-context.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType, isPrimitive, neverType } from '../types/type/primitives.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import type { Assignment } from '../../../syntax/statements/index.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
+import type { Type } from '../../types/type/index.ts';
+import { errorType, isPrimitive, neverType } from '../../types/type/primitives.ts';
 
 /** An operand of an operation, in evaluation order, and its type. */
 export interface StoppingOperand {

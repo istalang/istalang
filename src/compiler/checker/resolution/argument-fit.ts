@@ -1,7 +1,7 @@
 /**
  * A chosen call's arguments fitted to the parameters they fill, and the argument list as reports
- * spell it: one rule for a written call (calls/resolve.ts, closures/value-calls.ts) and an implicit
- * one (implicit.ts), so every argument's implicit wraps are recorded where it is given.
+ * spell it: one rule for a written call (resolution/calls/resolve.ts, closures/value-calls.ts) and
+ * an implicit one (implicit.ts), so every argument's implicit wraps are recorded where it is given.
  *
  * - An argument with no node stands for no expression of its own (an implicit call's operand
  *   that isn't wrappable), so there is nothing to wrap and it isn't fitted.

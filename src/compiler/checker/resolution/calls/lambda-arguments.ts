@@ -11,17 +11,17 @@
  * parameter nothing has bound is left for instantiating to report.
  */
 
-import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
-import type { Expression, Lambda } from '../../syntax/expressions/index.ts';
-import { unparenthesized } from '../../syntax/expressions/readings.ts';
-import type { Block } from '../../syntax/statements/index.ts';
-import { tailExpressionOf } from '../../syntax/statements/readings.ts';
-import type { BodyContext } from '../contexts/body-context.ts';
-import type { Application } from '../resolution/choosing/choice.ts';
-import { collectionTarget, expectedFunction, expectedTuple } from '../types/fitting/expected.ts';
-import type { Inference } from '../types/inference/infer.ts';
-import { parametersIn } from '../types/parts/type-parts.ts';
-import type { Type } from '../types/type/index.ts';
+import { valueBranchesOf } from '../../../syntax/expressions/branches.ts';
+import type { Expression, Lambda } from '../../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../../syntax/expressions/readings.ts';
+import type { Block } from '../../../syntax/statements/index.ts';
+import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
+import { collectionTarget, expectedFunction, expectedTuple } from '../../types/fitting/expected.ts';
+import type { Inference } from '../../types/inference/infer.ts';
+import { parametersIn } from '../../types/parts/type-parts.ts';
+import type { Type } from '../../types/type/index.ts';
+import type { Application } from '../choosing/choice.ts';
 
 /** An argument of a call being resolved: its node, and its type unless the call decides it. */
 interface Argument {

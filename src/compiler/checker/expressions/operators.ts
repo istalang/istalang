@@ -2,8 +2,8 @@
  * Operator expressions (§3.9).
  *
  * - An operator's meaning (syntax/operators.ts) decides how it is checked. Arithmetic, negation,
- *   the orderings and `in` call functions (calls/operators.ts); an ordering is `Bool` whatever
- *   `compare` returns, since lowering turns its int into the relation. `item in c` calls
+ *   the orderings and `in` call functions (resolution/calls/operators.ts); an ordering is `Bool`
+ *   whatever `compare` returns, since lowering turns its int into the relation. `item in c` calls
  *   `includes(c, item)`, which must give a `Bool`.
  * - A chain `a < b == c`, `in` and `not in` included, compares each operand with the next, each
  *   operand checked once. Its orderings' `compare` and its memberships' `includes` calls are
@@ -37,10 +37,15 @@ import {
   isImplicitOperator,
 } from '../../syntax/operators.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
-import { stoppedOperation } from '../calls/stopped-operations.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import {
+  applied,
+  type Operand,
+  resolveOperator,
+  unaryApplied,
+} from '../resolution/calls/operators.ts';
+import { stoppedOperation } from '../resolution/calls/stopped-operations.ts';
 import { type ImplicitOperand, implicitOperatorCall } from '../resolution/implicit.ts';
 import type { Type } from '../types/type/index.ts';
 import { boolType, isPrimitive } from '../types/type/primitives.ts';
@@ -94,7 +99,7 @@ export function checkChainedComparison(context: BodyContext, node: ChainedCompar
 
 /**
  * Checks one or more comparison links of `comparison` in sequence, checking shared operands once;
- * an operand with no value stops it (calls/stopped-operations.ts).
+ * an operand with no value stops it (resolution/calls/stopped-operations.ts).
  */
 function checkComparisons(
   context: BodyContext,

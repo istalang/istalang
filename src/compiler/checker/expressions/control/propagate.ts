@@ -6,9 +6,9 @@
 
 import { wellKnown } from '../../../../language/well-known/index.ts';
 import type { Propagate } from '../../../syntax/expressions/index.ts';
-import { stoppedOperation } from '../../calls/stopped-operations.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type-text.ts';

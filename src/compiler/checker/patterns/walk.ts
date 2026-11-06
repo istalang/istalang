@@ -187,7 +187,7 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
  * error, or a selection refused, was reported where it arose; it takes anything, for
  * exhaustiveness, and a refused one still binds its names, at the error type (`bindAt`). A part of
  * type `Never` has no value (§2), so the pattern never runs: it takes anything and binds its names
- * at `Never`, testing and reporting nothing (calls/stopped-operations.ts).
+ * at `Never`, testing and reporting nothing (resolution/calls/stopped-operations.ts).
  */
 function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart): Matched {
   const node =

@@ -23,7 +23,7 @@
  *   so one mistake is reported once instead of at every use that follows.
  * - `Never` (§2) is the type of expressions that don't produce a value, and fits wherever any type
  *   is expected. No value of it exists, so an operation on one never runs and reports nothing
- *   (calls/stopped-operations.ts).
+ *   (resolution/calls/stopped-operations.ts).
  * - A type parameter is keyed by its declaration. A trait's `Self` is the trait's own implicit
  *   parameter, keyed by the trait declaration, so substituting the constrained type for it is the
  *   same operation as for any other parameter.

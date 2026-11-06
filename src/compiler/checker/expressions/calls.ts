@@ -1,6 +1,6 @@
 /**
  * Calls (§3.3, §3.7, §3.10): the callee names a set of candidates, and the arguments' types choose
- * one (resolution/, calls/). A callee is written as:
+ * one (resolution/). A callee is written as:
  *
  * - a function's name, plain or through a namespace (`m.f()`), which looks only in that module,
  *   with no argument-dependent lookup (§3.13);
@@ -20,11 +20,11 @@
  *   (closures/own-calls.ts).
  *
  * An argument written `&x` passes the place `x` by reference, which must be a place that may change
- * (calls/places.ts). A named argument fills the parameter of its name, and a spread a rest
- * parameter (§3.3, resolution/choosing/binding.ts). An argument given by position after a named one
- * was reported by the parser, so it counts as the error type: the call still checks its arguments
- * and records the candidates a tool shows while the call is being written, and reports nothing
- * more.
+ * (resolution/calls/places.ts). A named argument fills the parameter of its name, and a spread a
+ * rest parameter (§3.3, resolution/choosing/binding.ts). An argument given by position after a
+ * named one was reported by the parser, so it counts as the error type: the call still checks its
+ * arguments and records the candidates a tool shows while the call is being written, and reports
+ * nothing more.
  */
 
 import { staticName } from '../../../language/static-names.ts';
@@ -39,12 +39,12 @@ import type {
   MemberAccess,
 } from '../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
-import { checkChangedPlace } from '../calls/places.ts';
-import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
-import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { checkChangedPlace } from '../resolution/calls/places.ts';
+import { resolveCall, type WrittenArgument } from '../resolution/calls/resolve.ts';
+import { stoppedOperation } from '../resolution/calls/stopped-operations.ts';
 import {
   callableThrough,
   callCandidates,

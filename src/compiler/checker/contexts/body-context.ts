@@ -135,7 +135,7 @@ export interface BodyContext {
    */
   readonly useEntity: (name: Identifier) => Entity | undefined;
   readonly recordCall: (site: ResolvedSite, call: ResolvedCall) => void;
-  /** Records the functions the call at `site` chooses among (calls/resolve.ts). */
+  /** Records the functions the call at `site` chooses among (resolution/calls/resolve.ts). */
   readonly recordCandidates: (
     site: ResolvedSite,
     candidates: readonly FunctionDeclaration[],
@@ -341,7 +341,7 @@ export interface IterationRecord {
 /**
  * How each field read reaches its field (expressions/access/member-access.ts), which a place
  * reaching it asks again: a field a key reads is a place's field, never an element
- * (calls/places.ts).
+ * (resolution/calls/places.ts).
  */
 export interface FieldReadRecord {
   readonly record: (reading: FieldReading, read: FieldRead) => void;

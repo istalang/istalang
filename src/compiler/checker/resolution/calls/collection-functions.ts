@@ -11,16 +11,16 @@
  *   would give a future where a value or a finished write is needed, so none may be async.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { collectionFunctions } from '../../../language/well-known/implicit-calls.ts';
-import type { NodeOf } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext } from '../contexts/body-context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { topLevelCandidates } from '../resolution/choosing/candidates.ts';
-import { implicitCall } from '../resolution/implicit.ts';
-import type { ImplicitRole, ResolvedCall } from '../surface/resolved-call.ts';
-import type { Type } from '../types/type/index.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import { collectionFunctions } from '../../../../language/well-known/implicit-calls.ts';
+import type { NodeOf } from '../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { ImplicitRole, ResolvedCall } from '../../surface/resolved-call.ts';
+import type { Type } from '../../types/type/index.ts';
+import { topLevelCandidates } from '../choosing/candidates.ts';
+import { implicitCall } from '../implicit.ts';
 
 /** An element written: by which construct and role, into what, and what to report when it can't. */
 export interface ElementWrite {

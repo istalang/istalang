@@ -141,11 +141,11 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - `signatureOf` (`resolution/choosing/choice.ts`) rebuilds `RestSlot` (`restSlotOf`) on every candidate of every call, re-extracting the `Array<T>` element type that `declarations/functions/signatures.ts` already checked.
   - `{ readonly type: Type; readonly reference: boolean }` is duplicated as `ParameterSlot` (`types/type/index.ts`) and `ArgumentSlot` (`resolution/choosing/binding.ts`).
   - `CallArgument`, `Passing`, `Accepts`, and `Inapplicability` sit in `resolution/choosing/choice.ts`, forcing `applicability.ts` and `packs.ts` (which `choice.ts` calls) to type-import upward from `choice.ts`.
-- **Incomplete target-typed lambda result inference (`src/compiler/checker/calls/lambda-arguments.ts`, `body-checker.ts`, D160):**
+- **Incomplete target-typed lambda result inference (`src/compiler/checker/resolution/calls/lambda-arguments.ts`, `body-checker.ts`, D160):**
   - While `acceptsOf` recurses through `Tuple`, `ArrayLiteral`, `MapLiteral`, `If`, and `BlockExpression`, `checkDecidedLambdas` only inspects top-level `unparenthesized(node).kind === 'Lambda'`, and `BodyChecker.inferLambda` throws `unreachable` on any non-lambda expression.
 - **`callWithTypes` assumes all candidates share the first candidate's arity (`src/compiler/checker/resolution/typed-call.ts`, D122):**
   - `callWithTypes` builds `decided` from `checker.parametersOf(candidates[0].declaration).length`, which would mis-resolve overloaded helpers with different arities.
-- **Potential silent failure in `explain` (`src/compiler/checker/calls/resolve.ts`, D217):**
+- **Potential silent failure in `explain` (`src/compiler/checker/resolution/calls/resolve.ts`, D217):**
   - When a 1-candidate call fails with `reason.kind === 'arguments'` on a target-typed argument (`argument.type === undefined`), `explain` calls `context.expect(argument.node, expected)`. If `expect` reports no diagnostic, `resolveCall` returns `errorType` with zero diagnostics emitted.
 
 ---
@@ -198,10 +198,10 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 - **Duplicated comparison & membership checking across binary operators, chains, and patterns (`src/compiler/checker/expressions/operators.ts`, `patterns/matching.ts`, D226):**
   - `checkBinary` and `checkMembership` resolve binary `<` / `==` / `in` one way (via `resolveOperator`, recording in `body.calls`), while `checkChainedComparison` and `checkLinkCall` resolve chained `a < b == c in d` a second way (via `implicitCall`, recording at `link.right` in `body.implicitCallOf`).
   - Meanwhile, ordering tests in patterns are split across three representations (`compare` test on `CompareFieldPattern`, `bound` test on `RangePattern`, and `length` + implicit `compare` on `ArrayPattern`).
-- **Single-target vs. destructuring assignment split and `_ = e` error suppression (`src/compiler/checker/statements/assignments.ts`, `calls/places.ts`, D101, D168):**
+- **Single-target vs. destructuring assignment split and `_ = e` error suppression (`src/compiler/checker/statements/assignments.ts`, `resolution/calls/places.ts`, D101, D168):**
   - `_ = e` checks `_` via `assignedPlace`, which returns `errorType`, and then passes `expected = errorType` into `context.expression(node.value, place)`. Because `errorType` fits everything, type errors inside `e` (such as `_ = if c: 1 else: "two"`) are silently suppressed (**D101**).
   - Single-target assignment `x = e` passes `place` as `expected` to `e`, whereas destructuring assignment `a, b = e` checks `e` with `expected = undefined`, rejecting `xs, n = ([], 1)` and `o, n = (none, 1)` (**D168**).
-  - Place identity/overlap is computed by string paths in `assignments.ts` (`placeName`, `overlap`) and by binder entities/AST steps in `calls/places.ts` (`rootVariable`, `throughShared`, `reachesAccessor`).
+  - Place identity/overlap is computed by string paths in `assignments.ts` (`placeName`, `overlap`) and by binder entities/AST steps in `resolution/calls/places.ts` (`rootVariable`, `throughShared`, `reachesAccessor`).
 
 ---
 
@@ -321,7 +321,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 ### 3. Tricky Parts of the Spec That Could Be Generalized
 
-1. **Bidirectional Target-Typing of Composite Arguments (`src/compiler/checker/rules/agreement.ts`, `expressions/tuples.ts`, `calls/lambda-arguments.ts`, D160, D168, D190):**
+1. **Bidirectional Target-Typing of Composite Arguments (`src/compiler/checker/rules/agreement.ts`, `expressions/tuples.ts`, `resolution/calls/lambda-arguments.ts`, D160, D168, D190):**
    - Target-typed argument checking (`Accepts`), lambda return-type inference (`checkDecidedLambdas`), and destructuring assignment (`checkAssignment`) are three partial solutions to one problem: propagating expected types into composite expressions (`Tuple`, `ArrayLiteral`, `MapLiteral`, `If`, `Match`, `Select`).
    - Because `agreedAccepts` returns `undefined` whenever `producers[0]` has a known type, `f(["a", none])` fails while `f([none, "a"])` succeeds; because `agreedAccepts` and `tupleAccepts` replace typed siblings with `?? true`, `[none, "a"]` and `(1, none)` lose their known element types during overload resolution; and because `checkDecidedLambdas` only checks top-level lambdas, a lambda inside a tuple or branch never binds call type parameters.
 2. **Compile-Time Constant Evaluation Ignoring Recorded `Fit`s (`src/compiler/checker/rules/computation.ts`, D216):**

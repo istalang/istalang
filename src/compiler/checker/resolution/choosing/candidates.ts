@@ -129,7 +129,7 @@ export function callCandidates(
 /**
  * The methods of `methods` a call through `callee`, a member access, may mean: one taking `&self`
  * only when the access is a place (§3.7), since what it changes must be the caller's own. Whether
- * that place may change is judged once one is chosen (calls/places.ts).
+ * that place may change is judged once one is chosen (resolution/calls/places.ts).
  */
 export function callableThrough(
   checker: Pick<CheckerContext, 'parametersOf'>,

@@ -19,10 +19,10 @@ import { staticName } from '../../../language/static-names.ts';
 import type { FunctionsEntity } from '../../binder/entities.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import { recordChosen } from '../calls/resolve.ts';
 import type { Accepts, BodyContext } from '../contexts/body-context.ts';
 import { useSite } from '../contexts/use-site.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { recordChosen } from '../resolution/calls/resolve.ts';
 import type { Passing } from '../resolution/choosing/call-arguments.ts';
 import {
   type Candidate,

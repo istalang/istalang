@@ -21,10 +21,10 @@ import { panicFunction } from '../../../../language/well-known/implicit-calls.ts
 import { unreachable } from '../../../../structures/unreachable.ts';
 import { type ChainStep, chainStepOf, isOptionalStep } from '../../../syntax/expressions/chains.ts';
 import type { Binary, Expression, Unwrap } from '../../../syntax/expressions/index.ts';
-import { stoppedOperation } from '../../calls/stopped-operations.ts';
 import type { BodyContext, Chains } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
 import { preludeCall } from '../../resolution/implicit.ts';
 import type { ChainLink } from '../../surface/checked-body.ts';
 import type { Type } from '../../types/type/index.ts';

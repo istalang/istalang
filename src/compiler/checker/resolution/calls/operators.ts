@@ -9,7 +9,7 @@
  * mention (§3.10).
  */
 
-import type { Expression } from '../../syntax/expressions/index.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
 import {
   type BinaryOperator,
   binaryOperators,
@@ -17,11 +17,11 @@ import {
   type CallingUnaryOperator,
   type UnaryOperator,
   unaryOperators,
-} from '../../syntax/operators.ts';
-import type { BodyContext } from '../contexts/body-context.ts';
-import { topLevelCandidates } from '../resolution/choosing/candidates.ts';
-import type { ResolvedSite } from '../surface/resolved-call.ts';
-import type { Type } from '../types/type/index.ts';
+} from '../../../syntax/operators.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
+import type { ResolvedSite } from '../../surface/resolved-call.ts';
+import type { Type } from '../../types/type/index.ts';
+import { topLevelCandidates } from '../choosing/candidates.ts';
 import { resolveCall } from './resolve.ts';
 
 /** An operator a call site applies: as it is written, and the function it calls (§3.9). */

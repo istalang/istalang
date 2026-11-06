@@ -1,8 +1,8 @@
 /**
  * A call applied: chosen among its candidates, instantiated with its constraints met, and its
- * arguments fitted to what they fill (§3.5, §3.7). Written calls (calls/resolve.ts) and the calls
- * the language makes (implicit.ts) apply through here, each saying how a call nothing takes is
- * reported and recording what it made; so choosing, ranking the implicit conversions
+ * arguments fitted to what they fill (§3.5, §3.7). Written calls (resolution/calls/resolve.ts) and
+ * the calls the language makes (implicit.ts) apply through here, each saying how a call nothing
+ * takes is reported and recording what it made; so choosing, ranking the implicit conversions
  * (choosing/choice.ts) and fitting an argument, its conversion and wraps included
  * (argument-fit.ts), each happen in one place for every call.
  *

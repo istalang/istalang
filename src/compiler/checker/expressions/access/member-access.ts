@@ -17,7 +17,6 @@ import { linkOperator } from '../../../syntax/expressions/chains.ts';
 import type { Expression, MemberAccess } from '../../../syntax/expressions/index.ts';
 import { isMissingName } from '../../../syntax/node.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import { stoppedOperation } from '../../calls/stopped-operations.ts';
 import {
   checkFunctionValue,
   functionsAccepted,
@@ -26,6 +25,7 @@ import {
 import type { Accepts, BodyContext, FieldReadRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
 import { topLevelCandidates } from '../../resolution/choosing/candidates.ts';
 import { namedType, nameNodeOf } from '../../resolution/named.ts';
 import type { FieldRead, FieldReading, FoundField } from '../../surface/checked-field.ts';
