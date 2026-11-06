@@ -1,7 +1,9 @@
 /**
- * The type a name names where a type is written in a value's place: as a static function's owner or
- * a conversion's target (§3.10), and as what a pattern names (pattern-types.ts reads it here); and
- * what static functions on a type are declared on (§3.7, §3.17). Its static functions
+ * What a name in value position names, where the binder alone can't tell (§3.1, §3.10, §3.11): a
+ * type, as a static function's owner or a conversion's target, and as what a pattern names
+ * (pattern-types.ts reads it here); a variant, which a bare name picks by the enum expected, in a
+ * pattern alike; or a struct without fields, the one type a bare name makes a value of. And what
+ * static functions on a type are declared on (§3.7, §3.17). Its static functions
  * (constructs/declarations/functions/statics.ts, constructs/declarations/functions/clashes.ts,
  * resolution/choosing/candidates.ts) and the editor's completion read the same rules here, so what
  * a name may name and what it then means can't drift apart.
@@ -14,12 +16,25 @@
  */
 
 import type { PrimitiveName } from '../../../../language/primitives.ts';
-import type { Entity } from '../../../binder/entities.ts';
+import type { Entity, VariantNaming } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
+import type {
+  EnumDeclaration,
+  FunctionDeclaration,
+  StructDeclaration,
+  Variant,
+} from '../../../syntax/declarations/index.ts';
+import type { Expression, MemberAccess } from '../../../syntax/expressions/index.ts';
+import type { Identifier } from '../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { Checker } from '../../check.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { enumsExpected } from '../fitting/expected.ts';
 import { type ShapeKey, typeKeys } from '../identity/type-keys.ts';
 import type { NominalDeclaration, Type } from '../type/index.ts';
+import { expectsError } from '../type/primitives.ts';
 import { optionalInner } from '../unions/unions.ts';
 import { typeOfEntity } from './resolve-type.ts';
 
@@ -75,4 +90,77 @@ export function declaredOwnerOf(
   return declaration.owner === undefined
     ? undefined
     : staticOwnerOf(entityType(checker, checker.bindings.entityOf(module, declaration.owner)));
+}
+
+/** What naming a type in value position reads: the checker, and what the binder says a name is. */
+export type Naming = Pick<BodyContext, 'checker' | 'entityOf'>;
+
+/**
+ * The type a type named in value position denotes, as the owner of a static call or the target
+ * of a conversion; undefined when `node` names no type.
+ */
+export function namedType(context: Naming, node: Expression): Type | undefined {
+  const name = nameNodeOf(node);
+  const entity = name === undefined ? undefined : context.entityOf(name);
+  if (entity === undefined && node.kind === 'MemberAccess' && !node.isOptional) {
+    return associatedNamed(context, node);
+  }
+  return entityType(context.checker, entity);
+}
+
+/**
+ * The associated type `access` names, `R.Data` (§3.1): its member on the type its target names,
+ * through which a static function is called (`R.Data.default()`); undefined for any other member.
+ */
+function associatedNamed(context: Naming, access: MemberAccess): Type | undefined {
+  const owner = namedType(context, access.target);
+  if (owner === undefined) {
+    return undefined;
+  }
+  const associated = context.checker.typeRules.associatedType(owner, access.member.text);
+  return associated.kind === 'error' ? undefined : associated;
+}
+
+/** The identifier naming what `node` names: itself, or the member of a qualified name. */
+export function nameNodeOf(node: Expression): Identifier | undefined {
+  if (node.kind === 'Identifier') {
+    return node;
+  }
+  return node.kind === 'MemberAccess' ? node.member : undefined;
+}
+
+/**
+ * The variant a name written at `at` means: the one its qualification names, or the one the
+ * expected enum has (§3.11), recorded for the bare name. A pattern names a variant the same way,
+ * its value's type expected.
+ */
+export function chooseVariant(
+  context: BodyContext,
+  at: { readonly span: AnchoredSpan; readonly name: Identifier },
+  naming: VariantNaming,
+  expected: Type | undefined,
+): { enum: EnumDeclaration; variant: Variant } | undefined {
+  if (naming.kind === 'variant') {
+    return { enum: naming.enum, variant: naming.variant };
+  }
+  const chosen = context.checker.inputs.variantNamed(naming.name, enumsExpected(expected));
+  if (chosen === undefined) {
+    if (!expectsError(expected)) {
+      context.report(checkerDiagnostics.bareVariant(at.span, at.name.text));
+    }
+    return undefined;
+  }
+  context.recordVariant(at.name, chosen);
+  return { enum: chosen.enum, variant: chosen.variant };
+}
+
+/** The struct without fields `entity` names, the one type a bare name makes a value of (§3.1). */
+export function fieldlessStructOf(
+  checker: Pick<CheckerContext, 'declaredFieldsOf'>,
+  entity: Entity,
+): StructDeclaration | undefined {
+  if (entity.kind !== 'type' || entity.declaration.kind !== 'StructDeclaration') {
+    return undefined;
+  }
+  return checker.declaredFieldsOf(entity.declaration).length > 0 ? undefined : entity.declaration;
 }

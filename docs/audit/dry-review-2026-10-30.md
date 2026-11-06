@@ -273,7 +273,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Duplicated call-completion pipeline between `implicitCall` (`src/compiler/checker/resolution/applying/implicit.ts`) and `resolveCall` (`src/compiler/checker/resolution/calls/resolve.ts`):**
   - `implicitCall` and `resolveCall` (`complete`) both check for `error` argument types, run `choose`, report `checkerDiagnostics.ambiguousCall(..., argumentListText(...))` on `'several'`, call `instantiate(useSite(...), application, expected)`, call `fitArguments(context, request.arguments, filledTypes(...))`, build `callMade(application, instantiation)`, and return `substitute(application.signature.result(), instantiation.substitution)`.
   - **Done** (`p2-structural`): see Ranked Summary item 5.
-- **Duplicate entity-to-type dispatch in `entityType` (`src/compiler/checker/resolution/named.ts`) vs. `namedType` (`src/compiler/checker/types/written/resolve-type.ts`):**
+- **Duplicate entity-to-type dispatch in `entityType` (`src/compiler/checker/types/written/named-types.ts`) vs. `namedType` (`src/compiler/checker/types/written/resolve-type.ts`):**
   - Both switch on `entity.kind` (`primitive`, `type`) and `entity.declaration.kind` (`TypeParameter`, `TypeAliasDeclaration`, `TraitDeclaration`, nominal declarations) to construct a `Type`, with `entityType` hard-coding `arguments: []` on `TypeAliasDeclaration` without filling default type parameters.
   - **Done** (`p2-structural`): both go through `typeOfEntity` (`types/written/resolve-type.ts`), given the arguments each finds: a written type's, defaults filled, or none for a name in a value's place, which names a generic declaration, an alias too, as a whole.
 - **Derived traits if-chain in `conform` (`src/compiler/checker/resolution/conformance/conformance.ts`; tracked as `Q7`):**
@@ -313,10 +313,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 19. `src/compiler/checker/constructs/declarations/` & `src/compiler/checker/constructs/closures/`
 
-- **Three separate implementations of static-function owner resolution; `checkClashes` misses type aliases (`src/compiler/checker/constructs/declarations/functions/statics.ts`, `rules/clashes.ts`, `resolution/named.ts`):**
+- **Three separate implementations of static-function owner resolution; `checkClashes` misses type aliases (`src/compiler/checker/constructs/declarations/functions/statics.ts`, `rules/clashes.ts`, `types/written/named-types.ts`):**
   - `StaticFunctions.#ownerOf` (`constructs/declarations/functions/statics.ts`) unwraps `TypeAliasDeclaration` via `checker.aliasedType(owner)` so `fn Duration.zero()` and `fn MyDuration.zero()` (for `type MyDuration = Duration`) index under the same `StaticOwner`.
   - `ownerKeyOf` (`rules/clashes.ts`) resolves `declaration.owner` separately using `checker.typeKeys.identityOf(entity.declaration)` without unwrapping `TypeAliasDeclaration`, so `checkClashes` misses overload clashes when one static function is declared through a type alias.
-  - Both duplicate `entityType(checker, entity)` (`resolution/named.ts`) + `staticTargetOf(checker, type)` (`resolution/choosing/candidates.ts`).
+  - Both duplicate `entityType(checker, entity)` (`types/written/named-types.ts`) + `staticTargetOf(checker, type)` (`resolution/choosing/candidates.ts`).
   - **Done** (`p2-structural`): see Ranked Summary item 4.
 - **Duplicate reachable-edges graph walk in `Expansion` and `TypeExpansion` (`src/compiler/checker/rules/expansion.ts`, `constructs/declarations/type-expansion.ts`):**
   - `Expansion.#reachedFrom` and `TypeExpansion.#reachedFrom` implement the identical DFS worklist traversal (`visited`, `pending`, `edges`) before passing the collected edges to `endlessEdges` (`types/expansion-edges.ts`).

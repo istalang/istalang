@@ -153,7 +153,7 @@ export interface BodyContext {
    * (constructs/expressions/indented-values.ts).
    */
   readonly recordBuilt: (value: IndentedValue, literal: BuiltLiteral) => void;
-  /** Records the variant the bare name `name` chose (resolution/named.ts). */
+  /** Records the variant the bare name `name` chose (types/written/named-types.ts). */
   readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
   /** Records that `node` calls a function value (§3.14). */
   readonly recordValueCall: (node: Call) => void;

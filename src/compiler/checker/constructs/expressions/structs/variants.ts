@@ -18,7 +18,6 @@ import type { FieldsLiteral, MemberAccess } from '../../../../syntax/expressions
 import { type Identifier, lastName } from '../../../../syntax/node.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { chooseVariant } from '../../../resolution/named.ts';
 import { enumsExpected, expectedNominal, sameNominal } from '../../../types/fitting/expected.ts';
 import {
   isNominalEntity,
@@ -28,6 +27,7 @@ import {
   type Type,
 } from '../../../types/type/index.ts';
 import { errorType, noneType } from '../../../types/type/primitives.ts';
+import { chooseVariant } from '../../../types/written/named-types.ts';
 import { checkLiteralFields, knownArguments } from './literal-fields.ts';
 
 /**

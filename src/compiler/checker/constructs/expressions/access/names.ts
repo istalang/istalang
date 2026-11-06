@@ -11,10 +11,10 @@ import type { Identifier } from '../../../../syntax/node.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { fieldlessStructOf } from '../../../resolution/named.ts';
 import { expectedNominal } from '../../../types/fitting/expected.ts';
 import { isNominalEntity, type Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
+import { fieldlessStructOf } from '../../../types/written/named-types.ts';
 import {
   checkFunctionValue,
   functionsAccepted,

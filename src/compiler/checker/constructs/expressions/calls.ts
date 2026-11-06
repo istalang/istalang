@@ -51,13 +51,13 @@ import {
   staticTargetOf,
   topLevelCandidates,
 } from '../../resolution/choosing/candidates.ts';
-import { namedType } from '../../resolution/named.ts';
 import { fieldOf } from '../../types/traits/known-fields.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { insideOptional } from '../../types/unions/inside-optional.ts';
 import { writtenLiteral } from '../../types/unions/unions.ts';
+import { namedType } from '../../types/written/named-types.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import { readsNothing, recordFieldRead } from './access/member-access.ts';
 import { spreadArgumentType } from './collections/collections.ts';
