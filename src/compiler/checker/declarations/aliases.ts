@@ -29,6 +29,7 @@ import type { TypeCase, TypeMatch } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { matchCase } from '../resolution/type-match-patterns.ts';
+import { TypeMatchExpansion } from '../rules/expansion/type-matches.ts';
 import { resolveConstraintSet } from '../traits/struct-constraints.ts';
 import type { MatchType } from '../types/computed-types.ts';
 import { parameterType } from '../types/resolve-type.ts';
@@ -43,7 +44,6 @@ import {
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import { AliasRecursions } from './alias-recursion.ts';
 import { RecursiveBodies } from './recursive-bodies.ts';
-import { TypeMatchExpansion } from './type-match-expansion.ts';
 
 export class Aliases implements TypeMatchQueries {
   readonly #checker: CheckerContext;

@@ -6,12 +6,12 @@
 
 import fc from 'fast-check';
 import { describe, expect, it, vi } from 'vitest';
-import { lineMapOf } from '../../../text/line-map.ts';
-import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { diagnosedAt } from '../../compile.test-kit.ts';
-import { idOf } from '../../program/program.test-kit.ts';
-import { checkProgram } from '../check.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { lineMapOf } from '../../../../text/line-map.ts';
+import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
+import { diagnosedAt } from '../../../compile.test-kit.ts';
+import { idOf } from '../../../program/program.test-kit.ts';
+import { checkProgram } from '../../check.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
 /** A call from `f<from>` to `f<to>`, passing `x` itself or `[x]`, an array built from it. */
 interface Call {

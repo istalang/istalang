@@ -2,7 +2,7 @@
  * Generic functions that would need endlessly many instantiations (§3.5): `f<T>` calling
  * `f<Array<T>>` never stops making new ones.
  *
- * The expansion graph (types/expansion-edges.ts) takes its edges from calls here: a call inside
+ * The expansion graph (edges.ts) takes its edges from calls here: a call inside
  * generic `F` to generic `G` gives `G`'s type parameters arguments built from `F`'s, and an
  * expanding edge on a cycle is reported at the call that makes it. Every call a function's code
  * makes counts: its
@@ -20,17 +20,17 @@
  * function's reports, which alone read where its calls stand.
  */
 
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import { sameItems, sameProperties } from '../../../structures/equality.ts';
-import type { ModuleId } from '../../program/program.ts';
-import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
-import { functionsOf } from '../../syntax/field-defaults.ts';
-import type { NodeOf } from '../../syntax/node.ts';
-import type { CheckerContext, CheckerNote } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { functionCallsWithin } from '../resolved-call.ts';
-import { type ArgumentEdge, argumentEdges, endlessEdgesFrom } from '../types/expansion-edges.ts';
-import type { ParameterKey } from '../types/type.ts';
+import type { EntryTable } from '../../../../structures/entries/index.ts';
+import { sameItems, sameProperties } from '../../../../structures/equality.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import { type FunctionDeclaration, typeParametersOf } from '../../../syntax/declarations.ts';
+import { functionsOf } from '../../../syntax/field-defaults.ts';
+import type { NodeOf } from '../../../syntax/node.ts';
+import type { CheckerContext, CheckerNote } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { functionCallsWithin } from '../../resolved-call.ts';
+import type { ParameterKey } from '../../types/type.ts';
+import { type ArgumentEdge, argumentEdges, endlessEdgesFrom } from './edges.ts';
 
 /** An edge of the graph, made by a call in `caller`'s code to `callee`, wherever it stands. */
 interface Edge extends ArgumentEdge {

@@ -14,7 +14,7 @@
  *   is one whose reduction reaches the use itself with no struct type holding it on the way
  *   (`case _: A<T>`, `case _: A<T> | Int`): it would be itself, as an alias can't be (§3.17).
  * - An alias reducing to itself with a type built from its own parameter never ends (§3.5); its
- *   declaration reports it (declarations/type-match-expansion.ts), and its uses are the error type.
+ *   declaration reports it (rules/expansion/type-matches.ts), and its uses are the error type.
  * - Each reduction is an entry of the checker's, by the use's spelled key (type-keys.ts): what it
  *   gives is spelled with the use's own arguments, so another spelling of the same type is another
  *   entry, and no use is answered with a type spelled at another's nodes. Which uses are under way

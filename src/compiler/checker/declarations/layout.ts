@@ -10,7 +10,7 @@
  * - As declared (`declaredFieldsOf`): field types resolved in the declaring module, once per
  *   declaration, in declaration order, which only evaluation follows: a literal's sources and the
  *   defaults, each seeing the fields before it. A field that would make the type's instantiation
- *   endless reads as the error type (type-expansion.ts).
+ *   endless reads as the error type (rules/expansion/types.ts).
  * - As laid out (`fieldsOf`): in name order, as every struct's fields are, nominal or shape (§3.1
  *   "Field order", `inFieldOrder`), so positions, the Definition's entry, patterns, codecs and a
  *   struct's conversion into its shape all follow one order.
@@ -34,6 +34,7 @@ import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { VariantMember } from '../check.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
+import { type FieldedDeclaration, TypeExpansion } from '../rules/expansion/types.ts';
 import { unfolded } from '../types/computed-types.ts';
 import { declaredFields } from '../types/declared-fields.ts';
 import { inFieldOrder } from '../types/field-order.ts';
@@ -48,7 +49,6 @@ import {
 } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import type { TypeRules } from '../types/type-rules.ts';
-import { type FieldedDeclaration, TypeExpansion } from './type-expansion.ts';
 
 /** Whether two lists of fields name, type and declare their fields alike, in order. */
 const sameFields = sameItems<FieldMember>(

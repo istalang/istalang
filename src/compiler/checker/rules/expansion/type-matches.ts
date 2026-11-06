@@ -2,8 +2,8 @@
  * Type `match` aliases whose reductions would never end (§3.5, §3.17): `type W<T> = match T:` with
  * `case _: W<Array<T>>` reduces `W<Int>` to `W<Array<Int>>`, and so on without end.
  *
- * The expansion graph (types/expansion-edges.ts) takes its edges from cases' types here, as it
- * takes a generic type's from its fields (type-expansion.ts): each use of a type `match` alias in a
+ * The expansion graph (edges.ts) takes its edges from cases' types here, as it
+ * takes a generic type's from its fields (types.ts): each use of a type `match` alias in a
  * case's type gives that alias's parameters arguments built from the declaring alias's own. An
  * argument is measured against the subject its case matched:
  * - an `infer` variable is a part of the subject, so it counts as the parameters the part of the
@@ -19,22 +19,22 @@
  * subject would pick, as a generic function calling itself is judged by its calls.
  */
 
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import { sameItems, sameProperties } from '../../../structures/equality.ts';
-import type { ModuleId } from '../../program/program.ts';
+import type { EntryTable } from '../../../../structures/entries/index.ts';
+import { sameItems, sameProperties } from '../../../../structures/equality.ts';
+import type { ModuleId } from '../../../program/program.ts';
 import {
   type AliasDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import type { CheckerContext, CheckerNote } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { type ArgumentEdge, endlessEdgesFrom } from '../types/expansion-edges.ts';
-import { sameType } from '../types/identity.ts';
-import type { ParameterKey, Type } from '../types/type.ts';
-import { typeChildren } from '../types/type-children.ts';
-import type { CasePatternForm, InferVariable, TypeMatchQueries } from '../types/type-match.ts';
-import { parametersIn } from '../types/type-parts.ts';
+} from '../../../syntax/declarations.ts';
+import type { CheckerContext, CheckerNote } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { sameType } from '../../types/identity.ts';
+import type { ParameterKey, Type } from '../../types/type.ts';
+import { typeChildren } from '../../types/type-children.ts';
+import type { CasePatternForm, InferVariable, TypeMatchQueries } from '../../types/type-match.ts';
+import { parametersIn } from '../../types/type-parts.ts';
+import { type ArgumentEdge, endlessEdgesFrom } from './edges.ts';
 
 interface ReductionEdge extends ArgumentEdge {
   readonly declaration: AliasDeclaration;

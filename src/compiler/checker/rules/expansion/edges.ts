@@ -7,23 +7,23 @@
  * use of a generic adds an edge from each of the user's own type parameters that a type argument
  * mentions to the parameter the argument is given for, an expanding edge when the parameter is
  * nested inside the argument rather than being the whole of it. Instantiation is endless exactly
- * when a cycle holds an expanding edge. Functions find their uses in their calls (rules/
- * expansion.ts), types in their fields (declarations/type-expansion.ts).
+ * when a cycle holds an expanding edge. Functions find their uses in their calls (functions.ts),
+ * types in their fields (types.ts), cases in their types (type-matches.ts).
  *
  * Each user knows its graph only node by node (a function's calls, a type's fields), so the
  * verdict walks from the nodes it judges to what their edges reach (`endlessEdgesFrom`), and the
  * user says what its nodes are, their edges, and the node an edge leads to.
  */
 
-import { edgesReachedFrom } from '../../../structures/reachable.ts';
-import { stronglyConnected } from '../../../structures/strongly-connected.ts';
+import { edgesReachedFrom } from '../../../../structures/reachable.ts';
+import { stronglyConnected } from '../../../../structures/strongly-connected.ts';
 import {
   type TypeParameter,
   type TypeParameters,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import { errorType, type ParameterKey, type Type } from './type.ts';
-import { parametersIn } from './type-parts.ts';
+} from '../../../syntax/declarations.ts';
+import { errorType, type ParameterKey, type Type } from '../../types/type.ts';
+import { parametersIn } from '../../types/type-parts.ts';
 
 /** An edge of the expansion graph: a type parameter given, in an argument, for another. */
 export interface ArgumentEdge {
