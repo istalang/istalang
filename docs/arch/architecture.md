@@ -207,8 +207,9 @@ src/
                         (signatures.ts), the call around a cursor and the parameter each written argument gives
                         (call-at.ts), and signature help over them (signature-help.ts)
   lsp/                  the language server (vscode-languageserver): server.ts (initialize, document sync, the providers),
-                        providers/ (one per request), diagnostics.ts (pushed per open document), project-loader.ts (the
-                        project as `ista check` loads it, open documents over it), locations.ts (URIs, ranges),
+                        providers/ (one per request; navigation/ holds a declaration, its references and renaming, as
+                        language-service/navigation/ does), diagnostics.ts (pushed per open document), project-loader.ts
+                        (the project as `ista check` loads it, open documents over it), locations.ts (URIs, ranges),
                         std-source-request.ts (`ista/source`, which its clients import too)
   project/              a project on disk: project.ts (sources, the loaders and roles a program is built with), file-loader.ts
                         (the project files ModuleLoader, and a module's id from its file and back), errno.ts (system errors)

@@ -1,8 +1,8 @@
 /** Going to the declaration a name denotes (language-service/navigation/declarations.ts). */
 
-import { nameAt } from '../../language-service/navigation/declarations.ts';
-import { documentOffset, locationOf } from '../locations.ts';
-import type { Provider } from './provider.ts';
+import { nameAt } from '../../../language-service/navigation/declarations.ts';
+import { documentOffset, locationOf } from '../../locations.ts';
+import type { Provider } from '../provider.ts';
 
 export const definition: Provider = {
   capabilities: { definitionProvider: true },

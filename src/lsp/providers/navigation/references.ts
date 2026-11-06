@@ -3,9 +3,9 @@
  * (language-service/navigation/references.ts); the declaring names only when the client asks.
  */
 
-import { referencesAt } from '../../language-service/navigation/references.ts';
-import { documentOffset, locationOf } from '../locations.ts';
-import type { Provider } from './provider.ts';
+import { referencesAt } from '../../../language-service/navigation/references.ts';
+import { documentOffset, locationOf } from '../../locations.ts';
+import type { Provider } from '../provider.ts';
 
 export const references: Provider = {
   capabilities: { referencesProvider: true },

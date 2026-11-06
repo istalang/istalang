@@ -13,7 +13,7 @@ Top-level folders are toolchain features. Their layers and contracts are in `doc
 - `project/`: a project on disk, for every app: `project.ts` finds sources and picks the loaders and roles, `file-loader.ts` loads project files by import path.
 - `language-service/`: what an editor asks of a project, with no protocol and no I/O: the workspace (open texts and the program they make, `workspace.ts`) and one module or folder per feature.
 - `formatter/`: a syntax tree to its canonical text; `format.ts` is its entry and the `istalang/formatter` API, with one printer table per family of constructs and comments placed on nodes (`comment-placement.ts`).
-- `lsp/`: the language server over vscode-languageserver; `server.ts` composes it, `providers/` holds one provider per request, and `ista lsp` runs it.
+- `lsp/`: the language server over vscode-languageserver; `server.ts` composes it, `providers/` holds one provider per request (the navigation ones in `providers/navigation/`), and `ista lsp` runs it.
 - `cli/`: the `ista` app. `cli.ts` is its composition root, `host-module.ts` loads the host externs of `run --host`, `report.ts` renders diagnostics, and `commands/` holds one module per subcommand.
 - `vscode-client/`: the VS Code extension's client of `ista lsp`: `extension.ts` activates it and serves the `std:` documents, `server-command.ts` picks the `ista lsp` process a workspace runs. It imports of the server only `lsp/std-source-request.ts`.
 

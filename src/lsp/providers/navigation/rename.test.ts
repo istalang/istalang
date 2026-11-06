@@ -10,30 +10,30 @@ import {
   RenameRequest,
   type WorkspaceEdit,
 } from 'vscode-languageserver/node';
-import { corpusDirectory } from '../../../test/corpus/programs.ts';
-import { diagnoseModule } from '../../compiler/compile.ts';
+import { corpusDirectory } from '../../../../test/corpus/programs.ts';
+import { diagnoseModule } from '../../../compiler/compile.ts';
 import {
   isStdModule,
   type ModuleId,
   type Program,
   programModule,
-} from '../../compiler/program/program.ts';
-import { spanIn } from '../../compiler/syntax/positions.ts';
-import { parentOf } from '../../compiler/syntax/tree.ts';
-import { isError } from '../../diagnostics/diagnostic.ts';
-import type { NamePlace } from '../../language-service/navigation/declarations.ts';
+} from '../../../compiler/program/program.ts';
+import { spanIn } from '../../../compiler/syntax/positions.ts';
+import { parentOf } from '../../../compiler/syntax/tree.ts';
+import { isError } from '../../../diagnostics/diagnostic.ts';
+import type { NamePlace } from '../../../language-service/navigation/declarations.ts';
 import {
   isSamePlace,
   nameAt,
   spelledName,
-} from '../../language-service/navigation/declarations.ts';
-import { namesDenoting } from '../../language-service/navigation/references.ts';
-import { renamingAt } from '../../language-service/navigation/rename.ts';
-import { lineMapOf } from '../../text/line-map.ts';
-import { corpusClient, corpusProgram } from '../corpus-client.test-kit.ts';
-import { moduleIdOfUri, rangeOf } from '../locations.ts';
-import { projectProgramLoader } from '../project-loader.ts';
-import type { TestClient } from '../server.test-kit.ts';
+} from '../../../language-service/navigation/declarations.ts';
+import { namesDenoting } from '../../../language-service/navigation/references.ts';
+import { renamingAt } from '../../../language-service/navigation/rename.ts';
+import { lineMapOf } from '../../../text/line-map.ts';
+import { corpusClient, corpusProgram } from '../../corpus-client.test-kit.ts';
+import { moduleIdOfUri, rangeOf } from '../../locations.ts';
+import { projectProgramLoader } from '../../project-loader.ts';
+import type { TestClient } from '../../server.test-kit.ts';
 import { namesOf, positionOf } from './navigation.test-kit.ts';
 
 let client: TestClient;
