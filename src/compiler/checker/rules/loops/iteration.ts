@@ -18,7 +18,7 @@
 import { collectionFunctions, wellKnown } from '../../../../language/well-known.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { Comprehension, Expression } from '../../../syntax/expressions/index.ts';
-import type { For } from '../../../syntax/statements.ts';
+import type { For } from '../../../syntax/statements/index.ts';
 import type { BodyContext, IterationRecord } from '../../body-context.ts';
 import type { Checker } from '../../check.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

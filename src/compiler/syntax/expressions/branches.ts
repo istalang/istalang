@@ -6,7 +6,7 @@
  * in them.
  */
 
-import type { Block } from '../statements.ts';
+import type { Block } from '../statements/index.ts';
 import type { If, Match, Select } from './index.ts';
 import { casesOf, selectCasesOf } from './readings.ts';
 

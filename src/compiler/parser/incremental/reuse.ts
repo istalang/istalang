@@ -30,7 +30,7 @@ import type {
   TraitDeclaration,
 } from '../../syntax/declarations/index.ts';
 import { type Segment, spanIn } from '../../syntax/positions.ts';
-import type { Block } from '../../syntax/statements.ts';
+import type { Block } from '../../syntax/statements/index.ts';
 import type { SyntaxTree } from '../../syntax/tree.ts';
 import { bodiesHeldBy } from './held-bodies.ts';
 

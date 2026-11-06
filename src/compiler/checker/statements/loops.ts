@@ -19,7 +19,7 @@ import type {
   LabelledBlock,
   LabelledScope,
   While,
-} from '../../syntax/statements.ts';
+} from '../../syntax/statements/index.ts';
 import type { BodyContext, LabelRecord } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkedFieldPasses, inFieldPasses } from '../rules/loops/field-passes.ts';

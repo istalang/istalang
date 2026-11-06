@@ -175,7 +175,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - The banner of `src/compiler/syntax/tree.ts` states: *"What tools ask of a tree by position derives from the same children, memoized on the immutable node or tree: a node's parent, the text a node and everything under it cover (its extent, as its own span is anchored to its segment: positions.ts), and the nodes at an offset."*
   - However, `extentIn(tree, node)` is not memoized: every call walks down `childrenOf(tree, first)` and `lastChildOf(tree, last)` to the leaves, and `nodesAt(tree, offset)` calls `extentIn` on every sibling tested at every level of the tree (contributing to the `tree.test.ts` `nodesAt` timeout in `B21`).
   - **Done** (`fast-wins`): See ranked summary #2.
-- **Ad-hoc `bare.text === '_'` check in `isUnnamedTarget` (`src/compiler/syntax/statements.ts`):**
+- **Ad-hoc `bare.text === '_'` check in `isUnnamedTarget` (`src/compiler/syntax/statements/index.ts`):**
   - `isUnnamedTarget` checks `bare.kind === 'Identifier' && bare.text === '_'` instead of calling `isUnnamed(bare.text)` (`src/language/naming.ts`).
   - **Done** (`fast-wins`): `isUnnamedTarget` calls `isUnnamed`.
 - **Missing `unparenthesizedType` helper for `TypeNode` (`src/compiler/syntax/types/index.ts`):**
@@ -203,7 +203,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 ### 9. `src/compiler/parser/` — grammar categories
 
 - **Ad-hoc `'_'` string checks instead of `isUnnamed` (`src/compiler/parser/patterns.ts`, `src/compiler/parser/statements/variables.ts`, `src/language/naming.ts`):**
-  - `parseWildcard` (`patterns.ts`) and `startsHeldVariableAt` (`statements/variables.ts`) both test `parser.textOf(...) === '_'` directly instead of calling `isUnnamed` (`src/language/naming.ts`), just as `isUnnamedTarget` does in `syntax/statements.ts`.
+  - `parseWildcard` (`patterns.ts`) and `startsHeldVariableAt` (`statements/variables.ts`) both test `parser.textOf(...) === '_'` directly instead of calling `isUnnamed` (`src/language/naming.ts`), just as `isUnnamedTarget` does in `syntax/statements/index.ts`.
   - **Done** (`fast-wins`): `parseWildcard` and `startsHeldVariableAt` call `isUnnamed`.
 - **Duplicate `RangePattern` construction in `parseRangePattern` and `parseOpenRangePattern` (`src/compiler/parser/patterns.ts`):**
   - Unlike `expressions/operators.ts` (where `parseOpenRange` and `rangeParselet` delegate to `parseRangeRest`), `parseRangePattern` and `parseOpenRangePattern` in `patterns.ts` duplicate the operator-kind check, `parseRangeBound`, and `RangePattern` node construction.

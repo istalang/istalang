@@ -20,7 +20,7 @@ import { sameItems } from '../../../structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
-import type { VariableDeclaration } from '../../syntax/statements.ts';
+import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { CheckedConstant } from '../check.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

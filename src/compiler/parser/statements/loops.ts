@@ -11,7 +11,7 @@
  */
 
 import type { Identifier, Invalid } from '../../syntax/node.ts';
-import type { FieldLoop, For, Statement, While } from '../../syntax/statements.ts';
+import type { FieldLoop, For, Statement, While } from '../../syntax/statements/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 import { parseHeaderBody } from '../parts/blocks.ts';

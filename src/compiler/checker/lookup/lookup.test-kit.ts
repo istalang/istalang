@@ -11,7 +11,7 @@ import type { Declaration } from '../../syntax/declarations/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
-import type { VariableDeclaration } from '../../syntax/statements.ts';
+import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import { nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import { type Checker, checkProgram } from '../check.ts';

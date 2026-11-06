@@ -24,7 +24,7 @@ import type { Expression, Parameter } from '../expressions/index.ts';
 import type { StringLiteral } from '../expressions/literals/literals.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from '../node.ts';
 import { type AnchoredSpan, spanAcross } from '../positions.ts';
-import type { Block, VariableDeclaration } from '../statements.ts';
+import type { Block, VariableDeclaration } from '../statements/index.ts';
 import type { ConstraintNode, FieldDeclaration, TypeMatch, TypeNode } from '../types/index.ts';
 
 /** `"""…"""`: what a declaration or module is for, in its own words (§2); tools read it. */

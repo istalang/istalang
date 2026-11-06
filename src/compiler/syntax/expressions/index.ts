@@ -9,8 +9,8 @@
  * Parameter). They are listed in ExpressionPart rather than Expression, so a field typed
  * Expression can't hold them.
  *
- * `if`, `match` and `select` are expressions (§4), and so is a `{…}` block. Their bodies are
- * Blocks (statements.ts), whatever form was written: indented, on the same line, or in braces.
+ * `if`, `match` and `select` are expressions (§4), and so is a `{…}` block. Their bodies are Blocks
+ * (statements/index.ts), whatever form was written: indented, on the same line, or in braces.
  *
  * Parentheses are kept as Parenthesized nodes: the `??` mixing rule depends on them, and the
  * formatter must not lose them. `&x` is a Reference expression wherever it is written; the parser
@@ -21,7 +21,7 @@
 import type { Identifier, Invalid, Missing, NodeOf } from '../node.ts';
 import type { BinaryOperator, ChainingOperator, UnaryOperator } from '../operators.ts';
 import type { Pattern } from '../patterns.ts';
-import type { Block } from '../statements.ts';
+import type { Block } from '../statements/index.ts';
 import type { NamedType, TypeNode } from '../types/index.ts';
 import type { Literal, StringLiteral } from './literals/literals.ts';
 
@@ -44,7 +44,9 @@ export interface MapEntry extends NodeOf<'MapEntry'> {
   readonly value: Expression;
 }
 
-/** `[for k, v in xs if cond: body]`; several targets destructure a tuple (statements.ts). */
+/**
+ * `[for k, v in xs if cond: body]`; several targets destructure a tuple (statements/targets.ts).
+ */
 export interface Comprehension extends NodeOf<'Comprehension'> {
   readonly targets: readonly Pattern[];
   readonly iterable: Expression;

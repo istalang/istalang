@@ -9,7 +9,7 @@ import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { Statement } from '../../syntax/statements.ts';
+import type { Statement } from '../../syntax/statements/index.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { FieldMember, NominalType } from '../types/type/index.ts';
 import type { CheckedBody } from './checked-body.ts';

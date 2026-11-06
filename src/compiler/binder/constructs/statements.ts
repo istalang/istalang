@@ -18,13 +18,8 @@ import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
 import { type AnchoredSpan, endOf } from '../../syntax/positions.ts';
-import {
-  type Block,
-  destructures,
-  type Statement,
-  targetParts,
-  type VariableDeclaration,
-} from '../../syntax/statements.ts';
+import type { Block, Statement, VariableDeclaration } from '../../syntax/statements/index.ts';
+import { destructures, targetParts } from '../../syntax/statements/targets.ts';
 import { bodyOf, type SyntaxNode } from '../../syntax/tree.ts';
 import { underCondition, underFields, underLoop } from '../module/flow.ts';
 import { holdsNoNames, type LocalBinder } from '../module/local-binder.ts';

@@ -11,7 +11,7 @@ import { stepVariants, wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Iteration } from '../../checker/surface/checked-body.ts';
 import type { Comprehension, Expression } from '../../syntax/expressions/index.ts';
-import type { For } from '../../syntax/statements.ts';
+import type { For } from '../../syntax/statements/index.ts';
 import { emitCall, emitImplicitCall } from '../calls/emit-call.ts';
 import type { FunctionContext } from '../context.ts';
 import { payloadOr } from '../expressions/structs/variants.ts';

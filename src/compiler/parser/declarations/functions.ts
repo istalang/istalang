@@ -14,7 +14,7 @@
 
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import type { Block } from '../../syntax/statements.ts';
+import type { Block } from '../../syntax/statements/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { documentedBy, type WithDocstring } from '../docstrings.ts';
 import { parseDocstringBelow } from '../layout/bodies.ts';

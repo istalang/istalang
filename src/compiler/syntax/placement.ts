@@ -20,7 +20,7 @@ import {
   type StatementWord,
   statementWords,
 } from './grammar-words.ts';
-import type { Statement } from './statements.ts';
+import type { Statement } from './statements/index.ts';
 
 export type Item = Declaration | Statement;
 

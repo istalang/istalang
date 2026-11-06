@@ -29,12 +29,12 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import { type CompoundAssignment, compoundOperator } from '../../syntax/operators.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { Assignment } from '../../syntax/statements/index.ts';
 import {
-  type Assignment,
   type Destructuring,
   destructuringOf,
   isUnnamedTarget,
-} from '../../syntax/statements.ts';
+} from '../../syntax/statements/targets.ts';
 import type { BodyContext } from '../body-context.ts';
 import { binaryApplied, resolveOperator } from '../calls/operators.ts';
 import {

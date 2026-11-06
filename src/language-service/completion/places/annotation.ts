@@ -18,7 +18,7 @@ import {
 import { parserDiagnostics } from '../../../compiler/parser/diagnostics.ts';
 import type { Invalid } from '../../../compiler/syntax/node.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';
-import type { Statement } from '../../../compiler/syntax/statements.ts';
+import type { Statement } from '../../../compiler/syntax/statements/index.ts';
 import { nodesUnder, type SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import { wellKnown } from '../../../language/well-known.ts';
 import type { Candidate } from '../candidate.ts';

@@ -33,17 +33,16 @@ import type {
 import { casesOf, selectCasesOf, unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { binaryOperators } from '../../syntax/operators.ts';
-import {
-  type Assignment,
-  type Block,
-  type Break,
-  type Continue,
-  type Drop,
-  type OverFields,
-  passedParts,
-  type Statement,
-  targetParts,
-} from '../../syntax/statements.ts';
+import type {
+  Assignment,
+  Block,
+  Break,
+  Continue,
+  Drop,
+  Statement,
+} from '../../syntax/statements/index.ts';
+import { type OverFields, passedParts } from '../../syntax/statements/readings.ts';
+import { targetParts } from '../../syntax/statements/targets.ts';
 import { fieldChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { LabelResolution } from '../surface/checked-body.ts';
 import { partsBeside } from './chain-parts.ts';

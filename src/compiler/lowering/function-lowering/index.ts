@@ -52,7 +52,7 @@ import type { Expression, FieldHeader, Lambda } from '../../syntax/expressions/i
 import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { Block, Statement } from '../../syntax/statements.ts';
+import type { Block, Statement } from '../../syntax/statements/index.ts';
 import { writtenBodyOf } from '../bodies.ts';
 import { type ClosedCall, closeCallWithin } from '../calls/closed-calls.ts';
 import { packElements } from '../calls/packs.ts';

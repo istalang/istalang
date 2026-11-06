@@ -37,7 +37,7 @@ import type {
   Loop,
   Return,
   Statement,
-} from '../syntax/statements.ts';
+} from '../syntax/statements/index.ts';
 import type { TypeNode } from '../syntax/types/index.ts';
 import type { SignatureParameter } from './check.ts';
 import type { CheckerContext } from './context.ts';

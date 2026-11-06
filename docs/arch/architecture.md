@@ -42,7 +42,7 @@ src/
   compiler/
     syntax/             contract: token kinds, the words each grammar position starts with (grammar-words.ts), tree node types, where items may stand, generic traversal, parents and the nodes at an offset,
                         spans anchored to segments of the text and read as text positions through the tree (positions.ts),
-                        how targets, places (expressions/places.ts), optional chains (expressions/chains.ts), struct items and parameters
+                        how targets (statements/targets.ts), places (expressions/places.ts), optional chains (expressions/chains.ts), struct items and parameters
                         (expressions/parameters.ts: a name, a pattern, or both) read as written, the function a declaration's
                         fields with defaults read as (declarations/field-defaults.ts), what a template stands for: its text, or the call a tag makes
                         (expressions/literals/templates.ts), and the literal an indented value reads as once its form is known

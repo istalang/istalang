@@ -36,7 +36,7 @@ import type { Identifier, Invalid, Missing } from '../syntax/node.ts';
 import type { PrecedenceLevel } from '../syntax/operators.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import { type AnchoredSpan, type Segment, type SegmentBases, spanIn } from '../syntax/positions.ts';
-import type { Block, Statement } from '../syntax/statements.ts';
+import type { Block, Statement } from '../syntax/statements/index.ts';
 import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types/index.ts';

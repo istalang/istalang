@@ -9,7 +9,7 @@ import { diagnosedAt } from '../../compile.test-kit.ts';
 import { idOf, programOf } from '../../program/program.test-kit.ts';
 import { programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
-import type { VariableDeclaration } from '../../syntax/statements.ts';
+import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import { bodyOf } from '../../syntax/tree.ts';
 import { checkProgram } from '../check.ts';
 import { typeText } from './type-text.ts';

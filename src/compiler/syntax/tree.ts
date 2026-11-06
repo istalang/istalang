@@ -35,7 +35,7 @@ import type { Expression, ExpressionPart, Lambda } from './expressions/index.ts'
 import type { Identifier, Invalid, Missing } from './node.ts';
 import type { Pattern, PatternPart } from './patterns.ts';
 import { type SegmentBases, spanIn } from './positions.ts';
-import type { Block, Statement, StatementPart } from './statements.ts';
+import type { Block, Statement, StatementPart } from './statements/index.ts';
 import type { Comment } from './tokens.ts';
 import type { TypeNode, TypePart } from './types/index.ts';
 

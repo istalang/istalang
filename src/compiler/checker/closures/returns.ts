@@ -14,7 +14,8 @@
 
 import { wellKnown } from '../../../language/well-known.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import { type Block, type Return, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
+import type { Block, Return } from '../../syntax/statements/index.ts';
+import { tailExpressionOf, tailNodeOf } from '../../syntax/statements/readings.ts';
 import type { BodyContext, Returns } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { agreedType, fitProduced, type Produced } from '../rules/agreement.ts';

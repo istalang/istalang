@@ -49,7 +49,7 @@ import type {
 } from '../../syntax/declarations/index.ts';
 import type { Parameter } from '../../syntax/expressions/index.ts';
 import { targetNames } from '../../syntax/patterns.ts';
-import type { VariableDeclaration } from '../../syntax/statements.ts';
+import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 
 /** The canonical name a module's declarations are qualified with. */
 function moduleName(checker: Checker, module: ModuleId): string {

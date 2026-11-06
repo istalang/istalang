@@ -9,7 +9,7 @@ import type { Span } from '../../../text/span.ts';
 import type { Declaration } from '../../syntax/declarations/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { allowedInBlock, allowedInModule, type Item } from '../../syntax/placement.ts';
-import type { Statement } from '../../syntax/statements.ts';
+import type { Statement } from '../../syntax/statements/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 

@@ -46,7 +46,7 @@ import type {
 } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { AsPattern, BindFieldPattern, NamePattern, RestPattern } from '../syntax/patterns.ts';
-import type { For, VariableDeclaration } from '../syntax/statements.ts';
+import type { For, VariableDeclaration } from '../syntax/statements/index.ts';
 
 /**
  * The call of an async function, which the function's name denotes before a `.` inside it (§7):

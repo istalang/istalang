@@ -16,7 +16,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { withPushed } from '../../../structures/stack.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Hold, LabelledScope } from '../../syntax/statements.ts';
+import type { Hold, LabelledScope } from '../../syntax/statements/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { endScope } from './scopes.ts';
 

@@ -28,11 +28,8 @@ import type { Type } from '../../checker/types/type/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { hasUnnamedPart } from '../../syntax/patterns.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import {
-  type Assignment,
-  hasUnnamedTarget,
-  type VariableDeclaration,
-} from '../../syntax/statements.ts';
+import type { Assignment, VariableDeclaration } from '../../syntax/statements/index.ts';
+import { hasUnnamedTarget } from '../../syntax/statements/targets.ts';
 import { emitCallAt } from '../calls/emit-call.ts';
 import type { FunctionContext } from '../context.ts';
 import { readPartAlong } from '../parts/part-paths.ts';

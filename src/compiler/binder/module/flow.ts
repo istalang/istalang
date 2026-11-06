@@ -23,7 +23,8 @@ import type {
   SelectCase,
 } from '../../syntax/expressions/index.ts';
 import { type AnchoredSpan, endOf } from '../../syntax/positions.ts';
-import type { For, OverFields, While } from '../../syntax/statements.ts';
+import type { For, While } from '../../syntax/statements/index.ts';
+import type { OverFields } from '../../syntax/statements/readings.ts';
 import type { LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
 

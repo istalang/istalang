@@ -7,7 +7,7 @@
 
 import { type MapOf, ValueSemantics } from '../../../language/values.ts';
 import type { Lambda } from '../../syntax/expressions/index.ts';
-import type { VariableDeclaration } from '../../syntax/statements.ts';
+import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import { laidOut, namedValues } from '../types/field-order.ts';
 import { sameType } from '../types/identity/identity.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';

@@ -11,7 +11,8 @@
  * Passed to a call that decides their type (§3.5), they take what their tails agree on.
  */
 
-import { type Block, tailExpressionOf, tailNodeOf } from '../../../syntax/statements.ts';
+import type { Block } from '../../../syntax/statements/index.ts';
+import { tailExpressionOf, tailNodeOf } from '../../../syntax/statements/readings.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../../body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import {

@@ -22,7 +22,7 @@ import type {
 } from '../syntax/declarations/index.ts';
 import type { Parameter } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
-import type { VariableDeclaration } from '../syntax/statements.ts';
+import type { VariableDeclaration } from '../syntax/statements/index.ts';
 import { type CheckerOptions, ProgramChecker } from './program/program-checker.ts';
 import type { AnnotationQueries } from './surface/checked-annotation.ts';
 import type { CheckedBody } from './surface/checked-body.ts';

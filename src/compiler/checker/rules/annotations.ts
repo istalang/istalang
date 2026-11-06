@@ -29,7 +29,7 @@ import type { Declaration, Field, FunctionDeclaration } from '../../syntax/decla
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Invalid, NodeOf } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { Statement } from '../../syntax/statements.ts';
+import type { Statement } from '../../syntax/statements/index.ts';
 import type { AnnotationChecks, CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {

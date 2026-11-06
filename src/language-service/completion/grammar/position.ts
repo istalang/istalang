@@ -24,7 +24,7 @@ import {
 } from '../../../compiler/syntax/grammar-words.ts';
 import type { Identifier, Invalid } from '../../../compiler/syntax/node.ts';
 import { moduleItemWords } from '../../../compiler/syntax/placement.ts';
-import type { LabelledScope } from '../../../compiler/syntax/statements.ts';
+import type { LabelledScope } from '../../../compiler/syntax/statements/index.ts';
 import { isKeyword, type Token } from '../../../compiler/syntax/tokens.ts';
 import {
   childrenOf,

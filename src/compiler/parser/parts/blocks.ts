@@ -1,11 +1,11 @@
 /**
  * Statement blocks, shared by every category with a body: the Block node each body becomes
- * (syntax/statements.ts), whether it was written indented, on the same line, or in braces. Layout
- * itself is in layout/; this only says that a block's items are statements (parts/items.ts),
+ * (syntax/statements/index.ts), whether it was written indented, on the same line, or in braces.
+ * Layout itself is in layout/; this only says that a block's items are statements (parts/items.ts),
  * which may carry annotations.
  */
 
-import type { Block, Statement } from '../../syntax/statements.ts';
+import type { Block, Statement } from '../../syntax/statements/index.ts';
 import { attachAnnotations } from '../annotations.ts';
 import type { WithDocstring } from '../docstrings.ts';
 import { type BodyEntry, parseBody, parseDocumentedBody } from '../layout/bodies.ts';

@@ -2,8 +2,8 @@
  * Statements and blocks (spec §3.4, §4, §7). A block's statements stand one per line: `;` parts
  * statements only inside braces (branches.ts), so a block never prints them on one line.
  *
- * `hold _ = x` is stored as `hold const _ = x` (syntax/statements.ts), and prints in the short
- * form it was most likely written in.
+ * `hold _ = x` is stored as `hold const _ = x` (syntax/statements/index.ts), and prints in the
+ * short form it was most likely written in.
  */
 
 import { builders } from 'prettier/doc';
@@ -13,7 +13,7 @@ import type {
   Statement,
   StatementPart,
   VariableDeclaration,
-} from '../compiler/syntax/statements.ts';
+} from '../compiler/syntax/statements/index.ts';
 import type { SyntaxNode } from '../compiler/syntax/tree.ts';
 import { annotated, body, indentedBlock } from './bodies.ts';
 import { ifChain } from './branches.ts';

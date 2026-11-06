@@ -14,7 +14,7 @@ import type {
 import type { Identifier } from '../../syntax/node.ts';
 import type { Relation } from '../../syntax/operators.ts';
 import type { ArrayPattern, CompareFieldPattern, LiteralPattern } from '../../syntax/patterns.ts';
-import type { For, VariableDeclaration } from '../../syntax/statements.ts';
+import type { For, VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { AnyType, Type } from '../types/type/index.ts';
 
 /**

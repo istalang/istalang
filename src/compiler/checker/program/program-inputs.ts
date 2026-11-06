@@ -36,7 +36,7 @@ import {
   typeParametersOf,
 } from '../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { VariableDeclaration } from '../../syntax/statements.ts';
+import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import { bodyOf, parentOf, type SyntaxTree } from '../../syntax/tree.ts';
 import type { CheckerNote, ProgramInputs } from '../context.ts';
 

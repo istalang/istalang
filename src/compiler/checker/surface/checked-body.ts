@@ -35,7 +35,7 @@ import type {
   Hold,
   LabelledScope,
   Return,
-} from '../../syntax/statements.ts';
+} from '../../syntax/statements/index.ts';
 import type { Checker, SignatureParameter } from '../check.ts';
 import type { FieldPassType, PassRecords } from '../passes.ts';
 import type { Fit } from '../types/fitting/fit.ts';

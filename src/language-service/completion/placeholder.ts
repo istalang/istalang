@@ -30,7 +30,7 @@ import {
   declaredTargets,
   ownsTargets,
   type TargetOwner,
-} from '../../compiler/syntax/statements.ts';
+} from '../../compiler/syntax/statements/targets.ts';
 import type { TokenKind } from '../../compiler/syntax/tokens.ts';
 import { extentIn, nodesAt, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
 import { isWrittenType } from '../../compiler/syntax/types/index.ts';

@@ -6,7 +6,7 @@
  */
 
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { Destructuring, FieldTarget } from '../../syntax/statements.ts';
+import type { Destructuring, FieldTarget } from '../../syntax/statements/targets.ts';
 import type { FieldStep, PartStep } from '../surface/checked-pattern.ts';
 import { anyShape, type Shape } from './exhaustiveness/exhaustiveness.ts';
 import { structKey, tupleKey } from './exhaustiveness/shapes.ts';

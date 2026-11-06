@@ -7,7 +7,7 @@
 import { describe, expect, it } from 'vitest';
 import { idOf, moduleAt, textSpanOf } from '../../program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../../program/program.ts';
-import type { Block } from '../../syntax/statements.ts';
+import type { Block } from '../../syntax/statements/index.ts';
 import { nodesUnder } from '../../syntax/tree.ts';
 import {
   boundCorpus,

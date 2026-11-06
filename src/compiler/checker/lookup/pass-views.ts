@@ -6,7 +6,7 @@
  * fields, checked nothing, so its nodes are read as the body around it reads them.
  */
 
-import { isOverFields, passedParts } from '../../syntax/statements.ts';
+import { isOverFields, passedParts } from '../../syntax/statements/readings.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
 import type { JoinedBody } from '../surface/denotation.ts';

@@ -15,7 +15,7 @@
 import type { Register } from '../../../../definition/operands.ts';
 import type { Select, SelectCase } from '../../../syntax/expressions/index.ts';
 import { selectCasesOf } from '../../../syntax/expressions/readings.ts';
-import type { Block } from '../../../syntax/statements.ts';
+import type { Block } from '../../../syntax/statements/index.ts';
 import type { Label, SelectCaseCode } from '../../code-writer.ts';
 import type { FunctionContext } from '../../context.ts';
 import { endScope } from '../../statements/scopes.ts';

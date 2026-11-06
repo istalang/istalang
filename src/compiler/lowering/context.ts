@@ -25,7 +25,7 @@ import type { Expression, FieldHeader, Lambda } from '../syntax/expressions/inde
 import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
 import type { Pattern } from '../syntax/patterns.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { Block, Statement } from '../syntax/statements.ts';
+import type { Block, Statement } from '../syntax/statements/index.ts';
 import type { ClosedCall } from './calls/closed-calls.ts';
 import type { CodeWriter } from './code-writer.ts';
 import type { HoldScopes } from './statements/holds.ts';

@@ -35,7 +35,7 @@ import { signedNumberOf } from '../../../syntax/expressions/literals/numbers.ts'
 import { constantTextOf } from '../../../syntax/expressions/literals/templates.ts';
 import type { Identifier } from '../../../syntax/node.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import type { VariableDeclaration } from '../../../syntax/statements.ts';
+import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { CheckedConstant } from '../../check.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

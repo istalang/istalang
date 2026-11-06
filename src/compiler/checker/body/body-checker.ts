@@ -43,7 +43,12 @@ import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-va
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Identifier, Invalid } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { Assignment, Block, Statement, VariableDeclaration } from '../../syntax/statements.ts';
+import type {
+  Assignment,
+  Block,
+  Statement,
+  VariableDeclaration,
+} from '../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import type {

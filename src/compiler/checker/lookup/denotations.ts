@@ -26,7 +26,7 @@ import { literalNaming } from '../../syntax/expressions/literals/built-types.ts'
 import { bareKeyOf } from '../../syntax/expressions/literals/indented-values.ts';
 import { isTagged, taggedCall } from '../../syntax/expressions/literals/templates.ts';
 import { type Identifier, lastName } from '../../syntax/node.ts';
-import type { Hold } from '../../syntax/statements.ts';
+import type { Hold } from '../../syntax/statements/index.ts';
 import { nestsFunction, parentOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { NamedType } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../context.ts';

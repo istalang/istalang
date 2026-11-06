@@ -8,7 +8,7 @@ import { type ModuleId, type Program, programModule } from '../program/program.t
 import { type FunctionDeclaration, nestedFunctionSpan } from '../syntax/declarations/index.ts';
 import type { Lambda } from '../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { Block } from '../syntax/statements.ts';
+import type { Block } from '../syntax/statements/index.ts';
 import { bodyOf } from '../syntax/tree.ts';
 
 /**

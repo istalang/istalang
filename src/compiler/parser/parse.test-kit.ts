@@ -14,7 +14,7 @@ import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { scan } from '../scanner/scan.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import type { Segment } from '../syntax/positions.ts';
-import type { Block } from '../syntax/statements.ts';
+import type { Block } from '../syntax/statements/index.ts';
 import { dump } from '../syntax/tree.test-kit.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import { parseModule } from './declarations/declaration.ts';

@@ -7,7 +7,7 @@
  */
 
 import { isUnnamed } from '../../../language/naming.ts';
-import type { Hold, VariableDeclaration } from '../../syntax/statements.ts';
+import type { Hold, VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { Parser } from '../parser.ts';
 import { parseTargets } from '../parts/names.ts';
 import { followsModifier } from '../word-parselets.ts';

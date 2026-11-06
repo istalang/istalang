@@ -22,7 +22,7 @@ import type {
   LabelledScope,
   Loop,
   While,
-} from '../../syntax/statements.ts';
+} from '../../syntax/statements/index.ts';
 import type { Label } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
 import { fieldsVisited, inFieldScope } from '../loops/field-passes.ts';

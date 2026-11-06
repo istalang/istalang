@@ -18,7 +18,7 @@
 import type { VariableEntity } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
-import type { Assignment, VariableDeclaration } from '../../syntax/statements.ts';
+import type { Assignment, VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { BodyContext, Variables } from '../body-context.ts';
 import type { SignatureParameter } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

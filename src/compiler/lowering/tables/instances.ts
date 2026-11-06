@@ -25,7 +25,7 @@ import type { FunctionType, Type } from '../../checker/types/type/index.ts';
 import { literalType } from '../../checker/types/unions/unions.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
-import type { VariableDeclaration } from '../../syntax/statements.ts';
+import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import { qualifiedNameOf, spelledType } from './names.ts';
 
 /** One function-table entry's function: a closed call, with every type concrete. */
