@@ -1,66 +1,86 @@
 ---
-description: future work — units (functions, types, constants) used by exactly one other unit but filed elsewhere by kind instead of by what they serve; the scan tool, a first-pass snapshot, how to triage, and open questions; read before a cohesion refactor or when deciding where a helper belongs
+description: cohesion by feature — how to scan for misplaced units, crowded folders and wide files (tsm cohesion), how to triage its hits, and what the 2026-11 reorganization left; read before moving a unit, splitting a folder, or deciding where a helper belongs
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-06
-last_updated: 2026-11-06
+last_verified: 2026-11-07
+last_updated: 2026-11-07
 tags: [cohesion, refactor, research, architecture]
 ---
 
-# Cohesion by use: units filed by kind, not by what they serve
+# Cohesion by feature
 
-AGENTS.md: folders are by feature, and inside a phase by language construct. Units that serve one consumer are still found filed by *kind*, beside other units of the same kind, instead of beside the one unit they exist for.
+AGENTS.md: folders are by feature, and inside a phase by language construct. A unit serving one consumer belongs beside that consumer, not beside other units of its kind (`*-types.ts`, `helpers`, `records`, a `rules/` grab-bag).
 
-**The case that surfaced it (Q42, 2026-11-06).** The body-facts table (`compiler/checker/body-facts/`) was the only user of:
+**The case that surfaced it (Q42, 2026-11-06).** The body-facts table (now `compiler/checker/body/facts/`) was the only user of:
 - eight pass-join functions in `lookup/pass-views.ts`;
 - `RecordedBody` with its types in `body-records.ts`;
 - `instantiatedRead` in `checked-field.ts`;
 - all of `types/instantiation.ts`.
 
-Moving them into the folder made the table readable in one place and shrank three unrelated files. That was one instance; the scan below suggests it is a pattern.
+Moving them into the folder made the table readable in one place. The scan below showed it was a pattern, and `plan.md` (this folder) reorganized the tree by feature.
 
-## The tool
+## The scan
 
-`exclusive-units.py` (this folder), run from the repo root:
-- `python3 docs/work/cohesion/exclusive-units.py .` lists every exported unit of `src` whose users all sit in one other file.
-- `python3 docs/work/cohesion/exclusive-units.py . --into <file-or-folder>` lists, to a fixpoint, the units used only by that file or folder. This is the check for "move X and everything only it uses into `X/`". Body-facts gives 0.
+```
+tsm cohesion --exclude '**/*.test.ts' --exclude '**/*.test-kit.ts' --exclude '**/*.bench.ts' src
+```
 
-It is regex-based, and `src` and `test` users both count; a unit's own `x.test.ts` counts as the unit itself. A shadowed name can over-count users, so the output is candidates to read, not verdicts.
+It reports four rules:
+- **Misplaced exports:** every user of an export sits under one folder (their deepest common folder), and the export doesn't live there.
+- **Crowded folders:** more than 10 files directly inside a folder.
+- **Long files:** more than 500 lines of code.
+- **Wide files:** more than 10 exports in a file.
 
-## First pass (main at `02e00679`)
+Pass every check's flags. The saved scans omitted `*.bench.ts`, which adds one file each to `parser/` and `language-service/`.
 
-- **708** exported units have exactly one user file. Most of them are a feature split for size inside one folder, e.g. `parser/expressions/operators.ts` serving `expression.ts`. That is the intended layout, not a violation.
-- **264** have their one user in a **different folder**. These are the candidates. Folder pairs with the most units:
+The output is candidates, not verdicts. Read each hit against the triage below.
 
-| Units | Lives in | Only user in |
-| --- | --- | --- |
-| 14 | `language-service/completion/places` | `language-service/completion` |
-| 11 | `lsp/providers` | `lsp` |
-| 9 | `compiler/lowering/boundary` | `compiler/lowering` |
-| 7 | `compiler/checker/declarations` | `compiler/checker` |
-| 6 | `compiler/lowering` | `compiler/lowering/expressions` |
-| 6 | `compiler/checker/traits` | `compiler/checker/resolution` |
-| 6 | `compiler/checker/expressions` | `compiler/checker` |
-| 5 | `compiler/checker/types` | `compiler/checker/resolution` |
-| 4 | `compiler/checker/rules` | `compiler/checker/expressions`, and 4 more → `declarations` |
-| 4 | `compiler/checker/closures` | `compiler/checker/expressions` |
-| 4 | `runtime/interpreter` | `runtime/scheduler/segment` |
+## Triage
 
-## Triage: which candidates are fine
+`plan.md` §1 lists the hits that stay, by kind:
+- contracts and vocabularies (`syntax/`, `definition/`, `language/`, `structures/`, `text/`, `diagnostics/`, `binder/entities.ts`, the checker's `surface/`);
+- layer entry points used by the layer above;
+- app-level helpers (`cli/`);
+- one function of a cohesive module;
+- an engine used by one construct;
+- a unit already at the lowest layer serving all its users.
 
-- **Contracts.** `compiler/syntax/`, `definition/`, and the checker surface lowering imports (architecture.md) are seams; one consumer today doesn't make them private. They stay.
-- **Downward entry points.** A child folder's unit used by its parent's entry, such as an `index.ts` wiring its parts, is the folder layout working as intended. Check only that the child is a real sub-feature.
-- **Sibling folders are the real signal**, e.g. `traits → resolution`, `types → resolution`, `rules → expressions`, `closures → expressions`, `interpreter → scheduler/segment`. A unit serving another feature's single unit belongs with that unit.
-- **Kind-named homes.** A unit sitting in a file named for its kind (`*-types.ts`, `helpers`, `utils`, `records`) while serving one feature is the pattern to break. Group by what it serves.
+The reorganization added two kinds:
+- **Wired by a coordinator.** The checker's `program/` and `body/` wiring, lowering's `function-lowering/index.ts` and the binder's `bind-module.ts` import every construct or table they compose. A unit only they use is still filed with its feature. `--root` on those coordinators would drop these hits.
+- **Feature over use site.** A feature folder gathered across layers (e.g. `checker/rules/expansion/`) keeps every part of its rule together, even when one part serves a single folder above it.
+
+## Before and after
+
+| Scan | Commit | Misplaced | Crowded | Wide |
+| --- | --- | --- | --- | --- |
+| before (`tsm-cohesion.txt`) | `5a8a7a36` | 255 | 23 | 43 |
+| after (`tsm-cohesion-after.txt`) | `2633776b` | 319 | 4 | 44 |
+
+Misplaced exports rose because sub-folders make each home deeper. A function of a shared module that serves one sub-folder now counts, where before its user and its module shared a folder. The 319 break down as:
+
+| Kind | Hits |
+| --- | --- |
+| contracts | 81 |
+| layer entry points | 25 |
+| wired by a coordinator | 36 |
+| other | 121 |
+
+Nearly all of the "other" hits are §1 keeps of the last three kinds above (one function, engine, lowest layer).
+
+## What remains
+
+- **`binder/module/flow.ts`:** only `binder/constructs/` (expressions, statements) uses it, so it belongs there. `module/` and `constructs/` also import each other: `bind-module` wires the constructs, and the constructs use `local-binder`, `scope` and `flow`. Recheck that split.
+- **`checker/expressions/structs/variants.ts`:** its `checkVariantName` serves `access/` (names, member-access). The module also covers names of types in value position. Consider moving it to the expressions root.
+- **Wide files left by splits:**
+  - vocabularies: `checker/types/type/index.ts` (27), `syntax/statements/index.ts` (17), `checker/surface/checked-body.ts` (15);
+  - single-subject: `types/type/primitives.ts` (13), `types/written/pattern-types.ts` (13), `stdlib/values/results.ts` (13), `syntax/statements/targets.ts` (11), `runtime/interpreter/registers.ts` (11).
+- **Wide files the plan didn't triage**, also present in the first scan: `types/parts/type-parts.ts` (12), `types/unions/unions.ts` (12), `checker/patterns/parts.ts` (11), `resolution/choosing/candidates.ts` (11), `types/fitting/expected.ts` (11).
+- **Crowded, by decision:** `checker/diagnostics/` (16) is one catalog whose parts only `index.ts` reads. `parser/parts/` (11) holds pieces several categories share.
 
 ## Open questions
 
-1. Is "one user file" the right threshold, or should a unit used by one *feature folder* count too? The scan could group users by folder.
-2. Which seams are contracts? Make the list explicit (architecture.md's checker surface, `syntax/`, `definition/`), so the scan can skip them instead of a reader deciding each time.
-3. Should this become a check (a dependency-cruiser rule or a knip-like script in `npm run verify`) once the backlog is cleared, so new code can't reintroduce it?
-4. Folder-izing (`name/index.ts`): AGENTS.md triggers it only at 400 lines. Should it also trigger when a unit gains exclusive helpers elsewhere?
-
-## Next step
-
-Run the scan, triage the 264 by the rules above, and file the confirmed groups as tracker Q items: one per destination unit, moved structurally with no behaviour change, as Q42's move was.
+1. **Threshold.** Answered by the tool: tsm groups users by their deepest common folder.
+2. **Which seams are contracts.** Listed in `plan.md` §1. tsm can't skip them yet: a contract or root list given to the scan would.
+3. **A check in `npm run verify`.** Still open. It needs the triage above encoded first: `--root` for coordinators, contract folders skipped, and the stated exceptions.
+4. **Folder-izing.** A module that becomes `name/index.ts` takes in every unit only it uses, to a fixpoint.
