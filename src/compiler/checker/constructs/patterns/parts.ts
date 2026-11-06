@@ -20,10 +20,10 @@ import type { Checker } from '../../check.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { FieldStep, PartStep } from '../../surface/checked-pattern.ts';
 import { itemField } from '../../surface/struct-items.ts';
-import { unfolded } from '../../types/computed-types.ts';
+import { unfolded } from '../../types/type/computed-types.ts';
 import type { AnyType, FieldMember, Type, UnionType } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { namesOwnType, patternTypeOf } from '../../types/written/pattern-types.ts';
 
 /** What a pattern reads and where it reports, in a body or in a top-level constant. */

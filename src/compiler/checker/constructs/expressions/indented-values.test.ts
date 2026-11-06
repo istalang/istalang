@@ -21,7 +21,7 @@ import { checkProgram } from '../../check.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import type { Type } from '../../types/type/index.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 
 function constantTypeOf(source: string, name = 'target'): Type | undefined {
   const program = stdProgramOf({ 'main.ista': source });

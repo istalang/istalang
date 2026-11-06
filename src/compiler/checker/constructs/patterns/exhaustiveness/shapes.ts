@@ -21,8 +21,8 @@ import type { Expression } from '../../../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../../../syntax/expressions/literals/numbers.ts';
 import type { Checker } from '../../../check.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
-import { unfolded } from '../../../types/computed-types.ts';
 import { typeKeys } from '../../../types/identity/type-keys.ts';
+import { unfolded } from '../../../types/type/computed-types.ts';
 import {
   type FieldMember,
   isMemberParameter,
@@ -31,9 +31,9 @@ import {
   type UnionType,
 } from '../../../types/type/index.ts';
 import { isPrimitive } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
+import { typeText } from '../../../types/type/type-text.ts';
+import { arrayElement } from '../../../types/type/well-known.ts';
 import { hasOneValue, membersOf } from '../../../types/unions/unions.ts';
-import { arrayElement } from '../../../types/well-known.ts';
 import type { ConstructorOf, Shape, Signature, WitnessShape } from './exhaustiveness.ts';
 
 /**

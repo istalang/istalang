@@ -8,12 +8,12 @@
  * - A union is a set of members: duplicates merge by key, `Never` drops out.
  * - No value sits in two members: a literal merges into its base where the base is a member,
  *   `true | false` is `Bool`, and an `any` member takes whole every member meeting its traits, or
- *   whose literals' base does, as the program's rules say (../type-rules.ts).
+ *   whose literals' base does, as the program's rules say (../type/type-rules.ts).
  */
 
 import type { AnyType, LiteralValue, Type } from '../type/index.ts';
 import { isPrimitive, primitiveType } from '../type/primitives.ts';
-import type { TypeRules } from '../type-rules.ts';
+import type { TypeRules } from '../type/type-rules.ts';
 
 /** The primitive a literal's value is a value of. */
 export type LiteralBase = 'Int' | 'String' | 'Bool';
@@ -41,7 +41,7 @@ export function baseOf(type: Type): Type {
   return type.kind === 'literal' ? primitiveType(literalBase(type.value)) : type;
 }
 
-/** What the rules of a program say about members of a union (../type-rules.ts). */
+/** What the rules of a program say about members of a union (../type/type-rules.ts). */
 export type MemberRules = Pick<TypeRules, 'absorbs'>;
 
 /** How members of a union are read: each one's type and key, and the member a type merges to. */

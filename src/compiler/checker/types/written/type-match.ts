@@ -20,13 +20,13 @@ import type {
 } from '../../../syntax/declarations/index.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree.ts';
 import type { TypeCase } from '../../../syntax/types/index.ts';
-import type { MatchType } from '../computed-types.ts';
+import { type Substitution, substitute } from '../parts/substitution.ts';
 import { mapChildren } from '../parts/type-parts.ts';
-import type { ConstraintSet, StructConstraintModel } from '../struct-constraint.ts';
-import { type Substitution, substitute } from '../substitution.ts';
 import type { RecursiveLabel } from '../type/alias-uses.ts';
+import type { MatchType } from '../type/computed-types.ts';
 import { type NominalEntity, nominalType, type Type } from '../type/index.ts';
-import type { TypeRules } from '../type-rules.ts';
+import type { ConstraintSet, StructConstraintModel } from '../type/struct-constraint.ts';
+import type { TypeRules } from '../type/type-rules.ts';
 
 /** A type `match`'s subject and cases, its declaration's parameters open. */
 export interface TypeMatchForm {
@@ -86,7 +86,7 @@ export interface TypeMatchQueries {
 /**
  * The unreduced use of `declaration`, whose body is a type `match`, with `typeArguments`: an
  * alias's, or an associated type's of `owner`, the type declaring it, which the use reads through
- * (`Bad<Int>.Data`, ../type-text.ts); undefined only where that type names none.
+ * (`Bad<Int>.Data`, ../type/type-text.ts); undefined only where that type names none.
  */
 export function matchUse(
   declaration: TypeAliasDeclaration,

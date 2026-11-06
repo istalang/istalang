@@ -17,11 +17,11 @@ import {
   type JsonField,
   variantTagKey,
 } from '../../checker/surface/json-form.ts';
-import { unfolded } from '../../checker/types/computed-types.ts';
+import { unfolded } from '../../checker/types/type/computed-types.ts';
 import type { Type, UnionType } from '../../checker/types/type/index.ts';
 import { isPrimitive } from '../../checker/types/type/primitives.ts';
+import { arrayElement, wellKnownArguments } from '../../checker/types/type/well-known.ts';
 import { baseOf } from '../../checker/types/unions/union-members.ts';
-import { arrayElement, wellKnownArguments } from '../../checker/types/well-known.ts';
 import { closeCall } from '../calls/closed-calls.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
 import type { TypedValue } from '../values/holdings.ts';

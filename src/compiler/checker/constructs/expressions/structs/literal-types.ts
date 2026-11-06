@@ -14,10 +14,10 @@ import { itemName, itemValue, unparenthesized } from '../../../../syntax/express
 import type { NamedType } from '../../../../syntax/types/index.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { itemField } from '../../../surface/struct-items.ts';
-import { unfolded } from '../../../types/computed-types.ts';
 import { builtFrom } from '../../../types/fitting/expected.ts';
-import { substitute, substitutionFor } from '../../../types/substitution.ts';
+import { substitute, substitutionFor } from '../../../types/parts/substitution.ts';
 import { aliasedAs } from '../../../types/type/alias-uses.ts';
+import { unfolded } from '../../../types/type/computed-types.ts';
 import {
   type AnonymousStructType,
   isNominalEntity,

@@ -21,8 +21,8 @@ import type {
 } from '../../../syntax/declarations/index.ts';
 import type { Type } from '../type/index.ts';
 import { boolType, intType, neverType, stringType } from '../type/primitives.ts';
-import { noProgramRules } from '../type-rules.test-kit.ts';
-import type { TypeRules } from '../type-rules.ts';
+import { noProgramRules } from '../type/type-rules.test-kit.ts';
+import type { TypeRules } from '../type/type-rules.ts';
 import { unionOf } from '../unions/unions.ts';
 import { closeRecursive } from './recursive-types.ts';
 

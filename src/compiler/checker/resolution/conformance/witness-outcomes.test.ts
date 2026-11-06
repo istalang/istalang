@@ -11,7 +11,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { checkProgram } from '../../check.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { formNodeLibrary } from './conformance.test-kit.ts';
 import { SearchGoals } from './witness-outcomes.ts';
 

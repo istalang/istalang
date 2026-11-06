@@ -22,7 +22,7 @@ import {
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { substitute, substitutionFor } from '../substitution.ts';
+import { substitute, substitutionFor } from '../parts/substitution.ts';
 import type { NominalDeclaration, ParameterKey, Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
 

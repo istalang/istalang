@@ -28,7 +28,7 @@ import type { PatternTest } from '../../surface/checked-pattern.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import type { Type, UnionType } from '../../types/type/index.ts';
 import { floatType, noneType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
 import {
   hasMember,

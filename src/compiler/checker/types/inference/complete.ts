@@ -8,7 +8,7 @@
 
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
-import { type Substitution, substitute } from '../substitution.ts';
+import { type Substitution, substitute } from '../parts/substitution.ts';
 import type { Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
 import { defaultArgument, type GenericDeclaration } from '../written/type-arguments.ts';

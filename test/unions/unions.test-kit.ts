@@ -10,7 +10,7 @@ import { type Checker, checkProgram } from '../../src/compiler/checker/check.ts'
 import { sameType } from '../../src/compiler/checker/types/identity/identity.ts';
 import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts';
 import type { Type } from '../../src/compiler/checker/types/type/index.ts';
-import { typeText } from '../../src/compiler/checker/types/type-text.ts';
+import { typeText } from '../../src/compiler/checker/types/type/type-text.ts';
 import { compiledDefinition, compiledText } from '../../src/compiler/compile.test-kit.ts';
 import { idOf } from '../../src/compiler/program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';

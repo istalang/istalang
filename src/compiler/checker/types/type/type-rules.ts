@@ -15,9 +15,9 @@
  *   question reached again while it is answered takes a stand-in (structures/entries/).
  */
 
-import type { AliasDeclaration } from '../../syntax/declarations/index.ts';
+import type { AliasDeclaration } from '../../../syntax/declarations/index.ts';
 import type { MappedParts } from './computed-types.ts';
-import type { AnyType, ParameterKey, Type } from './type/index.ts';
+import type { AnyType, ParameterKey, Type } from './index.ts';
 
 /** The rules of the program building a type that types/ sits below. */
 export interface TypeRules {

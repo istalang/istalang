@@ -9,9 +9,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { unfoldRecursive } from '../../src/compiler/checker/types/computed-types.ts';
 import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts';
-import { substitute, substituteKept } from '../../src/compiler/checker/types/substitution.ts';
+import { substitute, substituteKept } from '../../src/compiler/checker/types/parts/substitution.ts';
+import { unfoldRecursive } from '../../src/compiler/checker/types/type/computed-types.ts';
 import { intType } from '../../src/compiler/checker/types/type/primitives.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
 import { codesOf, resolveWrittenTypes, runMain, spelledTypeOf } from './computed.test-kit.ts';

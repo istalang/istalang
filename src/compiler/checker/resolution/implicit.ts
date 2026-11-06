@@ -30,7 +30,7 @@ import type { Pass, Passes, PassTable } from '../contexts/passes.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { ImplicitRole, MadeCall, ResolvedCall } from '../surface/resolved-call.ts';
 import type { Type } from '../types/type/index.ts';
-import { typeText } from '../types/type-text.ts';
+import { typeText } from '../types/type/type-text.ts';
 import { applyCall } from './applied-call.ts';
 import { callMade } from './calls-made.ts';
 import type { CallArgument } from './choosing/call-arguments.ts';

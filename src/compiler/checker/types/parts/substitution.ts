@@ -7,16 +7,15 @@
  * (type/index.ts). One written as an associated type is that associated type of its owner
  * substituted, built by the rules as every one is (§3.1), never its body substituted apart:
  * expanding one that reaches itself then stops alike however it is reached. The types substitution
- * builds are built by the program's rules (type-rules.ts), so a union reached through it is
+ * builds are built by the program's rules (type/type-rules.ts), so a union reached through it is
  * normalized as one written with its arguments in place: `T | any Stringable` with `T = String` is
  * `any Stringable`. A recursive type's graph closes again from its parts substituted
  * (identity/recursive-types.ts).
  */
 
-import { type TypeParameters, typeParametersOf } from '../../syntax/declarations/index.ts';
-import type { ComputedType, MappedParts, RecursiveType } from './computed-types.ts';
-import { mapChildren, mapParts } from './parts/type-parts.ts';
-import { aliasedAs, mapAliasUse } from './type/alias-uses.ts';
+import { type TypeParameters, typeParametersOf } from '../../../syntax/declarations/index.ts';
+import { aliasedAs, mapAliasUse } from '../type/alias-uses.ts';
+import type { ComputedType, MappedParts, RecursiveType } from '../type/computed-types.ts';
 import type {
   AnyType,
   Constraint,
@@ -24,9 +23,10 @@ import type {
   Type,
   TypeParameterType,
   UnionType,
-} from './type/index.ts';
-import { errorType } from './type/primitives.ts';
-import type { TypeRules } from './type-rules.ts';
+} from '../type/index.ts';
+import { errorType } from '../type/primitives.ts';
+import type { TypeRules } from '../type/type-rules.ts';
+import { mapChildren, mapParts } from './type-parts.ts';
 
 /** Type parameters mapped to the types that replace them. */
 export type Substitution = ReadonlyMap<ParameterKey, Type>;
@@ -80,7 +80,7 @@ export function substitute(type: Type, substitution: Substitution, rules: TypeRu
 /**
  * A mapped struct type with `substitution` applied, never to the parameter it binds (§3.1): its
  * keys and named fields first, then its value together with each key, once its keys are known
- * (type-rules.ts `mappedType`).
+ * (type/type-rules.ts `mappedType`).
  */
 function substituteMapped(type: MappedParts, substitution: Substitution, rules: TypeRules): Type {
   const outer = new Map(substitution);

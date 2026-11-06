@@ -55,16 +55,16 @@ import {
 import type { CollectionForm } from '../../../surface/checked-body.ts';
 import { collectionTarget } from '../../../types/fitting/expected.ts';
 import { isExact } from '../../../types/fitting/fit.ts';
-import { isPack } from '../../../types/function-types.ts';
+import { isPack } from '../../../types/type/function-types.ts';
 import type { NominalType, Type } from '../../../types/type/index.ts';
 import { errorType, expectsError, intType, neverType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
+import { typeText } from '../../../types/type/type-text.ts';
 import {
   arrayElement,
   arrayOf,
   wellKnownArguments,
   wellKnownOf,
-} from '../../../types/well-known.ts';
+} from '../../../types/type/well-known.ts';
 import { checkIterated, iteratedItem } from '../../loops/iteration.ts';
 
 /** The form of each collection literal of one body, for lowering. */

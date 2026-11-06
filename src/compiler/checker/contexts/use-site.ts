@@ -11,7 +11,7 @@ import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { type Witnesses, witnessCallsOf } from '../surface/resolved-call.ts';
-import { type Substitution, substitutionFor } from '../types/substitution.ts';
+import { type Substitution, substitutionFor } from '../types/parts/substitution.ts';
 import type { CheckerContext, Instantiable } from './context.ts';
 
 export interface UseSite {

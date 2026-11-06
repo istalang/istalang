@@ -45,8 +45,8 @@ import {
   stringType,
   unitType,
 } from '../../types/type/primitives.ts';
+import { wellKnownOf } from '../../types/type/well-known.ts';
 import { literalOrBase } from '../../types/unions/unions.ts';
-import { wellKnownOf } from '../../types/well-known.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
 import { checkDereference } from './access/dereference.ts';
 import { checkIndex } from './access/indexing.ts';

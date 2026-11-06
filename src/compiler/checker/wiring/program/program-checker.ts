@@ -82,7 +82,6 @@ import type { ResolvedCall } from '../../surface/resolved-call.ts';
 import { type Fit, type Fitting, fitOf } from '../../types/fitting/fit.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
 import { sameTypeSpelled, unaliased } from '../../types/parts/type-parts.ts';
-import type { ConstraintSet, StructConstraintModel } from '../../types/struct-constraint.ts';
 import { resolveAnyType } from '../../types/traits/any-types.ts';
 import { memberUnionOf } from '../../types/traits/struct-keys.ts';
 import {
@@ -94,7 +93,8 @@ import {
   type NominalType,
   type Type,
 } from '../../types/type/index.ts';
-import type { TypeRules } from '../../types/type-rules.ts';
+import type { ConstraintSet, StructConstraintModel } from '../../types/type/struct-constraint.ts';
+import type { TypeRules } from '../../types/type/type-rules.ts';
 import type { StaticOwner } from '../../types/written/named-types.ts';
 import { resolveTypeNode } from '../../types/written/resolve-type.ts';
 import type { TypeMatchQueries } from '../../types/written/type-match.ts';

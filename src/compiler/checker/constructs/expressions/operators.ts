@@ -49,7 +49,7 @@ import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
 import { type ImplicitOperand, implicitOperatorCall } from '../../resolution/implicit.ts';
 import type { Type } from '../../types/type/index.ts';
 import { boolType, isPrimitive } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { literalOrBase, writtenLiteral } from '../../types/unions/unions.ts';
 import { checkNullish } from './access/optionals.ts';
 import { checkEquality } from './decided-conditions.ts';

@@ -1,6 +1,6 @@
 /**
  * The rules over types that need the program, as one checker gives them: normalizing types
- * (types/type-rules.ts: whether an `any` member of a union takes another member whole, what an
+ * (types/type/type-rules.ts: whether an `any` member of a union takes another member whole, what an
  * associated type, a field's type, a struct's keys or a mapped struct type of a known type reduce
  * to), and fitting a value to a type (types/fitting/fit.ts), which adds conformance, the shapes of
  * nominal structs and member parameters.
@@ -18,15 +18,15 @@
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import { withEmptied } from '../../../structures/stack.ts';
 import type { CheckerContext, CheckerNote } from '../contexts/context.ts';
-import { unfolded } from '../types/computed-types.ts';
 import type { Fitting } from '../types/fitting/fit.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { associatedTypeOf, type Expansion } from '../types/traits/known-constraints.ts';
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../types/traits/struct-keys.ts';
+import { unfolded } from '../types/type/computed-types.ts';
 import type { AnonymousStructType, AnyType, Type } from '../types/type/index.ts';
 import { errorType } from '../types/type/primitives.ts';
-import type { TypeRules } from '../types/type-rules.ts';
+import type { TypeRules } from '../types/type/type-rules.ts';
 import { meetsAny } from './conformance/trait-objects.ts';
 import { TypeMatchReductions } from './type-matches/type-matches.ts';
 

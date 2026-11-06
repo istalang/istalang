@@ -3,9 +3,9 @@
  * shares (5000–5099) are here; a feature slice with a block of its own keeps its templates in a
  * part beside this one, named for the feature.
  *
- * Messages name types the way source writes them (types/type-text.ts), so the caller passes text.
- * A diagnostic about a value points at the expression that has it; one about a declaration points
- * at its name.
+ * Messages name types the way source writes them (types/type/type-text.ts), so the caller passes
+ * text. A diagnostic about a value points at the expression that has it; one about a declaration
+ * points at its name.
  */
 
 import { defineDiagnostics } from '../../../diagnostics/catalog.ts';

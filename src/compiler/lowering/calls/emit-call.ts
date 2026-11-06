@@ -20,7 +20,7 @@ import type { FunctionId, Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
 import type { ImplicitRole, ResolvedSite } from '../../checker/surface/resolved-call.ts';
-import { substitute } from '../../checker/types/substitution.ts';
+import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';

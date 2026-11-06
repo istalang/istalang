@@ -29,8 +29,8 @@ import { implicitCall, preludeCall } from '../../resolution/implicit.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import type { Type } from '../../types/type/index.ts';
 import { stringType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
-import { arrayOf } from '../../types/well-known.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import { arrayOf } from '../../types/type/well-known.ts';
 
 export function checkTemplate(
   context: BodyContext,

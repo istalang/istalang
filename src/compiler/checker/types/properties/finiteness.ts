@@ -14,10 +14,10 @@
  */
 
 import type { StructDeclaration } from '../../../syntax/declarations/index.ts';
-import { type RecursiveType, unfolded } from '../computed-types.ts';
 import { typeKeys } from '../identity/type-keys.ts';
+import { type RecursiveType, unfolded } from '../type/computed-types.ts';
 import type { FieldMember, Type } from '../type/index.ts';
-import type { TypeRules } from '../type-rules.ts';
+import type { TypeRules } from '../type/type-rules.ts';
 
 /** What a value must never hold by value: a struct declaration's values, or a recursive type's. */
 export type SelfHolding = StructDeclaration | RecursiveType;

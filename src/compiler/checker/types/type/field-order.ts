@@ -5,8 +5,8 @@
  * fields (keys, mapped types, field loops) agree on it.
  */
 
-import { compareOrdered } from '../../../language/order.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { compareOrdered } from '../../../../language/order.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
 
 /**
  * `fields` in the one order every struct lays its fields out in, nominal or shape: by name, as JSON

@@ -16,7 +16,7 @@ import type { ResolvedCall } from '../../surface/resolved-call.ts';
 import { sameConstraint } from '../../types/identity/identity.ts';
 import { constraintOn } from '../../types/traits/constraints.ts';
 import type { AnyType, Type } from '../../types/type/index.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { meets, witnessesFor } from './conformance.ts';
 
 /** Whether a value of `found` converts into `target` (§3.10). */

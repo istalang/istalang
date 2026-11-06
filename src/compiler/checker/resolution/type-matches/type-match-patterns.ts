@@ -28,15 +28,15 @@
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { searchSite } from '../../contexts/use-site.ts';
-import { isOpaque, unfolded } from '../../types/computed-types.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { UnfoldingPairs } from '../../types/identity/unfolding-pairs.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
 import { isKnown, parametersIn, unaliased } from '../../types/parts/type-parts.ts';
-import type { StructConstraintModel } from '../../types/struct-constraint.ts';
 import { constraintOn } from '../../types/traits/constraints.ts';
 import { isStructType } from '../../types/traits/struct-keys.ts';
+import { isOpaque, unfolded } from '../../types/type/computed-types.ts';
 import type { Type } from '../../types/type/index.ts';
+import type { StructConstraintModel } from '../../types/type/struct-constraint.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
 import { membersOf, unionOf } from '../../types/unions/unions.ts';
 import type { CasePatternForm, InferVariable } from '../../types/written/type-match.ts';

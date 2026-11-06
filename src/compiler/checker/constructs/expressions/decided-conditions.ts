@@ -19,7 +19,7 @@ import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { keyOwnerOfValue } from '../../types/traits/struct-keys.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { decidedEquality, type EqualitySide, fitEqualSides } from '../../types/unions/equality.ts';
 
 /** The value `condition` always has, by its operands' types; undefined when they don't fix it. */

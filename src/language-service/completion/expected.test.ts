@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { typeText } from '../../compiler/checker/types/type-text.ts';
+import { typeText } from '../../compiler/checker/types/type/type-text.ts';
 import { checkedModule } from '../checked-module.ts';
 import { programAt } from '../language-service.test-kit.ts';
 import { cursorAt } from './cursor.ts';

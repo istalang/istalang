@@ -37,9 +37,9 @@ import {
   substitute,
   substituteConstraint,
   substitutionFor,
-} from '../substitution.ts';
+} from '../parts/substitution.ts';
 import type { AnyType, Constraint, ParameterKey, Type } from '../type/index.ts';
-import type { TypeRules } from '../type-rules.ts';
+import type { TypeRules } from '../type/type-rules.ts';
 import { parameterType } from '../written/resolve-type.ts';
 import { typeArgumentsFor } from '../written/type-arguments.ts';
 

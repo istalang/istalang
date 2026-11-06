@@ -6,7 +6,7 @@
  * arguments (types/inference/infer.ts) both read recursive types by.
  */
 
-import { unfolded } from '../computed-types.ts';
+import { unfolded } from '../type/computed-types.ts';
 import type { Type } from '../type/index.ts';
 import { sameType } from './identity.ts';
 import { typeKeys } from './type-keys.ts';

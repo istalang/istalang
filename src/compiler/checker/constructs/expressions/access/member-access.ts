@@ -27,7 +27,7 @@ import type { FieldRead, FieldReading, FoundField } from '../../../surface/check
 import { fieldOf } from '../../../types/traits/known-fields.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
+import { typeText } from '../../../types/type/type-text.ts';
 import { insideOptional } from '../../../types/unions/inside-optional.ts';
 import { optionalInner } from '../../../types/unions/unions.ts';
 import {

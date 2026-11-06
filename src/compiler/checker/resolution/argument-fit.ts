@@ -12,10 +12,10 @@
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Accepts, BodyContext } from '../contexts/body-context.ts';
 import type { CheckerContext } from '../contexts/context.ts';
-import { substitute } from '../types/substitution.ts';
+import { substitute } from '../types/parts/substitution.ts';
 import type { LiteralType, Type } from '../types/type/index.ts';
-import type { TypeRules } from '../types/type-rules.ts';
-import { typeText } from '../types/type-text.ts';
+import type { TypeRules } from '../types/type/type-rules.ts';
+import { typeText } from '../types/type/type-text.ts';
 import { givenKeysOwner } from '../types/written/key-types.ts';
 import type { CallArgument } from './choosing/call-arguments.ts';
 import type { Application } from './choosing/choice.ts';

@@ -8,12 +8,12 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import { handMadeSpan } from '../../../syntax/tree.test-kit.ts';
-import { sameShape } from '../function-types.ts';
 import { sameType } from '../identity/identity.ts';
-import { substitute } from '../substitution.ts';
-import { noProgramRules } from '../type-rules.test-kit.ts';
+import { substitute } from '../parts/substitution.ts';
+import { sameShape } from './function-types.ts';
 import type { FunctionType, Type } from './index.ts';
 import { boolType, intType, stringType, tupleType, unitType } from './primitives.ts';
+import { noProgramRules } from './type-rules.test-kit.ts';
 
 const span = handMadeSpan(0);
 

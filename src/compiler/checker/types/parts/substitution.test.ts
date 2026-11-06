@@ -8,19 +8,19 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { StructDeclaration } from '../../syntax/declarations/index.ts';
-import { handMadeSpan } from '../../syntax/tree.test-kit.ts';
+import type { StructDeclaration } from '../../../syntax/declarations/index.ts';
+import { handMadeSpan } from '../../../syntax/tree.test-kit.ts';
 import {
   bodiesOf,
   closed,
   groups,
   open,
   showingRules,
-} from './identity/recursive-types.test-kit.ts';
-import { unaliased } from './parts/type-parts.ts';
+} from '../identity/recursive-types.test-kit.ts';
+import { type NominalEntity, shapeType, type Type } from '../type/index.ts';
+import { intType, stringType, tupleType } from '../type/primitives.ts';
 import { substitute } from './substitution.ts';
-import { type NominalEntity, shapeType, type Type } from './type/index.ts';
-import { intType, stringType, tupleType } from './type/primitives.ts';
+import { unaliased } from './type-parts.ts';
 
 const box = {
   declaration: { kind: 'StructDeclaration', name: { text: 'Box' } } as unknown as StructDeclaration,

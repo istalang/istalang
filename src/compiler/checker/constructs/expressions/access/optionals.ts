@@ -33,7 +33,7 @@ import { preludeCall } from '../../../resolution/implicit.ts';
 import type { ChainLink } from '../../../surface/checked-body.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType, isPrimitive, stringType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
+import { typeText } from '../../../types/type/type-text.ts';
 import { optionalOf, presentType } from '../../../types/unions/unions.ts';
 
 /**

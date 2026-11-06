@@ -7,7 +7,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { InlayHintRequest } from 'vscode-languageserver/node';
 import { checkProgram } from '../../compiler/checker/check.ts';
-import { typeText } from '../../compiler/checker/types/type-text.ts';
+import { typeText } from '../../compiler/checker/types/type/type-text.ts';
 import { parameterNames } from '../../compiler/syntax/expressions/parameters.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';
 import { targetNames } from '../../compiler/syntax/patterns.ts';

@@ -8,7 +8,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { substitute } from '../substitution.ts';
+import { substitute } from '../parts/substitution.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 import { boolType, intType, stringType } from '../type/primitives.ts';
 import { bisimilar } from './recursive-bisimulation.test-kit.ts';

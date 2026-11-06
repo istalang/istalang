@@ -11,13 +11,13 @@ import type {
 } from '../../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { unfoldRecursive } from '../../../types/computed-types.ts';
 import {
   fieldReaderOf,
   holdsItself,
   selfHoldingField,
 } from '../../../types/properties/finiteness.ts';
-import { typeText } from '../../../types/type-text.ts';
+import { unfoldRecursive } from '../../../types/type/computed-types.ts';
+import { typeText } from '../../../types/type/type-text.ts';
 
 /** Reports each field of `declaration` that makes its values hold themselves. */
 export function checkFiniteFields(checker: CheckerContext, declaration: StructDeclaration): void {

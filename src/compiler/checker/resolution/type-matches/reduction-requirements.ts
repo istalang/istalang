@@ -45,13 +45,13 @@ import type { CheckerContext, CheckerNote, Instantiable } from '../../contexts/c
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { functionCallsWithin } from '../../surface/resolved-call.ts';
-import { unfoldRecursive } from '../../types/computed-types.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
+import { type Substitution, substitute, substitutionFor } from '../../types/parts/substitution.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
 import { isKnown, sameTypeSpelled } from '../../types/parts/type-parts.ts';
-import { type Substitution, substitute, substitutionFor } from '../../types/substitution.ts';
+import { unfoldRecursive } from '../../types/type/computed-types.ts';
 import type { RecursiveUse, Type, UnreducedUse } from '../../types/type/index.ts';
-import { spellingText, typeText } from '../../types/type-text.ts';
+import { spellingText, typeText } from '../../types/type/type-text.ts';
 import { aliasInstance, type TypeMatchQueries } from '../../types/written/type-match.ts';
 
 /**

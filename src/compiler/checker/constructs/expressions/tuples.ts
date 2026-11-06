@@ -18,7 +18,7 @@ import { partsAccept, partsBuild } from '../../rules/agreement.ts';
 import { expectedTuple } from '../../types/fitting/expected.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, unitType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { insideOptional } from '../../types/unions/inside-optional.ts';
 
 export function checkTuple(context: BodyContext, node: Tuple, expected: Type | undefined): Type {

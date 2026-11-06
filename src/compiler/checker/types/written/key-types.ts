@@ -1,8 +1,8 @@
 /**
- * Key types and anonymous struct types as written (§3.1): `keyof S`, `S[K]`, and a `{…}` type,
- * a mapped one among them. Each builds through the program's rules (../type-rules.ts), which reduce
- * it once what it is built from is known, so a written type and a substituted one are one type;
- * here, what only writing it can get wrong is reported.
+ * Key types and anonymous struct types as written (§3.1): `keyof S`, `S[K]`, and a `{…}` type, a
+ * mapped one among them. Each builds through the program's rules (../type/type-rules.ts), which
+ * reduce it once what it is built from is known, so a written type and a substituted one are one
+ * type; here, what only writing it can get wrong is reported.
  *
  * - A shape's field takes no annotation (§3.16), which is reported here, where nothing else
  *   declares it, without computing its value: that could reach the very type being resolved.
@@ -24,10 +24,10 @@ import type {
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Fitting } from '../fitting/fit.ts';
-import { type Substitution, substitute } from '../substitution.ts';
+import { type Substitution, substitute } from '../parts/substitution.ts';
 import { type ParameterKey, shapeType, type Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
-import { typeText } from '../type-text.ts';
+import { typeText } from '../type/type-text.ts';
 import { membersOf } from '../unions/unions.ts';
 import { declaredFields } from './declared-fields.ts';
 

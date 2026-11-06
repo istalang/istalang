@@ -18,7 +18,7 @@ import type { FunctionId } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { FunctionType, Type } from '../../checker/types/type/index.ts';
-import { futureArgument } from '../../checker/types/well-known.ts';
+import { futureArgument } from '../../checker/types/type/well-known.ts';
 import type {
   ConstantDeclaration,
   Declaration,

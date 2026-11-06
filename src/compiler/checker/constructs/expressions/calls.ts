@@ -55,7 +55,7 @@ import { namedType } from '../../resolution/named.ts';
 import { fieldOf } from '../../types/traits/known-fields.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { insideOptional } from '../../types/unions/inside-optional.ts';
 import { writtenLiteral } from '../../types/unions/unions.ts';
 import { checkValueCall } from '../closures/value-calls.ts';

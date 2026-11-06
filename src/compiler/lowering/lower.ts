@@ -15,7 +15,7 @@ import { testingFunctions } from '../../language/well-known/testing.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/surface/host-externs.ts';
-import { substitute } from '../checker/types/substitution.ts';
+import { substitute } from '../checker/types/parts/substitution.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { writtenBodyOf } from './bodies.ts';
 import { derivedCodecDirection, derivedCodecEntry } from './boundary/codecs.ts';

@@ -21,7 +21,7 @@
 import type { Checker } from '../../../compiler/checker/check.ts';
 import type { Type } from '../../../compiler/checker/types/type/index.ts';
 import { boolType } from '../../../compiler/checker/types/type/primitives.ts';
-import { slotText, typeText } from '../../../compiler/checker/types/type-text.ts';
+import { slotText, typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import { hasDefault } from '../../../compiler/syntax/declarations/index.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { docstringOf } from '../../docstrings.ts';

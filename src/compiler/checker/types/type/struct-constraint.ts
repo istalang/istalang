@@ -5,10 +5,10 @@
  * types/traits/struct-constraints.ts's; here it is substituted, compared and spelled.
  */
 
-import { sameItems } from '../../../structures/equality.ts';
-import { sameConstraintSpelled, sameTypeSpelled } from './parts/type-parts.ts';
-import { type Substitution, substitute, substituteConstraint } from './substitution.ts';
-import type { Constraint, Type } from './type/index.ts';
+import { sameItems } from '../../../../structures/equality.ts';
+import { type Substitution, substitute, substituteConstraint } from '../parts/substitution.ts';
+import { sameConstraintSpelled, sameTypeSpelled } from '../parts/type-parts.ts';
+import type { Constraint, Type } from './index.ts';
 import type { TypeRules } from './type-rules.ts';
 import { constraintText, typeText } from './type-text.ts';
 

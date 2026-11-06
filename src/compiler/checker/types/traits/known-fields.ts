@@ -11,7 +11,7 @@ import {
   requiredFieldRead,
   structFieldOf,
 } from '../../surface/checked-field.ts';
-import { unfolded } from '../computed-types.ts';
+import { unfolded } from '../type/computed-types.ts';
 import type { Type } from '../type/index.ts';
 import { literalType } from '../unions/unions.ts';
 import { requiredFields, requiredFieldType } from './constraints.ts';

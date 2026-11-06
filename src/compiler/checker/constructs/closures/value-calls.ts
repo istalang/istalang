@@ -20,12 +20,12 @@ import { callArgumentOf, explain, type WrittenArgument } from '../../resolution/
 import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
 import { takenBy } from '../../resolution/choosing/applicability.ts';
 import { bindArguments } from '../../resolution/choosing/binding.ts';
-import { packRestSlot } from '../../types/function-types.ts';
+import { packRestSlot } from '../../types/type/function-types.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import { futureOf } from '../../types/type/well-known.ts';
 import { insideOptional } from '../../types/unions/inside-optional.ts';
-import { futureOf } from '../../types/well-known.ts';
 
 /** A call as written: where it stands, with its arguments and any type arguments. */
 export interface ValueCall {

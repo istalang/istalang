@@ -15,7 +15,7 @@ import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { isAssignable } from '../../../types/identity/identity.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { boolType, unitType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
+import { typeText } from '../../../types/type/type-text.ts';
 import { decidedValue } from '../decided-conditions.ts';
 import { Branches, branchesAccepts } from './branches.ts';
 

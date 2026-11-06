@@ -25,8 +25,8 @@ import { type JsonDirection, jsonTraits } from '../../surface/json-form.ts';
 import { wellKnownConstraint } from '../../types/traits/constraints.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
 import type { Type } from '../../types/type/index.ts';
-import { typeText } from '../../types/type-text.ts';
-import { futureArgument } from '../../types/well-known.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import { futureArgument } from '../../types/type/well-known.ts';
 
 /** Reports each type of the extern `node` declares, in `module`, that can't cross as JSON. */
 export function checkHostBoundary(

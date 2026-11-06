@@ -14,7 +14,7 @@ import { idOf } from '../../../program/program.test-kit.ts';
 import { programModule } from '../../../program/program.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import { checkProgram } from '../../check.ts';
-import { unfoldRecursive } from '../computed-types.ts';
+import { unfoldRecursive } from '../type/computed-types.ts';
 import { sameType } from './identity.ts';
 import { typeKeys } from './type-keys.ts';
 

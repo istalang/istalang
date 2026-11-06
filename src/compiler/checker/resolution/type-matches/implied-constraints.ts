@@ -13,14 +13,14 @@
 import { type TypeParameter, typeParametersOf } from '../../../syntax/declarations/index.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
+import { substituteConstraint, substitutionFor } from '../../types/parts/substitution.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
+import type { Constraint, Type } from '../../types/type/index.ts';
 import {
   type ConstraintSet,
   type StructConstraintModel,
   substituteStructConstraint,
-} from '../../types/struct-constraint.ts';
-import { substituteConstraint, substitutionFor } from '../../types/substitution.ts';
-import type { Constraint, Type } from '../../types/type/index.ts';
+} from '../../types/type/struct-constraint.ts';
 
 /** A declaration's parameter list and the arguments a use gives it. */
 interface Use {

@@ -11,8 +11,8 @@ import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
-import { wellKnownArguments } from '../../../types/well-known.ts';
+import { typeText } from '../../../types/type/type-text.ts';
+import { wellKnownArguments } from '../../../types/type/well-known.ts';
 
 export function checkPropagate(context: BodyContext, node: Propagate): Type {
   const type = context.expression(node.operand);

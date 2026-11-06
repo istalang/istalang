@@ -20,7 +20,7 @@ import {
 } from '../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../compiler/checker/check.ts';
 import { nominalType, type Type } from '../../../compiler/checker/types/type/index.ts';
-import { typeText } from '../../../compiler/checker/types/type-text.ts';
+import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import type { ModuleId } from '../../../compiler/program/program.ts';
 import { isMethod } from '../../../compiler/syntax/declarations/index.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';

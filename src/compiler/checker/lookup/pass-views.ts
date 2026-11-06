@@ -10,7 +10,7 @@ import { isOverFields, passedParts } from '../../syntax/statements/readings.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
 import type { JoinedBody } from '../surface/denotation.ts';
-import type { TypeRules } from '../types/type-rules.ts';
+import type { TypeRules } from '../types/type/type-rules.ts';
 
 /** One answer per pass of a field loop, in the order checked: there is one at least. */
 export type PassAnswers<Answer> = readonly [Answer, ...Answer[]];

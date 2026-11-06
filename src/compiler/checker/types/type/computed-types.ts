@@ -10,10 +10,10 @@ import type {
   AliasDeclaration,
   AssociatedType,
   TypeParameter,
-} from '../../syntax/declarations/index.ts';
-import type { RestPattern } from '../../syntax/patterns.ts';
-import type { StructType } from '../../syntax/types/index.ts';
-import type { RecursiveLabel } from './type/alias-uses.ts';
+} from '../../../syntax/declarations/index.ts';
+import type { RestPattern } from '../../../syntax/patterns.ts';
+import type { StructType } from '../../../syntax/types/index.ts';
+import type { RecursiveLabel } from './alias-uses.ts';
 import type {
   FieldMember,
   NominalEntity,
@@ -21,7 +21,7 @@ import type {
   Type,
   TypeParameterType,
   WrittenThrough,
-} from './type/index.ts';
+} from './index.ts';
 
 /**
  * `T.Data` (§3.1): the associated type `name` of `of`, a type not known yet, a type parameter or

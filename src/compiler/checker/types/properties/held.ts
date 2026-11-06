@@ -7,8 +7,8 @@
  */
 
 import type { CheckerContext } from '../../contexts/context.ts';
-import { unfolded } from '../computed-types.ts';
 import { typeChildren } from '../parts/type-children.ts';
+import { unfolded } from '../type/computed-types.ts';
 import type { Type } from '../type/index.ts';
 import { TypeCycle } from './type-cycle.ts';
 

@@ -17,9 +17,9 @@
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../../syntax/expressions/literals/numbers.ts';
-import { unfolded, unfoldRecursive } from '../computed-types.ts';
 import { folded } from '../identity/recursive-types.ts';
 import { typeKeys } from '../identity/type-keys.ts';
+import { unfolded, unfoldRecursive } from '../type/computed-types.ts';
 import {
   isMemberParameter,
   type LiteralType,
@@ -27,7 +27,7 @@ import {
   type Type,
 } from '../type/index.ts';
 import { isPrimitive, neverType, noneType } from '../type/primitives.ts';
-import type { TypeRules } from '../type-rules.ts';
+import type { TypeRules } from '../type/type-rules.ts';
 import {
   absorbingMember,
   baseOf,

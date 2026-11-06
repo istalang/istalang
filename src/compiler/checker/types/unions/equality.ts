@@ -25,8 +25,8 @@
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
-import { isOpaque } from '../computed-types.ts';
 import { sameType } from '../identity/identity.ts';
+import { isOpaque } from '../type/computed-types.ts';
 import {
   isMemberParameter,
   type LiteralValue,

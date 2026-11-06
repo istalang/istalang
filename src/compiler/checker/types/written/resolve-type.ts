@@ -43,10 +43,10 @@ import {
 } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { ownAssociatedType } from '../computed-types.ts';
-import { isPack, withPack } from '../function-types.ts';
-import { substitutionFor } from '../substitution.ts';
+import { substitutionFor } from '../parts/substitution.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
+import { ownAssociatedType } from '../type/computed-types.ts';
+import { isPack, withPack } from '../type/function-types.ts';
 import {
   type NominalDeclaration,
   nominalType,
@@ -55,7 +55,7 @@ import {
   type Type,
 } from '../type/index.ts';
 import { errorType, primitiveType, tupleType, unitType } from '../type/primitives.ts';
-import { typeText } from '../type-text.ts';
+import { typeText } from '../type/type-text.ts';
 import { optionalOf, unionOf, writtenLiteral } from '../unions/unions.ts';
 import { fieldWritten, keysWritten, structWritten } from './key-types.ts';
 import { namedPathOf } from './named-paths.ts';

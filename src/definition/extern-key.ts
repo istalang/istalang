@@ -173,8 +173,9 @@ function markerOf(parameter: KeyParameter): string {
 
 /**
  * A type as keys and function-table names spell it: module-qualified, without sugar. Tuple and
- * function types read as `checker/types/type-text.ts` writes them for messages; the two stay apart
- * on purpose: a key is a persisted identity, so a change of wording there must never reach it.
+ * function types read as `checker/types/type/type-text.ts` writes them for messages; the two stay
+ * apart on purpose: a key is a persisted identity, so a change of wording there must never reach
+ * it.
  */
 export function keyTypeText(type: KeyType): string {
   switch (type.kind) {

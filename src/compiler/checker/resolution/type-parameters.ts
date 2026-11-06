@@ -32,19 +32,19 @@ import type {
 import { useSite } from '../contexts/use-site.ts';
 import { standsForMember } from '../types/fitting/member-arguments.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
+import { substituteConstraint } from '../types/parts/substitution.ts';
 import { sameConstraintSpelled } from '../types/parts/type-parts.ts';
-import {
-  type ConstraintSet,
-  type StructConstraintModel,
-  sameStructConstraint,
-} from '../types/struct-constraint.ts';
-import { substituteConstraint } from '../types/substitution.ts';
 import { resolveConstraint } from '../types/traits/constraints.ts';
 import {
   resolveConstraintSet,
   resolveStructConstraint,
 } from '../types/traits/struct-constraints.ts';
 import type { Constraint, Type } from '../types/type/index.ts';
+import {
+  type ConstraintSet,
+  type StructConstraintModel,
+  sameStructConstraint,
+} from '../types/type/struct-constraint.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
 import { meets } from './conformance/conformance.ts';
 import { meetsStructConstraints } from './conformance/shortfalls.ts';

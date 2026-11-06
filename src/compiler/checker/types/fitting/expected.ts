@@ -30,7 +30,7 @@ import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { unfolded } from '../computed-types.ts';
+import { unfolded } from '../type/computed-types.ts';
 import {
   type FunctionType,
   type NominalDeclaration,
@@ -41,8 +41,8 @@ import {
   type UnionType,
 } from '../type/index.ts';
 import { errorType, expectsError } from '../type/primitives.ts';
+import { arrayElement, wellKnownArguments } from '../type/well-known.ts';
 import { membersOf, optionalInner } from '../unions/unions.ts';
-import { arrayElement, wellKnownArguments } from '../well-known.ts';
 import { typeArgumentsFor } from '../written/type-arguments.ts';
 
 /**

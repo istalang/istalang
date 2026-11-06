@@ -35,10 +35,14 @@ import type { Invalid } from '../../../../syntax/node.ts';
 import type { VariantMember } from '../../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../../contexts/context.ts';
 import { type FieldedDeclaration, TypeExpansion } from '../../../rules/expansion/types.ts';
-import { unfolded } from '../../../types/computed-types.ts';
-import { inFieldOrder } from '../../../types/field-order.ts';
+import {
+  type Substitution,
+  substitute,
+  substitutionFor,
+} from '../../../types/parts/substitution.ts';
 import { sameTypeSpelled } from '../../../types/parts/type-parts.ts';
-import { type Substitution, substitute, substitutionFor } from '../../../types/substitution.ts';
+import { unfolded } from '../../../types/type/computed-types.ts';
+import { inFieldOrder } from '../../../types/type/field-order.ts';
 import {
   type AnonymousStructType,
   type FieldMember,
@@ -47,7 +51,7 @@ import {
   type Type,
 } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
-import type { TypeRules } from '../../../types/type-rules.ts';
+import type { TypeRules } from '../../../types/type/type-rules.ts';
 import { declaredFields } from '../../../types/written/declared-fields.ts';
 
 /** Whether two lists of fields name, type and declare their fields alike, in order. */

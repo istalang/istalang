@@ -10,9 +10,9 @@
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { type Substitution, substitute } from '../substitution.ts';
+import { type Substitution, substitute } from '../parts/substitution.ts';
 import type { Type } from '../type/index.ts';
-import { typeText } from '../type-text.ts';
+import { typeText } from '../type/type-text.ts';
 import { hasMember, membersOf } from '../unions/unions.ts';
 import type { Fitting } from './fit.ts';
 

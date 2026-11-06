@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { fieldsFunctionOf } from '../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
-import { typeText } from '../types/type-text.ts';
+import { typeText } from '../types/type/type-text.ts';
 import { checkedMain } from './lookup.test-kit.ts';
 
 const text = `const zero = 0

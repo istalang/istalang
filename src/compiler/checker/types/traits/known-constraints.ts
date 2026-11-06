@@ -10,7 +10,7 @@
  *   an `any` type has none: only a type's own declaration declares one. One whose body is no type
  *   `match` and reaches itself again while expanded can't be a type (§3.1): it and every one on
  *   the cycle back to it is the error type carrying it, where it would otherwise expand without
- *   end, however it is reached (types/substitution.ts), which each instantiation reaching it
+ *   end, however it is reached (types/parts/substitution.ts), which each instantiation reaching it
  *   reports (resolution/type-matches/reduction-requirements.ts).
  * - `S["meta"]` (§3.5) meets what the entries of `S`'s struct constraints ask of that field; on a
  *   known struct it is the field's type, and an entry asking an exact type gives that type.
@@ -27,20 +27,20 @@ import type {
 } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { RequirementOrigin } from '../../surface/resolved-call.ts';
-import { type ComputedType, isMatchAlias, isOpaque } from '../computed-types.ts';
-import { inFieldOrder } from '../field-order.ts';
 import { sameConstraint, sameType } from '../identity/identity.ts';
 import { typeKeys } from '../identity/type-keys.ts';
+import { substitute, substituteConstraint, substitutionFor } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
+import { aliasedAs } from '../type/alias-uses.ts';
+import { type ComputedType, isMatchAlias, isOpaque } from '../type/computed-types.ts';
+import { inFieldOrder } from '../type/field-order.ts';
+import type { AnyType, Constraint, Type } from '../type/index.ts';
+import { errorType, isPrimitive } from '../type/primitives.ts';
 import {
   type EntryRule,
   type StructConstraintModel,
   substituteStructConstraint,
-} from '../struct-constraint.ts';
-import { substitute, substituteConstraint, substitutionFor } from '../substitution.ts';
-import { aliasedAs } from '../type/alias-uses.ts';
-import type { AnyType, Constraint, Type } from '../type/index.ts';
-import { errorType, isPrimitive } from '../type/primitives.ts';
+} from '../type/struct-constraint.ts';
 import { literalType, membersOf, unionOf } from '../unions/unions.ts';
 import { parameterType } from '../written/resolve-type.ts';
 import { aliasInstance } from '../written/type-match.ts';

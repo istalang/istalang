@@ -46,10 +46,11 @@ import {
   type PatternTest,
 } from '../../surface/checked-pattern.ts';
 import type { ImplicitRole } from '../../surface/resolved-call.ts';
-import { unfolded } from '../../types/computed-types.ts';
+import { unfolded } from '../../types/type/computed-types.ts';
 import type { NominalDeclaration, Type } from '../../types/type/index.ts';
 import { errorType, intType, isPrimitive, noneType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import { arrayElement } from '../../types/type/well-known.ts';
 import {
   comparable,
   decidedEquality,
@@ -57,7 +58,6 @@ import {
   isKnown,
 } from '../../types/unions/equality.ts';
 import { optionalInner } from '../../types/unions/unions.ts';
-import { arrayElement } from '../../types/well-known.ts';
 import { namesOwnType, patternTypeOf } from '../../types/written/pattern-types.ts';
 import { downcastOf } from './constructs/downcasts.ts';
 import { compareFunction, rangeLeaf } from './constructs/ranges.ts';

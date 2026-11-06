@@ -30,10 +30,10 @@ import type { CheckerContext } from '../contexts/context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isHostType } from '../surface/host-externs.ts';
 import type { FunctionCall, ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
-import { substitute, substitutionFor } from '../types/substitution.ts';
+import { substitute, substitutionFor } from '../types/parts/substitution.ts';
 import type { Type } from '../types/type/index.ts';
-import { typeText } from '../types/type-text.ts';
-import { arrayElement, wellKnownArguments } from '../types/well-known.ts';
+import { typeText } from '../types/type/type-text.ts';
+import { arrayElement, wellKnownArguments } from '../types/type/well-known.ts';
 
 /** Checks each of `calls`, a body's, that calls `mock` or `handle`; the mocks' targets. */
 export function checkTestingCalls(

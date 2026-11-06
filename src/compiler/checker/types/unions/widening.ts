@@ -20,7 +20,7 @@
 import { sameType } from '../identity/identity.ts';
 import { mapChildren } from '../parts/type-parts.ts';
 import type { Type } from '../type/index.ts';
-import type { TypeRules } from '../type-rules.ts';
+import type { TypeRules } from '../type/type-rules.ts';
 import { baseOf } from './union-members.ts';
 
 /**

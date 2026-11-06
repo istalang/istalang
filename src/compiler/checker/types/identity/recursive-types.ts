@@ -27,7 +27,6 @@
 
 import { sameItems } from '../../../../structures/equality.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
-import { isComputed, type RecursiveGraph, type RecursiveType } from '../computed-types.ts';
 import { reducedComputed } from '../parts/computed-reduction.ts';
 import {
   boundWithin,
@@ -39,8 +38,9 @@ import {
   withTypeChildren,
 } from '../parts/type-children.ts';
 import { mapAliasUse, type RecursiveLabel } from '../type/alias-uses.ts';
+import { isComputed, type RecursiveGraph, type RecursiveType } from '../type/computed-types.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
-import type { TypeRules } from '../type-rules.ts';
+import type { TypeRules } from '../type/type-rules.ts';
 import { type Slot, TermGraph } from './recursive-terms.ts';
 import { typeKeys } from './type-keys.ts';
 

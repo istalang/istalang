@@ -21,8 +21,8 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { agreedType, fitProduced, type Produced } from '../../rules/agreement.ts';
 import type { Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
-import { wellKnownArguments } from '../../types/well-known.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import { wellKnownArguments } from '../../types/type/well-known.ts';
 
 /** A `?` in the body: the error type it would return, and where. */
 interface Propagation {

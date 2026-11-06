@@ -27,8 +27,8 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { heldType } from '../../types/properties/held.ts';
 import type { Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
-import { futureArgument, wellKnownArguments } from '../../types/well-known.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import { futureArgument, wellKnownArguments } from '../../types/type/well-known.ts';
 import { isDisposable } from './disposal.ts';
 
 /** How a must-use value is used, besides being kept or dropped. */

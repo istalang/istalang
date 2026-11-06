@@ -47,9 +47,9 @@
 
 import { memo } from '../../../../structures/memo.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
-import type { MappedParts, RecursiveGraph } from '../computed-types.ts';
 import { holdsRecursion } from '../parts/type-children.ts';
 import type { AliasUse } from '../type/alias-uses.ts';
+import type { MappedParts, RecursiveGraph } from '../type/computed-types.ts';
 import type {
   AnonymousStructType,
   FieldMember,

@@ -1,6 +1,6 @@
 /**
  * Struct constraints (§3.5): `struct { title: String, [_] is FormNode }` after `is`, resolved
- * where it is written into what it asks of a struct's fields (types/struct-constraint.ts).
+ * where it is written into what it asks of a struct's fields (types/type/struct-constraint.ts).
  *
  * - A constraint is open: it states the fields its entries name, in name order as every struct's
  *   fields are (§3.1), and what every other field must be (`others`), or nothing.
@@ -17,9 +17,9 @@ import { isMissingName } from '../../../syntax/node.ts';
 import type { ConstraintNode, FieldEntry, StructConstraint } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { inFieldOrder } from '../field-order.ts';
-import type { ConstraintSet, EntryRule, StructConstraintModel } from '../struct-constraint.ts';
+import { inFieldOrder } from '../type/field-order.ts';
 import type { Constraint } from '../type/index.ts';
+import type { ConstraintSet, EntryRule, StructConstraintModel } from '../type/struct-constraint.ts';
 import { parameterType } from '../written/resolve-type.ts';
 import { type ConstraintSite, resolveConstraint } from './constraints.ts';
 

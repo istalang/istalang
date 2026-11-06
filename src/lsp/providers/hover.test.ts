@@ -10,7 +10,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { type Hover, HoverRequest, MarkupContent } from 'vscode-languageserver/node';
 import { checkProgram } from '../../compiler/checker/check.ts';
-import { typeText } from '../../compiler/checker/types/type-text.ts';
+import { typeText } from '../../compiler/checker/types/type/type-text.ts';
 import type { ModuleId } from '../../compiler/program/program.ts';
 import type { Expression } from '../../compiler/syntax/expressions/index.ts';
 import { lastName } from '../../compiler/syntax/node.ts';

@@ -9,7 +9,7 @@ import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { checkedApart, reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 
 interface ChoiceCase {
   readonly rule: string;

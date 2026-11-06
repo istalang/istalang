@@ -4,15 +4,19 @@
  * where each parameter's text stands in it, for signature help to mark. Hover, signature help and
  * completion all show a function through this, so they never disagree on how one reads.
  *
- * Types read as messages spell them (checker types/type-text.ts). A default value reads as `…`,
- * since its text may span lines; type parameters read by name, as a call site names them. A
- * parameter's pattern reads as written, on one line, with its `as` name (§3.3); one naming its
- * type (`Point{x, y}`) shows no type beside it, as source writes none.
+ * Types read as messages spell them (checker types/type/type-text.ts). A default value reads as
+ * `…`, since its text may span lines; type parameters read by name, as a call site names them. A
+ * parameter's pattern reads as written, on one line, with its `as` name (§3.3); one naming its type
+ * (`Point{x, y}`) shows no type beside it, as source writes none.
  */
 
 import type { Checker, SignatureParameter } from '../../compiler/checker/check.ts';
 import type { FunctionType } from '../../compiler/checker/types/type/index.ts';
-import { functionTypeParts, slotText, typeText } from '../../compiler/checker/types/type-text.ts';
+import {
+  functionTypeParts,
+  slotText,
+  typeText,
+} from '../../compiler/checker/types/type/type-text.ts';
 import { programModule } from '../../compiler/program/program.ts';
 import {
   type FunctionDeclaration,

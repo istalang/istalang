@@ -24,8 +24,8 @@
  */
 
 import { unreachable } from '../../../../structures/unreachable.ts';
-import type { RecursiveGraph } from '../computed-types.ts';
 import { holdsRecursion, typeChildren } from '../parts/type-children.ts';
+import type { RecursiveGraph } from '../type/computed-types.ts';
 import type { Type } from '../type/index.ts';
 import { errorType, neverType } from '../type/primitives.ts';
 import {

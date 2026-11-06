@@ -21,16 +21,8 @@ import type { RequiredAssociatedType, TypeParameter } from '../../../syntax/decl
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { isOpaque, unfolded } from '../../types/computed-types.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import {
-  constraintSetText,
-  type EntryRule,
-  type StructConstraintModel,
-  structConstraintText,
-  substituteStructConstraint,
-} from '../../types/struct-constraint.ts';
-import { type Substitution, substituteConstraint } from '../../types/substitution.ts';
+import { type Substitution, substituteConstraint } from '../../types/parts/substitution.ts';
 import {
   constraintOn,
   constraintSubstitution,
@@ -42,8 +34,16 @@ import { structConstraintsOn } from '../../types/traits/known-constraints.ts';
 import { fieldOf } from '../../types/traits/known-fields.ts';
 import { constraintsImply } from '../../types/traits/sendable.ts';
 import { isStructType } from '../../types/traits/struct-keys.ts';
+import { isOpaque, unfolded } from '../../types/type/computed-types.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
-import { typeText } from '../../types/type-text.ts';
+import {
+  constraintSetText,
+  type EntryRule,
+  type StructConstraintModel,
+  structConstraintText,
+  substituteStructConstraint,
+} from '../../types/type/struct-constraint.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { literalType } from '../../types/unions/unions.ts';
 
 /**

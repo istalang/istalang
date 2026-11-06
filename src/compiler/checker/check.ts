@@ -30,8 +30,8 @@ import type { LookupQueries } from './surface/denotation.ts';
 import type { JsonFormQueries } from './surface/json-form.ts';
 import type { FunctionCall, ResolvedCall } from './surface/resolved-call.ts';
 import type { Fit } from './types/fitting/fit.ts';
-import type { RestSlot } from './types/function-types.ts';
 import type { TypeKeys } from './types/identity/type-keys.ts';
+import type { RestSlot } from './types/type/function-types.ts';
 import type {
   AnonymousStructType,
   AnyType,
@@ -39,7 +39,7 @@ import type {
   NominalType,
   Type,
 } from './types/type/index.ts';
-import type { TypeRules } from './types/type-rules.ts';
+import type { TypeRules } from './types/type/type-rules.ts';
 import { type CheckerOptions, ProgramChecker } from './wiring/program/program-checker.ts';
 
 /** A variant of an enum type, its fields substituted for the type's arguments. */
@@ -153,7 +153,7 @@ export interface Checker {
    */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
   /**
-   * The program's rules for building types (types/type-rules.ts), which every substitution and
+   * The program's rules for building types (types/type/type-rules.ts), which every substitution and
    * union built after checking, as lowering's, takes, so its types are the checker's.
    */
   readonly typeRules: TypeRules;

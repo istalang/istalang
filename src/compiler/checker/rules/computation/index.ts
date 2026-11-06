@@ -42,9 +42,9 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedBody, FieldSource } from '../../surface/checked-body.ts';
 import { type ConstantForm, durationForm, formSemantics } from '../../surface/constant-form.ts';
 import type { FunctionCall } from '../../surface/resolved-call.ts';
-import { laidOut } from '../../types/field-order.ts';
 import { isExact } from '../../types/fitting/fit.ts';
-import { type Substitution, substitute, substitutionFor } from '../../types/substitution.ts';
+import { type Substitution, substitute, substitutionFor } from '../../types/parts/substitution.ts';
+import { laidOut } from '../../types/type/field-order.ts';
 import { computed, fittedForm, itemsOf, type Outcome, pairOf, refused, unknown } from './forms.ts';
 
 /** What the walk reads: layouts, field defaults, the constant or annotation checked, and others. */

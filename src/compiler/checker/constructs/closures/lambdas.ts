@@ -39,8 +39,8 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Produced } from '../../rules/agreement.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';
 import { expectedFunction } from '../../types/fitting/expected.ts';
-import { isPack, packRestSlot, type RestSlot, withPack } from '../../types/function-types.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
+import { isPack, packRestSlot, type RestSlot, withPack } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, expectsError, unitType } from '../../types/type/primitives.ts';
 import {

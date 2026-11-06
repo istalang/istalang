@@ -34,12 +34,12 @@ import { type Application, chooseAsValue, signatureOf } from '../../resolution/c
 import { instantiate } from '../../resolution/conformance/conformance.ts';
 import { namedType } from '../../resolution/named.ts';
 import { expectedFunction } from '../../types/fitting/expected.ts';
-import { withPack } from '../../types/function-types.ts';
-import { substitute } from '../../types/substitution.ts';
+import { substitute } from '../../types/parts/substitution.ts';
+import { withPack } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, expectsError } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
-import { futureArgument, futureOf } from '../../types/well-known.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import { futureArgument, futureOf } from '../../types/type/well-known.ts';
 
 /** Functions an expression names as a value: where, by what name in messages, and which. */
 export interface NamedFunctions {

@@ -12,11 +12,11 @@
 
 import { sameItems } from '../../../../structures/equality.ts';
 import { memo } from '../../../../structures/memo.ts';
-import { type ComputedType, isComputed, type RecursiveType } from '../computed-types.ts';
-import { withPack } from '../function-types.ts';
 import { mapRecursive } from '../identity/recursive-types.ts';
 import { typeKeys } from '../identity/type-keys.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
+import { type ComputedType, isComputed, type RecursiveType } from '../type/computed-types.ts';
+import { withPack } from '../type/function-types.ts';
 import type {
   AnyType,
   Constraint,
@@ -26,7 +26,7 @@ import type {
   Type,
   UnionType,
 } from '../type/index.ts';
-import type { TypeRules } from '../type-rules.ts';
+import type { TypeRules } from '../type/type-rules.ts';
 import { unionOf, unionOfNormalized } from '../unions/unions.ts';
 import { mappedParts, reducedComputed } from './computed-reduction.ts';
 import { boundParameters, typeChildren } from './type-children.ts';
@@ -172,7 +172,7 @@ type Rebuilt = UnionType | RecursiveType | ComputedType;
  * `type` rebuilt by `rules` from its parts as `map` gives them, written through its alias, when
  * building it takes the rules: a union, whose members may merge, a recursive type, whose graph
  * closes again (identity/recursive-types.ts), or a computed type, which may reduce
- * (../type-rules.ts); undefined for any other type.
+ * (../type/type-rules.ts); undefined for any other type.
  */
 function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Type | undefined {
   const rebuilt = (): Type | undefined => {

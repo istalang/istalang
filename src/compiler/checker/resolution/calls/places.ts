@@ -43,11 +43,11 @@ import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { AssignedPart } from '../../surface/checked-body.ts';
-import { isOpaque } from '../../types/computed-types.ts';
 import { keyMembers, structConstraintsOn } from '../../types/traits/known-constraints.ts';
+import { isOpaque } from '../../types/type/computed-types.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import type { Passing } from '../choosing/call-arguments.ts';
 import { runsAtOnce, writeElement } from './collection-functions.ts';
 

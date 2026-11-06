@@ -42,15 +42,15 @@ import { unreachable } from '../../../../structures/unreachable.ts';
 import type { AliasDeclaration } from '../../../syntax/declarations/index.ts';
 import { type StructType, unparenthesizedType } from '../../../syntax/types/index.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
-import { isOpaque, type MatchType, unfoldRecursive } from '../../types/computed-types.ts';
 import { closeRecursive } from '../../types/identity/recursive-types.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
+import { type Substitution, substitute, substitutionFor } from '../../types/parts/substitution.ts';
 import { errorIn } from '../../types/parts/type-parts.ts';
 import { fieldReaderOf, selfHoldingField } from '../../types/properties/finiteness.ts';
-import { substituteStructConstraint } from '../../types/struct-constraint.ts';
-import { type Substitution, substitute, substitutionFor } from '../../types/substitution.ts';
+import { isOpaque, type MatchType, unfoldRecursive } from '../../types/type/computed-types.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, isPrimitive, neverType } from '../../types/type/primitives.ts';
+import { substituteStructConstraint } from '../../types/type/struct-constraint.ts';
 import { unionOf } from '../../types/unions/unions.ts';
 import {
   type CaseForm,

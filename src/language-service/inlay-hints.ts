@@ -5,7 +5,7 @@
  * type the identifier query gives the declaring name, the one a hover there shows.
  */
 
-import { typeText } from '../compiler/checker/types/type-text.ts';
+import { typeText } from '../compiler/checker/types/type/type-text.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import { parameterNames } from '../compiler/syntax/expressions/parameters.ts';
 import { type Identifier, isMissingName } from '../compiler/syntax/node.ts';

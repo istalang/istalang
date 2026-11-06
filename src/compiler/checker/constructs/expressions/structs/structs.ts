@@ -29,8 +29,8 @@ import type {
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { partsAccept, partsBuild } from '../../../rules/agreement.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
-import { inFieldOrder } from '../../../types/field-order.ts';
 import { builtFrom } from '../../../types/fitting/expected.ts';
+import { inFieldOrder } from '../../../types/type/field-order.ts';
 import {
   type FieldMember,
   type NominalEntity,
@@ -39,7 +39,7 @@ import {
   type Type,
 } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
+import { typeText } from '../../../types/type/type-text.ts';
 import {
   checkLiteralFields,
   declaresDefault,

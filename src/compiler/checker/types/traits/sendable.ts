@@ -20,7 +20,7 @@ import { sameConstraint } from '../identity/identity.ts';
 import { heldParts } from '../properties/held.ts';
 import { TypeCycle } from '../properties/type-cycle.ts';
 import type { Constraint, NominalType, Type } from '../type/index.ts';
-import { isWellKnownTrait } from '../well-known.ts';
+import { isWellKnownTrait } from '../type/well-known.ts';
 import { knownConstraints } from './known-constraints.ts';
 
 /**

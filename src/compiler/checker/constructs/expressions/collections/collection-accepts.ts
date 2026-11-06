@@ -32,7 +32,7 @@ import { agreedAccepts, agreedBuilds, allProducersAccept } from '../../../rules/
 import { collectionTarget } from '../../../types/fitting/expected.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import type { Type } from '../../../types/type/index.ts';
-import { arrayElement, arrayOf, wellKnownOf } from '../../../types/well-known.ts';
+import { arrayElement, arrayOf, wellKnownOf } from '../../../types/type/well-known.ts';
 
 /**
  * What a spread's items have, as `read` reads its operand: an array's elements when its type is

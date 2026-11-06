@@ -29,8 +29,8 @@ import { implicitCall } from '../../resolution/implicit.ts';
 import type { Iteration, IterationForm } from '../../surface/checked-body.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
-import { wellKnownArguments } from '../../types/well-known.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import { wellKnownArguments } from '../../types/type/well-known.ts';
 import { declareTargets } from '../patterns/targets.ts';
 
 /** How each iteration in one body runs. */

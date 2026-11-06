@@ -21,10 +21,10 @@ import { checkProgram } from '../../../check.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import { typeKeys } from '../../../types/identity/type-keys.ts';
-import { substitute, substitutionFor } from '../../../types/substitution.ts';
+import { substitute, substitutionFor } from '../../../types/parts/substitution.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { intType, stringType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
+import { typeText } from '../../../types/type/type-text.ts';
 
 function parameterTypesOf(source: string): {
   readonly types: readonly Type[];

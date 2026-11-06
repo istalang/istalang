@@ -19,7 +19,7 @@ import type { UseSite } from '../../contexts/use-site.ts';
 import { type DerivedCodec, type JsonDirection, jsonTraits } from '../../surface/json-form.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
 import type { Type } from '../../types/type/index.ts';
-import { isWellKnownTrait } from '../../types/well-known.ts';
+import { isWellKnownTrait } from '../../types/type/well-known.ts';
 
 /** How a derived trait is met: what it asks of every type, and what it derives for one. */
 export interface Derivation {

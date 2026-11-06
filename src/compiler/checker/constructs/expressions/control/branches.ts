@@ -24,7 +24,7 @@ import {
 } from '../../../rules/agreement.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { neverType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
+import { typeText } from '../../../types/type/type-text.ts';
 
 export class Branches {
   readonly #context: BodyContext;

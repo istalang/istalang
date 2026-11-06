@@ -39,12 +39,12 @@
 
 import { type Fitting, fitOf, matchConversion } from '../fitting/fit.ts';
 import { isOneMember } from '../fitting/member-arguments.ts';
-import { fillsPack, functionFits, isPack } from '../function-types.ts';
 import { sameType } from '../identity/identity.ts';
 import { UnfoldingPairs } from '../identity/unfolding-pairs.ts';
+import { noSubstitution, type Substitution, substitute } from '../parts/substitution.ts';
 import { typeChildren } from '../parts/type-children.ts';
 import { parametersIn } from '../parts/type-parts.ts';
-import { noSubstitution, type Substitution, substitute } from '../substitution.ts';
+import { fillsPack, functionFits, isPack } from '../type/function-types.ts';
 import type {
   AnonymousStructType,
   AnyType,

@@ -26,7 +26,7 @@ import {
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { MembersRequirement } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { substitute } from '../../types/substitution.ts';
+import { substitute } from '../../types/parts/substitution.ts';
 import {
   constraintOn,
   constraintSubstitution,
@@ -35,8 +35,8 @@ import {
 } from '../../types/traits/constraints.ts';
 import { objectUnsafety } from '../../types/traits/object-safety.ts';
 import type { AnyType, Constraint, ParameterKey, Type, UnionType } from '../../types/type/index.ts';
-import type { TypeRules } from '../../types/type-rules.ts';
-import { typeText } from '../../types/type-text.ts';
+import type { TypeRules } from '../../types/type/type-rules.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { parameterType } from '../../types/written/resolve-type.ts';
 import { defaultArgument } from '../../types/written/type-arguments.ts';
 

@@ -25,7 +25,7 @@ import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
 import { parameterOfArgument } from '../../checker/surface/resolved-call.ts';
-import type { RestSlot } from '../../checker/types/function-types.ts';
+import type { RestSlot } from '../../checker/types/type/function-types.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import type { Call, Expression, Spawn } from '../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';

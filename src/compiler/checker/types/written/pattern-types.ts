@@ -24,14 +24,14 @@ import { sameItems } from '../../../../structures/equality.ts';
 import { type Entity, typeEntity } from '../../../binder/entities.ts';
 import type { TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Checker } from '../../check.ts';
-import { unfolded, unfoldRecursive } from '../computed-types.ts';
 import { sameType } from '../identity/identity.ts';
+import { unfolded, unfoldRecursive } from '../type/computed-types.ts';
 import type { AnyType, NominalDeclaration, Type } from '../type/index.ts';
 import { isPrimitive, tupleElements } from '../type/primitives.ts';
-import type { TypeRules } from '../type-rules.ts';
+import type { TypeRules } from '../type/type-rules.ts';
+import { arrayElement } from '../type/well-known.ts';
 import { absorbingMember, baseOf } from '../unions/union-members.ts';
 import { hasMember } from '../unions/unions.ts';
-import { arrayElement } from '../well-known.ts';
 import { type Aliases, entityType } from './named-types.ts';
 
 /** A generic type a pattern names: a nominal one. */

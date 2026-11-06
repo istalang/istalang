@@ -14,7 +14,7 @@ import type { FunctionDeclaration, TypeParameter } from '../../../syntax/declara
 import type { CheckerContext } from '../../contexts/context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
 import type { MembersRequirement } from '../../surface/resolved-call.ts';
-import { type Substitution, substituteAny } from '../../types/substitution.ts';
+import { type Substitution, substituteAny } from '../../types/parts/substitution.ts';
 import { constraintSubstitution } from '../../types/traits/constraints.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import type { Candidate } from '../choosing/candidates.ts';

@@ -20,8 +20,8 @@ import type { SignatureParameter } from '../../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { CheckedBody } from '../../../surface/checked-body.ts';
-import type { RestSlot } from '../../../types/function-types.ts';
 import { sameTypeSpelled } from '../../../types/parts/type-parts.ts';
+import type { RestSlot } from '../../../types/type/function-types.ts';
 import { type DefaultValues, declaredParameters, writtenParameters } from './signatures.ts';
 
 /** A body in which a function's defaults are checked, and what checking `values` found. */

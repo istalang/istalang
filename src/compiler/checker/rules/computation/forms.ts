@@ -13,8 +13,8 @@ import { unreachable } from '../../../../structures/unreachable.ts';
 import type { NodeOf } from '../../../syntax/node.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { ConstantForm } from '../../surface/constant-form.ts';
-import { laidOut, namedValues } from '../../types/field-order.ts';
 import type { Fit } from '../../types/fitting/fit.ts';
+import { laidOut, namedValues } from '../../types/type/field-order.ts';
 
 /**
  * How computing a part of an initializer went: computed, refused (`form` or `endless`), or already

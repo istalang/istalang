@@ -14,7 +14,7 @@ import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
+import { typeText } from '../../../types/type/type-text.ts';
 import { insideOptional } from '../../../types/unions/inside-optional.ts';
 
 export function checkDereference(context: BodyContext, node: Dereference): Type {

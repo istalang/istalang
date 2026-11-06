@@ -22,10 +22,10 @@ import { bodyOf, nodesUnder, type SyntaxNode } from '../../../../syntax/tree.ts'
 import { checkProgram } from '../../../check.ts';
 import type { CheckedBody } from '../../../surface/checked-body.ts';
 import { namesBound, type PartStep } from '../../../surface/checked-pattern.ts';
+import { substitutionFor } from '../../../types/parts/substitution.ts';
 import { parametersIn } from '../../../types/parts/type-parts.ts';
-import { substitutionFor } from '../../../types/substitution.ts';
 import { intType, stringType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
+import { typeText } from '../../../types/type/type-text.ts';
 
 describe('an instantiated body', () => {
   it("gives a loop's cursor the item type of its instantiation", () => {

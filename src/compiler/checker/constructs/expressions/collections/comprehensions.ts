@@ -26,8 +26,8 @@ import {
 } from '../../../rules/agreement.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { boolType, neverType } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type-text.ts';
-import { arrayOf } from '../../../types/well-known.ts';
+import { typeText } from '../../../types/type/type-text.ts';
+import { arrayOf } from '../../../types/type/well-known.ts';
 import { checkedFieldPasses, inFieldPasses } from '../../loops/field-passes.ts';
 import { checkLoopOver } from '../../loops/iteration.ts';
 import { expectedArrayItem } from './collections.ts';

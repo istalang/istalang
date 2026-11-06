@@ -35,7 +35,7 @@ import { requiredFunctions } from '../../types/traits/constraints.ts';
 import { knownConstraints } from '../../types/traits/known-constraints.ts';
 import type { NominalType, Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 
 const none: Disposal = { kind: 'none' };
 

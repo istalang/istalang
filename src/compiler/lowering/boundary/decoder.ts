@@ -18,7 +18,7 @@ import {
   variantTagKey,
 } from '../../checker/surface/json-form.ts';
 import type { LiteralType, NominalType, Type } from '../../checker/types/type/index.ts';
-import { typeText } from '../../checker/types/type-text.ts';
+import { typeText } from '../../checker/types/type/type-text.ts';
 import { type ClosedCall, closeCall } from '../calls/closed-calls.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
 import { literalValue, oneValueIn } from '../values/unions.ts';

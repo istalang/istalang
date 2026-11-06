@@ -5,12 +5,12 @@
  * program's own `Array` would be a different type.
  */
 
-import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
-import type { TraitDeclaration } from '../../syntax/declarations/index.ts';
-import type { Checker } from '../check.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import type { Type } from './type/index.ts';
-import { errorType } from './type/primitives.ts';
+import { type WellKnownDeclaration, wellKnown } from '../../../../language/well-known/index.ts';
+import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
+import type { Checker } from '../../check.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import type { Type } from './index.ts';
+import { errorType } from './primitives.ts';
 
 /**
  * The type arguments of `type` when it is the well-known `declaration`, such as `[T]` for an

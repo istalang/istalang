@@ -118,5 +118,5 @@ Nominal structs, enums, shared structs as handles, argument-dependent lookup and
 7. **Lookup and clashes.** `resolution/choosing/candidates.ts` already gives an anonymous type no owner module, so argument-dependent lookup and the trait coherence rule need no change. `rules/clashes.ts` compares through keys, so equal shapes clash with no change.
 8. **Literals through an alias.** The struct-literal check accepts a name resolving to an alias of a shape; the parser is unchanged, since a name before `{` already constructs.
 9. **Annotations.** The annotation check refuses annotations on an anonymous struct type's fields (`FieldDeclaration` in `src/compiler/syntax/types/index.ts` is `Annotatable` today).
-10. **Messages and hovers.** `types/type-text.ts` prints the alias when the type was written through one, otherwise the shape, never a key.
+10. **Messages and hovers.** `types/type/type-text.ts` prints the alias when the type was written through one, otherwise the shape, never a key.
 11. **Tests** (fast-check, beside the code): `typeKey` equal exactly when `sameType` holds over generated types; shapes equal under reordered fields and declaration sites; the conversion refused through containers, for annotated fields and from shape to nominal; equal shapes clashing as overloads.

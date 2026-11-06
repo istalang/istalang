@@ -31,7 +31,6 @@ import type {
   TargetBinding,
   TargetStep,
 } from '../../../surface/checked-pattern.ts';
-import { unfolded } from '../../../types/computed-types.ts';
 import type { Fit } from '../../../types/fitting/fit.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import {
@@ -39,9 +38,10 @@ import {
   substitute,
   substituteAny,
   substituteKept,
-} from '../../../types/substitution.ts';
+} from '../../../types/parts/substitution.ts';
+import { unfolded } from '../../../types/type/computed-types.ts';
 import type { FieldMember, Type } from '../../../types/type/index.ts';
-import type { TypeRules } from '../../../types/type-rules.ts';
+import type { TypeRules } from '../../../types/type/type-rules.ts';
 import { membersOf } from '../../../types/unions/unions.ts';
 
 /** One instantiation: each kind of part a body records, as it reads it. */

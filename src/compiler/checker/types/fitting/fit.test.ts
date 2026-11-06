@@ -18,7 +18,7 @@ import {
   stringType,
   unitType,
 } from '../type/primitives.ts';
-import { noProgramRules } from '../type-rules.test-kit.ts';
+import { noProgramRules } from '../type/type-rules.test-kit.ts';
 import { optionalInner, optionalOf, unionOf } from '../unions/unions.ts';
 import { type Fit, fitOf } from './fit.ts';
 

@@ -57,6 +57,7 @@ import type {
 import type { FieldHeader, StructLiteral } from '../../../syntax/expressions/index.ts';
 import type { RestPattern } from '../../../syntax/patterns.ts';
 import type { StructConstraint, StructType } from '../../../syntax/types/index.ts';
+import type { AliasUse, AssociatedUse } from './alias-uses.ts';
 import type {
   AssociatedOfType,
   FieldOfType,
@@ -64,10 +65,9 @@ import type {
   MappedType,
   MatchType,
   RecursiveType,
-} from '../computed-types.ts';
-import { inFieldOrder } from '../field-order.ts';
-import type { StructConstraintModel } from '../struct-constraint.ts';
-import type { AliasUse, AssociatedUse } from './alias-uses.ts';
+} from './computed-types.ts';
+import { inFieldOrder } from './field-order.ts';
+import type { StructConstraintModel } from './struct-constraint.ts';
 
 /** What every type carries beside its kind: the alias it was written through, if any. */
 export interface WrittenThrough {

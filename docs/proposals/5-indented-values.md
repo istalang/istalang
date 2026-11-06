@@ -409,7 +409,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
    - semantic tokens: a map's bare key is a String, a struct's a field (`src/language-service/semantic-tokens/`);
    - the VS Code grammar (`.vscode/extensions/ista/syntaxes/`) gains `- ` items.
 6. **Recursive aliases.**
-   - `checker/constructs/declarations/aliases/index.ts` reports 5106 only for an unguarded, blocking or irregular reference. A guarded group closes through `closeRecursive` (`checker/types/identity/recursive-types.ts`) into the `RecursiveType` of `checker/types/computed-types.ts`: a node of a minimized graph, the bodies resolved with placeholders (`constructs/declarations/aliases/recursive-bodies.ts`).
+   - `checker/constructs/declarations/aliases/index.ts` reports 5106 only for an unguarded, blocking or irregular reference. A guarded group closes through `closeRecursive` (`checker/types/identity/recursive-types.ts`) into the `RecursiveType` of `checker/types/type/computed-types.ts`: a node of a minimized graph, the bodies resolved with placeholders (`constructs/declarations/aliases/recursive-bodies.ts`).
    - It is keyed by its graph's canonical spelling (`types/identity/recursive-terms.ts`, `types/identity/type-keys.ts`) and unfolds to its node's body.
    - `types/unions/unions.ts`, through `unionOf`, flattens it and folds a union equal to it back into it.
    - `types/properties/finiteness.ts` walks `RecursiveType`.

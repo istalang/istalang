@@ -1,8 +1,8 @@
 /**
  * Struct keys (§3.1, §3.5, §3.9): `keyof S`, the type of the field a key names, `S[K]`, and mapped
- * struct types, each reduced once what it is built from is known (types/type-rules.ts). One home,
- * so `keyof`, mapped types, field loops, struct comprehensions, rest patterns and `s[k]` read keys
- * alike.
+ * struct types, each reduced once what it is built from is known (types/type/type-rules.ts). One
+ * home, so `keyof`, mapped types, field loops, struct comprehensions, rest patterns and `s[k]` read
+ * keys alike.
  *
  * - A struct type is a struct declaration's, not shared or extern, or a shape (§3.5). Its keys are
  *   its fields' names as String literals, in the name order every struct's fields are in (§3.1).
@@ -29,10 +29,10 @@ import { parentOf } from '../../../syntax/tree.ts';
 import type { StructType } from '../../../syntax/types/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
-import { isOpaque, type MappedParts } from '../computed-types.ts';
 import { typeKeys } from '../identity/type-keys.ts';
-import { substitute } from '../substitution.ts';
+import { substitute } from '../parts/substitution.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
+import { isOpaque, type MappedParts } from '../type/computed-types.ts';
 import {
   isMemberParameter,
   type ParameterKey,

@@ -9,7 +9,7 @@
  */
 
 import { sameItems } from '../../../../structures/equality.ts';
-import { functionFits } from '../function-types.ts';
+import { functionFits } from '../type/function-types.ts';
 import type { Constraint, Type } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
 import { typeKeys } from './type-keys.ts';

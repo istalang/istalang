@@ -51,11 +51,11 @@ import {
   variantTagKey,
 } from '../../surface/json-form.ts';
 import type { FunctionCall, ResolvedCall } from '../../surface/resolved-call.ts';
-import { unfolded } from '../../types/computed-types.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { unaliased } from '../../types/parts/type-parts.ts';
 import { TypeCycle } from '../../types/properties/type-cycle.ts';
 import { wellKnownConstraint } from '../../types/traits/constraints.ts';
+import { unfolded } from '../../types/type/computed-types.ts';
 import type {
   FieldMember,
   LiteralType,
@@ -64,7 +64,7 @@ import type {
   Type,
   UnionType,
 } from '../../types/type/index.ts';
-import { typeText } from '../../types/type-text.ts';
+import { typeText } from '../../types/type/type-text.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
 import { optionalInner } from '../../types/unions/unions.ts';
 import type { Annotations } from '../annotations.ts';

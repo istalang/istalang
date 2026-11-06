@@ -34,10 +34,10 @@ import type {
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import { isPlace } from '../../../syntax/expressions/places.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
-import { type ComputedType, isComputed } from '../../types/computed-types.ts';
 import { anyTypesIn, computedTypesIn, parametersIn } from '../../types/parts/type-parts.ts';
 import type { Requirement } from '../../types/traits/constraints.ts';
 import { requirementsNamed } from '../../types/traits/known-constraints.ts';
+import { type ComputedType, isComputed } from '../../types/type/computed-types.ts';
 import type { AnyType, Type } from '../../types/type/index.ts';
 import { type StaticOwner, staticOwnerOf } from '../../types/written/named-types.ts';
 import { traitCallsOn } from '../conformance/union-traits.ts';
