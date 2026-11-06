@@ -15,7 +15,7 @@ import { collectionTemplates } from './collections.ts';
 import { concurrencyTemplates } from './concurrency.ts';
 import { genericTemplates } from './generics.ts';
 import { keyTemplates } from './keys.ts';
-import { lifetimeTemplates } from './lifetimes.ts';
+import { lifetimeTemplates, weakSideTemplates } from './lifetimes.ts';
 import { packTemplates } from './packs.ts';
 import { patternTemplates } from './patterns.ts';
 import { templateTemplates } from './templates.ts';
@@ -23,7 +23,6 @@ import { testingTemplates } from './testing.ts';
 import { traitObjectTemplates } from './trait-objects.ts';
 import { typeMatchTemplates } from './type-matches.ts';
 import { valueTemplates } from './values.ts';
-import { weakSideTemplates } from './weak-side.ts';
 
 export const checkerDiagnostics = defineDiagnostics('checker', {
   typeMismatch: {
