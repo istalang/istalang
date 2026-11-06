@@ -216,7 +216,9 @@ export class TypeTable {
     return index;
   }
 
-  /** The variant of `type`'s enum holding a value of `member`, a type meeting it; added when new. */
+  /**
+   * The variant of `type`'s enum holding a value of `member`, a type meeting it; added when new.
+   */
   anyVariant(type: AnyType, member: Type): number {
     const { members } = this.#anyEntry(type);
     const found = members.findIndex((each) => sameType(each.type, member));

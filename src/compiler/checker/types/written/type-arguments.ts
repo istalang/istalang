@@ -33,7 +33,9 @@ export type GenericDeclaration =
   | TypeAliasDeclaration
   | FunctionDeclaration;
 
-/** Type arguments given a generic declaration at `at`; `self` is what a trait's `Self` stands for. */
+/**
+ * Type arguments given a generic declaration at `at`; `self` is what a trait's `Self` stands for.
+ */
 export interface ArgumentList {
   readonly at: AnchoredSpan;
   readonly declaration: GenericDeclaration;

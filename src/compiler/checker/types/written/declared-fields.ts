@@ -78,7 +78,9 @@ export function declaredFields(
   });
 }
 
-/** How written fields' types resolve: through a default's parameter, and how a written type does. */
+/**
+ * How written fields' types resolve: through a default's parameter, and how a written type does.
+ */
 interface FieldResolution {
   readonly defaults?: FunctionDeclaration | undefined;
   readonly resolve?: ((node: TypeNode) => Type) | undefined;

@@ -13,7 +13,10 @@ import { checkProgram } from '../../check.ts';
 import type { ProgramChecker } from '../../program/program-checker.ts';
 import { typeText } from '../../types/type-text.ts';
 
-/** A program converting a `Box<Int>` into `any Shows` at `sites` sites, met through a generic witness. */
+/**
+ * A program converting a `Box<Int>` into `any Shows` at `sites` sites, met through a generic
+ * witness.
+ */
 function converting(sites: number, shown: string): string {
   return [
     'trait Shows { fn show(self: Self) -> String }',
@@ -33,7 +36,10 @@ function witnessSearches(source: string): number {
   return constraintsOf.mock.calls.filter(([parameter]) => parameter.name.text === 'W').length;
 }
 
-/** A program writing `Holder<P>` at `sites` sites, each noting a check of `Holder`'s struct constraint. */
+/**
+ * A program writing `Holder<P>` at `sites` sites, each noting a check of `Holder`'s struct
+ * constraint.
+ */
 function holding(sites: number, needed: string): string {
   return [
     'struct P { x: Int, y: Int }',

@@ -43,7 +43,10 @@ type FactName = keyof BodyFacts;
 
 type ListedName = keyof typeof listedFacts;
 
-/** What a fact is across passes: as a pass answers it, or the list tools read (check.ts `ListedFacts`). */
+/**
+ * What a fact is across passes: as a pass answers it, or the list tools read (check.ts
+ * `ListedFacts`).
+ */
 type AcrossPasses<Name extends FactName> = Name extends ListedName
   ? ListedFacts[(typeof listedFacts)[Name]]
   : BodyFacts[Name];

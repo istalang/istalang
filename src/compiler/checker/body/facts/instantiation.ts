@@ -139,7 +139,10 @@ function instantiatedTarget(
   };
 }
 
-/** A target's or an assignment's path as one instantiation sees it: its struct steps' types substituted. */
+/**
+ * A target's or an assignment's path as one instantiation sees it: its struct steps' types
+ * substituted.
+ */
 function instantiatedTargetPath(
   path: readonly TargetStep[],
   substitution: Substitution,

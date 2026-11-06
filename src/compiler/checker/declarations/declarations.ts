@@ -133,7 +133,10 @@ function annotatedNowhere(description: string) {
   };
 }
 
-/** What every struct declaration must keep, shared or not; a shared struct's values are handles, so they are finite. */
+/**
+ * What every struct declaration must keep, shared or not; a shared struct's values are handles, so
+ * they are finite.
+ */
 function checkStruct(checker: CheckerContext, node: DeclaredStruct, module: ModuleId): void {
   annotatedNowhere('a struct declaration')(checker, node, module);
   checkTypeParameters(checker, node);
@@ -142,7 +145,9 @@ function checkStruct(checker: CheckerContext, node: DeclaredStruct, module: Modu
   checkFieldDefaults(checker, fieldsFunctionOf(node));
 }
 
-/** Resolves a struct's or an enum's associated types, which reports one referring to itself (§3.1). */
+/**
+ * Resolves a struct's or an enum's associated types, which reports one referring to itself (§3.1).
+ */
 function checkAssociatedTypes(
   checker: CheckerContext,
   node: AssociatingDeclaration,

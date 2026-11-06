@@ -123,7 +123,10 @@ export function membersRequirementOf(candidate: {
   return origin?.kind === 'members' ? origin : undefined;
 }
 
-/** The calls of `name` on `union` through `trait`: each function of that name it requires taking `Self` first. */
+/**
+ * The calls of `name` on `union` through `trait`: each function of that name it requires taking
+ * `Self` first.
+ */
 export function traitCallsOn(
   checker: CheckerContext,
   union: UnionType,

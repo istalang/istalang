@@ -60,7 +60,9 @@ export function inFieldScope(
   });
 }
 
-/** `value` given by the pass of the field at `position`, as `inFieldScope` writes it; its register. */
+/**
+ * `value` given by the pass of the field at `position`, as `inFieldScope` writes it; its register.
+ */
 export function valueInFieldScope(
   context: FunctionContext,
   visited: VisitedFields,
@@ -86,7 +88,9 @@ function inFieldPassOf<Lowered>(
   return context.inFieldPass(header, field.name, lower);
 }
 
-/** Binds `header`'s key and value to the name and a copy of the value of the field at `position`. */
+/**
+ * Binds `header`'s key and value to the name and a copy of the value of the field at `position`.
+ */
 function bindField(
   context: FunctionContext,
   { header, subject, fields }: VisitedFields,

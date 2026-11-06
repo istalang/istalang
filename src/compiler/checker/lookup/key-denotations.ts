@@ -36,7 +36,9 @@ export function keyDenotationsOf(
   );
 }
 
-/** The field of `owner`, the struct a key is of, that the key `key` names; none for no such field. */
+/**
+ * The field of `owner`, the struct a key is of, that the key `key` names; none for no such field.
+ */
 export function keyedFieldDenotations(
   checker: CheckerContext,
   owner: Type | undefined,
@@ -64,7 +66,9 @@ function keyOwnersAt(
   return [bodyHolding(checker, module, literal)?.keyOwnerOf(literal) ?? []].flat();
 }
 
-/** The structs a literal type is a key of: `S["region"]`'s, or a type argument's within its keys. */
+/**
+ * The structs a literal type is a key of: `S["region"]`'s, or a type argument's within its keys.
+ */
 function typeKeyOwners(
   checker: CheckerContext,
   module: ModuleId,
@@ -126,7 +130,9 @@ function instantiationsAt(
   return [instantiationOfType(checker, module, tree, node) ?? []].flat();
 }
 
-/** What `node`, a nominal type or an alias written in a type or naming a literal's, instantiates. */
+/**
+ * What `node`, a nominal type or an alias written in a type or naming a literal's, instantiates.
+ */
 function instantiationOfType(
   checker: CheckerContext,
   module: ModuleId,

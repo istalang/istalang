@@ -220,7 +220,10 @@ export function settleAgreement(
   return decided;
 }
 
-/** The type producers agreed on, the type expected of them, if any, and how one that doesn't fit is reported. */
+/**
+ * The type producers agreed on, the type expected of them, if any, and how one that doesn't fit is
+ * reported.
+ */
 export interface Agreed {
   readonly decided: Type;
   readonly expected: Type | undefined;

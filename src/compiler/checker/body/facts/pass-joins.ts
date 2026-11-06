@@ -77,7 +77,9 @@ export function everyDistinct<Args extends unknown[], Value>(
       .filter((value, index, all) => all.findIndex((other) => same(value, other)) === index);
 }
 
-/** Whether a node holds in every pass, as a branch is ruled out only where every pass rules it out. */
+/**
+ * Whether a node holds in every pass, as a branch is ruled out only where every pass rules it out.
+ */
 export function inEveryPass<Args extends unknown[]>(
   answers: PassAnswers<(...args: Args) => boolean>,
 ): (...args: Args) => boolean {

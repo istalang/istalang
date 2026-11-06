@@ -227,7 +227,9 @@ function refuseUnwritten(walk: Walk, node: Pattern | PatternPart): void {
   }
 }
 
-/** `node` past what it selected: the selection's test, then the rest of it against the selection. */
+/**
+ * `node` past what it selected: the selection's test, then the rest of it against the selection.
+ */
 function takeSelected(walk: Walk, node: Pattern | PatternPart, selection: Selection): Matched {
   if (selection.test.kind !== 'member') {
     refuseTypeArguments(walk.scope, node);
@@ -240,7 +242,9 @@ function takeSelected(walk: Walk, node: Pattern | PatternPart, selection: Select
   return { shape: selection.shapeOf(inside), part, selected: selection.test };
 }
 
-/** `node`, its part's type ruling it out (§3.11): a `never` test, covering nothing, binding `Never`. */
+/**
+ * `node`, its part's type ruling it out (§3.11): a `never` test, covering nothing, binding `Never`.
+ */
 function takeRuledOut(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Matched {
   walk.found.push(neverTest);
   bindAt(walk, node, part, neverType);

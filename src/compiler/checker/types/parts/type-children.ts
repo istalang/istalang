@@ -199,7 +199,9 @@ export function boundWithin(
   return own.length === 0 ? bound : new Set([...bound, ...own]);
 }
 
-/** The parameters `type` binds for its parts: an `any` type's traits' `Self`, a mapped type's own. */
+/**
+ * The parameters `type` binds for its parts: an `any` type's traits' `Self`, a mapped type's own.
+ */
 export function boundParameters(type: Type): readonly ParameterKey[] {
   switch (type.kind) {
     case 'any':

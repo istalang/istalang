@@ -147,7 +147,9 @@ export interface BodyContext {
    * types): where checking decides it, so tools read it as a name of that struct's field.
    */
   readonly recordKey: (value: Expression, owner: Type | undefined) => void;
-  /** Records the literal the indented value `value` was checked as (expressions/indented-values.ts). */
+  /**
+   * Records the literal the indented value `value` was checked as (expressions/indented-values.ts).
+   */
   readonly recordBuilt: (value: IndentedValue, literal: BuiltLiteral) => void;
   /** Records the variant the bare name `name` chose (resolution/named.ts). */
   readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
@@ -160,9 +162,14 @@ export interface BodyContext {
   readonly ruleOut: (body: Block) => void;
   /** Records that `operation` never runs past `operands`, the last of which has no value (§2). */
   readonly stopAt: (operation: Expression | Assignment, operands: readonly Expression[]) => void;
-  /** Records the value `condition` always has, by its operands' types (expressions/decided-conditions.ts). */
+  /**
+   * Records the value `condition` always has, by its operands' types
+   * (expressions/decided-conditions.ts).
+   */
   readonly decide: (condition: Expression, value: boolean) => void;
-  /** The value `node`, a comparison, `is` or condition, was decided to always have; else undefined. */
+  /**
+   * The value `node`, a comparison, `is` or condition, was decided to always have; else undefined.
+   */
   readonly decidedAt: (node: Expression) => boolean | undefined;
   /**
    * Runs `check` once per pass of the field loop `header` heads (§4), each pass's records of nodes
@@ -250,7 +257,9 @@ export interface Variables {
   readonly recordAssigned: (assignment: Assignment, parts: readonly AssignedPart[]) => void;
 }
 
-/** Where each struct or variant literal's fields get values (expressions/structs/literal-fields.ts). */
+/**
+ * Where each struct or variant literal's fields get values (expressions/structs/literal-fields.ts).
+ */
 export interface LiteralSources {
   readonly record: (literal: FieldsLiteral, sources: readonly FieldSource[]) => void;
   /** Records the fields `literal` builds, typed by the type arguments found for it. */

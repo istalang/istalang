@@ -159,11 +159,16 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
   readonly rootGoals: RootGoals;
   /** What fitting a value where a type is expected asks of the program (§2). */
   readonly fitting: Fitting;
-  /** How `found` fits `expected`, by implicit conversions; undefined when nothing makes it (§2, §3.14). */
+  /**
+   * How `found` fits `expected`, by implicit conversions; undefined when nothing makes it (§2,
+   * §3.14).
+   */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
   /** The trait constraints after `is` on a type parameter, resolved where it is declared (§3.5). */
   readonly constraintsOf: (parameter: TypeParameter) => readonly Constraint[];
-  /** The struct constraints after `is` on a type parameter, resolved where it is declared (§3.5). */
+  /**
+   * The struct constraints after `is` on a type parameter, resolved where it is declared (§3.5).
+   */
   readonly structConstraintsOf: (parameter: TypeParameter) => readonly StructConstraintModel[];
   /**
    * The bound a trait's associated type requirement states (`type Key is C`, §3.10), resolved in
@@ -200,7 +205,10 @@ export interface TraitGoal {
   readonly onValues: boolean;
 }
 
-/** A struct goal asked at the root of a witness search: `type` meeting the struct constraint `model`. */
+/**
+ * A struct goal asked at the root of a witness search: `type` meeting the struct constraint
+ * `model`.
+ */
 export interface StructGoal {
   readonly type: Type;
   readonly model: StructConstraintModel;

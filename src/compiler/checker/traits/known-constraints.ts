@@ -359,7 +359,9 @@ function commonRules(each: readonly (readonly EntryRule[])[]): readonly EntryRul
   return traits.length === 0 ? [] : [{ kind: 'meets', traits, structs: [] }];
 }
 
-/** A trait's requirement of an associated type, as a constraint on the type requiring it states it. */
+/**
+ * A trait's requirement of an associated type, as a constraint on the type requiring it states it.
+ */
 interface DeclaringConstraint {
   readonly constraint: Constraint;
   readonly requirement: RequiredAssociatedType;
@@ -382,7 +384,9 @@ function requirementsDeclaring(
   );
 }
 
-/** The constraints `of` meets, as its associated types are found: inside a trait, `Self` meets it. */
+/**
+ * The constraints `of` meets, as its associated types are found: inside a trait, `Self` meets it.
+ */
 function constraintsDeclaring(checker: CheckerContext, of: Type): readonly Constraint[] {
   return of.kind === 'parameter' && of.declaration.kind === 'TraitDeclaration'
     ? [selfConstraint(of.declaration)]

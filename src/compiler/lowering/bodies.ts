@@ -11,7 +11,9 @@ import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Block } from '../syntax/statements.ts';
 import { bodyOf } from '../syntax/tree.ts';
 
-/** The body written for `declaration`, a function of `module`; undefined for one written without. */
+/**
+ * The body written for `declaration`, a function of `module`; undefined for one written without.
+ */
 export function writtenBodyOf(
   program: Program,
   module: ModuleId,

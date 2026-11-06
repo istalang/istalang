@@ -93,7 +93,10 @@ export const exactFit: Fit = { conversion: { kind: 'none' } };
 export interface Fitting extends TypeRules {
   readonly meetsAny: (found: Type, target: AnyType) => boolean;
   readonly shapeOf: (found: Type) => AnonymousStructType | undefined;
-  /** The union a member parameter type stands for one member of: the one it carries, or its declared one. */
+  /**
+   * The union a member parameter type stands for one member of: the one it carries, or its declared
+   * one.
+   */
   readonly memberUnionOf: (parameter: TypeParameterType) => Type | undefined;
 }
 

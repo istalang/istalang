@@ -48,7 +48,9 @@ export function checkDecidedLambdas(
   });
 }
 
-/** Checks `node`, a lambda, against `expected` when its parameters are known, binding its result. */
+/**
+ * Checks `node`, a lambda, against `expected` when its parameters are known, binding its result.
+ */
 function inferLambdaAt(
   context: BodyContext,
   node: Lambda,

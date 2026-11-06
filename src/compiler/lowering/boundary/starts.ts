@@ -140,7 +140,9 @@ export function listStart(
   return tables.startIndex(startable.target, startable.key, encoder);
 }
 
-/** The start entry of `startable`: its own body, taking its arguments as JSON (function-lowering/). */
+/**
+ * The start entry of `startable`: its own body, taking its arguments as JSON (function-lowering/).
+ */
 export function startEntry(
   lowering: { readonly checker: Checker; readonly tables: DefinitionTables },
   startable: Startable,

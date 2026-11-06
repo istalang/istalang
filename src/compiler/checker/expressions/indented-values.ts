@@ -78,7 +78,10 @@ function buildingOf(
   return { form: formOf(context, named) ?? 'struct', target: named };
 }
 
-/** What `node`, naming no type, builds where `expected` is expected: what the type says, else its entries. */
+/**
+ * What `node`, naming no type, builds where `expected` is expected: what the type says, else its
+ * entries.
+ */
 function anonymousForm(
   context: BodyContext,
   node: IndentedValue,

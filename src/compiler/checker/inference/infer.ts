@@ -345,7 +345,10 @@ export class Inference {
     }
   }
 
-  /** Binds `parameter` where `given` converts into it: it fits the type bound, a conversion included. */
+  /**
+   * Binds `parameter` where `given` converts into it: it fits the type bound, a conversion
+   * included.
+   */
   #bindLoosely(parameter: ParameterKey, given: Type): boolean {
     const filling = this.#filling(parameter, given);
     return (

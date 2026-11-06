@@ -143,7 +143,9 @@ function sameKey(first: SlotKey, second: SlotKey): boolean {
   return takesAny(first, second) || takesAny(second, first);
 }
 
-/** Whether a value of each member of `narrow` is a value of `wide`: a member, or its literal's base. */
+/**
+ * Whether a value of each member of `narrow` is a value of `wide`: a member, or its literal's base.
+ */
 function holds(
   wide: Extract<SlotKey, { kind: 'type' }>,
   narrow: Extract<SlotKey, { kind: 'type' }>,

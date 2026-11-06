@@ -20,14 +20,19 @@ import { spanIn } from '../syntax/positions.ts';
 import { nodesUnder } from '../syntax/tree.ts';
 import { reported } from './check.test-kit.ts';
 
-/** A corpus program with one name cut short: `from` starts what the dot follows, `at` is the name. */
+/**
+ * A corpus program with one name cut short: `from` starts what the dot follows, `at` is the name.
+ */
 interface Cut {
   readonly text: string;
   readonly from: number;
   readonly at: number;
 }
 
-/** Every cut of `text`: a dot after each named type's and pattern's name, each member's name dropped. */
+/**
+ * Every cut of `text`: a dot after each named type's and pattern's name, each member's name
+ * dropped.
+ */
 function cutsOf(text: string): readonly Cut[] {
   const source = createSourceText('main.ista', text);
   const tree = parse(source, scan(source));
@@ -58,7 +63,9 @@ function joinsNext(text: string, end: number): boolean {
 
 const cuts = runPrograms.flatMap(({ text }) => cutsOf(text));
 
-/** What `cut` reports beyond scanning and parsing that starts at what it cuts and covers the name. */
+/**
+ * What `cut` reports beyond scanning and parsing that starts at what it cuts and covers the name.
+ */
 function reportedAtCut({ text, from, at }: Cut): readonly string[] {
   const { diagnostics } = diagnosedAt(stdProgramOf({ 'main.ista': text }), 'main.ista');
   return diagnostics

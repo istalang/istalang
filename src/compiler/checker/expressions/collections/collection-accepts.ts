@@ -163,7 +163,9 @@ export function mapBuilds(
   return keys === undefined || values === undefined ? undefined : mapTaking(context, keys, values);
 }
 
-/** The `Map` of the one type a map literal's keys, and the one its values, each have on their own. */
+/**
+ * The `Map` of the one type a map literal's keys, and the one its values, each have on their own.
+ */
 export function mapKnownType(context: BodyContext, node: MapLiteral): Type | undefined {
   const entries = node.entries.flatMap((entry) => (entry.kind === 'MapEntry' ? [entry] : []));
   if (entries.length === 0 || entries.length !== node.entries.length) {

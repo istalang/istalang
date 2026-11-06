@@ -21,7 +21,9 @@ const methods = [
   'fn bump(n: &Int):\n  n += 1',
 ].join('\n');
 
-/** `body` in a function beside `Pair`, `Id` and a few methods and functions on `Point` and `Int`. */
+/**
+ * `body` in a function beside `Pair`, `Id` and a few methods and functions on `Point` and `Int`.
+ */
 function inProgram(body: string): string {
   return `${pair}\n${one}\nstruct Empty\n${methods}\n${inFunction(body)}`;
 }

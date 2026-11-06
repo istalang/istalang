@@ -158,7 +158,10 @@ export function lowerBareStruct(context: FunctionContext, node: Expression): Reg
   return construct(context, structTypeOf(context, node), new Map(), node.span);
 }
 
-/** Whether `a.b` reads a field, rather than naming a namespace's or a type's member (../access/names.ts). */
+/**
+ * Whether `a.b` reads a field, rather than naming a namespace's or a type's member
+ * (../access/names.ts).
+ */
 export function readsField(context: FunctionContext, access: MemberAccess): boolean {
   return context.entityOf(access.member) === undefined;
 }

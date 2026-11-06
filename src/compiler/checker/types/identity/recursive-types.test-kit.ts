@@ -49,7 +49,9 @@ type Part =
   | { readonly kind: 'traits'; readonly constraints: readonly TraitPart[] }
   | { readonly kind: 'unguarded'; readonly body: number };
 
-/** A trait object's constraint: `Holds` takes one argument, `Pairs` two, either maybe its `Self`. */
+/**
+ * A trait object's constraint: `Holds` takes one argument, `Pairs` two, either maybe its `Self`.
+ */
 interface TraitPart {
   readonly trait: 'holds' | 'pairs';
   readonly arguments: readonly (Slot | { readonly kind: 'self' })[];

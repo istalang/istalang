@@ -56,7 +56,10 @@ export type Binder = (
   callArguments: readonly BoundArgument[],
 ) => Binding | BindingFailure;
 
-/** How many arguments a call may pass `slots` by position: one per fixed parameter without a default, up to all, or any number into a rest parameter. */
+/**
+ * How many arguments a call may pass `slots` by position: one per fixed parameter without a
+ * default, up to all, or any number into a rest parameter.
+ */
 export function positionalCounts(slots: readonly BoundSlot[]): {
   readonly minimum: number;
   readonly maximum: number;
@@ -138,7 +141,9 @@ function bindByPosition(
   });
 }
 
-/** `sources` with each of `named` filling the parameter of its name, which nothing else may fill. */
+/**
+ * `sources` with each of `named` filling the parameter of its name, which nothing else may fill.
+ */
 function bindByName(
   slots: readonly BoundSlot[],
   sources: Sources,

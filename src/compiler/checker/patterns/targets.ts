@@ -17,7 +17,9 @@ import type { Type } from '../types/type/index.ts';
 import { bodyScope } from './parts.ts';
 import { walkTargets } from './walk.ts';
 
-/** Takes a value of `type` apart into `owner`'s targets, declaring each name with its part's type. */
+/**
+ * Takes a value of `type` apart into `owner`'s targets, declaring each name with its part's type.
+ */
 export function declareTargets(
   context: BodyContext,
   owner: VariableDeclaration | For | Comprehension | FieldHeader | Parameter,

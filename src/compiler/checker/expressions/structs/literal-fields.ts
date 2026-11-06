@@ -163,7 +163,9 @@ export function checkLiteralFields(
   return type;
 }
 
-/** Fits each named item's value to its field, `substitution` giving the literal's type arguments. */
+/**
+ * Fits each named item's value to its field, `substitution` giving the literal's type arguments.
+ */
 function fitItems(
   context: BodyContext,
   given: ReadonlyMap<number, GivenField>,
@@ -179,7 +181,10 @@ function fitItems(
   }
 }
 
-/** What a literal's leading `spread` gives: its value, and the fields of `type`, the type it spreads. */
+/**
+ * What a literal's leading `spread` gives: its value, and the fields of `type`, the type it
+ * spreads.
+ */
 function spreadGiven(
   context: BodyContext,
   spread: LiteralSpread,

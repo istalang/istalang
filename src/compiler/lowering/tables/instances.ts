@@ -177,7 +177,10 @@ function entryKey(entry: InstanceEntry): string {
   }
 }
 
-/** A parameter's source as a filling entry's key spells it, so two different fillings never share one. */
+/**
+ * A parameter's source as a filling entry's key spells it, so two different fillings never share
+ * one.
+ */
 function sourceKey(source: Binding[number]): string {
   switch (source.kind) {
     case 'argument':

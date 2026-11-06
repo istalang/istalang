@@ -17,7 +17,9 @@ import type { ConstantForm } from './constant-form.ts';
 
 /** Where an annotated item stands, which decides which annotations mean anything on it (§3.16). */
 export type AnnotationPlace =
-  /** A field: of a struct, a variant or a trait, whose declared type its annotations' check reads. */
+  /**
+   * A field: of a struct, a variant or a trait, whose declared type its annotations' check reads.
+   */
   | { readonly kind: 'field' }
   | { readonly kind: 'function' }
   | { readonly kind: 'statement'; readonly waits: boolean }

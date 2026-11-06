@@ -68,7 +68,10 @@ export function headerTemporaries(
   return { result, temporaries: context.variables.temporariesAmong(registers) };
 }
 
-/** A scope entered through a header that may not hold: an `if` branch, a `while` pass, a guarded case. */
+/**
+ * A scope entered through a header that may not hold: an `if` branch, a `while` pass, a guarded
+ * case.
+ */
 export interface Guarded {
   /** What runs in the scope before the header: a case's tests and bindings. */
   readonly before?: () => void;

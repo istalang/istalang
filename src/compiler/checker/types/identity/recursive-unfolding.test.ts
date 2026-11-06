@@ -18,7 +18,9 @@ import { unfoldRecursive } from '../computed-types.ts';
 import { sameType } from './identity.ts';
 import { typeKeys } from './type-keys.ts';
 
-/** A recursive alias `R` of one body kind: its body, a literal of `depth` levels, and its measure. */
+/**
+ * A recursive alias `R` of one body kind: its body, a literal of `depth` levels, and its measure.
+ */
 interface BodyKind {
   readonly name: string;
   readonly body: string;

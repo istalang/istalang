@@ -310,7 +310,9 @@ interface KnownFields {
   readonly others: readonly EntryRule[];
 }
 
-/** What `models` say of a struct's fields; undefined for none, which says it is no struct at all. */
+/**
+ * What `models` say of a struct's fields; undefined for none, which says it is no struct at all.
+ */
 function knownFields(models: readonly StructConstraintModel[]): KnownFields | undefined {
   if (models.length === 0) {
     return undefined;
@@ -380,7 +382,9 @@ function structEntailed(
   );
 }
 
-/** Whether `argument` meets the struct constraint `model`, reporting at its site when it doesn't. */
+/**
+ * Whether `argument` meets the struct constraint `model`, reporting at its site when it doesn't.
+ */
 export type StructJudge = (argument: Type, model: StructConstraintModel) => boolean;
 
 /**

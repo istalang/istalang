@@ -85,18 +85,25 @@ export interface Checker {
    * default sees the parameters before it; undefined for a function with no defaults.
    */
   readonly defaultsOf: (declaration: FunctionDeclaration) => CheckedBody | undefined;
-  /** The checked top-level constant `declaration` declares (§3); undefined for any other variable. */
+  /**
+   * The checked top-level constant `declaration` declares (§3); undefined for any other variable.
+   */
   readonly constantOf: (declaration: VariableDeclaration) => CheckedConstant | undefined;
   /** The checking of a top-level constant's initializer, which lowers its lambdas (§3.14). */
   readonly constantBodyOf: (declaration: VariableDeclaration) => CheckedBody | undefined;
-  /** The checked top-level constant `name` denotes in `module`; undefined when it denotes anything else. */
+  /**
+   * The checked top-level constant `name` denotes in `module`; undefined when it denotes anything
+   * else.
+   */
   readonly constantNamed: (module: ModuleId, name: Identifier) => CheckedConstant | undefined;
   /**
    * The fields of a struct type, declared or anonymous, substituted for its type arguments;
    * undefined for another type.
    */
   readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
-  /** The variants of an enum type, substituted for its type arguments; undefined for another type. */
+  /**
+   * The variants of an enum type, substituted for its type arguments; undefined for another type.
+   */
   readonly variantsOf: (type: NominalType) => readonly VariantMember[] | undefined;
   /**
    * The value behind a shared struct, `*x` (§3.18), substituted for its type arguments; undefined
@@ -131,11 +138,17 @@ export interface Checker {
     declaration: WellKnownDeclaration,
     typeArguments?: readonly Type[],
   ) => NominalType | undefined;
-  /** How types cross as JSON (§9; rules/boundary/json-forms.ts): their codecs, and derived codecs' forms. */
+  /**
+   * How types cross as JSON (§9; rules/boundary/json-forms.ts): their codecs, and derived codecs'
+   * forms.
+   */
   readonly json: JsonFormQueries;
   /** Annotations, each checked once where its item stands (§3.16; rules/annotations.ts). */
   readonly annotations: AnnotationQueries;
-  /** How a value of type `found` fits where `expected` is, by implicit conversions (§2); undefined when it can't. */
+  /**
+   * How a value of type `found` fits where `expected` is, by implicit conversions (§2); undefined
+   * when it can't.
+   */
   readonly fitOf: (found: Type, expected: Type) => Fit | undefined;
   /**
    * The program's rules for building types (types/type-rules.ts), which every substitution and
@@ -144,7 +157,9 @@ export interface Checker {
   readonly typeRules: TypeRules;
   /** The type an alias stands for, its own type parameters left open (§3.17). */
   readonly aliasedType: (alias: AliasDeclaration) => Type;
-  /** The arguments `alias` is given where it names `type`; undefined where it names no such type. */
+  /**
+   * The arguments `alias` is given where it names `type`; undefined where it names no such type.
+   */
   readonly aliasArgumentsFor: (
     alias: TypeAliasDeclaration,
     type: Type,
@@ -182,6 +197,9 @@ export interface SignatureParameter {
   readonly node: Parameter;
   readonly type: Type;
   readonly reference: boolean;
-  /** For a rest parameter, what it collects into: an array of `item` (§3.3), or a pack's tuple (§3.5). */
+  /**
+   * For a rest parameter, what it collects into: an array of `item` (§3.3), or a pack's tuple
+   * (§3.5).
+   */
   readonly rest: RestSlot | undefined;
 }

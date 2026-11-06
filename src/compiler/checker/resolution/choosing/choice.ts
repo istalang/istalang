@@ -124,7 +124,10 @@ export function choose(
   return chosenAmong(checker, candidates, { callArguments, written, binder: bindArguments });
 }
 
-/** Chooses among `candidates` for a function value taking `callArguments` (resolution/choosing/binding.ts). */
+/**
+ * Chooses among `candidates` for a function value taking `callArguments`
+ * (resolution/choosing/binding.ts).
+ */
 export function chooseAsValue(
   checker: CheckerContext,
   candidates: readonly Candidate[],

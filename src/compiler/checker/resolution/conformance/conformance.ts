@@ -247,7 +247,9 @@ function conform(
   );
 }
 
-/** A constraint being met by a type at a use site, `onValues` when only calls on its values need it. */
+/**
+ * A constraint being met by a type at a use site, `onValues` when only calls on its values need it.
+ */
 interface Meeting {
   readonly site: UseSite;
   readonly type: Type;
@@ -260,7 +262,10 @@ function meetingKey({ site, type, constraint }: Meeting): string {
   return goalKey(site.checker.typeKeys, type, constraint);
 }
 
-/** How a search judges traits and active goals (`Meets`, shortfalls.ts) without reporting unmet ones. */
+/**
+ * How a search judges traits and active goals (`Meets`, shortfalls.ts) without reporting unmet
+ * ones.
+ */
 export function silentMeets(site: UseSite, search: Search = startSearch()): Meets {
   return meetsWith(site, search, (type, constraint) => {
     const meeting = { site: silent(site), type, constraint };
@@ -275,7 +280,9 @@ function lacks({ site, type, constraint }: Meeting, missing: string): Failure {
   return 'failed';
 }
 
-/** What meets a required function no function is declared for: derived, union members, or missing. */
+/**
+ * What meets a required function no function is declared for: derived, union members, or missing.
+ */
 function undeclaredWitness(
   meeting: Meeting,
   derivation: Derivation | undefined,
@@ -296,7 +303,9 @@ function undeclaredWitness(
   };
 }
 
-/** The witness of a required function a union meets through its members (`enter` is coinductive). */
+/**
+ * The witness of a required function a union meets through its members (`enter` is coinductive).
+ */
 function throughMembers(
   meeting: Meeting,
   members: MembersMeeting,

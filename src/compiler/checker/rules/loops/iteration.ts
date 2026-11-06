@@ -99,7 +99,9 @@ export function iteratedItem(
   return item;
 }
 
-/** Checks a `for` or a comprehension running over its iterable, binding its targets to each item. */
+/**
+ * Checks a `for` or a comprehension running over its iterable, binding its targets to each item.
+ */
 export function checkLoopOver(context: BodyContext, node: For | Comprehension): void {
   declareTargets(context, node, checkIterated(context, node, node.iterable) ?? errorType);
 }

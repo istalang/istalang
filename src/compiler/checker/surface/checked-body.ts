@@ -131,7 +131,9 @@ export type ValueSite = Expression | Return | Block | Spread;
 /** A construct that runs over an iterable (§3.10): a `for`, a comprehension, or a spread. */
 export type Iteration = For | Comprehension | Spread;
 
-/** What a collection literal builds: an `Array`, a `Map`, or a value of another declared type (§2). */
+/**
+ * What a collection literal builds: an `Array`, a `Map`, or a value of another declared type (§2).
+ */
 export type CollectionForm = 'array' | 'map' | 'declared';
 
 /**
@@ -190,7 +192,10 @@ export interface BodyFacts {
   readonly iterationOf: (iteration: Iteration) => IterationForm;
   /** How the value `site` gives is converted to fit where it is used (§2, §3.10, §3.14). */
   readonly fitAt: (site: ValueSite) => Fit;
-  /** What the targets of a declaration, or of a loop for each item, bind: each name's part of the value. */
+  /**
+   * What the targets of a declaration, or of a loop for each item, bind: each name's part of the
+   * value.
+   */
   readonly targetsOf: (owner: TargetOwner) => readonly TargetBinding[];
   /** Where an assignment's value goes: each place written, with its part of the value. */
   readonly assignedOf: (assignment: Assignment) => readonly AssignedPart[];
@@ -249,7 +254,9 @@ export interface BodyFacts {
    * it out (§4), so nothing of it was checked and nothing is lowered.
    */
   readonly isRuledOut: (body: Block) => boolean;
-  /** The operands an operation on a value of type `Never` runs before it stops (§2); else undefined. */
+  /**
+   * The operands an operation on a value of type `Never` runs before it stops (§2); else undefined.
+   */
   readonly stopsAt: (operation: Expression | Assignment) => readonly Expression[] | undefined;
   /** The value an `if`'s condition always has, by its operands' types; undefined when not fixed. */
   readonly decidedOf: (condition: Expression) => boolean | undefined;

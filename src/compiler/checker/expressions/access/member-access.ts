@@ -165,7 +165,9 @@ function noField(context: BodyContext, node: MemberAccess, type: Type): Diagnost
     : checkerDiagnostics.unknownField(span, typeText(type), name);
 }
 
-/** Which types a member passed to a call can take when the call decides it: a function's (names.ts). */
+/**
+ * Which types a member passed to a call can take when the call decides it: a function's (names.ts).
+ */
 export function memberAccepts(context: BodyContext, node: MemberAccess): Accepts | undefined {
   const functions = namedFunctions(context, node);
   return functions === undefined ? undefined : functionsAccepted(context, functions);

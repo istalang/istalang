@@ -16,7 +16,10 @@ import type { ConstantForm } from '../../surface/constant-form.ts';
 import { laidOut, namedValues } from '../../types/field-order.ts';
 import type { Fit } from '../../types/fitting/fit.ts';
 
-/** How computing a part of an initializer went: computed, refused (`form` or `endless`), or already in error. */
+/**
+ * How computing a part of an initializer went: computed, refused (`form` or `endless`), or already
+ * in error.
+ */
 export type Outcome =
   | { readonly kind: 'computed'; readonly form: ConstantForm }
   | { readonly kind: 'refused'; readonly part: NodeOf<string>; readonly why: 'form' | 'endless' }
@@ -81,7 +84,9 @@ function convertedForm(
   }
 }
 
-/** The items a spread of `form`, an array or a map, gives: its elements, or its entries as tuples. */
+/**
+ * The items a spread of `form`, an array or a map, gives: its elements, or its entries as tuples.
+ */
 export function itemsOf(form: ConstantForm): readonly ConstantForm[] {
   switch (form.kind) {
     case 'array':

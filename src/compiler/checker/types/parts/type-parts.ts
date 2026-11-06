@@ -53,7 +53,10 @@ export function sameTypeSpelled(first: Type, second: Type): boolean {
   return first === second || typeKeys.spelledKey(first) === typeKeys.spelledKey(second);
 }
 
-/** Whether two trait constraints are one trait with arguments alike in every part (`sameTypeSpelled`). */
+/**
+ * Whether two trait constraints are one trait with arguments alike in every part
+ * (`sameTypeSpelled`).
+ */
 export function sameConstraintSpelled(first: Constraint, second: Constraint): boolean {
   return (
     first.trait === second.trait && sameItems(sameTypeSpelled)(first.arguments, second.arguments)
@@ -215,7 +218,9 @@ export function mapParts(
   return changed ? rebuilt : type;
 }
 
-/** `type` rebuilt by `mapParts` from its parts as `map` gives them, a copy even when none changed. */
+/**
+ * `type` rebuilt by `mapParts` from its parts as `map` gives them, a copy even when none changed.
+ */
 function partsMapped(
   type: Exclude<Type, UnionType | RecursiveType>,
   map: (child: Type) => Type,

@@ -315,7 +315,9 @@ class Computation {
     return computed({ kind: 'tuple', elements: forms });
   }
 
-  /** An array of its elements and spreads' items; `[]` where a `Map` is expected is an empty map. */
+  /**
+   * An array of its elements and spreads' items; `[]` where a `Map` is expected is an empty map.
+   */
   #array(node: ArrayLiteral): Outcome {
     const form = this.#scope.checked.collectionFormOf(node);
     if (form !== 'array') {

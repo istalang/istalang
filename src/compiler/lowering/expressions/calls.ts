@@ -266,7 +266,9 @@ function valueArguments(
   });
 }
 
-/** How `argument` is passed: the place `&x` names, the receiver's place for a `&self`, or a value. */
+/**
+ * How `argument` is passed: the place `&x` names, the receiver's place for a `&self`, or a value.
+ */
 function argumentOf(
   context: FunctionContext,
   argument: Expression,

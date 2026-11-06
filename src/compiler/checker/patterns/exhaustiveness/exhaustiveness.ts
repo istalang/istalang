@@ -271,7 +271,9 @@ class Matrix<T> {
     );
   }
 
-  /** Vectors of shapes no row matches, at most `witnessLimit`; none when the rows are exhaustive. */
+  /**
+   * Vectors of shapes no row matches, at most `witnessLimit`; none when the rows are exhaustive.
+   */
   missing(
     written: readonly (readonly LaidOutShape[])[],
     types: readonly T[],
@@ -340,13 +342,17 @@ class Matrix<T> {
         };
   }
 
-  /** The constructor `key` of `type`; for a type with no finite signature, one of `arity` unknowns. */
+  /**
+   * The constructor `key` of `type`; for a type with no finite signature, one of `arity` unknowns.
+   */
   #constructorOf(type: T, key: ConstructorKey, arity: number): ConstructorOf<T, ConstructorKey> {
     const found = this.#constructors(type)?.find((option) => sameConstructorKey(option.key, key));
     return found ?? { key, arguments: Array.from({ length: arity }, () => type) };
   }
 
-  /** The constructors of `type`: an array's are its lengths, up to the ones no pattern tells apart. */
+  /**
+   * The constructors of `type`: an array's are its lengths, up to the ones no pattern tells apart.
+   */
   #constructors(type: T): readonly ConstructorOf<T, ConstructorKey>[] | undefined {
     const signed = this.#signature(type);
     if (signed === undefined || !('items' in signed)) {

@@ -9,7 +9,9 @@ import { describe, expect, it } from 'vitest';
 import type { Binding } from '../../surface/resolved-call.ts';
 import { type BoundArgument, type BoundSlot, bindArguments, bindValue } from './binding.ts';
 
-/** `count` parameters named `p0`…, the last `defaults` with a default, and maybe a rest one after. */
+/**
+ * `count` parameters named `p0`…, the last `defaults` with a default, and maybe a rest one after.
+ */
 function slotsOf(count: number, defaults: number, rest: boolean): BoundSlot[] {
   const fixed = Array.from({ length: count }, (_, index) => ({
     name: `p${index}`,
@@ -22,7 +24,9 @@ const shapes = fc
   .tuple(fc.nat(5), fc.nat(5), fc.boolean())
   .map(([count, defaults, rest]) => ({ count, defaults: Math.min(defaults, count), rest }));
 
-/** The binding positional arguments must give: the first `given`, then defaults, then the rest's. */
+/**
+ * The binding positional arguments must give: the first `given`, then defaults, then the rest's.
+ */
 function positional(count: number, given: number, rest: number | undefined): Binding {
   const fixed: Binding[number][] = Array.from({ length: count }, (_, index) =>
     index < given ? { kind: 'argument', index } : { kind: 'default' },

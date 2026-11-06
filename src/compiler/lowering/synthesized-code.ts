@@ -48,7 +48,9 @@ export class SynthesizedCode implements CodeContext {
   /** Where every instruction points: the declaration the code stands for. */
   readonly span: AnchoredSpan;
 
-  /** Code at `span` taking `parameters` arguments, then `captures` captures, as a closure's entry. */
+  /**
+   * Code at `span` taking `parameters` arguments, then `captures` captures, as a closure's entry.
+   */
   constructor(
     context: Pick<CodeContext, 'checker' | 'tables'>,
     span: AnchoredSpan,
@@ -149,7 +151,9 @@ export class SynthesizedCode implements CodeContext {
     this.code.emit({ kind: 'return', span: this.span, value });
   }
 
-  /** The finished entry, named and placed by `header`; `references` says which parameters are `&`. */
+  /**
+   * The finished entry, named and placed by `header`; `references` says which parameters are `&`.
+   */
   entry(header: EntryHeader, isAsync: boolean, references: readonly boolean[] = []): CodeFunction {
     const { registers, instructions } = this.code.finish(this.tables.treeAt(header.module));
     return {

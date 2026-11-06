@@ -160,7 +160,10 @@ function checkAnonymousLiteral(
   return checkLiteralFields(context, node, fromSpread, { ...spread, type });
 }
 
-/** Whether `type` is a struct type whose fields aren't all known yet, which has keys all the same (§3.1). */
+/**
+ * Whether `type` is a struct type whose fields aren't all known yet, which has keys all the same
+ * (§3.1).
+ */
 function hasKeys(context: BodyContext, type: Type): boolean {
   return context.checker.typeRules.keysOf(type, []).kind !== 'error';
 }

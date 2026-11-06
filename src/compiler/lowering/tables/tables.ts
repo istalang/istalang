@@ -139,7 +139,9 @@ export class DefinitionTables {
     return this.#modules.push({ id: module, lineStarts: [...lineStarts] }) - 1;
   }
 
-  /** The index of a constant holding `value`; equal values, as their persisted texts are, share one. */
+  /**
+   * The index of a constant holding `value`; equal values, as their persisted texts are, share one.
+   */
   constant(contents: Value): number {
     const key = encodeJson(z.encode(value, contents));
     return memo(this.#constantIndexes, key, () => this.#constants.push(contents) - 1);
@@ -191,7 +193,9 @@ export class DefinitionTables {
     };
   }
 
-  /** The header of an entry standing for `declaration` as a whole: its qualified name, its place. */
+  /**
+   * The header of an entry standing for `declaration` as a whole: its qualified name, its place.
+   */
   declarationHeader(declaration: HostExternDeclaration | StartTarget): EntryHeader {
     const module = this.#checker.moduleOf(declaration);
     const name = qualifiedNameOf(this.#checker, declaration);

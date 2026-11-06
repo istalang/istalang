@@ -45,7 +45,9 @@ import { literalType, membersOf, unionOf } from '../types/unions/unions.ts';
 import { keysOwner } from '../types/written/key-types.ts';
 import { entryRules, structConstraintsOn } from './known-constraints.ts';
 
-/** Whether `type` is a struct type (§3.5): a struct declaration's, not shared or extern, or a shape. */
+/**
+ * Whether `type` is a struct type (§3.5): a struct declaration's, not shared or extern, or a shape.
+ */
 export function isStructType(type: Type): type is StructValueType {
   return (
     type.kind === 'anonymous' ||
@@ -53,7 +55,9 @@ export function isStructType(type: Type): type is StructValueType {
   );
 }
 
-/** The names a struct type's fields have as keys, a String literal's value; undefined for others. */
+/**
+ * The names a struct type's fields have as keys, a String literal's value; undefined for others.
+ */
 export function keyName(key: Type): string | undefined {
   return key.kind === 'literal' && typeof key.value === 'string' ? key.value : undefined;
 }

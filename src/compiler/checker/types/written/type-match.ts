@@ -30,7 +30,9 @@ import type { TypeRules } from '../type-rules.ts';
 
 /** A type `match`'s subject and cases, its declaration's parameters open. */
 export interface TypeMatchForm {
-  /** What a use gives arguments for: the alias's own, or its declaration's for an associated type. */
+  /**
+   * What a use gives arguments for: the alias's own, or its declaration's for an associated type.
+   */
   readonly parameters: TypeParameters;
   readonly subject: Type;
   /**
@@ -60,7 +62,9 @@ export interface InferVariable {
   readonly constraints: ConstraintSet;
 }
 
-/** What a checker answers of the type `match`es its aliases have (declarations/aliases/index.ts). */
+/**
+ * What a checker answers of the type `match`es its aliases have (declarations/aliases/index.ts).
+ */
 export interface TypeMatchQueries {
   /** The subject and cases of `alias`'s type `match`; undefined when its body is a type. */
   readonly typeMatchOf: (alias: AliasDeclaration) => TypeMatchForm | undefined;
@@ -100,7 +104,9 @@ export function matchUse(
   return { kind: 'match', declaration, arguments: typeArguments, owner };
 }
 
-/** How the use `use` reads as a recursive type's label: its alias, or its owner's associated type. */
+/**
+ * How the use `use` reads as a recursive type's label: its alias, or its owner's associated type.
+ */
 export function labelOf(use: MatchType): RecursiveLabel | undefined {
   const { declaration, arguments: typeArguments, owner } = use;
   if (declaration.kind === 'TypeAliasDeclaration') {

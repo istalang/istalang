@@ -25,7 +25,9 @@ import { anyShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
 import { type PatternScope, structFieldStep, type ValuePart } from '../parts.ts';
 import type { Taking } from '../taking.ts';
 
-/** Whether a pattern takes `type` apart by its fields' names: a struct whose fields aren't known. */
+/**
+ * Whether a pattern takes `type` apart by its fields' names: a struct whose fields aren't known.
+ */
 export function isStructNotKnown(scope: PatternScope, type: Type): boolean {
   return (
     type.kind !== 'error' &&

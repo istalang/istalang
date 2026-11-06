@@ -224,7 +224,9 @@ function restSlotOf(checker: CheckerContext, node: Parameter, type: Type): RestS
     : { kind: 'array', item: arrayElement(checker, type) ?? errorType };
 }
 
-/** Reports what a rest parameter breaks of its rules: last, an array or a pack, no default (§3.3). */
+/**
+ * Reports what a rest parameter breaks of its rules: last, an array or a pack, no default (§3.3).
+ */
 function checkRest(
   checker: CheckerContext,
   module: ModuleId,

@@ -116,7 +116,9 @@ export class ReductionRequirements {
     return undefined;
   }
 
-  /** What `type` leads on to: its parts, what a recursive type unfolds to, a nominal's requirements. */
+  /**
+   * What `type` leads on to: its parts, what a recursive type unfolds to, a nominal's requirements.
+   */
   #reached(type: Type): readonly Type[] {
     const parts = typeChildren(type);
     if (type.kind === 'recursive') {
@@ -213,7 +215,9 @@ export class ReductionRequirements {
     return [...written, ...this.#calledThrough(bodies)];
   }
 
-  /** The type arguments the calls `bodies` make give, and their callees' requirements through them. */
+  /**
+   * The type arguments the calls `bodies` make give, and their callees' requirements through them.
+   */
   #calledThrough(bodies: readonly (CheckedBody | undefined)[]): readonly Type[] {
     return bodies
       .flatMap((body) => body?.madeCalls() ?? [])

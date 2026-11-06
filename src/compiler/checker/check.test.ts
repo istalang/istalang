@@ -313,7 +313,9 @@ const uncheckedExamples = new Map<string, readonly number[]>([
   ['docs/guide.md › 2.12 Testing (§10) #1', [4000]],
 ]);
 
-/** A doc module example to check, the line its code starts on, and its key in `uncheckedExamples`. */
+/**
+ * A doc module example to check, the line its code starts on, and its key in `uncheckedExamples`.
+ */
 interface CheckedExample {
   readonly key: string;
   readonly document: string;

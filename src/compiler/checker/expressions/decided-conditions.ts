@@ -43,7 +43,9 @@ export function decidedValue(context: BodyContext, condition: Expression): boole
   }
 }
 
-/** Where an `==` or `!=` stands: the comparison, unless it is a link of a chain, and its operator. */
+/**
+ * Where an `==` or `!=` stands: the comparison, unless it is a link of a chain, and its operator.
+ */
 export interface EqualityAt {
   readonly comparison: Expression | undefined;
   readonly span: AnchoredSpan;

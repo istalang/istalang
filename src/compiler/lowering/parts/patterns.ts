@@ -49,7 +49,9 @@ export interface Matching {
   readonly pattern: CheckedPattern;
 }
 
-/** Where a pattern's tests stand: the subject, where a failing test jumps, and each `or`'s choice. */
+/**
+ * Where a pattern's tests stand: the subject, where a failing test jumps, and each `or`'s choice.
+ */
 interface Run {
   readonly subject: Register;
   readonly span: AnchoredSpan;
@@ -172,7 +174,10 @@ function lowerMemberTest(
   }
 }
 
-/** The value of `member` `value` holds (values/holdings.ts), jumping to `otherwise` when it holds another. */
+/**
+ * The value of `member` `value` holds (values/holdings.ts), jumping to `otherwise` when it holds
+ * another.
+ */
 function heldOrJump(
   context: FunctionContext,
   value: TypedValue,

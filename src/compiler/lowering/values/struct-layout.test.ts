@@ -14,7 +14,9 @@ import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { compiledDefinition, compiledText } from '../../compile.test-kit.ts';
 
-/** camelCase names whose UTF-16 order differs from any other: `aB` before `aa`, `z10` before `z9`. */
+/**
+ * camelCase names whose UTF-16 order differs from any other: `aB` before `aa`, `z10` before `z9`.
+ */
 const names = ['b', 'a', 'aB', 'z9', 'z10', 'aa', 'ab', 'c'] as const;
 
 /** A field as declared: its name, and its default's value, if any, from the field before it. */
@@ -29,7 +31,9 @@ const declaredFields = fc
     fc.tuple(...picked.map((name) => fc.boolean().map((defaulted) => ({ name, defaulted })))),
   );
 
-/** Each field's value: given ones by position, a default one more than the field declared before it. */
+/**
+ * Each field's value: given ones by position, a default one more than the field declared before it.
+ */
 function expectedValues(fields: readonly DeclaredField[]): Record<string, number> {
   const values: Record<string, number> = {};
   let before = 0;

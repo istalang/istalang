@@ -55,7 +55,10 @@ function unchecked(type: Type): boolean {
   return type.kind === 'error' || isPrimitive(type, 'Never');
 }
 
-/** A literal type, or the keys of a struct not known yet, each instantiation a String literal (§3.1). */
+/**
+ * A literal type, or the keys of a struct not known yet, each instantiation a String literal
+ * (§3.1).
+ */
 function isLiteralLike(type: Type): boolean {
   return type.kind === 'literal' || type.kind === 'keys';
 }

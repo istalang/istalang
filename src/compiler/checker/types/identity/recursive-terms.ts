@@ -390,7 +390,10 @@ export class TermGraph {
     });
   }
 
-  /** `term`'s own structure, not a union's, spelled with each of its parts, resolved, by `spellPart`. */
+  /**
+   * `term`'s own structure, not a union's, spelled with each of its parts, resolved, by
+   * `spellPart`.
+   */
   #spelled(term: number, spellPart: (part: Slot) => string): string {
     const { type, parts } = this.#termAt(term);
     const byChild = new Map(typeChildren(type).map((child, index) => [child, parts[index]]));

@@ -57,14 +57,18 @@ export interface ComprehensionTarget {
   readonly isGiven: (index: number) => boolean;
 }
 
-/** A field a comprehension's pass gives: its position, its value's type, and its type as declared. */
+/**
+ * A field a comprehension's pass gives: its position, its value's type, and its type as declared.
+ */
 interface ComprehendedField {
   readonly index: number;
   readonly type: Type;
   readonly declared: Type;
 }
 
-/** What a comprehension gave a literal of declared fields: by pass, the field each gives, if any. */
+/**
+ * What a comprehension gave a literal of declared fields: by pass, the field each gives, if any.
+ */
 export interface Comprehended {
   readonly node: StructComprehension;
   readonly passes: CheckedPasses;
@@ -149,7 +153,10 @@ export function fitComprehended(
   });
 }
 
-/** The comprehension, if any, and the positions of the fields it gives, which its literal's sources leave to it. */
+/**
+ * The comprehension, if any, and the positions of the fields it gives, which its literal's sources
+ * leave to it.
+ */
 export function comprehendedGiven(
   comprehended: Comprehended | undefined,
 ): LiteralGiven['comprehended'] {
@@ -201,7 +208,9 @@ export function freshComprehended(
     : undefined;
 }
 
-/** Checks a comprehension's value in each pass with nothing expected, its literal's type unknown. */
+/**
+ * Checks a comprehension's value in each pass with nothing expected, its literal's type unknown.
+ */
 export function checkComprehensionAlone(context: BodyContext, node: StructComprehension): void {
   const passes = checkedFieldPasses(context, node.header);
   inFieldPasses(context, node.header, passes, () => context.expression(node.value));
@@ -247,7 +256,9 @@ export function checkOpaqueComprehended(
   return expected;
 }
 
-/** What a literal's named items give a type whose fields aren't all known: their keys and sources. */
+/**
+ * What a literal's named items give a type whose fields aren't all known: their keys and sources.
+ */
 interface NamedGiven {
   readonly keys: readonly Type[];
   readonly sources: readonly FieldSource[];
@@ -277,7 +288,9 @@ function checkNamedOf(context: BodyContext, node: StructLiteral, expected: Type)
   return { keys, sources, fits };
 }
 
-/** Checks `item` against the field of `expected` it names, after `keys`; its key, unless reported. */
+/**
+ * Checks `item` against the field of `expected` it names, after `keys`; its key, unless reported.
+ */
 function checkNamedItem(
   context: BodyContext,
   item: Extract<FieldItem, { readonly kind: 'FieldInitializer' }>,

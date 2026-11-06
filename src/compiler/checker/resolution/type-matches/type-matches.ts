@@ -101,7 +101,9 @@ export class TypeMatchReductions {
   readonly #reductions: EntryTable<CheckerNote, string, Type, MatchUse>;
   readonly #closings: EntryTable<CheckerNote, string, Type, MatchUse>;
   readonly #recursion: EntryTable<CheckerNote, string, Recursion, MatchUse>;
-  /** The reductions under way, innermost last: a finding or a closing reduces in a scope of its own. */
+  /**
+   * The reductions under way, innermost last: a finding or a closing reduces in a scope of its own.
+   */
   readonly #scopes: Reducing[] = [{ underWay: new Map() }];
 
   constructor(checker: CheckerContext) {
@@ -121,7 +123,10 @@ export class TypeMatchReductions {
     });
   }
 
-  /** The unreduced use of `declaration` with `typeArguments` (types/written/type-match.ts `matchUse`). */
+  /**
+   * The unreduced use of `declaration` with `typeArguments` (types/written/type-match.ts
+   * `matchUse`).
+   */
   #useOf(declaration: AliasDeclaration, typeArguments: readonly Type[]): MatchType {
     return this.#checker.typeMatches.useOf(declaration, typeArguments);
   }
@@ -351,7 +356,9 @@ function reducingWith(scope: Reducing, key: string, use: MatchUse, reduce: () =>
   }
 }
 
-/** Whether two findings reached the same uses with the same verdicts, each writing one struct type. */
+/**
+ * Whether two findings reached the same uses with the same verdicts, each writing one struct type.
+ */
 function sameRecursion(first: Recursion, second: Recursion): boolean {
   return (
     first.size === second.size &&
@@ -374,7 +381,9 @@ function unreducedUse(
   return { kind: 'error', unreduced: { use: { declaration, arguments: typeArguments }, cause } };
 }
 
-/** The error type carrying the recursive `use`, whose values would hold themselves through `field`. */
+/**
+ * The error type carrying the recursive `use`, whose values would hold themselves through `field`.
+ */
 function holdingItself({ declaration, typeArguments }: MatchUse, field: string): Type {
   const use = { declaration, arguments: typeArguments };
   return { kind: 'error', unreduced: { use, cause: 'holdsItself', field } };

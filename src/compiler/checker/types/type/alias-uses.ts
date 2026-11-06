@@ -57,7 +57,9 @@ export function aliasedAs<Aliased extends Type>(type: Aliased, alias: AliasUse):
   return type.kind === 'error' ? type : { ...type, alias };
 }
 
-/** `use` with each type it names replaced by what `map` gives; `use` itself when `map` changes none. */
+/**
+ * `use` with each type it names replaced by what `map` gives; `use` itself when `map` changes none.
+ */
 export function mapAliasUse<Use extends AliasUse>(use: Use, map: (type: Type) => Type): Use;
 export function mapAliasUse(use: AliasUse, map: (type: Type) => Type): AliasUse {
   if (use.kind === 'alias') {

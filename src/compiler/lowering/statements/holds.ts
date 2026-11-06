@@ -36,7 +36,10 @@ export class HoldScopes {
     this.#context = context;
   }
 
-  /** The list `hold` keeps into: the labelled scope's the checker found it naming, or the function's. */
+  /**
+   * The list `hold` keeps into: the labelled scope's the checker found it naming, or the
+   * function's.
+   */
   listOf(hold: Hold): Register {
     const scope = this.#context.body.labels.heldUntil(hold);
     if (scope === undefined) {

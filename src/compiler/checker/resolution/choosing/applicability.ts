@@ -32,7 +32,9 @@ import { argumentSlotsOf, type Binder, isBinding } from './binding.ts';
 import type { CallArgument, Inapplicability, Misfit, Takes } from './call-arguments.ts';
 import { packInapplicability, packItems } from './packs.ts';
 
-/** A call's arguments as choosing takes them: as passed, with any type arguments, bound by `binder`. */
+/**
+ * A call's arguments as choosing takes them: as passed, with any type arguments, bound by `binder`.
+ */
 export interface Given {
   readonly callArguments: readonly CallArgument[];
   readonly written: readonly Type[] | undefined;
@@ -256,7 +258,9 @@ function addedBy<Item>(
   return collection.size > size ? [...collection][size] : undefined;
 }
 
-/** Whether `argument` reaches `slot` by reference: written `&`, or a receiver `&self` takes (§3.7). */
+/**
+ * Whether `argument` reaches `slot` by reference: written `&`, or a receiver `&self` takes (§3.7).
+ */
 function isByReference(slot: ParameterSlot, argument: CallArgument): boolean {
   return argument.passing === 'reference' || (argument.passing === 'receiver' && slot.reference);
 }

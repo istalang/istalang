@@ -55,7 +55,9 @@ export function rangeLeaf(context: BodyContext, node: RangePattern, part: ValueP
   return { tests, shape: undefined };
 }
 
-/** The int a range pattern's bound writes: a literal, negated or not (the parser allows no other). */
+/**
+ * The int a range pattern's bound writes: a literal, negated or not (the parser allows no other).
+ */
 function intValueOf(bound: LiteralPattern): bigint | undefined {
   const number = signedNumberOf(bound.value);
   return number?.kind === 'IntegerLiteral' ? number.value : undefined;

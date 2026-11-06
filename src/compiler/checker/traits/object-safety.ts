@@ -60,7 +60,9 @@ export function objectUnsafety(
   return undefined;
 }
 
-/** How a required function's types read `Self`, its trait's parameters as the constraint maps them. */
+/**
+ * How a required function's types read `Self`, its trait's parameters as the constraint maps them.
+ */
 interface SelfReading {
   readonly isSelf: (type: Type) => boolean;
   readonly mentionsSelf: (type: Type) => boolean;

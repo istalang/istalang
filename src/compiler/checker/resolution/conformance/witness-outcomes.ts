@@ -52,7 +52,10 @@ export type WitnessOutcome =
   | { readonly kind: 'failed' }
   | { readonly kind: 'endless' };
 
-/** What searching for a constraint's witnesses found, distinguishing an undeclared function from a failure. */
+/**
+ * What searching for a constraint's witnesses found, distinguishing an undeclared function from a
+ * failure.
+ */
 export type ConformanceOutcome =
   | { readonly kind: 'met'; readonly witnesses: readonly ResolvedCall[] }
   | { readonly kind: 'undeclared' }
@@ -84,7 +87,10 @@ export function boundReached(search: Search): WitnessOutcome {
   return { kind: 'endless' };
 }
 
-/** What a goal found: a trait's witnesses, or what a type lacks for a struct constraint or member trait. */
+/**
+ * What a goal found: a trait's witnesses, or what a type lacks for a struct constraint or member
+ * trait.
+ */
 type Answer =
   | { readonly kind: 'witnesses'; readonly witnesses: readonly ResolvedCall[] | Failure }
   | { readonly kind: 'shortfall'; readonly shortfall: string | undefined };
@@ -100,7 +106,9 @@ interface RunningGoal {
   readonly index: number;
   /** How many kept answers were provisional when it started. */
   readonly provisionalBefore: number;
-  /** The lowest index of a running goal whose hypothesis what it found rests on; its own if none. */
+  /**
+   * The lowest index of a running goal whose hypothesis what it found rests on; its own if none.
+   */
   lowest: number;
   /** Whether a goal inside it took it as met. */
   assumed: boolean;
@@ -203,7 +211,9 @@ export class SearchGoals {
     top.lowest = Math.min(top.lowest, index);
   }
 
-  /** Settles what `goal` found while it ran, and keeps its own answer unless the bound tainted it. */
+  /**
+   * Settles what `goal` found while it ran, and keeps its own answer unless the bound tainted it.
+   */
   #end(key: string, goal: RunningGoal, answer: Answer): void {
     const parent = this.#running.at(-1);
     if (parent !== undefined) {

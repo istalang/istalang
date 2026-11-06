@@ -122,12 +122,19 @@ function reductionEdges(
   });
 }
 
-/** What a case's pattern matched of the subject: the parts it rebuilds, and its variables' sources. */
+/**
+ * What a case's pattern matched of the subject: the parts it rebuilds, and its variables' sources.
+ */
 interface CaseReading {
   readonly own: ReadonlySet<ParameterKey>;
-  /** Each type the pattern matched, the whole of it or a tuple subject's element, with that subject. */
+  /**
+   * Each type the pattern matched, the whole of it or a tuple subject's element, with that subject.
+   */
   readonly rebuilt: readonly Matched[];
-  /** The declaring alias's parameters the part of the subject an `infer` variable was bound in is built from. */
+  /**
+   * The declaring alias's parameters the part of the subject an `infer` variable was bound in is
+   * built from.
+   */
   readonly sources: ReadonlyMap<ParameterKey, readonly TypeParameter[]>;
 }
 

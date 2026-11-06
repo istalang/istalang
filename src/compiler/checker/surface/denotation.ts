@@ -66,7 +66,9 @@ export interface Denotation {
 export interface TypeMembers {
   readonly fields: readonly FieldMember[];
   readonly variants: readonly VariantMember[];
-  /** Functions taking it as `self`, among those its module sees and those beside the type (§3.13). */
+  /**
+   * Functions taking it as `self`, among those its module sees and those beside the type (§3.13).
+   */
   readonly methods: readonly FunctionDeclaration[];
   /** Functions declared on the type, `fn Type.name`, that its module sees (§3.7). */
   readonly statics: readonly FunctionDeclaration[];
@@ -119,7 +121,10 @@ export const listedFacts = {
   functionOf: 'functionsOf',
 } as const satisfies Partial<Record<keyof BodyFacts, keyof ListedFacts>>;
 
-/** What tools read of a call or a function across passes: each distinct one a pass checked, in pass order. */
+/**
+ * What tools read of a call or a function across passes: each distinct one a pass checked, in pass
+ * order.
+ */
 export interface ListedFacts {
   /** The functions `site` calls, or names as a value: each one a pass resolved it to. */
   readonly callsAt: (site: ResolvedSite) => readonly ResolvedCall[];

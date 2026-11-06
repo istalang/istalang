@@ -15,7 +15,9 @@ import { checkProgram } from '../../check.ts';
 import { computedTypesIn, errorIn } from '../../types/parts/type-parts.ts';
 import type { Type } from '../../types/type/index.ts';
 
-/** Aliases to build `A`, `B` and `S.Data` from: transparent, forwarding, union-making and matching. */
+/**
+ * Aliases to build `A`, `B` and `S.Data` from: transparent, forwarding, union-making and matching.
+ */
 const helpers = [
   'type Id<T> = T',
   'type OrInt<T> = T | Int',

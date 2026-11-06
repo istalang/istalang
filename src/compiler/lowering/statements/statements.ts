@@ -99,7 +99,9 @@ export function lowerBody(context: FunctionContext, block: Block): Register {
   return tail === undefined ? unitOf(context, block) : context.expression(tail);
 }
 
-/** The `Unit` a bare `return`, or a block with no tail expression, gives, fitted as checked (§2). */
+/**
+ * The `Unit` a bare `return`, or a block with no tail expression, gives, fitted as checked (§2).
+ */
 function unitOf(context: FunctionContext, site: Return | Block): Register {
   const unit = context.constant(null, site.span);
   return context.fitted(unit, unitType, context.body.fitAt(site), site);

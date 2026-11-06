@@ -272,7 +272,9 @@ function itemsOf(context: BodyContext, spread: Spread, type: Type, item?: Type):
   return element;
 }
 
-/** The keys and the values of the `(key, value)` items `spread` gives in a map literal of a `Map`. */
+/**
+ * The keys and the values of the `(key, value)` items `spread` gives in a map literal of a `Map`.
+ */
 function spreadEntries(
   context: BodyContext,
   spread: Spread,

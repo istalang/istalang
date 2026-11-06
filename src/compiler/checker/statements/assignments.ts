@@ -148,7 +148,9 @@ function checkCompound(
   context.variables.recordAssigned(node, [{ target, path: [], type: result, fit }]);
 }
 
-/** A value of `type` written to `place`, the type of `target`, as an assignment reports it at `at`. */
+/**
+ * A value of `type` written to `place`, the type of `target`, as an assignment reports it at `at`.
+ */
 interface Written {
   readonly type: Type;
   readonly place: Type;

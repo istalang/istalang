@@ -95,7 +95,10 @@ export interface ConstraintSite {
   readonly argumentType?: (argument: TypeNode) => Type;
 }
 
-/** The trait `constraint` names, parentheses aside, with its arguments for `Self`; undefined after a report. */
+/**
+ * The trait `constraint` names, parentheses aside, with its arguments for `Self`; undefined after a
+ * report.
+ */
 export function resolveConstraint(
   checker: CheckerContext,
   module: ModuleId,

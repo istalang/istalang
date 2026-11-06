@@ -247,7 +247,9 @@ function variableAt(context: BodyContext, name: Identifier): VariableEntity | un
   return entity?.kind === 'variable' ? entity : undefined;
 }
 
-/** A place's root variable, whether dereferenced (`*x`), its field/tuple steps, and how it reads. */
+/**
+ * A place's root variable, whether dereferenced (`*x`), its field/tuple steps, and how it reads.
+ */
 interface PlaceIdentity {
   readonly variable: VariableEntity;
   readonly dereferenced: boolean;
@@ -348,7 +350,9 @@ function accessorsOf(context: BodyContext, node: Expression): readonly (Derefere
   return root.kind === 'Dereference' ? [root, ...elements] : elements;
 }
 
-/** Makes the `setIndex` writing back each element the place `node` reaches; false after a report. */
+/**
+ * Makes the `setIndex` writing back each element the place `node` reaches; false after a report.
+ */
 function writesAccessors(context: BodyContext, node: Expression): boolean {
   return accessorsOf(context, node).every(
     (accessor) => accessor.kind !== 'Index' || writesElement(context, accessor),

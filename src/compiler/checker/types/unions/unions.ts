@@ -95,7 +95,9 @@ export function optionalOf(type: Type, rules: TypeRules): Type {
   return unionOf([type, noneType], rules);
 }
 
-/** What `type` holds beside `none` when it is a union holding `None` (`T` of `T?`); else undefined. */
+/**
+ * What `type` holds beside `none` when it is a union holding `None` (`T` of `T?`); else undefined.
+ */
 export function optionalInner(type: Type): Type | undefined {
   return type.kind === 'union' && type.members.some((member) => isPrimitive(member, 'None'))
     ? withoutMembers(type, noneType)

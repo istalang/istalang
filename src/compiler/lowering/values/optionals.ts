@@ -66,7 +66,10 @@ export function someOf(
     : intoUnion(context, value, optionalType(optional), span);
 }
 
-/** Where the optional `read` reads isn't `none`, carries on with it as `read.to`; else jumps to `absent`. */
+/**
+ * Where the optional `read` reads isn't `none`, carries on with it as `read.to`; else jumps to
+ * `absent`.
+ */
 function presentOrJump(
   context: CodeContext,
   read: OptionalRead,

@@ -198,7 +198,9 @@ function sameOrFails(pattern: Type, type: Type): Outcome {
   return sameType(pattern, type) ? 'match' : 'fail';
 }
 
-/** A union pattern (the banner): its members each among `type`'s, the variables' taking the rest. */
+/**
+ * A union pattern (the banner): its members each among `type`'s, the variables' taking the rest.
+ */
 function matchUnion(matching: Matching, members: readonly Type[], type: Type): Outcome {
   const { typeRules } = matching.checker;
   const binding = members.filter((member) => mentionsVariable(matching, member));

@@ -267,7 +267,9 @@ function writeAt(
   });
 }
 
-/** How a change reaches its place: whether it passes the place on by `&`, and where it is written. */
+/**
+ * How a change reaches its place: whether it passes the place on by `&`, and where it is written.
+ */
 interface Changing {
   readonly passedOn: boolean;
   readonly span: AnchoredSpan;
@@ -305,7 +307,9 @@ function changeAt(
   accessor.write(register);
 }
 
-/** The element of `container` at `key`, read and written with the calls the checker made at `node`. */
+/**
+ * The element of `container` at `key`, read and written with the calls the checker made at `node`.
+ */
 function elementAccessor(
   context: FunctionContext,
   container: Location,

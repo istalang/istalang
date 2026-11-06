@@ -30,7 +30,9 @@ const fitting = {
   memberUnionOf: () => undefined,
 };
 
-/** How a value of `found` fits `expected`: as it is (0), put into a union (1), or not (undefined). */
+/**
+ * How a value of `found` fits `expected`: as it is (0), put into a union (1), or not (undefined).
+ */
 function levelsInto(found: Type, expected: Type): number | undefined {
   const fit = fitOf(found, expected, fitting);
   return fit === undefined ? undefined : Number(fit.into !== undefined);

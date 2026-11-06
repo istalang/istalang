@@ -260,7 +260,9 @@ function candidates(
   }
 }
 
-/** The members a literal pattern's value selects (types/written/pattern-types.ts `literalMembers`). */
+/**
+ * The members a literal pattern's value selects (types/written/pattern-types.ts `literalMembers`).
+ */
 function literalSelected(
   scope: PatternScope,
   members: readonly Type[],
@@ -270,7 +272,9 @@ function literalSelected(
   return type === undefined ? [] : literalMembers(members, type, scope.typeRules);
 }
 
-/** The type a literal pattern's value has as a literal type, `None` for `none`, `Float` for a float. */
+/**
+ * The type a literal pattern's value has as a literal type, `None` for `none`, `Float` for a float.
+ */
 export function literalTypeOf(value: Expression): Type | undefined {
   if (value.kind === 'NoneLiteral') {
     return noneType;

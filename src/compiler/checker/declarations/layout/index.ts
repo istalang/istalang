@@ -154,7 +154,9 @@ export class Layouts {
     return annotated ? undefined : shapeType(type.entity.declaration, fields);
   }
 
-  /** The variants of an enum type, substituted for its type arguments; undefined for another type. */
+  /**
+   * The variants of an enum type, substituted for its type arguments; undefined for another type.
+   */
   variantsOf(type: NominalType): readonly VariantMember[] | undefined {
     const { declaration } = type.entity;
     if (declaration.kind !== 'EnumDeclaration') {

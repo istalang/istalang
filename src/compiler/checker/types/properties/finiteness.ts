@@ -22,7 +22,9 @@ import type { TypeRules } from '../type-rules.ts';
 /** What a value must never hold by value: a struct declaration's values, or a recursive type's. */
 export type SelfHolding = StructDeclaration | RecursiveType;
 
-/** How a struct type's fields are read: a declared struct's, and what a recursive type unfolds to. */
+/**
+ * How a struct type's fields are read: a declared struct's, and what a recursive type unfolds to.
+ */
 export interface StructFieldReader {
   readonly fieldsOf: (type: Type) => readonly FieldMember[] | undefined;
   readonly unfold: (type: RecursiveType) => Type;

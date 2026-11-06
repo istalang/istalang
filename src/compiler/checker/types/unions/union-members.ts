@@ -91,7 +91,10 @@ function distinctMembers<Member>(
   });
 }
 
-/** Distinct `members` with each literal merged into its base where it is a member, `true | false` into `Bool`. */
+/**
+ * Distinct `members` with each literal merged into its base where it is a member, `true | false`
+ * into `Bool`.
+ */
 function mergedLiterals<Member>(
   members: readonly Member[],
   reading: MemberReading<Member>,

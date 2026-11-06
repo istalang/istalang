@@ -167,7 +167,9 @@ export class BodyChecker implements BodyContext {
     return this.#finished([body], this.#result.result(this, blockTail(body, tail)));
   }
 
-  /** What checking a function's default `values` found (signatures.ts), once they are all checked. */
+  /**
+   * What checking a function's default `values` found (signatures.ts), once they are all checked.
+   */
   defaults(values: readonly Expression[]): CheckedBody {
     return this.#finished(values, unitType);
   }

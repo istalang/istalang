@@ -102,7 +102,10 @@ export function blockTail(body: Block, type: Type): Produced {
   return { type, span: tailNodeOf(body).span, site: tailExpressionOf(body) ?? body };
 }
 
-/** Reports a `?` whose `Err`'s error doesn't convert into the error of the `result` produced (§3.12). */
+/**
+ * Reports a `?` whose `Err`'s error doesn't convert into the error of the `result` produced
+ * (§3.12).
+ */
 function checkPropagation(context: BodyContext, result: Type, { error, span }: Propagation): void {
   if (result.kind === 'error') {
     return;

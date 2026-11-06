@@ -51,7 +51,9 @@ export function variantsAccepted(
     checker.inputs.variantNamed(naming.name, enumsExpected(expected)) !== undefined;
 }
 
-/** `none`, the one value of `None` (§2), whatever is expected: it goes into a union as its member. */
+/**
+ * `none`, the one value of `None` (§2), whatever is expected: it goes into a union as its member.
+ */
 export function checkNone(): Type {
   return noneType;
 }

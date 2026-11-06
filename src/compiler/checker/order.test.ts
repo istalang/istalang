@@ -84,7 +84,9 @@ function askable(program: Program, withStd = false) {
 
 type Asked = ReturnType<typeof askable>;
 
-/** One question asked before any module's diagnostics, by kind and by index into what is askable. */
+/**
+ * One question asked before any module's diagnostics, by kind and by index into what is askable.
+ */
 interface Question {
   readonly kind: 'lookup' | 'body' | 'result';
   readonly index: number;

@@ -12,7 +12,9 @@ import type { Constraint, Type } from './type/index.ts';
 import type { TypeRules } from './type-rules.ts';
 import { constraintText, typeText } from './type-text.ts';
 
-/** A struct constraint, resolved (§3.5): its named fields' rules, in name order, and the others'. */
+/**
+ * A struct constraint, resolved (§3.5): its named fields' rules, in name order, and the others'.
+ */
 export interface StructConstraintModel {
   readonly named: readonly NamedEntry[];
   readonly others: EntryRule | undefined;

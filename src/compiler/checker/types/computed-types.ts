@@ -110,7 +110,9 @@ export function isComputed(type: Type): type is ComputedType {
   );
 }
 
-/** Whether `type` is known only per instantiation: a type parameter, or computed from one (§3.5). */
+/**
+ * Whether `type` is known only per instantiation: a type parameter, or computed from one (§3.5).
+ */
 export function isOpaque(type: Type): type is TypeParameterType | ComputedType {
   return type.kind === 'parameter' || isComputed(type);
 }

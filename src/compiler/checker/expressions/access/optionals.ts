@@ -52,7 +52,10 @@ export class OptionalChains implements Chains {
     this.#links = passes.table();
   }
 
-  /** Whether `node`, a link or not, continues an optional chain: it uses `?.`, or its target is a link. */
+  /**
+   * Whether `node`, a link or not, continues an optional chain: it uses `?.`, or its target is a
+   * link.
+   */
   continues(node: Expression): boolean {
     const step = chainStepOf(node);
     return step !== undefined && (isOptionalStep(step) || this.#carried.has(step.target));

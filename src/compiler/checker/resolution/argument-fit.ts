@@ -33,7 +33,9 @@ export interface FittedArgument {
   readonly isSpread?: boolean | undefined;
 }
 
-/** The type each of `count` arguments fills in the chosen call, instantiated; undefined for none. */
+/**
+ * The type each of `count` arguments fills in the chosen call, instantiated; undefined for none.
+ */
 export function filledTypes(
   rules: TypeRules,
   application: Application,
@@ -109,7 +111,9 @@ function isBuiltAs(
   );
 }
 
-/** The types of a call's arguments as its argument list reads, `_` for a decided one: `&Stack, _`. */
+/**
+ * The types of a call's arguments as its argument list reads, `_` for a decided one: `&Stack, _`.
+ */
 export function argumentListText(
   argumentList: readonly Pick<CallArgument, 'type' | 'passing'>[],
 ): string {

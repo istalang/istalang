@@ -82,7 +82,9 @@ export function disposalOf(checker: CheckerContext, type: NominalType): Disposal
   return call === undefined ? none : { kind: 'function', call };
 }
 
-/** Whether `declaration`, a `dispose` a program declares, runs as code when its `self` is disposed. */
+/**
+ * Whether `declaration`, a `dispose` a program declares, runs as code when its `self` is disposed.
+ */
 export function isDisposeFunction(
   checker: CheckerContext,
   declaration: FunctionDeclaration,
@@ -94,7 +96,9 @@ export function isDisposeFunction(
   );
 }
 
-/** Whether `declaration` is a `dispose` the runtime performs: an extern one a std module declares. */
+/**
+ * Whether `declaration` is a `dispose` the runtime performs: an extern one a std module declares.
+ */
 function isRuntimeDispose(checker: CheckerContext, declaration: FunctionDeclaration): boolean {
   return declaration.isExtern && !isHostExtern(checker, declaration);
 }

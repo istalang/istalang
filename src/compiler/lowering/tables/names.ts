@@ -203,7 +203,10 @@ function namedUnionOf(
     : { name: qualifiedName(wellKnown.optional), arguments: [inner] };
 }
 
-/** How the type table names the recursive type `type`'s entry: by its preferred alias, else its text. */
+/**
+ * How the type table names the recursive type `type`'s entry: by its preferred alias, else its
+ * text.
+ */
 export function recursiveName(
   checker: Checker,
   type: RecursiveType,
