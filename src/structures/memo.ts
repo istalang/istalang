@@ -1,15 +1,21 @@
 /**
  * Computing a value once per key (architecture, "State: derive, never mirror"): every derived result
  * is memoized on the immutable input it derives from, so a new input is a new key and nothing is
- * ever invalidated by hand. A computed `undefined` is remembered like any other value.
+ * ever invalidated by hand.
+ *
+ * A computed `undefined` is remembered like any other value: the cache keeps one object of this
+ * unit's own in its place, so a single lookup tells a value kept from none. A cache that may hold
+ * an `undefined` is therefore read through `memo` only, never directly.
  */
 
 /** What `memo` keeps values in: a `Map`, or a `WeakMap` when the key's lifetime should decide. */
 export interface MemoCache<Key, Value> {
-  readonly has: (key: Key) => boolean;
   readonly get: (key: Key) => Value | undefined;
   readonly set: (key: Key, value: Value) => unknown;
 }
+
+/** What a cache keeps for a computed `undefined` (the banner). */
+const keptUndefined = Object.freeze({});
 
 /** The value `compute` gives for `key`, computed the first time and remembered in `cache`. */
 export function memo<Key, Value>(
@@ -17,11 +23,12 @@ export function memo<Key, Value>(
   key: Key,
   compute: () => Value,
 ): Value {
-  if (cache.has(key)) {
-    return cache.get(key) as Value;
+  const known = cache.get(key);
+  if (known !== undefined) {
+    return (known === keptUndefined ? undefined : known) as Value;
   }
   const value = compute();
-  cache.set(key, value);
+  cache.set(key, (value === undefined ? keptUndefined : value) as Value);
   return value;
 }
 
