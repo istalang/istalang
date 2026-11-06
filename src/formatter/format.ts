@@ -27,19 +27,19 @@ import { unreachable } from '../structures/unreachable.ts';
 import { createSourceText, type SourceText } from '../text/source-text.ts';
 import { encloses, type Span } from '../text/span.ts';
 import { nodesInBrackets } from './brackets.ts';
-import { branchPrinters } from './branches.ts';
-import { placeComments } from './comment-placement.ts';
+import { placeComments } from './comments/comment-placement.ts';
 import {
   type CommentsOf,
   danglingDocs,
   leadingDocs,
   type PlacedComment,
   trailingDocs,
-} from './comments.ts';
+} from './comments/comments.ts';
 import { declarationPrinters } from './declarations.ts';
-import { expressionPrinters } from './expressions.ts';
-import { indentedValuePrinters } from './indented-values.ts';
-import { isMultiLine, literalPrinters } from './literals.ts';
+import { branchPrinters } from './expressions/branches.ts';
+import { indentedValuePrinters } from './expressions/indented-values.ts';
+import { expressionPrinters } from './expressions/index.ts';
+import { isMultiLine, literalPrinters } from './expressions/literals.ts';
 import { patternPrinters } from './patterns.ts';
 import type { Printer, Printers } from './printer.ts';
 import { statementPrinters } from './statements.ts';

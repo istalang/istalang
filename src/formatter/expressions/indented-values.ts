@@ -16,11 +16,11 @@ import type {
   IndentedItem,
   IndentedValue,
   QuotedEntry,
-} from '../compiler/syntax/expressions/index.ts';
-import { extentIn, type SyntaxNode } from '../compiler/syntax/tree.ts';
-import { lineMapOf } from '../text/line-map.ts';
-import { blankBetween } from './lists.ts';
-import type { Printer, Printers } from './printer.ts';
+} from '../../compiler/syntax/expressions/index.ts';
+import { extentIn, type SyntaxNode } from '../../compiler/syntax/tree.ts';
+import { lineMapOf } from '../../text/line-map.ts';
+import { blankBetween } from '../lists.ts';
+import type { Printer, Printers } from '../printer.ts';
 
 const { align, hardline, indent, join } = builders;
 

@@ -26,9 +26,14 @@
  * where the comment went.
  */
 
-import type { Comment } from '../compiler/syntax/tokens.ts';
-import { childrenOf, extentIn, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
-import { encloses } from '../text/span.ts';
+import type { Comment } from '../../compiler/syntax/tokens.ts';
+import {
+  childrenOf,
+  extentIn,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../../compiler/syntax/tree.ts';
+import { encloses } from '../../text/span.ts';
 import {
   type CommentsOf,
   columnOf,

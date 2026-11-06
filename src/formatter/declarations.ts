@@ -22,7 +22,7 @@ import {
 import type { Identifier } from '../compiler/syntax/node.ts';
 import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './bodies.ts';
-import { opened } from './indented-values.ts';
+import { opened } from './expressions/indented-values.ts';
 import { angled, bracketed, bracketedWhenBroken, fieldList, itemLines } from './lists.ts';
 import type { Printer, Printers } from './printer.ts';
 import { constraintsAfterIs } from './types.ts';
@@ -72,7 +72,8 @@ function members(
 export const declarationPrinters: Printers<DeclarationKind> = {
   Module: (printer, node) => {
     const items = node.doc === undefined ? node.items : [node.doc, ...node.items];
-    // A module without items prints nothing of its own: its comments lead it (comments.ts).
+    // A module without items prints nothing of its own: its comments lead it
+    // (comments/comments.ts).
     return items.length === 0 ? '' : [itemLines(printer, items), hardline];
   },
   Annotation: (printer, node) => ['@', printer.print(node.value)],

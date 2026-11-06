@@ -16,10 +16,10 @@ import type {
   Expression,
   ExpressionPart,
   If,
-} from '../compiler/syntax/expressions/index.ts';
-import { unreachable } from '../structures/unreachable.ts';
-import { body, indentedBody, opensBody } from './bodies.ts';
-import type { Printer, Printers } from './printer.ts';
+} from '../../compiler/syntax/expressions/index.ts';
+import { unreachable } from '../../structures/unreachable.ts';
+import { body, indentedBody, opensBody } from '../bodies.ts';
+import type { Printer, Printers } from '../printer.ts';
 
 const { group, hardline, ifBreak, indent, join, line, softline } = builders;
 

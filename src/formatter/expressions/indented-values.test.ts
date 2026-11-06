@@ -6,8 +6,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { lines, roundTripOf, unexplainedLongLines } from './format.test-kit.ts';
-import { formatText } from './format.ts';
+import { lines, roundTripOf, unexplainedLongLines } from '../format.test-kit.ts';
+import { formatText } from '../format.ts';
 
 describe('formatting indented values as written (§1, note 4)', () => {
   it('prints a complex indented value with nested structs, maps, arrays, shorthands and spreads as written', () => {

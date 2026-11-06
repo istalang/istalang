@@ -14,18 +14,18 @@
  */
 
 import { builders, utils } from 'prettier/doc';
-import { scan } from '../compiler/scanner/scan.ts';
-import type { Docstring } from '../compiler/syntax/declarations/index.ts';
-import type { TemplateLiteral } from '../compiler/syntax/expressions/index.ts';
-import type { Literal } from '../compiler/syntax/expressions/literals/literals.ts';
-import { spanIn } from '../compiler/syntax/positions.ts';
-import type { Token } from '../compiler/syntax/tokens.ts';
-import type { SyntaxNode, SyntaxTree } from '../compiler/syntax/tree.ts';
-import { indentationAt, splitLines } from '../text/line-map.ts';
-import { createSourceText } from '../text/source-text.ts';
-import { textOf } from '../text/span.ts';
-import { oneLine } from './lists.ts';
-import type { Printer, Printers } from './printer.ts';
+import { scan } from '../../compiler/scanner/scan.ts';
+import type { Docstring } from '../../compiler/syntax/declarations/index.ts';
+import type { TemplateLiteral } from '../../compiler/syntax/expressions/index.ts';
+import type { Literal } from '../../compiler/syntax/expressions/literals/literals.ts';
+import { spanIn } from '../../compiler/syntax/positions.ts';
+import type { Token } from '../../compiler/syntax/tokens.ts';
+import type { SyntaxNode, SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { indentationAt, splitLines } from '../../text/line-map.ts';
+import { createSourceText } from '../../text/source-text.ts';
+import { textOf } from '../../text/span.ts';
+import { oneLine } from '../lists.ts';
+import type { Printer, Printers } from '../printer.ts';
 
 const { lineSuffixBoundary, literalline, markAsRoot } = builders;
 

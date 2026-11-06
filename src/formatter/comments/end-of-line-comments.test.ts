@@ -8,10 +8,10 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { scan } from '../compiler/scanner/scan.ts';
-import type { SyntaxTree } from '../compiler/syntax/tree.ts';
+import { scan } from '../../compiler/scanner/scan.ts';
+import type { SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { parseText, roundTripOf } from '../format.test-kit.ts';
 import { describeComment } from './comments.ts';
-import { parseText, roundTripOf } from './format.test-kit.ts';
 
 /** Each comment of `tree`: whether it stands on a line of its own, and its anchoring token. */
 function commentAnchors(tree: SyntaxTree): readonly (readonly [boolean, number])[] {

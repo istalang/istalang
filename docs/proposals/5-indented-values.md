@@ -401,7 +401,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
    - building from an expected union: `checker/types/fitting/expected.ts`.
 
    One adapter reads the entries as those checks read items. The checked form is the literal's, so `src/compiler/lowering/` needs nothing.
-4. **The formatter** prints an indented value as it was written (`src/formatter/literals.ts`, `bodies.ts`), never turning braces into a block or back.
+4. **The formatter** prints an indented value as it was written (`src/formatter/expressions/literals.ts`, `bodies.ts`), never turning braces into a block or back.
 5. **The language service:**
    - completion of field names and map keys in an indented value, as inside braces (`src/language-service/completion/places/`);
    - hover and go-to-definition on keys (`src/language-service/navigation/`);

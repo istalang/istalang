@@ -1,6 +1,7 @@
 /**
  * Statements and blocks (spec §3.4, §4, §7). A block's statements stand one per line: `;` parts
- * statements only inside braces (branches.ts), so a block never prints them on one line.
+ * statements only inside braces (expressions/branches.ts), so a block never prints them on one
+ * line.
  *
  * `hold _ = x` is stored as `hold const _ = x` (syntax/statements/index.ts), and prints in the
  * short form it was most likely written in.
@@ -16,8 +17,8 @@ import type {
 } from '../compiler/syntax/statements/index.ts';
 import type { SyntaxNode } from '../compiler/syntax/tree.ts';
 import { annotated, body, indentedBlock } from './bodies.ts';
-import { ifChain } from './branches.ts';
-import { opened } from './indented-values.ts';
+import { ifChain } from './expressions/branches.ts';
+import { opened } from './expressions/indented-values.ts';
 import { itemLines } from './lists.ts';
 import type { Printer, Printers } from './printer.ts';
 

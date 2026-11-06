@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { parseText, roundTripOf } from './format.test-kit.ts';
+import { parseText, roundTripOf } from '../format.test-kit.ts';
 
 const inputs = [
   'fn f(): g(# c\n)\n',
