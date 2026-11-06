@@ -26,24 +26,24 @@
  * later declaration.
  */
 
-import { addToGroup } from '../../../structures/groups.ts';
-import { memo } from '../../../structures/memo.ts';
-import type { ModuleId } from '../../program/program.ts';
+import { addToGroup } from '../../../../structures/groups.ts';
+import { memo } from '../../../../structures/memo.ts';
+import type { ModuleId } from '../../../program/program.ts';
 import {
   declaredFunctions,
   type FunctionDeclaration,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { positionalCounts } from '../resolution/binding.ts';
-import { signatureOf } from '../resolution/choice.ts';
-import type { RestSlot } from '../types/function-types.ts';
-import { declaredOwnerOf, type StaticOwner } from '../types/named-types.ts';
-import type { ParameterKey, Type } from '../types/type.ts';
-import { mentionsError } from '../types/type-parts.ts';
-import { baseOf } from '../types/union-members.ts';
-import { membersOf } from '../types/unions.ts';
+} from '../../../syntax/declarations.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { positionalCounts } from '../../resolution/binding.ts';
+import { signatureOf } from '../../resolution/choice.ts';
+import type { RestSlot } from '../../types/function-types.ts';
+import { declaredOwnerOf, type StaticOwner } from '../../types/named-types.ts';
+import type { ParameterKey, Type } from '../../types/type.ts';
+import { mentionsError } from '../../types/type-parts.ts';
+import { baseOf } from '../../types/union-members.ts';
+import { membersOf } from '../../types/unions.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {

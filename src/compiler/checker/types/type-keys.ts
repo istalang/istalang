@@ -31,7 +31,7 @@
  *   graphs replace an earlier one's; an identity's number is never reused, so a pre-key naming a
  *   graph gone finds nothing.
  * - A type's own key is memoized per type object, which is immutable. Comparing generic signatures
- *   up to the names of their type parameters (rules/clashes.ts) keys each of those parameters by
+ *   up to the names of their type parameters (declarations/functions/clashes.ts) keys each of those parameters by
  *   its position, which is the same as substituting canonical parameters, without building them;
  *   such keys are computed afresh.
  * - A type's spelled key (`spelledKey`) is its key with everything it is spelled with: the alias,

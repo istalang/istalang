@@ -16,9 +16,9 @@ import type { Declaration } from '../../syntax/declarations.ts';
 import { diagnosticIn, type SegmentBases } from '../../syntax/positions.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import type { TypeParameters } from '../resolution/type-parameters.ts';
-import { checkClashes } from '../rules/clashes.ts';
 import type { Expansion } from '../rules/expansion/functions.ts';
 import { checkDeclaration } from './declarations.ts';
+import { checkClashes } from './functions/clashes.ts';
 
 /** The program-wide units whose rules a module's check runs over the module as a whole. */
 export interface ModuleRules {
