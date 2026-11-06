@@ -13,8 +13,8 @@
  *   when the function is, awaiting the call it makes. On a union, a member with one value (a
  *   literal, `none`) holds nothing, so its function gets that value; on the one type a union
  *   collapsed into, it calls that type's function.
- * - Every entry switching over an `any` type's variants is a closing entry (tables.ts): written
- *   once lowering reached every type converted so far, and again when it reaches another.
+ * - Every entry switching over an `any` type's variants is a closing entry (../tables/tables.ts):
+ *   written once lowering reached every type converted so far, and again when it reaches another.
  */
 
 import type { Argument } from '../../../definition/instructions/places.ts';

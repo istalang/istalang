@@ -10,7 +10,7 @@ Istalang is one layered package in which each phase is a memoized function of an
 @answer scope="Implementation, not the language spec · worktree p4-computed at 5403091 · 2026-11-05"
 @meta locale=en
 @source compile title="Phase coordinator" path=src/compiler/compile.ts lines=38:88
-@source cruiser title="Layer allow-list" path=.dependency-cruiser.mjs lines=116:166
+@source cruiser title="Layer allow-list" path=.dependency-cruiser.mjs lines=22:124
 @source kindtable title="Exhaustive kind tables" path=src/foundation/structures/kind-table.ts lines=1:37
 @source program title="buildProgram: load, scan, parse, resolve imports" path=src/compiler/program/program.ts lines=133:153
 @source bind title="bindProgram and per-module binding" path=src/compiler/binder/module/bind-module.ts lines=40:54

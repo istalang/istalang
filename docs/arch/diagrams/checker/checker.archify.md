@@ -20,7 +20,7 @@ The checker is a **lazy, incremental query engine** over one immutable Program. 
 @source resolve title="resolveCall" path=src/compiler/checker/resolution/calls/resolve.ts lines=85:125
 @source applied title="applyCall" path=src/compiler/checker/resolution/applying/applied-call.ts lines=59:108
 @source entries title="Entries: get, produce, takeOver, replay" path=src/foundation/structures/entries/index.ts lines=163:309
-@source cruiser title="Checker inner layers" path=.dependency-cruiser.mjs lines=116:166
+@source cruiser title="Checker inner layers" path=.dependency-cruiser.mjs lines=126:209
 @source passes title="Passes of a field loop" path=src/compiler/checker/contexts/passes.ts lines=1:20
 
 ## How is the checker composed? {#composition}
@@ -36,24 +36,25 @@ The checker is a **lazy, incremental query engine** over one immutable Program. 
 | cs-handlers | handler tables | `handlerOf(table, node)` dispatches on the node's kind. Handlers reach each other only through the context. | checker-map | handlers |
 | cs-lookup | lookup/ | Tool queries decide nothing: they check the holding item on demand, then read what checking recorded. | checker-map | lookup |
 
-The checker's folders are layers too. Each folder imports only the folders listed before it, so engines never import constructs.[](source:cruiser)
+The checker's folders are layers too. Each layer imports only the layers listed before it, so engines never import constructs. A folder holding several layers (`types/`, `resolution/`, `rules/`, `constructs/`) is a contiguous run of them.[](source:cruiser)
 
 | Order | Folder | Owns |
 | --- | --- | --- |
 | 1 | `diagnostics/` | The checker's diagnostic catalog |
 | 2 | `types/` | The `Type` model, identity by key, fit, substitution, unions, written types resolved |
-| 3 | `inference/` | Type arguments matched from what a call or literal gives |
-| 4 | `traits/` | Constraints, `any` types, object safety, struct constraints, `Sendable` |
-| 5 | `resolution/` | Candidates and ADL, choice, conformance and witnesses, implicit calls |
-| 6 | `calls/` | A call in a body: arguments checked, places it changes, operators |
-| 7 | `patterns/` | One walk for every pattern, tests in run order, exhaustiveness |
-| 8 | `flow/` | Forward data flow: one table of how each construct runs |
-| 9 | `rules/` | Agreement, `drop`, disposal, JSON codecs, expansion, annotations |
-| 10 | `declarations/` | Signatures, layouts, module and item checks |
-| 11 | `closures/` | Lambdas, local functions, captures, own calls |
-| 12 | `expressions/` | One handler per expression kind |
-| 13 | `statements/` | One handler per statement kind, blocks |
-| 14 | `lookup/` | What tools ask by position |
+| 3 | `types/inference/` | Type arguments matched from what a call or literal gives |
+| 4 | `types/traits/` | Constraints, `any` types, object safety, struct constraints, `Sendable` |
+| 5 | `resolution/` | Candidates and ADL, choice, conformance and witnesses, a chosen call applied, implicit calls |
+| 6 | `resolution/calls/` | A call in a body: arguments checked, places it changes, operators |
+| 7 | `rules/flow/` | Forward data flow: one table of how each construct runs |
+| 8 | `rules/` | Agreement, `drop`, disposal, JSON codecs, expansion, annotations |
+| 9 | `constructs/patterns/` | One walk for every pattern, tests in run order, exhaustiveness |
+| 10 | `constructs/loops/` | Iteration and a field loop's passes, for `for` and comprehensions |
+| 11 | `constructs/declarations/` | Signatures, layouts, module and item checks |
+| 12 | `constructs/closures/` | Lambdas, local functions, captures, own calls |
+| 13 | `constructs/expressions/` | One handler per expression kind |
+| 14 | `constructs/statements/` | One handler per statement kind, blocks |
+| 15 | `lookup/` | What tools ask by position |
 
 ## What happens when a module's diagnostics are asked for? {#lazy-check}
 

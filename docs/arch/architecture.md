@@ -3,8 +3,8 @@ description: istalang toolchain architecture — folder hierarchy, layers, phase
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-29
-last_updated: 2026-11-06
+last_verified: 2026-11-07
+last_updated: 2026-11-07
 tags: [architecture, compiler, runtime, tooling]
 ---
 
@@ -35,30 +35,37 @@ The top level is split by toolchain feature. Inside a phase, folders are split b
 
 ```
 src/
-  language/             the language's fixed vocabulary: primitive type names, the std modules and declarations the toolchain knows by name (roles, `Future`, `_Cell`, `dispose`, `main`), in well-known/ with the functions constructs call, the variants built by name, and the json and testing modules' names; how a static function is named, `Owner.name` (static-names.ts); the built-in `==` and map keys over any representation of values (values.ts); the order of ints and strings that `<` and the canonical formats share (order.ts); the naming conventions: case, privacy, what case makes a bare name in a pattern do, and the built-in types' names no declaration takes (naming.ts)
-  structures/           the generic structures every phase builds on: exhaustive kind tables (nodes, instructions), `memo`, entries (results kept with what they read and reported, a cycle's members answering a stand-in, taken over by a later revision when every read answers alike), equality of results (`equality.ts`), scoped stacks, bisection over sorted items, and `unreachable`, the one way a broken invariant is thrown
-  text/                 SourceText, Span (UTF-16 offsets), LineMap, code points in UTF-16 text (code-points.ts)
-  diagnostics/          Diagnostic model (at a text span, or an anchored one inside a phase), per-phase catalog helper, renderer
+  foundation/           the vocabularies and structures every phase builds on (Layers)
+    language/           the language's fixed vocabulary: primitive type names, the std modules and declarations the toolchain knows by name (roles, `Future`, `_Cell`, `dispose`, `main`), in well-known/ with the functions constructs call, the variants built by name, and the json and testing modules' names; how a static function is named, `Owner.name` (static-names.ts); the built-in `==` and map keys over any representation of values (values.ts); the order of ints and strings that `<` and the canonical formats share (order.ts); the naming conventions: case, privacy, what case makes a bare name in a pattern do, and the built-in types' names no declaration takes (naming.ts)
+    structures/         the generic structures every phase builds on: exhaustive kind tables (nodes, instructions), `memo`, entries (results kept with what they read and reported, a cycle's members answering a stand-in, taken over by a later revision when every read answers alike), equality of results (`equality.ts`), scoped stacks, bisection over sorted items, and `unreachable`, the one way a broken invariant is thrown
+    text/               SourceText, Span (UTF-16 offsets), LineMap, code points in UTF-16 text (code-points.ts)
+    diagnostics/        Diagnostic model (at a text span, or an anchored one inside a phase), per-phase catalog helper, renderer
   compiler/
-    syntax/             contract: token kinds, the words each grammar position starts with (grammar-words.ts), tree node types, where items may stand, generic traversal, parents and the nodes at an offset,
-                        spans anchored to segments of the text and read as text positions through the tree (positions.ts),
+    syntax/             contract: tokens/ (token kinds, and the words each grammar position starts with: grammar-words.ts), tree/ (node
+                        types, generic traversal, parents and the nodes at an offset, spans anchored to segments of the text and read as
+                        text positions through the tree: positions.ts), where items may stand and the annotations they carry (items.ts),
                         how targets (statements/targets.ts), places (expressions/places.ts), optional chains (expressions/chains.ts), struct items and parameters
                         (expressions/parameters.ts: a name, a pattern, or both) read as written, the function a declaration's
                         fields with defaults read as (declarations/field-defaults.ts), what a template stands for: its text, or the call a tag makes
-                        (expressions/literals/templates.ts), and the literal an indented value reads as once its form is known
-                        (expressions/literals/indented-values.ts); a folder per construct whose nodes have readings beside them
-                        (declarations/, statements/, types/, expressions/), types/type-matches.ts reading a type `match`'s `infer` variables
+                        (expressions/literals/templates.ts), the literal an indented value reads as once its form is known
+                        (expressions/literals/indented-values.ts), operator precedence (expressions/operators.ts); a folder per construct
+                        whose nodes have readings beside them (declarations/, statements/, types/, expressions/), types/type-matches.ts
+                        reading a type `match`'s `infer` variables
     scanner/            text → tokens + comments + diagnostics
-    parser/             tokens → SyntaxTree; parse.ts is the entry
-      parser.ts grammar.ts                                       context, category wiring
-      cursor/ brackets/ layout/ nesting.ts                       line regions, the brackets paired and where one never closed ends (brackets/, with recovery), blocks and bodies (layout/bodies.ts), lists and where a line break separates their items (layout/item-breaks.ts), depth limit,
-      incremental/                                               a module parsed again after an edit, keeping the old tree's alike segments (reuse.ts), and the bodies a tree holds (held-bodies.ts),
-      annotations.ts                                             annotations,
-      docstrings.ts                                              docstrings and where they stand
-      parts/                                                     pieces every category may import; imports no category
-      word-parselets.ts                                          tables keyed by syntax/tokens/grammar-words.ts's lists, checked both ways by type
-      expressions/ patterns types statements declarations        by construct (parselet tables by token kind in expressions/, patterns.ts, types.ts); the value after
-                                                                 `=`, `return` or a key, an indented value or an expression (expressions/literals/indented-values.ts)
+    parser/             tokens → SyntaxTree; parse.ts is the entry, parser.ts the context grammar categories reach each other through
+      cursor/                                                    line regions, one shape per kind (regions.ts), the brackets paired (brackets.ts) and where one
+                                                                 never closed ends (recovery.ts)
+      layout/                                                    blocks and bodies (bodies.ts), lists and where a line break separates their items (item-breaks.ts),
+                                                                 lines continuing a construct past a break (continuations.ts), annotations, docstrings and where
+                                                                 they stand
+      incremental/                                               a module parsed again after an edit, keeping the old tree's alike segments (reuse.ts), and the
+                                                                 bodies a tree holds (held-bodies.ts)
+      grammar/                                                   the categories, wired in index.ts, by construct: expressions/ (parselet tables by token kind; the
+                                                                 value after `=`, `return` or a key, an indented value or an expression:
+                                                                 expressions/literals/indented-values.ts), patterns.ts, types.ts, statements/, declarations/;
+                                                                 parts/, pieces every category may import, which imports no category; the depth limit
+                                                                 (nesting.ts); tables keyed by syntax/tokens/grammar-words.ts's lists, checked both ways by type
+                                                                 (word-parselets.ts)
     program/            Program snapshot, module graph, the ModuleLoader seam; imposes no path syntax
     binder/             entities, scopes, imports/exports, name resolution; bind.ts binds each module, then links them; module/ binds
                         one module on its own (its scopes, where bindings are visible, the context every construct's binding gets),
@@ -66,13 +73,8 @@ src/
                         qualified name's next part is found through, an alias of an enum as the enum); an imported name is a
                         placeholder per name until linked, bound as its alias where renamed (`aliasOf`)
     checker/            check.ts is the entry and the surface later phases read
-      context.ts body-context.ts passes.ts                       the contexts a program and a body are checked in, and a field loop's passes
-      use-site.ts                                                where a check reports
-      program/                                                   wiring one program: its checker (program-checker.ts) and what checking reads of its
-                                                                 Program and Bindings (program-inputs.ts)
-      body/                                                      wiring one body: its checker (body-checker.ts), what it records of its nodes, per
-                                                                 pass (body-records.ts), and facts/: each fact a CheckedBody answers, read per
-                                                                 pass, instantiated and joined
+      contexts/                                                  the contexts a program and a body are checked in (context.ts, body-context.ts), a field loop's
+                                                                 passes (passes.ts), and where a check reports (use-site.ts)
       surface/                                                   the models the surface names, contracts like the root's: a body as checked
                                                                  (checked-body.ts), what calls resolved to (resolved-call.ts), patterns and targets as checked (checked-pattern.ts),
                                                                  computed constants (constant-form.ts), derived JSON forms (json-form.ts),
@@ -80,16 +82,17 @@ src/
                                                                  (checked-field.ts), the externs a host implements (host-externs.ts), which
                                                                  field a struct item gives (struct-items.ts), and what tools ask by position,
                                                                  a body read at a node among it (denotation.ts)
-                                                                 folders, lowest layer first (Layers):
-      diagnostics/ types/                                        the catalog; the type model (type/: the types, their primitives, the aliases
-                                                                 they were written through), types computed from others (computed-types.ts),
-                                                                 substitution, a type's text, and the rules building a type needs of the
-                                                                 program (type-rules.ts), which the checker implements once and every
-                                                                 type-building path takes; by sub-feature:
+                                                                 the layers, lowest first (Layers); a folder holding several is a run of them:
+      diagnostics/                                               the catalog: the codes every feature shares (index.ts), and a part per feature's blocks of codes
+      types/                                                     the type model and the rules over types alone, by sub-feature:
+        type/                                                    the types, their primitives, the aliases they were written through, types computed from others
+                                                                 (computed-types.ts), a type's text, a struct constraint's model, and the rules building a type
+                                                                 needs of the program (type-rules.ts), which the checker implements once and every type-building
+                                                                 path takes
         identity/                                                identity as key equality (a shape is its fields in name order), and
                                                                  recursive types as minimized graphs, equi-recursive, closed by one
                                                                  constructor (recursive-types.ts)
-        parts/                                                   a type's parts one level down, and walking them
+        parts/                                                   a type's parts one level down, walking them, and substitution
         unions/                                                  unions and literal types built normalized (unions.ts, by union-members.ts),
                                                                  `T?` being `T | None`, widening, and what types decide of `==`
         fitting/                                                 a value fitted where a type is expected, and what a value built from an
@@ -99,52 +102,61 @@ src/
                                                                  arguments, and type `match`es resolved, given, placed and unfolded
                                                                  (type-match.ts, written-matches.ts)
         properties/                                              what a type holds or reaches: finite values, held values, the cycle guard
-      inference/ traits/                                         inference of type arguments; constraints, the derived `Sendable`,
-                                                                 `any` types, and the object safety they need (object-safety.ts);
-                                                                 struct constraints (struct-constraints.ts), and what a type meets by
-                                                                 what it is, computed types `T.Data` and `S["meta"]` among them, with
-                                                                 their reductions (known-constraints.ts)
-      resolution/                                                what a call or a name may mean (applied-call.ts: every call chosen, instantiated
-                                                                 and fitted in one place), the calls a construct makes, a type or variant
-                                                                 named as a value, type parameters and their constraints;
-                                                                 choosing/: candidates and ADL, how arguments bind, choice among overloads;
-                                                                 conformance/: witnesses and why there is none, the traits the compiler
-                                                                 derives (derived-traits.ts: one table), unions meeting traits through
-                                                                 their members; type-matches/: a type `match`'s use reduced and its cases
-                                                                 matched, and the type `match`es and associated types an instantiation
-                                                                 reaches, checked to name a type whose values end where it is written
-      calls/                                                     a call in a body: arguments checked against the chosen function, operators,
-                                                                 the places a call or an assignment changes
-      patterns/ flow/                                            one walk for every pattern, the member of a union each selects (members.ts);
-                                                                 exhaustiveness/: what a `match` leaves unhandled, types' shapes, what a
-                                                                 case's binder has left (remaining.ts); constructs/: each pattern form
-                                                                 the walk dispatches to, a struct pattern's fields by name and its rest
-                                                                 (struct-fields.ts) among them; the order a body's code runs in, which
-                                                                 flow rules follow (forward data flow, one table of how each construct runs)
-      rules/                                                     semantic rules shared by constructs, one folder per feature: producers
-                                                                 agreeing on a type, annotations, tests' rules (testing.ts) at its root;
-                                                                 computation/ (compile-time computation), disposal/ (disposal, must-use,
-                                                                 `drop`), boundary/ (what externs may take, derived JSON codecs),
-                                                                 expansion/ (generics needing endlessly many instantiations), loops/
-                                                                 (iteration, passes over a struct's fields)
-      declarations/ closures/ expressions/ statements/           per-construct rules; closures/: the functions a body nests (§3.14), their
-                                                                 scopes, returns and captures, lambdas and local fns, function values;
-                                                                 declarations/: the handler table, a module's check and constants at its
-                                                                 root, then functions/ (signatures, parameters, statics, overload
-                                                                 clashes), aliases/ (aliases and associated types, their recursion),
-                                                                 layout/ (declared types' fields and variants, the rules structs keep);
-                                                                 expressions/: the handler table, calls, operators and the literals of
-                                                                 items at its root, then by family: structs/ (struct and variant
-                                                                 literals, struct comprehensions), collections/ (collection literals,
-                                                                 array comprehensions), control/ (branching, `match`, `?`, `await`,
-                                                                 `select`, `spawn`), access/ (names, members, indexing, `*`, optionals)
+        inference/                                               above the model: inference of type arguments
+        traits/                                                  above inference: constraints, the derived `Sendable`, `any` types, and the object safety they
+                                                                 need (object-safety.ts); struct constraints (struct-constraints.ts), and what a type meets by
+                                                                 what it is, computed types `T.Data` and `S["meta"]` among them, with their reductions
+                                                                 (known-constraints.ts)
+      resolution/                                                what a call or a name may mean:
+        choosing/                                                candidates and ADL, how arguments bind, choice among overloads, the calls a construct makes
+                                                                 (calls-made.ts)
+        conformance/                                             witnesses and why there is none, the traits the compiler derives (derived-traits.ts: one
+                                                                 table), unions meeting traits through their members
+        type-matches/                                            a type `match`'s use reduced and its cases matched, and the type `match`es and associated
+                                                                 types an instantiation reaches, checked to name a type whose values end where it is written
+        applying/                                                a chosen call applied: every call chosen, instantiated and fitted in one place
+                                                                 (applied-call.ts), its arguments fitted (argument-fit.ts), the calls the language makes
+                                                                 (implicit.ts) and the toolchain makes on its own (silent-choice.ts)
+        calls/                                                   above the rest: a call in a body, its arguments checked against the chosen function,
+                                                                 operators, the places a call or an assignment changes
+      rules/                                                     semantic rules shared by constructs, one folder per feature: producers agreeing on a type,
+                                                                 annotations, tests' rules (testing.ts) at its root; computation/ (compile-time computation),
+                                                                 disposal/ (disposal, must-use, `drop`), boundary/ (what externs may take, derived JSON codecs),
+                                                                 expansion/ (generics needing endlessly many instantiations); beneath them flow/, the order a
+                                                                 body's code runs in, which flow rules follow (forward data flow, one table of how each
+                                                                 construct runs)
+      constructs/                                                per-construct rules, layers in this order:
+        patterns/                                                one walk for every pattern (walk/: the parts a pattern takes apart, the tests a pattern that
+                                                                 may fail asks for, a value taken apart into targets, what a pattern selects first, the member
+                                                                 of a union each selects (members.ts), and kinds/, each pattern form the walk dispatches to, a
+                                                                 struct pattern's fields by name and its rest (struct-fields.ts) among them); patterns that may
+                                                                 fail (matching.ts) and targets declared (targets.ts); exhaustiveness/: what a `match` leaves
+                                                                 unhandled, types' shapes, what a case's binder has left (remaining.ts)
+        loops/                                                   iteration, and the passes over a struct's fields, for `for` and comprehensions
+        declarations/                                            the handler table, a module's check, constants and type parameters as declared at its root,
+                                                                 then functions/ (signatures, parameters, statics, overload clashes), aliases/ (aliases and
+                                                                 associated types, their recursion), layout/ (declared types' fields and variants, the rules
+                                                                 structs keep)
+        closures/                                                the functions a body nests (§3.14), their scopes, returns and captures, lambdas and local fns,
+                                                                 function values
+        expressions/                                             the handler table and calls at its root, then by family: structs/ (struct and variant
+                                                                 literals, struct comprehensions), collections/ (collection literals, array comprehensions),
+                                                                 control/ (branching, `match`, `?`, `await`, `select`, `spawn`), access/ (names, members,
+                                                                 indexing, `*`, optionals), operators/ (and the conditions types decide), literals/
+                                                                 (templates, tuples, indented values, the literals of items, the member of a union a value
+                                                                 is built as)
+        statements/                                              one handler per statement kind, and blocks
       lookup/                                                    what tools ask by position (denotation.ts): what a name denotes, the field a
                                                                  String literal names as a key (key-denotations.ts), the body holding a node,
                                                                  a written type's type, a type's members
-    lowering/           checked program → Definition; lower.ts is the entry. Desugaring the checker and lowering share is derived in syntax/; the rest lives here
-      context.ts function-lowering/ code-writer.ts               one function's context, its composition, frames and fits, its code and labels
-      bodies.ts synthesized/index.ts                              the written body lowering compiles; code with no syntax behind it, which
-                                                                 boundary/ and trait-objects/ use
+      wiring/                                                    wiring one program (program/: its checker, what checking reads of its Program and Bindings, and
+                                                                 the type rules it implements: program-type-rules.ts) and one body (body/: its checker, what it
+                                                                 records of its nodes, per pass, and facts/: each fact a CheckedBody answers, read per pass,
+                                                                 instantiated and joined); it imports every layer, and no layer imports it
+    lowering/           checked program → Definition; lower.ts is the entry, context.ts one function's context. Desugaring the checker and lowering share is derived in syntax/; the rest lives here
+      functions/                                                 writing one function: its composition (index.ts), frames and the variables an entry declares
+                                                                 (frame-variables.ts), fits, its code and labels (code-writer.ts), and the written body
+                                                                 lowering compiles (bodies.ts)
       tables/                                                    the interned tables (types in type-table.ts), qualified names, compile-time
                                                                  constants, function instances (one entry per instantiation), filling entries
       calls/                                                     a resolved call closed inside one instance (closed-calls.ts: substituted, a
@@ -156,68 +168,74 @@ src/
                                                                  value of one type sits in another as an instantiation made both, inside an
                                                                  `any` type that took it whole included (holdings.ts); structs built by their
                                                                  fields' names, beneath every builder of one; a field reached by a key's value
-      parts/                                                     places and parts of values: what assignments write and `&` passes
-                                                                 (places.ts); a value matched against a checked pattern, its tests then its
-                                                                 bindings; the part of a value a pattern or target reaches, along the
-                                                                 checker's steps
-      loops/                                                     the one loop of every iterating construct, and the passes over a struct's fields
-      boundary/                                                  code with no syntax behind it (docs/arch/boundary.md): derived json
-                                                                 codecs, host extern wrappers, start entries, reading inbound JSON
-      trait-objects/                                             `any` values: conversions, and the entries switching over every type
-                                                                 one holds (dispatch, conversion, field read), written once the program is reached;
-                                                                 a call on a union through a trait dispatches over its members alike
-      expressions/ statements/ never-lowered.ts                  per-construct handlers, as in the checker; expressions/ groups them by the
-                                                                 checker's families: structs/, collections/, control/, access/ (names, `??`, `!`)
+      synthesized/                                               code with no syntax behind it (index.ts): boundary/ (docs/arch/boundary.md: derived json
+                                                                 codecs, host extern wrappers, start entries, reading inbound JSON), and `any` values
+                                                                 (trait-objects.ts: conversions, and the entries switching over every type one holds,
+                                                                 dispatch, conversion, field read, written once the program is reached; a call on a union
+                                                                 through a trait dispatches over its members alike)
+      constructs/                                                per-construct handlers, as the checker's constructs/: expressions/ (by the checker's
+                                                                 families: structs/, collections/, control/, access/ (names, `??`, `!`), literals/),
+                                                                 statements/, loops/ (the one loop of every iterating construct, and the passes over a
+                                                                 struct's fields), parts/ (places and parts of values: what assignments write and `&` passes
+                                                                 (places.ts); a value matched against a checked pattern, its tests then its bindings; the part
+                                                                 of a value a pattern or target reaches, along the checker's steps), never-lowered.ts
     compile.ts          pipeline coordinator and public compiler API
-  definition/           contract: the compiled program (docs/arch/definition.md): its tables, function table, types,
-                        operands and extern keys; values/ (persisted values, read through their declarations,
+  definition/           contract: the compiled program (docs/arch/definition.md): its tables (tables/: their shapes,
+                        the function table, types, and the calls `ista test` makes of the testing module's runner:
+                        test-runner.ts), operands and extern keys; values/ (persisted values, read through their declarations,
                         JSON as values, their `==` and map keys, instance handles); formats/ (the canonical JSON
                         codec and the versioned envelope every persisted text goes through); validation/ (what
                         load checks beyond the shapes); instructions/ (the instruction set)
   runtime/
-    values/ interpreter/ scheduler/ snapshot/ boundary/          parts of values along paths, the instruction table, segments and commits, the persisted instance, values crossing to the host
-                        boundary/: host-natives.ts (host externs, against JSON, as natives), outbound.ts (an outcome's JSON),
-                        extern-signatures.ts (one name, one type across deploys)
-                        scheduler/: instance/ (an instance in memory, and the commit's snapshot from the one it was made from; live-objects.ts, heap objects as stored and as running;
-                        heap.ts, objects by id, and indexes finding them by field, derived, never persisted; futures.ts, resolving, who waits, `first`; slots.ts, §6's queue;
-                        weak-side.ts, weak references, `disposed()` and `disposing()`, told by disposal what it disposes),
-                        segment/ (a segment; calls.ts, how a call starts: a mock's replacement, a native at once, or code to push; run-stack.ts, the executions running on one another; disposal-runs.ts, the code disposals run; limits.ts, the limits a program runs into as panics),
-                        testing/ (what a test reaches through the scheduler: mocks.ts, the mock a call reaches, and calls answered by another instance's; test-world.ts, the seam a test's instances reach each other through, a null one outside a test),
-                        native-calls.ts, wake.ts (advancing, commits, spawned children), inspect.ts, instance-names.ts (`<parent>/<n>`, and the ancestors a name says)
-                        snapshot/: objects.ts (heap objects and frames as stored), holdings.ts (what each object kind holds and watches, and the one rule for a frame, live or stored), snapshot.ts (the persisted instance), check.ts (a snapshot against its Definition)
-    lifetimes/          holders and disposal (§7): holders.ts (what the live frames reach: held), orphans.ts (what to dispose now,
-                        holders before what they hold), disposal.ts (each kind's disposal), collector.ts (rounds, a disposal's call on the run stack)
     natives.ts          the Natives seam, the context a native is called with, and the Panic it throws
     store.ts            the InstanceStore seam, and a store in memory
     instance-state.ts   where an instance stands after the runtime advanced it
-    random.ts           an instance's random values: its secret seed, kept in its snapshot, and the draws made from it
-    host/index.ts             public host API: createRuntime(seams) → deploy, start, wake
-    settle.ts           the host's wake-until-settled loop over an instance and every instance it spawns, waiting each host's own way
+    refusal.ts          the runtime refusing what a host asked of it, as opposed to failing
+    host/               public host API (index.ts): createRuntime(seams) → deploy, start, wake; the host's wake-until-settled
+                        loop over an instance and every instance it spawns, waiting each host's own way (settle.ts), over a
+                        group of instances driven together (instance-group.ts)
+    interpreter/        the instruction table, and parts of values along paths (parts.ts)
+    snapshot/           objects.ts (heap objects and frames as stored), holdings.ts (what each object kind holds and watches, and the one rule for a frame, live or stored), snapshot.ts (the persisted instance), check.ts (a snapshot against its Definition),
+                        random.ts (an instance's random values: its secret seed, kept in its snapshot, and the draws made from it)
+    scheduler/          segments and commits: wake.ts (advancing, commits, spawned children), inspect.ts, loaded-definition.ts (a Definition bound to its natives once, named by its hash),
+                        instance/ (an instance in memory, and the commit's snapshot from the one it was made from; live-objects.ts, heap objects as stored and as running;
+                        heap.ts, objects by id, and indexes finding them by field, derived, never persisted; futures.ts, resolving, who waits, `first`; slots.ts, §6's queue;
+                        weak-side.ts, weak references, `disposed()` and `disposing()`, told by disposal what it disposes;
+                        instance-names.ts, `<parent>/<n>` and the ancestors a name says; instance-ends.ts, another instance's end as a wait on it sees it),
+                        segment/ (a segment; calls.ts, how a call starts: a mock's replacement, a native at once, or code to push; run-stack.ts, the executions running on one another; disposal-runs.ts, the code disposals run; limits.ts, the limits a program runs into as panics; native-calls.ts, the context a native is called with, built once for both kinds of caller; outcome-encoding.ts, an instance's outcome encoded for its host),
+                        testing/ (what a test reaches through the scheduler: mocks.ts, the mock a call reaches, and calls answered by another instance's; test-world.ts, the seam a test's instances reach each other through, a null one outside a test),
+    boundary/           values crossing to the host: host-natives.ts (host externs, against JSON, as natives), outbound.ts (an outcome's JSON),
+                        extern-signatures.ts (one name, one type across deploys)
+    lifetimes/          holders and disposal (§7): holders.ts (what the live frames reach: held), orphans.ts (what to dispose now,
+                        holders before what they hold), disposal.ts (each kind's disposal), collector.ts (rounds, a disposal's call on the run stack)
     testing/            running a test Definition (§10): world/ (one test's fresh runtime in memory: its instances, the mocks they reach, its watches, timers on the caller's clock; test-host.ts, the externs no mock replaces), run-tests.ts (listing each suite, then each test in a world of its own)
   stdlib/               std-sources.ts: the one list of std modules, each name with its embedded source, where a module's name is spelled unless the language names it by role; stdlib-loader.ts: the std ModuleLoader (simple name → source) and the roles, read from the list alone, so compiling imports no native (a cruiser rule); std-modules.ts: each module with its natives (std-module.ts: natives built from keys bound to the name, which key its functions and its own types; a module whose natives take another std module's type gets that module's keys, as `decimal` gets `math`'s for `Rounding`); natives.ts: every std native in one table, derived from the list; values/arguments.ts: the values natives read; values/results.ts: what they return, built as the declared result says; positions.ts: what an index, a range, `at` and `slice` select of an array or a string; prelude/ and one folder per std module: <module>.ista + natives.ts (keys built by definition/extern-key.ts, as lowering's are)
   formatter/            SyntaxTree → canonical text (format.ts, the `istalang/formatter` entry): one printer table per family of
                         constructs, comments/ (the comments printed, and the node each prints with: comment-placement.ts),
-                        which delimiters enclose which children and where a line break may stand inside an item (brackets.ts),
+                        layout/ (bodies after a header, the lists constructs print their parts in, and which delimiters
+                        enclose which children and where a line break may stand inside an item: brackets.ts),
                         expressions/ (the expression table, the constructs with bodies, indented values, and literals
                         from their source text: literals.ts)
-  language-service/     what an editor asks of a project, with no protocol and no I/O: workspace.ts (the open texts,
+  editor/               editor support: its features, the protocol server, the server's client
+    language-service/   what an editor asks of a project, with no protocol and no I/O: workspace.ts (the open texts,
                         and the program they make through the ProgramLoader seam), one module or folder per feature
-                        (symbols.ts, folding.ts, semantic-tokens/, which reads checking only for an indented map's
-                        bare keys (built-keys.ts); over types: hover.ts, inlay-hints.ts,
-                        signatures/, completion/), tokens.ts (a tree's tokens, scanned again once, brackets paired),
-                        checked-module.ts (a module and its program's checker), signatures/: how a function reads
+                        (outline/: symbols.ts, folding.ts; semantic-tokens/, which reads checking only for an indented
+                        map's bare keys (built-keys.ts); over types: hover.ts, inlay-hints.ts, signatures/, completion/,
+                        navigation/), reading/ (what features read of a module at a spot: a tree's tokens, scanned again
+                        once, brackets paired (tokens.ts), a module and its program's checker (checked-module.ts), the
+                        name at a cursor, a namespace's module, docstrings), signatures/: how a function reads
                         (signatures.ts), the call around a cursor and the parameter each written argument gives
                         (call-at.ts), and signature help over them (signature-help.ts)
-  lsp/                  the language server (vscode-languageserver): server.ts (initialize, document sync, the providers),
-                        providers/ (one per request; navigation/ holds a declaration, its references and renaming, as
-                        editor/language-service/navigation/ does), diagnostics.ts (pushed per open document), project-loader.ts
-                        (the project as `ista check` loads it, open documents over it), locations.ts (URIs, ranges),
-                        std-source-request.ts (`ista/source`, which its clients import too)
+    lsp/                the language server (vscode-languageserver): server.ts (initialize, document sync, the providers),
+                        providers/ (one per request; navigation/ holds a declaration, its references and renaming, and
+                        outline/ document symbols and folding ranges, as language-service does), diagnostics.ts (pushed per
+                        open document), project-loader.ts (the project as `ista check` loads it, open documents over it),
+                        locations.ts (URIs, ranges), std-source-request.ts (`ista/source`, which its clients import too)
+    vscode-client/      the VS Code extension's client of `ista lsp`: extension.ts (activation, the `std:` documents),
+                        server-command.ts (the `ista lsp` process a workspace gets); bundled into .vscode/extensions/ista
   project/              a project on disk: project.ts (sources, the loaders and roles a program is built with), file-loader.ts
                         (the project files ModuleLoader, and a module's id from its file and back), errno.ts (system errors)
   packages/             ista.json, minimal version selection, lockfile, vendor, verify, vendor loader
-  vscode-client/        the VS Code extension's client of `ista lsp`: extension.ts (activation, the `std:` documents),
-                        server-command.ts (the `ista lsp` process a workspace gets); bundled into .vscode/extensions/ista
   cli/                  main.ts executable, cli.ts root, command.ts (the command seam), directory-store.ts (the InstanceStore of --store), host-module.ts (the host externs of --host), report.ts (diagnostics output), clock.ts (the one clock), log-lines.ts (a log record as one line of JSON), commands/ (check, fmt, lsp, run, test)
 test/corpus/            shared .ista corpus (spec examples, valid/invalid cases) used by every phase
 ```
@@ -227,26 +245,26 @@ test/corpus/            shared .ista corpus (spec examples, valid/invalid cases)
 Imports point only downward; cycles are forbidden. Both rules are enforced by lint, not left to review.
 
 ```
-cli · vscode-client                     the apps (composition roots); nothing imports them. vscode-client
+cli · editor/vscode-client              the apps (composition roots); nothing imports them. vscode-client
                                         imports of the server only editor/lsp/std-source-request.ts, the request both sides speak
-lsp                                     the language server, a composition root that `ista lsp` runs
-language-service · formatter · packages tooling; language-service imports no Node built-in
+editor/lsp                              the language server, a composition root that `ista lsp` runs
+editor/language-service · formatter     tooling, with packages; language-service imports no Node built-in
 project                                 a project on disk: its sources and the loaders reading them
 compiler/compile ─▶ lowering ─▶ checker ─▶ binder ─▶ program ─▶ parser · scanner ─▶ syntax
 runtime ─▶ definition ◀─ lowering       runtime never imports compiler/
 stdlib ─▶ program (loader seam) · runtime native seam · definition values (==, map keys: definition/values/equality.ts)
-text · diagnostics                      foundation; the runtime may use text/ for positions
-language · structures                   beneath every layer; they import nothing
+foundation/text · diagnostics           vocabularies every phase uses; the runtime may use text/ for positions
+foundation/language · structures        beneath every layer; they import nothing
 ```
 
-- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`text/`, `diagnostics/`) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`surface/`, `types/type/index.ts`, `types/type/primitives.ts`, `types/type/alias-uses.ts`, `types/type/computed-types.ts`, `types/type/function-types.ts`, `types/type/field-order.ts`, `types/identity/identity.ts`, `types/written/named-types.ts`, `types/written/pattern-types.ts`, `types/parts/substitution.ts`, `types/type/type-rules.ts`, `types/fitting/fit.ts`, `types/fitting/expected.ts`, `types/unions/unions.ts`, `types/unions/union-members.ts`, `types/identity/recursive-types.ts`, `types/identity/type-keys.ts`, `types/type/type-text.ts`, `types/type/well-known.ts`), which lowering reads module by module.
-- Inside the checker, folders are layers too, from the type model up to the constructs: `diagnostics`, `types`, `inference`, `traits`, `resolution`, `calls`, `patterns`, `flow`, `rules`, `declarations`, `closures`, `expressions`, `statements`, `lookup`. A folder imports only those beneath it, so engines never import constructs. Its contracts, its root modules (its entry and contexts) and `surface/` (the models later phases read), may be imported by every folder, except the modules that wire a body and a program together (`program/`, `body/`).
+- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`foundation/text/`, `foundation/diagnostics/`, …) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`surface/`, `types/type/index.ts`, `types/type/primitives.ts`, `types/type/alias-uses.ts`, `types/type/computed-types.ts`, `types/type/function-types.ts`, `types/type/field-order.ts`, `types/identity/identity.ts`, `types/written/named-types.ts`, `types/written/pattern-types.ts`, `types/parts/substitution.ts`, `types/type/type-rules.ts`, `types/fitting/fit.ts`, `types/fitting/expected.ts`, `types/unions/unions.ts`, `types/unions/union-members.ts`, `types/identity/recursive-types.ts`, `types/identity/type-keys.ts`, `types/type/type-text.ts`, `types/type/well-known.ts`), which lowering reads module by module.
+- Inside the checker, folders are layers too, from the type model up to the constructs: `diagnostics`, `types` (the model, then `types/inference`, then `types/traits`), `resolution` (then `resolution/calls`), `rules` (`rules/flow`, then the rest), `constructs` (`patterns`, `loops`, `declarations`, `closures`, `expressions`, `statements`), `lookup`. A folder holding several layers is a contiguous run of them, so it is a layer as a whole too. A layer imports only those beneath it, so engines never import constructs. Its contracts, its entry, `contexts/` and `surface/` (the models later phases read), may be imported by every folder; they import nothing above the type model. `wiring/` (the modules that wire a body and a program together) imports every layer, and nothing imports it.
 - `syntax/` and `definition/` are contracts with high fan-in. Change them deliberately, and update every caller in the same change.
 - Mechanisms:
   - Biome `noExcessiveLinesPerFile` enforces the 400-line limit.
   - Biome `noImportCycles` (project domain) forbids cycles.
   - dependency-cruiser enforces the layers as an allow-list over resolved paths (`.dependency-cruiser.mjs`), the checker's inner layers and its surface included. A layer not listed there can import nothing. Biome's import rules match specifiers, whose shape depends on directory depth, so they can't state an allow-list.
-  - npm packages may be imported by any layer. Node's built-ins only by apps (`cli/`, `lsp/`, `vscode-client/`) and `project/`, which reads a project's files for both: the layers beneath reach files, processes and clocks through seams. The one exception is `crypto`, which is computation, not I/O: `definition/` hashes content with it, `runtime/` draws an instance's random values (`random.ts`) and seeds a test's from its title (`testing/run-tests.ts`), and `stdlib/` implements the `crypto` module.
+  - npm packages may be imported by any layer. Node's built-ins only by apps (`cli/`, `editor/lsp/`, `editor/vscode-client/`) and `project/`, which reads a project's files for both: the layers beneath reach files, processes and clocks through seams. The one exception is `crypto`, which is computation, not I/O: `definition/` hashes content with it, `runtime/` draws an instance's random values (`snapshot/random.ts`) and seeds a test's from its title (`testing/run-tests.ts`), and `stdlib/` implements the `crypto` module.
 
 ## Phase contracts
 
@@ -261,7 +279,7 @@ language · structures                   beneath every layer; they import nothin
 | format | `formatTree(tree) → string \| undefined`, `formatSource(source) → { tree, text }`, `formatText(text) → string \| undefined` (`istalang/formatter`) | Canonical and without options (docs/work/m6-m7/formatter.md): a two-space indent, width 100. A tree with syntax diagnostics is refused (`undefined`), since printing the parser's recovery would rewrite code nobody wrote. The output parses to the same tree (`dump`) with the same comments, and formatting it again changes nothing. It reads only the tree, its comments and its source text: literals print as written, and a multi-line template or docstring is copied whole, its later lines moving with its first only when that keeps its value. Comments are placed on nodes as Prettier places them (`comment-placement.ts`); one no printer emits is an `Unreachable`. A line break is added only between items, before a body, or where it means nothing (`layout/brackets.ts`), so a line holding an import's names or an operator run outside brackets stays as long as it is. |
 | workspace | `new Workspace(load: ProgramLoader, check?: ProgramChecking)`, `write(module, text)`, `close(module)`, `openModules`, `program`, `treeOf(module)`, `diagnosticsOf(module)`; `ProgramLoader = (open, previous) → Program`; `ProgramChecking = (program, previous) → Checker`, `checkProgram` unless a test counts (editor/language-service/workspace.ts) | The open texts are its one state, an immutable map replaced on every edit; the program is derived from them, loaded once per map, and handed the program before it so unchanged trees are reused. A program's checker is made only when a feature checks (`program`; never `treeOf`), and takes over from the checker of the last program whose diagnostics were asked: a pass asks for the most and recurs after every pause, while a checker made between keystrokes for a hover holds little, and making a checker lets go of what the one it takes over from took over from. Which roots a project has and where the rest of its texts come from is the app's: the language server's loader (editor/lsp/project-loader.ts) loads what `ista check` loads, with every open file document over its file and among the roots, and every unsaved buffer (`untitled:`) a root of its own, importing from the project root. A document the program doesn't hold (a `std:` module shown read-only) is parsed on its own, once per text, for the features that need syntax alone. |
 | navigation | `nameAt(program, module, offset) → NameAt { name, declarations, targets }`, `declarationsOf(checker, module, name) → DeclaredAt[] { declared, at }` (editor/language-service/navigation/declarations.ts); `namesDenoting(program, declaring)`, `referencesAt(program, module, offset) → Reference[]` (references.ts); `renamingAt(program, module, offset)`, `renameEdits(program, module, offset, newName) → Renamed { edits: NameEdit[] } \| Refusal` (rename.ts); `identifierAt(tree, offset)`, `stringLiteralAt(tree, offset)` (editor/language-service/reading/identifier-at.ts), the name or literal inside the offset or ending at it | Every feature reads the checker's identifier query (`lookup.denotationsOf`), and its key query (`lookup.keyDenotationsOf`) for a String literal naming a field as its key (§3.1 Key types), which is then a name of that field (`WrittenName`), renamed as the literal of the new name; and adds where each declaration is declared: its declaring name, which is also how declarations are told apart, by module and offset, since a declaration may be read through copies of its name's node (an async function's own call). A primitive, `Self` and a struct literal's own field have none, so nothing navigates to them. References are every name of the program the query answers with that declaration, std modules included, indexed once per Program: the program's one index of the names denoting a declaration (`namesDenoting`). A name acts on its `targets`: the declarations spelled as it is (a conversion's callee acts on its type), and at a shorthand the value it reads or binds, a variable or a function, rather than the field. Rename judges a declaration as its declaring name declares it (an async function's own call as the function), spells a shorthand out, and refuses (human decision, 2026-10-29) a std declaration, a declaration some name denotes together with another (an import naming every overload), a function, field or associated type named like a trait member or a function the language calls by name (`main`, the JSON codecs), a parameter named `self`, a new name of either kind, and a new name that isn't one, is `_`, or changes privacy or case. |
-| editor queries | `hoverAt`, `signatureHelpAt` `(program, module, offset)`; `inlayHintsIn(program, module, span)` (language-service/) | Over the program's checker, for a module the program holds; nothing for one it doesn't. A name is answered through the identifier query (`Checker.lookup.denotationsOf`), so hover agrees with navigation. Hover shows the innermost node at the offset that has a name or a type (a `->` shows the member read; a written type, its type as `lookup.typeOfNode` resolved it), else the name ending there. A name's type is the one it has where it stands: a written type's name, the type with its arguments; a variant's, its enum's, as the value it makes was checked, else the enum's own (its declaration, a pattern). A function reads as `signatureOf` spells it, in hover, signature help and completion alike. Signature help marks the parameter a resolved call's binding passes the argument to, so a method's receiver never counts; an unresolved call offers its candidates, as does one with an argument by position after a named one, whose arguments are still checked. A call holds the cursor between its `(` and the `)` pairing with it (`closingBracketsOf`), or, with none yet, up to the next token after it. Inlay hints type the names a `let`/`const`, a `for` or a lambda leave untyped, except one whose type checking failed to find (the error type). |
+| editor queries | `hoverAt`, `signatureHelpAt` `(program, module, offset)`; `inlayHintsIn(program, module, span)` (editor/language-service/) | Over the program's checker, for a module the program holds; nothing for one it doesn't. A name is answered through the identifier query (`Checker.lookup.denotationsOf`), so hover agrees with navigation. Hover shows the innermost node at the offset that has a name or a type (a `->` shows the member read; a written type, its type as `lookup.typeOfNode` resolved it), else the name ending there. A name's type is the one it has where it stands: a written type's name, the type with its arguments; a variant's, its enum's, as the value it makes was checked, else the enum's own (its declaration, a pattern). A function reads as `signatureOf` spells it, in hover, signature help and completion alike. Signature help marks the parameter a resolved call's binding passes the argument to, so a method's receiver never counts; an unresolved call offers its candidates, as does one with an argument by position after a named one, whose arguments are still checked. A call holds the cursor between its `(` and the `)` pairing with it (`closingBracketsOf`), or, with none yet, up to the next token after it. Inlay hints type the names a `let`/`const`, a `for` or a lambda leave untyped, except one whose type checking failed to find (the error type). |
 | completion | `completionsAt(program, module, offset, { trigger?, stdModules? }) → Completion[]` (editor/language-service/completion/index.ts); `completionTriggers` (triggers.ts) | A request is answered in three steps, each with one home. **Place** (place.ts): `placeAt(cursor) → Place`, decided once: `member` (memberPlaceAt, places/member.ts) and `literalField` (places/literal-field.ts) read from the tree as it stands; every other kind (placeholder.ts) from a parse of the module with a placeholder name at the cursor, joined to any name half written there, by the role its nearest deciding node gives it, and carrying that parse (`PlaceholderParse`: tree, the nodes holding the placeholder; its tokens read as every completion unit reads a tree's, `codeTokensOf`) for its provider: `nothing` (a template's, a docstring's or a number's text, with no parse carried; a comment is `nothing` before any parse, whatever surrounds it), `stringText` (a String literal's text, which may write a literal a value expected there is, a key among them), `grammar` (a declaration, a statement or an expression starts, or an operand goes on), `type`, `declaredName`, `callArgument` (an argument starts, which a name may label), `pattern` (tested by `case` or `is`; a `let`, `for` or parameter pattern declares names, as an `as` does anywhere), `patternField` (a struct pattern's item names its field), `import`, `annotation`; an expression inside one (a compared field's, an argument's or a field's value) is `grammar`. A `Cursor` (cursor.ts) carries the checked module, the offset, the trigger and the tokens there, and the std modules an import may name, which the app passes (`importableStdModules`, stdlib-loader.ts) since the program holds only those it loaded. **Offer**: one provider per place kind, `Handlers<Cursor, Place, [], readonly Candidate[]>` in index.ts, each but `nothing`'s in places/<kind>.ts; a `Candidate` is a name and the `Subject` it names (candidate.ts: an entity, a keyword, a field, a function through a value or a type, a variant with its enum, a parameter a call's argument names, a module path to a module or a folder, a loop's or a block's label). **Present** (`present(cursor, place, candidates)`, present.ts): one presenter per subject kind (a name a scope offers, entity-items.ts) gives an item's kind, detail and docstring (as hover reads them, editor/language-service/reading/docstrings.ts), what accepting it writes (presenting.ts: a callable its call and signature help, a variant with fields its braces and the next list, where a value or pattern is written, unless the cursor's line already opens them; an annotation's struct with fields its braces and the next list; a literal's field and a named argument `name: ` and the next list), its commit characters, its group (where its name comes from), priority and order (an enum's variants as declared), and the types of the values it writes. The list ranks an item first when one of those fits the type expected at the place (expected.ts `expectedTypeAt`: the checker's `expectedOf` for the placeholder, checked by a tentative checker over the placeholder parse, or for a name already written, by the program's own; for a call's argument, the parameter it gives, `argumentParameterAt`; where a pattern starts, the type it matches, `matchedTypeOf`), and preselects the first that fits if it is a local, the module's or a place's own (of no group), never a prelude or imported name; a method named bare, `Never` and the error type fit nothing; a value another case covers (`Candidate.covered`) ranks after the rest. Only the enum expected admits bare variants (`expectedVariants`, `isBareVariant`). The item model (presentation/item.ts): `Completion { name, kind, detail?, documentation? (Markdown), insert?: text \| snippet, next?: completion \| signatureHelp, rank?: { fitsExpected, group? (`rankGroups`: local, module, imported, prelude, keyword), priority? (0–999), order? (0–999) }, preselect?, commit? (commit characters) }`, kinds including struct, enum, trait, constant, typeParameter, folder and label, `type` for an alias or a type of no kind of its own; additive only. The LSP provider is its one encoding (`sortText` = fit, group, priority, order, name; `next` a VS Code command). A trigger character opens a list only where `triggers.ts` says it starts what the list completes: at the places it names for it, `>` only ending a `->`, a space only after `{` or `,` (where they open) or a field's or argument's `name: `; `:` is no trigger. Every candidate is offered unfiltered by what is typed: a member place (after `.`, `?.`, `->`, `?->`, or a qualifier in a type or pattern, written or not, a member spelled as a keyword so far included) gives the receiver's members (a tuple's elements by position among them), a namespace's exports, or a type's statics and variants, narrowed to what the qualified name takes: in a type, a namespace's types and nothing of a type's; naming what a literal builds or a pattern matches, a namespace's types and a type's variants; a `.` typed right after an integer, which may start its fraction, opens no list; a `grammar` place offers what its position admits (`grammarPositionAt`, places/grammar/position.ts: a module's or a block's item start, an operand's start, what goes on after an operand a space parts from the cursor (nothing right against it) or after a modifier as the placeholder parse reads it, a `for`'s or a comprehension's `in`, a `match` or `select` body's case, a label, the function a `spawn` calls, the place a call's `&` passes), its words those the parser dispatches on there (syntax/tokens/grammar-words.ts) but those the code around gives no meaning (places/grammar/words.ts `wordNeeds`: `await` outside an async body, `select`, `spawn` and `new` outside a function's, `break` and `continue` outside a loop), and what an operand starts with shared by every place where an expression starts (`expressionCandidates`); a `type` place, the types and the words a type starts with (but `struct`, as a struct type is written `{…}`, and `infer` outside a type `match` case's pattern, `matchPlaceOf`), traits only in a bound or after `any`, shared structs only after `new`; a `declaredName` place, nothing but what may stand first there (a static's type, `extern`'s words, a method's `self`); a `stringText` place, the String literals expected there, unquoted (`expectedLiterals`, the one source a value's place offers quoted), `"` opening it as it does an import's path; a `nothing` place, nothing; a place with no provider of its own yet, `Bindings.visibleAt` where the name starts, then every keyword (visible.ts); every place filters the visible names through one predicate (`visibleNames`). A receiver's members are those a read or call there resolves to: its value as checking found it (a chain link's, `chainOf`), none for the error type, a method only where its `self` takes that value as a call's receiver with the constraints that decides met, and one taking `&self` only through a place. Right after a `.` or `?.` where no member can stand, nothing is offered. Right after a struct or variant literal's own `{` or `,`, where only an item can stand, the fields the literal builds (`literalFieldsOf`) that its other items don't give, none for a literal with no known fields; after the `{` of one building a single field, which also takes its value unnamed, the visible names too, bare variants aside; a visible variable named like a field not given yet, as that field's shorthand; and `...` where the leading spread may stand. A pattern offers by the type it matches (places/patterns/matched-type.ts), read down from the `match` subject's or `is` operand's type as checked through its alternatives, tuple elements, array items and nested fields: where it starts, that type's variants, its own name, the namespaces, `_` and the literal keywords fitting it, never a variable; in a struct pattern's braces, the fields of the variant or struct it names (against an `any` value, the type it downcasts to) that its items don't test yet. A placeholder-parse node ending before the cursor is asked of the checker through its twin in the checked tree (`checkedTwinOf`, places/patterns/matched-type.ts). In an import (places/imports/import.ts): at a name, what the module its path names exports, less what the file imports from it by name; inside the path, the modules and the `name/` folders (accepting one asks again) the folder written so far holds, read in the one path syntax the file loader reads too (`importPathOf`, foundation/language/import-paths.ts): from the importer's folder after `./` or `../`, never above the root, else from the root, where std modules join them (`testing` in a test module only); `from` right after a name or the alias of an import without one, `as` after `*`. The parser reads an import's path, and the program loads its module, while the names are still being written: a `from` a string follows ends them, and a keyword standing for one is passed over. In an annotation (places/annotation.ts): on a statement that waits `Waypoint` alone (`statementPlace`), on a local function or any other item every visible struct (`canAnnotate`) and namespace; nothing on a statement that doesn't wait, where the parser takes no annotation (`misplacedAnnotation`), or where the `@` stands for a value or a type the item still lacks; its literal is a literal field's place, an annotation no item follows yet included, as the Invalid node holding it keeps it, bound, and its body is checked when asked. |
 | lsp | `serveLanguage(connection, cwd)` (editor/lsp/server.ts); `ista lsp [--stdio]`; the request `ista/source` (`{ uri } → string \| null`) | The project is the client's first workspace folder, else the server's directory. Documents sync whole (`TextDocumentSyncKind.Full`); a document's URI is its module id, a file's read back through its path. Every provider (editor/lsp/providers/) announces its capability and registers its handler together: document symbols, folding ranges, full semantic tokens (legend: editor/language-service/semantic-tokens/semantic-types.ts, no modifiers; one token per line), whole-document formatting by `formatTree`, definition, references, rename (with `prepareRename`, whose refusal reaches the user as a `RequestFailed` error with its reason), hover (Markdown: the code fenced as `ista`, then the docstring), inlay hints, signature help (triggered by `(` and `,`), and completion (triggered by `completionTriggers`; the service answers a typed one only where it opens a list). A position is read by `documentOffset` and a place written by `locationOf` (editor/lsp/locations.ts). Diagnostics are pushed for every open document once changes pause, cleared when one closes, and no more once the client shuts the server down; a compiler bug diagnosing one module is logged, and the rest still published. `ista/source` gives a std module's shipped text by its `std:` id, for a client to show read-only. |
 | vscode-client | `activate`, `deactivate` (editor/vscode-client/extension.ts); the setting `ista.server.path` | The client runs `ista lsp --stdio` in the first workspace folder: the setting's executable, else the workspace's `node_modules/.bin/ista`, else `ista` from the PATH. It serves `ista` documents of the `file`, `untitled` and `std` schemes; a `std:` document is read-only, its text from `ista/source`, and is marked as `ista` when it opens. In a workspace not yet trusted the server doesn't start (manifest `untrustedWorkspaces: limited`): starting it runs the workspace's own `ista`. |
