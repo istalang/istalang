@@ -13,8 +13,8 @@
  * Its subject and patterns resolve together, each case's type apart (types/written/type-match.ts).
  */
 
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import type { ModuleId } from '../../program/program.ts';
+import type { EntryTable } from '../../../../structures/entries/index.ts';
+import type { ModuleId } from '../../../program/program.ts';
 import {
   type AliasBody,
   type AliasDeclaration,
@@ -22,27 +22,27 @@ import {
   type TypeAliasDeclaration,
   type TypeParameters,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import { parentOf } from '../../syntax/tree.ts';
-import { inferTypesIn } from '../../syntax/type-matches.ts';
-import type { TypeCase, TypeMatch } from '../../syntax/types.ts';
-import type { CheckerContext, CheckerNote } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { matchCase } from '../resolution/type-matches/type-match-patterns.ts';
-import { TypeMatchExpansion } from '../rules/expansion/type-matches.ts';
-import { resolveConstraintSet } from '../traits/struct-constraints.ts';
-import type { MatchType } from '../types/computed-types.ts';
-import { sameTypeSpelled } from '../types/parts/type-parts.ts';
-import { isNominalEntity, type Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { parameterType } from '../types/written/resolve-type.ts';
+} from '../../../syntax/declarations.ts';
+import { parentOf } from '../../../syntax/tree.ts';
+import { inferTypesIn } from '../../../syntax/type-matches.ts';
+import type { TypeCase, TypeMatch } from '../../../syntax/types.ts';
+import type { CheckerContext, CheckerNote } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { matchCase } from '../../resolution/type-matches/type-match-patterns.ts';
+import { TypeMatchExpansion } from '../../rules/expansion/type-matches.ts';
+import { resolveConstraintSet } from '../../traits/struct-constraints.ts';
+import type { MatchType } from '../../types/computed-types.ts';
+import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
+import { isNominalEntity, type Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { parameterType } from '../../types/written/resolve-type.ts';
 import {
   type CaseForm,
   type CasePatternForm,
   matchUse,
   type TypeMatchForm,
   type TypeMatchQueries,
-} from '../types/written/type-match.ts';
+} from '../../types/written/type-match.ts';
 import { AliasRecursions } from './alias-recursion.ts';
 import { RecursiveBodies } from './recursive-bodies.ts';
 

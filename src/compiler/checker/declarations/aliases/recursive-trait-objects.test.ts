@@ -5,10 +5,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reportedNothing } from '../../../diagnostics/diagnostic.test-kit.ts';
-import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
-import { lines } from '../../parser/parse.test-kit.ts';
-import { reported } from '../check.test-kit.ts';
+import { reportedNothing } from '../../../../diagnostics/diagnostic.test-kit.ts';
+import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
+import { lines } from '../../../parser/parse.test-kit.ts';
+import { reported } from '../../check.test-kit.ts';
 
 const holds = lines('trait Holds<S>:', '  fn held(self: &Self) -> S');
 

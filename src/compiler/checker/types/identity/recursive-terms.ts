@@ -125,7 +125,7 @@ export class TermGraph {
     const forwarded = this.#forwardedBody(index);
     if (forwarded === undefined) {
       // Bodies each only standing for the next, around a cycle, name no type, which declarations
-      // report (declarations/alias-recursion.ts).
+      // report (declarations/aliases/alias-recursion.ts).
       return this.#leaf(errorType);
     }
     const body = this.#source.bodies[forwarded] ?? errorType;

@@ -42,7 +42,7 @@ import { checkSuite } from '../rules/testing.ts';
 import { namesMemberParameter } from '../traits/struct-keys.ts';
 import { futureArgument } from '../types/well-known.ts';
 import type { GenericDeclaration } from '../types/written/type-arguments.ts';
-import { checkFiniteAlias, checkFiniteFields } from './struct-rules.ts';
+import { checkFiniteAlias, checkFiniteFields } from './layout/struct-rules.ts';
 
 /**
  * Resolves the constraints, unions and defaults of `declaration`'s type parameters where they are

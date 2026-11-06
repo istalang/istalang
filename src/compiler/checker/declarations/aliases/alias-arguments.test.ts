@@ -7,8 +7,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reported } from '../check.test-kit.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { reported } from '../../check.test-kit.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
 const aliasCycle = checkerDiagnostics.aliasCycle('' as never, '').code;
 

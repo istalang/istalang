@@ -51,7 +51,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 - **Current narrow scope:** Four separate modules walk composite and nominal `Type` graphs:
   - `isSendable` (`src/compiler/checker/traits/sendable.ts`, tracking cycles via `Set<string>` of `typeKey`)
   - `JsonForms.problemOf` (`src/compiler/checker/rules/json-forms/index.ts`, tracking cycles via `Set<string>` of `typeKey`)
-  - `checkFiniteFields` (`src/compiler/checker/declarations/struct-rules.ts`, tracking cycles via `Set<StructDeclaration>`)
+  - `checkFiniteFields` (`src/compiler/checker/declarations/layout/struct-rules.ts`, tracking cycles via `Set<StructDeclaration>`)
   - `heldType` (`src/compiler/checker/types/properties/held.ts`, taking no `CheckerContext`, keeping no cycle set, and **skipping declared `StructDeclaration` and `EnumDeclaration` fields**).
 - **Correctness gap in `types/properties/held.ts`:** `types/properties/held.ts` states that a declared struct’s fields are checked where it is declared, but `src/compiler/checker/declarations/declarations.ts` never checks declared struct or enum fields for must-use types (`Future`, `Result`, `Disposable`). Consequently, a function returning a non-generic `struct Holder { f: Future<int> }` can have its result silently discarded as a bare expression statement without triggering `must-use` (`checkDiscarded`), whereas an anonymous struct `{ f: Future<int> }` is caught. Extracting a single cycle-safe type-graph traversal over `CheckerContext` fixes this and unifies all four walks.
 
@@ -186,7 +186,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 4. **Cross-feature imports inside `src/compiler/checker/`**
    - `patterns/matching.ts` imports `fieldlessStructOf` from `expressions/names.ts` and `chooseVariant`, `nameNodeOf` from `expressions/variants.ts`.
    - `closures/function-values.ts` imports `namedType` from `expressions/variants.ts` (resolving a type named in value position, unrelated to enum variants).
-   - `closures/functions.ts` and `closures/lambdas.ts` import `isChangeable` from `rules/places.ts`, and `closures/lambdas.ts` imports `declaredBodyResult`, `writtenByReference` from `declarations/signatures.ts` and `blockTail`, `ReturnScope` from `statements/returns.ts`.
+   - `closures/functions.ts` and `closures/lambdas.ts` import `isChangeable` from `rules/places.ts`, and `closures/lambdas.ts` imports `declaredBodyResult`, `writtenByReference` from `declarations/functions/signatures.ts` and `blockTail`, `ReturnScope` from `statements/returns.ts`.
    - `expressions/calls.ts` and `closures/function-values.ts` import `staticTargetOf` from `traits/conformance.ts` to resolve static calls (`Duration.zero()`) even when no traits are involved.
 5. **Duplicate frame-holding extraction between `src/runtime/lifetimes/holders.ts` and `src/runtime/snapshot/snapshot.ts` (**D110**)**
    - `holders.ts` imports `heldObjects` and `valuesIn` from `snapshot.ts`, then re-implements `valuesOfFrame` and `cellsOfFrame` beside `snapshot.ts`’s `frameValues` and `directHolds` because live `ActiveFrame` and stored `Frame` use different register array shapes.

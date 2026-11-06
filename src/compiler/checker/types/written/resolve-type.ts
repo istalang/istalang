@@ -76,7 +76,7 @@ interface Resolution {
   readonly closing?: ClosingGroup | undefined;
 }
 
-/** A recursive alias group whose bodies are resolved to close it (declarations/recursive-bodies.ts). */
+/** A recursive alias group whose bodies are resolved to close it (declarations/aliases/recursive-bodies.ts). */
 export interface ClosingGroup {
   readonly aliases: ReadonlySet<TypeAliasDeclaration>;
   /** Whether `node` writes a use of one of `aliases`, at any depth. */

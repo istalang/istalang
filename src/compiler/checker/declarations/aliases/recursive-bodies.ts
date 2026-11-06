@@ -18,17 +18,17 @@
  *   this is what it can't see).
  */
 
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import type { ModuleId } from '../../program/program.ts';
-import { type TypeAliasDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
-import type { CheckerContext, CheckerNote } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { closeRecursive } from '../types/identity/recursive-types.ts';
-import { mentionsError, sameTypeSpelled } from '../types/parts/type-parts.ts';
-import { substitute, substitutionFor } from '../types/substitution.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { parameterType, resolveClosing } from '../types/written/resolve-type.ts';
+import type { EntryTable } from '../../../../structures/entries/index.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import { type TypeAliasDeclaration, typeParametersOf } from '../../../syntax/declarations.ts';
+import type { CheckerContext, CheckerNote } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { closeRecursive } from '../../types/identity/recursive-types.ts';
+import { mentionsError, sameTypeSpelled } from '../../types/parts/type-parts.ts';
+import { substitute, substitutionFor } from '../../types/substitution.ts';
+import type { Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { parameterType, resolveClosing } from '../../types/written/resolve-type.ts';
 import type { AliasRecursions } from './alias-recursion.ts';
 
 export class RecursiveBodies {

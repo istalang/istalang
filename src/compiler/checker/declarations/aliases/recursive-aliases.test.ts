@@ -8,23 +8,23 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reportedNothing, reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
-import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
-import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { compiledDefinition } from '../../compile.test-kit.ts';
-import { lines } from '../../parser/parse.test-kit.ts';
-import { type Files, idOf } from '../../program/program.test-kit.ts';
-import { programModule } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import { reported } from '../check.test-kit.ts';
-import { checkProgram } from '../check.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { sameType } from '../types/identity/identity.ts';
-import { typeKeys } from '../types/identity/type-keys.ts';
-import { substitute, substitutionFor } from '../types/substitution.ts';
-import type { Type } from '../types/type/index.ts';
-import { intType, stringType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
+import { reportedNothing, reportedOnce } from '../../../../diagnostics/diagnostic.test-kit.ts';
+import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
+import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
+import { compiledDefinition } from '../../../compile.test-kit.ts';
+import { lines } from '../../../parser/parse.test-kit.ts';
+import { type Files, idOf } from '../../../program/program.test-kit.ts';
+import { programModule } from '../../../program/program.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import { reported } from '../../check.test-kit.ts';
+import { checkProgram } from '../../check.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { sameType } from '../../types/identity/identity.ts';
+import { typeKeys } from '../../types/identity/type-keys.ts';
+import { substitute, substitutionFor } from '../../types/substitution.ts';
+import type { Type } from '../../types/type/index.ts';
+import { intType, stringType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
 
 function parameterTypesOf(source: string): {
   readonly types: readonly Type[];

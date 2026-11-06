@@ -26,19 +26,19 @@
  *   and an alias whose body is a type `match`, keep their own rules.
  */
 
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import type { ModuleId } from '../../program/program.ts';
+import type { EntryTable } from '../../../../structures/entries/index.ts';
+import type { ModuleId } from '../../../program/program.ts';
 import {
   type TypeAliasDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import { inferTypesIn } from '../../syntax/type-matches.ts';
-import type { NamedType, TypeMatch, TypeNode } from '../../syntax/types.ts';
-import type { CheckerContext, CheckerNote } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { isMatchAlias } from '../types/computed-types.ts';
-import { namedPathOf } from '../types/written/named-paths.ts';
+} from '../../../syntax/declarations.ts';
+import { inferTypesIn } from '../../../syntax/type-matches.ts';
+import type { NamedType, TypeMatch, TypeNode } from '../../../syntax/types.ts';
+import type { CheckerContext, CheckerNote } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { isMatchAlias } from '../../types/computed-types.ts';
+import { namedPathOf } from '../../types/written/named-paths.ts';
 
 /** A reference in an alias's body to an alias that may take part in recursion. */
 interface AliasReference {

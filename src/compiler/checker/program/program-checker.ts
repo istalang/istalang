@@ -55,14 +55,14 @@ import type {
   ProgramInputs,
   RootGoals,
 } from '../context.ts';
-import { Aliases } from '../declarations/aliases.ts';
+import { Aliases } from '../declarations/aliases/index.ts';
 import { ConstantChecks } from '../declarations/constants.ts';
-import { FunctionChecks } from '../declarations/functions.ts';
-import { Layouts } from '../declarations/layout.ts';
+import { FunctionChecks } from '../declarations/functions/functions.ts';
+import { type DefaultsBody, Parameters } from '../declarations/functions/parameters.ts';
+import { writtenByReference } from '../declarations/functions/signatures.ts';
+import { StaticFunctions } from '../declarations/functions/statics.ts';
+import { Layouts } from '../declarations/layout/index.ts';
 import { ModuleChecks } from '../declarations/module-checks.ts';
-import { type DefaultsBody, Parameters } from '../declarations/parameters.ts';
-import { writtenByReference } from '../declarations/signatures.ts';
-import { StaticFunctions } from '../declarations/statics.ts';
 import { Lookup } from '../lookup/lookup.ts';
 import { declareParameter } from '../patterns/targets.ts';
 import { rootSearches } from '../resolution/conformance/conformance.ts';

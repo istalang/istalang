@@ -16,24 +16,24 @@
  *   into gives it an empty array.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import type { ModuleId } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Expression, Parameter } from '../../syntax/expressions/index.ts';
-import { isFieldsFunction } from '../../syntax/field-defaults.ts';
-import { lastName } from '../../syntax/node.ts';
-import { parameterSite, patternNamedType } from '../../syntax/parameters.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import { type NamedType, type TypeNode, unparenthesizedType } from '../../syntax/types.ts';
-import type { SignatureParameter } from '../check.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { isPack, packRestSlot, type RestSlot } from '../types/function-types.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { arrayElement, futureArgument, futureOf } from '../types/well-known.ts';
-import { patternTypeOf } from '../types/written/pattern-types.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { Expression, Parameter } from '../../../syntax/expressions/index.ts';
+import { isFieldsFunction } from '../../../syntax/field-defaults.ts';
+import { lastName } from '../../../syntax/node.ts';
+import { parameterSite, patternNamedType } from '../../../syntax/parameters.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import { type NamedType, type TypeNode, unparenthesizedType } from '../../../syntax/types.ts';
+import type { SignatureParameter } from '../../check.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { isPack, packRestSlot, type RestSlot } from '../../types/function-types.ts';
+import type { Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { arrayElement, futureArgument, futureOf } from '../../types/well-known.ts';
+import { patternTypeOf } from '../../types/written/pattern-types.ts';
 
 /** Where a function's defaults are checked: one body, seeing each parameter once declared. */
 export interface DefaultValues {

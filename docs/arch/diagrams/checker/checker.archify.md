@@ -13,7 +13,7 @@ The checker is a **lazy, incremental query engine** over one immutable Program. 
 @source context title="CheckerContext and ProgramInputs" path=src/compiler/checker/context.ts lines=77:171
 @source programchecker title="ProgramChecker wiring" path=src/compiler/checker/program/program-checker.ts lines=113:231
 @source bodychecker title="BodyChecker: expression, fit, record" path=src/compiler/checker/body/body-checker.ts lines=91:296
-@source functions title="FunctionChecks: results and bodies as entries" path=src/compiler/checker/declarations/functions.ts lines=44:111
+@source functions title="FunctionChecks: results and bodies as entries" path=src/compiler/checker/declarations/functions/functions.ts lines=44:111
 @source modulechecks title="ModuleChecks: module and item entries" path=src/compiler/checker/declarations/module-checks.ts lines=29:98
 @source handlers title="Expression handler table" path=src/compiler/checker/expressions/expressions.ts lines=88:127
 @source calls title="checkCall: callee kinds" path=src/compiler/checker/expressions/calls.ts lines=63:101

@@ -38,7 +38,7 @@ import {
   wholeWrittenTypeOf,
   writtenByReference,
   writtenTypeOf,
-} from '../declarations/signatures.ts';
+} from '../declarations/functions/signatures.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { declareParameter } from '../patterns/targets.ts';
 import type { Produced } from '../rules/agreement.ts';

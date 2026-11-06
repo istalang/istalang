@@ -20,35 +20,35 @@
  * ProgramChecker composes this unit and answers the layout queries through it.
  */
 
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import { sameItems } from '../../../structures/equality.ts';
-import { memo } from '../../../structures/memo.ts';
+import type { EntryTable } from '../../../../structures/entries/index.ts';
+import { sameItems } from '../../../../structures/equality.ts';
+import { memo } from '../../../../structures/memo.ts';
 import type {
   DeclaredStruct,
   EnumDeclaration,
   Field,
   FunctionDeclaration,
   Variant,
-} from '../../syntax/declarations.ts';
-import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
-import type { Invalid } from '../../syntax/node.ts';
-import type { VariantMember } from '../check.ts';
-import type { CheckerContext, CheckerNote } from '../context.ts';
-import { type FieldedDeclaration, TypeExpansion } from '../rules/expansion/types.ts';
-import { unfolded } from '../types/computed-types.ts';
-import { inFieldOrder } from '../types/field-order.ts';
-import { sameTypeSpelled } from '../types/parts/type-parts.ts';
-import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
+} from '../../../syntax/declarations.ts';
+import { fieldsFunctionOf } from '../../../syntax/field-defaults.ts';
+import type { Invalid } from '../../../syntax/node.ts';
+import type { VariantMember } from '../../check.ts';
+import type { CheckerContext, CheckerNote } from '../../context.ts';
+import { type FieldedDeclaration, TypeExpansion } from '../../rules/expansion/types.ts';
+import { unfolded } from '../../types/computed-types.ts';
+import { inFieldOrder } from '../../types/field-order.ts';
+import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
+import { type Substitution, substitute, substitutionFor } from '../../types/substitution.ts';
 import {
   type AnonymousStructType,
   type FieldMember,
   type NominalType,
   shapeType,
   type Type,
-} from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import type { TypeRules } from '../types/type-rules.ts';
-import { declaredFields } from '../types/written/declared-fields.ts';
+} from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import type { TypeRules } from '../../types/type-rules.ts';
+import { declaredFields } from '../../types/written/declared-fields.ts';
 
 /** Whether two lists of fields name, type and declare their fields alike, in order. */
 const sameFields = sameItems<FieldMember>(
@@ -75,7 +75,7 @@ export class Layouts {
     this.#checker = checker;
     // A layout reached again while its fields' defaults are checked, as when a default builds the
     // struct it belongs to, stands for its fields with those its defaults type read as the error
-    // type; the cycle is reported at the defaults (parameters.ts).
+    // type; the cycle is reported at the defaults (functions/parameters.ts).
     this.#fields = checker.entries.table({
       name: 'declared fields',
       compute: (declaration) =>

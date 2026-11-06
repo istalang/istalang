@@ -6,7 +6,8 @@
  * struct or enum a field's type names, at any depth, gives that type's parameters arguments built
  * from the declaring type's own. A field making an expanding edge on a cycle is endless: it is
  * reported where its declaration's layout is made, once, and the layout reads its type as the
- * error type (layout.ts), so every walk over types meets finitely many instantiations.
+ * error type (declarations/layout/index.ts), so every walk over types meets finitely many
+ * instantiations.
  *
  * Edges come from fields' written types alone, which resolve without checking any code. A field
  * typed by its default has a type only once the default is checked, which may itself need the

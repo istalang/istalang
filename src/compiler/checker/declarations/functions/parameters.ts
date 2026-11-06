@@ -11,17 +11,17 @@
  *   a default read as the error type (structures/entries/); its defaults keep their checking.
  */
 
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import { sameItems } from '../../../structures/equality.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
-import { writesType } from '../../syntax/parameters.ts';
-import type { SignatureParameter } from '../check.ts';
-import type { CheckerContext, CheckerNote } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { CheckedBody } from '../surface/checked-body.ts';
-import type { RestSlot } from '../types/function-types.ts';
-import { sameTypeSpelled } from '../types/parts/type-parts.ts';
+import type { EntryTable } from '../../../../structures/entries/index.ts';
+import { sameItems } from '../../../../structures/equality.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import { writesType } from '../../../syntax/parameters.ts';
+import type { SignatureParameter } from '../../check.ts';
+import type { CheckerContext, CheckerNote } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { CheckedBody } from '../../surface/checked-body.ts';
+import type { RestSlot } from '../../types/function-types.ts';
+import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { type DefaultValues, declaredParameters, writtenParameters } from './signatures.ts';
 
 /** A body in which a function's defaults are checked, and what checking `values` found. */
