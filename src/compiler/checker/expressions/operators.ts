@@ -14,7 +14,7 @@
  *   left side's type is what the right one is expected to have, so `x == none` reads naturally.
  *   One whose sides' types fix its value is decided (expressions/decided-conditions.ts).
  * - `and`, `or` and `not` take and give `Bool`; they short-circuit, so they are never calls.
- * - `??` works on optionals (optionals.ts).
+ * - `??` works on optionals (access/optionals.ts).
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
@@ -46,8 +46,8 @@ import type { Type } from '../types/type/index.ts';
 import { boolType, isPrimitive } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalOrBase, writtenLiteral } from '../types/unions/unions.ts';
+import { checkNullish } from './access/optionals.ts';
 import { checkEquality } from './decided-conditions.ts';
-import { checkNullish } from './optionals.ts';
 
 export function checkBinary(context: BodyContext, node: Binary, expected: Type | undefined): Type {
   const link = comparisonLinkOf(node);

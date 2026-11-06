@@ -10,7 +10,7 @@
  *   among them, falls on the iterable, not the whole loop.
  * - How each iteration runs is recorded (`IterationForm`): through its cursor, of its items' type,
  *   or, for a spread of the collection its literal builds, copied whole
- *   (expressions/collections.ts).
+ *   (expressions/collections/collections.ts).
  * - A loop's targets take each item apart as a declaration's do (§3.15): a map's items are
  *   `(key, value)`, so `for key, value in m:` works directly.
  */

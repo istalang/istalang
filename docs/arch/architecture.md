@@ -117,7 +117,12 @@ src/
       rules/                                                     semantic rules: derived JSON codecs, annotations, compile-time computation,
                                                                  what externs may take, disposal, must-use, `drop`
       declarations/ closures/ expressions/ statements/           per-construct rules; closures/: the functions a body nests (§3.14), their
-                                                                 scopes, returns and captures, lambdas and local fns, function values
+                                                                 scopes, returns and captures, lambdas and local fns, function values;
+                                                                 expressions/: the handler table, calls, operators and the literals of
+                                                                 items at its root, then by family: structs/ (struct and variant
+                                                                 literals, struct comprehensions), collections/ (collection literals,
+                                                                 array comprehensions), control/ (branching, `match`, `?`, `await`,
+                                                                 `select`, `spawn`), access/ (names, members, indexing, `*`, optionals)
       lookup/                                                    what tools ask by position (denotation.ts): what a name denotes, the field a
                                                                  String literal names as a key (key-denotations.ts), the body holding a node,
                                                                  a written type's type, a type's members

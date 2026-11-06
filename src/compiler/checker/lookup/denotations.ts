@@ -30,7 +30,7 @@ import type { Hold } from '../../syntax/statements.ts';
 import { nestsFunction, parentOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
-import { declaredOutsideBodies } from '../expressions/names.ts';
+import { declaredOutsideBodies } from '../expressions/access/names.ts';
 import { namedType } from '../resolution/named.ts';
 import type { Denotation, JoinedBody } from '../surface/denotation.ts';
 import { associatedDeclarationsOn } from '../traits/known-constraints.ts';

@@ -59,7 +59,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 ## 2. Solutions Hard-Coded for Specific Types Instead of Generic Mechanisms
 
-### 2.1 `Error{...}` Default `trace` Field (`src/compiler/checker/expressions/literal-fields.ts`)
+### 2.1 `Error{...}` Default `trace` Field (`src/compiler/checker/expressions/structs/literal-fields.ts`)
 
 - **Hard-coded behavior:** `checkLiteralFields` checks whether the target declaration is `prelude.Error` (`wellKnown.error`) and the field name is `'trace'`. When omitted, it records a special `FieldSource = { kind: 'trace' }` variant (`src/compiler/checker/check.ts`) that `src/compiler/checker/declarations/computation.ts` refuses at compile time and `src/compiler/lowering/expressions/structs.ts` lowers to a call to `prelude._trace()`.
 - **Generic mechanism:** Support default field expressions on `struct` declarations (`trace: string = _trace()`), matching function parameter defaults (spec §3.3). That removes `TraceSource` and `errorTrace` from the compiler.
@@ -67,7 +67,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 ### 2.2 `@JsonSkip` Restricted to 3 Hard-Coded Types (`src/compiler/checker/rules/annotations.ts`, `src/compiler/lowering/boundary/decoder.ts`)
 
 - **Hard-coded behavior:** `annotations.ts` hard-codes a 3-entry table (`[wellKnown.optional, 'none']`, `[wellKnown.array, 'array']`, `[wellKnown.map, 'map']`), and `Decoder` in `src/compiler/lowering/boundary/decoder.ts` switches on `'none' | 'array' | 'map'` to emit construction instructions. Any other type — even one implementing the built-in `Default` trait (`trait Default: fn Self.default() -> Self`) — is rejected.
-- **Generic mechanism:** `Array` and `Map` already implement `Default` in `src/stdlib/prelude/prelude.ista`, and `checkDeclaredLiteral` (`src/compiler/checker/expressions/collections.ts`) already resolves `T.default()` for arbitrary user types. Resolving `T.default()` (plus `Optional.default() -> None`) for `@JsonSkip` fields allows `@JsonSkip` on any `Default` type and lets `Decoder` emit a single call to the resolved `FunctionCall`.
+- **Generic mechanism:** `Array` and `Map` already implement `Default` in `src/stdlib/prelude/prelude.ista`, and `checkDeclaredLiteral` (`src/compiler/checker/expressions/collections/collections.ts`) already resolves `T.default()` for arbitrary user types. Resolving `T.default()` (plus `Optional.default() -> None`) for `@JsonSkip` fields allows `@JsonSkip` on any `Default` type and lets `Decoder` emit a single call to the resolved `FunctionCall`.
 
 ### 2.3 `@JsonBigInt` Hard-Coded to Bare `int` (`src/compiler/checker/rules/annotations.ts`, `src/compiler/checker/rules/json-forms/index.ts`)
 

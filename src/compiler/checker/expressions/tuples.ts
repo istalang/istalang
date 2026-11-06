@@ -1,6 +1,6 @@
 /**
  * Tuples (§3.15): `(a, b)` builds one, `()` is `Unit`, and `t.0` reads an element by position,
- * also as a link of an optional chain (optionals.ts).
+ * also as a link of an optional chain (access/optionals.ts).
  *
  * An expected tuple of the same size guides each element, and an element that fits its guide,
  * by the implicit wrap into `T?` included (§2), takes the guide's type: `(1, none)` is an

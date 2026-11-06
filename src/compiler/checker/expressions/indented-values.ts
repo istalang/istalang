@@ -1,7 +1,7 @@
 /**
  * Indented values (§2): what a block builds is decided by the type it is built as, then the block
  * is checked as the brace or bracket literal it reads as (syntax/expressions/indented-values.ts),
- * so every rule of literals keeps its one home (structs.ts, collections.ts).
+ * so every rule of literals keeps its one home (structs/structs.ts, collections/collections.ts).
  *
  * - `T:` naming a struct, a variant, or an alias of a struct or a shape builds a struct, `T{…}`;
  *   naming any other type, a map or an array of that type, as `[…]` built where `T` is expected.
@@ -37,7 +37,7 @@ import type { Type } from '../types/type/index.ts';
 import { errorType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalType, membersOf } from '../types/unions/unions.ts';
-import { aliasedShape } from './literal-types.ts';
+import { aliasedShape } from './structs/literal-types.ts';
 
 /** What a value is built as, and the type its literal is checked against. */
 interface Building {

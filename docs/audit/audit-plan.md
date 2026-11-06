@@ -154,7 +154,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 3. **Remove `walk.downcasts` side channel & move `unparenthesized` for patterns to `syntax/patterns.ts` (D214 — `syntax/patterns.ts`, `checker/patterns/walk.ts`):**
    - Export `unparenthesizedPattern(node: Pattern): Pattern` from `src/compiler/syntax/patterns.ts`.
    - Have `walk.take` in `checker/patterns/walk.ts` return both `{ shape, part }` (or pass the narrowed `ValuePart` directly to `AsPattern`) so `walk.downcasts` is deleted.
-4. **Prelude-invariant implicit calls without fake user diagnostics (B11 — `checker/resolution/implicit.ts`, `checker/patterns/matching.ts`, `checker/expressions/optionals.ts`, `checker/expressions/templates.ts`):**
+4. **Prelude-invariant implicit calls without fake user diagnostics (B11 — `checker/resolution/implicit.ts`, `checker/patterns/matching.ts`, `checker/expressions/access/optionals.ts`, `checker/expressions/templates.ts`):**
    - Add a `preludeCall` helper (or make `failure` optional for prelude-owned calls) in `src/compiler/checker/resolution/implicit.ts` that calls `unreachable` if a toolchain-owned prelude function (`panic`, `_inclusiveEnd`, `length`, `_patternItem`, `_patternRest`, `compare`, `join`) is missing, removing the bogus user-diagnostic callbacks at those call sites.
 5. **Fix case-less `select:` with `else:` in lowering (D149 — `lowering/expressions/select.ts`):**
    - When `cases.length === 0` and `node.elseClause !== undefined`, lower `node.elseClause.body` directly without emitting an empty `select` instruction (which `definition/instructions/suspension.ts` rejects).
@@ -265,7 +265,7 @@ Three agents in parallel, one worktree each. Wave 2 crosses contracts, so owners
 
 | Group | Items | Owns |
 | --- | --- | --- |
-| G — checker↔lowering contract | 1 (Q13), 2 (Q1, Q2), 8 (Q12, Q19); Q11's `lowering/places.ts` part | `checker/check.ts`, `checker/context.ts`, `checker/body-checker.ts`, `checker/expressions/structs.ts`, `lowering/`, `.dependency-cruiser.mjs`; the `entityOf` rename at its callers anywhere in `checker/` |
+| G — checker↔lowering contract | 1 (Q13), 2 (Q1, Q2), 8 (Q12, Q19); Q11's `lowering/places.ts` part | `checker/check.ts`, `checker/context.ts`, `checker/body-checker.ts`, `checker/expressions/structs/structs.ts`, `lowering/`, `.dependency-cruiser.mjs`; the `entityOf` rename at its callers anywhere in `checker/` |
 | H — checker expressions, operators, resolution | 6 (B8), 7 (B11), 9, 10; Q8, Q11 (but `lowering/places.ts`), Q24 | `compiler/syntax/`, the rest of `checker/`; additive edits to `check.ts`'s `ValueSite`/`IterationForm` for B8 |
 | I — cross-phase wiring, test modules | 3 (Q15–Q18, Q25), 4 (B2), 11 (Q26), 12; Q20, Q22, Q23, Q27 | `runtime/`, `stdlib/`, `definition/`, `language/`, `cli/`, `compiler/scanner/`, `program.test-kit.ts`, parse and check tests |
 

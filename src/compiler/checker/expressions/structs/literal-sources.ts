@@ -10,12 +10,12 @@ import type {
   Expression,
   FieldsLiteral,
   StructComprehension,
-} from '../../syntax/expressions/index.ts';
-import type { LiteralSources } from '../body-context.ts';
-import type { Pass, Passes, PassTable } from '../passes.ts';
-import type { FieldSource } from '../surface/checked-body.ts';
-import type { FunctionCall, MadeCall } from '../surface/resolved-call.ts';
-import type { FieldMember } from '../types/type/index.ts';
+} from '../../../syntax/expressions/index.ts';
+import type { LiteralSources } from '../../body-context.ts';
+import type { Pass, Passes, PassTable } from '../../passes.ts';
+import type { FieldSource } from '../../surface/checked-body.ts';
+import type { FunctionCall, MadeCall } from '../../surface/resolved-call.ts';
+import type { FieldMember } from '../../types/type/index.ts';
 
 /**
  * The struct literals of one body, each with the fields it builds and where their values come

@@ -19,7 +19,7 @@ They meet on **node identity**. The binder memoizes one `VariableEntity` per dec
 @source links title="ModuleLinks and resolvedImport" path=src/compiler/binder/link/module-links.ts lines=15:33
 @source inputs title="recordedBindings: each answer an entry input" path=src/compiler/checker/program/program-inputs.ts lines=67:95
 @source variables title="VariableScope and checkVariableDeclaration" path=src/compiler/checker/statements/variables.ts lines=36:149
-@source names title="checkName, variableType, declaredOutsideBodies" path=src/compiler/checker/expressions/names.ts lines=24:98
+@source names title="checkName, variableType, declaredOutsideBodies" path=src/compiler/checker/expressions/access/names.ts lines=24:98
 @source functions title="FunctionScopes.noteUse: captures" path=src/compiler/checker/closures/functions.ts lines=30:103
 @source passes title="Passes and PassTable" path=src/compiler/checker/passes.ts lines=27:198
 @source targets title="declareTargets" path=src/compiler/checker/patterns/targets.ts lines=15:26

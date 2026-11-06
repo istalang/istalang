@@ -4,15 +4,15 @@
  * apart by `?`; `??` and `match` do that (§4).
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
-import type { Propagate } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../body-context.ts';
-import { stoppedOperation } from '../calls/stopped-operations.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
+import { wellKnown } from '../../../../language/well-known.ts';
+import type { Propagate } from '../../../syntax/expressions/index.ts';
+import type { BodyContext } from '../../body-context.ts';
+import { stoppedOperation } from '../../calls/stopped-operations.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { wellKnownArguments } from '../../types/well-known.ts';
 
 export function checkPropagate(context: BodyContext, node: Propagate): Type {
   const type = context.expression(node.operand);

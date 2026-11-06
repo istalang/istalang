@@ -15,20 +15,20 @@
  *   on the function's own name, not through a variable holding that future.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
-import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
-import type { Expression, Select, SelectCase } from '../../syntax/expressions/index.ts';
-import { selectCasesOf, unparenthesized } from '../../syntax/expressions/readings.ts';
-import type { Accepts, BodyContext } from '../body-context.ts';
-import { ownCallerOf } from '../closures/own-calls.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { checkDiscarded } from '../rules/disposal/must-use.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { futureArgument } from '../types/well-known.ts';
+import { wellKnown } from '../../../../language/well-known.ts';
+import { valueBranchesOf } from '../../../syntax/expressions/branches.ts';
+import type { Expression, Select, SelectCase } from '../../../syntax/expressions/index.ts';
+import { selectCasesOf, unparenthesized } from '../../../syntax/expressions/readings.ts';
+import type { Accepts, BodyContext } from '../../body-context.ts';
+import { ownCallerOf } from '../../closures/own-calls.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { checkDiscarded } from '../../rules/disposal/must-use.ts';
+import type { Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { futureArgument } from '../../types/well-known.ts';
 import { reportWait } from './await.ts';
-import { Branches, branchesAccepts } from './control/branches.ts';
+import { Branches, branchesAccepts } from './branches.ts';
 
 export function checkSelect(context: BodyContext, node: Select, expected: Type | undefined): Type {
   reportForm(context, node);

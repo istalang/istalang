@@ -250,7 +250,7 @@ export interface Variables {
   readonly recordAssigned: (assignment: Assignment, parts: readonly AssignedPart[]) => void;
 }
 
-/** Where each struct or variant literal's fields get values (expressions/literal-fields.ts). */
+/** Where each struct or variant literal's fields get values (expressions/structs/literal-fields.ts). */
 export interface LiteralSources {
   readonly record: (literal: FieldsLiteral, sources: readonly FieldSource[]) => void;
   /** Records the fields `literal` builds, typed by the type arguments found for it. */
@@ -319,7 +319,7 @@ export interface ImplicitRecord {
   readonly of: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;
 }
 
-/** What each collection literal builds (expressions/collections.ts). */
+/** What each collection literal builds (expressions/collections/collections.ts). */
 export interface CollectionRecord {
   readonly record: (literal: ArrayLiteral | MapLiteral, form: CollectionForm) => void;
 }
@@ -330,8 +330,9 @@ export interface IterationRecord {
 }
 
 /**
- * How each field read reaches its field (expressions/member-access.ts), which a place reaching it
- * asks again: a field a key reads is a place's field, never an element (calls/places.ts).
+ * How each field read reaches its field (expressions/access/member-access.ts), which a place
+ * reaching it asks again: a field a key reads is a place's field, never an element
+ * (calls/places.ts).
  */
 export interface FieldReadRecord {
   readonly record: (reading: FieldReading, read: FieldRead) => void;
@@ -343,7 +344,7 @@ export interface PatternRecord {
   readonly record: (pattern: Pattern, checked: CheckedPattern) => void;
 }
 
-/** The links of optional chains (expressions/optionals.ts). */
+/** The links of optional chains (expressions/access/optionals.ts). */
 export interface Chains {
   /**
    * Checks the target of `link`'s step; the type the step works on: the value a chained target

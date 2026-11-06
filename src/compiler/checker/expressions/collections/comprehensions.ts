@@ -13,9 +13,9 @@
  * an array of `Never` with nothing expected.
  */
 
-import type { Comprehension, FieldComprehension } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../body-context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Comprehension, FieldComprehension } from '../../../syntax/expressions/index.ts';
+import type { BodyContext } from '../../body-context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import {
   agreedType,
   decidedSoFar,
@@ -23,13 +23,13 @@ import {
   producedBy,
   settleProduced,
   wholeWidened,
-} from '../rules/agreement.ts';
-import { checkedFieldPasses, inFieldPasses } from '../rules/loops/field-passes.ts';
-import { checkLoopOver } from '../rules/loops/iteration.ts';
-import type { Type } from '../types/type/index.ts';
-import { boolType, neverType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { arrayOf } from '../types/well-known.ts';
+} from '../../rules/agreement.ts';
+import { checkedFieldPasses, inFieldPasses } from '../../rules/loops/field-passes.ts';
+import { checkLoopOver } from '../../rules/loops/iteration.ts';
+import type { Type } from '../../types/type/index.ts';
+import { boolType, neverType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { arrayOf } from '../../types/well-known.ts';
 import { expectedArrayItem } from './collections.ts';
 
 export function checkComprehension(

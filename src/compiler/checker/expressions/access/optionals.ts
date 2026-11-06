@@ -17,20 +17,20 @@
  *   member took `None` whole, such as `any Sendable`; anything else is reported.
  */
 
-import { panicFunction } from '../../../language/well-known.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import { type ChainStep, chainStepOf, isOptionalStep } from '../../syntax/expressions/chains.ts';
-import type { Binary, Expression, Unwrap } from '../../syntax/expressions/index.ts';
-import type { BodyContext, Chains } from '../body-context.ts';
-import { stoppedOperation } from '../calls/stopped-operations.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Pass, Passes, PassTable } from '../passes.ts';
-import { preludeCall } from '../resolution/implicit.ts';
-import type { ChainLink } from '../surface/checked-body.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType, isPrimitive, stringType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { optionalOf, presentType } from '../types/unions/unions.ts';
+import { panicFunction } from '../../../../language/well-known.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import { type ChainStep, chainStepOf, isOptionalStep } from '../../../syntax/expressions/chains.ts';
+import type { Binary, Expression, Unwrap } from '../../../syntax/expressions/index.ts';
+import type { BodyContext, Chains } from '../../body-context.ts';
+import { stoppedOperation } from '../../calls/stopped-operations.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../../passes.ts';
+import { preludeCall } from '../../resolution/implicit.ts';
+import type { ChainLink } from '../../surface/checked-body.ts';
+import type { Type } from '../../types/type/index.ts';
+import { errorType, isPrimitive, stringType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { optionalOf, presentType } from '../../types/unions/unions.ts';
 
 /**
  * The links of optional chains in one body: what each one's step works on, and the value it

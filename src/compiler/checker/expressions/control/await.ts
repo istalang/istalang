@@ -4,15 +4,15 @@
  * function's call is disposed, an await stops the call instead (§7), which is warned about.
  */
 
-import type { Await } from '../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext } from '../body-context.ts';
-import { stoppedOperation } from '../calls/stopped-operations.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { futureArgument, futureOf } from '../types/well-known.ts';
+import type { Await } from '../../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { BodyContext } from '../../body-context.ts';
+import { stoppedOperation } from '../../calls/stopped-operations.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { futureArgument, futureOf } from '../../types/well-known.ts';
 
 export function checkAwait(context: BodyContext, node: Await, expected: Type | undefined): Type {
   reportWait(context, node.span);

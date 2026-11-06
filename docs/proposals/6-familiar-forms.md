@@ -155,7 +155,7 @@ Two annotations the prelude declares, ordinary structs as every annotation is (Â
 2. **Narrowing.**
    - **Where tests hold:** the checker already knows where an `is` binding exists. The same flow rules (`checker/flow/forward.ts`, one table of how each construct runs) give where a test holds and where it fails.
    - **The type a test leaves:** what a pattern selects comes from `checker/patterns/members.ts`, and what it leaves from `patterns/remaining.ts`. Narrowing reads both, so no second rule says what a pattern selects.
-   - **Reading a name:** a name read inside the region takes the narrowed type through the one lookup of a name's type (`checker/expressions/names.ts`). Field paths follow `checked-field.ts`.
+   - **Reading a name:** a name read inside the region takes the narrowed type through the one lookup of a name's type (`checker/expressions/access/names.ts`). Field paths follow `checked-field.ts`.
    - **Lowering** needs nothing: a narrowed `T?` holds its value as a `T` already (`lowering/optionals.ts` reads it).
    - **Tools:** hover and inlay hints show the narrowed type at the use.
 3. **`@AliasFor` and `@Warn`.**

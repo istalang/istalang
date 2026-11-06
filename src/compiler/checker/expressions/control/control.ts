@@ -7,16 +7,16 @@
  * neither checked nor lowered, and doesn't take part in the `if`'s type.
  */
 
-import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
-import type { Expression, If } from '../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext } from '../body-context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { isAssignable } from '../types/identity/identity.ts';
-import type { Type } from '../types/type/index.ts';
-import { boolType, unitType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { Branches, branchesAccepts } from './control/branches.ts';
-import { decidedValue } from './decided-conditions.ts';
+import { valueBranchesOf } from '../../../syntax/expressions/branches.ts';
+import type { Expression, If } from '../../../syntax/expressions/index.ts';
+import type { Accepts, BodyContext } from '../../body-context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { isAssignable } from '../../types/identity/identity.ts';
+import type { Type } from '../../types/type/index.ts';
+import { boolType, unitType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { decidedValue } from '../decided-conditions.ts';
+import { Branches, branchesAccepts } from './branches.ts';
 
 export function checkIf(context: BodyContext, node: If, expected: Type | undefined): Type {
   const branches = new Branches(context, expected);

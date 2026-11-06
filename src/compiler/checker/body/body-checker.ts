@@ -61,8 +61,10 @@ import { inferLambda } from '../closures/lambdas.ts';
 import { declareOwnCall } from '../closures/own-calls.ts';
 import { blockTail, ReturnScope } from '../closures/returns.ts';
 import type { CheckerContext } from '../context.ts';
+import { FieldReads } from '../expressions/access/member-access.ts';
+import { OptionalChains } from '../expressions/access/optionals.ts';
 import { builtAsChecked, builtMember } from '../expressions/built-members.ts';
-import { CollectionForms } from '../expressions/collections.ts';
+import { CollectionForms } from '../expressions/collections/collections.ts';
 import {
   acceptedPartOf,
   acceptsOf,
@@ -71,9 +73,7 @@ import {
   isBuiltLiteral,
 } from '../expressions/expressions.ts';
 import { argumentPartOf } from '../expressions/literal-items.ts';
-import { StructLiterals } from '../expressions/literal-sources.ts';
-import { FieldReads } from '../expressions/member-access.ts';
-import { OptionalChains } from '../expressions/optionals.ts';
+import { StructLiterals } from '../expressions/structs/literal-sources.ts';
 import type { FieldPassType } from '../passes.ts';
 import { Passes } from '../passes.ts';
 import { CheckedPatterns } from '../patterns/matching.ts';

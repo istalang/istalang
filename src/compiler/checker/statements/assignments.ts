@@ -17,7 +17,7 @@
  *   several fields reads takes a value fitting each of them (§3.9), which converts into whichever
  *   the key names once its fields are concrete: its part records that, not one conversion
  *   (`WrittenFit`), since an instantiation may leave the key one name or several.
- * - `*x = v` writes the value behind the handle `x` whole (§3.9; expressions/dereference.ts), as
+ * - `*x = v` writes the value behind the handle `x` whole (§3.9; expressions/access/dereference.ts), as
  *   its one part.
  * - `_` as a target holds the value without a name, so it records no part to write (§3.4).
  * - Taking a value apart writes each place once: no target is another's place, or a part of it,

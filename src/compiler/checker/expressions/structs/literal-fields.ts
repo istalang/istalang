@@ -30,32 +30,32 @@ import {
   hasDefault,
   type TypeAliasDeclaration,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
+} from '../../../syntax/declarations.ts';
 import type {
   Expression,
   FieldItem,
   FieldsLiteral,
   Spread,
-} from '../../syntax/expressions/index.ts';
-import { itemName, itemValue, unparenthesized } from '../../syntax/expressions/readings.ts';
-import { lastName } from '../../syntax/node.ts';
-import type { NamedType } from '../../syntax/types.ts';
-import type { BodyContext } from '../body-context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { completeInference } from '../inference/complete.ts';
-import { Inference } from '../inference/infer.ts';
-import { callWithTypes } from '../resolution/silent-choice.ts';
-import type { FunctionCall } from '../surface/resolved-call.ts';
-import { itemField } from '../surface/struct-items.ts';
-import { parametersIn } from '../types/parts/type-parts.ts';
-import { type Substitution, substitute } from '../types/substitution.ts';
-import type { FieldMember, ParameterKey, Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { writtenLiteral } from '../types/unions/unions.ts';
-import { givenKeysOwner } from '../types/written/key-types.ts';
-import { parameterType } from '../types/written/resolve-type.ts';
-import { constrainArguments, typeArgumentsFor } from '../types/written/type-arguments.ts';
+} from '../../../syntax/expressions/index.ts';
+import { itemName, itemValue, unparenthesized } from '../../../syntax/expressions/readings.ts';
+import { lastName } from '../../../syntax/node.ts';
+import type { NamedType } from '../../../syntax/types.ts';
+import type { BodyContext } from '../../body-context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { completeInference } from '../../inference/complete.ts';
+import { Inference } from '../../inference/infer.ts';
+import { callWithTypes } from '../../resolution/silent-choice.ts';
+import type { FunctionCall } from '../../surface/resolved-call.ts';
+import { itemField } from '../../surface/struct-items.ts';
+import { parametersIn } from '../../types/parts/type-parts.ts';
+import { type Substitution, substitute } from '../../types/substitution.ts';
+import type { FieldMember, ParameterKey, Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { writtenLiteral } from '../../types/unions/unions.ts';
+import { givenKeysOwner } from '../../types/written/key-types.ts';
+import { parameterType } from '../../types/written/resolve-type.ts';
+import { constrainArguments, typeArgumentsFor } from '../../types/written/type-arguments.ts';
 import { type LiteralGiven, sourcesOf } from './literal-sources.ts';
 import { checkComprehended, comprehendedGiven, fitComprehended } from './struct-comprehensions.ts';
 

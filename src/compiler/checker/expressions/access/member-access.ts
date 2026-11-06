@@ -4,39 +4,39 @@
  * - Reading `s.f` gives the field's type, substituted for the struct's type arguments; through a
  *   type parameter, a field a constraint requires (§3.10). A member that isn't a field is
  *   reported as unknown here, or, when it is a field of the value behind a handle, as to be read
- *   with `->` (§3.9); a call of one is a method call (calls.ts). How each read reaches its field
+ *   with `->` (§3.9); a call of one is a method call (../calls.ts). How each read reaches its field
  *   is recorded for lowering (`FieldReads`, checked-field.ts).
  * - A member qualified by a namespace or a type is what it names there: a variant, a function as
  *   a value, a constant; a type's member naming nothing is no static function of it. One cut
  *   short or not exported was reported already, so it reads as nothing (`readsNothing`).
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { isMethod as isMethodDeclaration } from '../../syntax/declarations.ts';
-import { linkOperator } from '../../syntax/expressions/chains.ts';
-import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts';
-import { isMissingName } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { Accepts, BodyContext, FieldReadRecord } from '../body-context.ts';
-import { stoppedOperation } from '../calls/stopped-operations.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import { isMethod as isMethodDeclaration } from '../../../syntax/declarations.ts';
+import { linkOperator } from '../../../syntax/expressions/chains.ts';
+import type { Expression, MemberAccess } from '../../../syntax/expressions/index.ts';
+import { isMissingName } from '../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { Accepts, BodyContext, FieldReadRecord } from '../../body-context.ts';
+import { stoppedOperation } from '../../calls/stopped-operations.ts';
 import {
   checkFunctionValue,
   functionsAccepted,
   namedFunctions,
-} from '../closures/function-values.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Pass, Passes, PassTable } from '../passes.ts';
-import { topLevelCandidates } from '../resolution/choosing/candidates.ts';
-import { namedType, nameNodeOf } from '../resolution/named.ts';
-import type { FieldRead, FieldReading, FoundField } from '../surface/checked-field.ts';
-import { fieldOf } from '../traits/known-fields.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { insideOptional } from '../types/unions/inside-optional.ts';
-import { optionalInner } from '../types/unions/unions.ts';
+} from '../../closures/function-values.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../../passes.ts';
+import { topLevelCandidates } from '../../resolution/choosing/candidates.ts';
+import { namedType, nameNodeOf } from '../../resolution/named.ts';
+import type { FieldRead, FieldReading, FoundField } from '../../surface/checked-field.ts';
+import { fieldOf } from '../../traits/known-fields.ts';
+import type { Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { insideOptional } from '../../types/unions/inside-optional.ts';
+import { optionalInner } from '../../types/unions/unions.ts';
+import { checkVariantName } from '../structs/variants.ts';
 import { entityValueType } from './names.ts';
-import { checkVariantName } from './variants.ts';
 
 export function checkMemberAccess(
   context: BodyContext,

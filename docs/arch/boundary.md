@@ -112,7 +112,7 @@ encoder, the entry of the codec writing the declared result (`boundary/starts.ts
 instance keeps for life and its segment calls with the outcome on top of the root's last frame as
 it returns, so what that frame holds is disposed after (`scheduler/segment/outcome-encoding.ts`): a
 finished instance keeps both, the outcome for `result()` and its JSON for the host. A `spawn` names
-the codec the checker recorded for what its call gives (`checker/expressions/spawn.ts`), found once
+the codec the checker recorded for what its call gives (`checker/expressions/control/spawn.ts`), found once
 in a generic body against its constraints, so its calls count in the body's expansion (§3.5). `main` is started through its own; what a host reads of an outcome is JSON by the declared result,
 as JavaScript values (`outcome`) like everything else it exchanges, or as text (`outcomeText`),
 which `ista run` prints (`runtime/boundary/outbound.ts`).

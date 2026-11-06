@@ -7,24 +7,24 @@
  * the one member its items fit (§2).
  */
 
-import type { Entity, TypeEntity } from '../../binder/entities.ts';
-import { type DeclaredStruct, isDeclaredStruct } from '../../syntax/declarations.ts';
-import type { FieldsLiteral } from '../../syntax/expressions/index.ts';
-import { itemName, itemValue, unparenthesized } from '../../syntax/expressions/readings.ts';
-import type { NamedType } from '../../syntax/types.ts';
-import type { BodyContext } from '../body-context.ts';
-import { itemField } from '../surface/struct-items.ts';
-import { unfolded } from '../types/computed-types.ts';
-import { builtFrom } from '../types/fitting/expected.ts';
-import { substitute, substitutionFor } from '../types/substitution.ts';
-import { aliasedAs } from '../types/type/alias-uses.ts';
+import type { Entity, TypeEntity } from '../../../binder/entities.ts';
+import { type DeclaredStruct, isDeclaredStruct } from '../../../syntax/declarations.ts';
+import type { FieldsLiteral } from '../../../syntax/expressions/index.ts';
+import { itemName, itemValue, unparenthesized } from '../../../syntax/expressions/readings.ts';
+import type { NamedType } from '../../../syntax/types.ts';
+import type { BodyContext } from '../../body-context.ts';
+import { itemField } from '../../surface/struct-items.ts';
+import { unfolded } from '../../types/computed-types.ts';
+import { builtFrom } from '../../types/fitting/expected.ts';
+import { substitute, substitutionFor } from '../../types/substitution.ts';
+import { aliasedAs } from '../../types/type/alias-uses.ts';
 import {
   type AnonymousStructType,
   isNominalEntity,
   type NominalEntity,
   type Type,
-} from '../types/type/index.ts';
-import { literalOrBase, writtenLiteral } from '../types/unions/unions.ts';
+} from '../../types/type/index.ts';
+import { literalOrBase, writtenLiteral } from '../../types/unions/unions.ts';
 import { knownArguments, type LiteralShape } from './literal-fields.ts';
 
 /** What a literal naming a type builds: a declared struct, or a shape an alias names. */

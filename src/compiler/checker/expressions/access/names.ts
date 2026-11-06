@@ -1,26 +1,26 @@
 /**
  * A name used as a value (§3.4): what it means comes from the binder, and its type from where it
- * was declared. A variant's type comes from its enum (variants.ts). Types, primitives and
+ * was declared. A variant's type comes from its enum (structs/variants.ts). Types, primitives and
  * namespaces are not values; a type in value position is how a static function or a conversion is
  * called, which the call checks before it gets here. The one type that is a value is a struct
  * without fields, written bare (§3.1), which takes its type arguments from the expected type.
  */
 
-import { type Entity, localFunctionOf, type VariableEntity } from '../../binder/entities.ts';
-import type { Identifier } from '../../syntax/node.ts';
-import type { Accepts, BodyContext } from '../body-context.ts';
+import { type Entity, localFunctionOf, type VariableEntity } from '../../../binder/entities.ts';
+import type { Identifier } from '../../../syntax/node.ts';
+import type { Accepts, BodyContext } from '../../body-context.ts';
 import {
   checkFunctionValue,
   functionsAccepted,
   namedFunctions,
-} from '../closures/function-values.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { fieldlessStructOf } from '../resolution/named.ts';
-import { expectedNominal } from '../types/fitting/expected.ts';
-import { isNominalEntity, type Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { checkVariantName, variantsAccepted } from './variants.ts';
+} from '../../closures/function-values.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { fieldlessStructOf } from '../../resolution/named.ts';
+import { expectedNominal } from '../../types/fitting/expected.ts';
+import { isNominalEntity, type Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { checkVariantName, variantsAccepted } from '../structs/variants.ts';
 
 export function checkName(
   context: BodyContext,

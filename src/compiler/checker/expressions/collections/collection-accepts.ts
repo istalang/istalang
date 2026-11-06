@@ -14,19 +14,19 @@
  *   whose items, keys and values take each item with a type of its own, the others taking any.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
+import { wellKnown } from '../../../../language/well-known.ts';
 import type {
   ArrayLiteral,
   Expression,
   MapLiteral,
   Spread,
-} from '../../syntax/expressions/index.ts';
-import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../body-context.ts';
-import { agreedAccepts, agreedBuilds, allProducersAccept } from '../rules/agreement.ts';
-import { collectionTarget } from '../types/fitting/expected.ts';
-import { sameType } from '../types/identity/identity.ts';
-import type { Type } from '../types/type/index.ts';
-import { arrayElement, arrayOf, wellKnownOf } from '../types/well-known.ts';
+} from '../../../syntax/expressions/index.ts';
+import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../../body-context.ts';
+import { agreedAccepts, agreedBuilds, allProducersAccept } from '../../rules/agreement.ts';
+import { collectionTarget } from '../../types/fitting/expected.ts';
+import { sameType } from '../../types/identity/identity.ts';
+import type { Type } from '../../types/type/index.ts';
+import { arrayElement, arrayOf, wellKnownOf } from '../../types/well-known.ts';
 
 /**
  * What a spread's items have, as `read` reads its operand: an array's elements when its type is

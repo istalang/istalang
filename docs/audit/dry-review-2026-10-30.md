@@ -42,7 +42,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - **Fix:** Extract a shared resolved-application completion step in `checker/calls/` and a shared call-lowering preparation helper in `lowering/expressions/calls.ts`.
    - **Done** (`p2-structural`): `applyCall` (`resolution/applied-call.ts`) chooses, reports an ambiguity or the caller's `none`, instantiates, fits the arguments and gives the result, for `resolveCall` and `implicitCall` alike, so P2's conversion is fitted (`fitArguments`) and ranked (`choice.ts`) in one place for every call; `checkValueCall`, which chooses nothing, fits through the same `fitArguments` and explains through the same `explain`. In lowering, `preparedCall` (`lowering/expressions/calls.ts`) evaluates the callee and arguments for `lowerCall` and `lowerSpawn` (which passes all by value).
 
-6. **`[medium]` Double standards in well-known type recognition and bare generic nominal values (`src/compiler/checker/types/type-text.ts:61`, `src/compiler/checker/types/well-known.ts:74`, `src/compiler/checker/expressions/names.ts:91`, `src/compiler/checker/expressions/variants.ts:61`)**
+6. **`[medium]` Double standards in well-known type recognition and bare generic nominal values (`src/compiler/checker/types/type-text.ts:61`, `src/compiler/checker/types/well-known.ts:74`, `src/compiler/checker/expressions/access/names.ts:91`, `src/compiler/checker/expressions/structs/variants.ts:61`)**
    - `nominalTypeText` (`types/type-text.ts:61`) checks `declaration.name.text === wellKnown.optional.name` by string instead of comparing `type.entity === checker.optionalEntity`, formatting any user-declared `enum Optional<T>` as `T?`. Meanwhile `optionalInner` (`types/fitting/fit.ts:57`) and `optionalArgument` (`types/well-known.ts:74`) provide two different functions to unwrap `T?`.
    - **Done** (`p3-unions`), the unwrapping: `optionalArgument` is gone, and every reader of `T?` asks `optionalInner` (`types/fitting/fit.ts`). `nominalTypeText`'s name check goes with `Optional` itself, which proposal 3 makes the alias `T | None`, printed structurally.
    - `enumTypeFor` (`expressions/variants.ts:61–85`) unwraps optionals on `expected` (`sameEnum`) and fills default type arguments for bare generic enum variants, whereas `bareStructValue` (`expressions/names.ts:91–116`) neither unwraps optionals on `expected` nor fills default type arguments for bare fieldless generic structs.
@@ -293,7 +293,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **Manual `MatchCase` / `SelectCase` filtering in `FlowWalk` (`src/compiler/checker/flow/forward.ts`, `src/compiler/syntax/expressions/index.ts`):**
   - `constructs.Match` in `flow/forward.ts` writes `node.cases.filter((each) => each.kind === 'MatchCase')` instead of calling `casesOf(node)` (`src/compiler/syntax/expressions/index.ts`).
-  - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `flow/forward.ts`, `binder/expressions.ts`, `checker/calls/lambda-arguments.ts`, `checker/expressions/select.ts`, and `lowering/expressions/select.ts` each filter `each.kind === 'SelectCase'` by hand.
+  - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `flow/forward.ts`, `binder/expressions.ts`, `checker/calls/lambda-arguments.ts`, `checker/expressions/control/select.ts`, and `lowering/expressions/select.ts` each filter `each.kind === 'SelectCase'` by hand.
   - **Done** (`fast-wins`): `FlowWalk` calls `casesOf`; `selectCasesOf` beside it serves the five select sites.
 - **Three separate implementations of negative numeric literal unwrapping (`src/compiler/checker/patterns/matching.ts`, `patterns/shapes.ts`, `rules/computation.ts`):**
   - `intValueOf` (`patterns/matching.ts`), `literalKey` (`patterns/shapes.ts`), and `Computation.#own` / `isNumberLiteral` (`rules/computation.ts`) each inspect `Unary` with `operator === '-'` over numeric literals independently (and `literalKey` formats `-0` as `'-IntegerLiteral:0'` vs. `'IntegerLiteral:0'` for `0`, even though `-0 == 0`).
@@ -327,17 +327,17 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 20. `src/compiler/checker/expressions/`, `src/compiler/checker/statements/` & `src/compiler/checker/lookup/`
 
-- **Double standard between bare generic fieldless structs (`bareStructValue`) and bare generic enum variants (`enumTypeFor`) (`src/compiler/checker/expressions/names.ts`, `expressions/variants.ts`):**
+- **Double standard between bare generic fieldless structs (`bareStructValue`) and bare generic enum variants (`enumTypeFor`) (`src/compiler/checker/expressions/access/names.ts`, `expressions/variants.ts`):**
   - `enumTypeFor` (`variants.ts`) unwraps optionals on `expected` via `sameEnum` and fills default type arguments via `typeArgumentsFor` when all type parameters have defaults.
   - `bareStructValue` (`names.ts`) checks `expected?.kind === 'nominal' && expected.entity.declaration === declaration` without unwrapping optionals (`withoutOptionals`), and rejects any generic fieldless struct when `expected` is absent even when all of its type parameters have defaults.
   - **Done** (`p3-unions`): `expectedNominal` (`types/fitting/expected.ts`) gives a value named without type arguments, a bare variant or a fieldless generic struct, the type the expected one asks for through its optionals, else its declaration's defaults; generic struct literals read their type arguments through the expected optionals too (`builtFrom`).
 - **Duplicate field-declaration resolution in `Annotations.#fieldType` (`src/compiler/checker/rules/annotations.ts`) vs. `declaredField` (`src/compiler/checker/lookup/denotations.ts`):**
   - Both map a `DeclaredField | FieldDeclaration` syntax node back to its resolved `FieldMember` in its enclosing `StructDeclaration`, `SharedStructDeclaration`, `EnumDeclaration` (`Variant`), or `TraitDeclaration`, using two different lookup mechanisms (`itemsOf(module).find(declaresField)` vs. `ancestorsOf`).
   - **Done** (`p2-structural`): see Ranked Summary item 8.
-- **Duplicate variable-type resolution in `variableType` (`src/compiler/checker/expressions/names.ts`) and `declaredVariableType` (`src/compiler/checker/lookup/denotations.ts`):**
+- **Duplicate variable-type resolution in `variableType` (`src/compiler/checker/expressions/access/names.ts`) and `declaredVariableType` (`src/compiler/checker/lookup/denotations.ts`):**
   - Both switch on `variable.owner.kind` (`ExternConstantDeclaration` vs. body/constant variables) to resolve a `VariableEntity`'s declared type.
   - **Done** (`p2-structural`): see Ranked Summary item 8.
-- **Inconsistent method recognition between `noField` / `callMethod` and `lookup/members.ts` (`src/compiler/checker/expressions/structs.ts`, `calls.ts`, `lookup/members.ts`; tracked as `B22`) and duplicate struct-literal constraint checks (`literal-fields.ts`; tracked as `Q6`).**
+- **Inconsistent method recognition between `noField` / `callMethod` and `lookup/members.ts` (`src/compiler/checker/expressions/structs/structs.ts`, `calls.ts`, `lookup/members.ts`; tracked as `B22`) and duplicate struct-literal constraint checks (`literal-fields.ts`; tracked as `Q6`).**
 
 ### 21. `src/compiler/lowering/` — core, tables & function lowering
 

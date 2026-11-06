@@ -9,9 +9,9 @@
  *
  * Only the items are checked ahead, never the literal: it is checked once, after them, while each
  * keeps what it was checked to have, never checked twice (body-checker.ts). A spread's operand is
- * checked ahead as an item is, so the literal's part reads the items it gives as it reads an
- * item's type (collection-accepts.ts `spreadPart`): `g([...f(), "a"])` as `[...f(), "a"]` after
- * `return`.
+ * checked ahead as an item is, so the literal's part reads the items it gives as it reads an item's
+ * type (collections/collection-accepts.ts `spreadPart`): `g([...f(), "a"])` as `[...f(), "a"]`
+ * after `return`.
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';

@@ -5,10 +5,10 @@
  */
 
 import type { FunctionScopes } from '../../closures/functions.ts';
-import type { CollectionForms } from '../../expressions/collections.ts';
-import type { StructLiterals } from '../../expressions/literal-sources.ts';
-import type { FieldReads } from '../../expressions/member-access.ts';
-import type { OptionalChains } from '../../expressions/optionals.ts';
+import type { FieldReads } from '../../expressions/access/member-access.ts';
+import type { OptionalChains } from '../../expressions/access/optionals.ts';
+import type { CollectionForms } from '../../expressions/collections/collections.ts';
+import type { StructLiterals } from '../../expressions/structs/literal-sources.ts';
 import type { CheckedPatterns } from '../../patterns/matching.ts';
 import type { ImplicitCalls } from '../../resolution/implicit.ts';
 import type { Iterations } from '../../rules/loops/iteration.ts';

@@ -178,7 +178,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - Array-length constructors encode their semantics in strings (`[3]` vs. `[3+]`) and parse them back via `isLongerKey` (`key.endsWith('+]')`).
 - **Side-channel `walk.downcasts` map and duplicate `unparenthesized` in `patterns/walk.ts` (D214):**
   - `takeDowncast` writes the narrowed `ValuePart` into `walk.downcasts` keyed by AST node, and `AsPattern` reads it back through a file-private `unparenthesized(node: Pattern)` helper instead of `walk.take` returning the matched `ValuePart` directly.
-- **False user diagnostics on prelude-owned pattern and operator helpers (`patterns/matching.ts`, `expressions/optionals.ts`, `expressions/collections.ts`, `expressions/templates.ts`, B11):**
+- **False user diagnostics on prelude-owned pattern and operator helpers (`patterns/matching.ts`, `expressions/access/optionals.ts`, `expressions/collections.ts`, `expressions/templates.ts`, B11):**
   - Calls to toolchain-invariant prelude functions (`_patternItem`, `_patternRest`, `length`, `compare`, `_inclusiveEnd`, `panic`, `join`) go through `implicitCall`, which requires a user-facing `failure: () => Diagnostic` callback that invents impossible user errors if the prelude lacks them.
 
 #### 4.3 `src/compiler/checker/flow/` & `src/compiler/checker/rules/`
@@ -224,7 +224,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - `lowerBinary` (`operators.ts`), `compared` (`operators.ts` for `ChainedComparison`), and `passed` (`patterns.ts` for pattern tests) all emit `equal` + `not` and `compare` + `order` separately, with `patterns.ts` defining its own local `equal` helper.
 - **Case-less `select` with `else:` emits invalid bytecode (`src/compiler/lowering/expressions/select.ts`, D149):**
   - `select:\n  else: v` passes type-checking, and `lowerSelect` emits a `select` instruction with `cases: []`, which fails Definition schema validation (`cases: z.array(selectCase).min(1)` in `definition/instructions/suspension.ts`).
-- **Spread elements cannot wrap `T` into `T?` (`src/compiler/lowering/expressions/collections.ts`, `checker/expressions/collections.ts`, B8):**
+- **Spread elements cannot wrap `T` into `T?` (`src/compiler/lowering/expressions/collections.ts`, `checker/expressions/collections/collections.ts`, B8):**
   - `[0, ...xs]` where `xs: Array<int>` and `Array<int?>` is expected is rejected because a spread copies or iterates its items without per-item conversion/wrapping.
 - **10-kind closed worklist in `DefinitionTables` (`src/compiler/lowering/tables.ts`, `lower.ts`):**
   - `PendingEntry | ClosingEntry` hard-codes 10 entry kinds (`instance`, `nested`, `hostNative`, `constantNative`, `externConstant`, `start`, `asyncFit`, `dispatch`, `anyConversion`, `anyField`), each with its own indexing method on `DefinitionTables` and dispatch arm in `lower.ts`.

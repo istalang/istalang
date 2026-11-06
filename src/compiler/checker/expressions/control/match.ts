@@ -14,23 +14,23 @@
  *   are declared here with their parts' types.
  */
 
-import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
-import type { Is, Match } from '../../syntax/expressions/index.ts';
-import { casesOf } from '../../syntax/expressions/readings.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { Accepts, BodyContext } from '../body-context.ts';
-import { stoppedOperation } from '../calls/stopped-operations.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { analyze, anyShape, type CaseShape } from '../patterns/exhaustiveness.ts';
-import { checkPattern } from '../patterns/matching.ts';
-import { remainingType } from '../patterns/remaining.ts';
-import { signatureOf, witnessText } from '../patterns/shapes.ts';
-import { cantMatch } from '../surface/checked-pattern.ts';
-import { keyOwnerOfValue, recordPatternKeys } from '../traits/struct-keys.ts';
-import type { Type } from '../types/type/index.ts';
-import { boolType } from '../types/type/primitives.ts';
-import { Branches, branchesAccepts } from './control/branches.ts';
-import { decideComparison } from './decided-conditions.ts';
+import { valueBranchesOf } from '../../../syntax/expressions/branches.ts';
+import type { Is, Match } from '../../../syntax/expressions/index.ts';
+import { casesOf } from '../../../syntax/expressions/readings.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { Accepts, BodyContext } from '../../body-context.ts';
+import { stoppedOperation } from '../../calls/stopped-operations.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { analyze, anyShape, type CaseShape } from '../../patterns/exhaustiveness.ts';
+import { checkPattern } from '../../patterns/matching.ts';
+import { remainingType } from '../../patterns/remaining.ts';
+import { signatureOf, witnessText } from '../../patterns/shapes.ts';
+import { cantMatch } from '../../surface/checked-pattern.ts';
+import { keyOwnerOfValue, recordPatternKeys } from '../../traits/struct-keys.ts';
+import type { Type } from '../../types/type/index.ts';
+import { boolType } from '../../types/type/primitives.ts';
+import { decideComparison } from '../decided-conditions.ts';
+import { Branches, branchesAccepts } from './branches.ts';
 
 export function checkMatch(context: BodyContext, node: Match, expected: Type | undefined): Type {
   const subject = context.expression(node.subject);

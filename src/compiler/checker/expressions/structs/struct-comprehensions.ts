@@ -20,21 +20,21 @@ import type {
   FieldsLiteral,
   StructComprehension,
   StructLiteral,
-} from '../../syntax/expressions/index.ts';
-import { itemValue } from '../../syntax/expressions/readings.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext, CheckedPasses } from '../body-context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Inference } from '../inference/infer.ts';
-import type { FieldPassType } from '../passes.ts';
-import { checkedFieldPasses, inFieldPasses } from '../rules/loops/field-passes.ts';
-import type { FieldSource } from '../surface/checked-body.ts';
-import { sameType } from '../types/identity/identity.ts';
-import { parametersIn } from '../types/parts/type-parts.ts';
-import { type Substitution, substitute } from '../types/substitution.ts';
-import type { FieldMember, Type } from '../types/type/index.ts';
-import { typeText } from '../types/type-text.ts';
-import { literalType, unionOf } from '../types/unions/unions.ts';
+} from '../../../syntax/expressions/index.ts';
+import { itemValue } from '../../../syntax/expressions/readings.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { BodyContext, CheckedPasses } from '../../body-context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Inference } from '../../inference/infer.ts';
+import type { FieldPassType } from '../../passes.ts';
+import { checkedFieldPasses, inFieldPasses } from '../../rules/loops/field-passes.ts';
+import type { FieldSource } from '../../surface/checked-body.ts';
+import { sameType } from '../../types/identity/identity.ts';
+import { parametersIn } from '../../types/parts/type-parts.ts';
+import { type Substitution, substitute } from '../../types/substitution.ts';
+import type { FieldMember, Type } from '../../types/type/index.ts';
+import { typeText } from '../../types/type-text.ts';
+import { literalType, unionOf } from '../../types/unions/unions.ts';
 import type { LiteralGiven } from './literal-sources.ts';
 
 /** The struct comprehension ending `node`'s items, if it has one. */

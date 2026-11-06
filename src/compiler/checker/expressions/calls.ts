@@ -14,7 +14,7 @@
  *   may change.
  * - a function value: a variable, a field of the receiver, or any other expression of a function
  *   type (closures/value-calls.ts), or of an optional one, called as `f?.(…)`, a link of an
- *   optional chain (optionals.ts). `x.f()` naming both a field and a method of `x`'s type is
+ *   optional chain (access/optionals.ts). `x.f()` naming both a field and a method of `x`'s type is
  *   ambiguous, so it is reported; `(x.f)()` calls the field.
  * - `worker.disposing()`, a method of the call an async function's own name is before a `.`
  *   (closures/own-calls.ts).
@@ -59,8 +59,8 @@ import { errorType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { insideOptional } from '../types/unions/inside-optional.ts';
 import { writtenLiteral } from '../types/unions/unions.ts';
-import { spreadArgumentType } from './collections.ts';
-import { readsNothing, recordFieldRead } from './member-access.ts';
+import { readsNothing, recordFieldRead } from './access/member-access.ts';
+import { spreadArgumentType } from './collections/collections.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const misplaced = misplacedArgument(node.arguments);
@@ -143,7 +143,7 @@ function valueArgument(context: BodyContext, argument: Expression): WrittenArgum
 
 /**
  * `x.f(…)`: `f` called with `x` as its `self` (§3.7); also as a link of an optional chain, which
- * calls it on the value inside and never through `&self` (optionals.ts).
+ * calls it on the value inside and never through `&self` (access/optionals.ts).
  */
 function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAccess): Type {
   const { checker, chains } = context;

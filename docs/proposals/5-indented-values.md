@@ -396,8 +396,8 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
 
    Its lines go through the one block loop, `parseItemEntries` in `parser/layout/index.ts`, which already gives columns, a separator within a line (`,` after §4 above), dedent errors and comments. Entries are told apart by their first tokens, as `parser/expressions/struct-literals.ts` tells items apart. Headers and labels (`parser/statements/statement.ts`) are unchanged.
 3. **The checker** dispatches an `IndentedValue` by its type to the checks that exist, so each rule keeps one home:
-   - struct literals: `checker/expressions/structs.ts` and `literal-fields.ts`;
-   - map and array literals: `checker/expressions/collections.ts` and `collection-accepts.ts`;
+   - struct literals: `checker/expressions/structs/structs.ts` and `literal-fields.ts`;
+   - map and array literals: `checker/expressions/collections/collections.ts` and `collection-accepts.ts`;
    - building from an expected union: `checker/types/fitting/expected.ts`.
 
    One adapter reads the entries as those checks read items. The checked form is the literal's, so `src/compiler/lowering/` needs nothing.

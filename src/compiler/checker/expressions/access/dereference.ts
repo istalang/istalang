@@ -7,15 +7,15 @@
  * prefix operator does.
  */
 
-import { chainStepOf } from '../../syntax/expressions/chains.ts';
-import type { Dereference } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../body-context.ts';
-import { stoppedOperation } from '../calls/stopped-operations.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { insideOptional } from '../types/unions/inside-optional.ts';
+import { chainStepOf } from '../../../syntax/expressions/chains.ts';
+import type { Dereference } from '../../../syntax/expressions/index.ts';
+import type { BodyContext } from '../../body-context.ts';
+import { stoppedOperation } from '../../calls/stopped-operations.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { insideOptional } from '../../types/unions/inside-optional.ts';
 
 export function checkDereference(context: BodyContext, node: Dereference): Type {
   const isLink = chainStepOf(node) !== undefined;

@@ -1,5 +1,5 @@
 /**
- * Building structs (§3.1); reading their fields is member-access.ts's.
+ * Building structs (§3.1); reading their fields is ../access/member-access.ts's.
  *
  * - A struct literal names its type, or with `struct{…}` takes it: from the expected type when
  *   that is a struct, else from a leading spread's value, else it is the shape of its named items,
@@ -7,34 +7,34 @@
  * - Its items are checked by the path variants share (literal-fields.ts), so a generic struct's
  *   type arguments are written, expected, spread or inferred alike. A literal naming a variant
  *   builds that variant (variants.ts).
- * - A struct without fields is written bare (names.ts), so braces after one are an error, whatever
+ * - A struct without fields is written bare (../access/names.ts), so braces after one are an error, whatever
  *   they hold.
  * - A shared struct is built with `new` and only one is (§3.18): its literal checks as any other,
  *   braces and all, and its type is the shared struct, while a spread gives it the value behind
  *   another (`new Inbox{...*box}`).
  */
 
-import { isDeclaredStruct } from '../../syntax/declarations.ts';
-import type { FieldsLiteral, StructLiteral } from '../../syntax/expressions/index.ts';
-import { itemValue } from '../../syntax/expressions/readings.ts';
-import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
-import { lastName } from '../../syntax/node.ts';
-import type { NamedType } from '../../syntax/types.ts';
-import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../body-context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { partsAccept, partsBuild } from '../rules/agreement.ts';
-import type { FieldSource } from '../surface/checked-body.ts';
-import { inFieldOrder } from '../types/field-order.ts';
-import { builtFrom } from '../types/fitting/expected.ts';
+import { isDeclaredStruct } from '../../../syntax/declarations.ts';
+import type { FieldsLiteral, StructLiteral } from '../../../syntax/expressions/index.ts';
+import { itemValue } from '../../../syntax/expressions/readings.ts';
+import { fieldsFunctionOf } from '../../../syntax/field-defaults.ts';
+import { lastName } from '../../../syntax/node.ts';
+import type { NamedType } from '../../../syntax/types.ts';
+import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../../body-context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { partsAccept, partsBuild } from '../../rules/agreement.ts';
+import type { FieldSource } from '../../surface/checked-body.ts';
+import { inFieldOrder } from '../../types/field-order.ts';
+import { builtFrom } from '../../types/fitting/expected.ts';
 import {
   type FieldMember,
   type NominalEntity,
   type NominalType,
   shapeType,
   type Type,
-} from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
+} from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
 import {
   checkLiteralFields,
   declaresDefault,

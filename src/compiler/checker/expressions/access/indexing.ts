@@ -2,7 +2,7 @@
  * Indexing and slicing (§3.9): `x[k]` calls `index(x, k)`, found like an operator's function, so
  * any type with an `index` can be indexed, and slicing is indexing with a `Range`. Writing an
  * element is the rule of places (calls/places.ts). An index can be a link of an optional chain
- * (expressions/optionals.ts), as in `a?.items[0]`.
+ * (expressions/access/optionals.ts), as in `a?.items[0]`.
  *
  * A struct is indexed by its keys first (§3.1, §3.9): `s[k]` with `k` within `keyof S` reads the
  * field `k` names, typed `S[K]`, before any `index`. Where `S` declares no `index` of its own, the
@@ -10,17 +10,17 @@
  * a key's type makes one, and anything else calls `index`.
  */
 
-import { collectionFunctions } from '../../../language/well-known.ts';
-import type { Index } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../body-context.ts';
-import { resolveCall } from '../calls/resolve.ts';
-import { stoppedOperation } from '../calls/stopped-operations.ts';
-import { topLevelCandidates } from '../resolution/choosing/candidates.ts';
-import { takesAsSelf } from '../resolution/choosing/receivers.ts';
-import { keyedFieldRead } from '../surface/checked-field.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { insideOptional } from '../types/unions/inside-optional.ts';
+import { collectionFunctions } from '../../../../language/well-known.ts';
+import type { Index } from '../../../syntax/expressions/index.ts';
+import type { BodyContext } from '../../body-context.ts';
+import { resolveCall } from '../../calls/resolve.ts';
+import { stoppedOperation } from '../../calls/stopped-operations.ts';
+import { topLevelCandidates } from '../../resolution/choosing/candidates.ts';
+import { takesAsSelf } from '../../resolution/choosing/receivers.ts';
+import { keyedFieldRead } from '../../surface/checked-field.ts';
+import type { Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import { insideOptional } from '../../types/unions/inside-optional.ts';
 
 export function checkIndex(context: BodyContext, node: Index, expected: Type | undefined): Type {
   const container = context.chains.target(context, node);

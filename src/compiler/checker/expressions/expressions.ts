@@ -40,7 +40,11 @@ import {
 } from '../types/type/primitives.ts';
 import { literalOrBase } from '../types/unions/unions.ts';
 import { wellKnownOf } from '../types/well-known.ts';
-import { checkAwait } from './await.ts';
+import { checkDereference } from './access/dereference.ts';
+import { checkIndex } from './access/indexing.ts';
+import { checkMemberAccess, memberAccepts } from './access/member-access.ts';
+import { checkName, nameAccepts, variableType } from './access/names.ts';
+import { checkUnwrap } from './access/optionals.ts';
 import { checkCall } from './calls.ts';
 import {
   arrayAccepts,
@@ -50,33 +54,29 @@ import {
   mapAccepts,
   mapBuilds,
   mapKnownType,
-} from './collection-accepts.ts';
-import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections.ts';
-import { checkComprehension, checkFieldComprehension } from './comprehensions.ts';
+} from './collections/collection-accepts.ts';
+import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections/collections.ts';
+import { checkComprehension, checkFieldComprehension } from './collections/comprehensions.ts';
+import { checkAwait } from './control/await.ts';
 import { blockAccepts } from './control/branches.ts';
-import { checkIf, ifAccepts } from './control.ts';
-import { checkDereference } from './dereference.ts';
+import { checkIf, ifAccepts } from './control/control.ts';
+import { checkIs, checkMatch, matchAccepts } from './control/match.ts';
+import { checkPropagate } from './control/propagate.ts';
+import { checkSelect, selectAccepts } from './control/select.ts';
+import { checkSpawn } from './control/spawn.ts';
 import { checkIndentedValue, indentedAccepts } from './indented-values.ts';
-import { checkIndex } from './indexing.ts';
 import { checkDurationLiteral } from './literals.ts';
-import { checkIs, checkMatch, matchAccepts } from './match.ts';
-import { checkMemberAccess, memberAccepts } from './member-access.ts';
-import { checkName, nameAccepts, variableType } from './names.ts';
 import { checkBinary, checkChainedComparison, checkUnary } from './operators.ts';
-import { checkUnwrap } from './optionals.ts';
-import { checkPropagate } from './propagate.ts';
-import { checkSelect, selectAccepts } from './select.ts';
-import { checkSpawn } from './spawn.ts';
 import {
   checkNamedLiteral,
   checkStructLiteral,
   structLiteralAccepts,
   structLiteralBuilds,
   structLiteralKnownType,
-} from './structs.ts';
+} from './structs/structs.ts';
+import { checkNone, noneAccepted } from './structs/variants.ts';
 import { checkTemplate } from './templates.ts';
 import { checkTuple, checkTupleElement, tupleAccepts, tupleBuilds } from './tuples.ts';
-import { checkNone, noneAccepted } from './variants.ts';
 
 /** Missing and invalid nodes were reported by the parser. */
 const alreadyReported = (): Type => errorType;

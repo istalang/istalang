@@ -26,8 +26,8 @@
  *   type the call decides (§3.5), so it takes what each item can take (collection-accepts.ts).
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { inclusiveEndFunction, wellKnown } from '../../../language/well-known.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import { inclusiveEndFunction, wellKnown } from '../../../../language/well-known.ts';
 import type {
   ArrayLiteral,
   Expression,
@@ -35,26 +35,26 @@ import type {
   MapLiteral,
   Range,
   Spread,
-} from '../../syntax/expressions/index.ts';
-import type { Invalid } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext, CollectionRecord } from '../body-context.ts';
-import { writeElement } from '../calls/collection-functions.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Pass, Passes, PassTable } from '../passes.ts';
-import { resolveDefault } from '../resolution/conformance/default-witness.ts';
-import { preludeCall } from '../resolution/implicit.ts';
-import { decidedSoFar, type Produced, producedBy, settleAgreement } from '../rules/agreement.ts';
-import { checkIterated, iteratedItem } from '../rules/loops/iteration.ts';
-import type { CollectionForm } from '../surface/checked-body.ts';
-import { collectionTarget } from '../types/fitting/expected.ts';
-import { isExact } from '../types/fitting/fit.ts';
-import { isPack } from '../types/function-types.ts';
-import type { NominalType, Type } from '../types/type/index.ts';
-import { errorType, expectsError, intType, neverType } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { arrayElement, arrayOf, wellKnownArguments, wellKnownOf } from '../types/well-known.ts';
-import { useSite } from '../use-site.ts';
+} from '../../../syntax/expressions/index.ts';
+import type { Invalid } from '../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { BodyContext, CollectionRecord } from '../../body-context.ts';
+import { writeElement } from '../../calls/collection-functions.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../../passes.ts';
+import { resolveDefault } from '../../resolution/conformance/default-witness.ts';
+import { preludeCall } from '../../resolution/implicit.ts';
+import { decidedSoFar, type Produced, producedBy, settleAgreement } from '../../rules/agreement.ts';
+import { checkIterated, iteratedItem } from '../../rules/loops/iteration.ts';
+import type { CollectionForm } from '../../surface/checked-body.ts';
+import { collectionTarget } from '../../types/fitting/expected.ts';
+import { isExact } from '../../types/fitting/fit.ts';
+import { isPack } from '../../types/function-types.ts';
+import type { NominalType, Type } from '../../types/type/index.ts';
+import { errorType, expectsError, intType, neverType } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { arrayElement, arrayOf, wellKnownArguments, wellKnownOf } from '../../types/well-known.ts';
+import { useSite } from '../../use-site.ts';
 
 /** The form of each collection literal of one body, for lowering. */
 export class CollectionForms implements CollectionRecord {
