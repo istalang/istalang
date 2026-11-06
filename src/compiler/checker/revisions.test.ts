@@ -385,6 +385,17 @@ describe('a checker made after an earlier one', () => {
       after: 'struct Node<T> { items: Int }\n',
       beside: { tree: "import Node from 'lib'\nstruct Tree { value: Int, next: Node<Tree> }\n" },
     },
+    {
+      name: 'two uses of an associated type whose alias an edit of a third module changes',
+      main: "import take, makeS from 'takes'\nfn a() -> Int: take(makeS())\nfn b() -> Int: take(makeS())\n",
+      before: 'type MyData = Int\n',
+      after: 'type MyData = String\n',
+      beside: {
+        s: "import MyData from 'lib'\nstruct S:\n  x: Int\n  type Data = MyData\n",
+        takes:
+          'import S from \'s\'\ntrait HasData:\n  type Data\nfn take<T is HasData>(x: T) -> T.Data: panic("no")\nfn makeS() -> S: S{x: 1}\n',
+      },
+    },
   ])('answers $name as a checker made afresh', ({ main, before, after, beside }) => {
     const { incremental, fresh } = afterLibEdit(main, before, after, beside);
     expect(incremental).toEqual(fresh);
