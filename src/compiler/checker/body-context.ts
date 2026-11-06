@@ -155,12 +155,12 @@ export interface BodyContext {
   readonly recordValueCall: (node: Call) => void;
   /**
    * Records that `body`, a branch or a case, never runs: a condition decided by types rules it
-   * out (rules/decided-conditions.ts), so it is neither checked nor lowered.
+   * out (expressions/decided-conditions.ts), so it is neither checked nor lowered.
    */
   readonly ruleOut: (body: Block) => void;
   /** Records that `operation` never runs past `operands`, the last of which has no value (§2). */
   readonly stopAt: (operation: Expression | Assignment, operands: readonly Expression[]) => void;
-  /** Records the value `condition` always has, by its operands' types (rules/decided-conditions.ts). */
+  /** Records the value `condition` always has, by its operands' types (expressions/decided-conditions.ts). */
   readonly decide: (condition: Expression, value: boolean) => void;
   /** The value `node`, a comparison, `is` or condition, was decided to always have; else undefined. */
   readonly decidedAt: (node: Expression) => boolean | undefined;

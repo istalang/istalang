@@ -26,10 +26,10 @@ import { analyze, anyShape, type CaseShape } from '../patterns/exhaustiveness.ts
 import { checkPattern } from '../patterns/matching.ts';
 import { remainingType } from '../patterns/remaining.ts';
 import { signatureOf, witnessText } from '../patterns/shapes.ts';
-import { decideComparison } from '../rules/decided-conditions.ts';
 import { keyOwnerOfValue, recordPatternKeys } from '../traits/struct-keys.ts';
 import { boolType, type Type } from '../types/type.ts';
 import { Branches, branchesAccepts } from './control/branches.ts';
+import { decideComparison } from './decided-conditions.ts';
 
 export function checkMatch(context: BodyContext, node: Match, expected: Type | undefined): Type {
   const subject = context.expression(node.subject);

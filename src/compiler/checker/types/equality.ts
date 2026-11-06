@@ -43,7 +43,7 @@ function isLiteralLike(type: Type): boolean {
  * instantiation makes it one member of its union, so every member must compare with every member
  * of the other side as it is, with nothing to convert. Each instantiation is then a comparison of
  * two values of one type, or of two literals, a constant one, so a literal no member equals
- * compares too, always unequal, a condition decided by types (rules/decided-conditions.ts).
+ * compares too, always unequal, a condition decided by types (expressions/decided-conditions.ts).
  */
 function comparableAsMembers(context: BodyContext, first: Type, second: Type): boolean {
   const unionOf = (type: Type) =>
