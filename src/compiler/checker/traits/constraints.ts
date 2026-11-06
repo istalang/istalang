@@ -64,22 +64,6 @@ export interface Requirement {
   readonly inferred?: readonly TypeParameter[] | undefined;
 }
 
-/** The constraints on `parameter`, resolved in `module`, where it is declared. */
-export function resolveConstraints(
-  checker: CheckerContext,
-  module: ModuleId,
-  parameter: TypeParameter,
-): readonly Constraint[] {
-  const self = parameterType(parameter);
-  return parameter.constraints.flatMap((node) => {
-    const constraint =
-      node.kind === 'StructConstraint'
-        ? undefined
-        : resolveConstraint(checker, module, node, { keyword: 'is', selfOf: () => self });
-    return constraint === undefined ? [] : [constraint];
-  });
-}
-
 /**
  * The constraints after `any`, each trait's `Self` its own (§3.10), their type arguments resolved
  * by `argumentType`; undefined for one reported.

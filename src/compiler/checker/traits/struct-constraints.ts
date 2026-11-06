@@ -13,7 +13,6 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type { TypeParameter } from '../../syntax/declarations.ts';
 import { isMissingName } from '../../syntax/node.ts';
 import type { ConstraintNode, FieldEntry, StructConstraint } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
@@ -27,17 +26,6 @@ import type {
 } from '../types/struct-constraint.ts';
 import type { Constraint } from '../types/type.ts';
 import { type ConstraintSite, resolveConstraint } from './constraints.ts';
-
-/** The struct constraints after `is` on `parameter`, resolved in `module`, where it is declared. */
-export function resolveStructConstraints(
-  checker: CheckerContext,
-  module: ModuleId,
-  parameter: TypeParameter,
-): readonly StructConstraintModel[] {
-  return parameter.constraints.flatMap((node) =>
-    node.kind === 'StructConstraint' ? [resolveStructConstraint(checker, module, node)] : [],
-  );
-}
 
 /**
  * The constraints `nodes` write after `is`, resolved in `module`, each trait's `Self` standing
@@ -62,7 +50,7 @@ export function resolveConstraintSet(
   return { traits, structs };
 }
 
-function resolveStructConstraint(
+export function resolveStructConstraint(
   checker: CheckerContext,
   module: ModuleId,
   node: StructConstraint,

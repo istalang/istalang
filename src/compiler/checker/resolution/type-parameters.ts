@@ -28,8 +28,8 @@ import type {
   ConstraintNote,
   Instantiable,
 } from '../context.ts';
-import { resolveConstraints } from '../traits/constraints.ts';
-import { resolveConstraintSet, resolveStructConstraints } from '../traits/struct-constraints.ts';
+import { resolveConstraint } from '../traits/constraints.ts';
+import { resolveConstraintSet, resolveStructConstraint } from '../traits/struct-constraints.ts';
 import { standsForMember } from '../types/member-arguments.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import {
@@ -252,4 +252,31 @@ function traitRequiring(
       (item): item is TraitDeclaration =>
         item.kind === 'TraitDeclaration' && item.members.includes(requirement),
     );
+}
+
+/** The constraints on `parameter`, resolved in `module`, where it is declared. */
+function resolveConstraints(
+  checker: CheckerContext,
+  module: ModuleId,
+  parameter: TypeParameter,
+): readonly Constraint[] {
+  const self = parameterType(parameter);
+  return parameter.constraints.flatMap((node) => {
+    const constraint =
+      node.kind === 'StructConstraint'
+        ? undefined
+        : resolveConstraint(checker, module, node, { keyword: 'is', selfOf: () => self });
+    return constraint === undefined ? [] : [constraint];
+  });
+}
+
+/** The struct constraints after `is` on `parameter`, resolved in `module`, where it is declared. */
+function resolveStructConstraints(
+  checker: CheckerContext,
+  module: ModuleId,
+  parameter: TypeParameter,
+): readonly StructConstraintModel[] {
+  return parameter.constraints.flatMap((node) =>
+    node.kind === 'StructConstraint' ? [resolveStructConstraint(checker, module, node)] : [],
+  );
 }
