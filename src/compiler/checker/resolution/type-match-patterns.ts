@@ -7,8 +7,13 @@
  *   pattern naming its base type when it doesn't match exactly. Inside another type it is a part
  *   of a different type: `Box<"a">` is no `Box<String>`.
  * - A variable binds the part standing where it is written; standing again, it must be that part.
- *   One standing beside other members of a union pattern (`infer T | None`) binds what the type's
- *   union has beyond them.
+ * - A union pattern's members holding no variable are each among the type's members. Each member
+ *   holding variables, but no variable standing whole, takes the first of the others it matches
+ *   (`List<infer T>?`, or the members `Tree<infer T>` unfolds to); one variable standing whole
+ *   (`infer T | None`) binds what is left, which must be something. Two standing whole can't split
+ *   what is left: undecided while the type isn't known, a failed case once it is.
+ * - A known type never leaves a case undecided: it matches or fails, so a type `match` given one
+ *   always reduces. A variable an undecided pattern bound nothing to is undecided too.
  * - A type not known yet (a type parameter, or a type computed from one) decides nothing: whatever
  *   it becomes might match, so a pattern meeting one is undecided, unless the pattern is that very
  *   type or a variable taking it whole. A part known to differ fails the case whatever the rest
@@ -96,16 +101,24 @@ function matchPattern(matching: Matching, pattern: CasePatternForm, type: Type):
  * fails exactly, what the failed try bound undone (the banner).
  */
 function matchWhole(matching: Matching, pattern: Type, type: Type): Outcome {
-  const before = new Map(matching.bound);
-  const outcome = matchType(matching, pattern, type);
+  const outcome = tried(matching, () => matchType(matching, pattern, type));
   if (outcome !== 'fail' || type.kind !== 'literal') {
     return outcome;
   }
-  matching.bound.clear();
-  for (const [variable, bound] of before) {
-    matching.bound.set(variable, bound);
-  }
   return matchType(matching, pattern, baseOf(type));
+}
+
+/** What `attempt` gives, what it bound undone unless it matched: a failed try binds nothing. */
+function tried(matching: Matching, attempt: () => Outcome): Outcome {
+  const before = new Map(matching.bound);
+  const outcome = attempt();
+  if (outcome !== 'match') {
+    matching.bound.clear();
+    for (const [variable, bound] of before) {
+      matching.bound.set(variable, bound);
+    }
+  }
+  return outcome;
 }
 
 /** Whether the type `pattern` matches `type`, both written through no alias (the banner). */
@@ -184,27 +197,62 @@ function sameOrFails(pattern: Type, type: Type): Outcome {
   return sameType(pattern, type) ? 'match' : 'fail';
 }
 
-/**
- * A union pattern: matched whole, or, with one variable standing as a member beside others
- * (`infer T | None`), the variable binding what `type`'s members are beyond those others.
- */
+/** A union pattern (the banner): its members each among `type`'s, the variables' taking the rest. */
 function matchUnion(matching: Matching, members: readonly Type[], type: Type): Outcome {
-  const [variable, ...more] = members.filter((member) => mentionsVariable(matching, member));
-  if (variable === undefined) {
-    return sameOrFails(unionOf(members, matching.checker.typeRules), type);
+  const { typeRules } = matching.checker;
+  const binding = members.filter((member) => mentionsVariable(matching, member));
+  if (binding.length === 0) {
+    return sameOrFails(unionOf(members, typeRules), type);
   }
-  if (more.length > 0 || variable.kind !== 'parameter') {
-    return 'undecided';
-  }
-  const fixed = members.filter((member) => member !== variable);
   const given = membersOf(type);
+  const fixed = members.filter((member) => !binding.includes(member));
   if (!fixed.every((member) => given.some((each) => sameType(each, member)))) {
     return 'fail';
   }
-  const rest = given.filter((each) => !fixed.some((member) => sameType(each, member)));
-  return rest.length === 0
-    ? 'fail'
-    : matchType(matching, variable, unionOf(rest, matching.checker.typeRules));
+  let rest = given.filter((each) => !fixed.some((member) => sameType(each, member)));
+  const whole = binding.filter((member) => isVariable(matching, member));
+  for (const member of binding.filter((each) => !whole.includes(each))) {
+    const taken = firstMatched(matching, member, rest);
+    if (taken.index === undefined) {
+      return taken.outcome;
+    }
+    rest = rest.filter((_, index) => index !== taken.index);
+  }
+  const [variable, ...others] = whole;
+  if (variable === undefined) {
+    return rest.length === 0 ? 'match' : 'fail';
+  }
+  if (others.length > 0) {
+    return isKnown(type) ? 'fail' : 'undecided';
+  }
+  return rest.length === 0 ? 'fail' : matchType(matching, variable, unionOf(rest, typeRules));
+}
+
+/**
+ * The first of `candidates` `pattern` matches, what it bound kept; else whether one might once
+ * its types are known.
+ */
+function firstMatched(
+  matching: Matching,
+  pattern: Type,
+  candidates: readonly Type[],
+): { readonly outcome: Outcome; readonly index?: number } {
+  let outcome: Outcome = 'fail';
+  for (const [index, candidate] of candidates.entries()) {
+    const each = tried(matching, () => matchType(matching, pattern, candidate));
+    if (each === 'match') {
+      return { outcome: each, index };
+    }
+    if (each === 'undecided') {
+      outcome = each;
+    }
+  }
+  return { outcome };
+}
+
+/** Whether `type` is a variable of the case, standing whole. */
+function isVariable(matching: Matching, type: Type): boolean {
+  return type.kind === 'parameter' && matching.variables.has(type.declaration as TypeParameter);
 }
 
 /** A variable taking `type` whole, or, standing again, finding the part it bound there. */
@@ -270,7 +318,8 @@ function variableMeets(
   type: Type | undefined,
 ): Outcome {
   if (type === undefined) {
-    return 'fail';
+    // Bound nothing: its pattern is undecided, which decides the case.
+    return 'undecided';
   }
   const { checker } = matching;
   const traitsMet = constraints.traits.every((trait) =>
