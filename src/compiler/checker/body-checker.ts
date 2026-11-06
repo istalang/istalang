@@ -82,7 +82,7 @@ import type { ResolvedCall, ResolvedSite } from './resolved-call.ts';
 import { checkDisposeUses } from './rules/disposal.ts';
 import { checkDropped } from './rules/dropped.ts';
 import { Iterations } from './rules/iteration.ts';
-import { checkTestingCalls } from './rules/testing-calls.ts';
+import { checkTestingCalls } from './rules/testing.ts';
 import { LabelTargets } from './statements/loops.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';

@@ -12,7 +12,7 @@
  *   declaration to carry one (§3.16): the json module's on fields
  *   (`@JsonSkip` only on a field whose type, as declared, has a default to read back as, which
  *   JSON forms decide, rules/json-forms/; `@JsonBigInt` only on an `Int`),
- *   `@Waypoint` on a statement that waits, `@Suite` on a function (rules/suites.ts says which),
+ *   `@Waypoint` on a statement that waits, `@Suite` on a function (rules/testing.ts says which),
  *   and any other struct on fields and functions, kept for tools. The same annotation twice on one item says nothing new, so it is an error.
  * - Fields of one struct or variant that end up with the same JSON name are reported where they
  *   are declared, since the clash is in the declaration whether or not the type ever crosses.

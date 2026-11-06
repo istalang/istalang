@@ -14,7 +14,7 @@
  * - A `dispose` a program declares makes its type disposable, on its rules (rules/disposal.ts).
  * - Every item's annotations are checked where it stands (rules/annotations.ts): a function's, a
  *   field's and, of the rest, each declaration's, which none may carry. A function marked
- *   `@Suite` is held to what a suite function may be (rules/suites.ts).
+ *   `@Suite` is held to what a suite function may be (rules/testing.ts).
  * - Imports declare nothing else to check.
  */
 
@@ -38,7 +38,7 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal.ts';
 import { checkHostBoundary, crossesToHost } from '../rules/host-boundary.ts';
-import { checkSuite } from '../rules/suites.ts';
+import { checkSuite } from '../rules/testing.ts';
 import { namesMemberParameter } from '../traits/struct-keys.ts';
 import type { GenericDeclaration } from '../types/type-arguments.ts';
 import { futureArgument } from '../types/well-known.ts';
