@@ -8,9 +8,9 @@
 
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import { errorType } from '../types/primitives.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { defaultArgument, type GenericDeclaration } from '../types/written/type-arguments.ts';
 import type { Inference } from './infer.ts';
 

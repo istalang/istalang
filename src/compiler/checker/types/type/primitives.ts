@@ -1,12 +1,12 @@
 /**
- * The built-in types every program has (§2), as values of the type model (type.ts): each primitive
+ * The built-in types every program has (§2), as values of the type model (type/index.ts): each primitive
  * by its name, and tuples. A tuple is built through `tupleType`, which makes the empty one the
  * primitive `Unit` (§3.15), so `()` and `Unit` are one type wherever either is written, and
  * `tupleElements` reads `Unit` back as no elements.
  */
 
-import type { PrimitiveName } from '../../../language/primitives.ts';
-import type { ErrorType, PrimitiveType, Type } from './type.ts';
+import type { PrimitiveName } from '../../../../language/primitives.ts';
+import type { ErrorType, PrimitiveType, Type } from './index.ts';
 
 /** The primitive type named `name`. */
 export function primitiveType(name: PrimitiveName): PrimitiveType {

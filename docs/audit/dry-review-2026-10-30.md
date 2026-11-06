@@ -249,21 +249,21 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - Violating the one-way rule in `docs/reuse/types-and-fitting.md` (*"Recognize well-known types by binder entity via `src/compiler/checker/types/well-known.ts` or `optionalInner` (`fit.ts`), never by declaration name string"*), `nominalTypeText` tests `declaration.kind === 'EnumDeclaration' && declaration.name.text === wellKnown.optional.name`, so any user-declared `enum Optional<T>` is formatted as `T?`.
 - **Two homes for unwrapping `T?`: `optionalInner` (`src/compiler/checker/types/fitting/fit.ts`) vs. `optionalArgument` (`src/compiler/checker/types/well-known.ts`):**
   - `optionalInner(type, checker.optionalEntity)` checks `type.entity === optional` using `ProgramChecker`'s cached `#optional` entry, whereas `optionalArgument(checker, type)` calls `wellKnownArguments(checker, wellKnown.optional, type)` (allocating a fresh `NominalType` via `checker.wellKnownType(wellKnown.optional)` on every call) to answer the exact same question.
-- **Duplicate array equality (`sameTypes`), anonymous-struct child extraction, and function compatibility (`src/compiler/checker/types/type.ts`, `type-parts.ts`, `src/structures/equality.ts`):**
+- **Duplicate array equality (`sameTypes`), anonymous-struct child extraction, and function compatibility (`src/compiler/checker/types/type/index.ts`, `type-parts.ts`, `src/structures/equality.ts`):**
   - `sameTypes` in `type.ts` re-implements `sameItems(sameType)` (`src/structures/equality.ts`).
   - `sameType`'s `'anonymous'` branch manually compares `isSharedValueType(first) ? first.arguments : []` and `first.fields.map((field) => field.type)` instead of comparing `typeChildren` (`type-parts.ts`), which `Inference.#matchExact` (`inference/infer.ts`) uses.
   - `isAssignable` (`type.ts`) and `Inference.#matchFunction` (`inference/infer.ts`) duplicate the function-header check `given.isAsync === declared.isAsync && (given.isSendable || !declared.isSendable) && sameShape(...)`.
   - **Done** (`fast-wins`): `sameTypes` is `sameItems(sameType)`.
-  - **Done** (`p2-structural`): `sameType` is key equality (`types/identity/identity.ts`), with no structural walk left, and the shared value's arguments are gone from shapes; `functionFits` (`types/type.ts`) is the one function-header rule, which `isAssignable` and `Inference.#matchFunction` both call.
+  - **Done** (`p2-structural`): `sameType` is key equality (`types/identity/identity.ts`), with no structural walk left, and the shared value's arguments are gone from shapes; `functionFits` (`types/type/index.ts`) is the one function-header rule, which `isAssignable` and `Inference.#matchFunction` both call.
 - **`heldType` hand-rolls a visited set instead of using `TypeCycle` (`src/compiler/checker/types/properties/held.ts`, `type-cycle.ts`; widens `Q7`):**
   - `heldType` maintains `const walked = new Set<string>()` keyed by `checker.typeKeys.typeKey(part)` instead of using `TypeCycle` (`type-cycle.ts`).
   - **Done** (`fast-wins`): `heldType` guards its walk with `TypeCycle`. A type reached on two branches is walked on each (the visited set walked it once); the answer is the same.
 
 ### 14. `src/compiler/checker/inference/` & `src/compiler/checker/traits/`
 
-- **Duplicate `isPack` predicate (`src/compiler/checker/inference/infer.ts`, `src/compiler/checker/types/type.ts`):**
-  - `infer.ts` defines a local `isPack(parameter: ParameterKey)` alongside `isPack(type: Type)` in `types/type.ts`.
-  - **Done** (`fast-wins`): `infer.ts` asks `types/type.ts`'s `isPack` of `parameterType(parameter)`.
+- **Duplicate `isPack` predicate (`src/compiler/checker/inference/infer.ts`, `src/compiler/checker/types/type/index.ts`):**
+  - `infer.ts` defines a local `isPack(parameter: ParameterKey)` alongside `isPack(type: Type)` in `types/type/index.ts`.
+  - **Done** (`fast-wins`): `infer.ts` asks `types/type/index.ts`'s `isPack` of `parameterType(parameter)`.
 - **`unsafetyOf` manually resolves and substitutes trait fields instead of using `requiredFieldType` / `constraintSubstitution` (`src/compiler/checker/traits/any-types.ts`, `constraints.ts`):**
   - `unsafetyOf` (`any-types.ts`) manually builds `substitutionFor(trait.typeParameters, constraint.arguments)` and calls `checker.resolveType(checker.moduleOf(trait), field.type)` instead of calling `requiredFieldType(checker, constraint, field, parameterType(trait))` and `constraintSubstitution(constraint, parameterType(trait))` from `constraints.ts`.
   - **Done** (`p3-unions`): object safety is one exported rule, `objectUnsafety` (`traits/object-safety.ts`), reading a trait's fields and functions through `requiredFieldType` and `constraintSubstitution` with the trait's own `Self`; `any` types ask it (`any-types.ts`), and so will a union meeting a trait through its members (proposal 3, §6).
@@ -449,8 +449,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 32. `src/language-service/completion/` (including `grammar/` and `places/`)
 
-- **Duplicate `ownsStatics` / `staticOwnerKinds` in `completion/places/declared-name.ts` vs. `isNominalEntity` (`src/compiler/checker/types/type.ts`):**
-  - `declared-name.ts` defines `staticOwnerKinds = new Set(['StructDeclaration', 'SharedStructDeclaration', 'ExternStructDeclaration', 'EnumDeclaration'])` and `ownsStatics`, duplicating `isNominalEntity` (`src/compiler/checker/types/type.ts`) and omitting type aliases (`StaticFunctions.#ownerOf` in `checker/declarations/statics.ts`).
+- **Duplicate `ownsStatics` / `staticOwnerKinds` in `completion/places/declared-name.ts` vs. `isNominalEntity` (`src/compiler/checker/types/type/index.ts`):**
+  - `declared-name.ts` defines `staticOwnerKinds = new Set(['StructDeclaration', 'SharedStructDeclaration', 'ExternStructDeclaration', 'EnumDeclaration'])` and `ownsStatics`, duplicating `isNominalEntity` (`src/compiler/checker/types/type/index.ts`) and omitting type aliases (`StaticFunctions.#ownerOf` in `checker/declarations/statics.ts`).
   - **Done** (`p2-structural`): `staticOwners` asks `staticOwnerOf(entityType(…))` (`types/written/named-types.ts`), so an alias, of a shape too, is offered.
 - **Hard-coded `'self'` string literal in `completion/places/declared-name.ts` (`src/language-service/completion/places/declared-name.ts`, `src/language/well-known.ts`):**
   - `declared-name.ts` writes `const receiver: Candidate = { name: 'self', subject: { kind: 'keyword' } }` instead of importing `receiverParameter` from `src/language/well-known.ts` (violating the one-way rule in `docs/reuse/modules-and-names.md`).

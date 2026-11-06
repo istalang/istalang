@@ -21,7 +21,7 @@ import { lineMapOf } from '../../text/line-map.ts';
 import type { Checker } from '../checker/check.ts';
 import type { RequiredField } from '../checker/surface/checked-field.ts';
 import { passesAll } from '../checker/surface/resolved-call.ts';
-import type { AnyType, Type } from '../checker/types/type.ts';
+import type { AnyType, Type } from '../checker/types/type/index.ts';
 
 import { type ModuleId, programModule } from '../program/program.ts';
 import type {

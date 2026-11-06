@@ -23,7 +23,7 @@ import { isHostExtern } from '../../surface/host-externs.ts';
 import { type JsonDirection, jsonTraits } from '../../surface/json-form.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
 import { isSendable } from '../../traits/sendable.ts';
-import type { Type } from '../../types/type.ts';
+import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type-text.ts';
 import { futureArgument } from '../../types/well-known.ts';
 import { hostSite, useSite } from '../../use-site.ts';

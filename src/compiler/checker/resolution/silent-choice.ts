@@ -15,7 +15,7 @@
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { CheckerContext } from '../context.ts';
 import type { FunctionCall } from '../surface/resolved-call.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
 import { searchSite } from '../use-site.ts';
 import type { CallArgument } from './call-arguments.ts';
 import { callMade } from './calls-made.ts';

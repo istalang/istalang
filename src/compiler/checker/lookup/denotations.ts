@@ -34,7 +34,7 @@ import { declaredOutsideBodies } from '../expressions/names.ts';
 import { namedType } from '../resolution/named.ts';
 import type { Denotation, JoinedBody } from '../surface/denotation.ts';
 import { associatedDeclarationsOn } from '../traits/known-constraints.ts';
-import { type FieldMember, nominalType, type Type } from '../types/type.ts';
+import { type FieldMember, nominalType, type Type } from '../types/type/index.ts';
 import { declaredFieldOf } from '../types/written/declared-fields.ts';
 import { entityType } from '../types/written/named-types.ts';
 import { parameterType } from '../types/written/resolve-type.ts';

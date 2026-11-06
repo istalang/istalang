@@ -15,7 +15,7 @@ import { reported } from './checker/check.test-kit.ts';
 import { checkProgram } from './checker/check.ts';
 import { checkerDiagnostics } from './checker/diagnostics/index.ts';
 import { sameType } from './checker/types/identity/identity.ts';
-import type { Type } from './checker/types/type.ts';
+import type { Type } from './checker/types/type/index.ts';
 import { parserDiagnostics } from './parser/diagnostics.ts';
 import { dumpClean, lines } from './parser/parse.test-kit.ts';
 import { idOf } from './program/program.test-kit.ts';

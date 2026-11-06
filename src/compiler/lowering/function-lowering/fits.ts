@@ -10,7 +10,7 @@ import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { ValueSite } from '../../checker/surface/checked-body.ts';
 import { type Fit, singleElement } from '../../checker/types/fitting/fit.ts';
-import type { FunctionType, StructValueType, Type } from '../../checker/types/type.ts';
+import type { FunctionType, StructValueType, Type } from '../../checker/types/type/index.ts';
 import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { membersOf } from '../../checker/types/unions/unions.ts';
 import { madeAsync } from '../async-fits.ts';

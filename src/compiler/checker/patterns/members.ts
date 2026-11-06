@@ -25,8 +25,8 @@ import type { TypeNode } from '../../syntax/types.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { PatternTest } from '../surface/checked-pattern.ts';
 import { sameType } from '../types/identity/identity.ts';
-import { floatType, noneType } from '../types/primitives.ts';
-import type { Type, UnionType } from '../types/type.ts';
+import type { Type, UnionType } from '../types/type/index.ts';
+import { floatType, noneType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { baseOf } from '../types/unions/union-members.ts';
 import {

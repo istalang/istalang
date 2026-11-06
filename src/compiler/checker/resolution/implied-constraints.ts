@@ -20,7 +20,7 @@ import {
   substituteStructConstraint,
 } from '../types/struct-constraint.ts';
 import { substituteConstraint, substitutionFor } from '../types/substitution.ts';
-import type { Constraint, Type } from '../types/type.ts';
+import type { Constraint, Type } from '../types/type/index.ts';
 
 /** A declaration's parameter list and the arguments a use gives it. */
 interface Use {

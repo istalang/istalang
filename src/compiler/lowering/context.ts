@@ -18,7 +18,7 @@ import type { FieldRead, FieldReading } from '../checker/surface/checked-field.t
 import type { CheckedPattern } from '../checker/surface/checked-pattern.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../checker/surface/resolved-call.ts';
 import type { Fit } from '../checker/types/fitting/fit.ts';
-import type { Type } from '../checker/types/type.ts';
+import type { Type } from '../checker/types/type/index.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import type { Expression, FieldHeader, Lambda } from '../syntax/expressions/index.ts';

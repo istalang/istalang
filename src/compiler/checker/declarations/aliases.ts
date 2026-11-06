@@ -33,8 +33,8 @@ import { TypeMatchExpansion } from '../rules/expansion/type-matches.ts';
 import { resolveConstraintSet } from '../traits/struct-constraints.ts';
 import type { MatchType } from '../types/computed-types.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';
-import { errorType } from '../types/primitives.ts';
-import { isNominalEntity, type Type } from '../types/type.ts';
+import { isNominalEntity, type Type } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
 import {
   type CaseForm,

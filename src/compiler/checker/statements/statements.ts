@@ -13,8 +13,8 @@ import type { Block, Statement } from '../../syntax/statements.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkLocalFunction } from '../closures/lambdas.ts';
 import { checkDiscarded, checkDrop } from '../rules/disposal/must-use.ts';
-import { neverType, unitType } from '../types/primitives.ts';
-import type { FunctionType, Type } from '../types/type.ts';
+import type { FunctionType, Type } from '../types/type/index.ts';
+import { neverType, unitType } from '../types/type/primitives.ts';
 import { checkAssignment } from './assignments.ts';
 import {
   checkFieldLoop,

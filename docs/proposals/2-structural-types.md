@@ -105,7 +105,7 @@ Nominal structs, enums, shared structs as handles, argument-dependent lookup and
 
 ## Implementation notes
 
-1. **One home for identity.** `typeKey` (`src/compiler/checker/types/identity/type-keys.ts`) already promises a key equal exactly when `sameType` holds, and `sameType` (`types/type.ts`) mirrors it as a structural walk. Define `sameType(a, b)` as `typeKey(a) === typeKey(b)`, the key memoized per type object in a `WeakMap`, and drop the walk.
+1. **One home for identity.** `typeKey` (`src/compiler/checker/types/identity/type-keys.ts`) already promises a key equal exactly when `sameType` holds, and `sameType` (`types/type/index.ts`) mirrors it as a structural walk. Define `sameType(a, b)` as `typeKey(a) === typeKey(b)`, the key memoized per type object in a `WeakMap`, and drop the walk.
 2. **The anonymous key.** Today `{${identityOf(origin)}…:${field types}}`; it becomes the field names and their keys, sorted by name: `{x:int,y:int}` however the fields were written. The value behind a shared struct loses its origin and arguments in the key the same way. Keep the canonical string as the identity, never a digest: a collision would make two types one without any error.
 3. **`origin` becomes spelling.** `AnonymousStructType.origin` stays on the type, as `aliasedAs` does, for go-to-definition and field locations, but no key or relation reads it. Two equal shapes from two places are one type held as two objects.
 4. **Recursive computed types.** A shape reached again during a type `match` reduction keys as its alias and arguments, so keys stay finite; `TypeCycle` (`types/properties/type-cycle.ts`) already guards the coinductive checks.

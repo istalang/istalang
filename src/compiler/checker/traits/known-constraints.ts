@@ -27,20 +27,20 @@ import type {
 } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import type { RequirementOrigin } from '../surface/resolved-call.ts';
-import { aliasedAs } from '../types/alias-uses.ts';
 import { type ComputedType, isMatchAlias, isOpaque } from '../types/computed-types.ts';
 import { inFieldOrder } from '../types/field-order.ts';
 import { sameConstraint, sameType } from '../types/identity/identity.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
-import { errorType, isPrimitive } from '../types/primitives.ts';
 import {
   type EntryRule,
   type StructConstraintModel,
   substituteStructConstraint,
 } from '../types/struct-constraint.ts';
 import { substitute, substituteConstraint, substitutionFor } from '../types/substitution.ts';
-import type { AnyType, Constraint, Type } from '../types/type.ts';
+import { aliasedAs } from '../types/type/alias-uses.ts';
+import type { AnyType, Constraint, Type } from '../types/type/index.ts';
+import { errorType, isPrimitive } from '../types/type/primitives.ts';
 import { literalType, membersOf, unionOf } from '../types/unions/unions.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
 import { aliasInstance } from '../types/written/type-match.ts';

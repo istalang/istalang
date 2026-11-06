@@ -17,7 +17,7 @@
 
 import type { AliasDeclaration } from '../../syntax/declarations.ts';
 import type { MappedParts } from './computed-types.ts';
-import type { AnyType, ParameterKey, Type } from './type.ts';
+import type { AnyType, ParameterKey, Type } from './type/index.ts';
 
 /** The rules of the program building a type that types/ sits below. */
 export interface TypeRules {

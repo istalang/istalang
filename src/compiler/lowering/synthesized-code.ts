@@ -20,7 +20,7 @@ import type { Value } from '../../definition/values.ts';
 import { resultVariants } from '../../language/well-known.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
-import type { AnonymousStructType, NominalType, Type } from '../checker/types/type.ts';
+import type { AnonymousStructType, NominalType, Type } from '../checker/types/type/index.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { ClosedCall } from './closed-calls.ts';
 import { CodeWriter } from './code-writer.ts';

@@ -39,10 +39,10 @@
  *   with the implicit conversions needs to know which type is `Optional`, so it lives in fitting/fit.ts.
  */
 
-import type { PrimitiveName } from '../../../language/primitives.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { TypeEntity } from '../../binder/entities.ts';
-import type { ModuleId } from '../../program/program.ts';
+import type { PrimitiveName } from '../../../../language/primitives.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { TypeEntity } from '../../../binder/entities.ts';
+import type { ModuleId } from '../../../program/program.ts';
 import type {
   AliasDeclaration,
   DeclaredStruct,
@@ -52,11 +52,10 @@ import type {
   TraitDeclaration,
   TypeAliasDeclaration,
   TypeParameter,
-} from '../../syntax/declarations.ts';
-import type { FieldHeader, StructLiteral } from '../../syntax/expressions/index.ts';
-import type { RestPattern } from '../../syntax/patterns.ts';
-import type { StructConstraint, StructType } from '../../syntax/types.ts';
-import type { AliasUse, AssociatedUse } from './alias-uses.ts';
+} from '../../../syntax/declarations.ts';
+import type { FieldHeader, StructLiteral } from '../../../syntax/expressions/index.ts';
+import type { RestPattern } from '../../../syntax/patterns.ts';
+import type { StructConstraint, StructType } from '../../../syntax/types.ts';
 import type {
   AssociatedOfType,
   FieldOfType,
@@ -64,9 +63,10 @@ import type {
   MappedType,
   MatchType,
   RecursiveType,
-} from './computed-types.ts';
-import { inFieldOrder } from './field-order.ts';
-import type { StructConstraintModel } from './struct-constraint.ts';
+} from '../computed-types.ts';
+import { inFieldOrder } from '../field-order.ts';
+import type { StructConstraintModel } from '../struct-constraint.ts';
+import type { AliasUse, AssociatedUse } from './alias-uses.ts';
 
 /** What every type carries beside its kind: the alias it was written through, if any. */
 export interface WrittenThrough {

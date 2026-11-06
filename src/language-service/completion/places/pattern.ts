@@ -18,8 +18,8 @@
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../compiler/checker/check.ts';
-import { noneType } from '../../../compiler/checker/types/primitives.ts';
-import type { Type } from '../../../compiler/checker/types/type.ts';
+import type { Type } from '../../../compiler/checker/types/type/index.ts';
+import { noneType } from '../../../compiler/checker/types/type/primitives.ts';
 import { literalType, membersOf } from '../../../compiler/checker/types/unions/unions.ts';
 import {
   downcastTargetOf,

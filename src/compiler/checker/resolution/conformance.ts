@@ -40,9 +40,9 @@ import { constraintSubstitution, requiredFunctions, traitAsAny } from '../traits
 import { standsForMember } from '../types/fitting/member-arguments.ts';
 import { sameType } from '../types/identity/identity.ts';
 import { mentionsError } from '../types/parts/type-parts.ts';
-import { errorType } from '../types/primitives.ts';
 import { type Substitution, substitute, substituteConstraint } from '../types/substitution.ts';
-import type { Constraint, Type } from '../types/type.ts';
+import type { Constraint, Type } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { silent, type UseSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';

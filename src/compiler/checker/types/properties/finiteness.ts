@@ -15,7 +15,7 @@
 import type { StructDeclaration } from '../../../syntax/declarations.ts';
 import { type RecursiveType, unfolded } from '../computed-types.ts';
 import { typeKeys } from '../identity/type-keys.ts';
-import type { FieldMember, Type } from '../type.ts';
+import type { FieldMember, Type } from '../type/index.ts';
 import type { TypeRules } from '../type-rules.ts';
 
 /** What a value must never hold by value: a struct declaration's values, or a recursive type's. */

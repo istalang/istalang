@@ -9,8 +9,8 @@ import { type WellKnownDeclaration, wellKnown } from '../../../language/well-kno
 import type { TraitDeclaration } from '../../syntax/declarations.ts';
 import type { Checker } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
-import { errorType } from './primitives.ts';
-import type { Type } from './type.ts';
+import type { Type } from './type/index.ts';
+import { errorType } from './type/primitives.ts';
 
 /**
  * The type arguments of `type` when it is the well-known `declaration`, such as `[T]` for an

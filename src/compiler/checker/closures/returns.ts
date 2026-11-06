@@ -18,8 +18,8 @@ import { type Block, type Return, tailExpressionOf, tailNodeOf } from '../../syn
 import type { BodyContext, Returns } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { agreedType, fitProduced, type Produced } from '../rules/agreement.ts';
-import { unitType } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { unitType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { wellKnownArguments } from '../types/well-known.ts';
 

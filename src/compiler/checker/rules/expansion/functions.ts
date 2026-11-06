@@ -29,7 +29,7 @@ import type { NodeOf } from '../../../syntax/node.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { functionCallsWithin } from '../../surface/resolved-call.ts';
-import type { ParameterKey } from '../../types/type.ts';
+import type { ParameterKey } from '../../types/type/index.ts';
 import { type ArgumentEdge, argumentEdges, endlessEdgesFrom } from './edges.ts';
 
 /** An edge of the graph, made by a call in `caller`'s code to `callee`, wherever it stands. */

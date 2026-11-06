@@ -30,7 +30,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isHostType } from '../surface/host-externs.ts';
 import type { FunctionCall, ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
 import { typeText } from '../types/type-text.ts';
 import { arrayElement, wellKnownArguments } from '../types/well-known.ts';
 

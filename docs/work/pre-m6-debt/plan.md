@@ -28,6 +28,6 @@ The tracker items whose shape M6 and M7 consume: syntax nodes a formatter walks,
 - **Q28:** one variable-type lookup.
 - **B3:** diagnostics name a value by the alias it was written through (`Entries<int>`).
 
-**Shared surface:** `types/type.ts` and `types/type-text.ts` (Q4, B3). Q4 replaces the shared-struct flag there; B3 adds only the alias. The branch that merges later rebases.
+**Shared surface:** `types/type/index.ts` and `types/type-text.ts` (Q4, B3). Q4 replaces the shared-struct flag there; B3 adds only the alias. The branch that merges later rebases.
 
 **Out of scope:** Q3, P5 and Q14 are design decisions for M7's plan.

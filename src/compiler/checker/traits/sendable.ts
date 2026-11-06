@@ -19,7 +19,7 @@ import type { CheckerContext } from '../context.ts';
 import { sameConstraint } from '../types/identity/identity.ts';
 import { heldParts } from '../types/properties/held.ts';
 import { TypeCycle } from '../types/properties/type-cycle.ts';
-import type { Constraint, NominalType, Type } from '../types/type.ts';
+import type { Constraint, NominalType, Type } from '../types/type/index.ts';
 import { isWellKnownTrait } from '../types/well-known.ts';
 import { knownConstraints } from './known-constraints.ts';
 

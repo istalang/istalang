@@ -33,8 +33,8 @@ import type { FunctionCall, ResolvedCall, ResolvedSite } from '../../surface/res
 import { requiredFunctions } from '../../traits/constraints.ts';
 import { knownConstraints } from '../../traits/known-constraints.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { unitType } from '../../types/primitives.ts';
-import type { NominalType, Type } from '../../types/type.ts';
+import type { NominalType, Type } from '../../types/type/index.ts';
+import { unitType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type-text.ts';
 
 const none: Disposal = { kind: 'none' };

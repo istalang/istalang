@@ -90,7 +90,7 @@ import {
   isNominalEntity,
   type NominalType,
   type Type,
-} from '../types/type.ts';
+} from '../types/type/index.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import type { StaticOwner } from '../types/written/named-types.ts';
 import { resolveTypeNode } from '../types/written/resolve-type.ts';

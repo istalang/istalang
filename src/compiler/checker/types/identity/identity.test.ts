@@ -8,8 +8,8 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { handMadeSpan } from '../../../syntax/tree.test-kit.ts';
 import type { StructType } from '../../../syntax/types.ts';
-import { boolType, intType, stringType, tupleType, unitType } from '../primitives.ts';
-import { type FieldMember, shapeType, type Type } from '../type.ts';
+import { type FieldMember, shapeType, type Type } from '../type/index.ts';
+import { boolType, intType, stringType, tupleType, unitType } from '../type/primitives.ts';
 import { sameType } from './identity.ts';
 import { typeKeys } from './type-keys.ts';
 

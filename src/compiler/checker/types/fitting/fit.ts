@@ -35,8 +35,14 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { unfolded } from '../computed-types.ts';
 import { isAssignable } from '../identity/identity.ts';
 import { parametersIn } from '../parts/type-parts.ts';
-import { isPrimitive } from '../primitives.ts';
-import type { AnonymousStructType, AnyType, Type, TypeParameterType, UnionType } from '../type.ts';
+import type {
+  AnonymousStructType,
+  AnyType,
+  Type,
+  TypeParameterType,
+  UnionType,
+} from '../type/index.ts';
+import { isPrimitive } from '../type/primitives.ts';
 import type { TypeRules } from '../type-rules.ts';
 import { typeText } from '../type-text.ts';
 import { absorbingMember, baseOf } from '../unions/union-members.ts';

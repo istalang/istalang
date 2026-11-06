@@ -1,9 +1,9 @@
 /**
  * Substitution (§3.5): type parameters replaced by the types given for them, through every type
  * they appear in. A type parameter is keyed by its declaration, and a trait's `Self` by the trait's
- * (type.ts), so instantiating a generic declaration and applying a constraint are one operation.
+ * (type/index.ts), so instantiating a generic declaration and applying a constraint are one operation.
  * An `any` type binds its traits' `Self`, so a substitution from outside never reaches it. A type
- * written through an alias stays written through it, its arguments substituted alike (type.ts). One
+ * written through an alias stays written through it, its arguments substituted alike (type/index.ts). One
  * written as an associated type is that associated type of its owner substituted, built by the
  * rules as every one is (§3.1), never its body substituted apart: expanding one that reaches
  * itself then stops alike however it is reached.
@@ -14,10 +14,9 @@
  */
 
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
-import { aliasedAs, mapAliasUse } from './alias-uses.ts';
 import type { ComputedType, MappedParts, RecursiveType } from './computed-types.ts';
 import { mapChildren, mapParts } from './parts/type-parts.ts';
-import { errorType } from './primitives.ts';
+import { aliasedAs, mapAliasUse } from './type/alias-uses.ts';
 import type {
   AnyType,
   Constraint,
@@ -25,7 +24,8 @@ import type {
   Type,
   TypeParameterType,
   UnionType,
-} from './type.ts';
+} from './type/index.ts';
+import { errorType } from './type/primitives.ts';
 import type { TypeRules } from './type-rules.ts';
 
 /** Type parameters mapped to the types that replace them. */

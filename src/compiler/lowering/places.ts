@@ -34,7 +34,7 @@ import type { Place } from '../../definition/instructions/places.ts';
 import type { Register, TypeId } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { WrittenFit } from '../checker/surface/checked-body.ts';
-import type { FieldMember, Type } from '../checker/types/type.ts';
+import type { FieldMember, Type } from '../checker/types/type/index.ts';
 import { chainStepOf } from '../syntax/expressions/chains.ts';
 import type { Dereference, Expression, Index, MemberAccess } from '../syntax/expressions/index.ts';
 import { type PlaceStep, placePath } from '../syntax/expressions/places.ts';

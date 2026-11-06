@@ -11,7 +11,7 @@ import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { Statement } from '../../syntax/statements.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
-import type { FieldMember, NominalType } from '../types/type.ts';
+import type { FieldMember, NominalType } from '../types/type/index.ts';
 import type { CheckedBody } from './checked-body.ts';
 import type { ConstantForm } from './constant-form.ts';
 

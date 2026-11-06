@@ -9,8 +9,8 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import { isPrimitive } from '../../checker/types/primitives.ts';
-import type { FieldMember } from '../../checker/types/type.ts';
+import type { FieldMember } from '../../checker/types/type/index.ts';
+import { isPrimitive } from '../../checker/types/type/primitives.ts';
 import type { FieldHeader } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { FunctionContext } from '../context.ts';

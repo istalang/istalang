@@ -32,7 +32,7 @@ import type { FieldSource } from '../surface/checked-body.ts';
 import { sameType } from '../types/identity/identity.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
-import type { FieldMember, Type } from '../types/type.ts';
+import type { FieldMember, Type } from '../types/type/index.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalType, unionOf } from '../types/unions/unions.ts';
 import type { LiteralGiven } from './literal-sources.ts';

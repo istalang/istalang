@@ -123,7 +123,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
     4. Value → `any` trait object (`expected.kind === 'any'` vs. `#convertsInto`)
     5. `T` → `T?` optional wrapping (`optionalInner` recursion)
   - Both modules duplicate the predicates for `fitsAsync`/`#matchMadeAsync` and `singleConversion`/`#matchSingle` because they differ only in how leaf types are compared (`isAssignable`/`sameType` vs. `#matchExact`). Extracting one parameterized conversion matcher eliminates the duplication.
-- **Function-type assignability ignores `never` return type (`src/compiler/checker/types/type.ts`, D180):**
+- **Function-type assignability ignores `never` return type (`src/compiler/checker/types/type/index.ts`, D180):**
   - `isAssignable(source, target)` checks `isPrimitive(source, 'never')` only at the top level, and compares function types with `sameShape(first, second, sameType)`. Consequently, a function or lambda whose body always panics (`fn(x: int) -> never`) is rejected where `fn(int) -> string` or `fn(int) -> unit` is expected.
 - **`typeText` checks `Optional` by string name instead of entity, and drops alias/shared-struct origins (`src/compiler/checker/types/type-text.ts`, B3, D153):**
   - `nominalText` checks `name === wellKnown.optional.name` (`'Optional'`) by bare string instead of checking the prelude's `Optional` entity, whereas every other module in the checker checks `Optional` by entity.
@@ -137,9 +137,9 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - Meanwhile, coinductive cycle detection over `checker.typeKeys.typeKey(type)` ("a recursive type meets the property while its parts are being decided") is written three separate times: `deciding` in `traits/sendable.ts`, `#deciding` in `rules/json-forms/index.ts`, and `walked` in `types/properties/held.ts`.
 - **Conflated `'none'` outcome in `witnessOf` hiding inner constraint failures (`src/compiler/checker/resolution/conformance.ts`, `declared-witness.ts`, D173):**
   - `witnessOf` returns `'none'` both when no candidate matches (`choice.kind !== 'chosen'`) and when a chosen candidate's own constraints fail to instantiate (`isFailure(instantiation)`). Consequently, `declaresWitness` treats a declared-but-uninstantiable witness as declared (blocking derived fallback), and `conform` reports that the outer function is missing rather than reporting the unmet inner constraint on its type parameter.
-- **Redundant parameter/slot shapes and upward type-imports in `resolution/` (`src/compiler/checker/check.ts`, `types/type.ts`, `resolution/binding.ts`, `resolution/choice.ts`, D229, D230):**
+- **Redundant parameter/slot shapes and upward type-imports in `resolution/` (`src/compiler/checker/check.ts`, `types/type/index.ts`, `resolution/binding.ts`, `resolution/choice.ts`, D229, D230):**
   - `signatureOf` (`resolution/choice.ts`) rebuilds `RestSlot` (`restSlotOf`) on every candidate of every call, re-extracting the `Array<T>` element type that `declarations/signatures.ts` already checked.
-  - `{ readonly type: Type; readonly reference: boolean }` is duplicated as `ParameterSlot` (`types/type.ts`) and `ArgumentSlot` (`resolution/binding.ts`).
+  - `{ readonly type: Type; readonly reference: boolean }` is duplicated as `ParameterSlot` (`types/type/index.ts`) and `ArgumentSlot` (`resolution/binding.ts`).
   - `CallArgument`, `Passing`, `Accepts`, and `Inapplicability` sit in `resolution/choice.ts`, forcing `applicability.ts` and `packs.ts` (which `choice.ts` calls) to type-import upward from `choice.ts`.
 - **Incomplete target-typed lambda result inference (`src/compiler/checker/calls/lambda-arguments.ts`, `body-checker.ts`, D160):**
   - While `acceptsOf` recurses through `Tuple`, `ArrayLiteral`, `MapLiteral`, `If`, and `BlockExpression`, `checkDecidedLambdas` only inspects top-level `unparenthesized(node).kind === 'Lambda'`, and `BodyChecker.inferLambda` throws `unreachable` on any non-lambda expression.

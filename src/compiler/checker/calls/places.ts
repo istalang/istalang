@@ -46,8 +46,8 @@ import type { Passing } from '../resolution/call-arguments.ts';
 import type { AssignedPart } from '../surface/checked-body.ts';
 import { keyMembers, structConstraintsOn } from '../traits/known-constraints.ts';
 import { isOpaque } from '../types/computed-types.ts';
-import { errorType } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { runsAtOnce, writeElement } from './collection-functions.ts';
 

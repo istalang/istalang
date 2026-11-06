@@ -10,7 +10,7 @@ import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { preludeCall } from '../resolution/implicit.ts';
 import type { PatternTest } from '../surface/checked-pattern.ts';
-import { intType, isPrimitive } from '../types/primitives.ts';
+import { intType, isPrimitive } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import type { ValuePart } from './parts.ts';
 import { failed, type Leaf } from './pattern-tests.ts';

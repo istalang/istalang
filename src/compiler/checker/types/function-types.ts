@@ -1,11 +1,11 @@
 /**
  * Function types (§3.14) and the packs they end in (§3.5): a pack substituted by a tuple flattens
  * into parameters, and two function types are compared parameter by parameter, a declared pack
- * taking whatever parameters are left. The types themselves are type.ts's.
+ * taking whatever parameters are left. The types themselves are type/index.ts's.
  */
 
-import { errorType, tupleElements, tupleType } from './primitives.ts';
-import type { FunctionType, Type, TypeParameterType } from './type.ts';
+import type { FunctionType, Type, TypeParameterType } from './type/index.ts';
+import { errorType, tupleElements, tupleType } from './type/primitives.ts';
 
 /** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
 export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };

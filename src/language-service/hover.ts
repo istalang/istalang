@@ -15,7 +15,7 @@
 import type { Checker } from '../compiler/checker/check.ts';
 import type { Denotation } from '../compiler/checker/surface/denotation.ts';
 import { isOpaque } from '../compiler/checker/types/computed-types.ts';
-import type { Type } from '../compiler/checker/types/type.ts';
+import type { Type } from '../compiler/checker/types/type/index.ts';
 import { constraintText, writtenAndNamedText } from '../compiler/checker/types/type-text.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import type { Expression } from '../compiler/syntax/expressions/index.ts';

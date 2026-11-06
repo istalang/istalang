@@ -170,7 +170,7 @@ match status:
 
 ## Implementation notes
 
-1. **A `union` type kind** (`src/compiler/checker/types/type.ts`). Its constructor normalizes:
+1. **A `union` type kind** (`src/compiler/checker/types/type/index.ts`). Its constructor normalizes:
    - it flattens member unions and merges duplicates by `typeKey`;
    - it merges a literal into its base and a member into an `any` member whose traits it meets;
    - it drops `Never` and gives a lone member back as itself.

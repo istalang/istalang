@@ -16,8 +16,8 @@ import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';
-import { errorType, unitType } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { errorType, unitType } from '../types/type/primitives.ts';
 import { callResult, declaredBodyResult } from './signatures.ts';
 
 /** What ProgramChecker gives the unit: how to check a body against its declared result. */

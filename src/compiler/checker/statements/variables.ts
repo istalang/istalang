@@ -26,8 +26,8 @@ import type { Pass, Passes, PassTable } from '../passes.ts';
 import { declareTargets } from '../patterns/targets.ts';
 import type { AssignedPart } from '../surface/checked-body.ts';
 import type { TargetBinding, TargetOwner } from '../surface/checked-pattern.ts';
-import { errorType } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { widened } from '../types/unions/widening.ts';
 import { checkHoldScope } from './loops.ts';
 

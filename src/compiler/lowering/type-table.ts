@@ -50,7 +50,7 @@ import type {
   NominalType,
   Type,
   UnionType,
-} from '../checker/types/type.ts';
+} from '../checker/types/type/index.ts';
 import { baseOf } from '../checker/types/unions/union-members.ts';
 import { hasOneValue } from '../checker/types/unions/unions.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';

@@ -27,7 +27,6 @@
 
 import { sameItems } from '../../../../structures/equality.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
-import { mapAliasUse, type RecursiveLabel } from '../alias-uses.ts';
 import { isComputed, type RecursiveGraph, type RecursiveType } from '../computed-types.ts';
 import { reducedComputed } from '../parts/computed-reduction.ts';
 import {
@@ -39,7 +38,8 @@ import {
   typeChildren,
   withTypeChildren,
 } from '../parts/type-children.ts';
-import type { ParameterKey, Type } from '../type.ts';
+import { mapAliasUse, type RecursiveLabel } from '../type/alias-uses.ts';
+import type { ParameterKey, Type } from '../type/index.ts';
 import type { TypeRules } from '../type-rules.ts';
 import { type Slot, TermGraph } from './recursive-terms.ts';
 import { typeKeys } from './type-keys.ts';
@@ -313,7 +313,7 @@ class GraphNodes {
  * The recursive type `type` with each of its graph's parts and the types its labels name replaced
  * by what `map` gives, closed again by the program's `rules` (the banner); `type` itself when `map`
  * changes none. A label is how its node is written, never one of its parts, as an alias a type is
- * written through is (../type.ts), so a parameter only a label names, `T` of `Phantom<T> = Int |
+ * written through is (../type/index.ts), so a parameter only a label names, `T` of `Phantom<T> = Int |
  * Array<Phantom<T>>`, is replaced in the label alone.
  */
 export function mapRecursive(

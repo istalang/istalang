@@ -5,8 +5,8 @@
  * stated here, not as ../unions/unions.ts states them.
  */
 
-import { boolType } from '../primitives.ts';
-import type { LiteralValue, Type } from '../type.ts';
+import type { LiteralValue, Type } from '../type/index.ts';
+import { boolType } from '../type/primitives.ts';
 import { aliases, shows } from './recursive-types.test-kit.ts';
 import { typeKeys } from './type-keys.ts';
 

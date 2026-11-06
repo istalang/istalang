@@ -11,7 +11,7 @@
  *   leaves. Whether it stands for a member parameter is instantiation's to check
  *   (types/fitting/member-arguments.ts).
  * - A pack binds only what can stand for one, a tuple, `Unit` or a pack (§3.5); a function type's
- *   pack binds to the parameters past the fixed ones (types/type.ts, `sameShape`).
+ *   pack binds to the parameters past the fixed ones (types/type/index.ts, `sameShape`).
  * - A shape matches a shape of the same field names, field by field, in the name order both keep.
  *   A recursive type is matched as what it unfolds to, on either side, a pair met again holding
  *   (types/identity/unfolding-pairs.ts), so `List<T>` inside what is declared binds `T` from a `List<Int>`
@@ -44,7 +44,6 @@ import { sameType } from '../types/identity/identity.ts';
 import { UnfoldingPairs } from '../types/identity/unfolding-pairs.ts';
 import { typeChildren } from '../types/parts/type-children.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
-import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
 import { noSubstitution, type Substitution, substitute } from '../types/substitution.ts';
 import type {
   AnonymousStructType,
@@ -54,7 +53,8 @@ import type {
   ParameterKey,
   Type,
   UnionType,
-} from '../types/type.ts';
+} from '../types/type/index.ts';
+import { errorType, isPrimitive, neverType } from '../types/type/primitives.ts';
 import { baseOf } from '../types/unions/union-members.ts';
 import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions/unions.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
@@ -437,7 +437,7 @@ export class Inference {
   }
 }
 
-/** Whether two shapes name the same fields; both keep them in name order (types/type.ts). */
+/** Whether two shapes name the same fields; both keep them in name order (types/type/index.ts). */
 function sameFieldNames(first: AnonymousStructType, second: AnonymousStructType): boolean {
   return (
     first.fields.length === second.fields.length &&

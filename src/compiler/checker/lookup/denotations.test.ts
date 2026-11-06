@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Denotation } from '../surface/denotation.ts';
-import { intType, stringType, tupleType } from '../types/primitives.ts';
+import { intType, stringType, tupleType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { checkedMain } from './lookup.test-kit.ts';
 

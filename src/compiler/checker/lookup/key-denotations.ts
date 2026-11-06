@@ -20,7 +20,7 @@ import type { LiteralType } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation } from '../surface/denotation.ts';
 import { substitutionFor } from '../types/substitution.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
 import { givenKeysOwner } from '../types/written/key-types.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
 import { bodyHolding } from './holders.ts';

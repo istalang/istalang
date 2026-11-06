@@ -33,7 +33,13 @@ import type { FunctionCall, ResolvedCall } from './surface/resolved-call.ts';
 import type { Fit } from './types/fitting/fit.ts';
 import type { RestSlot } from './types/function-types.ts';
 import type { TypeKeys } from './types/identity/type-keys.ts';
-import type { AnonymousStructType, AnyType, FieldMember, NominalType, Type } from './types/type.ts';
+import type {
+  AnonymousStructType,
+  AnyType,
+  FieldMember,
+  NominalType,
+  Type,
+} from './types/type/index.ts';
 import type { TypeRules } from './types/type-rules.ts';
 
 /** A variant of an enum type, its fields substituted for the type's arguments. */

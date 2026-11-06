@@ -25,8 +25,8 @@ import type { BodyContext, FunctionFrame, Functions } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
 import type { CheckedFunction, NestedFunction } from '../surface/checked-body.ts';
-import { errorType } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 
 export class FunctionScopes implements Functions {
   readonly #stack: FunctionFrame[];

@@ -58,7 +58,7 @@ import type { FieldRead, FieldReading } from './surface/checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './surface/checked-pattern.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from './surface/resolved-call.ts';
 import type { Fit } from './types/fitting/fit.ts';
-import type { FieldMember, FunctionType, Type } from './types/type.ts';
+import type { FieldMember, FunctionType, Type } from './types/type/index.ts';
 
 export interface BodyContext {
   readonly checker: CheckerContext;

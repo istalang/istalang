@@ -21,8 +21,8 @@ import {
   producedBy,
   settleAgreement,
 } from '../../rules/agreement.ts';
-import { neverType } from '../../types/primitives.ts';
-import type { Type } from '../../types/type.ts';
+import type { Type } from '../../types/type/index.ts';
+import { neverType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type-text.ts';
 
 export class Branches {

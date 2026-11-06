@@ -9,7 +9,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { type CodecHelper, codecHelpers } from '../../../language/well-known.ts';
 import type { Checker } from '../../checker/check.ts';
-import type { Type } from '../../checker/types/type.ts';
+import type { Type } from '../../checker/types/type/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { type ClosedCall, closeCall } from '../closed-calls.ts';
 import type { CodeContext } from '../context.ts';

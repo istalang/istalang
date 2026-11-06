@@ -14,7 +14,7 @@ import type { ImplicitCalls } from '../../resolution/implicit.ts';
 import type { Iterations } from '../../rules/loops/iteration.ts';
 import type { LabelTargets } from '../../statements/loops.ts';
 import type { VariableScope } from '../../statements/variables.ts';
-import type { Type } from '../../types/type.ts';
+import type { Type } from '../../types/type/index.ts';
 import type { bodyRecords } from '../body-records.ts';
 
 type BodyRecords = ReturnType<typeof bodyRecords>;

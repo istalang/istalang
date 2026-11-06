@@ -17,7 +17,7 @@ import type {
   CheckedBody,
   NestedFunction,
 } from '../../checker/surface/checked-body.ts';
-import type { Type } from '../../checker/types/type.ts';
+import type { Type } from '../../checker/types/type/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import {

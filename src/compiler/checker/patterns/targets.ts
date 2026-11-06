@@ -13,7 +13,7 @@ import { typingPattern } from '../../syntax/parameters.ts';
 import { declaredTargets, type For, type VariableDeclaration } from '../../syntax/statements.ts';
 import type { BodyContext } from '../body-context.ts';
 import type { SignatureParameter } from '../check.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
 import { bodyScope } from './parts.ts';
 import { walkTargets } from './walk.ts';
 

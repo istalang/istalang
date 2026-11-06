@@ -7,7 +7,7 @@
 
 import type { ExternConstantDeclaration, FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { Checker } from '../check.ts';
-import type { NominalType, Type } from '../types/type.ts';
+import type { NominalType, Type } from '../types/type/index.ts';
 
 /** Whether `declaration` is an extern its host implements, rather than the runtime. */
 export function isHostExtern(

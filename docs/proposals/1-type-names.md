@@ -68,7 +68,7 @@ fn shout(x: any Stringable) -> String:
 
 ## Implementation notes
 
-1. **One list.** `src/language/primitives.ts` holds `primitiveNames`; the binder's scope and entities (`src/compiler/binder/scope.ts`, `entities.ts`) and the checker (`types/type.ts`, `context.ts`) read it, so the rename starts there.
+1. **One list.** `src/language/primitives.ts` holds `primitiveNames`; the binder's scope and entities (`src/compiler/binder/scope.ts`, `entities.ts`) and the checker (`types/type/index.ts`, `context.ts`) read it, so the rename starts there.
 2. **The Definition's spelling.** The primitives are "spelled the same way by the compiler and by the Definition it produces" (`primitives.ts`), and `src/definition/extern-key.ts` builds extern keys from them. A deploy refuses a program whose extern has a different type from the one the runtime holds (§3.6), so a renamed spelling would refuse the next deploy of every program with externs. Keep the Definition's spelling as it is, through one table in `primitives.ts` from source name to Definition spelling, or accept one breaking deploy.
 3. **Patterns.** `src/compiler/binder/patterns.ts` already tells binding from referring by case, so the binder doesn't change. `checker/patterns/matching.ts` resolves a referring name to a type as well: on an `any` subject it lowers as a struct pattern on one does today, a check of the closed enum's variant (`lowering/type-table.ts`); on a subject of that type it is a catch-all.
 4. **Exhaustiveness.** `checker/patterns/exhaustiveness.ts` counts a type pattern as covering its type's every constructor.

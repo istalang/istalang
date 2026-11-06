@@ -9,7 +9,7 @@
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { JsonDirection } from '../../checker/surface/json-form.ts';
-import type { Type } from '../../checker/types/type.ts';
+import type { Type } from '../../checker/types/type/index.ts';
 import { type ClosedCall, closeCall } from '../closed-calls.ts';
 import type { FunctionInstance } from '../instances.ts';
 

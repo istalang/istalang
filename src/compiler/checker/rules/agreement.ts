@@ -26,8 +26,8 @@ import type { CheckerContext } from '../context.ts';
 import type { ValueSite } from '../surface/checked-body.ts';
 import { type Fit, isExact } from '../types/fitting/fit.ts';
 import { mapChildren } from '../types/parts/type-parts.ts';
-import { isPrimitive } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { isPrimitive } from '../types/type/primitives.ts';
 import { literalsBase } from '../types/unions/unions.ts';
 import { sendableWidened, widened } from '../types/unions/widening.ts';
 

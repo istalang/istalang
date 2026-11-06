@@ -9,7 +9,7 @@
 import type { AliasDeclaration, AssociatedType, TypeParameter } from '../../syntax/declarations.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
 import type { StructType } from '../../syntax/types.ts';
-import type { RecursiveLabel } from './alias-uses.ts';
+import type { RecursiveLabel } from './type/alias-uses.ts';
 import type {
   FieldMember,
   NominalEntity,
@@ -17,7 +17,7 @@ import type {
   Type,
   TypeParameterType,
   WrittenThrough,
-} from './type.ts';
+} from './type/index.ts';
 
 /**
  * `T.Data` (§3.1): the associated type `name` of `of`, a type not known yet, a type parameter or

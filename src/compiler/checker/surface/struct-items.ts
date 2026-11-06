@@ -6,7 +6,7 @@
  */
 
 import type { Identifier } from '../../syntax/node.ts';
-import type { FieldMember } from '../types/type.ts';
+import type { FieldMember } from '../types/type/index.ts';
 
 /** The index among `fields` of the field an item `named` gives; -1 when it gives none of them. */
 export function itemField(named: Identifier | undefined, fields: readonly FieldMember[]): number {

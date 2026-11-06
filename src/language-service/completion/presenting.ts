@@ -9,7 +9,7 @@
  * one on a later line starts a statement of its own (a tuple, a block).
  */
 
-import type { Type } from '../../compiler/checker/types/type.ts';
+import type { Type } from '../../compiler/checker/types/type/index.ts';
 import type { TokenKind } from '../../compiler/syntax/tokens.ts';
 import { codeTokensOf } from '../tokens.ts';
 import type { Cursor } from './cursor.ts';

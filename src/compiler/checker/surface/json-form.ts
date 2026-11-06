@@ -11,7 +11,13 @@ import {
   type WellKnownDeclaration,
   wellKnown,
 } from '../../../language/well-known.ts';
-import type { LiteralType, NominalType, StructValueType, TupleType, Type } from '../types/type.ts';
+import type {
+  LiteralType,
+  NominalType,
+  StructValueType,
+  TupleType,
+  Type,
+} from '../types/type/index.ts';
 import type { UseSite } from '../use-site.ts';
 import type { FunctionCall, ResolvedCall } from './resolved-call.ts';
 

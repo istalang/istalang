@@ -19,9 +19,9 @@ import type { IndexedType, MappedField, StructType, TypeNode } from '../../../sy
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Fitting } from '../fitting/fit.ts';
-import { errorType } from '../primitives.ts';
 import { type Substitution, substitute } from '../substitution.ts';
-import { type ParameterKey, shapeType, type Type } from '../type.ts';
+import { type ParameterKey, shapeType, type Type } from '../type/index.ts';
+import { errorType } from '../type/primitives.ts';
 import { typeText } from '../type-text.ts';
 import { membersOf } from '../unions/unions.ts';
 import { declaredFields } from './declared-fields.ts';

@@ -42,8 +42,8 @@ import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/o
 import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type ImplicitOperand, implicitOperatorCall } from '../resolution/implicit.ts';
-import { boolType, isPrimitive } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { boolType, isPrimitive } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalOrBase, writtenLiteral } from '../types/unions/unions.ts';
 import { checkEquality } from './decided-conditions.ts';

@@ -22,8 +22,8 @@ import { checkProgram } from '../../check.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { namesBound, type PartStep } from '../../surface/checked-pattern.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
-import { intType, stringType } from '../../types/primitives.ts';
 import { substitutionFor } from '../../types/substitution.ts';
+import { intType, stringType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type-text.ts';
 
 describe('an instantiated body', () => {
@@ -151,7 +151,7 @@ describe('an instantiated body', () => {
 
 /**
  * Every value `value` holds, outside syntax: a node keeps no type of its instance. Nor does where a
- * field is declared, which keeps its type there, before any substitution (types/type.ts
+ * field is declared, which keeps its type there, before any substitution (types/type/index.ts
  * `FieldMember`), as a shape written in the generic function's own signature does.
  */
 function valuesIn(value: unknown, seen = new Set<unknown>()): readonly unknown[] {

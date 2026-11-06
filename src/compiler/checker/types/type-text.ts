@@ -11,11 +11,10 @@
 import { selfType } from '../../../language/well-known.ts';
 import type { TypeAliasDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
-import type { AliasUse } from './alias-uses.ts';
 import { type MappedParts, type RecursiveType, unfoldRecursive } from './computed-types.ts';
 import { folded } from './identity/recursive-types.ts';
 import { holdsRecursion } from './parts/type-children.ts';
-import { isPrimitive } from './primitives.ts';
+import type { AliasUse } from './type/alias-uses.ts';
 import {
   type AnonymousStructType,
   type Constraint,
@@ -26,7 +25,8 @@ import {
   type Type,
   type TypeParameterType,
   type UnionType,
-} from './type.ts';
+} from './type/index.ts';
+import { isPrimitive } from './type/primitives.ts';
 
 /** The unlabelled recursive types being printed as their bodies, each `…` where reached again. */
 const printing = new Set<RecursiveType>();

@@ -29,18 +29,18 @@ import { parentOf } from '../../syntax/tree.ts';
 import type { StructType } from '../../syntax/types.ts';
 import type { BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
-import { aliasedAs } from '../types/alias-uses.ts';
 import { isOpaque, type MappedParts } from '../types/computed-types.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
-import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
 import { substitute } from '../types/substitution.ts';
+import { aliasedAs } from '../types/type/alias-uses.ts';
 import {
   isMemberParameter,
   type ParameterKey,
   type StructValueType,
   shapeType,
   type Type,
-} from '../types/type.ts';
+} from '../types/type/index.ts';
+import { errorType, isPrimitive, neverType } from '../types/type/primitives.ts';
 import { literalType, membersOf, unionOf } from '../types/unions/unions.ts';
 import { keysOwner } from '../types/written/key-types.ts';
 import { entryRules, structConstraintsOn } from './known-constraints.ts';

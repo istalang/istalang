@@ -32,7 +32,7 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
-import type { ParameterKey, Type } from '../../types/type.ts';
+import type { ParameterKey, Type } from '../../types/type/index.ts';
 import type {
   CasePatternForm,
   InferVariable,

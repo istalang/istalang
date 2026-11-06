@@ -39,7 +39,7 @@ import {
   sameStructConstraint,
 } from '../types/struct-constraint.ts';
 import { substituteConstraint } from '../types/substitution.ts';
-import type { Constraint, Type } from '../types/type.ts';
+import type { Constraint, Type } from '../types/type/index.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
 import { useSite } from '../use-site.ts';
 import { meets } from './conformance.ts';

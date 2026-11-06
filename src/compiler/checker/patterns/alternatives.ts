@@ -12,7 +12,7 @@
 
 import type { PartBinding, PatternTest } from '../surface/checked-pattern.ts';
 import { sameType } from '../types/identity/identity.ts';
-import type { AnyType, Type } from '../types/type.ts';
+import type { AnyType, Type } from '../types/type/index.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { unionOf } from '../types/unions/unions.ts';
 import { leftOf, unionPart } from './members.ts';

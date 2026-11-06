@@ -10,7 +10,7 @@ import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
 import { type LinkForm, optionalOperatorOf } from '../../../syntax/expressions/chains.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import type { Type } from '../type.ts';
+import type { Type } from '../type/index.ts';
 import { typeText } from '../type-text.ts';
 import { optionalInner } from './unions.ts';
 

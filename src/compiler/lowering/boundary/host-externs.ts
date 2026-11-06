@@ -19,7 +19,7 @@ import type { FunctionId, Register } from '../../../definition/operands.ts';
 import { wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
-import type { Type } from '../../checker/types/type.ts';
+import type { Type } from '../../checker/types/type/index.ts';
 import { futureArgument } from '../../checker/types/well-known.ts';
 import { entityType } from '../../checker/types/written/named-types.ts';
 import type { ExternConstantDeclaration, FunctionDeclaration } from '../../syntax/declarations.ts';

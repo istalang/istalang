@@ -17,7 +17,7 @@ import type { TraitDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import { type DerivedCodec, type JsonDirection, jsonTraits } from '../surface/json-form.ts';
 import { isSendable } from '../traits/sendable.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
 import { isWellKnownTrait } from '../types/well-known.ts';
 import type { UseSite } from '../use-site.ts';
 

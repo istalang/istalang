@@ -24,7 +24,7 @@ import type { Register, TypeId } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { AssignedPart } from '../../checker/surface/checked-body.ts';
 import type { TargetOwner } from '../../checker/surface/checked-pattern.ts';
-import type { Type } from '../../checker/types/type.ts';
+import type { Type } from '../../checker/types/type/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { hasUnnamedPart } from '../../syntax/patterns.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';

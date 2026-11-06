@@ -13,7 +13,7 @@ import type {
   NominalType,
   StructValueType,
   Type,
-} from '../checker/types/type.ts';
+} from '../checker/types/type/index.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { CodeContext } from './context.ts';
 

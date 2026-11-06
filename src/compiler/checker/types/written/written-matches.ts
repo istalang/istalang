@@ -20,10 +20,10 @@ import { matchPlaceOf } from '../../../syntax/type-matches.ts';
 import type { InferType, NamedType } from '../../../syntax/types.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { aliasedAs } from '../alias-uses.ts';
 import { ownAssociatedType } from '../computed-types.ts';
-import { errorType } from '../primitives.ts';
-import type { NominalDeclaration, Type } from '../type.ts';
+import { aliasedAs } from '../type/alias-uses.ts';
+import type { NominalDeclaration, Type } from '../type/index.ts';
+import { errorType } from '../type/primitives.ts';
 import { matchUse, structCaseOf } from './type-match.ts';
 
 /** Where a type is written: the checker resolving it, and its module. */

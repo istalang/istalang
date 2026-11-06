@@ -17,7 +17,7 @@ import type { RestPattern } from '../../syntax/patterns.ts';
 import type { FieldTarget } from '../../syntax/statements.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { PartBinding } from '../surface/checked-pattern.ts';
-import type { Type, TypeParameterType } from '../types/type.ts';
+import type { Type, TypeParameterType } from '../types/type/index.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { literalType } from '../types/unions/unions.ts';

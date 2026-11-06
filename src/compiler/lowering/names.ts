@@ -24,10 +24,10 @@ import { qualifiedName, wellKnown } from '../../language/well-known.ts';
 import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
-import type { DeclaredAliasUse } from '../checker/types/alias-uses.ts';
 import type { RecursiveType } from '../checker/types/computed-types.ts';
 import { folded } from '../checker/types/identity/recursive-types.ts';
 import { substitute, substitutionFor } from '../checker/types/substitution.ts';
+import type { DeclaredAliasUse } from '../checker/types/type/alias-uses.ts';
 import type {
   AnonymousStructType,
   FunctionType,
@@ -36,7 +36,7 @@ import type {
   TupleType,
   Type,
   UnionType,
-} from '../checker/types/type.ts';
+} from '../checker/types/type/index.ts';
 import { parameterText, typeText } from '../checker/types/type-text.ts';
 import { optionalInner } from '../checker/types/unions/unions.ts';
 import { isStdModule, type ModuleId, programModule } from '../program/program.ts';

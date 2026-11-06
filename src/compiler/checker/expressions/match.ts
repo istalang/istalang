@@ -27,8 +27,8 @@ import { remainingType } from '../patterns/remaining.ts';
 import { signatureOf, witnessText } from '../patterns/shapes.ts';
 import { cantMatch } from '../surface/checked-pattern.ts';
 import { keyOwnerOfValue, recordPatternKeys } from '../traits/struct-keys.ts';
-import { boolType } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { boolType } from '../types/type/primitives.ts';
 import { Branches, branchesAccepts } from './control/branches.ts';
 import { decideComparison } from './decided-conditions.ts';
 

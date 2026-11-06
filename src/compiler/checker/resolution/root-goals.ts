@@ -23,7 +23,7 @@ import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { CheckerContext, CheckerNote, RootGoals, StructGoal, TraitGoal } from '../context.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
 import { searchSite, type UseSite } from '../use-site.ts';
 import { goalKey } from './witness-outcomes.ts';
 

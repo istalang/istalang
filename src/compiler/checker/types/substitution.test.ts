@@ -18,9 +18,9 @@ import {
   showingRules,
 } from './identity/recursive-types.test-kit.ts';
 import { unaliased } from './parts/type-parts.ts';
-import { intType, stringType, tupleType } from './primitives.ts';
 import { substitute } from './substitution.ts';
-import { type NominalEntity, shapeType, type Type } from './type.ts';
+import { type NominalEntity, shapeType, type Type } from './type/index.ts';
+import { intType, stringType, tupleType } from './type/primitives.ts';
 
 const box = {
   declaration: { kind: 'StructDeclaration', name: { text: 'Box' } } as unknown as StructDeclaration,

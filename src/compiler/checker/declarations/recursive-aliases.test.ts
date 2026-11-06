@@ -21,9 +21,9 @@ import { checkProgram } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { sameType } from '../types/identity/identity.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
-import { intType, stringType } from '../types/primitives.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { intType, stringType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 
 function parameterTypesOf(source: string): {

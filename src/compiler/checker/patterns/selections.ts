@@ -28,7 +28,7 @@ import type {
 import { spanAcross } from '../../syntax/positions.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { sameType } from '../types/identity/identity.ts';
-import type { AnyType, Type } from '../types/type.ts';
+import type { AnyType, Type } from '../types/type/index.ts';
 import { isKnown } from '../types/unions/equality.ts';
 import { baseOf } from '../types/unions/union-members.ts';
 import {

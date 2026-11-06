@@ -16,7 +16,7 @@ import {
   parameterOfArgument,
   type ResolvedCall,
 } from '../compiler/checker/surface/resolved-call.ts';
-import type { FunctionType } from '../compiler/checker/types/type.ts';
+import type { FunctionType } from '../compiler/checker/types/type/index.ts';
 import { presentType } from '../compiler/checker/types/unions/unions.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import type { Call } from '../compiler/syntax/expressions/index.ts';

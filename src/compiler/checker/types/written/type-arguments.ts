@@ -22,9 +22,9 @@ import {
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { errorType } from '../primitives.ts';
 import { substitute, substitutionFor } from '../substitution.ts';
-import type { NominalDeclaration, ParameterKey, Type } from '../type.ts';
+import type { NominalDeclaration, ParameterKey, Type } from '../type/index.ts';
+import { errorType } from '../type/primitives.ts';
 
 /** A declaration that takes type parameters. */
 export type GenericDeclaration =

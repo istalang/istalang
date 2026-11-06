@@ -13,7 +13,7 @@
  * - An alias is the type it stands for, its own parameters replaced by the arguments, written
  *   through the alias so it reads as written (§3.17).
  * - `T?` is the prelude's `Optional<T>` (§2), and `Self` inside a trait is the trait's implicit
- *   parameter (types/type.ts).
+ *   parameter (types/type/index.ts).
  * - `&T` is only ever a parameter's type (the parser enforces it); here it denotes `T`, and the
  *   signature records the reference.
  * - Fields, of a struct, an enum's variant or an anonymous struct type, resolve in the module
@@ -43,18 +43,18 @@ import {
 } from '../../../syntax/types.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { aliasedAs } from '../alias-uses.ts';
 import { ownAssociatedType } from '../computed-types.ts';
 import { isPack, withPack } from '../function-types.ts';
-import { errorType, primitiveType, tupleType, unitType } from '../primitives.ts';
 import { substitutionFor } from '../substitution.ts';
+import { aliasedAs } from '../type/alias-uses.ts';
 import {
   type NominalDeclaration,
   nominalType,
   type PackType,
   type ParameterKey,
   type Type,
-} from '../type.ts';
+} from '../type/index.ts';
+import { errorType, primitiveType, tupleType, unitType } from '../type/primitives.ts';
 import { typeText } from '../type-text.ts';
 import { optionalOf, unionOf, writtenLiteral } from '../unions/unions.ts';
 import { fieldWritten, keysWritten, structWritten } from './key-types.ts';

@@ -18,8 +18,8 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations.ts';
-import { boolType, intType, neverType, stringType } from '../primitives.ts';
-import type { Type } from '../type.ts';
+import type { Type } from '../type/index.ts';
+import { boolType, intType, neverType, stringType } from '../type/primitives.ts';
 import { noProgramRules } from '../type-rules.test-kit.ts';
 import type { TypeRules } from '../type-rules.ts';
 import { unionOf } from '../unions/unions.ts';

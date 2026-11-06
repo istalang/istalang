@@ -6,7 +6,7 @@
 
 import type { Entity } from '../../compiler/binder/entities.ts';
 import type { SignatureParameter, VariantMember } from '../../compiler/checker/check.ts';
-import type { FieldMember, LiteralType, Type } from '../../compiler/checker/types/type.ts';
+import type { FieldMember, LiteralType, Type } from '../../compiler/checker/types/type/index.ts';
 import type { FunctionDeclaration } from '../../compiler/syntax/declarations.ts';
 
 export interface Candidate {

@@ -61,7 +61,7 @@ import type {
   StructValueType,
   Type,
   UnionType,
-} from '../../types/type.ts';
+} from '../../types/type/index.ts';
 import { typeText } from '../../types/type-text.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
 import { optionalInner } from '../../types/unions/unions.ts';

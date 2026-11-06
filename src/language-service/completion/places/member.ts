@@ -20,7 +20,7 @@
 
 import { type NamespaceEntity, namesType, typeEntity } from '../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../compiler/checker/check.ts';
-import type { Type } from '../../../compiler/checker/types/type.ts';
+import type { Type } from '../../../compiler/checker/types/type/index.ts';
 import type { FunctionDeclaration } from '../../../compiler/syntax/declarations.ts';
 import { chainStepOf } from '../../../compiler/syntax/expressions/chains.ts';
 import type { Expression, MemberAccess } from '../../../compiler/syntax/expressions/index.ts';

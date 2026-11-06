@@ -9,7 +9,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { resultVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { NominalType, Type } from '../../checker/types/type.ts';
+import type { NominalType, Type } from '../../checker/types/type/index.ts';
 import type { Propagate } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
 import { buildVariant, isEnum, payloadOf, payloadOr } from './variants.ts';

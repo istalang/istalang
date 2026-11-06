@@ -20,14 +20,14 @@ import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { chooseVariant } from '../resolution/named.ts';
 import { enumsExpected, expectedNominal, sameNominal } from '../types/fitting/expected.ts';
-import { errorType, noneType } from '../types/primitives.ts';
 import {
   isNominalEntity,
   type NominalEntity,
   type NominalType,
   nominalType,
   type Type,
-} from '../types/type.ts';
+} from '../types/type/index.ts';
+import { errorType, noneType } from '../types/type/primitives.ts';
 import { checkLiteralFields, knownArguments } from './literal-fields.ts';
 
 /**

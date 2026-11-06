@@ -26,7 +26,7 @@ import {
 import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { noSubstitution, type Substitution, substitute } from '../types/substitution.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { type Given, reshapesArguments, type Taken, takenBy } from './applicability.ts';
 import { bindArguments, bindValue } from './binding.ts';

@@ -22,8 +22,8 @@ import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isSendable } from '../traits/sendable.ts';
-import { errorType } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument, wellKnownOf } from '../types/well-known.ts';
 

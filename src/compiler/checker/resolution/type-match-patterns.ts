@@ -34,7 +34,7 @@ import { UnfoldingPairs } from '../types/identity/unfolding-pairs.ts';
 import { typeChildren } from '../types/parts/type-children.ts';
 import { isKnown, parametersIn, unaliased } from '../types/parts/type-parts.ts';
 import type { StructConstraintModel } from '../types/struct-constraint.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
 import { baseOf } from '../types/unions/union-members.ts';
 import { membersOf, unionOf } from '../types/unions/unions.ts';
 import type { CasePatternForm, InferVariable } from '../types/written/type-match.ts';

@@ -44,8 +44,8 @@ import {
   type PatternTest,
   type TargetBinding,
 } from '../surface/checked-pattern.ts';
-import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { errorType, isPrimitive, neverType } from '../types/type/primitives.ts';
 import { partSelected, sameNames } from './alternatives.ts';
 import { takeArray } from './arrays.ts';
 import { anyShape, nothingShape, type Shape } from './exhaustiveness.ts';

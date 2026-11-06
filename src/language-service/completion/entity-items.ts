@@ -19,7 +19,7 @@ import {
   type VariableEntity,
 } from '../../compiler/binder/entities.ts';
 import type { Checker } from '../../compiler/checker/check.ts';
-import { nominalType, type Type } from '../../compiler/checker/types/type.ts';
+import { nominalType, type Type } from '../../compiler/checker/types/type/index.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
 import type { ModuleId } from '../../compiler/program/program.ts';
 import { isMethod } from '../../compiler/syntax/declarations.ts';

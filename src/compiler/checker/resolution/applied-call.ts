@@ -21,7 +21,7 @@ import type { BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { substitute } from '../types/substitution.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
 import { typeText } from '../types/type-text.ts';
 import { useSite } from '../use-site.ts';
 import { argumentListText, filledTypes, fitArguments, recordArgumentKeys } from './argument-fit.ts';

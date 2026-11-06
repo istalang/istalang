@@ -33,7 +33,7 @@ import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import type { VariantMember } from '../check.ts';
-import type { Constraint, FieldMember, Type } from '../types/type.ts';
+import type { Constraint, FieldMember, Type } from '../types/type/index.ts';
 import type { BodyFacts, CheckedFunction } from './checked-body.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
 

@@ -23,8 +23,8 @@ import {
   typeParametersOf,
 } from '../../../syntax/declarations.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
-import { errorType } from '../../types/primitives.ts';
-import type { ParameterKey, Type } from '../../types/type.ts';
+import type { ParameterKey, Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
 
 /** An edge of the expansion graph: a type parameter given, in an argument, for another. */
 export interface ArgumentEdge {

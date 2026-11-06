@@ -18,8 +18,8 @@ import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { takesAsSelf } from '../resolution/receivers.ts';
 import { keyedFieldRead } from '../surface/checked-field.ts';
-import { errorType } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { insideOptional } from '../types/unions/inside-optional.ts';
 
 export function checkIndex(context: BodyContext, node: Index, expected: Type | undefined): Type {

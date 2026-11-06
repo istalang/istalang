@@ -40,7 +40,7 @@ import type { Checker, SignatureParameter } from '../check.ts';
 import type { FieldPassType, PassRecords } from '../passes.ts';
 import type { Fit } from '../types/fitting/fit.ts';
 import type { Substitution } from '../types/substitution.ts';
-import type { FieldMember, FunctionType, Type } from '../types/type.ts';
+import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import type { FieldRead, FieldReading } from './checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner, TargetStep } from './checked-pattern.ts';

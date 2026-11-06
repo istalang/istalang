@@ -1,6 +1,6 @@
 /**
  * The layout of declared types (§3.1, §3.11, §3.18): a struct's fields, an enum's variants and
- * the value behind a shared struct. An anonymous struct carries its own fields (types/type.ts), so
+ * the value behind a shared struct. An anonymous struct carries its own fields (types/type/index.ts), so
  * its layout is read off the type.
  *
  * A shared struct's fields are its value's, behind the handle that is the struct's value: they are
@@ -15,7 +15,7 @@
  *   "Field order", `inFieldOrder`), so positions, the Definition's entry, patterns, codecs and a
  *   struct's conversion into its shape all follow one order.
  * - As instantiated: substituted for a nominal type's arguments, derived on demand from the
- *   declared layout and never stored per instantiation (types/type.ts).
+ *   declared layout and never stored per instantiation (types/type/index.ts).
  *
  * ProgramChecker composes this unit and answers the layout queries through it.
  */
@@ -38,7 +38,6 @@ import { type FieldedDeclaration, TypeExpansion } from '../rules/expansion/types
 import { unfolded } from '../types/computed-types.ts';
 import { inFieldOrder } from '../types/field-order.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';
-import { errorType } from '../types/primitives.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import {
   type AnonymousStructType,
@@ -46,7 +45,8 @@ import {
   type NominalType,
   shapeType,
   type Type,
-} from '../types/type.ts';
+} from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { declaredFields } from '../types/written/declared-fields.ts';
 

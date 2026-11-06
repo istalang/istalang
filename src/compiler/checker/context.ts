@@ -37,7 +37,7 @@ import type { ResolvedCall } from './surface/resolved-call.ts';
 import type { Fit, Fitting } from './types/fitting/fit.ts';
 import type { ConstraintSet, StructConstraintModel } from './types/struct-constraint.ts';
 import type { Substitution } from './types/substitution.ts';
-import type { Constraint, FieldMember, NominalDeclaration, Type } from './types/type.ts';
+import type { Constraint, FieldMember, NominalDeclaration, Type } from './types/type/index.ts';
 import type { StaticOwner } from './types/written/named-types.ts';
 import type { TypeMatchQueries } from './types/written/type-match.ts';
 import type { UseSite } from './use-site.ts';

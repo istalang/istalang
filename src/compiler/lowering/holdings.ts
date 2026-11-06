@@ -19,7 +19,7 @@ import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { unfoldRecursive } from '../checker/types/computed-types.ts';
 import { sameType } from '../checker/types/identity/identity.ts';
-import type { AnyType, Type, UnionType } from '../checker/types/type.ts';
+import type { AnyType, Type, UnionType } from '../checker/types/type/index.ts';
 import { absorbingMember, baseOf } from '../checker/types/unions/union-members.ts';
 import { hasMember, hasOneValue } from '../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';

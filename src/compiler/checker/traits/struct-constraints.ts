@@ -23,7 +23,7 @@ import type {
   EntryRule,
   StructConstraintModel,
 } from '../types/struct-constraint.ts';
-import type { Constraint } from '../types/type.ts';
+import type { Constraint } from '../types/type/index.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
 import { type ConstraintSite, resolveConstraint } from './constraints.ts';
 

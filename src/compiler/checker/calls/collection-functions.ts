@@ -20,7 +20,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { implicitCall } from '../resolution/implicit.ts';
 import type { ImplicitRole, ResolvedCall } from '../surface/resolved-call.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
 
 /** An element written: by which construct and role, into what, and what to report when it can't. */
 export interface ElementWrite {

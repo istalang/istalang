@@ -47,7 +47,7 @@ import { typeKeys } from '../types/identity/type-keys.ts';
 import { typeChildren } from '../types/parts/type-children.ts';
 import { isKnown, sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
-import type { RecursiveUse, Type, UnreducedUse } from '../types/type.ts';
+import type { RecursiveUse, Type, UnreducedUse } from '../types/type/index.ts';
 import { spellingText, typeText } from '../types/type-text.ts';
 import { aliasInstance, type TypeMatchQueries } from '../types/written/type-match.ts';
 

@@ -53,8 +53,8 @@ import {
 } from '../resolution/candidates.ts';
 import { namedType } from '../resolution/named.ts';
 import { fieldOf } from '../traits/known-fields.ts';
-import { errorType } from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { insideOptional } from '../types/unions/inside-optional.ts';
 import { writtenLiteral } from '../types/unions/unions.ts';

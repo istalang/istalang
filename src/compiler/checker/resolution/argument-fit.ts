@@ -12,7 +12,7 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import { substitute } from '../types/substitution.ts';
-import type { LiteralType, Type } from '../types/type.ts';
+import type { LiteralType, Type } from '../types/type/index.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { givenKeysOwner } from '../types/written/key-types.ts';

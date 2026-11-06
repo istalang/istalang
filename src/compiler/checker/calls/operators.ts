@@ -21,7 +21,7 @@ import {
 import type { BodyContext } from '../body-context.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import type { ResolvedSite } from '../surface/resolved-call.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
 import { resolveCall } from './resolve.ts';
 
 /** An operator a call site applies: as it is written, and the function it calls (§3.9). */

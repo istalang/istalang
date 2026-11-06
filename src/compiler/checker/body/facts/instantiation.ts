@@ -40,7 +40,7 @@ import {
   substituteAny,
   substituteKept,
 } from '../../types/substitution.ts';
-import type { FieldMember, Type } from '../../types/type.ts';
+import type { FieldMember, Type } from '../../types/type/index.ts';
 import type { TypeRules } from '../../types/type-rules.ts';
 import { membersOf } from '../../types/unions/unions.ts';
 

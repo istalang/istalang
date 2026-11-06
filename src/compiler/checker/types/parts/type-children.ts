@@ -14,7 +14,7 @@
 import { memo } from '../../../../structures/memo.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { RecursiveGraph } from '../computed-types.ts';
-import type { ParameterKey, Type } from '../type.ts';
+import type { ParameterKey, Type } from '../type/index.ts';
 
 /** Each graph's parts, which never change: a graph is immutable. */
 const graphPartsOf = new WeakMap<RecursiveGraph, readonly Type[]>();

@@ -37,7 +37,7 @@ import type { Requirement } from '../traits/constraints.ts';
 import { requirementsNamed } from '../traits/known-constraints.ts';
 import { type ComputedType, isComputed } from '../types/computed-types.ts';
 import { anyTypesIn, computedTypesIn, parametersIn } from '../types/parts/type-parts.ts';
-import type { AnyType, Type } from '../types/type.ts';
+import type { AnyType, Type } from '../types/type/index.ts';
 import { type StaticOwner, staticOwnerOf } from '../types/written/named-types.ts';
 import { traitCallsOn } from './union-traits.ts';
 

@@ -26,14 +26,14 @@ import { partsAccept, partsBuild } from '../rules/agreement.ts';
 import type { FieldSource } from '../surface/checked-body.ts';
 import { inFieldOrder } from '../types/field-order.ts';
 import { builtFrom } from '../types/fitting/expected.ts';
-import { errorType } from '../types/primitives.ts';
 import {
   type FieldMember,
   type NominalEntity,
   type NominalType,
   shapeType,
   type Type,
-} from '../types/type.ts';
+} from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import {
   checkLiteralFields,

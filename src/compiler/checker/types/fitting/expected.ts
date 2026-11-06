@@ -31,7 +31,6 @@ import type { AcceptedPart, Accepts, BodyContext } from '../../body-context.ts';
 import type { CheckerContext } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { unfolded } from '../computed-types.ts';
-import { errorType, expectsError } from '../primitives.ts';
 import {
   type FunctionType,
   type NominalDeclaration,
@@ -40,7 +39,8 @@ import {
   nominalType,
   type Type,
   type UnionType,
-} from '../type.ts';
+} from '../type/index.ts';
+import { errorType, expectsError } from '../type/primitives.ts';
 import { membersOf, optionalInner } from '../unions/unions.ts';
 import { arrayElement, wellKnownArguments } from '../well-known.ts';
 import { typeArgumentsFor } from '../written/type-arguments.ts';

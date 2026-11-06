@@ -11,7 +11,7 @@
  */
 
 import type { Checker, SignatureParameter } from '../compiler/checker/check.ts';
-import type { FunctionType } from '../compiler/checker/types/type.ts';
+import type { FunctionType } from '../compiler/checker/types/type/index.ts';
 import { functionTypeParts, slotText, typeText } from '../compiler/checker/types/type-text.ts';
 import { programModule } from '../compiler/program/program.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../compiler/syntax/declarations.ts';

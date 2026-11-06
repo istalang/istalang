@@ -21,8 +21,8 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { FieldStep, PartStep } from '../surface/checked-pattern.ts';
 import { itemField } from '../surface/struct-items.ts';
 import { unfolded } from '../types/computed-types.ts';
-import { errorType } from '../types/primitives.ts';
-import type { AnyType, FieldMember, Type, UnionType } from '../types/type.ts';
+import type { AnyType, FieldMember, Type, UnionType } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { namesOwnType, patternTypeOf } from '../types/written/pattern-types.ts';
 

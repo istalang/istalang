@@ -29,7 +29,7 @@ import {
   substituteAny,
   substitutionFor,
 } from '../checker/types/substitution.ts';
-import type { AnyType, Type } from '../checker/types/type.ts';
+import type { AnyType, Type } from '../checker/types/type/index.ts';
 import { typeText } from '../checker/types/type-text.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
 import {

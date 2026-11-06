@@ -16,7 +16,7 @@ import {
   type JsonField,
   variantTagKey,
 } from '../../checker/surface/json-form.ts';
-import type { LiteralType, NominalType, Type } from '../../checker/types/type.ts';
+import type { LiteralType, NominalType, Type } from '../../checker/types/type/index.ts';
 import { typeText } from '../../checker/types/type-text.ts';
 import { type ClosedCall, closeCall } from '../closed-calls.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';

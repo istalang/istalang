@@ -25,9 +25,9 @@ import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { closeRecursive } from '../types/identity/recursive-types.ts';
 import { mentionsError, sameTypeSpelled } from '../types/parts/type-parts.ts';
-import { errorType } from '../types/primitives.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
-import type { Type } from '../types/type.ts';
+import type { Type } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { parameterType, resolveClosing } from '../types/written/resolve-type.ts';
 import type { AliasRecursions } from './alias-recursion.ts';
 

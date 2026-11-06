@@ -13,7 +13,7 @@ import type { CheckerContext } from '../context.ts';
 import type { Inference } from '../inference/infer.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
 import { substituteConstraint } from '../types/substitution.ts';
-import type { ParameterKey, Type } from '../types/type.ts';
+import type { ParameterKey, Type } from '../types/type/index.ts';
 import { searchSite } from '../use-site.ts';
 import { takenBy } from './applicability.ts';
 import { bindArguments } from './binding.ts';

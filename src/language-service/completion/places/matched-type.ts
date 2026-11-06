@@ -14,7 +14,7 @@
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { Denotation } from '../../../compiler/checker/surface/denotation.ts';
-import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type.ts';
+import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type/index.ts';
 import { unionOf } from '../../../compiler/checker/types/unions/unions.ts';
 import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
 import {

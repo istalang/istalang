@@ -45,7 +45,7 @@ fn saveTree(c: CrmCategory) -> Int: c.children.length()
 
 ## The iso-recursive representation it replaced, with its homes
 
-- `RecursiveUse` (`checker/types/type.ts`): `{declaration, arguments}`. `RecursiveType` (`checker/types/computed-types.ts`): `{kind: 'recursive', declaration, arguments}` plus `WrittenThrough`. It holds no structure.
+- `RecursiveUse` (`checker/types/type/index.ts`): `{declaration, arguments}`. `RecursiveType` (`checker/types/computed-types.ts`): `{kind: 'recursive', declaration, arguments}` plus `WrittenThrough`. It holds no structure.
 - **Unfolding is checker state**: `TypeRules.unfold` / `unfoldedMembers` (`checker/types/type-rules.ts`, implemented in `checker/declarations/aliases.ts` through the `#unfoldings` entries table keyed by `typeKeys.spelledKey`, and `checker/resolution/program-type-rules.ts`). `unfolded(type, rules)` (`type-rules.ts`) is the reader.
 - **Identity markers**: every unfolded body carries its use (`Unfolding.recursion`, `withRecursion` in `computed-types.ts`; `isUnfoldable`, `recursionOf` in `type.ts`) so `typeKey(unfold(use)) === typeKey(use)` (fix `f8b3558d`). `MappedType.recursion` (`computed-types.ts`, from `7a743115`) does the same for a type `match` reduced while its subject was opaque.
 - **Keys**: `checker/types/identity/type-keys.ts`. Identity is key equality (`identity.ts`). A recursive use keys as `{~<declaration identity number><args>}` (`recursionKeyOf`); the whole key of a type object is memoized in the `ownKeys` WeakMap, across every checker and revision. The banner states the contract: keys are pure functions of an immutable type object.

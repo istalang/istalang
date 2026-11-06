@@ -14,7 +14,7 @@
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { FieldSource } from '../../checker/surface/checked-body.ts';
-import type { AnonymousStructType, NominalType } from '../../checker/types/type.ts';
+import type { AnonymousStructType, NominalType } from '../../checker/types/type/index.ts';
 import type {
   Expression,
   FieldsLiteral,

@@ -1,7 +1,7 @@
 /**
  * How a type was written where it isn't spelled as itself (§3.1, §3.17): through an alias, an
  * associated type or a struct's keys. An alias names no type of its own: a type written through one
- * carries it (type.ts `WrittenThrough`) only so its text can read as written (`Entries<Int>`), which
+ * carries it (type/index.ts `WrittenThrough`) only so its text can read as written (`Entries<Int>`), which
  * messages and hovers show. An associated type on a known type is such an alias too
  * (`Field<Int>.Data`), whose spelling also keeps inference from looking through it (§3.5); on a
  * type not known yet, it is a type of its own, opaque (`AssociatedOfType`). Exact relations and type
@@ -10,9 +10,9 @@
  * the alias didn't write, so widening, the one other, drops it.
  */
 
-import { sameItems } from '../../../structures/equality.ts';
-import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
-import type { Type } from './type.ts';
+import { sameItems } from '../../../../structures/equality.ts';
+import type { TypeAliasDeclaration } from '../../../syntax/declarations.ts';
+import type { Type } from './index.ts';
 
 /** The alias a type was written through, with the arguments it was given there (§3.17). */
 export interface DeclaredAliasUse {

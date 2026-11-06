@@ -27,7 +27,7 @@ import {
   type PatternValue,
 } from '../checker/surface/checked-pattern.ts';
 import { sameType } from '../checker/types/identity/identity.ts';
-import type { LiteralType, Type } from '../checker/types/type.ts';
+import type { LiteralType, Type } from '../checker/types/type/index.ts';
 import { baseOf } from '../checker/types/unions/union-members.ts';
 import { hasMember } from '../checker/types/unions/unions.ts';
 import type { Identifier } from '../syntax/node.ts';

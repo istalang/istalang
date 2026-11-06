@@ -16,7 +16,7 @@
 
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { FieldMember, Type } from '../checker/types/type.ts';
+import type { FieldMember, Type } from '../checker/types/type/index.ts';
 import type { Expression, Index } from '../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { FunctionContext } from './context.ts';

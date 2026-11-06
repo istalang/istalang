@@ -34,7 +34,7 @@ import {
 import { objectUnsafety } from '../traits/object-safety.ts';
 import { sameType } from '../types/identity/identity.ts';
 import { substitute } from '../types/substitution.ts';
-import type { AnyType, Constraint, ParameterKey, Type, UnionType } from '../types/type.ts';
+import type { AnyType, Constraint, ParameterKey, Type, UnionType } from '../types/type/index.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
 import { parameterType } from '../types/written/resolve-type.ts';

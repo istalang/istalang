@@ -56,7 +56,7 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
 - **Lands:**
   - The checker records a wrap at the coercion site, as it does for `T`→`T?`.
   - Lowering wraps the value in a closure whose entry is async.
-  - Function-type equality is written twice (`types/type.ts` `sameType` and `inference/infer.ts`), so it becomes one function first.
+  - Function-type equality is written twice (`types/type/index.ts` `sameType` and `inference/infer.ts`), so it becomes one function first.
 - **Deletes:** the plain halves of `test` (×2), `futures.retry`, `rpc.onMessage` and `fanout.subscribe`.
 - **Gaps:** whether `sendable` is kept through the wrap (default: yes).
 

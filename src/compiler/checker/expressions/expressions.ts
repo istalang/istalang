@@ -29,6 +29,7 @@ import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import type { AcceptedPart, Accepts, BodyContext, PartReader, TypedPart } from '../body-context.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
 import { takingUnfolded } from '../types/fitting/expected.ts';
+import type { Type } from '../types/type/index.ts';
 import {
   boolType,
   errorType,
@@ -36,8 +37,7 @@ import {
   intType,
   stringType,
   unitType,
-} from '../types/primitives.ts';
-import type { Type } from '../types/type.ts';
+} from '../types/type/primitives.ts';
 import { literalOrBase } from '../types/unions/unions.ts';
 import { wellKnownOf } from '../types/well-known.ts';
 import { checkAwait } from './await.ts';

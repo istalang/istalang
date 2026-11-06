@@ -7,7 +7,7 @@
  */
 
 import { unfolded } from '../computed-types.ts';
-import type { Type } from '../type.ts';
+import type { Type } from '../type/index.ts';
 import { sameType } from './identity.ts';
 import { typeKeys } from './type-keys.ts';
 

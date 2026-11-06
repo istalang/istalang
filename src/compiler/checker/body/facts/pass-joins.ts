@@ -14,7 +14,7 @@
 
 import type { PassAnswers } from '../../lookup/pass-views.ts';
 import type { PassRecords } from '../../passes.ts';
-import type { Type } from '../../types/type.ts';
+import type { Type } from '../../types/type/index.ts';
 import type { TypeRules } from '../../types/type-rules.ts';
 import { unionOf } from '../../types/unions/unions.ts';
 

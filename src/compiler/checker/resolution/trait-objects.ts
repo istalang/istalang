@@ -14,7 +14,7 @@ import type { CheckerContext } from '../context.ts';
 import type { ResolvedCall } from '../surface/resolved-call.ts';
 import { constraintOn } from '../traits/constraints.ts';
 import { sameConstraint } from '../types/identity/identity.ts';
-import type { AnyType, Type } from '../types/type.ts';
+import type { AnyType, Type } from '../types/type/index.ts';
 import { typeText } from '../types/type-text.ts';
 import { searchSite, type UseSite } from '../use-site.ts';
 import { meets, witnessesFor } from './conformance.ts';

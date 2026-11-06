@@ -11,8 +11,8 @@
  *   whose literals' base does, as the program's rules say (../type-rules.ts).
  */
 
-import { isPrimitive, primitiveType } from '../primitives.ts';
-import type { AnyType, LiteralValue, Type } from '../type.ts';
+import type { AnyType, LiteralValue, Type } from '../type/index.ts';
+import { isPrimitive, primitiveType } from '../type/primitives.ts';
 import type { TypeRules } from '../type-rules.ts';
 
 /** The primitive a literal's value is a value of. */

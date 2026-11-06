@@ -40,8 +40,8 @@ import {
 import type { CheckedBody } from '../surface/checked-body.ts';
 import { sameForm } from '../surface/constant-form.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';
-import { errorType } from '../types/primitives.ts';
-import type { FieldMember, Type } from '../types/type.ts';
+import type { FieldMember, Type } from '../types/type/index.ts';
+import { errorType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { declaredFieldOf, type FieldOwner } from '../types/written/declared-fields.ts';
 import { computeConstant, refusalOf } from './computation/index.ts';

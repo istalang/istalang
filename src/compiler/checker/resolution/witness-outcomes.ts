@@ -21,7 +21,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { ResolvedCall } from '../surface/resolved-call.ts';
 import type { TypeKeys } from '../types/identity/type-keys.ts';
 import type { EntryRule, StructConstraintModel } from '../types/struct-constraint.ts';
-import type { Constraint, Type } from '../types/type.ts';
+import type { Constraint, Type } from '../types/type/index.ts';
 import { typeText } from '../types/type-text.ts';
 import type { UseSite } from '../use-site.ts';
 import type { Meets } from './shortfalls.ts';
