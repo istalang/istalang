@@ -1,13 +1,13 @@
 /**
  * One test's world (§10): a fresh runtime, in memory, running the test's instance and every
- * instance it starts or spawns, and the seam (scheduler/test-world.ts) through which those reach
- * each other.
+ * instance it starts or spawns, and the seam (scheduler/testing/test-world.ts) through which those
+ * reach each other.
  *
  * - Instances run one at a time, each advanced from its last commit: what one reads of another is
  *   that one's last commit, as a host would see it. An instance calling a mock another holds runs
- *   the holder's replacement inside its own segment (scheduler/mocks.ts); the answers the holder
- *   gives later are filled in once the caller's advance is over, as a host fills a future. The
- *   holder may run on meanwhile, and sees the caller neither idle nor at a waypoint, since the
+ *   the holder's replacement inside its own segment (scheduler/testing/mocks.ts); the answers the
+ *   holder gives later are filled in once the caller's advance is over, as a host fills a future.
+ *   The holder may run on meanwhile, and sees the caller neither idle nor at a waypoint, since the
  *   caller's segment hasn't committed.
  * - Each pass runs what can run now: answers to deliver, ready instances, then instances whose
  *   watches hold. When nothing can, the world waits for the earliest timer, on real time unless
@@ -29,11 +29,11 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { InstanceGroup } from '../../instance-group.ts';
 import type { Inspection, LogRecord } from '../../instance-state.ts';
 import type { Natives } from '../../natives.ts';
-import type { Answered } from '../../scheduler/futures.ts';
 import { inspection } from '../../scheduler/inspect.ts';
+import type { Answered } from '../../scheduler/instance/futures.ts';
 import { storedSnapshot } from '../../scheduler/instance-ends.ts';
 import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
-import type { MockAnswer, MockCall, TestWorld } from '../../scheduler/test-world.ts';
+import type { MockAnswer, MockCall, TestWorld } from '../../scheduler/testing/test-world.ts';
 import {
   type Advance,
   type AdvanceFirst,

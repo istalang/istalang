@@ -14,14 +14,14 @@
  * A disposal that runs code (a `defer` callback, a declared `dispose`, a disposed call's cleanup)
  * runs on the scheduler's run stack, as every call does (scheduler/segment/), and the round waits
  * for it to finish. Once a disposed object is gone, its weak reference lets go of it and its
- * `disposed()` watches resolve (scheduler/weak-side.ts).
+ * `disposed()` watches resolve (scheduler/instance/weak-side.ts).
  * Code a callback runs may let go of something in turn; that starts a round of its own, on top,
  * finished before the callback goes on. Whatever a waiting round has yet to dispose counts as held,
  * so no later round takes it out of order.
  */
 
 import { unreachable } from '../../structures/unreachable.ts';
-import type { LiveObject } from '../scheduler/heap.ts';
+import type { LiveObject } from '../scheduler/instance/heap.ts';
 import { type DisposalContext, type DisposalRun, dispose, isDisposable } from './disposal.ts';
 import { heldUnlessAll, type Roots, walkHolds } from './holders.ts';
 import { readyOrphans } from './orphans.ts';

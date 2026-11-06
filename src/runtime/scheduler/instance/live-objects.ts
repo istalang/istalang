@@ -8,7 +8,7 @@ import type { Definition } from '../../../definition/definition.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type ActiveFrame, type FrameHeap, newFrame } from '../../interpreter/machine.ts';
 import type { Frame, HeapObject, RegisterContents } from '../../snapshot/objects.ts';
-import type { LiveObject } from '../heap.ts';
+import type { LiveObject } from './heap.ts';
 
 /** A snapshot's object as the running instance holds it: an execution's frames made live. */
 export function liveObject(

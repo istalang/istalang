@@ -8,7 +8,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { handleTo } from '../../definition/values/values.ts';
-import { Heap, type LiveObject } from '../scheduler/heap.ts';
+import { Heap, type LiveObject } from '../scheduler/instance/heap.ts';
 import { isDisposable } from './disposal.ts';
 import { heldFrom, holdsOf } from './holders.ts';
 import { heapArbitrary, reachedFrom, testTypes } from './lifetimes.test-kit.ts';

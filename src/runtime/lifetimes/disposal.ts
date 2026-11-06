@@ -28,8 +28,8 @@ import type { TypeDefinition } from '../../definition/types.ts';
 import { closureOf, handleTo, type Value } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { Heap, LiveExecution, LiveObject, LiveObjectOf } from '../scheduler/heap.ts';
-import type { WeakSide } from '../scheduler/weak-side.ts';
+import type { Heap, LiveExecution, LiveObject, LiveObjectOf } from '../scheduler/instance/heap.ts';
+import type { WeakSide } from '../scheduler/instance/weak-side.ts';
 import type { FutureState } from '../snapshot/objects.ts';
 
 /** A call a disposal makes: a function value, or a function with its arguments. */

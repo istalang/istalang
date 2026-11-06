@@ -236,15 +236,15 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 #### 6.1 Heap Object Registries, Root Rules & Lifetimes (`src/runtime/snapshot/`, `lifetimes/`, `scheduler/`)
 - **Inconsistent root rules across 6 sites (`src/runtime/scheduler/instance/index.ts`, `segment/index.ts`, `heap.ts`, `lifetimes/holders.ts`, `lifetimes/orphans.ts`, D165, D198):**
   - `scheduler/instance/index.ts` defines `isRoot(object)` as `object.kind === 'execution' || object.kind === 'answer'`, and `segment/index.ts` passes `answers()` in `#roots()`.
-  - However, `lifetimes/holders.ts` (`holdsOf`, `valuesOf`), `lifetimes/orphans.ts` (`orphansFrom`), and `scheduler/heap.ts` (`#noteHoldings`) check only `object.kind === 'execution'`, ignoring `'answer'`.
+  - However, `lifetimes/holders.ts` (`holdsOf`, `valuesOf`), `lifetimes/orphans.ts` (`orphansFrom`), and `scheduler/instance/heap.ts` (`#noteHoldings`) check only `object.kind === 'execution'`, ignoring `'answer'`.
 - **Two different patterns for exhaustive `HeapObject['kind']` tables (`src/runtime/snapshot/check.ts` vs. `holdings.ts` & `lifetimes/disposal.ts`, D165):**
-  - `snapshot/check.ts` uses `Handlers` from `src/structures/kind-table.ts`, while `snapshot/holdings.ts` and `lifetimes/disposal.ts` hand-roll mapped types with unsafe `as` casts in `entryOf` / `stateEntry`, and `FutureState` is defined in both `scheduler/futures.ts` and `snapshot/holdings.ts`.
-- **Ambiguous `weakRef` with `target: undefined` & mixed id/handle API on `WeakSide` (`src/runtime/snapshot/objects.ts`, `scheduler/weak-side.ts`, `scheduler/native-calls.ts`, D115, D116):**
+  - `snapshot/check.ts` uses `Handlers` from `src/structures/kind-table.ts`, while `snapshot/holdings.ts` and `lifetimes/disposal.ts` hand-roll mapped types with unsafe `as` casts in `entryOf` / `stateEntry`, and `FutureState` is defined in both `scheduler/instance/futures.ts` and `snapshot/holdings.ts`.
+- **Ambiguous `weakRef` with `target: undefined` & mixed id/handle API on `WeakSide` (`src/runtime/snapshot/objects.ts`, `scheduler/instance/weak-side.ts`, `scheduler/native-calls.ts`, D115, D116):**
   - A `weakRef` with `target === undefined` represents both a disposed referent (`w.disposed()` resolves immediately) and a returned async call (`worker.disposing()` never resolves); the persisted state cannot distinguish them.
   - `WeakSide` takes/returns object IDs (`number`) on `reference`, `target`, `disposed`, and `onReturned`, but `Value` handles on `watch` and `whenDisposed`, forcing `nativeWeakSideOf` to adapt two methods and forward two.
 
 #### 6.2 Scheduler, Mocks, Test World & Seam Boundaries (`src/runtime/scheduler/`, `testing/`, `natives.ts`)
-- **Same-instance mock calls bypass `arriving`, breaking resource disposal in tests (`src/runtime/scheduler/mocks.ts`, D182):**
+- **Same-instance mock calls bypass `arriving`, breaking resource disposal in tests (`src/runtime/scheduler/testing/mocks.ts`, D182):**
   - When a child instance calls a mock held by a parent test (`relayCall`), the result passes through `arriving(instance, given.value)`, wrapping any disposable host extern (`isResourceType`) into a heap `resource` object so its `dispose` mock runs when dropped.
   - When code in the test's *own* instance calls a mock held by the test's own instance (`mockedCall`), `arriving` is never called: `testing.handle<T>()` stays a raw `{ kind: 'extern' }` value and is never disposed.
 - **Uncached snapshot decoding in `storedEnds` vs. cached `#snapshotOf` in `World` (`src/runtime/scheduler/instance-ends.ts` vs. `testing/world/index.ts`, D184, D212):**
@@ -255,7 +255,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 - **Production scheduler branches on optional `LoadedDefinition.world?` (`src/runtime/scheduler/wake.ts`, `mocks.ts`, `native-calls.ts`, D176):**
   - Instead of a null-object `TestWorld` for production runtimes, the scheduler checks `loaded.world !== undefined` across three modules.
 - **Upward type-imports in `runtime/natives.ts` (`src/runtime/natives.ts`, D179) & duplicate `namedType` in `native-calls.ts` (Q17):**
-  - `runtime/natives.ts` (imported by every `stdlib/` module) type-imports `TestWatch` from `scheduler/futures.ts` and `Inspection` from `scheduler/inspect.ts`.
+  - `runtime/natives.ts` (imported by every `stdlib/` module) type-imports `TestWatch` from `scheduler/instance/futures.ts` and `Inspection` from `scheduler/inspect.ts`.
   - `scheduler/native-calls.ts` defines a private `namedType(type: TypeReference): TypeId | undefined` beside `definition/values/declared-values.ts`'s throwing `namedType`.
 - **Unbounded call-frame stack in the VM (`src/runtime/scheduler/segment/index.ts`, `limits.ts`, D155):**
   - Because `SegmentRunner.call` allocates frames on the heap (`execution.frames` and `#runStack`), unbounded recursion (`fn loop(): loop()`) grows the array until V8 crashes with out-of-memory instead of throwing a `Panic` at a maximum frame depth in `limits.ts` (the way `requireDepth` bounds value nesting at `maximumDepth`).
@@ -360,7 +360,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | Narrowing a closure `Value` | `isComposite(v) && v.kind === 'closure'` at 7 sites | No `closureOf(v)` in `definition/values/values.ts` (Q15) |
 | `Instance<T>` extern payload construction/reading | `interpreter/instructions.ts` (`spawn`) | `stdlib/runtime/natives.ts`, `stdlib/testing/natives.ts`, `stdlib/prelude/instance-natives.ts` (Q18) |
 | Unpacking `Array<T>` element type in checker | `wellKnownArguments(checker, wellKnown.array, type)?.[0]` at 7 sites | No `arrayElement` helper in `checker/types/well-known.ts` (Q8) |
-| What heap objects are roots | `scheduler/instance/index.ts` (`'execution' \| 'answer'`) | `lifetimes/holders.ts`, `lifetimes/orphans.ts`, `scheduler/heap.ts` (`'execution'` only) (D165, D198) |
+| What heap objects are roots | `scheduler/instance/index.ts` (`'execution' \| 'answer'`) | `lifetimes/holders.ts`, `lifetimes/orphans.ts`, `scheduler/instance/heap.ts` (`'execution'` only) (D165, D198) |
 | Building an `Optional<int>` variant in lowering | `lowering/expressions/structs/variants.ts` (`buildVariant`) | `lowering/expressions/collections/collections.ts` (`optionalInt`) |
 | Unparenthesizing AST nodes | `syntax/expressions/index.ts` (`unparenthesized`) | `checker/patterns/walk.ts` (private `unparenthesized` for patterns) (D214) |
 
@@ -390,7 +390,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | **2** | **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (`src/compiler/checker/rules/agreement.ts`, `expressions/tuples.ts`, `expressions/literals/collections.ts`, D190):** Trigger target-typing when *any* producer has `accepts !== undefined`, and check typed siblings against `expected` instead of `?? true`. | Bug Fix / Generalization (Checker) | 4 files in `checker/` | S |
 | **3** | **Fix `_ = e` error suppression & destructuring assignment expected types (`src/compiler/checker/statements/assignments.ts`, D101, D168):** Don't pass `errorType` as `expected` for `_ = e`, and propagate target types into destructuring assignments. | Bug Fix (Checker) | 2 files in `checker/statements/` | S |
 | **4** | **Apply recorded `Fit` conversions in compile-time constant evaluation (`src/compiler/checker/rules/computation.ts`, D216):** Wrap `Some`, convert 1-tuples, and refuse/convert async fits on top-level `const` values. | Bug Fix (Checker) | 2 files in `checker/` | S |
-| **5** | **Fix same-instance mock return values bypassing `arriving` (`src/runtime/scheduler/mocks.ts`, D182):** Pass same-instance mock results through `arriving` so `testing.handle<T>()` resources are disposed. | Bug Fix (Runtime) | 2 files in `runtime/scheduler/` | S |
+| **5** | **Fix same-instance mock return values bypassing `arriving` (`src/runtime/scheduler/testing/mocks.ts`, D182):** Pass same-instance mock results through `arriving` so `testing.handle<T>()` resources are disposed. | Bug Fix (Runtime) | 2 files in `runtime/scheduler/` | S |
 | **6** | **Fix case-less `select:` with `else:` (`src/compiler/lowering/expressions/control/select.ts`, D149) & stale `${name}$` in diagnostic 5702 (`src/compiler/checker/diagnostics/lifetimes.ts`):** Lower 0-case `select` directly to its `else` body; update 5702 message to `*${name}`. | Bug Fix (Lowering / Diagnostics) | 2 files | XS |
 | **7** | **Guard host process against VM frame-depth OOM, `[...s]` string-length OOM, and unbounded `decimal` places (`src/runtime/scheduler/segment/limits.ts`, `src/text/code-points.ts`, `src/stdlib/decimal/arithmetic.ts`, D155, D194, D195):** Enforce max frame depth in `SegmentRunner.call`, add $O(1)$-space `codePointCount`, and cap `decimal` places. | Resilience / Safety | 5 files | S |
 | **8** | **Leaf DRY extractions (`qualifiedName` [D174], `qualifiedPath`, time-unit constants, `compareOrdered`, `closureOf` [Q15], `fieldValueOf` in `declared-values.ts` [Q16, Q17, D201], `optionalInt` → `buildVariant`, `arrayElement` in `types/well-known.ts` [Q8]):** Deduplicate leaf helpers from foundation upward. | DRY | ~18 leaf files | S |

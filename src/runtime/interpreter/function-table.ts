@@ -4,7 +4,7 @@
  * A code entry runs its instructions; an extern entry runs the native its key names, bound once
  * at load, so a Definition whose natives are missing is refused, naming them, before anything
  * runs. The table never changes: a mock (§10) is an object of the instance holding it, which the
- * scheduler consults before the table (scheduler/mocks.ts).
+ * scheduler consults before the table (scheduler/testing/mocks.ts).
  */
 
 import type { Definition } from '../../definition/definition.ts';

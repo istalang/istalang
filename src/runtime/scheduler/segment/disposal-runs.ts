@@ -16,7 +16,7 @@ import { handleTarget } from '../../../definition/values/values.ts';
 import { type ActiveFrame, newFrame, releaseFrame } from '../../interpreter/machine.ts';
 import { resume } from '../../interpreter/suspension.ts';
 import type { Cleanup, DisposalCall, DisposalRun } from '../../lifetimes/disposal.ts';
-import type { LiveExecution } from '../heap.ts';
+import type { LiveExecution } from '../instance/heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
 import { type Caller, startCall } from './calls.ts';
 import type { RunStack } from './run-stack.ts';

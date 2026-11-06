@@ -44,14 +44,14 @@ import { drawOf, seedFrom } from '../../random.ts';
 import { heldObjects, isRoot } from '../../snapshot/holdings.ts';
 import { type HeapObject, isReference, type RegisterContents } from '../../snapshot/objects.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
-import { type Answered, Futures } from '../futures.ts';
-import { Heap, type LiveExecution, type LiveObjectOf } from '../heap.ts';
 import { spawnedName } from '../instance-names.ts';
 import type { LoadedDefinition } from '../loaded-definition.ts';
-import { leaving, reachingMock } from '../mocks.ts';
-import { Slots } from '../slots.ts';
-import { WeakSide } from '../weak-side.ts';
+import { leaving, reachingMock } from '../testing/mocks.ts';
+import { type Answered, Futures } from './futures.ts';
+import { Heap, type LiveExecution, type LiveObjectOf } from './heap.ts';
 import { liveObject, storedObject } from './live-objects.ts';
+import { Slots } from './slots.ts';
+import { WeakSide } from './weak-side.ts';
 
 /**
  * A call this segment spawned (§9): the new instance's name, what it calls, its own options, and

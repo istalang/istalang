@@ -44,13 +44,13 @@ import {
   snapshotFormat,
 } from '../snapshot/snapshot.ts';
 import type { InstanceStore } from '../store.ts';
-import type { Answered } from './futures.ts';
+import type { Answered } from './instance/futures.ts';
 import { Instance } from './instance/index.ts';
 import { storedEnds } from './instance-ends.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
-import { arriving } from './mocks.ts';
 import { endInstance, runSegment, type SegmentEnd } from './segment/index.ts';
-import type { CallerFuture, MockCall } from './test-world.ts';
+import { arriving } from './testing/mocks.ts';
+import type { CallerFuture, MockCall } from './testing/test-world.ts';
 
 export interface SchedulerSeams {
   readonly store: InstanceStore;

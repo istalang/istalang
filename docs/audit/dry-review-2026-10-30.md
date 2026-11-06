@@ -48,9 +48,9 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - `enumTypeFor` (`expressions/structs/variants.ts:61–85`) unwraps optionals on `expected` (`sameEnum`) and fills default type arguments for bare generic enum variants, whereas `bareStructValue` (`expressions/access/names.ts:91–116`) neither unwraps optionals on `expected` nor fills default type arguments for bare fieldless generic structs.
    - **Fix:** Route `nominalTypeText` and all `Optional<T>` unwrapping through `optionalInner` (`types/fitting/fit.ts`), and share the expected-nominal/default-type-argument resolution between `bareStructValue` and `enumTypeFor`.
 
-7. **`[medium]` Duplicate JSON serialization, depth checks, and recursive `Value` walks in `definition/` and `runtime/` (`src/definition/values/json-values.ts:89`, `src/definition/formats/format.ts:44`, `src/runtime/scheduler/mocks.ts:104`; widens `Q29`)**
+7. **`[medium]` Duplicate JSON serialization, depth checks, and recursive `Value` walks in `definition/` and `runtime/` (`src/definition/values/json-values.ts:89`, `src/definition/formats/format.ts:44`, `src/runtime/scheduler/testing/mocks.ts:104`; widens `Q29`)**
    - `written` and `plainOfJson` in `src/definition/values/json-values.ts:89–162` duplicate the recursive fold over `Json` variants, and `written` hand-rolls a second canonical JSON serializer alongside `encodeJson` (`src/definition/formats/codec.ts:24`). `defineFormat.read` (`src/definition/formats/format.ts:44`) checks nesting depth *after* `decodeJson`, whereas `jsonOfText` (`json-values.ts:65`) checks `textDepth` *before* `decodeJson`.
-   - In `src/runtime/scheduler/mocks.ts:104–144`, `asHostValue`, `leaving`, and `arriving` are three copies of the same recursive `withChildValues(value, childValues(value).map(...))` traversal on the JS call stack (violating the explicit-stack rule in `docs/reuse/structures-and-invariants.md`).
+   - In `src/runtime/scheduler/testing/mocks.ts:104–144`, `asHostValue`, `leaving`, and `arriving` are three copies of the same recursive `withChildValues(value, childValues(value).map(...))` traversal on the JS call stack (violating the explicit-stack rule in `docs/reuse/structures-and-invariants.md`).
    - **Fix:** Serialize `Json` via `encodeJson(plainOfJson(...))`, run `textDepth` inside `decodeJson` (or `readEnvelope`) before `lossless-json` parses, and replace `asHostValue`/`leaving`/`arriving` with one iterative explicit-stack value mapper.
 
 8. **`[medium]` Why `DeclaringModules` (`Checker.moduleOf`) duplicates `Bindings.moduleOf`, plus parallel AST-to-member lookups (`src/compiler/checker/declaring-modules.ts:26`, `src/compiler/binder/link.ts:49`, `src/compiler/checker/rules/annotations.ts:175`, `src/compiler/checker/lookup/denotations.ts:103`; widens `Q30`)**
@@ -382,14 +382,14 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`fast-wins`): See ranked summary #1.
 - **Duplicate `call` capture/argument validation in `callProblems` (`src/runtime/snapshot/check.ts`) vs. `instruction-rules.ts` (`src/definition/validation/instruction-rules.ts`):**
   - `callProblems` in `snapshot/check.ts` re-implements the capture-count, parameter-count, and `takesReference` checks already in `closureProblem` and `argumentsProblem` (`src/definition/validation/instruction-rules.ts`).
-- **Repeated `closureOf(v) ?? unreachable(...)` unpacking across 4 runtime modules (`src/runtime/interpreter/instructions.ts`, `lifetimes/disposal.ts`, `scheduler/mocks.ts`, `scheduler/native-calls.ts`):**
+- **Repeated `closureOf(v) ?? unreachable(...)` unpacking across 4 runtime modules (`src/runtime/interpreter/instructions.ts`, `lifetimes/disposal.ts`, `scheduler/testing/mocks.ts`, `scheduler/native-calls.ts`):**
   - `calledFunction` (`instructions.ts`), `callOf` (`disposal.ts`), `replacementOf` (`mocks.ts`), and `nativeInstancesOf.spawn` (`native-calls.ts`) each narrow a `Value` with `closureOf` and throw `unreachable` on non-closures.
 
 ### 26. `src/runtime/scheduler/`, `src/runtime/boundary/` & `src/runtime/testing/`
 
-- **`asHostValue`, `leaving`, and `arriving` duplicate recursive `Value` mapping on the JS stack (`src/runtime/scheduler/mocks.ts`; widens `Q29`):**
+- **`asHostValue`, `leaving`, and `arriving` duplicate recursive `Value` mapping on the JS stack (`src/runtime/scheduler/testing/mocks.ts`; widens `Q29`):**
   - `Q29` notes that `asHostValue` and `leaving` share the same walk. `arriving` in the same file is a third copy of the same composite `withChildValues(value, childValues(value).map(...))` walk, and all three recurse on the host JS call stack instead of an explicit stack (violating the one-way rule in `docs/reuse/structures-and-invariants.md`, since in-memory values within a segment can exceed `maximumDepth` before commit).
-- **Redundant multimap + `reachingMock` in `mocksOf` (`src/runtime/testing/world/index.ts`, `src/runtime/scheduler/mocks.ts`):**
+- **Redundant multimap + `reachingMock` in `mocksOf` (`src/runtime/testing/world/index.ts`, `src/runtime/scheduler/testing/mocks.ts`):**
   - `mocksOf` groups `snapshot.objects` by `object.target` using `byTarget.set(object.target, [...(byTarget.get(object.target) ?? []), object])` and then calls `reachingMock(mocks)` (which picks the mock with the largest `id`). Because `snapshot.objects` is already in ascending `id` order (`snapshot.ts`), the last mock for each `target` in `snapshot.objects` is always `reachingMock`.
   - **Done** (`fast-wins`): `mocksOf` maps each target to its last mock in `snapshot.objects`, which ascend by id.
 - **Whole-heap disposable scan on commit (`P4`), encode-then-decode commit round-trip (`P1`), and module-global `decodedByStore` cache (`P7`) (`src/runtime/scheduler/instance/index.ts`, `wake.ts`, `instance-ends.ts`; tracked in `tracker.md`).**

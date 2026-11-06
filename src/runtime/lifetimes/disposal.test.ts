@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { Heap, type LiveObject } from '../scheduler/heap.ts';
+import { Heap, type LiveObject } from '../scheduler/instance/heap.ts';
 import { isDisposable } from './disposal.ts';
 import { testTypes } from './lifetimes.test-kit.ts';
 

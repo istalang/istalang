@@ -17,7 +17,7 @@
 
 import { pushAll } from '../../structures/stack.ts';
 import { type GraphEdge, stronglyConnected } from '../../structures/strongly-connected.ts';
-import type { Heap, LiveObject } from '../scheduler/heap.ts';
+import type { Heap, LiveObject } from '../scheduler/instance/heap.ts';
 import { isRoot } from '../snapshot/holdings.ts';
 import { holdsOf, walkHolds } from './holders.ts';
 

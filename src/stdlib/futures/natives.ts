@@ -1,7 +1,7 @@
 /**
  * The `futures` module's natives (futures.ista): `first`, the runtime primitive that races a list
  * of futures (§3.8). What it waits on, and which position wins when several resolved together, are
- * the runtime's (runtime/scheduler/futures.ts).
+ * the runtime's (runtime/scheduler/instance/futures.ts).
  */
 
 import { parameterKey } from '../../definition/extern-key.ts';

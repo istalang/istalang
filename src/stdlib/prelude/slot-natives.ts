@@ -1,7 +1,7 @@
 /**
  * The natives of the prelude's `Slot<T>` (spec §6): the runtime's slots, which every wait in the
  * language is on. Each operation returns its future; what an operation waits for and how the
- * slot's queue is served are the runtime's (runtime/scheduler/slots.ts).
+ * slot's queue is served are the runtime's (runtime/scheduler/instance/slots.ts).
  */
 
 import { parameterKey } from '../../definition/extern-key.ts';

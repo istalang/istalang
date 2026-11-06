@@ -26,7 +26,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - run collection rounds at release points → `Collector` (`src/runtime/lifetimes/collector.ts`)
 - convert between stored `HeapObject`s and live `Instance` objects/frames → `liveObject`, `storedObject` (`src/runtime/scheduler/instance/live-objects.ts`)
 - start, restore or persist a running instance in memory → `Instance` (`src/runtime/scheduler/instance/index.ts`)
-- manage indexed heap objects or unwrap a handle's object id → `Heap`, `handleObject` (`src/runtime/scheduler/heap.ts`)
+- manage indexed heap objects or unwrap a handle's object id → `Heap`, `handleObject` (`src/runtime/scheduler/instance/heap.ts`)
 - format stack traces or `module:line:column` locations from a `Definition`'s `lineStarts` → `traceOf`, `locationOf`; the trace a default asks for, its own frame left out → `callerTraceOf` (`src/runtime/interpreter/trace.ts`)
 - convert V8 limit `RangeError`s to `Panic` or guard depth → `panicOf`, `requireDepth`, `requireFrameDepth` (`src/runtime/scheduler/segment/limits.ts`)
 - encode/decode 32-byte instance random seeds, and draw deterministic HMAC-SHA-256 random bytes from one for a segment → `seedBytes`, `seedTextOf`, `seedFrom`, `drawOf` (`src/runtime/random.ts`)
@@ -50,7 +50,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 
 - Persisted formats use `defineFormat` (`src/definition/formats/format.ts`) and `encodeJson`/`decodeJson` (`codec.ts`), never `JSON.parse`/`JSON.stringify`.
 - Snapshots store only what cannot be derived: never store reference counts, holder lists, next object IDs or timer lists (`docs/arch/definition.md`).
-- Register changes go through `src/runtime/interpreter/machine.ts` and heap changes through `Heap` (`scheduler/heap.ts`) so released handles are noted.
+- Register changes go through `src/runtime/interpreter/machine.ts` and heap changes through `Heap` (`scheduler/instance/heap.ts`) so released handles are noted.
 
 ## Recipes
 
@@ -59,4 +59,4 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 1. Add the zod schema to `heapObject` or `futureState` in `src/runtime/snapshot/objects.ts`.
 2. Add its holding and watching rules to `kinds` or `futureStates` in `src/runtime/snapshot/holdings.ts`.
 3. Add its load-time check to `kindProblems` in `src/runtime/snapshot/check.ts` and its disposal rule to `src/runtime/lifetimes/disposal.ts`.
-4. If it is indexed in memory, add the derived index to `Heap` (`src/runtime/scheduler/heap.ts`).
+4. If it is indexed in memory, add the derived index to `Heap` (`src/runtime/scheduler/instance/heap.ts`).

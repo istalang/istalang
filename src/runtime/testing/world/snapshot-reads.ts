@@ -4,7 +4,7 @@
  * no longer wait on them. Only an active instance holds either.
  */
 
-import type { CallerFuture } from '../../scheduler/test-world.ts';
+import type { CallerFuture } from '../../scheduler/testing/test-world.ts';
 import type { HeapObject, TestWatch } from '../../snapshot/objects.ts';
 import type { Snapshot } from '../../snapshot/snapshot.ts';
 

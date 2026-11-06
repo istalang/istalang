@@ -172,12 +172,12 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 - `src/runtime/**` (+ `*.test.ts` and `*.test-kit.ts`)
 
 **Tasks in Group E:**
-1. **Fix same-instance mock return values bypassing `arriving` (D182 — `runtime/scheduler/mocks.ts`):**
+1. **Fix same-instance mock return values bypassing `arriving` (D182 — `runtime/scheduler/testing/mocks.ts`):**
    - Ensure that when a mock is called within the holder's own instance (`callTargetOf` / `NativeCalls`), a returned host resource value (`testing.handle<T>()`) goes through `arriving(instance, value)` so it is wrapped in a `resource` heap object and disposed when dropped.
-2. **Unify `HeapObject` kind tables and `isRoot` predicate (D165, D198 — `runtime/snapshot/holdings.ts`, `runtime/lifetimes/holders.ts`, `runtime/lifetimes/orphans.ts`, `runtime/lifetimes/disposal.ts`, `runtime/scheduler/heap.ts`, `runtime/scheduler/instance/index.ts`, `runtime/scheduler/futures.ts`):**
-   - Export one `isRoot(object: HeapObject | LiveObject): boolean` (`object.kind === 'execution' || object.kind === 'answer'`) from `src/runtime/snapshot/holdings.ts` and use it in `instance/index.ts`, `lifetimes/holders.ts`, `lifetimes/orphans.ts`, and `scheduler/heap.ts`.
+2. **Unify `HeapObject` kind tables and `isRoot` predicate (D165, D198 — `runtime/snapshot/holdings.ts`, `runtime/lifetimes/holders.ts`, `runtime/lifetimes/orphans.ts`, `runtime/lifetimes/disposal.ts`, `runtime/scheduler/instance/heap.ts`, `runtime/scheduler/instance/index.ts`, `runtime/scheduler/instance/futures.ts`):**
+   - Export one `isRoot(object: HeapObject | LiveObject): boolean` (`object.kind === 'execution' || object.kind === 'answer'`) from `src/runtime/snapshot/holdings.ts` and use it in `instance/index.ts`, `lifetimes/holders.ts`, `lifetimes/orphans.ts`, and `scheduler/instance/heap.ts`.
    - Export `FutureState` from `snapshot/objects.ts` (or `holdings.ts`) instead of defining it twice, and use `Handlers` from `src/structures/kind-table.ts` across `holdings.ts` and `disposal.ts`.
-3. **Distinguish disposed referent from returned call on `weakRef` & unify `WeakSide` handle/id surface (D115, D116 — `runtime/snapshot/objects.ts`, `runtime/scheduler/weak-side.ts`, `runtime/scheduler/native-calls.ts`):**
+3. **Distinguish disposed referent from returned call on `weakRef` & unify `WeakSide` handle/id surface (D115, D116 — `runtime/snapshot/objects.ts`, `runtime/scheduler/instance/weak-side.ts`, `runtime/scheduler/native-calls.ts`):**
    - Record why a `weakRef` has no target (or distinguish disposed vs. returned call) so `watch` and `whenDisposed` don't rely on caller convention (D115).
    - Make `WeakSide`'s native-facing methods consistently take and return `Value` handles, and its disposal-facing methods take `number` IDs, so `nativeWeakSideOf` simply forwards (D116).
 4. **Enforce maximum call-frame depth in the VM (D155 — `runtime/scheduler/segment/index.ts`, `runtime/scheduler/segment/limits.ts`):**
@@ -187,7 +187,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 6. **Cache decoded snapshots in `storedEnds` and unify `World` snapshot queries (D184, D212 — `runtime/scheduler/instance-ends.ts`, `runtime/testing/world/index.ts`, `runtime/scheduler/inspect.ts`):**
    - Cache decoded `Snapshot`s by their text in `storedEnds` (as `World.#snapshotOf` does) so watching N child instances doesn't re-parse N snapshots on every wake.
    - Extract `World`'s inline snapshot object queries (`#watchHolds`, `#withdrawAnswersTo`) into helpers beside `inspection` (`scheduler/inspect.ts`).
-7. **Null-object `TestWorld` & remove upward type-imports in `runtime/natives.ts` (D176, D179 — `runtime/natives.ts`, `runtime/instance-state.ts`, `runtime/scheduler/loaded-definition.ts`, `runtime/scheduler/test-world.ts`, `runtime/scheduler/wake.ts`, `runtime/scheduler/mocks.ts`, `runtime/scheduler/native-calls.ts`):**
+7. **Null-object `TestWorld` & remove upward type-imports in `runtime/natives.ts` (D176, D179 — `runtime/natives.ts`, `runtime/instance-state.ts`, `runtime/scheduler/loaded-definition.ts`, `runtime/scheduler/testing/test-world.ts`, `runtime/scheduler/wake.ts`, `runtime/scheduler/testing/mocks.ts`, `runtime/scheduler/native-calls.ts`):**
    - Provide a default non-test `TestWorld` in `test-world.ts` / `loaded-definition.ts` so `wake.ts`, `mocks.ts`, and `native-calls.ts` never branch on `world !== undefined` (D176).
    - Move `Inspection` (and `WaitingPoint`) to `src/runtime/instance-state.ts` (or a contract file beside it) and `TestWatch` to `src/runtime/snapshot/objects.ts` so `src/runtime/natives.ts` imports nothing from `scheduler/` (D179).
 8. **Unify seed derivation (`seedFrom` in `random.ts`, D203) & deduplicate lifetime test helpers (D130 — `runtime/random.ts`, `runtime/scheduler/instance/index.ts`, `runtime/testing/run-tests.ts`, `runtime/lifetimes/lifetimes.test-kit.ts`, `holders.test.ts`, `orphans.test.ts`, `snapshot/snapshot.test.ts`):**

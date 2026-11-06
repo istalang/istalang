@@ -1,6 +1,6 @@
 /**
  * A running instance's heap: the objects handles point at, by id, with executions holding live
- * frames (spec §5). The scheduler's parts (futures.ts, slots.ts, instance/) read and change it.
+ * frames (spec §5). The scheduler's parts (futures.ts, slots.ts, /) read and change it.
  *
  * - Ids grow with creation, so id order is creation order (snapshot/objects.ts). Counting starts
  *   one past the highest id the heap was made with, so the next id is never stored; an id a commit
@@ -19,12 +19,12 @@
  *   and none is persisted.
  */
 
-import { handleTarget, type Value } from '../../definition/values/values.ts';
-import { pushAll } from '../../structures/stack.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { ActiveFrame } from '../interpreter/machine.ts';
-import { heldObjects } from '../snapshot/holdings.ts';
-import type { HeapObject } from '../snapshot/objects.ts';
+import { handleTarget, type Value } from '../../../definition/values/values.ts';
+import { pushAll } from '../../../structures/stack.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { ActiveFrame } from '../../interpreter/machine.ts';
+import { heldObjects } from '../../snapshot/holdings.ts';
+import type { HeapObject } from '../../snapshot/objects.ts';
 
 export interface LiveExecution {
   readonly kind: 'execution';

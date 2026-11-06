@@ -6,7 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { FutureState } from '../snapshot/objects.ts';
+import type { FutureState } from '../../snapshot/objects.ts';
 import { Heap, type LiveObject } from './heap.ts';
 
 const ids = [0, 1, 2, 3, 4, 5];

@@ -7,7 +7,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Value } from '../../definition/values/values.ts';
+import type { Value } from '../../../definition/values/values.ts';
 import { ignoredEvents } from './futures.test-kit.ts';
 import { Futures } from './futures.ts';
 import { Heap, handleObject } from './heap.ts';

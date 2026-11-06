@@ -6,9 +6,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Value } from '../../definition/values/values.ts';
-import { Unreachable } from '../../structures/unreachable.ts';
-import { Panic } from '../natives.ts';
+import type { Value } from '../../../definition/values/values.ts';
+import { Unreachable } from '../../../structures/unreachable.ts';
+import { Panic } from '../../natives.ts';
 import { ignoredEvents } from './futures.test-kit.ts';
 import { Futures } from './futures.ts';
 import { Heap, handleObject } from './heap.ts';

@@ -15,8 +15,8 @@ import type { Value } from '../../../definition/values/values.ts';
 import { type ActiveFrame, type FrameEntry, passedValues } from '../../interpreter/machine.ts';
 import type { RegisterContents } from '../../snapshot/objects.ts';
 import type { Instance } from '../instance/index.ts';
-import { arriving, mockedCall } from '../mocks.ts';
 import type { NativeCalls } from '../native-calls.ts';
+import { arriving, mockedCall } from '../testing/mocks.ts';
 
 /** Who makes calls: an instance, its segment's natives, and when the segment started. */
 export interface Caller {

@@ -8,12 +8,12 @@
  * instance a test started runs between the test's segments, never inside one.
  */
 
-import type { FunctionId } from '../../definition/operands.ts';
-import type { Value } from '../../definition/values/values.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { Inspection } from '../instance-state.ts';
-import { Panic } from '../natives.ts';
-import type { TestWatch } from '../snapshot/objects.ts';
+import type { FunctionId } from '../../../definition/operands.ts';
+import type { Value } from '../../../definition/values/values.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { Inspection } from '../../instance-state.ts';
+import { Panic } from '../../natives.ts';
+import type { TestWatch } from '../../snapshot/objects.ts';
 
 /** The future a call to another instance's mock fills: its caller, and the token it named it. */
 export interface CallerFuture {
@@ -44,7 +44,7 @@ export interface TestWorld {
   readonly answer: (holder: string, call: MockCall) => MockAnswer;
   /**
    * What a test's pending wait on `instance` resolves with once `until` holds; undefined until
-   * then. A wait on an instance's end is the scheduler's, as anywhere else (instance-ends.ts).
+   * then. A wait on an instance's end is the scheduler's, as anywhere else (../instance-ends.ts).
    */
   readonly watched: (instance: string, until: TestWatch) => Value | undefined;
   /** Panics unless the instance runs inside `ista test` (§10). */

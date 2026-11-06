@@ -8,7 +8,7 @@
 import fc from 'fast-check';
 import type { TypeDefinition } from '../../definition/types.ts';
 import { valueArbitrary } from '../../definition/values/values.test-kit.ts';
-import { Heap, type LiveObject } from '../scheduler/heap.ts';
+import { Heap, type LiveObject } from '../scheduler/instance/heap.ts';
 import type { HoldingFrame } from '../snapshot/holdings.ts';
 
 /** Type entry 0 disposes by function 0; type entry 1 disposes nothing. */
