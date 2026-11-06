@@ -4,9 +4,12 @@
  * order the overloads are declared in.
  */
 
-import { describe, expect, it } from 'vitest';
-import { reported } from '../check.test-kit.ts';
+import { describe, expect, it, vi } from 'vitest';
+import { stdProgramOf } from '../../binder/bind.test-kit.ts';
+import { idOf } from '../../program/program.test-kit.ts';
+import { checkedApart, reported } from '../check.test-kit.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { typeText } from '../types/type-text.ts';
 
 interface ChoiceCase {
   readonly rule: string;
@@ -234,5 +237,25 @@ describe('overload choice', () => {
     for (const order of orders(choice.overloads)) {
       expect(codesOf(choice, order)).toEqual(first);
     }
+  });
+});
+
+/** How often checking a call `f(5)` among `overloads` asks whether an `Int` fits a type. */
+function intFitsAsked(overloads: readonly string[]): number {
+  const source = [...overloads, 'fn main() -> String: f(5)'].join('\n');
+  const checker = checkedApart(stdProgramOf({ 'main.ista': source }));
+  const fitOf = vi.spyOn(checker, 'fitOf');
+  checker.diagnosticsOf(idOf('main.ista'));
+  return fitOf.mock.calls.filter(([found]) => typeText(found) === 'Int').length;
+}
+
+describe('ranking the candidates that apply', () => {
+  it('asks how an argument fits only to break a tie the earlier ranks leave', () => {
+    const alone = intFitsAsked(['fn f(a: Int) -> String: "c"']);
+    const beatingGeneric = intFitsAsked([
+      'fn f<T>(a: T) -> Bool: true',
+      'fn f(a: Int) -> String: "c"',
+    ]);
+    expect(beatingGeneric).toBe(alone);
   });
 });

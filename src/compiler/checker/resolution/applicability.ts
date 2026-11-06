@@ -24,7 +24,8 @@ import { Inference } from '../inference/infer.ts';
 import type { Binding } from '../resolved-call.ts';
 import { reshapes } from '../types/fit.ts';
 import { fillsPack } from '../types/function-types.ts';
-import { errorType, type ParameterKey, type ParameterSlot, type Type } from '../types/type.ts';
+import type { Substitution } from '../types/substitution.ts';
+import { errorType, type ParameterSlot, type Type } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';
 import { argumentSlotsOf, type Binder, isBinding } from './binding.ts';
 import type { CallArgument, Inapplicability, Misfit, Takes } from './call-arguments.ts';
@@ -37,11 +38,14 @@ export interface Given {
   readonly binder: Binder;
 }
 
-/** How a function takes a call's arguments: what inference found, the binding, any reshaped. */
+/**
+ * How a function takes a call's arguments: what inference found, the binding, and by argument
+ * number the slot each argument fills (a pack's arguments fill it together, so have none).
+ */
 export interface Taken {
   readonly inference: Inference;
   readonly binding: Binding;
-  readonly reshapes: boolean;
+  readonly slots: ReadonlyMap<number, ParameterSlot>;
 }
 
 /**
@@ -63,31 +67,52 @@ export function takenBy(
   if (!isBinding(binding)) {
     return binding;
   }
-  const known = new Map<ParameterKey, Type>();
-  for (const [index, type] of (written ?? []).entries()) {
-    const parameter = takes.typeParameters[index];
-    if (parameter !== undefined) {
-      known.set(parameter, type);
-    }
-  }
-  const inference = new Inference(takes.typeParameters, checker.fitting, known);
+  const inference = new Inference(
+    takes.typeParameters,
+    checker.fitting,
+    writtenFor(takes, written),
+  );
   const slots = argumentSlotsOf(takes.parameters, binding);
   const packed = packItems(takes, binding);
   const matchPacks = () => packInapplicability(takes, binding, callArguments, inference);
   const misfit = argumentsInapplicability(callArguments, { slots, packed, matchPacks }, inference);
-  if (misfit !== undefined) {
-    return misfit;
-  }
-  const reshaped = callArguments.some((argument, index) => {
+  return misfit ?? { inference, binding, slots };
+}
+
+/**
+ * Whether `taken` takes an argument only reshaped: a plain function made async (§3.14), converted
+ * between a one-element tuple and its element (§3.15), or a literal built as a type other than its
+ * own (§3.7). Choosing asks it only to break a tie, so it isn't part of `Taken`.
+ */
+export function reshapesArguments(
+  checker: Pick<CheckerContext, 'fitOf'>,
+  { inference, slots }: Taken,
+  callArguments: readonly CallArgument[],
+): boolean {
+  return callArguments.some((argument, index) => {
     const slot = slots.get(index);
     if (argument.type === undefined || slot === undefined) {
       return false;
     }
-    const expected = inference.substituted(slot.type);
-    const fit = checker.fitOf(argument.type, expected);
+    const fit = checker.fitOf(argument.type, inference.substituted(slot.type));
     return fit === undefined ? argument.builds !== undefined : reshapes(fit);
   });
-  return { inference, binding, reshapes: reshaped };
+}
+
+/** The type arguments `written` gives `takes`' type parameters, in order (§3.5). */
+function writtenFor(
+  { typeParameters }: Takes,
+  written: readonly Type[] | undefined,
+): Substitution | undefined {
+  if (written === undefined) {
+    return undefined;
+  }
+  return new Map(
+    written.flatMap((type, index) => {
+      const parameter = typeParameters[index];
+      return parameter === undefined ? [] : [[parameter, type] as const];
+    }),
+  );
 }
 
 /**
@@ -136,12 +161,17 @@ function argumentsInapplicability(
   bound: BoundArguments,
   inference: Inference,
 ): Inapplicability | undefined {
-  const single = [...callArguments.entries()].filter(([index]) => !bound.packed.has(index));
   const misfits: Misfit[] = [];
-  const judged = (arguments_: typeof single): Inapplicability | undefined => {
-    for (const [index, argument] of arguments_) {
-      const judgement = judgedArgument(index, argument, bound.slots, inference);
-      if (judgement !== 'fits') {
+  /** Judges the arguments a pack doesn't take that `isJudged` picks. */
+  const judged = (isJudged: (argument: CallArgument) => boolean): Inapplicability | undefined => {
+    // Indexed rather than over `entries()`: this runs for every argument of every candidate.
+    for (let index = 0; index < callArguments.length; index += 1) {
+      const argument = callArguments[index];
+      const judgement =
+        argument !== undefined && !bound.packed.has(index) && isJudged(argument)
+          ? judgedArgument(index, argument, bound.slots, inference)
+          : undefined;
+      if (judgement !== undefined && judgement !== 'fits') {
         if ('kind' in judgement) {
           return judgement;
         }
@@ -151,9 +181,9 @@ function argumentsInapplicability(
     return undefined;
   };
   const refused =
-    judged(single.filter(([, argument]) => argument.type !== undefined)) ??
+    judged((argument) => argument.type !== undefined) ??
     bound.matchPacks() ??
-    judged(single.filter(([, argument]) => argument.type === undefined));
+    judged((argument) => argument.type === undefined);
   if (refused !== undefined) {
     return refused;
   }
@@ -179,12 +209,12 @@ function judgedArgument(
   const fits =
     argument.type === undefined
       ? acceptsDecided(argument, slot.type, inference)
-      : typedFits(slot, { ...argument, type: argument.type }, inference);
-  const [conflict] = [...inference.conflicts].slice(conflicts);
+      : typedFits(slot, argument, argument.type, inference);
+  const conflict = addedBy(inference.conflicts, conflicts);
   if (conflict?.kind === 'TypeParameter') {
     return { kind: 'conflict', parameter: conflict };
   }
-  const [several] = [...inference.severalMembers].slice(severalMembers);
+  const several = addedBy(inference.severalMembers, severalMembers);
   if (several !== undefined && several[0].kind === 'TypeParameter') {
     return { kind: 'severalMembers', index, parameter: several[0], found: several[1] };
   }
@@ -200,18 +230,29 @@ function judgedArgument(
  */
 function typedFits(
   slot: ParameterSlot,
-  argument: CallArgument & { readonly type: Type },
+  argument: CallArgument,
+  type: Type,
   inference: Inference,
 ): boolean {
   const { literal, builds } = argument;
-  const given =
-    literal === undefined ? argument.type : inference.literalType(literal.value, slot.type);
+  const given = literal === undefined ? type : inference.literalType(literal.value, slot.type);
   if (argument.exact === true || isByReference(slot, argument)) {
     return inference.matchExactly(slot.type, given);
   }
   const expected = inference.substituted(slot.type);
   const known = !parametersIn(expected).some((each) => inference.isUnknown(each));
   return inference.match(slot.type, given) || (known && builds?.(expected, () => false) === true);
+}
+
+/**
+ * The first item `collection` gained past its first `size`, as matching one argument added it;
+ * collections keep insertion order. Most matches add none, so that case reads no item.
+ */
+function addedBy<Item>(
+  collection: Iterable<Item> & { readonly size: number },
+  size: number,
+): Item | undefined {
+  return collection.size > size ? [...collection][size] : undefined;
 }
 
 /** Whether `argument` reaches `slot` by reference: written `&`, or a receiver `&self` takes (§3.7). */

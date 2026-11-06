@@ -32,6 +32,9 @@ import type { TypeRules } from './type-rules.ts';
 /** Type parameters mapped to the types that replace them. */
 export type Substitution = ReadonlyMap<ParameterKey, Type>;
 
+/** The substitution replacing nothing. */
+export const noSubstitution: Substitution = new Map();
+
 /**
  * The substitution giving a declaration's type `parameters` its `typeArguments`, in order; a
  * parameter left without one stands for the error type.

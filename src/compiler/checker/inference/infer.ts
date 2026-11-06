@@ -42,7 +42,7 @@ import { fillsPack, functionFits, isPack } from '../types/function-types.ts';
 import { sameType } from '../types/identity.ts';
 import { isOneMember } from '../types/member-arguments.ts';
 import { parameterType } from '../types/resolve-type.ts';
-import { type Substitution, substitute } from '../types/substitution.ts';
+import { noSubstitution, type Substitution, substitute } from '../types/substitution.ts';
 import {
   type AnonymousStructType,
   type AnyType,
@@ -61,20 +61,29 @@ import { UnfoldingPairs } from '../types/unfolding-pairs.ts';
 import { baseOf } from '../types/union-members.ts';
 import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions.ts';
 
+/** What a collection of an inference reads as before its first item. */
+const noParameters: ReadonlySet<ParameterKey> = new Set();
+const noMembers: ReadonlyMap<ParameterKey, Type> = new Map();
+
+/**
+ * Choosing builds an inference for every candidate (resolution/applicability.ts), and most never
+ * note a pinned, conflicting or several-membered parameter, nor unfold a recursive type, so those
+ * collections are made at their first item.
+ */
 export class Inference {
   readonly #unknowns: ReadonlySet<ParameterKey>;
   readonly #fitting: Fitting;
   readonly #bound = new Map<ParameterKey, Type>();
   /** The parameters a type was found for where it must be theirs exactly, which never widen. */
-  readonly #pinned = new Set<ParameterKey>();
-  readonly #conflicts = new Set<ParameterKey>();
+  #pinned: Set<ParameterKey> | undefined;
+  #conflicts: Set<ParameterKey> | undefined;
   /** The parameters `Never` met where a value must have its type exactly. */
-  readonly #metNever = new Set<ParameterKey>();
+  #metNever: Set<ParameterKey> | undefined;
   /** The parameters the error type met. */
-  readonly #metError = new Set<ParameterKey>();
+  #metError: Set<ParameterKey> | undefined;
   /** The pairs of recursive types being matched as they unfold (§3.17). */
-  readonly #unfolding = new UnfoldingPairs();
-  readonly #severalMembers = new Map<ParameterKey, Type>();
+  #unfolding: UnfoldingPairs | undefined;
+  #severalMembers: Map<ParameterKey, Type> | undefined;
   /** The type arguments written for some of the parameters, in place in whatever is matched. */
   readonly #written: Substitution;
 
@@ -82,7 +91,7 @@ export class Inference {
   constructor(unknowns: Iterable<ParameterKey>, fitting: Fitting, written?: Substitution) {
     this.#unknowns = new Set(unknowns);
     this.#fitting = fitting;
-    this.#written = written ?? new Map();
+    this.#written = written ?? noSubstitution;
     for (const [parameter, type] of this.#written) {
       this.#bound.set(parameter, type);
     }
@@ -136,26 +145,26 @@ export class Inference {
 
   /** Binds the error type to each parameter it met, once nothing else is left to bind it. */
   bindErrorWhereOpen(): void {
-    for (const parameter of this.#metError) {
+    for (const parameter of this.#metError ?? noParameters) {
       this.bindIfOpen(parameter, errorType);
     }
   }
 
   /** Binds `Never` to each parameter only `Never` met, once nothing else is left to bind it. */
   bindNeverWhereOpen(): void {
-    for (const parameter of this.#metNever) {
+    for (const parameter of this.#metNever ?? noParameters) {
       this.bindIfOpen(parameter, neverType);
     }
   }
 
   /** The parameters two different types were found for. */
   get conflicts(): ReadonlySet<ParameterKey> {
-    return this.#conflicts;
+    return this.#conflicts ?? noParameters;
   }
 
   /** The member parameters given a value of several members of their union, by what was given. */
   get severalMembers(): ReadonlyMap<ParameterKey, Type> {
-    return this.#severalMembers;
+    return this.#severalMembers ?? noMembers;
   }
 
   /**
@@ -194,15 +203,21 @@ export class Inference {
       : this.#matchExact(declared, given);
   }
 
+  /** Matches `declared` and `given`, one of them recursive, exactly as what they unfold to. */
+  #matchUnfolded(declared: Type, given: Type): boolean {
+    this.#unfolding ??= new UnfoldingPairs();
+    return this.#unfolding.relate(declared, given, true, (unfoldedDeclared, unfoldedGiven) =>
+      this.#matchExact(unfoldedDeclared, unfoldedGiven),
+    );
+  }
+
   #matchExact(declared: Type, given: Type): boolean {
     this.#meetError(declared, given);
     if (given.kind === 'error' || givesNothing(declared)) {
       return true;
     }
     if (declared.kind === 'recursive' || given.kind === 'recursive') {
-      return this.#unfolding.relate(declared, given, true, (unfoldedDeclared, unfoldedGiven) =>
-        this.#matchExact(unfoldedDeclared, unfoldedGiven),
-      );
+      return this.#matchUnfolded(declared, given);
     }
     switch (declared.kind) {
       case 'parameter':
@@ -325,6 +340,7 @@ export class Inference {
     if (given.kind === 'error') {
       for (const parameter of parametersIn(declared)) {
         if (this.#unknowns.has(parameter)) {
+          this.#metError ??= new Set();
           this.#metError.add(parameter);
         }
       }
@@ -360,6 +376,7 @@ export class Inference {
       return only;
     }
     if (members.every((member) => member !== undefined)) {
+      this.#severalMembers ??= new Map();
       this.#severalMembers.set(parameter, given);
     }
     return undefined;
@@ -376,6 +393,7 @@ export class Inference {
    */
   #bindExactly(parameter: ParameterKey, given: Type): boolean {
     if (isPrimitive(given, 'Never') && !isPack(parameterType(parameter))) {
+      this.#metNever ??= new Set();
       this.#metNever.add(parameter);
       return true;
     }
@@ -385,6 +403,7 @@ export class Inference {
     }
     const isBound = this.#bind(parameter, filling, (bound) => sameType(filling, bound));
     if (isBound) {
+      this.#pinned ??= new Set();
       this.#pinned.add(parameter);
     }
     return isBound;
@@ -407,10 +426,14 @@ export class Inference {
     if (agrees(current)) {
       return true;
     }
-    if (!this.#pinned.has(parameter) && fitOf(current, given, this.#fitting) !== undefined) {
+    if (
+      this.#pinned?.has(parameter) !== true &&
+      fitOf(current, given, this.#fitting) !== undefined
+    ) {
       this.#bound.set(parameter, given);
       return true;
     }
+    this.#conflicts ??= new Set();
     this.#conflicts.add(parameter);
     return false;
   }

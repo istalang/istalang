@@ -16,7 +16,6 @@ import { substitute } from '../types/substitution.ts';
 import type { LiteralType, Type } from '../types/type.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
-import { argumentSlotsOf } from './binding.ts';
 import type { CallArgument } from './call-arguments.ts';
 import type { Application } from './choice.ts';
 import type { Instantiation } from './conformance.ts';
@@ -41,7 +40,7 @@ export function filledTypes(
   instantiation: Instantiation,
   count: number,
 ): readonly (Type | undefined)[] {
-  const slots = argumentSlotsOf(application.signature.parameters, application.binding);
+  const { slots } = application;
   return Array.from({ length: count }, (_, index) => {
     const slot = slots.get(index);
     return slot === undefined
@@ -59,7 +58,7 @@ export function recordArgumentKeys(
   argumentList: readonly FittedArgument[],
   { application, instantiation }: { application: Application; instantiation: Instantiation },
 ): void {
-  const slots = argumentSlotsOf(application.signature.parameters, application.binding);
+  const { slots } = application;
   argumentList.forEach(({ node }, index) => {
     const slot = slots.get(index);
     if (node !== undefined && slot !== undefined) {

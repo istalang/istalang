@@ -17,17 +17,18 @@
  */
 
 import { receiverParameter } from '../../../language/well-known.ts';
+import { memo } from '../../../structures/memo.ts';
 import {
   type FunctionDeclaration,
   type TypeParameter,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
+import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
-import type { Inference } from '../inference/infer.ts';
-import type { Binding } from '../resolved-call.ts';
-import { type Substitution, substitute } from '../types/substitution.ts';
+import { noSubstitution, type Substitution, substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
-import { type Given, takenBy } from './applicability.ts';
+import type { TypeRules } from '../types/type-rules.ts';
+import { type Given, reshapesArguments, type Taken, takenBy } from './applicability.ts';
 import { bindArguments, bindValue } from './binding.ts';
 import type { CallArgument, Inapplicability, SignatureSlot } from './call-arguments.ts';
 import type { Candidate } from './candidates.ts';
@@ -49,17 +50,9 @@ export interface Signature {
  * A candidate that applies: which parameter each argument fills, and what inference has found for
  * its type parameters so far.
  */
-export interface Application {
+export interface Application extends Taken {
   readonly candidate: Candidate;
   readonly signature: Signature;
-  readonly inference: Inference;
-  readonly binding: Binding;
-  /**
-   * Whether it takes an argument only reshaped: a plain function made async (§3.14), converted
-   * between a one-element tuple and its element (§3.15), or a literal built as a type other than
-   * its own (§3.7).
-   */
-  readonly reshapes: boolean;
 }
 
 /** What choosing found: one application, none with each candidate's reason, or several tied. */
@@ -76,29 +69,49 @@ export type Choice =
 export function signatureOf(
   checker: CheckerContext,
   declaration: FunctionDeclaration,
-  substitution: Substitution = new Map(),
+  substitution: Substitution = noSubstitution,
   inferred: readonly TypeParameter[] = [],
 ): Signature {
+  const { typeRules: rules } = checker;
+  const parameters = checker.parametersOf(declaration);
   return {
     declaration,
     typeParameters: [...typeParametersOf(declaration.typeParameters), ...inferred],
-    parameters: checker.parametersOf(declaration).map(({ node, type, reference, rest }, index) => {
-      const substituted = substitute(type, substitution, checker.typeRules);
-      const isReceiver = index === 0 && node.name?.text === receiverParameter;
-      return {
-        type: substituted,
-        reference,
-        name: isReceiver ? undefined : node.name?.text,
-        isReceiver,
-        hasDefault: node.defaultValue !== undefined,
-        rest:
-          rest?.kind === 'array'
-            ? { kind: 'array', item: substitute(rest.item, substitution, checker.typeRules) }
-            : rest,
-      };
-    }),
-    result: () => substitute(checker.resultOf(declaration), substitution, checker.typeRules),
+    parameters:
+      substitution.size === 0
+        ? memo(ownSlots, parameters, () => slotsOf(parameters, substitution, rules))
+        : slotsOf(parameters, substitution, rules),
+    result: () => substitute(checker.resultOf(declaration), substitution, rules),
   };
+}
+
+/**
+ * A function's own slots, mapped by no requirement, by the parameters they are made from. Choosing
+ * asks a candidate's signature at every call it may mean; a requirement's substitution differs per
+ * call, so only these are kept.
+ */
+const ownSlots = new WeakMap<readonly SignatureParameter[], readonly SignatureSlot[]>();
+
+/** The slots of `parameters` as choosing takes them, their types mapped by `substitution`. */
+function slotsOf(
+  parameters: readonly SignatureParameter[],
+  substitution: Substitution,
+  rules: TypeRules,
+): readonly SignatureSlot[] {
+  return parameters.map(({ node, type, reference, rest }, index) => {
+    const isReceiver = index === 0 && node.name?.text === receiverParameter;
+    return {
+      type: substitute(type, substitution, rules),
+      reference,
+      name: isReceiver ? undefined : node.name?.text,
+      isReceiver,
+      hasDefault: node.defaultValue !== undefined,
+      rest:
+        rest?.kind === 'array'
+          ? { kind: 'array', item: substitute(rest.item, substitution, rules) }
+          : rest,
+    };
+  });
 }
 
 /** Chooses among `candidates` for `callArguments` and any written type arguments. */
@@ -135,12 +148,16 @@ function chosenAmong(
       reasons.push(outcome);
     }
   }
+  // Each rank only breaks a tie the ranks before it leave, so one left over is never ranked further.
   const preferred = [
     ({ candidate }: Application) => membersRequirementOf(candidate) === undefined,
     ({ signature }: Application) => signature.typeParameters.length === 0,
     ({ signature }: Application) => !signature.parameters.some((slot) => slot.rest !== undefined),
-    ({ reshapes: reshaped }: Application) => !reshaped,
+    (application: Application) => !reshapesArguments(checker, application, given.callArguments),
   ].reduce((chosen, isPreferred) => {
+    if (chosen.length <= 1) {
+      return chosen;
+    }
     const kept = chosen.filter(isPreferred);
     return kept.length > 0 ? kept : chosen;
   }, applications);

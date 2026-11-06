@@ -28,7 +28,7 @@ import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { applyCall } from '../resolution/applied-call.ts';
 import { argumentListText } from '../resolution/argument-fit.ts';
-import { argumentSlotsOf, type BindingFailure } from '../resolution/binding.ts';
+import type { BindingFailure } from '../resolution/binding.ts';
 import type {
   CallArgument,
   Inapplicability,
@@ -115,7 +115,7 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
   if (receiver !== undefined && signature.parameters[0]?.reference === true) {
     changeReceiver(context, receiver);
   }
-  const slots = argumentSlotsOf(signature.parameters, application.binding);
+  const { slots } = application;
   checkReferencedPlaces(context, written, {
     name: request.name,
     isAsync: signature.declaration.isAsync,

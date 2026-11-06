@@ -197,23 +197,23 @@ function arityOf(slots: readonly BoundSlot[]): BindingFailure {
 
 /**
  * By argument number, the slot `binding` passes each argument to; a pack's arguments have none of
- * their own, since together they fill it (choice.ts).
+ * their own, since together they fill it (packs.ts). Choosing computes it once per candidate that
+ * binds (applicability.ts `Taken`).
  */
 export function argumentSlotsOf(
   slots: readonly (ParameterSlot & { readonly rest?: RestSlot | undefined })[],
   binding: Binding,
 ): ReadonlyMap<number, ParameterSlot> {
-  return new Map(
-    [...parameterOfArgument(binding)].flatMap(([argument, parameter]) => {
-      const slot = slots[parameter];
-      if (slot === undefined || binding[parameter]?.kind !== 'rest') {
-        return slot === undefined ? [] : [[argument, slot] as const];
-      }
-      return slot.rest?.kind === 'array'
-        ? [[argument, { type: slot.rest.item, reference: false }] as const]
-        : [];
-    }),
-  );
+  const slotOfArgument = new Map<number, ParameterSlot>();
+  for (const [argument, parameter] of parameterOfArgument(binding)) {
+    const slot = slots[parameter];
+    if (slot !== undefined && binding[parameter]?.kind !== 'rest') {
+      slotOfArgument.set(argument, slot);
+    } else if (slot?.rest?.kind === 'array') {
+      slotOfArgument.set(argument, { type: slot.rest.item, reference: false });
+    }
+  }
+  return slotOfArgument;
 }
 
 /** Whether `bound` is a binding, not why one failed. */

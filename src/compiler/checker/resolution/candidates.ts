@@ -37,7 +37,7 @@ import type { Requirement } from '../traits/constraints.ts';
 import { requirementsNamed } from '../traits/known-constraints.ts';
 import { type ComputedType, isComputed } from '../types/computed-types.ts';
 import { type StaticOwner, staticOwnerOf } from '../types/named-types.ts';
-import type { Type } from '../types/type.ts';
+import type { AnyType, Type } from '../types/type.ts';
 import { anyTypesIn, computedTypesIn, parametersIn } from '../types/type-parts.ts';
 import { traitCallsOn } from './union-traits.ts';
 
@@ -259,32 +259,47 @@ function declaringModule(checker: CheckerContext, type: Type): ModuleId | undefi
   return target?.kind === 'owner' ? target.module : undefined;
 }
 
+/** What brings the functions its constraints require as candidates (§3.10). */
+type RequirementHolder = TypeParameter | AnyType | ComputedType;
+
+/** The type parameters, `any` types and computed types `type` mentions. */
+function requirementHoldersIn(type: Type): readonly RequirementHolder[] {
+  return [
+    ...parametersIn(type).filter((parameter) => parameter.kind === 'TypeParameter'),
+    ...anyTypesIn(type),
+    ...computedTypesIn(type),
+  ];
+}
+
 /**
  * The functions named `name` that constraints require on the type parameters, `any` types and
- * computed types the arguments mention; static ones are called through their type instead.
+ * computed types the arguments mention, in that order, each once (an `any` or computed type by its
+ * key); static ones are called through their type instead.
  */
 function requirementCandidates(
   checker: CheckerContext,
   name: string,
   argumentTypes: readonly Type[],
 ): readonly Candidate[] {
-  const parameters = new Set(argumentTypes.flatMap(parametersIn));
-  const onParameters = [...parameters].flatMap((parameter) =>
-    parameter.kind === 'TypeParameter' ? requirementsNamed(checker, parameter, name) : [],
-  );
-  const anyTypes = new Map(
-    argumentTypes.flatMap(anyTypesIn).map((type) => [checker.typeKeys.typeKey(type), type]),
-  );
-  const onAnyTypes = [...anyTypes.values()].flatMap((type) =>
-    requirementsNamed(checker, type, name),
-  );
-  const computed = new Map(
-    argumentTypes.flatMap(computedTypesIn).map((type) => [checker.typeKeys.typeKey(type), type]),
-  );
-  const onComputed = [...computed.values()].flatMap((type) =>
-    requirementsNamed(checker, type, name),
-  );
-  return [...onParameters, ...onAnyTypes, ...onComputed]
+  const holders = argumentTypes.flatMap(requirementHoldersIn);
+  if (holders.length === 0) {
+    // Most calls' arguments mention none; every call asks.
+    return [];
+  }
+  const parameters = new Set<TypeParameter>();
+  const anyTypes = new Map<string, AnyType>();
+  const computed = new Map<string, ComputedType>();
+  for (const holder of holders) {
+    if (holder.kind === 'TypeParameter') {
+      parameters.add(holder);
+    } else if (holder.kind === 'any') {
+      anyTypes.set(checker.typeKeys.typeKey(holder), holder);
+    } else {
+      computed.set(checker.typeKeys.typeKey(holder), holder);
+    }
+  }
+  return [...parameters, ...anyTypes.values(), ...computed.values()]
+    .flatMap((holder) => requirementsNamed(checker, holder, name))
     .filter((requirement) => requirement.declaration.owner === undefined)
     .map((requirement) => ({ declaration: requirement.declaration, requirement }));
 }
