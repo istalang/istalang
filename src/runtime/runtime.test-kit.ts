@@ -9,7 +9,7 @@ import type { HostExterns } from './boundary/host-natives.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from './host.ts';
 import type { Advanced, StartOptions } from './instance-state.ts';
 import type { FullNativeContext, Natives } from './natives.ts';
-import { seedBytes } from './random-seed.ts';
+import { seedBytes } from './random.ts';
 import { Refusal } from './refusal.ts';
 import { type Settled, settle } from './settle.ts';
 import { type InstanceStore, memoryStore } from './store.ts';

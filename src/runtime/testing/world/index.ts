@@ -68,7 +68,7 @@ export interface WorldSeams {
   readonly natives: Natives;
   /** Milliseconds since the Unix epoch. */
   readonly now: () => bigint;
-  /** The seed of the test's instance's random source (§3.8 `random`, random-seed.ts). */
+  /** The seed of the test's instance's random source (§3.8 `random`, random.ts). */
   readonly seed: string;
   /** When the test must have ended, in milliseconds since the Unix epoch. */
   readonly deadline: bigint;

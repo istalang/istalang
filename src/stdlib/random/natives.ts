@@ -1,6 +1,6 @@
 /**
  * The `random` module's natives (random.ista): integers and UUIDs drawn from the instance's random
- * source (runtime/scheduler/random-source.ts), so a segment that runs again draws the same values
+ * source (runtime/random.ts), so a segment that runs again draws the same values
  * (§5).
  *
  * An integer of a range is its start and a whole number of steps, uniform over every one it

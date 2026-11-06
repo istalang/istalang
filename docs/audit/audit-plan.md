@@ -190,8 +190,8 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 7. **Null-object `TestWorld` & remove upward type-imports in `runtime/natives.ts` (D176, D179 — `runtime/natives.ts`, `runtime/instance-state.ts`, `runtime/scheduler/loaded-definition.ts`, `runtime/scheduler/test-world.ts`, `runtime/scheduler/wake.ts`, `runtime/scheduler/mocks.ts`, `runtime/scheduler/native-calls.ts`):**
    - Provide a default non-test `TestWorld` in `test-world.ts` / `loaded-definition.ts` so `wake.ts`, `mocks.ts`, and `native-calls.ts` never branch on `world !== undefined` (D176).
    - Move `Inspection` (and `WaitingPoint`) to `src/runtime/instance-state.ts` (or a contract file beside it) and `TestWatch` to `src/runtime/snapshot/objects.ts` so `src/runtime/natives.ts` imports nothing from `scheduler/` (D179).
-8. **Unify seed derivation (`seedFrom` in `random-seed.ts`, D203) & deduplicate lifetime test helpers (D130 — `runtime/random-seed.ts`, `runtime/scheduler/instance/index.ts`, `runtime/testing/run-tests.ts`, `runtime/lifetimes/lifetimes.test-kit.ts`, `holders.test.ts`, `orphans.test.ts`, `snapshot/snapshot.test.ts`):**
-   - Add `seedFrom(bytes: Uint8Array): string` in `src/runtime/random-seed.ts` and use it in both `Instance.spawn` and `run-tests.ts`.
+8. **Unify seed derivation (`seedFrom` in `random.ts`, D203) & deduplicate lifetime test helpers (D130 — `runtime/random.ts`, `runtime/scheduler/instance/index.ts`, `runtime/testing/run-tests.ts`, `runtime/lifetimes/lifetimes.test-kit.ts`, `holders.test.ts`, `orphans.test.ts`, `snapshot/snapshot.test.ts`):**
+   - Add `seedFrom(bytes: Uint8Array): string` in `src/runtime/random.ts` and use it in both `Instance.spawn` and `run-tests.ts`.
    - Move duplicate `handle(object)` into `lifetimes.test-kit.ts` and rename the distinct `heapArbitrary` in `snapshot.test.ts`.
 
 ---

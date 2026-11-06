@@ -17,7 +17,7 @@
  *   that is discarded spawned nothing. So do the answers it gave other instances' calls to its
  *   mocks (§10): each fills its caller's future once the segment commits. The log records it wrote
  *   reach the host only then too (§3.8 `log`).
- * - Its random values are draws from the source its snapshot keeps (random-source.ts), counted
+ * - Its random values are draws from the source its snapshot keeps (random.ts), counted
  *   from the draws committed before the segment, so a segment that runs again draws the same ones.
  *   Each instance it spawns is seeded with the first bytes of a draw.
  * - A mock this instance holds replaces its target for the calls it makes itself (`mockOf`); one an
@@ -40,7 +40,7 @@ import {
 import { resume } from '../../interpreter/suspension.ts';
 import { isDisposable } from '../../lifetimes/disposal.ts';
 import { heldFrom } from '../../lifetimes/holders.ts';
-import { seedFrom } from '../../random-seed.ts';
+import { drawOf, seedFrom } from '../../random.ts';
 import { heldObjects, isRoot } from '../../snapshot/holdings.ts';
 import { type HeapObject, isReference, type RegisterContents } from '../../snapshot/objects.ts';
 import type { InstanceCall, Snapshot } from '../../snapshot/snapshot.ts';
@@ -49,7 +49,6 @@ import { Heap, type LiveExecution, type LiveObjectOf } from '../heap.ts';
 import { spawnedName } from '../instance-names.ts';
 import type { LoadedDefinition } from '../loaded-definition.ts';
 import { leaving, reachingMock } from '../mocks.ts';
-import { drawOf } from '../random-source.ts';
 import { Slots } from '../slots.ts';
 import { WeakSide } from '../weak-side.ts';
 import { liveObject, storedObject } from './live-objects.ts';

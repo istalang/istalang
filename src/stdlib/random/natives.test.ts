@@ -6,8 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { seedBytes, seedTextOf } from '../../runtime/random-seed.ts';
-import { drawOf } from '../../runtime/scheduler/random-source.ts';
+import { drawOf, seedBytes, seedTextOf } from '../../runtime/random.ts';
 import { uniformBelow } from './natives.ts';
 
 /** Draws from the source seeded with `seed`, counting from the first. */

@@ -6,7 +6,7 @@
  * - the order in which executions became ready
  * - how many instances it has spawned, which names the next one (`<instance>/<n>`, §9)
  * - its random source, a seed and how many draws were made from it, so a segment that runs again
- *   draws the same values (§3.8 `random`, random-seed.ts, scheduler/random-source.ts)
+ *   draws the same values (§3.8 `random`, random.ts, random.ts)
  * - its options, which a runtime that wakes it after a restart honours too: whether every segment
  *   runs twice before it commits (`crashEveryAwait`, §10), and whether a panic terminates it at
  *   once (`terminatesOnPanic`, as `runtime.isolate` starts it, §9)
@@ -32,7 +32,7 @@ import { contentHashText } from '../../definition/formats/codec.ts';
 import { defineFormat } from '../../definition/formats/format.ts';
 import { count, functionId, objectId } from '../../definition/operands.ts';
 import { integer, value } from '../../definition/values/values.ts';
-import { seedText } from '../random-seed.ts';
+import { seedText } from '../random.ts';
 import { referencedObjects } from './holdings.ts';
 import { heapObject } from './objects.ts';
 

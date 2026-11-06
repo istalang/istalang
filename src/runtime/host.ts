@@ -34,7 +34,7 @@ import { type HostExterns, hostNatives } from './boundary/host-natives.ts';
 import { outcomeJson, outcomeText } from './boundary/outbound.ts';
 import type { Advanced, Finished, Inspection, StartOptions } from './instance-state.ts';
 import type { Natives } from './natives.ts';
-import { seedTextOf } from './random-seed.ts';
+import { seedTextOf } from './random.ts';
 import { Refusal } from './refusal.ts';
 import { inspection } from './scheduler/inspect.ts';
 import { spawnedSeparator } from './scheduler/instance-names.ts';
@@ -57,7 +57,7 @@ export interface RuntimeSeams {
   /** Milliseconds since the Unix epoch: when each segment starts (§5). */
   readonly now: () => bigint;
   /**
-   * A new secret seed, `seedBytes` random bytes (random-seed.ts), for each instance a host starts:
+   * A new secret seed, `seedBytes` random bytes (random.ts), for each instance a host starts:
    * the source of its random values (§3.8 `random`). An instance it spawns is seeded from it in
    * turn. A seed of another length refuses the start.
    */

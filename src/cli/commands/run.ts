@@ -28,7 +28,7 @@ import { FormatError } from '../../definition/formats/format.ts';
 import { loadProject } from '../../project/project.ts';
 import { createRuntime, type DeployedProgram, type Runtime } from '../../runtime/host.ts';
 import type { Advanced } from '../../runtime/instance-state.ts';
-import { seedBytes } from '../../runtime/random-seed.ts';
+import { seedBytes } from '../../runtime/random.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { type Settled, settle } from '../../runtime/settle.ts';
 import { memoryStore } from '../../runtime/store.ts';
