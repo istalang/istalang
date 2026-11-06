@@ -7,12 +7,12 @@
  * for no check.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { ModuleId } from '../program/program.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import type { ModuleId } from '../../program/program.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { type Witnesses, witnessCallsOf } from '../surface/resolved-call.ts';
+import { type Substitution, substitutionFor } from '../types/substitution.ts';
 import type { CheckerContext, Instantiable } from './context.ts';
-import { type Witnesses, witnessCallsOf } from './surface/resolved-call.ts';
-import { type Substitution, substitutionFor } from './types/substitution.ts';
 
 export interface UseSite {
   readonly checker: CheckerContext;

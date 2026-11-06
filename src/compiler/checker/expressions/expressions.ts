@@ -28,8 +28,14 @@ import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { Block } from '../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../syntax/statements/readings.ts';
-import type { AcceptedPart, Accepts, BodyContext, PartReader, TypedPart } from '../body-context.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
+import type {
+  AcceptedPart,
+  Accepts,
+  BodyContext,
+  PartReader,
+  TypedPart,
+} from '../contexts/body-context.ts';
 import { takingUnfolded } from '../types/fitting/expected.ts';
 import type { Type } from '../types/type/index.ts';
 import {

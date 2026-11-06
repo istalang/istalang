@@ -37,9 +37,9 @@ import {
   isImplicitOperator,
 } from '../../syntax/operators.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext } from '../body-context.ts';
 import { applied, type Operand, resolveOperator, unaryApplied } from '../calls/operators.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
+import type { BodyContext } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type ImplicitOperand, implicitOperatorCall } from '../resolution/implicit.ts';
 import type { Type } from '../types/type/index.ts';

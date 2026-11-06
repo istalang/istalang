@@ -12,7 +12,7 @@
 
 import { type TypeParameter, typeParametersOf } from '../../../syntax/declarations/index.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
 import {
   type ConstraintSet,

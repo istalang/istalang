@@ -27,7 +27,7 @@ import {
   type TypeParameter,
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
-import type { CheckerContext, CheckerNote } from '../../context.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';

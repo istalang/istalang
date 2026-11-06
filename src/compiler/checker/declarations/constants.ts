@@ -22,7 +22,7 @@ import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { CheckedConstant } from '../check.ts';
-import type { CheckerContext, CheckerNote } from '../context.ts';
+import type { CheckerContext, CheckerNote } from '../contexts/context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { computeConstant, refusalOf } from '../rules/computation/index.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';

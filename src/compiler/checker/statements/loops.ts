@@ -20,7 +20,7 @@ import type {
   LabelledScope,
   While,
 } from '../../syntax/statements/index.ts';
-import type { BodyContext, LabelRecord } from '../body-context.ts';
+import type { BodyContext, LabelRecord } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkedFieldPasses, inFieldPasses } from '../rules/loops/field-passes.ts';
 import { checkLoopOver } from '../rules/loops/iteration.ts';

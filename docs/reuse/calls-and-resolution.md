@@ -12,7 +12,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 
 ## Units
 
-- build a `UseSite` (reporting, silent, or host-crossing) → `useSite`, `searchSite`, `hostSite`, `silent` (`src/compiler/checker/use-site.ts`)
+- build a `UseSite` (reporting, silent, or host-crossing) → `useSite`, `searchSite`, `hostSite`, `silent` (`src/compiler/checker/contexts/use-site.ts`)
 - look up top-level functions in a module (prelude joined) → `namedInModule` (`src/compiler/checker/resolution/choosing/candidates.ts`)
 - look up call candidates with ADL and type-parameter requirements → `topLevelCandidates`, `callCandidates` (`src/compiler/checker/resolution/choosing/candidates.ts`); `topLevelCandidates` adds a call on a union through the visible traits requiring its name (§6)
 - a union's trait met through its members: the trait as `any` takes it, the call dispatching over members, why members fall short, a candidate's union requirement → `traitAsAny` (`traits/constraints.ts`), `traitMetBy`, `membersCall`, `membersShortfall`, `membersRequirementOf`, `traitCallsOn` (`src/compiler/checker/resolution/conformance/union-traits.ts`); keep only the trait calls a union meets, or the function declared for it in their place → `metThroughTraits` (`src/compiler/checker/resolution/conformance/trait-calls.ts`), which choosing and member lookup both read; a trait's parameters without a default are `Requirement.inferred`, found by the call's own inference, and the chosen call is judged and closed with them by `closedThroughMembers` (same file, read by `applyCall`), never by a second pipeline

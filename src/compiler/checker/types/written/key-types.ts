@@ -21,7 +21,7 @@ import type {
   StructType,
   TypeNode,
 } from '../../../syntax/types/index.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Fitting } from '../fitting/fit.ts';
 import { type Substitution, substitute } from '../substitution.ts';

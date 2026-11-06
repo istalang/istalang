@@ -16,7 +16,7 @@ import { fieldsFunctionOf } from '../../../syntax/declarations/field-defaults.ts
 import type { EnumDeclaration } from '../../../syntax/declarations/index.ts';
 import type { FieldsLiteral, MemberAccess } from '../../../syntax/expressions/index.ts';
 import { type Identifier, lastName } from '../../../syntax/node.ts';
-import type { Accepts, BodyContext } from '../../body-context.ts';
+import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { chooseVariant } from '../../resolution/named.ts';
 import { enumsExpected, expectedNominal, sameNominal } from '../../types/fitting/expected.ts';

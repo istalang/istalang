@@ -18,7 +18,7 @@ import type { VariableEntity } from '../../../binder/entities.ts';
 import type { Identifier } from '../../../syntax/node.ts';
 import { droppedName } from '../../../syntax/statements/readings.ts';
 import type { SyntaxNode } from '../../../syntax/tree.ts';
-import type { BodyContext } from '../../body-context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { flowThrough } from '../../flow/forward.ts';
 

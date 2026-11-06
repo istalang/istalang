@@ -27,8 +27,8 @@ import { wellKnown } from '../../../../language/well-known/index.ts';
 import { typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../../body-context.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { unfolded } from '../computed-types.ts';
 import {

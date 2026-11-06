@@ -19,7 +19,7 @@ import { wellKnown } from '../../../../language/well-known/index.ts';
 import { argumentValue } from '../../../syntax/expressions/arguments.ts';
 import type { Call, Expression, Spawn } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
-import type { BodyContext } from '../../body-context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { isSendable } from '../../traits/sendable.ts';
 import type { Type } from '../../types/type/index.ts';

@@ -17,13 +17,13 @@
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext } from '../body-context.ts';
-import type { CheckerContext } from '../context.ts';
+import type { BodyContext } from '../contexts/body-context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
+import { useSite } from '../contexts/use-site.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type/index.ts';
 import { typeText } from '../types/type-text.ts';
-import { useSite } from '../use-site.ts';
 import { argumentListText, filledTypes, fitArguments, recordArgumentKeys } from './argument-fit.ts';
 import type { CallArgument, Inapplicability } from './choosing/call-arguments.ts';
 import type { Candidate } from './choosing/candidates.ts';

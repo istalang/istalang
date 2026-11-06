@@ -33,7 +33,7 @@ import type {
 } from '../../../syntax/declarations/index.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import { isPlace } from '../../../syntax/expressions/places.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import type { Requirement } from '../../traits/constraints.ts';
 import { requirementsNamed } from '../../traits/known-constraints.ts';
 import { type ComputedType, isComputed } from '../../types/computed-types.ts';

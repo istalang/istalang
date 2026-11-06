@@ -6,7 +6,7 @@
 
 import { wellKnown } from '../../../language/well-known/index.ts';
 import type { DurationLiteral } from '../../syntax/expressions/literals/literals.ts';
-import type { BodyContext } from '../body-context.ts';
+import type { BodyContext } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Type } from '../types/type/index.ts';
 import { errorType } from '../types/type/primitives.ts';

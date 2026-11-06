@@ -54,7 +54,7 @@ import type {
   ConstraintCheck,
   ProgramInputs,
   RootGoals,
-} from '../context.ts';
+} from '../contexts/context.ts';
 import { Aliases } from '../declarations/aliases/index.ts';
 import { ConstantChecks } from '../declarations/constants.ts';
 import { FunctionChecks } from '../declarations/functions/functions.ts';

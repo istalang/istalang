@@ -9,7 +9,7 @@
 
 import { valueBranchesOf } from '../../../syntax/expressions/branches.ts';
 import type { Expression, If } from '../../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext } from '../../body-context.ts';
+import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { isAssignable } from '../../types/identity/identity.ts';
 import type { Type } from '../../types/type/index.ts';

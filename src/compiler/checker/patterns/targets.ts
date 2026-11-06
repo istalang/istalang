@@ -12,8 +12,8 @@ import type { Comprehension, FieldHeader, Parameter } from '../../syntax/express
 import { typingPattern } from '../../syntax/expressions/parameters.ts';
 import type { For, VariableDeclaration } from '../../syntax/statements/index.ts';
 import { declaredTargets } from '../../syntax/statements/targets.ts';
-import type { BodyContext } from '../body-context.ts';
 import type { SignatureParameter } from '../check.ts';
+import type { BodyContext } from '../contexts/body-context.ts';
 import type { Type } from '../types/type/index.ts';
 import { bodyScope } from './parts.ts';
 import { walkTargets } from './walk.ts';

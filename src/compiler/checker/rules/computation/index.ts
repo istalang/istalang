@@ -37,7 +37,7 @@ import type { Identifier } from '../../../syntax/node.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { CheckedConstant } from '../../check.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedBody, FieldSource } from '../../surface/checked-body.ts';
 import { type ConstantForm, durationForm, formSemantics } from '../../surface/constant-form.ts';

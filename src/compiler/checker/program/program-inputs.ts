@@ -38,7 +38,7 @@ import {
 import type { NodeOf } from '../../syntax/node.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import { bodyOf, parentOf, type SyntaxTree } from '../../syntax/tree.ts';
-import type { CheckerNote, ProgramInputs } from '../context.ts';
+import type { CheckerNote, ProgramInputs } from '../contexts/context.ts';
 
 /** Checking's reads of `program`, recorded in `entries`. */
 export function programInputs(

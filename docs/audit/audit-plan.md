@@ -17,7 +17,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 ## 0. Rules for Concurrent Agents (Zero-Conflict Discipline)
 
 1. **Strict File Ownership:** Each Wave 1 agent may **only** edit files listed in its **Owned Files** section (plus the colocated `*.test.ts` / `test/corpus/...` files for its domain). Never edit a file owned by another group.
-2. **Do Not Edit Shared Coordination Docs in Sub-Agents:** Sub-agents must **not** edit `docs/work/tracker.md`, `docs/audit/*`, `.dependency-cruiser.mjs`, `src/compiler/checker/check.ts`, or `src/compiler/checker/context.ts`. The orchestrator updates `docs/work/tracker.md` once after Wave 1 merges.
+2. **Do Not Edit Shared Coordination Docs in Sub-Agents:** Sub-agents must **not** edit `docs/work/tracker.md`, `docs/audit/*`, `.dependency-cruiser.mjs`, `src/compiler/checker/check.ts`, or `src/compiler/checker/contexts/context.ts`. The orchestrator updates `docs/work/tracker.md` once after Wave 1 merges.
 3. **Diagnostic Catalogs (`src/compiler/checker/diagnostics/`):** Only **Group C** may edit `src/compiler/checker/diagnostics/{boundary,lifetimes}.ts`. Other groups use existing diagnostic factories in `checkerDiagnostics`.
 4. **Red → Fix → Green & Verification:** For every bug fix, write a failing test first, confirm it fails for the expected reason, apply the fix, and run `npm run verify` before committing.
 
@@ -233,10 +233,10 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 
 ## 3. Wave 2 — Cross-Contract & Cross-Phase Refactors (Run After Wave 1 Merges)
 
-These items touch shared phase contracts (`src/compiler/checker/check.ts`, `src/compiler/checker/context.ts`, `.dependency-cruiser.mjs`) or wire Wave 1's new `definition/` helpers into `runtime/` and `scanner/`:
+These items touch shared phase contracts (`src/compiler/checker/check.ts`, `src/compiler/checker/contexts/context.ts`, `.dependency-cruiser.mjs`) or wire Wave 1's new `definition/` helpers into `runtime/` and `scanner/`:
 
-1. **Layer `checker/context.ts` interfaces & enable type-import cycle checking (Q13):**
-   - Replace the concrete class type-imports in `src/compiler/checker/context.ts` with narrow interfaces declared in `context.ts`, and enable `tsPreCompilationDeps` in `.dependency-cruiser.mjs`.
+1. **Layer `checker/contexts/context.ts` interfaces & enable type-import cycle checking (Q13):**
+   - Replace the concrete class type-imports in `src/compiler/checker/contexts/context.ts` with narrow interfaces declared in `context.ts`, and enable `tsPreCompilationDeps` in `.dependency-cruiser.mjs`.
 2. **Explicit function-value calls on `CheckedBody` & pure `entityOf` query (Q1, Q2):**
    - Record function-value calls explicitly in `CheckedBody` (`src/compiler/checker/check.ts`, `body-checker.ts`, `lowering/expressions/calls.ts`) and split `BodyChecker.entityOf` (pure query) from `useEntity` (which notes closure captures).
 3. **Wire Wave 1 foundation helpers across phase boundaries (Q15, Q16, Q17, Q18):**
@@ -265,7 +265,7 @@ Three agents in parallel, one worktree each. Wave 2 crosses contracts, so owners
 
 | Group | Items | Owns |
 | --- | --- | --- |
-| G — checker↔lowering contract | 1 (Q13), 2 (Q1, Q2), 8 (Q12, Q19); Q11's `lowering/parts/places.ts` part | `checker/check.ts`, `checker/context.ts`, `checker/body-checker.ts`, `checker/expressions/structs/structs.ts`, `lowering/`, `.dependency-cruiser.mjs`; the `entityOf` rename at its callers anywhere in `checker/` |
+| G — checker↔lowering contract | 1 (Q13), 2 (Q1, Q2), 8 (Q12, Q19); Q11's `lowering/parts/places.ts` part | `checker/check.ts`, `checker/contexts/context.ts`, `checker/body-checker.ts`, `checker/expressions/structs/structs.ts`, `lowering/`, `.dependency-cruiser.mjs`; the `entityOf` rename at its callers anywhere in `checker/` |
 | H — checker expressions, operators, resolution | 6 (B8), 7 (B11), 9, 10; Q8, Q11 (but `lowering/parts/places.ts`), Q24 | `compiler/syntax/`, the rest of `checker/`; additive edits to `check.ts`'s `ValueSite`/`IterationForm` for B8 |
 | I — cross-phase wiring, test modules | 3 (Q15–Q18, Q25), 4 (B2), 11 (Q26), 12; Q20, Q22, Q23, Q27 | `runtime/`, `stdlib/`, `definition/`, `language/`, `cli/`, `compiler/scanner/`, `program.test-kit.ts`, parse and check tests |
 

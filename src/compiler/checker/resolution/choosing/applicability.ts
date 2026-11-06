@@ -19,7 +19,7 @@
  */
 
 import { unreachable } from '../../../../structures/unreachable.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { Inference } from '../../inference/infer.ts';
 import type { Binding } from '../../surface/resolved-call.ts';
 import { reshapes } from '../../types/fitting/fit.ts';

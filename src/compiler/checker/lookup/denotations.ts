@@ -29,7 +29,7 @@ import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { Hold } from '../../syntax/statements/index.ts';
 import { nestsFunction, parentOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { NamedType } from '../../syntax/types/index.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import { declaredOutsideBodies } from '../expressions/access/names.ts';
 import { namedType } from '../resolution/named.ts';
 import type { Denotation, JoinedBody } from '../surface/denotation.ts';

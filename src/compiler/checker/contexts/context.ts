@@ -5,18 +5,18 @@
  * through the context, and the wiring lives in one place.
  *
  * - `CheckerContext` answers program-wide questions, each memoized per Program: what later phases
- *   read (check.ts), plus reporting, type nodes' types, and the prelude's types and functions.
+ *   read (../check.ts), plus reporting, type nodes' types, and the prelude's types and functions.
  * - One body is checked in a `BodyContext` (body-context.ts), which asks this one.
  *
  * This contract names nothing above the type model, so no folder reaches another through it
  * (.dependency-cruiser.mjs).
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { LanguageModule } from '../../language/well-known/index.ts';
-import type { Entries } from '../../structures/entries/index.ts';
-import type { VariantEntity } from '../binder/entities.ts';
-import type { ModuleId } from '../program/program.ts';
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import type { LanguageModule } from '../../../language/well-known/index.ts';
+import type { Entries } from '../../../structures/entries/index.ts';
+import type { VariantEntity } from '../../binder/entities.ts';
+import type { ModuleId } from '../../program/program.ts';
 import type {
   Declaration,
   DeclaredStruct,
@@ -25,21 +25,21 @@ import type {
   RequiredAssociatedType,
   TypeAliasDeclaration,
   TypeParameter,
-} from '../syntax/declarations/index.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { Block } from '../syntax/statements/index.ts';
-import type { SyntaxTree } from '../syntax/tree.ts';
-import type { TypeNode } from '../syntax/types/index.ts';
-import type { Checker, VariantMember } from './check.ts';
-import type { AnnotationQueries } from './surface/checked-annotation.ts';
-import type { JsonCodecs } from './surface/json-form.ts';
-import type { ResolvedCall } from './surface/resolved-call.ts';
-import type { Fit, Fitting } from './types/fitting/fit.ts';
-import type { ConstraintSet, StructConstraintModel } from './types/struct-constraint.ts';
-import type { Substitution } from './types/substitution.ts';
-import type { Constraint, FieldMember, NominalDeclaration, Type } from './types/type/index.ts';
-import type { StaticOwner } from './types/written/named-types.ts';
-import type { TypeMatchQueries } from './types/written/type-match.ts';
+} from '../../syntax/declarations/index.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { Block } from '../../syntax/statements/index.ts';
+import type { SyntaxTree } from '../../syntax/tree.ts';
+import type { TypeNode } from '../../syntax/types/index.ts';
+import type { Checker, VariantMember } from '../check.ts';
+import type { AnnotationQueries } from '../surface/checked-annotation.ts';
+import type { JsonCodecs } from '../surface/json-form.ts';
+import type { ResolvedCall } from '../surface/resolved-call.ts';
+import type { Fit, Fitting } from '../types/fitting/fit.ts';
+import type { ConstraintSet, StructConstraintModel } from '../types/struct-constraint.ts';
+import type { Substitution } from '../types/substitution.ts';
+import type { Constraint, FieldMember, NominalDeclaration, Type } from '../types/type/index.ts';
+import type { StaticOwner } from '../types/written/named-types.ts';
+import type { TypeMatchQueries } from '../types/written/type-match.ts';
 import type { UseSite } from './use-site.ts';
 
 /** A declaration an instantiation gives type arguments: a function, a nominal type or an alias. */
@@ -110,7 +110,7 @@ export interface ProgramInputs {
 }
 
 /**
- * The program-wide services, beyond what later phases read (check.ts). A checker unit reads its
+ * The program-wide services, beyond what later phases read (../check.ts). A checker unit reads its
  * program only through `inputs`, which records each read in the entry making it, so the program
  * itself is no member here.
  */

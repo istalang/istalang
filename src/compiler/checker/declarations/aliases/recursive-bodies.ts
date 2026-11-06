@@ -21,7 +21,7 @@
 import type { EntryTable } from '../../../../structures/entries/index.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { type TypeAliasDeclaration, typeParametersOf } from '../../../syntax/declarations/index.ts';
-import type { CheckerContext, CheckerNote } from '../../context.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { closeRecursive } from '../../types/identity/recursive-types.ts';
 import { mentionsError, sameTypeSpelled } from '../../types/parts/type-parts.ts';

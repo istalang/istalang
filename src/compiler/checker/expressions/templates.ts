@@ -18,8 +18,8 @@ import {
   isTagged,
   taggedCall,
 } from '../../syntax/expressions/literals/templates.ts';
-import type { BodyContext } from '../body-context.ts';
 import { type StoppingOperand, stoppedOperation } from '../calls/stopped-operations.ts';
+import type { BodyContext } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/choosing/candidates.ts';
 import { implicitCall, preludeCall } from '../resolution/implicit.ts';

@@ -17,7 +17,7 @@
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import { withEmptied } from '../../../structures/stack.ts';
-import type { CheckerContext, CheckerNote } from '../context.ts';
+import type { CheckerContext, CheckerNote } from '../contexts/context.ts';
 import { associatedTypeOf, type Expansion } from '../traits/known-constraints.ts';
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../traits/struct-keys.ts';
 import { unfolded } from '../types/computed-types.ts';

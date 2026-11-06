@@ -11,12 +11,12 @@
  */
 
 import type { FunctionDeclaration, TypeParameter } from '../../../syntax/declarations/index.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { searchSite, type UseSite } from '../../contexts/use-site.ts';
 import type { MembersRequirement } from '../../surface/resolved-call.ts';
 import { constraintSubstitution } from '../../traits/constraints.ts';
 import { type Substitution, substituteAny } from '../../types/substitution.ts';
 import { errorType } from '../../types/type/primitives.ts';
-import { searchSite, type UseSite } from '../../use-site.ts';
 import type { Candidate } from '../choosing/candidates.ts';
 import { callWitnessesFor, type Instantiation } from './conformance.ts';
 import { membersRequirementOf, traitMetBy } from './union-traits.ts';

@@ -11,7 +11,7 @@
  * base, which is no literal, so it isn't met that way either.
  */
 
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { constraintSubstitution, requiredFunctions } from '../../traits/constraints.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { baseOf } from '../../types/unions/union-members.ts';

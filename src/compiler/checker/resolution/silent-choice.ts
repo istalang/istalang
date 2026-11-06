@@ -14,10 +14,10 @@
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
+import { searchSite } from '../contexts/use-site.ts';
 import type { FunctionCall } from '../surface/resolved-call.ts';
 import type { Type } from '../types/type/index.ts';
-import { searchSite } from '../use-site.ts';
 import { callMade } from './calls-made.ts';
 import type { CallArgument } from './choosing/call-arguments.ts';
 import type { Candidate } from './choosing/candidates.ts';

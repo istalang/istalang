@@ -9,7 +9,7 @@ import type {
   StructDeclaration,
   TypeAliasDeclaration,
 } from '../../../syntax/declarations/index.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { unfoldRecursive } from '../../types/computed-types.ts';
 import { fieldReaderOf, holdsItself, selfHoldingField } from '../../types/properties/finiteness.ts';

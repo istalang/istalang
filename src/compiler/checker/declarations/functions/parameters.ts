@@ -17,7 +17,7 @@ import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts'
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { writesType } from '../../../syntax/expressions/parameters.ts';
 import type { SignatureParameter } from '../../check.ts';
-import type { CheckerContext, CheckerNote } from '../../context.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import type { RestSlot } from '../../types/function-types.ts';

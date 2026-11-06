@@ -28,7 +28,8 @@ import type {
   ConstraintCheck,
   ConstraintNote,
   Instantiable,
-} from '../context.ts';
+} from '../contexts/context.ts';
+import { useSite } from '../contexts/use-site.ts';
 import { resolveConstraint } from '../traits/constraints.ts';
 import { resolveConstraintSet, resolveStructConstraint } from '../traits/struct-constraints.ts';
 import { standsForMember } from '../types/fitting/member-arguments.ts';
@@ -42,7 +43,6 @@ import {
 import { substituteConstraint } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type/index.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
-import { useSite } from '../use-site.ts';
 import { meets } from './conformance/conformance.ts';
 import { meetsStructConstraints } from './conformance/shortfalls.ts';
 import { impliedConstraints } from './type-matches/implied-constraints.ts';

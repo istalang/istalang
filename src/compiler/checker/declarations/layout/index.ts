@@ -33,7 +33,7 @@ import type {
 } from '../../../syntax/declarations/index.ts';
 import type { Invalid } from '../../../syntax/node.ts';
 import type { VariantMember } from '../../check.ts';
-import type { CheckerContext, CheckerNote } from '../../context.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { type FieldedDeclaration, TypeExpansion } from '../../rules/expansion/types.ts';
 import { unfolded } from '../../types/computed-types.ts';
 import { inFieldOrder } from '../../types/field-order.ts';

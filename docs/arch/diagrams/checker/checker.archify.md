@@ -10,7 +10,7 @@ The checker is a **lazy, incremental query engine** over one immutable Program. 
 @answer scope="src/compiler/checker and structures/entries · worktree p4-computed at 5403091 · 2026-11-05"
 @meta locale=en
 @source check title="checkProgram and the Checker surface" path=src/compiler/checker/check.ts lines=293:400
-@source context title="CheckerContext and ProgramInputs" path=src/compiler/checker/context.ts lines=77:171
+@source context title="CheckerContext and ProgramInputs" path=src/compiler/checker/contexts/context.ts lines=77:171
 @source programchecker title="ProgramChecker wiring" path=src/compiler/checker/program/program-checker.ts lines=113:231
 @source bodychecker title="BodyChecker: expression, fit, record" path=src/compiler/checker/body/body-checker.ts lines=91:296
 @source functions title="FunctionChecks: results and bodies as entries" path=src/compiler/checker/declarations/functions/functions.ts lines=44:111
@@ -21,7 +21,7 @@ The checker is a **lazy, incremental query engine** over one immutable Program. 
 @source applied title="applyCall" path=src/compiler/checker/resolution/applied-call.ts lines=59:108
 @source entries title="Entries: get, produce, takeOver, replay" path=src/structures/entries/index.ts lines=163:309
 @source cruiser title="Checker inner layers" path=.dependency-cruiser.mjs lines=116:166
-@source passes title="Passes of a field loop" path=src/compiler/checker/passes.ts lines=1:20
+@source passes title="Passes of a field loop" path=src/compiler/checker/contexts/passes.ts lines=1:20
 
 ## How is the checker composed? {#composition}
 

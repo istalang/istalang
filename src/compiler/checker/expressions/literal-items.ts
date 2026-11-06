@@ -16,7 +16,7 @@
 
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { itemValue } from '../../syntax/expressions/readings.ts';
-import type { AcceptedPart, BodyContext } from '../body-context.ts';
+import type { AcceptedPart, BodyContext } from '../contexts/body-context.ts';
 import { isBuiltLiteral, untypedLiteral } from './expressions.ts';
 
 /**

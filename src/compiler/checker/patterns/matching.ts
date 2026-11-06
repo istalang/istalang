@@ -35,9 +35,9 @@ import type {
   Pattern,
   StructPattern,
 } from '../../syntax/patterns.ts';
-import type { BodyContext, PatternRecord } from '../body-context.ts';
+import type { BodyContext, PatternRecord } from '../contexts/body-context.ts';
+import type { Pass, Passes, PassTable } from '../contexts/passes.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Pass, Passes, PassTable } from '../passes.ts';
 import { implicitOperatorCall, preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, nameNodeOf } from '../resolution/named.ts';
 import { type CheckedPattern, namesBound, type PatternTest } from '../surface/checked-pattern.ts';

@@ -39,11 +39,11 @@ import type {
   MemberAccess,
 } from '../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
-import type { BodyContext } from '../body-context.ts';
 import { checkChangedPlace } from '../calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../calls/resolve.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
+import type { BodyContext } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
   callableThrough,

@@ -8,7 +8,7 @@
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
 import type { TraitDeclaration } from '../../syntax/declarations/index.ts';
 import type { Checker } from '../check.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import type { Type } from './type/index.ts';
 import { errorType } from './type/primitives.ts';
 

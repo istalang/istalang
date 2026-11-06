@@ -39,10 +39,11 @@ import type {
 } from '../../../syntax/expressions/index.ts';
 import type { Invalid } from '../../../syntax/node.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import type { BodyContext, CollectionRecord } from '../../body-context.ts';
 import { writeElement } from '../../calls/collection-functions.ts';
+import type { BodyContext, CollectionRecord } from '../../contexts/body-context.ts';
+import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
+import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import type { Pass, Passes, PassTable } from '../../passes.ts';
 import { resolveDefault } from '../../resolution/conformance/default-witness.ts';
 import { preludeCall } from '../../resolution/implicit.ts';
 import { decidedSoFar, type Produced, producedBy, settleAgreement } from '../../rules/agreement.ts';
@@ -55,7 +56,6 @@ import type { NominalType, Type } from '../../types/type/index.ts';
 import { errorType, expectsError, intType, neverType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type-text.ts';
 import { arrayElement, arrayOf, wellKnownArguments, wellKnownOf } from '../../types/well-known.ts';
-import { useSite } from '../../use-site.ts';
 
 /** The form of each collection literal of one body, for lowering. */
 export class CollectionForms implements CollectionRecord {

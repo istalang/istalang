@@ -41,7 +41,7 @@ import {
   type UnionType,
   unparenthesizedType,
 } from '../../../syntax/types/index.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { ownAssociatedType } from '../computed-types.ts';
 import { isPack, withPack } from '../function-types.ts';

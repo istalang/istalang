@@ -19,8 +19,9 @@ import { staticName } from '../../../language/static-names.ts';
 import type { FunctionsEntity } from '../../binder/entities.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
-import type { Accepts, BodyContext } from '../body-context.ts';
 import { recordChosen } from '../calls/resolve.ts';
+import type { Accepts, BodyContext } from '../contexts/body-context.ts';
+import { useSite } from '../contexts/use-site.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Passing } from '../resolution/choosing/call-arguments.ts';
 import {
@@ -39,7 +40,6 @@ import type { FunctionType, Type } from '../types/type/index.ts';
 import { errorType, expectsError } from '../types/type/primitives.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument, futureOf } from '../types/well-known.ts';
-import { useSite } from '../use-site.ts';
 
 /** Functions an expression names as a value: where, by what name in messages, and which. */
 export interface NamedFunctions {

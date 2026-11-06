@@ -11,7 +11,7 @@ import type { StringLiteral } from '../../syntax/expressions/literals/literals.t
 import type { Identifier } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import type { Denotation, JoinedBody, LookupQueries, TypeMembers } from '../surface/denotation.ts';
 import { knownConstraints } from '../traits/known-constraints.ts';
 import type { Constraint, Type } from '../types/type/index.ts';

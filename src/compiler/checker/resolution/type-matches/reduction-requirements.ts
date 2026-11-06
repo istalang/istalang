@@ -41,7 +41,7 @@ import {
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import { nodesUnder } from '../../../syntax/tree.ts';
 import { isWrittenType } from '../../../syntax/types/index.ts';
-import type { CheckerContext, CheckerNote, Instantiable } from '../../context.ts';
+import type { CheckerContext, CheckerNote, Instantiable } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { functionCallsWithin } from '../../surface/resolved-call.ts';

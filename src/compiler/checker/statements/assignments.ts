@@ -35,7 +35,6 @@ import {
   destructuringOf,
   isUnnamedTarget,
 } from '../../syntax/statements/targets.ts';
-import type { BodyContext } from '../body-context.ts';
 import { binaryApplied, resolveOperator } from '../calls/operators.ts';
 import {
   checkChangedPlace,
@@ -44,6 +43,7 @@ import {
   severalKeyedFields,
 } from '../calls/places.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
+import type { BodyContext } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';

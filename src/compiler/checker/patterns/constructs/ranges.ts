@@ -6,7 +6,7 @@
 import { signedNumberOf } from '../../../syntax/expressions/literals/numbers.ts';
 import { binaryOperators, type Relation } from '../../../syntax/operators.ts';
 import type { LiteralPattern, RangePattern } from '../../../syntax/patterns.ts';
-import type { BodyContext } from '../../body-context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { preludeCall } from '../../resolution/implicit.ts';
 import type { PatternTest } from '../../surface/checked-pattern.ts';

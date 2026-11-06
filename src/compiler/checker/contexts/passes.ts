@@ -18,11 +18,11 @@
  *   when no pass reaches it (`settled`).
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { memo } from '../../structures/memo.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import { checkerDiagnostics } from './diagnostics/index.ts';
-import type { Type } from './types/type/index.ts';
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import { memo } from '../../../structures/memo.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { Type } from '../types/type/index.ts';
 
 /** One checking of a field loop's body, inside `outer`; the body itself has none. */
 export interface Pass {

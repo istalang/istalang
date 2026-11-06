@@ -8,6 +8,7 @@
 
 import type { CodecHelper } from '../../../language/well-known/codecs.ts';
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
+import type { UseSite } from '../contexts/use-site.ts';
 import type {
   LiteralType,
   NominalType,
@@ -15,7 +16,6 @@ import type {
   TupleType,
   Type,
 } from '../types/type/index.ts';
-import type { UseSite } from '../use-site.ts';
 import type { FunctionCall, ResolvedCall } from './resolved-call.ts';
 
 /** Which way a value crosses as JSON (§9): written to it, or read from it. */

@@ -23,7 +23,7 @@ import {
   type TypeParameter,
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import type { MembersRequirement } from '../../surface/resolved-call.ts';
 import {
   constraintOn,

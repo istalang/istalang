@@ -12,7 +12,7 @@
 import type { EntryTable } from '../../../../structures/entries/index.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
-import type { CheckerContext, CheckerNote } from '../../context.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { sameTypeSpelled } from '../../types/parts/type-parts.ts';

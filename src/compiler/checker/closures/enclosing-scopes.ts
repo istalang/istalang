@@ -7,7 +7,7 @@
 import { withPushed } from '../../../structures/stack.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { LabelledScope, Loop } from '../../syntax/statements/index.ts';
-import type { Enclosing } from '../body-context.ts';
+import type { Enclosing } from '../contexts/body-context.ts';
 
 /** The scopes whose bodies are being checked, innermost last, and the function's own name. */
 export class EnclosingScopes implements Enclosing {

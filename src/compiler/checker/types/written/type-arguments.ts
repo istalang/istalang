@@ -20,7 +20,7 @@ import {
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { substitute, substitutionFor } from '../substitution.ts';
 import type { NominalDeclaration, ParameterKey, Type } from '../type/index.ts';

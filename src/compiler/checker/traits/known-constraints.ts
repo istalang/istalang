@@ -25,7 +25,7 @@ import type {
   RequiredAssociatedType,
   TypeParameter,
 } from '../../syntax/declarations/index.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import type { RequirementOrigin } from '../surface/resolved-call.ts';
 import { type ComputedType, isMatchAlias, isOpaque } from '../types/computed-types.ts';
 import { inFieldOrder } from '../types/field-order.ts';

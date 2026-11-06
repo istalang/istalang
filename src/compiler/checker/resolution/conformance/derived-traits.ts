@@ -14,12 +14,12 @@
 
 import { type WellKnownDeclaration, wellKnown } from '../../../../language/well-known/index.ts';
 import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import type { UseSite } from '../../contexts/use-site.ts';
 import { type DerivedCodec, type JsonDirection, jsonTraits } from '../../surface/json-form.ts';
 import { isSendable } from '../../traits/sendable.ts';
 import type { Type } from '../../types/type/index.ts';
 import { isWellKnownTrait } from '../../types/well-known.ts';
-import type { UseSite } from '../../use-site.ts';
 
 /** How a derived trait is met: what it asks of every type, and what it derives for one. */
 export interface Derivation {

@@ -36,7 +36,7 @@ import {
 } from '../../../syntax/declarations/index.ts';
 import type { NamedType, TypeMatch, TypeNode } from '../../../syntax/types/index.ts';
 import { inferTypesIn } from '../../../syntax/types/type-matches.ts';
-import type { CheckerContext, CheckerNote } from '../../context.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { isMatchAlias } from '../../types/computed-types.ts';
 import { namedPathOf } from '../../types/written/named-paths.ts';

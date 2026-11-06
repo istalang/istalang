@@ -24,7 +24,7 @@ import {
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
 import type { SignatureParameter } from '../../check.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { noSubstitution, type Substitution, substitute } from '../../types/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
 import type { TypeRules } from '../../types/type-rules.ts';

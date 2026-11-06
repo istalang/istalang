@@ -22,7 +22,7 @@ import {
   type EnumDeclaration,
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
-import type { CheckerContext, CheckerNote } from '../../context.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { nominalsIn } from '../../types/parts/type-parts.ts';
 import type { ParameterKey } from '../../types/type/index.ts';

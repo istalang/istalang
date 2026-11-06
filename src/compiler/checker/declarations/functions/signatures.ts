@@ -26,7 +26,7 @@ import { lastName } from '../../../syntax/node.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import { type NamedType, type TypeNode, unparenthesizedType } from '../../../syntax/types/index.ts';
 import type { SignatureParameter } from '../../check.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { isPack, packRestSlot, type RestSlot } from '../../types/function-types.ts';
 import type { Type } from '../../types/type/index.ts';

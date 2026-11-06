@@ -28,9 +28,9 @@ import type {
   RootGoals,
   StructGoal,
   TraitGoal,
-} from '../../context.ts';
+} from '../../contexts/context.ts';
+import { searchSite, type UseSite } from '../../contexts/use-site.ts';
 import type { Type } from '../../types/type/index.ts';
-import { searchSite, type UseSite } from '../../use-site.ts';
 import { goalKey } from './witness-outcomes.ts';
 
 /** The root goals of `checker`'s program, each kept from what `searches` finds for it. */

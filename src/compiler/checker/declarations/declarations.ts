@@ -35,7 +35,7 @@ import {
 } from '../../syntax/declarations/index.ts';
 import { parameterSite } from '../../syntax/expressions/parameters.ts';
 import type { NodeOf } from '../../syntax/node.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkHostBoundary, crossesToHost } from '../rules/boundary/host-boundary.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal/disposal.ts';

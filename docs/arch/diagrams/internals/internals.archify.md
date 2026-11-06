@@ -21,7 +21,7 @@ They meet on **node identity**. The binder memoizes one `VariableEntity` per dec
 @source variables title="VariableScope and checkVariableDeclaration" path=src/compiler/checker/statements/variables.ts lines=36:149
 @source names title="checkName, variableType, declaredOutsideBodies" path=src/compiler/checker/expressions/access/names.ts lines=24:98
 @source functions title="FunctionScopes.noteUse: captures" path=src/compiler/checker/closures/functions.ts lines=30:103
-@source passes title="Passes and PassTable" path=src/compiler/checker/passes.ts lines=27:198
+@source passes title="Passes and PassTable" path=src/compiler/checker/contexts/passes.ts lines=27:198
 @source targets title="declareTargets" path=src/compiler/checker/patterns/targets.ts lines=15:26
 @source bodychecker title="BodyChecker tables and #checkedAt" path=src/compiler/checker/body/body-checker.ts lines=91:400
 @source lowervars title="Lowering: registers by declaring Identifier" path=src/compiler/lowering/statements/variables.ts lines=161:206

@@ -35,7 +35,7 @@ import {
   type FunctionDeclaration,
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { positionalCounts } from '../../resolution/choosing/binding.ts';
 import { signatureOf } from '../../resolution/choosing/choice.ts';

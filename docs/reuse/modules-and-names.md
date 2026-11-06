@@ -64,7 +64,7 @@ tags: [reuse, language, modules, program, binder, names]
 - read a named import's names: the name each binds, its alias or the export's, and the names recovery left whole → `boundName`, `importedNames` (`src/compiler/syntax/declarations/index.ts`); never read `NamedImport.names` as identifiers
 - tell whether a name reaches its entity through a renaming import (`import a as b`), and by which alias → `Bindings.aliasOf` (`src/compiler/binder/entities.ts`)
 - resolve what an `Identifier` denotes or list a module's exports → `Bindings.entityOf`, `Bindings.exportsOf` (`src/compiler/binder/entities.ts`)
-- resolve a name a body uses where it is written, noting closure captures → `BodyContext.useEntity`; only ask → `BodyContext.entityOf` (`src/compiler/checker/body-context.ts`)
+- resolve a name a body uses where it is written, noting closure captures → `BodyContext.useEntity`; only ask → `BodyContext.entityOf` (`src/compiler/checker/contexts/body-context.ts`)
 - find an entity's declaring module, locals included, tell a top-level name apart, or join prelude overloads → `Bindings.moduleOf`, `Bindings.isTopLevel`, `Bindings.overloadsOf` (`src/compiler/binder/entities.ts`)
 - list the names visible at an offset, each with what it denotes there → `Bindings.visibleAt` (`src/compiler/binder/entities.ts`)
 - find the module declaring any declaration, a local one included → `Checker.moduleOf` (`src/compiler/checker/program/program-inputs.ts`, `DeclaringModules`)

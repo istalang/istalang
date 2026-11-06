@@ -40,7 +40,7 @@ import type {
 import { itemName, itemValue, unparenthesized } from '../../../syntax/expressions/readings.ts';
 import { lastName } from '../../../syntax/node.ts';
 import type { NamedType } from '../../../syntax/types/index.ts';
-import type { BodyContext } from '../../body-context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { completeInference } from '../../inference/complete.ts';
 import { Inference } from '../../inference/infer.ts';

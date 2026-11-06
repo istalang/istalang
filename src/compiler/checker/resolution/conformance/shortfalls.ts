@@ -18,7 +18,8 @@
  */
 
 import type { RequiredAssociatedType, TypeParameter } from '../../../syntax/declarations/index.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import {
   constraintOn,
@@ -42,10 +43,8 @@ import {
 } from '../../types/struct-constraint.ts';
 import { type Substitution, substituteConstraint } from '../../types/substitution.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
-
 import { typeText } from '../../types/type-text.ts';
 import { literalType } from '../../types/unions/unions.ts';
-import type { UseSite } from '../../use-site.ts';
 
 /**
  * Whether `type` meets the trait `constraint` names, as the caller judges it (`conformance.ts`),

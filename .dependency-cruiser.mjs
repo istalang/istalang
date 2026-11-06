@@ -114,10 +114,10 @@ const layers = {
 
 /**
  * The checker's folders, lowest first: each may import the folders before it, never one after, and
- * a folder not listed may import none. Its contracts, its root modules (entry and contexts) and
- * surface/ (the models later phases read), may be imported by any folder, so they import no folder
- * above the type model, or every folder would reach every other through them; the modules wiring a
- * body and a program together are no contracts.
+ * a folder not listed may import none. Its contracts (its entry, contexts/, and surface/ with the
+ * models later phases read) may be imported by any folder, so they import no folder above the type
+ * model, or every folder would reach every other through them; the modules wiring a body and a
+ * program together are no contracts.
  * Type-only imports count, as the swc parser reports them: a cycle of types is a cycle of knowledge.
  */
 const checkerLayers = [
@@ -180,8 +180,8 @@ const checkerFolder = (names) => `^src/compiler/checker/(${names.join('|')})/`;
  */
 const checkerWiring = '^src/compiler/checker/(program|body)/';
 
-/** The checker's contracts: its root modules and the models its surface names (surface/). */
-const checkerContracts = '^src/compiler/checker/([^/]+\\.ts$|surface/)';
+/** The checker's contracts: its entry, the contexts every check runs in, the models it surfaces. */
+const checkerContracts = '^src/compiler/checker/([^/]+\\.ts$|contexts/|surface/)';
 
 /** The checker folders its contracts may name: diagnostics and the type model beneath everything. */
 const checkerModel = ['diagnostics', 'types'];

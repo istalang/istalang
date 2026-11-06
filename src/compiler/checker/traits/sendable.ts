@@ -15,7 +15,7 @@
  */
 
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import { sameConstraint } from '../types/identity/identity.ts';
 import { heldParts } from '../types/properties/held.ts';
 import { TypeCycle } from '../types/properties/type-cycle.ts';

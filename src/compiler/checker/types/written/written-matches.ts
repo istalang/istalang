@@ -19,7 +19,7 @@ import type { Identifier } from '../../../syntax/node.ts';
 import type { SyntaxNode } from '../../../syntax/tree.ts';
 import type { InferType, NamedType } from '../../../syntax/types/index.ts';
 import { matchPlaceOf } from '../../../syntax/types/type-matches.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { ownAssociatedType } from '../computed-types.ts';
 import { aliasedAs } from '../type/alias-uses.ts';

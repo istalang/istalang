@@ -37,7 +37,7 @@ import type {
   Return,
 } from '../../syntax/statements/index.ts';
 import type { Checker, SignatureParameter } from '../check.ts';
-import type { FieldPassType, PassRecords } from '../passes.ts';
+import type { FieldPassType, PassRecords } from '../contexts/passes.ts';
 import type { Fit } from '../types/fitting/fit.ts';
 import type { Substitution } from '../types/substitution.ts';
 import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';

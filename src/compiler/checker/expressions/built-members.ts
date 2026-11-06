@@ -9,7 +9,7 @@
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';
-import type { AcceptedPart, BodyContext } from '../body-context.ts';
+import type { AcceptedPart, BodyContext } from '../contexts/body-context.ts';
 import { unfolded } from '../types/computed-types.ts';
 import { memberBuilt } from '../types/fitting/expected.ts';
 import type { Type } from '../types/type/index.ts';

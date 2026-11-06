@@ -10,10 +10,10 @@
  *   type model (.dependency-cruiser.mjs).
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { Entity, VariableEntity, VariantEntity } from '../binder/entities.ts';
-import type { ModuleId } from '../program/program.ts';
-import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import type { Entity, VariableEntity, VariantEntity } from '../../binder/entities.ts';
+import type { ModuleId } from '../../program/program.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type {
   ArrayLiteral,
   Call,
@@ -22,11 +22,11 @@ import type {
   FieldsLiteral,
   IndentedValue,
   MapLiteral,
-} from '../syntax/expressions/index.ts';
-import type { BuiltLiteral } from '../syntax/expressions/literals/indented-values.ts';
-import type { Identifier, Invalid, NodeOf } from '../syntax/node.ts';
-import type { Pattern } from '../syntax/patterns.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
+} from '../../syntax/expressions/index.ts';
+import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
+import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
+import type { Pattern } from '../../syntax/patterns.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type {
   Assignment,
   Block,
@@ -37,11 +37,9 @@ import type {
   Loop,
   Return,
   Statement,
-} from '../syntax/statements/index.ts';
-import type { TypeNode } from '../syntax/types/index.ts';
-import type { SignatureParameter } from './check.ts';
-import type { CheckerContext } from './context.ts';
-import type { FieldPassType } from './passes.ts';
+} from '../../syntax/statements/index.ts';
+import type { TypeNode } from '../../syntax/types/index.ts';
+import type { SignatureParameter } from '../check.ts';
 import type {
   AssignedPart,
   ChainLink,
@@ -53,12 +51,14 @@ import type {
   LabelResolution,
   NestedFunction,
   ValueSite,
-} from './surface/checked-body.ts';
-import type { FieldRead, FieldReading } from './surface/checked-field.ts';
-import type { CheckedPattern, TargetBinding, TargetOwner } from './surface/checked-pattern.ts';
-import type { ImplicitRole, ResolvedCall, ResolvedSite } from './surface/resolved-call.ts';
-import type { Fit } from './types/fitting/fit.ts';
-import type { FieldMember, FunctionType, Type } from './types/type/index.ts';
+} from '../surface/checked-body.ts';
+import type { FieldRead, FieldReading } from '../surface/checked-field.ts';
+import type { CheckedPattern, TargetBinding, TargetOwner } from '../surface/checked-pattern.ts';
+import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
+import type { Fit } from '../types/fitting/fit.ts';
+import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';
+import type { CheckerContext } from './context.ts';
+import type { FieldPassType } from './passes.ts';
 
 export interface BodyContext {
   readonly checker: CheckerContext;

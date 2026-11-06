@@ -4,7 +4,7 @@
  * (traits/known-constraints.ts). One rule for a field read, a field called and conformance.
  */
 
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import {
   type FoundField,
   namedFieldRead,

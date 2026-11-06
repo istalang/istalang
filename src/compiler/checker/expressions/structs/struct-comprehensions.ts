@@ -23,10 +23,10 @@ import type {
 } from '../../../syntax/expressions/index.ts';
 import { itemValue } from '../../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import type { BodyContext, CheckedPasses } from '../../body-context.ts';
+import type { BodyContext, CheckedPasses } from '../../contexts/body-context.ts';
+import type { FieldPassType } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Inference } from '../../inference/infer.ts';
-import type { FieldPassType } from '../../passes.ts';
 import { checkedFieldPasses, inFieldPasses } from '../../rules/loops/field-passes.ts';
 import type { FieldSource } from '../../surface/checked-body.ts';
 import { sameType } from '../../types/identity/identity.ts';

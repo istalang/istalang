@@ -17,7 +17,7 @@ import { literalNaming } from '../../syntax/expressions/literals/built-types.ts'
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import type { LiteralType } from '../../syntax/types/index.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import type { Denotation } from '../surface/denotation.ts';
 import { substitutionFor } from '../types/substitution.ts';
 import type { Type } from '../types/type/index.ts';

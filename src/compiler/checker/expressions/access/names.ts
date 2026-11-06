@@ -8,13 +8,13 @@
 
 import { type Entity, localFunctionOf, type VariableEntity } from '../../../binder/entities.ts';
 import type { Identifier } from '../../../syntax/node.ts';
-import type { Accepts, BodyContext } from '../../body-context.ts';
 import {
   checkFunctionValue,
   functionsAccepted,
   namedFunctions,
 } from '../../closures/function-values.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { fieldlessStructOf } from '../../resolution/named.ts';
 import { expectedNominal } from '../../types/fitting/expected.ts';

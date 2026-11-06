@@ -22,9 +22,9 @@ import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts'
 import type { Parameter } from '../../../syntax/expressions/index.ts';
 import type { NodeOf } from '../../../syntax/node.ts';
 import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree.ts';
-import type { BodyContext } from '../../body-context.ts';
 import type { Disposal } from '../../check.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { callCandidates, namedInModule } from '../../resolution/choosing/candidates.ts';
 import { silentCall } from '../../resolution/silent-choice.ts';

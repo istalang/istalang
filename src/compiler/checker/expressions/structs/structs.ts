@@ -20,7 +20,12 @@ import type { FieldsLiteral, StructLiteral } from '../../../syntax/expressions/i
 import { itemValue } from '../../../syntax/expressions/readings.ts';
 import { lastName } from '../../../syntax/node.ts';
 import type { NamedType } from '../../../syntax/types/index.ts';
-import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../../body-context.ts';
+import type {
+  AcceptedPart,
+  Accepts,
+  BodyContext,
+  PartReader,
+} from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { partsAccept, partsBuild } from '../../rules/agreement.ts';
 import type { FieldSource } from '../../surface/checked-body.ts';

@@ -240,7 +240,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `formSemantics` sets `headKey: (form) => form.kind`, giving every struct constant in a compile-time map key the identical head hash `'struct'` regardless of its nominal type.
 - **Why `DeclaringModules` duplicates `Bindings.moduleOf` (`src/compiler/checker/declaring-modules.ts`, `src/compiler/binder/link.ts`; widens `Q30`):**
   - `Q30` notes that `Checker.moduleOf` (`DeclaringModules`) and `Bindings.moduleOf` both answer a declaration's module. The root cause is that `Bindings.moduleOf` is keyed by `Entity`, whereas trait member `FunctionDeclaration`s and synthesized `FieldsFunction`s (`syntax/declarations/field-defaults.ts`) have no top-level `Entity` in `Bindings`, and `Checker.moduleOf` takes syntax nodes (`Declaration | VariableDeclaration`) rather than entities. Unifying module ownership on `Bindings` (including trait members and fields functions, or resolving local declarations through their `VariableEntity`) deletes `DeclaringModules` and its `parentOf(tree, node)` search across all program modules.
-- **Unenforced incremental-checking invariants on `CheckerContext` and `EntryTable` (`src/compiler/checker/context.ts`, `program-checker.ts`; tracked as `Q31`):**
+- **Unenforced incremental-checking invariants on `CheckerContext` and `EntryTable` (`src/compiler/checker/contexts/context.ts`, `program-checker.ts`; tracked as `Q31`):**
   - `CheckerContext extends Checker` exposes `readonly program: Program` to all checker units, and `EntryTable` passes unverified side contexts (`module` in `#resolvedTypes`, `NominalType` in `#disposals`).
 
 ### 13. `src/compiler/checker/types/`

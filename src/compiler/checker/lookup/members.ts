@@ -24,7 +24,7 @@ import {
   importedNames,
 } from '../../syntax/declarations/index.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import {
   callableThrough,
   modulesSeenFrom,

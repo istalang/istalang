@@ -17,7 +17,7 @@ import type {
 } from '../../../syntax/declarations/index.ts';
 import type { Invalid } from '../../../syntax/node.ts';
 import type { StructType, TypeNode } from '../../../syntax/types/index.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldMember, Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
 

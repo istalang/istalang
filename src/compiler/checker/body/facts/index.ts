@@ -7,8 +7,8 @@
  * entry says all three, and no view passes a fact through unread.
  */
 
+import type { Pass } from '../../contexts/passes.ts';
 import type { PassAnswers } from '../../lookup/pass-views.ts';
-import type { Pass } from '../../passes.ts';
 import type { BodyFacts, CheckedBody } from '../../surface/checked-body.ts';
 import { type JoinedBody, type ListedFacts, listedFacts } from '../../surface/denotation.ts';
 import type { ResolvedCall } from '../../surface/resolved-call.ts';

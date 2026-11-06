@@ -28,7 +28,7 @@ import {
   type TypeNode,
   unparenthesizedType,
 } from '../../syntax/types/index.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { RequirementOrigin } from '../surface/resolved-call.ts';
 import { sameType } from '../types/identity/identity.ts';

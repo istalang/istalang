@@ -11,7 +11,7 @@ import type { Annotation } from '../../syntax/annotations.ts';
 import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/declarations/field-defaults.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
 import type { JoinedBody } from '../surface/denotation.ts';
 import { passesAround } from './pass-views.ts';

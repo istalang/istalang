@@ -22,7 +22,7 @@ import { localFunctionOf } from '../../../binder/entities.ts';
 import type { NodeOf } from '../../../syntax/node.ts';
 import type { Drop } from '../../../syntax/statements/index.ts';
 import { droppedName } from '../../../syntax/statements/readings.ts';
-import type { BodyContext } from '../../body-context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { heldType } from '../../types/properties/held.ts';
 import type { Type } from '../../types/type/index.ts';

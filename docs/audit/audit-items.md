@@ -108,7 +108,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 ### Part 3 — Checker: Surface, Types, Inference, Traits, Resolution & Calls (`src/compiler/checker/`)
 
 #### 3.1 `check.ts`, `context.ts`, `program-checker.ts`, `body-checker.ts` & `types/instantiation.ts`
-- **Upward type-imports in `context.ts` bypassing layer enforcement (`src/compiler/checker/context.ts`, Q13):**
+- **Upward type-imports in `context.ts` bypassing layer enforcement (`src/compiler/checker/contexts/context.ts`, Q13):**
   - `context.ts` is the foundational checker contract imported by every checker subfolder, yet it type-imports concrete classes (`FunctionScopes`, `OwnCalls`, `ReturnScope`, `EnclosingScopes`, `CollectionForms`, `StructLiterals`, `OptionalChains`, `LabelTargets`, `CheckedPatterns`, `ImplicitCalls`, `Annotations`, `Iterations`, `VariableScope`) from the highest checker layers (`closures/`, `expressions/`, `flow/`, `patterns/`, `resolution/`, `rules/`, `statements/`). Because `.dependency-cruiser.mjs` does not enable type-only dependency checking, these upward dependencies and cycles go unflagged.
 - **Side-table proliferation on `CheckedBody` & manual substitution in `instantiatedBody` (`src/compiler/checker/check.ts`, `types/instantiation.ts`, Q1, Q2, Q3, P5):**
   - `CheckedBody` exposes 16 per-feature side-table methods (`typeOf`, `calls`, `madeCalls`, `implicitCallOf`, `collectionFormOf`, `iterationOf`, `fitAt`, `targetsOf`, `assignedOf`, `inCell`, `functionOf`, `sourcesOf`, `patternOf`, `chainOf`, `ownCallReadAt`, `ownCallOf`, `labels`), and `instantiatedBody` (`types/instantiation.ts`) must manually wrap and substitute each typed query (which previously caused `OrPattern` alternatives' types to be missed until `3dfddbc`).
@@ -344,7 +344,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 2. **Time unit constants in Scanner and Stdlib (`src/compiler/scanner/numbers.ts` & `src/stdlib/time/iso.ts`):** Identical millisecond conversion constants; belongs in `src/language/`.
 3. **Ordered primitive comparator in Language and Stdlib (`src/language/values.ts` `compareCodeUnits` & `src/stdlib/prelude/natives.ts` `compareOrdered`):** Identical `<` / `===` comparator.
 4. **Canonical JSON & Versioned Format Envelope in `definition/` (`src/definition/formats/codec.ts`, `format.ts`):** Generic persistence utilities used by `definition/`, `runtime/snapshot/`, and `runtime/boundary/extern-signatures.ts`.
-5. **Upward Type-Imports in Contracts (`src/compiler/checker/context.ts` [Q13], `src/compiler/checker/resolution/choosing/choice.ts` [D230], `src/runtime/natives.ts` [D179]):** Root contract modules importing types from upper implementation modules.
+5. **Upward Type-Imports in Contracts (`src/compiler/checker/contexts/context.ts` [Q13], `src/compiler/checker/resolution/choosing/choice.ts` [D230], `src/runtime/natives.ts` [D179]):** Root contract modules importing types from upper implementation modules.
 
 ### 6. Summary of DRY Violations & Double Standards
 
@@ -397,5 +397,5 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | **9** | **Unify 5-step implicit conversion logic between `types/fitting/fit.ts` and `inference/infer.ts` (D222) + `never` return type assignability (D180):** Extract shared conversion matcher parameterized by leaf comparison. | Generalization / DRY | 3 files in `checker/` | M |
 | **10** | **Unify comparison & membership checking and lowering (`expressions/operators.ts`, `patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):** One checker function and one lowering function over `ComparisonLink` and pattern ordering tests. | DRY / Generalization | 4 files in `compiler/` | M |
 | **11** | **Unify runtime `HeapObject` kind tables, `isRoot`, and `WeakSide` handle surface (`src/runtime/snapshot/holdings.ts`, `lifetimes/`, `scheduler/`, D115, D116, D165, D198):** One `isRoot(object)` in `holdings.ts`, `Handlers` for all kind tables, and consistent handle/id methods on `WeakSide`. | Architecture / DRY | 6 files in `runtime/` | M |
-| **12** | **Remove upward type-imports in contracts (`checker/context.ts` [Q13], `checker/resolution/choosing/choice.ts` [D230], `runtime/natives.ts` [D179]) and enable type-import cycle checking:** Move shared vocabularies to lower modules. | Layering / DIP | 8 files | M |
+| **12** | **Remove upward type-imports in contracts (`checker/contexts/context.ts` [Q13], `checker/resolution/choosing/choice.ts` [D230], `runtime/natives.ts` [D179]) and enable type-import cycle checking:** Move shared vocabularies to lower modules. | Layering / DIP | 8 files | M |
 

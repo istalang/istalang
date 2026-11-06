@@ -15,7 +15,7 @@
  */
 
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
-import type { CheckerContext } from '../context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
 import { substitute } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type/index.ts';

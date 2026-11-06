@@ -7,10 +7,10 @@
  */
 
 import type { FieldHeader } from '../../../syntax/expressions/index.ts';
-import type { BodyContext, CheckedPasses } from '../../body-context.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { BodyContext, CheckedPasses } from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import type { FieldPassType } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import type { FieldPassType } from '../../passes.ts';
 import { declareTargets } from '../../patterns/targets.ts';
 import { fieldTypeOf, keyName, keysOf } from '../../traits/struct-keys.ts';
 import type { Type } from '../../types/type/index.ts';

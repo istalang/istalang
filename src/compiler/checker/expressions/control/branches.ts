@@ -13,7 +13,7 @@
 
 import type { Block } from '../../../syntax/statements/index.ts';
 import { tailExpressionOf, tailNodeOf } from '../../../syntax/statements/readings.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../../body-context.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import {
   agreedAccepts,

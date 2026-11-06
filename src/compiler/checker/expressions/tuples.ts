@@ -11,8 +11,8 @@
  */
 
 import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext, PartReader } from '../body-context.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
+import type { Accepts, BodyContext, PartReader } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { partsAccept, partsBuild } from '../rules/agreement.ts';
 import { expectedTuple } from '../types/fitting/expected.ts';

@@ -27,7 +27,7 @@ import {
 import { parentOf } from '../../../syntax/tree.ts';
 import type { TypeCase, TypeMatch } from '../../../syntax/types/index.ts';
 import { inferTypesIn } from '../../../syntax/types/type-matches.ts';
-import type { CheckerContext, CheckerNote } from '../../context.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { matchCase } from '../../resolution/type-matches/type-match-patterns.ts';
 import { TypeMatchExpansion } from '../../rules/expansion/type-matches.ts';

@@ -45,7 +45,7 @@ path):
   (`language/well-known/index.ts`, `derivedCodecs`). A recursive type counts as meeting the trait while
   its own parts are decided.
 - `Encodable` and `Decodable` imply Sendable, except where values cross to the host
-  (`checker/use-site.ts`, `toHost`): an extern's parameters and results, an extern constant,
+  (`checker/contexts/use-site.ts`, `toHost`): an extern's parameters and results, an extern constant,
   `main`'s outcome, a start entry. There only codecs count, so a disposable host type, which isn't
   sendable, crosses to its own host alone or inside other values.
 - Lowering writes each derived codec's body from its form, which carries the type it takes apart

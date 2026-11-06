@@ -5,11 +5,11 @@
  */
 
 import { wellKnown } from '../../../../language/well-known/index.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import type { UseSite } from '../../contexts/use-site.ts';
 import type { ResolvedCall } from '../../surface/resolved-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
-import type { UseSite } from '../../use-site.ts';
 import { conformWitnesses, witnessesFor } from './conformance.ts';
 import type { ConformanceOutcome } from './witness-outcomes.ts';
 

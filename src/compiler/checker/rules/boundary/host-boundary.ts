@@ -16,7 +16,8 @@ import type {
   FunctionDeclaration,
 } from '../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../syntax/node.ts';
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { hostSite, useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { meets } from '../../resolution/conformance/conformance.ts';
 import { isHostExtern } from '../../surface/host-externs.ts';
@@ -26,7 +27,6 @@ import { isSendable } from '../../traits/sendable.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type-text.ts';
 import { futureArgument } from '../../types/well-known.ts';
-import { hostSite, useSite } from '../../use-site.ts';
 
 /** Reports each type of the extern `node` declares, in `module`, that can't cross as JSON. */
 export function checkHostBoundary(

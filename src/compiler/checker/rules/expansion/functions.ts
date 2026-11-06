@@ -26,7 +26,7 @@ import type { ModuleId } from '../../../program/program.ts';
 import { functionsOf } from '../../../syntax/declarations/field-defaults.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { NodeOf } from '../../../syntax/node.ts';
-import type { CheckerContext, CheckerNote } from '../../context.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { functionCallsWithin } from '../../surface/resolved-call.ts';
 import type { ParameterKey } from '../../types/type/index.ts';

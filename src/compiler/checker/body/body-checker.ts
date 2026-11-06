@@ -51,6 +51,12 @@ import type {
 } from '../../syntax/statements/index.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
+import type { SignatureParameter } from '../check.ts';
+import { FunctionScope } from '../closures/function-scope.ts';
+import { FunctionScopes } from '../closures/functions.ts';
+import { inferLambda } from '../closures/lambdas.ts';
+import { declareOwnCall } from '../closures/own-calls.ts';
+import { blockTail, ReturnScope } from '../closures/returns.ts';
 import type {
   AcceptedPart,
   Accepts,
@@ -58,14 +64,11 @@ import type {
   CheckedPasses,
   Enclosing,
   Returns,
-} from '../body-context.ts';
-import type { SignatureParameter } from '../check.ts';
-import { FunctionScope } from '../closures/function-scope.ts';
-import { FunctionScopes } from '../closures/functions.ts';
-import { inferLambda } from '../closures/lambdas.ts';
-import { declareOwnCall } from '../closures/own-calls.ts';
-import { blockTail, ReturnScope } from '../closures/returns.ts';
-import type { CheckerContext } from '../context.ts';
+} from '../contexts/body-context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
+import type { FieldPassType } from '../contexts/passes.ts';
+import { Passes } from '../contexts/passes.ts';
+import { useSite } from '../contexts/use-site.ts';
 import { FieldReads } from '../expressions/access/member-access.ts';
 import { OptionalChains } from '../expressions/access/optionals.ts';
 import { builtAsChecked, builtMember } from '../expressions/built-members.ts';
@@ -79,8 +82,6 @@ import {
 } from '../expressions/expressions.ts';
 import { argumentPartOf } from '../expressions/literal-items.ts';
 import { StructLiterals } from '../expressions/structs/literal-sources.ts';
-import type { FieldPassType } from '../passes.ts';
-import { Passes } from '../passes.ts';
 import { CheckedPatterns } from '../patterns/matching.ts';
 import { declareParameter, declareTargets } from '../patterns/targets.ts';
 import { reportUnmet } from '../resolution/conformance/trait-objects.ts';
@@ -100,7 +101,6 @@ import { exactFit, type Fit, isExact, misfitOf } from '../types/fitting/fit.ts';
 import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';
 import { errorType, unitType } from '../types/type/primitives.ts';
 import { keysOwner } from '../types/written/key-types.ts';
-import { useSite } from '../use-site.ts';
 import { bodyRecords } from './body-records.ts';
 import { checkedAt } from './facts/index.ts';
 

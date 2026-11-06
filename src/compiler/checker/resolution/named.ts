@@ -14,8 +14,8 @@ import type {
 import type { Expression, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext } from '../body-context.ts';
-import type { CheckerContext } from '../context.ts';
+import type { BodyContext } from '../contexts/body-context.ts';
+import type { CheckerContext } from '../contexts/context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { enumsExpected } from '../types/fitting/expected.ts';
 import type { Type } from '../types/type/index.ts';

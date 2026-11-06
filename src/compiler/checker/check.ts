@@ -5,7 +5,7 @@
  * lowering asks for the bodies it lowers, so an editor pays only for what it asks, and a checker
  * made after an earlier snapshot's re-checks only what an edit changed. The
  * surface below, with the models in surface/ (a checked body's in checked-body.ts), is what later
- * phases read; the context interfaces in context.ts are the checker's own wiring.
+ * phases read; the context interfaces in contexts/context.ts are the checker's own wiring.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';

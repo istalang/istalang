@@ -41,7 +41,7 @@ import { withPushed } from '../../../../structures/stack.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { AliasDeclaration } from '../../../syntax/declarations/index.ts';
 import { type StructType, unparenthesizedType } from '../../../syntax/types/index.ts';
-import type { CheckerContext, CheckerNote } from '../../context.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { isOpaque, type MatchType, unfoldRecursive } from '../../types/computed-types.ts';
 import { closeRecursive } from '../../types/identity/recursive-types.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';

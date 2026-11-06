@@ -22,7 +22,12 @@ import type {
   MapLiteral,
   Spread,
 } from '../../../syntax/expressions/index.ts';
-import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../../body-context.ts';
+import type {
+  AcceptedPart,
+  Accepts,
+  BodyContext,
+  PartReader,
+} from '../../contexts/body-context.ts';
 import { agreedAccepts, agreedBuilds, allProducersAccept } from '../../rules/agreement.ts';
 import { collectionTarget } from '../../types/fitting/expected.ts';
 import { sameType } from '../../types/identity/identity.ts';

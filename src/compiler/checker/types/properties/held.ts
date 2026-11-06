@@ -6,7 +6,7 @@
  * nothing more where it recurs (type-cycle.ts).
  */
 
-import type { CheckerContext } from '../../context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { unfolded } from '../computed-types.ts';
 import { typeChildren } from '../parts/type-children.ts';
 import type { Type } from '../type/index.ts';

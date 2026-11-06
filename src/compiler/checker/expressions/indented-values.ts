@@ -31,7 +31,7 @@ import {
   untypedForm,
 } from '../../syntax/expressions/literals/indented-values.ts';
 import { lastName } from '../../syntax/node.ts';
-import type { Accepts, BodyContext } from '../body-context.ts';
+import type { Accepts, BodyContext } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { builtFrom, collectionTarget } from '../types/fitting/expected.ts';
 import type { Type } from '../types/type/index.ts';

@@ -14,7 +14,7 @@
  */
 
 import type { Comprehension, FieldComprehension } from '../../../syntax/expressions/index.ts';
-import type { BodyContext } from '../../body-context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import {
   agreedType,
