@@ -13,8 +13,8 @@
 import type { SourceText } from '../../text/source-text.ts';
 import type { ScanResult } from '../syntax/tokens.ts';
 import type { SyntaxTree } from '../syntax/tree.ts';
-import { parseModule } from './declarations/declaration.ts';
-import { createParser } from './grammar.ts';
+import { parseModule } from './grammar/declarations/declaration.ts';
+import { createParser } from './grammar/index.ts';
 import { bodiesHeldBy } from './incremental/held-bodies.ts';
 import { reusingSegments } from './incremental/reuse.ts';
 

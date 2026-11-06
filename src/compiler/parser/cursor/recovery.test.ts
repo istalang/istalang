@@ -20,7 +20,7 @@ import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import { spanIn } from '../../syntax/positions.ts';
 import { dump, errorNodes, spanViolations } from '../../syntax/tree.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { operatorTree, printFull } from '../expressions/precedence.test-kit.ts';
+import { operatorTree, printFull } from '../grammar/expressions/precedence.test-kit.ts';
 import {
   block,
   bodyOf,

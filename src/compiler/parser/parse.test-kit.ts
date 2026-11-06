@@ -17,8 +17,8 @@ import type { Segment } from '../syntax/positions.ts';
 import type { Block } from '../syntax/statements/index.ts';
 import { dump } from '../syntax/tree.test-kit.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
-import { parseModule } from './declarations/declaration.ts';
-import { createParser } from './grammar.ts';
+import { parseModule } from './grammar/declarations/declaration.ts';
+import { createParser } from './grammar/index.ts';
 import type { Parser } from './parser.ts';
 
 export type Category = 'expression' | 'type' | 'pattern' | 'parameterType' | 'statement' | 'module';

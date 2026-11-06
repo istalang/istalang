@@ -5,7 +5,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { printType, typeTree } from '../compiler/parser/type-precedence.test-kit.ts';
+import { printType, typeTree } from '../compiler/parser/grammar/type-precedence.test-kit.ts';
 import {
   formattableInputs,
   lines,

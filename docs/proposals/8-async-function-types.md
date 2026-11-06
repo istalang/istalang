@@ -106,7 +106,7 @@ Every program that compiles today compiles unchanged, except overloads that diff
    - **Headers:** an async declaration's or lambda's result is read in one place (`checker/constructs/closures/`, function types of declarations): written `Future<…>`, it is the call's result; otherwise it is the body's, wrapped. Error 5021 goes.
    - **The fit:** the plain-into-async fit (`types/fitting/fit.ts`, the function-type fit) becomes the fit of `fn(A) -> R` into `fn(A) -> Future<R>`.
    - **Clashes** (`rules/clashes.ts`) compare the one type, so a clash by spelling needs no rule of its own.
-2. **Parser.** Both spellings parse as today (`parser/types.ts`). The syntax node keeps whether `async` was written, for the formatter alone.
+2. **Parser.** Both spellings parse as today (`parser/grammar/types.ts`). The syntax node keeps whether `async` was written, for the formatter alone.
 3. **Formatter.**
    - A function type written `async fn(A) -> R` prints `fn(A) -> Future<R>`.
    - An async header or lambda whose result isn't spelled `Future<…>` prints it wrapped: `-> R` becomes `-> Future<R>`.

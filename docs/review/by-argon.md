@@ -148,7 +148,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 ### What Is Table-Driven Today
 
 - **Exhaustive `Handlers` registries (`src/structures/kind-table.ts`):**
-  - Parser: prefix and infix parselets (`src/compiler/parser/expressions/expression.ts`)
+  - Parser: prefix and infix parselets (`src/compiler/parser/grammar/expressions/expression.ts`)
   - Binder: declaration, statement, expression, pattern, and type tables (`src/compiler/binder/`)
   - Checker: `expressionHandlers`, `statementHandlers`, `declarationHandlers`, `typeHandlers`, `patternHandlers`
   - Lowering: `expressionHandlers`, `statementHandlers`

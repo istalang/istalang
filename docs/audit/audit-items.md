@@ -90,9 +90,9 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
     ```
   - Because `cursor.closesEnclosing('}')` checks `this.#enclosing.some((region) => region.closer === '}')` *before* checking whether `next.kind === cursor.closer && cursor.ownsCloser`, whenever a multi-line `{ … }` block expression is nested inside another `{ … }` block expression (or inside parentheses that are themselves inside a `{ … }` block), the inner block's own closing `}` on a new line matches the outer block's `'}'` in `#enclosing`! `placeOfNextLine` returns `'outside'` instead of `'ownCloser'`, `moveToItem` refuses to `crossLineBreak()` onto the `}`, `parseEnclosedIn` fails to see `}` (reporting 2002 unclosed `{`), and the outer block prematurely closes on the inner `}`.
   - Checking `if (next.kind === cursor.closer && cursor.ownsCloser) return 'ownCloser'` *before* `cursor.closesEnclosing(next.kind)` (and stopping `closesEnclosing` at a region that `ownsCloser` for a bracket) fixes the root cause.
-- **Duplicate `qualifiedPath` extraction in Parser and Binder (`src/compiler/parser/parts/names.ts` vs. `src/compiler/binder/constructs/expressions.ts`):**
-  - `parser/parts/names.ts` defines `qualifiedPath(expression: Expression): QualifiedName | undefined` (walking non-optional `MemberAccess` chains down to an `Identifier`), and `binder/constructs/expressions.ts` defines an identical `qualifiedPathOf(node: MemberAccess): QualifiedName | undefined`. Moving `qualifiedPathOf` into `src/compiler/syntax/expressions/` lets both phases share it.
-- **Duplicate postfix step list in `parseSpawn` (`src/compiler/parser/expressions/expression.ts`, D209):**
+- **Duplicate `qualifiedPath` extraction in Parser and Binder (`src/compiler/parser/grammar/parts/names.ts` vs. `src/compiler/binder/constructs/expressions.ts`):**
+  - `parser/grammar/parts/names.ts` defines `qualifiedPath(expression: Expression): QualifiedName | undefined` (walking non-optional `MemberAccess` chains down to an `Identifier`), and `binder/constructs/expressions.ts` defines an identical `qualifiedPathOf(node: MemberAccess): QualifiedName | undefined`. Moving `qualifiedPathOf` into `src/compiler/syntax/expressions/` lets both phases share it.
+- **Duplicate postfix step list in `parseSpawn` (`src/compiler/parser/grammar/expressions/expression.ts`, D209):**
   - `parseSpawn` hard-codes `const calleeSteps: ReadonlySet<CursorKind> = new Set(['.', '?.', '->', '?->', '[', '{'])` plus a special case for `<` (`parseTypeApplication`), duplicating the postfix subset of `infixParselets`.
 - **Two separate field swaps in `Parser.withinTemplateValue` (`src/compiler/parser/parser.ts`, D221):**
   - `withinTemplateValue` swaps `#cursor` and `#endReading` by hand instead of `Cursor` carrying its end-token description alongside `origin`.
@@ -152,7 +152,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 ### Part 4 — Checker: Patterns, Flow, Rules, Declarations, Closures, Expressions & Statements (`src/compiler/checker/`)
 
-#### 4.1 Order-Dependence & Partial-Type Loss in `agreedAccepts` and `tupleAccepts` (`src/compiler/checker/rules/agreement.ts`, `expressions/literals/collections.ts`, `expressions/tuples.ts`, `rules/branches.ts`, D190)
+#### 4.1 Order-Dependence & Partial-Type Loss in `agreedAccepts` and `tupleAccepts` (`src/compiler/checker/rules/agreement.ts`, `grammar/expressions/literals/collections.ts`, `expressions/tuples.ts`, `rules/branches.ts`, D190)
 - **Asymmetric first-producer assumption in `agreedAccepts` (`src/compiler/checker/rules/agreement.ts`):**
   - `agreedAccepts` begins with:
     ```ts
@@ -178,7 +178,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - Array-length constructors encode their semantics in strings (`[3]` vs. `[3+]`) and parse them back via `isLongerKey` (`key.endsWith('+]')`).
 - **Side-channel `walk.downcasts` map and duplicate `unparenthesized` in `constructs/patterns/walk/index.ts` (D214):**
   - `takeDowncast` writes the narrowed `ValuePart` into `walk.downcasts` keyed by AST node, and `AsPattern` reads it back through a file-private `unparenthesized(node: Pattern)` helper instead of `walk.take` returning the matched `ValuePart` directly.
-- **False user diagnostics on prelude-owned pattern and operator helpers (`constructs/patterns/matching.ts`, `expressions/access/optionals.ts`, `expressions/literals/collections.ts`, `expressions/templates.ts`, B11):**
+- **False user diagnostics on prelude-owned pattern and operator helpers (`constructs/patterns/matching.ts`, `expressions/access/optionals.ts`, `grammar/expressions/literals/collections.ts`, `expressions/templates.ts`, B11):**
   - Calls to toolchain-invariant prelude functions (`_patternItem`, `_patternRest`, `length`, `compare`, `_inclusiveEnd`, `panic`, `join`) go through `implicitCall`, which requires a user-facing `failure: () => Diagnostic` callback that invents impossible user errors if the prelude lacks them.
 
 #### 4.3 `src/compiler/checker/rules/flow/` & `src/compiler/checker/rules/`
@@ -340,7 +340,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 ### 5. Cross-Module Dependencies on Extractable Shared Solutions
 
-1. **`qualifiedPath` in Parser and Binder (`src/compiler/parser/parts/names.ts` & `src/compiler/binder/constructs/expressions.ts`):** Identical functions walking non-optional `MemberAccess` chains to an `Identifier`; belongs in `src/compiler/syntax/expressions/`.
+1. **`qualifiedPath` in Parser and Binder (`src/compiler/parser/grammar/parts/names.ts` & `src/compiler/binder/constructs/expressions.ts`):** Identical functions walking non-optional `MemberAccess` chains to an `Identifier`; belongs in `src/compiler/syntax/expressions/`.
 2. **Time unit constants in Scanner and Stdlib (`src/compiler/scanner/numbers.ts` & `src/stdlib/time/iso.ts`):** Identical millisecond conversion constants; belongs in `src/language/`.
 3. **Ordered primitive comparator in Language and Stdlib (`src/language/values.ts` `compareCodeUnits` & `src/stdlib/prelude/natives.ts` `compareOrdered`):** Identical `<` / `===` comparator.
 4. **Canonical JSON & Versioned Format Envelope in `definition/` (`src/definition/formats/codec.ts`, `format.ts`):** Generic persistence utilities used by `definition/`, `runtime/snapshot/`, and `runtime/boundary/extern-signatures.ts`.
@@ -353,7 +353,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | 5-step implicit conversion (`Fit` vs. `Inference`) | `checker/types/fitting/fit.ts` (`fitOf`) | `checker/types/inference/infer.ts` (`Inference.match`) (D222) |
 | Binary vs. chained vs. pattern comparisons | `checker/constructs/expressions/operators/operators.ts` (`checkBinary`) & `lowering/expressions/operators.ts` (`lowerBinary`) | `checkChainedComparison` / `compared` & `constructs/patterns/matching.ts` / `lowering/parts/patterns.ts` (D226) |
 | Module-qualified name `${module}.${name}` | `language/well-known/index.ts` (`qualifiedName`) | `lowering/tables/names.ts` (`qualifiedNameOf`), `definition/extern-key.ts` (`externKey`) (D174) |
-| Member-access chain → `QualifiedName` | `parser/parts/names.ts` (`qualifiedPath`) | `binder/constructs/expressions.ts` (`qualifiedPathOf`) |
+| Member-access chain → `QualifiedName` | `parser/grammar/parts/names.ts` (`qualifiedPath`) | `binder/constructs/expressions.ts` (`qualifiedPathOf`) |
 | Millisecond time unit constants | `scanner/numbers.ts` | `stdlib/time/iso.ts` |
 | `<` / `===` ordered comparator | `language/values.ts` (`compareCodeUnits`) | `stdlib/prelude/natives.ts` (`compareOrdered`) |
 | Reading a struct `Value`'s field by name | `stdlib/values/arguments.ts` (`fieldNamed`) | `runtime/testing/run-tests.ts` (`listedOf`), positional `fieldOf` in `regex/natives.ts` (Q16, Q17, D201) |
@@ -387,7 +387,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | Priority | Item & Location | Kind | Blast Radius | Effort |
 | --- | --- | --- | --- | --- |
 | **1** | **Fix nested multi-line `{ … }` block parsing (`src/compiler/parser/layout.ts` `placeOfNextLine`, D186):** Check `next.kind === cursor.closer && cursor.ownsCloser` before `cursor.closesEnclosing(next.kind)`. | Bug Fix (Parser) | 2 files (`layout.ts`, `cursor.ts`) | S |
-| **2** | **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (`src/compiler/checker/rules/agreement.ts`, `expressions/tuples.ts`, `expressions/literals/collections.ts`, D190):** Trigger target-typing when *any* producer has `accepts !== undefined`, and check typed siblings against `expected` instead of `?? true`. | Bug Fix / Generalization (Checker) | 4 files in `checker/` | S |
+| **2** | **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (`src/compiler/checker/rules/agreement.ts`, `expressions/tuples.ts`, `grammar/expressions/literals/collections.ts`, D190):** Trigger target-typing when *any* producer has `accepts !== undefined`, and check typed siblings against `expected` instead of `?? true`. | Bug Fix / Generalization (Checker) | 4 files in `checker/` | S |
 | **3** | **Fix `_ = e` error suppression & destructuring assignment expected types (`src/compiler/checker/constructs/statements/assignments.ts`, D101, D168):** Don't pass `errorType` as `expected` for `_ = e`, and propagate target types into destructuring assignments. | Bug Fix (Checker) | 2 files in `checker/constructs/statements/` | S |
 | **4** | **Apply recorded `Fit` conversions in compile-time constant evaluation (`src/compiler/checker/rules/computation.ts`, D216):** Wrap `Some`, convert 1-tuples, and refuse/convert async fits on top-level `const` values. | Bug Fix (Checker) | 2 files in `checker/` | S |
 | **5** | **Fix same-instance mock return values bypassing `arriving` (`src/runtime/scheduler/testing/mocks.ts`, D182):** Pass same-instance mock results through `arriving` so `testing.handle<T>()` resources are disposed. | Bug Fix (Runtime) | 2 files in `runtime/scheduler/` | S |

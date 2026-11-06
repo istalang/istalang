@@ -202,14 +202,14 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 9. `src/compiler/parser/` — grammar categories
 
-- **Ad-hoc `'_'` string checks instead of `isUnnamed` (`src/compiler/parser/patterns.ts`, `src/compiler/parser/statements/variables.ts`, `src/language/naming.ts`):**
+- **Ad-hoc `'_'` string checks instead of `isUnnamed` (`src/compiler/parser/grammar/patterns.ts`, `src/compiler/parser/grammar/statements/variables.ts`, `src/language/naming.ts`):**
   - `parseWildcard` (`patterns.ts`) and `startsHeldVariableAt` (`statements/variables.ts`) both test `parser.textOf(...) === '_'` directly instead of calling `isUnnamed` (`src/language/naming.ts`), just as `isUnnamedTarget` does in `syntax/statements/index.ts`.
   - **Done** (`fast-wins`): `parseWildcard` and `startsHeldVariableAt` call `isUnnamed`.
-- **Duplicate `RangePattern` construction in `parseRangePattern` and `parseOpenRangePattern` (`src/compiler/parser/patterns.ts`):**
+- **Duplicate `RangePattern` construction in `parseRangePattern` and `parseOpenRangePattern` (`src/compiler/parser/grammar/patterns.ts`):**
   - Unlike `expressions/operators.ts` (where `parseOpenRange` and `rangeParselet` delegate to `parseRangeRest`), `parseRangePattern` and `parseOpenRangePattern` in `patterns.ts` duplicate the operator-kind check, `parseRangeBound`, and `RangePattern` node construction.
 - **Closed parselet dispatch tables duplicated in completion (`src/compiler/parser/`, `src/language-service/completion/places/grammar/words.ts`; tracked as `Q35`):**
   - `typeParselets`/`wordParselets`, `patternParselets`, `prefixParselets`/`infixParselets`, `statementParselets`, and `topLevelParselets` are internal to `parser/`, forcing `completion/places/grammar/words.ts` to restate the keyword sets (`Q35`).
-  - **Done** (`p3-unions`): each position's words have one home, `syntax/grammar-words.ts` (`declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers`). Every parselet table above `satisfies` its list both ways (`StartParselets` for keywords, `WordParselets` for contextual words, `parser/word-parselets.ts`), and the lookaheads of `shared`, `sendable`, `hold` and `async` read `followers`. Completion offers the lists and names only the words that need surroundings (`wordNeeds`). Its property test now runs both ways: each keyword the parser takes at a corpus statement or operand is offered, unless it needs surroundings.
+  - **Done** (`p3-unions`): each position's words have one home, `syntax/grammar-words.ts` (`declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers`). Every parselet table above `satisfies` its list both ways (`StartParselets` for keywords, `WordParselets` for contextual words, `parser/grammar/word-parselets.ts`), and the lookaheads of `shared`, `sendable`, `hold` and `async` read `followers`. Completion offers the lists and names only the words that need surroundings (`wordNeeds`). Its property test now runs both ways: each keyword the parser takes at a corpus statement or operand is offered, unless it needs surroundings.
 
 ### 10. `src/compiler/program/`
 

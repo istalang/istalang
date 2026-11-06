@@ -43,8 +43,8 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 **Owned files:**
 - `src/compiler/scanner/{punctuators,scan,templates,numbers}.ts` (+ `*.test.ts`)
 - `src/compiler/parser/{layout,cursor,parser,annotations}.ts` (+ `*.test.ts`)
-- `src/compiler/parser/expressions/{expression,parselet,postfix,precedence.test-kit}.ts` (+ `*.test.ts`)
-- `src/compiler/parser/parts/names.ts`
+- `src/compiler/parser/grammar/expressions/{expression,parselet,postfix,precedence.test-kit}.ts` (+ `*.test.ts`)
+- `src/compiler/parser/grammar/parts/names.ts`
 - `src/compiler/syntax/expressions/index.ts`
 - `src/compiler/program/program.ts` (+ `*.test.ts`)
 - `src/compiler/binder/{diagnostics,expressions,link}.ts` (+ `*.test.ts`)
@@ -59,12 +59,12 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 3. **Isolate `Scanner.#scanValue` line state & stopping offset (D220 — `scanner/scan.ts`, `scanner/templates.ts`) + fix stale `punctuators.ts` comment:**
    - Have `Scanner.#scanValue` save and restore `#lineHasToken` and `#indentationTab`, and return `end: number` on `ScannedValue` so `#scanToken` doesn't need the post-hoc `this.#lineHasToken = true` repair and `TemplateScanner.#addValue` reads `value.end` directly.
    - Update `src/compiler/scanner/punctuators.ts` banner comment (which falsely says the language has no `>>` shift operator).
-4. **Derive `parseSpawn` callee steps from `infixParselets` (D209 — `parser/expressions/expression.ts`, `parselet.ts`):**
+4. **Derive `parseSpawn` callee steps from `infixParselets` (D209 — `parser/grammar/expressions/expression.ts`, `parselet.ts`):**
    - Add a boolean flag (e.g., `inSpawnCallee?: boolean`) on `InfixParselet` and derive `calleeStep` in `expression.ts` from `infixParselets` instead of maintaining the duplicate `calleeSteps` `Set`.
-5. **Decouple precedence property test oracle from parser helpers (D210 — `parser/expressions/precedence.test-kit.ts`):**
+5. **Decouple precedence property test oracle from parser helpers (D210 — `parser/grammar/expressions/precedence.test-kit.ts`):**
    - State right-associative (`'**'`) and prefix-refusal (`'**'`) rules directly in `precedence.test-kit.ts` instead of calling `rightOperandLevel` and `refusesPrefixedLeft` from `syntax/operators.ts`.
-6. **Deduplicate `qualifiedPath` between Parser and Binder (`syntax/expressions/index.ts`, `parser/parts/names.ts`, `binder/constructs/expressions.ts`):**
-   - Move `qualifiedPath(expression: Expression): QualifiedName | undefined` into `src/compiler/syntax/expressions/index.ts` and call it from `parser/parts/names.ts` (or directly in `parser/layout/annotations.ts` and `parser/expressions/postfix.ts`) and `binder/constructs/expressions.ts` (deleting `qualifiedPathOf`).
+6. **Deduplicate `qualifiedPath` between Parser and Binder (`syntax/expressions/index.ts`, `parser/grammar/parts/names.ts`, `binder/constructs/expressions.ts`):**
+   - Move `qualifiedPath(expression: Expression): QualifiedName | undefined` into `src/compiler/syntax/expressions/index.ts` and call it from `parser/grammar/parts/names.ts` (or directly in `parser/layout/annotations.ts` and `parser/grammar/expressions/postfix.ts`) and `binder/constructs/expressions.ts` (deleting `qualifiedPathOf`).
 7. **Move test-module path check out of `program.ts` into `LocatedModule` (D197 — `program/program.ts`, `cli/file-loader.ts`, `binder/diagnostics.ts`):**
    - Add `readonly isTest?: boolean` to `LocatedModule` and `readonly isTest: boolean` to `ProgramModule` (derived in `cli/file-loader.ts` from `testModuleSuffix`, with `isTestModule(program, id)` reading the module's flag or falling back for tests), and use `testModuleSuffix` in `binder/diagnostics.ts` (code 4015).
 
@@ -84,7 +84,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 - `src/compiler/checker/constructs/statements/assignments.ts`
 
 **Tasks in Group B:**
-1. **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (D190 & Audit §4.1 — `rules/agreement.ts`, `expressions/tuples.ts`, `expressions/literals/collections.ts`, `rules/branches.ts`):**
+1. **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (D190 & Audit §4.1 — `rules/agreement.ts`, `expressions/tuples.ts`, `grammar/expressions/literals/collections.ts`, `rules/branches.ts`):**
    - **Cause:** `agreedAccepts` returns `undefined` if `producers[0] === undefined`, so `["a", none]` and `if c: "a" else: none` fail to be treated as target-typed arguments while `[none, "a"]` succeeds. Furthermore, both `agreedAccepts` and `tupleAccepts` ignore siblings that *do* have their own type (`?? true`), losing known element types during overload selection.
    - **Fix:** Return an `Accepts` predicate whenever *any* element/producer has `accepts !== undefined`, and for each sibling with its own type `t`, check `isOpen(expectedPart) || context.checker.fitOf(t, expectedPart) !== undefined`. Also ensure explicit `call.typeArguments` in `resolution/calls/resolve.ts` / `resolution/choosing/applicability.ts` guide target-typed arguments (`same<Array<string?>>(xs, ["a", none])`).
 2. **Extend target-typed lambda result inference and optional stripping (D160 — `resolution/calls/lambda-arguments.ts`, `constructs/closures/lambdas.ts`, `constructs/closures/function-values.ts`, `expressions/tuples.ts`, `expressions/structs/variants.ts`, `expressions/expressions.ts`):**
@@ -95,13 +95,13 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - In `rules/agreement.ts` / `types/unions/widening.ts`, allow producers with sendable vs. plain functions nested inside tuples/arrays (`[(1, g), (2, f)]`, `[[g], [f]]`) to agree on the widened type (D144).
 4. **Fix `typeText` entity-based `Optional` check and `*SharedStruct` anonymous struct formatting (D153 — `types/type/type-text.ts`) + add `arrayOf`/`arrayElement`/`optionalArgument` to `types/type/well-known.ts` (Q8):**
    - In `types/type/type-text.ts`, spell an `AnonymousStructType` whose `origin` is a shared `StructDeclaration` as `*${origin.name.text}` (with any type arguments), and check `wellKnown.optional` properly.
-   - Add `arrayOf` and `arrayElement` to `types/type/well-known.ts` and use them in Group B's files (`resolution/choosing/choice.ts`, `expressions/literals/collections.ts`, `constructs/declarations/functions/signatures.ts`).
+   - Add `arrayOf` and `arrayElement` to `types/type/well-known.ts` and use them in Group B's files (`resolution/choosing/choice.ts`, `grammar/expressions/literals/collections.ts`, `constructs/declarations/functions/signatures.ts`).
 5. **Unify parameter/slot models, clash keys, and resolution vocabulary (D219, D223, D229, D230 — `constructs/declarations/functions/signatures.ts`, `resolution/choosing/binding.ts`, `resolution/choosing/choice.ts`, `resolution/choosing/applicability.ts`, `resolution/choosing/packs.ts`, `rules/clashes.ts`, `constructs/closures/lambdas.ts`, `constructs/closures/value-calls.ts`):**
    - Extract `CallArgument`, `Passing`, `Accepts`, and `Inapplicability` into `src/compiler/checker/resolution/choosing/call-arguments.ts` so `applicability.ts` and `packs.ts` do not type-import upward from `choice.ts` (D230).
    - Unify `ParameterSlot` and `ArgumentSlot` (D229), compute `RestSlot` once in `signatures.ts` instead of rebuilding `restSlotOf` per candidate per call in `choice.ts`, and add `isReceiver?: boolean` on `SignatureSlot` instead of overloading `name === undefined` (D219).
    - In `rules/clashes.ts`, replace string-encoded `packItemKey = '...'` and `'&'` prefix parsing with a structured slot key `{ kind: 'any' } | { kind: 'type'; key: string; reference: boolean }` (D223).
-6. **Structured `witnessOf` outcomes & `callWithTypes` per-candidate arity & `explain` fallback (D122, D173, D217 — `resolution/conformance/conformance.ts`, `resolution/conformance/declared-witness.ts`, `resolution/typed-call.ts`, `resolution/calls/resolve.ts`, `expressions/literals/collections.ts`):**
-   - In `resolution/conformance/conformance.ts`, give declared-but-uninstantiable witnesses a distinct failure outcome instead of returning `'none'`, so `declaresWitness` and `conform` report the unmet inner constraint and `checkDeclaredLiteral` in `expressions/literals/collections.ts` doesn't need `declaresDefault` (D173).
+6. **Structured `witnessOf` outcomes & `callWithTypes` per-candidate arity & `explain` fallback (D122, D173, D217 — `resolution/conformance/conformance.ts`, `resolution/conformance/declared-witness.ts`, `resolution/typed-call.ts`, `resolution/calls/resolve.ts`, `grammar/expressions/literals/collections.ts`):**
+   - In `resolution/conformance/conformance.ts`, give declared-but-uninstantiable witnesses a distinct failure outcome instead of returning `'none'`, so `declaresWitness` and `conform` report the unmet inner constraint and `checkDeclaredLiteral` in `grammar/expressions/literals/collections.ts` doesn't need `declaresDefault` (D173).
    - In `resolution/typed-call.ts`, size `decided` per candidate instead of using `candidates[0]`'s arity (D122).
    - In `resolution/calls/resolve.ts`, emit `noMatchingOverload` if `explain` reported no diagnostics during `case 'arguments':` (D217).
 7. **Fix `_ = e` error suppression & destructuring assignment target typing and place identity (D101, D168 — `constructs/statements/assignments.ts`, `resolution/calls/places.ts`):**
@@ -251,8 +251,8 @@ These items touch shared phase contracts (`src/compiler/checker/check.ts`, `src/
 
 ### Wave 2 additions from Wave 1's reports
 
-6. **B8:** wrap a spread's items into `T?` (checker `expressions/literals/collections.ts`, `rules/agreement.ts`, `check.ts` `ValueSite`/`IterationForm`).
-7. **B11's rest:** `..=`'s `_inclusiveEnd` through `preludeCall` (checker `expressions/literals/collections.ts`).
+6. **B8:** wrap a spread's items into `T?` (checker `grammar/expressions/literals/collections.ts`, `rules/agreement.ts`, `check.ts` `ValueSite`/`IterationForm`).
+7. **B11's rest:** `..=`'s `_inclusiveEnd` through `preludeCall` (checker `grammar/expressions/literals/collections.ts`).
 8. **Q12/Q19's rest:** record field positions and `any` field dispatches on `CheckedBody` (`check.ts`, `expressions/structs/structs.ts`); `requiredFields` through the checker surface (`.dependency-cruiser.mjs`).
 9. **Operator classification, one home:** export `BinaryOperatorOf` from `syntax/operators.ts`, write `ImplicitOperator = BinaryOperatorOf<'order' | 'membership'>`, move `isImplicitOperator` beside `isChainingOperator`; build a single binary's `ComparisonLink` in `syntax/expressions/comparisons.ts`; share `fitArguments`/`typesText` between `resolution/calls/resolve.ts` and `resolution/applying/implicit.ts`.
 10. **`rules/iteration.ts`:** `iteratedItem`'s implicit call passes `span: iterable.span`, so 5101/5003 fall on the iterable.

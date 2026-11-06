@@ -3,11 +3,11 @@
  * entry points of each grammar category.
  *
  * Grammar categories (expressions, types, patterns, statements, declarations) call one another in
- * cycles: an `is` expression
- * holds a pattern, and a pattern compares a field against an expression. So a category reaches
- * another only through this context, which grammar.ts wires once. What several categories share
- * without calling a category (qualified names, literals, parameters, struct parts) lives in
- * `parts/`, which every category may import. dependency-cruiser enforces both rules.
+ * cycles: an `is` expression holds a pattern, and a pattern compares a field against an expression.
+ * So a category reaches another only through this context, which grammar/index.ts wires once. What
+ * several categories share without calling a category (qualified names, literals, parameters,
+ * struct parts) lives in `grammar/parts/`, which every category may import. dependency-cruiser
+ * enforces both rules.
  *
  * The parser reads text positions: tokens carry them, and so do its own decisions. A node it makes
  * gets its span anchored to the segment being parsed (syntax/positions.ts), and reading a node's
@@ -44,7 +44,7 @@ import { unclosedBracketEnds } from './cursor/brackets.ts';
 import { Cursor, type CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 
-/** The entry point of each grammar category, wired in by grammar.ts. */
+/** The entry point of each grammar category, wired in by grammar/index.ts. */
 export interface Grammar {
   readonly expression: (parser: Parser, minLevel: PrecedenceLevel) => Expression;
   /**
@@ -256,7 +256,7 @@ export class Parser implements SegmentBases {
 
   /**
    * Runs `parse` one level of nesting deeper, or returns undefined without running it once the
-   * limit is reached (nesting.ts).
+   * limit is reached (grammar/nesting.ts).
    */
   descend<Result>(parse: () => Result): Result | undefined {
     if (this.#nesting >= nestingLimit) {

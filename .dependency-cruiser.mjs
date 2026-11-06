@@ -206,8 +206,9 @@ const nodeLayers = ['cli', 'lsp', 'project', 'vscode-client'];
 /** A layer is a folder (`compiler/program`) or a single module (`compiler/compile` is compile.ts). */
 const layerPath = (names) => `^src/(${names.join('|')})(/|\\.ts$)`;
 
-const parserCategory =
-  '^src/compiler/parser/(expressions/|statements/|declarations/|types\\.ts$|patterns\\.ts$)';
+const parserGrammar = '^src/compiler/parser/grammar/';
+
+const parserCategory = `${parserGrammar}(expressions/|statements/|declarations/|types\\.ts$|patterns\\.ts$)`;
 
 export default {
   forbidden: [
@@ -215,12 +216,12 @@ export default {
       name: 'parser-category-imports-category',
       severity: 'error',
       from: { path: parserCategory },
-      to: { path: parserCategory, pathNot: '^src/compiler/parser/$1' },
+      to: { path: parserCategory, pathNot: `${parserGrammar}$1` },
     },
     {
       name: 'parser-part-imports-category',
       severity: 'error',
-      from: { path: '^src/compiler/parser/parts/' },
+      from: { path: `${parserGrammar}parts/` },
       to: { path: parserCategory },
     },
     ...checkerLayers.slice(0, -1).map((layer, index) => ({

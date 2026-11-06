@@ -389,12 +389,12 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
 ## Implementation notes
 
 1. **One syntax node** (`src/compiler/syntax/expressions/index.ts`): `IndentedValue`, holding an optional `NamedType` and its entries. The entry kinds are the struct literal's items (named, shorthand, spread, comprehension), plus a quoted key and an item. It is one node whatever the block builds.
-2. **The parser.** A new `src/compiler/parser/expressions/literals/indented-values.ts` is called where a line ends after one of the opening tokens:
-   - `=` in the statement parsers (`parser/statements/`) and in field defaults (`parser/parts/structs.ts`);
+2. **The parser.** A new `src/compiler/parser/grammar/expressions/literals/indented-values.ts` is called where a line ends after one of the opening tokens:
+   - `=` in the statement parsers (`parser/grammar/statements/`) and in field defaults (`parser/grammar/parts/structs.ts`);
    - `return`;
    - its own keys and items.
 
-   Its lines go through the one block loop, `parseItemEntries` in `parser/layout/index.ts`, which already gives columns, a separator within a line (`,` after §4 above), dedent errors and comments. Entries are told apart by their first tokens, as `parser/expressions/literals/struct-literals.ts` tells items apart. Headers and labels (`parser/statements/statement.ts`) are unchanged.
+   Its lines go through the one block loop, `parseItemEntries` in `parser/layout/index.ts`, which already gives columns, a separator within a line (`,` after §4 above), dedent errors and comments. Entries are told apart by their first tokens, as `parser/grammar/expressions/literals/struct-literals.ts` tells items apart. Headers and labels (`parser/grammar/statements/statement.ts`) are unchanged.
 3. **The checker** dispatches an `IndentedValue` by its type to the checks that exist, so each rule keeps one home:
    - struct literals: `checker/constructs/expressions/structs/structs.ts` and `literal-fields.ts`;
    - map and array literals: `checker/constructs/expressions/collections/collections.ts` and `collection-accepts.ts`;
@@ -424,9 +424,9 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
    - **Scanner:** unchanged. `;` stays a token.
    - **Parser.**
      - `parser/layout/index.ts`: its one block loop takes its item separator from the block's kind. Field, variant, trait-member, constraint and indented-value blocks take `,`. Statement and module blocks take `;` (`skipSemicolons`), as today. Case blocks take one item per line.
-     - `parser/cursor/recovery.ts` and `parser/parts/structs.ts`: the brace lists of fields and variants become ordinary `,` lists under note 10. Their message "Expected ';', a line break or '}'" becomes "',', a line break or '}'".
+     - `parser/cursor/recovery.ts` and `parser/grammar/parts/structs.ts`: the brace lists of fields and variants become ordinary `,` lists under note 10. Their message "Expected ';', a line break or '}'" becomes "',', a line break or '}'".
      - A `;` between list items, and a `,` between statements, each get one diagnostic naming the right separator (`parser/diagnostics.ts`).
-     - `semicolonAfterInlineBody` (`parser/layout/bodies.ts`) and `blockWithoutSemicolon` (`parser/expressions/branches.ts`) stay.
+     - `semicolonAfterInlineBody` (`parser/layout/bodies.ts`) and `blockWithoutSemicolon` (`parser/grammar/expressions/branches.ts`) stay.
    - **Formatter.** `src/formatter/lists.ts` writes `,` where its field lists write `ifBreak('', ';')`. `branches.ts` keeps `;` for one-line blocks, and `comment-placement.ts` keeps both separators.
    - **The repository's sources: a one-off scripted rewrite through the project's own scanner** (`src/compiler/scanner/scan.ts`), run before the grammar changes, then `ista fmt`. It covers:
      - `src/stdlib/`, `test/` and its corpus, `examples/` and the form builder;
@@ -435,21 +435,21 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
 
      It rewrites only a `;` between two entries of a field, variant, trait-member or constraint list, writing `,`. A `;` between statements is left as it is.
 9. **Parameter patterns.**
-    - **Syntax.** The `Parameter` node (`src/compiler/syntax/expressions/index.ts`) holds a target pattern where it holds a name. `parser/parts/functions.ts` reads one with the declaration-target parser of `parser/statements/variables.ts`.
+    - **Syntax.** The `Parameter` node (`src/compiler/syntax/expressions/index.ts`) holds a target pattern where it holds a name. `parser/grammar/parts/functions.ts` reads one with the declaration-target parser of `parser/grammar/statements/variables.ts`.
     - **Checker.** `checker/constructs/patterns/targets.ts`'s `declareTargets`, the one home for declaration targets, declares a parameter's names too, and refutability is checked as it is for targets. A pattern's own type comes from `patternTypeOf` (`checker/types/written/named-types.ts`). Named arguments and `self` read a parameter's `as` name.
     - **Lowering.** The function takes the argument as one hidden parameter and takes it apart at entry, through the same lowering a destructuring `const` uses (`lowering/statements/variables.ts`).
     - **Language service.** Signatures and hovers print the pattern (`src/language-service/signatures/signatures.ts`, `hover.ts`).
 10. **Line breaks between items.**
     - **The rule's one home** is one predicate in `parser/layout/index.ts`, where every decision to move past a line break already lives: does this break separate two items of the enclosing list?
     - **Lists.** `parseDelimited` in `parser/cursor/recovery.ts`, through which every bracketed list already goes, takes a separating break as it takes `,`.
-    - **Expressions.** The infix and postfix loops (`parser/expressions/expression.ts`, `postfix.ts`) stop at a separating break, and `postfix.ts` attaches `(`, `[`, `{` and `<` only on their operand's line.
+    - **Expressions.** The infix and postfix loops (`parser/grammar/expressions/expression.ts`, `postfix.ts`) stop at a separating break, and `postfix.ts` attaches `(`, `[`, `{` and `<` only on their operand's line.
     - **The token sets are derived, never listed again.** What starts an item is the prefix parselet table of `expression.ts`. What continues is its infix table.
     - **Spacing.** Tokens already carry `firstOnLine` (`syntax/tokens.ts`). Their spans tell whether `-`, `*`, `&` or `..` is glued to the next token, so the scanner needs no change.
     - **Formatter.** `src/formatter/lists.ts` and `brackets.ts` print a broken list one item per line without `,`; `literals.ts` follows.
     - **Completion.** The places in `src/language-service/completion/places/` that find "the next item" after a `,` find it after a separating break too.
 11. **Parenthesized imports and renames.**
     - **Syntax.** `NamedImport` holds imported names, each an exported name and an optional alias, and whether they were parenthesized, which the formatter keeps.
-    - **Parser** (`parser/declarations/imports.ts`): `(` reads the names through `parseDelimited`, so §6's rule and recovery come with it; the bare form reads `,`-separated names on one line, as today.
+    - **Parser** (`parser/grammar/declarations/imports.ts`): `(` reads the names through `parseDelimited`, so §6's rule and recovery come with it; the bare form reads `,`-separated names on one line, as today.
     - **Binder.** An import binds each alias, or the name where there is none, to the export it names; clashes and the prelude rule read the bound names.
     - **Language service:** hover, definition, references and rename on both names; completion of exports inside the parentheses; semantic tokens for the alias as for the name; the VS Code grammar already reads `as` as a keyword and `from` before a path, so it needs no change.
 12. **Tests** (fast-check, beside the code):

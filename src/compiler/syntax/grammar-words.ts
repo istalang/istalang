@@ -2,8 +2,8 @@
  * The words each grammar position dispatches on, among the reserved and contextual words (§2): the
  * one home of what starts a module's declaration, a statement, an operand, a type and a pattern,
  * what goes on after an operand, and what follows a modifier. The parser keys its parselet tables
- * by these lists, typed so a table and its list agree both ways (parser/word-parselets.ts), and
- * completion offers them where the position is
+ * by these lists, typed so a table and its list agree both ways (parser/grammar/word-parselets.ts),
+ * and completion offers them where the position is
  * (language-service/completion/places/grammar/words.ts): a word the parser starts taking somewhere
  * is listed here, or the parser fails to compile, and completion offers it with no edit of its own.
  *

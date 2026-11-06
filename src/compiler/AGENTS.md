@@ -5,7 +5,7 @@ One folder per phase. Phases share only contracts.
 - `syntax/`: tokens, the words each grammar position starts with (`grammar-words.ts`), tree nodes, operator precedence, where items may stand, and traversal derived from node fields. Exhaustive node-kind handler tables use `structures/kind-table.ts`. It is a contract with high fan-in: change it deliberately, and update every consumer in the same change.
 - `scanner/`: `scan.ts` turns text into tokens, comments and diagnostics. It is context-free, total and lossless.
 - `parser/`: tokens to tree; `parse.ts` is the entry.
-  - A grammar category (`expressions/`, `statements/`, `declarations/`, `types.ts`, `patterns.ts`) reaches another only through the context in `parser.ts`, which `grammar.ts` wires.
+  - A grammar category (`expressions/`, `statements/`, `declarations/`, `types.ts`, `patterns.ts`) reaches another only through the context in `parser.ts`, which `grammar/index.ts` wires.
   - Pieces several categories share live in `parts/`, which imports no category.
   - dependency-cruiser enforces both rules.
   - The machinery is shared by all categories:

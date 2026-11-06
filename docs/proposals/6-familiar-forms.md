@@ -150,7 +150,7 @@ Two annotations the prelude declares, ordinary structs as every annotation is (Â
 ## Implementation notes
 
 1. **`is not`.**
-   - **Parser:** the `is` parselet (`parser/expressions/operators.ts`) takes an optional `not` before the pattern; the `Is` node holds whether it is negated.
+   - **Parser:** the `is` parselet (`parser/grammar/expressions/operators.ts`) takes an optional `not` before the pattern; the `Is` node holds whether it is negated.
    - **Checker:** a negated pattern that binds is refused where `is` patterns are checked.
 2. **Narrowing.**
    - **Where tests hold:** the checker already knows where an `is` binding exists. The same flow rules (`checker/rules/flow/forward.ts`, one table of how each construct runs) give where a test holds and where it fails.

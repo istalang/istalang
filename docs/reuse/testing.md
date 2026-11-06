@@ -23,7 +23,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 - check syntax tree span nesting or list error nodes → `spanViolations`, `errorNodes` (`src/compiler/syntax/tree.test-kit.ts`)
 - parse a single grammar category or dump a clean parse → `parseAs`, `dumpClean`, `reported`, `lines` (`src/compiler/parser/parse.test-kit.ts`)
 - generate random token soup in parser tests → `tokenSoup`, `parenFreeSoup` (`src/compiler/parser/parse.test-kit.ts`)
-- generate random operator trees → `operatorTree`, `printFull`, `printMinimal`, `shapeOf` (`src/compiler/parser/expressions/precedence.test-kit.ts`)
+- generate random operator trees → `operatorTree`, `printFull`, `printMinimal`, `shapeOf` (`src/compiler/parser/grammar/expressions/precedence.test-kit.ts`)
 - make a real project on disk, removed after the test → `tempProject` (`src/project/project.test-kit.ts`)
 - talk LSP to a language server in memory (open, change, close documents; await published diagnostics; read highlighting decoded) → `connectedClient`, `TestClient` (`src/lsp/server.test-kit.ts`)
 - run a property over every corpus and std module open in one language server → `corpusClient`, `corpusDocuments` (`src/lsp/corpus-client.test-kit.ts`)

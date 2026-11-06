@@ -8,14 +8,14 @@
  *   postfix operators, a type's and a pattern's), and in the list itself. After an operator, a
  *   `.`, a `:` or an opening bracket nothing asks, so the break is read past;
  * - the next line's first token can start an item. That is derived from the expression grammar's
- *   tables (expressions/expression.ts, `startsItemOnNewLine`) and the item parsers' openers (a
- *   spread's, a struct comprehension's, an annotated entry's), never listed here. A token both
+ *   tables (grammar/expressions/expression.ts, `startsItemOnNewLine`) and the item parsers' openers
+ *   (a spread's, a struct comprehension's, an annotated entry's), never listed here. A token both
  *   starting and continuing an operand starts an item when it would apply to the operand only on
  *   the operand's line (a postfix bracket), when it is a word not spelling an operator with the
  *   token after it (`not`, against `not in`), or when it is a symbol no space parts from the rest
  *   of its line: glued to what follows (`-1`, against `- 1`), or alone at its line's end (a lone
- *   `..`, the range open at both ends). So every line a broken list puts one item on reads back
- *   as that item.
+ *   `..`, the range open at both ends). So every line a broken list puts one item on reads back as
+ *   that item.
  * Comments and blank lines change nothing: the decision reads the break's two tokens.
  *
  * An optional part after a complete item (`& B` after `any A` or a constraint, a range's end after
