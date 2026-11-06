@@ -196,8 +196,8 @@ export type PackType = TypeParameterType | ErrorType;
  * loop's header, whose pass over the fields a struct constraint leaves unnamed stands for one of
  * them by a key of its own (§4), a struct pattern's rest, whose struct maps each key it takes to
  * its field by one (§3.11), or a recursive alias, whose own uses inside its group's bodies stand
- * for the type being closed while the group closes (declarations/aliases/recursive-bodies.ts), and
- * nowhere else.
+ * for the type being closed while the group closes
+ * (constructs/declarations/aliases/recursive-bodies.ts), and nowhere else.
  */
 export type ParameterKey =
   | TypeParameter

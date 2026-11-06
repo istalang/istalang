@@ -2,10 +2,10 @@
  * Calls the toolchain makes on its own to plain functions it knows (§3.9, §3.10), with no written
  * call to report at: a type's `dispose` (rules/disposal/disposal.ts), a json-module helper a codec
  * calls (rules/boundary/json-forms.ts), or the defaults a struct literal leaves fields to
- * (expressions/structs/literal-fields.ts). Each is chosen, instantiated and made as a written call
- * is (choosing/choice.ts, conformance/conformance.ts, calls-made.ts), its constraints' witnesses
- * found as anywhere, but nothing is reported: failing gives undefined, and each caller says what
- * that means.
+ * (constructs/expressions/structs/literal-fields.ts). Each is chosen, instantiated and made as a
+ * written call is (choosing/choice.ts, conformance/conformance.ts, calls-made.ts), its constraints'
+ * witnesses found as anywhere, but nothing is reported: failing gives undefined, and each caller
+ * says what that means.
  *
  * - The candidates are plain functions, never a type parameter's requirement, so the call made is
  *   always a function call.

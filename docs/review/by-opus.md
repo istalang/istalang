@@ -92,10 +92,10 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 ## Integration
 
-- Lowering reads checker internals: `rules/{futures,host-boundary,json-forms/form}.ts`, `closures/function-scope.ts`, `types/identity/type-keys.ts` (D135).
+- Lowering reads checker internals: `rules/{futures,host-boundary,json-forms/form}.ts`, `constructs/closures/function-scope.ts`, `types/identity/type-keys.ts` (D135).
 - The IR knows std types by name (D138).
 
 ## Architecture doc: two claims are false today
 
-- "Construct modules reach each other only through their context." Counterexamples: overloads→closures/expressions (`decided.ts`), patterns→`expressions/structs/variants.ts`, rules↔overloads.
+- "Construct modules reach each other only through their context." Counterexamples: overloads→constructs/closures/expressions (`decided.ts`), patterns→`expressions/structs/variants.ts`, rules↔overloads.
 - "Used only through its entry module." Lowering imports the checker internals listed above. Either name them as the checker's surface or route them through `check.ts`.

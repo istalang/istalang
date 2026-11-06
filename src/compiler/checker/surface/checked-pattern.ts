@@ -1,7 +1,7 @@
 /**
  * Patterns and targets as checked (§3.11, §3.15): the tests a value passes to match, and what each
  * name a target binds takes from the value. A model `check.ts` names; one walk produces both
- * (patterns/walk.ts).
+ * (constructs/patterns/walk.ts).
  */
 
 import type {

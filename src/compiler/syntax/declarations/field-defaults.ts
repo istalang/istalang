@@ -9,8 +9,9 @@
  *
  * Each such function is made once from its declaration's own nodes and is checked and lowered as a
  * written one is, but where it differs it says whose fields it reads (`fieldsOwner`): its defaults
- * needn't trail, since a literal names its fields (declarations/functions/signatures.ts), and its
- * entries are named after the struct or variant, not a static function's owner type.
+ * needn't trail, since a literal names its fields
+ * (constructs/declarations/functions/signatures.ts), and its entries are named after the struct or
+ * variant, not a static function's owner type.
  */
 
 import { memo } from '../../../structures/memo.ts';

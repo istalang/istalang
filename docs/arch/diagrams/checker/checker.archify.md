@@ -13,10 +13,10 @@ The checker is a **lazy, incremental query engine** over one immutable Program. 
 @source context title="CheckerContext and ProgramInputs" path=src/compiler/checker/contexts/context.ts lines=77:171
 @source programchecker title="ProgramChecker wiring" path=src/compiler/checker/wiring/program/program-checker.ts lines=113:231
 @source bodychecker title="BodyChecker: expression, fit, record" path=src/compiler/checker/wiring/body/body-checker.ts lines=91:296
-@source functions title="FunctionChecks: results and bodies as entries" path=src/compiler/checker/declarations/functions/functions.ts lines=44:111
-@source modulechecks title="ModuleChecks: module and item entries" path=src/compiler/checker/declarations/module-checks.ts lines=29:98
-@source handlers title="Expression handler table" path=src/compiler/checker/expressions/expressions.ts lines=88:127
-@source calls title="checkCall: callee kinds" path=src/compiler/checker/expressions/calls.ts lines=63:101
+@source functions title="FunctionChecks: results and bodies as entries" path=src/compiler/checker/constructs/declarations/functions/functions.ts lines=44:111
+@source modulechecks title="ModuleChecks: module and item entries" path=src/compiler/checker/constructs/declarations/module-checks.ts lines=29:98
+@source handlers title="Expression handler table" path=src/compiler/checker/constructs/expressions/expressions.ts lines=88:127
+@source calls title="checkCall: callee kinds" path=src/compiler/checker/constructs/expressions/calls.ts lines=63:101
 @source resolve title="resolveCall" path=src/compiler/checker/resolution/calls/resolve.ts lines=85:125
 @source applied title="applyCall" path=src/compiler/checker/resolution/applied-call.ts lines=59:108
 @source entries title="Entries: get, produce, takeOver, replay" path=src/structures/entries/index.ts lines=163:309

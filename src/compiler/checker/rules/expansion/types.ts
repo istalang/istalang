@@ -2,11 +2,11 @@
  * Generic types that would need endlessly many instantiations (§3.5): `struct W<T>` with a field of
  * type `W<(T,)>?` makes `W<Int>`, `W<(Int,)>` and so on without end.
  *
- * The expansion graph (edges.ts) takes its edges from fields here: each generic
- * struct or enum a field's type names, at any depth, gives that type's parameters arguments built
- * from the declaring type's own. A field making an expanding edge on a cycle is endless: it is
- * reported where its declaration's layout is made, once, and the layout reads its type as the
- * error type (declarations/layout/index.ts), so every walk over types meets finitely many
+ * The expansion graph (edges.ts) takes its edges from fields here: each generic struct or enum a
+ * field's type names, at any depth, gives that type's parameters arguments built from the declaring
+ * type's own. A field making an expanding edge on a cycle is endless: it is reported where its
+ * declaration's layout is made, once, and the layout reads its type as the error type
+ * (constructs/declarations/layout/index.ts), so every walk over types meets finitely many
  * instantiations.
  *
  * Edges come from fields' written types alone, which resolve without checking any code. A field

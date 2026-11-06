@@ -53,8 +53,8 @@ export interface Taken {
 
 /**
  * How a function taking `takes` takes `callArguments` and any written type arguments: which
- * parameter each argument fills and what inference found matching them, or why it can't. A
- * function value's call (closures/value-calls.ts) is judged here too, as a signature with no type
+ * parameter each argument fills and what inference found matching them, or why it can't. A function
+ * value's call (constructs/closures/value-calls.ts) is judged here too, as a signature with no type
  * parameters.
  */
 export function takenBy(

@@ -1,8 +1,8 @@
 /**
  * How a call's arguments fill its function's parameters (§3.3): the one rule a written call, a call
  * the language makes, a witness and a function named as a value are all bound by, so choosing
- * (choice.ts), overload clashes (declarations/functions/clashes.ts) and lowering agree on which
- * argument a parameter takes.
+ * (choice.ts), overload clashes (constructs/declarations/functions/clashes.ts) and lowering agree
+ * on which argument a parameter takes.
  *
  * - Positional arguments fill the parameters in order; once they run past the fixed ones, or from
  *   the first spread on, the rest parameter collects them, spreads included. A spread with no rest

@@ -63,7 +63,8 @@ export interface InferVariable {
 }
 
 /**
- * What a checker answers of the type `match`es its aliases have (declarations/aliases/index.ts).
+ * What a checker answers of the type `match`es its aliases have
+ * (constructs/declarations/aliases/index.ts).
  */
 export interface TypeMatchQueries {
   /** The subject and cases of `alias`'s type `match`; undefined when its body is a type. */

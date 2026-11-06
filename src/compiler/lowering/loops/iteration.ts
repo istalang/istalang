@@ -3,7 +3,7 @@
  * construct lowers"): a `for`, a comprehension, and a spread its literal doesn't copy whole. Each
  * calls `iterate` on what it runs over, which gives a cursor, then calls the cursor until it gives
  * `Done`, running the body with the item each `Next` holds. `iterate` is the call the checker made
- * for the construct (checker rules/loops/iteration.ts), so there is one loop for all.
+ * for the construct (checker constructs/loops/iteration.ts), so there is one loop for all.
  */
 
 import type { Register } from '../../../definition/operands.ts';

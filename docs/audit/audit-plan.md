@@ -28,9 +28,9 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 | Group | Domain / Subsystem | Exclusive `src/` Ownership | Items Covered |
 | --- | --- | --- | --- |
 | **Group A** | **Front-End: Scanner, Parser, Program & Binder** | `src/compiler/scanner/**`<br>`src/compiler/parser/**`<br>`src/compiler/syntax/expressions/index.ts`<br>`src/compiler/program/**`<br>`src/compiler/binder/**`<br>`src/cli/file-loader.ts` | **D186, D197, D209, D210, D220, D221**, `qualifiedPath` deduplication, stale `>>` comment in `punctuators.ts` |
-| **Group B** | **Checker Core: Types, Inference, Resolution, Target-Typing, Closures & Places** | `src/compiler/checker/types/{type,fit,type-text,well-known,widening}.ts`<br>`src/compiler/checker/types/inference/**`<br>`src/compiler/checker/resolution/{call-arguments,choice,applicability,binding,packs,typed-call,conformance,declared-witness,default-witness}.ts`<br>`src/compiler/checker/resolution/calls/**`<br>`src/compiler/checker/closures/**`<br>`src/compiler/checker/declarations/functions/signatures.ts`<br>`src/compiler/checker/rules/{agreement,branches,clashes}.ts`<br>`src/compiler/checker/expressions/{expressions,tuples,collections,calls}.ts`<br>`src/compiler/checker/statements/assignments.ts` | **D101, D122, D144, D153, D160, Q8, D168, D173, D180, D190, D217, D219, D222, D223, D229, D230**, `agreedAccepts`/`tupleAccepts` partial-type bug, `typeText` entity check |
-| **Group C** | **Checker Declarations, Field Defaults, Compile-Time Constants, Annotations, JSON & Rules** | `src/compiler/syntax/declarations/field-defaults.ts`<br>`src/compiler/checker/declarations/{declarations,constants,struct-rules}.ts`<br>`src/compiler/checker/types/properties/held.ts`<br>`src/compiler/checker/rules/{computation,annotations,disposal,must-use,suites}.ts`<br>`src/compiler/checker/rules/json-forms/**`<br>`src/compiler/checker/diagnostics/{boundary,lifetimes}.ts` | **D120, Q5, Q7, Q9, D216**, `waits` on non-blocking `select`, `suites.ts` `madeCalls()`, stale `${name}$` in 5702 |
-| **Group D** | **Patterns, Exhaustiveness, Chained Comparisons & Lowering** | `src/compiler/syntax/patterns.ts`<br>`src/compiler/checker/checked-pattern.ts`<br>`src/compiler/checker/patterns/**`<br>`src/compiler/checker/resolution/implicit.ts`<br>`src/compiler/checker/expressions/{operators,optionals,templates}.ts`<br>`src/compiler/lowering/**` (except `lowering/tables/names.ts`) | **B8, D149, Q12, D214, Q19, D224, B11, D226**, `optionalInt` → `buildVariant` |
+| **Group B** | **Checker Core: Types, Inference, Resolution, Target-Typing, Closures & Places** | `src/compiler/checker/types/{type,fit,type-text,well-known,widening}.ts`<br>`src/compiler/checker/types/inference/**`<br>`src/compiler/checker/resolution/{call-arguments,choice,applicability,binding,packs,typed-call,conformance,declared-witness,default-witness}.ts`<br>`src/compiler/checker/resolution/calls/**`<br>`src/compiler/checker/constructs/closures/**`<br>`src/compiler/checker/constructs/declarations/functions/signatures.ts`<br>`src/compiler/checker/rules/{agreement,branches,clashes}.ts`<br>`src/compiler/checker/constructs/expressions/{expressions,tuples,collections,calls}.ts`<br>`src/compiler/checker/constructs/statements/assignments.ts` | **D101, D122, D144, D153, D160, Q8, D168, D173, D180, D190, D217, D219, D222, D223, D229, D230**, `agreedAccepts`/`tupleAccepts` partial-type bug, `typeText` entity check |
+| **Group C** | **Checker Declarations, Field Defaults, Compile-Time Constants, Annotations, JSON & Rules** | `src/compiler/syntax/declarations/field-defaults.ts`<br>`src/compiler/checker/constructs/declarations/{declarations,constants,struct-rules}.ts`<br>`src/compiler/checker/types/properties/held.ts`<br>`src/compiler/checker/rules/{computation,annotations,disposal,must-use,suites}.ts`<br>`src/compiler/checker/rules/json-forms/**`<br>`src/compiler/checker/diagnostics/{boundary,lifetimes}.ts` | **D120, Q5, Q7, Q9, D216**, `waits` on non-blocking `select`, `suites.ts` `madeCalls()`, stale `${name}$` in 5702 |
+| **Group D** | **Patterns, Exhaustiveness, Chained Comparisons & Lowering** | `src/compiler/syntax/patterns.ts`<br>`src/compiler/checker/checked-pattern.ts`<br>`src/compiler/checker/constructs/patterns/**`<br>`src/compiler/checker/resolution/implicit.ts`<br>`src/compiler/checker/constructs/expressions/{operators,optionals,templates}.ts`<br>`src/compiler/lowering/**` (except `lowering/tables/names.ts`) | **B8, D149, Q12, D214, Q19, D224, B11, D226**, `optionalInt` → `buildVariant` |
 | **Group E** | **Runtime: Interpreter, Scheduler, Lifetimes, Snapshot & Testing** | `src/runtime/**` | **D115, D116, D130, D155, D165, D176, D179, D182, D184, D198, D199, D203, D212** |
 | **Group F** | **Foundation, Definition, Stdlib, CLI & Guide Examples** | `src/language/**`<br>`src/text/**`<br>`src/definition/**`<br>`src/compiler/lowering/tables/names.ts`<br>`src/stdlib/**`<br>`docs/guide.md`<br>`test/corpus/spec-examples.ts`<br>`test/spec-suites/purchase.test.ista` | **D100, D174, Q15 (definition+stdlib side), Q16 (definition side), D183, D188, Q17 (definition+stdlib side), D194, D195, D201, D202, D219 (extern-key side)**, time-unit constants, `compareOrdered` |
 
@@ -77,17 +77,17 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 - `src/compiler/checker/types/inference/{infer,complete}.ts` (+ `*.test.ts`)
 - `src/compiler/checker/resolution/{call-arguments,choice,applicability,binding,packs,typed-call,conformance,declared-witness,default-witness}.ts` (+ `*.test.ts`)
 - `src/compiler/checker/resolution/calls/{resolve,lambda-arguments,places,collection-functions,operators}.ts`
-- `src/compiler/checker/closures/{lambdas,value-calls,function-values,returns,functions}.ts` (+ `*.test.ts`)
-- `src/compiler/checker/declarations/functions/signatures.ts`
+- `src/compiler/checker/constructs/closures/{lambdas,value-calls,function-values,returns,functions}.ts` (+ `*.test.ts`)
+- `src/compiler/checker/constructs/declarations/functions/signatures.ts`
 - `src/compiler/checker/rules/{agreement,branches,clashes}.ts` (+ `*.test.ts`)
-- `src/compiler/checker/expressions/{expressions,tuples,collections,calls}.ts`
-- `src/compiler/checker/statements/assignments.ts`
+- `src/compiler/checker/constructs/expressions/{expressions,tuples,collections,calls}.ts`
+- `src/compiler/checker/constructs/statements/assignments.ts`
 
 **Tasks in Group B:**
 1. **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (D190 & Audit §4.1 — `rules/agreement.ts`, `expressions/tuples.ts`, `expressions/literals/collections.ts`, `rules/branches.ts`):**
    - **Cause:** `agreedAccepts` returns `undefined` if `producers[0] === undefined`, so `["a", none]` and `if c: "a" else: none` fail to be treated as target-typed arguments while `[none, "a"]` succeeds. Furthermore, both `agreedAccepts` and `tupleAccepts` ignore siblings that *do* have their own type (`?? true`), losing known element types during overload selection.
    - **Fix:** Return an `Accepts` predicate whenever *any* element/producer has `accepts !== undefined`, and for each sibling with its own type `t`, check `isOpen(expectedPart) || context.checker.fitOf(t, expectedPart) !== undefined`. Also ensure explicit `call.typeArguments` in `resolution/calls/resolve.ts` / `resolution/choosing/applicability.ts` guide target-typed arguments (`same<Array<string?>>(xs, ["a", none])`).
-2. **Extend target-typed lambda result inference and optional stripping (D160 — `resolution/calls/lambda-arguments.ts`, `closures/lambdas.ts`, `closures/function-values.ts`, `expressions/tuples.ts`, `expressions/structs/variants.ts`, `expressions/expressions.ts`):**
+2. **Extend target-typed lambda result inference and optional stripping (D160 — `resolution/calls/lambda-arguments.ts`, `constructs/closures/lambdas.ts`, `constructs/closures/function-values.ts`, `expressions/tuples.ts`, `expressions/structs/variants.ts`, `expressions/expressions.ts`):**
    - Allow `checkDecidedLambdas` to recurse into composite expressions holding a lambda (matching `acceptsOf`), and strip `Optional` consistently where target-typed expressions expect a structural type.
 3. **Unify 5-step implicit conversion logic between `types/fitting/fit.ts` and `types/inference/infer.ts` (D222) + `never` return type assignability (D180 — `types/type/index.ts`) + recursive widening (D144 — `types/unions/widening.ts`, `rules/agreement.ts`):**
    - Extract the shared conversion sequence (exact → plain-to-async function → 1-tuple ↔ element → `any` trait object → `Optional` wrap) parameterized by how leaf parts compare.
@@ -95,8 +95,8 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - In `rules/agreement.ts` / `types/unions/widening.ts`, allow producers with sendable vs. plain functions nested inside tuples/arrays (`[(1, g), (2, f)]`, `[[g], [f]]`) to agree on the widened type (D144).
 4. **Fix `typeText` entity-based `Optional` check and `*SharedStruct` anonymous struct formatting (D153 — `types/type-text.ts`) + add `arrayOf`/`arrayElement`/`optionalArgument` to `types/well-known.ts` (Q8):**
    - In `types/type-text.ts`, spell an `AnonymousStructType` whose `origin` is a shared `StructDeclaration` as `*${origin.name.text}` (with any type arguments), and check `wellKnown.optional` properly.
-   - Add `arrayOf` and `arrayElement` to `types/well-known.ts` and use them in Group B's files (`resolution/choosing/choice.ts`, `expressions/literals/collections.ts`, `declarations/functions/signatures.ts`).
-5. **Unify parameter/slot models, clash keys, and resolution vocabulary (D219, D223, D229, D230 — `declarations/functions/signatures.ts`, `resolution/choosing/binding.ts`, `resolution/choosing/choice.ts`, `resolution/choosing/applicability.ts`, `resolution/choosing/packs.ts`, `rules/clashes.ts`, `closures/lambdas.ts`, `closures/value-calls.ts`):**
+   - Add `arrayOf` and `arrayElement` to `types/well-known.ts` and use them in Group B's files (`resolution/choosing/choice.ts`, `expressions/literals/collections.ts`, `constructs/declarations/functions/signatures.ts`).
+5. **Unify parameter/slot models, clash keys, and resolution vocabulary (D219, D223, D229, D230 — `constructs/declarations/functions/signatures.ts`, `resolution/choosing/binding.ts`, `resolution/choosing/choice.ts`, `resolution/choosing/applicability.ts`, `resolution/choosing/packs.ts`, `rules/clashes.ts`, `constructs/closures/lambdas.ts`, `constructs/closures/value-calls.ts`):**
    - Extract `CallArgument`, `Passing`, `Accepts`, and `Inapplicability` into `src/compiler/checker/resolution/choosing/call-arguments.ts` so `applicability.ts` and `packs.ts` do not type-import upward from `choice.ts` (D230).
    - Unify `ParameterSlot` and `ArgumentSlot` (D229), compute `RestSlot` once in `signatures.ts` instead of rebuilding `restSlotOf` per candidate per call in `choice.ts`, and add `isReceiver?: boolean` on `SignatureSlot` instead of overloading `name === undefined` (D219).
    - In `rules/clashes.ts`, replace string-encoded `packItemKey = '...'` and `'&'` prefix parsing with a structured slot key `{ kind: 'any' } | { kind: 'type'; key: string; reference: boolean }` (D223).
@@ -104,8 +104,8 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - In `resolution/conformance/conformance.ts`, give declared-but-uninstantiable witnesses a distinct failure outcome instead of returning `'none'`, so `declaresWitness` and `conform` report the unmet inner constraint and `checkDeclaredLiteral` in `expressions/literals/collections.ts` doesn't need `declaresDefault` (D173).
    - In `resolution/typed-call.ts`, size `decided` per candidate instead of using `candidates[0]`'s arity (D122).
    - In `resolution/calls/resolve.ts`, emit `noMatchingOverload` if `explain` reported no diagnostics during `case 'arguments':` (D217).
-7. **Fix `_ = e` error suppression & destructuring assignment target typing and place identity (D101, D168 — `statements/assignments.ts`, `resolution/calls/places.ts`):**
-   - In `statements/assignments.ts`, do not pass `errorType` as `expected` when the target is `_` (`_ = if c: 1 else: "two"` must report 5005, D101).
+7. **Fix `_ = e` error suppression & destructuring assignment target typing and place identity (D101, D168 — `constructs/statements/assignments.ts`, `resolution/calls/places.ts`):**
+   - In `constructs/statements/assignments.ts`, do not pass `errorType` as `expected` when the target is `_` (`_ = if c: 1 else: "two"` must report 5005, D101).
    - Propagate expected types from destructuring assignment targets into `node.value` so `(xs, n) = ([], 1)` and `(o, n) = (none, 1)` infer `xs` and `o`'s types, and unify place-identity / receiver-place checks between `assignments.ts` and `resolution/calls/places.ts` (D168).
 
 ---
@@ -114,7 +114,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 
 **Owned files:**
 - `src/compiler/syntax/declarations/field-defaults.ts`
-- `src/compiler/checker/declarations/{declarations,constants,struct-rules}.ts`
+- `src/compiler/checker/constructs/declarations/{declarations,constants,struct-rules}.ts`
 - `src/compiler/checker/types/properties/held.ts`
 - `src/compiler/checker/rules/{computation,annotations,disposal,must-use,suites}.ts` (+ `*.test.ts`)
 - `src/compiler/checker/rules/json-forms/index.ts` (+ `*.test.ts`)
@@ -125,7 +125,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - In `Computation.of` (`src/compiler/checker/rules/computation.ts`), apply `this.#scope.checked.fitAt(node)` to the computed `ConstantForm` (wrapping `Some` for `wraps > 0`, wrapping/unwrapping 1-element tuples for `tupled`/`untupled`, and refusing or converting `async`/`any` fits), so `const x: int? = 1` followed by `x ?? 0` works at runtime.
 2. **Qualify enum variant field-default functions with their enum (Q5 — `syntax/declarations/field-defaults.ts`, `rules/computation.ts`):**
    - In `src/compiler/syntax/declarations/field-defaults.ts` (`fieldsFunctionOf`), set `owner: declaration.kind === 'EnumDeclaration' ? declaration.name : undefined` on a variant's synthetic `FunctionDeclaration` so two enums in the same module with identically named variants (`Circle { r: int = 1 }`) produce distinct lowered default entry names (`main.Shape.Circle/r` vs. `main.Icon.Circle/r`).
-3. **Unify derived-trait conformance & type-graph cycle guards (Q7, Q9 — `rules/json-forms/index.ts`, `rules/annotations.ts`, `types/properties/held.ts`, `declarations/layout/struct-rules.ts`):**
+3. **Unify derived-trait conformance & type-graph cycle guards (Q7, Q9 — `rules/json-forms/index.ts`, `rules/annotations.ts`, `types/properties/held.ts`, `constructs/declarations/layout/struct-rules.ts`):**
    - Extract a shared cycle guard over `TypeKeys` in `types/properties/held.ts` and reuse it in `json-forms/index.ts`.
    - Clean up `JsonForms` / `Annotations` separation (`Q9`), fix `waits(node)` in `rules/annotations.ts` so a non-blocking `select:` (`!node.awaits`) does not count as waiting for `@Waypoint`, and give annotation compile-time constant errors their own wording (or parameterized 5026 message, `D120`).
 4. **Check all `madeCalls()` in `@Suite` effect validation (`rules/suites.ts`) & clean up `rules/disposal.ts` (Q8) and diagnostic 5702 (`diagnostics/lifetimes.ts`):**
@@ -140,21 +140,21 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 **Owned files:**
 - `src/compiler/syntax/patterns.ts`
 - `src/compiler/checker/checked-pattern.ts`
-- `src/compiler/checker/patterns/{downcasts,exhaustiveness,matching,parts,pattern-tests,shapes,struct-items,taking,walk}.ts` (+ `*.test.ts`)
+- `src/compiler/checker/constructs/patterns/{downcasts,exhaustiveness,matching,parts,pattern-tests,shapes,struct-items,taking,walk}.ts` (+ `*.test.ts`)
 - `src/compiler/checker/resolution/implicit.ts`
-- `src/compiler/checker/expressions/{operators,optionals,templates}.ts`
+- `src/compiler/checker/constructs/expressions/{operators,optionals,templates}.ts`
 - `src/compiler/lowering/**` *(excluding `src/compiler/lowering/tables/names.ts`, which Group F owns)*
 
 **Tasks in Group D:**
-1. **Unify comparison & membership checking and lowering across binary operators, chains, and patterns (D226 — `checker/checked-pattern.ts`, `checker/expressions/operators.ts`, `checker/patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`):**
+1. **Unify comparison & membership checking and lowering across binary operators, chains, and patterns (D226 — `checker/checked-pattern.ts`, `checker/constructs/expressions/operators.ts`, `checker/constructs/patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`):**
    - Give binary and chained comparisons/memberships one checker function and one lowering function over a `ComparisonLink` (where a `Binary` comparison is a single link).
    - Unify pattern ordering tests (`CompareFieldPattern`, `RangePattern` bound, `ArrayPattern` rest length) into one ordering test representation so `lowering/parts/patterns.ts` (`passed`) and `lowering/expressions/operators.ts` share `ordered` and `equal`.
-2. **Separate written pattern shapes from matrix shapes in exhaustiveness (D224 — `checker/patterns/exhaustiveness/exhaustiveness.ts`, `checker/patterns/exhaustiveness/shapes.ts`):**
+2. **Separate written pattern shapes from matrix shapes in exhaustiveness (D224 — `checker/constructs/patterns/exhaustiveness/exhaustiveness.ts`, `checker/constructs/patterns/exhaustiveness/shapes.ts`):**
    - Split `Shape` into `WrittenShape` (which includes `or` and `array`) and `MatrixShape` / `WitnessShape` (`any` and `constructor` only, with a structured constructor key instead of parsing `key.endsWith('+]')`), removing the `unreachable` guards in `Matrix.useful`, `specialize`, and `witnessText`.
-3. **Remove `walk.downcasts` side channel & move `unparenthesized` for patterns to `syntax/patterns.ts` (D214 — `syntax/patterns.ts`, `checker/patterns/walk.ts`):**
+3. **Remove `walk.downcasts` side channel & move `unparenthesized` for patterns to `syntax/patterns.ts` (D214 — `syntax/patterns.ts`, `checker/constructs/patterns/walk.ts`):**
    - Export `unparenthesizedPattern(node: Pattern): Pattern` from `src/compiler/syntax/patterns.ts`.
-   - Have `walk.take` in `checker/patterns/walk.ts` return both `{ shape, part }` (or pass the narrowed `ValuePart` directly to `AsPattern`) so `walk.downcasts` is deleted.
-4. **Prelude-invariant implicit calls without fake user diagnostics (B11 — `checker/resolution/implicit.ts`, `checker/patterns/matching.ts`, `checker/expressions/access/optionals.ts`, `checker/expressions/templates.ts`):**
+   - Have `walk.take` in `checker/constructs/patterns/walk.ts` return both `{ shape, part }` (or pass the narrowed `ValuePart` directly to `AsPattern`) so `walk.downcasts` is deleted.
+4. **Prelude-invariant implicit calls without fake user diagnostics (B11 — `checker/resolution/implicit.ts`, `checker/constructs/patterns/matching.ts`, `checker/constructs/expressions/access/optionals.ts`, `checker/constructs/expressions/templates.ts`):**
    - Add a `preludeCall` helper (or make `failure` optional for prelude-owned calls) in `src/compiler/checker/resolution/implicit.ts` that calls `unreachable` if a toolchain-owned prelude function (`panic`, `_inclusiveEnd`, `length`, `_patternItem`, `_patternRest`, `compare`, `join`) is missing, removing the bogus user-diagnostic callbacks at those call sites.
 5. **Fix case-less `select:` with `else:` in lowering (D149 — `lowering/expressions/control/select.ts`):**
    - When `cases.length === 0` and `node.elseClause !== undefined`, lower `node.elseClause.body` directly without emitting an empty `select` instruction (which `definition/instructions/suspension.ts` rejects).
@@ -265,7 +265,7 @@ Three agents in parallel, one worktree each. Wave 2 crosses contracts, so owners
 
 | Group | Items | Owns |
 | --- | --- | --- |
-| G — checker↔lowering contract | 1 (Q13), 2 (Q1, Q2), 8 (Q12, Q19); Q11's `lowering/parts/places.ts` part | `checker/check.ts`, `checker/contexts/context.ts`, `checker/body-checker.ts`, `checker/expressions/structs/structs.ts`, `lowering/`, `.dependency-cruiser.mjs`; the `entityOf` rename at its callers anywhere in `checker/` |
+| G — checker↔lowering contract | 1 (Q13), 2 (Q1, Q2), 8 (Q12, Q19); Q11's `lowering/parts/places.ts` part | `checker/check.ts`, `checker/contexts/context.ts`, `checker/body-checker.ts`, `checker/constructs/expressions/structs/structs.ts`, `lowering/`, `.dependency-cruiser.mjs`; the `entityOf` rename at its callers anywhere in `checker/` |
 | H — checker expressions, operators, resolution | 6 (B8), 7 (B11), 9, 10; Q8, Q11 (but `lowering/parts/places.ts`), Q24 | `compiler/syntax/`, the rest of `checker/`; additive edits to `check.ts`'s `ValueSite`/`IterationForm` for B8 |
 | I — cross-phase wiring, test modules | 3 (Q15–Q18, Q25), 4 (B2), 11 (Q26), 12; Q20, Q22, Q23, Q27 | `runtime/`, `stdlib/`, `definition/`, `language/`, `cli/`, `compiler/scanner/`, `program.test-kit.ts`, parse and check tests |
 

@@ -1,8 +1,8 @@
 /**
  * The type a pattern naming a type tests a value for (§3.10, §3.11), the rules the checker's
- * patterns (patterns/matching.ts, patterns/constructs/downcasts.ts, patterns/members.ts) and the
- * editor's completion read alike, so what a pattern may name and what it then tests can't drift
- * apart.
+ * patterns (constructs/patterns/matching.ts, constructs/patterns/constructs/downcasts.ts,
+ * constructs/patterns/members.ts) and the editor's completion read alike, so what a pattern may
+ * name and what it then tests can't drift apart.
  *
  * - A pattern gives no type arguments, so it names a generic type only as a whole: against a value
  *   of that type it matches every instance, but against an `any` value, whose own type is one
@@ -14,10 +14,10 @@
  *   conversion's own rule, so what a pattern may name there and what may be converted in agree.
  * - Against an `any` value, a variant qualified by its enum names the enum, whose value is then
  *   tested for the variant; a bare variant name is chosen by the expected enum, so it names none.
- * - Against a union's value, a pattern selects members (§3.11, patterns/members.ts): a name the
- *   members it names (`membersNamed`), a generic type's instances or the one its type arguments
- *   give (`instancesWith`), a literal its own member or its base's (`literalMembers`), and a
- *   tuple, array or `struct{…}` pattern the members of its kind (`kindMembers`).
+ * - Against a union's value, a pattern selects members (§3.11, constructs/patterns/members.ts): a
+ *   name the members it names (`membersNamed`), a generic type's instances or the one its type
+ *   arguments give (`instancesWith`), a literal its own member or its base's (`literalMembers`),
+ *   and a tuple, array or `struct{…}` pattern the members of its kind (`kindMembers`).
  */
 
 import { sameItems } from '../../../../structures/equality.ts';

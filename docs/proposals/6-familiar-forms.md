@@ -154,8 +154,8 @@ Two annotations the prelude declares, ordinary structs as every annotation is (Â
    - **Checker:** a negated pattern that binds is refused where `is` patterns are checked.
 2. **Narrowing.**
    - **Where tests hold:** the checker already knows where an `is` binding exists. The same flow rules (`checker/rules/flow/forward.ts`, one table of how each construct runs) give where a test holds and where it fails.
-   - **The type a test leaves:** what a pattern selects comes from `checker/patterns/members.ts`, and what it leaves from `patterns/exhaustiveness/remaining.ts`. Narrowing reads both, so no second rule says what a pattern selects.
-   - **Reading a name:** a name read inside the region takes the narrowed type through the one lookup of a name's type (`checker/expressions/access/names.ts`). Field paths follow `checked-field.ts`.
+   - **The type a test leaves:** what a pattern selects comes from `checker/constructs/patterns/members.ts`, and what it leaves from `constructs/patterns/exhaustiveness/remaining.ts`. Narrowing reads both, so no second rule says what a pattern selects.
+   - **Reading a name:** a name read inside the region takes the narrowed type through the one lookup of a name's type (`checker/constructs/expressions/access/names.ts`). Field paths follow `checked-field.ts`.
    - **Lowering** needs nothing: a narrowed `T?` holds its value as a `T` already (`lowering/values/optionals.ts` reads it).
    - **Tools:** hover and inlay hints show the narrowed type at the use.
 3. **`@AliasFor` and `@Warn`.**
@@ -165,10 +165,10 @@ Two annotations the prelude declares, ordinary structs as every annotation is (Â
    - **Warnings:** a call or value of a `@Warn` function reports the new warning with the struct's message, from the one place a call's target is recorded, so calls, method calls, operators and values all warn.
    - **The std additions:** `unique` and `set` are std functions (`stdlib/prelude/`), `set` carrying its `@Warn`.
 4. **Literals as `Float` or `Decimal`.**
-   - **Checking:** the literal's check (`checker/expressions/literals.ts`, `literal-types.ts`) reads the expected type through `types/fitting/expected.ts`, which already decides the member a value goes into.
+   - **Checking:** the literal's check (`checker/constructs/expressions/literals.ts`, `literal-types.ts`) reads the expected type through `types/fitting/expected.ts`, which already decides the member a value goes into.
    - **Choosing:** overload choice (`resolution/`) ranks an exact `Int` first, as it ranks exact fits today.
    - **Values:** computation (`rules/computation/`) and lowering emit a `Float` constant, or the `Decimal` that `Decimal(n)` builds.
-   - **Patterns:** literal patterns (`patterns/matching.ts`) take the subject's number type.
+   - **Patterns:** literal patterns (`constructs/patterns/matching.ts`) take the subject's number type.
 5. **Tests** (fast-check, beside the code):
    - narrowing agrees with `match`: `if x is not None: f(x) else: g()` runs as `match x: case None: g() case v: f(v)` over generated optionals and unions;
    - an alias and its target give the same call and value, and formatting a module with alias uses gives the module the target names would have given, a commute law (test/AGENTS.md);

@@ -396,8 +396,8 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
 
    Its lines go through the one block loop, `parseItemEntries` in `parser/layout/index.ts`, which already gives columns, a separator within a line (`,` after §4 above), dedent errors and comments. Entries are told apart by their first tokens, as `parser/expressions/literals/struct-literals.ts` tells items apart. Headers and labels (`parser/statements/statement.ts`) are unchanged.
 3. **The checker** dispatches an `IndentedValue` by its type to the checks that exist, so each rule keeps one home:
-   - struct literals: `checker/expressions/structs/structs.ts` and `literal-fields.ts`;
-   - map and array literals: `checker/expressions/collections/collections.ts` and `collection-accepts.ts`;
+   - struct literals: `checker/constructs/expressions/structs/structs.ts` and `literal-fields.ts`;
+   - map and array literals: `checker/constructs/expressions/collections/collections.ts` and `collection-accepts.ts`;
    - building from an expected union: `checker/types/fitting/expected.ts`.
 
    One adapter reads the entries as those checks read items. The checked form is the literal's, so `src/compiler/lowering/` needs nothing.
@@ -409,7 +409,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
    - semantic tokens: a map's bare key is a String, a struct's a field (`src/language-service/semantic-tokens/`);
    - the VS Code grammar (`.vscode/extensions/ista/syntaxes/`) gains `- ` items.
 6. **Recursive aliases.**
-   - `checker/declarations/aliases/index.ts` reports 5106 only for an unguarded, blocking or irregular reference. A guarded group closes through `closeRecursive` (`checker/types/identity/recursive-types.ts`) into the `RecursiveType` of `checker/types/computed-types.ts`: a node of a minimized graph, the bodies resolved with placeholders (`declarations/aliases/recursive-bodies.ts`).
+   - `checker/constructs/declarations/aliases/index.ts` reports 5106 only for an unguarded, blocking or irregular reference. A guarded group closes through `closeRecursive` (`checker/types/identity/recursive-types.ts`) into the `RecursiveType` of `checker/types/computed-types.ts`: a node of a minimized graph, the bodies resolved with placeholders (`constructs/declarations/aliases/recursive-bodies.ts`).
    - It is keyed by its graph's canonical spelling (`types/identity/recursive-terms.ts`, `types/identity/type-keys.ts`) and unfolds to its node's body.
    - `types/unions/unions.ts`, through `unionOf`, flattens it and folds a union equal to it back into it.
    - `types/properties/finiteness.ts` walks `RecursiveType`.
@@ -436,7 +436,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
      It rewrites only a `;` between two entries of a field, variant, trait-member or constraint list, writing `,`. A `;` between statements is left as it is.
 9. **Parameter patterns.**
     - **Syntax.** The `Parameter` node (`src/compiler/syntax/expressions/index.ts`) holds a target pattern where it holds a name. `parser/parts/functions.ts` reads one with the declaration-target parser of `parser/statements/variables.ts`.
-    - **Checker.** `checker/patterns/targets.ts`'s `declareTargets`, the one home for declaration targets, declares a parameter's names too, and refutability is checked as it is for targets. A pattern's own type comes from `patternTypeOf` (`checker/types/written/named-types.ts`). Named arguments and `self` read a parameter's `as` name.
+    - **Checker.** `checker/constructs/patterns/targets.ts`'s `declareTargets`, the one home for declaration targets, declares a parameter's names too, and refutability is checked as it is for targets. A pattern's own type comes from `patternTypeOf` (`checker/types/written/named-types.ts`). Named arguments and `self` read a parameter's `as` name.
     - **Lowering.** The function takes the argument as one hidden parameter and takes it apart at entry, through the same lowering a destructuring `const` uses (`lowering/statements/variables.ts`).
     - **Language service.** Signatures and hovers print the pattern (`src/language-service/signatures/signatures.ts`, `hover.ts`).
 10. **Line breaks between items.**

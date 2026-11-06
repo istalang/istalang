@@ -74,7 +74,8 @@ export interface BodyContext {
   readonly acceptedPart: (node: Expression | undefined) => AcceptedPart;
   /**
    * How `node`, passed to a call, takes part in choosing it (§3.7): as `acceptedPart` reads it, a
-   * literal's items whose types only checking tells checked first (expressions/literal-items.ts).
+   * literal's items whose types only checking tells checked first
+   * (constructs/expressions/literal-items.ts).
    */
   readonly argumentPart: (node: Expression) => AcceptedPart;
   /** How `node`, already checked, takes part in building a literal as another type (§3.7). */
@@ -148,7 +149,8 @@ export interface BodyContext {
    */
   readonly recordKey: (value: Expression, owner: Type | undefined) => void;
   /**
-   * Records the literal the indented value `value` was checked as (expressions/indented-values.ts).
+   * Records the literal the indented value `value` was checked as
+   * (constructs/expressions/indented-values.ts).
    */
   readonly recordBuilt: (value: IndentedValue, literal: BuiltLiteral) => void;
   /** Records the variant the bare name `name` chose (resolution/named.ts). */
@@ -157,14 +159,14 @@ export interface BodyContext {
   readonly recordValueCall: (node: Call) => void;
   /**
    * Records that `body`, a branch or a case, never runs: a condition decided by types rules it
-   * out (expressions/decided-conditions.ts), so it is neither checked nor lowered.
+   * out (constructs/expressions/decided-conditions.ts), so it is neither checked nor lowered.
    */
   readonly ruleOut: (body: Block) => void;
   /** Records that `operation` never runs past `operands`, the last of which has no value (§2). */
   readonly stopAt: (operation: Expression | Assignment, operands: readonly Expression[]) => void;
   /**
    * Records the value `condition` always has, by its operands' types
-   * (expressions/decided-conditions.ts).
+   * (constructs/expressions/decided-conditions.ts).
    */
   readonly decide: (condition: Expression, value: boolean) => void;
   /**
@@ -236,7 +238,7 @@ export type TypedPart = Extract<AcceptedPart, { readonly kind: 'typed' }>;
 /** How a composite literal's parts are read: before checking, or as checked (`AcceptedPart`). */
 export type PartReader = (node: Expression | undefined) => AcceptedPart;
 
-/** A body's variables: types, uses, and what targets take (statements/variables.ts). */
+/** A body's variables: types, uses, and what targets take (constructs/statements/variables.ts). */
 export interface Variables {
   readonly declare: (name: Identifier, type: Type) => void;
   readonly declareParameter: (
@@ -258,7 +260,8 @@ export interface Variables {
 }
 
 /**
- * Where each struct or variant literal's fields get values (expressions/structs/literal-fields.ts).
+ * Where each struct or variant literal's fields get values
+ * (constructs/expressions/structs/literal-fields.ts).
  */
 export interface LiteralSources {
   readonly record: (literal: FieldsLiteral, sources: readonly FieldSource[]) => void;
@@ -266,7 +269,7 @@ export interface LiteralSources {
   readonly recordFields: (literal: FieldsLiteral, fields: readonly FieldMember[]) => void;
 }
 
-/** The functions a body is checked in, innermost current (closures/functions.ts). */
+/** The functions a body is checked in, innermost current (constructs/closures/functions.ts). */
 export interface Functions {
   readonly current: FunctionFrame;
   /** Runs `check` inside `scope`; while its type isn't known, using its own name is reported. */
@@ -279,7 +282,10 @@ export interface Functions {
   readonly checkedOf: (node: NestedFunction) => CheckedFunction | undefined;
 }
 
-/** One function being checked: the body's own, or a nested one (closures/function-scope.ts). */
+/**
+ * One function being checked: the body's own, or a nested one
+ * (constructs/closures/function-scope.ts).
+ */
 export interface FunctionFrame {
   /** The function checked: the body's own declaration, or a nested one; none for a value's body. */
   readonly function: NestedFunction | undefined;
@@ -301,7 +307,9 @@ export interface FunctionFrame {
   readonly cleanup: <Result>(check: () => Result) => Result;
 }
 
-/** One function's result: declared, or gathered from its `return`s (closures/returns.ts). */
+/**
+ * One function's result: declared, or gathered from its `return`s (constructs/closures/returns.ts).
+ */
 export interface Returns {
   readonly declared: Type | undefined;
   /** Checks a `return` and what it returns: its value, or `Unit` for a bare one. */
@@ -310,7 +318,10 @@ export interface Returns {
   readonly propagate: (context: BodyContext, error: Type, span: AnchoredSpan) => void;
 }
 
-/** The loops and labelled blocks around what one function checks (closures/enclosing-scopes.ts). */
+/**
+ * The loops and labelled blocks around what one function checks
+ * (constructs/closures/enclosing-scopes.ts).
+ */
 export interface Enclosing {
   /** Runs `check` inside the body of `scope`. */
   readonly inside: <Result>(scope: LabelledScope, check: () => Result) => Result;
@@ -328,19 +339,19 @@ export interface ImplicitRecord {
   readonly of: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;
 }
 
-/** What each collection literal builds (expressions/collections/collections.ts). */
+/** What each collection literal builds (constructs/expressions/collections/collections.ts). */
 export interface CollectionRecord {
   readonly record: (literal: ArrayLiteral | MapLiteral, form: CollectionForm) => void;
 }
 
-/** How each iteration runs (rules/loops/iteration.ts). */
+/** How each iteration runs (constructs/loops/iteration.ts). */
 export interface IterationRecord {
   readonly record: (iteration: Iteration, form: IterationForm) => void;
 }
 
 /**
- * How each field read reaches its field (expressions/access/member-access.ts), which a place
- * reaching it asks again: a field a key reads is a place's field, never an element
+ * How each field read reaches its field (constructs/expressions/access/member-access.ts), which a
+ * place reaching it asks again: a field a key reads is a place's field, never an element
  * (resolution/calls/places.ts).
  */
 export interface FieldReadRecord {
@@ -348,12 +359,12 @@ export interface FieldReadRecord {
   readonly of: (reading: FieldReading) => FieldRead | undefined;
 }
 
-/** Each pattern's tests and bindings (patterns/matching.ts). */
+/** Each pattern's tests and bindings (constructs/patterns/matching.ts). */
 export interface PatternRecord {
   readonly record: (pattern: Pattern, checked: CheckedPattern) => void;
 }
 
-/** The links of optional chains (expressions/access/optionals.ts). */
+/** The links of optional chains (constructs/expressions/access/optionals.ts). */
 export interface Chains {
   /**
    * Checks the target of `link`'s step; the type the step works on: the value a chained target
@@ -363,7 +374,7 @@ export interface Chains {
   readonly chainOf: (link: Expression) => ChainLink | undefined;
 }
 
-/** What each exit and hold names, recorded as statements/loops.ts resolves it. */
+/** What each exit and hold names, recorded as constructs/statements/loops.ts resolves it. */
 export interface LabelRecord extends LabelResolution {
   readonly recordExit: (exit: Break | Continue, target: LabelledScope) => void;
   readonly recordHold: (hold: Hold, target: LabelledScope) => void;

@@ -8,22 +8,24 @@
  * - What lowering needs is recorded as checking goes: every expression's type, every call's target,
  *   and every value's implicit conversions (§2, types/fitting/fit.ts), which `fit` finds: on the
  *   node giving the value, or, for a value an assignment writes, on its part
- *   (statements/assignments.ts). Nothing is recomputed later, so lowering sees what was checked.
+ *   (constructs/statements/assignments.ts). Nothing is recomputed later, so lowering sees what was
+ *   checked.
  * - A node is checked once. A literal of items each with a type of its own, checked before the type
  *   it is built as is decided (§3.7: a call's argument, a producer agreeing with others), is built
  *   again as that type (`rebuild`): its own literals are checked again as their parts, and every
  *   other item keeps what it was checked to have, fitted to its part, as an item an argument
- *   literal checked ahead of it does (expressions/literal-items.ts). So is a tuple or struct
- *   literal whose items' types only checking tells, and a collection literal an `any` member might
- *   take whole, where its own type doesn't go into the union expected: as the one member its
- *   checked items build it as (§2, expressions/built-members.ts). Any other collection literal is
- *   built as its member before its items are checked, so they agree on that member's item.
+ *   literal checked ahead of it does (constructs/expressions/literal-items.ts). So is a tuple or
+ *   struct literal whose items' types only checking tells, and a collection literal an `any` member
+ *   might take whole, where its own type doesn't go into the union expected: as the one member its
+ *   checked items build it as (§2, constructs/expressions/built-members.ts). Any other collection
+ *   literal is built as its member before its items are checked, so they agree on that member's
+ *   item.
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. What they record of a
- *   node is kept per pass of a field loop (passes.ts), so the body reads as each pass checked it.
- *   A lambda or local function is checked in this same body, in a function scope of its own
- *   (closures/), so its result, loops and asyncness are the innermost scope's, and a name used in
- *   it is captured where it is used (`useEntity`).
+ *   node is kept per pass of a field loop (passes.ts), so the body reads as each pass checked it. A
+ *   lambda or local function is checked in this same body, in a function scope of its own
+ *   (constructs/closures/), so its result, loops and asyncness are the innermost scope's, and a
+ *   name used in it is captured where it is used (`useEntity`).
  */
 
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
@@ -52,11 +54,30 @@ import type {
 import type { SyntaxNode } from '../../../syntax/tree.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { SignatureParameter } from '../../check.ts';
-import { FunctionScope } from '../../closures/function-scope.ts';
-import { FunctionScopes } from '../../closures/functions.ts';
-import { inferLambda } from '../../closures/lambdas.ts';
-import { declareOwnCall } from '../../closures/own-calls.ts';
-import { blockTail, ReturnScope } from '../../closures/returns.ts';
+import { FunctionScope } from '../../constructs/closures/function-scope.ts';
+import { FunctionScopes } from '../../constructs/closures/functions.ts';
+import { inferLambda } from '../../constructs/closures/lambdas.ts';
+import { declareOwnCall } from '../../constructs/closures/own-calls.ts';
+import { blockTail, ReturnScope } from '../../constructs/closures/returns.ts';
+import { FieldReads } from '../../constructs/expressions/access/member-access.ts';
+import { OptionalChains } from '../../constructs/expressions/access/optionals.ts';
+import { builtAsChecked, builtMember } from '../../constructs/expressions/built-members.ts';
+import { CollectionForms } from '../../constructs/expressions/collections/collections.ts';
+import {
+  acceptedPartOf,
+  acceptsOf,
+  checkedPartOf,
+  expressionHandlers,
+  isBuiltLiteral,
+} from '../../constructs/expressions/expressions.ts';
+import { argumentPartOf } from '../../constructs/expressions/literal-items.ts';
+import { StructLiterals } from '../../constructs/expressions/structs/literal-sources.ts';
+import { Iterations } from '../../constructs/loops/iteration.ts';
+import { CheckedPatterns } from '../../constructs/patterns/matching.ts';
+import { declareParameter, declareTargets } from '../../constructs/patterns/targets.ts';
+import { LabelTargets } from '../../constructs/statements/loops.ts';
+import { checkBlock, statementHandlers } from '../../constructs/statements/statements.ts';
+import { VariableScope } from '../../constructs/statements/variables.ts';
 import type {
   AcceptedPart,
   Accepts,
@@ -69,30 +90,11 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldPassType } from '../../contexts/passes.ts';
 import { Passes } from '../../contexts/passes.ts';
 import { useSite } from '../../contexts/use-site.ts';
-import { FieldReads } from '../../expressions/access/member-access.ts';
-import { OptionalChains } from '../../expressions/access/optionals.ts';
-import { builtAsChecked, builtMember } from '../../expressions/built-members.ts';
-import { CollectionForms } from '../../expressions/collections/collections.ts';
-import {
-  acceptedPartOf,
-  acceptsOf,
-  checkedPartOf,
-  expressionHandlers,
-  isBuiltLiteral,
-} from '../../expressions/expressions.ts';
-import { argumentPartOf } from '../../expressions/literal-items.ts';
-import { StructLiterals } from '../../expressions/structs/literal-sources.ts';
-import { CheckedPatterns } from '../../patterns/matching.ts';
-import { declareParameter, declareTargets } from '../../patterns/targets.ts';
 import { reportUnmet } from '../../resolution/conformance/trait-objects.ts';
 import { ImplicitCalls } from '../../resolution/implicit.ts';
 import { checkDisposeUses } from '../../rules/disposal/disposal.ts';
 import { checkDropped } from '../../rules/disposal/dropped.ts';
-import { Iterations } from '../../rules/loops/iteration.ts';
 import { checkTestingCalls } from '../../rules/testing.ts';
-import { LabelTargets } from '../../statements/loops.ts';
-import { checkBlock, statementHandlers } from '../../statements/statements.ts';
-import { VariableScope } from '../../statements/variables.ts';
 import { statementPlace } from '../../surface/checked-annotation.ts';
 import type { CheckedBody, ValueSite } from '../../surface/checked-body.ts';
 import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';

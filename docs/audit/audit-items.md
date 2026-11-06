@@ -41,7 +41,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - `declarations.ts`'s banner states: *"The tree keeps each declaration form apart where the forms hold different things, so a consumer never meets a combination the syntax can't produce."* Yet `shared struct` is modeled as `isShared: boolean` on `StructDeclaration` (requiring ~12 call sites across checker and lowering to check `isShared`), and `new X{…}` is modeled as `isNew: boolean` on `StructLiteral`.
   - Similarly, optional chaining uses `isOptional: boolean` on `MemberAccess`, `TupleElement`, `Index`, and `Call`, but `operator: '*' | '->' | '?->'` on `Dereference` (`expressions/chains.ts`).
 - **Missing `unparenthesized` helper for `Pattern` and `TypeNode` (`src/compiler/syntax/patterns.ts`, `types.ts`, D214):**
-  - `src/compiler/syntax/expressions/index.ts` exports `unparenthesized(node: Expression): Expression`, which every phase uses. `syntax/patterns.ts` has `ParenthesizedPattern` and `syntax/types/index.ts` has `ParenthesizedType`, but neither exports an `unparenthesized` helper, forcing `src/compiler/checker/patterns/walk.ts` to define a local `unparenthesized(pattern: Pattern)` copy.
+  - `src/compiler/syntax/expressions/index.ts` exports `unparenthesized(node: Expression): Expression`, which every phase uses. `syntax/patterns.ts` has `ParenthesizedPattern` and `syntax/types/index.ts` has `ParenthesizedType`, but neither exports an `unparenthesized` helper, forcing `src/compiler/checker/constructs/patterns/walk.ts` to define a local `unparenthesized(pattern: Pattern)` copy.
 - **Parallel destructuring-target helpers split across `syntax/statements/index.ts` and `syntax/patterns.ts`:**
   - Because `VariableDeclaration.targets` and `For.targets` are `Pattern[]` while `Assignment.targets` are `Expression[]`, `syntax/statements/index.ts` defines `destructuringOf`, `isTarget`, `destructures`, `targetParts`, `isUnnamedTarget`, and `hasUnnamedTarget`, while `syntax/patterns.ts` defines `targetLeaves`, `targetNames`, and `hasUnnamedPart`.
 - **Synthetic field-default functions tracked via a module-global `WeakSet` (`src/compiler/syntax/declarations/field-defaults.ts`, B9, Q5):**
@@ -100,7 +100,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 #### 2.3 `src/compiler/program/` & `src/compiler/binder/`
 - **Path syntax hardcoded in `program.ts` and `binder/diagnostics.ts` (`src/compiler/program/program.ts`, `src/compiler/binder/diagnostics.ts`, D197):**
   - `program.ts` states that the core imposes no path syntax and `ModuleId` is an opaque URL under any scheme, yet `isTestModule(module: ModuleId)` tests `module.endsWith(testModuleSuffix)` on the URL string, and `binder/diagnostics.ts` hard-codes the literal `'.test.ista'` in diagnostic 4015 instead of `testModuleSuffix`.
-- **Enclosing async function call (`worker.disposing()`) not bound in Binder (`src/compiler/binder/`, `src/compiler/checker/closures/own-calls.ts`, Q10):**
+- **Enclosing async function call (`worker.disposing()`) not bound in Binder (`src/compiler/binder/`, `src/compiler/checker/constructs/closures/own-calls.ts`, Q10):**
   - `worker` in `worker.disposing()` is bound by the binder as the `FunctionsEntity` (or outer `VariableEntity`) of `worker`, forcing `OptionalChains.target` in the checker to intercept it, synthesize a hidden `Identifier` and `VariableEntity`, and store `ownCallReadAt(name)` in a side table that lowering must check before `bindings.entityOf`.
 
 ---
@@ -138,7 +138,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 - **Conflated `'none'` outcome in `witnessOf` hiding inner constraint failures (`src/compiler/checker/resolution/conformance/conformance.ts`, `declared-witness.ts`, D173):**
   - `witnessOf` returns `'none'` both when no candidate matches (`choice.kind !== 'chosen'`) and when a chosen candidate's own constraints fail to instantiate (`isFailure(instantiation)`). Consequently, `declaresWitness` treats a declared-but-uninstantiable witness as declared (blocking derived fallback), and `conform` reports that the outer function is missing rather than reporting the unmet inner constraint on its type parameter.
 - **Redundant parameter/slot shapes and upward type-imports in `resolution/` (`src/compiler/checker/check.ts`, `types/type/index.ts`, `resolution/choosing/binding.ts`, `resolution/choosing/choice.ts`, D229, D230):**
-  - `signatureOf` (`resolution/choosing/choice.ts`) rebuilds `RestSlot` (`restSlotOf`) on every candidate of every call, re-extracting the `Array<T>` element type that `declarations/functions/signatures.ts` already checked.
+  - `signatureOf` (`resolution/choosing/choice.ts`) rebuilds `RestSlot` (`restSlotOf`) on every candidate of every call, re-extracting the `Array<T>` element type that `constructs/declarations/functions/signatures.ts` already checked.
   - `{ readonly type: Type; readonly reference: boolean }` is duplicated as `ParameterSlot` (`types/type/index.ts`) and `ArgumentSlot` (`resolution/choosing/binding.ts`).
   - `CallArgument`, `Passing`, `Accepts`, and `Inapplicability` sit in `resolution/choosing/choice.ts`, forcing `applicability.ts` and `packs.ts` (which `choice.ts` calls) to type-import upward from `choice.ts`.
 - **Incomplete target-typed lambda result inference (`src/compiler/checker/resolution/calls/lambda-arguments.ts`, `body-checker.ts`, D160):**
@@ -172,13 +172,13 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - As a result, `[none, "a"]` accepts `Array<int?>` during `choose`, and `(1, none)` accepts `(string, int?)` during `choose`, causing false overload ambiguity (`5003`) whenever overloads differ in the typed sibling's position.
   - **General fix:** In composite expressions (`Tuple`, `ArrayLiteral`, `MapLiteral`, `If`, `Match`, `Select`), if *any* child has `accepts !== undefined`, children with their own type should contribute `(expected, isOpen) => isOpen(expected) || context.checker.fitOf(childType, expected) !== undefined` instead of `?? true`.
 
-#### 4.2 `src/compiler/checker/patterns/`
+#### 4.2 `src/compiler/checker/constructs/patterns/`
 - **Two stages conflated in `exhaustiveness.ts` `Shape` union & string-encoded array lengths (D224):**
-  - `Shape` in `patterns/exhaustiveness/exhaustiveness.ts` combines pre-normalization AST shapes (`or`, `array`) with matrix-specialization shapes (`any`, `constructor`), forcing `Matrix.useful`, `specialize`, and `shapes.ts` `witnessText` to guard against `array` / `or` with `unreachable`.
+  - `Shape` in `constructs/patterns/exhaustiveness/exhaustiveness.ts` combines pre-normalization AST shapes (`or`, `array`) with matrix-specialization shapes (`any`, `constructor`), forcing `Matrix.useful`, `specialize`, and `shapes.ts` `witnessText` to guard against `array` / `or` with `unreachable`.
   - Array-length constructors encode their semantics in strings (`[3]` vs. `[3+]`) and parse them back via `isLongerKey` (`key.endsWith('+]')`).
-- **Side-channel `walk.downcasts` map and duplicate `unparenthesized` in `patterns/walk.ts` (D214):**
+- **Side-channel `walk.downcasts` map and duplicate `unparenthesized` in `constructs/patterns/walk.ts` (D214):**
   - `takeDowncast` writes the narrowed `ValuePart` into `walk.downcasts` keyed by AST node, and `AsPattern` reads it back through a file-private `unparenthesized(node: Pattern)` helper instead of `walk.take` returning the matched `ValuePart` directly.
-- **False user diagnostics on prelude-owned pattern and operator helpers (`patterns/matching.ts`, `expressions/access/optionals.ts`, `expressions/literals/collections.ts`, `expressions/templates.ts`, B11):**
+- **False user diagnostics on prelude-owned pattern and operator helpers (`constructs/patterns/matching.ts`, `expressions/access/optionals.ts`, `expressions/literals/collections.ts`, `expressions/templates.ts`, B11):**
   - Calls to toolchain-invariant prelude functions (`_patternItem`, `_patternRest`, `length`, `compare`, `_inclusiveEnd`, `panic`, `join`) go through `implicitCall`, which requires a user-facing `failure: () => Diagnostic` callback that invents impossible user errors if the prelude lacks them.
 
 #### 4.3 `src/compiler/checker/rules/flow/` & `src/compiler/checker/rules/`
@@ -194,11 +194,11 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 - **Stale `${name}$` syntax in diagnostic 5702 (`src/compiler/checker/diagnostics/lifetimes.ts`):**
   - `disposeSelfEscapes` (code 5702) still reads: `"In 'dispose', '${name}' can only be used as '${name}$' or passed to an extern function..."`, referencing the removed `x$` syntax instead of `*${name}` / `${name}->f`.
 
-#### 4.4 `src/compiler/checker/expressions/` & `src/compiler/checker/statements/`
-- **Duplicated comparison & membership checking across binary operators, chains, and patterns (`src/compiler/checker/expressions/operators.ts`, `patterns/matching.ts`, D226):**
+#### 4.4 `src/compiler/checker/constructs/expressions/` & `src/compiler/checker/constructs/statements/`
+- **Duplicated comparison & membership checking across binary operators, chains, and patterns (`src/compiler/checker/constructs/expressions/operators.ts`, `constructs/patterns/matching.ts`, D226):**
   - `checkBinary` and `checkMembership` resolve binary `<` / `==` / `in` one way (via `resolveOperator`, recording in `body.calls`), while `checkChainedComparison` and `checkLinkCall` resolve chained `a < b == c in d` a second way (via `implicitCall`, recording at `link.right` in `body.implicitCallOf`).
   - Meanwhile, ordering tests in patterns are split across three representations (`compare` test on `CompareFieldPattern`, `bound` test on `RangePattern`, and `length` + implicit `compare` on `ArrayPattern`).
-- **Single-target vs. destructuring assignment split and `_ = e` error suppression (`src/compiler/checker/statements/assignments.ts`, `resolution/calls/places.ts`, D101, D168):**
+- **Single-target vs. destructuring assignment split and `_ = e` error suppression (`src/compiler/checker/constructs/statements/assignments.ts`, `resolution/calls/places.ts`, D101, D168):**
   - `_ = e` checks `_` via `assignedPlace`, which returns `errorType`, and then passes `expected = errorType` into `context.expression(node.value, place)`. Because `errorType` fits everything, type errors inside `e` (such as `_ = if c: 1 else: "two"`) are silently suppressed (**D101**).
   - Single-target assignment `x = e` passes `place` as `expected` to `e`, whereas destructuring assignment `a, b = e` checks `e` with `expected = undefined`, rejecting `xs, n = ([], 1)` and `o, n = (none, 1)` (**D168**).
   - Place identity/overlap is computed by string paths in `assignments.ts` (`placeName`, `overlap`) and by binder entities/AST steps in `resolution/calls/places.ts` (`rootVariable`, `throughShared`, `reachesAccessor`).
@@ -224,7 +224,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - `lowerBinary` (`operators.ts`), `compared` (`operators.ts` for `ChainedComparison`), and `passed` (`patterns.ts` for pattern tests) all emit `equal` + `not` and `compare` + `order` separately, with `patterns.ts` defining its own local `equal` helper.
 - **Case-less `select` with `else:` emits invalid bytecode (`src/compiler/lowering/expressions/control/select.ts`, D149):**
   - `select:\n  else: v` passes type-checking, and `lowerSelect` emits a `select` instruction with `cases: []`, which fails Definition schema validation (`cases: z.array(selectCase).min(1)` in `definition/instructions/suspension.ts`).
-- **Spread elements cannot wrap `T` into `T?` (`src/compiler/lowering/expressions/collections/collections.ts`, `checker/expressions/collections/collections.ts`, B8):**
+- **Spread elements cannot wrap `T` into `T?` (`src/compiler/lowering/expressions/collections/collections.ts`, `checker/constructs/expressions/collections/collections.ts`, B8):**
   - `[0, ...xs]` where `xs: Array<int>` and `Array<int?>` is expected is rejected because a spread copies or iterates its items without per-item conversion/wrapping.
 - **10-kind closed worklist in `DefinitionTables` (`src/compiler/lowering/tables/tables.ts`, `lower.ts`):**
   - `PendingEntry | ClosingEntry` hard-codes 10 entry kinds (`instance`, `nested`, `hostNative`, `constantNative`, `externConstant`, `start`, `asyncFit`, `dispatch`, `anyConversion`, `anyField`), each with its own indexing method on `DefinitionTables` and dispatch arm in `lower.ts`.
@@ -303,9 +303,9 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
    - Both `fitOf` and `Inference.match` implement the exact same 5-step conversion hierarchy (exact/assignable → plain-to-async function → 1-tuple ↔ element → `any` trait object → `Optional` wrapping), differing only in how leaf types compare. Extracting one parameterized conversion matcher makes adding or changing an implicit conversion a single-file edit.
 2. **Whole-Body AST / Control-Flow Analysis (`src/compiler/checker/rules/flow/forward.ts` vs. `rules/annotations.ts`, `rules/disposal.ts`, `rules/suites.ts`):**
    - `rules/flow/forward.ts` models intra-function control flow (skipping nested functions via `nestsFunction`), while `waits` (`annotations.ts`), `checkSelfStays` (`disposal.ts`), and `firstEffect` (`suites.ts`) each hand-roll recursive AST walks over `childrenOf` / `bodyChildrenOf`.
-3. **Coinductive Type-Graph Traversal (`src/compiler/checker/types/traits/sendable.ts`, `rules/json-forms/index.ts`, `types/properties/held.ts`, `declarations/layout/struct-rules.ts`, Q7):**
+3. **Coinductive Type-Graph Traversal (`src/compiler/checker/types/traits/sendable.ts`, `rules/json-forms/index.ts`, `types/properties/held.ts`, `constructs/declarations/layout/struct-rules.ts`, Q7):**
    - Four modules walk composite/nominal `Type` graphs with their own visited-set cycle guards (`deciding`, `#deciding`, `walked`, `seen`). Extracting a cycle-safe type-graph reducer unifies all four.
-4. **Comparison & Membership Checking and Lowering (`src/compiler/checker/expressions/operators.ts`, `patterns/matching.ts`, `src/compiler/lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):**
+4. **Comparison & Membership Checking and Lowering (`src/compiler/checker/constructs/expressions/operators.ts`, `constructs/patterns/matching.ts`, `src/compiler/lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):**
    - Binary comparisons/memberships (`a < b`, `x in c`), chained comparisons (`a < b in c`), and pattern ordering tests (`amount > 1000`, `1..=5`, `[a, ...rest]`) are checked and lowered through three separate code paths. Unifying them into one `ComparisonLink` / ordering helper eliminates the triplication.
 5. **Declared-Value Field & Variant Readers (`src/definition/values/declared-values.ts` vs. `stdlib/values/arguments.ts`, `definition/values/json-values.ts`, `runtime/testing/run-tests.ts`, Q16, Q17, D201):**
    - `declared-values.ts` builds structs and variants by declared name, but lacks `fieldValueOf` (reading a struct field by name) and keeps `variantShape` private, causing 3 other modules to re-implement field/variant index lookup.
@@ -351,7 +351,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | Concept / Rule | Home 1 | Home 2 (+ others) |
 | --- | --- | --- |
 | 5-step implicit conversion (`Fit` vs. `Inference`) | `checker/types/fitting/fit.ts` (`fitOf`) | `checker/types/inference/infer.ts` (`Inference.match`) (D222) |
-| Binary vs. chained vs. pattern comparisons | `checker/expressions/operators.ts` (`checkBinary`) & `lowering/expressions/operators.ts` (`lowerBinary`) | `checkChainedComparison` / `compared` & `patterns/matching.ts` / `lowering/parts/patterns.ts` (D226) |
+| Binary vs. chained vs. pattern comparisons | `checker/constructs/expressions/operators.ts` (`checkBinary`) & `lowering/expressions/operators.ts` (`lowerBinary`) | `checkChainedComparison` / `compared` & `constructs/patterns/matching.ts` / `lowering/parts/patterns.ts` (D226) |
 | Module-qualified name `${module}.${name}` | `language/well-known/index.ts` (`qualifiedName`) | `lowering/tables/names.ts` (`qualifiedNameOf`), `definition/extern-key.ts` (`externKey`) (D174) |
 | Member-access chain → `QualifiedName` | `parser/parts/names.ts` (`qualifiedPath`) | `binder/constructs/expressions.ts` (`qualifiedPathOf`) |
 | Millisecond time unit constants | `scanner/numbers.ts` | `stdlib/time/iso.ts` |
@@ -362,7 +362,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | Unpacking `Array<T>` element type in checker | `wellKnownArguments(checker, wellKnown.array, type)?.[0]` at 7 sites | No `arrayElement` helper in `checker/types/well-known.ts` (Q8) |
 | What heap objects are roots | `scheduler/instance/index.ts` (`'execution' \| 'answer'`) | `lifetimes/holders.ts`, `lifetimes/orphans.ts`, `scheduler/instance/heap.ts` (`'execution'` only) (D165, D198) |
 | Building an `Optional<int>` variant in lowering | `lowering/expressions/structs/variants.ts` (`buildVariant`) | `lowering/expressions/collections/collections.ts` (`optionalInt`) |
-| Unparenthesizing AST nodes | `syntax/expressions/index.ts` (`unparenthesized`) | `checker/patterns/walk.ts` (private `unparenthesized` for patterns) (D214) |
+| Unparenthesizing AST nodes | `syntax/expressions/index.ts` (`unparenthesized`) | `checker/constructs/patterns/walk.ts` (private `unparenthesized` for patterns) (D214) |
 
 ### 7. Language Pitfalls Solved vs. Pitfalls Remaining
 
@@ -388,14 +388,14 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | --- | --- | --- | --- | --- |
 | **1** | **Fix nested multi-line `{ … }` block parsing (`src/compiler/parser/layout.ts` `placeOfNextLine`, D186):** Check `next.kind === cursor.closer && cursor.ownsCloser` before `cursor.closesEnclosing(next.kind)`. | Bug Fix (Parser) | 2 files (`layout.ts`, `cursor.ts`) | S |
 | **2** | **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (`src/compiler/checker/rules/agreement.ts`, `expressions/tuples.ts`, `expressions/literals/collections.ts`, D190):** Trigger target-typing when *any* producer has `accepts !== undefined`, and check typed siblings against `expected` instead of `?? true`. | Bug Fix / Generalization (Checker) | 4 files in `checker/` | S |
-| **3** | **Fix `_ = e` error suppression & destructuring assignment expected types (`src/compiler/checker/statements/assignments.ts`, D101, D168):** Don't pass `errorType` as `expected` for `_ = e`, and propagate target types into destructuring assignments. | Bug Fix (Checker) | 2 files in `checker/statements/` | S |
+| **3** | **Fix `_ = e` error suppression & destructuring assignment expected types (`src/compiler/checker/constructs/statements/assignments.ts`, D101, D168):** Don't pass `errorType` as `expected` for `_ = e`, and propagate target types into destructuring assignments. | Bug Fix (Checker) | 2 files in `checker/constructs/statements/` | S |
 | **4** | **Apply recorded `Fit` conversions in compile-time constant evaluation (`src/compiler/checker/rules/computation.ts`, D216):** Wrap `Some`, convert 1-tuples, and refuse/convert async fits on top-level `const` values. | Bug Fix (Checker) | 2 files in `checker/` | S |
 | **5** | **Fix same-instance mock return values bypassing `arriving` (`src/runtime/scheduler/testing/mocks.ts`, D182):** Pass same-instance mock results through `arriving` so `testing.handle<T>()` resources are disposed. | Bug Fix (Runtime) | 2 files in `runtime/scheduler/` | S |
 | **6** | **Fix case-less `select:` with `else:` (`src/compiler/lowering/expressions/control/select.ts`, D149) & stale `${name}$` in diagnostic 5702 (`src/compiler/checker/diagnostics/lifetimes.ts`):** Lower 0-case `select` directly to its `else` body; update 5702 message to `*${name}`. | Bug Fix (Lowering / Diagnostics) | 2 files | XS |
 | **7** | **Guard host process against VM frame-depth OOM, `[...s]` string-length OOM, and unbounded `decimal` places (`src/runtime/scheduler/segment/limits.ts`, `src/text/code-points.ts`, `src/stdlib/decimal/arithmetic.ts`, D155, D194, D195):** Enforce max frame depth in `SegmentRunner.call`, add $O(1)$-space `codePointCount`, and cap `decimal` places. | Resilience / Safety | 5 files | S |
 | **8** | **Leaf DRY extractions (`qualifiedName` [D174], `qualifiedPath`, time-unit constants, `compareOrdered`, `closureOf` [Q15], `fieldValueOf` in `declared-values.ts` [Q16, Q17, D201], `optionalInt` → `buildVariant`, `arrayElement` in `types/well-known.ts` [Q8]):** Deduplicate leaf helpers from foundation upward. | DRY | ~18 leaf files | S |
 | **9** | **Unify 5-step implicit conversion logic between `types/fitting/fit.ts` and `types/inference/infer.ts` (D222) + `never` return type assignability (D180):** Extract shared conversion matcher parameterized by leaf comparison. | Generalization / DRY | 3 files in `checker/` | M |
-| **10** | **Unify comparison & membership checking and lowering (`expressions/operators.ts`, `patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):** One checker function and one lowering function over `ComparisonLink` and pattern ordering tests. | DRY / Generalization | 4 files in `compiler/` | M |
+| **10** | **Unify comparison & membership checking and lowering (`expressions/operators.ts`, `constructs/patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):** One checker function and one lowering function over `ComparisonLink` and pattern ordering tests. | DRY / Generalization | 4 files in `compiler/` | M |
 | **11** | **Unify runtime `HeapObject` kind tables, `isRoot`, and `WeakSide` handle surface (`src/runtime/snapshot/holdings.ts`, `lifetimes/`, `scheduler/`, D115, D116, D165, D198):** One `isRoot(object)` in `holdings.ts`, `Handlers` for all kind tables, and consistent handle/id methods on `WeakSide`. | Architecture / DRY | 6 files in `runtime/` | M |
 | **12** | **Remove upward type-imports in contracts (`checker/contexts/context.ts` [Q13], `checker/resolution/choosing/choice.ts` [D230], `runtime/natives.ts` [D179]) and enable type-import cycle checking:** Move shared vocabularies to lower modules. | Layering / DIP | 8 files | M |
 

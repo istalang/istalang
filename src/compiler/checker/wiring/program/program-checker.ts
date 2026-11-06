@@ -6,13 +6,14 @@
  * - Checking is lazy. A function's body is checked the first time anything needs it: its module's
  *   diagnostics, lowering, or another function inferring a result from a call to it. Each entry
  *   keeps what it reported, and a module's diagnostics are read back from what its check read
- *   (declarations/module-checks.ts), so each is reported once and found by every module it is in.
+ *   (constructs/declarations/module-checks.ts), so each is reported once and found by every module
+ *   it is in.
  * - A top-level constant is checked the same lazy way, and one reached while it is being checked
  *   is defined through itself (§3).
  * - What one kind of declaration needs lives in a unit beside its rules, which this class composes
- *   (declarations/: functions, constants, layouts, parameters, aliases, static functions;
- *   resolution/: type parameters, the type rules and fitting; rules/: expansion), as BodyChecker
- *   composes a body's units.
+ *   (constructs/declarations/: functions, constants, layouts, parameters, aliases, static
+ *   functions; resolution/: type parameters, the type rules and fitting; rules/: expansion), as
+ *   BodyChecker composes a body's units.
  * - Items checked by their module are its top-level items and a trait's members; type parameters
  *   resolve their constraints in the module declaring them (program-inputs.ts).
  * - A checker made with the checker of an earlier snapshot takes over its entries wherever what
@@ -47,6 +48,18 @@ import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { CheckedConstant, Disposal, SignatureParameter, VariantMember } from '../../check.ts';
+import { Aliases } from '../../constructs/declarations/aliases/index.ts';
+import { ConstantChecks } from '../../constructs/declarations/constants.ts';
+import { FunctionChecks } from '../../constructs/declarations/functions/functions.ts';
+import {
+  type DefaultsBody,
+  Parameters,
+} from '../../constructs/declarations/functions/parameters.ts';
+import { writtenByReference } from '../../constructs/declarations/functions/signatures.ts';
+import { StaticFunctions } from '../../constructs/declarations/functions/statics.ts';
+import { Layouts } from '../../constructs/declarations/layout/index.ts';
+import { ModuleChecks } from '../../constructs/declarations/module-checks.ts';
+import { declareParameter } from '../../constructs/patterns/targets.ts';
 import type {
   CheckerContext,
   CheckerNote,
@@ -54,16 +67,7 @@ import type {
   ProgramInputs,
   RootGoals,
 } from '../../contexts/context.ts';
-import { Aliases } from '../../declarations/aliases/index.ts';
-import { ConstantChecks } from '../../declarations/constants.ts';
-import { FunctionChecks } from '../../declarations/functions/functions.ts';
-import { type DefaultsBody, Parameters } from '../../declarations/functions/parameters.ts';
-import { writtenByReference } from '../../declarations/functions/signatures.ts';
-import { StaticFunctions } from '../../declarations/functions/statics.ts';
-import { Layouts } from '../../declarations/layout/index.ts';
-import { ModuleChecks } from '../../declarations/module-checks.ts';
 import { Lookup } from '../../lookup/lookup.ts';
-import { declareParameter } from '../../patterns/targets.ts';
 import { rootSearches } from '../../resolution/conformance/conformance.ts';
 import { programRootGoals } from '../../resolution/conformance/root-goals.ts';
 import { memberWitnesses } from '../../resolution/conformance/trait-objects.ts';

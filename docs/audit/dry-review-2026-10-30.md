@@ -29,20 +29,20 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - `notesOfReads(entry)` walks the full transitive `entry.reads` graph from scratch (allocating `seen = new Set`, `pending = [...entry.reads]`, and `notes = []`) on every call to `notesFrom(entry)`, `Entries.notesReached()`, and `#replays` (`case 'notes'`), even after an entry is closed (`!entry.running && !entry.open`) and multiple times within one computing entry.
    - **Fix:** Memoize transitive notes on closed `Entry` nodes and track visited read subgraphs across `notesReached()` calls within an active computation.
 
-4. **`[high]` Three parallel static-function owner resolvers; `checkClashes` misses static overload clashes across type aliases (`src/compiler/checker/declarations/functions/statics.ts:81`, `src/compiler/checker/rules/clashes.ts:121`, `src/language-service/completion/places/declared-name.ts:47`)**
-   - `StaticFunctions.#ownerOf` (`declarations/functions/statics.ts:81–93`) unwraps `TypeAliasDeclaration` via `checker.aliasedType(owner)` so `fn Alias.f()` and `fn Target.f()` share one `StaticOwner`.
+4. **`[high]` Three parallel static-function owner resolvers; `checkClashes` misses static overload clashes across type aliases (`src/compiler/checker/constructs/declarations/functions/statics.ts:81`, `src/compiler/checker/rules/clashes.ts:121`, `src/language-service/completion/places/declared-name.ts:47`)**
+   - `StaticFunctions.#ownerOf` (`constructs/declarations/functions/statics.ts:81–93`) unwraps `TypeAliasDeclaration` via `checker.aliasedType(owner)` so `fn Alias.f()` and `fn Target.f()` share one `StaticOwner`.
    - `ownerKeyOf` (`rules/clashes.ts:121–131`) resolves `declaration.owner` separately using `checker.typeKeys.identityOf(entity.declaration)` *without* unwrapping `TypeAliasDeclaration`, so `checkClashes` misses overload clashes when one static function is declared on a type alias and another on the aliased type.
    - `ownsStatics` (`completion/places/declared-name.ts:47–59`) defines a third list (`staticOwnerKinds`) that also omits `TypeAliasDeclaration`.
    - **Fix:** Give static-owner resolution one home in the checker (`staticTargetOf` / `StaticFunctions`) and route `checkClashes` and `declared-name.ts` through it.
    - **Done** (`p2-structural`): `staticOwnerOf` and `declaredOwnerOf` (`types/written/named-types.ts`) are the one home: `StaticFunctions`, `checkClashes` (grouping by owner, so an alias's statics clash with its type's), `staticTargetOf` and completion's declared names all read them. `typeOfEntity` (`types/written/resolve-type.ts`) is the one dispatch from a name to its type, which `namedType` and `entityType` share. An alias of a shape owns statics as the shape (§3.17).
 
-5. **`[medium]` Three parallel call-checking pipelines across `resolveCall`, `implicitCall`, and `checkValueCall` (`src/compiler/checker/resolution/calls/resolve.ts:103`, `src/compiler/checker/resolution/implicit.ts:69`, `src/compiler/checker/closures/value-calls.ts:28`)**
-   - `resolveCall` (`complete` in `resolution/calls/resolve.ts:103–153`) and `implicitCall` (`resolution/implicit.ts:69–114`) duplicate the post-candidate pipeline (`choose`, `ambiguousCall` with `argumentListText`, `instantiate`, `fitArguments`, `callMade`, and result `substitute`), while `checkValueCall` (`closures/value-calls.ts:28–75`) duplicates the single-callee argument binding (`takenBy`), error reporting (`explain`), `fitArguments`, and `checkReferencedPlaces`.
+5. **`[medium]` Three parallel call-checking pipelines across `resolveCall`, `implicitCall`, and `checkValueCall` (`src/compiler/checker/resolution/calls/resolve.ts:103`, `src/compiler/checker/resolution/implicit.ts:69`, `src/compiler/checker/constructs/closures/value-calls.ts:28`)**
+   - `resolveCall` (`complete` in `resolution/calls/resolve.ts:103–153`) and `implicitCall` (`resolution/implicit.ts:69–114`) duplicate the post-candidate pipeline (`choose`, `ambiguousCall` with `argumentListText`, `instantiate`, `fitArguments`, `callMade`, and result `substitute`), while `checkValueCall` (`constructs/closures/value-calls.ts:28–75`) duplicates the single-callee argument binding (`takenBy`), error reporting (`explain`), `fitArguments`, and `checkReferencedPlaces`.
    - Likewise in lowering, `lowerSpawn` (`src/compiler/lowering/expressions/calls.ts:69–113`) duplicates callee/argument preparation from `lowerCall` and `lowerValueCall` (`calls.ts:27–67, 115–136`).
    - **Fix:** Extract a shared resolved-application completion step in `checker/resolution/calls/` and a shared call-lowering preparation helper in `lowering/expressions/calls.ts`.
    - **Done** (`p2-structural`): `applyCall` (`resolution/applied-call.ts`) chooses, reports an ambiguity or the caller's `none`, instantiates, fits the arguments and gives the result, for `resolveCall` and `implicitCall` alike, so P2's conversion is fitted (`fitArguments`) and ranked (`choice.ts`) in one place for every call; `checkValueCall`, which chooses nothing, fits through the same `fitArguments` and explains through the same `explain`. In lowering, `preparedCall` (`lowering/expressions/calls.ts`) evaluates the callee and arguments for `lowerCall` and `lowerSpawn` (which passes all by value).
 
-6. **`[medium]` Double standards in well-known type recognition and bare generic nominal values (`src/compiler/checker/types/type-text.ts:61`, `src/compiler/checker/types/well-known.ts:74`, `src/compiler/checker/expressions/access/names.ts:91`, `src/compiler/checker/expressions/structs/variants.ts:61`)**
+6. **`[medium]` Double standards in well-known type recognition and bare generic nominal values (`src/compiler/checker/types/type-text.ts:61`, `src/compiler/checker/types/well-known.ts:74`, `src/compiler/checker/constructs/expressions/access/names.ts:91`, `src/compiler/checker/constructs/expressions/structs/variants.ts:61`)**
    - `nominalTypeText` (`types/type-text.ts:61`) checks `declaration.name.text === wellKnown.optional.name` by string instead of comparing `type.entity === checker.optionalEntity`, formatting any user-declared `enum Optional<T>` as `T?`. Meanwhile `optionalInner` (`types/fitting/fit.ts:57`) and `optionalArgument` (`types/well-known.ts:74`) provide two different functions to unwrap `T?`.
    - **Done** (`p3-unions`), the unwrapping: `optionalArgument` is gone, and every reader of `T?` asks `optionalInner` (`types/fitting/fit.ts`). `nominalTypeText`'s name check goes with `Optional` itself, which proposal 3 makes the alias `T | None`, printed structurally.
    - `enumTypeFor` (`expressions/structs/variants.ts:61–85`) unwraps optionals on `expected` (`sameEnum`) and fills default type arguments for bare generic enum variants, whereas `bareStructValue` (`expressions/access/names.ts:91–116`) neither unwraps optionals on `expected` nor fills default type arguments for bare fieldless generic structs.
@@ -91,10 +91,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 14. `src/compiler/checker/types/inference/` & `src/compiler/checker/types/traits/`
 - [x] 15. `src/compiler/checker/resolution/`
 - [x] 16. `src/compiler/checker/resolution/calls/`
-- [x] 17. `src/compiler/checker/patterns/` & `src/compiler/checker/rules/flow/`
+- [x] 17. `src/compiler/checker/constructs/patterns/` & `src/compiler/checker/rules/flow/`
 - [x] 18. `src/compiler/checker/rules/` (including `rules/json-forms/`)
-- [x] 19. `src/compiler/checker/declarations/` & `src/compiler/checker/closures/`
-- [x] 20. `src/compiler/checker/expressions/`, `src/compiler/checker/statements/` & `src/compiler/checker/lookup/`
+- [x] 19. `src/compiler/checker/constructs/declarations/` & `src/compiler/checker/constructs/closures/`
+- [x] 20. `src/compiler/checker/constructs/expressions/`, `src/compiler/checker/constructs/statements/` & `src/compiler/checker/lookup/`
 - [x] 21. `src/compiler/lowering/` — core, tables & function lowering (`lower.ts`, `context.ts`, `tables.ts`, `type-table.ts`, `names.ts`, `constants.ts`, `instances.ts`, `filling-entry.ts`, `async-fits.ts`, `bodies.ts`, `code-writer.ts`, `synthesized-code.ts`, `emit-call.ts`, `iteration.ts`, `places.ts`, `optional-chains.ts`, `patterns.ts`, `packs.ts`, `never-lowered.ts`, `function-lowering/`)
 - [x] 22. `src/compiler/lowering/boundary/` & `src/compiler/lowering/trait-objects/`
 - [x] 23. `src/compiler/lowering/expressions/` & `src/compiler/lowering/statements/`
@@ -289,21 +289,21 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `explainNone` (`resolution/calls/resolve.ts`), `implicitOperatorCall` (`resolution/implicit.ts`), and `checkEqualSides` (`types/unions/equality.ts`) each format operand type lists with `.join(' and ')` at the call site instead of `checkerDiagnostics.operatorTypes` formatting an array of operand strings.
   - **Done** (`fast-wins`): `operatorTypes` takes the operand list and joins it.
 
-### 17. `src/compiler/checker/patterns/` & `src/compiler/checker/rules/flow/`
+### 17. `src/compiler/checker/constructs/patterns/` & `src/compiler/checker/rules/flow/`
 
 - **Manual `MatchCase` / `SelectCase` filtering in `FlowWalk` (`src/compiler/checker/rules/flow/forward.ts`, `src/compiler/syntax/expressions/index.ts`):**
   - `constructs.Match` in `rules/flow/forward.ts` writes `node.cases.filter((each) => each.kind === 'MatchCase')` instead of calling `casesOf(node)` (`src/compiler/syntax/expressions/index.ts`).
-  - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `rules/flow/forward.ts`, `binder/constructs/expressions.ts`, `checker/resolution/calls/lambda-arguments.ts`, `checker/expressions/control/select.ts`, and `lowering/expressions/control/select.ts` each filter `each.kind === 'SelectCase'` by hand.
+  - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `rules/flow/forward.ts`, `binder/constructs/expressions.ts`, `checker/resolution/calls/lambda-arguments.ts`, `checker/constructs/expressions/control/select.ts`, and `lowering/expressions/control/select.ts` each filter `each.kind === 'SelectCase'` by hand.
   - **Done** (`fast-wins`): `FlowWalk` calls `casesOf`; `selectCasesOf` beside it serves the five select sites.
-- **Three separate implementations of negative numeric literal unwrapping (`src/compiler/checker/patterns/matching.ts`, `patterns/exhaustiveness/shapes.ts`, `rules/computation.ts`):**
-  - `intValueOf` (`patterns/matching.ts`), `literalKey` (`patterns/exhaustiveness/shapes.ts`), and `Computation.#own` / `isNumberLiteral` (`rules/computation.ts`) each inspect `Unary` with `operator === '-'` over numeric literals independently (and `literalKey` formats `-0` as `'-IntegerLiteral:0'` vs. `'IntegerLiteral:0'` for `0`, even though `-0 == 0`).
+- **Three separate implementations of negative numeric literal unwrapping (`src/compiler/checker/constructs/patterns/matching.ts`, `constructs/patterns/exhaustiveness/shapes.ts`, `rules/computation.ts`):**
+  - `intValueOf` (`constructs/patterns/matching.ts`), `literalKey` (`constructs/patterns/exhaustiveness/shapes.ts`), and `Computation.#own` / `isNumberLiteral` (`rules/computation.ts`) each inspect `Unary` with `operator === '-'` over numeric literals independently (and `literalKey` formats `-0` as `'-IntegerLiteral:0'` vs. `'IntegerLiteral:0'` for `0`, even though `-0 == 0`).
   - **Done** (`fast-wins`): `intValueOf`, `literalKey` and `Computation.#own` read through `signedNumberOf` (`syntax/expressions/literals/numbers.ts`); `-0` keys as `0`, so `case -0` after `case 0` is unreachable (`patterns.test.ts`).
 
 ### 18. `src/compiler/checker/rules/` (including `rules/json-forms/`)
 
-- **Duplicate target binding in `bindLoopTargets` (`src/compiler/checker/rules/iteration.ts`) vs. `declareTargets` (`src/compiler/checker/statements/variables.ts`):**
+- **Duplicate target binding in `bindLoopTargets` (`src/compiler/checker/rules/iteration.ts`) vs. `declareTargets` (`src/compiler/checker/constructs/statements/variables.ts`):**
   - `bindLoopTargets` in `rules/iteration.ts` (`walkTargets(bodyScope(context), node.targets, ...)` followed by `context.variables.declare` and `context.variables.recordTargets`) is an exact copy of `declareTargets` in `statements/variables.ts`.
-  - **Done** (`fast-wins`): `bindLoopTargets` is gone; declarations, `for` and comprehensions call `declareTargets`, which moved to `checker/patterns/targets.ts` because `rules/` sits beneath `statements/` in the checker layers.
+  - **Done** (`fast-wins`): `bindLoopTargets` is gone; declarations, `for` and comprehensions call `declareTargets`, which moved to `checker/constructs/patterns/targets.ts` because `rules/` sits beneath `statements/` in the checker layers.
 - **Duplicate string-field extraction in `Annotations.jsonNameOf` vs. `Annotations.#textOf` (`src/compiler/checker/rules/annotations.ts`):**
   - `jsonNameOf(field)` manually extracts `named?.form.kind === 'struct' ? named.form.fields[0] : undefined` and checks `value?.kind === 'primitive' && typeof value.value === 'string'`, duplicating `this.#textOf(this.ofField(field), 'jsonName') ?? field.name` right below it.
   - **Done** (`fast-wins`): `jsonNameOf` reads through `#textOf`.
@@ -311,33 +311,33 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `Annotations.#problem` resolves `defaultWitness(searchSite(this.#seams.checker), held)` to validate `@JsonSkip` on a field, and `JsonForms.#field` resolves `defaultWitness(searchSite(checker), field.type)` a second time to populate `JsonField.skipped`.
   - **Done** (`p3-unions`): what a skipped field reads back as has one home, `JsonForms.skippedDefaultOf` (`JsonCodecs.skippedDefaultOf`, `json-form.ts`): the form asks it of the field's type in each instance, and annotations ask it, through the checker's `json`, of the type the field is declared with to tell whether `@JsonSkip` may stand there. The two ask of different types, so both stay; the rule is written once.
 
-### 19. `src/compiler/checker/declarations/` & `src/compiler/checker/closures/`
+### 19. `src/compiler/checker/constructs/declarations/` & `src/compiler/checker/constructs/closures/`
 
-- **Three separate implementations of static-function owner resolution; `checkClashes` misses type aliases (`src/compiler/checker/declarations/functions/statics.ts`, `rules/clashes.ts`, `resolution/named.ts`):**
-  - `StaticFunctions.#ownerOf` (`declarations/functions/statics.ts`) unwraps `TypeAliasDeclaration` via `checker.aliasedType(owner)` so `fn Duration.zero()` and `fn MyDuration.zero()` (for `type MyDuration = Duration`) index under the same `StaticOwner`.
+- **Three separate implementations of static-function owner resolution; `checkClashes` misses type aliases (`src/compiler/checker/constructs/declarations/functions/statics.ts`, `rules/clashes.ts`, `resolution/named.ts`):**
+  - `StaticFunctions.#ownerOf` (`constructs/declarations/functions/statics.ts`) unwraps `TypeAliasDeclaration` via `checker.aliasedType(owner)` so `fn Duration.zero()` and `fn MyDuration.zero()` (for `type MyDuration = Duration`) index under the same `StaticOwner`.
   - `ownerKeyOf` (`rules/clashes.ts`) resolves `declaration.owner` separately using `checker.typeKeys.identityOf(entity.declaration)` without unwrapping `TypeAliasDeclaration`, so `checkClashes` misses overload clashes when one static function is declared through a type alias.
   - Both duplicate `entityType(checker, entity)` (`resolution/named.ts`) + `staticTargetOf(checker, type)` (`resolution/choosing/candidates.ts`).
   - **Done** (`p2-structural`): see Ranked Summary item 4.
-- **Duplicate reachable-edges graph walk in `Expansion` and `TypeExpansion` (`src/compiler/checker/rules/expansion.ts`, `declarations/type-expansion.ts`):**
+- **Duplicate reachable-edges graph walk in `Expansion` and `TypeExpansion` (`src/compiler/checker/rules/expansion.ts`, `constructs/declarations/type-expansion.ts`):**
   - `Expansion.#reachedFrom` and `TypeExpansion.#reachedFrom` implement the identical DFS worklist traversal (`visited`, `pending`, `edges`) before passing the collected edges to `endlessEdges` (`types/expansion-edges.ts`).
   - **Done** (`p4-computed`): `endlessEdgesFrom` (`types/expansion-edges.ts`) walks from the judged nodes through `edgesReachedFrom` (`structures/reachable.ts`); each user supplies its nodes' edges and the node an edge leads to.
-- **Third parallel call-checking pipeline in `checkValueCall` (`src/compiler/checker/closures/value-calls.ts`, `resolution/calls/resolve.ts`):**
+- **Third parallel call-checking pipeline in `checkValueCall` (`src/compiler/checker/constructs/closures/value-calls.ts`, `resolution/calls/resolve.ts`):**
   - `checkValueCall` duplicates the error-argument guard, `takenBy` invocation, `explain` reporting, `fitArguments`, and `checkReferencedPlaces` of `resolveCall` (`resolution/calls/resolve.ts`).
   - **Done** (`p2-structural`): see Ranked Summary item 5; a value call has one callee and chooses nothing, so it takes `takenBy` directly and shares the rest by calling the same units.
 
-### 20. `src/compiler/checker/expressions/`, `src/compiler/checker/statements/` & `src/compiler/checker/lookup/`
+### 20. `src/compiler/checker/constructs/expressions/`, `src/compiler/checker/constructs/statements/` & `src/compiler/checker/lookup/`
 
-- **Double standard between bare generic fieldless structs (`bareStructValue`) and bare generic enum variants (`enumTypeFor`) (`src/compiler/checker/expressions/access/names.ts`, `expressions/structs/variants.ts`):**
+- **Double standard between bare generic fieldless structs (`bareStructValue`) and bare generic enum variants (`enumTypeFor`) (`src/compiler/checker/constructs/expressions/access/names.ts`, `expressions/structs/variants.ts`):**
   - `enumTypeFor` (`variants.ts`) unwraps optionals on `expected` via `sameEnum` and fills default type arguments via `typeArgumentsFor` when all type parameters have defaults.
   - `bareStructValue` (`names.ts`) checks `expected?.kind === 'nominal' && expected.entity.declaration === declaration` without unwrapping optionals (`withoutOptionals`), and rejects any generic fieldless struct when `expected` is absent even when all of its type parameters have defaults.
   - **Done** (`p3-unions`): `expectedNominal` (`types/fitting/expected.ts`) gives a value named without type arguments, a bare variant or a fieldless generic struct, the type the expected one asks for through its optionals, else its declaration's defaults; generic struct literals read their type arguments through the expected optionals too (`builtFrom`).
 - **Duplicate field-declaration resolution in `Annotations.#fieldType` (`src/compiler/checker/rules/annotations.ts`) vs. `declaredField` (`src/compiler/checker/lookup/denotations.ts`):**
   - Both map a `DeclaredField | FieldDeclaration` syntax node back to its resolved `FieldMember` in its enclosing `StructDeclaration`, `SharedStructDeclaration`, `EnumDeclaration` (`Variant`), or `TraitDeclaration`, using two different lookup mechanisms (`itemsOf(module).find(declaresField)` vs. `ancestorsOf`).
   - **Done** (`p2-structural`): see Ranked Summary item 8.
-- **Duplicate variable-type resolution in `variableType` (`src/compiler/checker/expressions/access/names.ts`) and `declaredVariableType` (`src/compiler/checker/lookup/denotations.ts`):**
+- **Duplicate variable-type resolution in `variableType` (`src/compiler/checker/constructs/expressions/access/names.ts`) and `declaredVariableType` (`src/compiler/checker/lookup/denotations.ts`):**
   - Both switch on `variable.owner.kind` (`ExternConstantDeclaration` vs. wiring/body/constant variables) to resolve a `VariableEntity`'s declared type.
   - **Done** (`p2-structural`): see Ranked Summary item 8.
-- **Inconsistent method recognition between `noField` / `callMethod` and `lookup/members.ts` (`src/compiler/checker/expressions/structs/structs.ts`, `calls.ts`, `lookup/members.ts`; tracked as `B22`) and duplicate struct-literal constraint checks (`literal-fields.ts`; tracked as `Q6`).**
+- **Inconsistent method recognition between `noField` / `callMethod` and `lookup/members.ts` (`src/compiler/checker/constructs/expressions/structs/structs.ts`, `calls.ts`, `lookup/members.ts`; tracked as `B22`) and duplicate struct-literal constraint checks (`literal-fields.ts`; tracked as `Q6`).**
 
 ### 21. `src/compiler/lowering/` — core, tables & function lowering
 
@@ -370,7 +370,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 24. `src/compiler/compile.ts`
 
-- **Double standard for diagnostic sorting between `diagnoseModule` (`src/compiler/compile.ts`) and `diagnosticsIn` (`src/compiler/checker/declarations/module-checks.ts`):**
+- **Double standard for diagnostic sorting between `diagnoseModule` (`src/compiler/compile.ts`) and `diagnosticsIn` (`src/compiler/checker/constructs/declarations/module-checks.ts`):**
   - `diagnosticsIn` (`module-checks.ts`) sorts diagnostics by `span.start`, then `span.end`, then `code`, then `compareOrdered(message)`, whereas `diagnoseModule` (`compile.ts`) sorts only by `first.span.start - second.span.start`.
   - **Done** (`fast-wins`): Both sort with `compareDiagnostics` (`diagnostics/diagnostic.ts`).
 
@@ -450,17 +450,17 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 ### 32. `src/language-service/completion/` (including `grammar/` and `places/`)
 
 - **Duplicate `ownsStatics` / `staticOwnerKinds` in `completion/places/declared-name.ts` vs. `isNominalEntity` (`src/compiler/checker/types/type/index.ts`):**
-  - `declared-name.ts` defines `staticOwnerKinds = new Set(['StructDeclaration', 'SharedStructDeclaration', 'ExternStructDeclaration', 'EnumDeclaration'])` and `ownsStatics`, duplicating `isNominalEntity` (`src/compiler/checker/types/type/index.ts`) and omitting type aliases (`StaticFunctions.#ownerOf` in `checker/declarations/functions/statics.ts`).
+  - `declared-name.ts` defines `staticOwnerKinds = new Set(['StructDeclaration', 'SharedStructDeclaration', 'ExternStructDeclaration', 'EnumDeclaration'])` and `ownsStatics`, duplicating `isNominalEntity` (`src/compiler/checker/types/type/index.ts`) and omitting type aliases (`StaticFunctions.#ownerOf` in `checker/constructs/declarations/functions/statics.ts`).
   - **Done** (`p2-structural`): `staticOwners` asks `staticOwnerOf(entityType(…))` (`types/written/named-types.ts`), so an alias, of a shape too, is offered.
 - **Hard-coded `'self'` string literal in `completion/places/declared-name.ts` (`src/language-service/completion/places/declared-name.ts`, `src/language/well-known/index.ts`):**
   - `declared-name.ts` writes `const receiver: Candidate = { name: 'self', subject: { kind: 'keyword' } }` instead of importing `receiverParameter` from `src/language/well-known/index.ts` (violating the one-way rule in `docs/reuse/modules-and-names.md`).
   - **Done** (`fast-wins`): `receiver` names `receiverParameter`.
-- **Duplicate `isChangeable` in `completion/places/grammar/index.ts` vs. `VariableScope.isChangeable` / `writtenByReference` (`src/language-service/completion/places/grammar/index.ts`, `src/compiler/checker/statements/variables.ts`, `declarations/functions/signatures.ts`):**
+- **Duplicate `isChangeable` in `completion/places/grammar/index.ts` vs. `VariableScope.isChangeable` / `writtenByReference` (`src/language-service/completion/places/grammar/index.ts`, `src/compiler/checker/constructs/statements/variables.ts`, `constructs/declarations/functions/signatures.ts`):**
   - `isChangeable` in `completion/places/grammar/index.ts` re-implements `owner.kind === 'VariableDeclaration' && owner.isMutable` and `owner.kind === 'Parameter' && owner.type?.kind === 'ReferenceType'` (missing lambda parameters whose `&` reference comes from an expected function type).
 - **Duplicate inline-whitespace check between `goesOn` (`src/language-service/completion/triggers.ts`) and `adjoins` (`src/language-service/completion/places/grammar/position.ts`):**
   - Both slice `tree.source.text` from `before.span.end` to `name?.span.start ?? offset` and test `[...between].every(isInlineWhitespace)`. Placing `adjoinsBefore(cursor)` beside `touchingBefore(cursor)` in `completion/cursor.ts` unifies both.
   - **Done** (`fast-wins`): `adjoinsBefore(cursor)` in `completion/cursor.ts` serves both.
-- **Duplicate `any` downcast target rules across `completion/places/patterns/matched-type.ts` (`downcastTo`), `completion/places/patterns/pattern.ts` (`mayRefer`), and `checker/patterns/constructs/downcasts.ts` (`namedTypeOf`).**
+- **Duplicate `any` downcast target rules across `completion/places/patterns/matched-type.ts` (`downcastTo`), `completion/places/patterns/pattern.ts` (`mayRefer`), and `checker/constructs/patterns/constructs/downcasts.ts` (`namedTypeOf`).**
 - **Tracked completion items (`P13`–`P16`, `P19`, `Q34`, `Q35`, `B23`, `F14`, `F15`; tracked in `tracker.md`).**
 
 ### 33. `src/lsp/` (including `providers/`)

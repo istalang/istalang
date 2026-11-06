@@ -4,11 +4,11 @@
  * however the aliases writing them are named or nested (equi-recursive identity).
  *
  * - A group of alias bodies closes together: each body resolved with a placeholder wherever a use
- *   of the group's aliases stands (declarations/aliases/recursive-bodies.ts). Their term graph is
- *   minimized (recursive-terms.ts), and each class holding a body, or a node of another graph a
- *   body reached, becomes a node: its body rebuilt from its representative term, a node's own type
- *   wherever a node is reached again, any other class rebuilt in place. So a graph refers to no
- *   other graph, and its parts hold no recursive type (../parts/type-children.ts).
+ *   of the group's aliases stands (constructs/declarations/aliases/recursive-bodies.ts). Their term
+ *   graph is minimized (recursive-terms.ts), and each class holding a body, or a node of another
+ *   graph a body reached, becomes a node: its body rebuilt from its representative term, a node's
+ *   own type wherever a node is reached again, any other class rebuilt in place. So a graph refers
+ *   to no other graph, and its parts hold no recursive type (../parts/type-children.ts).
  * - A recursive alias in a union is flattened: its members join the union, as a union member's do.
  * - A computed type a body holds over a use of the group (a type `match` given it, say) stays
  *   unreduced while that use is a placeholder, which decides nothing. Once the group has closed,

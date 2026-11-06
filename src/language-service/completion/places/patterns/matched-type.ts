@@ -98,7 +98,7 @@ export function fieldsMatchedBy(
  * resolved it, or `type`'s own struct, a shape an alias names among them (§3.17); against an `any`
  * type, the type it downcasts to, a struct, a shape or a qualified variant's enum, none generic
  * (§3.10); against a union, the member it selects. `struct{…}` names that type's own fields. A
- * trait's required fields are no pattern's (patterns/parts.ts).
+ * trait's required fields are no pattern's (constructs/patterns/parts.ts).
  */
 function fieldsOf(
   cursor: Cursor,

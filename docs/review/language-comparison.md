@@ -100,7 +100,7 @@ Measured on branch `p4-computed` at `cfd9b3c2`, whose `docs/spec.md` includes pr
 - **Standard library in Istalang:** 3,778 lines of `.ista` under `src/`.
 - **Tests:** 220 test files in `src/` with 28,981 lines, plus 14,999 lines of `.ts` and `.ista` in `test/`. Together that is 0.54 times the source.
 - **Spec:** 1,838 lines, 36,025 words.
-- **The 400-line cap:** 4 files exceed it: `src/compiler/parser/parser.ts` (422), `src/compiler/checker/patterns/matching.ts` (413), `src/compiler/checker/body-checker.ts` (404), `src/runtime/scheduler/segment/index.ts` (402).
+- **The 400-line cap:** 4 files exceed it: `src/compiler/parser/parser.ts` (422), `src/compiler/checker/constructs/patterns/matching.ts` (413), `src/compiler/checker/body-checker.ts` (404), `src/runtime/scheduler/segment/index.ts` (402).
 
 ### Duplication
 
@@ -113,7 +113,7 @@ Measured with jscpd 4 over `src/**/*.ts`, without `*.test.ts` and `*.test-kit.ts
 
 - At the lower threshold, the 58 clones have 116 ends: `compiler/checker` 51, `compiler/lowering` 15, `formatter` 14, `compiler/parser` 10, `runtime/scheduler` 6, others 20. The largest clone is 15 lines.
 - The largest clones checked by hand are boilerplate, not repeated logic:
-  - the same import lists in `checker/expressions/operators.ts` and `lowering/expressions/operators.ts`, and in the two `collections.ts`;
+  - the same import lists in `checker/constructs/expressions/operators.ts` and `lowering/expressions/operators.ts`, and in the two `collections.ts`;
   - the same constructor in `runtime/scheduler/instance/slots.ts` and `weak-side.ts`;
   - the tail of an emit loop in `lowering/values/unions.ts`.
 

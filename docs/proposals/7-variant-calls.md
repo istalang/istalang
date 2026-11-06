@@ -141,9 +141,9 @@ const ctx = struct{...sc.ctx, search}                         # sc.ctx's fields,
 2. **Checker.**
    - **Arguments:** binding a call's arguments to a variant's fields reuses the binding of arguments to parameters (`checker/resolution/calls/`, `takenBy`), fed the variant's fields as parameters. Defaults and rest come with it, and no second binding rule exists.
    - **The value:** the built value is the brace literal's (`expressions/structs/variants.ts`).
-   - **Patterns:** call patterns read the fields through `patterns/constructs/struct-fields.ts`, positions mapped to declared order.
+   - **Patterns:** call patterns read the fields through `constructs/patterns/constructs/struct-fields.ts`, positions mapped to declared order.
 3. **Widening.**
-   - **Checker:** `struct{...x, items}` is checked as the struct comprehension it stands for (`expressions/structs/struct-comprehensions.ts`), given the items' names. It records the comprehension it builds, as an indented value records the literal it builds (proposal 5), so lowering and computation need nothing new.
+   - **Checker:** `struct{...x, items}` is checked as the struct comprehension it stands for (`constructs/expressions/structs/struct-comprehensions.ts`), given the items' names. It records the comprehension it builds, as an indented value records the literal it builds (proposal 5), so lowering and computation need nothing new.
    - **Expected type:** the update or widen decision reads it through `types/fitting/expected.ts`.
 4. **Lowering.** A variant call lowers through the variant literal's lowering, its arguments in written order. A rest field is an array built from the extra arguments, as for a rest parameter.
 5. **The repository's sources: a scripted rewrite through the project's own parser.** Every variant declared in braces becomes the parenthesized form, keeping each field's text, default and annotations. It covers about 170 lines in std, test and example `.ista` files, the spec's examples, and the Istalang held in TypeScript tests; then `ista fmt`.

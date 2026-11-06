@@ -57,7 +57,7 @@ export type PlaceUse = 'assigned' | 'referenced';
 /**
  * Checks `node` as a place that will change; its type, read as the place's value, so lowering
  * finds every part of it typed. A variable assigned as a whole is the assignment's own rule
- * (statements/assignments.ts).
+ * (constructs/statements/assignments.ts).
  */
 export function checkChangedPlace(context: BodyContext, node: Expression, use: PlaceUse): Type {
   const type = context.expression(node);
@@ -378,7 +378,7 @@ function writesElement(context: BodyContext, node: Index): boolean {
 
 /**
  * Checks a method's receiver passed as `&self` (§3.7), already known to be a place (`isPlace` on
- * the call's callee, expressions/calls.ts), against the rules of changing places.
+ * the call's callee, constructs/expressions/calls.ts), against the rules of changing places.
  */
 export function changeReceiver(context: BodyContext, receiver: Expression): void {
   changePlace(context, receiver, 'referenced');

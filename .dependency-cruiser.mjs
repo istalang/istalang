@@ -129,13 +129,14 @@ const checkerLayers = [
   'types/traits',
   'resolution', // what a call or a name may mean, choosing among overloads, conformance
   'resolution/calls', // a call in a body: its arguments checked, the places it changes
-  'patterns',
   'rules/flow', // the order a body's code runs in, which flow rules follow
   'rules',
-  'declarations',
-  'closures',
-  'expressions',
-  'statements',
+  'constructs/patterns',
+  'constructs/loops', // iteration and a field loop's passes, for `for` and comprehensions
+  'constructs/declarations',
+  'constructs/closures',
+  'constructs/expressions',
+  'constructs/statements',
   'lookup', // what tools ask by position, read from what every layer beneath decided
 ];
 
