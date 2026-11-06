@@ -72,7 +72,14 @@ export type CheckerNote =
       readonly module: ModuleId;
       readonly diagnostic: Diagnostic<AnchoredSpan>;
     }
-  | { readonly kind: 'constraint'; readonly module: ModuleId; readonly check: ConstraintCheck };
+  | ConstraintNote;
+
+/** A constraint check to run once `module` is checked. */
+export interface ConstraintNote {
+  readonly kind: 'constraint';
+  readonly module: ModuleId;
+  readonly check: ConstraintCheck;
+}
 
 /**
  * What checking reads of its Program, each answer recorded in the entry computing now

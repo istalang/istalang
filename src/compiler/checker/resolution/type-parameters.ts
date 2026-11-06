@@ -5,12 +5,15 @@
  * with the type `match`es an instantiation reaches, which must all reduce (reduction-requirements.ts).
  *
  * A check is noted in the entry that resolved the arguments, so the module's check finds each
- * one among what it read, whatever was asked before. Each is keyed by where it was written, so it
- * runs once; running one may note more, which run too.
+ * one among what it read, whatever was asked before. Each runs once per site and what it checks;
+ * running one may note more, which run too. Each runs as an entry keyed by what it checks, spelled
+ * (`checkKey`), so after an edit elsewhere in the module a later revision takes it over instead of
+ * running it again, whether the entry noting it was taken over or computed again alike.
  */
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
+import { memo } from '../../../structures/memo.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type {
   RequiredAssociatedType,
@@ -18,7 +21,13 @@ import type {
   TypeParameter,
 } from '../../syntax/declarations.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { CheckerContext, CheckerNote, ConstraintCheck, Instantiable } from '../context.ts';
+import type {
+  CheckerContext,
+  CheckerNote,
+  ConstraintCheck,
+  ConstraintNote,
+  Instantiable,
+} from '../context.ts';
 import { resolveConstraints } from '../traits/constraints.ts';
 import { resolveConstraintSet, resolveStructConstraints } from '../traits/struct-constraints.ts';
 import { standsForMember } from '../types/member-arguments.ts';
@@ -30,6 +39,7 @@ import {
 } from '../types/struct-constraint.ts';
 import { substituteConstraint } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type.ts';
+import { typeKeys } from '../types/type-keys.ts';
 import { sameConstraintSpelled } from '../types/type-parts.ts';
 import { useSite } from '../use-site.ts';
 import { meets, silentMeets } from './conformance.ts';
@@ -46,6 +56,8 @@ export class TypeParameters {
     readonly StructConstraintModel[]
   >;
   readonly #bounds: EntryTable<CheckerNote, RequiredAssociatedType, ConstraintSet>;
+  /** Each check by `checkKey`, run with the note that asked for it. */
+  readonly #checks: EntryTable<CheckerNote, string, void, ConstraintNote>;
   readonly #requirements: ReductionRequirements;
 
   /**
@@ -104,6 +116,10 @@ export class TypeParameters {
         sameItems(sameConstraintSpelled)(first.traits, second.traits) &&
         sameItems(sameStructConstraint)(first.structs, second.structs),
     });
+    this.#checks = checker.entries.table({
+      name: 'constraint checks',
+      compute: (_key, { module, check }) => this.#check(module, check),
+    });
   }
 
   constraintsOf(parameter: TypeParameter): readonly Constraint[] {
@@ -133,12 +149,12 @@ export class TypeParameters {
       pending.length > 0;
       pending = this.#noted(module, done)
     ) {
-      for (const check of pending) {
-        const checked = done.get(check.at) ?? new Set();
-        if (!checked.has(checkedBy(check))) {
-          checked.add(checkedBy(check));
-          done.set(check.at, checked);
-          this.#check(module, check);
+      for (const note of pending) {
+        const checked = done.get(note.check.at) ?? new Set();
+        if (!checked.has(checkedBy(note.check))) {
+          checked.add(checkedBy(note.check));
+          done.set(note.check.at, checked);
+          this.#checks.get(checkKey(note), note);
         }
       }
     }
@@ -148,14 +164,14 @@ export class TypeParameters {
   #noted(
     module: ModuleId,
     done: ReadonlyMap<AnchoredSpan, ReadonlySet<Checked>>,
-  ): readonly ConstraintCheck[] {
+  ): readonly ConstraintNote[] {
     return this.#checker.entries
       .notesReached()
       .flatMap((note) =>
         note.kind === 'constraint' &&
         note.module === module &&
         done.get(note.check.at)?.has(checkedBy(note.check)) !== true
-          ? [note.check]
+          ? [note]
           : [],
       );
   }
@@ -196,6 +212,32 @@ type Checked = TypeParameter | Instantiable;
 
 function checkedBy(check: ConstraintCheck): Checked {
   return check.kind === 'meets' ? check.parameter : check.declaration;
+}
+
+/** Each note's `checkKey`: a note taken over keeps its key in every later revision. */
+const checkKeys = new WeakMap<ConstraintNote, string>();
+
+/**
+ * What `note` checks, spelled whole: its module, its site's segment and offsets, what it checks by
+ * identity, and its arguments by their spelled keys. An entry computed again, its value alike,
+ * notes its checks again as new objects; keyed this way, they are the checks it noted before.
+ */
+function checkKey(note: ConstraintNote): string {
+  const { module, check } = note;
+  return memo(checkKeys, note, () =>
+    JSON.stringify([
+      module,
+      check.kind,
+      typeKeys.identityOf(check.at.segment),
+      check.at.from,
+      check.at.to,
+      typeKeys.identityOf(checkedBy(check)),
+      ...[...check.typeArguments].flatMap(([parameter, argument]) => [
+        typeKeys.identityOf(parameter),
+        typeKeys.spelledKey(argument),
+      ]),
+    ]),
+  );
 }
 
 /** The trait of `module` requiring `requirement` among its members. */

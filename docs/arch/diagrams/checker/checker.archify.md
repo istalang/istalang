@@ -87,7 +87,7 @@ The checker's folders are layers too. Each folder imports only the folders liste
 
 @steps id=check-steps
 | ck-ask | diagnosticsOf | `compile.ts` asks per module and skips std modules; they are checked by their own tests, and lowering still checks what a program uses of them. | check-flow | coord |
-| ck-entry | module check | `ModuleChecks` asks one entry per module, which asks one entry per item, then clashes, expansion and the constraint checks noted for the module.[](source:modulechecks) | check-flow | ent |
+| ck-entry | module check | `ModuleChecks` asks one entry per module, which asks one entry per item, then clashes, expansion and one entry per constraint check noted for the module, keyed by what it checks, so an edit elsewhere takes the check over.[](source:modulechecks) | check-flow | ent |
 | ck-body | bodies | A body is an entry of `FunctionChecks`. A function without a declared result reaches its body through `resultOf`, so a recursion cycle meets the result first.[](source:functions) | check-flow | decl |
 | ck-handler | handlerOf | `expression(node, given)` stores the expected type, dispatches through `expressionHandlers`, and records the node's type in the current pass.[](source:handlers) | check-flow | body |
 | ck-call | applyCall | Candidates are chosen, instantiated and fitted in one place; asking for another function's result is just another entry read.[](source:applied) | check-flow | res |
