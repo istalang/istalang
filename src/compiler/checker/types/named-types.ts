@@ -33,14 +33,9 @@ import type { FunctionDeclaration, TypeAliasDeclaration } from '../../syntax/dec
 import type { Checker } from '../check.ts';
 import { unfolded, unfoldRecursive } from './computed-types.ts';
 import { sameType } from './identity.ts';
+import { isPrimitive, tupleElements } from './primitives.ts';
 import { typeOfEntity } from './resolve-type.ts';
-import {
-  type AnyType,
-  isPrimitive,
-  type NominalDeclaration,
-  type Type,
-  tupleElements,
-} from './type.ts';
+import type { AnyType, NominalDeclaration, Type } from './type.ts';
 import { type ShapeKey, typeKeys } from './type-keys.ts';
 import type { TypeRules } from './type-rules.ts';
 import { absorbingMember, baseOf } from './union-members.ts';

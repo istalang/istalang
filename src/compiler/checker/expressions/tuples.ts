@@ -17,7 +17,8 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { partsAccept, partsBuild } from '../rules/agreement.ts';
 import { expectedTuple } from '../types/expected.ts';
 import { insideOptional } from '../types/inside-optional.ts';
-import { errorType, type Type, unitType } from '../types/type.ts';
+import { errorType, unitType } from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 export function checkTuple(context: BodyContext, node: Tuple, expected: Type | undefined): Type {

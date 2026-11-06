@@ -43,22 +43,19 @@ import {
 } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { aliasedAs } from './alias-uses.ts';
 import { ownAssociatedType } from './computed-types.ts';
 import { isPack, withPack } from './function-types.ts';
 import { fieldWritten, keysWritten, structWritten } from './key-types.ts';
 import { namedPathOf } from './named-paths.ts';
+import { errorType, primitiveType, tupleType, unitType } from './primitives.ts';
 import { substitutionFor } from './substitution.ts';
 import {
-  aliasedAs,
-  errorType,
   type NominalDeclaration,
   nominalType,
   type PackType,
   type ParameterKey,
-  primitiveType,
   type Type,
-  tupleType,
-  unitType,
 } from './type.ts';
 import { constrainArguments, noteConstraints, typeArgumentsFor } from './type-arguments.ts';
 import { aliasInstance } from './type-match.ts';

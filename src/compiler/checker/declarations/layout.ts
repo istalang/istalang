@@ -38,10 +38,10 @@ import { type FieldedDeclaration, TypeExpansion } from '../rules/expansion/types
 import { unfolded } from '../types/computed-types.ts';
 import { declaredFields } from '../types/declared-fields.ts';
 import { inFieldOrder } from '../types/field-order.ts';
+import { errorType } from '../types/primitives.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import {
   type AnonymousStructType,
-  errorType,
   type FieldMember,
   type NominalType,
   shapeType,

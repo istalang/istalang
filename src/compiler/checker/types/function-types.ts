@@ -4,14 +4,8 @@
  * taking whatever parameters are left. The types themselves are type.ts's.
  */
 
-import {
-  errorType,
-  type FunctionType,
-  type Type,
-  type TypeParameterType,
-  tupleElements,
-  tupleType,
-} from './type.ts';
+import { errorType, tupleElements, tupleType } from './primitives.ts';
+import type { FunctionType, Type, TypeParameterType } from './type.ts';
 
 /** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
 export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };

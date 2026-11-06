@@ -7,7 +7,7 @@
 
 import type { ArrayPattern, Pattern, PatternPart } from '../../syntax/patterns.ts';
 import type { PatternTest } from '../surface/checked-pattern.ts';
-import { errorType } from '../types/type.ts';
+import { errorType } from '../types/primitives.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
 import type { ValuePart } from './parts.ts';
 import type { PatternTests } from './pattern-tests.ts';

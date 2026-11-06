@@ -18,7 +18,8 @@ import type {
 import type { Invalid } from '../../syntax/node.ts';
 import type { StructType, TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
-import { errorType, type FieldMember, type Type } from './type.ts';
+import { errorType } from './primitives.ts';
+import type { FieldMember, Type } from './type.ts';
 
 /** What declares a field: a struct, an enum through one of its variants, a shape or a trait. */
 export type FieldOwner = DeclaredStruct | EnumDeclaration | StructType | TraitDeclaration;

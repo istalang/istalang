@@ -35,9 +35,9 @@ import {
   floatType,
   intType,
   stringType,
-  type Type,
   unitType,
-} from '../types/type.ts';
+} from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 import { literalOrBase } from '../types/unions.ts';
 import { wellKnownOf } from '../types/well-known.ts';
 import { checkAwait } from './await.ts';

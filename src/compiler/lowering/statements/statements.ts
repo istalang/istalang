@@ -14,7 +14,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import { unitType } from '../../checker/types/type.ts';
+import { unitType } from '../../checker/types/primitives.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import {
   type Block,

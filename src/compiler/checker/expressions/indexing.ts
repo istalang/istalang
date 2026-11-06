@@ -19,7 +19,8 @@ import { topLevelCandidates } from '../resolution/candidates.ts';
 import { takesAsSelf } from '../resolution/receivers.ts';
 import { keyedFieldRead } from '../surface/checked-field.ts';
 import { insideOptional } from '../types/inside-optional.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { errorType } from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 
 export function checkIndex(context: BodyContext, node: Index, expected: Type | undefined): Type {
   const container = context.chains.target(context, node);

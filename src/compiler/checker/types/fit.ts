@@ -34,14 +34,8 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { unfolded } from './computed-types.ts';
 import { isAssignable } from './identity.ts';
-import {
-  type AnonymousStructType,
-  type AnyType,
-  isPrimitive,
-  type Type,
-  type TypeParameterType,
-  type UnionType,
-} from './type.ts';
+import { isPrimitive } from './primitives.ts';
+import type { AnonymousStructType, AnyType, Type, TypeParameterType, UnionType } from './type.ts';
 import { parametersIn } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
 import { typeText } from './type-text.ts';

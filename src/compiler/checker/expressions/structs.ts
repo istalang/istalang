@@ -26,8 +26,8 @@ import { partsAccept, partsBuild } from '../rules/agreement.ts';
 import type { FieldSource } from '../surface/checked-body.ts';
 import { builtFrom } from '../types/expected.ts';
 import { inFieldOrder } from '../types/field-order.ts';
+import { errorType } from '../types/primitives.ts';
 import {
-  errorType,
   type FieldMember,
   type NominalEntity,
   type NominalType,

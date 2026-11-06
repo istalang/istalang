@@ -50,7 +50,8 @@ import { bodyScope, type ValuePart } from '../patterns/parts.ts';
 import { type Taking, takeApart, takeTargets } from '../patterns/taking.ts';
 import type { AssignedPart, WrittenFit } from '../surface/checked-body.ts';
 import type { FieldStep } from '../surface/checked-pattern.ts';
-import { errorType, type Type, tupleType } from '../types/type.ts';
+import { errorType, tupleType } from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 
 export function checkAssignment(context: BodyContext, node: Assignment): void {
   const [only, ...more] = node.targets;

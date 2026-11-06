@@ -16,7 +16,7 @@ import { idOf } from '../../program/program.test-kit.ts';
 import { checkedApart, reported } from '../check.test-kit.ts';
 import { checkProgram } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { intType, stringType } from '../types/type.ts';
+import { intType, stringType } from '../types/primitives.ts';
 import { formNodeLibrary } from './conformance.test-kit.ts';
 import { callWithTypes } from './silent-choice.ts';
 

@@ -16,7 +16,8 @@
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Assignment } from '../../syntax/statements.ts';
 import type { BodyContext } from '../body-context.ts';
-import { errorType, isPrimitive, neverType, type Type } from '../types/type.ts';
+import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 
 /** An operand of an operation, in evaluation order, and its type. */
 export interface StoppingOperand {

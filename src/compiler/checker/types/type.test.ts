@@ -10,16 +10,9 @@ import type { TypeParameter } from '../../syntax/declarations.ts';
 import { handMadeSpan } from '../../syntax/tree.test-kit.ts';
 import { sameShape } from './function-types.ts';
 import { sameType } from './identity.ts';
+import { boolType, intType, stringType, tupleType, unitType } from './primitives.ts';
 import { substitute } from './substitution.ts';
-import {
-  boolType,
-  type FunctionType,
-  intType,
-  stringType,
-  type Type,
-  tupleType,
-  unitType,
-} from './type.ts';
+import type { FunctionType, Type } from './type.ts';
 import { noProgramRules } from './type-rules.test-kit.ts';
 
 const span = handMadeSpan(0);

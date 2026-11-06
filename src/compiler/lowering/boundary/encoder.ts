@@ -17,7 +17,8 @@ import {
   variantTagKey,
 } from '../../checker/surface/json-form.ts';
 import { unfolded } from '../../checker/types/computed-types.ts';
-import { isPrimitive, type Type, type UnionType } from '../../checker/types/type.ts';
+import { isPrimitive } from '../../checker/types/primitives.ts';
+import type { Type, UnionType } from '../../checker/types/type.ts';
 import { baseOf } from '../../checker/types/union-members.ts';
 import { arrayElement, wellKnownArguments } from '../../checker/types/well-known.ts';
 import { closeCall } from '../closed-calls.ts';

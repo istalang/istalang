@@ -14,17 +14,16 @@
  */
 
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';
+import { aliasedAs, mapAliasUse } from './alias-uses.ts';
 import type { ComputedType, MappedParts, RecursiveType } from './computed-types.ts';
-import {
-  type AnyType,
-  aliasedAs,
-  type Constraint,
-  errorType,
-  mapAliasUse,
-  type ParameterKey,
-  type Type,
-  type TypeParameterType,
-  type UnionType,
+import { errorType } from './primitives.ts';
+import type {
+  AnyType,
+  Constraint,
+  ParameterKey,
+  Type,
+  TypeParameterType,
+  UnionType,
 } from './type.ts';
 import { mapChildren, mapParts } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';

@@ -3,7 +3,7 @@
  * another, and no type has an associated type, a field or keys a computed type could reduce to.
  */
 
-import { errorType } from './type.ts';
+import { errorType } from './primitives.ts';
 import type { TypeRules } from './type-rules.ts';
 
 /** TypeRules of a program declaring nothing. */

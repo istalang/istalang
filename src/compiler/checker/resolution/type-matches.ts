@@ -43,10 +43,11 @@ import { type StructType, unparenthesizedType } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { isOpaque, type MatchType, unfoldRecursive } from '../types/computed-types.ts';
 import { fieldReaderOf, selfHoldingField } from '../types/finiteness.ts';
+import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
 import { closeRecursive } from '../types/recursive-types.ts';
 import { substituteStructConstraint } from '../types/struct-constraint.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
-import { errorType, isPrimitive, neverType, type Type } from '../types/type.ts';
+import type { Type } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
 import {
   type CaseForm,

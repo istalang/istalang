@@ -18,7 +18,8 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { fieldlessStructOf } from '../resolution/named.ts';
 import { expectedNominal } from '../types/expected.ts';
-import { errorType, isNominalEntity, type Type } from '../types/type.ts';
+import { errorType } from '../types/primitives.ts';
+import { isNominalEntity, type Type } from '../types/type.ts';
 import { checkVariantName, variantsAccepted } from './variants.ts';
 
 export function checkName(

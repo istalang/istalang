@@ -9,7 +9,8 @@ import type { ModuleId } from '../../program/program.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { type Constraint, errorType, type Type } from '../types/type.ts';
+import { errorType } from '../types/primitives.ts';
+import type { Constraint, Type } from '../types/type.ts';
 import { resolveAnyConstraints } from './constraints.ts';
 import { objectUnsafety } from './object-safety.ts';
 

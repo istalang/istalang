@@ -20,13 +20,12 @@ import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { chooseVariant } from '../resolution/named.ts';
 import { enumsExpected, expectedNominal, sameNominal } from '../types/expected.ts';
+import { errorType, noneType } from '../types/primitives.ts';
 import {
-  errorType,
   isNominalEntity,
   type NominalEntity,
   type NominalType,
   nominalType,
-  noneType,
   type Type,
 } from '../types/type.ts';
 import { checkLiteralFields, knownArguments } from './literal-fields.ts';

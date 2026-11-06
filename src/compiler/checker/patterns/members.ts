@@ -34,8 +34,9 @@ import {
   patternTypeOf,
   variantOwners,
 } from '../types/named-types.ts';
+import { floatType, noneType } from '../types/primitives.ts';
 import { typeOfEntity } from '../types/resolve-type.ts';
-import { floatType, noneType, type Type, type UnionType } from '../types/type.ts';
+import type { Type, UnionType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { baseOf } from '../types/union-members.ts';
 import {

@@ -21,8 +21,8 @@ import { bodyOf, nodesUnder, type SyntaxNode } from '../../../syntax/tree.ts';
 import { checkProgram } from '../../check.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { namesBound, type PartStep } from '../../surface/checked-pattern.ts';
+import { intType, stringType } from '../../types/primitives.ts';
 import { substitutionFor } from '../../types/substitution.ts';
-import { intType, stringType } from '../../types/type.ts';
 import { parametersIn } from '../../types/type-parts.ts';
 import { typeText } from '../../types/type-text.ts';
 

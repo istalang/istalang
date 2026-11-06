@@ -5,8 +5,9 @@
  * stated here, not as unions.ts states them.
  */
 
+import { boolType } from './primitives.ts';
 import { aliases, shows } from './recursive-types.test-kit.ts';
-import { boolType, type LiteralValue, type Type } from './type.ts';
+import type { LiteralValue, Type } from './type.ts';
 import { typeKeys } from './type-keys.ts';
 
 /** A type of a group's bodies, read through its placeholders. */

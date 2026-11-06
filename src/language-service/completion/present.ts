@@ -18,7 +18,8 @@
  */
 
 import type { Checker } from '../../compiler/checker/check.ts';
-import { boolType, type Type } from '../../compiler/checker/types/type.ts';
+import { boolType } from '../../compiler/checker/types/primitives.ts';
+import type { Type } from '../../compiler/checker/types/type.ts';
 import { slotText, typeText } from '../../compiler/checker/types/type-text.ts';
 import { hasDefault } from '../../compiler/syntax/declarations.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';

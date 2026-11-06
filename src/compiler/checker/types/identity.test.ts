@@ -9,16 +9,8 @@ import { describe, expect, it } from 'vitest';
 import { handMadeSpan } from '../../syntax/tree.test-kit.ts';
 import type { StructType } from '../../syntax/types.ts';
 import { sameType } from './identity.ts';
-import {
-  boolType,
-  type FieldMember,
-  intType,
-  shapeType,
-  stringType,
-  type Type,
-  tupleType,
-  unitType,
-} from './type.ts';
+import { boolType, intType, stringType, tupleType, unitType } from './primitives.ts';
+import { type FieldMember, shapeType, type Type } from './type.ts';
 import { typeKeys } from './type-keys.ts';
 
 /** A `{…}` type node written at `offset`, standing for where a shape is written. */

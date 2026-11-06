@@ -45,14 +45,8 @@ import type { ImplicitRole } from '../surface/resolved-call.ts';
 import { unfolded } from '../types/computed-types.ts';
 import { comparable, decidedEquality, fitEqualSides, isKnown } from '../types/equality.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
-import {
-  errorType,
-  intType,
-  isPrimitive,
-  type NominalDeclaration,
-  noneType,
-  type Type,
-} from '../types/type.ts';
+import { errorType, intType, isPrimitive, noneType } from '../types/primitives.ts';
+import type { NominalDeclaration, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { optionalInner } from '../types/unions.ts';
 import { arrayElement } from '../types/well-known.ts';

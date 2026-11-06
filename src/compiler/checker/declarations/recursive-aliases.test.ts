@@ -20,8 +20,9 @@ import { reported } from '../check.test-kit.ts';
 import { checkProgram } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { sameType } from '../types/identity.ts';
+import { intType, stringType } from '../types/primitives.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
-import { intType, stringType, type Type } from '../types/type.ts';
+import type { Type } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
 import { typeText } from '../types/type-text.ts';
 

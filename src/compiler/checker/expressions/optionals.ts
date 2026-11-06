@@ -27,7 +27,8 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
 import { preludeCall } from '../resolution/implicit.ts';
 import type { ChainLink } from '../surface/checked-body.ts';
-import { errorType, isPrimitive, stringType, type Type } from '../types/type.ts';
+import { errorType, isPrimitive, stringType } from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { optionalOf, presentType } from '../types/unions.ts';
 

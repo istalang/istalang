@@ -24,7 +24,8 @@ import type { BodyContext, LabelRecord } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkedFieldPasses, inFieldPasses } from '../rules/loops/field-passes.ts';
 import { checkLoopOver } from '../rules/loops/iteration.ts';
-import { boolType, neverType, type Type, unitType } from '../types/type.ts';
+import { boolType, neverType, unitType } from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 
 export function checkWhile(context: BodyContext, node: While): Type {
   context.expect(node.condition, boolType);

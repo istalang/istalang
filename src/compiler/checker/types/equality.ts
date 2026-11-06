@@ -27,13 +27,8 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../body-context.ts';
 import { isOpaque } from './computed-types.ts';
 import { sameType } from './identity.ts';
-import {
-  isMemberParameter,
-  isPrimitive,
-  type LiteralValue,
-  type Type,
-  type TypeParameterType,
-} from './type.ts';
+import { isPrimitive } from './primitives.ts';
+import { isMemberParameter, type LiteralValue, type Type, type TypeParameterType } from './type.ts';
 import { baseOf } from './union-members.ts';
 import { membersOf, writtenLiteral } from './unions.ts';
 

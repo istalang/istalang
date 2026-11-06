@@ -50,14 +50,8 @@ import type { CollectionForm } from '../surface/checked-body.ts';
 import { collectionTarget } from '../types/expected.ts';
 import { isExact } from '../types/fit.ts';
 import { isPack } from '../types/function-types.ts';
-import {
-  errorType,
-  expectsError,
-  intType,
-  type NominalType,
-  neverType,
-  type Type,
-} from '../types/type.ts';
+import { errorType, expectsError, intType, neverType } from '../types/primitives.ts';
+import type { NominalType, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { arrayElement, arrayOf, wellKnownArguments, wellKnownOf } from '../types/well-known.ts';
 import { useSite } from '../use-site.ts';

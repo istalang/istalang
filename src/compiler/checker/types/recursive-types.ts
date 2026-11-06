@@ -27,10 +27,11 @@
 
 import { sameItems } from '../../../structures/equality.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
+import { mapAliasUse, type RecursiveLabel } from './alias-uses.ts';
 import { reducedComputed } from './computed-reduction.ts';
 import { isComputed, type RecursiveGraph, type RecursiveType } from './computed-types.ts';
 import { type Slot, TermGraph } from './recursive-terms.ts';
-import { mapAliasUse, type ParameterKey, type RecursiveLabel, type Type } from './type.ts';
+import type { ParameterKey, Type } from './type.ts';
 import {
   boundWithin,
   graphParts,

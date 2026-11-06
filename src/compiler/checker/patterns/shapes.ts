@@ -22,10 +22,10 @@ import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import type { Checker } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { unfolded } from '../types/computed-types.ts';
+import { isPrimitive } from '../types/primitives.ts';
 import {
   type FieldMember,
   isMemberParameter,
-  isPrimitive,
   type LiteralValue,
   type Type,
   type UnionType,

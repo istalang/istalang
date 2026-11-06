@@ -9,11 +9,11 @@
 import type { AliasDeclaration, AssociatedType, TypeParameter } from '../../syntax/declarations.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
 import type { StructType } from '../../syntax/types.ts';
+import type { RecursiveLabel } from './alias-uses.ts';
 import type {
   FieldMember,
   NominalEntity,
   NominalType,
-  RecursiveLabel,
   Type,
   TypeParameterType,
   WrittenThrough,

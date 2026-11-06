@@ -10,7 +10,8 @@
 
 import { sameItems } from '../../../structures/equality.ts';
 import { functionFits } from './function-types.ts';
-import { type Constraint, isPrimitive, type Type } from './type.ts';
+import { isPrimitive } from './primitives.ts';
+import type { Constraint, Type } from './type.ts';
 import { typeKeys } from './type-keys.ts';
 
 /** Whether two types are the same type: their keys are equal. */

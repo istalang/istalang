@@ -15,7 +15,8 @@ import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
-import { errorType, type Type, unitType } from '../types/type.ts';
+import { errorType, unitType } from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import { callResult, declaredBodyResult } from './signatures.ts';
 

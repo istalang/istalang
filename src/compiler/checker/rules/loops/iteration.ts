@@ -27,7 +27,8 @@ import { declareTargets } from '../../patterns/targets.ts';
 import { topLevelCandidates } from '../../resolution/candidates.ts';
 import { implicitCall } from '../../resolution/implicit.ts';
 import type { Iteration, IterationForm } from '../../surface/checked-body.ts';
-import { errorType, type Type } from '../../types/type.ts';
+import { errorType } from '../../types/primitives.ts';
+import type { Type } from '../../types/type.ts';
 import { typeText } from '../../types/type-text.ts';
 import { wellKnownArguments } from '../../types/well-known.ts';
 

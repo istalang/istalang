@@ -31,9 +31,8 @@ import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { unfolded } from './computed-types.ts';
+import { errorType, expectsError } from './primitives.ts';
 import {
-  errorType,
-  expectsError,
   type FunctionType,
   type NominalDeclaration,
   type NominalEntity,

@@ -25,7 +25,8 @@ import {
   namesOwnType,
   variantOwners,
 } from '../../../compiler/checker/types/named-types.ts';
-import { noneType, type Type } from '../../../compiler/checker/types/type.ts';
+import { noneType } from '../../../compiler/checker/types/primitives.ts';
+import type { Type } from '../../../compiler/checker/types/type.ts';
 import { literalType, membersOf } from '../../../compiler/checker/types/unions.ts';
 import { casesOf } from '../../../compiler/syntax/expressions/readings.ts';
 import type { PatternWord } from '../../../compiler/syntax/grammar-words.ts';

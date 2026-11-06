@@ -11,14 +11,14 @@
 import { selfType } from '../../../language/well-known.ts';
 import type { TypeAliasDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
+import type { AliasUse } from './alias-uses.ts';
 import { type MappedParts, type RecursiveType, unfoldRecursive } from './computed-types.ts';
+import { isPrimitive } from './primitives.ts';
 import { folded } from './recursive-types.ts';
 import {
-  type AliasUse,
   type AnonymousStructType,
   type Constraint,
   type FunctionType,
-  isPrimitive,
   type NominalType,
   nominalType,
   type ParameterSlot,

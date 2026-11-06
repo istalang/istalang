@@ -43,7 +43,8 @@ import {
   structConstraintsOn,
 } from '../traits/known-constraints.ts';
 import { fieldOf } from '../traits/known-fields.ts';
-import { type FieldMember, type Type, tupleElements } from '../types/type.ts';
+import { tupleElements } from '../types/primitives.ts';
+import type { FieldMember, Type } from '../types/type.ts';
 
 const noMembers: TypeMembers = {
   fields: [],

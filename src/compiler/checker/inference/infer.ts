@@ -41,19 +41,17 @@ import { type Fitting, fitOf, matchConversion } from '../types/fit.ts';
 import { fillsPack, functionFits, isPack } from '../types/function-types.ts';
 import { sameType } from '../types/identity.ts';
 import { isOneMember } from '../types/member-arguments.ts';
+import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import { noSubstitution, type Substitution, substitute } from '../types/substitution.ts';
-import {
-  type AnonymousStructType,
-  type AnyType,
-  errorType,
-  type FunctionType,
-  isPrimitive,
-  type LiteralValue,
-  neverType,
-  type ParameterKey,
-  type Type,
-  type UnionType,
+import type {
+  AnonymousStructType,
+  AnyType,
+  FunctionType,
+  LiteralValue,
+  ParameterKey,
+  Type,
+  UnionType,
 } from '../types/type.ts';
 import { typeChildren } from '../types/type-children.ts';
 import { parametersIn } from '../types/type-parts.ts';

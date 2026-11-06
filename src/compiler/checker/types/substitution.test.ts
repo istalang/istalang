@@ -10,16 +10,10 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { StructDeclaration } from '../../syntax/declarations.ts';
 import { handMadeSpan } from '../../syntax/tree.test-kit.ts';
+import { intType, stringType, tupleType } from './primitives.ts';
 import { bodiesOf, closed, groups, open, showingRules } from './recursive-types.test-kit.ts';
 import { substitute } from './substitution.ts';
-import {
-  intType,
-  type NominalEntity,
-  shapeType,
-  stringType,
-  type Type,
-  tupleType,
-} from './type.ts';
+import { type NominalEntity, shapeType, type Type } from './type.ts';
 import { unaliased } from './type-parts.ts';
 
 const box = {

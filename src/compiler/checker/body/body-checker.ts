@@ -93,13 +93,8 @@ import type { ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
 import { unfolded } from '../types/computed-types.ts';
 import { exactFit, type Fit, isExact, misfitOf } from '../types/fit.ts';
 import { keysOwner } from '../types/key-types.ts';
-import {
-  errorType,
-  type FieldMember,
-  type FunctionType,
-  type Type,
-  unitType,
-} from '../types/type.ts';
+import { errorType, unitType } from '../types/primitives.ts';
+import type { FieldMember, FunctionType, Type } from '../types/type.ts';
 import { useSite } from '../use-site.ts';
 import { bodyRecords } from './body-records.ts';
 import { checkedAt } from './facts/index.ts';

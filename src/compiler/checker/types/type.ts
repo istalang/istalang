@@ -32,20 +32,14 @@
  *   trait's `Self` (`any Iterable<Int>` is `Iterable<Int, Self>`), which stands for each value's own
  *   type. The `any` type binds it, so substituting from outside never replaces it, and no type
  *   mentioning it is open.
- * - An alias names no type of its own (§3.17): a type written through one carries it only so its
- *   text can read as written (`Entries<Int>`), which messages and hovers show. An associated type
- *   on a known type is such an alias too (`Field<Int>.Data`, §3.1), whose spelling also keeps
- *   inference from looking through it (§3.5); on a type not known yet, it is a type of its own,
- *   opaque (`AssociatedOfType`). Exact relations and
- *   type keys look through it. Only substitution keeps it, substituting its arguments too, since
- *   that rewrites the alias's own parameters alike; any other change of a type leaves a type the
- *   alias didn't write, so widening, the one other, drops it.
+ * - An alias names no type of its own (§3.17): every type carries the alias it was written through,
+ *   if any (`WrittenThrough`), only so its text reads as written (alias-uses.ts).
+ * - The primitives by name, and tuples built so `()` is `Unit`, are in primitives.ts.
  * - Identity and the exact relations live in identity.ts, through type keys (type-keys.ts); fitting
  *   with the implicit conversions needs to know which type is `Optional`, so it lives in fit.ts.
  */
 
 import type { PrimitiveName } from '../../../language/primitives.ts';
-import { sameItems } from '../../../structures/equality.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { TypeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
@@ -62,6 +56,7 @@ import type {
 import type { FieldHeader, StructLiteral } from '../../syntax/expressions/index.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
 import type { StructConstraint, StructType } from '../../syntax/types.ts';
+import type { AliasUse, AssociatedUse } from './alias-uses.ts';
 import type {
   AssociatedOfType,
   FieldOfType,
@@ -72,44 +67,6 @@ import type {
 } from './computed-types.ts';
 import { inFieldOrder } from './field-order.ts';
 import type { StructConstraintModel } from './struct-constraint.ts';
-
-/** The alias a type was written through, with the arguments it was given there (§3.17). */
-export interface DeclaredAliasUse {
-  readonly kind: 'alias';
-  readonly declaration: TypeAliasDeclaration;
-  readonly arguments: readonly Type[];
-}
-
-/**
- * The associated type `name` of `of` a type was written as, `Field<T>.Data` (§3.1): the same type
- * as what it names, which inference never looks through (§3.5).
- */
-interface AssociatedUse {
-  readonly kind: 'associated';
-  readonly of: Type;
-  readonly name: string;
-}
-
-/**
- * The keys of the struct `of` a union of String literals was written as, `keyof Settings` (§3.1
- * Key types): the same type as the union, whose literals name `of`'s fields, which tools read.
- */
-interface KeysUse {
-  readonly kind: 'keys';
-  readonly of: Type;
-}
-
-/**
- * How a type was written where it isn't spelled as itself: through an alias, an associated type or
- * a struct's keys.
- */
-export type AliasUse = DeclaredAliasUse | AssociatedUse | KeysUse;
-
-/**
- * How a recursive type's node reads (§3.17): the alias it was written through, or, for a recursive
- * type `match` use an associated type stands for, that associated type, `Group<Category>.Data`.
- */
-export type RecursiveLabel = DeclaredAliasUse | AssociatedUse;
 
 /** What every type carries beside its kind: the alias it was written through, if any. */
 export interface WrittenThrough {
@@ -340,60 +297,3 @@ export type Type =
   | MatchType
   | RecursiveType
   | ErrorType;
-
-/** `type` as written through `alias`; the error type stays itself, as a diagnostic explained it. */
-export function aliasedAs<Aliased extends Type>(type: Aliased, alias: AliasUse): Aliased {
-  return type.kind === 'error' ? type : { ...type, alias };
-}
-
-/** `use` with each type it names replaced by what `map` gives; `use` itself when `map` changes none. */
-export function mapAliasUse<Use extends AliasUse>(use: Use, map: (type: Type) => Type): Use;
-export function mapAliasUse(use: AliasUse, map: (type: Type) => Type): AliasUse {
-  if (use.kind === 'alias') {
-    const given = use.arguments.map(map);
-    return sameItems<Type>()(given, use.arguments) ? use : { ...use, arguments: given };
-  }
-  const of = map(use.of);
-  return of === use.of ? use : { ...use, of };
-}
-
-/** The primitive type named `name`. */
-export function primitiveType(name: PrimitiveName): PrimitiveType {
-  return { kind: 'primitive', name };
-}
-
-export const intType = primitiveType('Int');
-export const floatType = primitiveType('Float');
-export const boolType = primitiveType('Bool');
-export const stringType = primitiveType('String');
-export const unitType = primitiveType('Unit');
-export const neverType = primitiveType('Never');
-export const noneType = primitiveType('None');
-export const errorType: ErrorType = { kind: 'error' };
-
-/**
- * Whether a value is expected to be of the error type, whose cause was reported already: a value
- * that needs an expected type to mean anything (`none`, a bare variant or generic struct without
- * fields, an empty collection, a function named among overloads, a lambda's untyped parameter)
- * reports nothing more.
- */
-export function expectsError(expected: Type | undefined): boolean {
-  return expected?.kind === 'error';
-}
-
-export function isPrimitive(type: Type, name: PrimitiveName): boolean {
-  return type.kind === 'primitive' && type.name === name;
-}
-
-/** The tuple of `elements`: `Unit` for none, the empty tuple (§3.15). */
-export function tupleType(elements: readonly Type[]): Type {
-  return elements.length === 0 ? unitType : { kind: 'tuple', elements };
-}
-
-/** The elements of a tuple type, none of `Unit`; undefined for any other type. */
-export function tupleElements(type: Type): readonly Type[] | undefined {
-  if (type.kind === 'tuple') {
-    return type.elements;
-  }
-  return isPrimitive(type, 'Unit') ? [] : undefined;
-}

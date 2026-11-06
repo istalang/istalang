@@ -8,7 +8,8 @@ import { wellKnown } from '../../../language/well-known.ts';
 import type { DurationLiteral } from '../../syntax/expressions/literals.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { errorType } from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 
 export function checkDurationLiteral(context: BodyContext, node: DurationLiteral): Type {
   const duration = context.checker.wellKnownType(wellKnown.duration);

@@ -8,6 +8,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { boolType, intType, stringType } from './primitives.ts';
 import { bisimilar } from './recursive-bisimulation.test-kit.ts';
 import {
   bodiesOf,
@@ -19,7 +20,7 @@ import {
   showingRules,
 } from './recursive-types.test-kit.ts';
 import { substitute } from './substitution.ts';
-import { boolType, intType, type ParameterKey, stringType, type Type } from './type.ts';
+import type { ParameterKey, Type } from './type.ts';
 import { typeKeys } from './type-keys.ts';
 
 /** The trait whose `Self` the parameter `self` is. */

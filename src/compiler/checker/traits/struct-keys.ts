@@ -29,15 +29,13 @@ import { parentOf } from '../../syntax/tree.ts';
 import type { StructType } from '../../syntax/types.ts';
 import type { BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
+import { aliasedAs } from '../types/alias-uses.ts';
 import { isOpaque, type MappedParts } from '../types/computed-types.ts';
 import { keysOwner } from '../types/key-types.ts';
+import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
 import { substitute } from '../types/substitution.ts';
 import {
-  aliasedAs,
-  errorType,
   isMemberParameter,
-  isPrimitive,
-  neverType,
   type ParameterKey,
   type StructValueType,
   shapeType,

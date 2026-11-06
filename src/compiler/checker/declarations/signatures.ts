@@ -30,7 +30,8 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isPack, packRestSlot, type RestSlot } from '../types/function-types.ts';
 import { patternTypeOf } from '../types/named-types.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { errorType } from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { arrayElement, futureArgument, futureOf } from '../types/well-known.ts';
 

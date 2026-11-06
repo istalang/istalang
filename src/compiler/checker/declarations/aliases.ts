@@ -32,8 +32,9 @@ import { matchCase } from '../resolution/type-match-patterns.ts';
 import { TypeMatchExpansion } from '../rules/expansion/type-matches.ts';
 import { resolveConstraintSet } from '../traits/struct-constraints.ts';
 import type { MatchType } from '../types/computed-types.ts';
+import { errorType } from '../types/primitives.ts';
 import { parameterType } from '../types/resolve-type.ts';
-import { errorType, isNominalEntity, type Type } from '../types/type.ts';
+import { isNominalEntity, type Type } from '../types/type.ts';
 import {
   type CaseForm,
   type CasePatternForm,

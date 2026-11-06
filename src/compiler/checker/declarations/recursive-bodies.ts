@@ -23,10 +23,11 @@ import type { ModuleId } from '../../program/program.ts';
 import { type TypeAliasDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { errorType } from '../types/primitives.ts';
 import { closeRecursive } from '../types/recursive-types.ts';
 import { parameterType, resolveClosing } from '../types/resolve-type.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
-import { errorType, type Type } from '../types/type.ts';
+import type { Type } from '../types/type.ts';
 import { mentionsError, sameTypeSpelled } from '../types/type-parts.ts';
 import type { AliasRecursions } from './alias-recursion.ts';
 

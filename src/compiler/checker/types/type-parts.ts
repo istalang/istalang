@@ -11,19 +11,19 @@
 
 import { sameItems } from '../../../structures/equality.ts';
 import { memo } from '../../../structures/memo.ts';
+import { aliasedAs } from './alias-uses.ts';
 import { mappedParts, reducedComputed } from './computed-reduction.ts';
 import { type ComputedType, isComputed, type RecursiveType } from './computed-types.ts';
 import { withPack } from './function-types.ts';
 import { mapRecursive } from './recursive-types.ts';
-import {
-  type AnyType,
-  aliasedAs,
-  type Constraint,
-  type ErrorType,
-  type NominalType,
-  type ParameterKey,
-  type Type,
-  type UnionType,
+import type {
+  AnyType,
+  Constraint,
+  ErrorType,
+  NominalType,
+  ParameterKey,
+  Type,
+  UnionType,
 } from './type.ts';
 import { boundParameters, typeChildren } from './type-children.ts';
 import { typeKeys } from './type-keys.ts';

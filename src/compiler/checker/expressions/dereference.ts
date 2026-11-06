@@ -13,7 +13,8 @@ import type { BodyContext } from '../body-context.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { insideOptional } from '../types/inside-optional.ts';
-import { errorType, type Type } from '../types/type.ts';
+import { errorType } from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 export function checkDereference(context: BodyContext, node: Dereference): Type {

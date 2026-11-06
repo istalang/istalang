@@ -18,16 +18,9 @@
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import { unfolded, unfoldRecursive } from './computed-types.ts';
+import { isPrimitive, neverType, noneType } from './primitives.ts';
 import { folded } from './recursive-types.ts';
-import {
-  isMemberParameter,
-  isPrimitive,
-  type LiteralType,
-  type LiteralValue,
-  neverType,
-  noneType,
-  type Type,
-} from './type.ts';
+import { isMemberParameter, type LiteralType, type LiteralValue, type Type } from './type.ts';
 import { typeKeys } from './type-keys.ts';
 import type { TypeRules } from './type-rules.ts';
 import {

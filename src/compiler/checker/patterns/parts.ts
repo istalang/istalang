@@ -22,13 +22,8 @@ import type { FieldStep, PartStep } from '../surface/checked-pattern.ts';
 import { itemField } from '../surface/struct-items.ts';
 import { unfolded } from '../types/computed-types.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
-import {
-  type AnyType,
-  errorType,
-  type FieldMember,
-  type Type,
-  type UnionType,
-} from '../types/type.ts';
+import { errorType } from '../types/primitives.ts';
+import type { AnyType, FieldMember, Type, UnionType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 
 /** What a pattern reads and where it reports, in a body or in a top-level constant. */

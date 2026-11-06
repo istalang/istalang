@@ -12,7 +12,8 @@
 
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { type Type, tupleElements } from '../checker/types/type.ts';
+import { tupleElements } from '../checker/types/primitives.ts';
+import type { Type } from '../checker/types/type.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { CodeContext } from './context.ts';
 

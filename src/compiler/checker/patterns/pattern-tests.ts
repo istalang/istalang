@@ -15,7 +15,8 @@ import type {
   StructPattern,
 } from '../../syntax/patterns.ts';
 import { neverTest, type PatternTest } from '../surface/checked-pattern.ts';
-import { type AnyType, type FieldMember, neverType, type Type } from '../types/type.ts';
+import { neverType } from '../types/primitives.ts';
+import type { AnyType, FieldMember, Type } from '../types/type.ts';
 import type { Downcast } from './downcasts.ts';
 import { nothingShape, type Shape } from './exhaustiveness.ts';
 import type { ValuePart } from './parts.ts';

@@ -15,7 +15,8 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { enumsExpected } from '../types/expected.ts';
 import { entityType } from '../types/named-types.ts';
-import { expectsError, type Type } from '../types/type.ts';
+import { expectsError } from '../types/primitives.ts';
+import type { Type } from '../types/type.ts';
 
 /** What naming a type in value position reads: the checker, and what the binder says a name is. */
 export type Naming = Pick<BodyContext, 'checker' | 'entityOf'>;

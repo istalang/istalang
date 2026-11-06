@@ -24,13 +24,8 @@ import type { Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { sameType } from '../checker/types/identity.ts';
-import {
-  type AnyType,
-  isPrimitive,
-  type LiteralType,
-  type Type,
-  type UnionType,
-} from '../checker/types/type.ts';
+import { isPrimitive } from '../checker/types/primitives.ts';
+import type { AnyType, LiteralType, Type, UnionType } from '../checker/types/type.ts';
 import { baseOf } from '../checker/types/union-members.ts';
 import { hasOneValue } from '../checker/types/unions.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';

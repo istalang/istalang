@@ -13,7 +13,8 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { FieldPassType } from '../../passes.ts';
 import { declareTargets } from '../../patterns/targets.ts';
 import { fieldTypeOf, keyName, keysOf } from '../../traits/struct-keys.ts';
-import { errorType, isPrimitive, neverType, type Type, tupleType } from '../../types/type.ts';
+import { errorType, isPrimitive, neverType, tupleType } from '../../types/primitives.ts';
+import type { Type } from '../../types/type.ts';
 import { typeText } from '../../types/type-text.ts';
 import { membersOf, unionOf } from '../../types/unions.ts';
 

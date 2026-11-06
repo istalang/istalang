@@ -27,9 +27,11 @@ import type {
 } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
 import type { RequirementOrigin } from '../surface/resolved-call.ts';
+import { aliasedAs } from '../types/alias-uses.ts';
 import { type ComputedType, isMatchAlias, isOpaque } from '../types/computed-types.ts';
 import { inFieldOrder } from '../types/field-order.ts';
 import { sameConstraint, sameType } from '../types/identity.ts';
+import { errorType, isPrimitive } from '../types/primitives.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import {
   type EntryRule,
@@ -37,14 +39,7 @@ import {
   substituteStructConstraint,
 } from '../types/struct-constraint.ts';
 import { substitute, substituteConstraint, substitutionFor } from '../types/substitution.ts';
-import {
-  type AnyType,
-  aliasedAs,
-  type Constraint,
-  errorType,
-  isPrimitive,
-  type Type,
-} from '../types/type.ts';
+import type { AnyType, Constraint, Type } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
 import { aliasInstance } from '../types/type-match.ts';
 import { parametersIn } from '../types/type-parts.ts';
