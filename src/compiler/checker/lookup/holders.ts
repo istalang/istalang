@@ -13,7 +13,7 @@ import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/field-defaul
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
-import type { JoinedBody } from '../joined-body.ts';
+import type { JoinedBody } from '../denotation.ts';
 import { passesAround } from './pass-views.ts';
 
 /** What finding a holding body reads of the checker. */

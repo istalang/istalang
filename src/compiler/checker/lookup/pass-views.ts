@@ -9,7 +9,7 @@
 import { isOverFields, passedParts } from '../../syntax/statements.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
-import type { JoinedBody } from '../joined-body.ts';
+import type { JoinedBody } from '../denotation.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 
 /** One answer per pass of a field loop, in the order checked: there is one at least. */

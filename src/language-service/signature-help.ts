@@ -11,7 +11,7 @@
  */
 
 import type { Checker } from '../compiler/checker/check.ts';
-import type { JoinedBody } from '../compiler/checker/joined-body.ts';
+import type { JoinedBody } from '../compiler/checker/denotation.ts';
 import { parameterOfArgument, type ResolvedCall } from '../compiler/checker/resolved-call.ts';
 import type { FunctionType } from '../compiler/checker/types/type.ts';
 import { presentType } from '../compiler/checker/types/unions.ts';

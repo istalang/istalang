@@ -8,6 +8,11 @@
  *   renaming and hovering, so they never disagree about what a name means.
  * - A query about a module answers as that module checked whole, so an answer never depends on
  *   what was asked before it.
+ * - A body is read at a node as one (`JoinedBody`, §4): the passes of the field loops around the
+ *   node, each fact joined as its entry says (body-facts/). A call can't join another into one, as
+ *   types join into a union, so where passes resolve one text differently, tools read every pass's
+ *   call: `show(v)` over a struct's `Int` and `String` fields calls both overloads. Lowering reads
+ *   each pass apart (check.ts `CheckedBody`), one call per site.
  */
 
 import type { Entity, NamespaceEntity, VariableEntity, VariantEntity } from '../binder/entities.ts';
@@ -17,13 +22,13 @@ import type {
   FunctionDeclaration,
   RequiredAssociatedType,
 } from '../syntax/declarations.ts';
-import type { MemberAccess } from '../syntax/expressions/index.ts';
+import type { Lambda, MemberAccess } from '../syntax/expressions/index.ts';
 import type { StringLiteral } from '../syntax/expressions/literals.ts';
-import type { Identifier } from '../syntax/node.ts';
+import type { Identifier, NodeOf } from '../syntax/node.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
-import type { VariantMember } from './check.ts';
-import type { JoinedBody } from './joined-body.ts';
+import type { BodyFacts, CheckedFunction, VariantMember } from './check.ts';
+import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
 import type { Constraint, FieldMember, Type } from './types/type.ts';
 
 /** What names a type: a declared one, a primitive, or `Self` inside a trait. */
@@ -97,3 +102,29 @@ export interface LookupQueries {
    */
   readonly constraintsOf: (type: Type) => readonly Constraint[];
 }
+
+/**
+ * The facts a body answers as functions and calls, once per pass, by the name tools read every
+ * pass's answer under.
+ */
+export const listedFacts = {
+  resolved: 'callsAt',
+  implicitCallOf: 'implicitCallsOf',
+  functionOf: 'functionsOf',
+} as const satisfies Partial<Record<keyof BodyFacts, keyof ListedFacts>>;
+
+/** What tools read of a call or a function across passes: each distinct one a pass checked, in pass order. */
+export interface ListedFacts {
+  /** The functions `site` calls, or names as a value: each one a pass resolved it to. */
+  readonly callsAt: (site: ResolvedSite) => readonly ResolvedCall[];
+  /** The calls the language makes for `node` in `role` (`implicitCallOf`): each one a pass made. */
+  readonly implicitCallsOf: (node: NodeOf<string>, role: ImplicitRole) => readonly ResolvedCall[];
+  /** A lambda or local function as each pass checked it: one for each type it was checked as. */
+  readonly functionsOf: (node: Lambda | FunctionDeclaration) => readonly CheckedFunction[];
+}
+
+/**
+ * A body as tools read it at a node: the passes of the field loops around the node read as one
+ * (§4), each fact joined as its entry says (body-facts/), calls and functions listed.
+ */
+export type JoinedBody = Omit<BodyFacts, keyof typeof listedFacts> & ListedFacts;

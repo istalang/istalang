@@ -8,7 +8,7 @@
  */
 
 import type { BodyFacts, CheckedBody } from '../check.ts';
-import { type JoinedBody, type ListedFacts, listedFacts } from '../joined-body.ts';
+import { type JoinedBody, type ListedFacts, listedFacts } from '../denotation.ts';
 import type { PassAnswers } from '../lookup/pass-views.ts';
 import type { Pass } from '../passes.ts';
 import type { ResolvedCall } from '../resolved-call.ts';

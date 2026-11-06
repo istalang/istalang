@@ -51,7 +51,7 @@ tags: [reuse, language, modules, program, binder, names]
 - tell whether a type may annotate (§3.16: a struct, not a shared or extern one) → `canAnnotate` (`src/compiler/checker/checked-annotation.ts`)
 - turn completion candidates into items, or an item into an LSP item → `present` (`src/language-service/completion/present.ts`), `completionItem` (`src/lsp/providers/completion.ts`)
 - the type expected where a cursor writes a value, and the variants that may be written bare there → `expectedTypeAt`, `expectedVariants`, `isBareVariant` (`src/language-service/completion/expected.ts`)
-- read a checked body at a node as tools do, the passes of the field loops around it read as one (§4) → `checker.lookup.bodyHolding`, a `JoinedBody` (`src/compiler/checker/joined-body.ts`): its types joined, and every pass's call or lambda listed (`callsAt`, `implicitCallsOf`, `functionsOf`); never a pass's single call, which lowering alone reads
+- read a checked body at a node as tools do, the passes of the field loops around it read as one (§4) → `checker.lookup.bodyHolding`, a `JoinedBody` (`src/compiler/checker/denotation.ts`): its types joined, and every pass's call or lambda listed (`callsAt`, `implicitCallsOf`, `functionsOf`); never a pass's single call, which lowering alone reads
 - the type expected of a value in a checked body → `CheckedBody.expectedOf`; whether a type fits another → `Checker.fitOf` (`src/compiler/checker/check.ts`)
 - check an edit tried out without cutting the program's incremental history → `checkProgram(program, { previous, tentative: true })`
 - the docstring of what a name denotes → `docstringOf` (`src/language-service/docstrings.ts`)
