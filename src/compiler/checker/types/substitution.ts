@@ -124,7 +124,10 @@ export function substituteKept<
   );
 }
 
-/** `substituted`, written through the alias `type` was written through, if any, substituted. */
+/**
+ * `substituted`, written through the alias `type` was written through, if any, substituted; `type`
+ * itself when substituting changed neither (type-parts.ts keeps a type alike).
+ */
 function asWritten<Substituted extends Type>(
   type: Type,
   substituted: Substituted,
@@ -135,10 +138,8 @@ function asWritten<Substituted extends Type>(
   if (alias === undefined) {
     return substituted;
   }
-  return aliasedAs(
-    substituted,
-    mapAliasUse(alias, (each) => substitute(each, substitution, rules)),
-  );
+  const given = mapAliasUse(alias, (each) => substitute(each, substitution, rules));
+  return substituted === type && given === alias ? substituted : aliasedAs(substituted, given);
 }
 
 /** `constraint` with `substitution` applied to its trait's arguments. */

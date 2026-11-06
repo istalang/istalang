@@ -2,9 +2,15 @@
  * What a type is built from (type.ts): the types one level down, a type with them replaced, and
  * what walking them finds, the type parameters, nominal and `any` types a type mentions and whether it holds
  * the error type.
+ *
+ * A type rebuilt with every part it is built from unchanged is the very type, never a copy, so
+ * what is memoized per type object (type-keys.ts, type-children.ts, here) stays found however often
+ * a type is substituted or respelled. Only a type computed from others is built again whatever its
+ * parts: a use left unreduced reduces once rebuilt (type-match.ts `rebuilt`).
  */
 
 import { sameItems } from '../../../structures/equality.ts';
+import { memo } from '../../../structures/memo.ts';
 import { mappedParts, reducedComputed } from './computed-reduction.ts';
 import { type ComputedType, isComputed, type RecursiveType } from './computed-types.ts';
 import { withPack } from './function-types.ts';
@@ -23,6 +29,12 @@ import { boundParameters, typeChildren } from './type-children.ts';
 import { typeKeys } from './type-keys.ts';
 import type { TypeRules } from './type-rules.ts';
 import { unionOf, unionOfNormalized } from './unions.ts';
+
+/** Each type written through no alias at any level (`unaliased`). */
+const unaliasedTypes = new WeakMap<Type, Type>();
+
+/** Each type's parameters (`parametersIn`). */
+const mentionedParameters = new WeakMap<Type, readonly ParameterKey[]>();
 
 /**
  * Whether two types are alike in every part: their spelled keys are equal (type-keys.ts), so they
@@ -51,15 +63,19 @@ export function sameConstraintSpelled(first: Constraint, second: Constraint): bo
 export function unaliased<Written extends Exclude<Type, UnionType>>(type: Written): Written;
 export function unaliased(type: Type): Type;
 export function unaliased(type: Type): Type {
-  const bare = type.alias === undefined ? type : { ...type, alias: undefined };
-  switch (bare.kind) {
-    case 'union':
-      return unionOfNormalized(bare.members.map(unaliased));
-    case 'recursive':
-      return bare;
-    default:
-      return mapParts(bare, unaliased);
-  }
+  return memo(unaliasedTypes, type, () => {
+    const bare = type.alias === undefined ? type : { ...type, alias: undefined };
+    switch (bare.kind) {
+      case 'union': {
+        const members = bare.members.map(unaliased);
+        return sameItems<Type>()(members, bare.members) ? bare : unionOfNormalized(members);
+      }
+      case 'recursive':
+        return bare;
+      default:
+        return mapParts(bare, unaliased);
+    }
+  });
 }
 
 /**
@@ -67,14 +83,16 @@ export function unaliased(type: Type): Type {
  * `any` type's `Self`, a mapped struct type's parameter.
  */
 export function parametersIn(type: Type): readonly ParameterKey[] {
-  if (type.kind === 'parameter') {
-    return [type.declaration];
-  }
-  const mentioned = new Set(typeChildren(type).flatMap(parametersIn));
-  for (const bound of boundParameters(type)) {
-    mentioned.delete(bound);
-  }
-  return [...mentioned];
+  return memo(mentionedParameters, type, () => {
+    if (type.kind === 'parameter') {
+      return [type.declaration];
+    }
+    const mentioned = new Set(typeChildren(type).flatMap(parametersIn));
+    for (const bound of boundParameters(type)) {
+      mentioned.delete(bound);
+    }
+    return [...mentioned];
+  });
 }
 
 /** The nominal types `type` is or is built from, outermost first. */
@@ -122,10 +140,10 @@ export function errorIn(type: Type): ErrorType | undefined {
 }
 
 /**
- * `type` with each type it is built from, one level down, replaced by what `map` gives. The alias
- * `type` was written through comes along: a caller changing what it wrote drops it (type.ts). A
- * union is built again by the program's `rules` (unions.ts), so its members may merge into fewer,
- * or into one.
+ * `type` with each type it is built from, one level down, replaced by what `map` gives; `type`
+ * itself when `map` changes none and it is no computed type (the banner). The alias `type` was
+ * written through comes along: a caller changing what it wrote drops it (type.ts). A union is built
+ * again by the program's `rules` (unions.ts), so its members may merge into fewer, or into one.
  */
 export function mapChildren(type: Type, map: (child: Type) => Type, rules: TypeRules): Type {
   const rebuilt = rebuiltBy(type, map, rules);
@@ -147,8 +165,10 @@ type Rebuilt = UnionType | RecursiveType | ComputedType;
 function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Type | undefined {
   const rebuilt = (): Type | undefined => {
     switch (type.kind) {
-      case 'union':
-        return unionOf(type.members.map(map), rules);
+      case 'union': {
+        const members = type.members.map(map);
+        return sameItems<Type>()(members, type.members) ? type : unionOf(members, rules);
+      }
       case 'recursive':
         return mapRecursive(type, map, rules);
       default:
@@ -156,21 +176,38 @@ function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Ty
     }
   };
   const built = rebuilt();
-  return built === undefined || type.alias === undefined ? built : aliasedAs(built, type.alias);
+  return built === undefined || built === type || type.alias === undefined
+    ? built
+    : aliasedAs(built, type.alias);
 }
 
 /**
  * `type`, neither a union nor a recursive type, with each type it is built from, one level down,
- * replaced by what `map` gives, still of its kind; its alias comes along, as `mapChildren` says.
- * Building one of these takes no rule of the program: only a union and a recursive type's graph
- * normalize members, and only a computed type reduces, which `mapChildren` does. A computed type
- * kept as it is, its parts respelled (`unaliased`), stays of its kind here.
+ * replaced by what `map` gives, still of its kind, `type` itself when `map` changes none; its alias
+ * comes along, as `mapChildren` says. Building one of these takes no rule of the program: only a
+ * union and a recursive type's graph normalize members, and only a computed type reduces, which
+ * `mapChildren` does. A computed type kept as it is, its parts respelled (`unaliased`), stays of
+ * its kind here.
  */
 export function mapParts<Mapped extends Exclude<Type, UnionType | RecursiveType>>(
   type: Mapped,
   map: (child: Type) => Type,
 ): Mapped;
 export function mapParts(
+  type: Exclude<Type, UnionType | RecursiveType>,
+  map: (child: Type) => Type,
+): Type {
+  let changed = false;
+  const rebuilt = partsMapped(type, (child) => {
+    const mapped = map(child);
+    changed ||= mapped !== child;
+    return mapped;
+  });
+  return changed ? rebuilt : type;
+}
+
+/** `type` rebuilt by `mapParts` from its parts as `map` gives them, a copy even when none changed. */
+function partsMapped(
   type: Exclude<Type, UnionType | RecursiveType>,
   map: (child: Type) => Type,
 ): Type {

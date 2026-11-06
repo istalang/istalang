@@ -11,6 +11,7 @@
  */
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
+import { memo } from '../../../structures/memo.ts';
 import { withEmptied } from '../../../structures/stack.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { associatedTypeOf, type Expansion } from '../traits/known-constraints.ts';
@@ -54,13 +55,24 @@ export function programTypeRules(
   const reductions = new TypeMatchReductions(checker);
   // The associated types being expanded: what is under way, the only state.
   const associating: Expansion[] = [];
+  // An associated type asked for with nothing under way is the same type however often it is asked.
+  const associatedTypes = new WeakMap<Type, Map<string, Type>>();
   const typeRules: TypeRules = {
     absorbs: (target, member) =>
       absorbed.get(JSON.stringify([typeKeys.typeKey(target), typeKeys.typeKey(member)]), {
         target,
         member,
       }),
-    associatedType: (of, name) => associatedTypeOf(checker, of, name, associating),
+    associatedType: (of, name) => {
+      const expanded = () => associatedTypeOf(checker, of, name, associating);
+      return associating.length === 0 && reductions.isIdle()
+        ? memo(
+            memo(associatedTypes, of, () => new Map<string, Type>()),
+            name,
+            expanded,
+          )
+        : expanded();
+    },
     fieldType: (of, key) => fieldTypeOf(checker, unfolded(of), key),
     keysOf: (of, without) => keysOf(checker, unfolded(of), without),
     mappedType: (parts, outer) => mappedTypeOf(checker, parts, outer),

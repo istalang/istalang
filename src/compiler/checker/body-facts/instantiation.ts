@@ -8,6 +8,7 @@
  * function instance's body this way, and compile time a field's default for the literal running it.
  */
 
+import { memo } from '../../../structures/memo.ts';
 import type {
   AssignedPart,
   ChainLink,
@@ -68,7 +69,10 @@ export function instantiationBy(
   checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
 ): Instantiation {
   const rules = checker.typeRules;
-  const concrete = (type: Type) => unfolded(substitute(type, substitution, rules));
+  // A body reads one type at many nodes, and lowering reads each node's again and again.
+  const concreteTypes = new WeakMap<Type, Type>();
+  const concrete = (type: Type) =>
+    memo(concreteTypes, type, () => unfolded(substitute(type, substitution, rules)));
   return {
     substitution,
     checker,

@@ -202,6 +202,12 @@ export class TypeMatchReductions {
   }
 
   /** The reductions under way now. */
+  /** Whether no reduction is under way, so a use reduces as it would asked on its own. */
+  isIdle(): boolean {
+    const [outermost, ...inner] = this.#scopes;
+    return inner.length === 0 && outermost?.underWay.size === 0;
+  }
+
   #scope(): Reducing {
     return this.#scopes.at(-1) ?? unreachable('No scope holds the reductions under way.');
   }
