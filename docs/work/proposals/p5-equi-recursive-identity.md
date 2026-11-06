@@ -1,7 +1,7 @@
 ---
 description: plan for making proposal 5's recursive aliases equi-recursive (two recursive types with one structure are one type) — the human's decision and why, the evidence from the form builder, why a canonical key alone can't do it, the one-constructor route (recursive types carrying a minimized cyclic graph), what it deletes, files, tests, docs to rewrite, and the steps left to ship proposal 5; read before implementing or reviewing equi-recursive identity
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-06
 last_updated: 2026-11-06
