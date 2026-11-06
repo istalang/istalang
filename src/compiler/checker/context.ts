@@ -33,12 +33,14 @@ import type { TypeNode } from '../syntax/types.ts';
 import type { Checker, VariantMember } from './check.ts';
 import type { AnnotationQueries } from './checked-annotation.ts';
 import type { JsonCodecs } from './json-form.ts';
+import type { ResolvedCall } from './resolved-call.ts';
 import type { Fit, Fitting } from './types/fit.ts';
 import type { StaticOwner } from './types/named-types.ts';
 import type { ConstraintSet, StructConstraintModel } from './types/struct-constraint.ts';
 import type { Substitution } from './types/substitution.ts';
 import type { Constraint, FieldMember, NominalDeclaration, Type } from './types/type.ts';
 import type { TypeMatchQueries } from './types/type-match.ts';
+import type { UseSite } from './use-site.ts';
 
 /** A declaration an instantiation gives type arguments: a function, a nominal type or an alias. */
 export type Instantiable = FunctionDeclaration | NominalDeclaration | TypeAliasDeclaration;
@@ -153,6 +155,8 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
   readonly declaredVariantsOf: (declaration: EnumDeclaration) => readonly VariantMember[];
   /** How types cross as JSON, with what meeting `Encodable` and `Decodable` asks (§9). */
   readonly json: JsonCodecs;
+  /** The trait goals asked at the root of a witness search, each searched once (§3.10). */
+  readonly rootGoals: RootGoals;
   /** What fitting a value where a type is expected asks of the program (§2). */
   readonly fitting: Fitting;
   /** How `found` fits `expected`, by implicit conversions; undefined when nothing makes it (§2, §3.14). */
@@ -186,6 +190,31 @@ export interface CheckerContext extends Omit<Checker, 'program'> {
    * computing now, which that module's check reads.
    */
   readonly constrainLater: (module: ModuleId, check: ConstraintCheck) => void;
+}
+
+/** A trait goal asked at the root of a witness search: `type` meeting `constraint`. */
+export interface TraitGoal {
+  readonly type: Type;
+  readonly constraint: Constraint;
+  /** Whether only calls on the type's values need it: a union's, through its members (§6). */
+  readonly onValues: boolean;
+}
+
+/** A struct goal asked at the root of a witness search: `type` meeting the struct constraint `model`. */
+export interface StructGoal {
+  readonly type: Type;
+  readonly model: StructConstraintModel;
+}
+
+/**
+ * Goals asked at the root of a witness search (resolution/conformance.ts), each searched once per
+ * program, since meeting is the same wherever it is asked (§3.10; resolution/root-goals.ts).
+ */
+export interface RootGoals {
+  /** The witness of every function `goal`'s trait requires; undefined after reporting why not. */
+  readonly witnesses: (site: UseSite, goal: TraitGoal) => readonly ResolvedCall[] | undefined;
+  /** Whether `goal` is met, reported at `site` when it isn't. */
+  readonly structMet: (site: UseSite, goal: StructGoal) => boolean;
 }
 
 /** What declarations ask of annotations beyond later phases' queries (rules/annotations.ts). */

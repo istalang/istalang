@@ -54,7 +54,13 @@ import type {
   SignatureParameter,
   VariantMember,
 } from './check.ts';
-import type { CheckerContext, CheckerNote, ConstraintCheck, ProgramInputs } from './context.ts';
+import type {
+  CheckerContext,
+  CheckerNote,
+  ConstraintCheck,
+  ProgramInputs,
+  RootGoals,
+} from './context.ts';
 import { Aliases } from './declarations/aliases.ts';
 import { ConstantChecks } from './declarations/constants.ts';
 import { FunctionChecks } from './declarations/functions.ts';
@@ -66,7 +72,9 @@ import { StaticFunctions } from './declarations/statics.ts';
 import { Lookup } from './lookup/lookup.ts';
 import { declareParameter } from './patterns/targets.ts';
 import { declaringInputs, programInputs, recordedBindings } from './program-inputs.ts';
+import { rootSearches } from './resolution/conformance.ts';
 import { programTypeRules } from './resolution/program-type-rules.ts';
+import { programRootGoals } from './resolution/root-goals.ts';
 import { memberWitnesses } from './resolution/trait-objects.ts';
 import { TypeParameters } from './resolution/type-parameters.ts';
 import type { ResolvedCall } from './resolved-call.ts';
@@ -137,6 +145,7 @@ export class ProgramChecker implements CheckerContext {
   readonly #moduleChecks: ModuleChecks;
   readonly annotations: Annotations;
   readonly json: JsonForms;
+  readonly rootGoals: RootGoals;
   readonly lookup: Lookup;
 
   constructor(program: Program, { previous, tentative = false, observe }: CheckerOptions = {}) {
@@ -195,6 +204,7 @@ export class ProgramChecker implements CheckerContext {
       checkValue: (module, value) => this.#valueBody(module, undefined).checkValue(value),
     });
     this.json = new JsonForms({ checker: this, annotations: this.annotations });
+    this.rootGoals = programRootGoals(this, rootSearches);
     this.lookup = new Lookup(this);
   }
 

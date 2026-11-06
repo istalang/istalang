@@ -18,6 +18,8 @@
  *   coinductive on the active search stack for concrete types: a `(struct, struct constraint)` or
  *   `(union, constraint)` goal already active counts as met (`silentMeets`). A search judges each
  *   goal once (witness-outcomes.ts `SearchGoals`), finding a failure again where its site reports.
+ * - A goal asked at the root, a trait's or a struct constraint's, is searched once per program
+ *   (`rootSearches`, kept by root-goals.ts), each site asking making its reports again.
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
  * - The required result is what the call is expected to give, so a type parameter no argument
@@ -30,6 +32,7 @@
  */
 
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import type { RootGoals } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type Completion, completeInference } from '../inference/complete.ts';
 import type { ResolvedCall, Witnesses } from '../resolved-call.ts';
@@ -164,9 +167,17 @@ export function witnessesFor(
   type: Type,
   constraint: Constraint,
 ): readonly ResolvedCall[] | undefined {
-  const witnesses = conform({ site, type, constraint }, startSearch());
-  return isFailure(witnesses) ? undefined : witnesses;
+  return site.checker.rootGoals.witnesses(site, { type, constraint, onValues: false });
 }
+
+/** How a goal is searched from its root at a site, which root-goals.ts keeps the answer of. */
+export const rootSearches: RootGoals = {
+  witnesses: (site, goal) => {
+    const witnesses = conform({ site, ...goal }, startSearch());
+    return isFailure(witnesses) ? undefined : witnesses;
+  },
+  structMet: (site, { type, model }) => meetsStructModel(site, type, model, silentMeets(site)),
+};
 
 /**
  * The witnesses a call through `constraint`'s trait on a value of `type`, a union, runs (§6): its
@@ -178,8 +189,7 @@ export function callWitnessesFor(
   type: Type,
   constraint: Constraint,
 ): readonly ResolvedCall[] | undefined {
-  const witnesses = conform({ site, type, constraint, onValues: true }, startSearch());
-  return isFailure(witnesses) ? undefined : witnesses;
+  return site.checker.rootGoals.witnesses(site, { type, constraint, onValues: true });
 }
 
 /**

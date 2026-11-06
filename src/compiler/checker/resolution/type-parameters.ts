@@ -42,10 +42,10 @@ import type { Constraint, Type } from '../types/type.ts';
 import { typeKeys } from '../types/type-keys.ts';
 import { sameConstraintSpelled } from '../types/type-parts.ts';
 import { useSite } from '../use-site.ts';
-import { meets, silentMeets } from './conformance.ts';
+import { meets } from './conformance.ts';
 import { impliedConstraints } from './implied-constraints.ts';
 import { failureDiagnostic, ReductionRequirements } from './reduction-requirements.ts';
-import { meetsStructConstraints, meetsStructModel } from './shortfalls.ts';
+import { meetsStructConstraints } from './shortfalls.ts';
 
 export class TypeParameters {
   readonly #checker: CheckerContext;
@@ -195,7 +195,7 @@ export class TypeParameters {
       site,
       parameter,
       { argument, substitution: typeArguments },
-      (type, model) => meetsStructModel(site, type, model, silentMeets(site)),
+      (type, model) => this.#checker.rootGoals.structMet(site, { type, model }),
     );
     for (const constraint of this.constraintsOf(parameter)) {
       meets(
