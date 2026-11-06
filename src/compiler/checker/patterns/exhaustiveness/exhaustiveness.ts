@@ -2,9 +2,9 @@
  * Which values a `match` leaves unhandled, and which of its cases can never run (§3.11, §4): the
  * usefulness algorithm over pattern matrices (Maranget, "Warnings for pattern matching", 2007).
  *
- * - Patterns are reduced to shapes first (shapes.ts): a constructor with its arguments, or anything.
- *   That keeps this module free of syntax and of the checker, so it is tested on its own against
- *   brute-force enumeration.
+ * - Patterns are reduced to shapes first (shapes.ts): a constructor with its arguments, or
+ *   anything. That keeps this module free of syntax and of the checker, so it is tested on its own
+ *   against brute-force enumeration.
  * - A type's constructors come from `Signature`: every variant of an enum, `true` and `false`, the
  *   one shape of a tuple or struct. A type with no finite set of constructors, such as `Int` or
  *   `String`, is covered only by a pattern that takes anything, whatever literals the cases list.

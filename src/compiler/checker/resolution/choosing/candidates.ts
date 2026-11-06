@@ -8,13 +8,14 @@
  *   arguments mention, so generic code calls `add(x, y)` on `T is Addable` like any other; and so
  *   for every `any` type they mention, whose value's own type decides the function (§3.10);
  * - for a call written in a module on a union, the functions of its name that the traits visible
- *   there require (../conformance/union-traits.ts), which choosing tries only where no function takes the union
- *   whole (§6): a union has no module, so argument-dependent lookup finds nothing for it.
+ *   there require (../conformance/union-traits.ts), which choosing tries only where no function
+ *   takes the union whole (§6): a union has no module, so argument-dependent lookup finds nothing
+ *   for it.
  *
- * A static function (`Duration.zero()`, `T.zero()`) is chosen among those declared on its type
- * and visible where it is called: in the calling module, the type's module, the prelude, or a
- * module the caller imports (§3.7); on a type parameter, among its constraints' static requirements.
- * A shape has no module (§3.13), so argument-dependent lookup finds nothing for it, and its static
+ * A static function (`Duration.zero()`, `T.zero()`) is chosen among those declared on its type and
+ * visible where it is called: in the calling module, the type's module, the prelude, or a module
+ * the caller imports (§3.7); on a type parameter, among its constraints' static requirements. A
+ * shape has no module (§3.13), so argument-dependent lookup finds nothing for it, and its static
  * functions are those the caller sees (§3.17).
  *
  * A witness of a trait's requirement (§3.10) is chosen among the functions declared beside the

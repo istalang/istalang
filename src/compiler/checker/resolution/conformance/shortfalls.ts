@@ -265,10 +265,10 @@ interface DescribedFields {
 }
 
 /**
- * What a struct the fields `known` describe lacks to meet `model`: each field `model` names must be one
- * `known` names, with rules implying its entry's; and, when `model` constrains its other fields,
- * every field `known` names beyond `model`'s, and every field it leaves to its others' entries,
- * must meet that rule.
+ * What a struct the fields `known` describe lacks to meet `model`: each field `model` names must be
+ * one `known` names, with rules implying its entry's; and, when `model` constrains its other
+ * fields, every field `known` names beyond `model`'s, and every field it leaves to its others'
+ * entries, must meet that rule.
  */
 function knownShortfall(
   checker: CheckerContext,

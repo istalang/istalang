@@ -3,9 +3,9 @@
  * (§3.11, §3.15).
  *
  * - A struct whose fields aren't known yet, a type parameter with a struct constraint or a computed
- *   struct over one (§3.5), gives a pattern the fields its constraints name, each typed as they say,
- *   and reached by its name, as every struct's field is (`StructStep`). Any other field is unknown
- *   to the pattern, as to a field read.
+ *   struct over one (§3.5), gives a pattern the fields its constraints name, each typed as they
+ *   say, and reached by its name, as every struct's field is (`StructStep`). Any other field is
+ *   unknown to the pattern, as to a field read.
  * - A rest is the mapped struct type of the keys the pattern leaves, each to its field's type:
  *   `{ [F in keyof S except "title"]: S[F] }`. Built through the program's type rules, it is the
  *   shape of those fields for a struct whose fields are known, and opaque until an instantiation

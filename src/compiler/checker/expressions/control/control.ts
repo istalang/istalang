@@ -1,10 +1,10 @@
 /**
- * `if` as an expression (§4): its branches agree on its type (expressions/control/branches.ts). An `if` without
- * `else` produces nothing, so its branches must be `Unit`.
+ * `if` as an expression (§4): its branches agree on its type (expressions/control/branches.ts). An
+ * `if` without `else` produces nothing, so its branches must be `Unit`.
  *
- * A condition its operands' types decide (expressions/decided-conditions.ts) rules out the branch that
- * never runs: its own when always false, every one after it when always true. A branch ruled out is
- * neither checked nor lowered, and doesn't take part in the `if`'s type.
+ * A condition its operands' types decide (expressions/decided-conditions.ts) rules out the branch
+ * that never runs: its own when always false, every one after it when always true. A branch ruled
+ * out is neither checked nor lowered, and doesn't take part in the `if`'s type.
  */
 
 import { valueBranchesOf } from '../../../syntax/expressions/branches.ts';

@@ -5,19 +5,19 @@
  * - Types flow both ways: a handler receives the type its context expects (bidirectional
  *   inference), and reports against it only where the spec says a value must fit (`expect`, or
  *   `fit` for a type already checked). Every type mismatch is reported through `fit`.
- * - What lowering needs is recorded as checking goes: every expression's type, every call's
- *   target, and every value's implicit conversions (§2, types/fitting/fit.ts), which `fit` finds: on the
+ * - What lowering needs is recorded as checking goes: every expression's type, every call's target,
+ *   and every value's implicit conversions (§2, types/fitting/fit.ts), which `fit` finds: on the
  *   node giving the value, or, for a value an assignment writes, on its part
  *   (statements/assignments.ts). Nothing is recomputed later, so lowering sees what was checked.
  * - A node is checked once. A literal of items each with a type of its own, checked before the type
  *   it is built as is decided (§3.7: a call's argument, a producer agreeing with others), is built
  *   again as that type (`rebuild`): its own literals are checked again as their parts, and every
- *   other item keeps what it was checked to have, fitted to its part, as an item an argument literal
- *   checked ahead of it does (expressions/literal-items.ts). So is a tuple or struct
+ *   other item keeps what it was checked to have, fitted to its part, as an item an argument
+ *   literal checked ahead of it does (expressions/literal-items.ts). So is a tuple or struct
  *   literal whose items' types only checking tells, and a collection literal an `any` member might
- *   take whole, where its own type doesn't go into the union expected: as the one member its checked
- *   items build it as (§2, expressions/built-members.ts). Any other collection literal is built
- *   as its member before its items are checked, so they agree on that member's item.
+ *   take whole, where its own type doesn't go into the union expected: as the one member its
+ *   checked items build it as (§2, expressions/built-members.ts). Any other collection literal is
+ *   built as its member before its items are checked, so they agree on that member's item.
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. What they record of a
  *   node is kept per pass of a field loop (passes.ts), so the body reads as each pass checked it.

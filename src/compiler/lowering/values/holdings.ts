@@ -4,8 +4,9 @@
  * ../parts/patterns.ts, optionals.ts, ../trait-objects/), so a layout an instantiation changed is
  * never patched afterwards.
  *
- * - A union's value is the variant of its enum holding a member (tables/type-table.ts): the member's own,
- *   its literal's base, whose value a literal is, or the `any` member that took it whole.
+ * - A union's value is the variant of its enum holding a member (tables/type-table.ts): the
+ *   member's own, its literal's base, whose value a literal is, or the `any` member that took it
+ *   whole.
  * - An `any` type's value is the variant of its enum holding a concrete type's value, its base's
  *   for a literal. Where an instantiation let an `any` type take a member whole (`T | any
  *   Stringable` with `T = Int`), a value of the member sits there, in the union's variant of that

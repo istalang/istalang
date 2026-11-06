@@ -10,8 +10,9 @@
  *   Items of different types agree only through checking, so such a literal has no type known
  *   before it, and a spread's items are known only from an array's type.
  * - Where a union is expected, a literal with an item whose type only checking tells is built by
- *   its shape before its items are checked (types/fitting/expected.ts `memberBuilt`): as the arrays or maps
- *   whose items, keys and values take each item with a type of its own, the others taking any.
+ *   its shape before its items are checked (types/fitting/expected.ts `memberBuilt`): as the arrays
+ *   or maps whose items, keys and values take each item with a type of its own, the others taking
+ *   any.
  */
 
 import { wellKnown } from '../../../../language/well-known.ts';

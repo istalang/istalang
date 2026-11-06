@@ -7,9 +7,9 @@
  *   naming any other type, a map or an array of that type, as `[…]` built where `T` is expected.
  * - With no `T`, the expected type decides, as for `struct{…}` and `[…]`: a struct type builds a
  *   struct; a type a map literal builds, a map; an array type, an array. A union is built as the
- *   one member the value fits, which choosing found before (types/fitting/expected.ts). A value whose
- *   type nothing decides builds what its entries say: items an array, a quoted key a map, names
- *   alone a shape.
+ *   one member the value fits, which choosing found before (types/fitting/expected.ts). A value
+ *   whose type nothing decides builds what its entries say: items an array, a quoted key a map,
+ *   names alone a shape.
  * - Entries the literal can't hold are reported, each once, and their values checked alone, so
  *   tools still read them. A map built as an indented value has String keys, so a map whose key
  *   type no String literal fits is refused whole.
@@ -219,9 +219,9 @@ function checkValuesAlone(context: BodyContext, entries: readonly IndentedEntry[
 }
 
 /**
- * Which types `node` can be built as where a call or a union decides (types/fitting/expected.ts): for each,
- * whether the literal of the form that type asks for takes it, its entries all held there. A value
- * naming its type is taken as its literal is, a variant's by its enums.
+ * Which types `node` can be built as where a call or a union decides (types/fitting/expected.ts):
+ * for each, whether the literal of the form that type asks for takes it, its entries all held
+ * there. A value naming its type is taken as its literal is, a variant's by its enums.
  */
 export function indentedAccepts(context: BodyContext, node: IndentedValue): Accepts | undefined {
   if (node.type !== undefined) {

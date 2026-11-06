@@ -1,8 +1,8 @@
 /**
- * Downcasts (§3.10): against an `any` value, a struct pattern, or a name referring to a type,
- * tests the value's own type, then matches the rest of the pattern against the value of that type
- * inside. A qualified variant (`Decision.Approved{by}`) tests for its enum, then for the variant,
- * as it would on a value of the enum. What a name downcasts to is types/written/pattern-types.ts's rule.
+ * Downcasts (§3.10): against an `any` value, a struct pattern, or a name referring to a type, tests
+ * the value's own type, then matches the rest of the pattern against the value of that type inside.
+ * A qualified variant (`Decision.Approved{by}`) tests for its enum, then for the variant, as it
+ * would on a value of the enum. What a name downcasts to is types/written/pattern-types.ts's rule.
  *
  * - A pattern names a type without type arguments, so a generic type can't be downcast to.
  * - A type that doesn't meet the `any` type's constraints is never inside it, so the pattern is

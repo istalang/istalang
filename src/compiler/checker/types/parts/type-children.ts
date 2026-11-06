@@ -7,8 +7,8 @@
  *   to no node of the graph and to no parameter a type around it there binds (an `any` type's
  *   traits' `Self`, a mapped struct type's own). They are what substitution replaces and what a
  *   walk looking for type parameters, errors or nominal types finds; the graph itself is rebuilt
- *   from them (identity/recursive-types.ts), a bound parameter kept as it is. A graph's parts hold no
- *   recursive type: closing a graph copies in the nodes of every graph it reaches.
+ *   from them (identity/recursive-types.ts), a bound parameter kept as it is. A graph's parts hold
+ *   no recursive type: closing a graph copies in the nodes of every graph it reaches.
  */
 
 import { memo } from '../../../../structures/memo.ts';
@@ -173,8 +173,8 @@ export function graphParts(graph: RecursiveGraph): readonly Type[] {
 }
 
 /**
- * What `type`, inside a body of `graph` under binders binding `bound`, is there (the banner): one of
- * its parts, a node of it, a bound parameter, or a type built from these.
+ * What `type`, inside a body of `graph` under binders binding `bound`, is there (the banner): one
+ * of its parts, a node of it, a bound parameter, or a type built from these.
  */
 export function graphPlaceOf(
   type: Type,

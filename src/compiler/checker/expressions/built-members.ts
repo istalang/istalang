@@ -1,8 +1,8 @@
 /**
- * The member of an expected union a value is built as (§2, types/fitting/expected.ts `memberBuilt`), as
- * every expression's check reads it (body-checker.ts `expression`): decided before checking from
- * what the value is known to take, and, for a literal whose own type turned out not to go into the
- * union, again from its checked items, which rebuilds it as that member.
+ * The member of an expected union a value is built as (§2, types/fitting/expected.ts
+ * `memberBuilt`), as every expression's check reads it (body-checker.ts `expression`): decided
+ * before checking from what the value is known to take, and, for a literal whose own type turned
+ * out not to go into the union, again from its checked items, which rebuilds it as that member.
  *
  * A member that is a union again, a recursive one's once unfolded, gives the member of it the value
  * is built as, at any depth, so a value goes into a union inside a union through each in turn.

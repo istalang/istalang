@@ -13,8 +13,9 @@
  *   downcast does its type.
  * - A literal leaves its literal type to what binds it, and type arguments are written only where a
  *   union's member is selected (§3.11).
- * - The types inside an `any` type are an open set, so a downcast acts as a guard for exhaustiveness;
- *   a union's members are a closed set, each a constructor (exhaustiveness/shapes.ts).
+ * - The types inside an `any` type are an open set, so a downcast acts as a guard for
+ *   exhaustiveness; a union's members are a closed set, each a constructor
+ *   (exhaustiveness/shapes.ts).
  */
 
 import { lastName } from '../../syntax/node.ts';

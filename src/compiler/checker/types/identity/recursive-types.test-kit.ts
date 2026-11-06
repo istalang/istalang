@@ -4,8 +4,9 @@
  *
  * - A body is a union of leaves and parts, or one part: a guarded one, or another body standing
  *   unguarded, before it or after it, never around a cycle, so a body may only forward to another.
- *   Leaves cover what a union normalizes: a literal beside its base, `true | false`, `Never`, and an `any Shows` member taking
- *   every primitive and literal whole, which the test rules (`showingRules`) say.
+ *   Leaves cover what a union normalizes: a literal beside its base, `true | false`, `Never`, and
+ *   an `any Shows` member taking every primitive and literal whole, which the test rules
+ *   (`showingRules`) say.
  * - The open slot is the alias's type parameter `T`; substituting it may merge members anew.
  * - A trait object part (`any Holds<…> & Pairs<…, …>`) holds slots as its traits' arguments, or
  *   a trait's own `Self`, which the trait object binds, its constraints written in either order:

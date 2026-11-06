@@ -1,21 +1,22 @@
 /**
  * The rule that several producers of one value agree on its type (§4): the branches of an `if`, a
  * body's tail and its `return`s, or the items of a collection literal. The expected type decides
- * when there is one; otherwise the first producer with a value does, widened (types/unions/widening.ts)
- * when only its widening fits them all, and `Never` (a branch that leaves) fits anything.
+ * when there is one; otherwise the first producer with a value does, widened
+ * (types/unions/widening.ts) when only its widening fits them all, and `Never` (a branch that
+ * leaves) fits anything.
  *
  * Without an expected type, a producer that doesn't fit is reported by the caller's own
  * diagnostic, which names what disagrees; with one, or when it fits only by the implicit wrap into
  * `T?` (§2), it is fitted, which reports the mismatch or records the wrap.
  *
  * A literal type inside another one is a value a container holds, which no conversion reaches
- * (types/unions/widening.ts), so producers holding different ones can't agree on any of their types as
- * they are: `(k, 1)` and `(k2, 2)` for keys `"a"` and `"b"`. A producer that is a literal built
+ * (types/unions/widening.ts), so producers holding different ones can't agree on any of their types
+ * as they are: `(k, 1)` and `(k2, 2)` for keys `"a"` and `"b"`. A producer that is a literal built
  * from parts each with a type of its own can be built as another type its parts convert into,
  * though (§3.7), so such producers agree on the first one's type with every literal type in it
- * widened, and each is built again as that type. A later producer is likewise expected to have
- * what those before it agree on with the literal types inside it widened, since they constrain
- * nothing a part could convert into.
+ * widened, and each is built again as that type. A later producer is likewise expected to have what
+ * those before it agree on with the literal types inside it widened, since they constrain nothing a
+ * part could convert into.
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
@@ -361,7 +362,8 @@ export function agreedAccepts(
 
 /**
  * Which types `producers` of one value can agree on when their literal is built as a parameter's
- * type instead of its own (§3.7); undefined unless each has a type of its own known before checking.
+ * type instead of its own (§3.7); undefined unless each has a type of its own known before
+ * checking.
  */
 export function agreedBuilds(
   context: BodyContext,

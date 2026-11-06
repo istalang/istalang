@@ -1,11 +1,11 @@
 /**
- * Loops and labels (§3.4, §4): `while`, `for`, field loops, the `break` and `continue` that leave their bodies,
- * blocks labelled for `hold`, and the names labels give. A loop or labelled block is a statement
- * of type `Unit`; its body runs for its effects, so the body's value is discarded. What a `for`
- * runs over, and how, is the rule of iteration (rules/loops/iteration.ts).
+ * Loops and labels (§3.4, §4): `while`, `for`, field loops, the `break` and `continue` that leave
+ * their bodies, blocks labelled for `hold`, and the names labels give. A loop or labelled block is
+ * a statement of type `Unit`; its body runs for its effects, so the body's value is discarded. What
+ * a `for` runs over, and how, is the rule of iteration (rules/loops/iteration.ts).
  *
- * Each `break`, `continue` and `hold(name)` is resolved here, once, and recorded (`LabelTargets`). A
- * label names one scope of its function: it may not repeat a label around it, nor the function's
+ * Each `break`, `continue` and `hold(name)` is resolved here, once, and recorded (`LabelTargets`).
+ * A label names one scope of its function: it may not repeat a label around it, nor the function's
  * own name, which `hold(name)` names too, so a name never means two things. A label nothing names
  * is a warning, found when its scope ends.
  */
@@ -80,7 +80,8 @@ export function checkHoldScope(context: BodyContext, hold: Hold): void {
 }
 
 /**
- * A field loop (§4): its body once per pass over its subject's fields (rules/loops/field-passes.ts).
+ * A field loop (§4): its body once per pass over its subject's fields
+ * (rules/loops/field-passes.ts).
  */
 export function checkFieldLoop(context: BodyContext, node: FieldLoop): Type {
   const { header } = node;

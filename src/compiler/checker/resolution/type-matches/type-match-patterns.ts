@@ -1,5 +1,6 @@
 /**
- * Whether a type `match` case's pattern matches a type (§3.17), and what its `infer` variables bind.
+ * Whether a type `match` case's pattern matches a type (§3.17), and what its `infer` variables
+ * bind.
  *
  * - Matching is exact: the pattern's form and the type's are one, part by part, after aliases
  *   resolve, with no conversion into a union and no one-element tuple. The one exception: a

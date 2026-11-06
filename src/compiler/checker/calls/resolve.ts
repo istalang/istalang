@@ -1,8 +1,8 @@
 /**
- * Resolving a call in a body (§3.3, §3.7, §3.9): applied as every call is (resolution/applied-call.ts),
- * chosen, instantiated with its constraints met and its arguments fitted, so their implicit
- * conversions are too, then recorded for lowering with what only a written call has: its receiver,
- * the places it changes, and a report about a call nothing takes.
+ * Resolving a call in a body (§3.3, §3.7, §3.9): applied as every call is
+ * (resolution/applied-call.ts), chosen, instantiated with its constraints met and its arguments
+ * fitted, so their implicit conversions are too, then recorded for lowering with what only a
+ * written call has: its receiver, the places it changes, and a report about a call nothing takes.
  *
  * - An argument whose type the chosen function decides (`none`, a bare variant, a lambda with an
  *   untyped parameter, an empty `[]`, a literal holding one) is checked only after choosing,

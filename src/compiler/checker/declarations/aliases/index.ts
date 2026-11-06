@@ -9,8 +9,9 @@
  * (recursive-bodies.ts), which a use substitutes as any alias's.
  *
  * One whose body is a type `match` stands for its own unreduced use, its parameters given for
- * themselves: a use reduces it (types/written/type-match.ts `aliasInstance`), so it may refer to itself.
- * Its subject and patterns resolve together, each case's type apart (types/written/type-match.ts).
+ * themselves: a use reduces it (types/written/type-match.ts `aliasInstance`), so it may refer to
+ * itself. Its subject and patterns resolve together, each case's type apart
+ * (types/written/type-match.ts).
  */
 
 import type { EntryTable } from '../../../../structures/entries/index.ts';

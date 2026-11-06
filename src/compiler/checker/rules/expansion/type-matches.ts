@@ -12,8 +12,8 @@
  *   is that subject again, so `Data<Node<T>>` is a finite recursion, not a bigger argument;
  * - a part of a parameter (`D[F]`, `D.Data`, `keyof D`) counts as the whole of it.
  * None of these is bigger than what it is taken from; anything built around one is. A case's type
- * resolves with the uses in it left unreduced (types/written/type-match.ts), so the graph is read without
- * reducing anything.
+ * resolves with the uses in it left unreduced (types/written/type-match.ts), so the graph is read
+ * without reducing anything.
  *
  * The verdict is like any judged by the expansion graph: by the uses written, whichever case a
  * subject would pick, as a generic function calling itself is judged by its calls.

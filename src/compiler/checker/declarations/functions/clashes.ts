@@ -12,18 +12,19 @@
  *   numbers of them never clash: written type arguments tell them apart (§3.7);
  * - a function with defaults is compared for every number of arguments a call by position may give
  *   it, a rest parameter taking its element's type at every position past the fixed ones (§3.3,
- *   resolution/choosing/binding.ts), a pack's taking any type by value (§3.5); a function with a rest
- *   parameter never clashes with one without, since the one without wins a call both take (§3.7);
- * - a parameter's `fn(A) -> R` and `async fn(A) -> R` differ: a call fitting both takes the one that
- *   needs no plain function made async (§3.7, §3.14).
+ *   resolution/choosing/binding.ts), a pack's taking any type by value (§3.5); a function with a
+ *   rest parameter never clashes with one without, since the one without wins a call both take
+ *   (§3.7);
+ * - a parameter's `fn(A) -> R` and `async fn(A) -> R` differ: a call fitting both takes the one
+ *   that needs no plain function made async (§3.7, §3.14).
  *
  * Two functions agreeing at some number of arguments agree at every smaller one both take, so the
  * smallest number both take decides.
  *
  * A module's functions are compared with each other and with the prelude's of the same name, which
  * they join (§3.13); a static function with the others declared on what its owner names, as
- * types/written/named-types.ts keys it, so an alias's are its type's (§3.17). A clash is reported at the
- * later declaration.
+ * types/written/named-types.ts keys it, so an alias's are its type's (§3.17). A clash is reported
+ * at the later declaration.
  */
 
 import { addToGroup } from '../../../../structures/groups.ts';

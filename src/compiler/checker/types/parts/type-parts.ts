@@ -1,12 +1,13 @@
 /**
- * What a type is built from (../type/index.ts): the types one level down, a type with them replaced, and
- * what walking them finds, the type parameters, nominal and `any` types a type mentions and whether it holds
- * the error type.
+ * What a type is built from (../type/index.ts): the types one level down, a type with them
+ * replaced, and what walking them finds, the type parameters, nominal and `any` types a type
+ * mentions and whether it holds the error type.
  *
- * A type rebuilt with every part it is built from unchanged is the very type, never a copy, so
- * what is memoized per type object (identity/type-keys.ts, type-children.ts, here) stays found however often
- * a type is substituted or respelled. Only a type computed from others is built again whatever its
- * parts: a use left unreduced reduces once rebuilt (../written/type-match.ts `rebuilt`).
+ * A type rebuilt with every part it is built from unchanged is the very type, never a copy, so what
+ * is memoized per type object (identity/type-keys.ts, type-children.ts, here) stays found however
+ * often a type is substituted or respelled. Only a type computed from others is built again
+ * whatever its parts: a use left unreduced reduces once rebuilt (../written/type-match.ts
+ * `rebuilt`).
  */
 
 import { sameItems } from '../../../../structures/equality.ts';
@@ -43,10 +44,10 @@ const mentionedAnyTypes = new WeakMap<Type, readonly AnyType[]>();
 const mentionedComputed = new WeakMap<Type, readonly ComputedType[]>();
 
 /**
- * Whether two types are alike in every part: their spelled keys are equal (identity/type-keys.ts), so they
- * are the same type, written alike at every level, at the same nodes. A checker result computed
- * again is the one before only if its types are alike so (incremental-checking.md §1), since a
- * taken-over result keeps every node its types name.
+ * Whether two types are alike in every part: their spelled keys are equal (identity/type-keys.ts),
+ * so they are the same type, written alike at every level, at the same nodes. A checker result
+ * computed again is the one before only if its types are alike so (incremental-checking.md §1),
+ * since a taken-over result keeps every node its types name.
  */
 export function sameTypeSpelled(first: Type, second: Type): boolean {
   return first === second || typeKeys.spelledKey(first) === typeKeys.spelledKey(second);
@@ -60,11 +61,11 @@ export function sameConstraintSpelled(first: Constraint, second: Constraint): bo
 }
 
 /**
- * `type` written through no alias at any level: the type its key names (identity/type-keys.ts). A result
- * kept by a type's key is computed from it, so it never depends on how the type was spelled where
- * it was first asked for. A recursive type's graph is one spelling already, whatever aliases its
- * parts were written through (identity/type-keys.ts `spelledKey`), so only the alias it is written through
- * goes.
+ * `type` written through no alias at any level: the type its key names (identity/type-keys.ts). A
+ * result kept by a type's key is computed from it, so it never depends on how the type was spelled
+ * where it was first asked for. A recursive type's graph is one spelling already, whatever aliases
+ * its parts were written through (identity/type-keys.ts `spelledKey`), so only the alias it is
+ * written through goes.
  */
 export function unaliased<Written extends Exclude<Type, UnionType>>(type: Written): Written;
 export function unaliased(type: Type): Type;
@@ -149,8 +150,9 @@ export function errorIn(type: Type): ErrorType | undefined {
 /**
  * `type` with each type it is built from, one level down, replaced by what `map` gives; `type`
  * itself when `map` changes none and it is no computed type (the banner). The alias `type` was
- * written through comes along: a caller changing what it wrote drops it (../type/index.ts). A union is built
- * again by the program's `rules` (../unions/unions.ts), so its members may merge into fewer, or into one.
+ * written through comes along: a caller changing what it wrote drops it (../type/index.ts). A union
+ * is built again by the program's `rules` (../unions/unions.ts), so its members may merge into
+ * fewer, or into one.
  */
 export function mapChildren(type: Type, map: (child: Type) => Type, rules: TypeRules): Type {
   const rebuilt = rebuiltBy(type, map, rules);
@@ -166,8 +168,8 @@ type Rebuilt = UnionType | RecursiveType | ComputedType;
 /**
  * `type` rebuilt by `rules` from its parts as `map` gives them, written through its alias, when
  * building it takes the rules: a union, whose members may merge, a recursive type, whose graph
- * closes again (identity/recursive-types.ts), or a computed type, which may reduce (../type-rules.ts);
- * undefined for any other type.
+ * closes again (identity/recursive-types.ts), or a computed type, which may reduce
+ * (../type-rules.ts); undefined for any other type.
  */
 function rebuiltBy(type: Type, map: (child: Type) => Type, rules: TypeRules): Type | undefined {
   const rebuilt = (): Type | undefined => {

@@ -10,8 +10,8 @@
  *   recursive or not: a recursive alias's uses are their structure (§3.17).
  * - An alias names the type it stands for; a trait, a type parameter, `Self` and `Never`, which no
  *   value has, name no type a value is tested for.
- * - An `any` type holds a type whose values convert into it (types/fitting/fit.ts), the conversion's own
- *   rule, so what a pattern may name there and what may be converted in agree.
+ * - An `any` type holds a type whose values convert into it (types/fitting/fit.ts), the
+ *   conversion's own rule, so what a pattern may name there and what may be converted in agree.
  * - Against an `any` value, a variant qualified by its enum names the enum, whose value is then
  *   tested for the variant; a bare variant name is chosen by the expected enum, so it names none.
  * - Against a union's value, a pattern selects members (§3.11, patterns/members.ts): a name the
@@ -221,7 +221,8 @@ export function instancesWith(
 
 /**
  * The type arguments `type` instantiates the generic `declaration` with, a nominal type's, or what
- * a recursive type it is unfolds to (§3.17); undefined when it instantiates `declaration` in neither.
+ * a recursive type it is unfolds to (§3.17); undefined when it instantiates `declaration` in
+ * neither.
  */
 function instanceOf(type: Type, declaration: GenericDeclaration): readonly Type[] | undefined {
   const value = type.kind === 'recursive' ? unfoldRecursive(type) : type;

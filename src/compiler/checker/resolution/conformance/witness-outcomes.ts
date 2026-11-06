@@ -8,8 +8,8 @@
  *   in their nesting. A search lives for one root check, so what it keeps is read inside the entry
  *   that asked (structures/entries), never across entries.
  * - A struct-constraint or union-member goal reached again while it runs counts as met
- *   (coinductive): a hypothesis. What a goal finds while a hypothesis holds is provisional until the
- *   goal holding it ends. Ended met, what rested on it rests on what that goal rested on, or on
+ *   (coinductive): a hypothesis. What a goal finds while a hypothesis holds is provisional until
+ *   the goal holding it ends. Ended met, what rested on it rests on what that goal rested on, or on
  *   nothing; ended unmet, everything found while it ran is dropped, being found under a falsehood.
  *   A goal is kept by the lowest hypothesis it rests on, as Tarjan's lowlink.
  * - A goal running when the search reaches the depth bound keeps nothing: what it found depends on

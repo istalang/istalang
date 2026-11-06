@@ -10,8 +10,8 @@
  *   implicit, at their right operands, since the chain is one node.
  *   An operand between two links is compared on both sides, so it is never wrapped into an
  *   optional for one of them; the first and the last may be, as in a single comparison.
- * - `==` and `!=` are built in for every type and can't be overloaded (types/unions/equality.ts). The
- *   left side's type is what the right one is expected to have, so `x == none` reads naturally.
+ * - `==` and `!=` are built in for every type and can't be overloaded (types/unions/equality.ts).
+ *   The left side's type is what the right one is expected to have, so `x == none` reads naturally.
  *   One whose sides' types fix its value is decided (expressions/decided-conditions.ts).
  * - `and`, `or` and `not` take and give `Bool`; they short-circuit, so they are never calls.
  * - `??` works on optionals (access/optionals.ts).

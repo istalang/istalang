@@ -252,9 +252,9 @@ function associatedAt(resolution: Resolution, owner: Type, name: Identifier): Ty
 /**
  * The type `entity` names, given the arguments `typeArgumentsOf` finds for a generic declaration: a
  * primitive, `Self` or a type parameter, a nominal type, or an alias as the type it stands for,
- * written through it (§3.17); the error type when `typeArgumentsOf` finds none, and undefined for what
- * names no type, a trait among them. The one dispatch from a name to its type, whether written in a
- * type (`namedType`) or in a value's place (named-types.ts).
+ * written through it (§3.17); the error type when `typeArgumentsOf` finds none, and undefined for
+ * what names no type, a trait among them. The one dispatch from a name to its type, whether written
+ * in a type (`namedType`) or in a value's place (named-types.ts).
  */
 export function typeOfEntity(
   checker: Pick<CheckerContext, 'aliasedType' | 'typeRules'>,

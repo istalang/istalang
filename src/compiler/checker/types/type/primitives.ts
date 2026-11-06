@@ -1,7 +1,7 @@
 /**
- * The built-in types every program has (§2), as values of the type model (type/index.ts): each primitive
- * by its name, and tuples. A tuple is built through `tupleType`, which makes the empty one the
- * primitive `Unit` (§3.15), so `()` and `Unit` are one type wherever either is written, and
+ * The built-in types every program has (§2), as values of the type model (type/index.ts): each
+ * primitive by its name, and tuples. A tuple is built through `tupleType`, which makes the empty
+ * one the primitive `Unit` (§3.15), so `()` and `Unit` are one type wherever either is written, and
  * `tupleElements` reads `Unit` back as no elements.
  */
 

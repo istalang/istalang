@@ -2,8 +2,8 @@
  * The rules over types that need the program, as one checker gives them: normalizing types
  * (types/type-rules.ts: whether an `any` member of a union takes another member whole, what an
  * associated type, a field's type, a struct's keys or a mapped struct type of a known type reduce
- * to), and fitting a value to a type
- * (types/fitting/fit.ts), which adds conformance, the shapes of nominal structs and member parameters.
+ * to), and fitting a value to a type (types/fitting/fit.ts), which adds conformance, the shapes of
+ * nominal structs and member parameters.
  *
  * An absorbing question is an entry of the checker's tables, keyed by both types' keys:
  * conformance may build the very union asking, so a question reached again while it is answered

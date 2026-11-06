@@ -148,7 +148,8 @@ function chosenAmong(
       reasons.push(outcome);
     }
   }
-  // Each rank only breaks a tie the ranks before it leave, so one left over is never ranked further.
+  // Each rank only breaks a tie the ranks before it leave, so one left over is never ranked
+  // further.
   const preferred = [
     ({ candidate }: Application) => membersRequirementOf(candidate) === undefined,
     ({ signature }: Application) => signature.typeParameters.length === 0,

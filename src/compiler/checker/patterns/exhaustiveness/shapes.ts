@@ -7,9 +7,9 @@
  * - An enum is made of its variants, `Bool` of `true` and `false`, and a tuple, a struct, `Unit`
  *   and a literal type of one constructor each, the literal's being its value; an array of its
  *   lengths (exhaustiveness.ts). A member parameter (§3.5) is made of what its union's members are
- *   made of, since each instantiation makes its value one member's, with no tag around it. Any other
- *   type (`Int`, `String`, a handle, a type parameter) has no finite set, so only a pattern taking
- *   anything covers it.
+ *   made of, since each instantiation makes its value one member's, with no tag around it. Any
+ *   other type (`Int`, `String`, a handle, a type parameter) has no finite set, so only a pattern
+ *   taking anything covers it.
  * - `==` against a literal counts as a pattern, but only a literal of `Bool`, `Int`, `Float` or
  *   `String` has a shape of its own; any other literal acts as a guard.
  * - A witness is written as a pattern would be, with `_` for anything and `{…}` for fields no case
@@ -37,8 +37,8 @@ import { arrayElement } from '../../types/well-known.ts';
 import type { ConstructorOf, Shape, Signature, WitnessShape } from './exhaustiveness.ts';
 
 /**
- * What shapes read of the checker: a type's fields, variants, whether it is an `Array`, and the union
- * a member parameter stands for one member of.
+ * What shapes read of the checker: a type's fields, variants, whether it is an `Array`, and the
+ * union a member parameter stands for one member of.
  */
 export type ShapeChecker = Pick<
   Checker,

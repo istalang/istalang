@@ -1,9 +1,9 @@
 /**
- * Equi-recursive identity (§3.17, docs/work/proposals/p5-equi-recursive-identity.md): over generated
- * groups of recursive bodies (recursive-types.test-kit.ts), two closed types have one key exactly
- * when a reference bisimulation says their unfoldings hold the same values, a recursive union in a
- * union counting as its members, normalized as any union's (§2); and substituting into a closed
- * type is closing the substituted bodies.
+ * Equi-recursive identity (§3.17, docs/work/proposals/p5-equi-recursive-identity.md): over
+ * generated groups of recursive bodies (recursive-types.test-kit.ts), two closed types have one key
+ * exactly when a reference bisimulation says their unfoldings hold the same values, a recursive
+ * union in a union counting as its members, normalized as any union's (§2); and substituting into a
+ * closed type is closing the substituted bodies.
  */
 
 import fc from 'fast-check';

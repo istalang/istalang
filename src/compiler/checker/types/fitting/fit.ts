@@ -86,8 +86,8 @@ interface IntoUnion {
 export const exactFit: Fit = { conversion: { kind: 'none' } };
 
 /**
- * What fitting needs of the program: the rules types are built by (../type-rules.ts), whether a type
- * meets an `any` type's constraints, the shape a nominal struct's value converts into, if any
+ * What fitting needs of the program: the rules types are built by (../type-rules.ts), whether a
+ * type meets an `any` type's constraints, the shape a nominal struct's value converts into, if any
  * (§3.1), and the union a member parameter stands for one member of (§3.5).
  */
 export interface Fitting extends TypeRules {
@@ -111,8 +111,8 @@ export function fitOf(found: Type, expected: Type, fitting: Fitting): Fit | unde
 }
 
 /**
- * How `found` fits `expected` under `rules` (§2, §3.10, §3.14, §3.15): exact, converted once, or put
- * into a union, converted first.
+ * How `found` fits `expected` under `rules` (§2, §3.10, §3.14, §3.15): exact, converted once, or
+ * put into a union, converted first.
  */
 export function matchConversion(
   found: Type,

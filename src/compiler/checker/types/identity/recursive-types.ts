@@ -4,11 +4,11 @@
  * however the aliases writing them are named or nested (equi-recursive identity).
  *
  * - A group of alias bodies closes together: each body resolved with a placeholder wherever a use
- *   of the group's aliases stands (declarations/aliases/recursive-bodies.ts). Their term graph is minimized
- *   (recursive-terms.ts), and each class holding a body, or a node of another graph a body reached,
- *   becomes a node: its body rebuilt from its representative term, a node's own type wherever a
- *   node is reached again, any other class rebuilt in place. So a graph refers to no other graph,
- *   and its parts hold no recursive type (../parts/type-children.ts).
+ *   of the group's aliases stands (declarations/aliases/recursive-bodies.ts). Their term graph is
+ *   minimized (recursive-terms.ts), and each class holding a body, or a node of another graph a
+ *   body reached, becomes a node: its body rebuilt from its representative term, a node's own type
+ *   wherever a node is reached again, any other class rebuilt in place. So a graph refers to no
+ *   other graph, and its parts hold no recursive type (../parts/type-children.ts).
  * - A recursive alias in a union is flattened: its members join the union, as a union member's do.
  * - A computed type a body holds over a use of the group (a type `match` given it, say) stays
  *   unreduced while that use is a placeholder, which decides nothing. Once the group has closed,
@@ -17,12 +17,12 @@
  *   docs/work/proposals/p5-equi-recursive-identity.md).
  * - A node is labelled with the alias it reads as: the group's own alias holding it, else the label
  *   of the node it copied; one made only to break a cycle has none. A label identifies nothing.
- * - A recursive type's parts replaced (substitution, `mapRecursive`) closes its graph again from its
- *   nodes' bodies, each node's own type standing as a placeholder for it, so substituting then
+ * - A recursive type's parts replaced (substitution, `mapRecursive`) closes its graph again from
+ *   its nodes' bodies, each node's own type standing as a placeholder for it, so substituting then
  *   closing and closing then substituting give one type.
  * - `folded` gives the labelled recursive type a type holding recursion is equal to, when a graph
- *   it reaches has one, so a union naming a recursive alias's members, or a recursive member with more of its
- *   members, reads as that alias.
+ *   it reaches has one, so a union naming a recursive alias's members, or a recursive member with
+ *   more of its members, reads as that alias.
  */
 
 import { sameItems } from '../../../../structures/equality.ts';
@@ -53,8 +53,9 @@ export interface RecursiveGroup {
   /** How each body reads: the alias, or associated type, it is written as, if any. */
   readonly labels: readonly (RecursiveLabel | undefined)[];
   /**
-   * The rules of the program, which normalize unions the graph flattens (../unions/union-members.ts) and
-   * reduce computed types built from its nodes (../parts/computed-reduction.ts).
+   * The rules of the program, which normalize unions the graph flattens
+   * (../unions/union-members.ts) and reduce computed types built from its nodes
+   * (../parts/computed-reduction.ts).
    */
   readonly rules: TypeRules;
 }
@@ -202,7 +203,8 @@ class GraphNodes {
   /**
    * Makes the class `slot` leads to a node, labelled `label`, unless it is one already or reaches
    * itself through no cycle: a body that closes no cycle, or holds only others', is finite, and
-   * rebuilds in place, so a recursive type always unfolds without end and never keys as a finite one.
+   * rebuilds in place, so a recursive type always unfolds without end and never keys as a finite
+   * one.
    */
   name(slot: Slot, label: RecursiveLabel | undefined): void {
     const resolved = this.#terms.resolved(slot);
@@ -313,8 +315,8 @@ class GraphNodes {
  * The recursive type `type` with each of its graph's parts and the types its labels name replaced
  * by what `map` gives, closed again by the program's `rules` (the banner); `type` itself when `map`
  * changes none. A label is how its node is written, never one of its parts, as an alias a type is
- * written through is (../type/index.ts), so a parameter only a label names, `T` of `Phantom<T> = Int |
- * Array<Phantom<T>>`, is replaced in the label alone.
+ * written through is (../type/index.ts), so a parameter only a label names, `T` of `Phantom<T> =
+ * Int | Array<Phantom<T>>`, is replaced in the label alone.
  */
 export function mapRecursive(
   type: RecursiveType,

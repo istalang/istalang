@@ -1,12 +1,12 @@
 /**
- * Operations on an operand with no value (§2): a value of type `Never` can't exist, so it stands only
- * in code that never runs, and an operation that reaches its target through it — a member read, a
- * method or value call, an index, an operator (a compound assignment's too), a template, a
- * comparison, `await`, `?`, `->`, an
- * optional step, a field loop or a pattern over it — never runs either. Such an operation is checked
- * no further and gives `Never`, reporting nothing, so a field loop over a struct with no field checks
- * its body once for the mistakes that don't depend on a field. Its operands still run in order up
- * to that one, which lowering reads (`CheckedBody.stopsAt`).
+ * Operations on an operand with no value (§2): a value of type `Never` can't exist, so it stands
+ * only in code that never runs, and an operation that reaches its target through it — a member
+ * read, a method or value call, an index, an operator (a compound assignment's too), a template, a
+ * comparison, `await`, `?`, `->`, an optional step, a field loop or a pattern over it — never runs
+ * either. Such an operation is checked no further and gives `Never`, reporting nothing, so a field
+ * loop over a struct with no field checks its body once for the mistakes that don't depend on a
+ * field. Its operands still run in order up to that one, which lowering reads
+ * (`CheckedBody.stopsAt`).
  *
  * The error type stops an operation alike, a diagnostic having explained it, and gives the error
  * type: the two stay apart, one meaning "explained", the other "no value", and only the first

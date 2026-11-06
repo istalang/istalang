@@ -15,16 +15,17 @@
  *   (`case _: A<T>`, `case _: A<T> | Int`): it would be itself, as an alias can't be (§3.17).
  * - An alias reducing to itself with a type built from its own parameter never ends (§3.5); its
  *   declaration reports it (rules/expansion/type-matches.ts), and its uses are the error type.
- * - Each reduction is an entry of the checker's, by the use's spelled key (types/identity/type-keys.ts): what it
- *   gives is spelled with the use's own arguments, so another spelling of the same type is another
- *   entry, and no use is answered with a type spelled at another's nodes. Which uses are under way
- *   or recursive is a matter of type identity, so those are kept by type key. One reaching a use whose
- *   reduction is under way repeats it: a recursive type, which a struct holds (§3.1). The uses on
- *   that cycle whose case gives a struct type are recursive: each closes, with every recursive use
- *   its finding reached, through the one constructor of recursive types (types/identity/recursive-types.ts),
- *   their bodies reduced with each such use an unreduced placeholder, so a recursive type `match` use
- *   and a recursive alias with its structure are one type (§3.17). One whose values would hold
- *   themselves names no type: the error type, carrying why (types/properties/finiteness.ts).
+ * - Each reduction is an entry of the checker's, by the use's spelled key
+ *   (types/identity/type-keys.ts): what it gives is spelled with the use's own arguments, so
+ *   another spelling of the same type is another entry, and no use is answered with a type spelled
+ *   at another's nodes. Which uses are under way or recursive is a matter of type identity, so
+ *   those are kept by type key. One reaching a use whose reduction is under way repeats it: a
+ *   recursive type, which a struct holds (§3.1). The uses on that cycle whose case gives a struct
+ *   type are recursive: each closes, with every recursive use its finding reached, through the one
+ *   constructor of recursive types (types/identity/recursive-types.ts), their bodies reduced with
+ *   each such use an unreduced placeholder, so a recursive type `match` use and a recursive alias
+ *   with its structure are one type (§3.17). One whose values would hold themselves names no type:
+ *   the error type, carrying why (types/properties/finiteness.ts).
  * - Whether a use is recursive, or would be itself with no struct type on its cycle, is an entry
  *   too, found before it is reduced by reducing it once in a scope of its own and keeping nothing
  *   but those verdicts (`#recursionOf`): it depends on the use alone, never on what was reduced
@@ -165,9 +166,9 @@ export class TypeMatchReductions {
 
   /**
    * The type the recursive `use` closes to (the banner): every recursive use its finding reached
-   * closes with it, each body reduced in a scope where reaching one of them gives its unreduced use,
-   * the placeholder closing replaces; the error type, carrying why, for one whose values would hold
-   * themselves.
+   * closes with it, each body reduced in a scope where reaching one of them gives its unreduced
+   * use, the placeholder closing replaces; the error type, carrying why, for one whose values would
+   * hold themselves.
    */
   #closed(use: MatchUse): Type {
     const key = typeKeys.typeKey(this.#useOf(use.declaration, use.typeArguments));
@@ -404,7 +405,8 @@ function instantiatedPattern(
 
 /**
  * `type` with `substitution` applied, every use of a type `match` in it reduced as far as it
- * allows: a case's type and patterns resolve with the uses in them unreduced (types/written/type-match.ts).
+ * allows: a case's type and patterns resolve with the uses in them unreduced
+ * (types/written/type-match.ts).
  */
 function instantiated(checker: CheckerContext, type: Type, substitution: Substitution): Type {
   const rules = checker.typeRules;

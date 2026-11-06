@@ -11,7 +11,8 @@
  *   a type of its own. A part still to be inferred can be anything.
  * - Own type (`knownTypeHandlers`): for a sibling inside a composite argument, the type it has on
  *   its own without running expression checking or reporting (`acceptedPartOf`); an item already
- *   checked, as an argument literal's may be (literal-items.ts), has the type it was checked to have.
+ *   checked, as an argument literal's may be (literal-items.ts), has the type it was checked to
+ *   have.
  * - Building (`buildsHandlers`): a literal of items each with a type of its own has that type when
  *   choosing, and, where its own type doesn't fit, is built as a parameter's type its items fit
  *   (§3.7): a struct, tuple, array or map literal.
@@ -363,8 +364,8 @@ function buildsOf(context: BodyContext, node: Expression, read: PartReader): Acc
 
 /**
  * The types `node` can be built as while its own type is known only through checking (§2,
- * types/fitting/expected.ts `memberBuilt`): a collection literal's by its shape, maybe parenthesized or
- * written as an indented value naming no type; undefined for any other expression.
+ * types/fitting/expected.ts `memberBuilt`): a collection literal's by its shape, maybe
+ * parenthesized or written as an indented value naming no type; undefined for any other expression.
  */
 export function openBuildsOf(context: BodyContext, node: Expression): Accepts | undefined {
   const inner = unparenthesized(node);

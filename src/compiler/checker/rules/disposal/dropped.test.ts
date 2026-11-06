@@ -1,8 +1,9 @@
 /**
  * The rule of dropped variables (§7) over control flow: a use some path reaches from a `drop` is
  * reported once, through branches, short circuits, optional chains, `match` cases, loops and
- * comprehensions carrying a drop to their next pass, `break` and `continue`; assigning a `let` again, a declaration run again and a branch
- * that leaves first make it usable; a lambda uses what it captures where it is made.
+ * comprehensions carrying a drop to their next pass, `break` and `continue`; assigning a `let`
+ * again, a declaration run again and a branch that leaves first make it usable; a lambda uses what
+ * it captures where it is made.
  */
 
 import { describe, expect, it } from 'vitest';

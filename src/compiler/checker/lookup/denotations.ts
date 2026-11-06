@@ -8,8 +8,8 @@
  * holding it; a name standing anywhere else is the binder's.
  *
  * A name's type is the one it has where it stands: a written type's as it resolved, type arguments
- * included; a variant's, that of the value it makes, bare, qualified or as a literal, else, where it
- * is declared or matched, its enum's own type.
+ * included; a variant's, that of the value it makes, bare, qualified or as a literal, else, where
+ * it is declared or matched, its enum's own type.
  */
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';

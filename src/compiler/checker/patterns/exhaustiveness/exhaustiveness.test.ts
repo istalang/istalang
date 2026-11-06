@@ -158,9 +158,9 @@ function arrayPatterns(): fc.Arbitrary<Shape> {
 }
 
 /**
- * Whether `pattern` matches `value`. An array value of `longer` items or more holds its first items,
- * then its last ones, so an array pattern reads its prefix from its start and its suffix from its
- * end (exhaustiveness.ts).
+ * Whether `pattern` matches `value`. An array value of `longer` items or more holds its first
+ * items, then its last ones, so an array pattern reads its prefix from its start and its suffix
+ * from its end (exhaustiveness.ts).
  */
 function matches(pattern: Shape | WitnessShape, value: WitnessShape): boolean {
   switch (pattern.kind) {

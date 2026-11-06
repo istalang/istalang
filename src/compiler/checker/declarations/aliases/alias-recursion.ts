@@ -1,7 +1,8 @@
 /**
  * Which aliases refer to themselves (§3.17), read from what their bodies name before any type is
  * resolved: resolving an alias's body needs to know first whether a use of it inside stands for the
- * alias (a placeholder while its group closes) or would resolve the body again (a cycle, reported where aliases resolve).
+ * alias (a placeholder while its group closes) or would resolve the body again (a cycle, reported
+ * where aliases resolve).
  *
  * - A reference to an alias is guarded where it stands inside a type built from others: a nominal
  *   type's argument, a trait's argument in an `any` type, a field of a shape, a tuple element, a

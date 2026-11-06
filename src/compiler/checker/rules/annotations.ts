@@ -9,11 +9,12 @@
  *   constant is (computation.ts), so the two can't disagree on what compile time
  *   computes. A value that isn't a struct is no annotation.
  * - What an annotation means decides where it may stand, and none on a shape's field, which has no
- *   declaration to carry one (§3.16): the json module's on fields
- *   (`@JsonSkip` only on a field whose type, as declared, has a default to read back as, which
- *   JSON forms decide, rules/boundary/json-forms.ts; `@JsonBigInt` only on an `Int`),
- *   `@Waypoint` on a statement that waits, `@Suite` on a function (rules/testing.ts says which),
- *   and any other struct on fields and functions, kept for tools. The same annotation twice on one item says nothing new, so it is an error.
+ *   declaration to carry one (§3.16): the json module's on fields (`@JsonSkip` only on a field
+ *   whose type, as declared, has a default to read back as, which JSON forms decide,
+ *   rules/boundary/json-forms.ts; `@JsonBigInt` only on an `Int`), `@Waypoint` on a statement that
+ *   waits, `@Suite` on a function (rules/testing.ts says which), and any other struct on fields and
+ *   functions, kept for tools. The same annotation twice on one item says nothing new, so it is an
+ *   error.
  * - Fields of one struct or variant that end up with the same JSON name are reported where they
  *   are declared, since the clash is in the declaration whether or not the type ever crosses.
  */

@@ -8,9 +8,9 @@
  * - A recursive type (§3.17) whose body is a union is flattened: its members join the union, as a
  *   union member's do. A union equal to a recursive type it reaches is that type, written through
  *   its alias (identity/recursive-types.ts `folded`), so `Json | Int` and `Json?` are `Json`.
- * - `unionOf` is the one constructor of a union from types, written, substituted (parts/type-parts.ts:
- *   `T | Int` with `T = Int` collapses, `T | any Stringable` with `T = String` too), joined or made
- *   optional, so normalization holds however a union was reached.
+ * - `unionOf` is the one constructor of a union from types, written, substituted
+ *   (parts/type-parts.ts: `T | Int` with `T = Int` collapses, `T | any Stringable` with `T =
+ *   String` too), joined or made optional, so normalization holds however a union was reached.
  * - Leaving members of a union out keeps the rest normalized against each other, so what remains
  *   (`unionOfNormalized`), what a `case` leaves to the cases after it, takes no rules.
  */

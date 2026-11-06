@@ -9,9 +9,10 @@
  *   an enum's associated type, an alias too (§3.1).
  * - The defaults of a struct's or a variant's fields are checked as the parameters they read as
  *   (§3.1).
- * - An extern a host implements takes and gives only what crosses as JSON (rules/boundary/host-boundary.ts),
- *   and so does `main`, whose outcome its host reads (§9).
- * - A `dispose` a program declares makes its type disposable, on its rules (rules/disposal/disposal.ts).
+ * - An extern a host implements takes and gives only what crosses as JSON
+ *   (rules/boundary/host-boundary.ts), and so does `main`, whose outcome its host reads (§9).
+ * - A `dispose` a program declares makes its type disposable, on its rules
+ *   (rules/disposal/disposal.ts).
  * - Every item's annotations are checked where it stands (rules/annotations.ts): a function's, a
  *   field's and, of the rest, each declaration's, which none may carry. A function marked
  *   `@Suite` is held to what a suite function may be (rules/testing.ts).
@@ -46,7 +47,8 @@ import { checkFiniteAlias, checkFiniteFields } from './layout/struct-rules.ts';
 
 /**
  * Resolves the constraints, unions and defaults of `declaration`'s type parameters where they are
- * written, so what they misname, and what their defaults' arguments fail to meet, is reported there.
+ * written, so what they misname, and what their defaults' arguments fail to meet, is reported
+ * there.
  */
 function checkTypeParameters(checker: CheckerContext, declaration: GenericDeclaration): void {
   for (const parameter of typeParametersOf(declaration.typeParameters)) {

@@ -14,9 +14,9 @@
  * - Tests come out in the order lowering runs them: a variant is tested before its fields are read.
  * - An or-pattern walks each alternative on its own, into one `or` test. Its alternatives bind the
  *   first's variables (binder), so a binding is named by its variable's declaring name, and the
- *   alternatives must agree on the names and their types (constructs/alternatives.ts). An alternative its
- *   part's type rules out (a `never` test, §3.11) is left out; with none left, the pattern never
- *   matches.
+ *   alternatives must agree on the names and their types (constructs/alternatives.ts). An
+ *   alternative its part's type rules out (a `never` test, §3.11) is left out; with none left, the
+ *   pattern never matches.
  * - What a pattern selects of its part comes first (selections.ts): a downcast of an `any` value,
  *   or the members of a union's. Type arguments are written only there, on a union's members, and
  *   in a parameter's own pattern, whose head names the parameter's type (§3.3, `typed`).
@@ -184,10 +184,10 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
 
 /**
  * `node` matched at `part`, what it selects of the part first (selections.ts). A part already in
- * error, or a selection refused, was reported where it arose; it takes anything, for exhaustiveness,
- * and a refused one still binds its names, at the error type (`bindAt`). A part of type `Never`
- * has no value (§2), so the pattern never runs: it takes anything and binds its names at `Never`,
- * testing and reporting nothing (calls/stopped-operations.ts).
+ * error, or a selection refused, was reported where it arose; it takes anything, for
+ * exhaustiveness, and a refused one still binds its names, at the error type (`bindAt`). A part of
+ * type `Never` has no value (§2), so the pattern never runs: it takes anything and binds its names
+ * at `Never`, testing and reporting nothing (calls/stopped-operations.ts).
  */
 function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart): Matched {
   const node =
@@ -387,10 +387,10 @@ function refused(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Shap
 
 /**
  * Binds each name `node` binds at `type`, the error type or `Never`, to the part it stands at: what
- * a pattern that isn't taken apart, refused where it stands, naming nothing or never running, binds,
- * so each use of its names resolves with nothing more to report, and an or-pattern's alternatives
- * still agree on them. In a case, a bare name the binder didn't make a variable refers to something,
- * so it binds nothing.
+ * a pattern that isn't taken apart, refused where it stands, naming nothing or never running,
+ * binds, so each use of its names resolves with nothing more to report, and an or-pattern's
+ * alternatives still agree on them. In a case, a bare name the binder didn't make a variable refers
+ * to something, so it binds nothing.
  */
 function bindAt(walk: Walk, node: Pattern | PatternPart, part: ValuePart, type: Type): void {
   const names = new Set(

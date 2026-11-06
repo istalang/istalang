@@ -2,11 +2,12 @@
  * `match` and `is` (§3.11, §4).
  *
  * - A `match` is an expression: its cases' bodies agree on its type, as an `if`'s branches do
- *   (expressions/control/branches.ts). Each case's pattern is checked against the subject's type, then its
- *   guard, then its body, in source order.
+ *   (expressions/control/branches.ts). Each case's pattern is checked against the subject's type,
+ *   then its guard, then its body, in source order.
  * - It must be exhaustive: the cases without a guard must cover every value of the subject's type
- *   (patterns/exhaustiveness/exhaustiveness.ts). A comparison other than `==` against a literal or variant acts
- *   as a guard there (§3.11). A case no value can reach, given the cases before it, is warned of.
+ *   (patterns/exhaustiveness/exhaustiveness.ts). A comparison other than `==` against a literal or
+ *   variant acts as a guard there (§3.11). A case no value can reach, given the cases before it, is
+ *   warned of.
  * - A case whose pattern its subject's type can't hold, as a field loop's value or key in another
  *   field's pass (§4), never matches (`cantMatch`, §3.11): it is warned of, and its guard and body
  *   are neither checked nor lowered.

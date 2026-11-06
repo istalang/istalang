@@ -4,20 +4,20 @@
  *
  * - Matching is exact, except at the top of a match, where a `T` may fill a `T?` (§2), a plain
  *   function an async one (§3.14), a one-element tuple and its element each other (§3.15), and a
- *   nominal struct's fields a shape, `T` of `{ x: T, y: T }` bound to `Int` by a `Pixel` (§3.1, §3.5):
- *   a conversion applies to a whole value, never inside a collection or a function type.
+ *   nominal struct's fields a shape, `T` of `{ x: T, y: T }` bound to `Int` by a `Pixel` (§3.1,
+ *   §3.5): a conversion applies to a whole value, never inside a collection or a function type.
  * - A type argument written is taken as given: what is matched has it in place before matching, so
  *   `f<Int?>(o)` for `fn f<T>(x: T?)` matches `Int?` against `Int?`, never `T` against what `None`
  *   leaves. Whether it stands for a member parameter is instantiation's to check
  *   (types/fitting/member-arguments.ts).
  * - A pack binds only what can stand for one, a tuple, `Unit` or a pack (§3.5); a function type's
  *   pack binds to the parameters past the fixed ones (types/type/index.ts, `sameShape`).
- * - A shape matches a shape of the same field names, field by field, in the name order both keep.
- *   A recursive type is matched as what it unfolds to, on either side, a pair met again holding
- *   (types/identity/unfolding-pairs.ts), so `List<T>` inside what is declared binds `T` from a `List<Int>`
- *   inside what is given.
- * - The types found for a parameter must agree, whatever order the arguments come in: a later
- *   one fits the bound type (a conversion included), or the bound type fits it, which then binds, so
+ * - A shape matches a shape of the same field names, field by field, in the name order both keep. A
+ *   recursive type is matched as what it unfolds to, on either side, a pair met again holding
+ *   (types/identity/unfolding-pairs.ts), so `List<T>` inside what is declared binds `T` from a
+ *   `List<Int>` inside what is given.
+ * - The types found for a parameter must agree, whatever order the arguments come in: a later one
+ *   fits the bound type (a conversion included), or the bound type fits it, which then binds, so
  *   `same(o, 2)` and `same(2, o)` both bind `T` to `Int?` for `o: Int?`. Two types neither fits
  *   conflict, and inference fails for that parameter.
  * - Only the top of a match converts. Anywhere else, inside a type or where a value must have its
@@ -29,12 +29,12 @@
  *   holds literals of its base (`literalType`), a literal type of a member's base gives that base,
  *   and a value of several members fills nothing, which is noted (`severalMembers`): the caller
  *   narrows it first. A union is never found otherwise than from what is given.
- * - The error type fits anything and binds nothing while matching, so one mistake is reported
- *   once: a parameter it met and nothing else bound is the error type once the expected result and
- *   defaults have had their say (complete.ts, `bindErrorWhereOpen`), never one inference failed for.
- *   `Never` fits anything too and binds nothing while matching; a parameter it alone met where a
- *   value must have its type exactly is `Never` only once the expected result and defaults have had
- *   their say (`bindNeverWhereOpen`), as `expectPanic(fn(): panic("x"))` needs.
+ * - The error type fits anything and binds nothing while matching, so one mistake is reported once:
+ *   a parameter it met and nothing else bound is the error type once the expected result and
+ *   defaults have had their say (complete.ts, `bindErrorWhereOpen`), never one inference failed
+ *   for. `Never` fits anything too and binds nothing while matching; a parameter it alone met where
+ *   a value must have its type exactly is `Never` only once the expected result and defaults have
+ *   had their say (`bindNeverWhereOpen`), as `expectPanic(fn(): panic("x"))` needs.
  */
 
 import { type Fitting, fitOf, matchConversion } from '../types/fitting/fit.ts';
@@ -356,9 +356,9 @@ export class Inference {
 
   /**
    * What `given` fills `parameter` with: itself, unless `parameter` is a member parameter (§3.5),
-   * which only one member of its union fills (types/fitting/member-arguments.ts `isOneMember`): `given`,
-   * or a literal of a member's base as that base. Undefined when nothing fills it, `given` holding
-   * several members noted as such.
+   * which only one member of its union fills (types/fitting/member-arguments.ts `isOneMember`):
+   * `given`, or a literal of a member's base as that base. Undefined when nothing fills it, `given`
+   * holding several members noted as such.
    */
   #filling(parameter: ParameterKey, given: Type): Type | undefined {
     const declared = this.#fitting.memberUnionOf({ kind: 'parameter', declaration: parameter });
@@ -408,8 +408,9 @@ export class Inference {
   }
 
   /**
-   * Binds `parameter` to `given` unless a type is bound already that `given` agrees with (`agrees`);
-   * a bound type `given` widens takes its place unless pinned. Two types neither takes conflict.
+   * Binds `parameter` to `given` unless a type is bound already that `given` agrees with
+   * (`agrees`); a bound type `given` widens takes its place unless pinned. Two types neither takes
+   * conflict.
    */
   #bind(parameter: ParameterKey, given: Type, agrees: (bound: Type) => boolean): boolean {
     if (isPack(parameterType(parameter)) && !fillsPack(given)) {

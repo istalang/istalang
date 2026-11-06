@@ -5,11 +5,11 @@
  *   an `if`'s branches do (rules/agreement.ts): the expected type's argument decides when there is
  *   one, otherwise the first item's type, which later items are expected to have. An empty `[]`
  *   or `[:]` therefore needs an expected type.
- * - A spread takes any iterable (rules/loops/iteration.ts): its items join an array literal's elements,
- *   and in a map literal they must be `(key, value)` tuples. A spread of the very collection its
- *   literal builds, an array into an array literal or a map into a map literal of `Map`, is copied
- *   whole, with no `iterate`; any other goes through its cursor, so a string spreads its
- *   characters, and a map into an array literal its entries.
+ * - A spread takes any iterable (rules/loops/iteration.ts): its items join an array literal's
+ *   elements, and in a map literal they must be `(key, value)` tuples. A spread of the very
+ *   collection its literal builds, an array into an array literal or a map into a map literal of
+ *   `Map`, is copied whole, with no `iterate`; any other goes through its cursor, so a string
+ *   spreads its characters, and a map into an array literal its entries.
  * - An array literal's spread gives its items where the literal's items are expected, so each is
  *   wrapped into `T?` as an element would be (§2), the fit recorded on the spread; a spread whose
  *   items need it is never copied whole, but goes through its cursor, each item fitted as it is

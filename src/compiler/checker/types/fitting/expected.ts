@@ -3,13 +3,13 @@
  * taking an expected type apart, which every construct with no type of its own reads, as does the
  * inference of lambdas nested in an argument (calls/lambda-arguments.ts).
  *
- * - A value with no type of its own is built as the one member of the expected union that takes
- *   it (`memberBuilt`, which every expression's check goes through), then goes into the union:
- *   `[]` where an `Array<Int>?` is expected builds an empty `Array<Int>`. So is a literal whose own
- *   type doesn't go into the union, as one member its items can build it as: `[1, [2]]` where a
- *   `Json` is expected builds an `Array<Json>`, each item against `Json`. So is a collection literal
- *   whose own type only checking tells, before its items are checked, so each is checked against
- *   the member's item: `[1 + 1, "a"]` builds an `Array<Json>` too, an item with no type known yet
+ * - A value with no type of its own is built as the one member of the expected union that takes it
+ *   (`memberBuilt`, which every expression's check goes through), then goes into the union: `[]`
+ *   where an `Array<Int>?` is expected builds an empty `Array<Int>`. So is a literal whose own type
+ *   doesn't go into the union, as one member its items can build it as: `[1, [2]]` where a `Json`
+ *   is expected builds an `Array<Json>`, each item against `Json`. So is a collection literal whose
+ *   own type only checking tells, before its items are checked, so each is checked against the
+ *   member's item: `[1 + 1, "a"]` builds an `Array<Json>` too, an item with no type known yet
  *   taking any member's item. Where an `any` member might take the literal's own type whole, it is
  *   checked first and built as a member only if its type doesn't go in (body-checker.ts). Where an
  *   array and a map member both take an empty literal, `[]` is the array and `[:]` the map. A
@@ -130,10 +130,10 @@ const builtKinds: ReadonlySet<Expression['kind']> = new Set([
 ]);
 
 /**
- * `accepts`, taking as well a type whose value it is built as (`memberBuilt`): what a recursive type
- * unfolds to, and a union of whose members it takes one, at any depth, as the value is then built
- * as that member: `[1, [2]]` takes `Json`, and `((1, none), 2)` takes `((Int, Int?) | String, Int)`.
- * Unfolding ends, since a guarded alias reaches itself only inside another type (§3.17).
+ * `accepts`, taking as well a type whose value it is built as (`memberBuilt`): what a recursive
+ * type unfolds to, and a union of whose members it takes one, at any depth, as the value is then
+ * built as that member: `[1, [2]]` takes `Json`, and `((1, none), 2)` takes `((Int, Int?) | String,
+ * Int)`. Unfolding ends, since a guarded alias reaches itself only inside another type (§3.17).
  */
 export function takingUnfolded(accepts: Accepts): Accepts {
   const taking: Accepts = (expected, isOpen) => {

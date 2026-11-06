@@ -1,8 +1,8 @@
 /**
  * What a type meets by what it is (§3.5, §3.10): the constraints of a type parameter, of an `any`
- * type, and of the types computed from types not known yet, and through them its requirements
- * and associated types; its fields are read through them too (known-fields.ts). One home for these, since each answer of a computed type is read
- * from what the type it is computed from meets.
+ * type, and of the types computed from types not known yet, and through them its requirements and
+ * associated types; its fields are read through them too (known-fields.ts). One home for these,
+ * since each answer of a computed type is read from what the type it is computed from meets.
  *
  * - `T.Data` (§3.1) is one type, meeting the bound of every requirement of `Data` among what `T`
  *   meets (`type Data is C`); on a known type it is that type's own associated type, an alias
@@ -330,8 +330,8 @@ export function entryRules(checker: CheckerContext, type: Type): readonly EntryR
 }
 
 /**
- * What each of several fields' rules asks, as one rule: the exact type every one of them gives, when
- * they all give the same one, so a key naming any of them reads and writes that type (§3.1 Key
+ * What each of several fields' rules asks, as one rule: the exact type every one of them gives,
+ * when they all give the same one, so a key naming any of them reads and writes that type (§3.1 Key
  * types); else the traits each asks, as a field any of them gives an exact type, or asks a struct
  * constraint of, meets nothing known here beside them.
  */

@@ -1,7 +1,7 @@
 /**
- * The layout of declared types (§3.1, §3.11, §3.18): a struct's fields, an enum's variants and
- * the value behind a shared struct. An anonymous struct carries its own fields (types/type/index.ts), so
- * its layout is read off the type.
+ * The layout of declared types (§3.1, §3.11, §3.18): a struct's fields, an enum's variants and the
+ * value behind a shared struct. An anonymous struct carries its own fields (types/type/index.ts),
+ * so its layout is read off the type.
  *
  * A shared struct's fields are its value's, behind the handle that is the struct's value: they are
  * no fields of the struct type itself, so `x.f` and patterns never see them, and `*x` reads them as

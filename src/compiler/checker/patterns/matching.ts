@@ -11,9 +11,9 @@
  *   comparison calls `compare`. Compared with `==` with a value fitting the field's type, it
  *   counts as a pattern for exhaustiveness (`opt == none` takes an optional's `None`).
  * - A name that refers is a variant without fields, tested like one; a type, a struct without
- *   fields among them, which matches every value of the part's own type with no test, as `_`
- *   does (types/written/pattern-types.ts); or a top-level constant (named qualified, since a bare camelCase name
- *   binds), compared with `==` and acting as a guard for exhaustiveness.
+ *   fields among them, which matches every value of the part's own type with no test, as `_` does
+ *   (types/written/pattern-types.ts); or a top-level constant (named qualified, since a bare
+ *   camelCase name binds), compared with `==` and acting as a guard for exhaustiveness.
  * - A struct pattern naming a variant tests that variant, then takes its fields apart. The part's
  *   enum is the expected type, so a bare variant name is enough (§3.11).
  * - An array pattern tests its part's length, then reads its items and rest, all through prelude

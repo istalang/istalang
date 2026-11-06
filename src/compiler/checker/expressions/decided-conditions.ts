@@ -1,10 +1,10 @@
 /**
  * Conditions decided by types (§4): an `==`, `!=` or `is` whose outcome the types of its operands
- * already fix (types/unions/equality.ts, and for `is` a pattern its subject can't match, §3.11), and
- * an `if`'s condition built of them, whose ruled-out branch never runs, so it is neither checked
- * nor lowered. This is what lets a field loop's pass (§4), the body written out for one field, skip
- * the code another field's key selects, and the generic loop, its instantiations and the body
- * written out by hand agree.
+ * already fix (types/unions/equality.ts, and for `is` a pattern its subject can't match, §3.11),
+ * and an `if`'s condition built of them, whose ruled-out branch never runs, so it is neither
+ * checked nor lowered. This is what lets a field loop's pass (§4), the body written out for one
+ * field, skip the code another field's key selects, and the generic loop, its instantiations and
+ * the body written out by hand agree.
  *
  * - Each comparison and `is` decides itself where it is checked, recording its value and warning
  *   of it there, at the one place the types fix it; a condition combines what its parts decided:
@@ -51,10 +51,10 @@ export interface EqualityAt {
 }
 
 /**
- * Checks that `left` and `right` compare by `==` (types/unions/equality.ts), deciding the comparison by
- * their types where they fix it: a single comparison then records and warns of its value. Sides
- * that never compare are reported, unless their types decide them unequal (types/unions/equality.ts),
- * which only a single comparison may be: a chain's link always runs.
+ * Checks that `left` and `right` compare by `==` (types/unions/equality.ts), deciding the
+ * comparison by their types where they fix it: a single comparison then records and warns of its
+ * value. Sides that never compare are reported, unless their types decide them unequal
+ * (types/unions/equality.ts), which only a single comparison may be: a chain's link always runs.
  */
 export function checkEquality(
   context: BodyContext,

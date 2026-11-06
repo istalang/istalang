@@ -9,8 +9,8 @@
  *   either. A type holding none is a leaf, keyed as any type is.
  * - A union's members are a set: a member that is a union term, or a leaf union, gives its members
  *   (flattening, which equi-recursion makes a recursive alias in a union do), and they are then
- *   normalized as every union's are (../unions/union-members.ts), by the rules the source gives; a union of
- *   one member is that member.
+ *   normalized as every union's are (../unions/union-members.ts), by the rules the source gives; a
+ *   union of one member is that member.
  * - Minimizing is partition refinement (term-signatures.ts): terms start in classes by their own
  *   structure (kind, field names, entity, arity), then split by their parts' classes, a union being
  *   the set of its members', until no class splits; a union left with one member's class is that

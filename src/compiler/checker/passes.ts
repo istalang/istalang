@@ -14,8 +14,8 @@
  * - What reads a body whole, the calls it makes or the rules over every call, reads every pass's
  *   records (`entries`).
  * - Each pass checks the same text, so what passes report waits for the loop's passes to be checked
- *   (`hold`), then a diagnostic several made is reported once, and a case no value reaches only when
- *   no pass reaches it (`settled`).
+ *   (`hold`), then a diagnostic several made is reported once, and a case no value reaches only
+ *   when no pass reaches it (`settled`).
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';

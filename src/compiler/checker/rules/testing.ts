@@ -8,11 +8,11 @@
  *   come from a call or a `new`, since a constant can't hold one, so those are what is checked. The
  *   functions it calls and the tests it builds run elsewhere or later, so only its own body is; the
  *   runner checks each test's title at its position as it runs it.
- * - The testing module's calls whose arguments its signatures can't constrain: a mock's target
- *   must name a function, since a lambda or a variable has no identity to replace, and is never
- *   made async to fit (§3.14), since the function made async would be another; and the type
- *   `handle` makes a value of must be a host type. Each is checked over the calls a body resolved.
- *   A mock's target is also the one place a `dispose` may be named (rules/disposal/disposal.ts), so the
+ * - The testing module's calls whose arguments its signatures can't constrain: a mock's target must
+ *   name a function, since a lambda or a variable has no identity to replace, and is never made
+ *   async to fit (§3.14), since the function made async would be another; and the type `handle`
+ *   makes a value of must be a host type. Each is checked over the calls a body resolved. A mock's
+ *   target is also the one place a `dispose` may be named (rules/disposal/disposal.ts), so the
  *   targets are what checking gives back.
  */
 

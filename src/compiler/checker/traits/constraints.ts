@@ -1,6 +1,6 @@
 /**
- * Constraints (§3.5, §3.10): the traits after `is` on a type parameter or after `any`, and what each
- * requires.
+ * Constraints (§3.5, §3.10): the traits after `is` on a type parameter or after `any`, and what
+ * each requires.
  *
  * - A constraint names a trait, with its type arguments resolved and defaults filled, where `Self`
  *   stands for the constrained parameter: `T is Addable` is `Addable<T>`. After `any`, `Self` stays
@@ -9,8 +9,8 @@
  *   `Self` mapped for that constraint. Requirements are numbered by constraint and by the trait's
  *   order of functions (`RequirementOrigin`), which is how a call to one and the witness that
  *   satisfies it find each other per instantiation.
- * - What a type meets by what it is, its fields and requirements included, is known-constraints.ts's;
- *   struct constraints (§3.5) are resolved in struct-constraints.ts.
+ * - What a type meets by what it is, its fields and requirements included, is
+ *   known-constraints.ts's; struct constraints (§3.5) are resolved in struct-constraints.ts.
  */
 
 import type { WellKnownDeclaration } from '../../../language/well-known.ts';

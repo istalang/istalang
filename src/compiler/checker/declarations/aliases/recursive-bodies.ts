@@ -4,9 +4,9 @@
  *
  * - A body is resolved for closing apart from the checker's own resolution of its nodes, each use
  *   of a group alias standing as a placeholder, a type parameter keyed by that alias, which nothing
- *   else ever holds (types/written/resolve-type.ts `resolveClosing`). Resolving it as written would need
- *   the alias closed first. Its nodes resolve again as written, with each use the closed type, which
- *   is what everything else reads; that resolution reports, and notes the constraint checks.
+ *   else ever holds (types/written/resolve-type.ts `resolveClosing`). Resolving it as written would
+ *   need the alias closed first. Its nodes resolve again as written, with each use the closed type,
+ *   which is what everything else reads; that resolution reports, and notes the constraint checks.
  * - Regularity (5128) makes every use inside the group pass its referring alias's own parameters,
  *   in order, so each body is written in the closing alias's parameters by renaming them, and a
  *   placeholder needs no arguments.

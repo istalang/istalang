@@ -274,8 +274,8 @@ class FlowWalk {
 
 /** A construct whose parts run in source order. */
 /**
- * A construct running over a struct's fields (§4): its header's subject once, then its key and value
- * and what its passes check once per field, which may be never.
+ * A construct running over a struct's fields (§4): its header's subject once, then its key and
+ * value and what its passes check once per field, which may be never.
  */
 function overFields(walk: FlowWalk, node: OverFields, state: Opaque): Flow {
   const { header } = node;

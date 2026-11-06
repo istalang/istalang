@@ -62,8 +62,8 @@ export class TypeParameters {
   readonly #requirements: ReductionRequirements;
 
   /**
-   * `moduleOf` answers the module declaring a parameter, a local one's (a local function's, a mapped
-   * type's, an `infer` variable's) too, or a trait's associated type requirement.
+   * `moduleOf` answers the module declaring a parameter, a local one's (a local function's, a
+   * mapped type's, an `infer` variable's) too, or a trait's associated type requirement.
    */
   constructor(
     checker: CheckerContext,

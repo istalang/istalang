@@ -10,15 +10,15 @@
  * - An anonymous struct (§3.1) is its shape: its field names and their types, wherever and in
  *   whatever order it is written, so two with the same fields are one type. It carries its fields,
  *   since it has no declaration to derive them from, always in name order (`shapeType`), the one
- *   order every struct lays its fields out in (`inFieldOrder`). Where it was written (`origin`) is only its spelling, for tools to locate it:
- *   the value behind a shared struct (§3.18) is the shape of the shared struct's fields, written at
- *   its declaration.
+ *   order every struct lays its fields out in (`inFieldOrder`). Where it was written (`origin`) is
+ *   only its spelling, for tools to locate it: the value behind a shared struct (§3.18) is the
+ *   shape of the shared struct's fields, written at its declaration.
  * - A literal type (§2) is the one value of a `String`, `Int` or `Bool` literal: `"draft"`, `-1`,
  *   `true`. Its base is derived from its value, never stored beside it.
- * - `A | B` (§2) is a value of one of its members, a set: unions/unions.ts normalizes it, so no value sits
- *   in two members and no union holds another. Its members keep the order they were first written
- *   in, which only its text reads; identity sorts them (identity/type-keys.ts). `T?` is `T | None`, `None`
- *   being the primitive whose one value is `none`.
+ * - `A | B` (§2) is a value of one of its members, a set: unions/unions.ts normalizes it, so no
+ *   value sits in two members and no union holds another. Its members keep the order they were
+ *   first written in, which only its text reads; identity sorts them (identity/type-keys.ts). `T?`
+ *   is `T | None`, `None` being the primitive whose one value is `none`.
  * - `error` stands for a type a diagnostic has already explained. It is compatible with everything,
  *   so one mistake is reported once instead of at every use that follows.
  * - `Never` (§2) is the type of expressions that don't produce a value, and fits wherever any type
@@ -29,14 +29,15 @@
  *   same operation as for any other parameter.
  * - `any A & B` (§3.10) is a value of any type meeting each of its constraints, a set: their order
  *   and the way they were written don't make two types. A constraint's arguments may name its
- *   trait's `Self` (`any Iterable<Int>` is `Iterable<Int, Self>`), which stands for each value's own
- *   type. The `any` type binds it, so substituting from outside never replaces it, and no type
+ *   trait's `Self` (`any Iterable<Int>` is `Iterable<Int, Self>`), which stands for each value's
+ *   own type. The `any` type binds it, so substituting from outside never replaces it, and no type
  *   mentioning it is open.
  * - An alias names no type of its own (§3.17): every type carries the alias it was written through,
  *   if any (`WrittenThrough`), only so its text reads as written (alias-uses.ts).
  * - The primitives by name, and tuples built so `()` is `Unit`, are in primitives.ts.
- * - Identity and the exact relations live in identity/identity.ts, through type keys (identity/type-keys.ts); fitting
- *   with the implicit conversions needs to know which type is `Optional`, so it lives in fitting/fit.ts.
+ * - Identity and the exact relations live in identity/identity.ts, through type keys
+ *   (identity/type-keys.ts); fitting with the implicit conversions needs to know which type is
+ *   `Optional`, so it lives in fitting/fit.ts.
  */
 
 import type { PrimitiveName } from '../../../../language/primitives.ts';
@@ -208,9 +209,9 @@ export type ParameterKey =
 /**
  * A type parameter, opaque inside the declaration that introduces it (§3.5). A mapped entry's binds
  * it within the type (§3.1), whose keys a substitution from outside changes, so its occurrences
- * carry the keys it ranges over (`within`), substituted with them, never read again from where
- * it is written. Its key holds them (identity/type-keys.ts): what is known of one field of several keys
- * isn't what is known of one of fewer, and results kept by a type's key must tell them apart.
+ * carry the keys it ranges over (`within`), substituted with them, never read again from where it
+ * is written. Its key holds them (identity/type-keys.ts): what is known of one field of several
+ * keys isn't what is known of one of fewer, and results kept by a type's key must tell them apart.
  * A type `match`'s subject, written in the type of a `case struct …:`, stands for a member meeting
  * that constraint (§3.17), which it carries (`meeting`) and its key holds alike. Every use of the
  * alias substitutes the subject, so a substitution never keeps one.

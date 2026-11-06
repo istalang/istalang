@@ -7,8 +7,8 @@
  * - Its items are checked by the path variants share (literal-fields.ts), so a generic struct's
  *   type arguments are written, expected, spread or inferred alike. A literal naming a variant
  *   builds that variant (variants.ts).
- * - A struct without fields is written bare (../access/names.ts), so braces after one are an error, whatever
- *   they hold.
+ * - A struct without fields is written bare (../access/names.ts), so braces after one are an error,
+ *   whatever they hold.
  * - A shared struct is built with `new` and only one is (§3.18): its literal checks as any other,
  *   braces and all, and its type is the shared struct, while a spread gives it the value behind
  *   another (`new Inbox{...*box}`).
@@ -181,8 +181,8 @@ function shapeOf(context: BodyContext, type: Type): LiteralShape | undefined {
 
 /**
  * `expected`, when it is a union with a member of `entity`'s type: none of them took the literal,
- * or it would be expected alone (types/fitting/expected.ts), so a literal inferring no type arguments of its
- * own doesn't fit it.
+ * or it would be expected alone (types/fitting/expected.ts), so a literal inferring no type
+ * arguments of its own doesn't fit it.
  */
 function unionHolding(expected: Type | undefined, entity: NominalEntity): Type | undefined {
   return expected?.kind === 'union' &&

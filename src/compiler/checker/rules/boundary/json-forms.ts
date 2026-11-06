@@ -19,7 +19,8 @@
  * - A derived codec exists when everything it holds meets the trait. A
  *   recursive type counts as meeting it while its own parts are decided, as Sendable does.
  * - What has no codec says why, in words a diagnostic finishes ("it needs …"): an enum with a field
- *   named as the tag; a function; a handle. A type with nothing more to say lacks the codec itself, as conformance says.
+ *   named as the tag; a function; a handle. A type with nothing more to say lacks the codec itself,
+ *   as conformance says.
  * - What the json module's field annotations mean is decided here: a field's key after its
  *   `@JsonName`, an `@JsonBigInt` field's own codecs, and what an `@JsonSkip` field reads back as,
  *   which annotations.ts also asks to tell where the annotation may stand.

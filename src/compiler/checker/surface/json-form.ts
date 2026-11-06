@@ -1,9 +1,9 @@
 /**
  * The JSON form model (§9; docs/arch/boundary.md): how the compiler derives the codecs of a type
- * that declares none of its own, which the checker decides (rules/boundary/json-forms.ts) and lowering writes
- * the derived codecs from, and what later phases may ask of codecs. It holds no decisions beyond
- * which trait means which direction, so the checker's surface (check.ts) and lowering depend on it
- * without depending on how codecs are found.
+ * that declares none of its own, which the checker decides (rules/boundary/json-forms.ts) and
+ * lowering writes the derived codecs from, and what later phases may ask of codecs. It holds no
+ * decisions beyond which trait means which direction, so the checker's surface (check.ts) and
+ * lowering depend on it without depending on how codecs are found.
  */
 
 import {

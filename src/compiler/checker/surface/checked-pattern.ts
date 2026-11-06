@@ -111,9 +111,9 @@ export interface PartBinding {
  *   the tests after it reach through a `downcast` step.
  * - `member`: the part, of the union `union`, holds a value of one of `members` (§3.11); the tests
  *   after it reach the value of the one member through a `member` step. An instantiation may
- *   collapse the union into one type (§3.5, body/facts/instantiation.ts): the part is then that type's
- *   value itself, which the test passes when a member is that type, compares with when a member is
- *   a literal of it, and fails otherwise.
+ *   collapse the union into one type (§3.5, body/facts/instantiation.ts): the part is then that
+ *   type's value itself, which the test passes when a member is that type, compares with when a
+ *   member is a literal of it, and fails otherwise.
  * - `equal`: the part `==` a value: a literal or comparison's expression, a top-level constant's
  *   name, or an array pattern's fixed item count; `negated` for `!=`.
  * - `compare`: `compare(part, value)`, the implicit call recorded at `site`, is in `relation`: a

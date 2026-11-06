@@ -6,9 +6,9 @@
  * - Every type argument must meet its parameter's constraints. A type meets a trait with the same
  *   functions wherever it is met: those the trait requires must be declared beside the types they
  *   take or beside the trait, or be a requirement of a type parameter's own constraints
- *   (resolution/choosing/candidates.ts). Each is the function declared to meet it (declared-witness.ts),
- *   which must give the required result. The calls found are the witnesses the instantiation
- *   calls (check.ts).
+ *   (resolution/choosing/candidates.ts). Each is the function declared to meet it
+ *   (declared-witness.ts), which must give the required result. The calls found are the witnesses
+ *   the instantiation calls (check.ts).
  * - A required field or associated type, and a struct constraint's entries, are met as
  *   shortfalls.ts judges them.
  * - A trait the compiler derives (derived-traits.ts) asks what its rule asks of every type first,

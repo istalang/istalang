@@ -1,8 +1,8 @@
 /**
- * Struct comprehensions (§3.1, §4): `struct{id, for k, v in ...x: [k]: e}` gives each field of
- * `x` a field of its own, of `e`'s value as that field's pass checks it (rules/loops/field-passes.ts),
- * after the fields the literal names. The literal gives every field itself, so it has no spread
- * and leaves no field to a default.
+ * Struct comprehensions (§3.1, §4): `struct{id, for k, v in ...x: [k]: e}` gives each field of `x`
+ * a field of its own, of `e`'s value as that field's pass checks it (rules/loops/field-passes.ts),
+ * after the fields the literal names. The literal gives every field itself, so it has no spread and
+ * leaves no field to a default.
  *
  * - Its type is the expected one, a struct type with exactly the named fields and `x`'s, a
  *   declaration's (literal-fields.ts) or a type whose fields aren't all known yet, such as a mapped
@@ -10,9 +10,9 @@
  *   named fields and each of `x`'s, typed as `e` is there: `x`'s fields must be known.
  * - A field the comprehension gives is a field the literal gives: a name the literal also gives,
  *   or one its type lacks, is a mistake as a repeated or unknown name is.
- * - Its source (surface/checked-body.ts `FieldSource`) is the comprehension itself, whose fields lowering finds
- *   on each instantiation's struct: what a generic body checks once, per named entry and once for
- *   the others, gives as many fields as the struct it is instantiated with has.
+ * - Its source (surface/checked-body.ts `FieldSource`) is the comprehension itself, whose fields
+ *   lowering finds on each instantiation's struct: what a generic body checks once, per named entry
+ *   and once for the others, gives as many fields as the struct it is instantiated with has.
  */
 
 import type {
@@ -72,9 +72,9 @@ export interface Comprehended {
 }
 
 /**
- * Checks the value of the comprehension `literal` ends with, if any, once per pass against the field
- * of `target` the pass's field is, as a named item's value is (literal-fields.ts), matching it for
- * inference where its type isn't known yet.
+ * Checks the value of the comprehension `literal` ends with, if any, once per pass against the
+ * field of `target` the pass's field is, as a named item's value is (literal-fields.ts), matching
+ * it for inference where its type isn't known yet.
  */
 export function checkComprehended(
   context: BodyContext,

@@ -1,7 +1,8 @@
 /**
- * The checker's diagnostics of struct keys, codes 5160–5169 (§3.1, §3.7, §3.9, §4): `keyof`, `S[K]`,
- * mapped struct types, reading or writing a field through a key, what a field loop runs over, and
- * the fields a struct comprehension gives. A part of the checker's one catalog (index.ts).
+ * The checker's diagnostics of struct keys, codes 5160–5169 (§3.1, §3.7, §3.9, §4): `keyof`,
+ * `S[K]`, mapped struct types, reading or writing a field through a key, what a field loop runs
+ * over, and the fields a struct comprehension gives. A part of the checker's one catalog
+ * (index.ts).
  */
 
 export const keyTemplates = {

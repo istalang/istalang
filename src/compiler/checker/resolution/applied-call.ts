@@ -8,8 +8,8 @@
  *
  * - An argument of the error type was reported already, so the call reports nothing more.
  * - A call through a union's trait is a candidate only where the union meets the trait (§6,
- *   conformance/trait-calls.ts); one that inferred the trait's arguments is judged once they are, and closed
- *   with them, or made through the function declared for the union whole instead.
+ *   conformance/trait-calls.ts); one that inferred the trait's arguments is judged once they are,
+ *   and closed with them, or made through the function declared for the union whole instead.
  * - A call several candidates take alike is ambiguous, named as `name` says; several traits a
  *   union meets requiring the function called on it are reported as such.
  */

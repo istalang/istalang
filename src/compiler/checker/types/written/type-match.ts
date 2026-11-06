@@ -154,8 +154,8 @@ export function structCaseOf(
 
 /**
  * `type` built again by `rules` at every level, each type in it computed from others reduced as far
- * as its parts allow: what a case's type, resolved with the uses in it unreduced, becomes once a use
- * of its alias picks it.
+ * as its parts allow: what a case's type, resolved with the uses in it unreduced, becomes once a
+ * use of its alias picks it.
  */
 export function rebuilt(type: Type, rules: TypeRules): Type {
   return mapChildren(type, (child) => rebuilt(child, rules), rules);

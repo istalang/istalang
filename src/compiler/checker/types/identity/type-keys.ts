@@ -19,8 +19,8 @@
  *   written out or through another alias are one type; a recursive type `match` use closes into
  *   such a graph too. A key holding `~` is no other type's.
  * - A type computed from types not known yet (`T.Data`, `S["meta"]`, `keyof S`) is its parts' keys:
- *   such a type is opaque, equal only to itself (§3.5). A mapped struct type not reduced yet keys its
- *   own parameter by how deep it binds, so its spelling's name for it never makes two types; it
+ *   such a type is opaque, equal only to itself (§3.5). A mapped struct type not reduced yet keys
+ *   its own parameter by how deep it binds, so its spelling's name for it never makes two types; it
  *   starts with `*`, as no other type's key does, so it never keys alike with a shape.
  * - An alias names no type of its own (§3.17), so no key mentions one.
  * - A canonical key is kept by the type's pre-key: its structure, keyed as here, down to each
@@ -31,9 +31,9 @@
  *   graphs replace an earlier one's; an identity's number is never reused, so a pre-key naming a
  *   graph gone finds nothing.
  * - A type's own key is memoized per type object, which is immutable. Comparing generic signatures
- *   up to the names of their type parameters (declarations/functions/clashes.ts) keys each of those parameters by
- *   its position, which is the same as substituting canonical parameters, without building them;
- *   such keys are computed afresh.
+ *   up to the names of their type parameters (declarations/functions/clashes.ts) keys each of those
+ *   parameters by its position, which is the same as substituting canonical parameters, without
+ *   building them; such keys are computed afresh.
  * - A type's spelled key (`spelledKey`) is its key with everything it is spelled with: the alias,
  *   associated type or keys it was written through, the node each shape, mapped type and field was
  *   written at, an `any`'s constraints and a union's members in written order, and the type

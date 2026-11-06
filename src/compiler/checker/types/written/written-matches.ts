@@ -6,7 +6,8 @@
  *   its alias's parameters open, and a use substitutes them.
  * - `infer` stands only in a case's pattern; anywhere else it is reported.
  * - A use no case matches is the error type carrying it: the check noted for its instantiation
- *   reports it where it is written, as for any it reaches (resolution/type-matches/reduction-requirements.ts).
+ *   reports it where it is written, as for any it reaches
+ *   (resolution/type-matches/reduction-requirements.ts).
  * - The subject written as a type parameter, in the type of a `case struct …:`, stands for a member
  *   meeting that constraint, so its keys and fields are known there as a constrained parameter's.
  */
@@ -106,8 +107,8 @@ export function asWrittenInMatch(
 }
 
 /**
- * Whether `node` stands in a type `match` case's pattern, which is matched, not used: a type, so its
- * arguments meet their constraints, but nothing there is reduced (§3.17).
+ * Whether `node` stands in a type `match` case's pattern, which is matched, not used: a type, so
+ * its arguments meet their constraints, but nothing there is reduced (§3.17).
  */
 export function inCasePattern(written: Written, node: SyntaxNode): boolean {
   return matchPlaceOf(treeOf(written), node) === 'pattern';

@@ -59,8 +59,8 @@ export function fieldWritten(written: Written, node: IndexedType, owner: Type, k
 }
 
 /**
- * A `{…}` type (§3.1): a shape, or a mapped struct type when one of its entries maps keys; each type
- * it writes resolved by `resolve`.
+ * A `{…}` type (§3.1): a shape, or a mapped struct type when one of its entries maps keys; each
+ * type it writes resolved by `resolve`.
  */
 export function structWritten(
   written: Written,

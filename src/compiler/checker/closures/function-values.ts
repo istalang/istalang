@@ -4,12 +4,12 @@
  * forms are one rule: `namedFunctions` finds what a name means, and the value is a closure with
  * no captures, recorded as a site at the expression naming it (check.ts).
  *
- * - The expected function type chooses among the functions named, as a call with arguments of
- *   its parameter types would (resolution/choosing/choice.ts), and infers a generic one's type arguments
- *   from those and its result (§3.5). A shorter function type leaves trailing parameters to their
- *   defaults, which the value computes at each call (§3.3), and a rest parameter is one array
- *   (resolution/choosing/binding.ts).
- *   A top-level name also finds what argument-dependent lookup does from those types (§3.13).
+ * - The expected function type chooses among the functions named, as a call with arguments of its
+ *   parameter types would (resolution/choosing/choice.ts), and infers a generic one's type
+ *   arguments from those and its result (§3.5). A shorter function type leaves trailing parameters
+ *   to their defaults, which the value computes at each call (§3.3), and a rest parameter is one
+ *   array (resolution/choosing/binding.ts). A top-level name also finds what argument-dependent
+ *   lookup does from those types (§3.13).
  * - With no expected function type, only a lone non-generic function can be named; any other
  *   name needs one (§3.14), which a call it is passed to gives (`functionsAccepted`).
  * - A function's type as a value has the `T` an `await` yields as an async function's result.

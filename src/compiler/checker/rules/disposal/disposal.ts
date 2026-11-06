@@ -137,9 +137,9 @@ function declaredDispose(checker: CheckerContext, type: NominalType): FunctionCa
 
 /**
  * Checks a `dispose` a program declares (§7): its one parameter takes a handle a program may make
- * disposable, and a host type that isn't declared sendable, since a disposable value has an identity
- * of its own (§3.1); it is plain code returning unit, lookup finds it for that type, and its `self`
- * never escapes it.
+ * disposable, and a host type that isn't declared sendable, since a disposable value has an
+ * identity of its own (§3.1); it is plain code returning unit, lookup finds it for that type, and
+ * its `self` never escapes it.
  */
 export function checkDisposeDeclaration(
   checker: CheckerContext,

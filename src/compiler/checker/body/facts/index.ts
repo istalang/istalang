@@ -1,8 +1,8 @@
 /**
- * The facts a checked body answers (surface/checked-body.ts `BodyFacts`), each one entry of `bodyFacts`: how it
- * is read as a pass checked it, from what checking recorded (recorded-body.ts); how an
- * instantiation reads it, from the parts its answers are made of (instantiation.ts); and how the
- * passes of the field loops around a node join it, for tools (pass-joins.ts). The body and its
+ * The facts a checked body answers (surface/checked-body.ts `BodyFacts`), each one entry of
+ * `bodyFacts`: how it is read as a pass checked it, from what checking recorded (recorded-body.ts);
+ * how an instantiation reads it, from the parts its answers are made of (instantiation.ts); and how
+ * the passes of the field loops around a node join it, for tools (pass-joins.ts). The body and its
  * views are derived from the table, so a fact added to the contract fails to typecheck until its
  * entry says all three, and no view passes a fact through unread.
  */
