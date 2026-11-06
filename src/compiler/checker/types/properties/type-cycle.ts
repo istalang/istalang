@@ -5,8 +5,8 @@
  * fresh.
  */
 
-import type { TypeKeys } from './identity/type-keys.ts';
-import type { Type } from './type.ts';
+import type { TypeKeys } from '../identity/type-keys.ts';
+import type { Type } from '../type.ts';
 
 export class TypeCycle {
   readonly #keys: TypeKeys;

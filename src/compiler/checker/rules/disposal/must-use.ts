@@ -5,7 +5,7 @@
  *
  * - A future must be used because its unawaited call would run on unseen, a `Result` because
  *   ignoring it ignores a failure, and any other disposable because it would be disposed at once.
- *   Any of them makes a value holding it must-use too, at any depth (types/held.ts): a `Result?`
+ *   Any of them makes a value holding it must-use too, at any depth (types/properties/held.ts): a `Result?`
  *   that `?.` gives, a tuple or a struct with a future in it. A value of a type parameter is
  *   disposable when its constraints require a `dispose` (rules/disposal/disposal.ts).
  * - A statement's value is discarded unless it is its block's value, and a block run for its
@@ -23,8 +23,8 @@ import type { NodeOf } from '../../../syntax/node.ts';
 import { type Drop, droppedName } from '../../../syntax/statements.ts';
 import type { BodyContext } from '../../body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { heldType } from '../../types/held.ts';
 import { unitType } from '../../types/primitives.ts';
+import { heldType } from '../../types/properties/held.ts';
 import type { Type } from '../../types/type.ts';
 import { typeText } from '../../types/type-text.ts';
 import { futureArgument, wellKnownArguments } from '../../types/well-known.ts';

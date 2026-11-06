@@ -412,7 +412,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
    - `checker/declarations/aliases.ts` reports 5106 only for an unguarded, blocking or irregular reference. A guarded group closes through `closeRecursive` (`checker/types/identity/recursive-types.ts`) into the `RecursiveType` of `checker/types/computed-types.ts`: a node of a minimized graph, the bodies resolved with placeholders (`declarations/recursive-bodies.ts`).
    - It is keyed by its graph's canonical spelling (`types/identity/recursive-terms.ts`, `types/identity/type-keys.ts`) and unfolds to its node's body.
    - `types/unions/unions.ts`, through `unionOf`, flattens it and folds a union equal to it back into it.
-   - `types/finiteness.ts` walks `RecursiveType`.
+   - `types/properties/finiteness.ts` walks `RecursiveType`.
    - A recursive type `match` use (proposal 4) closes through the same constructor with every recursive use its finding reached (`checker/resolution/type-matches.ts`), each body reduced with those uses unreduced as placeholders, so it is a `RecursiveType` too, identified by structure. Once a group closes, `closeRecursive` reduces each computed type built from its nodes (a type `match` given the group's own use) and closes again, so none stays unreduced; `matchCase` matches a recursive type as what it unfolds to.
    - `src/compiler/lowering/type-table.ts` gives it one entry per key, with its body (an enum for a union, a struct for a shape) referring to that entry, named by the preferred alias.
 7. **`Json`.**

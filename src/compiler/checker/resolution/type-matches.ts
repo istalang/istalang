@@ -24,7 +24,7 @@
  *   its finding reached, through the one constructor of recursive types (types/identity/recursive-types.ts),
  *   their bodies reduced with each such use an unreduced placeholder, so a recursive type `match` use
  *   and a recursive alias with its structure are one type (§3.17). One whose values would hold
- *   themselves names no type: the error type, carrying why (types/finiteness.ts).
+ *   themselves names no type: the error type, carrying why (types/properties/finiteness.ts).
  * - Whether a use is recursive, or would be itself with no struct type on its cycle, is an entry
  *   too, found before it is reduced by reducing it once in a scope of its own and keeping nothing
  *   but those verdicts (`#recursionOf`): it depends on the use alone, never on what was reduced
@@ -42,11 +42,11 @@ import type { AliasDeclaration } from '../../syntax/declarations.ts';
 import { type StructType, unparenthesizedType } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { isOpaque, type MatchType, unfoldRecursive } from '../types/computed-types.ts';
-import { fieldReaderOf, selfHoldingField } from '../types/finiteness.ts';
 import { closeRecursive } from '../types/identity/recursive-types.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
 import { errorIn } from '../types/parts/type-parts.ts';
 import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
+import { fieldReaderOf, selfHoldingField } from '../types/properties/finiteness.ts';
 import { substituteStructConstraint } from '../types/struct-constraint.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';

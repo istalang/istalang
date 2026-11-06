@@ -46,14 +46,14 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
   - **D87**: Passing `x$` or `x$.field` by `&` (`x$.push(v)`) remains on the checker frontier (`unwrapPart`) even though `lowering/places.ts` already implements copy-in/write-back for `Unwrap`.
   - **D96**: `c$ = v` and `a, c$ = (1, 2)` lower through two different paths (the destructuring path emits an extra observable `unwrap` before `rewrap`).
 
-#### 1.4 Recursive Type-Graph Property Queries (`sendable.ts`, `json-forms/index.ts`, `struct-rules.ts`, `types/held.ts`)
+#### 1.4 Recursive Type-Graph Property Queries (`sendable.ts`, `json-forms/index.ts`, `struct-rules.ts`, `types/properties/held.ts`)
 
 - **Current narrow scope:** Four separate modules walk composite and nominal `Type` graphs:
   - `isSendable` (`src/compiler/checker/traits/sendable.ts`, tracking cycles via `Set<string>` of `typeKey`)
   - `JsonForms.problemOf` (`src/compiler/checker/rules/json-forms/index.ts`, tracking cycles via `Set<string>` of `typeKey`)
   - `checkFiniteFields` (`src/compiler/checker/declarations/struct-rules.ts`, tracking cycles via `Set<StructDeclaration>`)
-  - `heldType` (`src/compiler/checker/types/held.ts`, taking no `CheckerContext`, keeping no cycle set, and **skipping declared `StructDeclaration` and `EnumDeclaration` fields**).
-- **Correctness gap in `types/held.ts`:** `types/held.ts` states that a declared struct’s fields are checked where it is declared, but `src/compiler/checker/declarations/declarations.ts` never checks declared struct or enum fields for must-use types (`Future`, `Result`, `Disposable`). Consequently, a function returning a non-generic `struct Holder { f: Future<int> }` can have its result silently discarded as a bare expression statement without triggering `must-use` (`checkDiscarded`), whereas an anonymous struct `{ f: Future<int> }` is caught. Extracting a single cycle-safe type-graph traversal over `CheckerContext` fixes this and unifies all four walks.
+  - `heldType` (`src/compiler/checker/types/properties/held.ts`, taking no `CheckerContext`, keeping no cycle set, and **skipping declared `StructDeclaration` and `EnumDeclaration` fields**).
+- **Correctness gap in `types/properties/held.ts`:** `types/properties/held.ts` states that a declared struct’s fields are checked where it is declared, but `src/compiler/checker/declarations/declarations.ts` never checks declared struct or enum fields for must-use types (`Future`, `Result`, `Disposable`). Consequently, a function returning a non-generic `struct Holder { f: Future<int> }` can have its result silently discarded as a bare expression statement without triggering `must-use` (`checkDiscarded`), whereas an anonymous struct `{ f: Future<int> }` is caught. Extracting a single cycle-safe type-graph traversal over `CheckerContext` fixes this and unifies all four walks.
 
 ---
 
@@ -201,7 +201,7 @@ Ranked by **correctness impact × fan-in (root stability) × blast-radius reduct
 
 | Priority | Target & Location | Category | Blast Radius | Effort | Sequence / Prerequisite |
 | --- | --- | --- | --- | --- | --- |
-| **1** | **Fix `heldType` + `must-use` for declared structs/enums and `T is Disposable`** (`src/compiler/checker/types/held.ts`, `src/compiler/checker/rules/must-use.ts` — **D108** + silent discard of structs holding `Future`/`Result`/`Disposable`) | Bug / Type-Graph Generalization | 2 files in `checker/` | S | Pass `CheckerContext` + cycle set into `heldType` so declared struct/enum fields and constrained type parameters are checked. |
+| **1** | **Fix `heldType` + `must-use` for declared structs/enums and `T is Disposable`** (`src/compiler/checker/types/properties/held.ts`, `src/compiler/checker/rules/must-use.ts` — **D108** + silent discard of structs holding `Future`/`Result`/`Disposable`) | Bug / Type-Graph Generalization | 2 files in `checker/` | S | Pass `CheckerContext` + cycle set into `heldType` so declared struct/enum fields and constrained type parameters are checked. |
 | **2** | **Deduplicate leaf helpers (`compareCodeUnits`, `staticName`, `preludeKey`)** (`src/language/values.ts`, `src/definition/codec.ts`, `src/definition/extern-key.ts`, `src/stdlib/prelude/` — **D79, D128**) | DRY | ~12 leaf files | S | Zero-dependency leaf cleanup. |
 | **3** | **Extract shared entity/type-lookup helpers in `checker/`** (`namedType`, `staticTargetOf`, `fieldlessStructOf`, `isChangeable`) out of `expressions/variants.ts`, `traits/conformance.ts`, and `rules/places.ts` | Cohesion / Decoupling | 8 files in `checker/` | S | Removes cross-feature imports between `patterns/`, `closures/`, `expressions/`, and `traits/`. |
 | **4** | **Unify `HeapObject` kind table, Frame view, and Snapshot builder in `runtime/`** (`src/runtime/snapshot/objects.ts`, `snapshot.ts`, `scheduler/instance.ts`, `lifetimes/holders.ts` — **D110, D123, D126**) | Open/Closed Registry & DRY | 6 files in `runtime/` | M | Replaces 6 `switch (object.kind)` blocks and duplicate `frameValues`/`valuesOfFrame` with one `Handlers` table. |

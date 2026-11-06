@@ -12,7 +12,7 @@
  *   again while its requirements are found adds none: the cycle's own uses are among the others'.
  * - An instantiation substitutes them, and any use whose arguments are then all known reduces:
  *   one naming no type (matching no case, being itself, or recursive with values that would hold
- *   themselves, types/finiteness.ts; an associated type on a cycle of expansions,
+ *   themselves, types/properties/finiteness.ts; an associated type on a cycle of expansions,
  *   traits/known-constraints.ts), the error type carrying it, is reported where the
  *   instantiation is written, its arguments written or inferred alike. A nominal type reached on
  *   the way brings its declaration's requirements, through its own arguments, and a recursive type

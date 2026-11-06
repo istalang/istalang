@@ -53,6 +53,7 @@ import { wellKnownConstraint } from '../../traits/constraints.ts';
 import { unfolded } from '../../types/computed-types.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { unaliased } from '../../types/parts/type-parts.ts';
+import { TypeCycle } from '../../types/properties/type-cycle.ts';
 import type {
   FieldMember,
   LiteralType,
@@ -61,7 +62,6 @@ import type {
   Type,
   UnionType,
 } from '../../types/type.ts';
-import { TypeCycle } from '../../types/type-cycle.ts';
 import { typeText } from '../../types/type-text.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
 import { optionalInner } from '../../types/unions/unions.ts';

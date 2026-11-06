@@ -151,7 +151,7 @@ L0 parses all of it; the owning phase gives each form its meaning and its refusa
   - `==` compares the type, then the value. JSON refuses `any`.
   - `case Email{to}` on an `any Notifier` downcasts, and needs `case _`.
 - **Lands:**
-  - **Checker:** a new `Type` kind. The silent `default`s over `Type` (`types/held.ts`, `resolution/candidates.ts` `staticTargetOf`) become exhaustive first.
+  - **Checker:** a new `Type` kind. The silent `default`s over `Type` (`types/properties/held.ts`, `resolution/candidates.ts` `staticTargetOf`) become exhaustive first.
   - **Parser:** reuses the constraint list that type parameters parse (`A & B`).
   - **Lowering and Definition:** synthesized enum types in the types table. Variants are positional within one Definition, which is enough because snapshots are tied to their version.
   - **Spec:** §3.10 and its "no dynamic dispatch" paragraph are rewritten.
