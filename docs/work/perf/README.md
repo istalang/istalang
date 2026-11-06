@@ -31,3 +31,4 @@ The tools are in `scripts/profile/`; each file's banner gives its usage. They al
 ## Reports
 
 - `profile-2026-11-06.md`: the whole toolchain at `189782f6` (tracker P22–P31).
+- `full-check-2026-11-06.md`: the cold end-to-end compile at `f999c924`, after P22–P24 (tracker P22, P25, P32–P37).
