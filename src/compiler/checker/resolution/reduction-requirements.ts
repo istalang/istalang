@@ -47,26 +47,21 @@ import { type Substitution, substitute, substitutionFor } from '../types/substit
 import type { RecursiveUse, Type, UnreducedUse } from '../types/type.ts';
 import { typeChildren } from '../types/type-children.ts';
 import { typeKeys } from '../types/type-keys.ts';
-import { aliasInstance, matchUse, type TypeMatchQueries } from '../types/type-match.ts';
+import { aliasInstance, type TypeMatchQueries } from '../types/type-match.ts';
 import { isKnown, sameTypeSpelled } from '../types/type-parts.ts';
 import { spellingText, typeText } from '../types/type-text.ts';
 
 /**
  * The diagnostic reporting `failure` at `at`, where the instantiation reaching it is written, its
- * use spelled as source writes it (`TypeMatchQueries.spellingOf`): `Bad<Int>.Data`, never the
- * associated type's own name given its owner's arguments.
+ * use spelled as every type is (`typeText`): `Bad<Int>.Data` for an associated type's.
  */
 export function failureDiagnostic(
   queries: TypeMatchQueries,
   at: AnchoredSpan,
   failure: UnreducedUse,
 ) {
-  const spelled = ({ declaration, arguments: typeArguments }: RecursiveUse) => {
-    const spelling = queries.spellingOf(declaration, typeArguments);
-    return spelling === undefined
-      ? typeText(matchUse(declaration, typeArguments))
-      : spellingText(spelling);
-  };
+  const spelled = ({ declaration, arguments: typeArguments }: RecursiveUse) =>
+    typeText(queries.useOf(declaration, typeArguments));
   switch (failure.cause) {
     case 'unmatched':
       return checkerDiagnostics.noCaseMatches(at, spelled(failure.use));

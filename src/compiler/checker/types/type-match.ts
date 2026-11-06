@@ -11,12 +11,19 @@
  *   it must meet for its case to match.
  */
 
-import type { AliasDeclaration, TypeParameter, TypeParameters } from '../../syntax/declarations.ts';
+import type {
+  AliasDeclaration,
+  AssociatedType,
+  TypeAliasDeclaration,
+  TypeParameter,
+  TypeParameters,
+} from '../../syntax/declarations.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import type { TypeCase } from '../../syntax/types.ts';
+import type { MatchType } from './computed-types.ts';
 import type { ConstraintSet, StructConstraintModel } from './struct-constraint.ts';
 import { type Substitution, substitute } from './substitution.ts';
-import type { RecursiveLabel, Type } from './type.ts';
+import { type NominalEntity, nominalType, type RecursiveLabel, type Type } from './type.ts';
 import { mapChildren } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
 
@@ -64,19 +71,43 @@ export interface TypeMatchQueries {
    */
   readonly isEndless: (alias: AliasDeclaration) => boolean;
   /**
-   * How a use of `alias` with `typeArguments` reads: the alias given them, or the associated type
-   * of its declaration's type given them, `Group<Category>.Data`; undefined when that declaration
-   * names no type.
+   * The unreduced use of `alias` given `typeArguments`: an associated type's carrying the type
+   * that declares it, which it reads through (`matchUse`).
    */
-  readonly spellingOf: (
-    alias: AliasDeclaration,
-    typeArguments: readonly Type[],
-  ) => RecursiveLabel | undefined;
+  readonly useOf: (alias: AliasDeclaration, typeArguments: readonly Type[]) => MatchType;
 }
 
-/** The unreduced use of `declaration`, whose body is a type `match`, with `typeArguments`. */
-export function matchUse(declaration: AliasDeclaration, typeArguments: readonly Type[]): Type {
-  return { kind: 'match', declaration, arguments: typeArguments };
+/**
+ * The unreduced use of `declaration`, whose body is a type `match`, with `typeArguments`: an
+ * alias's, or an associated type's of `owner`, the type declaring it, which the use reads through
+ * (`Bad<Int>.Data`, type-text.ts); undefined only where that type names none.
+ */
+export function matchUse(
+  declaration: TypeAliasDeclaration,
+  typeArguments: readonly Type[],
+): MatchType;
+export function matchUse(
+  declaration: AssociatedType,
+  typeArguments: readonly Type[],
+  owner: NominalEntity | undefined,
+): MatchType;
+export function matchUse(
+  declaration: AliasDeclaration,
+  typeArguments: readonly Type[],
+  owner?: NominalEntity,
+): MatchType {
+  return { kind: 'match', declaration, arguments: typeArguments, owner };
+}
+
+/** How the use `use` reads as a recursive type's label: its alias, or its owner's associated type. */
+export function labelOf(use: MatchType): RecursiveLabel | undefined {
+  const { declaration, arguments: typeArguments, owner } = use;
+  if (declaration.kind === 'TypeAliasDeclaration') {
+    return { kind: 'alias', declaration, arguments: typeArguments };
+  }
+  return owner === undefined
+    ? undefined
+    : { kind: 'associated', of: nominalType(owner, typeArguments), name: declaration.name.text };
 }
 
 /**

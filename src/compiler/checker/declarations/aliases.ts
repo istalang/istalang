@@ -30,14 +30,9 @@ import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { matchCase } from '../resolution/type-match-patterns.ts';
 import { resolveConstraintSet } from '../traits/struct-constraints.ts';
+import type { MatchType } from '../types/computed-types.ts';
 import { parameterType } from '../types/resolve-type.ts';
-import {
-  errorType,
-  isNominalEntity,
-  nominalType,
-  type RecursiveLabel,
-  type Type,
-} from '../types/type.ts';
+import { errorType, isNominalEntity, type Type } from '../types/type.ts';
 import {
   type CaseForm,
   type CasePatternForm,
@@ -125,7 +120,7 @@ export class Aliases implements TypeMatchQueries {
     if (body.kind !== 'TypeMatch') {
       return this.#checker.resolveType(this.#moduleOf(alias), body);
     }
-    return matchUse(alias, typeParametersOf(this.#parametersOf(alias)).map(parameterType));
+    return this.useOf(alias, typeParametersOf(this.#parametersOf(alias)).map(parameterType));
   }
 
   #typeMatch(alias: AliasDeclaration): TypeMatchForm | undefined {
@@ -170,9 +165,9 @@ export class Aliases implements TypeMatchQueries {
     }
   }
 
-  spellingOf(alias: AliasDeclaration, typeArguments: readonly Type[]): RecursiveLabel | undefined {
+  useOf(alias: AliasDeclaration, typeArguments: readonly Type[]): MatchType {
     if (alias.kind === 'TypeAliasDeclaration') {
-      return { kind: 'alias', declaration: alias, arguments: typeArguments };
+      return matchUse(alias, typeArguments);
     }
     const owner = this.#ownerOf(alias);
     const name = owner !== undefined && 'name' in owner ? owner.name?.text : undefined;
@@ -180,9 +175,11 @@ export class Aliases implements TypeMatchQueries {
       name === undefined
         ? undefined
         : this.#checker.bindings.topLevelNamed(this.#moduleOf(alias), name);
-    return entity?.kind === 'type' && isNominalEntity(entity)
-      ? { kind: 'associated', of: nominalType(entity, typeArguments), name: alias.name.text }
-      : undefined;
+    return matchUse(
+      alias,
+      typeArguments,
+      entity?.kind === 'type' && isNominalEntity(entity) ? entity : undefined,
+    );
   }
 
   /**

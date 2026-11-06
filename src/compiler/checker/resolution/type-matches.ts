@@ -41,7 +41,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { AliasDeclaration } from '../../syntax/declarations.ts';
 import { type StructType, unparenthesizedType } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
-import { isOpaque, unfoldRecursive } from '../types/computed-types.ts';
+import { isOpaque, type MatchType, unfoldRecursive } from '../types/computed-types.ts';
 import { fieldReaderOf, selfHoldingField } from '../types/finiteness.ts';
 import { closeRecursive } from '../types/recursive-types.ts';
 import { substituteStructConstraint } from '../types/struct-constraint.ts';
@@ -51,7 +51,7 @@ import { typeKeys } from '../types/type-keys.ts';
 import {
   type CaseForm,
   type CasePatternForm,
-  matchUse,
+  labelOf,
   rebuilt,
   type TypeMatchForm,
 } from '../types/type-match.ts';
@@ -119,6 +119,11 @@ export class TypeMatchReductions {
     });
   }
 
+  /** The unreduced use of `declaration` with `typeArguments` (types/type-match.ts `matchUse`). */
+  #useOf(declaration: AliasDeclaration, typeArguments: readonly Type[]): MatchType {
+    return this.#checker.typeMatches.useOf(declaration, typeArguments);
+  }
+
   /** The use of `declaration` with `typeArguments`, reduced as far as they allow (the banner). */
   reduce(declaration: AliasDeclaration, typeArguments: readonly Type[]): Type {
     const failed = typeArguments.map(errorIn).find((each) => each !== undefined);
@@ -126,10 +131,10 @@ export class TypeMatchReductions {
       return failed;
     }
     const use = { declaration, typeArguments };
-    const key = typeKeys.typeKey(matchUse(declaration, typeArguments));
+    const key = typeKeys.typeKey(this.#useOf(declaration, typeArguments));
     const scope = this.#scope();
     if (scope.closing?.has(key) === true) {
-      return matchUse(declaration, typeArguments);
+      return this.#useOf(declaration, typeArguments);
     }
     if (scope.underWay.has(key)) {
       return this.#reachedAgain(scope, key, use);
@@ -146,12 +151,12 @@ export class TypeMatchReductions {
     if (verdict !== undefined) {
       // Finding verdicts needs none of the types a recursive use closes to.
       if (found !== undefined) {
-        return matchUse(declaration, typeArguments);
+        return this.#useOf(declaration, typeArguments);
       }
-      const spelled = typeKeys.spelledKey(matchUse(declaration, typeArguments));
+      const spelled = typeKeys.spelledKey(this.#useOf(declaration, typeArguments));
       return kept ? this.#closings.get(spelled, use) : this.#closed(use);
     }
-    const spelled = typeKeys.spelledKey(matchUse(declaration, typeArguments));
+    const spelled = typeKeys.spelledKey(this.#useOf(declaration, typeArguments));
     return reducingWith(scope, key, use, () =>
       kept ? this.#reductions.get(spelled, use) : this.#reduced(use),
     );
@@ -164,7 +169,7 @@ export class TypeMatchReductions {
    * themselves.
    */
   #closed(use: MatchUse): Type {
-    const key = typeKeys.typeKey(matchUse(use.declaration, use.typeArguments));
+    const key = typeKeys.typeKey(this.#useOf(use.declaration, use.typeArguments));
     const group = [...this.#recursion.get(key, use)].flatMap(([each, verdict]) =>
       verdict.kind === 'recursive' ? [[each, verdict.use] as const] : [],
     );
@@ -180,7 +185,7 @@ export class TypeMatchReductions {
       placeholderOf: (type) =>
         type.kind === 'match' ? closing.get(typeKeys.typeKey(type)) : undefined,
       labels: group.map(([, { declaration, typeArguments }]) =>
-        this.#checker.typeMatches.spellingOf(declaration, typeArguments),
+        labelOf(this.#useOf(declaration, typeArguments)),
       ),
       rules: this.#checker.typeRules,
     })[closing.get(key) ?? -1];
@@ -237,7 +242,7 @@ export class TypeMatchReductions {
       }
     }
     return found.get(key)?.kind === 'recursive'
-      ? matchUse(use.declaration, use.typeArguments)
+      ? this.#useOf(use.declaration, use.typeArguments)
       : unreducedUse(use, 'itself');
   }
 
@@ -282,7 +287,7 @@ export class TypeMatchReductions {
     for (const member of members) {
       const each = this.#memberReduced(declaration, form, substitution, member);
       if (each === 'undecided') {
-        return matchUse(declaration, typeArguments);
+        return this.#useOf(declaration, typeArguments);
       }
       reduced.push(
         each === 'unmatched' ? unreducedUse({ declaration, typeArguments }, 'unmatched') : each,

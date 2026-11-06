@@ -11,6 +11,7 @@ import type { RestPattern } from '../../syntax/patterns.ts';
 import type { StructType } from '../../syntax/types.ts';
 import type {
   FieldMember,
+  NominalEntity,
   NominalType,
   RecursiveLabel,
   Type,
@@ -88,6 +89,8 @@ export interface MatchType extends WrittenThrough {
   readonly kind: 'match';
   readonly declaration: AliasDeclaration;
   readonly arguments: readonly Type[];
+  /** The type declaring an associated type, whose use reads through it, `Bad<T>.Data` (§3.1). */
+  readonly owner?: NominalEntity | undefined;
 }
 
 /** What a mapped struct type is built from (`MappedType`), reduced or not. */

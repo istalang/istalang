@@ -20,6 +20,7 @@ import {
   type FunctionType,
   isPrimitive,
   type NominalType,
+  nominalType,
   type ParameterSlot,
   type Type,
   type TypeParameterType,
@@ -118,7 +119,9 @@ export function typeText(given: Type): string {
     case 'mapped':
       return mappedText(type);
     case 'match':
-      return parameterizedText(type.declaration.name.text, type.arguments);
+      return type.owner === undefined
+        ? parameterizedText(type.declaration.name.text, type.arguments)
+        : associatedText(nominalType(type.owner, type.arguments), type.declaration.name.text);
     case 'error':
       return '?';
     default: {

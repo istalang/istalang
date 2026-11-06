@@ -70,7 +70,7 @@ export function unreducedAssociated(
   if (found === undefined || !isTypeMatchBodied(found)) {
     return undefined;
   }
-  const use = matchUse(found, owner.arguments);
+  const use = matchUse(found, owner.arguments, owner.entity);
   return aliasedAs(use, { kind: 'associated', of: owner, name: name.text });
 }
 
