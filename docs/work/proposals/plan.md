@@ -41,7 +41,7 @@ Specs: `docs/proposals/1-type-names.md` to `4-computed-types.md`, implemented in
 | Item | Audit | Where it closed |
 | --- | --- | --- |
 | Binding vs. referring decided by case two ways; `'_'` checks instead of `isUnnamed` | units 2, 6, 9, 11 | fast wins, `60f153f` |
-| The `any` downcast rule in three copies | unit 32 | P1: `checker/types/named-types.ts` |
+| The `any` downcast rule in three copies | unit 32 | P1: `checker/types/written/named-types.ts` |
 | Spec: reserved names split between §2 and §3.10 | unit 35 | P1's spec edit |
 
 **Before P2** (done in the P2 branch, but `DeclaringModules`: Q30 stays open, see the audit's item 8)

@@ -22,7 +22,7 @@
  *
  * A module's functions are compared with each other and with the prelude's of the same name, which
  * they join (§3.13); a static function with the others declared on what its owner names, as
- * types/named-types.ts keys it, so an alias's are its type's (§3.17). A clash is reported at the
+ * types/written/named-types.ts keys it, so an alias's are its type's (§3.17). A clash is reported at the
  * later declaration.
  */
 
@@ -39,11 +39,11 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { positionalCounts } from '../../resolution/binding.ts';
 import { signatureOf } from '../../resolution/choice.ts';
 import type { RestSlot } from '../../types/function-types.ts';
-import { declaredOwnerOf, type StaticOwner } from '../../types/named-types.ts';
 import { mentionsError } from '../../types/parts/type-parts.ts';
 import type { ParameterKey, Type } from '../../types/type.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
 import { membersOf } from '../../types/unions/unions.ts';
+import { declaredOwnerOf, type StaticOwner } from '../../types/written/named-types.ts';
 
 /** Reports every function of `module` that clashes with an earlier one, or with the prelude's. */
 export function checkClashes(checker: CheckerContext, module: ModuleId): void {

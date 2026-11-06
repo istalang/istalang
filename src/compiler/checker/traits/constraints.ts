@@ -28,7 +28,6 @@ import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { RequirementOrigin } from '../surface/resolved-call.ts';
 import { sameType } from '../types/identity/identity.ts';
-import { parameterType } from '../types/resolve-type.ts';
 import {
   type Substitution,
   substitute,
@@ -36,8 +35,9 @@ import {
   substitutionFor,
 } from '../types/substitution.ts';
 import type { AnyType, Constraint, ParameterKey, Type } from '../types/type.ts';
-import { typeArgumentsFor } from '../types/type-arguments.ts';
 import type { TypeRules } from '../types/type-rules.ts';
+import { parameterType } from '../types/written/resolve-type.ts';
+import { typeArgumentsFor } from '../types/written/type-arguments.ts';
 
 /** The well-known trait `declaration` names, as a constraint with no type arguments. */
 export function wellKnownConstraint(
@@ -86,7 +86,7 @@ export function resolveAnyConstraints(
 /**
  * Where a constraint is written: after which keyword, what its trait's `Self` stands for, and how
  * its written type arguments resolve there: as the checker resolves type nodes, unless a closing
- * body's resolution (types/resolve-type.ts) gives its own.
+ * body's resolution (types/written/resolve-type.ts) gives its own.
  */
 export interface ConstraintSite {
   readonly keyword: 'is' | 'any';

@@ -7,19 +7,19 @@
  * other from the node's ancestors.
  */
 
-import type { ModuleId } from '../../program/program.ts';
+import type { ModuleId } from '../../../program/program.ts';
 import type {
   DeclaredStruct,
   EnumDeclaration,
   Field,
   FunctionDeclaration,
   TraitDeclaration,
-} from '../../syntax/declarations.ts';
-import type { Invalid } from '../../syntax/node.ts';
-import type { StructType, TypeNode } from '../../syntax/types.ts';
-import type { CheckerContext } from '../context.ts';
-import { errorType } from './primitives.ts';
-import type { FieldMember, Type } from './type.ts';
+} from '../../../syntax/declarations.ts';
+import type { Invalid } from '../../../syntax/node.ts';
+import type { StructType, TypeNode } from '../../../syntax/types.ts';
+import type { CheckerContext } from '../../context.ts';
+import { errorType } from '../primitives.ts';
+import type { FieldMember, Type } from '../type.ts';
 
 /** What declares a field: a struct, an enum through one of its variants, a shape or a trait. */
 export type FieldOwner = DeclaredStruct | EnumDeclaration | StructType | TraitDeclaration;

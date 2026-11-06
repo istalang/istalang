@@ -6,7 +6,7 @@
  * A type rebuilt with every part it is built from unchanged is the very type, never a copy, so
  * what is memoized per type object (identity/type-keys.ts, type-children.ts, here) stays found however often
  * a type is substituted or respelled. Only a type computed from others is built again whatever its
- * parts: a use left unreduced reduces once rebuilt (../type-match.ts `rebuilt`).
+ * parts: a use left unreduced reduces once rebuilt (../written/type-match.ts `rebuilt`).
  */
 
 import { sameItems } from '../../../../structures/equality.ts';

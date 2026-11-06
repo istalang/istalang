@@ -1,6 +1,6 @@
 /**
  * Key types and anonymous struct types as written (§3.1): `keyof S`, `S[K]`, and a `{…}` type,
- * a mapped one among them. Each builds through the program's rules (type-rules.ts), which reduce
+ * a mapped one among them. Each builds through the program's rules (../type-rules.ts), which reduce
  * it once what it is built from is known, so a written type and a substituted one are one type;
  * here, what only writing it can get wrong is reported.
  *
@@ -11,20 +11,20 @@
  *   known yet; one entry at most. Its value is resolved once, its parameter standing for every key.
  */
 
-import { followsConvention, isUnnamed } from '../../../language/naming.ts';
-import type { ModuleId } from '../../program/program.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import { isKeyword } from '../../syntax/tokens.ts';
-import type { IndexedType, MappedField, StructType, TypeNode } from '../../syntax/types.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { followsConvention, isUnnamed } from '../../../../language/naming.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import { isKeyword } from '../../../syntax/tokens.ts';
+import type { IndexedType, MappedField, StructType, TypeNode } from '../../../syntax/types.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Fitting } from '../fitting/fit.ts';
+import { errorType } from '../primitives.ts';
+import { type Substitution, substitute } from '../substitution.ts';
+import { type ParameterKey, shapeType, type Type } from '../type.ts';
+import { typeText } from '../type-text.ts';
+import { membersOf } from '../unions/unions.ts';
 import { declaredFields } from './declared-fields.ts';
-import type { Fitting } from './fitting/fit.ts';
-import { errorType } from './primitives.ts';
-import { type Substitution, substitute } from './substitution.ts';
-import { type ParameterKey, shapeType, type Type } from './type.ts';
-import { typeText } from './type-text.ts';
-import { membersOf } from './unions/unions.ts';
 
 /** Where a type is written: the checker resolving it, and its module. */
 interface Written {

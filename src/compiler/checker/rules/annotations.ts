@@ -39,11 +39,11 @@ import {
 } from '../surface/checked-annotation.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
 import { sameForm } from '../surface/constant-form.ts';
-import { declaredFieldOf, type FieldOwner } from '../types/declared-fields.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { errorType } from '../types/primitives.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { declaredFieldOf, type FieldOwner } from '../types/written/declared-fields.ts';
 import { computeConstant, refusalOf } from './computation/index.ts';
 
 /** The annotations the toolchain itself reads. */

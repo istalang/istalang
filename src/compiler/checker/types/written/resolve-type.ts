@@ -28,11 +28,11 @@
  *   nothing its own resolution doesn't again; any other node resolves as the checker resolves it.
  */
 
-import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import type { Entity } from '../../binder/entities.ts';
-import type { ModuleId } from '../../program/program.ts';
-import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
-import { type Identifier, isMissingName } from '../../syntax/node.ts';
+import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
+import type { Entity } from '../../../binder/entities.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import type { TypeAliasDeclaration } from '../../../syntax/declarations.ts';
+import { type Identifier, isMissingName } from '../../../syntax/node.ts';
 import {
   type FunctionType as FunctionTypeNode,
   type NamedType,
@@ -40,27 +40,27 @@ import {
   type TypeNode,
   type UnionType,
   unparenthesizedType,
-} from '../../syntax/types.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { aliasedAs } from './alias-uses.ts';
-import { ownAssociatedType } from './computed-types.ts';
-import { isPack, withPack } from './function-types.ts';
-import { fieldWritten, keysWritten, structWritten } from './key-types.ts';
-import { namedPathOf } from './named-paths.ts';
-import { errorType, primitiveType, tupleType, unitType } from './primitives.ts';
-import { substitutionFor } from './substitution.ts';
+} from '../../../syntax/types.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { aliasedAs } from '../alias-uses.ts';
+import { ownAssociatedType } from '../computed-types.ts';
+import { isPack, withPack } from '../function-types.ts';
+import { errorType, primitiveType, tupleType, unitType } from '../primitives.ts';
+import { substitutionFor } from '../substitution.ts';
 import {
   type NominalDeclaration,
   nominalType,
   type PackType,
   type ParameterKey,
   type Type,
-} from './type.ts';
+} from '../type.ts';
+import { typeText } from '../type-text.ts';
+import { optionalOf, unionOf, writtenLiteral } from '../unions/unions.ts';
+import { fieldWritten, keysWritten, structWritten } from './key-types.ts';
+import { namedPathOf } from './named-paths.ts';
 import { constrainArguments, noteConstraints, typeArgumentsFor } from './type-arguments.ts';
 import { aliasInstance } from './type-match.ts';
-import { typeText } from './type-text.ts';
-import { optionalOf, unionOf, writtenLiteral } from './unions/unions.ts';
 import {
   asWrittenInMatch,
   inCasePattern,

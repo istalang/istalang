@@ -133,7 +133,7 @@ The CLI picks every implementation at its composition root: `memoryStore` or `di
 | Parser parselets | token kind or leading word | `parser/word-parselets.ts`, `parser/expressions/` |
 | Operators | operator text: level, associativity, meaning | `syntax/operators.ts` |
 | Binder handlers | node kind | `binder/declarations.ts`, `expressions.ts`, `statements.ts`, `patterns.ts`, `types.ts` |
-| Checker handlers | node kind (six tables) | `checker/expressions/expressions.ts`, `statements/`, `declarations/`, `types/resolve-type.ts` |
+| Checker handlers | node kind (six tables) | `checker/expressions/expressions.ts`, `statements/`, `declarations/`, `types/written/resolve-type.ts` |
 | Flow constructs | node kind | `checker/flow/forward.ts` |
 | Lowering handlers | node kind | `lowering/expressions/expressions.ts`, `lowering/statements/statements.ts` |
 | Interpreter | instruction kind | `runtime/interpreter/instructions.ts` |

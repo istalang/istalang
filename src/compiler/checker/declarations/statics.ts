@@ -1,7 +1,7 @@
 /**
  * Static functions by the type they are declared on (§3.7): `fn Duration.zero()` belongs to
  * `Duration`, not to an overload set of `zero`. Each module's are indexed once, by what their owner
- * names where it is written, as types/named-types.ts keys it: an alias's owner is the type it
+ * names where it is written, as types/written/named-types.ts keys it: an alias's owner is the type it
  * stands for, a shape among them (§3.17).
  */
 
@@ -11,7 +11,7 @@ import { addToGroup } from '../../../structures/groups.ts';
 import type { ModuleId } from '../../program/program.ts';
 import { declaredFunctions, type FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
-import { declaredOwnerOf, type StaticOwner } from '../types/named-types.ts';
+import { declaredOwnerOf, type StaticOwner } from '../types/written/named-types.ts';
 
 export class StaticFunctions {
   readonly #checker: CheckerContext;

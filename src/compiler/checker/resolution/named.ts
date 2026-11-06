@@ -2,7 +2,7 @@
  * What a name in value position names, where the binder alone can't tell (§3.1, §3.11): a type, as
  * the owner of a static call or a conversion's target; a variant, which a bare name picks by the
  * enum expected; or a struct without fields, the one type a bare name makes a value of. Patterns
- * name a variant the same way; the type a name names is types/named-types.ts's.
+ * name a variant the same way; the type a name names is types/written/named-types.ts's.
  */
 
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
@@ -14,9 +14,9 @@ import type { BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { enumsExpected } from '../types/fitting/expected.ts';
-import { entityType } from '../types/named-types.ts';
 import { expectsError } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
+import { entityType } from '../types/written/named-types.ts';
 
 /** What naming a type in value position reads: the checker, and what the binder says a name is. */
 export type Naming = Pick<BodyContext, 'checker' | 'entityOf'>;

@@ -3,7 +3,7 @@
  * the grammar lets something else stand first.
  *
  * - A top-level function's name may first name the type a static is declared on (`fn Duration.
- *   zero()`, §3.7): whatever the checker's static functions may be declared on (types/named-types.ts),
+ *   zero()`, §3.7): whatever the checker's static functions may be declared on (types/written/named-types.ts),
  *   an alias of a shape among them (§3.17); a trait's function, `Self` (§3.10).
  * - `extern` is followed by `fn`, `struct` or `sendable`, or by the constant's name; `extern
  *   sendable` by `struct` (§3.6).
@@ -13,7 +13,7 @@
  *   (§3.1, §3.10), and a trait's a function.
  */
 
-import { entityType, staticOwnerOf } from '../../../compiler/checker/types/named-types.ts';
+import { entityType, staticOwnerOf } from '../../../compiler/checker/types/written/named-types.ts';
 import type { FunctionDeclaration } from '../../../compiler/syntax/declarations.ts';
 import type { Word } from '../../../compiler/syntax/grammar-words.ts';
 import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';

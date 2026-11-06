@@ -11,7 +11,7 @@ import type { CheckerContext } from '../context.ts';
 import { errorType } from '../types/primitives.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
-import { defaultArgument, type GenericDeclaration } from '../types/type-arguments.ts';
+import { defaultArgument, type GenericDeclaration } from '../types/written/type-arguments.ts';
 import type { Inference } from './infer.ts';
 
 export type Completion =

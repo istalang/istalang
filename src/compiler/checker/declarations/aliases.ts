@@ -9,8 +9,8 @@
  * (recursive-bodies.ts), which a use substitutes as any alias's.
  *
  * One whose body is a type `match` stands for its own unreduced use, its parameters given for
- * themselves: a use reduces it (types/type-match.ts `aliasInstance`), so it may refer to itself.
- * Its subject and patterns resolve together, each case's type apart (types/type-match.ts).
+ * themselves: a use reduces it (types/written/type-match.ts `aliasInstance`), so it may refer to itself.
+ * Its subject and patterns resolve together, each case's type apart (types/written/type-match.ts).
  */
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
@@ -34,15 +34,15 @@ import { resolveConstraintSet } from '../traits/struct-constraints.ts';
 import type { MatchType } from '../types/computed-types.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { errorType } from '../types/primitives.ts';
-import { parameterType } from '../types/resolve-type.ts';
 import { isNominalEntity, type Type } from '../types/type.ts';
+import { parameterType } from '../types/written/resolve-type.ts';
 import {
   type CaseForm,
   type CasePatternForm,
   matchUse,
   type TypeMatchForm,
   type TypeMatchQueries,
-} from '../types/type-match.ts';
+} from '../types/written/type-match.ts';
 import { AliasRecursions } from './alias-recursion.ts';
 import { RecursiveBodies } from './recursive-bodies.ts';
 

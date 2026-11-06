@@ -19,19 +19,19 @@
  *   tuple, array or `struct{…}` pattern the members of its kind (`kindMembers`).
  */
 
-import { sameItems } from '../../../structures/equality.ts';
-import { type Entity, typeEntity } from '../../binder/entities.ts';
-import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
-import type { Checker } from '../check.ts';
-import { unfolded, unfoldRecursive } from './computed-types.ts';
-import { sameType } from './identity/identity.ts';
+import { sameItems } from '../../../../structures/equality.ts';
+import { type Entity, typeEntity } from '../../../binder/entities.ts';
+import type { TypeAliasDeclaration } from '../../../syntax/declarations.ts';
+import type { Checker } from '../../check.ts';
+import { unfolded, unfoldRecursive } from '../computed-types.ts';
+import { sameType } from '../identity/identity.ts';
+import { isPrimitive, tupleElements } from '../primitives.ts';
+import type { AnyType, NominalDeclaration, Type } from '../type.ts';
+import type { TypeRules } from '../type-rules.ts';
+import { absorbingMember, baseOf } from '../unions/union-members.ts';
+import { hasMember } from '../unions/unions.ts';
+import { arrayElement } from '../well-known.ts';
 import { type Aliases, entityType } from './named-types.ts';
-import { isPrimitive, tupleElements } from './primitives.ts';
-import type { AnyType, NominalDeclaration, Type } from './type.ts';
-import type { TypeRules } from './type-rules.ts';
-import { absorbingMember, baseOf } from './unions/union-members.ts';
-import { hasMember } from './unions/unions.ts';
-import { arrayElement } from './well-known.ts';
 
 /** A generic type a pattern names: a nominal one. */
 export type GenericDeclaration = NominalDeclaration;

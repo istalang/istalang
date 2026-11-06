@@ -5,7 +5,7 @@
  * pattern names (against an `any` value, the type it downcasts to); a nested field pattern, that
  * field's type; a tuple's element, its element's; an array's item, its item's, and its rest the
  * whole array. Against a union, a struct, tuple or array pattern first selects the one member it
- * takes apart, by the checker's rule (types/named-types.ts).
+ * takes apart, by the checker's rule (types/written/named-types.ts).
  *
  * The patterns are read from the placeholder parse, which holds the one being written whole; the
  * subject and a struct pattern's name end before the cursor, so the checked tree types the one and
@@ -14,6 +14,9 @@
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { Denotation } from '../../../compiler/checker/surface/denotation.ts';
+import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type.ts';
+import { unionOf } from '../../../compiler/checker/types/unions/unions.ts';
+import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
 import {
   downcastTargetOf,
   instancesWith,
@@ -21,10 +24,7 @@ import {
   membersNamed,
   namesOwnType,
   patternTypeOf,
-} from '../../../compiler/checker/types/pattern-types.ts';
-import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type.ts';
-import { unionOf } from '../../../compiler/checker/types/unions/unions.ts';
-import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
+} from '../../../compiler/checker/types/written/pattern-types.ts';
 import type { Parameter } from '../../../compiler/syntax/expressions/index.ts';
 import { type Identifier, lastName } from '../../../compiler/syntax/node.ts';
 import type {
@@ -138,7 +138,7 @@ function memberSelected(
 }
 
 /**
- * The members `pattern` selects (named-types.ts): those its type's name names, the instance its
+ * The members `pattern` selects (checker/types/written/pattern-types.ts): those its type's name names, the instance its
  * type arguments give, or those of its kind, a `struct{…}` pattern's the shapes having the fields
  * its items other than the one being written name.
  */
@@ -233,7 +233,7 @@ function entityNamed(cursor: Cursor, parsed: Parsed, name: Identifier): Entity |
 }
 
 /**
- * The type a downcast of a value of `from` to the type `pattern` names tests for (named-types.ts);
+ * The type a downcast of a value of `from` to the type `pattern` names tests for (checker/types/written/pattern-types.ts);
  * `struct{…}` names none.
  */
 function downcastOf(

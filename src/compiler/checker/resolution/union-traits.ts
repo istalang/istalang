@@ -33,12 +33,12 @@ import {
 } from '../traits/constraints.ts';
 import { objectUnsafety } from '../traits/object-safety.ts';
 import { sameType } from '../types/identity/identity.ts';
-import { parameterType } from '../types/resolve-type.ts';
 import { substitute } from '../types/substitution.ts';
 import type { AnyType, Constraint, ParameterKey, Type, UnionType } from '../types/type.ts';
-import { defaultArgument } from '../types/type-arguments.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
+import { parameterType } from '../types/written/resolve-type.ts';
+import { defaultArgument } from '../types/written/type-arguments.ts';
 
 /** A call through a union's trait, as a candidate: the required function, and how it is reached. */
 export interface MembersCall {

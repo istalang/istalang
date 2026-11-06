@@ -5,7 +5,7 @@
  * - Where a pattern starts, or a struct pattern's name is written, what it may refer to, never a
  *   variable, since a bare camelCase name binds one: the variants of the type it matches, bare, of
  *   a union's members those whose name selects one member; the names of that type and of what a
- *   pattern on a union selects (§3.11, named-types.ts), and the namespaces, which qualify a
+ *   pattern on a union selects (§3.11, checker/types/written/pattern-types.ts), and the namespaces, which qualify a
  *   variant, a struct or a constant; against an `any` type the types a downcast may name; `_`; and
  *   the literal keywords whose literal selects a member (`true` and `false` a `Bool`, `none` an
  *   optional), all of them where the type isn't known, as a literal pattern has the matched value's
@@ -18,16 +18,16 @@
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../compiler/checker/check.ts';
+import { noneType } from '../../../compiler/checker/types/primitives.ts';
+import type { Type } from '../../../compiler/checker/types/type.ts';
+import { literalType, membersOf } from '../../../compiler/checker/types/unions/unions.ts';
 import {
   downcastTargetOf,
   literalMembers,
   membersNamed,
   namesOwnType,
   variantOwners,
-} from '../../../compiler/checker/types/pattern-types.ts';
-import { noneType } from '../../../compiler/checker/types/primitives.ts';
-import type { Type } from '../../../compiler/checker/types/type.ts';
-import { literalType, membersOf } from '../../../compiler/checker/types/unions/unions.ts';
+} from '../../../compiler/checker/types/written/pattern-types.ts';
 import { casesOf } from '../../../compiler/syntax/expressions/readings.ts';
 import type { PatternWord } from '../../../compiler/syntax/grammar-words.ts';
 import { lastName } from '../../../compiler/syntax/node.ts';
@@ -112,7 +112,7 @@ function referringNames(cursor: Cursor, type: Type | undefined): readonly Candid
 
 /**
  * A namespace, which qualifies what it exports; a name of `type` itself, or, against a union, one a
- * pattern selects members by (named-types.ts), but a variant's, offered by its owner above; and
+ * pattern selects members by (checker/types/written/pattern-types.ts), but a variant's, offered by its owner above; and
  * against an `any` type, a type a downcast may name, one it may hold (§3.10).
  */
 function mayRefer(checker: Checker, entity: Entity, type: Type | undefined): boolean {

@@ -13,15 +13,15 @@
  *   its parameters make, keyed by them, so its static functions are reached through it.
  */
 
-import type { PrimitiveName } from '../../../language/primitives.ts';
-import type { Entity } from '../../binder/entities.ts';
-import type { ModuleId } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Checker } from '../check.ts';
-import { type ShapeKey, typeKeys } from './identity/type-keys.ts';
+import type { PrimitiveName } from '../../../../language/primitives.ts';
+import type { Entity } from '../../../binder/entities.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { Checker } from '../../check.ts';
+import { type ShapeKey, typeKeys } from '../identity/type-keys.ts';
+import type { NominalDeclaration, Type } from '../type.ts';
+import { optionalInner } from '../unions/unions.ts';
 import { typeOfEntity } from './resolve-type.ts';
-import type { NominalDeclaration, Type } from './type.ts';
-import { optionalInner } from './unions/unions.ts';
 
 export type Aliases = Pick<Checker, 'aliasedType' | 'typeRules'>;
 

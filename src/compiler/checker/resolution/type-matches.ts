@@ -50,14 +50,14 @@ import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
 import { substituteStructConstraint } from '../types/struct-constraint.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
+import { unionOf } from '../types/unions/unions.ts';
 import {
   type CaseForm,
   type CasePatternForm,
   labelOf,
   rebuilt,
   type TypeMatchForm,
-} from '../types/type-match.ts';
-import { unionOf } from '../types/unions/unions.ts';
+} from '../types/written/type-match.ts';
 import { matchCase } from './type-match-patterns.ts';
 
 /** A use of a type `match` alias, by its declaration and arguments. */
@@ -120,7 +120,7 @@ export class TypeMatchReductions {
     });
   }
 
-  /** The unreduced use of `declaration` with `typeArguments` (types/type-match.ts `matchUse`). */
+  /** The unreduced use of `declaration` with `typeArguments` (types/written/type-match.ts `matchUse`). */
   #useOf(declaration: AliasDeclaration, typeArguments: readonly Type[]): MatchType {
     return this.#checker.typeMatches.useOf(declaration, typeArguments);
   }
@@ -404,7 +404,7 @@ function instantiatedPattern(
 
 /**
  * `type` with `substitution` applied, every use of a type `match` in it reduced as far as it
- * allows: a case's type and patterns resolve with the uses in them unreduced (type-match.ts).
+ * allows: a case's type and patterns resolve with the uses in them unreduced (types/written/type-match.ts).
  */
 function instantiated(checker: CheckerContext, type: Type, substitution: Substitution): Type {
   const rules = checker.typeRules;

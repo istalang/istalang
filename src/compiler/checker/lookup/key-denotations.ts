@@ -19,10 +19,10 @@ import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts
 import type { LiteralType } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation } from '../surface/denotation.ts';
-import { givenKeysOwner } from '../types/key-types.ts';
-import { parameterType } from '../types/resolve-type.ts';
 import { substitutionFor } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
+import { givenKeysOwner } from '../types/written/key-types.ts';
+import { parameterType } from '../types/written/resolve-type.ts';
 import { bodyHolding } from './holders.ts';
 
 /** The field the String literal `literal` of `module` names as a key; none where it is no key. */

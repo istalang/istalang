@@ -1,7 +1,7 @@
 /**
  * Type parameters across the program (§3.5): where each is declared, its constraints resolved
  * there once, and the arguments given for those constraints, checked once the module that gave
- * them is checked (types/resolve-type.ts explains why later, and why every check is noted by then),
+ * them is checked (types/written/resolve-type.ts explains why later, and why every check is noted by then),
  * with the type `match`es an instantiation reaches, which must all reduce (reduction-requirements.ts).
  *
  * A check is noted in the entry that resolved the arguments, so the module's check finds each
@@ -33,7 +33,6 @@ import { resolveConstraintSet, resolveStructConstraint } from '../traits/struct-
 import { standsForMember } from '../types/fitting/member-arguments.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
 import { sameConstraintSpelled } from '../types/parts/type-parts.ts';
-import { parameterType } from '../types/resolve-type.ts';
 import {
   type ConstraintSet,
   type StructConstraintModel,
@@ -41,6 +40,7 @@ import {
 } from '../types/struct-constraint.ts';
 import { substituteConstraint } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type.ts';
+import { parameterType } from '../types/written/resolve-type.ts';
 import { useSite } from '../use-site.ts';
 import { meets } from './conformance.ts';
 import { impliedConstraints } from './implied-constraints.ts';

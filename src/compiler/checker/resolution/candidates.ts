@@ -36,9 +36,9 @@ import type { CheckerContext } from '../context.ts';
 import type { Requirement } from '../traits/constraints.ts';
 import { requirementsNamed } from '../traits/known-constraints.ts';
 import { type ComputedType, isComputed } from '../types/computed-types.ts';
-import { type StaticOwner, staticOwnerOf } from '../types/named-types.ts';
 import { anyTypesIn, computedTypesIn, parametersIn } from '../types/parts/type-parts.ts';
 import type { AnyType, Type } from '../types/type.ts';
+import { type StaticOwner, staticOwnerOf } from '../types/written/named-types.ts';
 import { traitCallsOn } from './union-traits.ts';
 
 /** A function a call may mean; a requirement is one a constraint provides. */

@@ -2,7 +2,7 @@
  * The members of a union a pattern selects (§3.11): against a union, every pattern that could fail
  * to match tests which member the value is, then matches the rest of itself against that member's
  * value, as a downcast does on an `any` value (downcasts.ts). What a name, a literal or a pattern's
- * kind selects is types/pattern-types.ts's rule, which completion reads too; this module applies it
+ * kind selects is types/written/pattern-types.ts's rule, which completion reads too; this module applies it
  * to a written pattern and reports what goes wrong.
  *
  * - A type pattern, or a literal selecting its own literal member or `None`, says all there is to
@@ -25,17 +25,7 @@ import type { TypeNode } from '../../syntax/types.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { PatternTest } from '../surface/checked-pattern.ts';
 import { sameType } from '../types/identity/identity.ts';
-import {
-  instancesWith,
-  kindMembers,
-  literalMembers,
-  membersNamed,
-  membersOfType,
-  patternTypeOf,
-  variantOwners,
-} from '../types/pattern-types.ts';
 import { floatType, noneType } from '../types/primitives.ts';
-import { typeOfEntity } from '../types/resolve-type.ts';
 import type { Type, UnionType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { baseOf } from '../types/unions/union-members.ts';
@@ -46,6 +36,16 @@ import {
   unionOfNormalized,
   writtenLiteral,
 } from '../types/unions/unions.ts';
+import {
+  instancesWith,
+  kindMembers,
+  literalMembers,
+  membersNamed,
+  membersOfType,
+  patternTypeOf,
+  variantOwners,
+} from '../types/written/pattern-types.ts';
+import { typeOfEntity } from '../types/written/resolve-type.ts';
 import { anyShape } from './exhaustiveness.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import { ruledOutSelection, type Selection } from './pattern-tests.ts';
@@ -258,7 +258,7 @@ function candidates(
   }
 }
 
-/** The members a literal pattern's value selects (types/pattern-types.ts `literalMembers`). */
+/** The members a literal pattern's value selects (types/written/pattern-types.ts `literalMembers`). */
 function literalSelected(
   scope: PatternScope,
   members: readonly Type[],
@@ -284,7 +284,7 @@ interface WrittenName {
 }
 
 /**
- * The members a pattern naming a type, variant or constant selects (types/pattern-types.ts
+ * The members a pattern naming a type, variant or constant selects (types/written/pattern-types.ts
  * `membersNamed`), a constant those of its base, and with type arguments the instance they give;
  * undefined after a report, or for a name naming nothing, reported where it was written. A type's
  * name sharing a member enum's variant's (`case Shared` where the prelude declares the type) is

@@ -32,7 +32,6 @@ import type { CheckerContext } from '../context.ts';
 import { aliasedAs } from '../types/alias-uses.ts';
 import { isOpaque, type MappedParts } from '../types/computed-types.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
-import { keysOwner } from '../types/key-types.ts';
 import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
 import { substitute } from '../types/substitution.ts';
 import {
@@ -43,6 +42,7 @@ import {
   type Type,
 } from '../types/type.ts';
 import { literalType, membersOf, unionOf } from '../types/unions/unions.ts';
+import { keysOwner } from '../types/written/key-types.ts';
 import { entryRules, structConstraintsOn } from './known-constraints.ts';
 
 /** Whether `type` is a struct type (§3.5): a struct declaration's, not shared or extern, or a shape. */

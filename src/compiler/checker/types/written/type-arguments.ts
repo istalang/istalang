@@ -11,20 +11,20 @@
  *   `match`es it reaches, which must reduce, except in a pattern, which is matched, not used.
  */
 
-import type { ModuleId } from '../../program/program.ts';
+import type { ModuleId } from '../../../program/program.ts';
 import {
   type FunctionDeclaration,
   type TraitDeclaration,
   type TypeAliasDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { errorType } from './primitives.ts';
-import { substitute, substitutionFor } from './substitution.ts';
-import type { NominalDeclaration, ParameterKey, Type } from './type.ts';
+} from '../../../syntax/declarations.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { errorType } from '../primitives.ts';
+import { substitute, substitutionFor } from '../substitution.ts';
+import type { NominalDeclaration, ParameterKey, Type } from '../type.ts';
 
 /** A declaration that takes type parameters. */
 export type GenericDeclaration =

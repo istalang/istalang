@@ -47,15 +47,15 @@ import { Inference } from '../inference/infer.ts';
 import { callWithTypes } from '../resolution/silent-choice.ts';
 import type { FunctionCall } from '../surface/resolved-call.ts';
 import { itemField } from '../surface/struct-items.ts';
-import { givenKeysOwner } from '../types/key-types.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
 import { errorType } from '../types/primitives.ts';
-import { parameterType } from '../types/resolve-type.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import type { FieldMember, ParameterKey, Type } from '../types/type.ts';
-import { constrainArguments, typeArgumentsFor } from '../types/type-arguments.ts';
 import { typeText } from '../types/type-text.ts';
 import { writtenLiteral } from '../types/unions/unions.ts';
+import { givenKeysOwner } from '../types/written/key-types.ts';
+import { parameterType } from '../types/written/resolve-type.ts';
+import { constrainArguments, typeArgumentsFor } from '../types/written/type-arguments.ts';
 import { type LiteralGiven, sourcesOf } from './literal-sources.ts';
 import { checkComprehended, comprehendedGiven, fitComprehended } from './struct-comprehensions.ts';
 

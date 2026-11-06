@@ -28,15 +28,15 @@ import type {
 import { spanAcross } from '../../syntax/positions.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { sameType } from '../types/identity/identity.ts';
+import type { AnyType, Type } from '../types/type.ts';
+import { isKnown } from '../types/unions/equality.ts';
+import { baseOf } from '../types/unions/union-members.ts';
 import {
   literalMembers,
   namesOwnType,
   patternTypeOf,
   variantOwners,
-} from '../types/pattern-types.ts';
-import type { AnyType, Type } from '../types/type.ts';
-import { isKnown } from '../types/unions/equality.ts';
-import { baseOf } from '../types/unions/union-members.ts';
+} from '../types/written/pattern-types.ts';
 import { literalTypeOf, memberTaken, selectsMember, unionPart } from './members.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import { type PatternTests, ruledOutSelection, type Selection } from './pattern-tests.ts';

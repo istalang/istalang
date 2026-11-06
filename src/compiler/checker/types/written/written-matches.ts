@@ -11,19 +11,19 @@
  *   meeting that constraint, so its keys and fields are known there as a constrained parameter's.
  */
 
-import type { Entity } from '../../binder/entities.ts';
-import type { ModuleId } from '../../program/program.ts';
-import type { AliasDeclaration, TypeAliasDeclaration } from '../../syntax/declarations.ts';
-import type { Identifier } from '../../syntax/node.ts';
-import type { SyntaxNode } from '../../syntax/tree.ts';
-import { matchPlaceOf } from '../../syntax/type-matches.ts';
-import type { InferType, NamedType } from '../../syntax/types.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { aliasedAs } from './alias-uses.ts';
-import { ownAssociatedType } from './computed-types.ts';
-import { errorType } from './primitives.ts';
-import type { NominalDeclaration, Type } from './type.ts';
+import type { Entity } from '../../../binder/entities.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import type { AliasDeclaration, TypeAliasDeclaration } from '../../../syntax/declarations.ts';
+import type { Identifier } from '../../../syntax/node.ts';
+import type { SyntaxNode } from '../../../syntax/tree.ts';
+import { matchPlaceOf } from '../../../syntax/type-matches.ts';
+import type { InferType, NamedType } from '../../../syntax/types.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { aliasedAs } from '../alias-uses.ts';
+import { ownAssociatedType } from '../computed-types.ts';
+import { errorType } from '../primitives.ts';
+import type { NominalDeclaration, Type } from '../type.ts';
 import { matchUse, structCaseOf } from './type-match.ts';
 
 /** Where a type is written: the checker resolving it, and its module. */

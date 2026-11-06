@@ -38,7 +38,7 @@ import type { NamedType, TypeMatch, TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isMatchAlias } from '../types/computed-types.ts';
-import { namedPathOf } from '../types/named-paths.ts';
+import { namedPathOf } from '../types/written/named-paths.ts';
 
 /** A reference in an alias's body to an alias that may take part in recursion. */
 interface AliasReference {

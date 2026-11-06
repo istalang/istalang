@@ -40,8 +40,8 @@ import { checkHostBoundary, crossesToHost } from '../rules/boundary/host-boundar
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal/disposal.ts';
 import { checkSuite } from '../rules/testing.ts';
 import { namesMemberParameter } from '../traits/struct-keys.ts';
-import type { GenericDeclaration } from '../types/type-arguments.ts';
 import { futureArgument } from '../types/well-known.ts';
+import type { GenericDeclaration } from '../types/written/type-arguments.ts';
 import { checkFiniteAlias, checkFiniteFields } from './struct-rules.ts';
 
 /**

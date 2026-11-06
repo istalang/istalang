@@ -18,13 +18,13 @@ import type { ConstraintNode, FieldEntry, StructConstraint } from '../../syntax/
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { inFieldOrder } from '../types/field-order.ts';
-import { parameterType } from '../types/resolve-type.ts';
 import type {
   ConstraintSet,
   EntryRule,
   StructConstraintModel,
 } from '../types/struct-constraint.ts';
 import type { Constraint } from '../types/type.ts';
+import { parameterType } from '../types/written/resolve-type.ts';
 import { type ConstraintSite, resolveConstraint } from './constraints.ts';
 
 /**

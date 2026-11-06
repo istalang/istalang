@@ -12,7 +12,7 @@
  *   is that subject again, so `Data<Node<T>>` is a finite recursion, not a bigger argument;
  * - a part of a parameter (`D[F]`, `D.Data`, `keyof D`) counts as the whole of it.
  * None of these is bigger than what it is taken from; anything built around one is. A case's type
- * resolves with the uses in it left unreduced (types/type-match.ts), so the graph is read without
+ * resolves with the uses in it left unreduced (types/written/type-match.ts), so the graph is read without
  * reducing anything.
  *
  * The verdict is like any judged by the expansion graph: by the uses written, whichever case a
@@ -33,7 +33,11 @@ import { sameType } from '../../types/identity/identity.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
 import type { ParameterKey, Type } from '../../types/type.ts';
-import type { CasePatternForm, InferVariable, TypeMatchQueries } from '../../types/type-match.ts';
+import type {
+  CasePatternForm,
+  InferVariable,
+  TypeMatchQueries,
+} from '../../types/written/type-match.ts';
 import { type ArgumentEdge, endlessEdgesFrom } from './edges.ts';
 
 interface ReductionEdge extends ArgumentEdge {

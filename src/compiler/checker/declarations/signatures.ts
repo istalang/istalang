@@ -29,11 +29,11 @@ import type { SignatureParameter } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isPack, packRestSlot, type RestSlot } from '../types/function-types.ts';
-import { patternTypeOf } from '../types/pattern-types.ts';
 import { errorType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { arrayElement, futureArgument, futureOf } from '../types/well-known.ts';
+import { patternTypeOf } from '../types/written/pattern-types.ts';
 
 /** Where a function's defaults are checked: one body, seeing each parameter once declared. */
 export interface DefaultValues {

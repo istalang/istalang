@@ -34,7 +34,6 @@ import { sameConstraint, sameType } from '../types/identity/identity.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
 import { errorType, isPrimitive } from '../types/primitives.ts';
-import { parameterType } from '../types/resolve-type.ts';
 import {
   type EntryRule,
   type StructConstraintModel,
@@ -42,8 +41,9 @@ import {
 } from '../types/struct-constraint.ts';
 import { substitute, substituteConstraint, substitutionFor } from '../types/substitution.ts';
 import type { AnyType, Constraint, Type } from '../types/type.ts';
-import { aliasInstance } from '../types/type-match.ts';
 import { literalType, membersOf, unionOf } from '../types/unions/unions.ts';
+import { parameterType } from '../types/written/resolve-type.ts';
+import { aliasInstance } from '../types/written/type-match.ts';
 import {
   constraintOn,
   constraintSubstitution,

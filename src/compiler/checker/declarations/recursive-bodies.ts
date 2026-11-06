@@ -4,7 +4,7 @@
  *
  * - A body is resolved for closing apart from the checker's own resolution of its nodes, each use
  *   of a group alias standing as a placeholder, a type parameter keyed by that alias, which nothing
- *   else ever holds (types/resolve-type.ts `resolveClosing`). Resolving it as written would need
+ *   else ever holds (types/written/resolve-type.ts `resolveClosing`). Resolving it as written would need
  *   the alias closed first. Its nodes resolve again as written, with each use the closed type, which
  *   is what everything else reads; that resolution reports, and notes the constraint checks.
  * - Regularity (5128) makes every use inside the group pass its referring alias's own parameters,
@@ -26,9 +26,9 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { closeRecursive } from '../types/identity/recursive-types.ts';
 import { mentionsError, sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { errorType } from '../types/primitives.ts';
-import { parameterType, resolveClosing } from '../types/resolve-type.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
+import { parameterType, resolveClosing } from '../types/written/resolve-type.ts';
 import type { AliasRecursions } from './alias-recursion.ts';
 
 export class RecursiveBodies {

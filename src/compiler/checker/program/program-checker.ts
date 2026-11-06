@@ -80,9 +80,7 @@ import { resolveAnyType } from '../traits/any-types.ts';
 import { memberUnionOf } from '../traits/struct-keys.ts';
 import { type Fit, type Fitting, fitOf } from '../types/fitting/fit.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
-import type { StaticOwner } from '../types/named-types.ts';
 import { sameTypeSpelled, unaliased } from '../types/parts/type-parts.ts';
-import { resolveTypeNode } from '../types/resolve-type.ts';
 import type { ConstraintSet, StructConstraintModel } from '../types/struct-constraint.ts';
 import {
   type AnonymousStructType,
@@ -93,8 +91,10 @@ import {
   type NominalType,
   type Type,
 } from '../types/type.ts';
-import type { TypeMatchQueries } from '../types/type-match.ts';
 import type { TypeRules } from '../types/type-rules.ts';
+import type { StaticOwner } from '../types/written/named-types.ts';
+import { resolveTypeNode } from '../types/written/resolve-type.ts';
+import type { TypeMatchQueries } from '../types/written/type-match.ts';
 import { declaringInputs, programInputs, recordedBindings } from './program-inputs.ts';
 
 /** What a checker is made with, beside its program. */

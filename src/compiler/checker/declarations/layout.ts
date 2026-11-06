@@ -36,7 +36,6 @@ import type { VariantMember } from '../check.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { type FieldedDeclaration, TypeExpansion } from '../rules/expansion/types.ts';
 import { unfolded } from '../types/computed-types.ts';
-import { declaredFields } from '../types/declared-fields.ts';
 import { inFieldOrder } from '../types/field-order.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';
 import { errorType } from '../types/primitives.ts';
@@ -49,6 +48,7 @@ import {
   type Type,
 } from '../types/type.ts';
 import type { TypeRules } from '../types/type-rules.ts';
+import { declaredFields } from '../types/written/declared-fields.ts';
 
 /** Whether two lists of fields name, type and declare their fields alike, in order. */
 const sameFields = sameItems<FieldMember>(

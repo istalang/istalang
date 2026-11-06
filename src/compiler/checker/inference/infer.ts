@@ -45,7 +45,6 @@ import { UnfoldingPairs } from '../types/identity/unfolding-pairs.ts';
 import { typeChildren } from '../types/parts/type-children.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
 import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
-import { parameterType } from '../types/resolve-type.ts';
 import { noSubstitution, type Substitution, substitute } from '../types/substitution.ts';
 import type {
   AnonymousStructType,
@@ -58,6 +57,7 @@ import type {
 } from '../types/type.ts';
 import { baseOf } from '../types/unions/union-members.ts';
 import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions/unions.ts';
+import { parameterType } from '../types/written/resolve-type.ts';
 
 /** What a collection of an inference reads as before its first item. */
 const noParameters: ReadonlySet<ParameterKey> = new Set();

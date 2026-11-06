@@ -41,9 +41,9 @@ import {
   type Type,
   type UnionType,
 } from '../type.ts';
-import { typeArgumentsFor } from '../type-arguments.ts';
 import { membersOf, optionalInner } from '../unions/unions.ts';
 import { arrayElement, wellKnownArguments } from '../well-known.ts';
+import { typeArgumentsFor } from '../written/type-arguments.ts';
 
 /**
  * What taking an expected type apart needs of the program: its well-known types, and its rules,
