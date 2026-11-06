@@ -4,13 +4,16 @@
  * way of writing one type differently — through an alias, an associated type or keys, at another
  * node, with an `any`'s traits or a union's members in another order, or reduced from a type
  * `match` use spelled so — keys apart, while the type's key stays one; and a type resolved from the
- * same nodes by another checker keys alike.
+ * same nodes by another checker keys alike. A recursive type closed again from one spelling keys
+ * alike, so a revision reuses what reads it.
  */
 
 import { describe, expect, it } from 'vitest';
+import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
 import { checkedApart } from '../../src/compiler/checker/check.test-kit.ts';
 import { typeKeys } from '../../src/compiler/checker/types/type-keys.ts';
 import { sameTypeSpelled, unaliased } from '../../src/compiler/checker/types/type-parts.ts';
+import { idOf } from '../../src/compiler/program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations.ts';
 import { resolveWrittenTypes } from './computed.test-kit.ts';
 
@@ -125,5 +128,63 @@ describe('a result kept for a type, computed from it as spelled', () => {
     for (const type of [one, other]) {
       expect(type && sameTypeSpelled(checker.json.formOf(type).type, unaliased(type))).toBe(true);
     }
+  });
+});
+
+describe("a recursive type's spelled key", () => {
+  const declarations = ['type Tree<T> = T | Array<Tree<T>>'];
+
+  it('is one for one spelling written twice, though each closes a graph of its own', () => {
+    const { types } = resolveWrittenTypes(['Tree<Int>', 'Tree<Int>'], declarations);
+    const [one, other] = types;
+    expect(one !== undefined && other !== undefined && sameTypeSpelled(one, other)).toBe(true);
+  });
+
+  it('is one when another checker resolves the same nodes', () => {
+    const { checker, types } = resolveWrittenTypes(['Tree<Int>'], declarations);
+    const again = checkedApart(checker.program);
+    const probe = [...again.program.modules.values()]
+      .flatMap((module) => module.tree.root.items)
+      .find(
+        (item): item is FunctionDeclaration =>
+          item.kind === 'FunctionDeclaration' && item.name.text === '_probe',
+      );
+    const [resolved] = probe === undefined ? [] : again.parametersOf(probe);
+    const [type] = types;
+    expect(type && typeKeys.spelledKey(type)).toBe(resolved && typeKeys.spelledKey(resolved.type));
+  });
+
+  it('lets an unrelated edit reuse a body reading one, closed again', () => {
+    const text = [
+      ...declarations,
+      'fn f() -> Tree<Int>: 1',
+      'fn g() -> Int:',
+      '  const tree: Tree<Int> = f()',
+      '  0',
+    ].join('\n');
+    const first = stdProgramOf({ main: text });
+    const previous = checkedApart(first);
+    previous.diagnosticsOf(idOf('main'));
+    const second = stdProgramOf({ main: `${text}\nfn appended(x: Int) -> Int: x + 1\n` }, first);
+    const checked: string[] = [];
+    checkedApart(second, {
+      previous,
+      observe: (table, key) => {
+        if (table === 'bodies') {
+          checked.push((key as FunctionDeclaration).name.text);
+        }
+      },
+    }).diagnosticsOf(idOf('main'));
+    expect(checked).toEqual(['appended']);
+  });
+
+  it('keys apart two recursive aliases of one structure whose shapes stand at other nodes', () => {
+    const { types } = resolveWrittenTypes(
+      ['A', 'B'],
+      ['type A = { head: Int, tail: A? }', 'type B = { head: Int, tail: B? }'],
+    );
+    const [one, other] = types;
+    expect(one && other && typeKeys.typeKey(one)).toBe(other && typeKeys.typeKey(other));
+    expect(one !== undefined && other !== undefined && sameTypeSpelled(one, other)).toBe(false);
   });
 });

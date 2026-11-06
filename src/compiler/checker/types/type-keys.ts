@@ -30,7 +30,9 @@
  * - A type's spelled key (`spelledKey`) is its key with everything it is spelled with: the alias,
  *   associated type or keys it was written through, the node each shape, mapped type and field was
  *   written at, an `any`'s constraints and a union's members in written order, and the type
- *   `match` use an error type carries. Two types are alike in every part (`sameTypeSpelled`)
+ *   `match` use an error type carries. A recursive type spells its graph by its nodes' spellings
+ *   and labels, `~i` where a node is reached again, so one spelling closed twice, by one checker or
+ *   two, spells alike. Two types are alike in every part (`sameTypeSpelled`)
  *   exactly when their spelled keys are equal. A result computed from a type's spelling, such as a
  *   type `match`'s reduction, is kept by this key, never by the type's, so it never answers one
  *   spelling with another's: a later revision would otherwise keep nodes an earlier tree made.
@@ -38,7 +40,7 @@
 
 import { memo } from '../../../structures/memo.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { MappedParts } from './computed-types.ts';
+import type { MappedParts, RecursiveGraph } from './computed-types.ts';
 import { canonicalKey } from './recursive-terms.ts';
 import type {
   AliasUse,
@@ -61,6 +63,9 @@ const ownKeys = new WeakMap<Type, string>();
 
 /** Each type's spelled key. */
 const spelledKeys = new WeakMap<Type, string>();
+
+/** Each recursive type graph's spelling. */
+const spelledGraphs = new WeakMap<RecursiveGraph, string>();
 
 /** Keys for types, and the numbers for identities they are made of. */
 export interface TypeKeys {
@@ -210,12 +215,35 @@ function unreducedKeyOf(unreduced: UnreducedUse, key: (type: Type) => string): s
 }
 
 function spelledKey(type: Type): string {
-  return memo(spelledKeys, type, () => `${spelledKindKey(type)}${aliasKeyOf(type.alias)}`);
+  return memo(spelledKeys, type, () => spelledWith(type, spelledKey));
 }
 
-/** `type`'s spelled key without the alias it was written through. */
-function spelledKindKey(type: Type): string {
-  const key = spelledKey;
+/** `type`'s spelled key, each type it is built from spelled by `key`. */
+function spelledWith(type: Type, key: (part: Type) => string): string {
+  return `${spelledKindKey(type, key)}${aliasKeyOf(type.alias, key)}`;
+}
+
+/**
+ * The spelling of a recursive type's graph (the banner): each node's body and label spelled, a
+ * node of the graph reached again inside one as `~i`; computed once per graph, which never changes.
+ */
+function spelledGraph(graph: RecursiveGraph): string {
+  return memo(spelledGraphs, graph, () => {
+    const key = (part: Type): string => {
+      if (part.kind === 'recursive' && part.graph === graph) {
+        return `~${part.node}`;
+      }
+      return holdsRecursion(part) ? spelledWith(part, key) : spelledKey(part);
+    };
+    const nodes = graph.nodes.map(
+      (body, index) => `${key(body)}${aliasKeyOf(graph.labels[index], key)}`,
+    );
+    return `~[${nodes.join(';')}]`;
+  });
+}
+
+/** `type`'s spelled key without the alias it was written through, its parts spelled by `key`. */
+function spelledKindKey(type: Type, key: (part: Type) => string): string {
   const keys = (types: readonly Type[]) => types.map(key).join(',');
   switch (type.kind) {
     case 'nominal':
@@ -223,8 +251,7 @@ function spelledKindKey(type: Type): string {
     case 'function':
       return structureKeyOf(type, undefined, key);
     case 'recursive':
-      // A graph is never respelled: closing builds a new one, which is another spelling.
-      return `${typeKey(type)}@${identityOf(type.graph)}#${type.node}`;
+      return `${spelledGraph(type.graph)}#${type.node}`;
     case 'primitive':
     case 'literal':
     case 'associated':
@@ -236,7 +263,7 @@ function spelledKindKey(type: Type): string {
     case 'error':
       return type.unreduced === undefined ? '?' : `?${unreducedKeyOf(type.unreduced, key)}`;
     case 'anonymous':
-      return `{@${identityOf(type.origin)}:${type.fields.map(spelledFieldKey).join(',')}}`;
+      return `{@${identityOf(type.origin)}:${type.fields.map((field) => spelledFieldKey(field, key)).join(',')}}`;
     case 'any': {
       const constraints = type.constraints.map(
         ({ trait, arguments: typeArguments }) => `${identityOf(trait)}<${keys(typeArguments)}>`,
@@ -246,7 +273,7 @@ function spelledKindKey(type: Type): string {
     case 'union':
       return `|<${keys(type.members)}>`;
     case 'mapped': {
-      const named = type.named.map(spelledFieldKey).join(',');
+      const named = type.named.map((field) => spelledFieldKey(field, key)).join(',');
       const written = `@${identityOf(type.origin)}'${identityOf(type.parameter)}`;
       return `*{${written}:${named}[${key(type.keys)}]:${key(type.value)}}`;
     }
@@ -258,27 +285,30 @@ function spelledKindKey(type: Type): string {
 }
 
 /** A field's spelled key: its name and type, and where it is declared, with its type there. */
-function spelledFieldKey(field: FieldMember): string {
+function spelledFieldKey(field: FieldMember, key: (part: Type) => string): string {
   const { declared } = field;
   const where =
     declared === undefined
       ? ''
-      : `@${identityOf(declared.node)}/${declared.module}:${spelledKey(declared.type)}`;
-  return `${field.name}${where}:${spelledKey(field.type)}`;
+      : `@${identityOf(declared.node)}/${declared.module}:${key(declared.type)}`;
+  return `${field.name}${where}:${key(field.type)}`;
 }
 
-/** What a type is written through, spelled: an alias with its arguments, an owner, or keys. */
-function aliasKeyOf(alias: AliasUse | undefined): string {
+/**
+ * What a type is written through, spelled, its types spelled by `key`: an alias with its
+ * arguments, an owner, or keys.
+ */
+function aliasKeyOf(alias: AliasUse | undefined, key: (part: Type) => string): string {
   if (alias === undefined) {
     return '';
   }
   switch (alias.kind) {
     case 'alias':
-      return ` as ${identityOf(alias.declaration)}<${alias.arguments.map(spelledKey).join(',')}>`;
+      return ` as ${identityOf(alias.declaration)}<${alias.arguments.map(key).join(',')}>`;
     case 'associated':
-      return ` as ${spelledKey(alias.of)}.${alias.name}`;
+      return ` as ${key(alias.of)}.${alias.name}`;
     case 'keys':
-      return ` as keyof ${spelledKey(alias.of)}`;
+      return ` as keyof ${key(alias.of)}`;
     default: {
       const unhandled: never = alias;
       return unhandled;
