@@ -29,7 +29,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { reducedComputed } from './computed-reduction.ts';
 import { isComputed, type RecursiveGraph, type RecursiveType } from './computed-types.ts';
 import { type Slot, TermGraph } from './recursive-terms.ts';
-import type { ParameterKey, RecursiveLabel, Type } from './type.ts';
+import { mapAliasUse, type ParameterKey, type RecursiveLabel, type Type } from './type.ts';
 import {
   boundWithin,
   graphParts,
@@ -339,7 +339,7 @@ export function mapRecursive(
     );
   };
   const bodies = graph.nodes.map((body) => rebuiltWithin(body, new Set()));
-  const labels = graph.labels.map((label) => label && relabelled(label, map));
+  const labels = graph.labels.map((label) => label && mapAliasUse(label, map));
   const closed = closeRecursive({
     bodies,
     placeholderOf: (each) =>
@@ -349,13 +349,6 @@ export function mapRecursive(
   });
   const result = closed[type.node] ?? unreachable('A node closed to nothing.');
   return type.alias === undefined ? result : { ...result, alias: type.alias };
-}
-
-/** `label` with the types it names replaced by what `map` gives. */
-function relabelled(label: RecursiveLabel, map: (part: Type) => Type): RecursiveLabel {
-  return label.kind === 'alias'
-    ? { ...label, arguments: label.arguments.map(map) }
-    : { ...label, of: map(label.of) };
 }
 
 /** `type` rebuilt from `children`, a union as the set of them, which closing normalizes. */

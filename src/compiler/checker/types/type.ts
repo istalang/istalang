@@ -45,6 +45,7 @@
  */
 
 import type { PrimitiveName } from '../../../language/primitives.ts';
+import { sameItems } from '../../../structures/equality.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { TypeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
@@ -343,6 +344,17 @@ export type Type =
 /** `type` as written through `alias`; the error type stays itself, as a diagnostic explained it. */
 export function aliasedAs<Aliased extends Type>(type: Aliased, alias: AliasUse): Aliased {
   return type.kind === 'error' ? type : { ...type, alias };
+}
+
+/** `use` with each type it names replaced by what `map` gives; `use` itself when `map` changes none. */
+export function mapAliasUse<Use extends AliasUse>(use: Use, map: (type: Type) => Type): Use;
+export function mapAliasUse(use: AliasUse, map: (type: Type) => Type): AliasUse {
+  if (use.kind === 'alias') {
+    const given = use.arguments.map(map);
+    return sameItems<Type>()(given, use.arguments) ? use : { ...use, arguments: given };
+  }
+  const of = map(use.of);
+  return of === use.of ? use : { ...use, of };
 }
 
 /** The primitive type named `name`. */

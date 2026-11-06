@@ -20,6 +20,7 @@ import {
   aliasedAs,
   type Constraint,
   errorType,
+  mapAliasUse,
   type ParameterKey,
   type Type,
   type TypeParameterType,
@@ -136,12 +137,7 @@ function asWritten<Substituted extends Type>(
   }
   return aliasedAs(
     substituted,
-    alias.kind === 'alias'
-      ? {
-          ...alias,
-          arguments: alias.arguments.map((each) => substitute(each, substitution, rules)),
-        }
-      : { ...alias, of: substitute(alias.of, substitution, rules) },
+    mapAliasUse(alias, (each) => substitute(each, substitution, rules)),
   );
 }
 
