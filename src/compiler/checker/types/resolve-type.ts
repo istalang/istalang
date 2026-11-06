@@ -46,6 +46,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { ownAssociatedType } from './computed-types.ts';
 import { isPack, withPack } from './function-types.ts';
 import { fieldWritten, keysWritten, structWritten } from './key-types.ts';
+import { namedPathOf } from './named-paths.ts';
 import { substitutionFor } from './substitution.ts';
 import {
   aliasedAs,
@@ -194,13 +195,7 @@ function isTypeNode(parameter: TypeNode | RestType): parameter is TypeNode {
  */
 function namedType(resolution: Resolution, node: NamedType): Type {
   const { checker, module } = resolution;
-  const resolved = node.path.findIndex(
-    (part) => checker.bindings.entityOf(module, part) === undefined,
-  );
-  const named = resolved === -1 ? node.path.length : resolved;
-  const name = node.path[named - 1];
-  const entity = name === undefined ? undefined : checker.bindings.entityOf(module, name);
-  const members = node.path.slice(named);
+  const { name, entity, members } = namedPathOf(checker.bindings, module, node);
   if (name === undefined || entity === undefined || members.some(isMissingName)) {
     return errorType;
   }

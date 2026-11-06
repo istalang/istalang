@@ -38,6 +38,7 @@ import type { NamedType, TypeMatch, TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isMatchAlias } from '../types/computed-types.ts';
+import { namedPathOf } from '../types/named-paths.ts';
 
 /** A reference in an alias's body to an alias that may take part in recursion. */
 interface AliasReference {
@@ -118,8 +119,7 @@ export class AliasRecursions {
     aliases: ReadonlySet<TypeAliasDeclaration>,
   ): boolean {
     if (node.kind === 'NamedType') {
-      const [name] = node.path;
-      const entity = name === undefined ? undefined : this.#checker.bindings.entityOf(module, name);
+      const { entity } = namedPathOf(this.#checker.bindings, module, node);
       if (
         entity?.kind === 'type' &&
         entity.declaration.kind === 'TypeAliasDeclaration' &&
@@ -199,11 +199,12 @@ export class AliasRecursions {
     const passesOwn = ({ typeArguments }: NamedType): boolean =>
       typeArguments.length === alias.typeParameters.length &&
       typeArguments.every((argument, index) => {
-        const [name, ...more] = argument.kind === 'NamedType' ? argument.path : [];
-        const entity = name === undefined ? undefined : bindings.entityOf(module, name);
+        if (argument.kind !== 'NamedType') {
+          return false;
+        }
+        const { entity, members } = namedPathOf(bindings, module, argument);
         return (
-          more.length === 0 &&
-          argument.kind === 'NamedType' &&
+          members.length === 0 &&
           argument.typeArguments.length === 0 &&
           entity?.kind === 'type' &&
           entity.declaration === alias.typeParameters[index]
@@ -238,8 +239,7 @@ export class AliasRecursions {
     }
     const module = this.#moduleOf(alias);
     return this.#namedIn(module, body, unguardedStanding).flatMap(({ node, standing }) => {
-      const [name, ...members] = node.path;
-      const entity = name === undefined ? undefined : this.#checker.bindings.entityOf(module, name);
+      const { entity, members } = namedPathOf(this.#checker.bindings, module, node);
       return entity?.kind === 'type' &&
         entity.declaration.kind === 'TypeAliasDeclaration' &&
         !isMatchAlias(entity.declaration)
@@ -283,8 +283,7 @@ export class AliasRecursions {
    * parameter; guarded for any other type, which builds a type from them.
    */
   #argumentStandings(module: ModuleId, node: NamedType): readonly Standing[] {
-    const [name, ...members] = node.path;
-    const entity = name === undefined ? undefined : this.#checker.bindings.entityOf(module, name);
+    const { entity, members } = namedPathOf(this.#checker.bindings, module, node);
     return members.length === 0 &&
       entity?.kind === 'type' &&
       entity.declaration.kind === 'TypeAliasDeclaration'
@@ -333,8 +332,7 @@ export class AliasRecursions {
     parameters: readonly TypeParameter[],
   ): readonly Standing[] {
     return this.#namedIn(module, node, unguardedStanding).flatMap(({ node: named, standing }) => {
-      const [name, ...members] = named.path;
-      const entity = name === undefined ? undefined : this.#checker.bindings.entityOf(module, name);
+      const { entity, members } = namedPathOf(this.#checker.bindings, module, named);
       return members.length === 0 &&
         entity?.kind === 'type' &&
         entity.declaration.kind === 'TypeParameter' &&

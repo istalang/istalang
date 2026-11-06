@@ -46,6 +46,16 @@ describe("an alias's type arguments", () => {
     },
   );
 
+  it('are unguarded through an alias a module namespace qualifies', () => {
+    const { codes } = reported(
+      ["import * as lib from 'lib.ista'", 'type A = lib.OrInt<A>'].join('\n'),
+      {
+        'lib.ista': 'type OrInt<T> = T | Int',
+      },
+    );
+    expect(codes).toEqual([aliasCycle]);
+  });
+
   it.each([
     ['a nominal type', ['struct Box<T> { value: T }', 'type A = Int | Box<A>']],
     [
