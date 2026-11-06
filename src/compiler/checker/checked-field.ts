@@ -2,7 +2,7 @@
  * How a field read reaches its field, as the checker finds it and lowering emits it (§3.1, §3.10):
  * lowering reads the record and never looks a field up by name again. A read through a type
  * parameter's constraint can't be resolved by the generic body checked once; each instantiation
- * resolves it into one of the others (`instantiatedRead`), by the one rule here.
+ * resolves it into one of the others (body-facts/instantiation.ts), by the reads here.
  *
  * A field is read by its name, `s.name`, or by a key, `s[k]` (§3.9): a key that is one name once
  * known reads as the name does, and several keys read the field the key's value names when the
@@ -85,29 +85,6 @@ export function namedFieldRead(
     unreachable(`A type with a field '${name}' its constraints name has none.`);
   }
   return found.read;
-}
-
-/** `read` as an instantiation reaches it, each type it reads through made `concrete`. */
-export function instantiatedRead(
-  checker: Pick<Checker, 'fieldsOf'>,
-  read: FieldRead,
-  concrete: (type: Type) => Type,
-): FieldRead {
-  switch (read.kind) {
-    case 'position':
-      return read;
-    case 'dispatch':
-    case 'required':
-      return requiredFieldRead(checker, concrete(read.on), read.required);
-    case 'named':
-      return namedFieldRead(checker, concrete(read.on), read.name);
-    case 'keyed':
-      return keyedFieldRead(checker, concrete(read.on), concrete(read.key));
-    default: {
-      const unhandled: never = read;
-      return unhandled;
-    }
-  }
 }
 
 /** A field a read finds, as the type read has it, and how the read reaches it. */

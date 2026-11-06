@@ -1,15 +1,21 @@
 /**
  * The facts a checked body answers (check.ts `BodyFacts`), each one entry of `bodyFacts`: how it
- * is read as a pass checked it, from what checking recorded (body-records.ts); how an
- * instantiation reads it, from the parts its answers are made of (types/instantiation.ts); and
- * how a field loop's passes join it (lookup/pass-views.ts). The body and both of its views are
- * derived from the table, so a fact added to the contract fails to typecheck until its entry says
- * all three, and no view passes a fact through unread.
+ * is read as a pass checked it, from what checking recorded (recorded-body.ts); how an
+ * instantiation reads it, from the parts its answers are made of (instantiation.ts); and how the
+ * passes of the field loops around a node join it, for tools (pass-joins.ts). The body and its
+ * views are derived from the table, so a fact added to the contract fails to typecheck until its
+ * entry says all three, and no view passes a fact through unread.
  */
 
-import type { RecordedBody } from './body-records.ts';
-import type { BodyFacts, CheckedBody } from './check.ts';
-import { type JoinedBody, type ListedFacts, listedFacts } from './joined-body.ts';
+import type { BodyFacts, CheckedBody } from '../check.ts';
+import { type JoinedBody, type ListedFacts, listedFacts } from '../joined-body.ts';
+import type { PassAnswers } from '../lookup/pass-views.ts';
+import type { Pass } from '../passes.ts';
+import type { ResolvedCall } from '../resolved-call.ts';
+import { exactFit } from '../types/fit.ts';
+import { sameType } from '../types/identity.ts';
+import type { TypeRules } from '../types/type-rules.ts';
+import { type Instantiation, instantiationBy } from './instantiation.ts';
 import {
   everyDistinct,
   everyListed,
@@ -18,15 +24,9 @@ import {
   firstPass,
   firstRecorded,
   inEveryPass,
-  type PassAnswers,
   typesJoined,
-} from './lookup/pass-views.ts';
-import type { Pass } from './passes.ts';
-import type { ResolvedCall } from './resolved-call.ts';
-import { exactFit } from './types/fit.ts';
-import { sameType } from './types/identity.ts';
-import { type Instantiation, instantiationBy } from './types/instantiation.ts';
-import type { TypeRules } from './types/type-rules.ts';
+} from './pass-joins.ts';
+import type { RecordedBody } from './recorded-body.ts';
 
 /**
  * How a body answers one fact: read as `pass` checked it, from what it recorded (`bodyAt` reads

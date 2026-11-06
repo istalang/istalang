@@ -49,7 +49,7 @@ import type {
   Enclosing,
   Returns,
 } from './body-context.ts';
-import { checkedAt } from './body-facts.ts';
+import { checkedAt } from './body-facts/index.ts';
 import { bodyRecords } from './body-records.ts';
 import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
 import { statementPlace } from './checked-annotation.ts';

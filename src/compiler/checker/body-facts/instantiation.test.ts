@@ -20,10 +20,10 @@ import { type For, tailExpressionOf } from '../../syntax/statements.ts';
 import { bodyOf, nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
 import { type CheckedBody, checkProgram } from '../check.ts';
 import { namesBound, type PartStep } from '../checked-pattern.ts';
-import { substitutionFor } from './substitution.ts';
-import { intType, stringType } from './type.ts';
-import { parametersIn } from './type-parts.ts';
-import { typeText } from './type-text.ts';
+import { substitutionFor } from '../types/substitution.ts';
+import { intType, stringType } from '../types/type.ts';
+import { parametersIn } from '../types/type-parts.ts';
+import { typeText } from '../types/type-text.ts';
 
 describe('an instantiated body', () => {
   it("gives a loop's cursor the item type of its instantiation", () => {

@@ -200,7 +200,7 @@ export interface LabelResolution {
 
 /**
  * What checking a function body found of its nodes, for lowering (architecture: phase contracts).
- * Every fact is one entry of the body's facts table (body-facts.ts), which says how it is read as
+ * Every fact is one entry of the body's facts table (body-facts/), which says how it is read as
  * a pass checked it, through an instantiation, and across a field loop's passes.
  */
 export interface BodyFacts {
@@ -302,7 +302,7 @@ export interface BodyFacts {
 export interface CheckedBody extends BodyFacts {
   /**
    * The body as one instantiation reads it (§3.5): checked once, generically, it records types of
-   * its type parameters, each substituted here (types/instantiation.ts).
+   * its type parameters, each substituted here (body-facts/instantiation.ts).
    */
   readonly instantiated: (
     substitution: Substitution,

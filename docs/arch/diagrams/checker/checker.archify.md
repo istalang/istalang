@@ -114,7 +114,7 @@ The result type never picks an overload. The expected type only fills type param
 - Nodes hold no tokens and no resolved references. The binder and checker keep those in side tables keyed by node.
 - An entity is made once per declaring node, so an edit that keeps a segment keeps its entities, and every type naming them.
 - A nominal type is its declaration's entity plus type arguments; field types are derived by substitution, never stored per instantiation.
-- A generic body is checked once. Lowering reads it through a substitution per instance (`types/instantiation.ts`).
+- A generic body is checked once. Lowering reads it through a substitution per instance (`body-facts/instantiation.ts`).
 
 | `CheckedBody` record | Lowering uses it to |
 | --- | --- |

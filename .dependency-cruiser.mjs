@@ -169,6 +169,13 @@ const checkerSurface = [
 
 const checkerFolder = (names) => `^src/compiler/checker/(${names.join('|')})/`;
 
+/**
+ * The modules wiring a body and a program together, which may import any folder and which no
+ * folder imports: the checkers, a body's records, and the facts table reading them (body-facts/).
+ */
+const checkerWiring =
+  '^src/compiler/checker/((body-checker|body-records|program-checker)\\.ts$|body-facts/)';
+
 /** The checker folders its contracts may name: diagnostics and the type model beneath everything. */
 const checkerModel = ['diagnostics', 'types'];
 
@@ -207,7 +214,10 @@ export default {
     {
       name: 'checker-folder-unlisted',
       severity: 'error',
-      from: { path: '^src/compiler/checker/[^/]+/', pathNot: checkerFolder(checkerLayers) },
+      from: {
+        path: '^src/compiler/checker/[^/]+/',
+        pathNot: `${checkerFolder(checkerLayers)}|${checkerWiring}`,
+      },
       to: { path: '^src/compiler/checker/' },
     },
     {
@@ -215,18 +225,15 @@ export default {
       severity: 'error',
       from: {
         path: '^src/compiler/checker/[^/]+\\.ts$',
-        pathNot:
-          '^src/compiler/checker/(body-checker|body-records|body-facts|program-checker)\\.ts$',
+        pathNot: checkerWiring,
       },
       to: { path: checkerFolder(checkerLayers.filter((layer) => !checkerModel.includes(layer))) },
     },
     {
       name: 'checker-folder-imports-wiring',
       severity: 'error',
-      from: { path: '^src/compiler/checker/[^/]+/' },
-      to: {
-        path: '^src/compiler/checker/(body-checker|body-records|body-facts|program-checker)\\.ts$',
-      },
+      from: { path: '^src/compiler/checker/[^/]+/', pathNot: checkerWiring },
+      to: { path: checkerWiring },
     },
     {
       // Compiling or editing a program loads std sources without natives or the runtime they reach.

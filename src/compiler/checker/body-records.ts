@@ -2,7 +2,7 @@
  * What checking one body records of its nodes (body-checker.ts), each record kept per pass of a
  * field loop (passes.ts), so the body reads as each pass checked it, and the passes nested in it
  * the same way. The facts a CheckedBody answers are read from these records and from the body's
- * units (body-facts.ts).
+ * units (body-facts/recorded-body.ts).
  */
 
 import type { VariantEntity } from '../binder/entities.ts';
@@ -13,18 +13,8 @@ import type { StringLiteral } from '../syntax/expressions/literals.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { Assignment, Block } from '../syntax/statements.ts';
 import type { ValueSite } from './check.ts';
-import type { FunctionScopes } from './closures/functions.ts';
-import type { CollectionForms } from './expressions/collections.ts';
-import type { StructLiterals } from './expressions/literal-sources.ts';
-import type { FieldReads } from './expressions/member-access.ts';
-import type { OptionalChains } from './expressions/optionals.ts';
 import type { FieldPassType, Pass, Passes } from './passes.ts';
-import type { CheckedPatterns } from './patterns/matching.ts';
-import type { ImplicitCalls } from './resolution/implicit.ts';
 import type { ResolvedCall, ResolvedSite } from './resolved-call.ts';
-import type { Iterations } from './rules/iteration.ts';
-import type { LabelTargets } from './statements/loops.ts';
-import type { VariableScope } from './statements/variables.ts';
 import type { Fit } from './types/fit.ts';
 import type { FieldMember, Type } from './types/type.ts';
 
@@ -51,27 +41,4 @@ export function bodyRecords(passes: Passes) {
     fits: passes.table<ValueSite, Fit>(),
     fieldPasses: passes.table<FieldHeader, readonly CheckedPass[]>(),
   };
-}
-
-type BodyRecords = ReturnType<typeof bodyRecords>;
-
-/** The units of a body whose records its CheckedBody reads beside its own. */
-interface BodyUnits {
-  readonly variables: VariableScope;
-  readonly functions: FunctionScopes;
-  readonly literals: StructLiterals;
-  readonly implicit: ImplicitCalls;
-  readonly collections: CollectionForms;
-  readonly iterations: Iterations;
-  readonly patterns: CheckedPatterns;
-  readonly chains: OptionalChains;
-  readonly fieldReads: FieldReads;
-  readonly labels: LabelTargets;
-}
-
-/** What checking a body recorded: its own records, its units', and what it produces. */
-export interface RecordedBody {
-  readonly records: BodyRecords;
-  readonly units: BodyUnits;
-  readonly result: Type;
 }

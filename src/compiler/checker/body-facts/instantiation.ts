@@ -1,7 +1,7 @@
 /**
  * What one instantiation does to each part a checked body records (§3.5): a body is checked once,
  * generically, so what runs for one instantiation reads it with every type it records substituted.
- * The body's facts table (body-facts.ts) says which part each fact is made of; the parts are
+ * The body's facts table (index.ts) says which part each fact is made of; the parts are
  * substituted here. The calls a body records stay as checked: closing one takes the
  * instantiation's witnesses too, which its reader has, so the reader closes it
  * (lowering/closed-calls.ts `closeCall`, rules/computation.ts for a default's). Lowering reads a
@@ -16,7 +16,12 @@ import type {
   FieldPass,
   IterationForm,
 } from '../check.ts';
-import { type FieldRead, instantiatedRead } from '../checked-field.ts';
+import {
+  type FieldRead,
+  keyedFieldRead,
+  namedFieldRead,
+  requiredFieldRead,
+} from '../checked-field.ts';
 import type {
   CheckedPattern,
   PartStep,
@@ -25,13 +30,18 @@ import type {
   TargetBinding,
   TargetStep,
 } from '../checked-pattern.ts';
-import { unfolded } from './computed-types.ts';
-import type { Fit } from './fit.ts';
-import { sameType } from './identity.ts';
-import { type Substitution, substitute, substituteAny, substituteKept } from './substitution.ts';
-import type { FieldMember, Type } from './type.ts';
-import type { TypeRules } from './type-rules.ts';
-import { membersOf } from './unions.ts';
+import { unfolded } from '../types/computed-types.ts';
+import type { Fit } from '../types/fit.ts';
+import { sameType } from '../types/identity.ts';
+import {
+  type Substitution,
+  substitute,
+  substituteAny,
+  substituteKept,
+} from '../types/substitution.ts';
+import type { FieldMember, Type } from '../types/type.ts';
+import type { TypeRules } from '../types/type-rules.ts';
+import { membersOf } from '../types/unions.ts';
 
 /** One instantiation: each kind of part a body records, as it reads it. */
 export interface Instantiation {
@@ -281,5 +291,28 @@ function substitutedConversion(
       return { kind: 'shape', to: substituteKept(conversion.to, substitution, rules) } as const;
     default:
       return conversion;
+  }
+}
+
+/** `read` as an instantiation reaches it, each type it reads through made `concrete`. */
+function instantiatedRead(
+  checker: Pick<Checker, 'fieldsOf'>,
+  read: FieldRead,
+  concrete: (type: Type) => Type,
+): FieldRead {
+  switch (read.kind) {
+    case 'position':
+      return read;
+    case 'dispatch':
+    case 'required':
+      return requiredFieldRead(checker, concrete(read.on), read.required);
+    case 'named':
+      return namedFieldRead(checker, concrete(read.on), read.name);
+    case 'keyed':
+      return keyedFieldRead(checker, concrete(read.on), concrete(read.key));
+    default: {
+      const unhandled: never = read;
+      return unhandled;
+    }
   }
 }
