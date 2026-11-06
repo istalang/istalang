@@ -1,10 +1,10 @@
 /**
  * Loops and labelled blocks (§3.4, §4): `while` tests its condition at the top; `continue` jumps
  * back to the test and `break` past the loop, both ending the blocks they leave as their ends
- * would. A `for` runs the loop every iterating construct runs (loops/iteration.ts), binding its targets
- * to each item; `continue` goes on to the next item. A field loop is written out once per field. A labelled `break` or `continue` goes to the
- * loop the checker found its label naming (CheckedBody `labels`). A labelled block is a block a
- * `hold` may name.
+ * would. A `for` runs the loop every iterating construct runs (loops/iteration.ts), binding its
+ * targets to each item; `continue` goes on to the next item. A field loop is written out once per
+ * field. A labelled `break` or `continue` goes to the loop the checker found its label naming
+ * (CheckedBody `labels`). A labelled block is a block a `hold` may name.
  *
  * Each pass of a `while` is a scope of its own: the `is` bindings of its condition live through
  * its body and end with the pass, and the condition's temporaries end before the body (§3.4, §7).

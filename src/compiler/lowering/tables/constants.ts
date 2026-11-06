@@ -52,7 +52,8 @@ export function constantValue(tables: DefinitionTables, form: ConstantForm): Val
         ]),
       };
     case 'member':
-      // A union is an enum with a variant per member, a member of one value its tag (type-table.ts).
+      // A union is an enum with a variant per member, a member of one value its tag
+      // (type-table.ts).
       return {
         kind: 'variant',
         type: tables.types.index(form.union),

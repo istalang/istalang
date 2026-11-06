@@ -70,9 +70,10 @@ function builtAt(
 
 /**
  * The positions `step` reads as a place: an element's or variant field's own, a named field's in
- * the struct an instantiation made, the one field of the variant an `any`'s value is held in, or where a union
- * holds its member's value as an instantiation made it (values/holdings.ts): none where the union
- * collapsed into that one type (§3.5), inside the `any` type that took the member whole.
+ * the struct an instantiation made, the one field of the variant an `any`'s value is held in, or
+ * where a union holds its member's value as an instantiation made it (values/holdings.ts): none
+ * where the union collapsed into that one type (§3.5), inside the `any` type that took the member
+ * whole.
  */
 function positionsOf(
   context: FunctionContext,

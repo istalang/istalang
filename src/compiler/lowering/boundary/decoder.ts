@@ -3,8 +3,8 @@
  * returns a `Result<T>`. It reads the way the encoder writes, stopping at the first part that
  * doesn't fit: each part's codec and each helper returns a `Result`, and an `Err` is passed on as
  * this codec's own, with the path it names. A literal type, or a union of literals, reads its base
- * and accepts only a value equal to one of its literals. A field the JSON lacks is `none` when its type is
- * optional, and an `Err` otherwise; a `@JsonSkip` field is never read and gets its type's
+ * and accepts only a value equal to one of its literals. A field the JSON lacks is `none` when its
+ * type is optional, and an `Err` otherwise; a `@JsonSkip` field is never read and gets its type's
  * `default()`.
  */
 
@@ -111,7 +111,8 @@ export class Decoder {
   /**
    * The literal the value read is: each base's codec reads it in turn, a base that can't moving on
    * to the next, and the value read is compared with that base's literals, else an `Err` naming
-   * them all. A union of literals' member holds nothing; a lone literal type is its base's value (§2).
+   * them all. A union of literals' member holds nothing; a lone literal type is its base's value
+   * (§2).
    */
   #literals(
     form: Extract<DerivedForm, { kind: 'literals' }>,

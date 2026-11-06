@@ -83,8 +83,8 @@ function presentOrJump(
 }
 
 /**
- * Where the optional `read` reads isn't `none`, carries on with it as `read.to`; else runs `absent`,
- * which writes what happens then and must leave the code.
+ * Where the optional `read` reads isn't `none`, carries on with it as `read.to`; else runs
+ * `absent`, which writes what happens then and must leave the code.
  */
 export function presentOr(
   context: CodeContext,

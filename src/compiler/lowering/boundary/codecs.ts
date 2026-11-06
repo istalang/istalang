@@ -1,6 +1,7 @@
 /**
  * The derived codecs (§9; docs/arch/boundary.md): the body of each `json._toJson<T>` and
- * `json._fromJson<T>` instance, written from `T`'s derived form (checker rules/boundary/json-forms.ts).
+ * `json._fromJson<T>` instance, written from `T`'s derived form (checker
+ * rules/boundary/json-forms.ts).
  *
  * Writing (encoder.ts) and reading (decoder.ts) take a form apart the same way: a struct, an enum
  * and a tuple part by part, each through its own type's codec, and a host type through the json

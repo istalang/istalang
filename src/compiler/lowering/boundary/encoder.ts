@@ -1,11 +1,11 @@
 /**
  * Writing `json._toJson<T>` (codecs.ts): its one parameter is the value, and it returns the `Json`.
  * A struct is an object of its fields, `@JsonSkip` ones left out, whose keys are sorted when it is
- * written; an enum the same, with its variant's tag; a tuple an array; a host type the JSON its host
- * gave, through the json module's helper; a literal its base's value, a union of literals' the tag's
- * literal (§2). Each part is written by its own type's codec, and a literal by its base's. `Json`
- * is a recursive union (§3.17), so what is built goes into it as the member it is: an array of
- * `Json`, a map of `Json` by `String`, or a `String`.
+ * written; an enum the same, with its variant's tag; a tuple an array; a host type the JSON its
+ * host gave, through the json module's helper; a literal its base's value, a union of literals' the
+ * tag's literal (§2). Each part is written by its own type's codec, and a literal by its base's.
+ * `Json` is a recursive union (§3.17), so what is built goes into it as the member it is: an array
+ * of `Json`, a map of `Json` by `String`, or a `String`.
  */
 
 import type { Register } from '../../../definition/operands.ts';

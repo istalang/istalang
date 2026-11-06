@@ -147,9 +147,9 @@ function passingOf(parameter: KeyedParameter): 'value' | 'reference' | 'rest' {
 }
 
 /**
- * How a recursive type is spelled (§3.17): its key's preferred alias, the one every spelling of that
- * type in a Definition's tables shares (`preferredAlias`); or, in an extern's key, the alias its
- * signature writes, which no alias written elsewhere changes.
+ * How a recursive type is spelled (§3.17): its key's preferred alias, the one every spelling of
+ * that type in a Definition's tables shares (`preferredAlias`); or, in an extern's key, the alias
+ * its signature writes, which no alias written elsewhere changes.
  */
 interface Spelling {
   readonly checker: Checker;
