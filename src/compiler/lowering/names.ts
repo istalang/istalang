@@ -26,6 +26,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { RecursiveType } from '../checker/types/computed-types.ts';
 import { folded } from '../checker/types/recursive-types.ts';
+import { substitute, substitutionFor } from '../checker/types/substitution.ts';
 import type {
   AnonymousStructType,
   DeclaredAliasUse,
@@ -215,28 +216,46 @@ export function recursiveName(
 
 /**
  * The alias the type table names the recursive type `type` by (§3.17): of the program's recursive
- * aliases taking no type arguments whose type it is, a std module's first, then by module name,
- * then by name; for one no such alias is, the alias its graph labels its node with, if any (an
- * associated type labelling it names no entry).
+ * aliases naming it, a generic one given the arguments it names it with, a std module's first, then
+ * by module name, then by name; for one no such alias is, the alias its graph labels its node with,
+ * if any (an associated type labelling it names no entry). Chosen once per key, so equal types
+ * name one entry whichever alias lowering met first.
  */
 function preferredAlias(checker: Checker, type: RecursiveType): DeclaredAliasUse | undefined {
-  const preferred = preferredAliases(checker).get(checker.typeKeys.typeKey(type));
-  const label = type.graph.labels[type.node];
-  if (preferred !== undefined) {
-    return { kind: 'alias', declaration: preferred, arguments: [] };
-  }
-  return label?.kind === 'alias' ? label : undefined;
+  const byKey = memo(preferredByProgram, checker, () => new Map());
+  return memo(byKey, checker.typeKeys.typeKey(type), () => {
+    const key = checker.typeKeys.typeKey(type);
+    for (const declaration of recursiveAliases(checker)) {
+      const typeArguments = checker.aliasArgumentsFor(declaration, type);
+      const named =
+        typeArguments === undefined
+          ? undefined
+          : substitute(
+              checker.aliasedType(declaration),
+              substitutionFor(declaration.typeParameters, typeArguments),
+              checker.typeRules,
+            );
+      if (typeArguments !== undefined && named && checker.typeKeys.typeKey(named) === key) {
+        return { kind: 'alias', declaration, arguments: typeArguments };
+      }
+    }
+    const label = type.graph.labels[type.node];
+    return label?.kind === 'alias' ? label : undefined;
+  });
 }
 
 /** Each program's preferred alias of each recursive type key (`preferredAlias`). */
-const preferredByProgram = new WeakMap<Checker, ReadonlyMap<string, TypeAliasDeclaration>>();
+const preferredByProgram = new WeakMap<Checker, Map<string, DeclaredAliasUse | undefined>>();
 
-function preferredAliases(checker: Checker): ReadonlyMap<string, TypeAliasDeclaration> {
-  return memo(preferredByProgram, checker, () => {
+/** Each program's recursive aliases, in the order `preferredAlias` prefers them. */
+const recursiveAliasesByProgram = new WeakMap<Checker, readonly TypeAliasDeclaration[]>();
+
+function recursiveAliases(checker: Checker): readonly TypeAliasDeclaration[] {
+  return memo(recursiveAliasesByProgram, checker, () => {
     const { program } = checker;
     const ranked = [...program.modules].flatMap(([module, loaded]) =>
       loaded.tree.root.items.flatMap((item) =>
-        item.kind === 'TypeAliasDeclaration' && item.typeParameters.length === 0
+        item.kind === 'TypeAliasDeclaration' && checker.aliasedType(item).kind === 'recursive'
           ? [{ item, std: isStdModule(program, module), module: loaded.name }]
           : [],
       ),
@@ -247,15 +266,7 @@ function preferredAliases(checker: Checker): ReadonlyMap<string, TypeAliasDeclar
         compareOrdered(first.module, second.module) ||
         compareOrdered(first.item.name.text, second.item.name.text),
     );
-    const preferred = new Map<string, TypeAliasDeclaration>();
-    for (const { item } of ranked) {
-      const type = checker.aliasedType(item);
-      const key = type.kind === 'recursive' ? checker.typeKeys.typeKey(type) : undefined;
-      if (key !== undefined && !preferred.has(key)) {
-        preferred.set(key, item);
-      }
-    }
-    return preferred;
+    return ranked.map(({ item }) => item);
   });
 }
 

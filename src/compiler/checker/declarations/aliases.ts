@@ -19,6 +19,7 @@ import {
   type AliasBody,
   type AliasDeclaration,
   type AssociatedType,
+  type TypeAliasDeclaration,
   type TypeParameters,
   typeParametersOf,
 } from '../../syntax/declarations.ts';
@@ -27,6 +28,7 @@ import { inferTypesIn } from '../../syntax/type-matches.ts';
 import type { TypeCase, TypeMatch } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { matchCase } from '../resolution/type-match-patterns.ts';
 import { resolveConstraintSet } from '../traits/struct-constraints.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import {
@@ -180,6 +182,25 @@ export class Aliases implements TypeMatchQueries {
         : this.#checker.bindings.topLevelNamed(this.#moduleOf(alias), name);
     return entity?.kind === 'type' && isNominalEntity(entity)
       ? { kind: 'associated', of: nominalType(entity, typeArguments), name: alias.name.text }
+      : undefined;
+  }
+
+  /**
+   * The arguments `alias` is given where it names `type` (§3.17): what its own parameters bind
+   * when its type, them open, is matched against `type` as a case's pattern is, unfolding recursive
+   * types alike; undefined when it names no such type.
+   */
+  argumentsFor(alias: TypeAliasDeclaration, type: Type): readonly Type[] | undefined {
+    const parameters = typeParametersOf(alias.typeParameters);
+    const { outcome, bound } = matchCase(
+      this.#checker,
+      { kind: 'type', type: this.aliasedType(alias) },
+      parameters.map((parameter) => ({ parameter, constraints: { traits: [], structs: [] } })),
+      type,
+    );
+    const typeArguments = parameters.flatMap((parameter) => bound.get(parameter) ?? []);
+    return outcome === 'match' && typeArguments.length === parameters.length
+      ? typeArguments
       : undefined;
   }
 

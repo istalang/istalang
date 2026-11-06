@@ -39,6 +39,7 @@ import type {
   EnumDeclaration,
   FunctionDeclaration,
   RequiredAssociatedType,
+  TypeAliasDeclaration,
   TypeParameter,
 } from '../syntax/declarations.ts';
 import type { Identifier, NodeOf } from '../syntax/node.ts';
@@ -316,6 +317,10 @@ export class ProgramChecker implements CheckerContext {
 
   aliasedType(alias: AliasDeclaration): Type {
     return this.#aliases.aliasedType(alias);
+  }
+
+  aliasArgumentsFor(alias: TypeAliasDeclaration, type: Type): readonly Type[] | undefined {
+    return this.#aliases.argumentsFor(alias, type);
   }
 
   resultOf(declaration: FunctionDeclaration): Type {

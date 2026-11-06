@@ -17,6 +17,7 @@ import type {
   AliasDeclaration,
   Declaration,
   FunctionDeclaration,
+  TypeAliasDeclaration,
   TypeParameter,
 } from '../syntax/declarations.ts';
 import type { BuiltLiteral } from '../syntax/expressions/indented-values.ts';
@@ -387,6 +388,11 @@ export interface Checker {
   readonly typeRules: TypeRules;
   /** The type an alias stands for, its own type parameters left open (§3.17). */
   readonly aliasedType: (alias: AliasDeclaration) => Type;
+  /** The arguments `alias` is given where it names `type`; undefined where it names no such type. */
+  readonly aliasArgumentsFor: (
+    alias: TypeAliasDeclaration,
+    type: Type,
+  ) => readonly Type[] | undefined;
   /** What tools ask by position: what names denote, the body holding a node (lookup/). */
   readonly lookup: LookupQueries;
 }
