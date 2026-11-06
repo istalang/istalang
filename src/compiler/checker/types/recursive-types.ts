@@ -25,6 +25,7 @@
  *   members, reads as that alias.
  */
 
+import { sameItems } from '../../../structures/equality.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { reducedComputed } from './computed-reduction.ts';
 import { isComputed, type RecursiveGraph, type RecursiveType } from './computed-types.ts';
@@ -308,8 +309,11 @@ class GraphNodes {
 }
 
 /**
- * The recursive type `type` with each of its graph's parts replaced by what `map` gives, closed
- * again by the program's `rules` (the banner); `type` itself when `map` changes none.
+ * The recursive type `type` with each of its graph's parts and the types its labels name replaced
+ * by what `map` gives, closed again by the program's `rules` (the banner); `type` itself when `map`
+ * changes none. A label is how its node is written, never one of its parts, as an alias a type is
+ * written through is (type.ts), so a parameter only a label names, `T` of `Phantom<T> = Int |
+ * Array<Phantom<T>>`, is replaced in the label alone.
  */
 export function mapRecursive(
   type: RecursiveType,
@@ -318,7 +322,11 @@ export function mapRecursive(
 ): Type {
   const { graph } = type;
   const mapped = new Map(graphParts(graph).map((part) => [part, map(part)] as const));
-  if ([...mapped].every(([part, replaced]) => part === replaced)) {
+  const labels = graph.labels.map((label) => label && mapAliasUse(label, map));
+  if (
+    [...mapped].every(([part, replaced]) => part === replaced) &&
+    sameItems<RecursiveLabel | undefined>()(labels, graph.labels)
+  ) {
     return type;
   }
   const remapped = (each: Type, bound: ReadonlySet<ParameterKey>): Type => {
@@ -339,7 +347,6 @@ export function mapRecursive(
     );
   };
   const bodies = graph.nodes.map((body) => rebuiltWithin(body, new Set()));
-  const labels = graph.labels.map((label) => label && mapAliasUse(label, map));
   const closed = closeRecursive({
     bodies,
     placeholderOf: (each) =>

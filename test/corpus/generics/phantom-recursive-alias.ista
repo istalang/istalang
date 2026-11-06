@@ -1,0 +1,13 @@
+# outcome: 2
+# A recursive alias whose parameter only its own uses name (§3.17): its parts are the same for every
+# argument, but the uses it is written through inside itself are its argument's.
+
+type Phantom<T> = Int | Array<Phantom<T>>
+
+fn f(x: Phantom<String>) -> Int:
+  match x:
+    case Int as n: n
+    case Array<Phantom<String>> as xs: xs.length()
+
+async fn main() -> Future<Int>:
+  return f([1, [2]])
