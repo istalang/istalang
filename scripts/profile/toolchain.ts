@@ -8,7 +8,7 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import process from 'node:process';
-import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
 import { round, withCpuProfile } from './cpu-profile.ts';
 import {
   built,

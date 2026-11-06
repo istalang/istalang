@@ -42,7 +42,7 @@ import type {
 } from '../../syntax/declarations/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { diagnosticIn } from '../../syntax/positions.ts';
-import { bindModule, type ModuleBindings } from '../bind-module.ts';
+import type { ModuleBindings } from '../bind-module.ts';
 import { binderDiagnostics } from '../diagnostics.ts';
 import {
   type Bindings,
@@ -67,8 +67,9 @@ import { checkTestImports, meetPrelude } from './top-level-rules.ts';
  */
 const unseenFunctions = new SequenceMemo<Module['items'][number], Map<string, FunctionsEntity>>();
 
-export function link(program: Program): Bindings {
-  const linker = new Linker(program);
+/** Every module's own bindings (`locals`), linked across `program`. */
+export function link(program: Program, locals: ReadonlyMap<ModuleId, ModuleBindings>): Bindings {
+  const linker = new Linker(program, locals);
   return {
     entityOf: (module, name) => linker.entityOf(module, name),
     exportsOf: (module) => linker.local(module)?.exports ?? new Map(),
@@ -94,11 +95,9 @@ class Linker {
   readonly #variantsOfEnum = new Map<EnumDeclaration, ReadonlyMap<string, VariantEntity>>();
   readonly #overloads = new Map<FunctionsEntity, readonly FunctionDeclaration[]>();
 
-  constructor(program: Program) {
+  constructor(program: Program, locals: ReadonlyMap<ModuleId, ModuleBindings>) {
     this.#program = program;
-    this.#locals = new Map(
-      [...program.modules].map(([id, module]) => [id, bindModule(module.tree)] as const),
-    );
+    this.#locals = locals;
     for (const [id, local] of this.#locals) {
       this.#index(id, local);
     }

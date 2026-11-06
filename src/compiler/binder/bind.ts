@@ -14,11 +14,17 @@
 
 import { memo } from '../../structures/memo.ts';
 import type { Program } from '../program/program.ts';
+import { bindModule } from './bind-module.ts';
 import type { Bindings } from './entities.ts';
 import { link } from './link/index.ts';
 
 const linked = new WeakMap<Program, Bindings>();
 
 export function bindProgram(program: Program): Bindings {
-  return memo(linked, program, () => link(program));
+  return memo(linked, program, () =>
+    link(
+      program,
+      new Map([...program.modules].map(([id, module]) => [id, bindModule(module.tree)])),
+    ),
+  );
 }
