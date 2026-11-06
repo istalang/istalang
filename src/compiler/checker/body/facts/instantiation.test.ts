@@ -4,26 +4,26 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { runPrograms } from '../../../../test/corpus/programs.ts';
-import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { idOf } from '../../program/program.test-kit.ts';
-import { programModule } from '../../program/program.ts';
+import { runPrograms } from '../../../../../test/corpus/programs.ts';
+import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
+import { idOf } from '../../../program/program.test-kit.ts';
+import { programModule } from '../../../program/program.ts';
 import {
   type FunctionDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../syntax/declarations.ts';
-import type { Expression, Match, MemberAccess } from '../../syntax/expressions/index.ts';
-import { casesOf } from '../../syntax/expressions/readings.ts';
-import type { Pattern } from '../../syntax/patterns.ts';
-import { type For, tailExpressionOf } from '../../syntax/statements.ts';
-import { bodyOf, nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
-import { type CheckedBody, checkProgram } from '../check.ts';
-import { namesBound, type PartStep } from '../surface/checked-pattern.ts';
-import { substitutionFor } from '../types/substitution.ts';
-import { intType, stringType } from '../types/type.ts';
-import { parametersIn } from '../types/type-parts.ts';
-import { typeText } from '../types/type-text.ts';
+} from '../../../syntax/declarations.ts';
+import type { Expression, Match, MemberAccess } from '../../../syntax/expressions/index.ts';
+import { casesOf } from '../../../syntax/expressions/readings.ts';
+import type { Pattern } from '../../../syntax/patterns.ts';
+import { type For, tailExpressionOf } from '../../../syntax/statements.ts';
+import { bodyOf, nodesUnder, type SyntaxNode } from '../../../syntax/tree.ts';
+import { type CheckedBody, checkProgram } from '../../check.ts';
+import { namesBound, type PartStep } from '../../surface/checked-pattern.ts';
+import { substitutionFor } from '../../types/substitution.ts';
+import { intType, stringType } from '../../types/type.ts';
+import { parametersIn } from '../../types/type-parts.ts';
+import { typeText } from '../../types/type-text.ts';
 
 describe('an instantiated body', () => {
   it("gives a loop's cursor the item type of its instantiation", () => {

@@ -8,7 +8,7 @@ import { reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../compile.test-kit.ts';
 import type { Program } from '../program/program.ts';
-import { type CheckerOptions, ProgramChecker } from './program-checker.ts';
+import { type CheckerOptions, ProgramChecker } from './program/program-checker.ts';
 
 /** Everything reported for `text` as module `main.ista`, beside the std modules and `others`. */
 export function reported(text: string, others: Readonly<Record<string, string>> = {}) {

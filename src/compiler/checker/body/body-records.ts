@@ -2,21 +2,26 @@
  * What checking one body records of its nodes (body-checker.ts), each record kept per pass of a
  * field loop (passes.ts), so the body reads as each pass checked it, and the passes nested in it
  * the same way. The facts a CheckedBody answers are read from these records and from the body's
- * units (body-facts/recorded-body.ts).
+ * units (body/facts/recorded-body.ts).
  */
 
-import type { VariantEntity } from '../binder/entities.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { BuiltLiteral } from '../syntax/expressions/indented-values.ts';
-import type { Call, Expression, FieldHeader, IndentedValue } from '../syntax/expressions/index.ts';
-import type { StringLiteral } from '../syntax/expressions/literals.ts';
-import type { Identifier } from '../syntax/node.ts';
-import type { Assignment, Block } from '../syntax/statements.ts';
-import type { ValueSite } from './check.ts';
-import type { FieldPassType, Pass, Passes } from './passes.ts';
-import type { ResolvedCall, ResolvedSite } from './surface/resolved-call.ts';
-import type { Fit } from './types/fit.ts';
-import type { FieldMember, Type } from './types/type.ts';
+import type { VariantEntity } from '../../binder/entities.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { BuiltLiteral } from '../../syntax/expressions/indented-values.ts';
+import type {
+  Call,
+  Expression,
+  FieldHeader,
+  IndentedValue,
+} from '../../syntax/expressions/index.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import type { Assignment, Block } from '../../syntax/statements.ts';
+import type { ValueSite } from '../check.ts';
+import type { FieldPassType, Pass, Passes } from '../passes.ts';
+import type { ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
+import type { Fit } from '../types/fit.ts';
+import type { FieldMember, Type } from '../types/type.ts';
 
 /** A field loop's pass as checked: its key and value, and the pass its records are kept in. */
 export interface CheckedPass extends FieldPassType {

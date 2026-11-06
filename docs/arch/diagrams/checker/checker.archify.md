@@ -11,8 +11,8 @@ The checker is a **lazy, incremental query engine** over one immutable Program. 
 @meta locale=en
 @source check title="checkProgram and the Checker surface" path=src/compiler/checker/check.ts lines=293:400
 @source context title="CheckerContext and ProgramInputs" path=src/compiler/checker/context.ts lines=77:171
-@source programchecker title="ProgramChecker wiring" path=src/compiler/checker/program-checker.ts lines=113:231
-@source bodychecker title="BodyChecker: expression, fit, record" path=src/compiler/checker/body-checker.ts lines=91:296
+@source programchecker title="ProgramChecker wiring" path=src/compiler/checker/program/program-checker.ts lines=113:231
+@source bodychecker title="BodyChecker: expression, fit, record" path=src/compiler/checker/body/body-checker.ts lines=91:296
 @source functions title="FunctionChecks: results and bodies as entries" path=src/compiler/checker/declarations/functions.ts lines=44:111
 @source modulechecks title="ModuleChecks: module and item entries" path=src/compiler/checker/declarations/module-checks.ts lines=29:98
 @source handlers title="Expression handler table" path=src/compiler/checker/expressions/expressions.ts lines=88:127
@@ -114,7 +114,7 @@ The result type never picks an overload. The expected type only fills type param
 - Nodes hold no tokens and no resolved references. The binder and checker keep those in side tables keyed by node.
 - An entity is made once per declaring node, so an edit that keeps a segment keeps its entities, and every type naming them.
 - A nominal type is its declaration's entity plus type arguments; field types are derived by substitution, never stored per instantiation.
-- A generic body is checked once. Lowering reads it through a substitution per instance (`body-facts/instantiation.ts`).
+- A generic body is checked once. Lowering reads it through a substitution per instance (`body/facts/instantiation.ts`).
 
 | `CheckedBody` record | Lowering uses it to |
 | --- | --- |

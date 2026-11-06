@@ -19,21 +19,25 @@
  *   it, found once on demand: only tools ask, since checking a body already knows its module.
  */
 
-import type { LanguageModule } from '../../language/well-known.ts';
-import type { Entries } from '../../structures/entries/index.ts';
-import { sameEntries, sameItems } from '../../structures/equality.ts';
-import { memo } from '../../structures/memo.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { Bindings, VariantEntity } from '../binder/entities.ts';
-import type { ModuleId, Program } from '../program/program.ts';
-import { isStdModule, programModule } from '../program/program.ts';
-import type { EnumDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';
-import { type Declaration, type TypeParameter, typeParametersOf } from '../syntax/declarations.ts';
-import { fieldsFunctionsOf } from '../syntax/field-defaults.ts';
-import type { NodeOf } from '../syntax/node.ts';
-import type { VariableDeclaration } from '../syntax/statements.ts';
-import { bodyOf, parentOf, type SyntaxTree } from '../syntax/tree.ts';
-import type { CheckerNote, ProgramInputs } from './context.ts';
+import type { LanguageModule } from '../../../language/well-known.ts';
+import type { Entries } from '../../../structures/entries/index.ts';
+import { sameEntries, sameItems } from '../../../structures/equality.ts';
+import { memo } from '../../../structures/memo.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { Bindings, VariantEntity } from '../../binder/entities.ts';
+import type { ModuleId, Program } from '../../program/program.ts';
+import { isStdModule, programModule } from '../../program/program.ts';
+import type { EnumDeclaration, FunctionDeclaration } from '../../syntax/declarations.ts';
+import {
+  type Declaration,
+  type TypeParameter,
+  typeParametersOf,
+} from '../../syntax/declarations.ts';
+import { fieldsFunctionsOf } from '../../syntax/field-defaults.ts';
+import type { NodeOf } from '../../syntax/node.ts';
+import type { VariableDeclaration } from '../../syntax/statements.ts';
+import { bodyOf, parentOf, type SyntaxTree } from '../../syntax/tree.ts';
+import type { CheckerNote, ProgramInputs } from '../context.ts';
 
 /** Checking's reads of `program`, recorded in `entries`. */
 export function programInputs(

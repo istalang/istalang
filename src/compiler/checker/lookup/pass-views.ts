@@ -2,7 +2,7 @@
  * A field loop's passes read as one body, for tools asking about a node inside it (§4): the body
  * is checked once per field it visits (passes.ts), but a position in the text is one node. The
  * bodies of every pass of the field loops around a node are read as one, each fact joined as its
- * entry in the body's facts table says (body-facts/). A loop with no pass, over a struct with no
+ * entry in the body's facts table says (body/facts/). A loop with no pass, over a struct with no
  * fields, checked nothing, so its nodes are read as the body around it reads them.
  */
 

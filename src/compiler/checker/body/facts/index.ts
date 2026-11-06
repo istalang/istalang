@@ -7,14 +7,14 @@
  * entry says all three, and no view passes a fact through unread.
  */
 
-import type { BodyFacts, CheckedBody } from '../check.ts';
-import type { PassAnswers } from '../lookup/pass-views.ts';
-import type { Pass } from '../passes.ts';
-import { type JoinedBody, type ListedFacts, listedFacts } from '../surface/denotation.ts';
-import type { ResolvedCall } from '../surface/resolved-call.ts';
-import { exactFit } from '../types/fit.ts';
-import { sameType } from '../types/identity.ts';
-import type { TypeRules } from '../types/type-rules.ts';
+import type { BodyFacts, CheckedBody } from '../../check.ts';
+import type { PassAnswers } from '../../lookup/pass-views.ts';
+import type { Pass } from '../../passes.ts';
+import { type JoinedBody, type ListedFacts, listedFacts } from '../../surface/denotation.ts';
+import type { ResolvedCall } from '../../surface/resolved-call.ts';
+import { exactFit } from '../../types/fit.ts';
+import { sameType } from '../../types/identity.ts';
+import type { TypeRules } from '../../types/type-rules.ts';
 import { type Instantiation, instantiationBy } from './instantiation.ts';
 import {
   everyDistinct,

@@ -61,10 +61,13 @@ src/
                         qualified name's next part is found through, an alias of an enum as the enum); an imported name is a
                         placeholder per name until linked, bound as its alias where renamed (`aliasOf`)
     checker/            check.ts is the entry and the surface later phases read
-      context.ts body-context.ts program-checker.ts body-checker.ts  contexts and the classes that wire them; body-records.ts: what a
-                                                                 body records of its nodes, per pass; body-facts/: each fact a
-                                                                 CheckedBody answers, read per pass, instantiated and joined
+      context.ts body-context.ts passes.ts                       the contexts a program and a body are checked in, and a field loop's passes
       use-site.ts                                                where a check reports
+      program/                                                   wiring one program: its checker (program-checker.ts) and what checking reads of its
+                                                                 Program and Bindings (program-inputs.ts)
+      body/                                                      wiring one body: its checker (body-checker.ts), what it records of its nodes, per
+                                                                 pass (body-records.ts), and facts/: each fact a CheckedBody answers, read per
+                                                                 pass, instantiated and joined
       surface/                                                   the models the surface names, contracts like the root's: what calls resolved to
                                                                  (resolved-call.ts), patterns and targets as checked (checked-pattern.ts),
                                                                  computed constants (constant-form.ts), derived JSON forms (json-form.ts),
@@ -196,7 +199,7 @@ language · structures                   beneath every layer; they import nothin
 ```
 
 - A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`text/`, `diagnostics/`) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`surface/`, `types/type.ts`, `types/computed-types.ts`, `types/function-types.ts`, `types/field-order.ts`, `types/identity.ts`, `types/named-types.ts`, `types/substitution.ts`, `types/type-rules.ts`, `types/fit.ts`, `types/expected.ts`, `types/unions.ts`, `types/union-members.ts`, `types/recursive-types.ts`, `types/type-keys.ts`, `types/type-text.ts`, `types/well-known.ts`), which lowering reads module by module.
-- Inside the checker, folders are layers too, from the type model up to the constructs: `diagnostics`, `types`, `inference`, `traits`, `resolution`, `calls`, `patterns`, `flow`, `rules`, `declarations`, `closures`, `expressions`, `statements`, `lookup`. A folder imports only those beneath it, so engines never import constructs. Its contracts, its root modules (its entry and contexts) and `surface/` (the models later phases read), may be imported by every folder, except the modules that wire a body and a program together (`body-checker.ts`, `body-records.ts`, `program-checker.ts`).
+- Inside the checker, folders are layers too, from the type model up to the constructs: `diagnostics`, `types`, `inference`, `traits`, `resolution`, `calls`, `patterns`, `flow`, `rules`, `declarations`, `closures`, `expressions`, `statements`, `lookup`. A folder imports only those beneath it, so engines never import constructs. Its contracts, its root modules (its entry and contexts) and `surface/` (the models later phases read), may be imported by every folder, except the modules that wire a body and a program together (`program/`, `body/`).
 - `syntax/` and `definition/` are contracts with high fan-in. Change them deliberately, and update every caller in the same change.
 - Mechanisms:
   - Biome `noExcessiveLinesPerFile` enforces the 400-line limit.

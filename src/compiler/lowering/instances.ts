@@ -5,7 +5,7 @@
  *   constraints (§3.10), and which of its entries it is (`InstanceEntry`): its own code, the code
  *   giving one parameter its default (§3.1, §3.3), or code filling a call's left-out parameters.
  * - A body is checked once, generically (checker), so lowering one instance reads the body
- *   through its substitution (checker/body-facts/instantiation.ts), and closes every call it makes
+ *   through its substitution (checker/body/facts/instantiation.ts), and closes every call it makes
  *   (closed-calls.ts).
  * - Two instances are one entry when their key is: the declaration, its arguments' types, and which
  *   entry. Witnesses are coherent (§3.10), the same for the same types wherever they are found, so

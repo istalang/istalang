@@ -8,7 +8,7 @@
  * function instance's body this way, and compile time a field's default for the literal running it.
  */
 
-import { memo } from '../../../structures/memo.ts';
+import { memo } from '../../../../structures/memo.ts';
 import type {
   AssignedPart,
   ChainLink,
@@ -16,13 +16,13 @@ import type {
   Checker,
   FieldPass,
   IterationForm,
-} from '../check.ts';
+} from '../../check.ts';
 import {
   type FieldRead,
   keyedFieldRead,
   namedFieldRead,
   requiredFieldRead,
-} from '../surface/checked-field.ts';
+} from '../../surface/checked-field.ts';
 import type {
   CheckedPattern,
   PartStep,
@@ -30,19 +30,19 @@ import type {
   StructStep,
   TargetBinding,
   TargetStep,
-} from '../surface/checked-pattern.ts';
-import { unfolded } from '../types/computed-types.ts';
-import type { Fit } from '../types/fit.ts';
-import { sameType } from '../types/identity.ts';
+} from '../../surface/checked-pattern.ts';
+import { unfolded } from '../../types/computed-types.ts';
+import type { Fit } from '../../types/fit.ts';
+import { sameType } from '../../types/identity.ts';
 import {
   type Substitution,
   substitute,
   substituteAny,
   substituteKept,
-} from '../types/substitution.ts';
-import type { FieldMember, Type } from '../types/type.ts';
-import type { TypeRules } from '../types/type-rules.ts';
-import { membersOf } from '../types/unions.ts';
+} from '../../types/substitution.ts';
+import type { FieldMember, Type } from '../../types/type.ts';
+import type { TypeRules } from '../../types/type-rules.ts';
+import { membersOf } from '../../types/unions.ts';
 
 /** One instantiation: each kind of part a body records, as it reads it. */
 export interface Instantiation {

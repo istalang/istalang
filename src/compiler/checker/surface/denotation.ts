@@ -9,7 +9,7 @@
  * - A query about a module answers as that module checked whole, so an answer never depends on
  *   what was asked before it.
  * - A body is read at a node as one (`JoinedBody`, §4): the passes of the field loops around the
- *   node, each fact joined as its entry says (body-facts/). A call can't join another into one, as
+ *   node, each fact joined as its entry says (body/facts/). A call can't join another into one, as
  *   types join into a union, so where passes resolve one text differently, tools read every pass's
  *   call: `show(v)` over a struct's `Int` and `String` fields calls both overloads. Lowering reads
  *   each pass apart (check.ts `CheckedBody`), one call per site.
@@ -130,6 +130,6 @@ export interface ListedFacts {
 
 /**
  * A body as tools read it at a node: the passes of the field loops around the node read as one
- * (§4), each fact joined as its entry says (body-facts/), calls and functions listed.
+ * (§4), each fact joined as its entry says (body/facts/), calls and functions listed.
  */
 export type JoinedBody = Omit<BodyFacts, keyof typeof listedFacts> & ListedFacts;
