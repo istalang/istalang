@@ -7,20 +7,17 @@
  * Each run writes `cold-<workload>-<run>.cpuprofile`, which analyze.ts merges with a glob
  * (`cold-fb-*`); the parent prints each phase's mean over the runs.
  *
- * Usage: node scripts/profile/cold-compile.ts <out-dir> [runs] [workload ...]
+ * Usage: npm run profile:cold -- <out-dir> [runs] [workload ...]
  */
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync } from 'node:fs';
 import process from 'node:process';
+import { bindProgram } from '../../src/compiler/binder/bind.ts';
+import { compileProgram, compileTests, diagnose } from '../../src/compiler/compile.ts';
 import type { Program } from '../../src/compiler/program/program.ts';
 import { round, withCpuProfile } from './cpu-profile.ts';
-import { built, formBuilderProgram, stdTestsProgram } from './inputs.ts';
-
-const { compileProgram, compileTests, diagnose } =
-  await built<typeof import('../../src/compiler/compile.ts')>('compiler/compile.js');
-const { bindProgram } =
-  await built<typeof import('../../src/compiler/binder/bind.ts')>('compiler/binder/bind.js');
+import { formBuilderProgram, stdTestsProgram } from './inputs.ts';
 
 /** A program loaded (its modules scanned and parsed), and how to lower what it runs. */
 interface Loaded {
@@ -111,7 +108,14 @@ async function main(): Promise<void> {
   const report = Object.fromEntries(
     names.map((name) => {
       const results = Array.from({ length: runs }, (_, run): RunResult => {
-        const args = [import.meta.filename, childFlag, first, name, String(run + 1)];
+        const args = [
+          ...process.execArgv,
+          import.meta.filename,
+          childFlag,
+          first,
+          name,
+          String(run + 1),
+        ];
         return JSON.parse(execFileSync(process.execPath, args, { encoding: 'utf8' })) as RunResult;
       });
       return [name, { outcomes: [...new Set(results.map((r) => r.outcome))], ms: means(results) }];

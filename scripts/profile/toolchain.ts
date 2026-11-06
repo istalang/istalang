@@ -8,10 +8,31 @@
 import { mkdirSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import process from 'node:process';
+import { checkProgram } from '../../src/compiler/checker/check.ts';
+import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts';
+import { ProgramChecker } from '../../src/compiler/checker/wiring/program/program-checker.ts';
+import { compileTests, diagnose } from '../../src/compiler/compile.ts';
+import { lower } from '../../src/compiler/lowering/lower.ts';
+import { parse } from '../../src/compiler/parser/parse.ts';
+import { moduleIdOf } from '../../src/compiler/program/program.ts';
+import { scan } from '../../src/compiler/scanner/scan.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
+import { definitionFormat } from '../../src/definition/definition.ts';
+import { formatSource } from '../../src/formatter/format.ts';
+import { completionsAt } from '../../src/language-service/completion/index.ts';
+import { inlayHintsIn } from '../../src/language-service/inlay-hints.ts';
+import { referencesAt } from '../../src/language-service/navigation/references.ts';
+import { checkedModule } from '../../src/language-service/reading/checked-module.ts';
+import { builtKeyTypesOf } from '../../src/language-service/semantic-tokens/built-keys.ts';
+import { semanticTokensOf } from '../../src/language-service/semantic-tokens/semantic-tokens.ts';
+import { Workspace } from '../../src/language-service/workspace.ts';
+import { findProjectSources, findSources, loadProject } from '../../src/project/project.ts';
+import { diskFiles } from '../../src/project/project-files.ts';
+import { runTests } from '../../src/runtime/testing/run-tests.ts';
+import { stdNatives } from '../../src/stdlib/natives.ts';
+import { createSourceText } from '../../src/text/source-text.ts';
 import { round, withCpuProfile } from './cpu-profile.ts';
 import {
-  built,
   decimalTests,
   formBuilderDir,
   formBuilderEntry,
@@ -19,68 +40,6 @@ import {
   repeated,
   repoRoot,
 } from './inputs.ts';
-
-const { checkProgram } = await built<typeof import('../../src/compiler/checker/check.ts')>(
-  'compiler/checker/check.js',
-);
-const { ProgramChecker } = await built<
-  typeof import('../../src/compiler/checker/wiring/program/program-checker.ts')
->('compiler/checker/program-checker.js');
-const { typeKeys } = await built<
-  typeof import('../../src/compiler/checker/types/identity/type-keys.ts')
->('compiler/checker/types/type-keys.js');
-const { compileTests, diagnose } =
-  await built<typeof import('../../src/compiler/compile.ts')>('compiler/compile.js');
-const { lower } = await built<typeof import('../../src/compiler/lowering/lower.ts')>(
-  'compiler/lowering/lower.js',
-);
-const { parse } = await built<typeof import('../../src/compiler/parser/parse.ts')>(
-  'compiler/parser/parse.js',
-);
-const { moduleIdOf } = await built<typeof import('../../src/compiler/program/program.ts')>(
-  'compiler/program/program.js',
-);
-const { scan } = await built<typeof import('../../src/compiler/scanner/scan.ts')>(
-  'compiler/scanner/scan.js',
-);
-const { definitionFormat } = await built<typeof import('../../src/definition/definition.ts')>(
-  'definition/definition.js',
-);
-const { formatSource } =
-  await built<typeof import('../../src/formatter/format.ts')>('formatter/format.js');
-const { checkedModule } = await built<
-  typeof import('../../src/language-service/reading/checked-module.ts')
->('language-service/reading/checked-module.js');
-const { completionsAt } = await built<
-  typeof import('../../src/language-service/completion/index.ts')
->('language-service/completion/index.js');
-const { inlayHintsIn } = await built<typeof import('../../src/language-service/inlay-hints.ts')>(
-  'language-service/inlay-hints.js',
-);
-const { referencesAt } = await built<
-  typeof import('../../src/language-service/navigation/references.ts')
->('language-service/navigation/references.js');
-const { builtKeyTypesOf } = await built<
-  typeof import('../../src/language-service/semantic-tokens/built-keys.ts')
->('language-service/semantic-tokens/built-keys.js');
-const { semanticTokensOf } = await built<
-  typeof import('../../src/language-service/semantic-tokens/semantic-tokens.ts')
->('language-service/semantic-tokens/semantic-tokens.js');
-const { Workspace } = await built<typeof import('../../src/language-service/workspace.ts')>(
-  'language-service/workspace.js',
-);
-const { findProjectSources, findSources, loadProject } =
-  await built<typeof import('../../src/project/project.ts')>('project/project.js');
-const { diskFiles } = await built<typeof import('../../src/project/project-files.ts')>(
-  'project/project-files.js',
-);
-const { runTests } = await built<typeof import('../../src/runtime/testing/run-tests.ts')>(
-  'runtime/testing/run-tests.js',
-);
-const { stdNatives } =
-  await built<typeof import('../../src/stdlib/natives.ts')>('stdlib/natives.js');
-const { createSourceText } =
-  await built<typeof import('../../src/text/source-text.ts')>('text/source-text.js');
 
 const editRuns = 5;
 const defaultTimeoutMs = 5000n;

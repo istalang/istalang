@@ -9,16 +9,17 @@
  * `fb-cold` runs first in the process, so it is the one cold, unjitted check; the rest are warm.
  * Counting slows code down, so compare times only between runs of the same mode.
  *
- * Usage: node scripts/profile/check-workloads.ts <out-dir> <cpu|count|alloc> [workload ...]
+ * Usage: npm run profile:check -- <out-dir> <cpu|count|alloc> [workload ...]
  */
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { type HeapProfiler, Session } from 'node:inspector/promises';
 import { resolve } from 'node:path';
 import process from 'node:process';
+import { checkProgram } from '../../src/compiler/checker/check.ts';
+import { diagnose } from '../../src/compiler/compile.ts';
 import { fileOfUrl, round, withCpuProfile } from './cpu-profile.ts';
 import {
-  built,
   corpusPaths,
   corpusProgram,
   decimalTests,
@@ -28,12 +29,6 @@ import {
   repeated,
   stdTestsProgram,
 } from './inputs.ts';
-
-const { diagnose } =
-  await built<typeof import('../../src/compiler/compile.ts')>('compiler/compile.js');
-const { checkProgram } = await built<typeof import('../../src/compiler/checker/check.ts')>(
-  'compiler/checker/check.js',
-);
 
 interface Workload {
   readonly repeat: number;

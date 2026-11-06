@@ -1,6 +1,6 @@
 /**
  * What every profiling script measures, in one place:
- * - The built modules, imported from `dist` so a profile times what ships; `npm run build` first.
+ * - The built modules: imported as their `src/` paths, loaded from `dist/` (from-dist.ts).
  * - The form builder with a synthetic `main` entry, since the prototype declares none.
  * - A test module repeated to scale, each copy's declarations renamed so the copies don't clash.
  * - The programs a whole check or compile is measured on: the form builder, the std test modules,
@@ -10,23 +10,11 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { LocatedModule, ModuleId, Program } from '../../src/compiler/program/program.ts';
-
-/** Loads the built module at `path` under `dist/`, typed as its `src/` module. */
-export async function built<Module>(path: string): Promise<Module> {
-  return (await import(new URL(`../../dist/${path}`, import.meta.url).href)) as Module;
-}
-
-const { buildProgram, moduleIdOf } = await built<
-  typeof import('../../src/compiler/program/program.ts')
->('compiler/program/program.js');
-const { findProjectSources, findSources, loadProject } =
-  await built<typeof import('../../src/project/project.ts')>('project/project.js');
-const { stdlibLoader, stdRoles } =
-  await built<typeof import('../../src/stdlib/stdlib-loader.ts')>('stdlib/stdlib-loader.js');
-const { stdModuleSources } =
-  await built<typeof import('../../src/stdlib/std-sources.ts')>('stdlib/std-sources.js');
-const { languageModules } =
-  await built<typeof import('../../src/language/well-known/index.ts')>('language/well-known.js');
+import { buildProgram, moduleIdOf } from '../../src/compiler/program/program.ts';
+import { languageModules } from '../../src/language/well-known/index.ts';
+import { findProjectSources, findSources, loadProject } from '../../src/project/project.ts';
+import { stdModuleSources } from '../../src/stdlib/std-sources.ts';
+import { stdlibLoader, stdRoles } from '../../src/stdlib/stdlib-loader.ts';
 
 export const repoRoot = resolve(import.meta.dirname, '../..');
 export const formBuilderDir = resolve(repoRoot, 'examples/FormBuilder');
