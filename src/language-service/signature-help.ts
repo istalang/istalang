@@ -10,7 +10,8 @@
  * - A call of a function value shows its type's parameters, which have no names (§3.14).
  */
 
-import type { CheckedBody, Checker } from '../compiler/checker/check.ts';
+import type { Checker } from '../compiler/checker/check.ts';
+import type { JoinedBody } from '../compiler/checker/joined-body.ts';
 import { parameterOfArgument, type ResolvedCall } from '../compiler/checker/resolved-call.ts';
 import type { FunctionType } from '../compiler/checker/types/type.ts';
 import { presentType } from '../compiler/checker/types/unions.ts';
@@ -22,8 +23,11 @@ import { functionTypeSignature, type Signature, signatureOf } from './signatures
 
 export interface SignatureHelp {
   readonly signatures: readonly CallSignature[];
-  /** The signature of the function the call calls, among `signatures`. */
-  readonly active: number;
+  /**
+   * The signature of the function the call calls, among `signatures`; undefined where the passes
+   * of a field loop around it call different ones (§4), as no one of them is the call's.
+   */
+  readonly active: number | undefined;
 }
 
 interface CallSignature extends Signature {
@@ -50,7 +54,7 @@ export function signatureHelpAt(
 
 function valueCallHelp(
   checker: Checker,
-  body: CheckedBody,
+  body: JoinedBody,
   call: Call,
   argument: number,
 ): SignatureHelp | undefined {
@@ -73,24 +77,26 @@ function slotOf({ parameters, pack }: FunctionType, argument: number): number | 
 
 function functionCallHelp(
   checker: Checker,
-  body: CheckedBody,
+  body: JoinedBody,
   call: Call,
   argument: number,
 ): SignatureHelp | undefined {
-  const resolved = body.resolved.get(call);
+  const calls = body.callsAt(call);
   const functions = calleesOf(body, call);
   if (functions.length === 0) {
     return undefined;
   }
   return {
-    signatures: functions.map((declaration) => ({
-      ...signatureOf(checker, declaration),
-      activeParameter:
-        declaration === resolved?.function
-          ? (boundParameter(resolved, argument) ?? writtenParameter(declaration, call, argument))
-          : writtenParameter(declaration, call, argument),
-    })),
-    active: 0,
+    signatures: functions.map((declaration) => {
+      const resolved = calls.find((each) => each.function === declaration);
+      return {
+        ...signatureOf(checker, declaration),
+        activeParameter:
+          (resolved && boundParameter(resolved, argument)) ??
+          writtenParameter(declaration, call, argument),
+      };
+    }),
+    active: calls.length > 1 ? undefined : 0,
   };
 }
 

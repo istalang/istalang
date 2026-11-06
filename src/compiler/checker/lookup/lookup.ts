@@ -11,9 +11,9 @@ import type { StringLiteral } from '../../syntax/expressions/literals.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types.ts';
-import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation, LookupQueries, TypeMembers } from '../denotation.ts';
+import type { JoinedBody } from '../joined-body.ts';
 import { knownConstraints } from '../traits/known-constraints.ts';
 import type { Constraint, Type } from '../types/type.ts';
 import { denotationsOf } from './denotations.ts';
@@ -36,7 +36,7 @@ export class Lookup implements LookupQueries {
     return keyDenotationsOf(this.#itemChecked(module, literal), module, literal);
   }
 
-  bodyHolding(module: ModuleId, node: SyntaxNode): CheckedBody | undefined {
+  bodyHolding(module: ModuleId, node: SyntaxNode): JoinedBody | undefined {
     return bodyHolding(this.#checker, module, node);
   }
 

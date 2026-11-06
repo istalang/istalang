@@ -18,10 +18,12 @@ export const signatureHelp: Provider = {
         parameters: parameters.map(([start, end]) => ({ label: [start, end] as [number, number] })),
         activeParameter: activeParameter ?? null,
       }));
+      const active = help.active === undefined ? undefined : help.signatures[help.active];
+      // The protocol has no "none": a help with no active signature leaves it to the client.
       return {
         signatures,
-        activeSignature: help.active,
-        activeParameter: help.signatures[help.active]?.activeParameter ?? null,
+        ...(help.active === undefined ? {} : { activeSignature: help.active }),
+        activeParameter: active?.activeParameter ?? null,
       };
     });
   },

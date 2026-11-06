@@ -6,7 +6,7 @@ import { signatureHelpAt } from './signature-help.ts';
 function help(...lines: readonly string[]) {
   const { program, module, offset } = programAt(...lines);
   const found = signatureHelpAt(program, module, offset);
-  const active = found?.signatures[found.active];
+  const active = found?.active === undefined ? undefined : found.signatures[found.active];
   const parameter = active?.activeParameter;
   const span = parameter === undefined ? undefined : active?.parameters[parameter];
   return active && { label: active.label, parameter: span && active.label.slice(...span) };

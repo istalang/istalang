@@ -54,6 +54,7 @@ import type { FieldRead, FieldReading } from './checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner, TargetStep } from './checked-pattern.ts';
 import type { ConstantForm } from './constant-form.ts';
 import type { LookupQueries } from './denotation.ts';
+import type { JoinedBody } from './joined-body.ts';
 import type { JsonFormQueries } from './json-form.ts';
 import type { FieldPassType, PassRecords } from './passes.ts';
 import { type CheckerOptions, ProgramChecker } from './program-checker.ts';
@@ -308,10 +309,10 @@ export interface CheckedBody extends BodyFacts {
     checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
   ) => CheckedBody;
   /**
-   * The passes of the field loop `header` heads read as one body, as tools read a node inside it
-   * (§4, lookup/pass-views.ts); this body where the loop has no pass.
+   * The body read as one with `others`, the other passes of the field loops around a node (§4),
+   * as tools read the node (lookup/pass-views.ts); with none, the body alone, as tools read it.
    */
-  readonly passesJoined: (header: FieldHeader, rules: TypeRules) => CheckedBody;
+  readonly joinedWith: (others: readonly CheckedBody[], rules: TypeRules) => JoinedBody;
 }
 
 /**

@@ -29,10 +29,10 @@ import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { Hold } from '../../syntax/statements.ts';
 import { nestsFunction, parentOf, type SyntaxNode } from '../../syntax/tree.ts';
 import type { NamedType } from '../../syntax/types.ts';
-import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import type { Denotation } from '../denotation.ts';
 import { declaredOutsideBodies } from '../expressions/names.ts';
+import type { JoinedBody } from '../joined-body.ts';
 import { namedType } from '../resolution/named.ts';
 import { associatedDeclarationsOn } from '../traits/known-constraints.ts';
 import { declaredFieldOf } from '../types/declared-fields.ts';
@@ -49,7 +49,7 @@ interface NameSite {
   readonly name: Identifier;
   /** The nodes holding the name, innermost first. */
   readonly holders: readonly SyntaxNode[];
-  readonly body: CheckedBody | undefined;
+  readonly body: JoinedBody | undefined;
 }
 
 /** What `name` of `module` denotes (denotation.ts `denotationsOf`). */
@@ -170,14 +170,19 @@ function functionDenotation(declaration: FunctionDeclaration, type: Type | undef
   return { declared: { kind: 'function', declaration }, type };
 }
 
-/** The function the checker resolved `site` to, `call` or a function value; undefined for none. */
+/**
+ * The functions the checker resolved `site` to, `call` or a function value: one, or in a field
+ * loop each one a pass resolved it to; undefined for none.
+ */
 function calledAt(
   { body }: NameSite,
   call: Call | MemberAccess | Identifier,
   type: Type | undefined,
 ): readonly Denotation[] | undefined {
-  const resolved = body?.resolved.get(call);
-  return resolved === undefined ? undefined : [functionDenotation(resolved.function, type)];
+  const calls = body?.callsAt(call) ?? [];
+  return calls.length === 0
+    ? undefined
+    : calls.map((each) => functionDenotation(each.function, type));
 }
 
 /** A member: a field read, a method, a static function or a namespace's, or a qualified part. */
@@ -247,24 +252,23 @@ function heldFunction(site: NameSite, hold: Hold): readonly Denotation[] {
   return own?.name?.text === name.text ? denotationsOf(checker, module, own.name) : [];
 }
 
-/** The parameter a named argument names, of the function its call resolved to. */
+/** The parameter a named argument names, of each function its call resolved to. */
 function parameterNamed(site: NameSite, call: SyntaxNode | undefined): readonly Denotation[] {
   const { checker, name } = site;
-  const resolved = call?.kind === 'Call' ? site.body?.resolved.get(call) : undefined;
-  if (resolved === undefined) {
-    return [];
-  }
-  const parameter = checker
-    .parametersOf(resolved.function)
-    .find(({ node }) => node.name?.text === name.text);
-  const declaring = parameter?.node.name;
-  const entity =
-    declaring === undefined
-      ? undefined
-      : checker.bindings.entityOf(checker.moduleOf(resolved.function), declaring);
-  return entity?.kind === 'variable'
-    ? [{ declared: { kind: 'variable', entity }, type: parameter?.type }]
-    : [];
+  const calls = call?.kind === 'Call' ? (site.body?.callsAt(call) ?? []) : [];
+  return calls.flatMap(({ function: called }): readonly Denotation[] => {
+    const parameter = checker
+      .parametersOf(called)
+      .find(({ node }) => node.name?.text === name.text);
+    const declaring = parameter?.node.name;
+    const entity =
+      declaring === undefined
+        ? undefined
+        : checker.bindings.entityOf(checker.moduleOf(called), declaring);
+    return entity?.kind === 'variable'
+      ? [{ declared: { kind: 'variable', entity }, type: parameter?.type }]
+      : [];
+  });
 }
 
 /** The field a field's declaring name declares, as its owner's layout has it. */

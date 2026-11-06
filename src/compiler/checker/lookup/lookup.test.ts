@@ -14,8 +14,9 @@ import type { ModuleId } from '../../program/program.ts';
 import type { Call } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { nodesUnder, parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
-import { type CheckedBody, type Checker, checkProgram } from '../check.ts';
+import { type Checker, checkProgram } from '../check.ts';
 import type { Denotation } from '../denotation.ts';
+import type { JoinedBody } from '../joined-body.ts';
 import type { ResolvedSite } from '../resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { answersAt } from './lookup.test-kit.ts';
@@ -67,26 +68,22 @@ function callWith(callee: SyntaxNode | undefined, call: SyntaxNode | undefined):
 function chosenFor(
   { checker, module, tree }: CheckedModule,
   name: Identifier,
-  body: CheckedBody,
+  body: JoinedBody,
 ): readonly ((denotation: Denotation) => boolean)[] {
   const parent = parentOf(tree, name);
   const grandparent = parent === undefined ? undefined : parentOf(tree, parent);
   const member = parent?.kind === 'MemberAccess' && parent.member === name ? parent : undefined;
   const site: ResolvedSite =
     callWith(name, parent) ?? callWith(member, grandparent) ?? member ?? name;
-  const called = body.resolved.get(site);
+  const called = body.callsAt(site);
   const field = body.namedFieldOf(name);
   const read = member === undefined ? undefined : body.fieldReadOf(member);
   const entity = checker.bindings.entityOf(module, name);
-  const isOverloadChosen = entity?.kind === 'functions' && called !== undefined;
+  const isOverloadChosen = entity?.kind === 'functions' && called.length > 0;
   return [
-    ...(called === undefined
-      ? []
-      : [
-          denotes(
-            (declared) => 'declaration' in declared && declared.declaration === called.function,
-          ),
-        ]),
+    ...called.map((call) =>
+      denotes((declared) => 'declaration' in declared && declared.declaration === call.function),
+    ),
     ...(field === undefined && read === undefined
       ? []
       : [denotes((declared) => declared.kind === 'field' && declared.field.name === name.text)]),
@@ -102,7 +99,7 @@ function denotes(
 }
 
 function boundAs(
-  body: CheckedBody,
+  body: JoinedBody,
   name: Identifier,
   entity: Entity,
 ): readonly ((denotation: Denotation) => boolean)[] {

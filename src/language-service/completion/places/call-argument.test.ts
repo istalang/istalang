@@ -72,10 +72,15 @@ function callSites(main: MainProgram): readonly CallSite[] {
       return [];
     }
     const body = checker.lookup.bodyHolding(module, node);
-    const resolved = body?.resolved.get(node);
+    const [resolved, ...others] = body?.callsAt(node) ?? [];
     const takesReference =
       resolved && checker.parametersOf(resolved.function).some((p) => p.reference);
-    if (resolved === undefined || takesReference || (body?.candidatesAt(node).length ?? 0) > 1) {
+    if (
+      resolved === undefined ||
+      others.length > 0 ||
+      takesReference ||
+      (body?.candidatesAt(node).length ?? 0) > 1
+    ) {
       return [];
     }
     const firstNamed = node.arguments.findIndex(

@@ -13,6 +13,7 @@ import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/field-defaul
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import type { CheckedBody } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
+import type { JoinedBody } from '../joined-body.ts';
 import { passesAround } from './pass-views.ts';
 
 /** What finding a holding body reads of the checker. */
@@ -46,7 +47,7 @@ export function bodyHolding(
   checker: Holders,
   module: ModuleId,
   node: SyntaxNode,
-): CheckedBody | undefined {
+): JoinedBody | undefined {
   const path = ancestorsOf(checker.inputs.treeOf(module), node);
   const annotation = path.find((each): each is Annotation => each.kind === 'Annotation');
   const body =

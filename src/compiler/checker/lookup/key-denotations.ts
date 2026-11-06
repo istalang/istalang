@@ -31,7 +31,9 @@ export function keyDenotationsOf(
   module: ModuleId,
   literal: StringLiteral,
 ): readonly Denotation[] {
-  return keyedFieldDenotations(checker, keyOwnerAt(checker, module, literal), literal.value);
+  return keyOwnersAt(checker, module, literal).flatMap((owner) =>
+    keyedFieldDenotations(checker, owner, literal.value),
+  );
 }
 
 /** The field of `owner`, the struct a key is of, that the key `key` names; none for no such field. */
@@ -45,27 +47,30 @@ export function keyedFieldDenotations(
   return field === undefined ? [] : [{ declared: { kind: 'field', field }, type: field.type }];
 }
 
-/** The struct `literal` is a key of: its type's, in a type; else what checking its body recorded. */
-function keyOwnerAt(
+/**
+ * The structs `literal` is a key of: its type's, in a type, one for each function a call taking it
+ * as a type argument calls; else what checking its body recorded.
+ */
+function keyOwnersAt(
   checker: CheckerContext,
   module: ModuleId,
   literal: StringLiteral,
-): Type | undefined {
+): readonly Type[] {
   const tree = checker.inputs.treeOf(module);
   const parent = parentOf(tree, literal);
   if (parent?.kind === 'LiteralType') {
-    return typeKeyOwner(checker, module, tree, parent);
+    return typeKeyOwners(checker, module, tree, parent);
   }
-  return bodyHolding(checker, module, literal)?.keyOwnerOf(literal);
+  return [bodyHolding(checker, module, literal)?.keyOwnerOf(literal) ?? []].flat();
 }
 
-/** The struct a literal type is a key of: `S["region"]`'s, or a type argument's within its keys. */
-function typeKeyOwner(
+/** The structs a literal type is a key of: `S["region"]`'s, or a type argument's within its keys. */
+function typeKeyOwners(
   checker: CheckerContext,
   module: ModuleId,
   tree: SyntaxTree,
   literal: LiteralType,
-): Type | undefined {
+): readonly Type[] {
   let key: SyntaxNode = literal;
   let parent = parentOf(tree, literal);
   while (parent?.kind === 'UnionType' || parent?.kind === 'ParenthesizedType') {
@@ -73,40 +78,61 @@ function typeKeyOwner(
     parent = parentOf(tree, parent);
   }
   if (parent?.kind === 'IndexedType') {
-    return parent.key === key ? checker.resolvedTypeOf(parent.owner) : undefined;
+    return parent.key === key ? [checker.resolvedTypeOf(parent.owner) ?? []].flat() : [];
   }
-  const given = parent === undefined ? undefined : instantiationAt(checker, module, tree, parent);
   const index =
     parent?.kind === 'NamedType' || parent?.kind === 'Call'
       ? parent.typeArguments.indexOf(key)
       : -1;
-  const parameter = given === undefined ? undefined : typeParametersOf(given.parameters)[index];
-  return parameter === undefined || given === undefined
-    ? undefined
-    : givenKeysOwner(
+  const given = parent === undefined ? [] : instantiationsAt(checker, module, tree, parent);
+  return given.flatMap(({ parameters, typeArguments }) => {
+    const parameter = typeParametersOf(parameters)[index];
+    const owner =
+      parameter &&
+      givenKeysOwner(
         checker.fitting,
         parameterType(parameter),
-        substitutionFor(given.parameters, given.typeArguments),
+        substitutionFor(parameters, typeArguments),
       );
+    return owner ?? [];
+  });
+}
+
+/** What a type or call taking type arguments instantiates, with the arguments it was given. */
+interface Instantiated {
+  readonly parameters: TypeParameters;
+  readonly typeArguments: readonly Type[];
 }
 
 /**
  * What `node`, a type or call taking type arguments, instantiates, with the arguments it was given:
- * a nominal type or an alias written in a type, a struct literal's type, a generic call.
+ * a nominal type or an alias written in a type, a struct literal's type, or each function a generic
+ * call calls.
  */
-function instantiationAt(
+function instantiationsAt(
   checker: CheckerContext,
   module: ModuleId,
   tree: SyntaxTree,
   node: SyntaxNode,
-): { readonly parameters: TypeParameters; readonly typeArguments: readonly Type[] } | undefined {
+): readonly Instantiated[] {
   if (node.kind === 'Call') {
-    const body = bodyHolding(checker, module, node);
-    const resolved = body?.resolved.get(node);
-    return resolved?.kind === 'function'
-      ? { parameters: resolved.function.typeParameters, typeArguments: resolved.typeArguments }
-      : undefined;
+    const calls = bodyHolding(checker, module, node)?.callsAt(node) ?? [];
+    return calls.flatMap((call) =>
+      call.kind === 'function'
+        ? [{ parameters: call.function.typeParameters, typeArguments: call.typeArguments }]
+        : [],
+    );
   }
+  return [instantiationOfType(checker, module, tree, node) ?? []].flat();
+}
+
+/** What `node`, a nominal type or an alias written in a type or naming a literal's, instantiates. */
+function instantiationOfType(
+  checker: CheckerContext,
+  module: ModuleId,
+  tree: SyntaxTree,
+  node: SyntaxNode,
+): Instantiated | undefined {
   if (node.kind !== 'NamedType') {
     return undefined;
   }

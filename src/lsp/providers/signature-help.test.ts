@@ -24,7 +24,9 @@ import type { Call } from '../../compiler/syntax/expressions/index.ts';
 import { spanIn } from '../../compiler/syntax/positions.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
 import { wellKnown } from '../../language/well-known.ts';
-import type { SourceText } from '../../text/source-text.ts';
+import { signatureOf } from '../../language-service/signatures.ts';
+import { unreachable } from '../../structures/unreachable.ts';
+import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import {
   corpusClient,
   programDocuments as documents,
@@ -42,14 +44,30 @@ beforeAll(async () => {
 });
 
 /** What the active signature must be, at each written argument: its label's start, and the parameter's. */
-interface Expected {
+interface Active {
+  readonly kind: 'active';
   readonly label: (label: string) => boolean;
   readonly parameter: (argument: number) => string | undefined;
 }
 
+/** A call a field loop's passes resolve to several functions: each one's signature, none active. */
+interface NoneActive {
+  readonly kind: 'none';
+  readonly labels: readonly string[];
+}
+
+type Expected = Active | NoneActive;
+
 function expectedAt(module: ModuleId, call: Call): Expected | undefined {
   const body = checker.lookup.bodyHolding(module, call);
-  const resolved = body?.resolved.get(call);
+  const calls = body?.callsAt(call) ?? [];
+  const [resolved, ...others] = calls;
+  if (others.length > 0) {
+    return {
+      kind: 'none',
+      labels: calls.map((each) => signatureOf(checker, each.function).label),
+    };
+  }
   if (resolved !== undefined) {
     const bound = parameterOfArgument(resolved.binding);
     const receivers = resolved.receiver === undefined ? 0 : 1;
@@ -59,6 +77,7 @@ function expectedAt(module: ModuleId, call: Call): Expected | undefined {
         : '',
     );
     return {
+      kind: 'active',
       label: (label) => label.includes(`${resolved.function.name.text}`),
       parameter: (argument) => {
         const index = bound.get(argument + receivers);
@@ -75,6 +94,7 @@ function expectedAt(module: ModuleId, call: Call): Expected | undefined {
     return undefined;
   }
   return {
+    kind: 'active',
     // Spelled out, never as an alias the type was written through: help marks its parameters.
     label: (label) => label === typeText({ ...type, alias: undefined }),
     parameter: (argument) => {
@@ -82,6 +102,22 @@ function expectedAt(module: ModuleId, call: Call): Expected | undefined {
       return slot === undefined ? undefined : `${slot.reference ? '&' : ''}${typeText(slot.type)}`;
     },
   };
+}
+
+/** Where `help` at the written argument `argument` isn't what `expected` says; empty where it is. */
+function mismatchOf(help: SignatureHelp | null, expected: Expected, argument: number): string {
+  if (expected.kind === 'none') {
+    const shown = help?.signatures.map((signature) => signature.label) ?? [];
+    const fits =
+      help?.activeSignature === undefined &&
+      help?.activeParameter === null &&
+      expected.labels.every((each) => shown.includes(each));
+    return fits ? '' : `${JSON.stringify(help)} ≠ none active of ${expected.labels.join(', ')}`;
+  }
+  const { label, parameter } = activeOf(help);
+  const wanted = expected.parameter(argument);
+  const fits = expected.label(label) && (wanted === undefined || parameter.startsWith(wanted));
+  return fits ? '' : `${label} [${parameter}] ≠ ${wanted}`;
 }
 
 function activeOf(help: SignatureHelp | null) {
@@ -151,18 +187,12 @@ describe('signature help over the corpus', () => {
     const wrong = await Promise.all(
       asked.map(async ({ at, index, expected }) => {
         const position = rangeOf(tree.source, { start: at, end: at }).start;
-        const { label, parameter } = activeOf(
-          await client.connection.sendRequest(SignatureHelpRequest.type, {
-            textDocument: { uri },
-            position,
-          }),
-        );
-        const wanted = expected.parameter(index);
-        const fits =
-          expected.label(label) && (wanted === undefined || parameter.startsWith(wanted));
-        return fits
-          ? []
-          : [`${position.line}:${position.character} ${label} [${parameter}] ≠ ${wanted}`];
+        const help = await client.connection.sendRequest(SignatureHelpRequest.type, {
+          textDocument: { uri },
+          position,
+        });
+        const mismatch = mismatchOf(help, expected, index);
+        return mismatch === '' ? [] : [`${position.line}:${position.character} ${mismatch}`];
       }),
     );
     expect(wrong.flat()).toEqual([]);
@@ -170,5 +200,36 @@ describe('signature help over the corpus', () => {
 
   it.each(argumentEnds)('$uri $at, the call left open', async ({ uri, source, end }) => {
     expect(await leftOpenMismatch(uri, source, end)).toEqual([]);
+  });
+
+  it("marks none active where a field loop's passes call different functions", async () => {
+    const [{ uri, tree } = unreachable('No corpus document.')] = documents.filter((each) =>
+      each.uri.startsWith('file:'),
+    );
+    const text = [
+      'struct Pair:',
+      '  a: Int',
+      '  b: String',
+      'fn show(x: Int) -> Int: 1',
+      'fn show(x: String) -> Int: 2',
+      'fn f(p: Pair) -> Int:',
+      '  let n = 0',
+      '  for k, v in ...p:',
+      '    n += show(v)',
+      '  n',
+      '',
+    ].join('\n');
+    const at = text.indexOf('show(v)') + 'show('.length;
+    await client.change(uri, text);
+    const help = await client.connection.sendRequest(SignatureHelpRequest.type, {
+      textDocument: { uri },
+      position: rangeOf(createSourceText(uri, text), { start: at, end: at }).start,
+    });
+    await client.change(uri, tree.source.text);
+    const none: NoneActive = {
+      kind: 'none',
+      labels: ['fn show(x: Int) -> Int', 'fn show(x: String) -> Int'],
+    };
+    expect(mismatchOf(help, none, 0)).toBe('');
   });
 });

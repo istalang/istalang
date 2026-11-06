@@ -16,6 +16,14 @@ const label = "x"
 fn f(a: Int, b: Int = zero) -> Int: a + b
 `;
 
+/**
+ * Which body a view reads: its own labels, which the view tools read at a node answers with
+ * unchanged where no field loop's passes join.
+ */
+function bodyRead(body: { readonly labels: object } | undefined): object | undefined {
+  return body?.labels;
+}
+
 describe('the body holding a node', () => {
   const { checker, module, named, first } = checkedMain(text);
   const { lookup } = checker;
@@ -27,22 +35,26 @@ describe('the body holding a node', () => {
   const shape = first('EnumDeclaration');
 
   it("is a function's body, or its parameters' defaults", () => {
-    expect(f && lookup.bodyHolding(module, named('a', 1))).toBe(f && checker.bodyOf(f));
-    expect(f && lookup.bodyHolding(module, named('zero', 4))).toBe(f && checker.defaultsOf(f));
+    expect(bodyRead(lookup.bodyHolding(module, named('a', 1)))).toBe(
+      bodyRead(f && checker.bodyOf(f)),
+    );
+    expect(bodyRead(lookup.bodyHolding(module, named('zero', 4)))).toBe(
+      bodyRead(f && checker.defaultsOf(f)),
+    );
   });
 
   it("is a constant's, and a struct's or a variant's field defaults", () => {
-    expect(twoDeclaration && lookup.bodyHolding(module, named('zero', 1))).toBe(
-      twoDeclaration && checker.constantBodyOf(twoDeclaration),
+    expect(bodyRead(lookup.bodyHolding(module, named('zero', 1)))).toBe(
+      bodyRead(twoDeclaration && checker.constantBodyOf(twoDeclaration)),
     );
     const pointFields = point?.kind === 'StructDeclaration' ? fieldsFunctionOf(point) : undefined;
-    expect(lookup.bodyHolding(module, named('zero', 2))).toBe(
-      pointFields && checker.defaultsOf(pointFields),
+    expect(bodyRead(lookup.bodyHolding(module, named('zero', 2)))).toBe(
+      bodyRead(pointFields && checker.defaultsOf(pointFields)),
     );
     const dot = shape?.variants[0];
     const dotFields = shape && dot?.kind === 'Variant' ? fieldsFunctionOf(shape, dot) : undefined;
-    expect(lookup.bodyHolding(module, named('zero', 3))).toBe(
-      dotFields && checker.defaultsOf(dotFields),
+    expect(bodyRead(lookup.bodyHolding(module, named('zero', 3)))).toBe(
+      bodyRead(dotFields && checker.defaultsOf(dotFields)),
     );
   });
 
@@ -50,7 +62,9 @@ describe('the body holding a node', () => {
     const annotation = first('Annotation');
     const body = lookup.bodyHolding(module, named('label', 1));
     expect(body).toBeDefined();
-    expect(body).toBe(annotation && checker.annotations.bodyOf(module, annotation));
+    expect(bodyRead(body)).toBe(
+      bodyRead(annotation && checker.annotations.bodyOf(module, annotation)),
+    );
   });
 
   it('is none for a signature or a declaring name', () => {

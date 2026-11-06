@@ -79,7 +79,7 @@ export function answersAt(
     body?.typeOf(node as Expression),
     body?.patternOf(node as Pattern),
     body?.candidatesAt(node as ResolvedSite),
-    body?.resolved.get(node as ResolvedSite),
+    body?.callsAt(node as ResolvedSite),
   ];
   if (node.kind === 'Identifier') {
     answers.push(

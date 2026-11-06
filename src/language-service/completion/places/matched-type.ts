@@ -23,6 +23,7 @@ import {
   patternTypeOf,
 } from '../../../compiler/checker/types/named-types.ts';
 import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type.ts';
+import { unionOf } from '../../../compiler/checker/types/unions.ts';
 import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
 import type { Parameter } from '../../../compiler/syntax/expressions/index.ts';
 import { type Identifier, lastName } from '../../../compiler/syntax/node.ts';
@@ -274,8 +275,9 @@ function subjectType(
 
 /**
  * What the parameter whose pattern holds the cursor has, as checked: a declared function's
- * signature gives it, and a lambda's as the body holding it checked the lambda. The pattern reaches
- * past the cursor, so the checked tree's parameter is the one there.
+ * signature gives it, and a lambda's as the body holding it checked the lambda, the union of each
+ * pass's in a field loop (§4). The pattern reaches past the cursor, so the checked tree's parameter
+ * is the one there.
  */
 function parameterTypeAt({ cursor }: Link<SyntaxNode>): Type | undefined {
   const { checker, module, tree, offset } = cursor;
@@ -283,12 +285,17 @@ function parameterTypeAt({ cursor }: Link<SyntaxNode>): Type | undefined {
     (node): node is Parameter => node.kind === 'Parameter',
   );
   const holder = parameter === undefined ? undefined : parentOf(tree, parameter);
-  const declared = holder?.kind === 'FunctionDeclaration' ? checker.parametersOf(holder) : [];
+  const declared = holder?.kind === 'FunctionDeclaration' ? [checker.parametersOf(holder)] : [];
   const nested =
     holder?.kind === 'Lambda'
-      ? (checker.lookup.bodyHolding(module, holder)?.functionOf(holder)?.parameters ?? [])
+      ? (checker.lookup.bodyHolding(module, holder)?.functionsOf(holder) ?? []).map(
+          (checked) => checked.parameters,
+        )
       : [];
-  return [...declared, ...nested].find(({ node }) => node === parameter)?.type;
+  const types = [...declared, ...nested].flatMap(
+    (parameters) => parameters.find(({ node }) => node === parameter)?.type ?? [],
+  );
+  return types.length === 0 ? undefined : unionOf(types, checker.typeRules);
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.

@@ -22,7 +22,8 @@ import type { StringLiteral } from '../syntax/expressions/literals.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types.ts';
-import type { CheckedBody, VariantMember } from './check.ts';
+import type { VariantMember } from './check.ts';
+import type { JoinedBody } from './joined-body.ts';
 import type { Constraint, FieldMember, Type } from './types/type.ts';
 
 /** What names a type: a declared one, a primitive, or `Self` inside a trait. */
@@ -78,7 +79,7 @@ export interface LookupQueries {
    * The checked body holding `node` of `module`: a function's, its parameters' defaults, a
    * struct's or variant's field defaults, a constant's, or an annotation's; undefined outside them.
    */
-  readonly bodyHolding: (module: ModuleId, node: SyntaxNode) => CheckedBody | undefined;
+  readonly bodyHolding: (module: ModuleId, node: SyntaxNode) => JoinedBody | undefined;
   /**
    * The type the written type `node` of `module` denotes; undefined where checking resolved none,
    * such as a pattern's or a struct literal's type, or a constraint's trait.

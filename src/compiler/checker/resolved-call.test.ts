@@ -29,7 +29,7 @@ describe('a checked body', () => {
         return (
           node.kind === 'Call' &&
           body !== undefined &&
-          body.resolved.has(node) === body.valueCalls.has(node)
+          body.callsAt(node).length > 0 === body.valueCalls.has(node)
         );
       });
     });

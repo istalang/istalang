@@ -10,7 +10,8 @@
  *   and name, against each function it chose among.
  */
 
-import type { CheckedBody, SignatureParameter } from '../compiler/checker/check.ts';
+import type { SignatureParameter } from '../compiler/checker/check.ts';
+import type { JoinedBody } from '../compiler/checker/joined-body.ts';
 import { type FunctionDeclaration, isMethod } from '../compiler/syntax/declarations.ts';
 import type { Call } from '../compiler/syntax/expressions/index.ts';
 import { spanIn } from '../compiler/syntax/positions.ts';
@@ -23,8 +24,8 @@ import { closingBracketsOf, codeTokensOf } from './tokens.ts';
 /** A call a cursor writes an argument of. */
 export interface CallAt {
   readonly call: Call;
-  /** The checked body holding the call. */
-  readonly body: CheckedBody;
+  /** The checked body holding the call, as tools read it there. */
+  readonly body: JoinedBody;
   /**
    * The number of the written argument at the cursor: the one it is in, or after but for
    * whitespace, else the next. An argument not written yet, between two commas, is a `Missing` one.
@@ -42,20 +43,22 @@ export function callAt(
   return call && body && { call, body, argument: argumentAt(tree, call, offset) };
 }
 
-/** The functions a call of a function may call: the one it resolved to, then those it chose among. */
-export function calleesOf(body: CheckedBody, call: Call): readonly FunctionDeclaration[] {
-  const resolved = body.resolved.get(call);
+/**
+ * The functions a call of a function may call: those it resolved to, one or in a field loop each
+ * pass's, then those it chose among.
+ */
+export function calleesOf(body: JoinedBody, call: Call): readonly FunctionDeclaration[] {
   return [
     ...new Set([
-      ...(resolved === undefined ? [] : [resolved.function]),
+      ...body.callsAt(call).map((resolved) => resolved.function),
       ...body.candidatesAt(call),
     ]),
   ];
 }
 
 /**
- * The parameter the argument at `offset` gives, of the function its call resolved to, else of the
- * first it chose among; undefined in a function value's call, or where no parameter takes it.
+ * The parameter the argument at `offset` gives, of the first function its call resolved to, else
+ * of the first it chose among; undefined in a function value's call, or where no parameter takes it.
  */
 export function argumentParameterAt(
   checked: CheckedModule,
