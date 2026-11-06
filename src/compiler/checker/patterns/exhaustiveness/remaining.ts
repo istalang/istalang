@@ -8,10 +8,10 @@
  * `case false:` of a `Bool` member) counts once they all have run.
  */
 
-import type { Type } from '../types/type/index.ts';
-import { unionOfNormalized } from '../types/unions/unions.ts';
+import type { Type } from '../../types/type/index.ts';
+import { unionOfNormalized } from '../../types/unions/unions.ts';
+import type { ValuePart } from '../parts.ts';
 import { analyze, anyShape, type CaseShape } from './exhaustiveness.ts';
-import type { ValuePart } from './parts.ts';
 import { memberShape, type ShapeChecker, signatureOf } from './shapes.ts';
 
 /** What remains of `subject` for the case after `cases`, those of them without a guard counting. */

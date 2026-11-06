@@ -1,8 +1,8 @@
 /**
  * What a pattern selects of a value before taking it apart (§3.10, §3.11): against an `any` value,
- * the type a downcast names (downcasts.ts); against a union's, the members it matches (members.ts).
- * Either is a test, then the rest of the pattern against the value it selected, so the walk takes
- * both alike (walk.ts).
+ * the type a downcast names (constructs/downcasts.ts); against a union's, the members it matches
+ * (members.ts). Either is a test, then the rest of the pattern against the value it selected, so
+ * the walk takes both alike (walk.ts).
  *
  * - A name that binds selects nothing, nor does a name naming the part's own type, which matches
  *   every value of it: an `any` type's, or a union's through its alias.
@@ -14,7 +14,7 @@
  * - A literal leaves its literal type to what binds it, and type arguments are written only where a
  *   union's member is selected (§3.11).
  * - The types inside an `any` type are an open set, so a downcast acts as a guard for exhaustiveness;
- *   a union's members are a closed set, each a constructor (shapes.ts).
+ *   a union's members are a closed set, each a constructor (exhaustiveness/shapes.ts).
  */
 
 import { lastName } from '../../syntax/node.ts';

@@ -14,7 +14,7 @@
  * - Tests come out in the order lowering runs them: a variant is tested before its fields are read.
  * - An or-pattern walks each alternative on its own, into one `or` test. Its alternatives bind the
  *   first's variables (binder), so a binding is named by its variable's declaring name, and the
- *   alternatives must agree on the names and their types (alternatives.ts). An alternative its
+ *   alternatives must agree on the names and their types (constructs/alternatives.ts). An alternative its
  *   part's type rules out (a `never` test, §3.11) is left out; with none left, the pattern never
  *   matches.
  * - What a pattern selects of its part comes first (selections.ts): a downcast of an `any` value,
@@ -46,13 +46,13 @@ import {
 } from '../surface/checked-pattern.ts';
 import type { Type } from '../types/type/index.ts';
 import { errorType, isPrimitive, neverType } from '../types/type/primitives.ts';
-import { partSelected, sameNames } from './alternatives.ts';
-import { takeArray } from './arrays.ts';
-import { anyShape, nothingShape, type Shape } from './exhaustiveness.ts';
+import { partSelected, sameNames } from './constructs/alternatives.ts';
+import { takeArray } from './constructs/arrays.ts';
+import { isStructNotKnown, restBinding, takeFieldsByName } from './constructs/struct-fields.ts';
+import { anyShape, nothingShape, type Shape } from './exhaustiveness/exhaustiveness.ts';
 import { type PatternScope, type ValuePart, variantFieldStep } from './parts.ts';
 import type { Leaf, PatternTests, Selection } from './pattern-tests.ts';
 import { literalPart, refuseTypeArguments, selectionOf } from './selections.ts';
-import { isStructNotKnown, restBinding, takeFieldsByName } from './struct-fields.ts';
 import { constructed, type Taking, takeApart, takeFields, takeTargets } from './taking.ts';
 
 /** A pattern as walked. */

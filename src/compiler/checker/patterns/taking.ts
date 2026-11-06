@@ -8,7 +8,8 @@
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Destructuring, FieldTarget } from '../../syntax/statements.ts';
 import type { FieldStep, PartStep } from '../surface/checked-pattern.ts';
-import { anyShape, type Shape } from './exhaustiveness.ts';
+import { anyShape, type Shape } from './exhaustiveness/exhaustiveness.ts';
+import { structKey, tupleKey } from './exhaustiveness/shapes.ts';
 import {
   elementParts,
   fieldPart,
@@ -18,7 +19,6 @@ import {
   type TakenFields,
   type ValuePart,
 } from './parts.ts';
-import { structKey, tupleKey } from './shapes.ts';
 
 /**
  * How a walk takes the targets a value is taken apart into: where it reports, and each target.

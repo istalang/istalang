@@ -19,7 +19,7 @@
  * - An array pattern tests its part's length, then reads its items and rest, all through prelude
  *   calls made here, at the pattern: `length`, `compare` against the fixed count when there is a
  *   rest, and `_patternItem` and `_patternRest` (the prelude's, so no program's replaces them).
- * - A range pattern's leaf is ranges.ts's.
+ * - A range pattern's leaf is constructs/ranges.ts's.
  */
 
 import { arrayPatternFunctions } from '../../../language/well-known.ts';
@@ -50,8 +50,11 @@ import { comparable, decidedEquality, fitEqualSides, isKnown } from '../types/un
 import { optionalInner } from '../types/unions/unions.ts';
 import { arrayElement } from '../types/well-known.ts';
 import { namesOwnType, patternTypeOf } from '../types/written/pattern-types.ts';
-import { downcastOf } from './downcasts.ts';
-import { anyShape } from './exhaustiveness.ts';
+import { downcastOf } from './constructs/downcasts.ts';
+import { compareFunction, rangeLeaf } from './constructs/ranges.ts';
+import { anyShape } from './exhaustiveness/exhaustiveness.ts';
+import { subjectPart } from './exhaustiveness/remaining.ts';
+import { literalShape, memberShape, nullaryShape } from './exhaustiveness/shapes.ts';
 import { bodyScope, otherTypeNamed, type ValuePart } from './parts.ts';
 import {
   type ArrayPart,
@@ -61,9 +64,6 @@ import {
   ruledOutLeaf,
   type VariantPart,
 } from './pattern-tests.ts';
-import { compareFunction, rangeLeaf } from './ranges.ts';
-import { subjectPart } from './remaining.ts';
-import { literalShape, memberShape, nullaryShape } from './shapes.ts';
 import { type WalkedPattern, walkPattern } from './walk.ts';
 
 /** The patterns of one body as checked, for lowering. */
@@ -84,9 +84,9 @@ export class CheckedPatterns implements PatternRecord {
 }
 
 /**
- * Checks `pattern` against a value of `subject`, declaring the names it binds, which a `match`
- * case binds of what earlier cases left of it (`remaining`, remaining.ts); its shape is undefined
- * when it acts as a guard for exhaustiveness.
+ * Checks `pattern` against a value of `subject`, declaring the names it binds, which a `match` case
+ * binds of what earlier cases left of it (`remaining`, exhaustiveness/remaining.ts); its shape is
+ * undefined when it acts as a guard for exhaustiveness.
  */
 export function checkPattern(
   context: BodyContext,

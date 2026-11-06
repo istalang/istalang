@@ -174,7 +174,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 #### 4.2 `src/compiler/checker/patterns/`
 - **Two stages conflated in `exhaustiveness.ts` `Shape` union & string-encoded array lengths (D224):**
-  - `Shape` in `patterns/exhaustiveness.ts` combines pre-normalization AST shapes (`or`, `array`) with matrix-specialization shapes (`any`, `constructor`), forcing `Matrix.useful`, `specialize`, and `shapes.ts` `witnessText` to guard against `array` / `or` with `unreachable`.
+  - `Shape` in `patterns/exhaustiveness/exhaustiveness.ts` combines pre-normalization AST shapes (`or`, `array`) with matrix-specialization shapes (`any`, `constructor`), forcing `Matrix.useful`, `specialize`, and `shapes.ts` `witnessText` to guard against `array` / `or` with `unreachable`.
   - Array-length constructors encode their semantics in strings (`[3]` vs. `[3+]`) and parse them back via `isLongerKey` (`key.endsWith('+]')`).
 - **Side-channel `walk.downcasts` map and duplicate `unparenthesized` in `patterns/walk.ts` (D214):**
   - `takeDowncast` writes the narrowed `ValuePart` into `walk.downcasts` keyed by AST node, and `AsPattern` reads it back through a file-private `unparenthesized(node: Pattern)` helper instead of `walk.take` returning the matched `ValuePart` directly.

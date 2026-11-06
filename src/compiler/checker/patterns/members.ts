@@ -1,9 +1,9 @@
 /**
  * The members of a union a pattern selects (§3.11): against a union, every pattern that could fail
  * to match tests which member the value is, then matches the rest of itself against that member's
- * value, as a downcast does on an `any` value (downcasts.ts). What a name, a literal or a pattern's
- * kind selects is types/written/pattern-types.ts's rule, which completion reads too; this module applies it
- * to a written pattern and reports what goes wrong.
+ * value, as a downcast does on an `any` value (constructs/downcasts.ts). What a name, a literal or
+ * a pattern's kind selects is types/written/pattern-types.ts's rule, which completion reads too;
+ * this module applies it to a written pattern and reports what goes wrong.
  *
  * - A type pattern, or a literal selecting its own literal member or `None`, says all there is to
  *   match. Any other pattern takes one member's value apart, so it must select exactly one.
@@ -46,15 +46,16 @@ import {
   variantOwners,
 } from '../types/written/pattern-types.ts';
 import { typeOfEntity } from '../types/written/resolve-type.ts';
-import { anyShape } from './exhaustiveness.ts';
+import { anyShape } from './exhaustiveness/exhaustiveness.ts';
+import { memberShape } from './exhaustiveness/shapes.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import { ruledOutSelection, type Selection } from './pattern-tests.ts';
-import { memberShape } from './shapes.ts';
 
 /**
- * The union a part's value is of, whose members a pattern selects among; undefined for a part of
- * no union. What earlier cases took (remaining.ts) narrows only what binds the part: a later case
- * still selects among all the members, and one selecting only those taken is unreachable.
+ * The union a part's value is of, whose members a pattern selects among; undefined for a part of no
+ * union. What earlier cases took (exhaustiveness/remaining.ts) narrows only what binds the part: a
+ * later case still selects among all the members, and one selecting only those taken is
+ * unreachable.
  */
 export function unionPart(part: ValuePart): UnionType | undefined {
   const from = part.narrowedFrom;

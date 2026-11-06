@@ -110,9 +110,11 @@ src/
                                                                  reaches, checked to name a type whose values end where it is written
       calls/                                                     a call in a body: arguments checked against the chosen function, operators,
                                                                  the places a call or an assignment changes
-      patterns/ flow/                                            one walk for every pattern, the member of a union each selects (members.ts),
-                                                                 what a case's binder has left (remaining.ts), and a struct pattern's fields
-                                                                 by name and its rest (struct-fields.ts); the order a body's code runs in, which
+      patterns/ flow/                                            one walk for every pattern, the member of a union each selects (members.ts);
+                                                                 exhaustiveness/: what a `match` leaves unhandled, types' shapes, what a
+                                                                 case's binder has left (remaining.ts); constructs/: each pattern form
+                                                                 the walk dispatches to, a struct pattern's fields by name and its rest
+                                                                 (struct-fields.ts) among them; the order a body's code runs in, which
                                                                  flow rules follow (forward data flow, one table of how each construct runs)
       rules/                                                     semantic rules: derived JSON codecs, annotations, compile-time computation,
                                                                  what externs may take, disposal, must-use, `drop`

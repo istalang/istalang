@@ -16,24 +16,24 @@
  *   looked into.
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
-import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
-import type { Checker } from '../check.ts';
-import type { CheckerContext } from '../context.ts';
-import { unfolded } from '../types/computed-types.ts';
-import { typeKeys } from '../types/identity/type-keys.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import { signedNumberOf } from '../../../syntax/expressions/numbers.ts';
+import type { Checker } from '../../check.ts';
+import type { CheckerContext } from '../../context.ts';
+import { unfolded } from '../../types/computed-types.ts';
+import { typeKeys } from '../../types/identity/type-keys.ts';
 import {
   type FieldMember,
   isMemberParameter,
   type LiteralValue,
   type Type,
   type UnionType,
-} from '../types/type/index.ts';
-import { isPrimitive } from '../types/type/primitives.ts';
-import { typeText } from '../types/type-text.ts';
-import { hasOneValue, membersOf } from '../types/unions/unions.ts';
-import { arrayElement } from '../types/well-known.ts';
+} from '../../types/type/index.ts';
+import { isPrimitive } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type-text.ts';
+import { hasOneValue, membersOf } from '../../types/unions/unions.ts';
+import { arrayElement } from '../../types/well-known.ts';
 import type { ConstructorOf, Shape, Signature, WitnessShape } from './exhaustiveness.ts';
 
 /**

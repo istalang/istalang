@@ -19,7 +19,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 ### Established Reference Patterns Already in the Codebase
 
 - **`ValueSemantics<Value>` (`src/language/values.ts`)**: Parameterized by `ValueView<Value>` (`shapeOf`, `sameHead`, `headKey`), allowing runtime values (`src/definition/equality.ts`) and compile-time constant forms (`src/compiler/checker/constant-form.ts`) to share one implementation of `==`, structural hashing, and map-entry insertion ordering.
-- **Exhaustiveness Matrix (`src/compiler/checker/patterns/exhaustiveness.ts`)**: Maranget’s usefulness algorithm is parameterized over `Signature<T>` and `Shape`, free of AST or `Checker` types.
+- **Exhaustiveness Matrix (`src/compiler/checker/patterns/exhaustiveness/exhaustiveness.ts`)**: Maranget’s usefulness algorithm is parameterized over `Signature<T>` and `Shape`, free of AST or `Checker` types.
 - **Iterative Tarjan SCC (`src/structures/strongly-connected.ts`)**: Shared by the checker’s generic expansion check (`src/compiler/checker/rules/expansion.ts`) and the runtime’s cycle-aware orphan disposal (`src/runtime/lifetimes/orphans.ts`).
 - **Indentation & Separator Layout Engine (`src/compiler/parser/layout.ts`)**: Parameterized by `ItemRules<Item>`, handling module top-level items, statement blocks, struct fields, enum variants, trait members, match/select cases, one-line bodies, `{…}` block expressions, and `{ a: int; b: int }` entry braces in one loop.
 

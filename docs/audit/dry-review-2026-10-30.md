@@ -295,8 +295,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `constructs.Match` in `flow/forward.ts` writes `node.cases.filter((each) => each.kind === 'MatchCase')` instead of calling `casesOf(node)` (`src/compiler/syntax/expressions/index.ts`).
   - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `flow/forward.ts`, `binder/expressions.ts`, `checker/calls/lambda-arguments.ts`, `checker/expressions/control/select.ts`, and `lowering/expressions/select.ts` each filter `each.kind === 'SelectCase'` by hand.
   - **Done** (`fast-wins`): `FlowWalk` calls `casesOf`; `selectCasesOf` beside it serves the five select sites.
-- **Three separate implementations of negative numeric literal unwrapping (`src/compiler/checker/patterns/matching.ts`, `patterns/shapes.ts`, `rules/computation.ts`):**
-  - `intValueOf` (`patterns/matching.ts`), `literalKey` (`patterns/shapes.ts`), and `Computation.#own` / `isNumberLiteral` (`rules/computation.ts`) each inspect `Unary` with `operator === '-'` over numeric literals independently (and `literalKey` formats `-0` as `'-IntegerLiteral:0'` vs. `'IntegerLiteral:0'` for `0`, even though `-0 == 0`).
+- **Three separate implementations of negative numeric literal unwrapping (`src/compiler/checker/patterns/matching.ts`, `patterns/exhaustiveness/shapes.ts`, `rules/computation.ts`):**
+  - `intValueOf` (`patterns/matching.ts`), `literalKey` (`patterns/exhaustiveness/shapes.ts`), and `Computation.#own` / `isNumberLiteral` (`rules/computation.ts`) each inspect `Unary` with `operator === '-'` over numeric literals independently (and `literalKey` formats `-0` as `'-IntegerLiteral:0'` vs. `'IntegerLiteral:0'` for `0`, even though `-0 == 0`).
   - **Done** (`fast-wins`): `intValueOf`, `literalKey` and `Computation.#own` read through `signedNumberOf` (`syntax/expressions/numbers.ts`); `-0` keys as `0`, so `case -0` after `case 0` is unreachable (`patterns.test.ts`).
 
 ### 18. `src/compiler/checker/rules/` (including `rules/json-forms/`)
@@ -460,7 +460,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Duplicate inline-whitespace check between `goesOn` (`src/language-service/completion/triggers.ts`) and `adjoins` (`src/language-service/completion/grammar/position.ts`):**
   - Both slice `tree.source.text` from `before.span.end` to `name?.span.start ?? offset` and test `[...between].every(isInlineWhitespace)`. Placing `adjoinsBefore(cursor)` beside `touchingBefore(cursor)` in `completion/cursor.ts` unifies both.
   - **Done** (`fast-wins`): `adjoinsBefore(cursor)` in `completion/cursor.ts` serves both.
-- **Duplicate `any` downcast target rules across `completion/places/matched-type.ts` (`downcastTo`), `completion/places/pattern.ts` (`mayRefer`), and `checker/patterns/downcasts.ts` (`namedTypeOf`).**
+- **Duplicate `any` downcast target rules across `completion/places/matched-type.ts` (`downcastTo`), `completion/places/pattern.ts` (`mayRefer`), and `checker/patterns/constructs/downcasts.ts` (`namedTypeOf`).**
 - **Tracked completion items (`P13`–`P16`, `P19`, `Q34`, `Q35`, `B23`, `F14`, `F15`; tracked in `tracker.md`).**
 
 ### 33. `src/lsp/` (including `providers/`)

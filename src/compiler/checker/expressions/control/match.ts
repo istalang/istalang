@@ -5,7 +5,7 @@
  *   (expressions/control/branches.ts). Each case's pattern is checked against the subject's type, then its
  *   guard, then its body, in source order.
  * - It must be exhaustive: the cases without a guard must cover every value of the subject's type
- *   (patterns/exhaustiveness.ts). A comparison other than `==` against a literal or variant acts
+ *   (patterns/exhaustiveness/exhaustiveness.ts). A comparison other than `==` against a literal or variant acts
  *   as a guard there (§3.11). A case no value can reach, given the cases before it, is warned of.
  * - A case whose pattern its subject's type can't hold, as a field loop's value or key in another
  *   field's pass (§4), never matches (`cantMatch`, §3.11): it is warned of, and its guard and body
@@ -21,10 +21,10 @@ import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { Accepts, BodyContext } from '../../body-context.ts';
 import { stoppedOperation } from '../../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { analyze, anyShape, type CaseShape } from '../../patterns/exhaustiveness.ts';
+import { analyze, anyShape, type CaseShape } from '../../patterns/exhaustiveness/exhaustiveness.ts';
+import { remainingType } from '../../patterns/exhaustiveness/remaining.ts';
+import { signatureOf, witnessText } from '../../patterns/exhaustiveness/shapes.ts';
 import { checkPattern } from '../../patterns/matching.ts';
-import { remainingType } from '../../patterns/remaining.ts';
-import { signatureOf, witnessText } from '../../patterns/shapes.ts';
 import { cantMatch } from '../../surface/checked-pattern.ts';
 import { keyOwnerOfValue, recordPatternKeys } from '../../traits/struct-keys.ts';
 import type { Type } from '../../types/type/index.ts';

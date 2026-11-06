@@ -12,18 +12,18 @@
  *   makes them known otherwise, so field loops, comprehensions and keys take it as any other.
  */
 
-import type { Identifier } from '../../syntax/node.ts';
-import type { RestPattern } from '../../syntax/patterns.ts';
-import type { FieldTarget } from '../../syntax/statements.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { PartBinding } from '../surface/checked-pattern.ts';
-import type { Type, TypeParameterType } from '../types/type/index.ts';
-import type { TypeRules } from '../types/type-rules.ts';
-import { typeText } from '../types/type-text.ts';
-import { literalType } from '../types/unions/unions.ts';
-import { anyShape, type Shape } from './exhaustiveness.ts';
-import { type PatternScope, structFieldStep, type ValuePart } from './parts.ts';
-import type { Taking } from './taking.ts';
+import type { Identifier } from '../../../syntax/node.ts';
+import type { RestPattern } from '../../../syntax/patterns.ts';
+import type { FieldTarget } from '../../../syntax/statements.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { PartBinding } from '../../surface/checked-pattern.ts';
+import type { Type, TypeParameterType } from '../../types/type/index.ts';
+import type { TypeRules } from '../../types/type-rules.ts';
+import { typeText } from '../../types/type-text.ts';
+import { literalType } from '../../types/unions/unions.ts';
+import { anyShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
+import { type PatternScope, structFieldStep, type ValuePart } from '../parts.ts';
+import type { Taking } from '../taking.ts';
 
 /** Whether a pattern takes `type` apart by its fields' names: a struct whose fields aren't known. */
 export function isStructNotKnown(scope: PatternScope, type: Type): boolean {
@@ -35,10 +35,10 @@ export function isStructNotKnown(scope: PatternScope, type: Type): boolean {
 }
 
 /**
- * Takes the fields `items` name of `part`, a struct whose fields aren't known yet, each by its
- * name (a pattern's items always name theirs); an item naming a field its constraints don't is
- * reported. Matches whatever its items do: anything when they all do, else it guards, as no shape
- * can list fields it doesn't know; a field two items take guards, as for a known struct (taking.ts).
+ * Takes the fields `items` name of `part`, a struct whose fields aren't known yet, each by its name
+ * (a pattern's items always name theirs); an item naming a field its constraints don't is reported.
+ * Matches whatever its items do: anything when they all do, else it guards, as no shape can list
+ * fields it doesn't know; a field two items take guards, as for a known struct (../taking.ts).
  */
 export function takeFieldsByName<Target>(
   taking: Taking<Target>,

@@ -149,7 +149,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 1. **Unify comparison & membership checking and lowering across binary operators, chains, and patterns (D226 — `checker/checked-pattern.ts`, `checker/expressions/operators.ts`, `checker/patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/patterns.ts`):**
    - Give binary and chained comparisons/memberships one checker function and one lowering function over a `ComparisonLink` (where a `Binary` comparison is a single link).
    - Unify pattern ordering tests (`CompareFieldPattern`, `RangePattern` bound, `ArrayPattern` rest length) into one ordering test representation so `lowering/patterns.ts` (`passed`) and `lowering/expressions/operators.ts` share `ordered` and `equal`.
-2. **Separate written pattern shapes from matrix shapes in exhaustiveness (D224 — `checker/patterns/exhaustiveness.ts`, `checker/patterns/shapes.ts`):**
+2. **Separate written pattern shapes from matrix shapes in exhaustiveness (D224 — `checker/patterns/exhaustiveness/exhaustiveness.ts`, `checker/patterns/exhaustiveness/shapes.ts`):**
    - Split `Shape` into `WrittenShape` (which includes `or` and `array`) and `MatrixShape` / `WitnessShape` (`any` and `constructor` only, with a structured constructor key instead of parsing `key.endsWith('+]')`), removing the `unreachable` guards in `Matrix.useful`, `specialize`, and `witnessText`.
 3. **Remove `walk.downcasts` side channel & move `unparenthesized` for patterns to `syntax/patterns.ts` (D214 — `syntax/patterns.ts`, `checker/patterns/walk.ts`):**
    - Export `unparenthesizedPattern(node: Pattern): Pattern` from `src/compiler/syntax/patterns.ts`.
