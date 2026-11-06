@@ -13,6 +13,9 @@
  * - A pack binds only what can stand for one, a tuple, `Unit` or a pack (§3.5); a function type's
  *   pack binds to the parameters past the fixed ones (types/type.ts, `sameShape`).
  * - A shape matches a shape of the same field names, field by field, in the name order both keep.
+ *   A recursive type is matched as what it unfolds to, on either side, a pair met again holding
+ *   (types/unfolding-pairs.ts), so `List<T>` inside what is declared binds `T` from a `List<Int>`
+ *   inside what is given.
  * - The types found for a parameter must agree, whatever order the arguments come in: a later
  *   one fits the bound type (a conversion included), or the bound type fits it, which then binds, so
  *   `same(o, 2)` and `same(2, o)` both bind `T` to `Int?` for `o: Int?`. Two types neither fits
@@ -54,6 +57,7 @@ import {
 } from '../types/type.ts';
 import { typeChildren } from '../types/type-children.ts';
 import { parametersIn } from '../types/type-parts.ts';
+import { UnfoldingPairs } from '../types/unfolding-pairs.ts';
 import { baseOf } from '../types/union-members.ts';
 import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions.ts';
 
@@ -68,6 +72,8 @@ export class Inference {
   readonly #metNever = new Set<ParameterKey>();
   /** The parameters the error type met. */
   readonly #metError = new Set<ParameterKey>();
+  /** The pairs of recursive types being matched as they unfold (§3.17). */
+  readonly #unfolding = new UnfoldingPairs();
   readonly #severalMembers = new Map<ParameterKey, Type>();
   /** The type arguments written for some of the parameters, in place in whatever is matched. */
   readonly #written: Substitution;
@@ -193,6 +199,11 @@ export class Inference {
     if (given.kind === 'error' || givesNothing(declared)) {
       return true;
     }
+    if (declared.kind === 'recursive' || given.kind === 'recursive') {
+      return this.#unfolding.relate(declared, given, true, (unfoldedDeclared, unfoldedGiven) =>
+        this.#matchExact(unfoldedDeclared, unfoldedGiven),
+      );
+    }
     switch (declared.kind) {
       case 'parameter':
         return this.#unknowns.has(declared.declaration)
@@ -223,7 +234,6 @@ export class Inference {
       case 'keys':
       case 'mapped':
       case 'match':
-      case 'recursive':
         // Opaque: what it stands for is known only once its parameters are (§3.5), and inference
         // never goes through it (§3.5, §3.17).
         return (

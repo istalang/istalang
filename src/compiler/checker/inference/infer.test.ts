@@ -164,3 +164,23 @@ describe('a parameter the error type met', () => {
     );
   });
 });
+
+describe('a recursive type inside what is given', () => {
+  it.each([
+    ['inside an optional', 'headOf(maybe)', 'fn headOf<T>(l: List<T>?) -> T?: l?.head'],
+    ['inside an array', 'firstHead(xs)', 'fn firstHead<T>(xs: Array<List<T>>) -> T: xs[0].head'],
+    ['inside itself', 'second(l)', 'fn second<T>(l: List<T>) -> T?: l.tail?.head'],
+  ])('is matched as it unfolds, %s', (_case, call, declaration) => {
+    const main = [
+      'type List<T> = { head: T, tail: List<T>? }',
+      declaration,
+      'async fn main():',
+      '  const l: List<Int> = struct{head: 1, tail: none}',
+      '  const maybe: List<Int>? = l',
+      '  const xs: Array<List<Int>> = [l]',
+      `  const found = ${call}`,
+      '  const n: Int? = found',
+    ].join('\n');
+    expect(reportedErrors(main)).toEqual([]);
+  });
+});

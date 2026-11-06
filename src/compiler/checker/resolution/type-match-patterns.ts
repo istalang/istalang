@@ -28,9 +28,9 @@ import { sameType } from '../types/identity.ts';
 import type { StructConstraintModel } from '../types/struct-constraint.ts';
 import type { Type } from '../types/type.ts';
 import { typeChildren } from '../types/type-children.ts';
-import { typeKeys } from '../types/type-keys.ts';
 import type { CasePatternForm, InferVariable } from '../types/type-match.ts';
 import { isKnown, parametersIn, unaliased } from '../types/type-parts.ts';
+import { UnfoldingPairs } from '../types/unfolding-pairs.ts';
 import { baseOf } from '../types/union-members.ts';
 import { membersOf, unionOf } from '../types/unions.ts';
 import { searchSite } from '../use-site.ts';
@@ -46,8 +46,8 @@ interface Matching {
   readonly variables: ReadonlyMap<TypeParameter, InferVariable>;
   readonly bound: Map<TypeParameter, Type>;
   readonly meets: Meets;
-  /** The pairs of types holding recursion being matched, by key, which hold when met again. */
-  readonly unfolding: Set<string>;
+  /** The pairs of types holding recursion being matched, which hold when met again. */
+  readonly unfolding: UnfoldingPairs;
 }
 
 /**
@@ -65,7 +65,7 @@ export function matchCase(
     variables: new Map(variables.map((variable) => [variable.parameter, variable])),
     bound: new Map(),
     meets: silentMeets(searchSite(checker)),
-    unfolding: new Set(),
+    unfolding: new UnfoldingPairs(),
   };
   const outcome = all([
     () => matchPattern(matching, pattern, type),
@@ -136,19 +136,9 @@ function matchType(matching: Matching, pattern: Type, type: Type): Outcome {
 
 /** Whether `pattern` matches `type`, one of them recursive, as they unfold (the banner). */
 function matchUnfolded(matching: Matching, pattern: Type, type: Type): Outcome {
-  if (sameType(pattern, type)) {
-    return 'match';
-  }
-  const pair = `${typeKeys.typeKey(pattern)} ~ ${typeKeys.typeKey(type)}`;
-  if (matching.unfolding.has(pair)) {
-    return 'match';
-  }
-  matching.unfolding.add(pair);
-  try {
-    return matchType(matching, unfolded(pattern), unfolded(type));
-  } finally {
-    matching.unfolding.delete(pair);
-  }
+  return matching.unfolding.relate(pattern, type, 'match', (unfoldedPattern, unfoldedType) =>
+    matchType(matching, unfoldedPattern, unfoldedType),
+  );
 }
 
 /** Whether two types of one kind, neither a union, match part by part. */
