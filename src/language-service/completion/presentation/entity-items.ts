@@ -26,7 +26,7 @@ import { isMethod } from '../../../compiler/syntax/declarations/index.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { docstringOf } from '../../docstrings.ts';
 import { importedModule } from '../../namespaces.ts';
-import { signatureOf } from '../../signatures.ts';
+import { signatureOf } from '../../signatures/signatures.ts';
 import type { CompletionKind, RankGroup } from './item.ts';
 import { called, constructed, documented, type Presenting, type Shown } from './presenting.ts';
 

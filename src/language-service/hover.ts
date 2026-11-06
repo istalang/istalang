@@ -29,7 +29,7 @@ import { type CheckedModule, checkedModule } from './checked-module.ts';
 import { docstringOf } from './docstrings.ts';
 import { identifierAt } from './identifier-at.ts';
 import { importedModule } from './namespaces.ts';
-import { signatureOf } from './signatures.ts';
+import { signatureOf } from './signatures/signatures.ts';
 
 export interface Hover {
   /** The name or expression hovered over. */

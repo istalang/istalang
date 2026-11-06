@@ -10,20 +10,20 @@
  * type (`Point{x, y}`) shows no type beside it, as source writes none.
  */
 
-import type { Checker, SignatureParameter } from '../compiler/checker/check.ts';
-import type { FunctionType } from '../compiler/checker/types/type/index.ts';
-import { functionTypeParts, slotText, typeText } from '../compiler/checker/types/type-text.ts';
-import { programModule } from '../compiler/program/program.ts';
+import type { Checker, SignatureParameter } from '../../compiler/checker/check.ts';
+import type { FunctionType } from '../../compiler/checker/types/type/index.ts';
+import { functionTypeParts, slotText, typeText } from '../../compiler/checker/types/type-text.ts';
+import { programModule } from '../../compiler/program/program.ts';
 import {
   type FunctionDeclaration,
   typeParametersOf,
-} from '../compiler/syntax/declarations/index.ts';
-import { patternNamedType } from '../compiler/syntax/expressions/parameters.ts';
-import type { Pattern } from '../compiler/syntax/patterns.ts';
-import { spanIn } from '../compiler/syntax/positions.ts';
-import type { SyntaxTree } from '../compiler/syntax/tree.ts';
-import { staticName } from '../language/static-names.ts';
-import { textOf } from '../text/span.ts';
+} from '../../compiler/syntax/declarations/index.ts';
+import { patternNamedType } from '../../compiler/syntax/expressions/parameters.ts';
+import type { Pattern } from '../../compiler/syntax/patterns.ts';
+import { spanIn } from '../../compiler/syntax/positions.ts';
+import type { SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { staticName } from '../../language/static-names.ts';
+import { textOf } from '../../text/span.ts';
 
 /** A signature's text, and where each parameter's text stands in it. */
 export interface Signature {

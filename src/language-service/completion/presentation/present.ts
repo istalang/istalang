@@ -25,7 +25,7 @@ import { slotText, typeText } from '../../../compiler/checker/types/type-text.ts
 import { hasDefault } from '../../../compiler/syntax/declarations/index.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { docstringOf } from '../../docstrings.ts';
-import { signatureOf } from '../../signatures.ts';
+import { signatureOf } from '../../signatures/signatures.ts';
 import type { Candidate, Subject } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import { expectedTypeAt } from '../expected.ts';

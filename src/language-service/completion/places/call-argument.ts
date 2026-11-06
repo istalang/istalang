@@ -21,7 +21,7 @@ import {
   callAt,
   calleesOf,
   writtenParameter,
-} from '../../call-at.ts';
+} from '../../signatures/call-at.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import type { ParsedPlace } from '../placeholder.ts';

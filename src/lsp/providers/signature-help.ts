@@ -1,6 +1,9 @@
-/** Signature help (language-service/signature-help.ts), its parameters marked by label offsets. */
+/**
+ * Signature help (language-service/signatures/signature-help.ts), its parameters marked by label
+ * offsets.
+ */
 
-import { signatureHelpAt } from '../../language-service/signature-help.ts';
+import { signatureHelpAt } from '../../language-service/signatures/signature-help.ts';
 import { documentOffset } from '../locations.ts';
 import type { Provider } from './provider.ts';
 

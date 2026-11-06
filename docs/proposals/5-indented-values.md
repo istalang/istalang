@@ -438,7 +438,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
     - **Syntax.** The `Parameter` node (`src/compiler/syntax/expressions/index.ts`) holds a target pattern where it holds a name. `parser/parts/functions.ts` reads one with the declaration-target parser of `parser/statements/variables.ts`.
     - **Checker.** `checker/patterns/targets.ts`'s `declareTargets`, the one home for declaration targets, declares a parameter's names too, and refutability is checked as it is for targets. A pattern's own type comes from `patternTypeOf` (`checker/types/written/named-types.ts`). Named arguments and `self` read a parameter's `as` name.
     - **Lowering.** The function takes the argument as one hidden parameter and takes it apart at entry, through the same lowering a destructuring `const` uses (`lowering/statements/variables.ts`).
-    - **Language service.** Signatures and hovers print the pattern (`src/language-service/signatures.ts`, `hover.ts`).
+    - **Language service.** Signatures and hovers print the pattern (`src/language-service/signatures/signatures.ts`, `hover.ts`).
 10. **Line breaks between items.**
     - **The rule's one home** is one predicate in `parser/layout/index.ts`, where every decision to move past a line break already lives: does this break separate two items of the enclosing list?
     - **Lists.** `parseDelimited` in `parser/brackets/recovery.ts`, through which every bracketed list already goes, takes a separating break as it takes `,`.

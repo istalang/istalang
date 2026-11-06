@@ -11,7 +11,7 @@ import { programAt } from './language-service.test-kit.ts';
 import { nameAt } from './navigation/declarations.ts';
 import { referencesAt } from './navigation/references.ts';
 import { renameEdits } from './navigation/rename.ts';
-import { signatureHelpAt } from './signature-help.ts';
+import { signatureHelpAt } from './signatures/signature-help.ts';
 
 function completed(...lines: readonly string[]): readonly string[] {
   const { program, module, offset } = programAt(...lines);

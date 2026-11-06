@@ -3,23 +3,23 @@
  * written arguments meet a function's parameters: what signature help marks and completion names,
  * read alike so the two never disagree on which parameter an argument gives.
  *
- * - The tree keeps no tokens, so the parentheses are the code's (tokens.ts): the `(` is the first
- *   after the callee and its type arguments, and the `)` the one pairing with it. While no `)`
- *   closes a call, as when one is being typed, the call reaches up to the next token after it.
+ * - The tree keeps no tokens, so the parentheses are the code's (../tokens.ts): the `(` is the
+ *   first after the callee and its type arguments, and the `)` the one pairing with it. While no
+ *   `)` closes a call, as when one is being typed, the call reaches up to the next token after it.
  * - A call being written often doesn't resolve, so its arguments are read as written, by position
  *   and name, against each function it chose among.
  */
 
-import type { SignatureParameter } from '../compiler/checker/check.ts';
-import type { JoinedBody } from '../compiler/checker/surface/denotation.ts';
-import { type FunctionDeclaration, isMethod } from '../compiler/syntax/declarations/index.ts';
-import type { Call } from '../compiler/syntax/expressions/index.ts';
-import { spanIn } from '../compiler/syntax/positions.ts';
-import type { Token } from '../compiler/syntax/tokens.ts';
-import { nodesAt, type SyntaxTree } from '../compiler/syntax/tree.ts';
-import { lastIndexAtMost } from '../structures/sorted.ts';
-import type { CheckedModule } from './checked-module.ts';
-import { closingBracketsOf, codeTokensOf } from './tokens.ts';
+import type { SignatureParameter } from '../../compiler/checker/check.ts';
+import type { JoinedBody } from '../../compiler/checker/surface/denotation.ts';
+import { type FunctionDeclaration, isMethod } from '../../compiler/syntax/declarations/index.ts';
+import type { Call } from '../../compiler/syntax/expressions/index.ts';
+import { spanIn } from '../../compiler/syntax/positions.ts';
+import type { Token } from '../../compiler/syntax/tokens.ts';
+import { nodesAt, type SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { lastIndexAtMost } from '../../structures/sorted.ts';
+import type { CheckedModule } from '../checked-module.ts';
+import { closingBracketsOf, codeTokensOf } from '../tokens.ts';
 
 /** A call a cursor writes an argument of. */
 export interface CallAt {

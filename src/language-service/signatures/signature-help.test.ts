@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { programAt } from './language-service.test-kit.ts';
+import { programAt } from '../language-service.test-kit.ts';
 import { signatureHelpAt } from './signature-help.ts';
 
 /** The active signature's label, with its active parameter's text. */

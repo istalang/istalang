@@ -10,18 +10,18 @@
  * - A call of a function value shows its type's parameters, which have no names (§3.14).
  */
 
-import type { Checker } from '../compiler/checker/check.ts';
-import type { JoinedBody } from '../compiler/checker/surface/denotation.ts';
+import type { Checker } from '../../compiler/checker/check.ts';
+import type { JoinedBody } from '../../compiler/checker/surface/denotation.ts';
 import {
   parameterOfArgument,
   type ResolvedCall,
-} from '../compiler/checker/surface/resolved-call.ts';
-import type { FunctionType } from '../compiler/checker/types/type/index.ts';
-import { presentType } from '../compiler/checker/types/unions/unions.ts';
-import type { ModuleId, Program } from '../compiler/program/program.ts';
-import type { Call } from '../compiler/syntax/expressions/index.ts';
+} from '../../compiler/checker/surface/resolved-call.ts';
+import type { FunctionType } from '../../compiler/checker/types/type/index.ts';
+import { presentType } from '../../compiler/checker/types/unions/unions.ts';
+import type { ModuleId, Program } from '../../compiler/program/program.ts';
+import type { Call } from '../../compiler/syntax/expressions/index.ts';
+import { checkedModule } from '../checked-module.ts';
 import { callAt, calleesOf, writtenParameter } from './call-at.ts';
-import { checkedModule } from './checked-module.ts';
 import { functionTypeSignature, type Signature, signatureOf } from './signatures.ts';
 
 export interface SignatureHelp {

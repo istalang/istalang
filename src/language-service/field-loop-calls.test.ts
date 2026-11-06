@@ -9,7 +9,7 @@ import { hoverAt } from './hover.ts';
 import { programAt } from './language-service.test-kit.ts';
 import { nameAt, spanOfUse } from './navigation/declarations.ts';
 import { referencesAt } from './navigation/references.ts';
-import { signatureHelpAt } from './signature-help.ts';
+import { signatureHelpAt } from './signatures/signature-help.ts';
 
 /** `show(v)` calls `show(Int)` in pass `a` and `show(String)` in pass `b`; `marked` holds the cursor. */
 function showInLoop(marked: { readonly declaration?: 'Int' | 'String'; readonly call?: string }) {

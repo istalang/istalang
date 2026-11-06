@@ -202,9 +202,10 @@ src/
                         and the program they make through the ProgramLoader seam), one module or folder per feature
                         (symbols.ts, folding.ts, semantic-tokens/, which reads checking only for an indented map's
                         bare keys (built-keys.ts); over types: hover.ts, inlay-hints.ts,
-                        signature-help.ts, completion/), tokens.ts (a tree's tokens, scanned again once, brackets paired),
-                        checked-module.ts (a module and its program's checker), signatures.ts (how a function reads),
-                        call-at.ts (the call around a cursor, and the parameter each written argument gives)
+                        signatures/, completion/), tokens.ts (a tree's tokens, scanned again once, brackets paired),
+                        checked-module.ts (a module and its program's checker), signatures/: how a function reads
+                        (signatures.ts), the call around a cursor and the parameter each written argument gives
+                        (call-at.ts), and signature help over them (signature-help.ts)
   lsp/                  the language server (vscode-languageserver): server.ts (initialize, document sync, the providers),
                         providers/ (one per request), diagnostics.ts (pushed per open document), project-loader.ts (the
                         project as `ista check` loads it, open documents over it), locations.ts (URIs, ranges),
