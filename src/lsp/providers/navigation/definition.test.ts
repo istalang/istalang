@@ -1,5 +1,5 @@
 import { beforeAll, describe, expect, it } from 'vitest';
-import { spanIn } from '../../../compiler/syntax/positions.ts';
+import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { nameAt } from '../../../language-service/navigation/declarations.ts';
 import { corpusClient, corpusDocuments, corpusProgram } from '../../corpus-client.test-kit.ts';
 import { locationOf, moduleIdOfUri } from '../../locations.ts';

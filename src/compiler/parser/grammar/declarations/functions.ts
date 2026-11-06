@@ -9,12 +9,12 @@
  *
  * A function's own span covers its header, docstring included; its body, which the tree holds
  * apart, follows it, as a segment of its own for a module's or a trait's function
- * (syntax/positions.ts).
+ * (syntax/tree/positions.ts).
  */
 
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
-import type { Identifier } from '../../../syntax/node.ts';
 import type { Block } from '../../../syntax/statements/index.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { parseDocstringBelow } from '../../layout/bodies.ts';
 import { documentedBy, type WithDocstring } from '../../layout/docstrings.ts';

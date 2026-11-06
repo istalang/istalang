@@ -16,7 +16,7 @@ import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit
 import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import type { Span } from '../../text/span.ts';
 import { textOf } from '../../text/span.ts';
-import type { ScanResult, Token } from '../syntax/tokens.ts';
+import type { ScanResult, Token } from '../syntax/tokens/index.ts';
 import { scan } from './scan.ts';
 
 export interface ScannedText extends ScanResult {

@@ -38,8 +38,8 @@ import {
   type TypeAliasDeclaration,
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import { nodesUnder } from '../../../syntax/tree.ts';
+import { nodesUnder } from '../../../syntax/tree/index.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { isWrittenType } from '../../../syntax/types/index.ts';
 import type { CheckerContext, CheckerNote, Instantiable } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

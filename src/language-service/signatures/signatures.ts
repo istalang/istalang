@@ -24,8 +24,8 @@ import {
 } from '../../compiler/syntax/declarations/index.ts';
 import { patternNamedType } from '../../compiler/syntax/expressions/parameters.ts';
 import type { Pattern } from '../../compiler/syntax/patterns.ts';
-import { spanIn } from '../../compiler/syntax/positions.ts';
-import type { SyntaxTree } from '../../compiler/syntax/tree.ts';
+import type { SyntaxTree } from '../../compiler/syntax/tree/index.ts';
+import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import { staticName } from '../../language/static-names.ts';
 import { textOf } from '../../text/span.ts';
 

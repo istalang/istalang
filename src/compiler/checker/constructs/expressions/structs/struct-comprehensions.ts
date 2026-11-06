@@ -22,7 +22,7 @@ import type {
   StructLiteral,
 } from '../../../../syntax/expressions/index.ts';
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
-import type { AnchoredSpan } from '../../../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext, CheckedPasses } from '../../../contexts/body-context.ts';
 import type { FieldPassType } from '../../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';

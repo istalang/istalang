@@ -10,8 +10,8 @@ import { describe, expect, it } from 'vitest';
 import { invalidPrograms, runPrograms } from '../../../../test/corpus/programs.ts';
 import { checkProgram } from '../../../compiler/checker/check.ts';
 import type { Call } from '../../../compiler/syntax/expressions/index.ts';
-import { spanIn } from '../../../compiler/syntax/positions.ts';
-import { nodesUnder } from '../../../compiler/syntax/tree.ts';
+import { nodesUnder } from '../../../compiler/syntax/tree/index.ts';
+import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { type MainProgram, mainProgram, programAt } from '../../language-service.test-kit.ts';
 import { completionsAt } from '../index.ts';
 

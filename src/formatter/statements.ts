@@ -8,14 +8,14 @@
  */
 
 import { builders } from 'prettier/doc';
-import type { Identifier } from '../compiler/syntax/node.ts';
 import type {
   Block,
   Statement,
   StatementPart,
   VariableDeclaration,
 } from '../compiler/syntax/statements/index.ts';
-import type { SyntaxNode } from '../compiler/syntax/tree.ts';
+import type { SyntaxNode } from '../compiler/syntax/tree/index.ts';
+import type { Identifier } from '../compiler/syntax/tree/node.ts';
 import { annotated, body, indentedBlock } from './bodies.ts';
 import { ifChain } from './expressions/branches.ts';
 import { opened } from './expressions/indented-values.ts';

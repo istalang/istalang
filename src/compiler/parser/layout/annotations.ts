@@ -7,9 +7,9 @@
  *
  * Attaching adds the annotations to an item already parsed, and widens its span over them, so no
  * item parser has to know about annotations. It makes the item anew, so a function's body, which
- * the tree holds by its function (syntax/tree.ts), moves to the function made. Annotations nothing
- * can take are reported and kept in an Invalid node, which holds them; where that is, layout
- * decides (index.ts).
+ * the tree holds by its function (syntax/tree/index.ts), moves to the function made. Annotations
+ * nothing can take are reported and kept in an Invalid node, which holds them; where that is,
+ * layout decides (index.ts).
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
@@ -17,9 +17,9 @@ import type { Span } from '../../../text/span.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { qualifiedPath } from '../../syntax/expressions/readings.ts';
-import type { Invalid } from '../../syntax/node.ts';
-import { spanAcross, spanCovering } from '../../syntax/positions.ts';
-import type { SyntaxNode } from '../../syntax/tree.ts';
+import type { SyntaxNode } from '../../syntax/tree/index.ts';
+import type { Invalid } from '../../syntax/tree/node.ts';
+import { spanAcross, spanCovering } from '../../syntax/tree/positions.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 

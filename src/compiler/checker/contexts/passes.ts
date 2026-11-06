@@ -20,7 +20,7 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { memo } from '../../../structures/memo.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Type } from '../types/type/index.ts';
 

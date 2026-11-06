@@ -444,7 +444,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
     - **Lists.** `parseDelimited` in `parser/cursor/recovery.ts`, through which every bracketed list already goes, takes a separating break as it takes `,`.
     - **Expressions.** The infix and postfix loops (`parser/grammar/expressions/expression.ts`, `postfix.ts`) stop at a separating break, and `postfix.ts` attaches `(`, `[`, `{` and `<` only on their operand's line.
     - **The token sets are derived, never listed again.** What starts an item is the prefix parselet table of `expression.ts`. What continues is its infix table.
-    - **Spacing.** Tokens already carry `firstOnLine` (`syntax/tokens.ts`). Their spans tell whether `-`, `*`, `&` or `..` is glued to the next token, so the scanner needs no change.
+    - **Spacing.** Tokens already carry `firstOnLine` (`syntax/tokens/index.ts`). Their spans tell whether `-`, `*`, `&` or `..` is glued to the next token, so the scanner needs no change.
     - **Formatter.** `src/formatter/lists.ts` and `brackets.ts` print a broken list one item per line without `,`; `literals.ts` follows.
     - **Completion.** The places in `src/language-service/completion/places/` that find "the next item" after a `,` find it after a separating break too.
 11. **Parenthesized imports and renames.**

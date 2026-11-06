@@ -9,10 +9,10 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { createSourceText } from '../../../text/source-text.ts';
 import { scan } from '../../scanner/scan.ts';
-import type { Segment } from '../../syntax/positions.ts';
-import { spanIn } from '../../syntax/positions.ts';
-import { dump, spanViolations, strayBodies } from '../../syntax/tree.test-kit.ts';
-import { bodyOf, extentIn, nodesUnder, type SyntaxTree } from '../../syntax/tree.ts';
+import { bodyOf, extentIn, nodesUnder, type SyntaxTree } from '../../syntax/tree/index.ts';
+import type { Segment } from '../../syntax/tree/positions.ts';
+import { spanIn } from '../../syntax/tree/positions.ts';
+import { dump, spanViolations, strayBodies } from '../../syntax/tree/tree.test-kit.ts';
 import {
   applied,
   bodyEditChoices,

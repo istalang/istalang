@@ -30,7 +30,6 @@ import {
   patternTypeOf,
 } from '../../../../compiler/checker/types/written/pattern-types.ts';
 import type { Parameter } from '../../../../compiler/syntax/expressions/index.ts';
-import { type Identifier, lastName } from '../../../../compiler/syntax/node.ts';
 import type {
   ArrayPattern,
   NamePattern,
@@ -42,7 +41,8 @@ import {
   parentOf,
   type SyntaxNode,
   type SyntaxTree,
-} from '../../../../compiler/syntax/tree.ts';
+} from '../../../../compiler/syntax/tree/index.ts';
+import { type Identifier, lastName } from '../../../../compiler/syntax/tree/node.ts';
 import type { NamedType } from '../../../../compiler/syntax/types/index.ts';
 import type { Cursor } from '../../cursor.ts';
 import type { ParsedPlace } from '../../placeholder.ts';

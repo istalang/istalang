@@ -8,8 +8,8 @@
 import type { ModuleId } from '../../program/program.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
-import type { Identifier } from '../../syntax/node.ts';
-import type { SyntaxNode } from '../../syntax/tree.ts';
+import type { SyntaxNode } from '../../syntax/tree/index.ts';
+import type { Identifier } from '../../syntax/tree/node.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import type { Denotation, JoinedBody, LookupQueries, TypeMembers } from '../surface/denotation.ts';

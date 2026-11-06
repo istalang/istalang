@@ -1,6 +1,6 @@
 /**
  * Statements (§3.4, §4, §7), dispatched on their first token: a word of `statementWords`
- * (syntax/grammar-words.ts), or else a name or an expression.
+ * (syntax/tokens/grammar-words.ts), or else a name or an expression.
  *
  * Three first tokens need a look further ahead:
  * - `fn` starts a local function (`fn name…`), or else a lambda expression (`fn(x): …`,
@@ -20,11 +20,11 @@
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { StatementWord } from '../../../syntax/grammar-words.ts';
-import type { Invalid } from '../../../syntax/node.ts';
-import { isAssignmentOperator } from '../../../syntax/operators.ts';
+import { isAssignmentOperator } from '../../../syntax/expressions/operators.ts';
 import type { Statement } from '../../../syntax/statements/index.ts';
 import { destructures, isTarget } from '../../../syntax/statements/targets.ts';
+import type { StatementWord } from '../../../syntax/tokens/grammar-words.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
 import type { CursorKind } from '../../cursor/index.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import type { Parser } from '../../parser.ts';

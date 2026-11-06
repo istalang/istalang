@@ -29,11 +29,11 @@ import {
   variantOwners,
 } from '../../../../compiler/checker/types/written/pattern-types.ts';
 import { casesOf } from '../../../../compiler/syntax/expressions/readings.ts';
-import type { PatternWord } from '../../../../compiler/syntax/grammar-words.ts';
-import { lastName } from '../../../../compiler/syntax/node.ts';
 import type { NamePattern, Pattern, StructPattern } from '../../../../compiler/syntax/patterns.ts';
-import { spanIn } from '../../../../compiler/syntax/positions.ts';
-import type { SyntaxNode } from '../../../../compiler/syntax/tree.ts';
+import type { PatternWord } from '../../../../compiler/syntax/tokens/grammar-words.ts';
+import type { SyntaxNode } from '../../../../compiler/syntax/tree/index.ts';
+import { lastName } from '../../../../compiler/syntax/tree/node.ts';
+import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import type { Candidate } from '../../candidate.ts';
 import { type Cursor, touchingBefore } from '../../cursor.ts';
 import { expectedTypeAt } from '../../expected.ts';
@@ -93,9 +93,9 @@ function patternStarts(
 }
 
 /**
- * The words a pattern starts with (`PatternWord`, syntax/grammar-words.ts, which the parser's
- * pattern table is keyed by) and `_`, each with the literal it writes, `_` none, as it matches any
- * value. A struct's value is matched through its type's name, offered where it fits, so
+ * The words a pattern starts with (`PatternWord`, syntax/tokens/grammar-words.ts, which the
+ * parser's pattern table is keyed by) and `_`, each with the literal it writes, `_` none, as it
+ * matches any value. A struct's value is matched through its type's name, offered where it fits, so
  * `struct{…}` is offered nowhere.
  */
 const startWordLiterals = {

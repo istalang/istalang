@@ -24,7 +24,7 @@ import { diagnoseModule, type ModuleDiagnostics } from '../compiler/compile.ts';
 import { parse } from '../compiler/parser/parse.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import { scan } from '../compiler/scanner/scan.ts';
-import type { SyntaxTree } from '../compiler/syntax/tree.ts';
+import type { SyntaxTree } from '../compiler/syntax/tree/index.ts';
 import { memo } from '../structures/memo.ts';
 import { createSourceText } from '../text/source-text.ts';
 

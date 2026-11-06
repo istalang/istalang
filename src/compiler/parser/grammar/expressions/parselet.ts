@@ -9,7 +9,7 @@
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { PrecedenceLevel } from '../../../syntax/operators.ts';
+import type { PrecedenceLevel } from '../../../syntax/expressions/operators.ts';
 import type { Parser } from '../../parser.ts';
 
 export type PrefixParselet = (parser: Parser, minLevel: PrecedenceLevel) => Expression;

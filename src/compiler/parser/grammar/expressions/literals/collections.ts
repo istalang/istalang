@@ -17,8 +17,8 @@ import type {
   MapLiteral,
   Spread,
 } from '../../../../syntax/expressions/index.ts';
-import type { Invalid } from '../../../../syntax/node.ts';
-import { type AnchoredSpan, endOf } from '../../../../syntax/positions.ts';
+import type { Invalid } from '../../../../syntax/tree/node.ts';
+import { type AnchoredSpan, endOf } from '../../../../syntax/tree/positions.ts';
 import { parseCommaSeparated, parseList } from '../../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../../diagnostics.ts';
 import type { Parser } from '../../../parser.ts';

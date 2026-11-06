@@ -8,7 +8,7 @@
  * A diagnostic holds only a span, not a file. Every phase result belongs to one source, and the
  * layer that aggregates results across modules pairs them with their module. Inside a phase that
  * keeps its results across edits, a diagnostic points at a span anchored to the syntax
- * (compiler/syntax/positions.ts); it leaves the phase with the text span that becomes.
+ * (compiler/syntax/tree/positions.ts); it leaves the phase with the text span that becomes.
  */
 
 import { compareOrdered } from '../language/order.ts';

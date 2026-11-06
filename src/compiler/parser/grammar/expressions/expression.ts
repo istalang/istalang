@@ -1,11 +1,11 @@
 /**
  * The Pratt engine for expressions, and its tables.
  *
- * The tables map a token kind to the parselet that handles it, and a contextual word (`new`) to
- * the one it starts where a name stands. Each parselet lives with its construct family. The words
- * they take are the operand's and the infix ones of syntax/grammar-words.ts, which completion
- * offers. Binary operators are derived from the precedence table in syntax/operators.ts, so an
- * operator's level has one home.
+ * The tables map a token kind to the parselet that handles it, and a contextual word (`new`) to the
+ * one it starts where a name stands. Each parselet lives with its construct family. The words they
+ * take are the operand's and the infix ones of syntax/tokens/grammar-words.ts, which completion
+ * offers. Binary operators are derived from the precedence table in
+ * syntax/expressions/operators.ts, so an operator's level has one home.
  *
  * An infix parselet applies when its level is at least the level being parsed. Operands of a
  * left-associative operator parse one level tighter, so equal levels group to the left. Type
@@ -14,7 +14,6 @@
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { InfixWord, OperandWord } from '../../../syntax/grammar-words.ts';
 import {
   type BinaryOperator,
   binaryOperators,
@@ -22,8 +21,9 @@ import {
   type PrecedenceLevel,
   type UnaryOperator,
   unaryOperators,
-} from '../../../syntax/operators.ts';
-import { isKeyword } from '../../../syntax/tokens.ts';
+} from '../../../syntax/expressions/operators.ts';
+import type { InfixWord, OperandWord } from '../../../syntax/tokens/grammar-words.ts';
+import { isKeyword } from '../../../syntax/tokens/index.ts';
 import type { CursorKind } from '../../cursor/index.ts';
 import { misplacedDocstring } from '../../layout/docstrings.ts';
 import { atPostfix, breakSeparatesItems } from '../../layout/item-breaks.ts';
@@ -106,7 +106,7 @@ function parseName(parser: Parser): Expression {
   return wordParseletAt(parser, wordParselets)?.(parser) ?? parser.identifier();
 }
 
-/** A parselet per prefix operator of the table in syntax/operators.ts. */
+/** A parselet per prefix operator of the table in syntax/expressions/operators.ts. */
 function unaryParselets(): Record<UnaryOperator, PrefixParselet> {
   return Object.fromEntries(
     (Object.keys(unaryOperators) as UnaryOperator[]).map((operator) => [

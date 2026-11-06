@@ -8,8 +8,8 @@
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { Identifier } from '../../../syntax/node.ts';
 import type { Break, Continue, Defer, Drop, Return } from '../../../syntax/statements/index.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { Parser } from '../../parser.ts';
 
 export function parseReturn(parser: Parser): Return {

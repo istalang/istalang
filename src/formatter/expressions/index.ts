@@ -15,7 +15,7 @@ import type {
   Expression,
   ExpressionPart,
 } from '../../compiler/syntax/expressions/index.ts';
-import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import { angled, bracketed, enclosed, hasComments, hugging, oneLine, tupleList } from '../lists.ts';
 import type { Printer, Printers } from '../printer.ts';
 import { opened } from './indented-values.ts';

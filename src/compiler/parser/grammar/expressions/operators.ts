@@ -1,5 +1,6 @@
 /**
- * Operator parselets: prefix, binary, `is` and ranges, at the levels of syntax/operators.ts.
+ * Operator parselets: prefix, binary, `is` and ranges, at the levels of
+ * syntax/expressions/operators.ts.
  *
  * A prefix operator's operand parses at the operator's own level, so `not not a` and `- -a` nest. A
  * prefix operator that binds more loosely than the operand position it stands in (`a == not b`, `a
@@ -27,7 +28,7 @@ import {
   tighterLevel,
   type UnaryOperator,
   unaryOperators,
-} from '../../../syntax/operators.ts';
+} from '../../../syntax/expressions/operators.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { continues } from '../../layout/item-breaks.ts';
 import type { Parser } from '../../parser.ts';

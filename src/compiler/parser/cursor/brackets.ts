@@ -6,7 +6,7 @@
  */
 
 import { lastIndexAtMost } from '../../../structures/sorted.ts';
-import type { Token } from '../../syntax/tokens.ts';
+import type { Token } from '../../syntax/tokens/index.ts';
 
 /**
  * Each opener's closer. `<` is also the less-than operator, so it is not a bracket: pairing leaves

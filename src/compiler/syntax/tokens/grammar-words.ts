@@ -12,8 +12,8 @@
  * - A word starts its construct only where what follows lets it: `struct` declares before a name
  *   and starts a literal elsewhere, `type` is a name unless a name follows. The parser decides
  *   that; a list says which words a position may start with at all.
- * - The operator words come from the operator table (operators.ts), where each operator is
- *   spelled once.
+ * - The operator words come from the operator table (../expressions/operators.ts), where each
+ *   operator is spelled once.
  * - Clause words a single construct expects at a fixed point (`elif`, `case`, `by`, `from`) are
  *   that construct's own, not a position's.
  */
@@ -23,8 +23,8 @@ import {
   binaryOperators,
   type UnaryOperator,
   unaryOperators,
-} from './operators.ts';
-import { type ContextualWord, isKeyword, type Keyword } from './tokens.ts';
+} from '../expressions/operators.ts';
+import { type ContextualWord, isKeyword, type Keyword } from './index.ts';
 
 export type Word = Keyword | ContextualWord;
 
@@ -45,7 +45,7 @@ export type DeclarationWord = (typeof declarationWords)[number];
 
 /**
  * What starts a statement (§3.4, §4, §7) other than an expression; where the item each starts may
- * stand is placement.ts's.
+ * stand is ../placement.ts's.
  */
 export const statementWords = [
   'let',
@@ -136,8 +136,8 @@ export type PatternWord = (typeof patternWords)[number];
 
 /**
  * The words that alone may follow each modifier where it stands as one: `async fn`, `shared
- * struct`, `hold let`, `sendable fn` in a type, and `not in` (operators.ts) after an operand. Each
- * is a keyword, read by its token kind.
+ * struct`, `hold let`, `sendable fn` in a type, and `not in` (../expressions/operators.ts) after an
+ * operand. Each is a keyword, read by its token kind.
  */
 export const followers = {
   async: ['fn'],

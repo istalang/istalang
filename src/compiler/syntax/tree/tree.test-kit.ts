@@ -1,5 +1,4 @@
-import { encloses } from '../../text/span.ts';
-import type { AnchoredSpan, Segment, SegmentBases } from './positions.ts';
+import { encloses } from '../../../text/span.ts';
 import {
   bodyOf,
   childrenOf,
@@ -10,7 +9,8 @@ import {
   type SyntaxTree,
   type TreeBodies,
   type TreePlaces,
-} from './tree.ts';
+} from './index.ts';
+import type { AnchoredSpan, Segment, SegmentBases } from './positions.ts';
 
 /** The segment of the nodes and spans a test makes by hand, which starts its text. */
 const handMade: Segment = { kind: 'module' };

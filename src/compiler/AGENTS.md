@@ -13,7 +13,7 @@ One folder per phase. Phases share only contracts.
     - `layout/`: items separated by `,`, `;` (statements and the module's declarations) or line breaks (blocks, braces of entries) and annotations on items (`index.ts`), one-line bodies (`bodies.ts`)
     - `recovery.ts`: bracketed lists and recovery
     - `nesting.ts`: the nesting limit every recursive grammar entry goes through
-    - `word-parselets.ts`: tables keyed by the words of `syntax/grammar-words.ts`, which completion offers, checked against them both ways by type
+    - `word-parselets.ts`: tables keyed by the words of `syntax/tokens/grammar-words.ts`, which completion offers, checked against them both ways by type
 
 - `program/`: `program.ts` loads the module graph from roots through the `ModuleLoader` seam. It imposes no path syntax and does no I/O.
 - `binder/`: `bind.ts` binds a program's names; `entities.ts` is the vocabulary its consumers read. Each module binds on its own (`module/bind-module.ts`, memoized per tree), with the categories in `constructs/` wired through the context in `module/local-binder.ts` as the parser's are; `module/flow.ts` holds where bindings are visible; `link/` resolves what crosses modules, over the modules `bind.ts` bound.

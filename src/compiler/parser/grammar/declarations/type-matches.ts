@@ -10,8 +10,8 @@
 
 import { isUnnamed } from '../../../../language/naming.ts';
 import type { AliasBody } from '../../../syntax/declarations/index.ts';
-import type { Invalid } from '../../../syntax/node.ts';
 import type { WildcardPattern } from '../../../syntax/patterns.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
 import type { CasePattern, TypeCase, TypeMatch, TypeNode } from '../../../syntax/types/index.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { parseBody } from '../../layout/bodies.ts';

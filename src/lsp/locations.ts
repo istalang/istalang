@@ -21,7 +21,7 @@ import {
   type Program,
   programModule,
 } from '../compiler/program/program.ts';
-import { type AnchoredSpan, spanIn } from '../compiler/syntax/positions.ts';
+import { type AnchoredSpan, spanIn } from '../compiler/syntax/tree/positions.ts';
 import type { Workspace } from '../language-service/workspace.ts';
 import { moduleIdOfFile } from '../project/file-loader.ts';
 import { lineMapOf } from '../text/line-map.ts';

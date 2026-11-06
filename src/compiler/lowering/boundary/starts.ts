@@ -24,7 +24,7 @@ import type {
   Declaration,
   FunctionDeclaration,
 } from '../../syntax/declarations/index.ts';
-import type { Invalid } from '../../syntax/node.ts';
+import type { Invalid } from '../../syntax/tree/node.ts';
 import { writtenBodyOf } from '../bodies.ts';
 import { instanceLowering, nestedLowering, type StartEdges } from '../function-lowering/index.ts';
 import { constantValue } from '../tables/constants.ts';

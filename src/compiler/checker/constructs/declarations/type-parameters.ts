@@ -21,7 +21,7 @@ import type {
   TraitDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type {
   CheckerContext,
   CheckerNote,

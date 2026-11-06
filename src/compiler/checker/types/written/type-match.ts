@@ -18,7 +18,7 @@ import type {
   TypeParameter,
   TypeParameters,
 } from '../../../syntax/declarations/index.ts';
-import { parentOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree.ts';
+import { parentOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree/index.ts';
 import type { TypeCase } from '../../../syntax/types/index.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
 import { mapChildren } from '../parts/type-parts.ts';

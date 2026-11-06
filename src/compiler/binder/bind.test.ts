@@ -16,7 +16,7 @@ import { preludeModule } from '../../stdlib/stdlib-loader.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { idOf, moduleAt } from '../program/program.test-kit.ts';
 import { programModule } from '../program/program.ts';
-import { nodesUnder } from '../syntax/tree.ts';
+import { nodesUnder } from '../syntax/tree/index.ts';
 import {
   boundCorpus,
   boundReport,

@@ -15,9 +15,9 @@
 import { builders } from 'prettier/doc';
 import type { Annotatable, Annotation } from '../compiler/syntax/annotations.ts';
 import type { Docstring } from '../compiler/syntax/declarations/index.ts';
-import { spanIn } from '../compiler/syntax/positions.ts';
 import type { Block } from '../compiler/syntax/statements/index.ts';
-import { extentIn, fieldChildrenOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
+import { extentIn, fieldChildrenOf, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
+import { spanIn } from '../compiler/syntax/tree/positions.ts';
 import { standingIn } from './brackets.ts';
 import { blankBetween, hasComments, hugging, itemLines } from './lists.ts';
 import type { Printer } from './printer.ts';

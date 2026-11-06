@@ -5,7 +5,7 @@
  * pattern) and where a use of a type `match` alias stays as written (inside one).
  */
 
-import { fieldChildrenOf, parentOf, type SyntaxNode, type SyntaxTree } from '../tree.ts';
+import { fieldChildrenOf, parentOf, type SyntaxNode, type SyntaxTree } from '../tree/index.ts';
 import type { InferType } from './index.ts';
 
 /** The `infer` types `node` holds, at any depth, in the order written. */

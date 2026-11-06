@@ -10,7 +10,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { FunctionContext } from '../context.ts';
 import type { BlockScope } from './variables.ts';
 

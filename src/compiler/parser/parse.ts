@@ -2,8 +2,8 @@
  * The parser's entry: a scanned source file to its syntax tree.
  *
  * Parsing is total. Whatever the input, it returns a complete tree, with Missing and Invalid nodes
- * where the source is wrong and a diagnostic explaining each (syntax/node.ts). The tree carries the
- * scanner's diagnostics before its own, so a later phase reads one list per file.
+ * where the source is wrong and a diagnostic explaining each (syntax/tree/node.ts). The tree
+ * carries the scanner's diagnostics before its own, so a later phase reads one list per file.
  *
  * Given the tree of the text before an edit, the new tree keeps that tree's nodes for every segment
  * the edit left alike (incremental/reuse.ts), so what later phases derived from them outlives the
@@ -11,8 +11,8 @@
  */
 
 import type { SourceText } from '../../text/source-text.ts';
-import type { ScanResult } from '../syntax/tokens.ts';
-import type { SyntaxTree } from '../syntax/tree.ts';
+import type { ScanResult } from '../syntax/tokens/index.ts';
+import type { SyntaxTree } from '../syntax/tree/index.ts';
 import { parseModule } from './grammar/declarations/declaration.ts';
 import { createParser } from './grammar/index.ts';
 import { bodiesHeldBy } from './incremental/held-bodies.ts';

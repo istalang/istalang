@@ -26,15 +26,18 @@
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
+import {
+  type CompoundAssignment,
+  compoundOperator,
+} from '../../../syntax/expressions/operators.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
-import { type CompoundAssignment, compoundOperator } from '../../../syntax/operators.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { Assignment } from '../../../syntax/statements/index.ts';
 import {
   type Destructuring,
   destructuringOf,
   isUnnamedTarget,
 } from '../../../syntax/statements/targets.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { binaryApplied, resolveOperator } from '../../resolution/calls/operators.ts';

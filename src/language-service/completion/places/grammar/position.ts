@@ -16,23 +16,23 @@
  *   kind of name: a label, a function to spawn, a place a call's argument passes by reference.
  */
 
+import { moduleItemWords } from '../../../../compiler/syntax/placement.ts';
+import type { LabelledScope } from '../../../../compiler/syntax/statements/index.ts';
 import {
   followers,
   infixWords,
   type Modifier,
   type Word,
-} from '../../../../compiler/syntax/grammar-words.ts';
-import type { Identifier, Invalid } from '../../../../compiler/syntax/node.ts';
-import { moduleItemWords } from '../../../../compiler/syntax/placement.ts';
-import type { LabelledScope } from '../../../../compiler/syntax/statements/index.ts';
-import { isKeyword, type Token } from '../../../../compiler/syntax/tokens.ts';
+} from '../../../../compiler/syntax/tokens/grammar-words.ts';
+import { isKeyword, type Token } from '../../../../compiler/syntax/tokens/index.ts';
 import {
   childrenOf,
   extentIn,
   nodesAt,
   type SyntaxNode,
   type SyntaxTree,
-} from '../../../../compiler/syntax/tree.ts';
+} from '../../../../compiler/syntax/tree/index.ts';
+import type { Identifier, Invalid } from '../../../../compiler/syntax/tree/node.ts';
 import { codeTokensOf } from '../../../tokens.ts';
 import { adjoins, adjoinsBefore, type Cursor, touchingBefore } from '../../cursor.ts';
 import type { ParsedPlace } from '../../placeholder.ts';

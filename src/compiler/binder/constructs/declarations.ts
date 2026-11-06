@@ -36,9 +36,9 @@ import {
   type Variant,
 } from '../../syntax/declarations/index.ts';
 import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
-import type { Invalid } from '../../syntax/node.ts';
-import { endOf } from '../../syntax/positions.ts';
-import { bodyOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { bodyOf, type SyntaxNode } from '../../syntax/tree/index.ts';
+import type { Invalid } from '../../syntax/tree/node.ts';
+import { endOf } from '../../syntax/tree/positions.ts';
 import { binderDiagnostics } from '../diagnostics.ts';
 import { selfEntity, typeEntity, variableEntity } from '../entities.ts';
 import { holdsNoNames, type LocalBinder } from '../module/local-binder.ts';

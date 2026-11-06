@@ -1,7 +1,7 @@
 /**
  * Operators as calls (§3.9): `a + b` calls `add(a, b)`. Which function an operator calls is its
- * entry's in syntax/operators.ts; the orderings and `in`, which call `compare` and `includes`, are
- * the language's implicit calls (resolution/applying/implicit.ts).
+ * entry's in syntax/expressions/operators.ts; the orderings and `in`, which call `compare` and
+ * `includes`, are the language's implicit calls (resolution/applying/implicit.ts).
  *
  * An operator's function is found like any call's: by its name where the operator is written, the
  * prelude's included, which declares the operators on primitives as externs; through the modules
@@ -17,7 +17,7 @@ import {
   type CallingUnaryOperator,
   type UnaryOperator,
   unaryOperators,
-} from '../../../syntax/operators.ts';
+} from '../../../syntax/expressions/operators.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { ResolvedSite } from '../../surface/resolved-call.ts';
 import type { Type } from '../../types/type/index.ts';

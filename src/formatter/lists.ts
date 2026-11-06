@@ -10,7 +10,7 @@
  */
 
 import { builders, printer as docPrinter, utils } from 'prettier/doc';
-import { extentIn, type SyntaxNode } from '../compiler/syntax/tree.ts';
+import { extentIn, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
 import { hasBlankLine } from './comments/comments.ts';
 import type { Printer } from './printer.ts';
 

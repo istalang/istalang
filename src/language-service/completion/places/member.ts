@@ -25,15 +25,15 @@ import type { FunctionDeclaration } from '../../../compiler/syntax/declarations/
 import { chainStepOf } from '../../../compiler/syntax/expressions/chains.ts';
 import type { Expression, MemberAccess } from '../../../compiler/syntax/expressions/index.ts';
 import { qualifiedPath } from '../../../compiler/syntax/expressions/readings.ts';
-import type { Identifier } from '../../../compiler/syntax/node.ts';
 import type { NamePattern } from '../../../compiler/syntax/patterns.ts';
-import { spanIn } from '../../../compiler/syntax/positions.ts';
 import {
   nodesAt,
   parentOf,
   type SyntaxNode,
   type SyntaxTree,
-} from '../../../compiler/syntax/tree.ts';
+} from '../../../compiler/syntax/tree/index.ts';
+import type { Identifier } from '../../../compiler/syntax/tree/node.ts';
+import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import type { NamedType, TypeNode } from '../../../compiler/syntax/types/index.ts';
 import { importedModule } from '../../namespaces.ts';
 import type { Candidate } from '../candidate.ts';

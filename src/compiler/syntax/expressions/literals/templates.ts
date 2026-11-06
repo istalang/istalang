@@ -10,7 +10,7 @@
  */
 
 import { memo } from '../../../../structures/memo.ts';
-import { endOf, spanAcross } from '../../positions.ts';
+import { endOf, spanAcross } from '../../tree/positions.ts';
 import type { ArrayLiteral, Call, Expression, TemplateLiteral } from '../index.ts';
 
 /** A template with a tag. */

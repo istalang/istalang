@@ -6,7 +6,7 @@
 
 import type { Expression, FieldComprehension, StructComprehension } from '../expressions/index.ts';
 import { unparenthesized } from '../expressions/readings.ts';
-import type { Identifier, NodeOf } from '../node.ts';
+import type { Identifier, NodeOf } from '../tree/node.ts';
 import type { Block, Drop, FieldLoop } from './index.ts';
 
 /** The name `drop` releases, parentheses seen through; undefined when it drops a value (§7). */

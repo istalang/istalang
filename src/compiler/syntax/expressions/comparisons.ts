@@ -4,9 +4,9 @@
  * home.
  */
 
-import { type ChainingOperator, isChainingOperator } from '../operators.ts';
-import { type AnchoredSpan, spanAcross } from '../positions.ts';
+import { type AnchoredSpan, spanAcross } from '../tree/positions.ts';
 import type { Binary, ChainedComparison, Expression } from './index.ts';
+import { type ChainingOperator, isChainingOperator } from './operators.ts';
 
 /** One comparison of a chain: an operand, the operator after it, and the operand after that. */
 export interface ComparisonLink {

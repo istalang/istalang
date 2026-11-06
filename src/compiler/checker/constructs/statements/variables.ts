@@ -16,9 +16,9 @@
  */
 
 import type { VariableEntity } from '../../../binder/entities.ts';
-import type { Identifier } from '../../../syntax/node.ts';
 import { targetNames } from '../../../syntax/patterns.ts';
 import type { Assignment, VariableDeclaration } from '../../../syntax/statements/index.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { BodyContext, Variables } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';

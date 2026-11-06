@@ -7,7 +7,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { textOf } from '../../text/span.ts';
-import type { Token } from '../syntax/tokens.ts';
+import type { Token } from '../syntax/tokens/index.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
 import { losslessnessViolations, scanMalformed, scanText, soleToken } from './scan.test-kit.ts';
 

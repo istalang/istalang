@@ -11,7 +11,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../../../test/corpus/programs.ts';
 import { checkProgram } from '../../../../compiler/checker/check.ts';
-import { extentIn, nodesUnder } from '../../../../compiler/syntax/tree.ts';
+import { extentIn, nodesUnder } from '../../../../compiler/syntax/tree/index.ts';
 import { type Diagnostic, isError } from '../../../../diagnostics/diagnostic.ts';
 import { checkedModule } from '../../../checked-module.ts';
 import { mainProgram, programAt } from '../../../language-service.test-kit.ts';

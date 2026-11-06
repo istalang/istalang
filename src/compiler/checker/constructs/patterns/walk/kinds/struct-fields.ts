@@ -12,9 +12,9 @@
  *   makes them known otherwise, so field loops, comprehensions and keys take it as any other.
  */
 
-import type { Identifier } from '../../../../../syntax/node.ts';
 import type { RestPattern } from '../../../../../syntax/patterns.ts';
 import type { FieldTarget } from '../../../../../syntax/statements/targets.ts';
+import type { Identifier } from '../../../../../syntax/tree/node.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 import type { PartBinding } from '../../../../surface/checked-pattern.ts';
 import type { Type, TypeParameterType } from '../../../../types/type/index.ts';

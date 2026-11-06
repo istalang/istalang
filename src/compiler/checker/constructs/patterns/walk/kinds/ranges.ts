@@ -4,7 +4,7 @@
  */
 
 import { signedNumberOf } from '../../../../../syntax/expressions/literals/numbers.ts';
-import { binaryOperators, type Relation } from '../../../../../syntax/operators.ts';
+import { binaryOperators, type Relation } from '../../../../../syntax/expressions/operators.ts';
 import type { LiteralPattern, RangePattern } from '../../../../../syntax/patterns.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';

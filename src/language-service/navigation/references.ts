@@ -12,8 +12,8 @@
 
 import { checkProgram } from '../../compiler/checker/check.ts';
 import { isStdModule, type ModuleId, type Program } from '../../compiler/program/program.ts';
-import { isMissingName } from '../../compiler/syntax/node.ts';
-import { nodesUnder, type SyntaxNode } from '../../compiler/syntax/tree.ts';
+import { nodesUnder, type SyntaxNode } from '../../compiler/syntax/tree/index.ts';
+import { isMissingName } from '../../compiler/syntax/tree/node.ts';
 import { memo } from '../../structures/memo.ts';
 import {
   actedOnBy,

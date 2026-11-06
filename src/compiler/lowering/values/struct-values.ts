@@ -14,7 +14,7 @@ import type {
   StructValueType,
   Type,
 } from '../../checker/types/type/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext } from '../context.ts';
 
 /** Builds a struct of `type`, each of its fields taken by its name from `named`. */

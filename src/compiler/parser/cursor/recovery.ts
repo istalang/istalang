@@ -20,8 +20,8 @@
  * Each loop iteration consumes a token or stops, so parsing always terminates.
  */
 
-import type { Invalid } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { Invalid } from '../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { breakSeparatesItems } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';

@@ -10,7 +10,7 @@
 import { pushAll } from '../../../structures/stack.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Block } from '../../syntax/statements/index.ts';
-import { isNode, type SyntaxNode } from '../../syntax/tree.ts';
+import { isNode, type SyntaxNode } from '../../syntax/tree/index.ts';
 
 /** The bodies of the functions `nodes` reach, each read from `recorded`. */
 export function bodiesHeldBy(

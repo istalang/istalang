@@ -12,7 +12,7 @@
 import type { Register } from '../../../../definition/operands.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
-import type { Identifier } from '../../../syntax/node.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import { emitCall } from '../../calls/emit-call.ts';
 import type { FunctionContext } from '../../context.ts';
 import { constantValue } from '../../tables/constants.ts';

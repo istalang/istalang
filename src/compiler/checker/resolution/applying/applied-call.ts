@@ -16,7 +16,7 @@
 
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { useSite } from '../../contexts/use-site.ts';

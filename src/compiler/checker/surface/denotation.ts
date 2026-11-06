@@ -29,8 +29,8 @@ import type {
 } from '../../syntax/declarations/index.ts';
 import type { Lambda, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
-import type { Identifier, NodeOf } from '../../syntax/node.ts';
-import type { SyntaxNode } from '../../syntax/tree.ts';
+import type { SyntaxNode } from '../../syntax/tree/index.ts';
+import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import type { VariantMember } from '../check.ts';
 import type { Constraint, FieldMember, Type } from '../types/type/index.ts';

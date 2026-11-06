@@ -1,7 +1,7 @@
 /**
  * What a `type` place offers: the visible names of types, with namespaces, which qualify one
- * (`time.Duration`), and the words a type starts with (`typeWords`, syntax/grammar-words.ts, which
- * the parser's type tables are keyed by). An anonymous struct type is written `{…}`, as the
+ * (`time.Duration`), and the words a type starts with (`typeWords`, syntax/tokens/grammar-words.ts,
+ * which the parser's type tables are keyed by). An anonymous struct type is written `{…}`, as the
  * formatter prints it, so `struct` before its brace is not offered; `infer` is offered only in a
  * type `match` case's pattern.
  *
@@ -11,8 +11,8 @@
  */
 
 import { type Entity, namesType } from '../../../compiler/binder/entities.ts';
-import { type TypeWord, typeWords } from '../../../compiler/syntax/grammar-words.ts';
-import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
+import { type TypeWord, typeWords } from '../../../compiler/syntax/tokens/grammar-words.ts';
+import type { SyntaxNode } from '../../../compiler/syntax/tree/index.ts';
 import { matchPlaceOf } from '../../../compiler/syntax/types/type-matches.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';

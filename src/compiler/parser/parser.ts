@@ -10,10 +10,10 @@
  * enforces both rules.
  *
  * The parser reads text positions: tokens carry them, and so do its own decisions. A node it makes
- * gets its span anchored to the segment being parsed (syntax/positions.ts), and reading a node's
- * position back goes through the segments' starts, which the tree keeps. Layout starts a header
- * segment for each item of a module or a trait standing on lines of its own, and a function that
- * is such an item parses its body as a segment of its own (`inFunctionBody`).
+ * gets its span anchored to the segment being parsed (syntax/tree/positions.ts), and reading a
+ * node's position back goes through the segments' starts, which the tree keeps. Layout starts a
+ * header segment for each item of a module or a trait standing on lines of its own, and a function
+ * that is such an item parses its body as a segment of its own (`inFunctionBody`).
  *
  * Speculation settles two ambiguities: `name<…>(` against a comparison (§3.5), and `a, b = …`
  * against a comma that belongs to an enclosing call. An attempt that reports anything is undone
@@ -32,13 +32,18 @@ import {
   nestedFunctionSpan,
 } from '../syntax/declarations/index.ts';
 import type { Expression } from '../syntax/expressions/index.ts';
-import type { Identifier, Invalid, Missing } from '../syntax/node.ts';
-import type { PrecedenceLevel } from '../syntax/operators.ts';
+import type { PrecedenceLevel } from '../syntax/expressions/operators.ts';
 import type { Pattern } from '../syntax/patterns.ts';
-import { type AnchoredSpan, type Segment, type SegmentBases, spanIn } from '../syntax/positions.ts';
 import type { Block, Statement } from '../syntax/statements/index.ts';
-import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
-import type { SyntaxNode } from '../syntax/tree.ts';
+import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/tokens/index.ts';
+import type { SyntaxNode } from '../syntax/tree/index.ts';
+import type { Identifier, Invalid, Missing } from '../syntax/tree/node.ts';
+import {
+  type AnchoredSpan,
+  type Segment,
+  type SegmentBases,
+  spanIn,
+} from '../syntax/tree/positions.ts';
 import type { TypeNode } from '../syntax/types/index.ts';
 import { unclosedBracketEnds } from './cursor/brackets.ts';
 import { Cursor, type CursorKind } from './cursor/index.ts';
@@ -128,8 +133,8 @@ export class Parser implements SegmentBases {
   }
 
   /**
-   * Runs `parse` over a template value's own tokens (syntax/tokens.ts), whose `end` stands where
-   * its `}` does; line breaks there are ignored, as in brackets (§2).
+   * Runs `parse` over a template value's own tokens (syntax/tokens/index.ts), whose `end` stands
+   * where its `}` does; line breaks there are ignored, as in brackets (§2).
    */
   withinTemplateValue<Result>(value: TemplateValue, parse: () => Result): Result {
     const outer = this.#cursor;
@@ -153,8 +158,8 @@ export class Parser implements SegmentBases {
 
   /**
    * The body of each function parsed, which the tree holds apart from the function
-   * (syntax/tree.ts), functions the parser let go of since included: a parse undone, a node made
-   * Invalid.
+   * (syntax/tree/index.ts), functions the parser let go of since included: a parse undone, a node
+   * made Invalid.
    */
   get recordedBodies(): ReadonlyMap<FunctionDeclaration, Block> {
     return this.#bodies;

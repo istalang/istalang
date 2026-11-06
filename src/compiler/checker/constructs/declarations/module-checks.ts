@@ -13,7 +13,7 @@ import { compareDiagnostics, type Diagnostic } from '../../../../diagnostics/dia
 import type { EntryTable } from '../../../../structures/entries/index.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type { Declaration } from '../../../syntax/declarations/index.ts';
-import { diagnosticIn, type SegmentBases } from '../../../syntax/positions.ts';
+import { diagnosticIn, type SegmentBases } from '../../../syntax/tree/positions.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import type { Expansion } from '../../rules/expansion/functions.ts';
 import { checkDeclaration } from './declarations.ts';
@@ -62,7 +62,8 @@ export class ModuleChecks {
 
   /**
    * Every diagnostic of `module`, once it is checked whole, at its text positions in `tree`, the
-   * module's: entries keep anchored spans (positions.ts), and they leave the checker here.
+   * module's: entries keep anchored spans (syntax/tree/positions.ts), and they leave the checker
+   * here.
    */
   diagnosticsOf(module: ModuleId, tree: SegmentBases): readonly Diagnostic[] {
     this.#modules.get(module);

@@ -5,7 +5,7 @@
  */
 
 import type { Await } from '../../../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';

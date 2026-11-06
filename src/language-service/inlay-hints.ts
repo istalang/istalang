@@ -8,11 +8,16 @@
 import { typeText } from '../compiler/checker/types/type/type-text.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import { parameterNames } from '../compiler/syntax/expressions/parameters.ts';
-import { type Identifier, isMissingName } from '../compiler/syntax/node.ts';
 import { targetNames } from '../compiler/syntax/patterns.ts';
-import { spanIn } from '../compiler/syntax/positions.ts';
 import { declaredTargets } from '../compiler/syntax/statements/targets.ts';
-import { childrenOf, extentIn, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
+import {
+  childrenOf,
+  extentIn,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../compiler/syntax/tree/index.ts';
+import { type Identifier, isMissingName } from '../compiler/syntax/tree/node.ts';
+import { spanIn } from '../compiler/syntax/tree/positions.ts';
 import type { Span } from '../text/span.ts';
 import { type CheckedModule, checkedModule } from './checked-module.ts';
 

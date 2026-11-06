@@ -7,8 +7,8 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { type Convention, followsConvention, isBuiltInTypeName } from '../../language/naming.ts';
 import { primitiveOnceSpelled } from '../../language/primitives.ts';
-import { type Identifier, isMissingName } from '../syntax/node.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
+import { type Identifier, isMissingName } from '../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../syntax/tree/positions.ts';
 import { binderDiagnostics } from './diagnostics.ts';
 
 /** The diagnostic for a declared name that breaks the naming rules, if it does. */

@@ -22,13 +22,12 @@
  */
 
 import { isUnnamed } from '../../../language/naming.ts';
-import type { PatternWord } from '../../syntax/grammar-words.ts';
 import {
   binaryOperators,
   isComparisonOperator,
   operatorLevels,
   tighterLevel,
-} from '../../syntax/operators.ts';
+} from '../../syntax/expressions/operators.ts';
 import type {
   LiteralPattern,
   Pattern,
@@ -36,6 +35,7 @@ import type {
   StructPattern,
   WildcardPattern,
 } from '../../syntax/patterns.ts';
+import type { PatternWord } from '../../syntax/tokens/grammar-words.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import { parseDelimited, parseGroup } from '../cursor/recovery.ts';

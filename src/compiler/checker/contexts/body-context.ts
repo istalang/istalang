@@ -24,9 +24,7 @@ import type {
   MapLiteral,
 } from '../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
-import type { Identifier, Invalid, NodeOf } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type {
   Assignment,
   Block,
@@ -38,6 +36,8 @@ import type {
   Return,
   Statement,
 } from '../../syntax/statements/index.ts';
+import type { Identifier, Invalid, NodeOf } from '../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import type { SignatureParameter } from '../check.ts';
 import type {

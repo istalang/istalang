@@ -25,14 +25,19 @@ import {
   buildsShared,
   literalNaming,
 } from '../../compiler/syntax/expressions/literals/built-types.ts';
-import type { Identifier } from '../../compiler/syntax/node.ts';
 import {
   declaredTargets,
   ownsTargets,
   type TargetOwner,
 } from '../../compiler/syntax/statements/targets.ts';
-import type { TokenKind } from '../../compiler/syntax/tokens.ts';
-import { extentIn, nodesAt, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
+import type { TokenKind } from '../../compiler/syntax/tokens/index.ts';
+import {
+  extentIn,
+  nodesAt,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../../compiler/syntax/tree/index.ts';
+import type { Identifier } from '../../compiler/syntax/tree/node.ts';
 import { isWrittenType } from '../../compiler/syntax/types/index.ts';
 import { createSourceText } from '../../text/source-text.ts';
 import { codeTokensOf } from '../tokens.ts';

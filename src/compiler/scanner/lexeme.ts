@@ -6,7 +6,7 @@
  * can't fall out of sync with what sub-scanners return.
  */
 
-import type { Token } from '../syntax/tokens.ts';
+import type { Token } from '../syntax/tokens/index.ts';
 
 type DistributiveOmit<Union, Key extends PropertyKey> = Union extends unknown
   ? Omit<Union, Key>

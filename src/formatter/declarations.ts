@@ -19,8 +19,8 @@ import {
   membersAsWritten,
   type TypeParameters,
 } from '../compiler/syntax/declarations/index.ts';
-import type { Identifier } from '../compiler/syntax/node.ts';
-import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree.ts';
+import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
+import type { Identifier } from '../compiler/syntax/tree/node.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './bodies.ts';
 import { opened } from './expressions/indented-values.ts';
 import { angled, bracketed, bracketedWhenBroken, fieldList, itemLines } from './lists.ts';

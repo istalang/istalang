@@ -11,9 +11,13 @@
 
 import { isMethod } from '../../compiler/syntax/declarations/index.ts';
 import type { Expression } from '../../compiler/syntax/expressions/index.ts';
-import { type Identifier, isMissingName, type QualifiedName } from '../../compiler/syntax/node.ts';
-import { spanIn } from '../../compiler/syntax/positions.ts';
-import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
+import {
+  type Identifier,
+  isMissingName,
+  type QualifiedName,
+} from '../../compiler/syntax/tree/node.ts';
+import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import { memo } from '../../structures/memo.ts';
 import type { SemanticType } from './semantic-types.ts';
 

@@ -11,8 +11,8 @@
  *   exhaustiveness: a `match` on one needs `case _` (../index.ts).
  */
 
-import { lastName } from '../../../../../syntax/node.ts';
 import type { NamePattern, StructPattern } from '../../../../../syntax/patterns.ts';
+import { lastName } from '../../../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 import type { PatternTest } from '../../../../surface/checked-pattern.ts';

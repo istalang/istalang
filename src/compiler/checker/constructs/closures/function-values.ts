@@ -18,7 +18,7 @@
 import { staticName } from '../../../../language/static-names.ts';
 import type { FunctionsEntity } from '../../../binder/entities.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
-import type { Identifier } from '../../../syntax/node.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

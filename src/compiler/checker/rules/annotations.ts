@@ -27,9 +27,9 @@ import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
 import type { Declaration, Field, FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
-import type { Invalid, NodeOf } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Statement } from '../../syntax/statements/index.ts';
+import type { Invalid, NodeOf } from '../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { AnnotationChecks, CheckerContext, CheckerNote } from '../contexts/context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {

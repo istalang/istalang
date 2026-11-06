@@ -18,8 +18,8 @@ import {
   type Program,
   programModule,
 } from '../../../compiler/program/program.ts';
-import { spanIn } from '../../../compiler/syntax/positions.ts';
-import { parentOf } from '../../../compiler/syntax/tree.ts';
+import { parentOf } from '../../../compiler/syntax/tree/index.ts';
+import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { isError } from '../../../diagnostics/diagnostic.ts';
 import type { NamePlace } from '../../../language-service/navigation/declarations.ts';
 import {

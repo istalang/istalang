@@ -24,7 +24,7 @@ import {
   type TypeParameters,
   typeParametersOf,
 } from '../../../../syntax/declarations/index.ts';
-import { parentOf } from '../../../../syntax/tree.ts';
+import { parentOf } from '../../../../syntax/tree/index.ts';
 import type { TypeCase, TypeMatch } from '../../../../syntax/types/index.ts';
 import { inferTypesIn } from '../../../../syntax/types/type-matches.ts';
 import type { CheckerContext, CheckerNote } from '../../../contexts/context.ts';

@@ -1,6 +1,6 @@
 /**
  * Operators (§3.9; docs/arch/definition.md, "How each construct lowers"), by their meaning in
- * syntax/operators.ts.
+ * syntax/expressions/operators.ts.
  *
  * - An operator that calls a function calls the one the checker resolved; an ordering calls
  *   `compare` and turns its int into the relation with `order`. `item in c` calls
@@ -26,8 +26,12 @@ import type {
   Expression,
   Unary,
 } from '../../syntax/expressions/index.ts';
-import { binaryOperators, type Relation, unaryOperators } from '../../syntax/operators.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+import {
+  binaryOperators,
+  type Relation,
+  unaryOperators,
+} from '../../syntax/expressions/operators.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { emitCallAt, emitFunctionCall } from '../calls/emit-call.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { lowerNullish } from './access/optionals.ts';

@@ -16,10 +16,10 @@ import {
   statementPlace,
 } from '../../../compiler/checker/surface/checked-annotation.ts';
 import { parserDiagnostics } from '../../../compiler/parser/diagnostics.ts';
-import type { Invalid } from '../../../compiler/syntax/node.ts';
-import { spanIn } from '../../../compiler/syntax/positions.ts';
 import type { Statement } from '../../../compiler/syntax/statements/index.ts';
-import { nodesUnder, type SyntaxNode } from '../../../compiler/syntax/tree.ts';
+import { nodesUnder, type SyntaxNode } from '../../../compiler/syntax/tree/index.ts';
+import type { Invalid } from '../../../compiler/syntax/tree/node.ts';
+import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { wellKnown } from '../../../language/well-known/index.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';

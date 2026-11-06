@@ -28,7 +28,7 @@ import type { AnyType, LiteralType, Type, UnionType } from '../../checker/types/
 import { isPrimitive } from '../../checker/types/type/primitives.ts';
 import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext } from '../context.ts';
 import { emitConstant } from '../tables/constants.ts';
 import {

@@ -19,8 +19,8 @@ import {
 import { createSourceText } from '../../text/source-text.ts';
 import { textOf } from '../../text/span.ts';
 import { scan } from '../scanner/scan.ts';
-import { dump, errorNodes, spanViolations, strayBodies } from '../syntax/tree.test-kit.ts';
-import type { SyntaxTree } from '../syntax/tree.ts';
+import type { SyntaxTree } from '../syntax/tree/index.ts';
+import { dump, errorNodes, spanViolations, strayBodies } from '../syntax/tree/tree.test-kit.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { bodyOf, functionOf } from './parse.test-kit.ts';
 import { parse } from './parse.ts';

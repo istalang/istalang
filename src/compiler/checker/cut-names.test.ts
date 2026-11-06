@@ -15,9 +15,9 @@ import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../compile.test-kit.ts';
 import { parse } from '../parser/parse.ts';
 import { scan } from '../scanner/scan.ts';
-import { lastName } from '../syntax/node.ts';
-import { spanIn } from '../syntax/positions.ts';
-import { nodesUnder } from '../syntax/tree.ts';
+import { nodesUnder } from '../syntax/tree/index.ts';
+import { lastName } from '../syntax/tree/node.ts';
+import { spanIn } from '../syntax/tree/positions.ts';
 import { reported } from './check.test-kit.ts';
 
 /**

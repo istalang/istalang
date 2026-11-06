@@ -8,9 +8,9 @@ import { isUnnamed } from '../../../language/naming.ts';
 import type { Comprehension, Expression, FieldHeader, Parameter } from '../expressions/index.ts';
 import { isPlace } from '../expressions/places.ts';
 import { itemName, itemValue, unparenthesized } from '../expressions/readings.ts';
-import type { Identifier } from '../node.ts';
 import type { Pattern } from '../patterns.ts';
-import type { AnchoredSpan } from '../positions.ts';
+import type { Identifier } from '../tree/node.ts';
+import type { AnchoredSpan } from '../tree/positions.ts';
 import type { NamedType } from '../types/index.ts';
 import type { For, VariableDeclaration } from './index.ts';
 

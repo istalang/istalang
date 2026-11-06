@@ -7,7 +7,7 @@
  * and get `false` instead of a special case.
  */
 
-import { isKeyword } from '../syntax/tokens.ts';
+import { isKeyword } from '../syntax/tokens/index.ts';
 
 /** Whitespace between tokens. Line breaks are handled separately (see lineBreakLength). */
 export function isInlineWhitespace(char: string | undefined): boolean {

@@ -24,7 +24,6 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
-import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type {
   Assignment,
@@ -36,6 +35,7 @@ import type {
   LabelledScope,
   Return,
 } from '../../syntax/statements/index.ts';
+import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
 import type { Checker, SignatureParameter } from '../check.ts';
 import type { FieldPassType, PassRecords } from '../contexts/passes.ts';
 import type { Fit } from '../types/fitting/fit.ts';

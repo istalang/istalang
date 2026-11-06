@@ -12,7 +12,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { FieldMember } from '../../checker/types/type/index.ts';
 import { isPrimitive } from '../../checker/types/type/primitives.ts';
 import type { FieldHeader } from '../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { FunctionContext } from '../context.ts';
 import { tupleOf } from '../expressions/tuples.ts';
 import { endScope, valueInBlock } from '../statements/scopes.ts';

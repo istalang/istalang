@@ -17,7 +17,7 @@
 
 import { isUnnamed } from '../../../../language/naming.ts';
 import type { DeclaredField, TypeParameter } from '../../../syntax/declarations/index.ts';
-import type { Invalid, Missing } from '../../../syntax/node.ts';
+import type { Invalid, Missing } from '../../../syntax/tree/node.ts';
 import type { FieldDeclaration, MappedField, StructType } from '../../../syntax/types/index.ts';
 import { type Enclosed, parseEnclosed } from '../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';

@@ -5,8 +5,8 @@
  */
 
 import type { VariableEntity } from '../../../binder/entities.ts';
-import type { Identifier } from '../../../syntax/node.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { FunctionFrame } from '../../contexts/body-context.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';
 import { EnclosingScopes } from './enclosing-scopes.ts';

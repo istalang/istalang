@@ -43,15 +43,15 @@ import type {
 } from '../../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
-import type { Identifier, Invalid } from '../../../syntax/node.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type {
   Assignment,
   Block,
   Statement,
   VariableDeclaration,
 } from '../../../syntax/statements/index.ts';
-import type { SyntaxNode } from '../../../syntax/tree.ts';
+import type { SyntaxNode } from '../../../syntax/tree/index.ts';
+import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { SignatureParameter } from '../../check.ts';
 import { FunctionScope } from '../../constructs/closures/function-scope.ts';

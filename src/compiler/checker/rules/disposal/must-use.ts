@@ -19,9 +19,9 @@
 import { wellKnown } from '../../../../language/well-known/index.ts';
 import type { VariableEntity } from '../../../binder/entities.ts';
 import { localFunctionOf } from '../../../binder/entities.ts';
-import type { NodeOf } from '../../../syntax/node.ts';
 import type { Drop } from '../../../syntax/statements/index.ts';
 import { droppedName } from '../../../syntax/statements/readings.ts';
+import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { heldType } from '../../types/properties/held.ts';

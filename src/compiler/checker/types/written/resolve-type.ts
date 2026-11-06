@@ -32,7 +32,7 @@ import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
 import type { Entity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type { TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';
-import { type Identifier, isMissingName } from '../../../syntax/node.ts';
+import { type Identifier, isMissingName } from '../../../syntax/tree/node.ts';
 import {
   type FunctionType as FunctionTypeNode,
   type NamedType,

@@ -27,8 +27,8 @@
  */
 
 import { indentationAt, lineStartAt } from '../../../text/line-map.ts';
-import { type AnchoredSpan, spanIn } from '../../syntax/positions.ts';
-import { nodesAt, parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
+import { nodesAt, parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';
+import { type AnchoredSpan, spanIn } from '../../syntax/tree/positions.ts';
 import { type LocalEntity, Scope, type ScopeSnapshot } from './scope.ts';
 
 /** A scope state, noted for a node from where `start` starts on. */

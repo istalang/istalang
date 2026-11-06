@@ -26,9 +26,9 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../../syntax/declarations/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Block } from '../../syntax/statements/index.ts';
-import type { SyntaxTree } from '../../syntax/tree.ts';
+import type { SyntaxTree } from '../../syntax/tree/index.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import type { Checker, VariantMember } from '../check.ts';
 import type { AnnotationQueries } from '../surface/checked-annotation.ts';

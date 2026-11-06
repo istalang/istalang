@@ -29,8 +29,8 @@ import type {
   ExternConstantDeclaration,
   FunctionDeclaration,
 } from '../../syntax/declarations/index.ts';
-import { type AnchoredSpan, spanIn } from '../../syntax/positions.ts';
-import type { SyntaxTree } from '../../syntax/tree.ts';
+import type { SyntaxTree } from '../../syntax/tree/index.ts';
+import { type AnchoredSpan, spanIn } from '../../syntax/tree/positions.ts';
 import { nestedSpanOf } from '../bodies.ts';
 import { type ClosedCall, type Dispatch, takingPassed } from '../calls/closed-calls.ts';
 import { laidOutAs } from '../values/holdings.ts';

@@ -8,8 +8,8 @@
  */
 
 import type { Handlers } from '../../../../structures/kind-table.ts';
-import type { Invalid } from '../../../syntax/node.ts';
 import type { Block, Statement } from '../../../syntax/statements/index.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkDiscarded, checkDrop } from '../../rules/disposal/must-use.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';

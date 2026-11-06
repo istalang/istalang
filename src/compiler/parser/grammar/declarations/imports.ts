@@ -15,13 +15,13 @@
 
 import type { ImportDeclaration, ImportedName } from '../../../syntax/declarations/index.ts';
 import type { StringLiteral } from '../../../syntax/expressions/literals/literals.ts';
+import { isKeyword } from '../../../syntax/tokens/index.ts';
 import {
   type Identifier,
   type Invalid,
   isMissingName,
   type Missing,
-} from '../../../syntax/node.ts';
-import { isKeyword } from '../../../syntax/tokens.ts';
+} from '../../../syntax/tree/node.ts';
 import { parseDelimited } from '../../cursor/recovery.ts';
 import type { Parser } from '../../parser.ts';
 

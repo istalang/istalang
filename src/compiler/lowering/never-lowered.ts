@@ -6,7 +6,7 @@
  */
 
 import { unreachable } from '../../structures/unreachable.ts';
-import type { NodeOf } from '../syntax/node.ts';
+import type { NodeOf } from '../syntax/tree/node.ts';
 import type { FunctionContext } from './context.ts';
 
 export const neverLowered = (_context: FunctionContext, node: NodeOf<string>): never => {

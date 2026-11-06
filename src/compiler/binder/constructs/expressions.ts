@@ -18,7 +18,7 @@ import type {
   SelectCase,
 } from '../../syntax/expressions/index.ts';
 import { casesOf, qualifiedPath, selectCasesOf } from '../../syntax/expressions/readings.ts';
-import type { Identifier, Invalid } from '../../syntax/node.ts';
+import type { Identifier, Invalid } from '../../syntax/tree/node.ts';
 import {
   bindConditionValue,
   underBindings,

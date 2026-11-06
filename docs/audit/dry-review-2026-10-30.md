@@ -19,10 +19,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - **Fix:** Key `programBinder`'s outer memo by the raw `text` string (or pass a pre-verified `{ definition, text, hash }` bundle from `compileProgram` / `definitionFormat`), computing `definitionFormat.read` and `definitionFormat.write` at most once per unique `Definition`.
    - **Done** (`fast-wins`): `programBinder` keys its memo by the text, so each text is read, validated and written back once (`Format.readCanonical`) and each later host operation on it binds from the memo; `deploy` stores the canonical text that read gave. `inspect` on a finished instance (`runtime/host.bench.ts`): 1.94 ms → 14.6 µs mean. `runTests` reads through `readCanonical` too. Still open: the CLI writes a compiled Definition to text only for `deploy`/`runTests` to read it back, since both take text.
 
-2. **`[high]` Unmemoized `extentIn(tree, node)` and repeated token re-scanning across parser and language service (`src/compiler/syntax/tree.ts:127`, `src/language-service/tokens.ts:24`, `src/compiler/parser/cursor/brackets.ts:34`; widens `B21`, `P17`)**
-   - Despite `src/compiler/syntax/tree.ts`'s banner stating that a node's extent is memoized on the immutable node or tree, `extentIn(tree, node)` (`src/compiler/syntax/tree.ts:127–135`) is unmemoized and walks down `childrenOf` and `lastChildOf` to the leaves on every call — including at every sibling tested by `nodesAt(tree, offset)` (`tree.ts:141–156`).
+2. **`[high]` Unmemoized `extentIn(tree, node)` and repeated token re-scanning across parser and language service (`src/compiler/syntax/tree/index.ts:127`, `src/language-service/tokens.ts:24`, `src/compiler/parser/cursor/brackets.ts:34`; widens `B21`, `P17`)**
+   - Despite `src/compiler/syntax/tree/index.ts`'s banner stating that a node's extent is memoized on the immutable node or tree, `extentIn(tree, node)` (`src/compiler/syntax/tree/index.ts:127–135`) is unmemoized and walks down `childrenOf` and `lastChildOf` to the leaves on every call — including at every sibling tested by `nodesAt(tree, offset)` (`tree/index.ts:141–156`).
    - Separately, `parse(source, scanned)` (`src/compiler/parser/parse.ts:28`) discards `scanned.tokens`, so `scannedOf(tree)` (`src/language-service/tokens.ts:24`) re-runs `scan(tree.source)` from scratch, and `pairBrackets` (`src/compiler/parser/cursor/brackets.ts:34`) re-walks the token stream a second time.
-   - **Fix:** Memoize `extentIn` per `(tree, node)` via `WeakMap` in `tree.ts`; retain `tokens` on `SyntaxTree` (or memoize `scan(source)` on `SourceText` as `lineMapOf` does) and compute bracket pairs once.
+   - **Fix:** Memoize `extentIn` per `(tree, node)` via `WeakMap` in `tree/index.ts`; retain `tokens` on `SyntaxTree` (or memoize `scan(source)` on `SourceText` as `lineMapOf` does) and compute bracket pairs once.
    - **Done** (`fast-wins`): `extentIn` is memoized per (tree, node) in a `SequenceMemo`, as the banner says (formatter, language-service and `tree.test.ts` suites: 5.45 s → 3.38 s). The token re-scan and bracket re-walk stay open.
 
 3. **`[high]` Unmemoized transitive-read graph traversal in `notesOfReads` (`src/structures/entries/entry.ts:74`, `src/structures/entries/index.ts:95`; widens `P10`)**
@@ -171,8 +171,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 6. `src/compiler/syntax/` (including `expressions/`)
 
-- **Unmemoized `extentIn(tree, node)` despite banner contract (`src/compiler/syntax/tree.ts`; widens `B21`):**
-  - The banner of `src/compiler/syntax/tree.ts` states: *"What tools ask of a tree by position derives from the same children, memoized on the immutable node or tree: a node's parent, the text a node and everything under it cover (its extent, as its own span is anchored to its segment: positions.ts), and the nodes at an offset."*
+- **Unmemoized `extentIn(tree, node)` despite banner contract (`src/compiler/syntax/tree/index.ts`; widens `B21`):**
+  - The banner of `src/compiler/syntax/tree/index.ts` states: *"What tools ask of a tree by position derives from the same children, memoized on the immutable node or tree: a node's parent, the text a node and everything under it cover (its extent, as its own span is anchored to its segment: positions.ts), and the nodes at an offset."*
   - However, `extentIn(tree, node)` is not memoized: every call walks down `childrenOf(tree, first)` and `lastChildOf(tree, last)` to the leaves, and `nodesAt(tree, offset)` calls `extentIn` on every sibling tested at every level of the tree (contributing to the `tree.test.ts` `nodesAt` timeout in `B21`).
   - **Done** (`fast-wins`): See ranked summary #2.
 - **Ad-hoc `bare.text === '_'` check in `isUnnamedTarget` (`src/compiler/syntax/statements/index.ts`):**
@@ -194,8 +194,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Two hand-rolled binary searches duplicating `lastIndexAtMost` (`src/compiler/parser/cursor/brackets.ts`, `src/compiler/parser/cursor/index.ts`, `src/structures/sorted.ts`):**
   - `lineOf` in `src/compiler/parser/cursor/brackets.ts` and `Cursor.lineHead` in `src/compiler/parser/cursor/index.ts` each write their own `while (low < high)` binary search loop (`Math.ceil((low + high) / 2)`), duplicating `lastIndexAtMost` (`src/structures/sorted.ts`).
   - **Done** (`fast-wins`): `lineOf` and `Cursor.lineHead` call `lastIndexAtMost`.
-- **Duplicate node-field reflection walk in `bodiesHeldBy` (`src/compiler/parser/incremental/held-bodies.ts`, `src/compiler/syntax/tree.ts`):**
-  - `bodiesHeldBy` inspects `Object.values(node)` with `Array.isArray(value)` and `isNode` directly instead of sharing the field-child extraction in `src/compiler/syntax/tree.ts` (`fieldChildrenOf`).
+- **Duplicate node-field reflection walk in `bodiesHeldBy` (`src/compiler/parser/incremental/held-bodies.ts`, `src/compiler/syntax/tree/index.ts`):**
+  - `bodiesHeldBy` inspects `Object.values(node)` with `Array.isArray(value)` and `isNode` directly instead of sharing the field-child extraction in `src/compiler/syntax/tree/index.ts` (`fieldChildrenOf`).
 - **Repeated array-spreading multimap insertion in `SegmentReuse` (`src/compiler/parser/incremental/reuse.ts`):**
   - `SegmentReuse.constructor` builds `#unused` with `this.#unused.set(run.text.text, [...(this.#unused.get(run.text.text) ?? []), run])`, repeating the same copying multimap pattern as `strongly-connected.ts` and `language/values.ts`.
   - **Done** (`fast-wins`): Uses `addToGroup` (unit 1).
@@ -209,7 +209,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - Unlike `expressions/operators.ts` (where `parseOpenRange` and `rangeParselet` delegate to `parseRangeRest`), `parseRangePattern` and `parseOpenRangePattern` in `patterns.ts` duplicate the operator-kind check, `parseRangeBound`, and `RangePattern` node construction.
 - **Closed parselet dispatch tables duplicated in completion (`src/compiler/parser/`, `src/language-service/completion/places/grammar/words.ts`; tracked as `Q35`):**
   - `typeParselets`/`wordParselets`, `patternParselets`, `prefixParselets`/`infixParselets`, `statementParselets`, and `topLevelParselets` are internal to `parser/`, forcing `completion/places/grammar/words.ts` to restate the keyword sets (`Q35`).
-  - **Done** (`p3-unions`): each position's words have one home, `syntax/grammar-words.ts` (`declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers`). Every parselet table above `satisfies` its list both ways (`StartParselets` for keywords, `WordParselets` for contextual words, `parser/grammar/word-parselets.ts`), and the lookaheads of `shared`, `sendable`, `hold` and `async` read `followers`. Completion offers the lists and names only the words that need surroundings (`wordNeeds`). Its property test now runs both ways: each keyword the parser takes at a corpus statement or operand is offered, unless it needs surroundings.
+  - **Done** (`p3-unions`): each position's words have one home, `syntax/tokens/grammar-words.ts` (`declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers`). Every parselet table above `satisfies` its list both ways (`StartParselets` for keywords, `WordParselets` for contextual words, `parser/grammar/word-parselets.ts`), and the lookaheads of `shared`, `sendable`, `hold` and `async` read `followers`. Completion offers the lists and names only the words that need surroundings (`wordNeeds`). Its property test now runs both ways: each keyword the parser takes at a corpus statement or operand is offered, unless it needs surroundings.
 
 ### 10. `src/compiler/program/`
 
@@ -428,7 +428,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Double printing of call arguments in `callArguments` (`src/formatter/expressions/index.ts`):**
   - `callArguments` first builds `const expanded = bracketed(printer, node, ['(', ')'], node.arguments)` (which calls `printer.print` on every argument) and then, when the last argument is huggable, calls `front.map((argument) => printer.print(argument))` and `printer.print(last)` a second time ($O(2^d)$ work on nested huggable calls).
   - **Done** (`fast-wins`): See ranked summary #9: `TreePrinter.print` keeps each node's doc.
-- **Duplicate tree-descent loop in `surroundingsOf` (`src/formatter/comments/comment-placement.ts`) vs. `nodesAt` (`src/compiler/syntax/tree.ts`):**
+- **Duplicate tree-descent loop in `surroundingsOf` (`src/formatter/comments/comment-placement.ts`) vs. `nodesAt` (`src/compiler/syntax/tree/index.ts`):**
   - `surroundingsOf` descends `childrenOf(tree, ...).find(encloserOf(tree, comment))` from `tree.root`, duplicating `nodesAt(tree, comment.span.start)`.
 
 ### 30. `src/project/`

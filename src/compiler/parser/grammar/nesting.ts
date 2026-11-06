@@ -10,7 +10,7 @@
  * recursing (cursor/index.ts), so the skipped part may nest to any depth.
  */
 
-import type { Invalid } from '../../syntax/node.ts';
+import type { Invalid } from '../../syntax/tree/node.ts';
 import { skipUntil } from '../cursor/recovery.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { skipDeeperLines } from '../layout/continuations.ts';

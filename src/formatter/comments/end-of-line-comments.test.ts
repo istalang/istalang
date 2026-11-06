@@ -9,7 +9,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { scan } from '../../compiler/scanner/scan.ts';
-import type { SyntaxTree } from '../../compiler/syntax/tree.ts';
+import type { SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import { parseText, roundTripOf } from '../format.test-kit.ts';
 import { describeComment } from './comments.ts';
 

@@ -7,7 +7,7 @@
  */
 
 import type { Docstring, Documented } from '../../syntax/declarations/index.ts';
-import type { Invalid } from '../../syntax/node.ts';
+import type { Invalid } from '../../syntax/tree/node.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 

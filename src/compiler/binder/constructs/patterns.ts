@@ -15,8 +15,8 @@
 
 import { bindsInPattern } from '../../../language/naming.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import type { Identifier } from '../../syntax/node.ts';
 import type { Pattern, RestPattern } from '../../syntax/patterns.ts';
+import type { Identifier } from '../../syntax/tree/node.ts';
 import type { VariableEntity, VariableOwner } from '../entities.ts';
 import { holdsNoNames, type LocalBinder, type PatternBindings } from '../module/local-binder.ts';
 import { Scope } from '../module/scope.ts';

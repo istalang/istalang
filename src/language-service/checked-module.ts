@@ -6,7 +6,7 @@
 
 import { type Checker, checkProgram } from '../compiler/checker/check.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
-import type { SyntaxTree } from '../compiler/syntax/tree.ts';
+import type { SyntaxTree } from '../compiler/syntax/tree/index.ts';
 
 export interface CheckedModule {
   readonly checker: Checker;

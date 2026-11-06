@@ -5,7 +5,7 @@
  * index.ts, which these reads build on.
  */
 
-import type { Identifier, QualifiedName } from '../node.ts';
+import type { Identifier, QualifiedName } from '../tree/node.ts';
 import type { Expression, FieldItem, Match, MatchCase, Select, SelectCase } from './index.ts';
 
 /** The expression an item gives its field: its value, or for the shorthand, its own name. */

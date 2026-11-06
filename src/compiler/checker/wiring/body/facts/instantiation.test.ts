@@ -18,7 +18,7 @@ import { casesOf } from '../../../../syntax/expressions/readings.ts';
 import type { Pattern } from '../../../../syntax/patterns.ts';
 import type { For } from '../../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../../syntax/statements/readings.ts';
-import { bodyOf, nodesUnder, type SyntaxNode } from '../../../../syntax/tree.ts';
+import { bodyOf, nodesUnder, type SyntaxNode } from '../../../../syntax/tree/index.ts';
 import { checkProgram } from '../../../check.ts';
 import type { CheckedBody } from '../../../surface/checked-body.ts';
 import { namesBound, type PartStep } from '../../../surface/checked-pattern.ts';

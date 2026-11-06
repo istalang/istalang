@@ -11,7 +11,7 @@
  */
 
 import { type TypeParameter, typeParametersOf } from '../../../syntax/declarations/index.ts';
-import { parentOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree.ts';
+import { parentOf, type SyntaxNode, type SyntaxTree } from '../../../syntax/tree/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { substituteConstraint, substitutionFor } from '../../types/parts/substitution.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';

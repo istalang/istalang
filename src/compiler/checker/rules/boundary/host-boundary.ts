@@ -15,7 +15,7 @@ import type {
   ExternConstantDeclaration,
   FunctionDeclaration,
 } from '../../../syntax/declarations/index.ts';
-import type { NodeOf } from '../../../syntax/node.ts';
+import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { hostSite, useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

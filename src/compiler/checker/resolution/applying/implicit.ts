@@ -22,9 +22,9 @@
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { NodeOf } from '../../../syntax/node.ts';
-import { binaryOperators, type ImplicitOperator } from '../../../syntax/operators.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import { binaryOperators, type ImplicitOperator } from '../../../syntax/expressions/operators.ts';
+import type { NodeOf } from '../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, ImplicitRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

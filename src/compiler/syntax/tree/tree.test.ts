@@ -7,16 +7,13 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { invalidPrograms, runPrograms } from '../../../test/corpus/programs.ts';
-import { specExamples } from '../../../test/corpus/spec-examples.ts';
-import { createSourceText } from '../../text/source-text.ts';
-import { textOf } from '../../text/span.ts';
-import { parse } from '../parser/parse.ts';
-import { scan } from '../scanner/scan.ts';
-import type { Call } from './expressions/index.ts';
-import type { Identifier } from './node.ts';
-import { spanIn } from './positions.ts';
-import { handMadeSpan as at, strayBodies } from './tree.test-kit.ts';
+import { invalidPrograms, runPrograms } from '../../../../test/corpus/programs.ts';
+import { specExamples } from '../../../../test/corpus/spec-examples.ts';
+import { createSourceText } from '../../../text/source-text.ts';
+import { textOf } from '../../../text/span.ts';
+import { parse } from '../../parser/parse.ts';
+import { scan } from '../../scanner/scan.ts';
+import type { Call } from '../expressions/index.ts';
 import {
   bodyOf,
   childrenOf,
@@ -27,7 +24,10 @@ import {
   parentOf,
   type SyntaxNode,
   type SyntaxTree,
-} from './tree.ts';
+} from './index.ts';
+import type { Identifier } from './node.ts';
+import { spanIn } from './positions.ts';
+import { handMadeSpan as at, strayBodies } from './tree.test-kit.ts';
 
 const name = (text: string, start: number): Identifier => ({
   kind: 'Identifier',

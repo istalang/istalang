@@ -13,8 +13,8 @@
 
 import { followsConvention, isUnnamed } from '../../../../language/naming.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import { isKeyword } from '../../../syntax/tokens.ts';
+import { isKeyword } from '../../../syntax/tokens/index.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type {
   IndexedType,
   MappedField,

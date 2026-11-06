@@ -27,7 +27,6 @@
 
 import { type Handlers, handlerOf } from '../../../../../structures/kind-table.ts';
 import { unreachable } from '../../../../../structures/unreachable.ts';
-import { type Identifier, isMissingName, lastName } from '../../../../syntax/node.ts';
 import type {
   NamePattern,
   OrPattern,
@@ -36,7 +35,8 @@ import type {
   StructPattern,
 } from '../../../../syntax/patterns.ts';
 import { targetNames, unparenthesizedPattern } from '../../../../syntax/patterns.ts';
-import { type AnchoredSpan, spanAcross } from '../../../../syntax/positions.ts';
+import { type Identifier, isMissingName, lastName } from '../../../../syntax/tree/node.ts';
+import { type AnchoredSpan, spanAcross } from '../../../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import {
   cantMatch,

@@ -9,7 +9,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { StructDeclaration } from '../../../syntax/declarations/index.ts';
-import { handMadeSpan } from '../../../syntax/tree.test-kit.ts';
+import { handMadeSpan } from '../../../syntax/tree/tree.test-kit.ts';
 import {
   bodiesOf,
   closed,

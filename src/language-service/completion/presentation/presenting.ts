@@ -10,7 +10,7 @@
  */
 
 import type { Type } from '../../../compiler/checker/types/type/index.ts';
-import type { TokenKind } from '../../../compiler/syntax/tokens.ts';
+import type { TokenKind } from '../../../compiler/syntax/tokens/index.ts';
 import { codeTokensOf } from '../../tokens.ts';
 import type { Cursor } from '../cursor.ts';
 import type { Place, PlaceKind } from '../place.ts';

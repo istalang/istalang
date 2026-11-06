@@ -1,10 +1,10 @@
 /**
  * Operator expressions (§3.9).
  *
- * - An operator's meaning (syntax/operators.ts) decides how it is checked. Arithmetic, negation,
- *   the orderings and `in` call functions (resolution/calls/operators.ts); an ordering is `Bool`
- *   whatever `compare` returns, since lowering turns its int into the relation. `item in c` calls
- *   `includes(c, item)`, which must give a `Bool`.
+ * - An operator's meaning (syntax/expressions/operators.ts) decides how it is checked. Arithmetic,
+ *   negation, the orderings and `in` call functions (resolution/calls/operators.ts); an ordering is
+ *   `Bool` whatever `compare` returns, since lowering turns its int into the relation. `item in c`
+ *   calls `includes(c, item)`, which must give a `Bool`.
  * - A chain `a < b == c`, `in` and `not in` included, compares each operand with the next, each
  *   operand checked once. Its orderings' `compare` and its memberships' `includes` calls are
  *   implicit, at their right operands, since the chain is one node.
@@ -36,8 +36,8 @@ import {
   binaryOperators,
   type ImplicitOperator,
   isImplicitOperator,
-} from '../../../../syntax/operators.ts';
-import type { AnchoredSpan } from '../../../../syntax/positions.ts';
+} from '../../../../syntax/expressions/operators.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import {

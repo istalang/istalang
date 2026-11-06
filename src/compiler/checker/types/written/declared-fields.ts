@@ -15,7 +15,7 @@ import type {
   FunctionDeclaration,
   TraitDeclaration,
 } from '../../../syntax/declarations/index.ts';
-import type { Invalid } from '../../../syntax/node.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
 import type { StructType, TypeNode } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldMember, Type } from '../type/index.ts';

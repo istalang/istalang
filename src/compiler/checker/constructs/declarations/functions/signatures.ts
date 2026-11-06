@@ -22,8 +22,8 @@ import { isFieldsFunction } from '../../../../syntax/declarations/field-defaults
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { Expression, Parameter } from '../../../../syntax/expressions/index.ts';
 import { parameterSite, patternNamedType } from '../../../../syntax/expressions/parameters.ts';
-import { lastName } from '../../../../syntax/node.ts';
-import type { AnchoredSpan } from '../../../../syntax/positions.ts';
+import { lastName } from '../../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import {
   type NamedType,
   type TypeNode,

@@ -5,8 +5,8 @@
  * stands at their leaves differs, which each says through its own `take`.
  */
 
-import type { AnchoredSpan } from '../../../../syntax/positions.ts';
 import type { Destructuring, FieldTarget } from '../../../../syntax/statements/targets.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { FieldStep, PartStep } from '../../../surface/checked-pattern.ts';
 import { anyShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
 import { structKey, tupleKey } from '../exhaustiveness/shapes.ts';

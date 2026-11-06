@@ -16,7 +16,7 @@
 
 import { memo } from '../../../structures/memo.ts';
 import type { Parameter } from '../expressions/index.ts';
-import type { Invalid } from '../node.ts';
+import type { Invalid } from '../tree/node.ts';
 import {
   type Declaration,
   type DeclaredField,
@@ -32,7 +32,7 @@ import {
 /**
  * Whose fields a fields function's parameters are: a struct's, or one variant's of an enum. It is
  * plain data with no `kind`, so a walk over the function's fields never takes it, or the owner it
- * holds, for a child node (../tree.ts).
+ * holds, for a child node (../tree/index.ts).
  */
 type FieldsOwner =
   | { readonly struct: DeclaredStruct }

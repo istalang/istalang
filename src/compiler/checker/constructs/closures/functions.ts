@@ -19,8 +19,8 @@
 
 import type { VariableEntity } from '../../../binder/entities.ts';
 import { localFunctionOf } from '../../../binder/entities.ts';
-import type { Identifier } from '../../../syntax/node.ts';
-import { encloses } from '../../../syntax/positions.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
+import { encloses } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, FunctionFrame, Functions } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

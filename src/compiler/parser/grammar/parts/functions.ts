@@ -12,8 +12,8 @@
  */
 
 import type { Parameter, ParameterBinding } from '../../../syntax/expressions/index.ts';
-import type { Invalid } from '../../../syntax/node.ts';
 import type { Pattern } from '../../../syntax/patterns.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
 import type { CursorKind } from '../../cursor/index.ts';
 import { parseDelimited } from '../../cursor/recovery.ts';
 import type { Parser } from '../../parser.ts';

@@ -1,7 +1,7 @@
 /**
  * Random operator trees and two printers for them, for the precedence property.
  *
- * Both printers read their levels from syntax/operators.ts, the table the parser uses:
+ * Both printers read their levels from syntax/expressions/operators.ts, the table the parser uses:
  * - The full printer parenthesizes every operator.
  * - The minimal printer parenthesizes only where the grammar requires it: levels, the operands an
  *   operator refuses without parentheses, `**`'s right-associativity and its refusal of a prefix
@@ -24,7 +24,7 @@ import {
   tighterLevel,
   type UnaryOperator,
   unaryOperators,
-} from '../../../syntax/operators.ts';
+} from '../../../syntax/expressions/operators.ts';
 
 type Prefix = UnaryOperator | '*' | 'await';
 

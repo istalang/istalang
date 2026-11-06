@@ -6,7 +6,7 @@
  * it, so none reads items differently.
  */
 
-import type { Identifier } from '../../syntax/node.ts';
+import type { Identifier } from '../../syntax/tree/node.ts';
 import type { FieldMember } from '../types/type/index.ts';
 
 /** The index among `fields` of the field an item `named` gives; -1 when it gives none of them. */

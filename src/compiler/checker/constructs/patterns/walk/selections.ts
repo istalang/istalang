@@ -18,7 +18,6 @@
  *   (exhaustiveness/shapes.ts).
  */
 
-import { lastName } from '../../../../syntax/node.ts';
 import type {
   LiteralPattern,
   NamePattern,
@@ -26,7 +25,8 @@ import type {
   PatternPart,
   StructPattern,
 } from '../../../../syntax/patterns.ts';
-import { spanAcross } from '../../../../syntax/positions.ts';
+import { lastName } from '../../../../syntax/tree/node.ts';
+import { spanAcross } from '../../../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import type { AnyType, Type } from '../../../types/type/index.ts';

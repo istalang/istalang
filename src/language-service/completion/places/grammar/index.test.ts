@@ -3,8 +3,8 @@
  * only those: over the corpus's statements and declared values, each word offered, written at the
  * cursor, is read by the parser without an error at it, and each keyword the parser reads there so
  * is offered. A contextual word is a name wherever a keyword isn't, so the parser reads any; those
- * the parser starts something with are offered by type, as its tables and completion share one
- * list of them (syntax/grammar-words.ts). What a word needs around it (a loop, an async body, a
+ * the parser starts something with are offered by type, as its tables and completion share one list
+ * of them (syntax/tokens/grammar-words.ts). What a word needs around it (a loop, an async body, a
  * function's body, an open `if`) and what a name must be (a function, a variable, a label) are
  * cases of their own.
  */
@@ -15,9 +15,9 @@ import { runPrograms } from '../../../../../test/corpus/programs.ts';
 import { parserDiagnostics } from '../../../../compiler/parser/diagnostics.ts';
 import { parse } from '../../../../compiler/parser/parse.ts';
 import { scan } from '../../../../compiler/scanner/scan.ts';
-import { spanIn } from '../../../../compiler/syntax/positions.ts';
-import { keywords } from '../../../../compiler/syntax/tokens.ts';
-import { nodesUnder } from '../../../../compiler/syntax/tree.ts';
+import { keywords } from '../../../../compiler/syntax/tokens/index.ts';
+import { nodesUnder } from '../../../../compiler/syntax/tree/index.ts';
+import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import { createSourceText } from '../../../../text/source-text.ts';
 import { mainProgram, programAt } from '../../../language-service.test-kit.ts';
 import { completionsAt } from '../../index.ts';

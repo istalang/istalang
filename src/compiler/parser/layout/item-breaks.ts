@@ -28,7 +28,7 @@
  * `${…}` and other brackets read past them.
  */
 
-import type { Token, TokenKind } from '../../syntax/tokens.ts';
+import type { Token, TokenKind } from '../../syntax/tokens/index.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import type { Parser } from '../parser.ts';
 import { annotationOpener } from './annotations.ts';

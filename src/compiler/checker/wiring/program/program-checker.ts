@@ -43,9 +43,9 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
-import type { Identifier, NodeOf } from '../../../syntax/node.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
+import type { Identifier, NodeOf } from '../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { CheckedConstant, Disposal, SignatureParameter, VariantMember } from '../../check.ts';
 import { Aliases } from '../../constructs/declarations/aliases/index.ts';

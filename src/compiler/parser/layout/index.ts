@@ -36,8 +36,8 @@
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
 import type { Annotation } from '../../syntax/annotations.ts';
-import type { Invalid } from '../../syntax/node.ts';
-import type { SyntaxNode } from '../../syntax/tree.ts';
+import type { SyntaxNode } from '../../syntax/tree/index.ts';
+import type { Invalid } from '../../syntax/tree/node.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import {
   atRegionEnd,
@@ -58,7 +58,7 @@ export interface ItemRules<Item extends SyntaxNode> {
   readonly parseItem: (parser: Parser) => Item | Invalid;
   readonly separator: ItemSeparator;
   /**
-   * Whether each item standing on lines of its own heads a segment of the text (syntax/
+   * Whether each item standing on lines of its own heads a segment of the text (syntax/tree/
    * positions.ts), its annotations included: a module's items and a trait's members do.
    */
   readonly headsSegments?: boolean;

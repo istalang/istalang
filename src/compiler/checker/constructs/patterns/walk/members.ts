@@ -20,8 +20,8 @@
 import type { Entity } from '../../../../binder/entities.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../../../syntax/expressions/literals/numbers.ts';
-import { isMissingName, lastName } from '../../../../syntax/node.ts';
 import type { NamePattern, Pattern, PatternPart } from '../../../../syntax/patterns.ts';
+import { isMissingName, lastName } from '../../../../syntax/tree/node.ts';
 import type { TypeNode } from '../../../../syntax/types/index.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { PatternTest } from '../../../surface/checked-pattern.ts';

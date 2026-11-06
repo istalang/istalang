@@ -3,9 +3,9 @@
  *
  * A node is an immutable plain object: a `kind` naming its shape, a `span` anchored to its segment
  * of text (positions.ts), and fields that are nodes, arrays of nodes, optional nodes or node
- * arrays, or primitives. That invariant is what lets traversal be derived from the fields (tree.ts)
- * instead of being written out for each kind. Nodes hold no tokens and no resolved references;
- * later phases keep those in side tables keyed by node.
+ * arrays, or primitives. That invariant is what lets traversal be derived from the fields
+ * (index.ts) instead of being written out for each kind. Nodes hold no tokens and no resolved
+ * references; later phases keep those in side tables keyed by node.
  *
  * Errors are part of the tree, so every phase always gets a complete one:
  * - `Missing` stands where the grammar required something that isn't there. Its span is empty.
@@ -17,7 +17,7 @@
  * The parser reports a diagnostic for each of them.
  */
 
-import type { Annotatable } from './annotations.ts';
+import type { Annotatable } from '../annotations.ts';
 import type { AnchoredSpan } from './positions.ts';
 
 export interface NodeOf<Kind extends string> {

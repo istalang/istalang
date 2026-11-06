@@ -40,8 +40,8 @@ import type {
   FunctionDeclaration,
   Module,
 } from '../../syntax/declarations/index.ts';
-import type { Identifier } from '../../syntax/node.ts';
-import { diagnosticIn } from '../../syntax/positions.ts';
+import type { Identifier } from '../../syntax/tree/node.ts';
+import { diagnosticIn } from '../../syntax/tree/positions.ts';
 import { binderDiagnostics } from '../diagnostics.ts';
 import {
   type Bindings,

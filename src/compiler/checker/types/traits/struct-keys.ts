@@ -25,7 +25,7 @@ import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Pattern } from '../../../syntax/patterns.ts';
-import { parentOf } from '../../../syntax/tree.ts';
+import { parentOf } from '../../../syntax/tree/index.ts';
 import type { StructType } from '../../../syntax/types/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';

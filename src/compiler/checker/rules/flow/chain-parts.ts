@@ -3,7 +3,7 @@
  * step's target, which the flow model runs before the step, as the chain evaluates them.
  */
 
-import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree.ts';
+import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree/index.ts';
 
 /**
  * The parts of `node` other than its step's `target`, a child or, for a method call, the callee's

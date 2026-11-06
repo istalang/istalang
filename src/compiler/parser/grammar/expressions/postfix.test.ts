@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { reportedNothing, reportedOnce } from '../../../../diagnostics/diagnostic.test-kit.ts';
-import { spanIn } from '../../../syntax/positions.ts';
+import { spanIn } from '../../../syntax/tree/positions.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { dumpClean, named, parseAs, reported } from '../../parse.test-kit.ts';
 

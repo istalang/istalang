@@ -10,7 +10,7 @@
  * otherwise.
  */
 
-import type { TokenKind } from './tokens.ts';
+import type { TokenKind } from '../tokens/index.ts';
 
 const precedenceLevels = [
   'coalesce',

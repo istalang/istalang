@@ -26,8 +26,8 @@ import type {
   TypeAliasDeclaration,
   Variant,
 } from '../../../syntax/declarations/index.ts';
-import type { Invalid } from '../../../syntax/node.ts';
-import { spanAcross } from '../../../syntax/positions.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
+import { spanAcross } from '../../../syntax/tree/positions.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { attachAnnotations } from '../../layout/annotations.ts';
 import { parseDocstringBelow, parseDocumentedMembers } from '../../layout/bodies.ts';
@@ -151,9 +151,9 @@ function parseAssociatedHead(parser: Parser) {
 
 /**
  * A trait that is an item of its own, its members on lines of their own, gives each a segment
- * (syntax/positions.ts), and its span ends with its header, at its `:` or docstring, where their
- * segments begin. Members in braces or on its line, or of a trait standing in a block, stay inside
- * it.
+ * (syntax/tree/positions.ts), and its span ends with its header, at its `:` or docstring, where
+ * their segments begin. Members in braces or on its line, or of a trait standing in a block, stay
+ * inside it.
  */
 export function parseTrait(parser: Parser): TraitDeclaration {
   const { start, name, typeParameters } = parseTypeHead(parser);

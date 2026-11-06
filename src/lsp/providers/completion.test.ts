@@ -20,9 +20,9 @@ import { corpusDirectory } from '../../../test/corpus/programs.ts';
 import { isLookedUp, resolvedNames } from '../../compiler/binder/bind.test-kit.ts';
 import { checkProgram } from '../../compiler/checker/check.ts';
 import { checkerDiagnostics } from '../../compiler/checker/diagnostics/index.ts';
-import type { Identifier } from '../../compiler/syntax/node.ts';
-import { spanIn } from '../../compiler/syntax/positions.ts';
-import { nodesUnder } from '../../compiler/syntax/tree.ts';
+import { nodesUnder } from '../../compiler/syntax/tree/index.ts';
+import type { Identifier } from '../../compiler/syntax/tree/node.ts';
+import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import { isError } from '../../diagnostics/diagnostic.ts';
 import {
   corpusClient,

@@ -25,15 +25,15 @@ import type {
   IndentedValue,
 } from '../../../compiler/syntax/expressions/index.ts';
 import { itemName } from '../../../compiler/syntax/expressions/readings.ts';
-import type { Identifier } from '../../../compiler/syntax/node.ts';
-import { spanIn } from '../../../compiler/syntax/positions.ts';
-import type { Token } from '../../../compiler/syntax/tokens.ts';
+import type { Token } from '../../../compiler/syntax/tokens/index.ts';
 import {
   childrenOf,
   nodesAt,
   type SyntaxNode,
   type SyntaxTree,
-} from '../../../compiler/syntax/tree.ts';
+} from '../../../compiler/syntax/tree/index.ts';
+import type { Identifier } from '../../../compiler/syntax/tree/node.ts';
+import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { indentationAt, lineStartAt } from '../../../text/line-map.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';

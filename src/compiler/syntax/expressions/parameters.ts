@@ -9,8 +9,8 @@
  * function type a lambda is expected as.
  */
 
-import type { Identifier } from '../node.ts';
 import { type Pattern, type StructPattern, targetNames } from '../patterns.ts';
+import type { Identifier } from '../tree/node.ts';
 import type { NamedType } from '../types/index.ts';
 import type { Parameter } from './index.ts';
 

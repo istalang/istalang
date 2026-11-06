@@ -8,7 +8,7 @@
  */
 
 import type { builders } from 'prettier/doc';
-import type { SyntaxNode, SyntaxTree } from '../compiler/syntax/tree.ts';
+import type { SyntaxNode, SyntaxTree } from '../compiler/syntax/tree/index.ts';
 import type { Handlers } from '../structures/kind-table.ts';
 import type { Span } from '../text/span.ts';
 

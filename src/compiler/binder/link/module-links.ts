@@ -6,8 +6,8 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { Identifier } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { Identifier } from '../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { Entity } from '../entities.ts';
 import type { ModuleBindings } from '../module/bind-module.ts';
 import type { ImportPlaceholder, LocalEntity } from '../module/scope.ts';

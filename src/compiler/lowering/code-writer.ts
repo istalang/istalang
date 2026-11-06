@@ -5,8 +5,8 @@
  * - Registers are numbered as the frame lays them out: parameters first, then locals and
  *   temporaries, each a fresh register. Nothing is reused, so a register's meaning never changes
  *   within a function, which keeps the code easy to read back from a snapshot.
- * - An instruction is written at the span of the syntax it stands for (syntax/positions.ts), and
- *   finishing turns every span into its module's text positions, the one place lowering does.
+ * - An instruction is written at the span of the syntax it stands for (syntax/tree/positions.ts),
+ *   and finishing turns every span into its module's text positions, the one place lowering does.
  * - A jump to a label not yet placed is patched when the label is placed, so code is written in a
  *   single pass. A label a jump names but nothing places would leave the jump at instruction 0,
  *   which loading can't tell from a real target, so finishing refuses code with one.
@@ -16,7 +16,7 @@ import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { Register } from '../../definition/operands.ts';
 import { addToGroup } from '../../structures/groups.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { type AnchoredSpan, type SegmentBases, spanIn } from '../syntax/positions.ts';
+import { type AnchoredSpan, type SegmentBases, spanIn } from '../syntax/tree/positions.ts';
 
 /** A place in the code, known once the code before it has been written. */
 export interface Label {

@@ -10,8 +10,8 @@
  * a statement reads so. It is reported, and the statement after it parsed as if it weren't there.
  */
 
-import type { Identifier, Invalid } from '../../../syntax/node.ts';
 import type { FieldLoop, For, Statement, While } from '../../../syntax/statements/index.ts';
+import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import type { Parser } from '../../parser.ts';
 import { parseHeaderBody } from '../parts/blocks.ts';

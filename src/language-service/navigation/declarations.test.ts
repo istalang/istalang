@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { idOf } from '../../compiler/program/program.test-kit.ts';
 import { type ModuleId, programModule } from '../../compiler/program/program.ts';
-import { parentOf } from '../../compiler/syntax/tree.ts';
+import { parentOf } from '../../compiler/syntax/tree/index.ts';
 import { type DeclaredAt, type NamePlace, nameAt, spanOfUse } from './declarations.ts';
 import { navigable, placeOf } from './navigation.test-kit.ts';
 

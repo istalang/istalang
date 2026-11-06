@@ -15,7 +15,7 @@
  *   node holds them.
  * - A body is reused when its text is alike and its function's header was, which decides the column
  *   it is laid out from. A reused header whose body changed keeps its node with the new body: a
- *   function's identity is its header (syntax/tree.ts).
+ *   function's identity is its header (syntax/tree/index.ts).
  * - Old runs are matched to new ones by text, in order, so an item moved or repeated is found too.
  *   The module's own segment (its root and docstring), the comments and the diagnostics are always
  *   the new parse's.
@@ -29,9 +29,9 @@ import type {
   Module,
   TraitDeclaration,
 } from '../../syntax/declarations/index.ts';
-import { type Segment, spanIn } from '../../syntax/positions.ts';
 import type { Block } from '../../syntax/statements/index.ts';
-import type { SyntaxTree } from '../../syntax/tree.ts';
+import type { SyntaxTree } from '../../syntax/tree/index.ts';
+import { type Segment, spanIn } from '../../syntax/tree/positions.ts';
 import { bodiesHeldBy } from './held-bodies.ts';
 
 type Item = Module['items'][number];

@@ -12,7 +12,7 @@ import { bindProgram } from '../../../binder/bind.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { programModule } from '../../../program/program.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
-import { nestsFunction, nodesUnder } from '../../../syntax/tree.ts';
+import { nestsFunction, nodesUnder } from '../../../syntax/tree/index.ts';
 import { reported } from '../../check.test-kit.ts';
 import { checkProgram } from '../../check.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';

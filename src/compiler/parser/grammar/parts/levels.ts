@@ -4,7 +4,7 @@
  * being parsed, up to a line break separating two items of a list (layout/item-breaks.ts). An
  * operator parses what follows it one level tighter, or loops at its own level, as `A | B | C`
  * makes one node of every alternative. Expressions, whose levels are the operator table's
- * (syntax/operators.ts), have a Pratt engine of their own.
+ * (syntax/expressions/operators.ts), have a Pratt engine of their own.
  */
 
 import type { CursorKind } from '../../cursor/index.ts';

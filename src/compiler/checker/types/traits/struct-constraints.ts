@@ -13,7 +13,7 @@
  */
 
 import type { ModuleId } from '../../../program/program.ts';
-import { isMissingName } from '../../../syntax/node.ts';
+import { isMissingName } from '../../../syntax/tree/node.ts';
 import type { ConstraintNode, FieldEntry, StructConstraint } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

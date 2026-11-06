@@ -11,7 +11,7 @@
  */
 
 import { memo } from '../../../structures/memo.ts';
-import type { SyntaxTree } from '../../syntax/tree.ts';
+import type { SyntaxTree } from '../../syntax/tree/index.ts';
 import { bindDeclaration, bindFunction } from '../constructs/declarations.ts';
 import { bindExpression } from '../constructs/expressions.ts';
 import { bindPattern } from '../constructs/patterns.ts';

@@ -15,8 +15,8 @@ import type {
 } from '../../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
 import type { StringLiteral } from '../../../syntax/expressions/literals/literals.ts';
-import type { Identifier } from '../../../syntax/node.ts';
 import type { Assignment, Block } from '../../../syntax/statements/index.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { FieldPassType, Pass, Passes } from '../../contexts/passes.ts';
 import type { ValueSite } from '../../surface/checked-body.ts';
 import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';

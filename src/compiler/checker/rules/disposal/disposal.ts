@@ -20,8 +20,8 @@
 import { disposeFunction } from '../../../../language/well-known/implicit-calls.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Parameter } from '../../../syntax/expressions/index.ts';
-import type { NodeOf } from '../../../syntax/node.ts';
-import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree.ts';
+import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
+import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { Disposal } from '../../check.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';

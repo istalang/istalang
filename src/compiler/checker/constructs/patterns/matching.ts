@@ -25,8 +25,7 @@
 import { arrayPatternFunctions } from '../../../../language/well-known/implicit-calls.ts';
 import type { Entity, VariantNaming } from '../../../binder/entities.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import { lastName } from '../../../syntax/node.ts';
-import { binaryOperators, isImplicitOperator } from '../../../syntax/operators.ts';
+import { binaryOperators, isImplicitOperator } from '../../../syntax/expressions/operators.ts';
 import type {
   ArrayPattern,
   CompareFieldPattern,
@@ -35,6 +34,7 @@ import type {
   Pattern,
   StructPattern,
 } from '../../../syntax/patterns.ts';
+import { lastName } from '../../../syntax/tree/node.ts';
 import type { BodyContext, PatternRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

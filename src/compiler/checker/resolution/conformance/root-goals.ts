@@ -21,7 +21,7 @@
 
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
 import type { EntryTable } from '../../../../structures/entries/index.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type {
   CheckerContext,
   CheckerNote,

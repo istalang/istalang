@@ -22,7 +22,7 @@ import type {
   TraitDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
-import { lastName } from '../../../syntax/node.ts';
+import { lastName } from '../../../syntax/tree/node.ts';
 import {
   type FieldDeclaration,
   type TypeNode,

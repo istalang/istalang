@@ -10,7 +10,7 @@
  */
 
 import { builders, utils } from 'prettier/doc';
-import type { Comment } from '../../compiler/syntax/tokens.ts';
+import type { Comment } from '../../compiler/syntax/tokens/index.ts';
 import { lineMapOf, lineStartAt, splitLines } from '../../text/line-map.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import { type Span, textOf } from '../../text/span.ts';

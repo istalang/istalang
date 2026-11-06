@@ -5,7 +5,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Tuple, TupleElement } from '../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 
 export function lowerTuple(context: FunctionContext, node: Tuple): Register {

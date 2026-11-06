@@ -9,8 +9,8 @@
  */
 
 import { isInlineWhitespace } from '../../compiler/scanner/characters.ts';
-import { isKeyword, type Token } from '../../compiler/syntax/tokens.ts';
-import type { SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { isKeyword, type Token } from '../../compiler/syntax/tokens/index.ts';
+import type { SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import type { CheckedModule } from '../checked-module.ts';
 import { codeTokensOf } from '../tokens.ts';
 

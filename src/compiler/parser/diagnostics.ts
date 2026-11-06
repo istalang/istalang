@@ -1,10 +1,10 @@
 /**
  * The parser's diagnostics, codes 2000–2999.
  *
- * Every parse error still yields a complete tree (Missing and Invalid nodes, syntax/node.ts), so
- * one mistake costs one diagnostic: recovery skips silently past whatever a reported error has
- * already explained. Messages say what was expected and what was found, and the span points at
- * what was found.
+ * Every parse error still yields a complete tree (Missing and Invalid nodes, syntax/tree/node.ts),
+ * so one mistake costs one diagnostic: recovery skips silently past whatever a reported error has
+ * already explained. Messages say what was expected and what was found, and the span points at what
+ * was found.
  */
 
 import { defineDiagnostics } from '../../diagnostics/catalog.ts';

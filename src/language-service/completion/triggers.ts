@@ -19,7 +19,7 @@
  * and most are answered without reading the place, which parses the module again.
  */
 
-import type { TokenKind } from '../../compiler/syntax/tokens.ts';
+import type { TokenKind } from '../../compiler/syntax/tokens/index.ts';
 import { adjoinsBefore, type Cursor, touchingBefore } from './cursor.ts';
 import type { Place, PlaceKind } from './place.ts';
 

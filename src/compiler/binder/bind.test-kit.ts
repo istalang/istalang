@@ -14,8 +14,8 @@ import { preludeModule, stdlibLoader, stdRoles } from '../../stdlib/stdlib-loade
 import type { Files } from '../program/program.test-kit.ts';
 import { idOf, moduleAt, programOf } from '../program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../program/program.ts';
-import type { Identifier } from '../syntax/node.ts';
-import { nodesUnder, parentOf } from '../syntax/tree.ts';
+import { nodesUnder, parentOf } from '../syntax/tree/index.ts';
+import type { Identifier } from '../syntax/tree/node.ts';
 import { bindProgram } from './bind.ts';
 import type { Entity } from './entities.ts';
 

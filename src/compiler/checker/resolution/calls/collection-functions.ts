@@ -13,8 +13,8 @@
 
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
 import { collectionFunctions } from '../../../../language/well-known/implicit-calls.ts';
-import type { NodeOf } from '../../../syntax/node.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { NodeOf } from '../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { ImplicitRole, ResolvedCall } from '../../surface/resolved-call.ts';

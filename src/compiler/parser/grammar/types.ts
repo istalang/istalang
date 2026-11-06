@@ -22,7 +22,7 @@
  */
 
 import type { TypeParameter } from '../../syntax/declarations/index.ts';
-import type { TypeWord } from '../../syntax/grammar-words.ts';
+import type { TypeWord } from '../../syntax/tokens/grammar-words.ts';
 import type {
   FunctionType,
   LiteralType,
@@ -80,7 +80,7 @@ const typeParselets: Partial<Record<CursorKind, TypeParselet>> = {
 
 /**
  * Types a contextual word starts, when what follows it fits; undefined, with nothing consumed,
- * where the word is a type's name (tokens.ts).
+ * where the word is a type's name (syntax/tokens/index.ts).
  */
 const wordParselets = {
   sendable: (parser) =>

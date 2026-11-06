@@ -14,9 +14,9 @@
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
 import type { Span } from '../../../../text/span.ts';
 import type { Declaration } from '../../../syntax/declarations/index.ts';
-import type { Invalid } from '../../../syntax/node.ts';
 import { allowedInBlock, allowedInModule, type Item } from '../../../syntax/placement.ts';
 import type { Block, Statement } from '../../../syntax/statements/index.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { attachAnnotations } from '../../layout/annotations.ts';
 import { type BodyEntry, parseBody, parseDocumentedBody } from '../../layout/bodies.ts';

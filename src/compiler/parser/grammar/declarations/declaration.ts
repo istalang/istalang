@@ -3,8 +3,8 @@
  * (§3.13).
  *
  * The dispatch tables cover the declarations that have a word of their own (`declarationWords`,
- * syntax/grammar-words.ts). Functions and `const` are statements as well (a local `fn`, a local
- * `const`). Which item may stand where is decided once, for modules and blocks alike
+ * syntax/tokens/grammar-words.ts). Functions and `const` are statements as well (a local `fn`, a
+ * local `const`). Which item may stand where is decided once, for modules and blocks alike
  * (syntax/placement.ts, grammar/parts/blocks.ts).
  *
  * `struct` and `type` start a declaration only when a name follows: `struct{…}` is an anonymous
@@ -13,7 +13,7 @@
  */
 
 import type { Declaration, Module } from '../../../syntax/declarations/index.ts';
-import type { DeclarationWord } from '../../../syntax/grammar-words.ts';
+import type { DeclarationWord } from '../../../syntax/tokens/grammar-words.ts';
 import type { CursorKind } from '../../cursor/index.ts';
 import { attachAnnotations } from '../../layout/annotations.ts';
 import { documentedBy } from '../../layout/docstrings.ts';

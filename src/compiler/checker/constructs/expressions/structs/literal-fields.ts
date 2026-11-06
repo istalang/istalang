@@ -38,7 +38,7 @@ import type {
   Spread,
 } from '../../../../syntax/expressions/index.ts';
 import { itemName, itemValue, unparenthesized } from '../../../../syntax/expressions/readings.ts';
-import { lastName } from '../../../../syntax/node.ts';
+import { lastName } from '../../../../syntax/tree/node.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';

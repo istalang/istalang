@@ -22,7 +22,7 @@ import type {
   MatchCase,
   SelectCase,
 } from '../../../syntax/expressions/index.ts';
-import type { Invalid } from '../../../syntax/node.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { parseBody } from '../../layout/bodies.ts';
 import { moveToContinuation } from '../../layout/continuations.ts';

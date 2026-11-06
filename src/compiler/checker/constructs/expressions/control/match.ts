@@ -18,7 +18,7 @@
 import { valueBranchesOf } from '../../../../syntax/expressions/branches.ts';
 import type { Is, Match } from '../../../../syntax/expressions/index.ts';
 import { casesOf } from '../../../../syntax/expressions/readings.ts';
-import type { AnchoredSpan } from '../../../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';

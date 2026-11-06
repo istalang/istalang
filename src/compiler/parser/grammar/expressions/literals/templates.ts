@@ -1,13 +1,14 @@
 /**
  * Templates (§2): `` `a ${x} b` ``, and `` tag`…` `` calling `tag` with the texts and the values.
  *
- * The scanner keeps each value's tokens in the template token (syntax/tokens.ts), so each value is
- * parsed from those, as a bracketed expression: an error inside one ends at its `}`, and nothing
- * outside the template is read. A tag attaches the way a call's `(` does, at the postfix level.
+ * The scanner keeps each value's tokens in the template token (syntax/tokens/index.ts), so each
+ * value is parsed from those, as a bracketed expression: an error inside one ends at its `}`, and
+ * nothing outside the template is read. A tag attaches the way a call's `(` does, at the postfix
+ * level.
  */
 
 import type { Expression } from '../../../../syntax/expressions/index.ts';
-import type { TemplateValue } from '../../../../syntax/tokens.ts';
+import type { TemplateValue } from '../../../../syntax/tokens/index.ts';
 import { skipUntil } from '../../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../../diagnostics.ts';
 import type { Parser } from '../../../parser.ts';

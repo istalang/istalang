@@ -9,7 +9,7 @@ import { corpusDirectory, corpusFiles } from '../../test/corpus/programs.ts';
 import { parse } from '../compiler/parser/parse.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import { scan } from '../compiler/scanner/scan.ts';
-import type { SyntaxTree } from '../compiler/syntax/tree.ts';
+import type { SyntaxTree } from '../compiler/syntax/tree/index.ts';
 import { stdModuleSources } from '../stdlib/std-sources.ts';
 import { createSourceText } from '../text/source-text.ts';
 import { moduleIdOfUri } from './locations.ts';

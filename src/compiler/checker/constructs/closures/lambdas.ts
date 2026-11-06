@@ -30,8 +30,8 @@ import {
 } from '../../../syntax/declarations/index.ts';
 import type { Lambda, Parameter } from '../../../syntax/expressions/index.ts';
 import { parameterSite } from '../../../syntax/expressions/parameters.ts';
-import type { Identifier, Invalid } from '../../../syntax/node.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { Accepts, BodyContext } from '../../contexts/body-context.ts';

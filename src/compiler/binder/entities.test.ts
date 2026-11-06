@@ -8,7 +8,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { bodyEditChoices, editedTexts, editInsideBody } from '../parser/edits.test-kit.ts';
 import { idOf, moduleAt } from '../program/program.test-kit.ts';
-import { bodyOf, nodesUnder } from '../syntax/tree.ts';
+import { bodyOf, nodesUnder } from '../syntax/tree/index.ts';
 import { stdProgramOf } from './bind.test-kit.ts';
 import { bindProgram } from './bind.ts';
 

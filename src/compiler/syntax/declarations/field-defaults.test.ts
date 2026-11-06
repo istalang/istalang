@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { compiledDefinition } from '../../compile.test-kit.ts';
 import { parseAs } from '../../parser/parse.test-kit.ts';
-import { childrenOf } from '../tree.ts';
+import { childrenOf } from '../tree/index.ts';
 import { fieldsFunctionsOf, isFieldsFunction } from './field-defaults.ts';
 
 describe('fieldsFunctionOf', () => {

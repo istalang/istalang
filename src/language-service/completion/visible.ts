@@ -7,7 +7,7 @@
  */
 
 import type { Entity } from '../../compiler/binder/entities.ts';
-import { keywords } from '../../compiler/syntax/tokens.ts';
+import { keywords } from '../../compiler/syntax/tokens/index.ts';
 import type { Candidate } from './candidate.ts';
 import type { Cursor } from './cursor.ts';
 

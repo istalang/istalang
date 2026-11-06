@@ -3,7 +3,7 @@
  *
  * It is context-free, total and lossless:
  * - Context-free: no token depends on syntactic context. Layout is left to the parser (see
- *   syntax/tokens.ts).
+ *   syntax/tokens/index.ts).
  * - Total: it never throws, and every malformed input still yields tokens and diagnostics.
  * - Lossless: tokens, comments and whitespace cover the source exactly, so the formatter and editor
  *   tooling can account for every character.
@@ -21,7 +21,7 @@ import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { codePointWidth } from '../../text/code-points.ts';
 import { lineBreakLength } from '../../text/line-map.ts';
 import type { SourceText } from '../../text/source-text.ts';
-import { type Comment, isKeyword, type ScanResult, type Token } from '../syntax/tokens.ts';
+import { type Comment, isKeyword, type ScanResult, type Token } from '../syntax/tokens/index.ts';
 import {
   identifierRunEnd,
   isDecimalDigit,

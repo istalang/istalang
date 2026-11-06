@@ -18,28 +18,28 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - print a list in brackets, on one line or one item per line with no `,` → `bracketed` (`src/formatter/lists.ts`); a list whose brackets only its broken form needs, as a bare import's names → `bracketedWhenBroken`; which children stand in brackets → `standingIn` (`src/formatter/brackets.ts`)
 - read a tree's tokens again, all of them or only its code's, or the bracket closing each opening one → `allTokensOf`, `codeTokensOf`, `closingBracketsOf` (`src/language-service/tokens.ts`)
 - pair a token list's brackets as the parser does, and find where each one left open ends → `pairBrackets` (`src/compiler/parser/cursor/brackets.ts`)
-- check whether a word is a reserved or contextual keyword → `isKeyword`, `isContextualWord`, `keywords`, `punctuators` (`src/compiler/syntax/tokens.ts`)
-- list the words a grammar position dispatches on: a declaration's, a statement's, an operand's, a type's or a pattern's start, what goes on after an operand, and what follows each modifier → `declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers` (`src/compiler/syntax/grammar-words.ts`); what a module's item starts with → `moduleItemWords` (`src/compiler/syntax/placement.ts`)
+- check whether a word is a reserved or contextual keyword → `isKeyword`, `isContextualWord`, `keywords`, `punctuators` (`src/compiler/syntax/tokens/index.ts`)
+- list the words a grammar position dispatches on: a declaration's, a statement's, an operand's, a type's or a pattern's start, what goes on after an operand, and what follows each modifier → `declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers` (`src/compiler/syntax/tokens/grammar-words.ts`); what a module's item starts with → `moduleItemWords` (`src/compiler/syntax/placement.ts`)
 - key a parser table by those words, checked both ways by type, read a contextual word's parselet, or ask whether a modifier's follower comes next → `StartParselets`, `WordParselets`, `wordParseletAt`, `followsModifier` (`src/compiler/parser/grammar/word-parselets.ts`)
 - parse the `case` of a `match`, a `select` or a type `match`, a line not starting with one skipped whole → `parseCase` (`src/compiler/parser/grammar/parts/cases.ts`); an alias's or associated type's body, a type or a type `match` → `parseAliasBody` (`src/compiler/parser/grammar/declarations/type-matches.ts`); the `infer` variables a case's pattern declares → `inferTypesIn` (`src/compiler/syntax/types/type-matches.ts`)
 - where a node stands among type `match`es — in a case's pattern (the one place `infer` may stand, which the checker and completion both read), elsewhere inside one, or outside — and the `infer` types a pattern holds → `matchPlaceOf`, `inferTypesIn` (`src/compiler/syntax/types/type-matches.ts`)
 - parse a grammar whose operators bind at a few fixed levels, as patterns and types do → `leveledGrammar`, `LeveledParselet` (`src/compiler/parser/grammar/parts/levels.ts`)
 - read the literal a token denotes, the literal at the cursor, or a negative number where a literal stands alone → `literalFrom`, `parseLiteral`, `parseNegativeLiteral`, `Negatable` (`src/compiler/parser/grammar/parts/literals.ts`)
-- get the last identifier of a `QualifiedName` or check for a missing identifier → `lastName`, `isMissingName` (`src/compiler/syntax/node.ts`)
-- list a syntax node's direct children in source order, its field children alone, or a function's body → `childrenOf`, `fieldChildrenOf`, `bodyOf`, `isNode` (`src/compiler/syntax/tree.ts`); a struct's or an enum's members as written, associated types among them → `membersAsWritten` (`src/compiler/syntax/declarations/index.ts`)
+- get the last identifier of a `QualifiedName` or check for a missing identifier → `lastName`, `isMissingName` (`src/compiler/syntax/tree/node.ts`)
+- list a syntax node's direct children in source order, its field children alone, or a function's body → `childrenOf`, `fieldChildrenOf`, `bodyOf`, `isNode` (`src/compiler/syntax/tree/index.ts`); a struct's or an enum's members as written, associated types among them → `membersAsWritten` (`src/compiler/syntax/declarations/index.ts`)
 - parse what follows `is`: a trait or a struct constraint, several joined by `&` → `parseConstraints` (`src/compiler/parser/grammar/parts/constraints.ts`); its tree → `ConstraintNode`, `StructConstraint`, `FieldEntry` (`src/compiler/syntax/types/index.ts`)
 - check whether an item may stand in a module or a block → `allowedInModule`, `allowedInBlock` (`src/compiler/syntax/placement.ts`)
-- find a node's parent, or the nodes holding an offset from the root to the innermost → `parentOf`, `nodesAt` (`src/compiler/syntax/tree.ts`)
-- read where a node stands in the text: its own span → `spanIn`; it and everything under it, through a function's body or a trait's members → `extentIn` (`src/compiler/syntax/positions.ts`, `src/compiler/syntax/tree.ts`)
-- join or compare spans of one segment: first to last, covering several, the empty span at an end, containment, one place → `spanAcross`, `spanCovering`, `endOf`, `encloses`, `startTogether` (`src/compiler/syntax/positions.ts`)
-- turn a phase's anchored diagnostic into one at text positions as it leaves → `diagnosticIn` (`src/compiler/syntax/positions.ts`)
+- find a node's parent, or the nodes holding an offset from the root to the innermost → `parentOf`, `nodesAt` (`src/compiler/syntax/tree/index.ts`)
+- read where a node stands in the text: its own span → `spanIn`; it and everything under it, through a function's body or a trait's members → `extentIn` (`src/compiler/syntax/tree/positions.ts`, `src/compiler/syntax/tree/index.ts`)
+- join or compare spans of one segment: first to last, covering several, the empty span at an end, containment, one place → `spanAcross`, `spanCovering`, `endOf`, `encloses`, `startTogether` (`src/compiler/syntax/tree/positions.ts`)
+- turn a phase's anchored diagnostic into one at text positions as it leaves → `diagnosticIn` (`src/compiler/syntax/tree/positions.ts`)
 - the text a lambda or local function covers, header and body → `nestedFunctionSpan` (`src/compiler/syntax/declarations/index.ts`); lowering's, from the tree → `nestedSpanOf` (`src/compiler/lowering/bodies.ts`)
-- list a node and every node under it in source order, each before its children (explicit stack) → `nodesUnder` (`src/compiler/syntax/tree.ts`)
-- list direct children that run in the same function body (skipping nested functions) → `bodyChildrenOf`, `nestsFunction` (`src/compiler/syntax/tree.ts`)
-- look up operator precedence, associativity and meaning → `binaryOperators`, `unaryOperators`, `operatorLevels` (`src/compiler/syntax/operators.ts`)
-- classify operators or unwrap a compound assignment's operator → `isAssignmentOperator`, `compoundOperator` (`src/compiler/syntax/operators.ts`)
-- test whether a token kind is a comparison or chaining operator, or one calling `compare`/`includes` → `isComparisonOperator`, `isChainingOperator`, `isImplicitOperator` (`src/compiler/syntax/operators.ts`)
-- compute precedence levels for operator parsing and printing → `tighterLevel`, `rightOperandLevel`, `bindingPower` (`src/compiler/syntax/operators.ts`)
+- list a node and every node under it in source order, each before its children (explicit stack) → `nodesUnder` (`src/compiler/syntax/tree/index.ts`)
+- list direct children that run in the same function body (skipping nested functions) → `bodyChildrenOf`, `nestsFunction` (`src/compiler/syntax/tree/index.ts`)
+- look up operator precedence, associativity and meaning → `binaryOperators`, `unaryOperators`, `operatorLevels` (`src/compiler/syntax/expressions/operators.ts`)
+- classify operators or unwrap a compound assignment's operator → `isAssignmentOperator`, `compoundOperator` (`src/compiler/syntax/expressions/operators.ts`)
+- test whether a token kind is a comparison or chaining operator, or one calling `compare`/`includes` → `isComparisonOperator`, `isChainingOperator`, `isImplicitOperator` (`src/compiler/syntax/expressions/operators.ts`)
+- compute precedence levels for operator parsing and printing → `tighterLevel`, `rightOperandLevel`, `bindingPower` (`src/compiler/syntax/expressions/operators.ts`)
 - strip outer parentheses from an `Expression` → `unparenthesized` (`src/compiler/syntax/expressions/readings.ts`)
 - strip outer parentheses from a `Pattern` → `unparenthesizedPattern` (`src/compiler/syntax/patterns.ts`)
 - strip outer parentheses from a `TypeNode` before asking its kind → `unparenthesizedType` (`src/compiler/syntax/types/index.ts`)
@@ -75,24 +75,24 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 
 - Shared desugaring (`taggedCall`, `fieldsFunctionOf`, `comparisonLinksOf`, `placePath`, `destructuringOf`) lives in `src/compiler/syntax/`.
 - A link reads through an optional when its node `isOptional` (member access, tuple element, index, call, `->`); its operator is spelled by `linkOperator`/`optionalOperatorOf` (`chains.ts`), never as a literal.
-- Node fields hold only nodes, node arrays, optional nodes/arrays, a span or primitives, so `childrenOf` (`tree.ts`) derives traversal automatically.
+- Node fields hold only nodes, node arrays, optional nodes/arrays, a span or primitives, so `childrenOf` (`tree/index.ts`) derives traversal automatically.
 - A node's span is anchored to its segment (`AnchoredSpan`, `positions.ts`): offsets of different segments never compare, and text positions come only through the tree (`spanIn`, `extentIn`). A function's own span covers its header alone, as does a top-level trait's whose members stand on lines of their own; use `extentIn` for all a node covers.
 - In `src/compiler/parser/`, a bracketed construct uses `parseEnclosed`, a list `parseList` / `parseDelimited` (`recovery.ts`, which enters the cursor's list region), and recursive entries use `nested` (`nesting.ts`).
 - Where a line break separates two items of a list (spec §2) has one home, `layout/item-breaks.ts`: `breakSeparatesItems` (the next line can start an item), `startsLineInList` and `atPostfix` (a postfix bracket attaches only on its operand's line). Ask it only where an item could end: the Pratt `extend` loop, `leveledGrammar`'s loop (types, patterns), the comma list, a lookahead deciding an item's shape by the token after it (struct literal shorthand), and an optional part after a complete item (`& B` after `any A` or a constraint, a range's end) → `continues`, `eatContinuing`. A symbol both prefix and infix starts an item unless a space parts it from the rest of its line, so a lone `..` is an item. What starts an item is derived, never listed: the expression tables (`startsItemOnNewLine`, grammar/expressions/expression.ts) with the item parsers' openers (`spreadOpener`, `grammar/parts/spreads.ts`; `structComprehensionOpener`; `annotationOpener`). A `<…>` list, which nothing pairs, ends at a line heading no deeper than its `<`'s own unless its `>` heads it (`angleListRegion`, `cursor/`), as a bracket left open ends (`cursor/brackets.ts`).
 - An indented value is checked, lowered, computed and offered as the literal checking built it as (`CheckedBody.builtLiteralOf`): a phase meeting an `IndentedValue` reads that literal, never its entries a second way. Which literal is the checker's one decision (`checker/constructs/expressions/literals/indented-values.ts`, from the type, else `untypedForm`).
 - What separates a block's items on one line is its `ItemRules.separator` (`ItemSeparator`, `recovery.ts`; spec §2): `;` for statements and a module's declarations, `,` for every list (fields, variants, trait members, constraint entries), `'lineBreak'` for cases. Entries in braces are a list (`parseItemEntries`, layout/index.ts): `,` or a separating line break, with each entry's annotations. Layout (`layout/index.ts`) reads either separator and reports the wrong one once (2038, 2039), as `parseCommaSeparated` reports a `;` between bracketed items; no other site tests for a separator.
-- A word a grammar position starts with is listed once, in `src/compiler/syntax/grammar-words.ts`: the parser's table for that position `satisfies StartParselets` (keywords) and `WordParselets` (contextual words) of the list, and completion offers the list, never one of its own (`language-service/completion/places/grammar/words.ts` names only the words that need surroundings, `wordNeeds`).
+- A word a grammar position starts with is listed once, in `src/compiler/syntax/tokens/grammar-words.ts`: the parser's table for that position `satisfies StartParselets` (keywords) and `WordParselets` (contextual words) of the list, and completion offers the list, never one of its own (`language-service/completion/places/grammar/words.ts` names only the words that need surroundings, `wordNeeds`).
 
 ## Recipes
 
 ### Add a word a grammar position starts with
 
-1. Add it to the position's list in `src/compiler/syntax/grammar-words.ts` (a new modifier: `followers`).
+1. Add it to the position's list in `src/compiler/syntax/tokens/grammar-words.ts` (a new modifier: `followers`).
 2. Give it a parselet in that position's table: a keyword in the table by token kind, a contextual word in the position's `WordParselets`, declining with `undefined` where what follows makes it a name. Either table fails to compile until it does. A statement word also needs its place in `statementWordPlaces` (`syntax/placement.ts`).
 3. Completion offers it there with no edit; add it to `wordNeeds` (`completion/places/grammar/words.ts`) only if it means something in some surroundings alone.
 
 ### Add a syntax node kind
 
-1. Declare the interface extending `NodeOf<'Kind'>` in `src/compiler/syntax/` and add it to its union in `src/compiler/syntax/tree.ts`.
+1. Declare the interface extending `NodeOf<'Kind'>` in `src/compiler/syntax/` and add it to its union in `src/compiler/syntax/tree/index.ts`.
 2. Parse it in `src/compiler/parser/` using `nested` (`nesting.ts`) and `parseEnclosed` / `parseDelimited` (`recovery.ts`).
 3. Add its handler to every exhaustive `Handlers` table across `binder/`, `checker/` (including `rules/flow/forward.ts`), and `lowering/`.

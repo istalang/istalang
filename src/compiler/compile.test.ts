@@ -21,7 +21,7 @@ import { programDiagnostics } from './program/diagnostics.ts';
 import { idOf, programOf } from './program/program.test-kit.ts';
 import type { Program } from './program/program.ts';
 import { scannerDiagnostics } from './scanner/diagnostics.ts';
-import { nodesUnder } from './syntax/tree.ts';
+import { nodesUnder } from './syntax/tree/index.ts';
 
 describe('compiling', () => {
   it.each(runPrograms.map(({ name, text }) => ({ name, text })))(

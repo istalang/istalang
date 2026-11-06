@@ -9,14 +9,14 @@
  * everything keyed by those nodes.
  *
  * An anchored span is not a text `Span`, so the compiler finds every place that needs a text
- * position; those convert through the tree (`spanIn`, and tree.ts `extentIn`). Spans of different
- * segments never compare: their offsets count from different starts. The helpers here that join or
- * compare two spans therefore require one segment, and throw on two.
+ * position; those convert through the tree (`spanIn`, and index.ts `extentIn`). Spans of
+ * different segments never compare: their offsets count from different starts. The helpers here
+ * that join or compare two spans therefore require one segment, and throw on two.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { Span } from '../../text/span.ts';
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { Span } from '../../../text/span.ts';
 
 /** A segment of a module's text. The object is its identity; a tree gives its start. */
 export interface Segment {

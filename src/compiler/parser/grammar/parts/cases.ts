@@ -4,7 +4,7 @@
  * isn't one recovers, so that lives here once.
  */
 
-import type { Invalid } from '../../../syntax/node.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
 import { skipToSeparator } from '../../cursor/recovery.ts';
 import type { Parser } from '../../parser.ts';
 

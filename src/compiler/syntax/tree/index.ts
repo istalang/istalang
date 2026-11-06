@@ -15,29 +15,29 @@
  *
  * What tools ask of a tree by position derives from the same children, memoized on the immutable
  * node or tree: a node's parent, the text a node and everything under it cover (its extent, as its
- * own span is anchored to its segment: positions.ts), and the nodes at an offset. A child's extent
- * lies inside its parent's and before its next sibling's (the parser's tests hold every tree to
- * it), so the nodes at an offset are found by descending from the root.
+ * own span is anchored to its segment: positions.ts), and the nodes at an offset. A child's
+ * extent lies inside its parent's and before its next sibling's (the parser's tests hold every tree
+ * to it), so the nodes at an offset are found by descending from the root.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { memo, SequenceMemo } from '../../structures/memo.ts';
-import type { SourceText } from '../../text/source-text.ts';
-import type { Span } from '../../text/span.ts';
-import type { Annotation } from './annotations.ts';
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import { memo, SequenceMemo } from '../../../structures/memo.ts';
+import type { SourceText } from '../../../text/source-text.ts';
+import type { Span } from '../../../text/span.ts';
+import type { Annotation } from '../annotations.ts';
 import type {
   Declaration,
   DeclarationPart,
   FunctionDeclaration,
   Module,
-} from './declarations/index.ts';
-import type { Expression, ExpressionPart, Lambda } from './expressions/index.ts';
+} from '../declarations/index.ts';
+import type { Expression, ExpressionPart, Lambda } from '../expressions/index.ts';
+import type { Pattern, PatternPart } from '../patterns.ts';
+import type { Block, Statement, StatementPart } from '../statements/index.ts';
+import type { Comment } from '../tokens/index.ts';
+import type { TypeNode, TypePart } from '../types/index.ts';
 import type { Identifier, Invalid, Missing } from './node.ts';
-import type { Pattern, PatternPart } from './patterns.ts';
 import { type SegmentBases, spanIn } from './positions.ts';
-import type { Block, Statement, StatementPart } from './statements/index.ts';
-import type { Comment } from './tokens.ts';
-import type { TypeNode, TypePart } from './types/index.ts';
 
 export type SyntaxNode =
   | Identifier
@@ -59,9 +59,9 @@ export type SyntaxNode =
 
 /**
  * What parsing one source file yields: its module, the body of each function that has one, where
- * each segment of its text starts (positions.ts), its comments, and the diagnostics of scanning and
- * parsing it, in that order. Later phases need nothing else from the syntax of a file. Bodies are
- * read through `bodyOf`, and text positions through `spanIn`.
+ * each segment of its text starts (positions.ts), its comments, and the diagnostics of scanning
+ * and parsing it, in that order. Later phases need nothing else from the syntax of a file. Bodies
+ * are read through `bodyOf`, and text positions through `spanIn`.
  */
 export interface SyntaxTree extends SegmentBases {
   readonly source: SourceText;

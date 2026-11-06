@@ -35,9 +35,9 @@ import {
   type TypeParameter,
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
-import type { NodeOf } from '../../../syntax/node.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
-import { bodyOf, parentOf, type SyntaxTree } from '../../../syntax/tree.ts';
+import { bodyOf, parentOf, type SyntaxTree } from '../../../syntax/tree/index.ts';
+import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { CheckerNote, ProgramInputs } from '../../contexts/context.ts';
 
 /** Checking's reads of `program`, recorded in `entries`. */

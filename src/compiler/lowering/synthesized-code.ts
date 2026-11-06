@@ -22,7 +22,7 @@ import { resultVariants } from '../../language/well-known/variants.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { AnonymousStructType, NominalType, Type } from '../checker/types/type/index.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
+import type { AnchoredSpan } from '../syntax/tree/positions.ts';
 import type { ClosedCall } from './calls/closed-calls.ts';
 import { emitCall, emitFunctionCall } from './calls/emit-call.ts';
 import { CodeWriter } from './code-writer.ts';

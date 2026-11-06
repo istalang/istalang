@@ -19,8 +19,8 @@ import type {
   StructComprehension,
   StructLiteral,
 } from '../../../../syntax/expressions/index.ts';
-import { lastName } from '../../../../syntax/node.ts';
-import type { AnchoredSpan } from '../../../../syntax/positions.ts';
+import { lastName } from '../../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
 import { parseDelimited } from '../../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../../diagnostics.ts';

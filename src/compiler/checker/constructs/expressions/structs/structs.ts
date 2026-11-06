@@ -18,7 +18,7 @@ import { fieldsFunctionOf } from '../../../../syntax/declarations/field-defaults
 import { isDeclaredStruct } from '../../../../syntax/declarations/index.ts';
 import type { FieldsLiteral, StructLiteral } from '../../../../syntax/expressions/index.ts';
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
-import { lastName } from '../../../../syntax/node.ts';
+import { lastName } from '../../../../syntax/tree/node.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
 import type {
   AcceptedPart,

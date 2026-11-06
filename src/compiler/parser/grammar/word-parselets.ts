@@ -1,8 +1,9 @@
 /**
- * Parselet tables keyed by the words a grammar position dispatches on (syntax/grammar-words.ts),
- * typed so a table and its position's list agree both ways: a listed word with no parselet, or a
- * parselet for a word the list lacks, fails to compile. Completion offers the lists, so what a
- * table takes is what completion offers, with no second list to keep in step.
+ * Parselet tables keyed by the words a grammar position dispatches on
+ * (syntax/tokens/grammar-words.ts), typed so a table and its position's list agree both ways: a
+ * listed word with no parselet, or a parselet for a word the list lacks, fails to compile.
+ * Completion offers the lists, so what a table takes is what completion offers, with no second list
+ * to keep in step.
  *
  * - A keyword is a token kind of its own, so a position's keywords key its table by token kind,
  *   beside the starts that are no words (`StartParselets`).
@@ -13,8 +14,8 @@
  *   (`followsModifier`).
  */
 
-import { followers, type Modifier, type Word } from '../../syntax/grammar-words.ts';
-import type { ContextualWord, Keyword } from '../../syntax/tokens.ts';
+import { followers, type Modifier, type Word } from '../../syntax/tokens/grammar-words.ts';
+import type { ContextualWord, Keyword } from '../../syntax/tokens/index.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import type { Parser } from '../parser.ts';
 

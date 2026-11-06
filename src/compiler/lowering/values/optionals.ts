@@ -36,7 +36,7 @@ import { isPrimitive, noneType } from '../../checker/types/type/primitives.ts';
 import { optionalOf } from '../../checker/types/unions/unions.ts';
 import { chainStepOf, isOptionalStep } from '../../syntax/expressions/chains.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { Label } from '../code-writer.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { jumpIfHeld, laidOutAs, type TypedValue } from './holdings.ts';

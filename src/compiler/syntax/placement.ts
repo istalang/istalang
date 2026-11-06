@@ -14,13 +14,13 @@
  */
 
 import type { Declaration } from './declarations/index.ts';
+import type { Statement } from './statements/index.ts';
 import {
   type DeclarationWord,
   declarationWords,
   type StatementWord,
   statementWords,
-} from './grammar-words.ts';
-import type { Statement } from './statements/index.ts';
+} from './tokens/grammar-words.ts';
 
 export type Item = Declaration | Statement;
 

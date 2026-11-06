@@ -1,9 +1,9 @@
 /**
  * What a grammar position offers of the words the parser dispatches on there
- * (syntax/grammar-words.ts, whose lists the parser's tables are keyed by): every one, but where
- * the code around gives it no meaning. The parser takes `await` in any body and `break` in any
- * block; only an async function's body waits (§7), and only a loop ends early (§4). So a word the
- * parser starts taking at a position is offered there with no edit here, unless it needs
+ * (syntax/tokens/grammar-words.ts, whose lists the parser's tables are keyed by): every one, but
+ * where the code around gives it no meaning. The parser takes `await` in any body and `break` in
+ * any block; only an async function's body waits (§7), and only a loop ends early (§4). So a word
+ * the parser starts taking at a position is offered there with no edit here, unless it needs
  * surroundings, which `wordNeeds` says.
  *
  * The `if` chain's clauses are the `if`'s own words, which no position starts with.
@@ -13,7 +13,7 @@ import {
   operandWords,
   statementWords,
   type Word,
-} from '../../../../compiler/syntax/grammar-words.ts';
+} from '../../../../compiler/syntax/tokens/grammar-words.ts';
 import type { Candidate } from '../../candidate.ts';
 import type { Surroundings } from './surroundings.ts';
 

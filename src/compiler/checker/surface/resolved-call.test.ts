@@ -10,7 +10,7 @@ import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { idOf } from '../../program/program.test-kit.ts';
 import { programModule } from '../../program/program.ts';
 import { functionsOf } from '../../syntax/declarations/field-defaults.ts';
-import { bodyOf, nodesUnder } from '../../syntax/tree.ts';
+import { bodyOf, nodesUnder } from '../../syntax/tree/index.ts';
 import { checkProgram } from '../check.ts';
 
 describe('a checked body', () => {

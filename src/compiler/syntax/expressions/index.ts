@@ -18,12 +18,12 @@
  * was written.
  */
 
-import type { Identifier, Invalid, Missing, NodeOf } from '../node.ts';
-import type { BinaryOperator, ChainingOperator, UnaryOperator } from '../operators.ts';
 import type { Pattern } from '../patterns.ts';
 import type { Block } from '../statements/index.ts';
+import type { Identifier, Invalid, Missing, NodeOf } from '../tree/node.ts';
 import type { NamedType, TypeNode } from '../types/index.ts';
 import type { Literal, StringLiteral } from './literals/literals.ts';
+import type { BinaryOperator, ChainingOperator, UnaryOperator } from './operators.ts';
 
 /** `...xs` inside an array, map, call or struct literal. */
 export interface Spread extends NodeOf<'Spread'> {

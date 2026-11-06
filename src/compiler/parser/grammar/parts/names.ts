@@ -4,8 +4,8 @@
  * comprehensions and variables all bind through targets, so each rule lives here once.
  */
 
-import type { Identifier, QualifiedName } from '../../../syntax/node.ts';
 import type { Pattern } from '../../../syntax/patterns.ts';
+import type { Identifier, QualifiedName } from '../../../syntax/tree/node.ts';
 import type { NamedType, TypeNode } from '../../../syntax/types/index.ts';
 import type { Parser } from '../../parser.ts';
 

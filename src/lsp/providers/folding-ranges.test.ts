@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { FoldingRangeRequest } from 'vscode-languageserver/node';
-import { spanIn } from '../../compiler/syntax/positions.ts';
-import { extentIn, nodesUnder, type SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { extentIn, nodesUnder, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
+import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import { allTokensOf } from '../../language-service/tokens.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Span } from '../../text/span.ts';

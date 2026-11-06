@@ -26,13 +26,13 @@
  * where the comment went.
  */
 
-import type { Comment } from '../../compiler/syntax/tokens.ts';
+import type { Comment } from '../../compiler/syntax/tokens/index.ts';
 import {
   childrenOf,
   extentIn,
   type SyntaxNode,
   type SyntaxTree,
-} from '../../compiler/syntax/tree.ts';
+} from '../../compiler/syntax/tree/index.ts';
 import { encloses } from '../../text/span.ts';
 import {
   type CommentsOf,

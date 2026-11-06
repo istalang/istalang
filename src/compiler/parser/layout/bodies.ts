@@ -6,15 +6,15 @@
  * the construct starts on. A `;` right after a one-line body is an error (§4): a Python reader
  * would think `if x: a; b` puts both statements in the body.
  *
- * A function's body is entered as a segment of its own (syntax/positions.ts) after the `:` and its
- * docstring, so what describes the items, as their span, is made inside it. A trait's members may
- * each head a segment, so their list has no span of its own.
+ * A function's body is entered as a segment of its own (syntax/tree/positions.ts) after the `:` and
+ * its docstring, so what describes the items, as their span, is made inside it. A trait's members
+ * may each head a segment, so their list has no span of its own.
  */
 
 import type { Docstring } from '../../syntax/declarations/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import { spanAcross } from '../../syntax/positions.ts';
-import type { SyntaxNode } from '../../syntax/tree.ts';
+import type { SyntaxNode } from '../../syntax/tree/index.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
+import { spanAcross } from '../../syntax/tree/positions.ts';
 import { atRegionEnd } from '../cursor/recovery.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';

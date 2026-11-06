@@ -10,7 +10,7 @@
  */
 
 import type { Expression, Parameter } from '../../../syntax/expressions/index.ts';
-import type { Invalid } from '../../../syntax/node.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
 import type { Parser } from '../../parser.ts';
 import { parseFunctionKeyword, parseParameters } from '../parts/functions.ts';
 

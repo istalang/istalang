@@ -73,7 +73,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 #### 2.1 `src/compiler/scanner/`
 - **Stale banner comment contradicting L5 shift operators (`src/compiler/scanner/punctuators.ts`):**
-  - The banner states: *"There is deliberately no `>>` (the language has no shift operators), so `Array<Array<int>>` closes two type-argument lists without the parser splitting a token."* L5 added `<<`, `>>`, `<<=`, and `>>=` to `syntax/tokens.ts` and token-splitting (`restAfterAngle`) to `parser/cursor.ts`, making this comment false.
+  - The banner states: *"There is deliberately no `>>` (the language has no shift operators), so `Array<Array<int>>` closes two type-argument lists without the parser splitting a token."* L5 added `<<`, `>>`, `<<=`, and `>>=` to `syntax/tokens/index.ts` and token-splitting (`restAfterAngle`) to `parser/cursor.ts`, making this comment false.
 - **Coupled mutable state between `Scanner.#scanValue` and `TemplateScanner` (`src/compiler/scanner/scan.ts`, `templates.ts`, D220):**
   - `Scanner.#scanValue` re-enters `#scanTokens(true)` mutating the outer scanner's `#offset`, `#lineHasToken`, and `#indentationTab`. Consequently, `#scanToken` must unconditionally reset `this.#lineHasToken = true` after `scanLexeme()`, and `TemplateScanner.#addValue` must reconstruct the end offset from `value.tokens.at(-1)?.span.start ?? this.#text.length` instead of `#scanValue` saving/restoring line state and returning its stopping offset.
 

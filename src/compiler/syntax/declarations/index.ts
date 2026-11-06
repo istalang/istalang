@@ -9,9 +9,9 @@
  * - An extern constant has a type and no value, unlike a `const`.
  * - The two import forms bind different things.
  *
- * A function stays one kind, extern or not, because its signature is the same either way. Only
- * its body differs, and an extern function never has one: the parser reports any it finds. The
- * body is not a field: the tree holds it (../tree.ts `bodyOf`), so the declaration's node, and all
+ * A function stays one kind, extern or not, because its signature is the same either way. Only its
+ * body differs, and an extern function never has one: the parser reports any it finds. The body is
+ * not a field: the tree holds it (../tree/index.ts `bodyOf`), so the declaration's node, and all
  * that is keyed by it, can outlive an edit of the body (docs/work/m6-m7/incremental-checking.md).
  *
  * Module items are declarations only. A statement written at the top level is reported and kept
@@ -22,9 +22,9 @@ import { receiverParameter } from '../../../language/well-known/index.ts';
 import type { Annotatable } from '../annotations.ts';
 import type { Expression, Parameter } from '../expressions/index.ts';
 import type { StringLiteral } from '../expressions/literals/literals.ts';
-import type { Identifier, Invalid, Missing, NodeOf } from '../node.ts';
-import { type AnchoredSpan, spanAcross } from '../positions.ts';
 import type { Block, VariableDeclaration } from '../statements/index.ts';
+import type { Identifier, Invalid, Missing, NodeOf } from '../tree/node.ts';
+import { type AnchoredSpan, spanAcross } from '../tree/positions.ts';
 import type { ConstraintNode, FieldDeclaration, TypeMatch, TypeNode } from '../types/index.ts';
 
 /** `"""…"""`: what a declaration or module is for, in its own words (§2); tools read it. */
@@ -76,7 +76,7 @@ export interface FunctionDeclaration
 
 /**
  * The text a function nested in a body covers, its header and `body`, which share the body's
- * segment; a function's own span covers its header alone (../positions.ts).
+ * segment; a function's own span covers its header alone (../tree/positions.ts).
  */
 export function nestedFunctionSpan(
   declaration: FunctionDeclaration,

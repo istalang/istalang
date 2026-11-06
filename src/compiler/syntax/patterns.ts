@@ -11,8 +11,8 @@
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { Expression, Unary } from './expressions/index.ts';
 import type { Literal } from './expressions/literals/literals.ts';
-import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './node.ts';
-import type { ComparisonOperator } from './operators.ts';
+import type { ComparisonOperator } from './expressions/operators.ts';
+import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from './tree/node.ts';
 import type { NamedType, TypeNode } from './types/index.ts';
 
 export type WildcardPattern = NodeOf<'WildcardPattern'>;

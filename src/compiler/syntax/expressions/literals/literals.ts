@@ -4,7 +4,7 @@
  * resolved, so no later phase reads its source text again.
  */
 
-import type { NodeOf } from '../../node.ts';
+import type { NodeOf } from '../../tree/node.ts';
 
 interface IntegerLiteral extends NodeOf<'IntegerLiteral'> {
   readonly value: bigint;

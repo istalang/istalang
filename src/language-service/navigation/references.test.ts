@@ -8,7 +8,7 @@ import { corpusDirectory } from '../../../test/corpus/programs.ts';
 import type { Entity } from '../../compiler/binder/entities.ts';
 import { checkProgram } from '../../compiler/checker/check.ts';
 import type { Program } from '../../compiler/program/program.ts';
-import { nodesUnder } from '../../compiler/syntax/tree.ts';
+import { nodesUnder } from '../../compiler/syntax/tree/index.ts';
 import { findProjectSources, loadProject } from '../../project/project.ts';
 import { isSamePlace, type NamePlace, nameAt, spanOfUse, spelledName } from './declarations.ts';
 import { navigable, placeOf } from './navigation.test-kit.ts';

@@ -30,7 +30,7 @@
  */
 
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { isAssignable } from '../identity/identity.ts';
 import { parametersIn } from '../parts/type-parts.ts';

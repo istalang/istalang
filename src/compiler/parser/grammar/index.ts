@@ -4,7 +4,7 @@
  */
 
 import type { SourceText } from '../../../text/source-text.ts';
-import type { ScanResult } from '../../syntax/tokens.ts';
+import type { ScanResult } from '../../syntax/tokens/index.ts';
 import { type Grammar, Parser } from '../parser.ts';
 import { parseTopLevelDeclaration } from './declarations/declaration.ts';
 import { parseDefinedFunction } from './declarations/functions.ts';

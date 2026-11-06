@@ -13,8 +13,8 @@
  * around a list of types (angle-brackets.ts), which are comparisons elsewhere.
  */
 
-import { isContextualWord, isKeyword, type Token } from '../../compiler/syntax/tokens.ts';
-import type { SyntaxTree } from '../../compiler/syntax/tree.ts';
+import { isContextualWord, isKeyword, type Token } from '../../compiler/syntax/tokens/index.ts';
+import type { SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import { type Span, textOf } from '../../text/span.ts';
 import { allTokensOf } from '../tokens.ts';

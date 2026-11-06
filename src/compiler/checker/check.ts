@@ -21,8 +21,8 @@ import type {
   TypeParameter,
 } from '../syntax/declarations/index.ts';
 import type { Parameter } from '../syntax/expressions/index.ts';
-import type { Identifier } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements/index.ts';
+import type { Identifier } from '../syntax/tree/node.ts';
 import type { AnnotationQueries } from './surface/checked-annotation.ts';
 import type { CheckedBody } from './surface/checked-body.ts';
 import type { ConstantForm } from './surface/constant-form.ts';

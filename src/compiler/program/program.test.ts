@@ -14,7 +14,7 @@ import {
   reportedOnce,
 } from '../../diagnostics/diagnostic.test-kit.ts';
 import { textOf } from '../../text/span.ts';
-import { spanIn } from '../syntax/positions.ts';
+import { spanIn } from '../syntax/tree/positions.ts';
 import { programDiagnostics } from './diagnostics.ts';
 import {
   type Files,

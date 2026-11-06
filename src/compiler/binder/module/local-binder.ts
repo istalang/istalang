@@ -32,11 +32,11 @@ import type {
   Lambda,
   Parameter,
 } from '../../syntax/expressions/index.ts';
-import { type Identifier, isMissingName, type QualifiedName } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Block, For, VariableDeclaration } from '../../syntax/statements/index.ts';
-import type { SyntaxNode, SyntaxTree } from '../../syntax/tree.ts';
+import type { SyntaxNode, SyntaxTree } from '../../syntax/tree/index.ts';
+import { type Identifier, isMissingName, type QualifiedName } from '../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { NamedType, TypeNode } from '../../syntax/types/index.ts';
 import { binderDiagnostics } from '../diagnostics.ts';
 import {

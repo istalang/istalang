@@ -28,8 +28,8 @@ import type {
   Range,
   Spread,
 } from '../../../syntax/expressions/index.ts';
-import type { Invalid } from '../../../syntax/node.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCallAt, emitImplicitCall, referenceTo } from '../../calls/emit-call.ts';
 import type { CodeContext, FunctionContext } from '../../context.ts';
 import { cursorOf, emitLoop } from '../../loops/iteration.ts';

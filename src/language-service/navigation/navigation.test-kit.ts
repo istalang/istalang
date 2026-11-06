@@ -6,8 +6,8 @@
 import { stdProgramOf } from '../../compiler/binder/bind.test-kit.ts';
 import { idOf } from '../../compiler/program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../../compiler/program/program.ts';
-import type { Identifier } from '../../compiler/syntax/node.ts';
-import { nodesUnder } from '../../compiler/syntax/tree.ts';
+import { nodesUnder } from '../../compiler/syntax/tree/index.ts';
+import type { Identifier } from '../../compiler/syntax/tree/node.ts';
 import type { NamePlace } from './declarations.ts';
 import { spanOfUse } from './declarations.ts';
 import type { NameEdit } from './rename.ts';

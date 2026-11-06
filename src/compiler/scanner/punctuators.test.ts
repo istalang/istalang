@@ -5,7 +5,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { punctuators } from '../syntax/tokens.ts';
+import { punctuators } from '../syntax/tokens/index.ts';
 import { kindsAndTexts, scanText, soleToken } from './scan.test-kit.ts';
 
 describe('punctuators', () => {

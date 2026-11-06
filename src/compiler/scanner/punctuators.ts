@@ -1,12 +1,12 @@
 /**
  * Longest-match lookup of punctuators.
  *
- * The lookup table is derived from the punctuator list in syntax/tokens.ts, so adding a punctuator
- * there is enough. A glued `>=`, `>>` or `>>=` is scanned as one token and split by the parser's
- * cursor where `>` closes type arguments.
+ * The lookup table is derived from the punctuator list in syntax/tokens/index.ts, so adding a
+ * punctuator there is enough. A glued `>=`, `>>` or `>>=` is scanned as one token and split by the
+ * parser's cursor where `>` closes type arguments.
  */
 
-import { type Punctuator, punctuators } from '../syntax/tokens.ts';
+import { type Punctuator, punctuators } from '../syntax/tokens/index.ts';
 
 const candidatesByFirstChar: ReadonlyMap<string, readonly Punctuator[]> = Map.groupBy(
   [...punctuators].sort((left, right) => right.length - left.length),

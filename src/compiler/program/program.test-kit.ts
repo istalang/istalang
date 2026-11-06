@@ -8,7 +8,7 @@
 
 import { isTestModulePath } from '../../language/well-known/testing.ts';
 import type { Span } from '../../text/span.ts';
-import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
+import { type AnchoredSpan, spanIn } from '../syntax/tree/positions.ts';
 import {
   buildProgram,
   type LocatedModule,

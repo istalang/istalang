@@ -11,10 +11,10 @@ import type {
   Parameter,
   SelectCase,
 } from '../../syntax/expressions/index.ts';
-import type { Identifier } from '../../syntax/node.ts';
-import type { Relation } from '../../syntax/operators.ts';
+import type { Relation } from '../../syntax/expressions/operators.ts';
 import type { ArrayPattern, CompareFieldPattern, LiteralPattern } from '../../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../../syntax/statements/index.ts';
+import type { Identifier } from '../../syntax/tree/node.ts';
 import type { AnyType, Type } from '../types/type/index.ts';
 
 /**

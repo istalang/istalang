@@ -11,8 +11,8 @@ import { checkProgram } from '../../../compiler/checker/check.ts';
 import type { Program } from '../../../compiler/program/program.ts';
 import { isMethod } from '../../../compiler/syntax/declarations/index.ts';
 import type { MemberAccess } from '../../../compiler/syntax/expressions/index.ts';
-import { spanIn } from '../../../compiler/syntax/positions.ts';
-import { nodesAt, nodesUnder, parentOf } from '../../../compiler/syntax/tree.ts';
+import { nodesAt, nodesUnder, parentOf } from '../../../compiler/syntax/tree/index.ts';
+import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { type MainProgram, mainProgram, programAt } from '../../language-service.test-kit.ts';
 import { completionsAt } from '../index.ts';
 

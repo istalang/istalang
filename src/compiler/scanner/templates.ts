@@ -14,7 +14,7 @@
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
 import { lineBreakLength } from '../../text/line-map.ts';
 import type { Span } from '../../text/span.ts';
-import type { TemplateValue, Token } from '../syntax/tokens.ts';
+import type { TemplateValue, Token } from '../syntax/tokens/index.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
 import type { ScannedLexeme } from './lexeme.ts';
 import { type LinePiece, layOutLines, PieceReader } from './multi-line.ts';

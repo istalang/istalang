@@ -5,8 +5,8 @@
  * body: a map's key written with its value is a String, a shorthand key the variable it reads.
  */
 
-import { spanIn } from '../../compiler/syntax/positions.ts';
-import { nodesUnder } from '../../compiler/syntax/tree.ts';
+import { nodesUnder } from '../../compiler/syntax/tree/index.ts';
+import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import type { CheckedModule } from '../checked-module.ts';
 import type { SemanticType } from './semantic-types.ts';
 

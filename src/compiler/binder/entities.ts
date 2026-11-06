@@ -44,9 +44,9 @@ import type {
   Parameter,
   SelectCase,
 } from '../syntax/expressions/index.ts';
-import type { Identifier } from '../syntax/node.ts';
 import type { AsPattern, BindFieldPattern, NamePattern, RestPattern } from '../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../syntax/statements/index.ts';
+import type { Identifier } from '../syntax/tree/node.ts';
 
 /**
  * The call of an async function, which the function's name denotes before a `.` inside it (§7):

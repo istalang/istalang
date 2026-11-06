@@ -19,9 +19,9 @@
 import type { EntryTable } from '../../../../structures/entries/index.ts';
 import { sameItems } from '../../../../structures/equality.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type { Identifier } from '../../../syntax/node.ts';
 import { targetNames } from '../../../syntax/patterns.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { CheckedConstant } from '../../check.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

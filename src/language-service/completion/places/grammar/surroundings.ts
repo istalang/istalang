@@ -8,7 +8,11 @@
  */
 
 import type { LabelledScope } from '../../../../compiler/syntax/statements/index.ts';
-import { bodyOf, type SyntaxNode, type SyntaxTree } from '../../../../compiler/syntax/tree.ts';
+import {
+  bodyOf,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../../../../compiler/syntax/tree/index.ts';
 
 export interface Surroundings {
   /** The body of the innermost function holding the position, if it is in one. */

@@ -13,8 +13,8 @@
 import type { Diagnostic } from '../../../../../diagnostics/diagnostic.ts';
 import type { Entity } from '../../../../binder/entities.ts';
 import type { ModuleId } from '../../../../program/program.ts';
-import { type Identifier, lastName } from '../../../../syntax/node.ts';
-import type { AnchoredSpan } from '../../../../syntax/positions.ts';
+import { type Identifier, lastName } from '../../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { NamedType, TypeNode } from '../../../../syntax/types/index.ts';
 import type { Checker } from '../../../check.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';

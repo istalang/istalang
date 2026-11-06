@@ -12,8 +12,8 @@ import { globSync, readFileSync } from 'node:fs';
 import fc from 'fast-check';
 import { invalidPrograms, runPrograms } from '../../../test/corpus/programs.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
-import { spanIn } from '../syntax/positions.ts';
-import { bodyOf, nodesUnder, type SyntaxNode, type SyntaxTree } from '../syntax/tree.ts';
+import { bodyOf, nodesUnder, type SyntaxNode, type SyntaxTree } from '../syntax/tree/index.ts';
+import { spanIn } from '../syntax/tree/positions.ts';
 
 /** A module's text, named for a test's title. */
 export interface ModuleText {

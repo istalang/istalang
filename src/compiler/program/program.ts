@@ -33,8 +33,8 @@ import { parse } from '../parser/parse.ts';
 import { scan } from '../scanner/scan.ts';
 import type { ImportDeclaration } from '../syntax/declarations/index.ts';
 import type { StringLiteral } from '../syntax/expressions/literals/literals.ts';
-import { type AnchoredSpan, diagnosticIn } from '../syntax/positions.ts';
-import type { SyntaxTree } from '../syntax/tree.ts';
+import type { SyntaxTree } from '../syntax/tree/index.ts';
+import { type AnchoredSpan, diagnosticIn } from '../syntax/tree/positions.ts';
 import { programDiagnostics } from './diagnostics.ts';
 
 declare const isModuleUrl: unique symbol;

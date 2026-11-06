@@ -14,7 +14,7 @@
 
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { AliasBody, Field } from '../../syntax/declarations/index.ts';
-import type { Invalid } from '../../syntax/node.ts';
+import type { Invalid } from '../../syntax/tree/node.ts';
 import type {
   ConstraintNode,
   MappedField,

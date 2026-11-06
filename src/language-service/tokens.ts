@@ -1,7 +1,7 @@
 /**
  * The tokens of a tree's source, for features that read text the tree doesn't keep: brackets,
- * keywords, operators. Trees hold no tokens (syntax/node.ts), so they are scanned again, once per
- * tree.
+ * keywords, operators. Trees hold no tokens (syntax/tree/node.ts), so they are scanned again, once
+ * per tree.
  *
  * Brackets pair as the parser pairs them (parser/cursor/brackets.ts `pairBrackets`), so a feature
  * sees the groups the parser read: an unclosed bracket, as in code being typed, pairs with nothing
@@ -13,8 +13,8 @@
 
 import { isBracketOpener, pairBrackets } from '../compiler/parser/cursor/brackets.ts';
 import { scan } from '../compiler/scanner/scan.ts';
-import type { ScanResult, Token } from '../compiler/syntax/tokens.ts';
-import type { SyntaxTree } from '../compiler/syntax/tree.ts';
+import type { ScanResult, Token } from '../compiler/syntax/tokens/index.ts';
+import type { SyntaxTree } from '../compiler/syntax/tree/index.ts';
 import { memo } from '../structures/memo.ts';
 import { lineMapOf } from '../text/line-map.ts';
 

@@ -19,8 +19,13 @@
 import { type builders, printer as docPrinter } from 'prettier/doc';
 import { parse } from '../compiler/parser/parse.ts';
 import { scan } from '../compiler/scanner/scan.ts';
-import { spanIn } from '../compiler/syntax/positions.ts';
-import { childrenOf, extentIn, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree.ts';
+import {
+  childrenOf,
+  extentIn,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../compiler/syntax/tree/index.ts';
+import { spanIn } from '../compiler/syntax/tree/positions.ts';
 import { handlerOf } from '../structures/kind-table.ts';
 import { memo } from '../structures/memo.ts';
 import { unreachable } from '../structures/unreachable.ts';

@@ -17,8 +17,8 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
-import { spanIn } from '../../syntax/positions.ts';
-import { dump, errorNodes, spanViolations } from '../../syntax/tree.test-kit.ts';
+import { spanIn } from '../../syntax/tree/positions.ts';
+import { dump, errorNodes, spanViolations } from '../../syntax/tree/tree.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { operatorTree, printFull } from '../grammar/expressions/precedence.test-kit.ts';
 import {

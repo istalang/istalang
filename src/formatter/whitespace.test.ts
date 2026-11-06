@@ -14,9 +14,9 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { scan } from '../compiler/scanner/scan.ts';
-import type { Token } from '../compiler/syntax/tokens.ts';
-import { dump } from '../compiler/syntax/tree.test-kit.ts';
-import { extentIn, nodesUnder, type SyntaxNode } from '../compiler/syntax/tree.ts';
+import type { Token } from '../compiler/syntax/tokens/index.ts';
+import { extentIn, nodesUnder, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
+import { dump } from '../compiler/syntax/tree/tree.test-kit.ts';
 import { encloses, type Span } from '../text/span.ts';
 import { nodesInBrackets } from './brackets.ts';
 import { commentTexts, formattableInputs, parseText } from './format.test-kit.ts';
