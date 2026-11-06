@@ -2,18 +2,17 @@
 
 One folder per phase. Phases share only contracts.
 
-- `syntax/`: tokens, the words each grammar position starts with (`grammar-words.ts`), tree nodes, operator precedence, where items may stand, and traversal derived from node fields. Exhaustive node-kind handler tables use `structures/kind-table.ts`. It is a contract with high fan-in: change it deliberately, and update every consumer in the same change.
+- `syntax/`: tokens and the words each grammar position starts with (`tokens/`: `grammar-words.ts`), tree nodes and traversal derived from node fields (`tree/`), operator precedence (`expressions/operators.ts`), where items may stand and the annotations they carry (`items.ts`). Exhaustive node-kind handler tables use `structures/kind-table.ts`. It is a contract with high fan-in: change it deliberately, and update every consumer in the same change.
 - `scanner/`: `scan.ts` turns text into tokens, comments and diagnostics. It is context-free, total and lossless.
 - `parser/`: tokens to tree; `parse.ts` is the entry.
-  - A grammar category (`expressions/`, `statements/`, `declarations/`, `types.ts`, `patterns.ts`) reaches another only through the context in `parser.ts`, which `grammar/index.ts` wires.
-  - Pieces several categories share live in `parts/`, which imports no category.
-  - dependency-cruiser enforces both rules.
-  - The machinery is shared by all categories:
-    - `cursor/`: line breaks and regions (`regions.ts`: one shape per kind)
-    - `layout/`: items separated by `,`, `;` (statements and the module's declarations) or line breaks (blocks, braces of entries) and annotations on items (`index.ts`), one-line bodies (`bodies.ts`)
-    - `recovery.ts`: bracketed lists and recovery
+  - `grammar/`: a grammar category (`expressions/`, `statements/`, `declarations/`, `types.ts`, `patterns.ts`) reaches another only through the context in `parser.ts`, which `grammar/index.ts` wires.
+    - Pieces several categories share live in `grammar/parts/`, which imports no category.
+    - dependency-cruiser enforces both rules.
     - `nesting.ts`: the nesting limit every recursive grammar entry goes through
     - `word-parselets.ts`: tables keyed by the words of `syntax/tokens/grammar-words.ts`, which completion offers, checked against them both ways by type
+  - The machinery is shared by all categories:
+    - `cursor/`: line breaks and regions (`regions.ts`: one shape per kind), brackets paired (`brackets.ts`), bracketed lists and recovery (`recovery.ts`)
+    - `layout/`: items separated by `,`, `;` (statements and the module's declarations) or line breaks (blocks, braces of entries) and annotations on items (`index.ts`, `annotations.ts`), one-line bodies (`bodies.ts`), docstrings (`docstrings.ts`)
 
 - `program/`: `program.ts` loads the module graph from roots through the `ModuleLoader` seam. It imposes no path syntax and does no I/O.
 - `binder/`: `bind.ts` binds a program's names; `entities.ts` is the vocabulary its consumers read. Each module binds on its own (`module/bind-module.ts`, memoized per tree), with the categories in `constructs/` wired through the context in `module/local-binder.ts` as the parser's are; `module/flow.ts` holds where bindings are visible; `link/` resolves what crosses modules, over the modules `bind.ts` bound.
