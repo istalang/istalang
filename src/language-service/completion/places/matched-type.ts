@@ -1,15 +1,19 @@
 /**
  * The type a pattern being written matches (§3.11), read down from the type the `match` subject or
- * the `is` operand has as checked, or the parameter whose pattern it is (§3.3): an alternative, a parenthesized or an `as` pattern matches its
- * whole; a struct pattern's item, the field it names, among those of the variant or struct the
- * pattern names (against an `any` value, the type it downcasts to); a nested field pattern, that
- * field's type; a tuple's element, its element's; an array's item, its item's, and its rest the
- * whole array. Against a union, a struct, tuple or array pattern first selects the one member it
- * takes apart, by the checker's rule (types/written/named-types.ts).
+ * the `is` operand has as checked, or the parameter whose pattern it is (§3.3): an alternative, a
+ * parenthesized or an `as` pattern matches its whole; a struct pattern's item, the field it names,
+ * among those of the variant or struct the pattern names (against an `any` value, the type it
+ * downcasts to); a nested field pattern, that field's type; a tuple's element, its element's; an
+ * array's item, its item's, and its rest the whole array. Against a union, a struct, tuple or array
+ * pattern first selects the one member it takes apart, by the checker's rule
+ * (types/written/named-types.ts).
  *
  * The patterns are read from the placeholder parse, which holds the one being written whole; the
  * subject and a struct pattern's name end before the cursor, so the checked tree types the one and
- * tells what the other denotes (checked-twin.ts).
+ * tells what the other denotes, through each one's twin there (`checkedTwinOf`). Before the cursor
+ * both trees read the same text, so a node ending there has a twin of the same kind and extent; one
+ * reaching past the cursor may have none, as the text after the cursor reads differently without
+ * the placeholder.
  */
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
@@ -32,9 +36,14 @@ import type {
   NamePattern,
   StructPattern,
 } from '../../../compiler/syntax/patterns.ts';
-import { nodesAt, parentOf, type SyntaxNode } from '../../../compiler/syntax/tree.ts';
+import {
+  extentIn,
+  nodesAt,
+  parentOf,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../../../compiler/syntax/tree.ts';
 import type { NamedType } from '../../../compiler/syntax/types/index.ts';
-import { checkedTwinOf } from '../checked-twin.ts';
 import type { Cursor } from '../cursor.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 import { holderIn } from './grammar/chain.ts';
@@ -335,3 +344,19 @@ const steps: { readonly [Kind in SyntaxNode['kind']]?: Step<Extract<SyntaxNode, 
     NestedFieldPattern: (link) => (link.child === link.node.pattern ? link.type : undefined),
   };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
+
+/** `node` of `parsed`, the placeholder parse, as the checked tree holds it; undefined for none. */
+function checkedTwinOf<Node extends SyntaxNode>(
+  { tree, offset }: Cursor,
+  parsed: SyntaxTree,
+  node: Node,
+): Node | undefined {
+  const { start, end } = extentIn(parsed, node);
+  if (end > offset) {
+    return undefined;
+  }
+  return nodesAt(tree, start).find((each): each is Node => {
+    const extent = extentIn(tree, each);
+    return each.kind === node.kind && extent.start === start && extent.end === end;
+  });
+}

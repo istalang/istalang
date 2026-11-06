@@ -45,7 +45,7 @@ tags: [reuse, language, modules, program, binder, names]
 - tell what the grammar admits at a cursor (a type, a declared name, a pattern, a call's argument, a member…) → `placeAt`, `Place` (`src/language-service/completion/place.ts`), which reads all but members and literal fields from a parse with a placeholder name there (`parsedPlaceAt`, `placeholder.ts`)
 - offer the names visible at a cursor, alone or with every keyword, as completion candidates → `visibleNames`, `visibleCandidates` (`src/language-service/completion/visible.ts`)
 - offer what an expression may start with at a completion place: the names that are values and the words an operand starts with in the body around it → `expressionCandidates` (`src/language-service/completion/places/grammar/expression.ts`)
-- ask the checker about a node of completion's placeholder parse (one ending before the cursor) → `checkedTwinOf` (`src/language-service/completion/checked-twin.ts`)
+- ask the checker about a node of completion's placeholder parse (one ending before the cursor) → `checkedTwinOf` (`src/language-service/completion/places/matched-type.ts`)
 - the type a `case`, `is` or parameter pattern being written matches, or the fields its struct pattern names → `matchedTypeOf`, `fieldsMatchedBy` (`src/language-service/completion/places/matched-type.ts`)
 - offer the module paths an import's path may go on with, one segment at a time, from the importer or the project root → `modulePathsAt` (`src/language-service/completion/places/module-paths.ts`)
 - tell whether a type may annotate (§3.16: a struct, not a shared or extern one) → `canAnnotate` (`src/compiler/checker/surface/checked-annotation.ts`)
