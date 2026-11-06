@@ -23,6 +23,13 @@
  *   own parameter by how deep it binds, so its spelling's name for it never makes two types; it
  *   starts with `*`, as no other type's key does, so it never keys alike with a shape.
  * - An alias names no type of its own (§3.17), so no key mentions one.
+ * - A canonical key is kept by the type's pre-key: its structure, keyed as here, down to each
+ *   recursive type it reaches, spelled by that type's graph and node. A graph is immutable and
+ *   minimized, so one pre-key always unfolds alike and has one key; substitution and union
+ *   construction build many objects of one structure, and only the first builds a term graph. A
+ *   key is kept with the first graph its pre-key reaches and goes with it, as a later revision's
+ *   graphs replace an earlier one's; an identity's number is never reused, so a pre-key naming a
+ *   graph gone finds nothing.
  * - A type's own key is memoized per type object, which is immutable. Comparing generic signatures
  *   up to the names of their type parameters (rules/clashes.ts) keys each of those parameters by
  *   its position, which is the same as substituting canonical parameters, without building them;
@@ -60,6 +67,9 @@ let numbered = 0;
 
 /** Each type's own key, with no parameter keyed by position. */
 const ownKeys = new WeakMap<Type, string>();
+
+/** Canonical keys by pre-key, kept with the first graph each pre-key reaches (the banner). */
+const canonicalKeys = new WeakMap<RecursiveGraph, Map<string, string>>();
 
 /** Each type's spelled key. */
 const spelledKeys = new WeakMap<Type, string>();
@@ -105,11 +115,47 @@ function keyAt(type: Type, positions: ReadonlyMap<ParameterKey, number> | undefi
   if (!holdsRecursion(type)) {
     return structureKeyOf(type, positions, (each) => typeKey(each, positions));
   }
+  return positions === undefined ? keptCanonicalKey(type) : termGraphKey(type, positions);
+}
+
+/** The canonical key of `type`, holding recursion, from its term graph built afresh. */
+function termGraphKey(
+  type: Type,
+  positions: ReadonlyMap<ParameterKey, number> | undefined,
+): string {
   return canonicalKey(
     type,
     (leaf) => typeKey(leaf, positions),
     (term, partKey) => structureKeyOf(term, positions, partKey),
   );
+}
+
+/** The canonical key of `type`, holding recursion, built once per pre-key (the banner). */
+function keptCanonicalKey(type: Type): string {
+  const { preKey, graph } = preKeyOf(type);
+  if (graph === undefined) {
+    // Only a mapped struct type's parts were reached, which it keys whole: nothing to keep it by.
+    return termGraphKey(type, undefined);
+  }
+  const kept = memo(canonicalKeys, graph, () => new Map<string, string>());
+  return memo(kept, preKey, () => termGraphKey(type, undefined));
+}
+
+/**
+ * `type`'s pre-key (the banner): its structure, down to each recursive type it holds, spelled as
+ * that type's graph and node; and the first graph it reaches.
+ */
+function preKeyOf(type: Type): { readonly preKey: string; readonly graph?: RecursiveGraph } {
+  let graph: RecursiveGraph | undefined;
+  const spell = (part: Type): string => {
+    if (part.kind === 'recursive') {
+      graph ??= part.graph;
+      return `@${identityOf(part.graph)}#${part.node}`;
+    }
+    return holdsRecursion(part) ? structureKeyOf(part, undefined, spell) : typeKey(part);
+  };
+  const preKey = spell(type);
+  return graph === undefined ? { preKey } : { preKey, graph };
 }
 
 /** `type`'s key by its kind and parts, each part keyed by `key`. */

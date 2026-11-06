@@ -302,12 +302,18 @@ export class TermGraph {
 
   /** Whether `type` holds recursion, a placeholder or a recursive type, so it is a term. */
   #isTerm(type: Type): boolean {
+    if (holdsRecursion(type)) {
+      return true;
+    }
+    if (this.#source.bodies.length === 0) {
+      // No body, so no placeholder: keying a type never walks a leaf.
+      return false;
+    }
     const known = this.#holdsPlaceholder.get(type);
     if (known !== undefined) {
       return known;
     }
     const isTerm =
-      holdsRecursion(type) ||
       this.#source.placeholderOf(type) !== undefined ||
       typeChildren(type).some((part) => this.#isTerm(part));
     this.#holdsPlaceholder.set(type, isTerm);
