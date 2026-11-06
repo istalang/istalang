@@ -16,16 +16,16 @@ import type {
   MapEntry,
   MapLiteral,
   Spread,
-} from '../../syntax/expressions/index.ts';
-import type { Invalid } from '../../syntax/node.ts';
-import { type AnchoredSpan, endOf } from '../../syntax/positions.ts';
-import { parserDiagnostics } from '../diagnostics.ts';
-import type { Parser } from '../parser.ts';
-import { parseFieldHeaderAfter } from '../parts/field-headers.ts';
-import { parseTargets } from '../parts/names.ts';
-import { spreadOpener } from '../parts/spreads.ts';
-import { parseCommaSeparated, parseList } from '../recovery.ts';
-import { parseSpread } from './spread.ts';
+} from '../../../syntax/expressions/index.ts';
+import type { Invalid } from '../../../syntax/node.ts';
+import { type AnchoredSpan, endOf } from '../../../syntax/positions.ts';
+import { parseCommaSeparated, parseList } from '../../brackets/recovery.ts';
+import { parserDiagnostics } from '../../diagnostics.ts';
+import type { Parser } from '../../parser.ts';
+import { parseFieldHeaderAfter } from '../../parts/field-headers.ts';
+import { parseTargets } from '../../parts/names.ts';
+import { spreadOpener } from '../../parts/spreads.ts';
+import { parseSpread } from '../spread.ts';
 
 type CollectionItem = Expression | Spread | MapEntry;
 

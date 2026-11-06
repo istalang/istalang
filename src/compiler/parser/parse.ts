@@ -6,7 +6,8 @@
  * scanner's diagnostics before its own, so a later phase reads one list per file.
  *
  * Given the tree of the text before an edit, the new tree keeps that tree's nodes for every segment
- * the edit left alike (reuse.ts), so what later phases derived from them outlives the edit.
+ * the edit left alike (incremental/reuse.ts), so what later phases derived from them outlives the
+ * edit.
  */
 
 import type { SourceText } from '../../text/source-text.ts';
@@ -14,8 +15,8 @@ import type { ScanResult } from '../syntax/tokens.ts';
 import type { SyntaxTree } from '../syntax/tree.ts';
 import { parseModule } from './declarations/declaration.ts';
 import { createParser } from './grammar.ts';
-import { bodiesHeldBy } from './held-bodies.ts';
-import { reusingSegments } from './reuse.ts';
+import { bodiesHeldBy } from './incremental/held-bodies.ts';
+import { reusingSegments } from './incremental/reuse.ts';
 
 export function parse(source: SourceText, scanned: ScanResult, previous?: SyntaxTree): SyntaxTree {
   const parser = createParser(source, scanned);

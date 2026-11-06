@@ -13,7 +13,10 @@ const q3 = '"""';
 const { misplacedDocstring } = parserDiagnostics;
 const sentence = /\.$/u;
 
-/** The docstrings of a module and of its items, by the item's kind; undefined if it reported anything. */
+/**
+ * The docstrings of a module and of its items, by the item's kind; undefined if it reported
+ * anything.
+ */
 function docsOf(text: string): readonly (readonly [string, string | undefined])[] | undefined {
   if (reported('module', text).codes.length > 0) {
     return undefined;

@@ -5,8 +5,8 @@
  */
 
 import type { Invalid } from '../../syntax/node.ts';
+import { skipToSeparator } from '../brackets/recovery.ts';
 import type { Parser } from '../parser.ts';
-import { skipToSeparator } from '../recovery.ts';
 
 /**
  * `case`, then whatever `parseRest` reads from where the case starts. A line that doesn't start

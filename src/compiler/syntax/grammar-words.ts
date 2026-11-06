@@ -28,7 +28,9 @@ import { type ContextualWord, isKeyword, type Keyword } from './tokens.ts';
 
 export type Word = Keyword | ContextualWord;
 
-/** What starts a declaration only a module holds (§3); a function and `const` start statements too. */
+/**
+ * What starts a declaration only a module holds (§3); a function and `const` start statements too.
+ */
 export const declarationWords = [
   'import',
   'struct',

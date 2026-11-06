@@ -21,17 +21,17 @@
  *   the new parse's.
  */
 
-import { addToGroup } from '../../structures/groups.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import { lineStartAt } from '../../text/line-map.ts';
+import { addToGroup } from '../../../structures/groups.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import { lineStartAt } from '../../../text/line-map.ts';
 import type {
   FunctionDeclaration,
   Module,
   TraitDeclaration,
-} from '../syntax/declarations/index.ts';
-import { type Segment, spanIn } from '../syntax/positions.ts';
-import type { Block } from '../syntax/statements.ts';
-import type { SyntaxTree } from '../syntax/tree.ts';
+} from '../../syntax/declarations/index.ts';
+import { type Segment, spanIn } from '../../syntax/positions.ts';
+import type { Block } from '../../syntax/statements.ts';
+import type { SyntaxTree } from '../../syntax/tree.ts';
 import { bodiesHeldBy } from './held-bodies.ts';
 
 type Item = Module['items'][number];

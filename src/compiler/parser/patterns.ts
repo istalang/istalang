@@ -2,13 +2,14 @@
  * Pattern grammar (§3.11).
  *
  * Patterns parse as expressions do, through tables: a prefix parselet per token that starts one,
- * and the operators that extend one, at their levels: `|` between alternatives, then `..` and
- * `..=` between a range's literals. A parameter's pattern (§3.3) reads through the same grammar
- * over one start more, `{`, short for `struct{`, which every pattern nested in it takes too: a
- * grammar hands each parselet its own reader of nested patterns, so no flag says where it is. `as name` binds the whole pattern, alternatives included, so
- * `A | B as x` binds what either matched. A name may take type arguments, `Entry<S, "a">{value}`
- * or `Box<Int> as b`, which select a generic member of a union (§3.11); a pattern holds no
- * comparison, but an `is` expression around it may, so they are only read when they parse.
+ * and the operators that extend one, at their levels: `|` between alternatives, then `..` and `..=`
+ * between a range's literals. A parameter's pattern (§3.3) reads through the same grammar over one
+ * start more, `{`, short for `struct{`, which every pattern nested in it takes too: a grammar hands
+ * each parselet its own reader of nested patterns, so no flag says where it is. `as name` binds the
+ * whole pattern, alternatives included, so `A | B as x` binds what either matched. A name may take
+ * type arguments, `Entry<S, "a">{value}` or `Box<Int> as b`, which select a generic member of a
+ * union (§3.11); a pattern holds no comparison, but an `is` expression around it may, so they are
+ * only read when they parse.
  *
  * Inside a struct pattern's braces, the token after the field name picks the test:
  * - `as` renames the binding
@@ -36,6 +37,7 @@ import type {
   WildcardPattern,
 } from '../syntax/patterns.ts';
 import type { TypeNode } from '../syntax/types/index.ts';
+import { parseDelimited, parseGroup } from './brackets/recovery.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { atPostfix, continues } from './layout/item-breaks.ts';
@@ -51,7 +53,6 @@ import {
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
 import { spreadOpener } from './parts/spreads.ts';
 import { afterStructKeyword } from './parts/structs.ts';
-import { parseDelimited, parseGroup } from './recovery.ts';
 import type { StartParselets } from './word-parselets.ts';
 
 /** `pattern`, or `pattern as name` binding the whole when `as` follows it. */
@@ -148,7 +149,9 @@ function parseOrPattern(parser: Parser, first: Pattern, alternative: NestedPatte
   return { kind: 'OrPattern', span: parser.spanFrom(parser.startOf(first)), alternatives };
 }
 
-/** `[first, ...rest, last]`; a second rest is reported, since the items between would be ambiguous. */
+/**
+ * `[first, ...rest, last]`; a second rest is reported, since the items between would be ambiguous.
+ */
 function parseArrayPattern(parser: Parser, inner: NestedPattern): Pattern {
   const { start } = parser.cursor.token.span;
   const { items } = parseDelimited(parser, '[', () =>

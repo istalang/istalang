@@ -19,8 +19,8 @@
  *   refusing a file) propagates to the app, which reports it.
  * - A Program is immutable. Building one with the previous snapshot reuses each tree whose text is
  *   unchanged, by identity, and parses an edited module keeping the nodes of every segment the edit
- *   left alike (parser/reuse.ts). Everything derived is memoized on those identities, so an edit
- *   re-derives only what it touched, and no cache is invalidated by hand.
+ *   left alike (parser/incremental/reuse.ts). Everything derived is memoized on those identities,
+ *   so an edit re-derives only what it touched, and no cache is invalidated by hand.
  * - Loading, meaning scanning, parsing and resolving, belongs here: discovering a module's imports
  *   needs its tree. The coordinator (compile.ts) takes over from a Program.
  */

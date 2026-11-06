@@ -19,9 +19,9 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - **Fix:** Key `programBinder`'s outer memo by the raw `text` string (or pass a pre-verified `{ definition, text, hash }` bundle from `compileProgram` / `definitionFormat`), computing `definitionFormat.read` and `definitionFormat.write` at most once per unique `Definition`.
    - **Done** (`fast-wins`): `programBinder` keys its memo by the text, so each text is read, validated and written back once (`Format.readCanonical`) and each later host operation on it binds from the memo; `deploy` stores the canonical text that read gave. `inspect` on a finished instance (`runtime/host.bench.ts`): 1.94 ms → 14.6 µs mean. `runTests` reads through `readCanonical` too. Still open: the CLI writes a compiled Definition to text only for `deploy`/`runTests` to read it back, since both take text.
 
-2. **`[high]` Unmemoized `extentIn(tree, node)` and repeated token re-scanning across parser and language service (`src/compiler/syntax/tree.ts:127`, `src/language-service/tokens.ts:24`, `src/compiler/parser/brackets.ts:34`; widens `B21`, `P17`)**
+2. **`[high]` Unmemoized `extentIn(tree, node)` and repeated token re-scanning across parser and language service (`src/compiler/syntax/tree.ts:127`, `src/language-service/tokens.ts:24`, `src/compiler/parser/brackets/brackets.ts:34`; widens `B21`, `P17`)**
    - Despite `src/compiler/syntax/tree.ts`'s banner stating that a node's extent is memoized on the immutable node or tree, `extentIn(tree, node)` (`src/compiler/syntax/tree.ts:127–135`) is unmemoized and walks down `childrenOf` and `lastChildOf` to the leaves on every call — including at every sibling tested by `nodesAt(tree, offset)` (`tree.ts:141–156`).
-   - Separately, `parse(source, scanned)` (`src/compiler/parser/parse.ts:28`) discards `scanned.tokens`, so `scannedOf(tree)` (`src/language-service/tokens.ts:24`) re-runs `scan(tree.source)` from scratch, and `pairBrackets` (`src/compiler/parser/brackets.ts:34`) re-walks the token stream a second time.
+   - Separately, `parse(source, scanned)` (`src/compiler/parser/parse.ts:28`) discards `scanned.tokens`, so `scannedOf(tree)` (`src/language-service/tokens.ts:24`) re-runs `scan(tree.source)` from scratch, and `pairBrackets` (`src/compiler/parser/brackets/brackets.ts:34`) re-walks the token stream a second time.
    - **Fix:** Memoize `extentIn` per `(tree, node)` via `WeakMap` in `tree.ts`; retain `tokens` on `SyntaxTree` (or memoize `scan(source)` on `SourceText` as `lineMapOf` does) and compute bracket pairs once.
    - **Done** (`fast-wins`): `extentIn` is memoized per (tree, node) in a `SequenceMemo`, as the banner says (formatter, language-service and `tree.test.ts` suites: 5.45 s → 3.38 s). The token re-scan and bracket re-walk stay open.
 
@@ -184,19 +184,19 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 7. `src/compiler/scanner/`
 
-- **Bracket pairing re-scans the token stream instead of deriving from the scanner's pass (`src/compiler/scanner/scan.ts`, `src/compiler/parser/brackets.ts`, `src/language-service/tokens.ts`; widens `P17`):**
-  - `Scanner.#scanTokens` already walks every token in order and tracks brace depth (`braceChange`), yet `unclosedBracketEnds` (`src/compiler/parser/brackets.ts`) and `closingBracketsOf` (`src/language-service/tokens.ts`) re-walk the entire token array from scratch in `pairBrackets`.
+- **Bracket pairing re-scans the token stream instead of deriving from the scanner's pass (`src/compiler/scanner/scan.ts`, `src/compiler/parser/brackets/brackets.ts`, `src/language-service/tokens.ts`; widens `P17`):**
+  - `Scanner.#scanTokens` already walks every token in order and tracks brace depth (`braceChange`), yet `unclosedBracketEnds` (`src/compiler/parser/brackets/brackets.ts`) and `closingBracketsOf` (`src/language-service/tokens.ts`) re-walk the entire token array from scratch in `pairBrackets`.
 - **Repeated `[...run]` allocations in `scanRadixInteger` (`src/compiler/scanner/numbers.ts`):**
   - `scanRadixInteger` spreads the ASCII identifier run `[...run]` twice (once for `.filter(radix.isDigit)` and once for `.findIndex(...)`) and adds the code-point index `invalidAt` to the UTF-16 offset `digitsStart`.
 
 ### 8. `src/compiler/parser/` — machinery & shared parts
 
-- **Two hand-rolled binary searches duplicating `lastIndexAtMost` (`src/compiler/parser/brackets.ts`, `src/compiler/parser/cursor/index.ts`, `src/structures/sorted.ts`):**
-  - `lineOf` in `src/compiler/parser/brackets.ts` and `Cursor.lineHead` in `src/compiler/parser/cursor/index.ts` each write their own `while (low < high)` binary search loop (`Math.ceil((low + high) / 2)`), duplicating `lastIndexAtMost` (`src/structures/sorted.ts`).
+- **Two hand-rolled binary searches duplicating `lastIndexAtMost` (`src/compiler/parser/brackets/brackets.ts`, `src/compiler/parser/cursor/index.ts`, `src/structures/sorted.ts`):**
+  - `lineOf` in `src/compiler/parser/brackets/brackets.ts` and `Cursor.lineHead` in `src/compiler/parser/cursor/index.ts` each write their own `while (low < high)` binary search loop (`Math.ceil((low + high) / 2)`), duplicating `lastIndexAtMost` (`src/structures/sorted.ts`).
   - **Done** (`fast-wins`): `lineOf` and `Cursor.lineHead` call `lastIndexAtMost`.
-- **Duplicate node-field reflection walk in `bodiesHeldBy` (`src/compiler/parser/held-bodies.ts`, `src/compiler/syntax/tree.ts`):**
+- **Duplicate node-field reflection walk in `bodiesHeldBy` (`src/compiler/parser/incremental/held-bodies.ts`, `src/compiler/syntax/tree.ts`):**
   - `bodiesHeldBy` inspects `Object.values(node)` with `Array.isArray(value)` and `isNode` directly instead of sharing the field-child extraction in `src/compiler/syntax/tree.ts` (`fieldChildrenOf`).
-- **Repeated array-spreading multimap insertion in `SegmentReuse` (`src/compiler/parser/reuse.ts`):**
+- **Repeated array-spreading multimap insertion in `SegmentReuse` (`src/compiler/parser/incremental/reuse.ts`):**
   - `SegmentReuse.constructor` builds `#unused` with `this.#unused.set(run.text.text, [...(this.#unused.get(run.text.text) ?? []), run])`, repeating the same copying multimap pattern as `strongly-connected.ts` and `language/values.ts`.
   - **Done** (`fast-wins`): Uses `addToGroup` (unit 1).
 

@@ -4,9 +4,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
-import { parserDiagnostics } from '../diagnostics.ts';
-import { dumpClean, dumpOf, parseAs, reported } from '../parse.test-kit.ts';
+import { reportedOnce } from '../../../../diagnostics/diagnostic.test-kit.ts';
+import { parserDiagnostics } from '../../diagnostics.ts';
+import { dumpClean, dumpOf, parseAs, reported } from '../../parse.test-kit.ts';
 
 describe('templates', () => {
   it.each([

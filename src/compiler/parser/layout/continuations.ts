@@ -4,9 +4,9 @@
  * Layout's other decisions to move past a line break are index.ts's and item-breaks.ts's.
  */
 
+import { skipUntil } from '../brackets/recovery.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import type { Parser } from '../parser.ts';
-import { skipUntil } from '../recovery.ts';
 
 /**
  * Moves to `keyword` if it continues the construct that starts at `constructStart`: next on this

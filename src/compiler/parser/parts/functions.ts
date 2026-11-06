@@ -14,9 +14,9 @@
 import type { Parameter, ParameterBinding } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
+import { parseDelimited } from '../brackets/recovery.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import type { Parser } from '../parser.ts';
-import { parseDelimited } from '../recovery.ts';
 import { spreadOpener } from './spreads.ts';
 
 /** `fn` or `async fn`, starting at either keyword: whether the function is async. */
@@ -61,7 +61,9 @@ function startsPattern(parser: Parser): boolean {
 /** What stands where a parameter is missing: its list's end, or what follows a parameter's name. */
 const missingParameterBefore: ReadonlySet<CursorKind> = new Set([',', ')', ':', '=', 'lineBreak']);
 
-/** A parameter's pattern split into the name of the whole, its `as` name, and what it takes apart. */
+/**
+ * A parameter's pattern split into the name of the whole, its `as` name, and what it takes apart.
+ */
 function bindingOf(pattern: Pattern): ParameterBinding {
   return pattern.kind === 'AsPattern'
     ? { name: pattern.name, pattern: pattern.pattern }

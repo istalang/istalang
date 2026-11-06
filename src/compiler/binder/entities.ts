@@ -4,8 +4,8 @@
  * - Entities point at the syntax that declares them and carry nothing derived. Their types and
  *   meaning are the checker's, keyed by entity identity. An entity is made once per node it stands
  *   for (a function set once per list of overloads), however often a module is bound, so a segment
- *   an edit left alike keeps its nodes (parser/reuse.ts) and with them its entities, and everything
- *   the checker took over about them.
+ *   an edit left alike keeps its nodes (parser/incremental/reuse.ts) and with them its entities,
+ *   and everything the checker took over about them.
  * - What depends on the whole program is a query on Bindings, memoized per Program: a function
  *   set's overloads with the prelude's joined, a bare variant's candidates.
  * - Values and types share one namespace per scope. Naming conventions keep them apart (types are

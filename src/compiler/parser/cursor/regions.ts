@@ -4,7 +4,7 @@
  * enters is made here, so the shapes are read side by side.
  */
 
-import type { Closer } from '../brackets.ts';
+import type { Closer } from '../brackets/brackets.ts';
 
 export interface Region {
   /**
@@ -28,7 +28,7 @@ export interface Region {
   /**
    * In a `<…>` list, the index of its `<`: `<` is no bracket, so nothing pairs it, and a line
    * heading no deeper than the `<`'s own ends the list unless its `>` heads it (§2), as one ends a
-   * bracket left open (brackets.ts).
+   * bracket left open (brackets/brackets.ts).
    */
   readonly angleOpener: number | undefined;
 }

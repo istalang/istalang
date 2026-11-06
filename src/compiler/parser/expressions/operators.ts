@@ -2,9 +2,9 @@
  * Operator parselets: prefix, binary, `is` and ranges, at the levels of syntax/operators.ts.
  *
  * A prefix operator's operand parses at the operator's own level, so `not not a` and `- -a` nest. A
- * prefix operator that binds more loosely than the operand position it stands in (`a == not b`,
- * `a + ..b`) is still parsed, so the tree shows what was written, but it is reported: the reader
- * can't tell how far it reaches. An operand an operator's entry refuses without parentheses, such as
+ * prefix operator that binds more loosely than the operand position it stands in (`a == not b`, `a
+ * + ..b`) is still parsed, so the tree shows what was written, but it is reported: the reader can't
+ * tell how far it reaches. An operand an operator's entry refuses without parentheses, such as
  * `and` under `??`, is reported for the same reason (§3.9). `..` without an end is the open range
  * `a..`; `..=` always needs one.
  */
@@ -89,7 +89,9 @@ export const parseDereference: PrefixParselet = (parser, minLevel) => {
   };
 };
 
-/** `**x` before an operand: the value behind the value behind `x`, two dereferences in one token. */
+/**
+ * `**x` before an operand: the value behind the value behind `x`, two dereferences in one token.
+ */
 export const parseDoubleDereference: PrefixParselet = (parser, minLevel) => {
   const { start } = advancePrefix(parser, operatorLevels.dereference, minLevel);
   const operand = prefixOperand(parser, { start, spelling: '*' }, operatorLevels.dereference);
@@ -228,7 +230,9 @@ function parseBinaryRest(parser: Parser, left: Expression, operator: BinaryOpera
   return { kind: 'Binary', span, left, operator, right };
 }
 
-/** The comparisons `node` makes, unparenthesized, which a further comparison extends into a chain. */
+/**
+ * The comparisons `node` makes, unparenthesized, which a further comparison extends into a chain.
+ */
 function comparisonsOf(
   node: Expression,
 ): Pick<ChainedComparison, 'operands' | 'operators'> | undefined {

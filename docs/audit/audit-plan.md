@@ -84,7 +84,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 - `src/compiler/checker/statements/assignments.ts`
 
 **Tasks in Group B:**
-1. **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (D190 & Audit §4.1 — `rules/agreement.ts`, `expressions/tuples.ts`, `expressions/collections.ts`, `rules/branches.ts`):**
+1. **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (D190 & Audit §4.1 — `rules/agreement.ts`, `expressions/tuples.ts`, `expressions/literals/collections.ts`, `rules/branches.ts`):**
    - **Cause:** `agreedAccepts` returns `undefined` if `producers[0] === undefined`, so `["a", none]` and `if c: "a" else: none` fail to be treated as target-typed arguments while `[none, "a"]` succeeds. Furthermore, both `agreedAccepts` and `tupleAccepts` ignore siblings that *do* have their own type (`?? true`), losing known element types during overload selection.
    - **Fix:** Return an `Accepts` predicate whenever *any* element/producer has `accepts !== undefined`, and for each sibling with its own type `t`, check `isOpen(expectedPart) || context.checker.fitOf(t, expectedPart) !== undefined`. Also ensure explicit `call.typeArguments` in `calls/resolve.ts` / `resolution/choosing/applicability.ts` guide target-typed arguments (`same<Array<string?>>(xs, ["a", none])`).
 2. **Extend target-typed lambda result inference and optional stripping (D160 — `calls/lambda-arguments.ts`, `closures/lambdas.ts`, `closures/function-values.ts`, `expressions/tuples.ts`, `expressions/structs/variants.ts`, `expressions/expressions.ts`):**
@@ -95,13 +95,13 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - In `rules/agreement.ts` / `types/unions/widening.ts`, allow producers with sendable vs. plain functions nested inside tuples/arrays (`[(1, g), (2, f)]`, `[[g], [f]]`) to agree on the widened type (D144).
 4. **Fix `typeText` entity-based `Optional` check and `*SharedStruct` anonymous struct formatting (D153 — `types/type-text.ts`) + add `arrayOf`/`arrayElement`/`optionalArgument` to `types/well-known.ts` (Q8):**
    - In `types/type-text.ts`, spell an `AnonymousStructType` whose `origin` is a shared `StructDeclaration` as `*${origin.name.text}` (with any type arguments), and check `wellKnown.optional` properly.
-   - Add `arrayOf` and `arrayElement` to `types/well-known.ts` and use them in Group B's files (`resolution/choosing/choice.ts`, `expressions/collections.ts`, `declarations/functions/signatures.ts`).
+   - Add `arrayOf` and `arrayElement` to `types/well-known.ts` and use them in Group B's files (`resolution/choosing/choice.ts`, `expressions/literals/collections.ts`, `declarations/functions/signatures.ts`).
 5. **Unify parameter/slot models, clash keys, and resolution vocabulary (D219, D223, D229, D230 — `declarations/functions/signatures.ts`, `resolution/choosing/binding.ts`, `resolution/choosing/choice.ts`, `resolution/choosing/applicability.ts`, `resolution/choosing/packs.ts`, `rules/clashes.ts`, `closures/lambdas.ts`, `closures/value-calls.ts`):**
    - Extract `CallArgument`, `Passing`, `Accepts`, and `Inapplicability` into `src/compiler/checker/resolution/choosing/call-arguments.ts` so `applicability.ts` and `packs.ts` do not type-import upward from `choice.ts` (D230).
    - Unify `ParameterSlot` and `ArgumentSlot` (D229), compute `RestSlot` once in `signatures.ts` instead of rebuilding `restSlotOf` per candidate per call in `choice.ts`, and add `isReceiver?: boolean` on `SignatureSlot` instead of overloading `name === undefined` (D219).
    - In `rules/clashes.ts`, replace string-encoded `packItemKey = '...'` and `'&'` prefix parsing with a structured slot key `{ kind: 'any' } | { kind: 'type'; key: string; reference: boolean }` (D223).
-6. **Structured `witnessOf` outcomes & `callWithTypes` per-candidate arity & `explain` fallback (D122, D173, D217 — `resolution/conformance/conformance.ts`, `resolution/conformance/declared-witness.ts`, `resolution/typed-call.ts`, `calls/resolve.ts`, `expressions/collections.ts`):**
-   - In `resolution/conformance/conformance.ts`, give declared-but-uninstantiable witnesses a distinct failure outcome instead of returning `'none'`, so `declaresWitness` and `conform` report the unmet inner constraint and `checkDeclaredLiteral` in `expressions/collections.ts` doesn't need `declaresDefault` (D173).
+6. **Structured `witnessOf` outcomes & `callWithTypes` per-candidate arity & `explain` fallback (D122, D173, D217 — `resolution/conformance/conformance.ts`, `resolution/conformance/declared-witness.ts`, `resolution/typed-call.ts`, `calls/resolve.ts`, `expressions/literals/collections.ts`):**
+   - In `resolution/conformance/conformance.ts`, give declared-but-uninstantiable witnesses a distinct failure outcome instead of returning `'none'`, so `declaresWitness` and `conform` report the unmet inner constraint and `checkDeclaredLiteral` in `expressions/literals/collections.ts` doesn't need `declaresDefault` (D173).
    - In `resolution/typed-call.ts`, size `decided` per candidate instead of using `candidates[0]`'s arity (D122).
    - In `calls/resolve.ts`, emit `noMatchingOverload` if `explain` reported no diagnostics during `case 'arguments':` (D217).
 7. **Fix `_ = e` error suppression & destructuring assignment target typing and place identity (D101, D168 — `statements/assignments.ts`, `calls/places.ts`):**
@@ -251,8 +251,8 @@ These items touch shared phase contracts (`src/compiler/checker/check.ts`, `src/
 
 ### Wave 2 additions from Wave 1's reports
 
-6. **B8:** wrap a spread's items into `T?` (checker `expressions/collections.ts`, `rules/agreement.ts`, `check.ts` `ValueSite`/`IterationForm`).
-7. **B11's rest:** `..=`'s `_inclusiveEnd` through `preludeCall` (checker `expressions/collections.ts`).
+6. **B8:** wrap a spread's items into `T?` (checker `expressions/literals/collections.ts`, `rules/agreement.ts`, `check.ts` `ValueSite`/`IterationForm`).
+7. **B11's rest:** `..=`'s `_inclusiveEnd` through `preludeCall` (checker `expressions/literals/collections.ts`).
 8. **Q12/Q19's rest:** record field positions and `any` field dispatches on `CheckedBody` (`check.ts`, `expressions/structs/structs.ts`); `requiredFields` through the checker surface (`.dependency-cruiser.mjs`).
 9. **Operator classification, one home:** export `BinaryOperatorOf` from `syntax/operators.ts`, write `ImplicitOperator = BinaryOperatorOf<'order' | 'membership'>`, move `isImplicitOperator` beside `isChainingOperator`; build a single binary's `ComparisonLink` in `syntax/expressions/comparisons.ts`; share `fitArguments`/`typesText` between `calls/resolve.ts` and `resolution/implicit.ts`.
 10. **`rules/iteration.ts`:** `iteratedItem`'s implicit call passes `span: iterable.span`, so 5101/5003 fall on the iterable.

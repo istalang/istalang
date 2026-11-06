@@ -18,19 +18,19 @@ import type {
   FieldsLiteral,
   StructComprehension,
   StructLiteral,
-} from '../../syntax/expressions/index.ts';
-import { lastName } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { NamedType } from '../../syntax/types/index.ts';
-import { parserDiagnostics } from '../diagnostics.ts';
-import { atPostfix, breakSeparatesItems } from '../layout/item-breaks.ts';
-import type { Parser } from '../parser.ts';
-import { parseFieldHeaderAfter } from '../parts/field-headers.ts';
-import { parseTargets } from '../parts/names.ts';
-import { spreadOpener } from '../parts/spreads.ts';
-import { afterStructKeyword } from '../parts/structs.ts';
-import { parseDelimited } from '../recovery.ts';
-import { parseSpread } from './spread.ts';
+} from '../../../syntax/expressions/index.ts';
+import { lastName } from '../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { NamedType } from '../../../syntax/types/index.ts';
+import { parseDelimited } from '../../brackets/recovery.ts';
+import { parserDiagnostics } from '../../diagnostics.ts';
+import { atPostfix, breakSeparatesItems } from '../../layout/item-breaks.ts';
+import type { Parser } from '../../parser.ts';
+import { parseFieldHeaderAfter } from '../../parts/field-headers.ts';
+import { parseTargets } from '../../parts/names.ts';
+import { spreadOpener } from '../../parts/spreads.ts';
+import { afterStructKeyword } from '../../parts/structs.ts';
+import { parseSpread } from '../spread.ts';
 
 /** What opens a struct comprehension, the last item of a struct literal. */
 export const structComprehensionOpener = 'for';
@@ -117,7 +117,10 @@ function parseItem(parser: Parser): FieldsLiteral['items'][number] {
   return { kind: 'PositionalInitializer', span: value.span, value };
 }
 
-/** `for k, v in ...x: [k]: value`, from `for`; brackets naming anything but the loop's key are reported. */
+/**
+ * `for k, v in ...x: [k]: value`, from `for`; brackets naming anything but the loop's key are
+ * reported.
+ */
 export function parseStructComprehension(parser: Parser): StructComprehension {
   const { start } = parser.cursor.advance().span;
   const targets = parseTargets(parser);

@@ -20,8 +20,12 @@
  * Each loop iteration consumes a token or stops, so parsing always terminates.
  */
 
-import type { Invalid } from '../syntax/node.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
+import type { Invalid } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { CursorKind } from '../cursor/index.ts';
+import { parserDiagnostics } from '../diagnostics.ts';
+import { breakSeparatesItems } from '../layout/item-breaks.ts';
+import type { Parser } from '../parser.ts';
 import {
   type BracketOpener,
   type Closer,
@@ -29,10 +33,6 @@ import {
   type Opener,
   openers,
 } from './brackets.ts';
-import type { CursorKind } from './cursor/index.ts';
-import { parserDiagnostics } from './diagnostics.ts';
-import { breakSeparatesItems } from './layout/item-breaks.ts';
-import type { Parser } from './parser.ts';
 
 export interface Enclosed<Value> {
   readonly value: Value;
@@ -224,7 +224,10 @@ export function skipToSeparator(
   return skipUnexpected(parser, reported, expected, () => stops.includes(parser.cursor.kind));
 }
 
-/** Whether the next token ends the current region: its closer, an enclosing closer, a line break, or the end. */
+/**
+ * Whether the next token ends the current region: its closer, an enclosing closer, a line break, or
+ * the end.
+ */
 export function atRegionEnd(parser: Parser): boolean {
   const { cursor } = parser;
   const { kind } = cursor;

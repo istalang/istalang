@@ -17,9 +17,9 @@
  *
  * Speculation settles two ambiguities: `name<…>(` against a comparison (§3.5), and `a, b = …`
  * against a comma that belongs to an enclosing call. An attempt that reports anything is undone
- * completely, cursor (cursor/index.ts) and diagnostics together, and while speculating, recovery gives
- * up instead of skipping tokens. A failed guess therefore costs only the tokens a well-formed one
- * would have read.
+ * completely, cursor (cursor/index.ts) and diagnostics together, and while speculating, recovery
+ * gives up instead of skipping tokens. A failed guess therefore costs only the tokens a well-formed
+ * one would have read.
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
@@ -40,7 +40,7 @@ import type { Block, Statement } from '../syntax/statements.ts';
 import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types/index.ts';
-import { unclosedBracketEnds } from './brackets.ts';
+import { unclosedBracketEnds } from './brackets/brackets.ts';
 import { Cursor, type CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 
@@ -152,8 +152,9 @@ export class Parser implements SegmentBases {
   }
 
   /**
-   * The body of each function parsed, which the tree holds apart from the function (syntax/tree.ts),
-   * functions the parser let go of since included: a parse undone, a node made Invalid.
+   * The body of each function parsed, which the tree holds apart from the function
+   * (syntax/tree.ts), functions the parser let go of since included: a parse undone, a node made
+   * Invalid.
    */
   get recordedBodies(): ReadonlyMap<FunctionDeclaration, Block> {
     return this.#bodies;
@@ -344,7 +345,10 @@ export class Parser implements SegmentBases {
     return this.cursor.at('identifier') && this.textOf(this.cursor.token) === word;
   }
 
-  /** The column layout sees a token at. For the first token on a line, that is the line's indentation. */
+  /**
+   * The column layout sees a token at. For the first token on a line, that is the line's
+   * indentation.
+   */
   columnOf(token: { readonly span: Span }): number {
     return lineMapOf(this.#source).positionAt(token.span.start).column;
   }

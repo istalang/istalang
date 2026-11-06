@@ -25,7 +25,9 @@ export function parameterNames(parameter: Parameter): readonly Identifier[] {
   return parameter.name === undefined ? parts : [...parts, parameter.name];
 }
 
-/** The type `parameter`'s pattern names, as written; undefined for a name or a pattern naming none. */
+/**
+ * The type `parameter`'s pattern names, as written; undefined for a name or a pattern naming none.
+ */
 export function patternNamedType(parameter: Parameter): NamedType | undefined {
   return typingPattern(parameter)?.type;
 }

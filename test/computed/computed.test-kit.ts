@@ -15,7 +15,7 @@ import type { Type } from '../../src/compiler/checker/types/type/index.ts';
 import { typeText } from '../../src/compiler/checker/types/type-text.ts';
 import { compiledText } from '../../src/compiler/compile.test-kit.ts';
 import { idOf } from '../../src/compiler/program/program.test-kit.ts';
-import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
 import { dump } from '../../src/compiler/syntax/tree.test-kit.ts';
 import { decodeJson } from '../../src/definition/codec.ts';
 import { parseText } from '../../src/formatter/format.test-kit.ts';

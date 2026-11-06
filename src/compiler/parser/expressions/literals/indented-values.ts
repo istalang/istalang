@@ -21,23 +21,23 @@
  *   its block by the block they stand in.
  */
 
-import { bindsInPattern } from '../../../language/naming.ts';
+import { bindsInPattern } from '../../../../language/naming.ts';
 import type {
   Expression,
   IndentedEntry,
   IndentedItem,
   IndentedValue,
-} from '../../syntax/expressions/index.ts';
-import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
-import type { NamedType } from '../../syntax/types/index.ts';
-import { parserDiagnostics } from '../diagnostics.ts';
-import { parseBlockBelow } from '../layout/bodies.ts';
-import { type ItemRules, parseLines } from '../layout/index.ts';
-import { nested } from '../nesting.ts';
-import type { Parser } from '../parser.ts';
-import { spreadOpener } from '../parts/spreads.ts';
-import { skipUntil } from '../recovery.ts';
-import { parseSpread } from './spread.ts';
+} from '../../../syntax/expressions/index.ts';
+import type { StringLiteral } from '../../../syntax/expressions/literals/literals.ts';
+import type { NamedType } from '../../../syntax/types/index.ts';
+import { skipUntil } from '../../brackets/recovery.ts';
+import { parserDiagnostics } from '../../diagnostics.ts';
+import { parseBlockBelow } from '../../layout/bodies.ts';
+import { type ItemRules, parseLines } from '../../layout/index.ts';
+import { nested } from '../../nesting.ts';
+import type { Parser } from '../../parser.ts';
+import { spreadOpener } from '../../parts/spreads.ts';
+import { parseSpread } from '../spread.ts';
 import {
   parseStructComprehension,
   reportAfterComprehension,
@@ -184,7 +184,9 @@ function parseKey(parser: Parser): StringLiteral {
   return { kind: 'StringLiteral', span: parser.anchor(token.span), value };
 }
 
-/** Whether a `-` opening an item comes next: first on its line, a space or the line's end after it. */
+/**
+ * Whether a `-` opening an item comes next: first on its line, a space or the line's end after it.
+ */
 function atItem(parser: Parser): boolean {
   return atLineStart(parser, '-') && !gluedToNext(parser);
 }

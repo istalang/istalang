@@ -5,9 +5,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
-import { parserDiagnostics } from '../diagnostics.ts';
-import { dumpClean, dumpOf, named, parseAs, reported } from '../parse.test-kit.ts';
+import { reportedOnce } from '../../../../diagnostics/diagnostic.test-kit.ts';
+import { parserDiagnostics } from '../../diagnostics.ts';
+import { dumpClean, dumpOf, named, parseAs, reported } from '../../parse.test-kit.ts';
 
 const literal = (type: string, items: string) => `(StructLiteral ${type} [${items}])`;
 

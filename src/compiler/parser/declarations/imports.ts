@@ -17,8 +17,8 @@ import type { ImportDeclaration, ImportedName } from '../../syntax/declarations/
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import { type Identifier, type Invalid, isMissingName, type Missing } from '../../syntax/node.ts';
 import { isKeyword } from '../../syntax/tokens.ts';
+import { parseDelimited } from '../brackets/recovery.ts';
 import type { Parser } from '../parser.ts';
-import { parseDelimited } from '../recovery.ts';
 
 export function parseImport(parser: Parser): ImportDeclaration {
   const { cursor } = parser;

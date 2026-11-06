@@ -90,8 +90,9 @@ function missingParameters(parser: Parser): [] {
 
 /**
  * The body after `:`, if any, the function's docstring, first in the body or on the line after a
- * function without one (§2), and where its header ends: before the body. A missing body is reported only for a defined function whose
- * signature is complete: a broken signature has already been reported.
+ * function without one (§2), and where its header ends: before the body. A missing body is reported
+ * only for a defined function whose signature is complete: a broken signature has already been
+ * reported.
  */
 function parseFunctionBody(
   parser: Parser,

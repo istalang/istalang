@@ -7,10 +7,10 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { lineMapOf } from '../../text/line-map.ts';
-import { createSourceText } from '../../text/source-text.ts';
-import { scan } from '../scanner/scan.ts';
-import type { Token } from '../syntax/tokens.ts';
+import { lineMapOf } from '../../../text/line-map.ts';
+import { createSourceText } from '../../../text/source-text.ts';
+import { scan } from '../../scanner/scan.ts';
+import type { Token } from '../../syntax/tokens.ts';
 import { type BracketPairs, bracketClosers, pairBrackets } from './brackets.ts';
 
 /** Words standing between brackets, each on a line of its own or after a space. */

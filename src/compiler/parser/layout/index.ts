@@ -23,10 +23,10 @@
  * whose line it lines up with.
  *
  * Annotations are handled here, for every kind of item. One standing alone on its line waits for
- * the next item of the block, or of the list, which reads past the line break to it. One written
- * on an item's line applies to that item, before it or after it; in a list, one starting a line
- * after an item starts the next. Where items can't carry annotations (match and select cases), an annotation is
- * reported and kept as an Invalid node.
+ * the next item of the block, or of the list, which reads past the line break to it. One written on
+ * an item's line applies to that item, before it or after it; in a list, one starting a line after
+ * an item starts the next. Where items can't carry annotations (match and select cases), an
+ * annotation is reported and kept as an Invalid node.
  *
  * Docstrings are placed here too (§2): first in a documented body (bodies.ts) or a module, or on
  * the line right after a declaration without an indented body, deeper than the declaration. A
@@ -39,10 +39,6 @@ import type { Annotation } from '../../syntax/annotations.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import { annotationOpener, parseAnnotation, rejectAnnotations } from '../annotations.ts';
-import type { CursorKind } from '../cursor/index.ts';
-import { parserDiagnostics } from '../diagnostics.ts';
-import { misplacedDocstring, parseDocstring, type WithDocstring } from '../docstrings.ts';
-import type { Parser } from '../parser.ts';
 import {
   atRegionEnd,
   type Enclosed,
@@ -51,7 +47,11 @@ import {
   parseEnclosedIn,
   parseList,
   skipToSeparator,
-} from '../recovery.ts';
+} from '../brackets/recovery.ts';
+import type { CursorKind } from '../cursor/index.ts';
+import { parserDiagnostics } from '../diagnostics.ts';
+import { misplacedDocstring, parseDocstring, type WithDocstring } from '../docstrings.ts';
+import type { Parser } from '../parser.ts';
 
 /** How to parse one kind of item, what separates two of them, and how they take annotations. */
 export interface ItemRules<Item extends SyntaxNode> {

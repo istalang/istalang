@@ -17,8 +17,8 @@
  * it is reported. Expressions follow the same rule for `&x` in call arguments.
  *
  * `T??` arrives as one `??` token and means `T?` twice. Fields of an anonymous struct, as the items
- * of every list in a type, are separated by `,` or line breaks (§2). A function type without `->` returns unit, as
- * `Setup<E> = async fn(async fn(E))` in §10 shows.
+ * of every list in a type, are separated by `,` or line breaks (§2). A function type without `->`
+ * returns unit, as `Setup<E> = async fn(async fn(E))` in §10 shows.
  */
 
 import type { TypeParameter } from '../syntax/declarations/index.ts';
@@ -30,6 +30,7 @@ import type {
   RestType,
   TypeNode,
 } from '../syntax/types/index.ts';
+import { parseDelimited, parseEnclosed, parseGroup } from './brackets/recovery.ts';
 import type { CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { atPostfix, eatContinuing } from './layout/item-breaks.ts';
@@ -41,7 +42,6 @@ import { type Negatable, parseLiteral, parseNegativeLiteral } from './parts/lite
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
 import { spreadOpener } from './parts/spreads.ts';
 import { afterStructKeyword, parseFieldEntries } from './parts/structs.ts';
-import { parseDelimited, parseEnclosed, parseGroup } from './recovery.ts';
 import {
   followsModifier,
   type StartParselets,

@@ -11,10 +11,10 @@
  */
 
 import type { Invalid } from '../syntax/node.ts';
+import { skipUntil } from './brackets/recovery.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { skipDeeperLines } from './layout/continuations.ts';
 import { nestingLimit, type Parser } from './parser.ts';
-import { skipUntil } from './recovery.ts';
 
 /** `parse` one level deeper; past the limit, the over-deep construct skipped instead. */
 export function nested<Node>(parser: Parser, parse: () => Node): Node | Invalid {

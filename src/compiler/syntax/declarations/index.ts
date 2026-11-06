@@ -153,7 +153,9 @@ export interface DeclaredField extends NodeOf<'DeclaredField'>, Annotatable {
   readonly defaultValue: Expression | undefined;
 }
 
-/** A field anywhere: of a struct's or a variant's declaration, an anonymous struct type or a trait. */
+/**
+ * A field anywhere: of a struct's or a variant's declaration, an anonymous struct type or a trait.
+ */
 export type Field = DeclaredField | FieldDeclaration;
 
 /** Whether `field` has a default: only a struct's or a variant's field may (§3.1). */
@@ -186,7 +188,10 @@ export interface EnumDeclaration extends NodeOf<'EnumDeclaration'>, Annotatable,
   readonly associatedTypes: readonly AssociatedType[];
 }
 
-/** A declaration standing for a type written beside it: an alias, or an associated type (§3.17, §3.1). */
+/**
+ * A declaration standing for a type written beside it: an alias, or an associated type (§3.17,
+ * §3.1).
+ */
 export type AliasDeclaration = TypeAliasDeclaration | AssociatedType;
 
 /** A declaration whose body may declare associated types (§3.1). */

@@ -152,7 +152,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 ### Part 4 — Checker: Patterns, Flow, Rules, Declarations, Closures, Expressions & Statements (`src/compiler/checker/`)
 
-#### 4.1 Order-Dependence & Partial-Type Loss in `agreedAccepts` and `tupleAccepts` (`src/compiler/checker/rules/agreement.ts`, `expressions/collections.ts`, `expressions/tuples.ts`, `rules/branches.ts`, D190)
+#### 4.1 Order-Dependence & Partial-Type Loss in `agreedAccepts` and `tupleAccepts` (`src/compiler/checker/rules/agreement.ts`, `expressions/literals/collections.ts`, `expressions/tuples.ts`, `rules/branches.ts`, D190)
 - **Asymmetric first-producer assumption in `agreedAccepts` (`src/compiler/checker/rules/agreement.ts`):**
   - `agreedAccepts` begins with:
     ```ts
@@ -178,7 +178,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - Array-length constructors encode their semantics in strings (`[3]` vs. `[3+]`) and parse them back via `isLongerKey` (`key.endsWith('+]')`).
 - **Side-channel `walk.downcasts` map and duplicate `unparenthesized` in `patterns/walk.ts` (D214):**
   - `takeDowncast` writes the narrowed `ValuePart` into `walk.downcasts` keyed by AST node, and `AsPattern` reads it back through a file-private `unparenthesized(node: Pattern)` helper instead of `walk.take` returning the matched `ValuePart` directly.
-- **False user diagnostics on prelude-owned pattern and operator helpers (`patterns/matching.ts`, `expressions/access/optionals.ts`, `expressions/collections.ts`, `expressions/templates.ts`, B11):**
+- **False user diagnostics on prelude-owned pattern and operator helpers (`patterns/matching.ts`, `expressions/access/optionals.ts`, `expressions/literals/collections.ts`, `expressions/templates.ts`, B11):**
   - Calls to toolchain-invariant prelude functions (`_patternItem`, `_patternRest`, `length`, `compare`, `_inclusiveEnd`, `panic`, `join`) go through `implicitCall`, which requires a user-facing `failure: () => Diagnostic` callback that invents impossible user errors if the prelude lacks them.
 
 #### 4.3 `src/compiler/checker/flow/` & `src/compiler/checker/rules/`
@@ -387,7 +387,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | Priority | Item & Location | Kind | Blast Radius | Effort |
 | --- | --- | --- | --- | --- |
 | **1** | **Fix nested multi-line `{ … }` block parsing (`src/compiler/parser/layout.ts` `placeOfNextLine`, D186):** Check `next.kind === cursor.closer && cursor.ownsCloser` before `cursor.closesEnclosing(next.kind)`. | Bug Fix (Parser) | 2 files (`layout.ts`, `cursor.ts`) | S |
-| **2** | **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (`src/compiler/checker/rules/agreement.ts`, `expressions/tuples.ts`, `expressions/collections.ts`, D190):** Trigger target-typing when *any* producer has `accepts !== undefined`, and check typed siblings against `expected` instead of `?? true`. | Bug Fix / Generalization (Checker) | 4 files in `checker/` | S |
+| **2** | **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (`src/compiler/checker/rules/agreement.ts`, `expressions/tuples.ts`, `expressions/literals/collections.ts`, D190):** Trigger target-typing when *any* producer has `accepts !== undefined`, and check typed siblings against `expected` instead of `?? true`. | Bug Fix / Generalization (Checker) | 4 files in `checker/` | S |
 | **3** | **Fix `_ = e` error suppression & destructuring assignment expected types (`src/compiler/checker/statements/assignments.ts`, D101, D168):** Don't pass `errorType` as `expected` for `_ = e`, and propagate target types into destructuring assignments. | Bug Fix (Checker) | 2 files in `checker/statements/` | S |
 | **4** | **Apply recorded `Fit` conversions in compile-time constant evaluation (`src/compiler/checker/rules/computation.ts`, D216):** Wrap `Some`, convert 1-tuples, and refuse/convert async fits on top-level `const` values. | Bug Fix (Checker) | 2 files in `checker/` | S |
 | **5** | **Fix same-instance mock return values bypassing `arriving` (`src/runtime/scheduler/mocks.ts`, D182):** Pass same-instance mock results through `arriving` so `testing.handle<T>()` resources are disposed. | Bug Fix (Runtime) | 2 files in `runtime/scheduler/` | S |

@@ -17,8 +17,8 @@
  * Regions nest. A region also records the closer that ends it, so recovery knows which closing
  * brackets belong to enclosing constructs and must not be consumed. A region without a closer of
  * its own keeps the closer of the region it sits in, since that closer also ends it. A bracket no
- * closer matches ends where recovery decides (brackets.ts), as at a line break no layout crosses,
- * and so does every region inside it.
+ * closer matches ends where recovery decides (brackets/brackets.ts), as at a line break no layout
+ * crosses, and so does every region inside it.
  *
  * There is one view of the stream: `token`, `kind`, `advance` and `eat` all stop at a line break,
  * as they stop at the end. The only way past a line break is `crossLineBreak`, which only the
@@ -43,7 +43,7 @@ import {
   type Closer,
   type Opener,
   openers,
-} from '../brackets.ts';
+} from '../brackets/brackets.ts';
 import {
   angleListRegion,
   blockBracesRegion,
@@ -77,7 +77,10 @@ export interface CursorMark {
 
 /** How indentation reads a token list: where brackets left open end, and each token's column. */
 export interface Indentation {
-  /** Where each bracket no closer matches ends, by the index its region starts at (brackets.ts). */
+  /**
+   * Where each bracket no closer matches ends, by the index its region starts at
+   * (brackets/brackets.ts).
+   */
   readonly unclosedEnds: ReadonlyMap<number, number>;
   readonly columnOf: (token: Token) => number;
 }
@@ -390,7 +393,9 @@ export class Cursor {
     return index >= (this.#current.until ?? Number.POSITIVE_INFINITY);
   }
 
-  /** The token at `index` as the current region reads it: a glued `>…` closing `<…>` reads as `>`. */
+  /**
+   * The token at `index` as the current region reads it: a glued `>…` closing `<…>` reads as `>`.
+   */
   #readAt(index: number): Token {
     const token = this.#rawAt(index);
     if (!restAfterAngle.has(token.kind) || this.#current.closer !== '>') {

@@ -163,7 +163,9 @@ export function nodesAt(tree: SyntaxTree, offset: number): readonly SyntaxNode[]
   return path;
 }
 
-/** Each node's extent in each tree that holds it: a node reused across edits sits at other offsets. */
+/**
+ * Each node's extent in each tree that holds it: a node reused across edits sits at other offsets.
+ */
 const extents = new SequenceMemo<TreePlaces | SyntaxNode, Span>();
 
 /**

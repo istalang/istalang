@@ -7,20 +7,20 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { createSourceText } from '../../text/source-text.ts';
-import { scan } from '../scanner/scan.ts';
-import type { Segment } from '../syntax/positions.ts';
-import { spanIn } from '../syntax/positions.ts';
-import { dump, spanViolations, strayBodies } from '../syntax/tree.test-kit.ts';
-import { bodyOf, extentIn, nodesUnder, type SyntaxTree } from '../syntax/tree.ts';
+import { createSourceText } from '../../../text/source-text.ts';
+import { scan } from '../../scanner/scan.ts';
+import type { Segment } from '../../syntax/positions.ts';
+import { spanIn } from '../../syntax/positions.ts';
+import { dump, spanViolations, strayBodies } from '../../syntax/tree.test-kit.ts';
+import { bodyOf, extentIn, nodesUnder, type SyntaxTree } from '../../syntax/tree.ts';
 import {
   applied,
   bodyEditChoices,
   editedTexts,
   editInsideBody,
   editSequences,
-} from './edits.test-kit.ts';
-import { parse } from './parse.ts';
+} from '../edits.test-kit.ts';
+import { parse } from '../parse.ts';
 
 function parsed(text: string, previous?: SyntaxTree): SyntaxTree {
   const source = createSourceText('main.ista', text);

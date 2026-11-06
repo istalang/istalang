@@ -13,7 +13,7 @@ import { unfoldRecursive } from '../../src/compiler/checker/types/computed-types
 import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts';
 import { substitute, substituteKept } from '../../src/compiler/checker/types/substitution.ts';
 import { intType } from '../../src/compiler/checker/types/type/primitives.ts';
-import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations.ts';
+import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
 import { codesOf, resolveWrittenTypes, runMain, spelledTypeOf } from './computed.test-kit.ts';
 
 /** `Data<D>` is recursive for a `Node`, which holds nodes, and plain for a `Leaf`. */

@@ -33,8 +33,14 @@ import { spreadOpener } from '../parts/spreads.ts';
 import { type StartParselets, type WordParselets, wordParseletAt } from '../word-parselets.ts';
 import { parseParenthesized } from './atoms.ts';
 import { parseBlockExpression, parseIf, parseMatch, parseSelect } from './branches.ts';
-import { parseCollection } from './collections.ts';
 import { parseLambda } from './lambdas.ts';
+import { parseCollection } from './literals/collections.ts';
+import {
+  parseAnonymousStructLiteral,
+  parseNew,
+  structComprehensionOpener,
+} from './literals/struct-literals.ts';
+import { parseTemplate, templateParselet } from './literals/templates.ts';
 import {
   binaryParselet,
   isParselet,
@@ -59,12 +65,6 @@ import {
   structLiteralParselet,
   unwrapParselet,
 } from './postfix.ts';
-import {
-  parseAnonymousStructLiteral,
-  parseNew,
-  structComprehensionOpener,
-} from './struct-literals.ts';
-import { parseTemplate, templateParselet } from './templates.ts';
 
 const prefixParselets: Partial<Record<CursorKind, PrefixParselet>> = {
   identifier: parseName,
@@ -234,7 +234,10 @@ export function startsExpression(parser: Parser): boolean {
   return prefixParselets[parser.cursor.kind] !== undefined;
 }
 
-/** What opens an item only a list holds, beyond an operand: a spread or a rest, a struct comprehension. */
+/**
+ * What opens an item only a list holds, beyond an operand: a spread or a rest, a struct
+ * comprehension.
+ */
 const listItemOpeners: ReadonlySet<CursorKind> = new Set([spreadOpener, structComprehensionOpener]);
 
 /**

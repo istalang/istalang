@@ -18,7 +18,9 @@ import type { ContextualWord, Keyword } from '../syntax/tokens.ts';
 import type { CursorKind } from './cursor/index.ts';
 import type { Parser } from './parser.ts';
 
-/** A table by token kind holding a parselet for each of `Words`' keywords and for no other keyword. */
+/**
+ * A table by token kind holding a parselet for each of `Words`' keywords and for no other keyword.
+ */
 export type StartParselets<Words extends Word, Parselet> = {
   readonly [Kind in Extract<Words, Keyword>]: Parselet;
 } & { readonly [Kind in Exclude<CursorKind, Keyword>]?: Parselet };

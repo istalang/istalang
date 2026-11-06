@@ -2,9 +2,9 @@
  * Shared helpers for the parser's tests.
  *
  * Tests drive one grammar category at a time through the parsing context, exactly as the grammar
- * itself does, or a whole module through the parser's entry. Helpers return observations; assertions stay in the
- * tests. `rest` counts tokens the category left unparsed, so a test can tell "parsed all of it"
- * from "stopped early".
+ * itself does, or a whole module through the parser's entry. Helpers return observations;
+ * assertions stay in the tests. `rest` counts tokens the category left unparsed, so a test can tell
+ * "parsed all of it" from "stopped early".
  */
 
 import { soupOf } from '../../../test/soup.ts';
@@ -119,7 +119,9 @@ export function field(name: string, type: string): string {
   return `(FieldDeclaration ${name} ${type})`;
 }
 
-/** The dump of a field of a struct's or a variant's declaration, with its default's when it has one. */
+/**
+ * The dump of a field of a struct's or a variant's declaration, with its default's when it has one.
+ */
 export function declaredField(name: string, type: string, defaultValue = '_'): string {
   return `(DeclaredField ${name} ${type} ${defaultValue})`;
 }

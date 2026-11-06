@@ -33,16 +33,16 @@ import type {
 import { isPlace } from '../../syntax/expressions/places.ts';
 import { qualifiedPath } from '../../syntax/expressions/readings.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
+import { parseDelimited, parseEnclosed } from '../brackets/recovery.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { atPostfix } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
 import { namedTypeFrom } from '../parts/names.ts';
 import { spreadOpener } from '../parts/spreads.ts';
-import { parseDelimited, parseEnclosed } from '../recovery.ts';
+import { parseStructLiteralBody } from './literals/struct-literals.ts';
 import { parseReference } from './operators.ts';
 import type { InfixParselet } from './parselet.ts';
 import { parseSpread } from './spread.ts';
-import { parseStructLiteralBody } from './struct-literals.ts';
 
 /** `name<…>(…)` or `name<…>{…}`, or undefined when the `<` is a comparison. */
 export function parseTypeApplication(parser: Parser, left: Expression): Expression | undefined {

@@ -51,7 +51,10 @@ export function parseSharedStruct(parser: Parser): SharedStructDeclaration {
   return { kind: 'SharedStructDeclaration', ...parseStructFrom(parser, start) };
 }
 
-/** A struct declaration but its kind, from its `struct`, which starts at `start` with what precedes it. */
+/**
+ * A struct declaration but its kind, from its `struct`, which starts at `start` with what precedes
+ * it.
+ */
 function parseStructFrom(parser: Parser, start: number): Omit<DeclaredStruct, 'kind'> {
   const { name, typeParameters } = parseTypeHead(parser);
   const { value: members, doc } = parseMembers(

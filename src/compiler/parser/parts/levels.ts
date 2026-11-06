@@ -1,9 +1,10 @@
 /**
  * Grammars whose operators bind at a few fixed levels, patterns' and types', parse through one
  * loop: a primary, then each operator after it whose level binds at least as tightly as the level
- * being parsed, up to a line break separating two items of a list (layout/item-breaks.ts). An operator parses what follows it one level tighter, or loops at its own level,
- * as `A | B | C` makes one node of every alternative. Expressions, whose levels are the operator
- * table's (syntax/operators.ts), have a Pratt engine of their own.
+ * being parsed, up to a line break separating two items of a list (layout/item-breaks.ts). An
+ * operator parses what follows it one level tighter, or loops at its own level, as `A | B | C`
+ * makes one node of every alternative. Expressions, whose levels are the operator table's
+ * (syntax/operators.ts), have a Pratt engine of their own.
  */
 
 import type { CursorKind } from '../cursor/index.ts';

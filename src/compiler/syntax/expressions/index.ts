@@ -64,8 +64,8 @@ export interface FieldHeader extends NodeOf<'FieldHeader'> {
 }
 
 /**
- * `[for k, v in ...x: e]`: an array of `e`'s value for each field of `x`, in name order (§4), as the
- * element written out once per field.
+ * `[for k, v in ...x: e]`: an array of `e`'s value for each field of `x`, in name order (§4), as
+ * the element written out once per field.
  */
 export interface FieldComprehension extends NodeOf<'FieldComprehension'> {
   readonly header: FieldHeader;
@@ -130,7 +130,9 @@ interface PositionalInitializer extends NodeOf<'PositionalInitializer'> {
 /** A struct literal's item naming a field's value, by name or by position. */
 export type FieldItem = FieldInitializer | PositionalInitializer;
 
-/** `"x-region": "eu"`: an indented value's entry under a quoted key, which only a map takes (§2). */
+/**
+ * `"x-region": "eu"`: an indented value's entry under a quoted key, which only a map takes (§2).
+ */
 export interface QuotedEntry extends NodeOf<'QuotedEntry'> {
   readonly key: StringLiteral;
   readonly value: Expression;
@@ -142,8 +144,8 @@ export interface IndentedItem extends NodeOf<'IndentedItem'> {
 }
 
 /**
- * One entry of an indented value, told apart by its first tokens: the struct literal's items
- * (`key: value`, the shorthand `name`, `...value`, a struct comprehension), a quoted key, or an item.
+ * One entry of an indented value, told apart by its first tokens: the struct literal's items (`key:
+ * value`, the shorthand `name`, `...value`, a struct comprehension), a quoted key, or an item.
  */
 export type IndentedEntry =
   | FieldInitializer
@@ -313,8 +315,8 @@ export interface Range extends NodeOf<'Range'> {
 }
 
 /**
- * `` `text ${value} text` ``, or `` tag`…` `` calling `tag` with the texts and the values. `texts` has
- * one more item than `values`: the text before each value, and the text after the last.
+ * `` `text ${value} text` ``, or `` tag`…` `` calling `tag` with the texts and the values. `texts`
+ * has one more item than `values`: the text before each value, and the text after the last.
  */
 export interface TemplateLiteral extends NodeOf<'TemplateLiteral'> {
   readonly tag: Expression | undefined;

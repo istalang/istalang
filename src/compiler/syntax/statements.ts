@@ -265,7 +265,10 @@ export function declaredTargets(owner: TargetOwner): readonly Pattern[] {
   }
 }
 
-/** A construct running over a struct's fields (§4): a field loop, an array or a struct comprehension. */
+/**
+ * A construct running over a struct's fields (§4): a field loop, an array or a struct
+ * comprehension.
+ */
 export type OverFields = FieldLoop | FieldComprehension | StructComprehension;
 
 const overFieldsKinds: ReadonlySet<string> = new Set<OverFields['kind']>([
@@ -337,7 +340,10 @@ export function tailExpressionOf(block: Block): Expression | undefined {
   return last?.kind === 'ExpressionStatement' ? last.expression : undefined;
 }
 
-/** Where a block's value comes from, for a report about it: its tail expression, last statement, or itself. */
+/**
+ * Where a block's value comes from, for a report about it: its tail expression, last statement, or
+ * itself.
+ */
 export function tailNodeOf(block: Block): NodeOf<string> {
   return tailExpressionOf(block) ?? block.statements.at(-1) ?? block;
 }

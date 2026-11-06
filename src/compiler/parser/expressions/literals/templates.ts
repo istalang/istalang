@@ -6,12 +6,12 @@
  * outside the template is read. A tag attaches the way a call's `(` does, at the postfix level.
  */
 
-import type { Expression } from '../../syntax/expressions/index.ts';
-import type { TemplateValue } from '../../syntax/tokens.ts';
-import { parserDiagnostics } from '../diagnostics.ts';
-import type { Parser } from '../parser.ts';
-import { skipUntil } from '../recovery.ts';
-import type { InfixParselet } from './parselet.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import type { TemplateValue } from '../../../syntax/tokens.ts';
+import { skipUntil } from '../../brackets/recovery.ts';
+import { parserDiagnostics } from '../../diagnostics.ts';
+import type { Parser } from '../../parser.ts';
+import type { InfixParselet } from '../parselet.ts';
 
 /** An untagged template. */
 export function parseTemplate(parser: Parser): Expression {

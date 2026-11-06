@@ -50,7 +50,10 @@ export function breakSeparatesItems(parser: Parser, ahead = 0): boolean {
   );
 }
 
-/** Whether the next token continues the current item: on its line, or past a break separating nothing. */
+/**
+ * Whether the next token continues the current item: on its line, or past a break separating
+ * nothing.
+ */
 export function continues(parser: Parser): boolean {
   return !breakSeparatesItems(parser);
 }

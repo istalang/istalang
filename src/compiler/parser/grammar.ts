@@ -13,7 +13,7 @@ import {
   startsExpression,
   startsItemOnNewLine,
 } from './expressions/expression.ts';
-import { parseValue } from './expressions/indented-values.ts';
+import { parseValue } from './expressions/literals/indented-values.ts';
 import { nested } from './nesting.ts';
 import { type Grammar, Parser } from './parser.ts';
 import { parseParameterPattern, parsePattern } from './patterns.ts';
