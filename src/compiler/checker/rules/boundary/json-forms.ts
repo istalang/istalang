@@ -51,7 +51,7 @@ import {
 import type { FunctionCall, ResolvedCall } from '../../surface/resolved-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
 import { unfolded } from '../../types/computed-types.ts';
-import { sameType } from '../../types/identity.ts';
+import { sameType } from '../../types/identity/identity.ts';
 import type {
   FieldMember,
   LiteralType,
@@ -97,7 +97,7 @@ type FormOrNone = DerivedForm | { readonly kind: 'none'; readonly reason: string
 
 export class JsonForms implements JsonCodecs {
   readonly #seams: JsonFormSeams;
-  /** Each type's form, by the spelled key of the type through no alias (types/type-keys.ts). */
+  /** Each type's form, by the spelled key of the type through no alias (types/identity/type-keys.ts). */
   readonly #forms: EntryTable<CheckerNote, string, FormOrNone, Type>;
   /** The derived codecs being decided, by direction, which count as found meanwhile. */
   readonly #deciding: Readonly<Record<JsonDirection, TypeCycle>>;

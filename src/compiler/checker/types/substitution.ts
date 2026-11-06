@@ -10,7 +10,7 @@
  * The types substitution builds are built by the program's rules (type-rules.ts), so a union
  * reached through it is normalized as one written with its arguments in place: `T | any Stringable`
  * with `T = String` is `any Stringable`. A recursive type's graph closes again from its parts
- * substituted (recursive-types.ts).
+ * substituted (identity/recursive-types.ts).
  */
 
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations.ts';

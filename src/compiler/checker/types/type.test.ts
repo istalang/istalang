@@ -9,7 +9,7 @@ import { describe, expect, it } from 'vitest';
 import type { TypeParameter } from '../../syntax/declarations.ts';
 import { handMadeSpan } from '../../syntax/tree.test-kit.ts';
 import { sameShape } from './function-types.ts';
-import { sameType } from './identity.ts';
+import { sameType } from './identity/identity.ts';
 import { boolType, intType, stringType, tupleType, unitType } from './primitives.ts';
 import { substitute } from './substitution.ts';
 import type { FunctionType, Type } from './type.ts';

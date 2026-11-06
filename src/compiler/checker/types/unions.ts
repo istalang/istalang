@@ -7,7 +7,7 @@
  *   none `Never`.
  * - A recursive type (§3.17) whose body is a union is flattened: its members join the union, as a
  *   union member's do. A union equal to a recursive type it reaches is that type, written through
- *   its alias (recursive-types.ts `folded`), so `Json | Int` and `Json?` are `Json`.
+ *   its alias (identity/recursive-types.ts `folded`), so `Json | Int` and `Json?` are `Json`.
  * - `unionOf` is the one constructor of a union from types, written, substituted (type-parts.ts:
  *   `T | Int` with `T = Int` collapses, `T | any Stringable` with `T = String` too), joined or made
  *   optional, so normalization holds however a union was reached.
@@ -18,10 +18,10 @@
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import { unfolded, unfoldRecursive } from './computed-types.ts';
+import { folded } from './identity/recursive-types.ts';
+import { typeKeys } from './identity/type-keys.ts';
 import { isPrimitive, neverType, noneType } from './primitives.ts';
-import { folded } from './recursive-types.ts';
 import { isMemberParameter, type LiteralType, type LiteralValue, type Type } from './type.ts';
-import { typeKeys } from './type-keys.ts';
 import type { TypeRules } from './type-rules.ts';
 import {
   absorbingMember,

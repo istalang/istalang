@@ -26,9 +26,9 @@ const { checkProgram } = await built<typeof import('../../src/compiler/checker/c
 const { ProgramChecker } = await built<
   typeof import('../../src/compiler/checker/program/program-checker.ts')
 >('compiler/checker/program-checker.js');
-const { typeKeys } = await built<typeof import('../../src/compiler/checker/types/type-keys.ts')>(
-  'compiler/checker/types/type-keys.js',
-);
+const { typeKeys } = await built<
+  typeof import('../../src/compiler/checker/types/identity/type-keys.ts')
+>('compiler/checker/types/type-keys.js');
 const { compileTests, diagnose } =
   await built<typeof import('../../src/compiler/compile.ts')>('compiler/compile.js');
 const { lower } = await built<typeof import('../../src/compiler/lowering/lower.ts')>(

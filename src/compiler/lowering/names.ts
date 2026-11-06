@@ -26,7 +26,7 @@ import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import type { DeclaredAliasUse } from '../checker/types/alias-uses.ts';
 import type { RecursiveType } from '../checker/types/computed-types.ts';
-import { folded } from '../checker/types/recursive-types.ts';
+import { folded } from '../checker/types/identity/recursive-types.ts';
 import { substitute, substitutionFor } from '../checker/types/substitution.ts';
 import type {
   AnonymousStructType,

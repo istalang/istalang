@@ -1,5 +1,5 @@
 /**
- * A type's spelled key (checker/types/type-keys.ts) holds everything the type is spelled with, so a
+ * A type's spelled key (checker/types/identity/type-keys.ts) holds everything the type is spelled with, so a
  * result kept by it never answers one spelling with another's (incremental-checking.md §1): every
  * way of writing one type differently — through an alias, an associated type or keys, at another
  * node, with an `any`'s traits or a union's members in another order, or reduced from a type
@@ -11,7 +11,7 @@
 import { describe, expect, it } from 'vitest';
 import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
 import { checkedApart } from '../../src/compiler/checker/check.test-kit.ts';
-import { typeKeys } from '../../src/compiler/checker/types/type-keys.ts';
+import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts';
 import { sameTypeSpelled, unaliased } from '../../src/compiler/checker/types/type-parts.ts';
 import { idOf } from '../../src/compiler/program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations.ts';

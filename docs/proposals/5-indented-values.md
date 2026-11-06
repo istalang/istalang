@@ -115,7 +115,7 @@ type List = { head: Int, tail: List? }
   - A use stands for its body with itself substituted, unfolded where it is used. Its members, fields, patterns, conversions and exhaustiveness are its body's.
   - No fold or unfold is ever written: `1` converts into a `Tree<Int>`, and `case Array<Tree<Int>> as xs` selects a member.
   - **Why:** the form builder's generated data flows into domain modules that write the shapes they consume; with iso-recursion one self-reference (a category tree) made a structural shape nominal. Plan and evidence: `docs/work/proposals/p5-equi-recursive-identity.md`.
-  - **How:** a recursive type is a node of a minimized cyclic graph, built by one constructor that closes a group of alias bodies, and its key is the graph's canonical spelling (`checker/types/recursive-types.ts`, `recursive-terms.ts`).
+  - **How:** a recursive type is a node of a minimized cyclic graph, built by one constructor that closes a group of alias bodies, and its key is the graph's canonical spelling (`checker/types/identity/recursive-types.ts`, `recursive-terms.ts`).
 - **In a union** its members join the union, flattened as a union member's are (§2): `Json | Int` and `Json?` are both `Json`, and with `type Forest = Tree | Array<Forest>`, `Forest` is `Tree`.
 - **Spelled** as the alias it was written through in messages, hovers and extern keys; a compiled program names it by its preferred alias, which identifies nothing. A static function declared on it belongs to the type.
 
@@ -409,8 +409,8 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
    - semantic tokens: a map's bare key is a String, a struct's a field (`src/language-service/semantic-tokens/`);
    - the VS Code grammar (`.vscode/extensions/ista/syntaxes/`) gains `- ` items.
 6. **Recursive aliases.**
-   - `checker/declarations/aliases.ts` reports 5106 only for an unguarded, blocking or irregular reference. A guarded group closes through `closeRecursive` (`checker/types/recursive-types.ts`) into the `RecursiveType` of `checker/types/computed-types.ts`: a node of a minimized graph, the bodies resolved with placeholders (`declarations/recursive-bodies.ts`).
-   - It is keyed by its graph's canonical spelling (`types/recursive-terms.ts`, `types/type-keys.ts`) and unfolds to its node's body.
+   - `checker/declarations/aliases.ts` reports 5106 only for an unguarded, blocking or irregular reference. A guarded group closes through `closeRecursive` (`checker/types/identity/recursive-types.ts`) into the `RecursiveType` of `checker/types/computed-types.ts`: a node of a minimized graph, the bodies resolved with placeholders (`declarations/recursive-bodies.ts`).
+   - It is keyed by its graph's canonical spelling (`types/identity/recursive-terms.ts`, `types/identity/type-keys.ts`) and unfolds to its node's body.
    - `types/unions.ts`, through `unionOf`, flattens it and folds a union equal to it back into it.
    - `types/finiteness.ts` walks `RecursiveType`.
    - A recursive type `match` use (proposal 4) closes through the same constructor with every recursive use its finding reached (`checker/resolution/type-matches.ts`), each body reduced with those uses unreduced as placeholders, so it is a `RecursiveType` too, identified by structure. Once a group closes, `closeRecursive` reduces each computed type built from its nodes (a type `match` given the group's own use) and closes again, so none stays unreduced; `matchCase` matches a recursive type as what it unfolds to.

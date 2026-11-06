@@ -24,7 +24,7 @@ import type { NamePattern, Pattern, PatternPart } from '../../syntax/patterns.ts
 import type { TypeNode } from '../../syntax/types.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { PatternTest } from '../surface/checked-pattern.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
 import {
   instancesWith,
   kindMembers,

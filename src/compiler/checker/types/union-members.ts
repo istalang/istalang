@@ -1,6 +1,6 @@
 /**
  * The rules that normalize a union's members (§2), in one home for every union built: `unionOf`
- * (unions.ts) over types, and the term graph of recursive types (recursive-terms.ts) over its
+ * (unions.ts) over types, and the term graph of recursive types (identity/recursive-terms.ts) over its
  * slots, whose members only flattening brings together. Each reads its members through a
  * `MemberReading`, so the rules never depend on how a member is held.
  *

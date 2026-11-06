@@ -33,7 +33,7 @@ import type {
 } from '../../surface/checked-pattern.ts';
 import { unfolded } from '../../types/computed-types.ts';
 import type { Fit } from '../../types/fit.ts';
-import { sameType } from '../../types/identity.ts';
+import { sameType } from '../../types/identity/identity.ts';
 import {
   type Substitution,
   substitute,

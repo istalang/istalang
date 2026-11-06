@@ -29,7 +29,7 @@ import {
 } from '../../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { sameType } from '../../types/identity.ts';
+import { sameType } from '../../types/identity/identity.ts';
 import type { ParameterKey, Type } from '../../types/type.ts';
 import { typeChildren } from '../../types/type-children.ts';
 import type { CasePatternForm, InferVariable, TypeMatchQueries } from '../../types/type-match.ts';

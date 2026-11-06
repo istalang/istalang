@@ -1,6 +1,6 @@
 /**
  * The type table of a Definition (docs/arch/definition.md): one entry per distinct type, keyed as
- * the checker keys it (types/type-keys.ts).
+ * the checker keys it (types/identity/type-keys.ts).
  *
  * - An entry is numbered before its layout is computed, so a recursive type refers to itself
  *   through the table (§3.1).
@@ -41,8 +41,8 @@ import type { Checker, Disposal } from '../checker/check.ts';
 import type { CheckedAnnotation } from '../checker/surface/checked-annotation.ts';
 import { isHostExtern } from '../checker/surface/host-externs.ts';
 import { type RecursiveType, unfoldRecursive } from '../checker/types/computed-types.ts';
-import { sameType } from '../checker/types/identity.ts';
-import { folded } from '../checker/types/recursive-types.ts';
+import { sameType } from '../checker/types/identity/identity.ts';
+import { folded } from '../checker/types/identity/recursive-types.ts';
 import type {
   AnonymousStructType,
   AnyType,

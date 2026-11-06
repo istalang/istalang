@@ -1,6 +1,6 @@
 /**
  * The types recursive aliases close to (§3.17): each alias's group (alias-recursion.ts) closes
- * together, so mutually recursive aliases are one graph (types/recursive-types.ts).
+ * together, so mutually recursive aliases are one graph (types/identity/recursive-types.ts).
  *
  * - A body is resolved for closing apart from the checker's own resolution of its nodes, each use
  *   of a group alias standing as a placeholder, a type parameter keyed by that alias, which nothing
@@ -23,8 +23,8 @@ import type { ModuleId } from '../../program/program.ts';
 import { type TypeAliasDeclaration, typeParametersOf } from '../../syntax/declarations.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { closeRecursive } from '../types/identity/recursive-types.ts';
 import { errorType } from '../types/primitives.ts';
-import { closeRecursive } from '../types/recursive-types.ts';
 import { parameterType, resolveClosing } from '../types/resolve-type.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';

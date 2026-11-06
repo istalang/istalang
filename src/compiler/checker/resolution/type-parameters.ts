@@ -30,6 +30,7 @@ import type {
 } from '../context.ts';
 import { resolveConstraint } from '../traits/constraints.ts';
 import { resolveConstraintSet, resolveStructConstraint } from '../traits/struct-constraints.ts';
+import { typeKeys } from '../types/identity/type-keys.ts';
 import { standsForMember } from '../types/member-arguments.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import {
@@ -39,7 +40,6 @@ import {
 } from '../types/struct-constraint.ts';
 import { substituteConstraint } from '../types/substitution.ts';
 import type { Constraint, Type } from '../types/type.ts';
-import { typeKeys } from '../types/type-keys.ts';
 import { sameConstraintSpelled } from '../types/type-parts.ts';
 import { useSite } from '../use-site.ts';
 import { meets } from './conformance.ts';

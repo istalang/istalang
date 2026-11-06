@@ -24,7 +24,7 @@ import { type Entity, typeEntity } from '../../binder/entities.ts';
 import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
 import type { Checker } from '../check.ts';
 import { unfolded, unfoldRecursive } from './computed-types.ts';
-import { sameType } from './identity.ts';
+import { sameType } from './identity/identity.ts';
 import { type Aliases, entityType } from './named-types.ts';
 import { isPrimitive, tupleElements } from './primitives.ts';
 import type { AnyType, NominalDeclaration, Type } from './type.ts';

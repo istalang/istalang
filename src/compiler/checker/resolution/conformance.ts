@@ -37,7 +37,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type Completion, completeInference } from '../inference/complete.ts';
 import type { ResolvedCall, Witnesses } from '../surface/resolved-call.ts';
 import { constraintSubstitution, requiredFunctions, traitAsAny } from '../traits/constraints.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
 import { standsForMember } from '../types/member-arguments.ts';
 import { errorType } from '../types/primitives.ts';
 import { type Substitution, substitute, substituteConstraint } from '../types/substitution.ts';

@@ -16,7 +16,7 @@
 
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { sameType } from '../checker/types/identity.ts';
+import { sameType } from '../checker/types/identity/identity.ts';
 import { isPrimitive, noneType } from '../checker/types/primitives.ts';
 import type { AnyType, Type, UnionType } from '../checker/types/type.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';

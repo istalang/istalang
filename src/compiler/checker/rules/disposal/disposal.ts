@@ -32,7 +32,7 @@ import { isHostExtern, isHostType } from '../../surface/host-externs.ts';
 import type { FunctionCall, ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
 import { requiredFunctions } from '../../traits/constraints.ts';
 import { knownConstraints } from '../../traits/known-constraints.ts';
-import { sameType } from '../../types/identity.ts';
+import { sameType } from '../../types/identity/identity.ts';
 import { unitType } from '../../types/primitives.ts';
 import type { NominalType, Type } from '../../types/type.ts';
 import { typeText } from '../../types/type-text.ts';

@@ -9,7 +9,7 @@ import { type MapOf, ValueSemantics } from '../../../language/values.ts';
 import type { Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import { laidOut, namedValues } from '../types/field-order.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
 import type { FieldMember, NominalType, StructValueType, Type, UnionType } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import type { TargetStep } from './checked-pattern.ts';

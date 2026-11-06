@@ -2,12 +2,12 @@
  * A reference bisimulation over the generated groups of recursive bodies
  * (recursive-types.test-kit.ts), written apart from the term graph it checks
  * (recursive-types.test.ts): a union's members flattened, then normalized by the rules of §2 as
- * stated here, not as unions.ts states them.
+ * stated here, not as ../unions.ts states them.
  */
 
-import { boolType } from './primitives.ts';
+import { boolType } from '../primitives.ts';
+import type { LiteralValue, Type } from '../type.ts';
 import { aliases, shows } from './recursive-types.test-kit.ts';
-import type { LiteralValue, Type } from './type.ts';
 import { typeKeys } from './type-keys.ts';
 
 /** A type of a group's bodies, read through its placeholders. */

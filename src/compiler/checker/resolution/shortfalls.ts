@@ -32,7 +32,7 @@ import { fieldOf } from '../traits/known-fields.ts';
 import { constraintsImply } from '../traits/sendable.ts';
 import { isStructType } from '../traits/struct-keys.ts';
 import { isOpaque, unfolded } from '../types/computed-types.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
 import {
   constraintSetText,
   type EntryRule,

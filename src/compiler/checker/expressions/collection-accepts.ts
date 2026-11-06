@@ -24,7 +24,7 @@ import type {
 import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../body-context.ts';
 import { agreedAccepts, agreedBuilds, allProducersAccept } from '../rules/agreement.ts';
 import { collectionTarget } from '../types/expected.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
 import type { Type } from '../types/type.ts';
 import { arrayElement, arrayOf, wellKnownOf } from '../types/well-known.ts';
 

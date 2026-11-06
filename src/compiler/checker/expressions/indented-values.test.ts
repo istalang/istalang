@@ -19,7 +19,7 @@ import { nodesUnder } from '../../syntax/tree.ts';
 import { reported } from '../check.test-kit.ts';
 import { checkProgram } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 

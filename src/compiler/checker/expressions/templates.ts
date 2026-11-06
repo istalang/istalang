@@ -19,7 +19,7 @@ import { type StoppingOperand, stoppedOperation } from '../calls/stopped-operati
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { implicitCall, preludeCall } from '../resolution/implicit.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
 import { stringType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

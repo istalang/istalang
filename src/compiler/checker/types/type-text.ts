@@ -13,8 +13,8 @@ import type { TypeAliasDeclaration, TypeParameter } from '../../syntax/declarati
 import type { RestPattern } from '../../syntax/patterns.ts';
 import type { AliasUse } from './alias-uses.ts';
 import { type MappedParts, type RecursiveType, unfoldRecursive } from './computed-types.ts';
+import { folded } from './identity/recursive-types.ts';
 import { isPrimitive } from './primitives.ts';
-import { folded } from './recursive-types.ts';
 import {
   type AnonymousStructType,
   type Constraint,

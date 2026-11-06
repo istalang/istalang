@@ -14,7 +14,7 @@ import { stdProgramOf } from './binder/bind.test-kit.ts';
 import { bindProgram } from './binder/bind.ts';
 import { binderDiagnostics } from './binder/diagnostics.ts';
 import { checkerDiagnostics } from './checker/diagnostics/index.ts';
-import { typeKeys } from './checker/types/type-keys.ts';
+import { typeKeys } from './checker/types/identity/type-keys.ts';
 import { compiledDefinition, diagnosedAt } from './compile.test-kit.ts';
 import { diagnose, diagnoseModule } from './compile.ts';
 import { programDiagnostics } from './program/diagnostics.ts';

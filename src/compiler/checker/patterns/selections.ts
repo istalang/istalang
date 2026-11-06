@@ -28,7 +28,7 @@ import type {
 import { spanAcross } from '../../syntax/positions.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isKnown } from '../types/equality.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
 import {
   literalMembers,
   namesOwnType,

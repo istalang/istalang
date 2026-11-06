@@ -11,7 +11,7 @@ import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
 import type { Expression, If } from '../../syntax/expressions/index.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { isAssignable } from '../types/identity.ts';
+import { isAssignable } from '../types/identity/identity.ts';
 import { boolType, unitType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

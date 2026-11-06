@@ -15,13 +15,13 @@
  *   (`case _: A<T>`, `case _: A<T> | Int`): it would be itself, as an alias can't be (§3.17).
  * - An alias reducing to itself with a type built from its own parameter never ends (§3.5); its
  *   declaration reports it (rules/expansion/type-matches.ts), and its uses are the error type.
- * - Each reduction is an entry of the checker's, by the use's spelled key (type-keys.ts): what it
+ * - Each reduction is an entry of the checker's, by the use's spelled key (types/identity/type-keys.ts): what it
  *   gives is spelled with the use's own arguments, so another spelling of the same type is another
  *   entry, and no use is answered with a type spelled at another's nodes. Which uses are under way
  *   or recursive is a matter of type identity, so those are kept by type key. One reaching a use whose
  *   reduction is under way repeats it: a recursive type, which a struct holds (§3.1). The uses on
  *   that cycle whose case gives a struct type are recursive: each closes, with every recursive use
- *   its finding reached, through the one constructor of recursive types (types/recursive-types.ts),
+ *   its finding reached, through the one constructor of recursive types (types/identity/recursive-types.ts),
  *   their bodies reduced with each such use an unreduced placeholder, so a recursive type `match` use
  *   and a recursive alias with its structure are one type (§3.17). One whose values would hold
  *   themselves names no type: the error type, carrying why (types/finiteness.ts).
@@ -43,12 +43,12 @@ import { type StructType, unparenthesizedType } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { isOpaque, type MatchType, unfoldRecursive } from '../types/computed-types.ts';
 import { fieldReaderOf, selfHoldingField } from '../types/finiteness.ts';
+import { closeRecursive } from '../types/identity/recursive-types.ts';
+import { typeKeys } from '../types/identity/type-keys.ts';
 import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
-import { closeRecursive } from '../types/recursive-types.ts';
 import { substituteStructConstraint } from '../types/struct-constraint.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import type { Type } from '../types/type.ts';
-import { typeKeys } from '../types/type-keys.ts';
 import {
   type CaseForm,
   type CasePatternForm,

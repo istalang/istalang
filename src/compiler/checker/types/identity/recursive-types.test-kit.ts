@@ -17,13 +17,13 @@ import type {
   TraitDeclaration,
   TypeAliasDeclaration,
   TypeParameter,
-} from '../../syntax/declarations.ts';
-import { boolType, intType, neverType, stringType } from './primitives.ts';
+} from '../../../syntax/declarations.ts';
+import { boolType, intType, neverType, stringType } from '../primitives.ts';
+import type { Type } from '../type.ts';
+import { noProgramRules } from '../type-rules.test-kit.ts';
+import type { TypeRules } from '../type-rules.ts';
+import { unionOf } from '../unions.ts';
 import { closeRecursive } from './recursive-types.ts';
-import type { Type } from './type.ts';
-import { noProgramRules } from './type-rules.test-kit.ts';
-import type { TypeRules } from './type-rules.ts';
-import { unionOf } from './unions.ts';
 
 /** A body as generated: a union of leaves and parts, or a part. */
 export type Spec =

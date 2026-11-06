@@ -8,13 +8,13 @@
 
 import fc from 'fast-check';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { StructDeclaration } from '../../syntax/declarations.ts';
-import { handMadeSpan } from '../../syntax/tree.test-kit.ts';
-import { intType, stringType } from './primitives.ts';
+import type { StructDeclaration } from '../../../syntax/declarations.ts';
+import { handMadeSpan } from '../../../syntax/tree.test-kit.ts';
+import { intType, stringType } from '../primitives.ts';
+import { type NominalEntity, shapeType, type Type } from '../type.ts';
+import { holdsRecursion } from '../type-children.ts';
 import { canonicalKey } from './recursive-terms.ts';
 import { bodiesOf, closed, groups } from './recursive-types.test-kit.ts';
-import { type NominalEntity, shapeType, type Type } from './type.ts';
-import { holdsRecursion } from './type-children.ts';
 import { typeKeys } from './type-keys.ts';
 
 vi.mock(import('./recursive-terms.ts'), async (importOriginal) => {

@@ -6,11 +6,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { handMadeSpan } from '../../syntax/tree.test-kit.ts';
-import type { StructType } from '../../syntax/types.ts';
+import { handMadeSpan } from '../../../syntax/tree.test-kit.ts';
+import type { StructType } from '../../../syntax/types.ts';
+import { boolType, intType, stringType, tupleType, unitType } from '../primitives.ts';
+import { type FieldMember, shapeType, type Type } from '../type.ts';
 import { sameType } from './identity.ts';
-import { boolType, intType, stringType, tupleType, unitType } from './primitives.ts';
-import { type FieldMember, shapeType, type Type } from './type.ts';
 import { typeKeys } from './type-keys.ts';
 
 /** A `{…}` type node written at `offset`, standing for where a shape is written. */

@@ -33,7 +33,7 @@ import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { unfolded } from './computed-types.ts';
-import { isAssignable } from './identity.ts';
+import { isAssignable } from './identity/identity.ts';
 import { isPrimitive } from './primitives.ts';
 import type { AnonymousStructType, AnyType, Type, TypeParameterType, UnionType } from './type.ts';
 import { parametersIn } from './type-parts.ts';

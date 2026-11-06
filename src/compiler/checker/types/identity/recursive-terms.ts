@@ -9,7 +9,7 @@
  *   either. A type holding none is a leaf, keyed as any type is.
  * - A union's members are a set: a member that is a union term, or a leaf union, gives its members
  *   (flattening, which equi-recursion makes a recursive alias in a union do), and they are then
- *   normalized as every union's are (union-members.ts), by the rules the source gives; a union of
+ *   normalized as every union's are (../union-members.ts), by the rules the source gives; a union of
  *   one member is that member.
  * - Minimizing is partition refinement (term-signatures.ts): terms start in classes by their own
  *   structure (kind, field names, entity, arity), then split by their parts' classes, a union being
@@ -23,13 +23,13 @@
  *   where it was built, recursive members flattened, so none takes another member whole again.
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { RecursiveGraph } from './computed-types.ts';
-import { errorType, neverType } from './primitives.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { RecursiveGraph } from '../computed-types.ts';
+import { errorType, neverType } from '../primitives.ts';
+import type { Type } from '../type.ts';
+import { holdsRecursion, typeChildren } from '../type-children.ts';
+import { type MemberReading, type MemberRules, normalizedMembers } from '../union-members.ts';
 import { compareSignatures, refinedRanks, type Signature } from './term-signatures.ts';
-import type { Type } from './type.ts';
-import { holdsRecursion, typeChildren } from './type-children.ts';
-import { type MemberReading, type MemberRules, normalizedMembers } from './union-members.ts';
 
 /** Where a part of a term leads: a type holding no recursion, with its key, or a term. */
 export type Slot =

@@ -11,7 +11,7 @@
  */
 
 import type { PartBinding, PatternTest } from '../surface/checked-pattern.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
 import type { AnyType, Type } from '../types/type.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { unionOf } from '../types/unions.ts';

@@ -9,10 +9,10 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reportedNothing } from '../../../diagnostics/diagnostic.test-kit.ts';
-import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
-import { lines } from '../../parser/parse.test-kit.ts';
-import { reported } from '../check.test-kit.ts';
+import { reportedNothing } from '../../../../diagnostics/diagnostic.test-kit.ts';
+import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
+import { lines } from '../../../parser/parse.test-kit.ts';
+import { reported } from '../../check.test-kit.ts';
 
 /**
  * `depth` aliases, `A1 = Int | Array<A1>` and each next `Ak = A(k-1) | Array<Ak>`, all one type,

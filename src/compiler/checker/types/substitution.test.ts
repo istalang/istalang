@@ -1,8 +1,8 @@
 /**
  * Substitution (§3.5) and respelling keep a type they change nothing in: the very object, never a
- * copy, so what is memoized per type object (type-keys.ts, type-children.ts) stays found however
+ * copy, so what is memoized per type object (identity/type-keys.ts, type-children.ts) stays found however
  * often a type is substituted. Checked over generated groups of recursive bodies
- * (recursive-types.test-kit.ts), open and closed, their open slot given a type mentioning no
+ * (identity/recursive-types.test-kit.ts), open and closed, their open slot given a type mentioning no
  * parameter.
  */
 
@@ -10,8 +10,14 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import type { StructDeclaration } from '../../syntax/declarations.ts';
 import { handMadeSpan } from '../../syntax/tree.test-kit.ts';
+import {
+  bodiesOf,
+  closed,
+  groups,
+  open,
+  showingRules,
+} from './identity/recursive-types.test-kit.ts';
 import { intType, stringType, tupleType } from './primitives.ts';
-import { bodiesOf, closed, groups, open, showingRules } from './recursive-types.test-kit.ts';
 import { substitute } from './substitution.ts';
 import { type NominalEntity, shapeType, type Type } from './type.ts';
 import { unaliased } from './type-parts.ts';

@@ -22,6 +22,7 @@ import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import type { Checker } from '../check.ts';
 import type { CheckerContext } from '../context.ts';
 import { unfolded } from '../types/computed-types.ts';
+import { typeKeys } from '../types/identity/type-keys.ts';
 import { isPrimitive } from '../types/primitives.ts';
 import {
   type FieldMember,
@@ -30,7 +31,6 @@ import {
   type Type,
   type UnionType,
 } from '../types/type.ts';
-import { typeKeys } from '../types/type-keys.ts';
 import { typeText } from '../types/type-text.ts';
 import { hasOneValue, membersOf } from '../types/unions.ts';
 import { arrayElement } from '../types/well-known.ts';

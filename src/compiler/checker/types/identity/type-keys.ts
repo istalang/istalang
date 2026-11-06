@@ -45,11 +45,10 @@
  *   spelling with another's: a later revision would otherwise keep nodes an earlier tree made.
  */
 
-import { memo } from '../../../structures/memo.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { AliasUse } from './alias-uses.ts';
-import type { MappedParts, RecursiveGraph } from './computed-types.ts';
-import { canonicalKey } from './recursive-terms.ts';
+import { memo } from '../../../../structures/memo.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { AliasUse } from '../alias-uses.ts';
+import type { MappedParts, RecursiveGraph } from '../computed-types.ts';
 import type {
   AnonymousStructType,
   FieldMember,
@@ -58,8 +57,9 @@ import type {
   RecursiveUse,
   Type,
   UnreducedUse,
-} from './type.ts';
-import { holdsRecursion } from './type-children.ts';
+} from '../type.ts';
+import { holdsRecursion } from '../type-children.ts';
+import { canonicalKey } from './recursive-terms.ts';
 
 /** Every identity numbered so far; an object no longer reachable lets its number go. */
 const identities = new WeakMap<object, number>();

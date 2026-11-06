@@ -32,7 +32,7 @@ import {
   requiredFunctions,
 } from '../traits/constraints.ts';
 import { objectUnsafety } from '../traits/object-safety.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
 import { parameterType } from '../types/resolve-type.ts';
 import { substitute } from '../types/substitution.ts';
 import type { AnyType, Constraint, ParameterKey, Type, UnionType } from '../types/type.ts';

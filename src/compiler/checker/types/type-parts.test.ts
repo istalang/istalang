@@ -6,8 +6,8 @@
 
 import { describe, expect, it } from 'vitest';
 import type { TraitDeclaration } from '../../syntax/declarations.ts';
+import { open } from './identity/recursive-types.test-kit.ts';
 import { intType } from './primitives.ts';
-import { open } from './recursive-types.test-kit.ts';
 import type { Type } from './type.ts';
 import { anyTypesIn, computedTypesIn, parametersIn } from './type-parts.ts';
 

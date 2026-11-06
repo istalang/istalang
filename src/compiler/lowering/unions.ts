@@ -23,7 +23,7 @@
 import type { Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { sameType } from '../checker/types/identity.ts';
+import { sameType } from '../checker/types/identity/identity.ts';
 import { isPrimitive } from '../checker/types/primitives.ts';
 import type { AnyType, LiteralType, Type, UnionType } from '../checker/types/type.ts';
 import { baseOf } from '../checker/types/union-members.ts';

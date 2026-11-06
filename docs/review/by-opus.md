@@ -92,7 +92,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 ## Integration
 
-- Lowering reads checker internals: `rules/{futures,host-boundary,json-forms/form}.ts`, `closures/function-scope.ts`, `types/type-keys.ts` (D135).
+- Lowering reads checker internals: `rules/{futures,host-boundary,json-forms/form}.ts`, `closures/function-scope.ts`, `types/identity/type-keys.ts` (D135).
 - The IR knows std types by name (D138).
 
 ## Architecture doc: two claims are false today

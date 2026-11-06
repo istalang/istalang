@@ -22,9 +22,9 @@ import { associatedTypeOf, type Expansion } from '../traits/known-constraints.ts
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../traits/struct-keys.ts';
 import { unfolded } from '../types/computed-types.ts';
 import type { Fitting } from '../types/fit.ts';
+import { typeKeys } from '../types/identity/type-keys.ts';
 import { errorType } from '../types/primitives.ts';
 import type { AnonymousStructType, AnyType, Type } from '../types/type.ts';
-import { typeKeys } from '../types/type-keys.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { meetsAny } from './trait-objects.ts';

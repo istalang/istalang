@@ -17,7 +17,7 @@
  *   `true`. Its base is derived from its value, never stored beside it.
  * - `A | B` (§2) is a value of one of its members, a set: unions.ts normalizes it, so no value sits
  *   in two members and no union holds another. Its members keep the order they were first written
- *   in, which only its text reads; identity sorts them (type-keys.ts). `T?` is `T | None`, `None`
+ *   in, which only its text reads; identity sorts them (identity/type-keys.ts). `T?` is `T | None`, `None`
  *   being the primitive whose one value is `none`.
  * - `error` stands for a type a diagnostic has already explained. It is compatible with everything,
  *   so one mistake is reported once instead of at every use that follows.
@@ -35,7 +35,7 @@
  * - An alias names no type of its own (§3.17): every type carries the alias it was written through,
  *   if any (`WrittenThrough`), only so its text reads as written (alias-uses.ts).
  * - The primitives by name, and tuples built so `()` is `Unit`, are in primitives.ts.
- * - Identity and the exact relations live in identity.ts, through type keys (type-keys.ts); fitting
+ * - Identity and the exact relations live in identity/identity.ts, through type keys (identity/type-keys.ts); fitting
  *   with the implicit conversions needs to know which type is `Optional`, so it lives in fit.ts.
  */
 
@@ -209,7 +209,7 @@ export type ParameterKey =
  * A type parameter, opaque inside the declaration that introduces it (§3.5). A mapped entry's binds
  * it within the type (§3.1), whose keys a substitution from outside changes, so its occurrences
  * carry the keys it ranges over (`within`), substituted with them, never read again from where
- * it is written. Its key holds them (type-keys.ts): what is known of one field of several keys
+ * it is written. Its key holds them (identity/type-keys.ts): what is known of one field of several keys
  * isn't what is known of one of fewer, and results kept by a type's key must tell them apart.
  * A type `match`'s subject, written in the type of a `case struct …:`, stands for a member meeting
  * that constraint (§3.17), which it carries (`meeting`) and its key holds alike. Every use of the

@@ -175,7 +175,7 @@ match status:
    - it merges a literal into its base and a member into an `any` member whose traits it meets;
    - it drops `Never` and gives a lone member back as itself.
 
-   So `true | false` is `Bool`. `substitute` builds through the constructor, so collapse falls out. The key is the members' keys, sorted (`types/type-keys.ts`). Messages print the union as written (`aliasedAs`, `type-text.ts`).
+   So `true | false` is `Bool`. `substitute` builds through the constructor, so collapse falls out. The key is the members' keys, sorted (`types/identity/type-keys.ts`). Messages print the union as written (`aliasedAs`, `type-text.ts`).
 2. **A `literal` type kind:** a base primitive and a constant. Its key is the base and the value. A literal value's expected type decides whether it gets the literal type or its base. A lone literal type lowers as its base's value; only as a union member is it a tag (note 4).
 3. **Fitting** (`types/fit.ts`).
    - The conversion into a union replaces the wrap into `T?`: `optionalInner`, `withoutOptionals`, `enumsExpected` and their callers move to unions holding `None`.

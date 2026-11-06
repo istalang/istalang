@@ -31,6 +31,7 @@ import type { BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
 import { aliasedAs } from '../types/alias-uses.ts';
 import { isOpaque, type MappedParts } from '../types/computed-types.ts';
+import { typeKeys } from '../types/identity/type-keys.ts';
 import { keysOwner } from '../types/key-types.ts';
 import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
 import { substitute } from '../types/substitution.ts';
@@ -41,7 +42,6 @@ import {
   shapeType,
   type Type,
 } from '../types/type.ts';
-import { typeKeys } from '../types/type-keys.ts';
 import { literalType, membersOf, unionOf } from '../types/unions.ts';
 import { entryRules, structConstraintsOn } from './known-constraints.ts';
 

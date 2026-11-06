@@ -119,9 +119,9 @@ export function isOpaque(type: Type): type is TypeParameterType | ComputedType {
  * A recursive type (§3.17): a node of an immutable, minimized cyclic graph whose nodes are ordinary
  * types, a recursive type of the same graph standing wherever a node is reached again. Its identity
  * is its structure (equi-recursive): two graphs whose nodes unfold alike are one type, whatever
- * aliases wrote them, so its key is its graph's canonical spelling (type-keys.ts). It stands for
+ * aliases wrote them, so its key is its graph's canonical spelling (identity/type-keys.ts). It stands for
  * what it unfolds to, its node's body (`unfoldRecursive`); no fold or unfold is ever written. Only
- * closing a group of bodies builds one (recursive-types.ts `closeRecursive`): a recursive alias's
+ * closing a group of bodies builds one (identity/recursive-types.ts `closeRecursive`): a recursive alias's
  * group, or the recursive uses of type `match`es a reduction reaches (resolution/type-matches.ts).
  */
 export interface RecursiveType extends WrittenThrough {

@@ -29,7 +29,7 @@ import type { Inference } from '../inference/infer.ts';
 import type { FieldPassType } from '../passes.ts';
 import { checkedFieldPasses, inFieldPasses } from '../rules/loops/field-passes.ts';
 import type { FieldSource } from '../surface/checked-body.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';

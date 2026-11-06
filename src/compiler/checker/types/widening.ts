@@ -2,7 +2,7 @@
  * Widening (§2): a type with its refinements dropped, at any depth.
  *
  * A refinement narrows a type to some of its values, which still fit wherever the wider type is
- * expected (identity.ts, `isAssignable`). A type decided by one value but meant to hold others is
+ * expected (identity/identity.ts, `isAssignable`). A type decided by one value but meant to hold others is
  * widened:
  * - a `let` without a written type holds its initializer's type widened, since a later assignment
  *   may give any value of the wider type (§3.4);
@@ -16,7 +16,7 @@
  * container holds, which no conversion reaches (fit.ts), so `"a"` and `"b"` agree on `String`.
  */
 
-import { sameType } from './identity.ts';
+import { sameType } from './identity/identity.ts';
 import type { Type } from './type.ts';
 import { mapChildren } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';

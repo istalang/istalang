@@ -12,8 +12,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { sameType } from '../../src/compiler/checker/types/identity.ts';
-import { typeKeys } from '../../src/compiler/checker/types/type-keys.ts';
+import { sameType } from '../../src/compiler/checker/types/identity/identity.ts';
+import { typeKeys } from '../../src/compiler/checker/types/identity/type-keys.ts';
 import { compareWrittenTypes, resolveWrittenTypes, runMain } from './unions.test-kit.ts';
 
 const declarations = [

@@ -14,7 +14,7 @@
  *   pack binds to the parameters past the fixed ones (types/type.ts, `sameShape`).
  * - A shape matches a shape of the same field names, field by field, in the name order both keep.
  *   A recursive type is matched as what it unfolds to, on either side, a pair met again holding
- *   (types/unfolding-pairs.ts), so `List<T>` inside what is declared binds `T` from a `List<Int>`
+ *   (types/identity/unfolding-pairs.ts), so `List<T>` inside what is declared binds `T` from a `List<Int>`
  *   inside what is given.
  * - The types found for a parameter must agree, whatever order the arguments come in: a later
  *   one fits the bound type (a conversion included), or the bound type fits it, which then binds, so
@@ -39,7 +39,8 @@
 
 import { type Fitting, fitOf, matchConversion } from '../types/fit.ts';
 import { fillsPack, functionFits, isPack } from '../types/function-types.ts';
-import { sameType } from '../types/identity.ts';
+import { sameType } from '../types/identity/identity.ts';
+import { UnfoldingPairs } from '../types/identity/unfolding-pairs.ts';
 import { isOneMember } from '../types/member-arguments.ts';
 import { errorType, isPrimitive, neverType } from '../types/primitives.ts';
 import { parameterType } from '../types/resolve-type.ts';
@@ -55,7 +56,6 @@ import type {
 } from '../types/type.ts';
 import { typeChildren } from '../types/type-children.ts';
 import { parametersIn } from '../types/type-parts.ts';
-import { UnfoldingPairs } from '../types/unfolding-pairs.ts';
 import { baseOf } from '../types/union-members.ts';
 import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions.ts';
 

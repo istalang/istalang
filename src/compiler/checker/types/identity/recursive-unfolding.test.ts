@@ -7,14 +7,14 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { mainGives } from '../../../stdlib/prelude/prelude.test-kit.ts';
-import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { lines } from '../../parser/parse.test-kit.ts';
-import { idOf } from '../../program/program.test-kit.ts';
-import { programModule } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import { checkProgram } from '../check.ts';
-import { unfoldRecursive } from './computed-types.ts';
+import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
+import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
+import { lines } from '../../../parser/parse.test-kit.ts';
+import { idOf } from '../../../program/program.test-kit.ts';
+import { programModule } from '../../../program/program.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import { checkProgram } from '../../check.ts';
+import { unfoldRecursive } from '../computed-types.ts';
 import { sameType } from './identity.ts';
 import { typeKeys } from './type-keys.ts';
 
