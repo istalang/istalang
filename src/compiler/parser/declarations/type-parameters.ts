@@ -10,7 +10,7 @@
 
 import type { TypeParameter, TypeParameters } from '../../syntax/declarations/index.ts';
 import type { ConstraintNode } from '../../syntax/types/index.ts';
-import { parseDelimited } from '../brackets/recovery.ts';
+import { parseDelimited } from '../cursor/recovery.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import type { Parser } from '../parser.ts';
 import { parseConstraints } from '../parts/constraints.ts';

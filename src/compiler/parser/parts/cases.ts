@@ -5,7 +5,7 @@
  */
 
 import type { Invalid } from '../../syntax/node.ts';
-import { skipToSeparator } from '../brackets/recovery.ts';
+import { skipToSeparator } from '../cursor/recovery.ts';
 import type { Parser } from '../parser.ts';
 
 /**

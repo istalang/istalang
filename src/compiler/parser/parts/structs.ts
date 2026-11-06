@@ -20,7 +20,7 @@ import type { DeclaredField, TypeParameter } from '../../syntax/declarations/ind
 import type { Invalid, Missing } from '../../syntax/node.ts';
 import type { FieldDeclaration, MappedField, StructType } from '../../syntax/types/index.ts';
 import { attachAnnotations } from '../annotations.ts';
-import { type Enclosed, parseEnclosed } from '../brackets/recovery.ts';
+import { type Enclosed, parseEnclosed } from '../cursor/recovery.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { parseBody } from '../layout/bodies.ts';
 import { type ItemRules, parseItemEntries } from '../layout/index.ts';

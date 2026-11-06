@@ -40,7 +40,7 @@ import type { Block, Statement } from '../syntax/statements/index.ts';
 import type { ContextualWord, TemplateValue, Token, TokenKind } from '../syntax/tokens.ts';
 import type { SyntaxNode } from '../syntax/tree.ts';
 import type { TypeNode } from '../syntax/types/index.ts';
-import { unclosedBracketEnds } from './brackets/brackets.ts';
+import { unclosedBracketEnds } from './cursor/brackets.ts';
 import { Cursor, type CursorKind } from './cursor/index.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 

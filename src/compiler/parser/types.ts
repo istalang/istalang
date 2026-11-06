@@ -30,8 +30,8 @@ import type {
   RestType,
   TypeNode,
 } from '../syntax/types/index.ts';
-import { parseDelimited, parseEnclosed, parseGroup } from './brackets/recovery.ts';
 import type { CursorKind } from './cursor/index.ts';
+import { parseDelimited, parseEnclosed, parseGroup } from './cursor/recovery.ts';
 import { parserDiagnostics } from './diagnostics.ts';
 import { atPostfix, eatContinuing } from './layout/item-breaks.ts';
 import type { Parser } from './parser.ts';

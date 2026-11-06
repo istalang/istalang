@@ -8,7 +8,7 @@
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { TemplateValue } from '../../../syntax/tokens.ts';
-import { skipUntil } from '../../brackets/recovery.ts';
+import { skipUntil } from '../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import type { Parser } from '../../parser.ts';
 import type { InfixParselet } from '../parselet.ts';

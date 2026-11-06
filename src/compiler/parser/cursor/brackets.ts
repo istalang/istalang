@@ -1,5 +1,5 @@
 /**
- * The brackets the grammar pairs, and which of them group: what the cursor's regions (../cursor/)
+ * The brackets the grammar pairs, and which of them group: what the cursor's regions (regions.ts)
  * and recovery (recovery.ts) read as opening and closing, how a token list's brackets pair, and
  * where a bracket left open ends. The language service pairs brackets here too
  * (language-service/tokens.ts), so its features see the groups the parser read.
@@ -11,7 +11,7 @@ import type { Token } from '../../syntax/tokens.ts';
 /**
  * Each opener's closer. `<` is also the less-than operator, so it is not a bracket: pairing leaves
  * it out, recovery never skips it as a group, and a `<…>` list ends where indentation says
- * (../cursor/), never by pairing.
+ * (index.ts), never by pairing.
  */
 export const openers = {
   '(': { closer: ')', isBracket: true },

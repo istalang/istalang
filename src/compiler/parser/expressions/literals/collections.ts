@@ -19,7 +19,7 @@ import type {
 } from '../../../syntax/expressions/index.ts';
 import type { Invalid } from '../../../syntax/node.ts';
 import { type AnchoredSpan, endOf } from '../../../syntax/positions.ts';
-import { parseCommaSeparated, parseList } from '../../brackets/recovery.ts';
+import { parseCommaSeparated, parseList } from '../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import type { Parser } from '../../parser.ts';
 import { parseFieldHeaderAfter } from '../../parts/field-headers.ts';

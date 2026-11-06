@@ -22,7 +22,6 @@
 
 import type { Invalid } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { CursorKind } from '../cursor/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { breakSeparatesItems } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
@@ -33,6 +32,7 @@ import {
   type Opener,
   openers,
 } from './brackets.ts';
+import type { CursorKind } from './index.ts';
 
 export interface Enclosed<Value> {
   readonly value: Value;
@@ -84,7 +84,7 @@ export function parseList<Value>(
 
 /**
  * `opener`, whatever `parseInner` reads, and the matching closer, inside the region `enter` opens
- * (cursor/regions.ts): a bracket's, a list's, or the line-sensitive one of a block in braces.
+ * (regions.ts): a bracket's, a list's, or the line-sensitive one of a block in braces.
  */
 export function parseEnclosedIn<Value>(
   parser: Parser,

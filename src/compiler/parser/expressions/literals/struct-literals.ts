@@ -22,7 +22,7 @@ import type {
 import { lastName } from '../../../syntax/node.ts';
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { NamedType } from '../../../syntax/types/index.ts';
-import { parseDelimited } from '../../brackets/recovery.ts';
+import { parseDelimited } from '../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { atPostfix, breakSeparatesItems } from '../../layout/item-breaks.ts';
 import type { Parser } from '../../parser.ts';

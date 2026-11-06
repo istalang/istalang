@@ -424,7 +424,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
    - **Scanner:** unchanged. `;` stays a token.
    - **Parser.**
      - `parser/layout/index.ts`: its one block loop takes its item separator from the block's kind. Field, variant, trait-member, constraint and indented-value blocks take `,`. Statement and module blocks take `;` (`skipSemicolons`), as today. Case blocks take one item per line.
-     - `parser/brackets/recovery.ts` and `parser/parts/structs.ts`: the brace lists of fields and variants become ordinary `,` lists under note 10. Their message "Expected ';', a line break or '}'" becomes "',', a line break or '}'".
+     - `parser/cursor/recovery.ts` and `parser/parts/structs.ts`: the brace lists of fields and variants become ordinary `,` lists under note 10. Their message "Expected ';', a line break or '}'" becomes "',', a line break or '}'".
      - A `;` between list items, and a `,` between statements, each get one diagnostic naming the right separator (`parser/diagnostics.ts`).
      - `semicolonAfterInlineBody` (`parser/layout/bodies.ts`) and `blockWithoutSemicolon` (`parser/expressions/branches.ts`) stay.
    - **Formatter.** `src/formatter/lists.ts` writes `,` where its field lists write `ifBreak('', ';')`. `branches.ts` keeps `;` for one-line blocks, and `comment-placement.ts` keeps both separators.
@@ -441,7 +441,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
     - **Language service.** Signatures and hovers print the pattern (`src/language-service/signatures/signatures.ts`, `hover.ts`).
 10. **Line breaks between items.**
     - **The rule's one home** is one predicate in `parser/layout/index.ts`, where every decision to move past a line break already lives: does this break separate two items of the enclosing list?
-    - **Lists.** `parseDelimited` in `parser/brackets/recovery.ts`, through which every bracketed list already goes, takes a separating break as it takes `,`.
+    - **Lists.** `parseDelimited` in `parser/cursor/recovery.ts`, through which every bracketed list already goes, takes a separating break as it takes `,`.
     - **Expressions.** The infix and postfix loops (`parser/expressions/expression.ts`, `postfix.ts`) stop at a separating break, and `postfix.ts` attaches `(`, `[`, `{` and `<` only on their operand's line.
     - **The token sets are derived, never listed again.** What starts an item is the prefix parselet table of `expression.ts`. What continues is its infix table.
     - **Spacing.** Tokens already carry `firstOnLine` (`syntax/tokens.ts`). Their spans tell whether `-`, `*`, `&` or `..` is glued to the next token, so the scanner needs no change.

@@ -4,8 +4,8 @@
  * Layout's other decisions to move past a line break are index.ts's and item-breaks.ts's.
  */
 
-import { skipUntil } from '../brackets/recovery.ts';
 import type { CursorKind } from '../cursor/index.ts';
+import { skipUntil } from '../cursor/recovery.ts';
 import type { Parser } from '../parser.ts';
 
 /**

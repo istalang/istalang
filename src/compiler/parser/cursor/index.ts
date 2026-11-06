@@ -17,7 +17,7 @@
  * Regions nest. A region also records the closer that ends it, so recovery knows which closing
  * brackets belong to enclosing constructs and must not be consumed. A region without a closer of
  * its own keeps the closer of the region it sits in, since that closer also ends it. A bracket no
- * closer matches ends where recovery decides (brackets/brackets.ts), as at a line break no layout
+ * closer matches ends where recovery decides (brackets.ts), as at a line break no layout
  * crosses, and so does every region inside it.
  *
  * There is one view of the stream: `token`, `kind`, `advance` and `eat` all stop at a line break,
@@ -43,7 +43,7 @@ import {
   type Closer,
   type Opener,
   openers,
-} from '../brackets/brackets.ts';
+} from './brackets.ts';
 import {
   angleListRegion,
   blockBracesRegion,
@@ -79,7 +79,7 @@ export interface CursorMark {
 export interface Indentation {
   /**
    * Where each bracket no closer matches ends, by the index its region starts at
-   * (brackets/brackets.ts).
+   * (brackets.ts).
    */
   readonly unclosedEnds: ReadonlyMap<number, number>;
   readonly columnOf: (token: Token) => number;

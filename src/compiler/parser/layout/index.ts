@@ -39,6 +39,7 @@ import type { Annotation } from '../../syntax/annotations.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import { annotationOpener, parseAnnotation, rejectAnnotations } from '../annotations.ts';
+import type { CursorKind } from '../cursor/index.ts';
 import {
   atRegionEnd,
   type Enclosed,
@@ -47,8 +48,7 @@ import {
   parseEnclosedIn,
   parseList,
   skipToSeparator,
-} from '../brackets/recovery.ts';
-import type { CursorKind } from '../cursor/index.ts';
+} from '../cursor/recovery.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { misplacedDocstring, parseDocstring, type WithDocstring } from '../docstrings.ts';
 import type { Parser } from '../parser.ts';

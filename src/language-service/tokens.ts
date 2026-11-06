@@ -3,7 +3,7 @@
  * keywords, operators. Trees hold no tokens (syntax/node.ts), so they are scanned again, once per
  * tree.
  *
- * Brackets pair as the parser pairs them (parser/brackets/brackets.ts `pairBrackets`), so a feature
+ * Brackets pair as the parser pairs them (parser/cursor/brackets.ts `pairBrackets`), so a feature
  * sees the groups the parser read: an unclosed bracket, as in code being typed, pairs with nothing
  * and leaves the pairs around it intact. A template's value pairs its own, as the parser reads it.
  *
@@ -11,7 +11,7 @@
  * place, after the template, so a value's code is found like any other.
  */
 
-import { isBracketOpener, pairBrackets } from '../compiler/parser/brackets/brackets.ts';
+import { isBracketOpener, pairBrackets } from '../compiler/parser/cursor/brackets.ts';
 import { scan } from '../compiler/scanner/scan.ts';
 import type { ScanResult, Token } from '../compiler/syntax/tokens.ts';
 import type { SyntaxTree } from '../compiler/syntax/tree.ts';

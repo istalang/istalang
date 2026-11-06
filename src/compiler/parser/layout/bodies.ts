@@ -15,7 +15,7 @@ import type { Docstring } from '../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { spanAcross } from '../../syntax/positions.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
-import { atRegionEnd } from '../brackets/recovery.ts';
+import { atRegionEnd } from '../cursor/recovery.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { parseDocstring, type WithDocstring } from '../docstrings.ts';
 import type { Parser } from '../parser.ts';

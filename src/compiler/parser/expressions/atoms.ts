@@ -5,7 +5,7 @@
  */
 
 import type { Expression } from '../../syntax/expressions/index.ts';
-import { parseGroup } from '../brackets/recovery.ts';
+import { parseGroup } from '../cursor/recovery.ts';
 import type { Parser } from '../parser.ts';
 
 /** `(x)` groups; `()`, `(x,)` and `(x, y)` are tuples (§3.15). */

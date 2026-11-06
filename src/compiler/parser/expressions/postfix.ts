@@ -33,7 +33,7 @@ import type {
 import { isPlace } from '../../syntax/expressions/places.ts';
 import { qualifiedPath } from '../../syntax/expressions/readings.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
-import { parseDelimited, parseEnclosed } from '../brackets/recovery.ts';
+import { parseDelimited, parseEnclosed } from '../cursor/recovery.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { atPostfix } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
