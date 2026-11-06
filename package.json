@@ -34,7 +34,11 @@
     "fix": "biome check --write",
     "test": "vitest run",
     "test:std": "node dist/cli/main.js test src/stdlib",
-    "profile": "npm run build && node scripts/profile.ts",
+    "profile": "npm run build && node scripts/profile/toolchain.ts",
+    "profile:cold": "npm run build && node scripts/profile/cold-compile.ts",
+    "profile:check": "npm run build && node scripts/profile/check-workloads.ts",
+    "profile:analyze": "node scripts/profile/analyze.ts",
+    "profile:allocations": "node scripts/profile/allocations.ts",
     "verify": "npm run typecheck && npm run lint && npm run knip && npm test && npm run build && npm run test:std",
     "bench": "vitest bench --run --reporter=verbose",
     "knip": "knip"
