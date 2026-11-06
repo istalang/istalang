@@ -9,10 +9,11 @@
  *   (../values/optionals.ts); a link's handler only reads its target through `chains.target`.
  * - The body's value is returned at its end; a body ending in `return` leaves that last `return`
  *   unreachable but harmless, and the code always ends in one, as loading requires.
- * - The frame (frames.ts) is laid out as the Definition says: the parameters, in order, a pack's
- *   elements each one (packs.ts), then a closure's captures, then locals and temporaries. A
- *   variable living in a cell is listed in `cells`; a reference parameter's register holds the
- *   caller's reference, and a captured cell's register the cell its closure carries.
+ * - The frame (frames.ts) is laid out as the Definition says, and its variables declared in that
+ *   order (frame-variables.ts): the parameters, in order, a pack's elements each one (packs.ts),
+ *   then a closure's captures, then locals and temporaries. A variable living in a cell is listed
+ *   in `cells`; a reference parameter's register holds the caller's reference, and a captured
+ *   cell's register the cell its closure carries.
  * - A parameter with a pattern (§3.3) takes its argument whole, in a register of its own, named
  *   only by its `as` name; once the frame is laid out, the argument is taken apart into the
  *   pattern's names as a declaration's targets take its value (constructs/statements/variables.ts).
@@ -34,7 +35,7 @@ import type { Value } from '../../../definition/values/values.ts';
 import { handlerOf } from '../../../structures/kind-table.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity } from '../../binder/entities.ts';
-import type { Checker, SignatureParameter } from '../../checker/check.ts';
+import type { Checker } from '../../checker/check.ts';
 import type { CheckedBody, ValueSite } from '../../checker/surface/checked-body.ts';
 import type { FieldRead, FieldReading } from '../../checker/surface/checked-field.ts';
 import type { CheckedPattern } from '../../checker/surface/checked-pattern.ts';
@@ -44,7 +45,6 @@ import type {
   ResolvedSite,
 } from '../../checker/surface/resolved-call.ts';
 import type { Fit } from '../../checker/types/fitting/fit.ts';
-import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
@@ -54,31 +54,34 @@ import type { Block, Statement } from '../../syntax/statements/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, closeCallWithin } from '../calls/closed-calls.ts';
-import { packElements } from '../calls/packs.ts';
 import { expressionHandlers } from '../constructs/expressions/expressions.ts';
-import { tupleOf } from '../constructs/expressions/tuples.ts';
 import { HoldScopes } from '../constructs/statements/holds.ts';
 import { LoopStack } from '../constructs/statements/loops.ts';
 import { lowerBlock, lowerBody, lowerStatement } from '../constructs/statements/statements.ts';
-import {
-  bindTargets,
-  declareVariable,
-  VariableRegisters,
-} from '../constructs/statements/variables.ts';
-import type { CodeContext, FunctionContext } from '../context.ts';
+import { VariableRegisters } from '../constructs/statements/variables.ts';
+import type { CodeContext } from '../context.ts';
 import { emitConstant } from '../tables/constants.ts';
 import {
   type BodyOwner,
   type FunctionInstance,
   type NestedInstance,
   ownerDeclaration,
-  ownerSubstitution,
 } from '../tables/instances.ts';
 import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 import { OptionalChains } from '../values/optionals.ts';
 import { writtenBodyOf } from './bodies.ts';
-import { CodeWriter, type WrittenInstruction } from './code-writer.ts';
+import { CodeWriter } from './code-writer.ts';
 import { fittedValue } from './fits.ts';
+import {
+  declareArgument,
+  declareFilled,
+  declareFrame,
+  declareOwnCall,
+  type EntryContext,
+  type FrameSlot,
+  frameSlots,
+  takeApart,
+} from './frame-variables.ts';
 import {
   defaultValueOf,
   type Frame,
@@ -125,13 +128,7 @@ export function nestedLowering(
   return new FunctionLowering(lowered, nestedFrame(lowered, nested, startHeader));
 }
 
-/** A parameter of a frame, with the element types it takes as parameters when it is a pack's. */
-interface FrameSlot {
-  readonly parameter: SignatureParameter;
-  readonly elements: readonly Type[] | undefined;
-}
-
-class FunctionLowering implements FunctionContext {
+class FunctionLowering implements EntryContext {
   readonly checker: Checker;
   readonly tables: DefinitionTables;
   readonly module: ModuleId;
@@ -178,14 +175,14 @@ class FunctionLowering implements FunctionContext {
 
   /** The code entry for a function instance, whose body is `block`. */
   lower(block: Block): CodeFunction {
-    this.#declareFrame();
+    declareFrame(this, this.#slots());
     this.code.emit({ kind: 'return', span: block.span, value: lowerBody(this, block) });
     return this.#entry();
   }
 
   /** The code entry for a lambda or local function of the owner (§3.14). */
   lowerNested(node: Lambda | FunctionDeclaration): CodeFunction {
-    this.#declareFrame();
+    declareFrame(this, this.#slots());
     const body =
       node.kind === 'Lambda' ? node.body : writtenBodyOf(this.checker.program, this.module, node);
     if (body === undefined) {
@@ -207,16 +204,16 @@ class FunctionLowering implements FunctionContext {
         unreachable(`No edge for argument ${index} of a start entry.`);
       }
       const value = decode(this, json, span);
-      const register = this.#declareArgument(parameter);
+      const register = declareArgument(this, parameter);
       this.code.emit({ kind: 'move', span, dst: register, src: value });
-      this.#takeApart(parameter, register);
+      takeApart(this, parameter, register);
     }
     const { self } = this.frame;
     if (self !== undefined && edges.self !== undefined) {
       const src = this.constant(edges.self, self.span);
-      this.#declareFilled(self, (dst) => ({ kind: 'move', span: self.span, dst, src }));
+      declareFilled(this, self, (dst) => ({ kind: 'move', span: self.span, dst, src }));
     }
-    this.#declareOwnCall();
+    declareOwnCall(this);
     const value = body.kind === 'Block' ? lowerBody(this, body) : this.expression(body);
     this.code.emit({ kind: 'return', span, value });
     return this.#entry();
@@ -224,7 +221,7 @@ class FunctionLowering implements FunctionContext {
 
   /** A default's entry: the parameters before its own, then that parameter's default. */
   lowerDefault(instance: FunctionInstance): CodeFunction {
-    const given = this.#declareFrame();
+    const given = declareFrame(this, this.#slots());
     const parameter = this.checker.parametersOf(instance.declaration)[given.length];
     if (parameter === undefined) {
       unreachable(`No parameter ${given.length} of ${instance.declaration.name.text}.`);
@@ -307,106 +304,10 @@ class FunctionLowering implements FunctionContext {
     return this.checker.bindings.entityOf(this.module, name);
   }
 
-  /**
-   * Declares the frame's variables in its layout's order: the parameters, each in a register of
-   * its own and a pack's elements in one each, then the captures, then a nested function's own
-   * name, then each pack's tuple, then the names patterns take apart of arguments; the parameters'
-   * registers.
-   */
-  #declareFrame(): readonly Register[] {
-    const packs: { readonly parameter: SignatureParameter; readonly elements: Register[] }[] = [];
-    const taken: { readonly parameter: SignatureParameter; readonly register: Register }[] = [];
-    const parameters = this.#slots().flatMap(({ parameter, elements: types }) => {
-      if (types !== undefined) {
-        const elements = types.map(() => this.code.allocate());
-        packs.push({ parameter, elements });
-        return elements;
-      }
-      if (!parameter.reference) {
-        const register = this.#declareArgument(parameter);
-        taken.push({ parameter, register });
-        return [register];
-      }
-      const register = this.code.allocate();
-      if (parameter.node.name !== undefined) {
-        this.variables.declare(parameter.node.name, register);
-      }
-      return [register];
-    });
-    for (const { entity, type } of this.frame.captures) {
-      declareVariable(this, entity.name, this.#concrete(type));
-    }
-    const { self } = this.frame;
-    if (self !== undefined) {
-      this.#declareFilled(self, (dst) => ({ kind: 'currentClosure', span: self.span, dst }));
-    }
-    this.#declareOwnCall();
-    for (const { parameter, elements } of packs) {
-      const { span } = parameter.node;
-      const tuple = tupleOf(this, elements, span);
-      const register = this.#declareArgument(parameter);
-      this.code.emit({ kind: 'move', span, dst: register, src: tuple });
-    }
-    for (const { parameter, register } of taken) {
-      this.#takeApart(parameter, register);
-    }
-    return parameters;
-  }
-
-  /**
-   * A register for `parameter`'s argument: its name's variable, or, for a pattern alone, one with
-   * no name, which lasts as the frame does.
-   */
-  #declareArgument(parameter: SignatureParameter): Register {
-    const type = this.#concrete(parameter.type);
-    const { name } = parameter.node;
-    if (name !== undefined) {
-      return declareVariable(this, name, type);
-    }
-    const register = this.code.allocate();
-    this.variables.declareUnnamed(register);
-    return register;
-  }
-
-  /** Takes the argument in `register` apart into `parameter`'s pattern's names, if it has one. */
-  #takeApart(parameter: SignatureParameter, register: Register): void {
-    if (parameter.node.pattern !== undefined) {
-      bindTargets(this, parameter.node, register, parameter.node.span);
-    }
-  }
-
-  /** The frame's parameters, a pack's with the element types it takes as parameters (packs.ts). */
+  /** The frame's parameters, laid out once for declaring them and for the entry's header. */
   #slots(): readonly FrameSlot[] {
-    this.#layout ??= this.frame.parameters.map((parameter) => ({
-      parameter,
-      elements:
-        parameter.rest?.kind === 'pack' ? packElements(this.#concrete(parameter.type)) : undefined,
-    }));
+    this.#layout ??= frameSlots(this);
     return this.#layout;
-  }
-
-  /**
-   * Declares the variable an async function reads its own call through (§7), when it reads it, in
-   * the entry running its body: its call is no default's, which runs before the call starts.
-   */
-  #declareOwnCall(): void {
-    const { isAsync, function: owner } = this.frame;
-    const call = isAsync ? this.checker.bindings.ownCallOf(this.module, owner) : undefined;
-    if (call !== undefined) {
-      this.#declareFilled(call.name, (dst) => ({ kind: 'currentCall', span: owner.span, dst }));
-    }
-  }
-
-  /** Declares `name` in a register of its own, written by the instruction `fill` makes. */
-  #declareFilled(name: Identifier, fill: (dst: Register) => WrittenInstruction): void {
-    const register = this.code.allocate();
-    this.variables.declare(name, register);
-    this.code.emit(fill(register));
-  }
-
-  /** `type` as the owner sees it: its type parameters substituted. */
-  #concrete(type: Type): Type {
-    return substitute(type, ownerSubstitution(this.owner), this.checker.typeRules);
   }
 
   #entry(): CodeFunction {
