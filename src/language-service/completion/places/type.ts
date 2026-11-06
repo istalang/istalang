@@ -15,10 +15,10 @@ import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import { matchPlaceOf } from '../../../compiler/syntax/types/type-matches.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
-import { holderIn } from '../grammar/chain.ts';
-import { wordCandidates } from '../grammar/words.ts';
 import { followsNew, type ParsedPlace } from '../placeholder.ts';
 import { visibleNames } from '../visible.ts';
+import { holderIn } from './grammar/chain.ts';
+import { wordCandidates } from './grammar/words.ts';
 
 export function offerType(
   cursor: Cursor,

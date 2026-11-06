@@ -7,8 +7,8 @@
  * with no instance's work to wait on (§3.3), as a top-level constant's value does (§3).
  */
 
-import type { LabelledScope } from '../../../compiler/syntax/statements/index.ts';
-import { bodyOf, type SyntaxNode, type SyntaxTree } from '../../../compiler/syntax/tree.ts';
+import type { LabelledScope } from '../../../../compiler/syntax/statements/index.ts';
+import { bodyOf, type SyntaxNode, type SyntaxTree } from '../../../../compiler/syntax/tree.ts';
 
 export interface Surroundings {
   /** The body of the innermost function holding the position, if it is in one. */

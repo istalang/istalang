@@ -11,17 +11,17 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { runPrograms } from '../../../../test/corpus/programs.ts';
-import { parserDiagnostics } from '../../../compiler/parser/diagnostics.ts';
-import { parse } from '../../../compiler/parser/parse.ts';
-import { scan } from '../../../compiler/scanner/scan.ts';
-import { spanIn } from '../../../compiler/syntax/positions.ts';
-import { keywords } from '../../../compiler/syntax/tokens.ts';
-import { nodesUnder } from '../../../compiler/syntax/tree.ts';
-import { createSourceText } from '../../../text/source-text.ts';
-import { mainProgram, programAt } from '../../language-service.test-kit.ts';
-import { ifClauseWords, wordNeeds } from '../grammar/words.ts';
-import { completionsAt } from '../index.ts';
+import { runPrograms } from '../../../../../test/corpus/programs.ts';
+import { parserDiagnostics } from '../../../../compiler/parser/diagnostics.ts';
+import { parse } from '../../../../compiler/parser/parse.ts';
+import { scan } from '../../../../compiler/scanner/scan.ts';
+import { spanIn } from '../../../../compiler/syntax/positions.ts';
+import { keywords } from '../../../../compiler/syntax/tokens.ts';
+import { nodesUnder } from '../../../../compiler/syntax/tree.ts';
+import { createSourceText } from '../../../../text/source-text.ts';
+import { mainProgram, programAt } from '../../../language-service.test-kit.ts';
+import { completionsAt } from '../../index.ts';
+import { ifClauseWords, wordNeeds } from './words.ts';
 
 /** A position in a program's text where a statement or an operand starts. */
 interface Site {

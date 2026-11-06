@@ -1,9 +1,9 @@
 /**
  * What a `grammar` place offers: what the grammar admits at the position the cursor is in
- * (grammar/position.ts), never every keyword.
+ * (places/grammar/position.ts), never every keyword.
  *
- * - A block's item starts with a statement's word (grammar/words.ts), `elif` and `else` after an
- *   `if` chain still open, or whatever an operand starts with.
+ * - A block's item starts with a statement's word (places/grammar/words.ts), `elif` and `else`
+ *   after an `if` chain still open, or whatever an operand starts with.
  * - `spawn` calls a function: a module's, a local one, or one a namespace qualifies (§9).
  * - `&` passes a place that may change: a `let` variable, or a reference parameter passing its
  *   caller's on (§3.7). A shared struct's cell or an element reached through others is left to the
@@ -11,16 +11,16 @@
  * - `break`, `continue` and `hold(` name a scope around the cursor by its label (§3.4, §4).
  */
 
-import { type Entity, localFunctionOf } from '../../../compiler/binder/entities.ts';
-import { unparenthesizedType } from '../../../compiler/syntax/types/index.ts';
-import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import type { Candidate } from '../candidate.ts';
-import type { Cursor } from '../cursor.ts';
-import { operandCandidates } from '../grammar/expression.ts';
-import { type GrammarPosition, grammarPositionAt } from '../grammar/position.ts';
-import { ifClauseWords, statementWordsIn, wordCandidates } from '../grammar/words.ts';
-import type { ParsedPlace } from '../placeholder.ts';
-import { visibleNames } from '../visible.ts';
+import { type Entity, localFunctionOf } from '../../../../compiler/binder/entities.ts';
+import { unparenthesizedType } from '../../../../compiler/syntax/types/index.ts';
+import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
+import type { Candidate } from '../../candidate.ts';
+import type { Cursor } from '../../cursor.ts';
+import type { ParsedPlace } from '../../placeholder.ts';
+import { visibleNames } from '../../visible.ts';
+import { operandCandidates } from './expression.ts';
+import { type GrammarPosition, grammarPositionAt } from './position.ts';
+import { ifClauseWords, statementWordsIn, wordCandidates } from './words.ts';
 
 type GrammarPlace = Extract<ParsedPlace, { readonly kind: 'grammar' }>;
 

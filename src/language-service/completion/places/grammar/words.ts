@@ -9,8 +9,12 @@
  * The `if` chain's clauses are the `if`'s own words, which no position starts with.
  */
 
-import { operandWords, statementWords, type Word } from '../../../compiler/syntax/grammar-words.ts';
-import type { Candidate } from '../candidate.ts';
+import {
+  operandWords,
+  statementWords,
+  type Word,
+} from '../../../../compiler/syntax/grammar-words.ts';
+import type { Candidate } from '../../candidate.ts';
 import type { Surroundings } from './surroundings.ts';
 
 /** Whether surroundings give a word meaning. */

@@ -20,10 +20,10 @@ import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import { receiverParameter } from '../../../language/well-known/index.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
-import { holderIn } from '../grammar/chain.ts';
-import { wordCandidates } from '../grammar/words.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 import { visibleNames } from '../visible.ts';
+import { holderIn } from './grammar/chain.ts';
+import { wordCandidates } from './grammar/words.ts';
 
 export function offerDeclaredName(
   cursor: Cursor,

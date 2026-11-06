@@ -3,9 +3,9 @@
  * one home of what starts a module's declaration, a statement, an operand, a type and a pattern,
  * what goes on after an operand, and what follows a modifier. The parser keys its parselet tables
  * by these lists, typed so a table and its list agree both ways (parser/word-parselets.ts), and
- * completion offers them where the position is (language-service/completion/grammar/words.ts): a
- * word the parser starts taking somewhere is listed here, or the parser fails to compile, and
- * completion offers it with no edit of its own.
+ * completion offers them where the position is
+ * (language-service/completion/places/grammar/words.ts): a word the parser starts taking somewhere
+ * is listed here, or the parser fails to compile, and completion offers it with no edit of its own.
  *
  * - A list holds a position's keywords and contextual words alike. The parser reads a keyword by
  *   its token kind and a contextual word by a name's text, so its tables key the two apart.

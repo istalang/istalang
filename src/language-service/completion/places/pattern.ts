@@ -37,9 +37,9 @@ import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
 import type { Candidate } from '../candidate.ts';
 import { type Cursor, touchingBefore } from '../cursor.ts';
 import { expectedTypeAt } from '../expected.ts';
-import { wordCandidates } from '../grammar/words.ts';
 import type { ParsedPlace } from '../placeholder.ts';
 import { visibleNames } from '../visible.ts';
+import { wordCandidates } from './grammar/words.ts';
 import { patternStartedBy } from './matched-type.ts';
 
 type PatternPlace = Extract<ParsedPlace, { readonly kind: 'pattern' }>;

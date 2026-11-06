@@ -24,8 +24,8 @@ import {
 } from '../../call-at.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
-import { expressionCandidates } from '../grammar/expression.ts';
 import type { ParsedPlace } from '../placeholder.ts';
+import { expressionCandidates } from './grammar/expression.ts';
 
 export function offerCallArgument(
   cursor: Cursor,

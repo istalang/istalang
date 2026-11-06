@@ -21,21 +21,21 @@ import {
   infixWords,
   type Modifier,
   type Word,
-} from '../../../compiler/syntax/grammar-words.ts';
-import type { Identifier, Invalid } from '../../../compiler/syntax/node.ts';
-import { moduleItemWords } from '../../../compiler/syntax/placement.ts';
-import type { LabelledScope } from '../../../compiler/syntax/statements/index.ts';
-import { isKeyword, type Token } from '../../../compiler/syntax/tokens.ts';
+} from '../../../../compiler/syntax/grammar-words.ts';
+import type { Identifier, Invalid } from '../../../../compiler/syntax/node.ts';
+import { moduleItemWords } from '../../../../compiler/syntax/placement.ts';
+import type { LabelledScope } from '../../../../compiler/syntax/statements/index.ts';
+import { isKeyword, type Token } from '../../../../compiler/syntax/tokens.ts';
 import {
   childrenOf,
   extentIn,
   nodesAt,
   type SyntaxNode,
   type SyntaxTree,
-} from '../../../compiler/syntax/tree.ts';
-import { codeTokensOf } from '../../tokens.ts';
-import { adjoins, adjoinsBefore, type Cursor, touchingBefore } from '../cursor.ts';
-import type { ParsedPlace } from '../placeholder.ts';
+} from '../../../../compiler/syntax/tree.ts';
+import { codeTokensOf } from '../../../tokens.ts';
+import { adjoins, adjoinsBefore, type Cursor, touchingBefore } from '../../cursor.ts';
+import type { ParsedPlace } from '../../placeholder.ts';
 import { holderIn } from './chain.ts';
 import { type Surroundings, surroundingsOf } from './surroundings.ts';
 

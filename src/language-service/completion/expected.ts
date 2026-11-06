@@ -33,9 +33,9 @@ import { argumentParameterAt } from '../call-at.ts';
 import { identifierAt } from '../identifier-at.ts';
 import type { Candidate } from './candidate.ts';
 import type { Cursor } from './cursor.ts';
-import { holderIn } from './grammar/chain.ts';
 import type { Place } from './place.ts';
 import type { ParsedPlace, PlaceholderParse } from './placeholder.ts';
+import { holderIn } from './places/grammar/chain.ts';
 import { matchedTypeOf, patternStartedBy } from './places/matched-type.ts';
 import { visibleNames } from './visible.ts';
 

@@ -36,8 +36,8 @@ import { nodesAt, parentOf, type SyntaxNode } from '../../../compiler/syntax/tre
 import type { NamedType } from '../../../compiler/syntax/types/index.ts';
 import { checkedTwinOf } from '../checked-twin.ts';
 import type { Cursor } from '../cursor.ts';
-import { holderIn } from '../grammar/chain.ts';
 import type { ParsedPlace } from '../placeholder.ts';
+import { holderIn } from './grammar/chain.ts';
 
 type Parsed = ParsedPlace['parsed'];
 

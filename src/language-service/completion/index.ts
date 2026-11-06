@@ -20,7 +20,7 @@ import { type Place, placeAt } from './place.ts';
 import { offerAnnotation } from './places/annotation.ts';
 import { offerCallArgument } from './places/call-argument.ts';
 import { offerDeclaredName } from './places/declared-name.ts';
-import { offerGrammar } from './places/grammar.ts';
+import { offerGrammar } from './places/grammar/index.ts';
 import { offerImport } from './places/import.ts';
 import { offerLiteralFields } from './places/literal-field.ts';
 import { offerMembers } from './places/member.ts';
