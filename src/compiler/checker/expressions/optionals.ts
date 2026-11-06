@@ -23,10 +23,10 @@ import { type ChainStep, chainStepOf, isOptionalStep } from '../../syntax/expres
 import type { Binary, Expression, Unwrap } from '../../syntax/expressions/index.ts';
 import type { BodyContext, Chains } from '../body-context.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
-import type { ChainLink } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
 import { preludeCall } from '../resolution/implicit.ts';
+import type { ChainLink } from '../surface/checked-body.ts';
 import { errorType, isPrimitive, stringType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { optionalOf, presentType } from '../types/unions.ts';

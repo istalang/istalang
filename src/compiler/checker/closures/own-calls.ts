@@ -13,7 +13,7 @@
 import { wellKnown } from '../../../language/well-known.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../body-context.ts';
-import type { NestedFunction } from '../check.ts';
+import type { NestedFunction } from '../surface/checked-body.ts';
 
 /**
  * Declares the variable the function being entered holds its own call in, when its name reads

@@ -22,9 +22,9 @@ import { localFunctionOf } from '../../binder/entities.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { encloses } from '../../syntax/positions.ts';
 import type { BodyContext, FunctionFrame, Functions } from '../body-context.ts';
-import type { CheckedFunction, NestedFunction } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
+import type { CheckedFunction, NestedFunction } from '../surface/checked-body.ts';
 import { errorType, type Type } from '../types/type.ts';
 
 export class FunctionScopes implements Functions {

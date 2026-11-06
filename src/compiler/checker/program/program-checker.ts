@@ -47,13 +47,7 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import { BodyChecker, type BodyKind } from '../body/body-checker.ts';
-import type {
-  CheckedBody,
-  CheckedConstant,
-  Disposal,
-  SignatureParameter,
-  VariantMember,
-} from '../check.ts';
+import type { CheckedConstant, Disposal, SignatureParameter, VariantMember } from '../check.ts';
 import type {
   CheckerContext,
   CheckerNote,
@@ -80,6 +74,7 @@ import { Annotations } from '../rules/annotations.ts';
 import { JsonForms } from '../rules/boundary/json-forms.ts';
 import { disposalOf } from '../rules/disposal/disposal.ts';
 import { Expansion } from '../rules/expansion/functions.ts';
+import type { CheckedBody } from '../surface/checked-body.ts';
 import type { ResolvedCall } from '../surface/resolved-call.ts';
 import { resolveAnyType } from '../traits/any-types.ts';
 import { memberUnionOf } from '../traits/struct-keys.ts';

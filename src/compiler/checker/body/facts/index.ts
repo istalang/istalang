@@ -1,5 +1,5 @@
 /**
- * The facts a checked body answers (check.ts `BodyFacts`), each one entry of `bodyFacts`: how it
+ * The facts a checked body answers (surface/checked-body.ts `BodyFacts`), each one entry of `bodyFacts`: how it
  * is read as a pass checked it, from what checking recorded (recorded-body.ts); how an
  * instantiation reads it, from the parts its answers are made of (instantiation.ts); and how the
  * passes of the field loops around a node join it, for tools (pass-joins.ts). The body and its
@@ -7,9 +7,9 @@
  * entry says all three, and no view passes a fact through unread.
  */
 
-import type { BodyFacts, CheckedBody } from '../../check.ts';
 import type { PassAnswers } from '../../lookup/pass-views.ts';
 import type { Pass } from '../../passes.ts';
+import type { BodyFacts, CheckedBody } from '../../surface/checked-body.ts';
 import { type JoinedBody, type ListedFacts, listedFacts } from '../../surface/denotation.ts';
 import type { ResolvedCall } from '../../surface/resolved-call.ts';
 import { exactFit } from '../../types/fit.ts';

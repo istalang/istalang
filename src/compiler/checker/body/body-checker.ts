@@ -54,7 +54,7 @@ import type {
   Enclosing,
   Returns,
 } from '../body-context.ts';
-import type { CheckedBody, SignatureParameter, ValueSite } from '../check.ts';
+import type { SignatureParameter } from '../check.ts';
 import { FunctionScope } from '../closures/function-scope.ts';
 import { FunctionScopes } from '../closures/functions.ts';
 import { inferLambda } from '../closures/lambdas.ts';
@@ -88,6 +88,7 @@ import { LabelTargets } from '../statements/loops.ts';
 import { checkBlock, statementHandlers } from '../statements/statements.ts';
 import { VariableScope } from '../statements/variables.ts';
 import { statementPlace } from '../surface/checked-annotation.ts';
+import type { CheckedBody, ValueSite } from '../surface/checked-body.ts';
 import type { ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
 import { unfolded } from '../types/computed-types.ts';
 import { exactFit, type Fit, isExact, misfitOf } from '../types/fit.ts';

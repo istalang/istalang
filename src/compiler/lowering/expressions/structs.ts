@@ -13,7 +13,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { FieldSource } from '../../checker/check.ts';
+import type { FieldSource } from '../../checker/surface/checked-body.ts';
 import type { AnonymousStructType, NominalType } from '../../checker/types/type.ts';
 import type {
   Expression,

@@ -11,8 +11,8 @@ import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { Statement } from '../../syntax/statements.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
-import type { CheckedBody } from '../check.ts';
 import type { FieldMember, NominalType } from '../types/type.ts';
+import type { CheckedBody } from './checked-body.ts';
 import type { ConstantForm } from './constant-form.ts';
 
 /** Where an annotated item stands, which decides which annotations mean anything on it (§3.16). */

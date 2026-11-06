@@ -45,7 +45,7 @@ import {
   targetParts,
 } from '../../syntax/statements.ts';
 import { fieldChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
-import type { LabelResolution } from '../check.ts';
+import type { LabelResolution } from '../surface/checked-body.ts';
 import { partsBeside } from './chain-parts.ts';
 
 /** What a flow rule decides: its states, where paths meet, and what its own events do. */

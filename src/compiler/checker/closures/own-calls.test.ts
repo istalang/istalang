@@ -14,8 +14,8 @@ import { programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import { nestsFunction, nodesUnder } from '../../syntax/tree.ts';
 import { reported } from '../check.test-kit.ts';
-import type { NestedFunction } from '../check.ts';
 import { checkProgram } from '../check.ts';
+import type { NestedFunction } from '../surface/checked-body.ts';
 
 /** `worker`, whose `select` waits on its own `disposing()` and then runs `cleanup`. */
 function cleaningUp(cleanup: string): string {

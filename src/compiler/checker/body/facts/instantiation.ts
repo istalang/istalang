@@ -9,14 +9,14 @@
  */
 
 import { memo } from '../../../../structures/memo.ts';
+import type { Checker } from '../../check.ts';
 import type {
   AssignedPart,
   ChainLink,
   CheckedFunction,
-  Checker,
   FieldPass,
   IterationForm,
-} from '../../check.ts';
+} from '../../surface/checked-body.ts';
 import {
   type FieldRead,
   keyedFieldRead,

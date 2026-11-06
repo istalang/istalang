@@ -44,11 +44,11 @@ import {
   severalKeyedFields,
 } from '../calls/places.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
-import type { AssignedPart, WrittenFit } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';
 import { type Taking, takeApart, takeTargets } from '../patterns/taking.ts';
+import type { AssignedPart, WrittenFit } from '../surface/checked-body.ts';
 import type { FieldStep } from '../surface/checked-pattern.ts';
 import { errorType, type Type, tupleType } from '../types/type.ts';
 

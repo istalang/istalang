@@ -39,6 +39,9 @@ import type {
   Statement,
 } from '../syntax/statements.ts';
 import type { TypeNode } from '../syntax/types.ts';
+import type { SignatureParameter } from './check.ts';
+import type { CheckerContext } from './context.ts';
+import type { FieldPassType } from './passes.ts';
 import type {
   AssignedPart,
   ChainLink,
@@ -49,11 +52,8 @@ import type {
   IterationForm,
   LabelResolution,
   NestedFunction,
-  SignatureParameter,
   ValueSite,
-} from './check.ts';
-import type { CheckerContext } from './context.ts';
-import type { FieldPassType } from './passes.ts';
+} from './surface/checked-body.ts';
 import type { FieldRead, FieldReading } from './surface/checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from './surface/checked-pattern.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from './surface/resolved-call.ts';

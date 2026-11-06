@@ -8,7 +8,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { ValueSite } from '../../checker/check.ts';
+import type { ValueSite } from '../../checker/surface/checked-body.ts';
 import { type Fit, singleElement } from '../../checker/types/fit.ts';
 import type { FunctionType, StructValueType, Type } from '../../checker/types/type.ts';
 import { baseOf } from '../../checker/types/union-members.ts';

@@ -8,7 +8,7 @@
 
 import { isOverFields, passedParts } from '../../syntax/statements.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
-import type { CheckedBody } from '../check.ts';
+import type { CheckedBody } from '../surface/checked-body.ts';
 import type { JoinedBody } from '../surface/denotation.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 

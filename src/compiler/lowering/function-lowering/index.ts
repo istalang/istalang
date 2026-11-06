@@ -34,7 +34,8 @@ import type { Value } from '../../../definition/values.ts';
 import { handlerOf } from '../../../structures/kind-table.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity } from '../../binder/entities.ts';
-import type { CheckedBody, Checker, SignatureParameter, ValueSite } from '../../checker/check.ts';
+import type { Checker, SignatureParameter } from '../../checker/check.ts';
+import type { CheckedBody, ValueSite } from '../../checker/surface/checked-body.ts';
 import type { FieldRead, FieldReading } from '../../checker/surface/checked-field.ts';
 import type { CheckedPattern } from '../../checker/surface/checked-pattern.ts';
 import type {

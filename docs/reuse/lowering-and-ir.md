@@ -34,7 +34,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - read one field of a value, or its part along field and element positions → `CodeWriter.field`, `CodeWriter.readPath` (`src/compiler/lowering/code-writer.ts`); compare two registers with the built-in `equal` → `CodeWriter.equal`, or `equal` (`operators.ts`) for `!=` too
 - a variable's register → `VariableRegisters.registerOf` (`src/compiler/lowering/statements/variables.ts`); allocate a cell → `cellRegister` (`src/compiler/lowering/places.ts`)
 - take a value apart into a declaration's or a parameter's targets, each name its part's copy → `bindTargets` (`src/compiler/lowering/statements/variables.ts`); a parameter's pattern is taken apart there, at its function's entry, its argument in a register of its own (`FunctionLowering`, `src/compiler/lowering/function-lowering/index.ts`), never by a second destructuring path
-- read how a field access reaches its field → `CheckedBody.fieldReadOf` (`src/compiler/checker/check.ts`)
+- read how a field access reaches its field → `CheckedBody.fieldReadOf` (`src/compiler/checker/surface/checked-body.ts`)
 - lower pattern tests and bindings jumping to a failure label → `lowerMatching` (`src/compiler/lowering/patterns.ts`)
 - build an enum variant by its declared name → `buildVariant`, `isEnum` (`src/compiler/lowering/expressions/variants.ts`); in synthesized code, `SynthesizedCode.variant`
 - branch on an enum variant, or read variant field 0 → `branchOnVariant`, `payloadOf` (`src/compiler/lowering/expressions/variants.ts`); carry on with a variant's one field where a value holds it, else run what leaves → `payloadOr`

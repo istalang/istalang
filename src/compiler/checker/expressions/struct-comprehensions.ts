@@ -10,7 +10,7 @@
  *   named fields and each of `x`'s, typed as `e` is there: `x`'s fields must be known.
  * - A field the comprehension gives is a field the literal gives: a name the literal also gives,
  *   or one its type lacks, is a mistake as a repeated or unknown name is.
- * - Its source (check.ts `FieldSource`) is the comprehension itself, whose fields lowering finds
+ * - Its source (surface/checked-body.ts `FieldSource`) is the comprehension itself, whose fields lowering finds
  *   on each instantiation's struct: what a generic body checks once, per named entry and once for
  *   the others, gives as many fields as the struct it is instantiated with has.
  */
@@ -24,11 +24,11 @@ import type {
 import { itemValue } from '../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext, CheckedPasses } from '../body-context.ts';
-import type { FieldSource } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Inference } from '../inference/infer.ts';
 import type { FieldPassType } from '../passes.ts';
 import { checkedFieldPasses, inFieldPasses } from '../rules/loops/field-passes.ts';
+import type { FieldSource } from '../surface/checked-body.ts';
 import { sameType } from '../types/identity.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import type { FieldMember, Type } from '../types/type.ts';

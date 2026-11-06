@@ -12,7 +12,8 @@
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import type { Entity } from '../binder/entities.ts';
-import type { CheckedBody, Checker, ValueSite } from '../checker/check.ts';
+import type { Checker } from '../checker/check.ts';
+import type { CheckedBody, ValueSite } from '../checker/surface/checked-body.ts';
 import type { FieldRead, FieldReading } from '../checker/surface/checked-field.ts';
 import type { CheckedPattern } from '../checker/surface/checked-pattern.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../checker/surface/resolved-call.ts';

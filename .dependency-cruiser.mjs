@@ -140,6 +140,7 @@ const checkerLayers = [
 /** What later phases may import of the checker: its entry and the models its surface names. */
 const checkerSurface = [
   'check.ts',
+  'surface/checked-body.ts',
   'surface/resolved-call.ts',
   'surface/checked-pattern.ts',
   'surface/checked-field.ts',

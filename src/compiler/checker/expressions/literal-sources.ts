@@ -12,8 +12,8 @@ import type {
   StructComprehension,
 } from '../../syntax/expressions/index.ts';
 import type { LiteralSources } from '../body-context.ts';
-import type { FieldSource } from '../check.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
+import type { FieldSource } from '../surface/checked-body.ts';
 import type { FunctionCall, MadeCall } from '../surface/resolved-call.ts';
 import type { FieldMember } from '../types/type.ts';
 

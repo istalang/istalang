@@ -68,8 +68,8 @@ src/
       body/                                                      wiring one body: its checker (body-checker.ts), what it records of its nodes, per
                                                                  pass (body-records.ts), and facts/: each fact a CheckedBody answers, read per
                                                                  pass, instantiated and joined
-      surface/                                                   the models the surface names, contracts like the root's: what calls resolved to
-                                                                 (resolved-call.ts), patterns and targets as checked (checked-pattern.ts),
+      surface/                                                   the models the surface names, contracts like the root's: a body as checked
+                                                                 (checked-body.ts), what calls resolved to (resolved-call.ts), patterns and targets as checked (checked-pattern.ts),
                                                                  computed constants (constant-form.ts), derived JSON forms (json-form.ts),
                                                                  annotations (checked-annotation.ts), how field reads reach their fields
                                                                  (checked-field.ts), the externs a host implements (host-externs.ts), which

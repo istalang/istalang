@@ -31,7 +31,7 @@ import { parameterSite } from '../../syntax/parameters.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
-import type { NestedFunction, SignatureParameter } from '../check.ts';
+import type { SignatureParameter } from '../check.ts';
 import {
   checkPatternParameter,
   declaredBodyResult,
@@ -42,6 +42,7 @@ import {
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { declareParameter } from '../patterns/targets.ts';
 import type { Produced } from '../rules/agreement.ts';
+import type { NestedFunction } from '../surface/checked-body.ts';
 import { isSendable } from '../traits/sendable.ts';
 import { expectedFunction } from '../types/expected.ts';
 import { isPack, packRestSlot, type RestSlot, withPack } from '../types/function-types.ts';

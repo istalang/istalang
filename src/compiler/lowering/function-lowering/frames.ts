@@ -11,13 +11,12 @@
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';
+import type { Checker, SignatureParameter } from '../../checker/check.ts';
 import type {
   CapturedVariable,
   CheckedBody,
-  Checker,
   NestedFunction,
-  SignatureParameter,
-} from '../../checker/check.ts';
+} from '../../checker/surface/checked-body.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';

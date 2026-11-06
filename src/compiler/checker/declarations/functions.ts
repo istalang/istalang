@@ -12,9 +12,9 @@
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { CheckedBody } from '../check.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { CheckedBody } from '../surface/checked-body.ts';
 import { errorType, type Type, unitType } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 import { callResult, declaredBodyResult } from './signatures.ts';

@@ -21,9 +21,9 @@ import { fieldsFunctionOf } from '../../syntax/field-defaults.ts';
 import { lastName } from '../../syntax/node.ts';
 import type { NamedType } from '../../syntax/types.ts';
 import type { AcceptedPart, Accepts, BodyContext, PartReader } from '../body-context.ts';
-import type { FieldSource } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { partsAccept, partsBuild } from '../rules/agreement.ts';
+import type { FieldSource } from '../surface/checked-body.ts';
 import { builtFrom } from '../types/expected.ts';
 import { inFieldOrder } from '../types/field-order.ts';
 import {

@@ -12,7 +12,7 @@
  *   node, each fact joined as its entry says (body/facts/). A call can't join another into one, as
  *   types join into a union, so where passes resolve one text differently, tools read every pass's
  *   call: `show(v)` over a struct's `Int` and `String` fields calls both overloads. Lowering reads
- *   each pass apart (check.ts `CheckedBody`), one call per site.
+ *   each pass apart (checked-body.ts `CheckedBody`), one call per site.
  */
 
 import type {
@@ -32,8 +32,9 @@ import type { StringLiteral } from '../../syntax/expressions/literals.ts';
 import type { Identifier, NodeOf } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types.ts';
-import type { BodyFacts, CheckedFunction, VariantMember } from '../check.ts';
+import type { VariantMember } from '../check.ts';
 import type { Constraint, FieldMember, Type } from '../types/type.ts';
+import type { BodyFacts, CheckedFunction } from './checked-body.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
 
 /** What names a type: a declared one, a primitive, or `Self` inside a trait. */

@@ -16,7 +16,8 @@
  *   value is one entry, owned by the constant, which has no type parameters to substitute.
  */
 
-import type { Checker, ValueSite } from '../checker/check.ts';
+import type { Checker } from '../checker/check.ts';
+import type { ValueSite } from '../checker/surface/checked-body.ts';
 import type { Binding, Witnesses } from '../checker/surface/resolved-call.ts';
 import { type Substitution, substitutionFor } from '../checker/types/substitution.ts';
 import type { FunctionType, Type } from '../checker/types/type.ts';
