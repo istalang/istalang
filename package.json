@@ -34,6 +34,7 @@
     "fix": "biome check --write",
     "test": "vitest run",
     "test:std": "node dist/cli/main.js test src/stdlib",
+    "profile": "npm run build && node scripts/profile.ts",
     "verify": "npm run typecheck && npm run lint && npm run knip && npm test && npm run build && npm run test:std",
     "bench": "vitest bench --run --reporter=verbose",
     "knip": "knip"
