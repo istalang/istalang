@@ -8,8 +8,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { bisimilar } from './recursive-bisimulation.test-kit.ts';
 import {
-  bisimilar,
   bodiesOf,
   closed,
   duplicated,

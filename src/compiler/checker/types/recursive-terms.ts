@@ -111,23 +111,50 @@ export class TermGraph {
     return slot;
   }
 
-  /** Where body `index` leads. */
+  /** Where body `index` leads: where the body it forwards to does. */
   bodySlot(index: number): Slot {
     const known = this.#bodies[index];
     if (known !== undefined) {
       return known;
     }
-    const body = this.#source.bodies[index] ?? errorType;
-    if (this.#entering.has(index)) {
-      // Reached again from inside: the body's own term, made before its parts. A body that is
-      // only a placeholder standing for another names no type, which declarations report.
-      return this.#ofType.get(body) ?? this.#leaf(errorType);
+    const forwarded = this.#forwardedBody(index);
+    if (forwarded === undefined) {
+      // Bodies each only standing for the next, around a cycle, name no type, which declarations
+      // report (declarations/alias-recursion.ts).
+      return this.#leaf(errorType);
     }
-    this.#entering.add(index);
+    const body = this.#source.bodies[forwarded] ?? errorType;
+    if (this.#entering.has(forwarded)) {
+      // Reached again from inside: the body's own term, made before its parts.
+      return this.#ofType.get(body) ?? unreachable('A body was reached again before its own term.');
+    }
+    this.#entering.add(forwarded);
     const slot = this.slotOf(body);
-    this.#entering.delete(index);
+    this.#entering.delete(forwarded);
+    this.#bodies[forwarded] = slot;
     this.#bodies[index] = slot;
     return slot;
+  }
+
+  /**
+   * The body body `index` is: itself, or, when it is only a placeholder standing for another body,
+   * the body that one is, so a body forwarding to another is that body's term, never a term of its
+   * own; undefined when the bodies forward around a cycle.
+   */
+  #forwardedBody(index: number): number | undefined {
+    const passed = new Set<number>();
+    let current = index;
+    for (;;) {
+      if (passed.has(current)) {
+        return undefined;
+      }
+      passed.add(current);
+      const next = this.#source.placeholderOf(this.#source.bodies[current] ?? errorType);
+      if (next === undefined) {
+        return current;
+      }
+      current = next;
+    }
   }
 
   /** The slot `slot` stands for once unions of one member are that member. */

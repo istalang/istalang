@@ -1,10 +1,10 @@
 /**
- * Generated groups of recursive bodies and a reference bisimulation over them, written apart from
- * the term graph they check (recursive-types.test.ts): a union's members flattened, then normalized
- * by the rules of §2 as stated here, not as unions.ts states them.
+ * Generated groups of recursive bodies, written apart from the term graph they check
+ * (recursive-types.test.ts), and closed as one; recursive-bisimulation.test-kit.ts relates them.
  *
- * - A body is a union of leaves and guarded parts, or one guarded part. Leaves cover what a union
- *   normalizes: a literal beside its base, `true | false`, `Never`, and an `any Shows` member taking
+ * - A body is a union of leaves and parts, or one part: a guarded one, or another body standing
+ *   unguarded, before it or after it, never around a cycle, so a body may only forward to another.
+ *   Leaves cover what a union normalizes: a literal beside its base, `true | false`, `Never`, and an `any Shows` member taking
  *   every primitive and literal whole, which the test rules (`showingRules`) say.
  * - The open slot is the alias's type parameter `T`; substituting it may merge members anew.
  * - A trait object part (`any Holds<…> & Pairs<…, …>`) holds slots as its traits' arguments, or
@@ -19,8 +19,7 @@ import type {
   TypeParameter,
 } from '../../syntax/declarations.ts';
 import { closeRecursive } from './recursive-types.ts';
-import { boolType, intType, type LiteralValue, neverType, stringType, type Type } from './type.ts';
-import { typeKeys } from './type-keys.ts';
+import { boolType, intType, neverType, stringType, type Type } from './type.ts';
 import { noProgramRules } from './type-rules.test-kit.ts';
 import type { TypeRules } from './type-rules.ts';
 import { unionOf } from './unions.ts';
@@ -38,14 +37,15 @@ export type Spec =
 type Leaf = 'Int' | 'String' | 'Bool' | 1 | 'a' | true | false | 'Never' | 'Shows' | 'open';
 
 /**
- * A guarded part: a tuple, a function or a trait object of slots, or, unguarded in a union, an
- * earlier body.
+ * A guarded part: a tuple, a function or a trait object of slots; or another body standing
+ * unguarded, in a union or as the whole body, earlier or later, the unguarded ones never forming a
+ * cycle.
  */
 type Part =
   | { readonly kind: 'tuple'; readonly elements: readonly Slot[] }
   | { readonly kind: 'function'; readonly parameter: Slot; readonly result: Slot }
   | { readonly kind: 'traits'; readonly constraints: readonly TraitPart[] }
-  | { readonly kind: 'earlier'; readonly body: number };
+  | { readonly kind: 'unguarded'; readonly body: number };
 
 /** A trait object's constraint: `Holds` takes one argument, `Pairs` two, either maybe its `Self`. */
 interface TraitPart {
@@ -59,7 +59,8 @@ type Slot =
   | { readonly kind: 'primitive'; readonly name: 'Int' | 'String' }
   | { readonly kind: 'open' };
 
-const aliases = [0, 1, 2, 3].map(
+/** The aliases a group's bodies are written as, whose uses are the group's placeholders. */
+export const aliases = [0, 1, 2, 3].map(
   (index) =>
     ({
       kind: 'TypeAliasDeclaration',
@@ -69,7 +70,7 @@ const aliases = [0, 1, 2, 3].map(
 export const open = { kind: 'TypeParameter', name: { text: 'T' } } as unknown as TypeParameter;
 const traitNamed = (text: string) =>
   ({ kind: 'TraitDeclaration', name: { text } }) as unknown as TraitDeclaration;
-const shows = traitNamed('Shows');
+export const shows = traitNamed('Shows');
 const traits = { holds: traitNamed('Holds'), pairs: traitNamed('Pairs') };
 
 /** The `Self` of the trait named `name`, which a trait object binds. */
@@ -128,8 +129,52 @@ function partArbitrary(size: number, index: number): fc.Arbitrary<Part> {
     ? guarded
     : fc.oneof(
         guarded,
-        fc.record({ kind: fc.constant('earlier' as const), body: fc.nat({ max: index - 1 }) }),
+        fc.record({ kind: fc.constant('unguarded' as const), body: fc.nat({ max: index - 1 }) }),
       );
+}
+
+/** `specs` numbered from the last body, so each unguarded body it names comes later instead. */
+function reversedOrder(specs: readonly Spec[]): readonly Spec[] {
+  const last = specs.length - 1;
+  const renumbered = (body: number) => last - body;
+  return specs
+    .map((spec) =>
+      respecified(
+        spec,
+        (each) => (each.kind === 'body' ? { ...each, body: renumbered(each.body) } : each),
+        renumbered,
+      ),
+    )
+    .reverse();
+}
+
+/** `spec` with each slot as `slot` gives it and each unguarded body as `unguarded` numbers it. */
+function respecified(
+  spec: Spec,
+  slot: (each: Slot) => Slot,
+  unguarded: (body: number) => number,
+): Spec {
+  const part = (each: Part): Part => {
+    switch (each.kind) {
+      case 'tuple':
+        return { ...each, elements: each.elements.map(slot) };
+      case 'function':
+        return { ...each, parameter: slot(each.parameter), result: slot(each.result) };
+      case 'traits':
+        return {
+          ...each,
+          constraints: each.constraints.map((constraint) => ({
+            ...constraint,
+            arguments: constraint.arguments.map((argument) =>
+              argument.kind === 'self' ? argument : slot(argument),
+            ),
+          })),
+        };
+      default:
+        return { ...each, body: unguarded(each.body) };
+    }
+  };
+  return spec.kind === 'union' ? { ...spec, parts: spec.parts.map(part) } : part(spec);
 }
 
 const leafArbitrary: fc.Arbitrary<Leaf> = fc.constantFrom<Leaf>(
@@ -145,20 +190,28 @@ const leafArbitrary: fc.Arbitrary<Leaf> = fc.constantFrom<Leaf>(
   'open',
 );
 
-/** A group of one to three bodies, each referring to any body only where guarded. */
+/**
+ * A group of one to three bodies, each referring to any body where guarded, and unguarded, in a
+ * union or as its whole, to a body before it or, numbered the other way, after it.
+ */
 export const groups: fc.Arbitrary<readonly Spec[]> = fc.integer({ min: 1, max: 3 }).chain((size) =>
-  fc.tuple(
-    ...Array.from({ length: size }, (_, index) =>
-      fc.oneof(
-        fc.record({
-          kind: fc.constant('union' as const),
-          leaves: fc.array(leafArbitrary, { minLength: 1, maxLength: 3 }),
-          parts: fc.array(partArbitrary(size, index), { minLength: 1, maxLength: 2 }),
-        }),
-        partArbitrary(size, 0),
+  fc
+    .tuple(
+      fc.boolean(),
+      fc.tuple(
+        ...Array.from({ length: size }, (_, index) =>
+          fc.oneof(
+            fc.record({
+              kind: fc.constant('union' as const),
+              leaves: fc.array(leafArbitrary, { minLength: 1, maxLength: 3 }),
+              parts: fc.array(partArbitrary(size, index), { minLength: 1, maxLength: 2 }),
+            }),
+            partArbitrary(size, index),
+          ),
+        ),
       ),
-    ),
-  ),
+    )
+    .map(([reversed, specs]) => (reversed ? reversedOrder(specs) : specs)),
 );
 
 /** The type a leaf stands for, `given` for the open one. */
@@ -245,140 +298,6 @@ export function closed(bodies: readonly Type[]): readonly Type[] {
   });
 }
 
-/** A type of a group's bodies, read through its placeholders. */
-export interface Side {
-  readonly bodies: readonly Type[];
-  readonly type: Type;
-}
-
-/** `side` past its placeholders. */
-function viewOf(side: Side): Type {
-  let { type } = side;
-  while (type.kind === 'parameter' && type.declaration.kind === 'TypeAliasDeclaration') {
-    type = side.bodies[aliases.indexOf(type.declaration)] ?? type;
-  }
-  return type;
-}
-
-/** The members `side` is a set of: a union's, flattened through every union it holds. */
-function flatMembersOf(side: Side): readonly Side[] {
-  const type = viewOf(side);
-  return type.kind === 'union'
-    ? type.members.flatMap((member) => flatMembersOf({ bodies: side.bodies, type: member }))
-    : [side];
-}
-
-/**
- * The members `side` holds as values (§2): `Never` holds none; `any Shows` holds every primitive
- * and literal; a primitive holds its literals, and `true` and `false` together are `Bool`.
- */
-function membersOf(side: Side): readonly Side[] {
-  const flat = flatMembersOf(side).filter((member) => {
-    const type = viewOf(member);
-    return !(type.kind === 'primitive' && type.name === 'Never');
-  });
-  const views = flat.map(viewOf);
-  if (views.some((type) => type.kind === 'any' && type.constraints[0]?.trait === shows)) {
-    return flat.filter((_, index) => {
-      const type = views[index];
-      return type?.kind !== 'primitive' && type?.kind !== 'literal';
-    });
-  }
-  const bases = new Set<string>(
-    views.flatMap((type) => (type.kind === 'primitive' ? [type.name] : [])),
-  );
-  const literals = new Set(views.flatMap((type) => (type.kind === 'literal' ? [type.value] : [])));
-  const bool = !bases.has('Bool') && literals.has(true) && literals.has(false);
-  const kept = flat.filter((_, index) => {
-    const type = views[index];
-    if (type?.kind !== 'literal') {
-      return true;
-    }
-    return !(bases.has(literalBaseName(type.value)) || (bool && typeof type.value === 'boolean'));
-  });
-  return bool ? [...kept, { bodies: side.bodies, type: boolType }] : kept;
-}
-
-/** The name of the primitive a literal of `value` belongs to. */
-function literalBaseName(value: LiteralValue): string {
-  switch (typeof value) {
-    case 'bigint':
-      return 'Int';
-    case 'string':
-      return 'String';
-    default:
-      return 'Bool';
-  }
-}
-
-const ids = new WeakMap<object, number>();
-let numbered = 0;
-const idOf = (object: object): number => {
-  const known = ids.get(object);
-  if (known !== undefined) {
-    return known;
-  }
-  numbered += 1;
-  ids.set(object, numbered);
-  return numbered;
-};
-
-/** Whether `first` and `second` unfold alike: a greatest fixed point, every assumption its own. */
-export function bisimilar(
-  first: Side,
-  second: Side,
-  assumed: ReadonlySet<string> = new Set(),
-): boolean {
-  const pair = `${idOf(first.bodies)}:${idOf(first.type)}/${idOf(second.bodies)}:${idOf(second.type)}`;
-  if (assumed.has(pair)) {
-    return true;
-  }
-  const inner = new Set([...assumed, pair]);
-  const [a, b] = [membersOf(first), membersOf(second)];
-  const [left, right] = [a[0], b[0]];
-  if (a.length !== 1 || b.length !== 1 || left === undefined || right === undefined) {
-    return (
-      a.every((each) => b.some((other) => bisimilar(each, other, inner))) &&
-      b.every((other) => a.some((each) => bisimilar(each, other, inner)))
-    );
-  }
-  return sameNode(left, right, inner);
-}
-
-/** Whether two sides holding one member each are alike at their top, their parts bisimilar. */
-function sameNode(first: Side, second: Side, inner: ReadonlySet<string>): boolean {
-  const [x, y] = [viewOf(first), viewOf(second)];
-  const parts = (left: readonly Type[], right: readonly Type[]) =>
-    left.length === right.length &&
-    left.every((each, index) =>
-      bisimilar(
-        { bodies: first.bodies, type: each },
-        { bodies: second.bodies, type: right[index] ?? each },
-        inner,
-      ),
-    );
-  if (x.kind === 'tuple' && y.kind === 'tuple') {
-    return parts(x.elements, y.elements);
-  }
-  if (x.kind === 'function' && y.kind === 'function') {
-    return parts(
-      [...x.parameters.map((each) => each.type), x.result],
-      [...y.parameters.map((each) => each.type), y.result],
-    );
-  }
-  if (x.kind === 'any' && y.kind === 'any') {
-    return (
-      x.constraints.length === y.constraints.length &&
-      x.constraints.every((constraint) => {
-        const other = y.constraints.find((each) => each.trait === constraint.trait);
-        return other !== undefined && parts(constraint.arguments, other.arguments);
-      })
-    );
-  }
-  const composite = (type: Type) => ['tuple', 'function', 'any'].includes(type.kind);
-  return typeKeys.typeKey(x) === typeKeys.typeKey(y) && !composite(x);
-}
-
 /**
  * `specs` with its last body copied, the first guarded use of it pointing at the copy instead: a
  * group of the same types written as a larger graph, which closing must minimize back.
@@ -393,28 +312,8 @@ export function duplicated(specs: readonly Spec[]): readonly Spec[] {
     redirected = true;
     return { kind: 'body', body: specs.length };
   };
-  const part = (each: Part): Part => {
-    switch (each.kind) {
-      case 'tuple':
-        return { ...each, elements: each.elements.map(slot) };
-      case 'function':
-        return { ...each, parameter: slot(each.parameter), result: slot(each.result) };
-      case 'traits':
-        return {
-          ...each,
-          constraints: each.constraints.map((constraint) => ({
-            ...constraint,
-            arguments: constraint.arguments.map((argument) =>
-              argument.kind === 'self' ? argument : slot(argument),
-            ),
-          })),
-        };
-      default:
-        return each;
-    }
-  };
   const copy = specs[last];
-  const redirect = (spec: Spec): Spec =>
-    spec.kind === 'union' ? { ...spec, parts: spec.parts.map(part) } : part(spec);
-  return copy === undefined ? specs : [...specs.map(redirect), copy];
+  return copy === undefined
+    ? specs
+    : [...specs.map((spec) => respecified(spec, slot, (body) => body)), copy];
 }
