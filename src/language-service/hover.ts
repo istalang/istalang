@@ -25,10 +25,10 @@ import type { Identifier } from '../compiler/syntax/tree/node.ts';
 import { spanIn } from '../compiler/syntax/tree/positions.ts';
 import type { TypeNode } from '../compiler/syntax/types/index.ts';
 import type { Span } from '../text/span.ts';
-import { type CheckedModule, checkedModule } from './checked-module.ts';
-import { docstringOf } from './docstrings.ts';
-import { identifierAt } from './identifier-at.ts';
-import { importedModule } from './namespaces.ts';
+import { type CheckedModule, checkedModule } from './reading/checked-module.ts';
+import { docstringOf } from './reading/docstrings.ts';
+import { identifierAt } from './reading/identifier-at.ts';
+import { importedModule } from './reading/namespaces.ts';
 import { signatureOf } from './signatures/signatures.ts';
 
 export interface Hover {

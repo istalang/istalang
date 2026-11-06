@@ -11,12 +11,12 @@
  * place, after the template, so a value's code is found like any other.
  */
 
-import { isBracketOpener, pairBrackets } from '../compiler/parser/cursor/brackets.ts';
-import { scan } from '../compiler/scanner/scan.ts';
-import type { ScanResult, Token } from '../compiler/syntax/tokens/index.ts';
-import type { SyntaxTree } from '../compiler/syntax/tree/index.ts';
-import { memo } from '../structures/memo.ts';
-import { lineMapOf } from '../text/line-map.ts';
+import { isBracketOpener, pairBrackets } from '../../compiler/parser/cursor/brackets.ts';
+import { scan } from '../../compiler/scanner/scan.ts';
+import type { ScanResult, Token } from '../../compiler/syntax/tokens/index.ts';
+import type { SyntaxTree } from '../../compiler/syntax/tree/index.ts';
+import { memo } from '../../structures/memo.ts';
+import { lineMapOf } from '../../text/line-map.ts';
 
 const scans = new WeakMap<SyntaxTree, ScanResult>();
 const flattened = new WeakMap<SyntaxTree, readonly Token[]>();

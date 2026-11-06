@@ -17,7 +17,7 @@ import { isContextualWord, isKeyword, type Token } from '../../compiler/syntax/t
 import type { SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import type { SourceText } from '../../text/source-text.ts';
 import { type Span, textOf } from '../../text/span.ts';
-import { allTokensOf } from '../tokens.ts';
+import { allTokensOf } from '../reading/tokens.ts';
 import { angleBracketsOf } from './angle-brackets.ts';
 import { nameTypesOf } from './name-types.ts';
 import type { SemanticType } from './semantic-types.ts';

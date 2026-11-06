@@ -35,7 +35,7 @@ import {
 import type { Identifier } from '../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import type { NamedType, TypeNode } from '../../../compiler/syntax/types/index.ts';
-import { importedModule } from '../../namespaces.ts';
+import { importedModule } from '../../reading/namespaces.ts';
 import type { Candidate } from '../candidate.ts';
 import { type Cursor, touchingBefore } from '../cursor.ts';
 

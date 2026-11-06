@@ -23,10 +23,10 @@ import {
   CompletionTriggerKind,
 } from 'vscode-languageserver/node';
 import { corpusDirectory } from '../../../test/corpus/programs.ts';
-import { checkedModule } from '../../language-service/checked-module.ts';
 import { cursorAt } from '../../language-service/completion/cursor.ts';
 import { type PlaceKind, placeAt } from '../../language-service/completion/place.ts';
 import { mainProgram } from '../../language-service/language-service.test-kit.ts';
+import { checkedModule } from '../../language-service/reading/checked-module.ts';
 import { connectedClient, type TestClient } from '../server.test-kit.ts';
 import {
   type Answer,

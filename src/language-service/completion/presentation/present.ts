@@ -24,7 +24,7 @@ import { boolType } from '../../../compiler/checker/types/type/primitives.ts';
 import { slotText, typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import { hasDefault } from '../../../compiler/syntax/declarations/index.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import { docstringOf } from '../../docstrings.ts';
+import { docstringOf } from '../../reading/docstrings.ts';
 import { signatureOf } from '../../signatures/signatures.ts';
 import type { Candidate, Subject } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';

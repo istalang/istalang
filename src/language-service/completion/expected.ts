@@ -29,7 +29,7 @@ import type { Identifier } from '../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { memo } from '../../structures/memo.ts';
-import { identifierAt } from '../identifier-at.ts';
+import { identifierAt } from '../reading/identifier-at.ts';
 import { argumentParameterAt } from '../signatures/call-at.ts';
 import type { Candidate } from './candidate.ts';
 import type { Cursor } from './cursor.ts';

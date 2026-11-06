@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { treeOf } from '../language-service.test-kit.ts';
 import { foldingRangesOf } from './folding.ts';
-import { treeOf } from './language-service.test-kit.ts';
 
 describe('folding', () => {
   it('folds an indented block from the line its colon stands on, past comments before it', () => {

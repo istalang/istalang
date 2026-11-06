@@ -10,7 +10,7 @@ import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../compiler/syn
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import { memo } from '../../structures/memo.ts';
 import { lastIndexAtMost } from '../../structures/sorted.ts';
-import { codeTokensOf } from '../tokens.ts';
+import { codeTokensOf } from '../reading/tokens.ts';
 
 const angleTokens: ReadonlySet<string> = new Set(['<', '>', '>>']);
 

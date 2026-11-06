@@ -11,8 +11,8 @@
 import { isInlineWhitespace } from '../../compiler/scanner/characters.ts';
 import { isKeyword, type Token } from '../../compiler/syntax/tokens/index.ts';
 import type { SyntaxTree } from '../../compiler/syntax/tree/index.ts';
-import type { CheckedModule } from '../checked-module.ts';
-import { codeTokensOf } from '../tokens.ts';
+import type { CheckedModule } from '../reading/checked-module.ts';
+import { codeTokensOf } from '../reading/tokens.ts';
 
 export interface Cursor extends CheckedModule {
   readonly offset: number;

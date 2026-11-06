@@ -405,7 +405,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
 5. **The language service:**
    - completion of field names and map keys in an indented value, as inside braces (`src/language-service/completion/places/`);
    - hover and go-to-definition on keys (`src/language-service/navigation/`);
-   - folding for the block (`src/language-service/folding.ts`);
+   - folding for the block (`src/language-service/outline/folding.ts`);
    - semantic tokens: a map's bare key is a String, a struct's a field (`src/language-service/semantic-tokens/`);
    - the VS Code grammar (`.vscode/extensions/ista/syntaxes/`) gains `- ` items.
 6. **Recursive aliases.**

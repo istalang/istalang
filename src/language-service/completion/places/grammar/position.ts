@@ -33,7 +33,7 @@ import {
   type SyntaxTree,
 } from '../../../../compiler/syntax/tree/index.ts';
 import type { Identifier, Invalid } from '../../../../compiler/syntax/tree/node.ts';
-import { codeTokensOf } from '../../../tokens.ts';
+import { codeTokensOf } from '../../../reading/tokens.ts';
 import { adjoins, adjoinsBefore, type Cursor, touchingBefore } from '../../cursor.ts';
 import type { ParsedPlace } from '../../placeholder.ts';
 import { holderIn } from './chain.ts';

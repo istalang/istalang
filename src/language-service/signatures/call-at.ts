@@ -3,9 +3,10 @@
  * written arguments meet a function's parameters: what signature help marks and completion names,
  * read alike so the two never disagree on which parameter an argument gives.
  *
- * - The tree keeps no tokens, so the parentheses are the code's (../tokens.ts): the `(` is the
- *   first after the callee and its type arguments, and the `)` the one pairing with it. While no
- *   `)` closes a call, as when one is being typed, the call reaches up to the next token after it.
+ * - The tree keeps no tokens, so the parentheses are the code's (../reading/tokens.ts): the `(` is
+ *   the first after the callee and its type arguments, and the `)` the one pairing with it. While
+ *   no `)` closes a call, as when one is being typed, the call reaches up to the next token after
+ *   it.
  * - A call being written often doesn't resolve, so its arguments are read as written, by position
  *   and name, against each function it chose among.
  */
@@ -18,8 +19,8 @@ import type { Token } from '../../compiler/syntax/tokens/index.ts';
 import { nodesAt, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import { lastIndexAtMost } from '../../structures/sorted.ts';
-import type { CheckedModule } from '../checked-module.ts';
-import { closingBracketsOf, codeTokensOf } from '../tokens.ts';
+import type { CheckedModule } from '../reading/checked-module.ts';
+import { closingBracketsOf, codeTokensOf } from '../reading/tokens.ts';
 
 /** A call a cursor writes an argument of. */
 export interface CallAt {

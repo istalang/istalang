@@ -49,8 +49,8 @@ const { definitionFormat } = await built<typeof import('../../src/definition/def
 const { formatSource } =
   await built<typeof import('../../src/formatter/format.ts')>('formatter/format.js');
 const { checkedModule } = await built<
-  typeof import('../../src/language-service/checked-module.ts')
->('language-service/checked-module.js');
+  typeof import('../../src/language-service/reading/checked-module.ts')
+>('language-service/reading/checked-module.js');
 const { completionsAt } = await built<
   typeof import('../../src/language-service/completion/index.ts')
 >('language-service/completion/index.js');

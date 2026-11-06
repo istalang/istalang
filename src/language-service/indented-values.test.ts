@@ -7,14 +7,14 @@
 
 import { describe, expect, it } from 'vitest';
 import { textOf } from '../text/span.ts';
-import { checkedModule } from './checked-module.ts';
 import { completionsAt } from './completion/index.ts';
-import { foldingRangesOf } from './folding.ts';
 import { hoverAt } from './hover.ts';
 import { mainProgram, programAt, treeOf } from './language-service.test-kit.ts';
 import { nameAt } from './navigation/declarations.ts';
 import { referencesAt } from './navigation/references.ts';
 import { renameEdits } from './navigation/rename.ts';
+import { foldingRangesOf } from './outline/folding.ts';
+import { checkedModule } from './reading/checked-module.ts';
 import { builtKeyTypesOf } from './semantic-tokens/built-keys.ts';
 import { semanticTokensOf } from './semantic-tokens/semantic-tokens.ts';
 

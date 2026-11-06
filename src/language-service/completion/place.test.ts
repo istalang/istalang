@@ -5,8 +5,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { checkedModule } from '../checked-module.ts';
 import { programAt } from '../language-service.test-kit.ts';
+import { checkedModule } from '../reading/checked-module.ts';
 import { cursorAt } from './cursor.ts';
 import { type PlaceKind, placeAt } from './place.ts';
 

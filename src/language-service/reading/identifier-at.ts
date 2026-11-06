@@ -5,9 +5,9 @@
  * two names never touch.
  */
 
-import type { StringLiteral } from '../compiler/syntax/expressions/literals/literals.ts';
-import { nodesAt, type SyntaxTree } from '../compiler/syntax/tree/index.ts';
-import { type Identifier, isMissingName } from '../compiler/syntax/tree/node.ts';
+import type { StringLiteral } from '../../compiler/syntax/expressions/literals/literals.ts';
+import { nodesAt, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
+import { type Identifier, isMissingName } from '../../compiler/syntax/tree/node.ts';
 
 /** The identifier of `tree` whose span holds `offset`, or ends at it; undefined for none. */
 export function identifierAt(tree: SyntaxTree, offset: number): Identifier | undefined {

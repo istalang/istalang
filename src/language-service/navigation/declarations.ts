@@ -22,7 +22,7 @@ import { type Identifier, isMissingName } from '../../compiler/syntax/tree/node.
 import { spanIn, startTogether } from '../../compiler/syntax/tree/positions.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import type { Span } from '../../text/span.ts';
-import { identifierAt, stringLiteralAt } from '../identifier-at.ts';
+import { identifierAt, stringLiteralAt } from '../reading/identifier-at.ts';
 
 type Declared = Denotation['declared'];
 

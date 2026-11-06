@@ -1,6 +1,6 @@
-/** Where a document folds (language-service/folding.ts), as LSP's folding ranges. */
+/** Where a document folds (language-service/outline/folding.ts), as LSP's folding ranges. */
 
-import { foldingRangesOf } from '../../language-service/folding.ts';
+import { foldingRangesOf } from '../../language-service/outline/folding.ts';
 import { moduleIdOfUri } from '../locations.ts';
 import type { Provider } from './provider.ts';
 

@@ -7,7 +7,7 @@
  */
 
 import { SemanticTokensBuilder } from 'vscode-languageserver/node';
-import { checkedModule } from '../../language-service/checked-module.ts';
+import { checkedModule } from '../../language-service/reading/checked-module.ts';
 import { builtKeyTypesOf } from '../../language-service/semantic-tokens/built-keys.ts';
 import { semanticTokensOf } from '../../language-service/semantic-tokens/semantic-tokens.ts';
 import { semanticTypes } from '../../language-service/semantic-tokens/semantic-types.ts';

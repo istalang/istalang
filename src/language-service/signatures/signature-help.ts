@@ -20,7 +20,7 @@ import type { FunctionType } from '../../compiler/checker/types/type/index.ts';
 import { presentType } from '../../compiler/checker/types/unions/unions.ts';
 import type { ModuleId, Program } from '../../compiler/program/program.ts';
 import type { Call } from '../../compiler/syntax/expressions/index.ts';
-import { checkedModule } from '../checked-module.ts';
+import { checkedModule } from '../reading/checked-module.ts';
 import { callAt, calleesOf, writtenParameter } from './call-at.ts';
 import { functionTypeSignature, type Signature, signatureOf } from './signatures.ts';
 

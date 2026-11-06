@@ -15,14 +15,14 @@ import {
   importedNames,
   isMethod,
   type Variant,
-} from '../compiler/syntax/declarations/index.ts';
-import { targetNames } from '../compiler/syntax/patterns.ts';
-import { extentIn, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree/index.ts';
-import { type Identifier, type Invalid, isMissingName } from '../compiler/syntax/tree/node.ts';
-import { spanIn } from '../compiler/syntax/tree/positions.ts';
-import type { FieldDeclaration } from '../compiler/syntax/types/index.ts';
-import { staticName } from '../language/static-names.ts';
-import type { Span } from '../text/span.ts';
+} from '../../compiler/syntax/declarations/index.ts';
+import { targetNames } from '../../compiler/syntax/patterns.ts';
+import { extentIn, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
+import { type Identifier, type Invalid, isMissingName } from '../../compiler/syntax/tree/node.ts';
+import { spanIn } from '../../compiler/syntax/tree/positions.ts';
+import type { FieldDeclaration } from '../../compiler/syntax/types/index.ts';
+import { staticName } from '../../language/static-names.ts';
+import type { Span } from '../../text/span.ts';
 
 export type SymbolKind =
   | 'function'

@@ -12,7 +12,7 @@
 
 import type { ModuleId, Program } from '../../compiler/program/program.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import { checkedModule } from '../checked-module.ts';
+import { checkedModule } from '../reading/checked-module.ts';
 import type { Candidate } from './candidate.ts';
 import { type Cursor, cursorAt } from './cursor.ts';
 import { type Place, placeAt } from './place.ts';
@@ -23,7 +23,6 @@ import { offerGrammar } from './places/grammar/index.ts';
 import { offerImport } from './places/imports/import.ts';
 import { offerLiteralFields } from './places/literal-field.ts';
 import { offerMembers } from './places/member.ts';
-import { offerNothing } from './places/nothing.ts';
 import { offerPattern } from './places/patterns/pattern.ts';
 import { offerPatternFields } from './places/patterns/pattern-field.ts';
 import { offerStringText } from './places/string-text.ts';
@@ -62,11 +61,12 @@ export function completionsAt(
   return opened ? present(cursor, place, handlerOf(offers, place)(cursor, place)) : [];
 }
 
-/** What may be written at each kind of place; each kind's provider lives in places/. */
+/** What may be written at each kind of place; each kind's provider but `nothing`'s lives in places/. */
 const offers: Handlers<Cursor, Place, [], readonly Candidate[]> = {
   member: offerMembers,
   literalField: offerLiteralFields,
-  nothing: offerNothing,
+  // A comment, or the text of a string or a number, holds no code, so no list opens there.
+  nothing: () => [],
   grammar: offerGrammar,
   stringText: offerStringText,
   type: offerType,

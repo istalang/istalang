@@ -40,7 +40,7 @@ import {
 import type { Identifier } from '../../compiler/syntax/tree/node.ts';
 import { isWrittenType } from '../../compiler/syntax/types/index.ts';
 import { createSourceText } from '../../text/source-text.ts';
-import { codeTokensOf } from '../tokens.ts';
+import { codeTokensOf } from '../reading/tokens.ts';
 import type { Cursor } from './cursor.ts';
 
 /**

@@ -7,7 +7,7 @@
 
 import { nodesUnder } from '../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
-import type { CheckedModule } from '../checked-module.ts';
+import type { CheckedModule } from '../reading/checked-module.ts';
 import type { SemanticType } from './semantic-types.ts';
 
 /** The kind of each bare key of `checked`'s indented values built as maps, by where it starts. */

@@ -1,6 +1,6 @@
 /**
  * How a name a scope offers shows (present.ts): what the binder says it denotes decides its kind,
- * its detail and its docstring, as hover reads them (docstrings.ts, signatures.ts), so the two
+ * its detail and its docstring, as hover reads them (reading/docstrings.ts, signatures/signatures.ts), so the two
  * never disagree.
  *
  * - A name's group is where it comes from: declared inside a function (a local), at its module's
@@ -24,8 +24,8 @@ import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import type { ModuleId } from '../../../compiler/program/program.ts';
 import { isMethod } from '../../../compiler/syntax/declarations/index.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import { docstringOf } from '../../docstrings.ts';
-import { importedModule } from '../../namespaces.ts';
+import { docstringOf } from '../../reading/docstrings.ts';
+import { importedModule } from '../../reading/namespaces.ts';
 import { signatureOf } from '../../signatures/signatures.ts';
 import type { CompletionKind, RankGroup } from './item.ts';
 import { called, constructed, documented, type Presenting, type Shown } from './presenting.ts';
