@@ -24,8 +24,14 @@
  * - Whether a type meets a constraint is the program's to say (`Fitting`).
  * - A member parameter's value (`T in U`, §3.5) fits where its own type doesn't as a value of `U`
  *   does: it is one member of `U`, which each instantiation makes concrete.
+ * - Why a value doesn't fit is worded once for every place that reports it, a value's own check and
+ *   a call's argument alike (`misfitOf`): it converts into several members of the union expected,
+ *   which makes no fit rather than a guess, or it doesn't fit at all.
  */
 
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { unfolded } from './computed-types.ts';
 import { isAssignable } from './identity.ts';
 import {
@@ -38,6 +44,7 @@ import {
 } from './type.ts';
 import { parametersIn } from './type-parts.ts';
 import type { TypeRules } from './type-rules.ts';
+import { typeText } from './type-text.ts';
 import { absorbingMember, baseOf } from './union-members.ts';
 import { hasMember, membersOf } from './unions.ts';
 
@@ -261,7 +268,7 @@ function membersTaking(
  * Whether a value of `found` would go into a union `expected` as several of its members, each by
  * a conversion: a fit refused as ambiguous rather than as a mismatch.
  */
-export function intoSeveral(found: Type, expected: Type, fitting: Fitting): boolean {
+function intoSeveral(found: Type, expected: Type, fitting: Fitting): boolean {
   if (expected.kind !== 'union' || found.kind === 'union') {
     return false;
   }
@@ -321,4 +328,16 @@ function fitsAsync(
 /** Whether `fit` converts nothing: the value has the expected type. */
 export function isExact(fit: Fit): boolean {
   return fit.conversion.kind === 'none' && fit.into === undefined;
+}
+
+/** The diagnostic for a value of `found` at `at` that doesn't fit `expected`. */
+export function misfitOf(
+  fitting: Fitting,
+  at: AnchoredSpan,
+  found: Type,
+  expected: Type,
+): Diagnostic<AnchoredSpan> {
+  return intoSeveral(found, expected, fitting)
+    ? checkerDiagnostics.severalConversions(at, typeText(found), typeText(expected))
+    : checkerDiagnostics.typeMismatch(at, typeText(expected), typeText(found));
 }

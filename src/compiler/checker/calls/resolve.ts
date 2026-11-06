@@ -40,7 +40,7 @@ import type { Candidate } from '../resolution/candidates.ts';
 import type { Application } from '../resolution/choice.ts';
 import type { Instantiation } from '../resolution/conformance.ts';
 import type { ResolvedSite } from '../resolved-call.ts';
-import { misfitOf } from '../types/misfit.ts';
+import { misfitOf } from '../types/fit.ts';
 import { errorType, type LiteralType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { checkDecidedLambdas } from './lambda-arguments.ts';

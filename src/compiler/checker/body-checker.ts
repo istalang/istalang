@@ -87,9 +87,8 @@ import { LabelTargets } from './statements/loops.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';
 import { VariableScope } from './statements/variables.ts';
 import { unfolded } from './types/computed-types.ts';
-import { exactFit, type Fit, isExact } from './types/fit.ts';
+import { exactFit, type Fit, isExact, misfitOf } from './types/fit.ts';
 import { keysOwner } from './types/key-types.ts';
-import { misfitOf } from './types/misfit.ts';
 import {
   errorType,
   type FieldMember,
