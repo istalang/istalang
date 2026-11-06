@@ -17,7 +17,6 @@ import type { Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/surface/host-externs.ts';
 import { substitute } from '../checker/types/substitution.ts';
 import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { asyncFitEntry } from './async-fits.ts';
 import { writtenBodyOf } from './bodies.ts';
 import { derivedCodecDirection, derivedCodecEntry } from './boundary/codecs.ts';
 import {
@@ -28,6 +27,7 @@ import {
 } from './boundary/host-externs.ts';
 import { listStart, startableOf, startables, startEntry } from './boundary/starts.ts';
 import { fillingEntry } from './filling-entry.ts';
+import { asyncFitEntry } from './function-lowering/fits.ts';
 import { instanceLowering, nestedLowering } from './function-lowering/index.ts';
 import {
   type FunctionInstance,

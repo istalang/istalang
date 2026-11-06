@@ -55,7 +55,7 @@ import { TypeTable } from './type-table.ts';
  * A function-table entry waiting to be lowered: a top-level function's instance, a nested one, an
  * extern a host implements as its native sees it (boundary/host-externs.ts), the read of an extern
  * constant, the wrapper a host starts a function through (boundary/starts.ts), or the async entry
- * of a plain function made async (async-fits.ts).
+ * of a plain function made async (function-lowering/fits.ts).
  */
 export type PendingEntry =
   | { readonly kind: 'instance'; readonly instance: FunctionInstance }
@@ -78,9 +78,9 @@ export type PendingEntry =
 /**
  * An entry switching over every variant of an `any` type's enum (§3.10): a dispatch on a value's
  * own type, a conversion into another `any` type, or the read of a field a trait requires. It is
- * written once the worklist is empty, when lowering has reached every type converted into its
- * `any` type so far, and written again whenever a later entry converts another. A dispatch on a
- * union's members (§6) switches over a union's enum, whose variants are known, so it is written once.
+ * written once the worklist is empty, when lowering has reached every type converted into its `any`
+ * type so far, and written again whenever a later entry converts another. A dispatch on a union's
+ * members (§6) switches over a union's enum, whose variants are known, so it is written once.
  */
 export type ClosingEntry =
   | { readonly kind: 'dispatch'; readonly dispatch: Dispatch }

@@ -112,7 +112,7 @@ Every program that compiles today compiles unchanged, except overloads that diff
    - An async header or lambda whose result isn't spelled `Future<…>` prints it wrapped: `-> R` becomes `-> Future<R>`.
    - Both are rewrites of text the formatter already holds (`formatter/types.ts`, `declarations.ts`), and the format-then-parse round trip gives the same type.
 4. **Lowering.**
-   - **Plain functions:** a plain function value made to fit (`lowering/async-fits.ts`, `madeAsync`) stays: its entry is async and returns at once.
+   - **Plain functions:** a plain function value made to fit (`lowering/function-lowering/fits.ts`, `madeAsync`) stays: its entry is async and returns at once.
    - **Async values in plain slots:** an async function's value passed where `fn(A) -> Future<R>` was expected needs no wrapper, since calling an async entry gives its future in any frame.
    - **Type keys:** the `async` flag leaves function type keys (`lowering/type-table.ts`, `lowering/names.ts`) and extern keys (`definition/extern-key.ts`). Entries keep theirs (`synthesized-code.ts`), since an entry is a body.
 5. **Definition.** A function type's `async` flag goes from the format (`docs/arch/definition.md`), and every extern key is spelled anew. Nothing is released, so hosts re-key as after proposal 1.
