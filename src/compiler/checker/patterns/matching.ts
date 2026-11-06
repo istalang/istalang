@@ -43,8 +43,7 @@ import { implicitOperatorCall, preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, nameNodeOf } from '../resolution/named.ts';
 import type { ImplicitRole } from '../resolved-call.ts';
 import { unfolded } from '../types/computed-types.ts';
-import { comparable, fitEqualSides } from '../types/equality.ts';
-import { decidedEquality, isKnown } from '../types/known-literals.ts';
+import { comparable, decidedEquality, fitEqualSides, isKnown } from '../types/equality.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
 import {
   errorType,
@@ -164,7 +163,7 @@ function arrayTest(
 
 /**
  * A literal compared with its part by `==`; ruled out where the part's type can't hold it
- * (types/known-literals.ts): `none` where no value of a known type is `none`.
+ * (types/equality.ts): `none` where no value of a known type is `none`.
  */
 function literal(context: BodyContext, node: LiteralPattern, part: ValuePart): Leaf {
   const { value } = node;
