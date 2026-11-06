@@ -5,15 +5,15 @@
  * (syntax/expressions/literals/templates.ts), lowered as any written call is.
  */
 
-import type { Register } from '../../../../definition/operands.ts';
-import type { TemplateLiteral } from '../../../syntax/expressions/index.ts';
+import type { Register } from '../../../../../definition/operands.ts';
+import type { TemplateLiteral } from '../../../../syntax/expressions/index.ts';
 import {
   constantTextOf,
   isTagged,
   taggedCall,
-} from '../../../syntax/expressions/literals/templates.ts';
-import { emitImplicitCall } from '../../calls/emit-call.ts';
-import type { FunctionContext } from '../../context.ts';
+} from '../../../../syntax/expressions/literals/templates.ts';
+import { emitImplicitCall } from '../../../calls/emit-call.ts';
+import type { FunctionContext } from '../../../context.ts';
 
 export function lowerTemplate(context: FunctionContext, node: TemplateLiteral): Register {
   if (isTagged(node)) {

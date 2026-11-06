@@ -3,12 +3,12 @@
  * milliseconds (§2), the same value as a constant (`durationForm`), so it lowers to a constant.
  */
 
-import type { Register } from '../../../../definition/operands.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
-import { durationForm } from '../../../checker/surface/constant-form.ts';
-import type { DurationLiteral } from '../../../syntax/expressions/literals/literals.ts';
-import type { FunctionContext } from '../../context.ts';
-import { constantValue } from '../../tables/constants.ts';
+import type { Register } from '../../../../../definition/operands.ts';
+import { unreachable } from '../../../../../structures/unreachable.ts';
+import { durationForm } from '../../../../checker/surface/constant-form.ts';
+import type { DurationLiteral } from '../../../../syntax/expressions/literals/literals.ts';
+import type { FunctionContext } from '../../../context.ts';
+import { constantValue } from '../../../tables/constants.ts';
 
 export function lowerDurationLiteral(context: FunctionContext, node: DurationLiteral): Register {
   const type = context.typeOf(node);

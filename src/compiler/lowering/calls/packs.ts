@@ -24,7 +24,7 @@ export function packElements(concrete: Type): readonly Type[] {
 
 /**
  * The elements of the pack's tuple in `tuple`, of the `type` an instantiation gives, each read by
- * position at `span`, as `t.0` reads one (constructs/expressions/tuples.ts).
+ * position at `span`, as `t.0` reads one (constructs/expressions/literals/tuples.ts).
  */
 export function packElementsOf(
   context: CodeContext,

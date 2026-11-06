@@ -28,7 +28,9 @@ import { lowerIf } from './control/control.ts';
 import { lowerIs, lowerMatch } from './control/matching.ts';
 import { lowerPropagate } from './control/propagate.ts';
 import { lowerSelect } from './control/select.ts';
-import { lowerDurationLiteral } from './literals.ts';
+import { lowerDurationLiteral } from './literals/literals.ts';
+import { lowerTemplate } from './literals/templates.ts';
+import { lowerTuple, lowerTupleElement } from './literals/tuples.ts';
 import { lowerBinary, lowerChainedComparison, lowerUnary } from './operators.ts';
 import {
   lowerFieldRead,
@@ -37,8 +39,6 @@ import {
   readsField,
 } from './structs/structs.ts';
 import { isEnum, lowerVariantLiteral } from './structs/variants.ts';
-import { lowerTemplate } from './templates.ts';
-import { lowerTuple, lowerTupleElement } from './tuples.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionHandlers: Handlers<FunctionContext, Expression, [], Register> = {

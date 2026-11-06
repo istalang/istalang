@@ -21,7 +21,7 @@ import type { FunctionType, StructValueType, Type } from '../../checker/types/ty
 import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { membersOf } from '../../checker/types/unions/unions.ts';
 import { emitCall } from '../calls/emit-call.ts';
-import { tupleOf } from '../constructs/expressions/tuples.ts';
+import { tupleOf } from '../constructs/expressions/literals/tuples.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { SynthesizedCode } from '../synthesized/index.ts';
 import { convertedIntoAny } from '../synthesized/trait-objects.ts';

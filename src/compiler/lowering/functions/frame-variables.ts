@@ -13,7 +13,7 @@ import { substitute } from '../../checker/types/parts/substitution.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import { packElements } from '../calls/packs.ts';
-import { tupleOf } from '../constructs/expressions/tuples.ts';
+import { tupleOf } from '../constructs/expressions/literals/tuples.ts';
 import { bindTargets, declareVariable } from '../constructs/statements/variables.ts';
 import type { FunctionContext } from '../context.ts';
 import { type BodyOwner, ownerSubstitution } from '../tables/instances.ts';

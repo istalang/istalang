@@ -14,7 +14,7 @@ import { isPrimitive } from '../../../checker/types/type/primitives.ts';
 import type { FieldHeader } from '../../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { FunctionContext } from '../../context.ts';
-import { tupleOf } from '../expressions/tuples.ts';
+import { tupleOf } from '../expressions/literals/tuples.ts';
 import { endScope, valueInBlock } from '../statements/scopes.ts';
 import { bindTargets } from '../statements/variables.ts';
 

@@ -3,10 +3,10 @@
  * `field` read by position, the instruction that reads struct fields too.
  */
 
-import type { Register } from '../../../../definition/operands.ts';
-import type { Tuple, TupleElement } from '../../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
-import type { CodeContext, FunctionContext } from '../../context.ts';
+import type { Register } from '../../../../../definition/operands.ts';
+import type { Tuple, TupleElement } from '../../../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
+import type { CodeContext, FunctionContext } from '../../../context.ts';
 
 export function lowerTuple(context: FunctionContext, node: Tuple): Register {
   const elements = node.elements.map((element) => context.expression(element));
