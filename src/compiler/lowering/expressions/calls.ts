@@ -34,8 +34,8 @@ import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
 import { packElementsOf } from '../calls/packs.ts';
 import type { FunctionContext } from '../context.ts';
 import { enterReferenced } from '../parts/places.ts';
-import { spreadArray } from './collections.ts';
-import { lowerFieldRead, readsField } from './structs.ts';
+import { spreadArray } from './collections/collections.ts';
+import { lowerFieldRead, readsField } from './structs/structs.ts';
 
 export function lowerCall(context: FunctionContext, node: Call): Register {
   const { target, passed, arguments: given } = preparedCall(context, node, 'asWritten');

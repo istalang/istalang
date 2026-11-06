@@ -3,15 +3,15 @@
  * by the variant's index, fields in declaration order.
  */
 
-import type { Register } from '../../../definition/operands.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Checker } from '../../checker/check.ts';
-import type { NominalType, Type } from '../../checker/types/type/index.ts';
-import type { Expression, StructLiteral } from '../../syntax/expressions/index.ts';
-import { lastName } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { Label } from '../code-writer.ts';
-import type { CodeContext, FunctionContext } from '../context.ts';
+import type { Register } from '../../../../definition/operands.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Checker } from '../../../checker/check.ts';
+import type { NominalType, Type } from '../../../checker/types/type/index.ts';
+import type { Expression, StructLiteral } from '../../../syntax/expressions/index.ts';
+import { lastName } from '../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { Label } from '../../code-writer.ts';
+import type { CodeContext, FunctionContext } from '../../context.ts';
 import { literalFields } from './structs.ts';
 
 /** The index of the variant `name` of the enum `type`. */

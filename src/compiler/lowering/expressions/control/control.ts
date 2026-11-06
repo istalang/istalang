@@ -11,11 +11,11 @@
  * `else` never reached.
  */
 
-import type { Register } from '../../../definition/operands.ts';
-import type { ConditionalBranch, If } from '../../syntax/expressions/index.ts';
-import type { Label } from '../code-writer.ts';
-import type { FunctionContext } from '../context.ts';
-import { lowerGuarded } from '../statements/scopes.ts';
+import type { Register } from '../../../../definition/operands.ts';
+import type { ConditionalBranch, If } from '../../../syntax/expressions/index.ts';
+import type { Label } from '../../code-writer.ts';
+import type { FunctionContext } from '../../context.ts';
+import { lowerGuarded } from '../../statements/scopes.ts';
 
 export function lowerIf(context: FunctionContext, node: If): Register {
   const { code } = context;

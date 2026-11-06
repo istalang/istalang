@@ -10,7 +10,7 @@
  * - `==` and `!=` are the built-in `equal`, `not` its own instruction. One whose sides' types fix
  *   its value (§4) is that value, its sides still run.
  * - `and` and `or` short-circuit through `branch`, so their right side runs only when needed;
- *   `??` through a `switch` (optionals.ts).
+ *   `??` through a `switch` (access/optionals.ts).
  */
 
 import type { Register } from '../../../definition/operands.ts';
@@ -30,7 +30,7 @@ import { binaryOperators, type Relation, unaryOperators } from '../../syntax/ope
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { emitCallAt, emitFunctionCall } from '../calls/emit-call.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
-import { lowerNullish } from './optionals.ts';
+import { lowerNullish } from './access/optionals.ts';
 
 export function lowerBinary(context: FunctionContext, node: Binary): Register {
   const link = comparisonLinkOf(node);

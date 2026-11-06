@@ -210,21 +210,21 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 #### 5.1 Re-Derivation of Checker Facts & Implicit Contracts (`src/compiler/lowering/`)
 - **Unrecorded function-value calls relying on `calls.get(node) === undefined` (`src/compiler/lowering/expressions/calls.ts`, Q1):**
   - `lowerCall` treats `context.body.calls.get(node) === undefined` as meaning "call `node.callee` as a closure value" (`lowerValueCall`). Any checker path that forgets to record a resolved call silently compiles into a closure call instead of failing an invariant check.
-- **Re-deriving struct field indices and `any` field dispatches in lowering (`src/compiler/lowering/parts/places.ts`, `expressions/structs.ts`, `trait-objects/trait-objects.ts`, Q12, Q19):**
-  - `lowerFieldRead` (`lowering/expressions/structs.ts`) re-inspects `base.kind === 'any'` and otherwise calls `fieldIndexOf` (`lowering/parts/places.ts`), which re-runs `fieldsOf(type).findIndex(...)`.
+- **Re-deriving struct field indices and `any` field dispatches in lowering (`src/compiler/lowering/parts/places.ts`, `expressions/structs/structs.ts`, `trait-objects/trait-objects.ts`, Q12, Q19):**
+  - `lowerFieldRead` (`lowering/expressions/structs/structs.ts`) re-inspects `base.kind === 'any'` and otherwise calls `fieldIndexOf` (`lowering/parts/places.ts`), which re-runs `fieldsOf(type).findIndex(...)`.
   - Because `x.f(...)` on a function-typed struct field never checks `x.f` (`MemberAccess`) as an expression in the checker, `lowerFieldRead` and `fieldIndexOf` take a `link: Expression = node` workaround parameter to look up `chainOf(link)?.base`.
   - `anyFieldEntry` (`lowering/trait-objects/trait-objects.ts`) re-scans `on.constraints` with a local `isField` predicate (instead of `requiredFields`) and looks up `(checker.fieldsOf(type) ?? []).findIndex(...)` without guarding against `-1`.
 - **Bidirectional import cycle between `function-lowering/` and `boundary/` (`src/compiler/lowering/function-lowering/index.ts` ↔ `src/compiler/lowering/boundary/starts.ts`, Q12):**
   - `function-lowering/index.ts` imports `emitInbound` and `Inbound` from `boundary/inbound.ts` to implement `FunctionLowering.lowerStart`, while `boundary/starts.ts` imports `instanceLowering`, `nestedLowering`, and `StartEdges` from `function-lowering/index.ts`.
 
 #### 5.2 Duplication & Edge Cases in Construct Lowering (`src/compiler/lowering/`)
-- **Copy-pasted `buildVariant` in `optionalInt` (`src/compiler/lowering/expressions/collections.ts` vs. `variants.ts`):**
-  - `optionalInt` in `lowering/expressions/collections.ts` manually allocates a register, looks up `tables.types.index(optional)` and `variantIndexOf(context.checker, optional, name)`, and emits `{ kind: 'variant', ... }`, duplicating `buildVariant` from `lowering/expressions/variants.ts` (from which `collections.ts` already imports `variantIndexOf`).
+- **Copy-pasted `buildVariant` in `optionalInt` (`src/compiler/lowering/expressions/collections/collections.ts` vs. `variants.ts`):**
+  - `optionalInt` in `lowering/expressions/collections/collections.ts` manually allocates a register, looks up `tables.types.index(optional)` and `variantIndexOf(context.checker, optional, name)`, and emits `{ kind: 'variant', ... }`, duplicating `buildVariant` from `lowering/expressions/structs/variants.ts` (from which `collections.ts` already imports `variantIndexOf`).
 - **Three copies of comparison/equality/negation emission (`src/compiler/lowering/expressions/operators.ts` vs. `lowering/parts/patterns.ts`, D226):**
   - `lowerBinary` (`operators.ts`), `compared` (`operators.ts` for `ChainedComparison`), and `passed` (`patterns.ts` for pattern tests) all emit `equal` + `not` and `compare` + `order` separately, with `patterns.ts` defining its own local `equal` helper.
-- **Case-less `select` with `else:` emits invalid bytecode (`src/compiler/lowering/expressions/select.ts`, D149):**
+- **Case-less `select` with `else:` emits invalid bytecode (`src/compiler/lowering/expressions/control/select.ts`, D149):**
   - `select:\n  else: v` passes type-checking, and `lowerSelect` emits a `select` instruction with `cases: []`, which fails Definition schema validation (`cases: z.array(selectCase).min(1)` in `definition/instructions/suspension.ts`).
-- **Spread elements cannot wrap `T` into `T?` (`src/compiler/lowering/expressions/collections.ts`, `checker/expressions/collections/collections.ts`, B8):**
+- **Spread elements cannot wrap `T` into `T?` (`src/compiler/lowering/expressions/collections/collections.ts`, `checker/expressions/collections/collections.ts`, B8):**
   - `[0, ...xs]` where `xs: Array<int>` and `Array<int?>` is expected is rejected because a spread copies or iterates its items without per-item conversion/wrapping.
 - **10-kind closed worklist in `DefinitionTables` (`src/compiler/lowering/tables/tables.ts`, `lower.ts`):**
   - `PendingEntry | ClosingEntry` hard-codes 10 entry kinds (`instance`, `nested`, `hostNative`, `constantNative`, `externConstant`, `start`, `asyncFit`, `dispatch`, `anyConversion`, `anyField`), each with its own indexing method on `DefinitionTables` and dispatch arm in `lower.ts`.
@@ -361,7 +361,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | `Instance<T>` extern payload construction/reading | `interpreter/instructions.ts` (`spawn`) | `stdlib/runtime/natives.ts`, `stdlib/testing/natives.ts`, `stdlib/prelude/instance-natives.ts` (Q18) |
 | Unpacking `Array<T>` element type in checker | `wellKnownArguments(checker, wellKnown.array, type)?.[0]` at 7 sites | No `arrayElement` helper in `checker/types/well-known.ts` (Q8) |
 | What heap objects are roots | `scheduler/instance/index.ts` (`'execution' \| 'answer'`) | `lifetimes/holders.ts`, `lifetimes/orphans.ts`, `scheduler/heap.ts` (`'execution'` only) (D165, D198) |
-| Building an `Optional<int>` variant in lowering | `lowering/expressions/variants.ts` (`buildVariant`) | `lowering/expressions/collections.ts` (`optionalInt`) |
+| Building an `Optional<int>` variant in lowering | `lowering/expressions/structs/variants.ts` (`buildVariant`) | `lowering/expressions/collections/collections.ts` (`optionalInt`) |
 | Unparenthesizing AST nodes | `syntax/expressions/index.ts` (`unparenthesized`) | `checker/patterns/walk.ts` (private `unparenthesized` for patterns) (D214) |
 
 ### 7. Language Pitfalls Solved vs. Pitfalls Remaining
@@ -391,7 +391,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | **3** | **Fix `_ = e` error suppression & destructuring assignment expected types (`src/compiler/checker/statements/assignments.ts`, D101, D168):** Don't pass `errorType` as `expected` for `_ = e`, and propagate target types into destructuring assignments. | Bug Fix (Checker) | 2 files in `checker/statements/` | S |
 | **4** | **Apply recorded `Fit` conversions in compile-time constant evaluation (`src/compiler/checker/rules/computation.ts`, D216):** Wrap `Some`, convert 1-tuples, and refuse/convert async fits on top-level `const` values. | Bug Fix (Checker) | 2 files in `checker/` | S |
 | **5** | **Fix same-instance mock return values bypassing `arriving` (`src/runtime/scheduler/mocks.ts`, D182):** Pass same-instance mock results through `arriving` so `testing.handle<T>()` resources are disposed. | Bug Fix (Runtime) | 2 files in `runtime/scheduler/` | S |
-| **6** | **Fix case-less `select:` with `else:` (`src/compiler/lowering/expressions/select.ts`, D149) & stale `${name}$` in diagnostic 5702 (`src/compiler/checker/diagnostics/lifetimes.ts`):** Lower 0-case `select` directly to its `else` body; update 5702 message to `*${name}`. | Bug Fix (Lowering / Diagnostics) | 2 files | XS |
+| **6** | **Fix case-less `select:` with `else:` (`src/compiler/lowering/expressions/control/select.ts`, D149) & stale `${name}$` in diagnostic 5702 (`src/compiler/checker/diagnostics/lifetimes.ts`):** Lower 0-case `select` directly to its `else` body; update 5702 message to `*${name}`. | Bug Fix (Lowering / Diagnostics) | 2 files | XS |
 | **7** | **Guard host process against VM frame-depth OOM, `[...s]` string-length OOM, and unbounded `decimal` places (`src/runtime/scheduler/segment/limits.ts`, `src/text/code-points.ts`, `src/stdlib/decimal/arithmetic.ts`, D155, D194, D195):** Enforce max frame depth in `SegmentRunner.call`, add $O(1)$-space `codePointCount`, and cap `decimal` places. | Resilience / Safety | 5 files | S |
 | **8** | **Leaf DRY extractions (`qualifiedName` [D174], `qualifiedPath`, time-unit constants, `compareOrdered`, `closureOf` [Q15], `fieldValueOf` in `declared-values.ts` [Q16, Q17, D201], `optionalInt` → `buildVariant`, `arrayElement` in `types/well-known.ts` [Q8]):** Deduplicate leaf helpers from foundation upward. | DRY | ~18 leaf files | S |
 | **9** | **Unify 5-step implicit conversion logic between `types/fitting/fit.ts` and `inference/infer.ts` (D222) + `never` return type assignability (D180):** Extract shared conversion matcher parameterized by leaf comparison. | Generalization / DRY | 3 files in `checker/` | M |

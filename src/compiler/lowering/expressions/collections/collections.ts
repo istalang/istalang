@@ -14,11 +14,11 @@
  *   (keyed-fields.ts).
  */
 
-import type { Instruction } from '../../../definition/instructions/instruction.ts';
-import type { Register } from '../../../definition/operands.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import { intType } from '../../checker/types/type/primitives.ts';
-import { optionalOf } from '../../checker/types/unions/unions.ts';
+import type { Instruction } from '../../../../definition/instructions/instruction.ts';
+import type { Register } from '../../../../definition/operands.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import { intType } from '../../../checker/types/type/primitives.ts';
+import { optionalOf } from '../../../checker/types/unions/unions.ts';
 import type {
   ArrayLiteral,
   Expression,
@@ -27,16 +27,16 @@ import type {
   MapLiteral,
   Range,
   Spread,
-} from '../../syntax/expressions/index.ts';
-import type { Invalid } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import { emitCallAt, emitImplicitCall, referenceTo } from '../calls/emit-call.ts';
-import type { CodeContext, FunctionContext } from '../context.ts';
-import { cursorOf, emitLoop } from '../loops/iteration.ts';
-import { cellRegister } from '../parts/places.ts';
-import { lowerKeyRead } from '../values/keyed-fields.ts';
-import { noneOf, someOf } from '../values/optionals.ts';
-import { construct } from '../values/struct-values.ts';
+} from '../../../syntax/expressions/index.ts';
+import type { Invalid } from '../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import { emitCallAt, emitImplicitCall, referenceTo } from '../../calls/emit-call.ts';
+import type { CodeContext, FunctionContext } from '../../context.ts';
+import { cursorOf, emitLoop } from '../../loops/iteration.ts';
+import { cellRegister } from '../../parts/places.ts';
+import { lowerKeyRead } from '../../values/keyed-fields.ts';
+import { noneOf, someOf } from '../../values/optionals.ts';
+import { construct } from '../../values/struct-values.ts';
 
 /** An element of an `array` instruction. */
 type ArrayItem = Extract<Instruction, { kind: 'array' }>['elements'][number];

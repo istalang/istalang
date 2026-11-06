@@ -161,7 +161,8 @@ src/
       trait-objects/                                             `any` values: conversions, and the entries switching over every type
                                                                  one holds (dispatch, conversion, field read), written once the program is reached;
                                                                  a call on a union through a trait dispatches over its members alike
-      expressions/ statements/ never-lowered.ts                  per-construct handlers, as in the checker
+      expressions/ statements/ never-lowered.ts                  per-construct handlers, as in the checker; expressions/ groups them by the
+                                                                 checker's families: structs/, collections/, control/, access/ (names, `??`, `!`)
     compile.ts          pipeline coordinator and public compiler API
   definition/           contract: the compiled program (docs/arch/definition.md): canonical JSON codec,
                         versioned formats, values and their `==` and map keys, types, instruction set

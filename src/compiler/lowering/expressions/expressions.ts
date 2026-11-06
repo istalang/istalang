@@ -12,28 +12,33 @@ import type { FunctionContext } from '../context.ts';
 import { neverLowered } from '../never-lowered.ts';
 import { lowerDereference } from '../parts/places.ts';
 import { noneOf } from '../values/optionals.ts';
-import { lowerAwait } from './await.ts';
+import { lowerName, lowerNamed } from './access/names.ts';
+import { lowerUnwrap } from './access/optionals.ts';
 import { lowerCall, lowerSpawn } from './calls.ts';
 import { lowerFunctionValue, lowerLambda } from './closures.ts';
-import { lowerArrayLiteral, lowerIndex, lowerMapLiteral, lowerRange } from './collections.ts';
-import { lowerComprehension, lowerFieldComprehension } from './comprehensions.ts';
-import { lowerIf } from './control.ts';
+import {
+  lowerArrayLiteral,
+  lowerIndex,
+  lowerMapLiteral,
+  lowerRange,
+} from './collections/collections.ts';
+import { lowerComprehension, lowerFieldComprehension } from './collections/comprehensions.ts';
+import { lowerAwait } from './control/await.ts';
+import { lowerIf } from './control/control.ts';
+import { lowerIs, lowerMatch } from './control/matching.ts';
+import { lowerPropagate } from './control/propagate.ts';
+import { lowerSelect } from './control/select.ts';
 import { lowerDurationLiteral } from './literals.ts';
-import { lowerIs, lowerMatch } from './matching.ts';
-import { lowerName, lowerNamed } from './names.ts';
 import { lowerBinary, lowerChainedComparison, lowerUnary } from './operators.ts';
-import { lowerUnwrap } from './optionals.ts';
-import { lowerPropagate } from './propagate.ts';
-import { lowerSelect } from './select.ts';
 import {
   lowerFieldRead,
   lowerNewStructLiteral,
   lowerStructLiteral,
   readsField,
-} from './structs.ts';
+} from './structs/structs.ts';
+import { isEnum, lowerVariantLiteral } from './structs/variants.ts';
 import { lowerTemplate } from './templates.ts';
 import { lowerTuple, lowerTupleElement } from './tuples.ts';
-import { isEnum, lowerVariantLiteral } from './variants.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionHandlers: Handlers<FunctionContext, Expression, [], Register> = {
@@ -89,7 +94,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
 /**
  * `a.b`: a function named as a value through a namespace or its type (closures.ts), anything else
  * a qualified member names, such as a variant or a namespace's constant, read as its name reads
- * (names.ts), or a field read.
+ * (access/names.ts), or a field read.
  */
 function lowerMemberAccess(context: FunctionContext, node: MemberAccess): Register {
   if (context.body.resolved.has(node)) {

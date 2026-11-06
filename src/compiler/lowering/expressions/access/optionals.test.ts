@@ -5,8 +5,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
-import { compiledText } from '../../compile.test-kit.ts';
+import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
+import { compiledText } from '../../../compile.test-kit.ts';
 
 const shapes = ['struct Inner { code: Int }', 'struct Outer { inner: Inner? }'];
 

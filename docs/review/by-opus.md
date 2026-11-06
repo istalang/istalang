@@ -97,5 +97,5 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 ## Architecture doc: two claims are false today
 
-- "Construct modules reach each other only through their context." Counterexamples: overloads→closures/expressions (`decided.ts`), patterns→`expressions/variants.ts`, rules↔overloads.
+- "Construct modules reach each other only through their context." Counterexamples: overloads→closures/expressions (`decided.ts`), patterns→`expressions/structs/variants.ts`, rules↔overloads.
 - "Used only through its entry module." Lowering imports the checker internals listed above. Either name them as the checker's surface or route them through `check.ts`.

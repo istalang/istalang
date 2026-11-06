@@ -36,7 +36,7 @@ import { emitImplicitCall } from '../calls/emit-call.ts';
 import type { Label } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
 import { equal, ordered } from '../expressions/operators.ts';
-import { branchOnVariant } from '../expressions/variants.ts';
+import { branchOnVariant } from '../expressions/structs/variants.ts';
 import { declareVariable } from '../statements/variables.ts';
 import { constantValue, emitConstant } from '../tables/constants.ts';
 import { branchOnHeld, laidOutAs, type TypedValue } from '../values/holdings.ts';

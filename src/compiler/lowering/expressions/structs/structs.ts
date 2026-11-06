@@ -11,10 +11,10 @@
  * and puts it in a new cell, whose handle is the shared struct's value (§3.18).
  */
 
-import type { Register } from '../../../definition/operands.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { FieldSource } from '../../checker/surface/checked-body.ts';
-import type { AnonymousStructType, NominalType } from '../../checker/types/type/index.ts';
+import type { Register } from '../../../../definition/operands.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { FieldSource } from '../../../checker/surface/checked-body.ts';
+import type { AnonymousStructType, NominalType } from '../../../checker/types/type/index.ts';
 import type {
   Expression,
   FieldsLiteral,
@@ -22,13 +22,13 @@ import type {
   NewStructLiteral,
   StructComprehension,
   StructLiteral,
-} from '../../syntax/expressions/index.ts';
-import { itemValue } from '../../syntax/expressions/readings.ts';
-import { defaultEntryOf } from '../calls/closed-calls.ts';
-import { emitCall } from '../calls/emit-call.ts';
-import type { FunctionContext } from '../context.ts';
-import { fieldsVisited, valueInFieldScope } from '../loops/field-passes.ts';
-import { construct } from '../values/struct-values.ts';
+} from '../../../syntax/expressions/index.ts';
+import { itemValue } from '../../../syntax/expressions/readings.ts';
+import { defaultEntryOf } from '../../calls/closed-calls.ts';
+import { emitCall } from '../../calls/emit-call.ts';
+import type { FunctionContext } from '../../context.ts';
+import { fieldsVisited, valueInFieldScope } from '../../loops/field-passes.ts';
+import { construct } from '../../values/struct-values.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
   const fields = namedFields(literalFields(context, node));
@@ -158,14 +158,14 @@ export function lowerBareStruct(context: FunctionContext, node: Expression): Reg
   return construct(context, structTypeOf(context, node), new Map(), node.span);
 }
 
-/** Whether `a.b` reads a field, rather than naming a namespace's or a type's member (names.ts). */
+/** Whether `a.b` reads a field, rather than naming a namespace's or a type's member (../access/names.ts). */
 export function readsField(context: FunctionContext, access: MemberAccess): boolean {
   return context.entityOf(access.member) === undefined;
 }
 
 /**
  * `x.f`, read from the value its chain link works on: the access itself, or the call `x.f(…)` of
- * a function-typed field, which is the link instead (calls.ts).
+ * a function-typed field, which is the link instead (../calls.ts).
  */
 export function lowerFieldRead(
   context: FunctionContext,

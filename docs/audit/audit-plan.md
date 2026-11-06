@@ -87,7 +87,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 1. **Fix `agreedAccepts` & `tupleAccepts` order-dependence and partial-type loss (D190 & Audit §4.1 — `rules/agreement.ts`, `expressions/tuples.ts`, `expressions/collections.ts`, `rules/branches.ts`):**
    - **Cause:** `agreedAccepts` returns `undefined` if `producers[0] === undefined`, so `["a", none]` and `if c: "a" else: none` fail to be treated as target-typed arguments while `[none, "a"]` succeeds. Furthermore, both `agreedAccepts` and `tupleAccepts` ignore siblings that *do* have their own type (`?? true`), losing known element types during overload selection.
    - **Fix:** Return an `Accepts` predicate whenever *any* element/producer has `accepts !== undefined`, and for each sibling with its own type `t`, check `isOpen(expectedPart) || context.checker.fitOf(t, expectedPart) !== undefined`. Also ensure explicit `call.typeArguments` in `calls/resolve.ts` / `resolution/choosing/applicability.ts` guide target-typed arguments (`same<Array<string?>>(xs, ["a", none])`).
-2. **Extend target-typed lambda result inference and optional stripping (D160 — `calls/lambda-arguments.ts`, `closures/lambdas.ts`, `closures/function-values.ts`, `expressions/tuples.ts`, `expressions/variants.ts`, `expressions/expressions.ts`):**
+2. **Extend target-typed lambda result inference and optional stripping (D160 — `calls/lambda-arguments.ts`, `closures/lambdas.ts`, `closures/function-values.ts`, `expressions/tuples.ts`, `expressions/structs/variants.ts`, `expressions/expressions.ts`):**
    - Allow `checkDecidedLambdas` to recurse into composite expressions holding a lambda (matching `acceptsOf`), and strip `Optional` consistently where target-typed expressions expect a structural type.
 3. **Unify 5-step implicit conversion logic between `types/fitting/fit.ts` and `inference/infer.ts` (D222) + `never` return type assignability (D180 — `types/type/index.ts`) + recursive widening (D144 — `types/unions/widening.ts`, `rules/agreement.ts`):**
    - Extract the shared conversion sequence (exact → plain-to-async function → 1-tuple ↔ element → `any` trait object → `Optional` wrap) parameterized by how leaf parts compare.
@@ -156,11 +156,11 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - Have `walk.take` in `checker/patterns/walk.ts` return both `{ shape, part }` (or pass the narrowed `ValuePart` directly to `AsPattern`) so `walk.downcasts` is deleted.
 4. **Prelude-invariant implicit calls without fake user diagnostics (B11 — `checker/resolution/implicit.ts`, `checker/patterns/matching.ts`, `checker/expressions/access/optionals.ts`, `checker/expressions/templates.ts`):**
    - Add a `preludeCall` helper (or make `failure` optional for prelude-owned calls) in `src/compiler/checker/resolution/implicit.ts` that calls `unreachable` if a toolchain-owned prelude function (`panic`, `_inclusiveEnd`, `length`, `_patternItem`, `_patternRest`, `compare`, `join`) is missing, removing the bogus user-diagnostic callbacks at those call sites.
-5. **Fix case-less `select:` with `else:` in lowering (D149 — `lowering/expressions/select.ts`):**
+5. **Fix case-less `select:` with `else:` in lowering (D149 — `lowering/expressions/control/select.ts`):**
    - When `cases.length === 0` and `node.elseClause !== undefined`, lower `node.elseClause.body` directly without emitting an empty `select` instruction (which `definition/instructions/suspension.ts` rejects).
-6. **Wrap spread elements when `Array<T?>` is expected (B8 — `lowering/expressions/collections.ts`) & replace `optionalInt` with `buildVariant`:**
-   - Replace `optionalInt` in `src/compiler/lowering/expressions/collections.ts` with `buildVariant` from `./variants.ts`.
-7. **Clean up lowering re-derivations and `function-lowering` ↔ `boundary` cycle (Q12, Q19 — `lowering/parts/places.ts`, `lowering/expressions/structs.ts`, `lowering/trait-objects/trait-objects.ts`, `lowering/function-lowering/index.ts`, `lowering/boundary/starts.ts`):**
+6. **Wrap spread elements when `Array<T?>` is expected (B8 — `lowering/expressions/collections/collections.ts`) & replace `optionalInt` with `buildVariant`:**
+   - Replace `optionalInt` in `src/compiler/lowering/expressions/collections/collections.ts` with `buildVariant` from `./variants.ts`.
+7. **Clean up lowering re-derivations and `function-lowering` ↔ `boundary` cycle (Q12, Q19 — `lowering/parts/places.ts`, `lowering/expressions/structs/structs.ts`, `lowering/trait-objects/trait-objects.ts`, `lowering/function-lowering/index.ts`, `lowering/boundary/starts.ts`):**
    - In `lowering/trait-objects/trait-objects.ts` (`anyFieldEntry`), use `requiredFields` and guard `index < 0` with `unreachable`.
    - Break the bidirectional import between `lowering/function-lowering/index.ts` and `lowering/boundary/inbound.ts` / `starts.ts`.
 
@@ -253,7 +253,7 @@ These items touch shared phase contracts (`src/compiler/checker/check.ts`, `src/
 
 6. **B8:** wrap a spread's items into `T?` (checker `expressions/collections.ts`, `rules/agreement.ts`, `check.ts` `ValueSite`/`IterationForm`).
 7. **B11's rest:** `..=`'s `_inclusiveEnd` through `preludeCall` (checker `expressions/collections.ts`).
-8. **Q12/Q19's rest:** record field positions and `any` field dispatches on `CheckedBody` (`check.ts`, `expressions/structs.ts`); `requiredFields` through the checker surface (`.dependency-cruiser.mjs`).
+8. **Q12/Q19's rest:** record field positions and `any` field dispatches on `CheckedBody` (`check.ts`, `expressions/structs/structs.ts`); `requiredFields` through the checker surface (`.dependency-cruiser.mjs`).
 9. **Operator classification, one home:** export `BinaryOperatorOf` from `syntax/operators.ts`, write `ImplicitOperator = BinaryOperatorOf<'order' | 'membership'>`, move `isImplicitOperator` beside `isChainingOperator`; build a single binary's `ComparisonLink` in `syntax/expressions/comparisons.ts`; share `fitArguments`/`typesText` between `calls/resolve.ts` and `resolution/implicit.ts`.
 10. **`rules/iteration.ts`:** `iteratedItem`'s implicit call passes `span: iterable.span`, so 5101/5003 fall on the iterable.
 11. **Weak side:** remove `NativeWeakSide.whenDisposed`, switch `stdlib/prelude/weak-natives.ts` to `watch`, delete `nativeWeakSideOf`; a production `handleTo(id)` in `definition/values.ts` replaces the inline `{kind: 'handle', object}` literals.

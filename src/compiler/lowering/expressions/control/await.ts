@@ -3,9 +3,9 @@
  * or hands control back to an async caller that started this function in its own segment.
  */
 
-import type { Register } from '../../../definition/operands.ts';
-import type { Await } from '../../syntax/expressions/index.ts';
-import type { FunctionContext } from '../context.ts';
+import type { Register } from '../../../../definition/operands.ts';
+import type { Await } from '../../../syntax/expressions/index.ts';
+import type { FunctionContext } from '../../context.ts';
 
 export function lowerAwait(context: FunctionContext, node: Await): Register {
   const future = context.expression(node.operand);
