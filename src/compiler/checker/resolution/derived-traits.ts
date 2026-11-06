@@ -2,7 +2,7 @@
  * The traits the compiler derives (§3.1, §3.10): met by a rule over what a type is, where no
  * function declared for it meets them. Conformance consults this one table for every constraint
  * (conformance.ts) rather than testing for each trait. Each rule decides by the kind of type it is
- * given (traits/sendable.ts, rules/json-forms/), so a new kind of type is one case in each rule and
+ * given (traits/sendable.ts, rules/boundary/json-forms.ts), so a new kind of type is one case in each rule and
  * nothing here or in conformance.
  *
  * - `Sendable` requires no function, so its rule is all there is to meeting it.

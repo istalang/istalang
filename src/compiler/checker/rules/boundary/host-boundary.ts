@@ -10,20 +10,23 @@
  * and take values as they are.
  */
 
-import type { ModuleId } from '../../program/program.ts';
-import type { ExternConstantDeclaration, FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { NodeOf } from '../../syntax/node.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { isHostExtern } from '../host-externs.ts';
-import { type JsonDirection, jsonTraits } from '../json-form.ts';
-import { meets } from '../resolution/conformance.ts';
-import { wellKnownConstraint } from '../traits/constraints.ts';
-import { isSendable } from '../traits/sendable.ts';
-import type { Type } from '../types/type.ts';
-import { typeText } from '../types/type-text.ts';
-import { futureArgument } from '../types/well-known.ts';
-import { hostSite, useSite } from '../use-site.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import type {
+  ExternConstantDeclaration,
+  FunctionDeclaration,
+} from '../../../syntax/declarations.ts';
+import type { NodeOf } from '../../../syntax/node.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { isHostExtern } from '../../host-externs.ts';
+import { type JsonDirection, jsonTraits } from '../../json-form.ts';
+import { meets } from '../../resolution/conformance.ts';
+import { wellKnownConstraint } from '../../traits/constraints.ts';
+import { isSendable } from '../../traits/sendable.ts';
+import type { Type } from '../../types/type.ts';
+import { typeText } from '../../types/type-text.ts';
+import { futureArgument } from '../../types/well-known.ts';
+import { hostSite, useSite } from '../../use-site.ts';
 
 /** Reports each type of the extern `node` declares, in `module`, that can't cross as JSON. */
 export function checkHostBoundary(

@@ -10,7 +10,7 @@
  * (resolution/derived-traits.ts).
  *
  * Code is sendable only to another instance of the same program; whether a value can go to the
- * host is whether it has a codec (rules/json-forms/), which no function type has. A host type a
+ * host is whether it has a codec (rules/boundary/json-forms.ts), which no function type has. A host type a
  * `dispose` makes disposable has one, yet isn't sendable: its values have an identity.
  */
 

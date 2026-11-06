@@ -9,7 +9,7 @@
  *   an enum's associated type, an alias too (§3.1).
  * - The defaults of a struct's or a variant's fields are checked as the parameters they read as
  *   (§3.1).
- * - An extern a host implements takes and gives only what crosses as JSON (rules/host-boundary.ts),
+ * - An extern a host implements takes and gives only what crosses as JSON (rules/boundary/host-boundary.ts),
  *   and so does `main`, whose outcome its host reads (§9).
  * - A `dispose` a program declares makes its type disposable, on its rules (rules/disposal/disposal.ts).
  * - Every item's annotations are checked where it stands (rules/annotations.ts): a function's, a
@@ -36,8 +36,8 @@ import type { NodeOf } from '../../syntax/node.ts';
 import { parameterSite } from '../../syntax/parameters.ts';
 import type { CheckerContext } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { checkHostBoundary, crossesToHost } from '../rules/boundary/host-boundary.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal/disposal.ts';
-import { checkHostBoundary, crossesToHost } from '../rules/host-boundary.ts';
 import { checkSuite } from '../rules/testing.ts';
 import { namesMemberParameter } from '../traits/struct-keys.ts';
 import type { GenericDeclaration } from '../types/type-arguments.ts';

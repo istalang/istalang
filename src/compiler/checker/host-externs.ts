@@ -2,7 +2,7 @@
  * Externs a host implements (§3.6, §9), as the checker's surface (check.ts) and lowering read
  * them: which externs and extern types are the host's rather than the runtime's, the one rule
  * being who declares them, a program's module or a std one. Whether what they take and give can
- * cross is rules/host-boundary.ts's.
+ * cross is rules/boundary/host-boundary.ts's.
  */
 
 import type { ExternConstantDeclaration, FunctionDeclaration } from '../syntax/declarations.ts';

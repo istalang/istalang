@@ -16,7 +16,7 @@
  *   as an entry its own read recomputes while it is taken over, is searched afresh there, outside
  *   its entry: an entry reached while it runs would answer a stand-in for its whole cycle, and no
  *   stand-in is what a search finds. The derived codec decided
- *   meanwhile (rules/json-forms) is what ends that recursion.
+ *   meanwhile (rules/boundary/json-forms.ts) is what ends that recursion.
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
