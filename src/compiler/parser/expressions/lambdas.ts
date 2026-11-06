@@ -12,8 +12,7 @@
 import type { Expression, Parameter } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { Parser } from '../parser.ts';
-import { parseFunctionKeyword } from '../parts/functions.ts';
-import { parseParameters } from '../parts/parameters.ts';
+import { parseFunctionKeyword, parseParameters } from '../parts/functions.ts';
 
 /** A lambda, starting at `fn` or `async`. */
 export function parseLambda(parser: Parser): Expression {

@@ -20,8 +20,7 @@ import { documentedBy, type WithDocstring } from '../docstrings.ts';
 import { parseDocstringBelow } from '../layout/bodies.ts';
 import type { Parser } from '../parser.ts';
 import { parseDocumentedStatementBody } from '../parts/blocks.ts';
-import { parseFunctionKeyword } from '../parts/functions.ts';
-import { parseParameters } from '../parts/parameters.ts';
+import { parseFunctionKeyword, parseParameters } from '../parts/functions.ts';
 import { parseTypeParameters } from './type-parameters.ts';
 
 export type FunctionForm = 'defined' | 'requirement' | 'extern';
