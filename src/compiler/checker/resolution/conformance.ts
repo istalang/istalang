@@ -50,6 +50,7 @@ import {
   fieldShortfall,
   type Meets,
   meetsStructConstraints,
+  meetsStructModel,
 } from './shortfalls.ts';
 import { type MembersMeeting, membersCall, membersShortfall } from './union-traits.ts';
 import {
@@ -128,7 +129,10 @@ function witnessesOf(
   for (const [index, parameter] of parameters.entries()) {
     const argument = typeArguments[index] ?? errorType;
     const given = { argument, substitution };
-    const struct = () => meetsStructConstraints(site, parameter, given, silentMeets(site, search));
+    const struct = () =>
+      meetsStructConstraints(site, parameter, given, (type, model) =>
+        meetsStructModel(site, type, model, silentMeets(site, search)),
+      );
     if (!(standsForMember(site, parameter, argument, substitution) && struct())) {
       return search.endless === undefined ? 'failed' : 'endless';
     }

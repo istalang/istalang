@@ -296,21 +296,32 @@ export function meetsWith(
   });
 }
 
-/** The key of `type` meeting `goal`, a trait or a struct constraint. */
+/**
+ * The key of `type` meeting `goal`, a trait or a struct constraint, each type in it keyed by `key`:
+ * its key by default, its spelled key where what is kept is spelled through it (root-goals.ts).
+ */
 export function goalKey(
   keys: TypeKeys,
   type: Type,
   goal: Constraint | StructConstraintModel,
+  key: (type: Type) => string = (each) => keys.typeKey(each),
 ): string {
-  const goalText = 'trait' in goal ? constraintKey(keys, goal) : structModelKey(keys, goal);
-  return `${keys.typeKey(type)}:${goalText}`;
+  const goalKeys = { identityOf: keys.identityOf, key };
+  const goalText = 'trait' in goal ? constraintKey(goalKeys, goal) : structModelKey(goalKeys, goal);
+  return `${key(type)}:${goalText}`;
 }
 
-function constraintKey(keys: TypeKeys, { trait, arguments: args }: Constraint): string {
-  return `${keys.identityOf(trait)}<${args.map((arg) => keys.typeKey(arg)).join(',')}>`;
+/** How a goal's parts are keyed: identities, and types by `key`. */
+interface GoalKeys {
+  readonly identityOf: (object: object) => number;
+  readonly key: (type: Type) => string;
 }
 
-function structModelKey(keys: TypeKeys, model: StructConstraintModel): string {
+function constraintKey(keys: GoalKeys, { trait, arguments: args }: Constraint): string {
+  return `${keys.identityOf(trait)}<${args.map(keys.key).join(',')}>`;
+}
+
+function structModelKey(keys: GoalKeys, model: StructConstraintModel): string {
   const entries = [
     ...model.named.map(({ name, rule }) => `${name}${entryRuleKey(keys, rule)}`),
     ...(model.others === undefined ? [] : [`[_]${entryRuleKey(keys, model.others)}`]),
@@ -318,9 +329,9 @@ function structModelKey(keys: TypeKeys, model: StructConstraintModel): string {
   return `struct{${entries.join(',')}}`;
 }
 
-function entryRuleKey(keys: TypeKeys, rule: EntryRule): string {
+function entryRuleKey(keys: GoalKeys, rule: EntryRule): string {
   if (rule.kind === 'type') {
-    return `:${keys.typeKey(rule.type)}`;
+    return `:${keys.key(rule.type)}`;
   }
   const parts = [
     ...rule.traits.map((trait) => constraintKey(keys, trait)),

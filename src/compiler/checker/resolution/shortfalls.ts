@@ -380,29 +380,43 @@ function structEntailed(
   );
 }
 
+/** Whether `argument` meets the struct constraint `model`, reporting at its site when it doesn't. */
+export type StructJudge = (argument: Type, model: StructConstraintModel) => boolean;
+
 /**
  * Whether `argument`, given for `parameter` with the others in `substitution`, meets the struct
- * constraints on it, reporting at `site` what it lacks when it doesn't.
+ * constraints on it, each judged by `judge`, which reports at `site` what it lacks.
  */
 export function meetsStructConstraints(
   site: UseSite,
   parameter: TypeParameter,
   { argument, substitution }: { readonly argument: Type; readonly substitution: Substitution },
-  meets: Meets,
+  judge: StructJudge,
 ): boolean {
   const { checker } = site;
-  for (const model of checker.structConstraintsOf(parameter)) {
-    const mapped = substituteStructConstraint(model, substitution, checker.typeRules);
-    const shortfall = structShortfall(checker, argument, mapped, meets);
-    if (shortfall !== undefined) {
-      if (!meets.reportEndless()) {
-        const constraint = structConstraintText(mapped);
-        site.report((at) =>
-          checkerDiagnostics.unmetStructConstraint(at, shortfall, typeText(argument), constraint),
-        );
-      }
-      return false;
-    }
+  return checker
+    .structConstraintsOf(parameter)
+    .every((model) =>
+      judge(argument, substituteStructConstraint(model, substitution, checker.typeRules)),
+    );
+}
+
+/** Whether `argument` meets the struct constraint `model`, reporting at `site` what it lacks. */
+export function meetsStructModel(
+  site: UseSite,
+  argument: Type,
+  model: StructConstraintModel,
+  meets: Meets,
+): boolean {
+  const shortfall = structShortfall(site.checker, argument, model, meets);
+  if (shortfall === undefined) {
+    return true;
   }
-  return true;
+  if (!meets.reportEndless()) {
+    const constraint = structConstraintText(model);
+    site.report((at) =>
+      checkerDiagnostics.unmetStructConstraint(at, shortfall, typeText(argument), constraint),
+    );
+  }
+  return false;
 }

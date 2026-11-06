@@ -45,7 +45,7 @@ import { useSite } from '../use-site.ts';
 import { meets, silentMeets } from './conformance.ts';
 import { impliedConstraints } from './implied-constraints.ts';
 import { failureDiagnostic, ReductionRequirements } from './reduction-requirements.ts';
-import { meetsStructConstraints } from './shortfalls.ts';
+import { meetsStructConstraints, meetsStructModel } from './shortfalls.ts';
 
 export class TypeParameters {
   readonly #checker: CheckerContext;
@@ -195,7 +195,7 @@ export class TypeParameters {
       site,
       parameter,
       { argument, substitution: typeArguments },
-      silentMeets(site),
+      (type, model) => meetsStructModel(site, type, model, silentMeets(site)),
     );
     for (const constraint of this.constraintsOf(parameter)) {
       meets(
