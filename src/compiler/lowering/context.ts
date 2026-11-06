@@ -28,7 +28,7 @@ import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { Block, Statement } from '../syntax/statements.ts';
 import type { ClosedCall } from './closed-calls.ts';
 import type { CodeWriter } from './code-writer.ts';
-import type { OptionalChains } from './optional-chains.ts';
+import type { OptionalChains } from './optionals.ts';
 import type { HoldScopes } from './statements/holds.ts';
 import type { LoopStack } from './statements/loops.ts';
 import type { VariableRegisters } from './statements/variables.ts';

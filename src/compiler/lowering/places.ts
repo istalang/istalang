@@ -333,7 +333,7 @@ export function lowerDereference(context: FunctionContext, node: Dereference): R
 
 /**
  * The value behind the shared struct a place's root `node` reads, computing it (§3.9); `x->` reads
- * its handle as a link of an optional chain (optional-chains.ts).
+ * its handle as a link of an optional chain (optionals.ts).
  */
 function sharedAccessor(context: FunctionContext, node: Expression): Accessor {
   if (node.kind !== 'Dereference') {

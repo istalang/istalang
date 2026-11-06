@@ -6,7 +6,7 @@
  *   constant: its types are concrete, and its calls target the instances they close to.
  * - A value the checker fitted (§2) is converted and wrapped once it is computed (fits.ts), so no
  *   handler needs to know about fitting. An optional chain is lowered from its last link
- *   (optional-chains.ts); a link's handler only reads its target through `chains.target`.
+ *   (../optionals.ts); a link's handler only reads its target through `chains.target`.
  * - The body's value is returned at its end; a body ending in `return` leaves that last `return`
  *   unreachable but harmless, and the code always ends in one, as loading requires.
  * - The frame (frames.ts) is laid out as the Definition says: the parameters, in order, a pack's
@@ -67,7 +67,7 @@ import {
   ownerDeclaration,
   ownerSubstitution,
 } from '../instances.ts';
-import { OptionalChains } from '../optional-chains.ts';
+import { OptionalChains } from '../optionals.ts';
 import { packElements } from '../packs.ts';
 import { HoldScopes } from '../statements/holds.ts';
 import { LoopStack } from '../statements/loops.ts';
