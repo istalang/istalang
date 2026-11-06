@@ -6,7 +6,8 @@
 
 import { functionKey, parameterKey } from '../../definition/extern-key.ts';
 import type { NativeContext, Natives, WithFutures, WithInstances } from '../../runtime/natives.ts';
-import { declaredResult, given } from '../native-values.ts';
+import { declaredResult } from '../native-results.ts';
+import { given } from '../native-values.ts';
 import type { NativeKeys } from '../std-module.ts';
 
 export const runtimeNatives = (

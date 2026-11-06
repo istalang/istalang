@@ -16,7 +16,8 @@ import {
   Panic,
   type WithFutures,
 } from '../../runtime/natives.ts';
-import { parseResult, text } from '../native-values.ts';
+import { parseResult } from '../native-results.ts';
+import { text } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { millisecondsOf, okMilliseconds, resultMilliseconds } from './fields.ts';
 import { durationText, readDuration, readTime, timeText } from './iso.ts';

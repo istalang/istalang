@@ -11,7 +11,8 @@
 
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
-import { resultError, resultOk, text, variantEntry } from '../native-values.ts';
+import { resultError, resultOk } from '../native-results.ts';
+import { text, variantEntry } from '../native-values.ts';
 import type { NativeKeys } from '../std-module.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the enums' variant names.

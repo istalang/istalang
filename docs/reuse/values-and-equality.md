@@ -20,11 +20,11 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - look up a field's `TypeReference`, a type argument, or a named `TypeId` → `fieldTypeOf`, `typeArgumentOf`, `namedType`, `namedTypeOf` (`src/definition/values/declared-values.ts`)
 - read primitive, tuple or extern native arguments → `given`, `int`, `float`, `text`, `elementOf`, `externPayloadOf`, `textPayloadOf` (`src/stdlib/native-values.ts`)
 - read an optional by its declared variant → `optionalValueOf` (`src/definition/values/declared-values.ts`); an optional `Int` native argument → `optionalInt`, or map an enum argument by variant name → `variantEntry` (`src/stdlib/native-values.ts`)
-- build array, struct, variant or extern results → `arrayOf`, `resultStruct`, `resultVariant`, `resultExtern`, `resultOptional` (`src/stdlib/native-values.ts`)
-- the type entry a native's declared result names → `declaredResult` (`src/stdlib/native-values.ts`)
+- build array, struct, variant or extern results → `arrayOf` (`src/stdlib/native-values.ts`), `resultStruct`, `resultVariant`, `resultExtern`, `resultOptional` (`src/stdlib/native-results.ts`)
+- the type entry a native's declared result names → `declaredResult` (`src/stdlib/native-results.ts`)
 - make or read an `Instance<T>` handle (the instance's name) → `instanceHandle`, `instanceNameOf` (`src/definition/values/instance-handles.ts`)
-- read a result's type argument or build `Ok` native results → `resultTypeArgument`, `resultOk`, `okStruct`, `okExtern` (`src/stdlib/native-values.ts`)
-- build `Err` or `parse` native return values → `resultErr`, `resultError`, `parseFailure`, `parseResult` (`src/stdlib/native-values.ts`)
+- read a result's type argument or build `Ok` native results → `resultTypeArgument`, `resultOk`, `okStruct`, `okExtern` (`src/stdlib/native-results.ts`)
+- build `Err` or `parse` native return values → `resultErr`, `resultError`, `parseFailure`, `parseResult` (`src/stdlib/native-results.ts`)
 - read or build `time.Time` and `time.Duration` millisecond values → `millisecondsOf`, `resultMilliseconds`, `okMilliseconds` (`src/stdlib/time/fields.ts`)
 - read or write a nested part of an immutable `Value` along field positions → `partAt`, `withPart` (`src/runtime/values/parts.ts`)
 - read a nested part of a compile-time `ConstantForm` along a target's steps (a struct pattern's rest built by name), or build a duration form → `formAt`, `durationForm` (`src/compiler/checker/surface/constant-form.ts`)
@@ -39,7 +39,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 
 ## One-way rules
 
-- Build and read structs, variants, `Optional`, `Result` and `Error` by declared name (`declared-values.ts`, `native-values.ts`), never by positional index.
+- Build and read structs, variants, `Optional`, `Result` and `Error` by declared name (`declared-values.ts`, `native-values.ts`, `native-results.ts`), never by positional index.
 - Narrow closures with `closureOf` and handles with `handleTarget`, and make handles with `handleTo` (`src/definition/values/values.ts`), never with ad-hoc `isComposite(v) && v.kind === ...` checks or `{ kind: 'handle', … }` literals.
 - Values are immutable: never mutate `fields`, `elements`, `entries` or `captures`; rebuild with `withPart`, `withChildValues`, or `withEntry`/`withoutEntry`.
 - Built-in `==` and map hashing live in `ValueSemantics` (`src/language/values.ts`), shared by `definition/values/equality.ts` and `checker/surface/constant-form.ts`.

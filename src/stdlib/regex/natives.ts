@@ -28,14 +28,13 @@ import { type NativeContext, type Natives, Panic } from '../../runtime/natives.t
 import { memo } from '../../structures/memo.ts';
 import { codePointPositions } from '../../text/code-points.ts';
 import {
-  arrayOf,
   okStruct,
   parseFailure,
   resultOk,
   resultOptional,
   resultTypeArgument,
-  text,
-} from '../native-values.ts';
+} from '../native-results.ts';
+import { arrayOf, text } from '../native-values.ts';
 import type { NativeKeys } from '../std-module.ts';
 import { split } from './split.ts';
 

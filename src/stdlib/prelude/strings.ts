@@ -14,7 +14,8 @@ import {
   codePointSlice,
   codePointsAt,
 } from '../../text/code-points.ts';
-import { int, resultOptional, text } from '../native-values.ts';
+import { resultOptional } from '../native-results.ts';
+import { int, text } from '../native-values.ts';
 import { atPosition, checkedIndex, selectionOf } from '../positions.ts';
 import { rangeOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';

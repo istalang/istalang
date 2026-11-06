@@ -14,7 +14,8 @@ import {
 import { mapValueOf, type Value } from '../../definition/values/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import { type Native, type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
-import { arrayOf, int, resultOptional } from '../native-values.ts';
+import { resultOptional } from '../native-results.ts';
+import { arrayOf, int } from '../native-values.ts';
 import { checkedIndex } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 

@@ -8,7 +8,8 @@
 import { parameterKey } from '../../definition/extern-key.ts';
 import { conversionFunction, wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithWeakSide } from '../../runtime/natives.ts';
-import { given, resultOptional } from '../native-values.ts';
+import { resultOptional } from '../native-results.ts';
+import { given } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 const referent = parameterKey('T');

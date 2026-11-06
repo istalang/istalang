@@ -127,7 +127,9 @@ function replacedAsPython(
   return changed;
 }
 
-/** Python's `items[start:end:step]` for ends already inside, an end of -1 meaning before the first. */
+/**
+ * Python's `items[start:end:step]` for ends already inside, an end of -1 meaning before the first.
+ */
 function pythonSlice(items: readonly number[], range: RangeValue): number[] {
   const { from, to, forward } = pythonEnds(range, items.length);
   const result: number[] = [];

@@ -7,7 +7,7 @@ import { parameterKey } from '../../definition/extern-key.ts';
 import { instanceNameOf } from '../../definition/values/instance-handles.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithInstances } from '../../runtime/natives.ts';
-import { resultTypeArgument } from '../native-values.ts';
+import { resultTypeArgument } from '../native-results.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 export const instanceNatives = (keys: NativeKeys): Natives<NativeContext & WithInstances> => ({

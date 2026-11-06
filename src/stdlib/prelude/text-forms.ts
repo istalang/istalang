@@ -12,7 +12,8 @@
 import type { Value } from '../../definition/values/values.ts';
 import type { PrimitiveName } from '../../language/primitives.ts';
 import type { Native, NativeContext, Natives } from '../../runtime/natives.ts';
-import { parseResult, text } from '../native-values.ts';
+import { parseResult } from '../native-results.ts';
+import { text } from '../native-values.ts';
 import type { NativeKeys } from '../std-module.ts';
 
 const wholeDigits = /^-?\d+$/u;

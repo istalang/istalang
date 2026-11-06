@@ -20,16 +20,8 @@ import { fieldValueOf, type NamedFields } from '../../definition/values/declared
 import type { Value } from '../../definition/values/values.ts';
 import { wellKnown } from '../../language/well-known.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
-import {
-  int,
-  okExtern,
-  okStruct,
-  parseResult,
-  resultExtern,
-  resultStruct,
-  text,
-  textPayloadOf,
-} from '../native-values.ts';
+import { okExtern, okStruct, parseResult, resultExtern, resultStruct } from '../native-results.ts';
+import { int, text, textPayloadOf } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { millisecondsOf, resultMilliseconds } from './fields.ts';
 

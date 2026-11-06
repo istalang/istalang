@@ -3,10 +3,10 @@
  * source (runtime/random.ts), so a segment that runs again draws the same values
  * (§5).
  *
- * An integer of a range is its start and a whole number of steps, uniform over every one it
- * reaches (ranges.ts). An integer below `n` reads as many bytes as `n - 1` needs, keeps as many low bits as it has, and
- * draws again whenever it lands at `n` or above, so every value is equally likely; each try is
- * likelier than not to land below `n`.
+ * An integer of a range is its start and a whole number of steps, uniform over every one it reaches
+ * (ranges.ts). An integer below `n` reads as many bytes as `n - 1` needs, keeps as many low bits as
+ * it has, and draws again whenever it lands at `n` or above, so every value is equally likely; each
+ * try is likelier than not to land below `n`.
  */
 
 import { wellKnown } from '../../language/well-known.ts';

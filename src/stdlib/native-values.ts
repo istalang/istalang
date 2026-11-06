@@ -1,27 +1,15 @@
 /**
- * The values std natives receive and return, as the runtime holds them: an `Int` is a bigint, a
- * `Float` a number, a `String` a string, a struct its fields in declaration order, an array its
- * elements, an optional the variant of its declared union holding its member, or its `None`
- * variant, told apart by name (`optionalValueOf`), and a value of an extern type the runtime
- * implements its type and a payload.
+ * The values std natives receive, as the runtime holds them: an `Int` is a bigint, a `Float` a
+ * number, a `String` a string, a struct its fields in declaration order, an array its elements, an
+ * optional the variant of its declared union holding its member, or its `None` variant, told apart
+ * by name (`optionalValueOf`), and a value of an extern type the runtime implements its type and a
+ * payload. What a native returns is built as its declared result says (native-results.ts).
  *
  * An argument of another shape is a bug in lowering or loading, never in the program, so reading
  * one throws a TypeError rather than panicking.
  */
 
-import type { TypeId } from '../definition/operands.ts';
-import {
-  errOf,
-  errorOf,
-  type NamedFields,
-  okOf,
-  okTypeOf,
-  optionalOf,
-  optionalValueOf,
-  structOf,
-  typeArgumentOf,
-  variantOf,
-} from '../definition/values/declared-values.ts';
+import { optionalValueOf } from '../definition/values/declared-values.ts';
 import { isComposite, type Value } from '../definition/values/values.ts';
 import type { NativeContext } from '../runtime/natives.ts';
 import { unreachable } from '../structures/unreachable.ts';
@@ -56,16 +44,6 @@ export const int = argumentOf('bigint');
 export const float = argumentOf('number');
 export const text = argumentOf('string');
 
-/** The type entry the extern's declared result names: a struct, an enum or an extern type. */
-export function declaredResult(context: NativeContext): TypeId {
-  return context.resultType ?? unreachable(`${context.name} returns no named type.`);
-}
-
-/** A struct of the extern's declared result type, with `fields` by name. */
-export function resultStruct(context: NativeContext, fields: NamedFields): Value {
-  return structOf(context.types, declaredResult(context), fields);
-}
-
 /** The payload of an argument of an extern type the runtime implements (§3.6). */
 export function externPayloadOf(value: Value | undefined): unknown {
   if (value === undefined || !isComposite(value) || value.kind !== 'extern') {
@@ -78,16 +56,6 @@ export function externPayloadOf(value: Value | undefined): unknown {
 export function textPayloadOf(value: Value | undefined): string {
   const payload = externPayloadOf(value);
   return typeof payload === 'string' ? payload : unreachable('Expected an extern value of text.');
-}
-
-/** A value of extern type entry `type`, holding `payload`. */
-function externOf(type: TypeId, payload: unknown): Value {
-  return { kind: 'extern', type, payload };
-}
-
-/** A value of the extern type the extern declares as its result, holding `payload`. */
-export function resultExtern(context: NativeContext, payload: unknown): Value {
-  return externOf(declaredResult(context), payload);
 }
 
 export function arrayOf(elements: readonly Value[]): Value {
@@ -114,54 +82,6 @@ export function optionalInt(
 }
 
 /**
- * An optional of the extern's declared result type: its member holding `value`, or its `None`
- * without one. A `T?` whose `T` is `None` is `None` itself (§3.5), whose one value is `null`.
- */
-export function resultOptional(context: NativeContext, value: Value | undefined): Value {
-  return context.resultType === undefined
-    ? null
-    : optionalOf(context.types, context.resultType, value);
-}
-
-/** `Ok` of `value`, of the extern's declared `Result` type (§3.12). */
-export function resultOk(context: NativeContext, value: Value): Value {
-  return okOf(context.types, declaredResult(context), value);
-}
-
-/** A struct of the type the extern's declared `Result` holds when `Ok`, with `fields` by name. */
-export function okStruct(context: NativeContext, fields: NamedFields): Value {
-  return structOf(context.types, okType(context), fields);
-}
-
-/** A value of the extern type the extern's declared `Result` holds when `Ok`, holding `payload`. */
-export function okExtern(context: NativeContext, payload: unknown): Value {
-  return externOf(okType(context), payload);
-}
-
-/** The type the extern's declared `Result` holds when `Ok`. */
-function okType(context: NativeContext): TypeId {
-  return okTypeOf(context.types, declaredResult(context));
-}
-
-/** `Err` of `error`, of the extern's declared `Result` type (§3.12). */
-export function resultErr(context: NativeContext, error: Value): Value {
-  return errOf(context.types, declaredResult(context), error);
-}
-
-/**
- * `Err` of an `Error` with `message` and `code`, of the extern's declared `Result` type; its trace
- * is the frames running the native, as an `Error` literal without one gets (§3.12).
- */
-export function resultError(context: NativeContext, message: string, code: string): Value {
-  return errorOf(context.types, declaredResult(context), { message, code, trace: context.trace() });
-}
-
-/** Type argument `position` of the extern's declared result: the `T` of an `Array<T>` or a `T?`. */
-export function resultTypeArgument(context: NativeContext, position: number): TypeId {
-  return typeArgumentOf(context.types, declaredResult(context), position);
-}
-
-/**
  * The entry of `table` for the variant an enum argument holds, by its declared name; a variant the
  * table lacks fails loudly, so a table and its enum can't drift apart unnoticed.
  */
@@ -175,32 +95,4 @@ export function variantEntry<Entry>(
   return entry === undefined
     ? unreachable(`${context.name} has no entry for variant ${name}.`)
     : entry;
-}
-
-/** The code of every `Error` a `parse` returns (§3.10). */
-const parseErrorCode = 'parse';
-
-/** `Err` of an `Error` saying `message`, as a `parse` fails (§3.10). */
-export function parseFailure(context: NativeContext, message: string): Value {
-  return resultError(context, message, parseErrorCode);
-}
-
-/**
- * What a `parse` returns (§3.10): `Ok` of `read`, or, when `source` didn't read as `what` (`an
- * int`), an `Error` saying so.
- */
-export function parseResult(
-  context: NativeContext,
-  source: string,
-  what: string,
-  read: Value | undefined,
-): Value {
-  return read === undefined
-    ? parseFailure(context, `'${source}' is not ${what}.`)
-    : resultOk(context, read);
-}
-
-/** Variant `name` of the enum the extern declares as its result, holding `fields` by name. */
-export function resultVariant(context: NativeContext, name: string, fields: NamedFields): Value {
-  return variantOf(context.types, declaredResult(context), name, fields);
 }

@@ -27,7 +27,10 @@ export function atPosition(key: bigint, length: number): number | undefined {
   return position >= 0n && position < BigInt(length) ? Number(position) : undefined;
 }
 
-/** The span `slice(start, end)` selects in a sequence of `length`: clamped, a negative index counting from the end. */
+/**
+ * The span `slice(start, end)` selects in a sequence of `length`: clamped, a negative index
+ * counting from the end.
+ */
 export function sliceBounds(
   length: number,
   start: bigint,
@@ -45,7 +48,10 @@ export function sliceBounds(
   return { start: from, end: Math.max(from, to) };
 }
 
-/** The items `slice(start, end)` selects of `items`: clamped, a negative index counting from the end. */
+/**
+ * The items `slice(start, end)` selects of `items`: clamped, a negative index counting from the
+ * end.
+ */
 export function sliced<T>(items: readonly T[], start: bigint, end: bigint | undefined): T[] {
   const bounds = sliceBounds(items.length, start, end);
   return items.slice(bounds.start, bounds.end);

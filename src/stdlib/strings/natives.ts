@@ -7,10 +7,10 @@
  * separator does, it steps over code points instead.
  *
  * Case mapping is Unicode's default, never a locale's, and graphemes are segmented by the root
- * locale, so the machine's locale never changes a result; the Unicode tables are the Node build's, so
- * a segment re-run on a newer Node may map a newly assigned code point differently. A string longer
- * than JavaScript can hold is a limit the program ran into, so building one panics (§3.12), as the
- * segment running a native makes every such limit do (runtime/scheduler/segment/limits.ts).
+ * locale, so the machine's locale never changes a result; the Unicode tables are the Node build's,
+ * so a segment re-run on a newer Node may map a newly assigned code point differently. A string
+ * longer than JavaScript can hold is a limit the program ran into, so building one panics (§3.12),
+ * as the segment running a native makes every such limit do (runtime/scheduler/segment/limits.ts).
  */
 
 import { restKey } from '../../definition/extern-key.ts';
@@ -101,7 +101,9 @@ function replacedFirst(s: string, search: string, replacement: string): string {
   return found < 0 ? s : s.slice(0, found) + replacement + s.slice(found + search.length);
 }
 
-/** `s` with every `search` replaced; an empty search is found before each code point and at the end. */
+/**
+ * `s` with every `search` replaced; an empty search is found before each code point and at the end.
+ */
 function replacedAll(s: string, search: string, replacement: string): string {
   if (search === '') {
     return `${codePoints(s)
@@ -116,7 +118,10 @@ function position(whole: string, found: number): bigint {
   return found < 0 ? -1n : BigInt(codePointPositions(whole)(found));
 }
 
-/** What pads `s` to `length` code points: `fill` repeated and cut to fit; none when it is long enough. */
+/**
+ * What pads `s` to `length` code points: `fill` repeated and cut to fit; none when it is long
+ * enough.
+ */
 function padding(s: string, length: bigint, fill: string): string {
   const missing = Number(length) - codePointCount(s);
   const fillLength = codePointCount(fill);

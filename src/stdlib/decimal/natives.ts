@@ -11,15 +11,8 @@ import type { Value } from '../../definition/values/values.ts';
 import { conversionFunction } from '../../language/well-known.ts';
 import type { Native, NativeContext, Natives } from '../../runtime/natives.ts';
 import { roundingType } from '../math/rounding.ts';
-import {
-  int,
-  okExtern,
-  parseResult,
-  resultExtern,
-  text,
-  textPayloadOf,
-  variantEntry,
-} from '../native-values.ts';
+import { okExtern, parseResult, resultExtern } from '../native-results.ts';
+import { int, text, textPayloadOf, variantEntry } from '../native-values.ts';
 import type { NativeKeys } from '../std-module.ts';
 import {
   canonicalText,

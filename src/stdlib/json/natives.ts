@@ -27,7 +27,8 @@ import { codecHelpers, wellKnown } from '../../language/well-known.ts';
 import type { NativeContext, Natives, WithResources } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { externPayloadOf, given, resultErr, resultOk, text } from '../native-values.ts';
+import { resultErr, resultOk } from '../native-results.ts';
+import { externPayloadOf, given, text } from '../native-values.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 
 /** The JSON a host gave a value of one of its types: the value itself, or its resource's (§7). */

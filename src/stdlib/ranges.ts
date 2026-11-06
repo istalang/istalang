@@ -56,7 +56,9 @@ export function bounded(range: RangeValue, doing: string): BoundedRange {
   return { start, end, step: range.step };
 }
 
-/** How many ints `range` reaches: `start`, `start + step`, … before `end` in the step's direction. */
+/**
+ * How many ints `range` reaches: `start`, `start + step`, … before `end` in the step's direction.
+ */
 export function countOf({ start, end, step }: BoundedRange): bigint {
   const distance = step > 0n ? end - start : start - end;
   const stride = step > 0n ? step : -step;
