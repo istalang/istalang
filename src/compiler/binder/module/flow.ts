@@ -21,9 +21,9 @@ import type {
   Expression,
   MatchCase,
   SelectCase,
-} from '../syntax/expressions/index.ts';
-import { type AnchoredSpan, endOf } from '../syntax/positions.ts';
-import type { For, OverFields, While } from '../syntax/statements.ts';
+} from '../../syntax/expressions/index.ts';
+import { type AnchoredSpan, endOf } from '../../syntax/positions.ts';
+import type { For, OverFields, While } from '../../syntax/statements.ts';
 import type { LocalBinder } from './local-binder.ts';
 import { Scope } from './scope.ts';
 
@@ -93,7 +93,9 @@ export function underCondition(
   flow.endUpTo(scope);
 }
 
-/** How a construct with bindings of its own is bound: `define` fills them, then `body` sees them. */
+/**
+ * How a construct with bindings of its own is bound: `define` fills them, then `body` sees them.
+ */
 interface BindingSteps {
   readonly define: Body;
   readonly body: Body;

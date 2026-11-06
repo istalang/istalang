@@ -12,33 +12,33 @@
  * goes to `free` with the reason a scope gave for missing it. A qualified name (`m.Pair`,
  * `Decision.Expired`) goes to `paths` whole: its later parts are resolved once its head is.
  *
- * Every entity is made here, never while linking, once per node it stands for (entities.ts): a
+ * Every entity is made here, never while linking, once per node it stands for (../entities.ts): a
  * segment an edit left alike keeps the identity of everything it declares or refers to.
  *
  * Each category notes the scope it binds each node in (`enter`), so tools can tell afterwards which
  * names are visible where (visibility.ts).
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { type Convention, isUnnamed } from '../../language/naming.ts';
-import { memo, SequenceMemo } from '../../structures/memo.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { Annotatable } from '../syntax/annotations.ts';
-import type { FunctionDeclaration, Module } from '../syntax/declarations/index.ts';
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import { type Convention, isUnnamed } from '../../../language/naming.ts';
+import { memo, SequenceMemo } from '../../../structures/memo.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { Annotatable } from '../../syntax/annotations.ts';
+import type { FunctionDeclaration, Module } from '../../syntax/declarations/index.ts';
 import type {
   Comprehension,
   Expression,
   FieldHeader,
   Lambda,
   Parameter,
-} from '../syntax/expressions/index.ts';
-import { type Identifier, isMissingName, type QualifiedName } from '../syntax/node.ts';
-import type { Pattern } from '../syntax/patterns.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { Block, For, VariableDeclaration } from '../syntax/statements.ts';
-import type { SyntaxNode, SyntaxTree } from '../syntax/tree.ts';
-import type { NamedType, TypeNode } from '../syntax/types/index.ts';
-import { binderDiagnostics } from './diagnostics.ts';
+} from '../../syntax/expressions/index.ts';
+import { type Identifier, isMissingName, type QualifiedName } from '../../syntax/node.ts';
+import type { Pattern } from '../../syntax/patterns.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { Block, For, VariableDeclaration } from '../../syntax/statements.ts';
+import type { SyntaxNode, SyntaxTree } from '../../syntax/tree.ts';
+import type { NamedType, TypeNode } from '../../syntax/types/index.ts';
+import { binderDiagnostics } from '../diagnostics.ts';
 import {
   isAlias,
   ownCallEntity,
@@ -47,8 +47,8 @@ import {
   type VariableOwner,
   type VariantsEntity,
   variableEntity,
-} from './entities.ts';
-import { namingViolation } from './naming.ts';
+} from '../entities.ts';
+import { namingViolation } from '../naming.ts';
 import { functionsNamed, namesMain, noOwnCall } from './own-calls.ts';
 import type { LocalEntity, Miss, Scope, ScopeSnapshot } from './scope.ts';
 import { type Visibility, VisibilityNotes } from './visibility.ts';
@@ -81,14 +81,17 @@ export interface QualifiedPath {
 
 /**
  * Where a path is written, which says what may follow a part nothing qualifies: in an expression a
- * value's member, in a type an associated type (§3.1), naming a pattern's or literal's type nothing.
+ * value's member, in a type an associated type (§3.1), naming a pattern's or literal's type
+ * nothing.
  */
 export type PathRole = 'expression' | 'type' | 'named';
 
 /** What binding one tree produced. */
 export interface LocalResult {
   readonly entities: ReadonlyMap<Identifier, LocalEntity>;
-  /** The variable each async function holds its own call in, when its name before a `.` reads it. */
+  /**
+   * The variable each async function holds its own call in, when its name before a `.` reads it.
+   */
   readonly ownCalls: ReadonlyMap<FunctionDeclaration | Lambda, VariableEntity>;
   /**
    * Names before a `.` that only linking can tell name functions, imported or the prelude's, which
@@ -99,7 +102,9 @@ export interface LocalResult {
   readonly paths: readonly QualifiedPath[];
   readonly diagnostics: readonly Diagnostic<AnchoredSpan>[];
   readonly visibility: Visibility;
-  /** What a bare name denotes when it may be any variant so named: one entity per name per module. */
+  /**
+   * What a bare name denotes when it may be any variant so named: one entity per name per module.
+   */
   readonly variantsNamed: (name: string) => VariantsEntity;
   /** Every entity the tree's scopes defined. */
   readonly defined: ReadonlySet<LocalEntity>;
@@ -117,7 +122,7 @@ export const holdsNoNames = (): void => undefined;
  */
 type TargetOwner = VariableDeclaration | For | FieldHeader | Comprehension | Parameter;
 
-/** Where a pattern's bindings go (patterns.ts). */
+/** Where a pattern's bindings go (../constructs/patterns.ts). */
 export interface PatternBindings {
   /**
    * The scope bindings are defined in; undefined when they were defined already, as a top-level
@@ -132,7 +137,9 @@ export interface PatternBindings {
 export interface Walk {
   readonly expression: (binder: LocalBinder, node: Expression, scope: Scope) => void;
   readonly block: (binder: LocalBinder, node: Block, scope: Scope) => void;
-  /** Resolves the pattern's references in `scope` and defines its bindings where `bindings` says. */
+  /**
+   * Resolves the pattern's references in `scope` and defines its bindings where `bindings` says.
+   */
   readonly pattern: (
     binder: LocalBinder,
     node: Pattern,
@@ -291,7 +298,9 @@ export class LocalBinder {
     }
   }
 
-  /** Binds the annotations on an item; each is a struct value written in the item's scope (§3.16). */
+  /**
+   * Binds the annotations on an item; each is a struct value written in the item's scope (§3.16).
+   */
   annotations(item: Annotatable, scope: Scope): void {
     for (const annotation of item.annotations ?? []) {
       this.walk.expression(this, annotation.value, scope);
@@ -344,7 +353,7 @@ export class LocalBinder {
 
   /**
    * One entity per bare name per module, kept while the module's items are, so an edit inside a
-   * body keeps it (entities.ts).
+   * body keeps it (../entities.ts).
    */
   #variantsNamed(name: string): VariantsEntity {
     const ofModule = variantsByModule.get(this.tree.root.items, () => new Map());

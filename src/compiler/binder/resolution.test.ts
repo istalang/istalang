@@ -1,6 +1,7 @@
 /**
- * What names resolve to (§3.3, §3.4, §3.5, §3.7, §3.10, §3.11, §3.13, §3.14): each case names a use and
- * the declaration it must reach, both by their text and occurrence, so the case reads as its source.
+ * What names resolve to (§3.3, §3.4, §3.5, §3.7, §3.10, §3.11, §3.13, §3.14): each case names a use
+ * and the declaration it must reach, both by their text and occurrence, so the case reads as its
+ * source.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -16,8 +17,8 @@ import {
   preludeProgramOf,
 } from './bind.test-kit.ts';
 import { bindProgram } from './bind.ts';
-import { bindModule } from './bind-module.ts';
 import type { Entity } from './entities.ts';
+import { bindModule } from './module/bind-module.ts';
 
 const lib = 'struct Shape { radius: Int }\nfn helper(): 1\nenum Color { Red, Green }';
 

@@ -3,14 +3,15 @@
  * (§3.1, §3.3, §3.5, §3.10, §3.11, §3.14, §3.17).
  *
  * A declaration's own name is defined by whoever owns its scope: the module for top-level ones
- * (module-scope.ts), the block for a local function. What is bound here is everything inside it.
+ * (module/module-scope.ts), the block for a local function. What is bound here is everything inside
+ * it.
  *
  * - Type parameters are all defined before any constraint or default is bound, so they may refer
  *   to one another (`<A, B is Convertible<A>>`).
  * - A parameter's default may use the parameters before it (§3.3), so each parameter is defined
- *   after its own type and default are bound: its name, and the names its pattern binds, which
- *   the parameter owns, as a declaration owns its targets' (patterns.ts). A field's default may use the fields before it the
- *   same way (§3.1), as a parameter of the function the fields read as
+ *   after its own type and default are bound: its name, and the names its pattern binds, which the
+ *   parameter owns, as a declaration owns its targets' (patterns.ts). A field's default may use the
+ *   fields before it the same way (§3.1), as a parameter of the function the fields read as
  *   (syntax/declarations/field-defaults.ts).
  * - A named lambda's name is visible only inside the lambda (§3.14).
  * - `Self` is defined in a trait's scope, and only there (§3.10).
@@ -18,9 +19,9 @@
  *   around the function, which inside a trait includes `Self`.
  */
 
-import { selfType } from '../../language/well-known.ts';
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import { fieldsFunctionOf } from '../syntax/declarations/field-defaults.ts';
+import { selfType } from '../../../language/well-known.ts';
+import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { fieldsFunctionOf } from '../../syntax/declarations/field-defaults.ts';
 import {
   type AssociatingDeclaration,
   type Declaration,
@@ -33,15 +34,15 @@ import {
   type TypeParameters,
   typeParametersOf,
   type Variant,
-} from '../syntax/declarations/index.ts';
-import type { Lambda, Parameter } from '../syntax/expressions/index.ts';
-import type { Invalid } from '../syntax/node.ts';
-import { endOf } from '../syntax/positions.ts';
-import { bodyOf, type SyntaxNode } from '../syntax/tree.ts';
-import { binderDiagnostics } from './diagnostics.ts';
-import { selfEntity, typeEntity, variableEntity } from './entities.ts';
-import { holdsNoNames, type LocalBinder } from './local-binder.ts';
-import { Scope } from './scope.ts';
+} from '../../syntax/declarations/index.ts';
+import type { Lambda, Parameter } from '../../syntax/expressions/index.ts';
+import type { Invalid } from '../../syntax/node.ts';
+import { endOf } from '../../syntax/positions.ts';
+import { bodyOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { binderDiagnostics } from '../diagnostics.ts';
+import { selfEntity, typeEntity, variableEntity } from '../entities.ts';
+import { holdsNoNames, type LocalBinder } from '../module/local-binder.ts';
+import { Scope } from '../module/scope.ts';
 import { bindTargets, bindVariableValue, spanThrough } from './statements.ts';
 import { bindAliasBody, bindConstraints, bindFields } from './types.ts';
 
@@ -119,7 +120,9 @@ function bindFieldDefaults(
   });
 }
 
-/** Parameters, or fields as their function's parameters, and the node in the tree declaring them. */
+/**
+ * Parameters, or fields as their function's parameters, and the node in the tree declaring them.
+ */
 interface DeclaredParameters {
   readonly node: SyntaxNode;
   readonly parameters: readonly (Parameter | Invalid)[];

@@ -10,11 +10,11 @@ They meet on **node identity**. The binder memoizes one `VariableEntity` per dec
 @answer scope="Binder, checker body storage, and their readers · worktree p4-computed at 5403091 · 2026-11-05"
 @meta locale=en
 @source entities title="Entity kinds and their memo maps" path=src/compiler/binder/entities.ts lines=60:236
-@source localbinder title="LocalBinder: use, declare, record" path=src/compiler/binder/local-binder.ts lines=146:272
-@source scope title="Scope: define, lookup, misses" path=src/compiler/binder/scope.ts lines=67:161
-@source bindmodule title="bindModule: memo on the tree" path=src/compiler/binder/bind-module.ts lines=38:54
-@source statements title="Block pre-pass and variable declarations" path=src/compiler/binder/statements.ts lines=89:143
-@source patterns title="Pattern bindings and or-pattern adoption" path=src/compiler/binder/patterns.ts lines=113:179
+@source localbinder title="LocalBinder: use, declare, record" path=src/compiler/binder/module/local-binder.ts lines=146:272
+@source scope title="Scope: define, lookup, misses" path=src/compiler/binder/module/scope.ts lines=67:161
+@source bindmodule title="bindModule: memo on the tree" path=src/compiler/binder/module/bind-module.ts lines=38:54
+@source statements title="Block pre-pass and variable declarations" path=src/compiler/binder/constructs/statements.ts lines=89:143
+@source patterns title="Pattern bindings and or-pattern adoption" path=src/compiler/binder/constructs/patterns.ts lines=113:179
 @source linker title="Linker: two passes, entityOf" path=src/compiler/binder/link/index.ts lines=65:245
 @source links title="ModuleLinks and resolvedImport" path=src/compiler/binder/link/module-links.ts lines=15:33
 @source inputs title="recordedBindings: each answer an entry input" path=src/compiler/checker/program/program-inputs.ts lines=67:95

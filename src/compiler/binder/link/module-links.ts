@@ -8,9 +8,9 @@ import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { ModuleBindings } from '../bind-module.ts';
 import type { Entity } from '../entities.ts';
-import type { ImportPlaceholder, LocalEntity } from '../scope.ts';
+import type { ModuleBindings } from '../module/bind-module.ts';
+import type { ImportPlaceholder, LocalEntity } from '../module/scope.ts';
 
 export interface ModuleLinks {
   /** The module linked. */

@@ -2,8 +2,8 @@
  * The binder's entry: the names of a whole program, bound (§3.4, §3.11, §3.13).
  *
  * Binding runs in two steps with different lifetimes:
- * - Each module is bound on its own and memoized on its tree (bind-module.ts), so an edit rebinds
- *   only the module it touched.
+ * - Each module is bound on its own and memoized on its tree (module/bind-module.ts), so an edit
+ *   rebinds only the module it touched.
  * - Linking resolves what crosses modules: imports, the prelude, variants named by expected type,
  *   qualified names. It is cheap next to binding a module, so it is redone for each Program and
  *   memoized on it.
@@ -14,9 +14,9 @@
 
 import { memo } from '../../structures/memo.ts';
 import type { Program } from '../program/program.ts';
-import { bindModule } from './bind-module.ts';
 import type { Bindings } from './entities.ts';
 import { link } from './link/index.ts';
+import { bindModule } from './module/bind-module.ts';
 
 const linked = new WeakMap<Program, Bindings>();
 

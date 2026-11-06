@@ -63,8 +63,8 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - Add a boolean flag (e.g., `inSpawnCallee?: boolean`) on `InfixParselet` and derive `calleeStep` in `expression.ts` from `infixParselets` instead of maintaining the duplicate `calleeSteps` `Set`.
 5. **Decouple precedence property test oracle from parser helpers (D210 — `parser/expressions/precedence.test-kit.ts`):**
    - State right-associative (`'**'`) and prefix-refusal (`'**'`) rules directly in `precedence.test-kit.ts` instead of calling `rightOperandLevel` and `refusesPrefixedLeft` from `syntax/operators.ts`.
-6. **Deduplicate `qualifiedPath` between Parser and Binder (`syntax/expressions/index.ts`, `parser/parts/names.ts`, `binder/expressions.ts`):**
-   - Move `qualifiedPath(expression: Expression): QualifiedName | undefined` into `src/compiler/syntax/expressions/index.ts` and call it from `parser/parts/names.ts` (or directly in `parser/annotations.ts` and `parser/expressions/postfix.ts`) and `binder/expressions.ts` (deleting `qualifiedPathOf`).
+6. **Deduplicate `qualifiedPath` between Parser and Binder (`syntax/expressions/index.ts`, `parser/parts/names.ts`, `binder/constructs/expressions.ts`):**
+   - Move `qualifiedPath(expression: Expression): QualifiedName | undefined` into `src/compiler/syntax/expressions/index.ts` and call it from `parser/parts/names.ts` (or directly in `parser/annotations.ts` and `parser/expressions/postfix.ts`) and `binder/constructs/expressions.ts` (deleting `qualifiedPathOf`).
 7. **Move test-module path check out of `program.ts` into `LocatedModule` (D197 — `program/program.ts`, `cli/file-loader.ts`, `binder/diagnostics.ts`):**
    - Add `readonly isTest?: boolean` to `LocatedModule` and `readonly isTest: boolean` to `ProgramModule` (derived in `cli/file-loader.ts` from `testModuleSuffix`, with `isTestModule(program, id)` reading the module's flag or falling back for tests), and use `testModuleSuffix` in `binder/diagnostics.ts` (code 4015).
 

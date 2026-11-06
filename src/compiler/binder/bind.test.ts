@@ -26,8 +26,8 @@ import {
   resolvedNames,
 } from './bind.test-kit.ts';
 import { bindProgram } from './bind.ts';
-import { bindModule } from './bind-module.ts';
 import { binderDiagnostics as d } from './diagnostics.ts';
+import { bindModule } from './module/bind-module.ts';
 
 const corpus = { 'names/main': namesMain, 'names/lib': namesLib };
 

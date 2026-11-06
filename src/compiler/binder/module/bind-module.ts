@@ -6,20 +6,20 @@
  *
  * The result depends on the tree alone, so it is memoized on the tree. A Program snapshot that
  * reuses an unchanged tree reuses its bindings with it. An edited module is bound again whole, but
- * an entity is made once per node it stands for (entities.ts), so every segment the edit left alike
- * keeps its entities, and every result derived from them, without anything being invalidated.
+ * an entity is made once per node it stands for (../entities.ts), so every segment the edit left
+ * alike keeps its entities, and every result derived from them, without anything being invalidated.
  */
 
-import { memo } from '../../structures/memo.ts';
-import type { SyntaxTree } from '../syntax/tree.ts';
-import { bindDeclaration, bindFunction } from './declarations.ts';
-import { bindExpression } from './expressions.ts';
+import { memo } from '../../../structures/memo.ts';
+import type { SyntaxTree } from '../../syntax/tree.ts';
+import { bindDeclaration, bindFunction } from '../constructs/declarations.ts';
+import { bindExpression } from '../constructs/expressions.ts';
+import { bindPattern } from '../constructs/patterns.ts';
+import { bindBlock } from '../constructs/statements.ts';
+import { bindType } from '../constructs/types.ts';
 import { LocalBinder, type LocalResult, type Walk } from './local-binder.ts';
 import { defineModuleScope, type ModuleScope } from './module-scope.ts';
-import { bindPattern } from './patterns.ts';
 import { universe } from './scope.ts';
-import { bindBlock } from './statements.ts';
-import { bindType } from './types.ts';
 
 const walk: Walk = {
   expression: bindExpression,

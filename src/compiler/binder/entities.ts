@@ -84,7 +84,9 @@ export interface VariableEntity {
   readonly owner: VariableOwner;
 }
 
-/** The local `fn` or named lambda whose own name `variable` is; undefined for any other variable. */
+/**
+ * The local `fn` or named lambda whose own name `variable` is; undefined for any other variable.
+ */
 export function localFunctionOf(
   variable: VariableEntity,
 ): FunctionDeclaration | Lambda | undefined {
@@ -164,7 +166,9 @@ export type Entity =
 /** What names may follow and a dot: a module's namespace, or an enum's variants. */
 export type Qualifier = NamespaceEntity | (TypeEntity & { readonly declaration: EnumDeclaration });
 
-/** Whether `entity` is a qualifier itself; an alias may stand for one (binder/link/qualifiers.ts). */
+/**
+ * Whether `entity` is a qualifier itself; an alias may stand for one (binder/link/qualifiers.ts).
+ */
 export function qualifies(entity: Entity): entity is Qualifier {
   return (
     entity.kind === 'namespace' ||

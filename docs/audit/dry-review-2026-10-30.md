@@ -218,17 +218,17 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 11. `src/compiler/binder/`
 
-- **Three ad-hoc `name.text === '_'` checks in `LocalBinder` instead of `isUnnamed` (`src/compiler/binder/local-binder.ts`, `src/language/naming.ts`):**
+- **Three ad-hoc `name.text === '_'` checks in `LocalBinder` instead of `isUnnamed` (`src/compiler/binder/module/local-binder.ts`, `src/language/naming.ts`):**
   - `LocalBinder.use` (twice) and `LocalBinder.declare` check `name.text === '_'` directly instead of calling `isUnnamed(name.text)` (`src/language/naming.ts`).
   - **Done** (`fast-wins`): `use` and `declare` call `isUnnamed`; `docs/reuse/modules-and-names.md` gains the one-way rule.
-- **Duplicate qualification predicates `mayQualify` and `qualifies` (`src/compiler/binder/local-binder.ts`, `src/compiler/binder/link.ts`; related to `B25`):**
+- **Duplicate qualification predicates `mayQualify` and `qualifies` (`src/compiler/binder/module/local-binder.ts`, `src/compiler/binder/link.ts`; related to `B25`):**
   - `mayQualify(head)` in `local-binder.ts` and `qualifies(entity)` in `link.ts` duplicate the check `entity.kind === 'namespace' || (entity.kind === 'type' && entity.declaration.kind === 'EnumDeclaration')` instead of sharing `qualifies` from `entities.ts`.
   - **Done** (`fast-wins`): `qualifies` moved to `entities.ts`; `mayQualify` adds only what a head unlinked yet may be (none, or an import) and asks `qualifies` for the rest.
 - **Duplicate namespace-to-module resolution in `Linker.#importedBy` and `language-service/namespaces.ts` (`src/compiler/binder/link.ts`, `src/language-service/namespaces.ts`):**
   - `Linker.#importedBy(namespace)` (`link.ts`) and `importedModule(program, bindings, namespace)` (`language-service/namespaces.ts`) compute the exact same lookup (`program.modules.get(importer)?.imports.get(namespace.declaration)`). Exposing `importedBy` on `Bindings` would eliminate the duplicate helper in `language-service/`.
-- **`bindTrait` misses annotations on `Invalid` trait members (`src/compiler/binder/declarations.ts`; widens `Q36`):**
+- **`bindTrait` misses annotations on `Invalid` trait members (`src/compiler/binder/constructs/declarations.ts`; widens `Q36`):**
   - `Q36` notes that list sites skipping `Invalid` items must remember to bind their rejected annotations (`bindModule`, `bindBlock`, `bindRejectedAnnotations` in `expressions.ts`). In `bindTrait` (`declarations.ts`), `bindFields` binds annotations on non-function members (including `Invalid` only because `Invalid !== 'FunctionDeclaration'`), which is fragile and implicit compared to a single generic rule for `Invalid` annotations.
-- **Repeated array-spreading multimaps in `functionSets` and `Linker.#index` (`src/compiler/binder/module-scope.ts`, `src/compiler/binder/link.ts`):**
+- **Repeated array-spreading multimaps in `functionSets` and `Linker.#index` (`src/compiler/binder/module/module-scope.ts`, `src/compiler/binder/link.ts`):**
   - `functionSets` (`sets.set(name, [...(sets.get(name) ?? []), declared])`) and `Linker.#index` (`this.#variantsByName.set(name, [...this.variantsNamed(name), variant])`) repeat the copying multimap pattern.
   - **Done** (`fast-wins`): `functionSets` uses `Map.groupBy` (`functionsEntity` takes the name it is grouped by); `Linker.#index` uses `addToGroup` (unit 1).
 
@@ -293,7 +293,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **Manual `MatchCase` / `SelectCase` filtering in `FlowWalk` (`src/compiler/checker/flow/forward.ts`, `src/compiler/syntax/expressions/index.ts`):**
   - `constructs.Match` in `flow/forward.ts` writes `node.cases.filter((each) => each.kind === 'MatchCase')` instead of calling `casesOf(node)` (`src/compiler/syntax/expressions/index.ts`).
-  - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `flow/forward.ts`, `binder/expressions.ts`, `checker/calls/lambda-arguments.ts`, `checker/expressions/control/select.ts`, and `lowering/expressions/control/select.ts` each filter `each.kind === 'SelectCase'` by hand.
+  - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `flow/forward.ts`, `binder/constructs/expressions.ts`, `checker/calls/lambda-arguments.ts`, `checker/expressions/control/select.ts`, and `lowering/expressions/control/select.ts` each filter `each.kind === 'SelectCase'` by hand.
   - **Done** (`fast-wins`): `FlowWalk` calls `casesOf`; `selectCasesOf` beside it serves the five select sites.
 - **Three separate implementations of negative numeric literal unwrapping (`src/compiler/checker/patterns/matching.ts`, `patterns/exhaustiveness/shapes.ts`, `rules/computation.ts`):**
   - `intValueOf` (`patterns/matching.ts`), `literalKey` (`patterns/exhaustiveness/shapes.ts`), and `Computation.#own` / `isNumberLiteral` (`rules/computation.ts`) each inspect `Unary` with `operator === '-'` over numeric literals independently (and `literalKey` formats `-0` as `'-IntegerLiteral:0'` vs. `'IntegerLiteral:0'` for `0`, even though `-0 == 0`).
@@ -416,8 +416,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 29. `src/formatter/`
 
-- **Three separate implementations of leading-space indentation counting (`src/formatter/literals.ts`, `src/compiler/binder/visibility.ts`, `src/compiler/scanner/multi-line.ts`):**
-  - `lineIndentation` (`formatter/literals.ts`), `indentationAt` (`binder/visibility.ts`), and `leadingSpaceCount` (`scanner/multi-line.ts`) each match leading spaces with a regex on a line slice, and `literals.ts` (`lineIndentation`) and `comments.ts` (`describeComment`) compute `offset - columnOf(source, offset)` instead of calling `lineStartAt(source.text, offset)` (`src/text/line-map.ts`).
+- **Three separate implementations of leading-space indentation counting (`src/formatter/literals.ts`, `src/compiler/binder/module/visibility.ts`, `src/compiler/scanner/multi-line.ts`):**
+  - `lineIndentation` (`formatter/literals.ts`), `indentationAt` (`binder/module/visibility.ts`), and `leadingSpaceCount` (`scanner/multi-line.ts`) each match leading spaces with a regex on a line slice, and `literals.ts` (`lineIndentation`) and `comments.ts` (`describeComment`) compute `offset - columnOf(source, offset)` instead of calling `lineStartAt(source.text, offset)` (`src/text/line-map.ts`).
   - **Done** (`p5-indented`): `leadingSpaceCount` and `indentationAt` (`text/line-map.ts`) are the one home, which the scanner, the binder and the formatter call; `describeComment` reads `lineStartAt`. Indentation is spaces only (§2), so the binder's count no longer takes tabs.
 - **Duplicate bracketed-child classification between `formatter/bodies.ts` (`bracketKinds`, `unbracketedChildren`) and `formatter/brackets.ts` (`inBracketsUnder`):**
   - `unbracketedChildren` (`bodies.ts`) and `inBracketsUnder` (`brackets.ts`) independently list which node kinds (`ArrayLiteral`, `MapLiteral`, `Comprehension`, `Tuple`, `Parenthesized`, `StructLiteral`, `NewStructLiteral`) and which child positions (`Call.callee`, `Index.target`) stand inside vs. outside brackets.

@@ -24,15 +24,15 @@
  * moment, though the scope went on to define more.
  */
 
-import { primitiveNames } from '../../language/primitives.ts';
-import { memo } from '../../structures/memo.ts';
+import { primitiveNames } from '../../../language/primitives.ts';
+import { memo } from '../../../structures/memo.ts';
 import type {
   FunctionDeclaration,
   ImportedName,
   NamedImport,
-} from '../syntax/declarations/index.ts';
-import type { Lambda } from '../syntax/expressions/index.ts';
-import type { Entity, PrimitiveEntity } from './entities.ts';
+} from '../../syntax/declarations/index.ts';
+import type { Lambda } from '../../syntax/expressions/index.ts';
+import type { Entity, PrimitiveEntity } from '../entities.ts';
 
 /** `a`, or `a as b`, in `import a from 'path'`, until linking finds the export it names. */
 export interface ImportPlaceholder {
@@ -43,7 +43,9 @@ export interface ImportPlaceholder {
 
 const placeholders = new WeakMap<ImportedName, ImportPlaceholder>();
 
-/** The placeholder of `imported`, of `declaration`: one per name, as entities are (entities.ts). */
+/**
+ * The placeholder of `imported`, of `declaration`: one per name, as entities are (../entities.ts).
+ */
 export function importPlaceholder(
   imported: ImportedName,
   declaration: NamedImport,

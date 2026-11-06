@@ -90,8 +90,8 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
     ```
   - Because `cursor.closesEnclosing('}')` checks `this.#enclosing.some((region) => region.closer === '}')` *before* checking whether `next.kind === cursor.closer && cursor.ownsCloser`, whenever a multi-line `{ … }` block expression is nested inside another `{ … }` block expression (or inside parentheses that are themselves inside a `{ … }` block), the inner block's own closing `}` on a new line matches the outer block's `'}'` in `#enclosing`! `placeOfNextLine` returns `'outside'` instead of `'ownCloser'`, `moveToItem` refuses to `crossLineBreak()` onto the `}`, `parseEnclosedIn` fails to see `}` (reporting 2002 unclosed `{`), and the outer block prematurely closes on the inner `}`.
   - Checking `if (next.kind === cursor.closer && cursor.ownsCloser) return 'ownCloser'` *before* `cursor.closesEnclosing(next.kind)` (and stopping `closesEnclosing` at a region that `ownsCloser` for a bracket) fixes the root cause.
-- **Duplicate `qualifiedPath` extraction in Parser and Binder (`src/compiler/parser/parts/names.ts` vs. `src/compiler/binder/expressions.ts`):**
-  - `parser/parts/names.ts` defines `qualifiedPath(expression: Expression): QualifiedName | undefined` (walking non-optional `MemberAccess` chains down to an `Identifier`), and `binder/expressions.ts` defines an identical `qualifiedPathOf(node: MemberAccess): QualifiedName | undefined`. Moving `qualifiedPathOf` into `src/compiler/syntax/expressions/` lets both phases share it.
+- **Duplicate `qualifiedPath` extraction in Parser and Binder (`src/compiler/parser/parts/names.ts` vs. `src/compiler/binder/constructs/expressions.ts`):**
+  - `parser/parts/names.ts` defines `qualifiedPath(expression: Expression): QualifiedName | undefined` (walking non-optional `MemberAccess` chains down to an `Identifier`), and `binder/constructs/expressions.ts` defines an identical `qualifiedPathOf(node: MemberAccess): QualifiedName | undefined`. Moving `qualifiedPathOf` into `src/compiler/syntax/expressions/` lets both phases share it.
 - **Duplicate postfix step list in `parseSpawn` (`src/compiler/parser/expressions/expression.ts`, D209):**
   - `parseSpawn` hard-codes `const calleeSteps: ReadonlySet<CursorKind> = new Set(['.', '?.', '->', '?->', '[', '{'])` plus a special case for `<` (`parseTypeApplication`), duplicating the postfix subset of `infixParselets`.
 - **Two separate field swaps in `Parser.withinTemplateValue` (`src/compiler/parser/parser.ts`, D221):**
@@ -340,7 +340,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 ### 5. Cross-Module Dependencies on Extractable Shared Solutions
 
-1. **`qualifiedPath` in Parser and Binder (`src/compiler/parser/parts/names.ts` & `src/compiler/binder/expressions.ts`):** Identical functions walking non-optional `MemberAccess` chains to an `Identifier`; belongs in `src/compiler/syntax/expressions/`.
+1. **`qualifiedPath` in Parser and Binder (`src/compiler/parser/parts/names.ts` & `src/compiler/binder/constructs/expressions.ts`):** Identical functions walking non-optional `MemberAccess` chains to an `Identifier`; belongs in `src/compiler/syntax/expressions/`.
 2. **Time unit constants in Scanner and Stdlib (`src/compiler/scanner/numbers.ts` & `src/stdlib/time/iso.ts`):** Identical millisecond conversion constants; belongs in `src/language/`.
 3. **Ordered primitive comparator in Language and Stdlib (`src/language/values.ts` `compareCodeUnits` & `src/stdlib/prelude/natives.ts` `compareOrdered`):** Identical `<` / `===` comparator.
 4. **Canonical JSON & Versioned Format Envelope in `definition/` (`src/definition/codec.ts`, `format.ts`):** Generic persistence utilities used by `definition/`, `runtime/snapshot/`, and `runtime/boundary/extern-signatures.ts`.
@@ -353,7 +353,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | 5-step implicit conversion (`Fit` vs. `Inference`) | `checker/types/fitting/fit.ts` (`fitOf`) | `checker/inference/infer.ts` (`Inference.match`) (D222) |
 | Binary vs. chained vs. pattern comparisons | `checker/expressions/operators.ts` (`checkBinary`) & `lowering/expressions/operators.ts` (`lowerBinary`) | `checkChainedComparison` / `compared` & `patterns/matching.ts` / `lowering/parts/patterns.ts` (D226) |
 | Module-qualified name `${module}.${name}` | `language/well-known.ts` (`qualifiedName`) | `lowering/tables/names.ts` (`qualifiedNameOf`), `definition/extern-key.ts` (`externKey`) (D174) |
-| Member-access chain → `QualifiedName` | `parser/parts/names.ts` (`qualifiedPath`) | `binder/expressions.ts` (`qualifiedPathOf`) |
+| Member-access chain → `QualifiedName` | `parser/parts/names.ts` (`qualifiedPath`) | `binder/constructs/expressions.ts` (`qualifiedPathOf`) |
 | Millisecond time unit constants | `scanner/numbers.ts` | `stdlib/time/iso.ts` |
 | `<` / `===` ordered comparator | `language/values.ts` (`compareCodeUnits`) | `stdlib/prelude/natives.ts` (`compareOrdered`) |
 | Reading a struct `Value`'s field by name | `stdlib/native-values.ts` (`fieldNamed`) | `runtime/testing/run-tests.ts` (`listedOf`), positional `fieldOf` in `regex/natives.ts` (Q16, Q17, D201) |

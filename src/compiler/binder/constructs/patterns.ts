@@ -7,19 +7,19 @@
  * apart is what stops a pattern from seeing its own bindings.
  *
  * In a `match` case, a bare name binds a new variable when it is camelCase and refers to a variant
- * or a type when it is PascalCase (naming.ts), and each binding is owned by the
+ * or a type when it is PascalCase (../naming.ts), and each binding is owned by the
  * pattern node that binds it. A declaration's or loop's target only binds, so there a bare name
- * always binds (naming.ts then reports a PascalCase one), and every binding is owned by the
+ * always binds (../naming.ts then reports a PascalCase one), and every binding is owned by the
  * declaration, which says whether it is a `let` or a `const`. A qualified name always refers.
  */
 
-import { bindsInPattern } from '../../language/naming.ts';
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import type { Identifier } from '../syntax/node.ts';
-import type { Pattern, RestPattern } from '../syntax/patterns.ts';
-import type { VariableEntity, VariableOwner } from './entities.ts';
-import { holdsNoNames, type LocalBinder, type PatternBindings } from './local-binder.ts';
-import { Scope } from './scope.ts';
+import { bindsInPattern } from '../../../language/naming.ts';
+import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import type { Pattern, RestPattern } from '../../syntax/patterns.ts';
+import type { VariableEntity, VariableOwner } from '../entities.ts';
+import { holdsNoNames, type LocalBinder, type PatternBindings } from '../module/local-binder.ts';
+import { Scope } from '../module/scope.ts';
 
 interface Binding {
   readonly scope: Scope;

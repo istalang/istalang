@@ -42,7 +42,6 @@ import type {
 } from '../../syntax/declarations/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { diagnosticIn } from '../../syntax/positions.ts';
-import type { ModuleBindings } from '../bind-module.ts';
 import { binderDiagnostics } from '../diagnostics.ts';
 import {
   type Bindings,
@@ -53,9 +52,10 @@ import {
   type Qualifier,
   type VariantEntity,
 } from '../entities.ts';
-import type { FreeName, QualifiedPath } from '../local-binder.ts';
+import type { ModuleBindings } from '../module/bind-module.ts';
+import type { FreeName, QualifiedPath } from '../module/local-binder.ts';
+import { noOwnCall } from '../module/own-calls.ts';
 import { undeclaredName } from '../naming.ts';
-import { noOwnCall } from '../own-calls.ts';
 import { type ModuleLinks, resolvedImport } from './module-links.ts';
 import { type AliasLookup, qualifierOf } from './qualifiers.ts';
 import { checkTestImports, meetPrelude } from './top-level-rules.ts';
@@ -306,7 +306,9 @@ class Linker {
     );
   }
 
-  /** A name before a `.` that names imported or prelude functions: none of them can enclose it (§7). */
+  /**
+   * A name before a `.` that names imported or prelude functions: none of them can enclose it (§7).
+   */
   #refuseFunctionHead(id: ModuleId, links: ModuleLinks, head: Identifier): void {
     const entity = this.entityOf(id, head);
     if (entity?.kind === 'functions') {

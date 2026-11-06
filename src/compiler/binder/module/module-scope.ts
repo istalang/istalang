@@ -15,7 +15,7 @@
  *   a bare one chosen by expected type resolve to the same entity.
  */
 
-import { type Convention, isPrivate } from '../../language/naming.ts';
+import { type Convention, isPrivate } from '../../../language/naming.ts';
 import {
   boundName,
   type Declaration,
@@ -24,10 +24,10 @@ import {
   type FunctionDeclaration,
   importedNames,
   type Module,
-} from '../syntax/declarations/index.ts';
-import { type Identifier, isMissingName } from '../syntax/node.ts';
-import { targetNames } from '../syntax/patterns.ts';
-import { binderDiagnostics } from './diagnostics.ts';
+} from '../../syntax/declarations/index.ts';
+import { type Identifier, isMissingName } from '../../syntax/node.ts';
+import { targetNames } from '../../syntax/patterns.ts';
+import { binderDiagnostics } from '../diagnostics.ts';
 import {
   type Entity,
   type FunctionsEntity,
@@ -37,7 +37,7 @@ import {
   type VariantEntity,
   variableEntity,
   variantEntity,
-} from './entities.ts';
+} from '../entities.ts';
 import type { LocalBinder } from './local-binder.ts';
 import { type ImportPlaceholder, importPlaceholder, type LocalEntity, Scope } from './scope.ts';
 
@@ -54,7 +54,9 @@ export interface ModuleScope {
   /** Each enum's variants by name. */
   readonly variants: ReadonlyMap<EnumDeclaration, ReadonlyMap<string, VariantEntity>>;
   readonly exports: ReadonlyMap<string, Entity>;
-  /** The module's own declarations its exports leave out because a leading `_` keeps them private. */
+  /**
+   * The module's own declarations its exports leave out because a leading `_` keeps them private.
+   */
   readonly privates: ReadonlyMap<string, Entity>;
 }
 

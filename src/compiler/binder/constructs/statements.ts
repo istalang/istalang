@@ -5,30 +5,30 @@
  * that declares it, and nothing is hoisted: not a `let`, not a local function (§3.14). Before any
  * statement is bound, the block notes every name it will declare, so a use that comes too early is
  * reported as such rather than as undeclared. When the block ends, its names move to the enclosing
- * block's list of names that have ended (scope.ts).
+ * block's list of names that have ended (module/scope.ts).
  *
  * A local function's name is defined before its body is bound, so it can call itself. `_` as a
  * target holds a value without a name (§3.4).
  */
 
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
-import type { Expression } from '../syntax/expressions/index.ts';
-import { unparenthesized } from '../syntax/expressions/readings.ts';
-import type { Identifier } from '../syntax/node.ts';
-import { targetNames } from '../syntax/patterns.ts';
-import { type AnchoredSpan, endOf } from '../syntax/positions.ts';
+import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../syntax/expressions/readings.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import { targetNames } from '../../syntax/patterns.ts';
+import { type AnchoredSpan, endOf } from '../../syntax/positions.ts';
 import {
   type Block,
   destructures,
   type Statement,
   targetParts,
   type VariableDeclaration,
-} from '../syntax/statements.ts';
-import { bodyOf, type SyntaxNode } from '../syntax/tree.ts';
-import { underCondition, underFields, underLoop } from './flow.ts';
-import { holdsNoNames, type LocalBinder } from './local-binder.ts';
-import { Scope } from './scope.ts';
+} from '../../syntax/statements.ts';
+import { bodyOf, type SyntaxNode } from '../../syntax/tree.ts';
+import { underCondition, underFields, underLoop } from '../module/flow.ts';
+import { holdsNoNames, type LocalBinder } from '../module/local-binder.ts';
+import { Scope } from '../module/scope.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const statementHandlers: Handlers<LocalBinder, Statement, [Scope], void> = {
@@ -68,7 +68,9 @@ const statementHandlers: Handlers<LocalBinder, Statement, [Scope], void> = {
 
 const declaresNothing = (): readonly Identifier[] => [];
 
-/** The names each statement declares in its block: the one list both the pre-pass and binding read. */
+/**
+ * The names each statement declares in its block: the one list both the pre-pass and binding read.
+ */
 const declaredNames: Handlers<undefined, Statement, [], readonly Identifier[]> = {
   VariableDeclaration: (_, node) => node.targets.flatMap(targetNames),
   FunctionDeclaration: (_, node) => [node.name],

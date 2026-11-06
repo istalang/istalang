@@ -60,7 +60,7 @@ tags: [reuse, language, modules, program, binder, names]
 - get a module of a program, its tree and the program's checker, for an editor feature reading types → `checkedModule` (`src/language-service/checked-module.ts`)
 - find the module a namespace import loaded → `importedModule` (`src/language-service/namespaces.ts`)
 - bind a `Program`'s names (memoized per `Program` and per `SyntaxTree`) → `bindProgram` (`src/compiler/binder/bind.ts`)
-- make an entity, once per node it stands for, so it outlives edits elsewhere → `variableEntity`, `ownCallEntity`, `typeEntity`, `selfEntity`, `variantEntity`, `namespaceEntity`, `functionsEntity` (`src/compiler/binder/entities.ts`); an import's placeholder, one per imported name → `importPlaceholder` (`src/compiler/binder/scope.ts`)
+- make an entity, once per node it stands for, so it outlives edits elsewhere → `variableEntity`, `ownCallEntity`, `typeEntity`, `selfEntity`, `variantEntity`, `namespaceEntity`, `functionsEntity` (`src/compiler/binder/entities.ts`); an import's placeholder, one per imported name → `importPlaceholder` (`src/compiler/binder/module/scope.ts`)
 - read a named import's names: the name each binds, its alias or the export's, and the names recovery left whole → `boundName`, `importedNames` (`src/compiler/syntax/declarations/index.ts`); never read `NamedImport.names` as identifiers
 - tell whether a name reaches its entity through a renaming import (`import a as b`), and by which alias → `Bindings.aliasOf` (`src/compiler/binder/entities.ts`)
 - resolve what an `Identifier` denotes or list a module's exports → `Bindings.entityOf`, `Bindings.exportsOf` (`src/compiler/binder/entities.ts`)

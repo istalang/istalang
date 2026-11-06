@@ -5,10 +5,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { idOf, moduleAt, textSpanOf } from '../program/program.test-kit.ts';
-import { type ModuleId, type Program, programModule } from '../program/program.ts';
-import type { Block } from '../syntax/statements.ts';
-import { nodesUnder } from '../syntax/tree.ts';
+import { idOf, moduleAt, textSpanOf } from '../../program/program.test-kit.ts';
+import { type ModuleId, type Program, programModule } from '../../program/program.ts';
+import type { Block } from '../../syntax/statements.ts';
+import { nodesUnder } from '../../syntax/tree.ts';
 import {
   boundCorpus,
   type CorpusProgram,
@@ -16,9 +16,9 @@ import {
   isLookedUp,
   resolvedNames,
   stdProgramOf,
-} from './bind.test-kit.ts';
-import { bindProgram } from './bind.ts';
-import type { Entity } from './entities.ts';
+} from '../bind.test-kit.ts';
+import { bindProgram } from '../bind.ts';
+import type { Entity } from '../entities.ts';
 
 /** A program of the std modules and `main`, which must bind without a diagnostic. */
 function cleanProgram(files: Readonly<Record<string, string>>): Program {

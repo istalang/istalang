@@ -4,14 +4,14 @@
  * and a name naming no enclosing async function denotes no call, which is reported.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { entryFunction } from '../../language/well-known.ts';
-import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
-import type { Lambda } from '../syntax/expressions/index.ts';
-import type { Identifier } from '../syntax/node.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import { binderDiagnostics } from './diagnostics.ts';
-import { localFunctionOf } from './entities.ts';
+import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import { entryFunction } from '../../../language/well-known.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import type { Lambda } from '../../syntax/expressions/index.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { binderDiagnostics } from '../diagnostics.ts';
+import { localFunctionOf } from '../entities.ts';
 import type { LocalEntity } from './scope.ts';
 
 /**
@@ -29,7 +29,9 @@ export function namesMain(name: Identifier, entity: LocalEntity): boolean {
   return entity.kind === 'functions' && name.text === entryFunction;
 }
 
-/** The functions `entity` names: a top-level set of this tree's, or a local `fn` or named lambda. */
+/**
+ * The functions `entity` names: a top-level set of this tree's, or a local `fn` or named lambda.
+ */
 export function functionsNamed(
   entity: LocalEntity | undefined,
 ): readonly (FunctionDeclaration | Lambda)[] | undefined {

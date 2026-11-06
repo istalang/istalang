@@ -12,9 +12,9 @@
  * later bare `T` names the same part as `infer T`, and its type.
  */
 
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import type { AliasBody, Field } from '../syntax/declarations/index.ts';
-import type { Invalid } from '../syntax/node.ts';
+import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import type { AliasBody, Field } from '../../syntax/declarations/index.ts';
+import type { Invalid } from '../../syntax/node.ts';
 import type {
   ConstraintNode,
   MappedField,
@@ -22,11 +22,11 @@ import type {
   StructType,
   TypeCase,
   TypeNode,
-} from '../syntax/types/index.ts';
-import { inferTypesIn } from '../syntax/types/type-matches.ts';
-import { typeEntity } from './entities.ts';
-import { holdsNoNames, type LocalBinder } from './local-binder.ts';
-import { Scope } from './scope.ts';
+} from '../../syntax/types/index.ts';
+import { inferTypesIn } from '../../syntax/types/type-matches.ts';
+import { typeEntity } from '../entities.ts';
+import { holdsNoNames, type LocalBinder } from '../module/local-binder.ts';
+import { Scope } from '../module/scope.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const typeHandlers: Handlers<LocalBinder, TypeNode, [Scope], void> = {
@@ -72,7 +72,9 @@ function bindTypes(binder: LocalBinder, nodes: readonly TypeNode[], scope: Scope
   }
 }
 
-/** What an alias or an associated type stands for: a type, or a type `match`'s subject and cases. */
+/**
+ * What an alias or an associated type stands for: a type, or a type `match`'s subject and cases.
+ */
 export function bindAliasBody(binder: LocalBinder, node: AliasBody, scope: Scope): void {
   if (node.kind !== 'TypeMatch') {
     bindType(binder, node, scope);
@@ -103,7 +105,9 @@ function bindTypeCase(binder: LocalBinder, node: TypeCase, scope: Scope): void {
   bindType(binder, node.type, inner);
 }
 
-/** An anonymous struct type's entries: its fields, then its mapped entries, each in its own scope. */
+/**
+ * An anonymous struct type's entries: its fields, then its mapped entries, each in its own scope.
+ */
 function bindStructType(binder: LocalBinder, node: StructType, scope: Scope): void {
   bindFields(
     binder,

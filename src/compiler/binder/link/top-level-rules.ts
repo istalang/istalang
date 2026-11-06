@@ -6,8 +6,8 @@
  */
 
 import { isTestModule, type ModuleId, type Program } from '../../program/program.ts';
-import type { ModuleBindings } from '../bind-module.ts';
 import { binderDiagnostics } from '../diagnostics.ts';
+import type { ModuleBindings } from '../module/bind-module.ts';
 import { type ModuleLinks, resolvedImport } from './module-links.ts';
 
 /**

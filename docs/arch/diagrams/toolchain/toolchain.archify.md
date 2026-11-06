@@ -13,7 +13,7 @@ Istalang is one layered package in which each phase is a memoized function of an
 @source cruiser title="Layer allow-list" path=.dependency-cruiser.mjs lines=116:166
 @source kindtable title="Exhaustive kind tables" path=src/structures/kind-table.ts lines=1:37
 @source program title="buildProgram: load, scan, parse, resolve imports" path=src/compiler/program/program.ts lines=133:153
-@source bind title="bindProgram and per-module binding" path=src/compiler/binder/bind-module.ts lines=40:54
+@source bind title="bindProgram and per-module binding" path=src/compiler/binder/module/bind-module.ts lines=40:54
 @source link title="Linker: imports, prelude, overloads" path=src/compiler/binder/link/index.ts lines=65:105
 @source lower title="lower: start entries and the worklist" path=src/compiler/lowering/lower.ts lines=46:92
 @source host title="Runtime host API and seams" path=src/runtime/host.ts lines=129:200
@@ -132,7 +132,7 @@ The CLI picks every implementation at its composition root: `memoryStore` or `di
 | --- | --- | --- |
 | Parser parselets | token kind or leading word | `parser/word-parselets.ts`, `parser/expressions/` |
 | Operators | operator text: level, associativity, meaning | `syntax/operators.ts` |
-| Binder handlers | node kind | `binder/declarations.ts`, `expressions.ts`, `statements.ts`, `patterns.ts`, `types.ts` |
+| Binder handlers | node kind | `binder/constructs/`: `declarations.ts`, `expressions.ts`, `statements.ts`, `patterns.ts`, `types.ts` |
 | Checker handlers | node kind (six tables) | `checker/expressions/expressions.ts`, `statements/`, `declarations/`, `types/written/resolve-type.ts` |
 | Flow constructs | node kind | `checker/flow/forward.ts` |
 | Lowering handlers | node kind | `lowering/expressions/expressions.ts`, `lowering/statements/statements.ts` |

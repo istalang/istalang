@@ -1,14 +1,14 @@
 /**
  * Binding names in expressions (§2–§4, §3.11, §3.14). Where the bindings of a condition, case or
- * comprehension are visible is flow.ts's rule.
+ * comprehension are visible is module/flow.ts's rule.
  *
  * `a.b.c` is bound as a qualified name only when its head may be a module namespace or an enum:
  * otherwise every part after the head is a member, which the checker resolves by type. A head
- * naming a function denotes its call instead (§7, local-binder.ts `useBeforeMember`).
+ * naming a function denotes its call instead (§7, module/local-binder.ts `useBeforeMember`).
  */
 
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import { argumentValue } from '../syntax/expressions/arguments.ts';
+import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import type {
   CallArgument,
   Expression,
@@ -16,18 +16,18 @@ import type {
   IndentedValue,
   MatchCase,
   SelectCase,
-} from '../syntax/expressions/index.ts';
-import { casesOf, qualifiedPath, selectCasesOf } from '../syntax/expressions/readings.ts';
-import type { Identifier, Invalid } from '../syntax/node.ts';
+} from '../../syntax/expressions/index.ts';
+import { casesOf, qualifiedPath, selectCasesOf } from '../../syntax/expressions/readings.ts';
+import type { Identifier, Invalid } from '../../syntax/node.ts';
 import {
   bindConditionValue,
   underBindings,
   underCondition,
   underFields,
   underLoop,
-} from './flow.ts';
-import { holdsNoNames, type LocalBinder } from './local-binder.ts';
-import type { Scope } from './scope.ts';
+} from '../module/flow.ts';
+import { holdsNoNames, type LocalBinder } from '../module/local-binder.ts';
+import type { Scope } from '../module/scope.ts';
 
 /** A struct literal's or an indented value's type and entries (§3.1, §2). */
 function bindLiteral(binder: LocalBinder, node: FieldsLiteral | IndentedValue, scope: Scope): void {
@@ -183,7 +183,9 @@ export function bindExpression(binder: LocalBinder, node: Expression, scope: Sco
   handlerOf(expressionHandlers, node)(binder, node, scope);
 }
 
-/** Binds the value each of `nodes` gives: an expression's own, a spread's, or a named argument's. */
+/**
+ * Binds the value each of `nodes` gives: an expression's own, a spread's, or a named argument's.
+ */
 function bindAll(
   binder: LocalBinder,
   nodes: readonly (CallArgument | undefined)[],

@@ -3,10 +3,11 @@
  * editor offers the names visible where the cursor is, and only those.
  *
  * Binding notes, for each node it binds, the scope it binds that node in, as defined at that
- * moment. The scope rules are therefore the binder's alone (flow.ts, statements.ts and the rest),
- * not restated here: what is visible at an offset is what a lookup found while binding the
- * innermost noted node there, so a name declared later in a block, an `is` binding outside the
- * region it flows into, or a pattern's own bindings inside the pattern are never visible.
+ * moment. The scope rules are therefore the binder's alone (flow.ts, ../constructs/statements.ts
+ * and the rest), not restated here: what is visible at an offset is what a lookup found while
+ * binding the innermost noted node there, so a name declared later in a block, an `is` binding
+ * outside the region it flows into, or a pattern's own bindings inside the pattern are never
+ * visible.
  *
  * A note may start later than its node: a construct that makes a scope notes it from where its
  * names become visible (a function after each parameter, a case after its pattern, a block after
@@ -25,9 +26,9 @@
  * or a `for`'s iterable before its body.
  */
 
-import { indentationAt, lineStartAt } from '../../text/line-map.ts';
-import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
-import { nodesAt, parentOf, type SyntaxNode, type SyntaxTree } from '../syntax/tree.ts';
+import { indentationAt, lineStartAt } from '../../../text/line-map.ts';
+import { type AnchoredSpan, spanIn } from '../../syntax/positions.ts';
+import { nodesAt, parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import { type LocalEntity, Scope, type ScopeSnapshot } from './scope.ts';
 
 /** A scope state, noted for a node from where `start` starts on. */
@@ -148,7 +149,10 @@ function goesOn(tree: SyntaxTree, offset: number, { node, start }: TrailingNote)
   );
 }
 
-/** The construct whose header code going on at `node` stands below: an empty node's holder, a body's. */
+/**
+ * The construct whose header code going on at `node` stands below: an empty node's holder, a
+ * body's.
+ */
 function constructOf(tree: SyntaxTree, node: SyntaxNode): SyntaxNode {
   return (isBody(node) ? bodies[node.kind] : parentOf)(tree, node) ?? node;
 }
