@@ -29,7 +29,7 @@
  *   which makes no fit rather than a guess, or it doesn't fit at all.
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { isAssignable } from '../identity/identity.ts';

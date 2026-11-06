@@ -7,7 +7,7 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Inspection, WaitingPoint } from '../instance-state.ts';
 import { locationOf } from '../interpreter/trace.ts';
 import type { Frame } from '../snapshot/objects.ts';

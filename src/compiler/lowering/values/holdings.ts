@@ -18,7 +18,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';
 import { unfoldRecursive } from '../../checker/types/type/computed-types.ts';
 import type { AnyType, Type, UnionType } from '../../checker/types/type/index.ts';

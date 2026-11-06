@@ -22,7 +22,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';
 import type { AnyType, LiteralType, Type, UnionType } from '../../checker/types/type/index.ts';
 import { isPrimitive } from '../../checker/types/type/primitives.ts';

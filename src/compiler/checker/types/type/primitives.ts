@@ -5,7 +5,7 @@
  * `tupleElements` reads `Unit` back as no elements.
  */
 
-import type { PrimitiveName } from '../../../../language/primitives.ts';
+import type { PrimitiveName } from '../../../../foundation/language/primitives.ts';
 import type { ErrorType, PrimitiveType, Type } from './index.ts';
 
 /** The primitive type named `name`. */

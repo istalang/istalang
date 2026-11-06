@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createSourceText } from '../../../../text/source-text.ts';
+import { createSourceText } from '../../../../foundation/text/source-text.ts';
 import { scan } from '../../../scanner/scan.ts';
 import { errorNodes, spanViolations, strayBodies } from '../../../syntax/tree/tree.test-kit.ts';
 import { lines, reported } from '../../parse.test-kit.ts';

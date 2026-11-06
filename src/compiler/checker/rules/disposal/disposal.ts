@@ -17,7 +17,7 @@
  *   test's mock target (§10), checked over a body's calls once it is checked.
  */
 
-import { disposeFunction } from '../../../../language/well-known/implicit-calls.ts';
+import { disposeFunction } from '../../../../foundation/language/well-known/implicit-calls.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Parameter } from '../../../syntax/expressions/index.ts';
 import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';

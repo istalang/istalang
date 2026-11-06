@@ -13,7 +13,7 @@
 
 import { type Entity, localFunctionOf } from '../../../../compiler/binder/entities.ts';
 import { unparenthesizedType } from '../../../../compiler/syntax/types/index.ts';
-import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import type { Candidate } from '../../candidate.ts';
 import type { Cursor } from '../../cursor.ts';
 import type { ParsedPlace } from '../../placeholder.ts';

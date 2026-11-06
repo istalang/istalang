@@ -8,7 +8,7 @@
  * recursive type reads as the alias it was written through, else as its node's label.
  */
 
-import { selfType } from '../../../../language/well-known/index.ts';
+import { selfType } from '../../../../foundation/language/well-known/index.ts';
 import type { TypeAliasDeclaration, TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { RestPattern } from '../../../syntax/patterns.ts';
 import { folded } from '../identity/recursive-types.ts';

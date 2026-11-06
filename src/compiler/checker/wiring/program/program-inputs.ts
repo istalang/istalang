@@ -1,7 +1,7 @@
 /**
  * What checking reads of its Program and its Bindings, as inputs of the checker's revision
- * (structures/entries/): each answer is recorded in the entry computing now, so a later revision
- * takes an entry over whenever what it read still answers alike, however much else changed
+ * (foundation/structures/entries/): each answer is recorded in the entry computing now, so a later
+ * revision takes an entry over whenever what it read still answers alike, however much else changed
  * (docs/work/m6-m7/incremental-checking.md §1, §4).
  *
  * - A module is read in parts (its items, the modules its imports name, a function's body, its
@@ -20,11 +20,11 @@
  *   its module.
  */
 
-import type { LanguageModule } from '../../../../language/well-known/index.ts';
-import type { Entries } from '../../../../structures/entries/index.ts';
-import { sameEntries, sameItems } from '../../../../structures/equality.ts';
-import { memo } from '../../../../structures/memo.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import type { LanguageModule } from '../../../../foundation/language/well-known/index.ts';
+import type { Entries } from '../../../../foundation/structures/entries/index.ts';
+import { sameEntries, sameItems } from '../../../../foundation/structures/equality.ts';
+import { memo } from '../../../../foundation/structures/memo.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Bindings, VariantEntity } from '../../../binder/entities.ts';
 import type { ModuleId, Program } from '../../../program/program.ts';
 import { isStdModule, programModule } from '../../../program/program.ts';

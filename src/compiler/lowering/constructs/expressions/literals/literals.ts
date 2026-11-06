@@ -4,7 +4,7 @@
  */
 
 import type { Register } from '../../../../../definition/operands.ts';
-import { unreachable } from '../../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import { durationForm } from '../../../../checker/surface/constant-form.ts';
 import type { DurationLiteral } from '../../../../syntax/expressions/literals/literals.ts';
 import type { FunctionContext } from '../../../context.ts';

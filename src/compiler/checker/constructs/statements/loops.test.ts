@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { reportedNothing, reportedOnce } from '../../../../diagnostics/diagnostic.test-kit.ts';
+import {
+  reportedNothing,
+  reportedOnce,
+} from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { inFunction, reported } from '../../check.test-kit.ts';
 import { checkerDiagnostics as reports } from '../../diagnostics/index.ts';
 

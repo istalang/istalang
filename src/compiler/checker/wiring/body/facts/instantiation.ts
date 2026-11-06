@@ -8,7 +8,7 @@
  * compile time a field's default for the literal running it.
  */
 
-import { memo } from '../../../../../structures/memo.ts';
+import { memo } from '../../../../../foundation/structures/memo.ts';
 import type { Checker } from '../../../check.ts';
 import type {
   AssignedPart,

@@ -21,9 +21,9 @@ import type { Literal } from '../../compiler/syntax/expressions/literals/literal
 import type { Token } from '../../compiler/syntax/tokens/index.ts';
 import type { SyntaxNode, SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
-import { indentationAt, splitLines } from '../../text/line-map.ts';
-import { createSourceText } from '../../text/source-text.ts';
-import { textOf } from '../../text/span.ts';
+import { indentationAt, splitLines } from '../../foundation/text/line-map.ts';
+import { createSourceText } from '../../foundation/text/source-text.ts';
+import { textOf } from '../../foundation/text/span.ts';
 import { oneLine } from '../layout/lists.ts';
 import type { Printer, Printers } from '../printer.ts';
 

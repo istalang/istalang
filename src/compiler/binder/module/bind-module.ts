@@ -10,7 +10,7 @@
  * alike keeps its entities, and every result derived from them, without anything being invalidated.
  */
 
-import { memo } from '../../../structures/memo.ts';
+import { memo } from '../../../foundation/structures/memo.ts';
 import type { SyntaxTree } from '../../syntax/tree/index.ts';
 import { bindDeclaration, bindFunction } from '../constructs/declarations.ts';
 import { bindExpression } from '../constructs/expressions.ts';

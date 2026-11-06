@@ -7,12 +7,12 @@
  */
 
 import { SemanticTokensBuilder } from 'vscode-languageserver/node';
+import { type LineMap, lineMapOf } from '../../foundation/text/line-map.ts';
+import type { Span } from '../../foundation/text/span.ts';
 import { checkedModule } from '../../language-service/reading/checked-module.ts';
 import { builtKeyTypesOf } from '../../language-service/semantic-tokens/built-keys.ts';
 import { semanticTokensOf } from '../../language-service/semantic-tokens/semantic-tokens.ts';
 import { semanticTypes } from '../../language-service/semantic-tokens/semantic-types.ts';
-import { type LineMap, lineMapOf } from '../../text/line-map.ts';
-import type { Span } from '../../text/span.ts';
 import { moduleIdOfUri } from '../locations.ts';
 import type { Provider } from './provider.ts';
 

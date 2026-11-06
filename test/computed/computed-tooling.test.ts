@@ -11,7 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { parse } from '../../src/compiler/parser/parse.ts';
 import { scan } from '../../src/compiler/scanner/scan.ts';
 import { formatText, formatTree } from '../../src/formatter/format.ts';
-import { createSourceText } from '../../src/text/source-text.ts';
+import { createSourceText } from '../../src/foundation/text/source-text.ts';
 import { brokenText } from '../broken.ts';
 import { soupOf } from '../soup.ts';
 import {

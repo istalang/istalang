@@ -12,7 +12,7 @@
  * argument-dependent lookup, choosing among variant candidates) are the checker's.
  */
 
-import { memo } from '../../structures/memo.ts';
+import { memo } from '../../foundation/structures/memo.ts';
 import type { Program } from '../program/program.ts';
 import type { Bindings } from './entities.ts';
 import { link } from './link/index.ts';

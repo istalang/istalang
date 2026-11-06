@@ -10,7 +10,7 @@
  *   (synthesized/boundary/starts.ts), which its frame's header says from the start.
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, SignatureParameter } from '../../checker/check.ts';
 import type {
   CapturedVariable,

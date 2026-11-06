@@ -6,8 +6,8 @@
  * applies is it plainly undeclared. Each points at the name as written.
  */
 
-import { defineDiagnostics } from '../../diagnostics/catalog.ts';
-import { testModuleSuffix } from '../../language/well-known/testing.ts';
+import { defineDiagnostics } from '../../foundation/diagnostics/catalog.ts';
+import { testModuleSuffix } from '../../foundation/language/well-known/testing.ts';
 
 export const binderDiagnostics = defineDiagnostics('binder', {
   undeclared: {

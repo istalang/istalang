@@ -9,7 +9,7 @@
  * its union's own.
  */
 
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { ConstantForm } from '../../surface/constant-form.ts';

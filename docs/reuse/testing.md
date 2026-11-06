@@ -12,7 +12,7 @@ tags: [reuse, testing, test-kit, arbitraries, fast-check, corpus]
 
 ## Units
 
-- assert reported diagnostic codes and span texts in any phase test → `reportedIn`, `reportedNothing`, `reportedOnce` (`src/diagnostics/diagnostic.test-kit.ts`)
+- assert reported diagnostic codes and span texts in any phase test → `reportedIn`, `reportedNothing`, `reportedOnce` (`src/foundation/diagnostics/diagnostic.test-kit.ts`)
 - scan source text in tests or list non-`end` tokens → `scanText`, `lexemes`, `kindsAndTexts`, `soleToken` (`src/compiler/scanner/scan.test-kit.ts`)
 - check scanner losslessness or malformed-line recovery → `losslessnessViolations`, `scanMalformed`, `scannedPast` (`src/compiler/scanner/scan.test-kit.ts`)
 - dump a `SyntaxNode` as an S-expression → `dump` (`src/compiler/syntax/tree/tree.test-kit.ts`)

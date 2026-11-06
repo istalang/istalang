@@ -11,7 +11,7 @@
  *   as any written call is, so the tag's parameters decide what its values must be.
  */
 
-import { templateFunctions } from '../../../../../language/well-known/implicit-calls.ts';
+import { templateFunctions } from '../../../../../foundation/language/well-known/implicit-calls.ts';
 import type { TemplateLiteral } from '../../../../syntax/expressions/index.ts';
 import {
   constantTextOf,

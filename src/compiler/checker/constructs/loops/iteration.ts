@@ -15,9 +15,9 @@
  *   `(key, value)`, so `for key, value in m:` works directly.
  */
 
-import { collectionFunctions } from '../../../../language/well-known/implicit-calls.ts';
-import { wellKnown } from '../../../../language/well-known/index.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { collectionFunctions } from '../../../../foundation/language/well-known/implicit-calls.ts';
+import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Comprehension, Expression } from '../../../syntax/expressions/index.ts';
 import type { For } from '../../../syntax/statements/index.ts';
 import type { Checker } from '../../check.ts';

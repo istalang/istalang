@@ -16,8 +16,8 @@
  * report about a failed call explains the reason it found.
  */
 
-import { receiverParameter } from '../../../../language/well-known/index.ts';
-import { memo } from '../../../../structures/memo.ts';
+import { receiverParameter } from '../../../../foundation/language/well-known/index.ts';
+import { memo } from '../../../../foundation/structures/memo.ts';
 import {
   type FunctionDeclaration,
   type TypeParameter,

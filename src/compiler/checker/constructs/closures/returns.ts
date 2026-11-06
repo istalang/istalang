@@ -12,7 +12,7 @@
  *   a default or a constant's, is refused.
  */
 
-import { wellKnown } from '../../../../language/well-known/index.ts';
+import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import type { Block, Return } from '../../../syntax/statements/index.ts';
 import { tailExpressionOf, tailNodeOf } from '../../../syntax/statements/readings.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';

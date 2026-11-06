@@ -27,7 +27,7 @@ import type { Token } from '../../../../compiler/syntax/tokens/index.ts';
 import type { SyntaxNode } from '../../../../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
-import { lineStartAt } from '../../../../text/line-map.ts';
+import { lineStartAt } from '../../../../foundation/text/line-map.ts';
 import { codeTokensOf } from '../../../reading/tokens.ts';
 import type { Candidate } from '../../candidate.ts';
 import type { Cursor } from '../../cursor.ts';

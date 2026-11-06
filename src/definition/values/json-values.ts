@@ -22,9 +22,9 @@
  *   form is walked, so deep input is refused instead of overflowing the host's stack.
  */
 
-import { qualifiedName, wellKnown } from '../../language/well-known/index.ts';
-import { memo } from '../../structures/memo.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import { qualifiedName, wellKnown } from '../../foundation/language/well-known/index.ts';
+import { memo } from '../../foundation/structures/memo.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { decodeJson, encodeJson, NestingError } from '../formats/codec.ts';
 import type { TypeId } from '../operands.ts';
 import { hasRole, type TypeDefinition, type TypeReference } from '../tables/types.ts';

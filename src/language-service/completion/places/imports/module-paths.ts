@@ -2,7 +2,7 @@
  * The module paths an import's path may go on with (§3.13), one name at a time: the modules in the
  * folder written so far, and the folders holding more, named with their `/`, so a folder never
  * reads as a module of its name and accepting one goes on to the modules inside. Text out of the
- * path syntax (language/import-paths.ts) goes on with nothing.
+ * path syntax (foundation/language/import-paths.ts) goes on with nothing.
  *
  * A module's canonical name is its path from the project root (program.ts), so the folder is found
  * among the project's modules by name: from the root, or for a relative path from the importer's
@@ -17,8 +17,8 @@ import {
   type Program,
   programModule,
 } from '../../../../compiler/program/program.ts';
-import { importPathOf } from '../../../../language/import-paths.ts';
-import { languageModules } from '../../../../language/well-known/index.ts';
+import { importPathOf } from '../../../../foundation/language/import-paths.ts';
+import { languageModules } from '../../../../foundation/language/well-known/index.ts';
 import type { Candidate } from '../../candidate.ts';
 import type { Cursor } from '../../cursor.ts';
 

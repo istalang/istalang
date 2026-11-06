@@ -11,7 +11,7 @@
  */
 
 import type { Register } from '../../../../definition/operands.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { ArrayStep, PartStep, StructStep } from '../../../checker/surface/checked-pattern.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitImplicitCall } from '../../calls/emit-call.ts';

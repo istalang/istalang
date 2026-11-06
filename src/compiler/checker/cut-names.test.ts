@@ -9,8 +9,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../test/corpus/programs.ts';
-import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
-import { createSourceText } from '../../text/source-text.ts';
+import { reportedOnce } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
+import { createSourceText } from '../../foundation/text/source-text.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../compile.test-kit.ts';
 import { parse } from '../parser/parse.ts';

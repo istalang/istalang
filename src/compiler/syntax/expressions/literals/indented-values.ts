@@ -14,7 +14,7 @@
  * lowering and tools read.
  */
 
-import { memo } from '../../../../structures/memo.ts';
+import { memo } from '../../../../foundation/structures/memo.ts';
 import type {
   ArrayLiteral,
   FieldInitializer,

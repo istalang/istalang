@@ -7,7 +7,7 @@
  * names a form that link lacks.
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import { type LinkForm, optionalOperatorOf } from '../../../syntax/expressions/chains.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

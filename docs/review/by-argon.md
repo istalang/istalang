@@ -18,9 +18,9 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 ### Established Reference Patterns Already in the Codebase
 
-- **`ValueSemantics<Value>` (`src/language/values.ts`)**: Parameterized by `ValueView<Value>` (`shapeOf`, `sameHead`, `headKey`), allowing runtime values (`src/definition/values/equality.ts`) and compile-time constant forms (`src/compiler/checker/constant-form.ts`) to share one implementation of `==`, structural hashing, and map-entry insertion ordering.
+- **`ValueSemantics<Value>` (`src/foundation/language/values.ts`)**: Parameterized by `ValueView<Value>` (`shapeOf`, `sameHead`, `headKey`), allowing runtime values (`src/definition/values/equality.ts`) and compile-time constant forms (`src/compiler/checker/constant-form.ts`) to share one implementation of `==`, structural hashing, and map-entry insertion ordering.
 - **Exhaustiveness Matrix (`src/compiler/checker/constructs/patterns/exhaustiveness/exhaustiveness.ts`)**: Maranget’s usefulness algorithm is parameterized over `Signature<T>` and `Shape`, free of AST or `Checker` types.
-- **Iterative Tarjan SCC (`src/structures/strongly-connected.ts`)**: Shared by the checker’s generic expansion check (`src/compiler/checker/rules/expansion.ts`) and the runtime’s cycle-aware orphan disposal (`src/runtime/lifetimes/orphans.ts`).
+- **Iterative Tarjan SCC (`src/foundation/structures/strongly-connected.ts`)**: Shared by the checker’s generic expansion check (`src/compiler/checker/rules/expansion.ts`) and the runtime’s cycle-aware orphan disposal (`src/runtime/lifetimes/orphans.ts`).
 - **Indentation & Separator Layout Engine (`src/compiler/parser/layout.ts`)**: Parameterized by `ItemRules<Item>`, handling module top-level items, statement blocks, struct fields, enum variants, trait members, match/select cases, one-line bodies, `{…}` block expressions, and `{ a: int; b: int }` entry braces in one loop.
 
 ### Narrow Solutions to Extract and Generalize
@@ -143,11 +143,11 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 ## 5. Modularity: Are the Phases True Plugin Registries?
 
-**Assessment: Halfway.** Dispatch over syntax and instruction kinds is table-driven and exhaustive (`Handlers` in `src/structures/kind-table.ts`), and per-concern state lives in focused units, **but language features are not standalone plugins** — adding a feature slice requires editing **6 to 10 central coordinator modules**.
+**Assessment: Halfway.** Dispatch over syntax and instruction kinds is table-driven and exhaustive (`Handlers` in `src/foundation/structures/kind-table.ts`), and per-concern state lives in focused units, **but language features are not standalone plugins** — adding a feature slice requires editing **6 to 10 central coordinator modules**.
 
 ### What Is Table-Driven Today
 
-- **Exhaustive `Handlers` registries (`src/structures/kind-table.ts`):**
+- **Exhaustive `Handlers` registries (`src/foundation/structures/kind-table.ts`):**
   - Parser: prefix and infix parselets (`src/compiler/parser/grammar/expressions/expression.ts`)
   - Binder: declaration, statement, expression, pattern, and type tables (`src/compiler/binder/`)
   - Checker: `expressionHandlers`, `statementHandlers`, `declarationHandlers`, `typeHandlers`, `patternHandlers`
@@ -181,8 +181,8 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
    - `codec.ts` and `format.ts` are generic canonical-JSON (`lossless-json` + sorted keys + SHA-256 + `{format, version, body}` Zod envelope) persistence utilities with no dependency on bytecode Definitions.
 2. **Stdlib `json.Json` enum marshalling inside `src/definition/values/json-values.ts`**
    - `src/definition/values/json-values.ts` hard-codes `wellKnown.json` (`'json.Json'`) and its 7 variant names (`Null`, `Bool`, `Integer`, `Number`, `Text`, `List`, `Object`), and is imported by both `src/stdlib/json/natives.ts` and `src/runtime/boundary/`.
-3. **Duplicate UTF-16 code-unit comparator in `src/language/values.ts` and `src/definition/formats/codec.ts`**
-   - `byCodeUnits` (`src/language/values.ts`) and `compareCodeUnits` (`src/definition/formats/codec.ts`) are identical functions (`definition` already lists `language` in `foundation` in `.dependency-cruiser.mjs`).
+3. **Duplicate UTF-16 code-unit comparator in `src/foundation/language/values.ts` and `src/definition/formats/codec.ts`**
+   - `byCodeUnits` (`src/foundation/language/values.ts`) and `compareCodeUnits` (`src/definition/formats/codec.ts`) are identical functions (`definition` already lists `language` in `foundation` in `.dependency-cruiser.mjs`).
 4. **Cross-feature imports inside `src/compiler/checker/`**
    - `constructs/patterns/matching.ts` imports `fieldlessStructOf` from `expressions/access/names.ts` and `chooseVariant`, `nameNodeOf` from `expressions/structs/variants.ts`.
    - `constructs/closures/function-values.ts` imports `namedType` from `expressions/structs/variants.ts` (resolving a type named in value position, unrelated to enum variants).
@@ -202,7 +202,7 @@ Ranked by **correctness impact × fan-in (root stability) × blast-radius reduct
 | Priority | Target & Location | Category | Blast Radius | Effort | Sequence / Prerequisite |
 | --- | --- | --- | --- | --- | --- |
 | **1** | **Fix `heldType` + `must-use` for declared structs/enums and `T is Disposable`** (`src/compiler/checker/types/properties/held.ts`, `src/compiler/checker/rules/must-use.ts` — **D108** + silent discard of structs holding `Future`/`Result`/`Disposable`) | Bug / Type-Graph Generalization | 2 files in `checker/` | S | Pass `CheckerContext` + cycle set into `heldType` so declared struct/enum fields and constrained type parameters are checked. |
-| **2** | **Deduplicate leaf helpers (`compareCodeUnits`, `staticName`, `preludeKey`)** (`src/language/values.ts`, `src/definition/formats/codec.ts`, `src/definition/extern-key.ts`, `src/stdlib/prelude/` — **D79, D128**) | DRY | ~12 leaf files | S | Zero-dependency leaf cleanup. |
+| **2** | **Deduplicate leaf helpers (`compareCodeUnits`, `staticName`, `preludeKey`)** (`src/foundation/language/values.ts`, `src/definition/formats/codec.ts`, `src/definition/extern-key.ts`, `src/stdlib/prelude/` — **D79, D128**) | DRY | ~12 leaf files | S | Zero-dependency leaf cleanup. |
 | **3** | **Extract shared entity/type-lookup helpers in `checker/`** (`namedType`, `staticTargetOf`, `fieldlessStructOf`, `isChangeable`) out of `expressions/structs/variants.ts`, `types/traits/conformance.ts`, and `rules/places.ts` | Cohesion / Decoupling | 8 files in `checker/` | S | Removes cross-feature imports between `patterns/`, `closures/`, `expressions/`, and `traits/`. |
 | **4** | **Unify `HeapObject` kind table, Frame view, and Snapshot builder in `runtime/`** (`src/runtime/snapshot/objects.ts`, `snapshot.ts`, `scheduler/instance.ts`, `lifetimes/holders.ts` — **D110, D123, D126**) | Open/Closed Registry & DRY | 6 files in `runtime/` | M | Replaces 6 `switch (object.kind)` blocks and duplicate `frameValues`/`valuesOfFrame` with one `Handlers` table. |
 | **5** | **Generalize `@JsonSkip` to use the `Default` trait** (`src/compiler/checker/rules/annotations.ts`, `src/compiler/checker/rules/json-forms/`, `src/compiler/lowering/synthesized/boundary/decoder.ts`) | Type Generalization | 4 files in `checker/` & `lowering/` | S | Resolve `Default` (plus `Optional`) in the checker and store the `FunctionCall` on `JsonField.skipped` for `Decoder` to call. |

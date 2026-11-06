@@ -11,8 +11,8 @@
  *   would give a future where a value or a finished write is needed, so none may be async.
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
-import { collectionFunctions } from '../../../../language/well-known/implicit-calls.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
+import { collectionFunctions } from '../../../../foundation/language/well-known/implicit-calls.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';

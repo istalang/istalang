@@ -1,8 +1,8 @@
 /**
  * Loads the project's modules from disk, for import paths in the toolchain's syntax (§3.13,
- * language/import-paths.ts): one starting with `./` or `../` goes from the importing file, any
- * other from the project root, and a path out of that syntax names no file here. A module's id is
- * its file's URL, so every path that reaches one file names one module.
+ * foundation/language/import-paths.ts): one starting with `./` or `../` goes from the importing
+ * file, any other from the project root, and a path out of that syntax names no file here. A
+ * module's id is its file's URL, so every path that reaches one file names one module.
  *
  * Locating a file only checks that it is there; the loading core reads it once, when it loads the
  * module. A path to nothing, or to a directory, is simply not a module. Any other error is the
@@ -20,8 +20,8 @@ import {
   type ModuleLoader,
   moduleIdOf,
 } from '../compiler/program/program.ts';
-import { importPathOf } from '../language/import-paths.ts';
-import { isTestModulePath } from '../language/well-known/testing.ts';
+import { importPathOf } from '../foundation/language/import-paths.ts';
+import { isTestModulePath } from '../foundation/language/well-known/testing.ts';
 import { diskFiles, type ProjectFiles } from './project-files.ts';
 
 export const sourceExtension = '.ista';

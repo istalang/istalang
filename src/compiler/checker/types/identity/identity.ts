@@ -8,7 +8,7 @@
  * and a function's looser header (`functionFits`) widen, and constraints compared one by one.
  */
 
-import { sameItems } from '../../../../structures/equality.ts';
+import { sameItems } from '../../../../foundation/structures/equality.ts';
 import { functionFits } from '../type/function-types.ts';
 import type { Constraint, Type } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';

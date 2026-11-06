@@ -6,8 +6,11 @@
  * lowering depend on it without depending on how codecs are found.
  */
 
-import type { CodecHelper } from '../../../language/well-known/codecs.ts';
-import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
+import type { CodecHelper } from '../../../foundation/language/well-known/codecs.ts';
+import {
+  type WellKnownDeclaration,
+  wellKnown,
+} from '../../../foundation/language/well-known/index.ts';
 import type { UseSite } from '../contexts/use-site.ts';
 import type {
   LiteralType,

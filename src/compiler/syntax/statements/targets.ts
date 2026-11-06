@@ -4,7 +4,7 @@
  * loop's header, a parameter), so the binder, the checker and lowering read one destructuring.
  */
 
-import { isUnnamed } from '../../../language/naming.ts';
+import { isUnnamed } from '../../../foundation/language/naming.ts';
 import type { Comprehension, Expression, FieldHeader, Parameter } from '../expressions/index.ts';
 import { isPlace } from '../expressions/places.ts';
 import { itemName, itemValue, unparenthesized } from '../expressions/readings.ts';

@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { createSourceText } from '../../../text/source-text.ts';
+import { createSourceText } from '../../../foundation/text/source-text.ts';
 import { scan } from '../../scanner/scan.ts';
 import { Cursor } from './index.ts';
 

@@ -1,8 +1,8 @@
 /** Inlay hints (language-service/inlay-hints.ts), as LSP's type hints. */
 
 import { InlayHintKind } from 'vscode-languageserver/node';
+import { lineMapOf } from '../../foundation/text/line-map.ts';
 import { inlayHintsIn } from '../../language-service/inlay-hints.ts';
-import { lineMapOf } from '../../text/line-map.ts';
 import { moduleIdOfUri, spanOf } from '../locations.ts';
 import type { Provider } from './provider.ts';
 

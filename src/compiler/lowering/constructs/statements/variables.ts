@@ -21,7 +21,7 @@
  */
 
 import type { Register, TypeId } from '../../../../definition/operands.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { AssignedPart } from '../../../checker/surface/checked-body.ts';
 import type { TargetOwner } from '../../../checker/surface/checked-pattern.ts';
 import type { Type } from '../../../checker/types/type/index.ts';

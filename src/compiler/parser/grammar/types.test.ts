@@ -5,7 +5,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
+import { reportedOnce } from '../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import type { TypeNode } from '../../syntax/types/index.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import { dumpClean, dumpOf, field, int, named, parseAs, reported } from '../parse.test-kit.ts';

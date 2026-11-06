@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import type { Location } from 'vscode-languageserver/node';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
-import { addToGroup } from '../../../structures/groups.ts';
+import { addToGroup } from '../../../foundation/structures/groups.ts';
 import { corpusClient, corpusDocuments } from '../../corpus-client.test-kit.ts';
 import type { TestClient } from '../../server.test-kit.ts';
 import {

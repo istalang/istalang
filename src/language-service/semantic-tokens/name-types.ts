@@ -18,7 +18,7 @@ import {
   type QualifiedName,
 } from '../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
-import { memo } from '../../structures/memo.ts';
+import { memo } from '../../foundation/structures/memo.ts';
 import type { SemanticType } from './semantic-types.ts';
 
 type Role = readonly [Identifier | undefined, SemanticType];

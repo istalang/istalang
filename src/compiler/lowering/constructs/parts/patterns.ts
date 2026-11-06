@@ -19,7 +19,7 @@
  */
 
 import type { Register } from '../../../../definition/operands.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import {
   type CheckedPattern,
   namesBound,

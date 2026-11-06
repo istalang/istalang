@@ -33,7 +33,7 @@ import {
   type SyntaxNode,
   type SyntaxTree,
 } from '../../compiler/syntax/tree/index.ts';
-import { encloses } from '../../text/span.ts';
+import { encloses } from '../../foundation/text/span.ts';
 import {
   type CommentsOf,
   columnOf,

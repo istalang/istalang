@@ -14,7 +14,7 @@
 
 import type { Register } from '../../../definition/operands.ts';
 import type { CodeFunction } from '../../../definition/tables/functions.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ValueSite } from '../../checker/surface/checked-body.ts';
 import { type Fit, singleElement } from '../../checker/types/fitting/fit.ts';
 import type { FunctionType, StructValueType, Type } from '../../checker/types/type/index.ts';

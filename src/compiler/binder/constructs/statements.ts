@@ -11,7 +11,7 @@
  * target holds a value without a name (§3.4).
  */
 
-import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';

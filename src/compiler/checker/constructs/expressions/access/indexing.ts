@@ -10,7 +10,7 @@
  * a key's type makes one, and anything else calls `index`.
  */
 
-import { collectionFunctions } from '../../../../../language/well-known/implicit-calls.ts';
+import { collectionFunctions } from '../../../../../foundation/language/well-known/implicit-calls.ts';
 import type { Index } from '../../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { resolveCall } from '../../../resolution/calls/resolve.ts';

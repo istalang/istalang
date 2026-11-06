@@ -9,7 +9,7 @@
  * conversion records no witnesses: lowering finds them again for each type a value converts from.
  */
 
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
 import type { ResolvedCall } from '../../surface/resolved-call.ts';

@@ -12,9 +12,9 @@
  * running it again, whether the entry noting it was taken over or computed again alike.
  */
 
-import type { EntryTable } from '../../../../structures/entries/index.ts';
-import { sameItems } from '../../../../structures/equality.ts';
-import { memo } from '../../../../structures/memo.ts';
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { sameItems } from '../../../../foundation/structures/equality.ts';
+import { memo } from '../../../../foundation/structures/memo.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type {
   RequiredAssociatedType,

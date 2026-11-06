@@ -25,8 +25,8 @@
  *   more of its members, reads as that alias.
  */
 
-import { sameItems } from '../../../../structures/equality.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { sameItems } from '../../../../foundation/structures/equality.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import { reducedComputed } from '../parts/computed-reduction.ts';
 import {
   boundWithin,

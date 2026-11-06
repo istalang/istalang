@@ -16,7 +16,7 @@
  *   parameter, whose value is its caller's.
  */
 
-import { wellKnown } from '../../../../language/well-known/index.ts';
+import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import type { VariableEntity } from '../../../binder/entities.ts';
 import { localFunctionOf } from '../../../binder/entities.ts';
 import type { Drop } from '../../../syntax/statements/index.ts';

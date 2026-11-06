@@ -40,8 +40,8 @@
  *   `Optional`, so it lives in fitting/fit.ts.
  */
 
-import type { PrimitiveName } from '../../../../language/primitives.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import type { PrimitiveName } from '../../../../foundation/language/primitives.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { TypeEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type {

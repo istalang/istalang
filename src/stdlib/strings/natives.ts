@@ -3,8 +3,8 @@
  *
  * Positions and lengths count code points, as a string's indexing does, while JavaScript counts
  * UTF-16 units: each native works on the UTF-16 text and converts positions at its edge
- * (text/code-points.ts). Where JavaScript would split a code point, as an empty search or
- * separator does, it steps over code points instead.
+ * (foundation/text/code-points.ts). Where JavaScript would split a code point, as an empty search
+ * or separator does, it steps over code points instead.
  *
  * Case mapping is Unicode's default, never a locale's, and graphemes are segmented by the root
  * locale, so the machine's locale never changes a result; the Unicode tables are the Node build's,
@@ -15,15 +15,15 @@
 
 import { restKey } from '../../definition/extern-key.ts';
 import { elementsOf } from '../../definition/values/values.ts';
-import { wellKnown } from '../../language/well-known/index.ts';
-import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
+import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import {
   codePointCount,
   codePointPositions,
   codePointSlice,
   codePoints,
   utf16Offset,
-} from '../../text/code-points.ts';
+} from '../../foundation/text/code-points.ts';
+import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import { sliceBounds } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { arrayOf, int, optionalInt, text } from '../values/arguments.ts';

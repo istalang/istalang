@@ -10,7 +10,7 @@
  * type leaves a type the alias didn't write, so widening, the one other, drops it.
  */
 
-import { sameItems } from '../../../../structures/equality.ts';
+import { sameItems } from '../../../../foundation/structures/equality.ts';
 import type { TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Type } from './index.ts';
 

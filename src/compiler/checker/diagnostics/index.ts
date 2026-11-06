@@ -8,7 +8,7 @@
  * points at its name.
  */
 
-import { defineDiagnostics } from '../../../diagnostics/catalog.ts';
+import { defineDiagnostics } from '../../../foundation/diagnostics/catalog.ts';
 import { boundaryTemplates } from './boundary.ts';
 import { closureTemplates } from './closures.ts';
 import { collectionTemplates } from './collections.ts';

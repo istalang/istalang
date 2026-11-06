@@ -32,7 +32,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 | **Group C** | **Checker Declarations, Field Defaults, Compile-Time Constants, Annotations, JSON & Rules** | `src/compiler/syntax/declarations/field-defaults.ts`<br>`src/compiler/checker/constructs/declarations/{declarations,constants,struct-rules}.ts`<br>`src/compiler/checker/types/properties/held.ts`<br>`src/compiler/checker/rules/{computation,annotations,disposal,must-use,suites}.ts`<br>`src/compiler/checker/rules/json-forms/**`<br>`src/compiler/checker/diagnostics/{boundary,lifetimes}.ts` | **D120, Q5, Q7, Q9, D216**, `waits` on non-blocking `select`, `suites.ts` `madeCalls()`, stale `${name}$` in 5702 |
 | **Group D** | **Patterns, Exhaustiveness, Chained Comparisons & Lowering** | `src/compiler/syntax/patterns.ts`<br>`src/compiler/checker/checked-pattern.ts`<br>`src/compiler/checker/constructs/patterns/**`<br>`src/compiler/checker/resolution/applying/implicit.ts`<br>`src/compiler/checker/constructs/expressions/{operators,optionals,templates}.ts`<br>`src/compiler/lowering/**` (except `lowering/tables/names.ts`) | **B8, D149, Q12, D214, Q19, D224, B11, D226**, `optionalInt` → `buildVariant` |
 | **Group E** | **Runtime: Interpreter, Scheduler, Lifetimes, Snapshot & Testing** | `src/runtime/**` | **D115, D116, D130, D155, D165, D176, D179, D182, D184, D198, D199, D203, D212** |
-| **Group F** | **Foundation, Definition, Stdlib, CLI & Guide Examples** | `src/language/**`<br>`src/text/**`<br>`src/definition/**`<br>`src/compiler/lowering/tables/names.ts`<br>`src/stdlib/**`<br>`docs/guide.md`<br>`test/corpus/spec-examples.ts`<br>`test/spec-suites/purchase.test.ista` | **D100, D174, Q15 (definition+stdlib side), Q16 (definition side), D183, D188, Q17 (definition+stdlib side), D194, D195, D201, D202, D219 (extern-key side)**, time-unit constants, `compareOrdered` |
+| **Group F** | **Foundation, Definition, Stdlib, CLI & Guide Examples** | `src/foundation/language/**`<br>`src/foundation/text/**`<br>`src/definition/**`<br>`src/compiler/lowering/tables/names.ts`<br>`src/stdlib/**`<br>`docs/guide.md`<br>`test/corpus/spec-examples.ts`<br>`test/spec-suites/purchase.test.ista` | **D100, D174, Q15 (definition+stdlib side), Q16 (definition side), D183, D188, Q17 (definition+stdlib side), D194, D195, D201, D202, D219 (extern-key side)**, time-unit constants, `compareOrdered` |
 
 ---
 
@@ -176,7 +176,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - Ensure that when a mock is called within the holder's own instance (`callTargetOf` / `NativeCalls`), a returned host resource value (`testing.handle<T>()`) goes through `arriving(instance, value)` so it is wrapped in a `resource` heap object and disposed when dropped.
 2. **Unify `HeapObject` kind tables and `isRoot` predicate (D165, D198 — `runtime/snapshot/holdings.ts`, `runtime/lifetimes/holders.ts`, `runtime/lifetimes/orphans.ts`, `runtime/lifetimes/disposal.ts`, `runtime/scheduler/instance/heap.ts`, `runtime/scheduler/instance/index.ts`, `runtime/scheduler/instance/futures.ts`):**
    - Export one `isRoot(object: HeapObject | LiveObject): boolean` (`object.kind === 'execution' || object.kind === 'answer'`) from `src/runtime/snapshot/holdings.ts` and use it in `instance/index.ts`, `lifetimes/holders.ts`, `lifetimes/orphans.ts`, and `scheduler/instance/heap.ts`.
-   - Export `FutureState` from `snapshot/objects.ts` (or `holdings.ts`) instead of defining it twice, and use `Handlers` from `src/structures/kind-table.ts` across `holdings.ts` and `disposal.ts`.
+   - Export `FutureState` from `snapshot/objects.ts` (or `holdings.ts`) instead of defining it twice, and use `Handlers` from `src/foundation/structures/kind-table.ts` across `holdings.ts` and `disposal.ts`.
 3. **Distinguish disposed referent from returned call on `weakRef` & unify `WeakSide` handle/id surface (D115, D116 — `runtime/snapshot/objects.ts`, `runtime/scheduler/instance/weak-side.ts`, `runtime/scheduler/segment/native-calls.ts`):**
    - Record why a `weakRef` has no target (or distinguish disposed vs. returned call) so `watch` and `whenDisposed` don't rely on caller convention (D115).
    - Make `WeakSide`'s native-facing methods consistently take and return `Value` handles, and its disposal-facing methods take `number` IDs, so `nativeWeakSideOf` simply forwards (D116).
@@ -199,8 +199,8 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 ### Group F — Foundation, Definition, Stdlib, CLI & Guide Examples
 
 **Owned files:**
-- `src/language/{primitives,static-names,values,well-known}.ts` (+ `*.test.ts`)
-- `src/text/code-points.ts` (+ `*.test.ts`)
+- `src/foundation/language/{primitives,static-names,values,well-known}.ts` (+ `*.test.ts`)
+- `src/foundation/text/code-points.ts` (+ `*.test.ts`)
 - `src/definition/{codec,declared-values,equality,extern-key,json-values,references,types,values}.ts` (+ `*.test.ts`)
 - `src/compiler/lowering/tables/names.ts`
 - `src/stdlib/**`
@@ -210,18 +210,18 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 
 **Tasks in Group F:**
 1. **Unify `qualifiedName` across `language/`, `lowering/tables/names.ts`, and `definition/extern-key.ts` (D174) & make `KeyParameter` passing an enum (D219):**
-   - Use `qualifiedName` from `src/language/well-known/index.ts` in `src/compiler/lowering/tables/names.ts` (`qualifiedNameOf`) and `src/definition/extern-key.ts` (`externKey`).
+   - Use `qualifiedName` from `src/foundation/language/well-known/index.ts` in `src/compiler/lowering/tables/names.ts` (`qualifiedNameOf`) and `src/definition/extern-key.ts` (`externKey`).
    - In `src/definition/extern-key.ts`, replace `reference: boolean; rest?: boolean` on `KeyParameter` with `passing: 'value' | 'reference' | 'rest'`.
 2. **Add `fieldValueOf` and export `variantShape` in `definition/values/declared-values.ts`, and `closureOf` in `definition/values/values.ts` (Q15, Q16, Q17, D201):**
    - Add `fieldValueOf(types, structValue, fieldName)` and export `variantShape` in `src/definition/values/declared-values.ts`.
    - Use them in `src/stdlib/values/arguments.ts` (`fieldNamed`), `src/stdlib/regex/natives.ts` (reading `Regex.pattern` by name instead of `fieldOf(regex, 0)`), `src/definition/values/json-values.ts` (`findJsonType`), and `src/stdlib/json/natives.ts` (`_object`).
    - Add `closureOf(value: Value | undefined)` in `src/definition/values/values.ts` and use it in `src/stdlib/testing/natives.ts`.
-   - Make `valueProblems` in `src/definition/validation/references.ts` iterative (or bounded) and make `ValueSemantics.#sameKeys` in `src/language/values.ts` push onto `pending` or bound key depth (D100).
+   - Make `valueProblems` in `src/definition/validation/references.ts` iterative (or bounded) and make `ValueSemantics.#sameKeys` in `src/foundation/language/values.ts` push onto `pending` or bound key depth (D100).
 3. **Deduplicate time-unit constants and `compareOrdered` (`language/`, `stdlib/prelude/natives.ts`, `stdlib/time/iso.ts`):**
-   - Export `compareCodeUnits` / `compareOrdered` from `src/language/values.ts` and use it in `src/stdlib/prelude/natives.ts`.
-   - Export time-unit millisecond constants from `src/language/well-known/index.ts` (or `src/language/time-units.ts`) and use them in `src/stdlib/time/iso.ts`.
-4. **Fix $O(N)$ array allocation in string length/indexing (D195 — `text/code-points.ts`, `stdlib/prelude/strings.ts`, `stdlib/strings/natives.ts`) & bound `decimal` places/exponent work (D194 — `stdlib/decimal/arithmetic.ts`):**
-   - Add non-allocating `codePointCount(s: string): number` (and `codePointAtPosition`) in `src/text/code-points.ts`, and use them in `src/stdlib/prelude/strings.ts` (`length`, `at`, `index`) and `src/stdlib/strings/natives.ts` (`padding`) so large strings do not crash V8 with OOM.
+   - Export `compareCodeUnits` / `compareOrdered` from `src/foundation/language/values.ts` and use it in `src/stdlib/prelude/natives.ts`.
+   - Export time-unit millisecond constants from `src/foundation/language/well-known/index.ts` (or `src/foundation/language/time-units.ts`) and use them in `src/stdlib/time/iso.ts`.
+4. **Fix $O(N)$ array allocation in string length/indexing (D195 — `foundation/text/code-points.ts`, `stdlib/prelude/strings.ts`, `stdlib/strings/natives.ts`) & bound `decimal` places/exponent work (D194 — `stdlib/decimal/arithmetic.ts`):**
+   - Add non-allocating `codePointCount(s: string): number` (and `codePointAtPosition`) in `src/foundation/text/code-points.ts`, and use them in `src/stdlib/prelude/strings.ts` (`length`, `at`, `index`) and `src/stdlib/strings/natives.ts` (`padding`) so large strings do not crash V8 with OOM.
    - Bound `places` and negative exponent work in `src/stdlib/decimal/arithmetic.ts` so `decimal.divide` and `power` panic immediately on unreasonable precision instead of stalling the host thread for minutes.
 5. **Add `FakeClock` setup and `FakeQueue` revertible-receipt support in `testing.ista` (D183, D188 — `stdlib/testing/testing.ista`, `stdlib/futures/futures.test.ista`, `test/spec-suites/purchase.test.ista`):**
    - Add a `FakeClock` setup helper in `src/stdlib/testing/testing.ista` that mocks both `time.now` and `time.at`, and use it in `futures.test.ista` and `purchase.test.ista` (D188).
@@ -257,7 +257,7 @@ These items touch shared phase contracts (`src/compiler/checker/check.ts`, `src/
 9. **Operator classification, one home:** export `BinaryOperatorOf` from `syntax/expressions/operators.ts`, write `ImplicitOperator = BinaryOperatorOf<'order' | 'membership'>`, move `isImplicitOperator` beside `isChainingOperator`; build a single binary's `ComparisonLink` in `syntax/expressions/comparisons.ts`; share `fitArguments`/`typesText` between `resolution/calls/resolve.ts` and `resolution/applying/implicit.ts`.
 10. **`rules/iteration.ts`:** `iteratedItem`'s implicit call passes `span: iterable.span`, so 5101/5003 fall on the iterable.
 11. **Weak side:** remove `NativeWeakSide.whenDisposed`, switch `stdlib/prelude/weak-natives.ts` to `watch`, delete `nativeWeakSideOf`; a production `handleTo(id)` in `definition/values/values.ts` replaces the inline `{kind: 'handle', object}` literals.
-12. **Test modules:** one test-suffix predicate in `language/well-known/index.ts`, used by `cli/file-loader.ts` and `program.test-kit.ts`; `parse.test.ts` titles become `$document:$line`, and `section` drops its `${path} › ` prefix.
+12. **Test modules:** one test-suffix predicate in `foundation/language/well-known/index.ts`, used by `cli/file-loader.ts` and `program.test-kit.ts`; `parse.test.ts` titles become `$document:$line`, and `section` drops its `${path} › ` prefix.
 
 ### Wave 2 groups
 

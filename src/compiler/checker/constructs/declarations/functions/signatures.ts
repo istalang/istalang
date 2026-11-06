@@ -16,7 +16,7 @@
  *   into gives it an empty array.
  */
 
-import type { Diagnostic } from '../../../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../../../program/program.ts';
 import { isFieldsFunction } from '../../../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';

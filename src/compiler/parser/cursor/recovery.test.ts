@@ -15,7 +15,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
+import { reportedOnce } from '../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import { spanIn } from '../../syntax/tree/positions.ts';
 import { dump, errorNodes, spanViolations } from '../../syntax/tree/tree.test-kit.ts';

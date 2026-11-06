@@ -23,7 +23,7 @@
  *   from the expected type, else from its declaration's defaults (`expectedNominal`).
  */
 
-import { wellKnown } from '../../../../language/well-known/index.ts';
+import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';

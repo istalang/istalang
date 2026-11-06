@@ -8,7 +8,7 @@
  */
 
 import { z } from 'zod';
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import type { ConstantId, FunctionId, Label, Register, TypeId } from '../operands.ts';
 import { type Callee, callInstructions } from './calls.ts';
 import { controlInstructions } from './control.ts';

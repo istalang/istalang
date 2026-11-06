@@ -7,8 +7,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../../../../diagnostics/diagnostic.test-kit.ts';
-import { createSourceText } from '../../../../../text/source-text.ts';
+import { reportedOnce } from '../../../../../foundation/diagnostics/diagnostic.test-kit.ts';
+import { createSourceText } from '../../../../../foundation/text/source-text.ts';
 import { scan } from '../../../../scanner/scan.ts';
 import type { StructDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { VariableDeclaration } from '../../../../syntax/statements/index.ts';

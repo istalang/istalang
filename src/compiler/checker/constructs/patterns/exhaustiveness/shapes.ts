@@ -16,7 +16,7 @@
  *   looked into.
  */
 
-import { unreachable } from '../../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../../../syntax/expressions/literals/numbers.ts';
 import type { Checker } from '../../../check.ts';

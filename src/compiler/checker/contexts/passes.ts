@@ -18,8 +18,8 @@
  *   when no pass reaches it (`settled`).
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { memo } from '../../../structures/memo.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import { memo } from '../../../foundation/structures/memo.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Type } from '../types/type/index.ts';

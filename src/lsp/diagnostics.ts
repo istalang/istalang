@@ -14,9 +14,9 @@
 import type { Connection, Diagnostic as LspDiagnostic } from 'vscode-languageserver/node';
 import { DiagnosticSeverity } from 'vscode-languageserver/node';
 import type { ModuleId } from '../compiler/program/program.ts';
-import type { Diagnostic, Severity } from '../diagnostics/diagnostic.ts';
+import type { Diagnostic, Severity } from '../foundation/diagnostics/diagnostic.ts';
+import type { SourceText } from '../foundation/text/source-text.ts';
 import type { Workspace } from '../language-service/workspace.ts';
-import type { SourceText } from '../text/source-text.ts';
 import { rangeOf } from './locations.ts';
 
 /** How long changes must pause before a pass runs. */

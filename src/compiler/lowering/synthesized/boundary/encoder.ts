@@ -9,9 +9,9 @@
  */
 
 import type { Register } from '../../../../definition/operands.ts';
-import { codecHelpers } from '../../../../language/well-known/codecs.ts';
-import { wellKnown } from '../../../../language/well-known/index.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { codecHelpers } from '../../../../foundation/language/well-known/codecs.ts';
+import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import {
   type DerivedForm,
   type JsonField,

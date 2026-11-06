@@ -100,7 +100,7 @@ Map entries keep the runtime's order, so a restore iterates the same way.
 
 A persisted value nests at most `maximumDepth` (256) levels (spec §5), since the JSON and zod codecs recurse on the host's stack; a format refuses a body deeper than any valid one before either codec runs. Walks over values in memory (`==`, map keys, handles, depth) keep stacks of their own, so a deeper value lives within a segment, and the runtime panics a segment that would commit one.
 
-The built-in `==` and map keys are `language/values.ts`'s rules, shown the runtime's values by `definition/values/equality.ts` and compile time's constant forms by the checker, so the two can't disagree.
+The built-in `==` and map keys are `foundation/language/values.ts`'s rules, shown the runtime's values by `definition/values/equality.ts` and compile time's constant forms by the checker, so the two can't disagree.
 
 Values are immutable. A `constant` instruction hands its register the pool's own value, and a bound program, its pool included, is shared by every instance a runtime runs, so nothing may write into a value in place: a write through a place (`store`, `setIndex`) builds the new value along its path, as value semantics (spec §3.1) has it anyway.
 

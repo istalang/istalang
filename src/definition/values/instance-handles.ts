@@ -4,7 +4,7 @@
  * natives that spawn, and those that read a handle go through it.
  */
 
-import { unreachable } from '../../structures/unreachable.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { TypeId } from '../operands.ts';
 import { isComposite, type Value } from './values.ts';
 

@@ -15,7 +15,7 @@
  *   on the function's own name, not through a variable holding that future.
  */
 
-import { wellKnown } from '../../../../../language/well-known/index.ts';
+import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
 import { valueBranchesOf } from '../../../../syntax/expressions/branches.ts';
 import type { Expression, Select, SelectCase } from '../../../../syntax/expressions/index.ts';
 import { selectCasesOf, unparenthesized } from '../../../../syntax/expressions/readings.ts';

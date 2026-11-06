@@ -20,7 +20,8 @@ import {
 } from '../../../compiler/program/program.ts';
 import { parentOf } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
-import { isError } from '../../../diagnostics/diagnostic.ts';
+import { isError } from '../../../foundation/diagnostics/diagnostic.ts';
+import { lineMapOf } from '../../../foundation/text/line-map.ts';
 import type { NamePlace } from '../../../language-service/navigation/declarations.ts';
 import {
   isSamePlace,
@@ -29,7 +30,6 @@ import {
 } from '../../../language-service/navigation/declarations.ts';
 import { namesDenoting } from '../../../language-service/navigation/references.ts';
 import { renamingAt } from '../../../language-service/navigation/rename.ts';
-import { lineMapOf } from '../../../text/line-map.ts';
 import { corpusClient, corpusProgram } from '../../corpus-client.test-kit.ts';
 import { moduleIdOfUri, rangeOf } from '../../locations.ts';
 import { projectProgramLoader } from '../../project-loader.ts';

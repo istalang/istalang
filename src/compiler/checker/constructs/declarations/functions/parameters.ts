@@ -6,13 +6,14 @@
  *   its type from its default, so only then do the types need the defaults checked; otherwise the
  *   defaults are checked apart, when their diagnostics or lowering ask. Choosing a call therefore
  *   never checks the defaults of a function it doesn't choose.
- * - A default reaching its own function through calls, while that function's types wait on it, is
- *   a cycle, reported at the function, whose parameters then stand as written, a type taken from
- *   a default read as the error type (structures/entries/); its defaults keep their checking.
+ * - A default reaching its own function through calls, while that function's types wait on it, is a
+ *   cycle, reported at the function, whose parameters then stand as written, a type taken from a
+ *   default read as the error type (foundation/structures/entries/); its defaults keep their
+ *   checking.
  */
 
-import type { EntryTable } from '../../../../../structures/entries/index.ts';
-import { sameItems } from '../../../../../structures/equality.ts';
+import type { EntryTable } from '../../../../../foundation/structures/entries/index.ts';
+import { sameItems } from '../../../../../foundation/structures/equality.ts';
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import { writesType } from '../../../../syntax/expressions/parameters.ts';

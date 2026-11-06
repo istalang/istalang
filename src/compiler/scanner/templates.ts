@@ -11,9 +11,9 @@
  * diagnostic points at the opening one.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { lineBreakLength } from '../../text/line-map.ts';
-import type { Span } from '../../text/span.ts';
+import type { Diagnostic } from '../../foundation/diagnostics/diagnostic.ts';
+import { lineBreakLength } from '../../foundation/text/line-map.ts';
+import type { Span } from '../../foundation/text/span.ts';
 import type { TemplateValue, Token } from '../syntax/tokens/index.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
 import type { ScannedLexeme } from './lexeme.ts';

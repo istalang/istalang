@@ -28,10 +28,10 @@
  *   name used in it is captured where it is used (`useEntity`).
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
-import { handlerOf } from '../../../../structures/kind-table.ts';
-import { withPushed } from '../../../../structures/stack.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
+import { handlerOf } from '../../../../foundation/structures/kind-table.ts';
+import { withPushed } from '../../../../foundation/structures/stack.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';

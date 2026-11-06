@@ -13,8 +13,8 @@
  * declaration, which says whether it is a `let` or a `const`. A qualified name always refers.
  */
 
-import { bindsInPattern } from '../../../language/naming.ts';
-import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { bindsInPattern } from '../../../foundation/language/naming.ts';
+import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import type { Pattern, RestPattern } from '../../syntax/patterns.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import type { VariableEntity, VariableOwner } from '../entities.ts';

@@ -45,8 +45,8 @@
  *   spelling with another's: a later revision would otherwise keep nodes an earlier tree made.
  */
 
-import { memo } from '../../../../structures/memo.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { memo } from '../../../../foundation/structures/memo.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import { holdsRecursion } from '../parts/type-children.ts';
 import type { AliasUse } from '../type/alias-uses.ts';
 import type { MappedParts, RecursiveGraph } from '../type/computed-types.ts';

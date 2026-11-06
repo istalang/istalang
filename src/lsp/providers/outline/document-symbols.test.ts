@@ -8,7 +8,7 @@ import {
 import { targetNames } from '../../../compiler/syntax/patterns.ts';
 import { type Identifier, isMissingName } from '../../../compiler/syntax/tree/node.ts';
 import { type AnchoredSpan, spanIn } from '../../../compiler/syntax/tree/positions.ts';
-import { lineMapOf } from '../../../text/line-map.ts';
+import { lineMapOf } from '../../../foundation/text/line-map.ts';
 import { corpusClient, corpusDocuments } from '../../corpus-client.test-kit.ts';
 import type { TestClient } from '../../server.test-kit.ts';
 

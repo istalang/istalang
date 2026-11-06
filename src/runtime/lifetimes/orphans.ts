@@ -15,8 +15,11 @@
  * orphan is reached from what was let go of: the search starts there, not from the whole heap.
  */
 
-import { pushAll } from '../../structures/stack.ts';
-import { type GraphEdge, stronglyConnected } from '../../structures/strongly-connected.ts';
+import { pushAll } from '../../foundation/structures/stack.ts';
+import {
+  type GraphEdge,
+  stronglyConnected,
+} from '../../foundation/structures/strongly-connected.ts';
 import type { Heap, LiveObject } from '../scheduler/instance/heap.ts';
 import { isRoot } from '../snapshot/holdings.ts';
 import { holdsOf, walkHolds } from './holders.ts';

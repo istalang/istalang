@@ -22,7 +22,7 @@
 import type { Callee } from '../../../../definition/instructions/calls.ts';
 import type { Argument } from '../../../../definition/instructions/places.ts';
 import type { Register } from '../../../../definition/operands.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { SignatureParameter } from '../../../checker/check.ts';
 import { parameterOfArgument } from '../../../checker/surface/resolved-call.ts';
 import type { RestSlot } from '../../../checker/types/type/function-types.ts';

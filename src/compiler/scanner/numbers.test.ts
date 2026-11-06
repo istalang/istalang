@@ -8,7 +8,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
+import { reportedOnce } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
 import { kindsAndTexts, scanMalformed, scannedPast, scanText, soleToken } from './scan.test-kit.ts';
 

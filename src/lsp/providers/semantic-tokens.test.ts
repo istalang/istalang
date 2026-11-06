@@ -3,7 +3,7 @@ import { scan } from '../../compiler/scanner/scan.ts';
 import { isKeyword, type Token } from '../../compiler/syntax/tokens/index.ts';
 import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
-import { lineMapOf } from '../../text/line-map.ts';
+import { lineMapOf } from '../../foundation/text/line-map.ts';
 import { corpusClient, corpusDocuments } from '../corpus-client.test-kit.ts';
 import type { TestClient } from '../server.test-kit.ts';
 

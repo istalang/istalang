@@ -11,7 +11,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { LocatedModule, ModuleId, Program } from '../../src/compiler/program/program.ts';
 import { buildProgram, moduleIdOf } from '../../src/compiler/program/program.ts';
-import { languageModules } from '../../src/language/well-known/index.ts';
+import { languageModules } from '../../src/foundation/language/well-known/index.ts';
 import { findProjectSources, findSources, loadProject } from '../../src/project/project.ts';
 import { stdModuleSources } from '../../src/stdlib/std-sources.ts';
 import { stdlibLoader, stdRoles } from '../../src/stdlib/stdlib-loader.ts';

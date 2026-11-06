@@ -20,7 +20,11 @@
 
 import type { LocatedModule, ModuleId, ModuleLoader } from '../compiler/program/program.ts';
 import { moduleIdOf } from '../compiler/program/program.ts';
-import { type LanguageModule, languageModules, stdScheme } from '../language/well-known/index.ts';
+import {
+  type LanguageModule,
+  languageModules,
+  stdScheme,
+} from '../foundation/language/well-known/index.ts';
 import { stdModuleSources } from './std-sources.ts';
 
 /** Std module sources by name. */

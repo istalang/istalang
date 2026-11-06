@@ -19,7 +19,7 @@
  *   chosen once an instantiation makes the type known (`ComputedRequirement`).
  */
 
-import { withPushed } from '../../../../structures/stack.ts';
+import { withPushed } from '../../../../foundation/structures/stack.ts';
 import type {
   AssociatedType,
   RequiredAssociatedType,

@@ -12,7 +12,10 @@
  *   from its JSON form.
  */
 
-import { type WellKnownDeclaration, wellKnown } from '../../../../language/well-known/index.ts';
+import {
+  type WellKnownDeclaration,
+  wellKnown,
+} from '../../../../foundation/language/well-known/index.ts';
 import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';

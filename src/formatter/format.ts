@@ -9,7 +9,8 @@
  * Printing goes through Prettier's doc printer (`prettier/doc`), which needs no parser or plugin:
  * each construct builds a doc of groups, indents and line breaks, and the printer chooses where
  * groups break to keep within the width. The table of printers is exhaustive by type, the binder's
- * pattern (structures/kind-table.ts), so a new node kind fails to compile until it prints.
+ * pattern (foundation/structures/kind-table.ts), so a new node kind fails to compile until it
+ * prints.
  *
  * A node's doc depends on the node alone, so each is printed once and kept: a construct offering
  * Prettier two layouts, as a hugged last argument does (layout/lists.ts `hugging`), shares the docs
@@ -27,11 +28,11 @@ import {
   type SyntaxTree,
 } from '../compiler/syntax/tree/index.ts';
 import { spanIn } from '../compiler/syntax/tree/positions.ts';
-import { handlerOf } from '../structures/kind-table.ts';
-import { memo } from '../structures/memo.ts';
-import { unreachable } from '../structures/unreachable.ts';
-import { createSourceText, type SourceText } from '../text/source-text.ts';
-import { encloses, type Span } from '../text/span.ts';
+import { handlerOf } from '../foundation/structures/kind-table.ts';
+import { memo } from '../foundation/structures/memo.ts';
+import { unreachable } from '../foundation/structures/unreachable.ts';
+import { createSourceText, type SourceText } from '../foundation/text/source-text.ts';
+import { encloses, type Span } from '../foundation/text/span.ts';
 import { placeComments } from './comments/comment-placement.ts';
 import {
   type CommentsOf,

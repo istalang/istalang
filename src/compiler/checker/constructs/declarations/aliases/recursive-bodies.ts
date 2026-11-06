@@ -18,7 +18,7 @@
  *   this is what it can't see).
  */
 
-import type { EntryTable } from '../../../../../structures/entries/index.ts';
+import type { EntryTable } from '../../../../../foundation/structures/entries/index.ts';
 import type { ModuleId } from '../../../../program/program.ts';
 import {
   type TypeAliasDeclaration,

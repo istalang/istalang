@@ -23,18 +23,18 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 ## Audit Progress & Module-by-Module Findings
 
-### Part 1 — Foundation & Contracts (`src/structures/`, `src/language/`, `src/text/`, `src/diagnostics/`, `src/compiler/syntax/`, `src/definition/`)
+### Part 1 — Foundation & Contracts (`src/foundation/structures/`, `src/foundation/language/`, `src/foundation/text/`, `src/foundation/diagnostics/`, `src/compiler/syntax/`, `src/definition/`)
 
-#### 1.1 `src/structures/` & `src/language/`
-- **`ValueSemantics` map-key equality recursion (`src/language/values.ts`, D100):**
+#### 1.1 `src/foundation/structures/` & `src/foundation/language/`
+- **`ValueSemantics` map-key equality recursion (`src/foundation/language/values.ts`, D100):**
   - `ValueSemantics.equal` and `structuralKey` use explicit heap stacks so deep values never overflow the JS stack, and the banner states *"Every walk keeps its own stack"*. However, `#sameKeys` calls `this.entryValue(other, key)` → `this.entryPosition(map, key)` → `this.equal(entry[0], key)`, recursing on the host JS stack when maps are nested inside map keys.
-- **Three separate implementations of module-qualified naming (`src/language/well-known/index.ts`, `src/compiler/lowering/tables/names.ts`, `src/definition/extern-key.ts`, D174):**
-  - `qualifiedName({ module, name })` in `src/language/well-known/index.ts`, `qualifiedNameOf` in `src/compiler/lowering/tables/names.ts`, and `${signature.module}.${signature.name}` in `src/definition/extern-key.ts` all format `${module}.${name}` independently, even though `stdlib/std-module.ts` relies on `qualifiedName` matching lowering's type-table names and extern keys.
+- **Three separate implementations of module-qualified naming (`src/foundation/language/well-known/index.ts`, `src/compiler/lowering/tables/names.ts`, `src/definition/extern-key.ts`, D174):**
+  - `qualifiedName({ module, name })` in `src/foundation/language/well-known/index.ts`, `qualifiedNameOf` in `src/compiler/lowering/tables/names.ts`, and `${signature.module}.${signature.name}` in `src/definition/extern-key.ts` all format `${module}.${name}` independently, even though `stdlib/std-module.ts` relies on `qualifiedName` matching lowering's type-table names and extern keys.
 
-#### 1.2 `src/text/`
-- **Double standard & OOM hazard in `codePoints` vs. `codePointWidth` (`src/text/code-points.ts`, D195):**
+#### 1.2 `src/foundation/text/`
+- **Double standard & OOM hazard in `codePoints` vs. `codePointWidth` (`src/foundation/text/code-points.ts`, D195):**
   - `utf16Offset` and `codePointPositions` step through UTF-16 strings in $O(1)$ space using `codePointWidth(text, offset)`.
-  - Right beside them, `export const codePoints = (s: string): string[] => [...s]` allocates a full JS array of single-character strings. `src/stdlib/prelude/strings.ts` calls `codePoints(s).length` for `s.length()` and `codePoints(s)` for iteration/reversal, causing large strings to crash the V8 process with `heap out of memory` instead of counting in $O(1)$ space. Extracting a non-allocating `codePointCount(s: string): number` in `src/text/code-points.ts` fixes `length()` and gives all code-point counting one home.
+  - Right beside them, `export const codePoints = (s: string): string[] => [...s]` allocates a full JS array of single-character strings. `src/stdlib/prelude/strings.ts` calls `codePoints(s).length` for `s.length()` and `codePoints(s)` for iteration/reversal, causing large strings to crash the V8 process with `heap out of memory` instead of counting in $O(1)$ space. Extracting a non-allocating `codePointCount(s: string): number` in `src/foundation/text/code-points.ts` fixes `length()` and gives all code-point counting one home.
 
 #### 1.3 `src/compiler/syntax/`
 - **Inconsistent AST modeling: boolean flags vs. distinct node kinds (`src/compiler/syntax/declarations/index.ts`, `expressions/index.ts`, `expressions/chains.ts`, Q4, Q11):**
@@ -65,7 +65,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 - **Hard-coded test runner arity in `references.ts` (`src/definition/validation/references.ts`, Q16):**
   - `runnerArity = { list: 2, run: 4 }` duplicates the contract between `testing.ista` and `runtime/testing/run-tests.ts`.
 - **JS call-stack recursion in `valueProblems` (`src/definition/validation/references.ts`):**
-  - Unlike `values.ts` (`summaryOf`), `codec.ts` (`jsonDepth`), and `language/values.ts` (`equal`, `structuralKey`), which walk values iteratively on an explicit heap stack, `valueProblems` recurses on the JS stack for every nested child value.
+  - Unlike `values.ts` (`summaryOf`), `codec.ts` (`jsonDepth`), and `foundation/language/values.ts` (`equal`, `structuralKey`), which walk values iteratively on an explicit heap stack, `valueProblems` recurses on the JS stack for every nested child value.
 
 ---
 
@@ -238,7 +238,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - `scheduler/instance/index.ts` defines `isRoot(object)` as `object.kind === 'execution' || object.kind === 'answer'`, and `segment/index.ts` passes `answers()` in `#roots()`.
   - However, `lifetimes/holders.ts` (`holdsOf`, `valuesOf`), `lifetimes/orphans.ts` (`orphansFrom`), and `scheduler/instance/heap.ts` (`#noteHoldings`) check only `object.kind === 'execution'`, ignoring `'answer'`.
 - **Two different patterns for exhaustive `HeapObject['kind']` tables (`src/runtime/snapshot/check.ts` vs. `holdings.ts` & `lifetimes/disposal.ts`, D165):**
-  - `snapshot/check.ts` uses `Handlers` from `src/structures/kind-table.ts`, while `snapshot/holdings.ts` and `lifetimes/disposal.ts` hand-roll mapped types with unsafe `as` casts in `entryOf` / `stateEntry`, and `FutureState` is defined in both `scheduler/instance/futures.ts` and `snapshot/holdings.ts`.
+  - `snapshot/check.ts` uses `Handlers` from `src/foundation/structures/kind-table.ts`, while `snapshot/holdings.ts` and `lifetimes/disposal.ts` hand-roll mapped types with unsafe `as` casts in `entryOf` / `stateEntry`, and `FutureState` is defined in both `scheduler/instance/futures.ts` and `snapshot/holdings.ts`.
 - **Ambiguous `weakRef` with `target: undefined` & mixed id/handle API on `WeakSide` (`src/runtime/snapshot/objects.ts`, `scheduler/instance/weak-side.ts`, `scheduler/segment/native-calls.ts`, D115, D116):**
   - A `weakRef` with `target === undefined` represents both a disposed referent (`w.disposed()` resolves immediately) and a returned async call (`worker.disposing()` never resolves); the persisted state cannot distinguish them.
   - `WeakSide` takes/returns object IDs (`number`) on `reference`, `target`, `disposed`, and `onReturned`, but `Value` handles on `watch` and `whenDisposed`, forcing `nativeWeakSideOf` to adapt two methods and forward two.
@@ -268,16 +268,16 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 #### 7.1 `src/stdlib/`
 - **Duplicate time-unit constants between Scanner and `stdlib/time/iso.ts` (`src/compiler/scanner/numbers.ts` vs. `src/stdlib/time/iso.ts`):**
-  - Both `scanner/numbers.ts` and `stdlib/time/iso.ts` define `millisecondsPerSecond = 1000n`, `secondsPerMinute = 60n`, `minutesPerHour = 60n`, `hoursPerDay = 24n`, `millisecondsPerMinute`, and `millisecondsPerHour`. Moving these constants to `src/language/` gives the language's time units one home.
-- **Duplicate `compareOrdered` vs. `compareCodeUnits` (`src/stdlib/prelude/natives.ts` vs. `src/language/values.ts`):**
-  - `compareOrdered` in `stdlib/prelude/natives.ts` and `compareCodeUnits` in `language/values.ts` have identical implementations (`if (left === right) return 0; return left < right ? -1 : 1;`).
+  - Both `scanner/numbers.ts` and `stdlib/time/iso.ts` define `millisecondsPerSecond = 1000n`, `secondsPerMinute = 60n`, `minutesPerHour = 60n`, `hoursPerDay = 24n`, `millisecondsPerMinute`, and `millisecondsPerHour`. Moving these constants to `src/foundation/language/` gives the language's time units one home.
+- **Duplicate `compareOrdered` vs. `compareCodeUnits` (`src/stdlib/prelude/natives.ts` vs. `src/foundation/language/values.ts`):**
+  - `compareOrdered` in `stdlib/prelude/natives.ts` and `compareCodeUnits` in `foundation/language/values.ts` have identical implementations (`if (left === right) return 0; return left < right ? -1 : 1;`).
 - **Scattered `Instance<T>` handle construction and extraction (`src/runtime/interpreter/instructions.ts`, `stdlib/prelude/instance-natives.ts`, `stdlib/runtime/natives.ts`, `stdlib/testing/natives.ts`, Q18):**
   - Knowledge that `Instance<T>` is an extern value whose `payload` is the instance name string is spread across 4 modules instead of `NativeInstances.spawn` returning the `Instance<T>` value directly and one helper reading it.
 - **Positional `fieldOf` on struct values in `regex/natives.ts` & manual `Json.Object` construction in `json/natives.ts` (Q17, D201):**
   - `regex/natives.ts` (`programOf`) reads `Regex.pattern` positionally via `fieldOf(regex, 0)` instead of `fieldNamed(context, regex, 'pattern')`.
   - `json/natives.ts` (`_object`) manually constructs `{ kind: 'variant', type: shape.type, variant: shape.variants.Object, fields: [mapOf(entries)] }` instead of using `declared-values.ts` / `resultVariant`.
 - **Full-string `[...s]` allocation in `prelude/strings.ts` and `strings/natives.ts` (D195):**
-  - `prelude/strings.ts` (`length`, `at`, `index`) and `strings/natives.ts` (`slice`, `padding`) call `codePoints(text(s))` (allocating an array of single-code-point strings), even though `text/code-points.ts` already provides $O(1)$-space `utf16Offset` and `codePointWidth`.
+  - `prelude/strings.ts` (`length`, `at`, `index`) and `strings/natives.ts` (`slice`, `padding`) call `codePoints(text(s))` (allocating an array of single-code-point strings), even though `foundation/text/code-points.ts` already provides $O(1)$-space `utf16Offset` and `codePointWidth`.
 - **Unbounded precision in `decimal` `dividedTo` and negative `power` (`src/stdlib/decimal/arithmetic.ts`, D194):**
   - `placesOf` allows up to `maximumDigits = 1e9`, so `decimal.divide(Decimal(1), 7, 20_000_000)` stalls the host thread for >60s, and `power(base, -exponent)` computes the exact positive power up to $10^9$ digits before dividing to 34 digits.
 - **Repeated test-setup boilerplate for `FakeClock` and revertible `FakeQueue` receipts (`src/stdlib/testing/testing.ista`, `test/spec-suites/purchase.test.ista`, F2, D183, D188):**
@@ -341,8 +341,8 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 ### 5. Cross-Module Dependencies on Extractable Shared Solutions
 
 1. **`qualifiedPath` in Parser and Binder (`src/compiler/parser/grammar/parts/names.ts` & `src/compiler/binder/constructs/expressions.ts`):** Identical functions walking non-optional `MemberAccess` chains to an `Identifier`; belongs in `src/compiler/syntax/expressions/`.
-2. **Time unit constants in Scanner and Stdlib (`src/compiler/scanner/numbers.ts` & `src/stdlib/time/iso.ts`):** Identical millisecond conversion constants; belongs in `src/language/`.
-3. **Ordered primitive comparator in Language and Stdlib (`src/language/values.ts` `compareCodeUnits` & `src/stdlib/prelude/natives.ts` `compareOrdered`):** Identical `<` / `===` comparator.
+2. **Time unit constants in Scanner and Stdlib (`src/compiler/scanner/numbers.ts` & `src/stdlib/time/iso.ts`):** Identical millisecond conversion constants; belongs in `src/foundation/language/`.
+3. **Ordered primitive comparator in Language and Stdlib (`src/foundation/language/values.ts` `compareCodeUnits` & `src/stdlib/prelude/natives.ts` `compareOrdered`):** Identical `<` / `===` comparator.
 4. **Canonical JSON & Versioned Format Envelope in `definition/` (`src/definition/formats/codec.ts`, `format.ts`):** Generic persistence utilities used by `definition/`, `runtime/snapshot/`, and `runtime/boundary/extern-signatures.ts`.
 5. **Upward Type-Imports in Contracts (`src/compiler/checker/contexts/context.ts` [Q13], `src/compiler/checker/resolution/choosing/choice.ts` [D230], `src/runtime/natives.ts` [D179]):** Root contract modules importing types from upper implementation modules.
 
@@ -352,10 +352,10 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | --- | --- | --- |
 | 5-step implicit conversion (`Fit` vs. `Inference`) | `checker/types/fitting/fit.ts` (`fitOf`) | `checker/types/inference/infer.ts` (`Inference.match`) (D222) |
 | Binary vs. chained vs. pattern comparisons | `checker/constructs/expressions/operators/operators.ts` (`checkBinary`) & `lowering/constructs/expressions/operators.ts` (`lowerBinary`) | `checkChainedComparison` / `compared` & `constructs/patterns/matching.ts` / `lowering/constructs/parts/patterns.ts` (D226) |
-| Module-qualified name `${module}.${name}` | `language/well-known/index.ts` (`qualifiedName`) | `lowering/tables/names.ts` (`qualifiedNameOf`), `definition/extern-key.ts` (`externKey`) (D174) |
+| Module-qualified name `${module}.${name}` | `foundation/language/well-known/index.ts` (`qualifiedName`) | `lowering/tables/names.ts` (`qualifiedNameOf`), `definition/extern-key.ts` (`externKey`) (D174) |
 | Member-access chain → `QualifiedName` | `parser/grammar/parts/names.ts` (`qualifiedPath`) | `binder/constructs/expressions.ts` (`qualifiedPathOf`) |
 | Millisecond time unit constants | `scanner/numbers.ts` | `stdlib/time/iso.ts` |
-| `<` / `===` ordered comparator | `language/values.ts` (`compareCodeUnits`) | `stdlib/prelude/natives.ts` (`compareOrdered`) |
+| `<` / `===` ordered comparator | `foundation/language/values.ts` (`compareCodeUnits`) | `stdlib/prelude/natives.ts` (`compareOrdered`) |
 | Reading a struct `Value`'s field by name | `stdlib/values/arguments.ts` (`fieldNamed`) | `runtime/testing/run-tests.ts` (`listedOf`), positional `fieldOf` in `regex/natives.ts` (Q16, Q17, D201) |
 | Narrowing a closure `Value` | `isComposite(v) && v.kind === 'closure'` at 7 sites | No `closureOf(v)` in `definition/values/values.ts` (Q15) |
 | `Instance<T>` extern payload construction/reading | `interpreter/instructions.ts` (`spawn`) | `stdlib/runtime/natives.ts`, `stdlib/testing/natives.ts`, `stdlib/prelude/instance-natives.ts` (Q18) |
@@ -392,7 +392,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | **4** | **Apply recorded `Fit` conversions in compile-time constant evaluation (`src/compiler/checker/rules/computation.ts`, D216):** Wrap `Some`, convert 1-tuples, and refuse/convert async fits on top-level `const` values. | Bug Fix (Checker) | 2 files in `checker/` | S |
 | **5** | **Fix same-instance mock return values bypassing `arriving` (`src/runtime/scheduler/testing/mocks.ts`, D182):** Pass same-instance mock results through `arriving` so `testing.handle<T>()` resources are disposed. | Bug Fix (Runtime) | 2 files in `runtime/scheduler/` | S |
 | **6** | **Fix case-less `select:` with `else:` (`src/compiler/lowering/constructs/expressions/control/select.ts`, D149) & stale `${name}$` in diagnostic 5702 (`src/compiler/checker/diagnostics/lifetimes.ts`):** Lower 0-case `select` directly to its `else` body; update 5702 message to `*${name}`. | Bug Fix (Lowering / Diagnostics) | 2 files | XS |
-| **7** | **Guard host process against VM frame-depth OOM, `[...s]` string-length OOM, and unbounded `decimal` places (`src/runtime/scheduler/segment/limits.ts`, `src/text/code-points.ts`, `src/stdlib/decimal/arithmetic.ts`, D155, D194, D195):** Enforce max frame depth in `SegmentRunner.call`, add $O(1)$-space `codePointCount`, and cap `decimal` places. | Resilience / Safety | 5 files | S |
+| **7** | **Guard host process against VM frame-depth OOM, `[...s]` string-length OOM, and unbounded `decimal` places (`src/runtime/scheduler/segment/limits.ts`, `src/foundation/text/code-points.ts`, `src/stdlib/decimal/arithmetic.ts`, D155, D194, D195):** Enforce max frame depth in `SegmentRunner.call`, add $O(1)$-space `codePointCount`, and cap `decimal` places. | Resilience / Safety | 5 files | S |
 | **8** | **Leaf DRY extractions (`qualifiedName` [D174], `qualifiedPath`, time-unit constants, `compareOrdered`, `closureOf` [Q15], `fieldValueOf` in `declared-values.ts` [Q16, Q17, D201], `optionalInt` → `buildVariant`, `arrayElement` in `types/type/well-known.ts` [Q8]):** Deduplicate leaf helpers from foundation upward. | DRY | ~18 leaf files | S |
 | **9** | **Unify 5-step implicit conversion logic between `types/fitting/fit.ts` and `types/inference/infer.ts` (D222) + `never` return type assignability (D180):** Extract shared conversion matcher parameterized by leaf comparison. | Generalization / DRY | 3 files in `checker/` | M |
 | **10** | **Unify comparison & membership checking and lowering (`expressions/operators.ts`, `constructs/patterns/matching.ts`, `lowering/constructs/expressions/operators.ts`, `lowering/constructs/parts/patterns.ts`, D226):** One checker function and one lowering function over `ComparisonLink` and pattern ordering tests. | DRY / Generalization | 4 files in `compiler/` | M |

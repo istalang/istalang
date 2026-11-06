@@ -10,7 +10,7 @@
 import { parameterKey, referenceKey } from '../../definition/extern-key.ts';
 import { valuesEqual } from '../../definition/values/equality.ts';
 import { elementsOf } from '../../definition/values/values.ts';
-import { wellKnown } from '../../language/well-known/index.ts';
+import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { atPosition, checkedIndex, replaced, selected, selectionOf, sliced } from '../positions.ts';
 import { rangeOf } from '../ranges.ts';

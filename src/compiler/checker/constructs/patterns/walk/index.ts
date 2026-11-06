@@ -25,8 +25,8 @@
  *   than `==` against a literal or variant, tests one field twice, or is a range (§3.11).
  */
 
-import { type Handlers, handlerOf } from '../../../../../structures/kind-table.ts';
-import { unreachable } from '../../../../../structures/unreachable.ts';
+import { type Handlers, handlerOf } from '../../../../../foundation/structures/kind-table.ts';
+import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type {
   NamePattern,
   OrPattern,

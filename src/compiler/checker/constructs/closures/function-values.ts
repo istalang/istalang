@@ -15,7 +15,7 @@
  * - A function's type as a value has the `T` an `await` yields as an async function's result.
  */
 
-import { staticName } from '../../../../language/static-names.ts';
+import { staticName } from '../../../../foundation/language/static-names.ts';
 import type { FunctionsEntity } from '../../../binder/entities.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';

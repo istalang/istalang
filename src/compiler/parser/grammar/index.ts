@@ -3,7 +3,7 @@
  * knows every category, so the categories themselves never import one another.
  */
 
-import type { SourceText } from '../../../text/source-text.ts';
+import type { SourceText } from '../../../foundation/text/source-text.ts';
 import type { ScanResult } from '../../syntax/tokens/index.ts';
 import { type Grammar, Parser } from '../parser.ts';
 import { parseTopLevelDeclaration } from './declarations/declaration.ts';

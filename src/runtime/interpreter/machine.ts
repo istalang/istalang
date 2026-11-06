@@ -10,7 +10,7 @@ import type { Definition } from '../../definition/definition.ts';
 import type { Argument } from '../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values/values.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { isReference, type RegisterContents } from '../snapshot/objects.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
 import type { ActiveFrame, FrameEntry, FrameHeap } from './frames.ts';

@@ -28,7 +28,7 @@ import {
   StreamMessageReader,
   StreamMessageWriter,
 } from 'vscode-languageserver/node';
-import { addToGroup } from '../structures/groups.ts';
+import { addToGroup } from '../foundation/structures/groups.ts';
 import { serveLanguage } from './server.ts';
 
 const shutdowns: (() => Promise<void>)[] = [];

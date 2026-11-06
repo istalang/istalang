@@ -25,7 +25,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - **Fix:** Memoize `extentIn` per `(tree, node)` via `WeakMap` in `tree/index.ts`; retain `tokens` on `SyntaxTree` (or memoize `scan(source)` on `SourceText` as `lineMapOf` does) and compute bracket pairs once.
    - **Done** (`fast-wins`): `extentIn` is memoized per (tree, node) in a `SequenceMemo`, as the banner says (formatter, language-service and `tree.test.ts` suites: 5.45 s → 3.38 s). The token re-scan and bracket re-walk stay open.
 
-3. **`[high]` Unmemoized transitive-read graph traversal in `notesOfReads` (`src/structures/entries/entry.ts:74`, `src/structures/entries/index.ts:95`; widens `P10`)**
+3. **`[high]` Unmemoized transitive-read graph traversal in `notesOfReads` (`src/foundation/structures/entries/entry.ts:74`, `src/foundation/structures/entries/index.ts:95`; widens `P10`)**
    - `notesOfReads(entry)` walks the full transitive `entry.reads` graph from scratch (allocating `seen = new Set`, `pending = [...entry.reads]`, and `notes = []`) on every call to `notesFrom(entry)`, `Entries.notesReached()`, and `#replays` (`case 'notes'`), even after an entry is closed (`!entry.running && !entry.open`) and multiple times within one computing entry.
    - **Fix:** Memoize transitive notes on closed `Entry` nodes and track visited read subgraphs across `notesReached()` calls within an active computation.
 
@@ -59,9 +59,9 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - **Fix:** Record declaration-to-module ownership once during binding (covering trait members and `FieldsFunction`s) and centralize `fieldMemberOf` and `variableTypeOf` on `Checker`.
    - **Done** (`p2-structural`): fields and variables. `declaredFieldOf` (`types/written/declared-fields.ts`) maps a field's declaring node and its owner to its `FieldMember`, which annotations (owner from the module's items) and denotations (owner from the node's ancestors) both read; `declaredOutsideBodies` (`expressions/access/names.ts`) is the one rule for an extern or top-level constant's type, which `variableType` and `declaredVariableType` both read. `DeclaringModules` stays (`Q30` open): trait members and fields functions have no entity, so the binder would need a node-to-module index of its own, a second map rather than one.
 
-9. **`[medium]` Formatter exponential re-printing of huggable call arguments and duplicated `LineMap` / indentation / bracket helpers (`src/formatter/expressions/index.ts:198`, `src/formatter/layout/bodies.ts:74`, `src/text/line-map.ts:27`, `src/diagnostics/render.ts:77`, `src/lsp/providers/semantic-tokens.ts:53`)**
+9. **`[medium]` Formatter exponential re-printing of huggable call arguments and duplicated `LineMap` / indentation / bracket helpers (`src/formatter/expressions/index.ts:198`, `src/formatter/layout/bodies.ts:74`, `src/foundation/text/line-map.ts:27`, `src/foundation/diagnostics/render.ts:77`, `src/lsp/providers/semantic-tokens.ts:53`)**
    - `callArguments` (`src/formatter/expressions/index.ts:198–221`) prints every argument in `bracketed(...)` and then, when the last argument is huggable, prints `front` and `last` a second time ($O(2^d)$ work on nested huggable calls).
-   - `LineMap` (`src/text/line-map.ts:27`) duplicates `splitLines` (`line-map.ts:92`) and hides `#lineEnds`, forcing both `renderDiagnostic` (`src/diagnostics/render.ts:77`) and `linesOf` (`src/lsp/providers/semantic-tokens.ts:53`) to pass `column: Number.MAX_SAFE_INTEGER` to `lines.offsetAt`.
+   - `LineMap` (`src/foundation/text/line-map.ts:27`) duplicates `splitLines` (`line-map.ts:92`) and hides `#lineEnds`, forcing both `renderDiagnostic` (`src/foundation/diagnostics/render.ts:77`) and `linesOf` (`src/lsp/providers/semantic-tokens.ts:53`) to pass `column: Number.MAX_SAFE_INTEGER` to `lines.offsetAt`.
    - **Fix:** Reuse the already-printed argument `Doc`s in `callArguments`, and expose `lineSpan(line)` on `LineMap`.
    - **Done** (`fast-wins`): Formatter part: `TreePrinter.print` keeps each node's doc, so `callArguments` (and `body`, which printed a hugged block twice too) reuse what they printed. `formatter/format.bench.ts`, calls hugging their last argument 16 deep: 458 ms → 0.39 ms mean. The `LineMap` part is done under unit 3.
 
@@ -75,10 +75,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ## Checklist
 
-- [x] 1. `src/structures/` (including `entries/`)
-- [x] 2. `src/language/`
-- [x] 3. `src/text/`
-- [x] 4. `src/diagnostics/`
+- [x] 1. `src/foundation/structures/` (including `entries/`)
+- [x] 2. `src/foundation/language/`
+- [x] 3. `src/foundation/text/`
+- [x] 4. `src/foundation/diagnostics/`
 - [x] 5. `src/definition/` (including `instructions/`)
 - [x] 6. `src/compiler/syntax/` (including `expressions/`)
 - [x] 7. `src/compiler/scanner/`
@@ -118,37 +118,37 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ## Findings by Unit
 
-### 1. `src/structures/` (including `entries/`)
+### 1. `src/foundation/structures/` (including `entries/`)
 
-- **Duplicate prefix-tree (trie) implementations: `TupleSet` (`src/structures/entries/tuple-set.ts`) vs. `SequenceMemo` (`src/structures/memo.ts`):**
-  - `SequenceMemo` and `TupleSet` both implement prefix trees keyed by a sequence of items (`for (const item of items)` walking down `node.next`). `SequenceMemo` uses `memo(node.next, item, ...)` over `WeakMap` and stores `found?: { readonly value: Value }`, while `TupleSet` hand-rolls the lookup/insert (`let next = prefix.next.get(item); if (next === undefined) ...`) over `Map` and stores `added: boolean` — bypassing `memo` (`src/structures/memo.ts`) and duplicating the trie traversal.
-- **Unmemoized, repeated transitive-read graph traversal in `notesOfReads` (`src/structures/entries/entry.ts`, `index.ts`; widens `P10`):**
+- **Duplicate prefix-tree (trie) implementations: `TupleSet` (`src/foundation/structures/entries/tuple-set.ts`) vs. `SequenceMemo` (`src/foundation/structures/memo.ts`):**
+  - `SequenceMemo` and `TupleSet` both implement prefix trees keyed by a sequence of items (`for (const item of items)` walking down `node.next`). `SequenceMemo` uses `memo(node.next, item, ...)` over `WeakMap` and stores `found?: { readonly value: Value }`, while `TupleSet` hand-rolls the lookup/insert (`let next = prefix.next.get(item); if (next === undefined) ...`) over `Map` and stores `added: boolean` — bypassing `memo` (`src/foundation/structures/memo.ts`) and duplicating the trie traversal.
+- **Unmemoized, repeated transitive-read graph traversal in `notesOfReads` (`src/foundation/structures/entries/entry.ts`, `index.ts`; widens `P10`):**
   - `notesOfReads(entry)` walks the full transitive `entry.reads` graph from scratch (allocating `seen = new Set`, `pending = [...entry.reads]`, and `notes = []`) on every call to `notesFrom(entry)`, `Entries.notesReached()`, and `#replays` (`case 'notes'`). Even after an entry finishes computing (`!entry.running && !entry.open`), its transitive notes are never memoized on the `Entry`, and multiple `notesReached()` calls within one computing entry re-walk the entire subgraph already visited.
-- **Quadratic array-spreading multimap construction in `Components` (`src/structures/strongly-connected.ts`):**
-  - `Components.constructor` builds adjacency lists with `this.#successors.set(from, [...(this.#successors.get(from) ?? []), to])`, copying the entire neighbor array on every edge ($O(d^2)$ in out-degree) instead of pushing onto a mutable array or using a shared group-by helper (the same pattern recurs in `ValueSemantics.#tableOf` and `#carryTable` in `src/language/values.ts`).
-  - **Done** (`fast-wins`): `Components`, `SegmentReuse`, `Linker.#index`, `CodeWriter.#refer`, `StaticFunctions.#index`, `checkClashes` and the LSP rename's `workspaceEdit` fill their groups with `addToGroup` (`structures/groups.ts`); `functionSets` and `callWithTypes` use `Map.groupBy`; the LSP test kit and two tests use `addToGroup` too. `#tableOf` pushes in place by hand, since `language/` imports nothing. `#carryTable` keeps its copy: the old map keeps its bucket (persistent update, `P8`). `mocksOf` is unit 26's.
+- **Quadratic array-spreading multimap construction in `Components` (`src/foundation/structures/strongly-connected.ts`):**
+  - `Components.constructor` builds adjacency lists with `this.#successors.set(from, [...(this.#successors.get(from) ?? []), to])`, copying the entire neighbor array on every edge ($O(d^2)$ in out-degree) instead of pushing onto a mutable array or using a shared group-by helper (the same pattern recurs in `ValueSemantics.#tableOf` and `#carryTable` in `src/foundation/language/values.ts`).
+  - **Done** (`fast-wins`): `Components`, `SegmentReuse`, `Linker.#index`, `CodeWriter.#refer`, `StaticFunctions.#index`, `checkClashes` and the LSP rename's `workspaceEdit` fill their groups with `addToGroup` (`foundation/structures/groups.ts`); `functionSets` and `callWithTypes` use `Map.groupBy`; the LSP test kit and two tests use `addToGroup` too. `#tableOf` pushes in place by hand, since `language/` imports nothing. `#carryTable` keeps its copy: the old map keeps its bucket (persistent update, `P8`). `mocksOf` is unit 26's.
 
-### 2. `src/language/`
+### 2. `src/foundation/language/`
 
-- **Double standard for case classification in `followsConvention` vs. `bindsInPattern` (`src/language/naming.ts`):**
+- **Double standard for case classification in `followsConvention` vs. `bindsInPattern` (`src/foundation/language/naming.ts`):**
   - The banner states that both functions *"read the same first letter, so they share this module"*. Yet `followsConvention` tests `shapes.type` (`/^[A-Z][A-Za-z0-9]*$/u`) and `shapes.value` (`/^[a-z][A-Za-z0-9]*$/u`), while `bindsInPattern` computes `const first = withoutPrivacy(name).charAt(0); return first !== first.toUpperCase()`. Because `'' !== ''.toUpperCase()` and `'1' !== '1'.toUpperCase()` are `false`, `bindsInPattern('_')` and `bindsInPattern('_1')` return `false` (classifying them as non-binding variant/type names), disagreeing with `followsConvention(..., 'type')`.
   - **Done** (`fast-wins`): `bindsInPattern` reads the first letter through `shapes.type`, so `_`, `_1` and every name not cased as a type bind (`naming.test.ts`).
-- **`ValueSemantics.withoutEntry` drops the cached hash table and `partSteps` over-allocates (`src/language/values.ts`; widens `P8`):**
+- **`ValueSemantics.withoutEntry` drops the cached hash table and `partSteps` over-allocates (`src/foundation/language/values.ts`; widens `P8`):**
   - `withEntry` carries/updates `#tables` via `#carryTable` (whose full-map copy and bucket spread are tracked in `P8`), whereas `withoutEntry` discards `#tables` completely, forcing the next lookup after a removal to re-hash/re-index the entire map in `#tableOf`.
   - In addition, `partSteps` allocates `shape.map.entries.flat()`, then `.toReversed()`, then `.map(...)`, and spreads `[join, ...]` on every uncached composite/map hash, instead of pushing `visit` steps onto `steps` in reverse order directly.
 
-### 3. `src/text/`
+### 3. `src/foundation/text/`
 
-- **Three overlapping UTF-16 ↔ code-point stepping loops (`src/text/code-points.ts`):**
+- **Three overlapping UTF-16 ↔ code-point stepping loops (`src/foundation/text/code-points.ts`):**
   - `utf16Offset(s, position)`, `codePointsAt(s)`, and `codePointSlice(s, start, end)` each write their own `codePointWidth(s, offset)` stepping loop. `codePointPositions(s)` provides a stateful monotonic UTF-16-offset → code-point-index cursor, and `codePointsAt(s)` already embeds a bidirectional code-point-index ↔ UTF-16-offset cursor internally; extracting that bidirectional cursor as `utf16Offsets(s): (position: number) => number` would let `utf16Offset`, `codePointSlice`, and `codePointsAt` share one stepping implementation.
-- **Duplicate line-break scanning in `splitLines` and `LineMap`, and hidden `#lineEnds` (`src/text/line-map.ts`, `src/diagnostics/render.ts`):**
+- **Duplicate line-break scanning in `splitLines` and `LineMap`, and hidden `#lineEnds` (`src/foundation/text/line-map.ts`, `src/foundation/diagnostics/render.ts`):**
   - `splitLines(text)` and `new LineMap(text)` run identical `while (offset < text.length)` loops calling `lineBreakLength(text, offset)` to find every line's `[start, end)` bounds.
-  - Although `LineMap` computes and stores `#lineStarts` and `#lineEnds`, it exposes no `lineSpan(line)` or `lineText(source, line)` method, forcing `renderDiagnostic` (`src/diagnostics/render.ts`) to reconstruct a line's bounds via `lines.offsetAt({ line, column: 0 })` and `lines.offsetAt({ line, column: Number.MAX_SAFE_INTEGER })`.
+  - Although `LineMap` computes and stores `#lineStarts` and `#lineEnds`, it exposes no `lineSpan(line)` or `lineText(source, line)` method, forcing `renderDiagnostic` (`src/foundation/diagnostics/render.ts`) to reconstruct a line's bounds via `lines.offsetAt({ line, column: 0 })` and `lines.offsetAt({ line, column: Number.MAX_SAFE_INTEGER })`.
   - **Done** (`fast-wins`): `splitLines` and `LineMap` share one scan (`lineBounds`); `LineMap.lineSpan(line)` exposes a line's bounds, which `offsetAt` reads too.
 
-### 4. `src/diagnostics/`
+### 4. `src/foundation/diagnostics/`
 
-- **Workaround for missing `LineMap` line-span query in `renderDiagnostic` (`src/diagnostics/render.ts`):**
+- **Workaround for missing `LineMap` line-span query in `renderDiagnostic` (`src/foundation/diagnostics/render.ts`):**
   - Covered under Unit 3 (`LineMap`): `renderDiagnostic` passes `Number.MAX_SAFE_INTEGER` as a synthetic column to `lines.offsetAt` to recover `#lineEnds[line]`.
   - **Done** (`fast-wins`): `renderDiagnostic` reads `lines.lineSpan(line)`.
 
@@ -165,9 +165,9 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **`hasRole` narrowed to `ExternRole` only (`src/definition/tables/types.ts`, `src/definition/values/json-values.ts`):**
   - `hasRole(types, type, role)` only accepts `ExternRole` (`'shared' | 'cell' | 'future' | 'instance'`) and checks `entry?.kind === 'extern'`, forcing `findJsonType` (`src/definition/values/json-values.ts`) to hand-write `candidate.kind === 'enum' && candidate.role === 'json'` instead of calling `hasRole(types, index, 'json')`.
   - **Done** (`p5-indented`): `hasRole` takes an extern's role or an enum's, which `findJsonType` asks.
-- **Hard-coded variant/struct field names in `declared-values.ts` (`src/definition/values/declared-values.ts`, `src/language/well-known/index.ts`):**
-  - `optionalOf`, `okTypeOf`, `okOf`, `errOf`, and `errorOf` import `optionalVariants` and `resultVariants` from `src/language/well-known/index.ts`, but hard-code the field names `'value'` and `'error'` as string literals.
-  - **Done** (`p3-unions`): `resultFields` and `optionalValueField` (`language/well-known/index.ts`) name the fields once; `optionalValueOf` (`declared-values.ts`) reads an optional by its declared variant and field.
+- **Hard-coded variant/struct field names in `declared-values.ts` (`src/definition/values/declared-values.ts`, `src/foundation/language/well-known/index.ts`):**
+  - `optionalOf`, `okTypeOf`, `okOf`, `errOf`, and `errorOf` import `optionalVariants` and `resultVariants` from `src/foundation/language/well-known/index.ts`, but hard-code the field names `'value'` and `'error'` as string literals.
+  - **Done** (`p3-unions`): `resultFields` and `optionalValueField` (`foundation/language/well-known/index.ts`) name the fields once; `optionalValueOf` (`declared-values.ts`) reads an optional by its declared variant and field.
 
 ### 6. `src/compiler/syntax/` (including `expressions/`)
 
@@ -176,7 +176,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - However, `extentIn(tree, node)` is not memoized: every call walks down `childrenOf(tree, first)` and `lastChildOf(tree, last)` to the leaves, and `nodesAt(tree, offset)` calls `extentIn` on every sibling tested at every level of the tree (contributing to the `tree.test.ts` `nodesAt` timeout in `B21`).
   - **Done** (`fast-wins`): See ranked summary #2.
 - **Ad-hoc `bare.text === '_'` check in `isUnnamedTarget` (`src/compiler/syntax/statements/index.ts`):**
-  - `isUnnamedTarget` checks `bare.kind === 'Identifier' && bare.text === '_'` instead of calling `isUnnamed(bare.text)` (`src/language/naming.ts`).
+  - `isUnnamedTarget` checks `bare.kind === 'Identifier' && bare.text === '_'` instead of calling `isUnnamed(bare.text)` (`src/foundation/language/naming.ts`).
   - **Done** (`fast-wins`): `isUnnamedTarget` calls `isUnnamed`.
 - **Missing `unparenthesizedType` helper for `TypeNode` (`src/compiler/syntax/types/index.ts`):**
   - `syntax/expressions/index.ts` exports `unparenthesized(node: Expression)` and `syntax/patterns.ts` exports `unparenthesizedPattern(node: Pattern)`, but `syntax/types/index.ts` keeps `ParenthesizedType` private and provides no `unparenthesizedType(node: TypeNode)` helper for callers inspecting type nodes.
@@ -191,19 +191,19 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 8. `src/compiler/parser/` — machinery & shared parts
 
-- **Two hand-rolled binary searches duplicating `lastIndexAtMost` (`src/compiler/parser/cursor/brackets.ts`, `src/compiler/parser/cursor/index.ts`, `src/structures/sorted.ts`):**
-  - `lineOf` in `src/compiler/parser/cursor/brackets.ts` and `Cursor.lineHead` in `src/compiler/parser/cursor/index.ts` each write their own `while (low < high)` binary search loop (`Math.ceil((low + high) / 2)`), duplicating `lastIndexAtMost` (`src/structures/sorted.ts`).
+- **Two hand-rolled binary searches duplicating `lastIndexAtMost` (`src/compiler/parser/cursor/brackets.ts`, `src/compiler/parser/cursor/index.ts`, `src/foundation/structures/sorted.ts`):**
+  - `lineOf` in `src/compiler/parser/cursor/brackets.ts` and `Cursor.lineHead` in `src/compiler/parser/cursor/index.ts` each write their own `while (low < high)` binary search loop (`Math.ceil((low + high) / 2)`), duplicating `lastIndexAtMost` (`src/foundation/structures/sorted.ts`).
   - **Done** (`fast-wins`): `lineOf` and `Cursor.lineHead` call `lastIndexAtMost`.
 - **Duplicate node-field reflection walk in `bodiesHeldBy` (`src/compiler/parser/incremental/held-bodies.ts`, `src/compiler/syntax/tree/index.ts`):**
   - `bodiesHeldBy` inspects `Object.values(node)` with `Array.isArray(value)` and `isNode` directly instead of sharing the field-child extraction in `src/compiler/syntax/tree/index.ts` (`fieldChildrenOf`).
 - **Repeated array-spreading multimap insertion in `SegmentReuse` (`src/compiler/parser/incremental/reuse.ts`):**
-  - `SegmentReuse.constructor` builds `#unused` with `this.#unused.set(run.text.text, [...(this.#unused.get(run.text.text) ?? []), run])`, repeating the same copying multimap pattern as `strongly-connected.ts` and `language/values.ts`.
+  - `SegmentReuse.constructor` builds `#unused` with `this.#unused.set(run.text.text, [...(this.#unused.get(run.text.text) ?? []), run])`, repeating the same copying multimap pattern as `strongly-connected.ts` and `foundation/language/values.ts`.
   - **Done** (`fast-wins`): Uses `addToGroup` (unit 1).
 
 ### 9. `src/compiler/parser/` — grammar categories
 
-- **Ad-hoc `'_'` string checks instead of `isUnnamed` (`src/compiler/parser/grammar/patterns.ts`, `src/compiler/parser/grammar/statements/variables.ts`, `src/language/naming.ts`):**
-  - `parseWildcard` (`patterns.ts`) and `startsHeldVariableAt` (`statements/variables.ts`) both test `parser.textOf(...) === '_'` directly instead of calling `isUnnamed` (`src/language/naming.ts`), just as `isUnnamedTarget` does in `syntax/statements/index.ts`.
+- **Ad-hoc `'_'` string checks instead of `isUnnamed` (`src/compiler/parser/grammar/patterns.ts`, `src/compiler/parser/grammar/statements/variables.ts`, `src/foundation/language/naming.ts`):**
+  - `parseWildcard` (`patterns.ts`) and `startsHeldVariableAt` (`statements/variables.ts`) both test `parser.textOf(...) === '_'` directly instead of calling `isUnnamed` (`src/foundation/language/naming.ts`), just as `isUnnamedTarget` does in `syntax/statements/index.ts`.
   - **Done** (`fast-wins`): `parseWildcard` and `startsHeldVariableAt` call `isUnnamed`.
 - **Duplicate `RangePattern` construction in `parseRangePattern` and `parseOpenRangePattern` (`src/compiler/parser/grammar/patterns.ts`):**
   - Unlike `expressions/operators.ts` (where `parseOpenRange` and `rangeParselet` delegate to `parseRangeRest`), `parseRangePattern` and `parseOpenRangePattern` in `patterns.ts` duplicate the operator-kind check, `parseRangeBound`, and `RangePattern` node construction.
@@ -218,8 +218,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 11. `src/compiler/binder/`
 
-- **Three ad-hoc `name.text === '_'` checks in `LocalBinder` instead of `isUnnamed` (`src/compiler/binder/module/local-binder.ts`, `src/language/naming.ts`):**
-  - `LocalBinder.use` (twice) and `LocalBinder.declare` check `name.text === '_'` directly instead of calling `isUnnamed(name.text)` (`src/language/naming.ts`).
+- **Three ad-hoc `name.text === '_'` checks in `LocalBinder` instead of `isUnnamed` (`src/compiler/binder/module/local-binder.ts`, `src/foundation/language/naming.ts`):**
+  - `LocalBinder.use` (twice) and `LocalBinder.declare` check `name.text === '_'` directly instead of calling `isUnnamed(name.text)` (`src/foundation/language/naming.ts`).
   - **Done** (`fast-wins`): `use` and `declare` call `isUnnamed`; `docs/reuse/modules-and-names.md` gains the one-way rule.
 - **Duplicate qualification predicates `mayQualify` and `qualifies` (`src/compiler/binder/module/local-binder.ts`, `src/compiler/binder/link.ts`; related to `B25`):**
   - `mayQualify(head)` in `local-binder.ts` and `qualifies(entity)` in `link.ts` duplicate the check `entity.kind === 'namespace' || (entity.kind === 'type' && entity.declaration.kind === 'EnumDeclaration')` instead of sharing `qualifies` from `entities.ts`.
@@ -249,8 +249,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - Violating the one-way rule in `docs/reuse/types-and-fitting.md` (*"Recognize well-known types by binder entity via `src/compiler/checker/types/type/well-known.ts` or `optionalInner` (`fit.ts`), never by declaration name string"*), `nominalTypeText` tests `declaration.kind === 'EnumDeclaration' && declaration.name.text === wellKnown.optional.name`, so any user-declared `enum Optional<T>` is formatted as `T?`.
 - **Two homes for unwrapping `T?`: `optionalInner` (`src/compiler/checker/types/fitting/fit.ts`) vs. `optionalArgument` (`src/compiler/checker/types/type/well-known.ts`):**
   - `optionalInner(type, checker.optionalEntity)` checks `type.entity === optional` using `ProgramChecker`'s cached `#optional` entry, whereas `optionalArgument(checker, type)` calls `wellKnownArguments(checker, wellKnown.optional, type)` (allocating a fresh `NominalType` via `checker.wellKnownType(wellKnown.optional)` on every call) to answer the exact same question.
-- **Duplicate array equality (`sameTypes`), anonymous-struct child extraction, and function compatibility (`src/compiler/checker/types/type/index.ts`, `type-parts.ts`, `src/structures/equality.ts`):**
-  - `sameTypes` in `type.ts` re-implements `sameItems(sameType)` (`src/structures/equality.ts`).
+- **Duplicate array equality (`sameTypes`), anonymous-struct child extraction, and function compatibility (`src/compiler/checker/types/type/index.ts`, `type-parts.ts`, `src/foundation/structures/equality.ts`):**
+  - `sameTypes` in `type.ts` re-implements `sameItems(sameType)` (`src/foundation/structures/equality.ts`).
   - `sameType`'s `'anonymous'` branch manually compares `isSharedValueType(first) ? first.arguments : []` and `first.fields.map((field) => field.type)` instead of comparing `typeChildren` (`type-parts.ts`), which `Inference.#matchExact` (`types/inference/infer.ts`) uses.
   - `isAssignable` (`type.ts`) and `Inference.#matchFunction` (`types/inference/infer.ts`) duplicate the function-header check `given.isAsync === declared.isAsync && (given.isSendable || !declared.isSendable) && sameShape(...)`.
   - **Done** (`fast-wins`): `sameTypes` is `sameItems(sameType)`.
@@ -320,7 +320,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`p2-structural`): see Ranked Summary item 4.
 - **Duplicate reachable-edges graph walk in `Expansion` and `TypeExpansion` (`src/compiler/checker/rules/expansion.ts`, `constructs/declarations/type-expansion.ts`):**
   - `Expansion.#reachedFrom` and `TypeExpansion.#reachedFrom` implement the identical DFS worklist traversal (`visited`, `pending`, `edges`) before passing the collected edges to `endlessEdges` (`types/expansion-edges.ts`).
-  - **Done** (`p4-computed`): `endlessEdgesFrom` (`types/expansion-edges.ts`) walks from the judged nodes through `edgesReachedFrom` (`structures/reachable.ts`); each user supplies its nodes' edges and the node an edge leads to.
+  - **Done** (`p4-computed`): `endlessEdgesFrom` (`types/expansion-edges.ts`) walks from the judged nodes through `edgesReachedFrom` (`foundation/structures/reachable.ts`); each user supplies its nodes' edges and the node an edge leads to.
 - **Third parallel call-checking pipeline in `checkValueCall` (`src/compiler/checker/constructs/closures/value-calls.ts`, `resolution/calls/resolve.ts`):**
   - `checkValueCall` duplicates the error-argument guard, `takenBy` invocation, `explain` reporting, `fitArguments`, and `checkReferencedPlaces` of `resolveCall` (`resolution/calls/resolve.ts`).
   - **Done** (`p2-structural`): see Ranked Summary item 5; a value call has one callee and chooses nothing, so it takes `takenBy` directly and shares the rest by calling the same units.
@@ -372,7 +372,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **Double standard for diagnostic sorting between `diagnoseModule` (`src/compiler/compile.ts`) and `diagnosticsIn` (`src/compiler/checker/constructs/declarations/module-checks.ts`):**
   - `diagnosticsIn` (`module-checks.ts`) sorts diagnostics by `span.start`, then `span.end`, then `code`, then `compareOrdered(message)`, whereas `diagnoseModule` (`compile.ts`) sorts only by `first.span.start - second.span.start`.
-  - **Done** (`fast-wins`): Both sort with `compareDiagnostics` (`diagnostics/diagnostic.ts`).
+  - **Done** (`fast-wins`): Both sort with `compareDiagnostics` (`foundation/diagnostics/diagnostic.ts`).
 
 ### 25. `src/runtime/` — core, values, snapshot, lifetimes & interpreter
 
@@ -417,8 +417,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 ### 29. `src/formatter/`
 
 - **Three separate implementations of leading-space indentation counting (`src/formatter/expressions/literals.ts`, `src/compiler/binder/module/visibility.ts`, `src/compiler/scanner/multi-line.ts`):**
-  - `lineIndentation` (`formatter/expressions/literals.ts`), `indentationAt` (`binder/module/visibility.ts`), and `leadingSpaceCount` (`scanner/multi-line.ts`) each match leading spaces with a regex on a line slice, and `literals.ts` (`lineIndentation`) and `comments.ts` (`describeComment`) compute `offset - columnOf(source, offset)` instead of calling `lineStartAt(source.text, offset)` (`src/text/line-map.ts`).
-  - **Done** (`p5-indented`): `leadingSpaceCount` and `indentationAt` (`text/line-map.ts`) are the one home, which the scanner, the binder and the formatter call; `describeComment` reads `lineStartAt`. Indentation is spaces only (§2), so the binder's count no longer takes tabs.
+  - `lineIndentation` (`formatter/expressions/literals.ts`), `indentationAt` (`binder/module/visibility.ts`), and `leadingSpaceCount` (`scanner/multi-line.ts`) each match leading spaces with a regex on a line slice, and `literals.ts` (`lineIndentation`) and `comments.ts` (`describeComment`) compute `offset - columnOf(source, offset)` instead of calling `lineStartAt(source.text, offset)` (`src/foundation/text/line-map.ts`).
+  - **Done** (`p5-indented`): `leadingSpaceCount` and `indentationAt` (`foundation/text/line-map.ts`) are the one home, which the scanner, the binder and the formatter call; `describeComment` reads `lineStartAt`. Indentation is spaces only (§2), so the binder's count no longer takes tabs.
 - **Duplicate bracketed-child classification between `formatter/layout/bodies.ts` (`bracketKinds`, `unbracketedChildren`) and `formatter/layout/brackets.ts` (`inBracketsUnder`):**
   - `unbracketedChildren` (`bodies.ts`) and `inBracketsUnder` (`brackets.ts`) independently list which node kinds (`ArrayLiteral`, `MapLiteral`, `Comprehension`, `Tuple`, `Parenthesized`, `StructLiteral`, `NewStructLiteral`) and which child positions (`Call.callee`, `Index.target`) stand inside vs. outside brackets.
   - **Done** (`p4-computed`): `standingIn` (`brackets.ts`) is the one list of which delimiters enclose which children; brackets derive from it where a line break means nothing, `bodies.ts` the children an `else` could continue a body of.
@@ -438,8 +438,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 ### 31. `src/language-service/` — core, navigation, semantic-tokens & editor queries
 
 - **Re-scanning `tree.source` in `scannedOf(tree)` instead of memoizing `scan` on `SourceText` or keeping tokens on `SyntaxTree` (`src/language-service/reading/tokens.ts`, `src/compiler/scanner/scan.ts`):**
-  - `parse(source, scanned)` (`src/compiler/parser/parse.ts`) receives `scanned: ScanResult` and keeps `scanned.comments` and `scanned.diagnostics` on `SyntaxTree`, but drops `scanned.tokens`. As a result, `scannedOf(tree)` in `language-service/reading/tokens.ts` has to re-run `scan(tree.source)` from scratch whenever any language-service feature requests tokens or bracket pairs. Memoizing `scan(source)` on the branded, immutable `SourceText` (as `lineMapOf(source)` does in `src/text/line-map.ts`) eliminates the duplicate scan.
-- **Manual `Owner.name` string formatting in `symbols.ts` and `signatures.ts` instead of `staticName` (`src/language-service/outline/symbols.ts`, `src/language-service/signatures/signatures.ts`, `src/language/static-names.ts`):**
+  - `parse(source, scanned)` (`src/compiler/parser/parse.ts`) receives `scanned: ScanResult` and keeps `scanned.comments` and `scanned.diagnostics` on `SyntaxTree`, but drops `scanned.tokens`. As a result, `scannedOf(tree)` in `language-service/reading/tokens.ts` has to re-run `scan(tree.source)` from scratch whenever any language-service feature requests tokens or bracket pairs. Memoizing `scan(source)` on the branded, immutable `SourceText` (as `lineMapOf(source)` does in `src/foundation/text/line-map.ts`) eliminates the duplicate scan.
+- **Manual `Owner.name` string formatting in `symbols.ts` and `signatures.ts` instead of `staticName` (`src/language-service/outline/symbols.ts`, `src/language-service/signatures/signatures.ts`, `src/foundation/language/static-names.ts`):**
   - Violating the one-way rule in `docs/reuse/modules-and-names.md` (*"Spell `Owner.name` with `staticName`"*), `symbolsOfDeclaration.FunctionDeclaration` (`symbols.ts`) formats `` `${owner.text}.${name.text}` `` directly, and `signatureOf` (`signatures.ts`) formats ``owner === undefined ? '' : `${owner.text}.` `` directly.
   - **Done** (`fast-wins`): Both spell it with `staticName`.
 - **`isName(text)` in `rename.ts` runs `createSourceText` + `scan` to validate an identifier (`src/language-service/navigation/rename.ts`, `src/compiler/scanner/characters.ts`):**
@@ -452,8 +452,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Duplicate `ownsStatics` / `staticOwnerKinds` in `completion/places/declared-name.ts` vs. `isNominalEntity` (`src/compiler/checker/types/type/index.ts`):**
   - `declared-name.ts` defines `staticOwnerKinds = new Set(['StructDeclaration', 'SharedStructDeclaration', 'ExternStructDeclaration', 'EnumDeclaration'])` and `ownsStatics`, duplicating `isNominalEntity` (`src/compiler/checker/types/type/index.ts`) and omitting type aliases (`StaticFunctions.#ownerOf` in `checker/constructs/declarations/functions/statics.ts`).
   - **Done** (`p2-structural`): `staticOwners` asks `staticOwnerOf(entityType(…))` (`types/written/named-types.ts`), so an alias, of a shape too, is offered.
-- **Hard-coded `'self'` string literal in `completion/places/declared-name.ts` (`src/language-service/completion/places/declared-name.ts`, `src/language/well-known/index.ts`):**
-  - `declared-name.ts` writes `const receiver: Candidate = { name: 'self', subject: { kind: 'keyword' } }` instead of importing `receiverParameter` from `src/language/well-known/index.ts` (violating the one-way rule in `docs/reuse/modules-and-names.md`).
+- **Hard-coded `'self'` string literal in `completion/places/declared-name.ts` (`src/language-service/completion/places/declared-name.ts`, `src/foundation/language/well-known/index.ts`):**
+  - `declared-name.ts` writes `const receiver: Candidate = { name: 'self', subject: { kind: 'keyword' } }` instead of importing `receiverParameter` from `src/foundation/language/well-known/index.ts` (violating the one-way rule in `docs/reuse/modules-and-names.md`).
   - **Done** (`fast-wins`): `receiver` names `receiverParameter`.
 - **Duplicate `isChangeable` in `completion/places/grammar/index.ts` vs. `VariableScope.isChangeable` / `writtenByReference` (`src/language-service/completion/places/grammar/index.ts`, `src/compiler/checker/constructs/statements/variables.ts`, `constructs/declarations/functions/signatures.ts`):**
   - `isChangeable` in `completion/places/grammar/index.ts` re-implements `owner.kind === 'VariableDeclaration' && owner.isMutable` and `owner.kind === 'Parameter' && owner.type?.kind === 'ReferenceType'` (missing lambda parameters whose `&` reference comes from an expected function type).
@@ -465,8 +465,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 33. `src/lsp/` (including `providers/`)
 
-- **Second `Number.MAX_SAFE_INTEGER` column workaround for `LineMap` line bounds in `linesOf` (`src/lsp/providers/semantic-tokens.ts`, `src/text/line-map.ts`, `src/diagnostics/render.ts`):**
-  - `linesOf` in `semantic-tokens.ts` reconstructs each line's `[start, end)` bounds via `lines.offsetAt({ line, column: 0 })` and `lines.offsetAt({ line, column: Number.MAX_SAFE_INTEGER })`, repeating the same workaround as `renderDiagnostic` (`src/diagnostics/render.ts`) because `LineMap` does not expose its stored `#lineEnds`.
+- **Second `Number.MAX_SAFE_INTEGER` column workaround for `LineMap` line bounds in `linesOf` (`src/lsp/providers/semantic-tokens.ts`, `src/foundation/text/line-map.ts`, `src/foundation/diagnostics/render.ts`):**
+  - `linesOf` in `semantic-tokens.ts` reconstructs each line's `[start, end)` bounds via `lines.offsetAt({ line, column: 0 })` and `lines.offsetAt({ line, column: Number.MAX_SAFE_INTEGER })`, repeating the same workaround as `renderDiagnostic` (`src/foundation/diagnostics/render.ts`) because `LineMap` does not expose its stored `#lineEnds`.
   - **Done** (`fast-wins`): `linesOf` reads `lines.lineSpan(line)`.
 - **Duplicate offset-to-LSP-`Position` conversion in `rangeOf` (`src/lsp/locations.ts`) and `inlayHints` (`src/lsp/providers/inlay-hints.ts`):**
   - `rangeOf` and `inlayHints` both convert `lines.positionAt(offset)` to `{ line, character: column }`.

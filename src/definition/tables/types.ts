@@ -31,7 +31,7 @@
  */
 
 import { z } from 'zod';
-import { primitiveNames } from '../../language/primitives.ts';
+import { primitiveNames } from '../../foundation/language/primitives.ts';
 import { functionId, typeId } from '../operands.ts';
 import { value } from '../values/values.ts';
 

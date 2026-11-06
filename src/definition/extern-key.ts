@@ -18,8 +18,8 @@
  *   name alone: `purchase.approvalDeadline` (§9).
  */
 
-import type { PrimitiveName } from '../language/primitives.ts';
-import { qualifiedName } from '../language/well-known/index.ts';
+import type { PrimitiveName } from '../foundation/language/primitives.ts';
+import { qualifiedName } from '../foundation/language/well-known/index.ts';
 
 /** A declared type, as a key spells it. */
 export type KeyType =

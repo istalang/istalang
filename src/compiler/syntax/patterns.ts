@@ -8,7 +8,7 @@
  * only: the spec has no positional field patterns.
  */
 
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import type { Expression, Unary } from './expressions/index.ts';
 import type { Literal } from './expressions/literals/literals.ts';
 import type { ComparisonOperator } from './expressions/operators.ts';

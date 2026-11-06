@@ -16,7 +16,7 @@ import {
   type Value,
   withChildValues,
 } from '../../definition/values/values.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 
 /** The part of `value` at `path`. */
 export function partAt(value: Value, path: readonly number[]): Value {

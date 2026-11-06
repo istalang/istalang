@@ -20,10 +20,10 @@
  * to it), so the nodes at an offset are found by descending from the root.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { memo, SequenceMemo } from '../../../structures/memo.ts';
-import type { SourceText } from '../../../text/source-text.ts';
-import type { Span } from '../../../text/span.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import { memo, SequenceMemo } from '../../../foundation/structures/memo.ts';
+import type { SourceText } from '../../../foundation/text/source-text.ts';
+import type { Span } from '../../../foundation/text/span.ts';
 import type {
   Declaration,
   DeclarationPart,

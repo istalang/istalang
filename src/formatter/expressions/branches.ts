@@ -17,7 +17,7 @@ import type {
   ExpressionPart,
   If,
 } from '../../compiler/syntax/expressions/index.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { body, indentedBody, opensBody } from '../layout/bodies.ts';
 import type { Printer, Printers } from '../printer.ts';
 

@@ -9,8 +9,8 @@ import {
 import type { StringLiteral } from '../../../compiler/syntax/expressions/literals/literals.ts';
 import { nodesUnder, type SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
 import { type Identifier, isMissingName } from '../../../compiler/syntax/tree/node.ts';
-import { lineMapOf } from '../../../text/line-map.ts';
-import type { SourceText } from '../../../text/source-text.ts';
+import { lineMapOf } from '../../../foundation/text/line-map.ts';
+import type { SourceText } from '../../../foundation/text/source-text.ts';
 import type { TestClient } from '../../server.test-kit.ts';
 
 /**

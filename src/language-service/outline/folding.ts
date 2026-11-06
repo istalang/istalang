@@ -26,9 +26,9 @@ import {
 } from '../../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
-import { lastIndexAtMost } from '../../structures/sorted.ts';
-import { type LineMap, lineMapOf } from '../../text/line-map.ts';
-import type { Span } from '../../text/span.ts';
+import { lastIndexAtMost } from '../../foundation/structures/sorted.ts';
+import { type LineMap, lineMapOf } from '../../foundation/text/line-map.ts';
+import type { Span } from '../../foundation/text/span.ts';
 import { closingBracketsOf, codeTokensOf } from '../reading/tokens.ts';
 
 /** Lines `start` through `end`, 0-based. */

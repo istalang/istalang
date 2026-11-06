@@ -14,7 +14,7 @@
  *   union meets requiring the function called on it are reported as such.
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';

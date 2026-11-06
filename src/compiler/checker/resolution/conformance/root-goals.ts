@@ -19,8 +19,8 @@
  *   meanwhile (rules/boundary/json-forms.ts) is what ends that recursion.
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
-import type { EntryTable } from '../../../../structures/entries/index.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type {
   CheckerContext,

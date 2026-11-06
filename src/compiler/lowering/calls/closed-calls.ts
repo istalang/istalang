@@ -13,7 +13,7 @@
  *   leaves parameters out or passes them out of order.
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, SignatureParameter } from '../../checker/check.ts';
 import {
   type Binding,

@@ -2,9 +2,9 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { FoldingRangeRequest } from 'vscode-languageserver/node';
 import { extentIn, nodesUnder, type SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
+import { lineMapOf } from '../../../foundation/text/line-map.ts';
+import type { Span } from '../../../foundation/text/span.ts';
 import { allTokensOf } from '../../../language-service/reading/tokens.ts';
-import { lineMapOf } from '../../../text/line-map.ts';
-import type { Span } from '../../../text/span.ts';
 import { corpusClient, corpusDocuments } from '../../corpus-client.test-kit.ts';
 import type { TestClient } from '../../server.test-kit.ts';
 

@@ -23,7 +23,7 @@
  *   where it was built, recursive members flattened, so none takes another member whole again.
  */
 
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import { holdsRecursion, typeChildren } from '../parts/type-children.ts';
 import type { RecursiveGraph } from '../type/computed-types.ts';
 import type { Type } from '../type/index.ts';

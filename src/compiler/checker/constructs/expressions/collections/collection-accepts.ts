@@ -15,7 +15,7 @@
  *   any.
  */
 
-import { wellKnown } from '../../../../../language/well-known/index.ts';
+import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
 import type {
   ArrayLiteral,
   Expression,

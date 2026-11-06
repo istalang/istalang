@@ -7,7 +7,7 @@
 import { stdProgramOf } from '../../compiler/binder/bind.test-kit.ts';
 import { compileTests, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
-import { renderDiagnostic } from '../../diagnostics/render.ts';
+import { renderDiagnostic } from '../../foundation/diagnostics/render.ts';
 import { stdNatives } from '../../stdlib/natives.ts';
 import { runTests, type TestReport } from './run-tests.ts';
 

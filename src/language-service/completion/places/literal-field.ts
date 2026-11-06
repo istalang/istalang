@@ -34,7 +34,7 @@ import {
 } from '../../../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
-import { indentationAt, lineStartAt } from '../../../text/line-map.ts';
+import { indentationAt, lineStartAt } from '../../../foundation/text/line-map.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import { isBareVariant } from '../expected.ts';

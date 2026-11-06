@@ -16,8 +16,8 @@ import {
   type SpecExample,
   specExamples,
 } from '../../../test/corpus/spec-examples.ts';
-import { createSourceText } from '../../text/source-text.ts';
-import { textOf } from '../../text/span.ts';
+import { createSourceText } from '../../foundation/text/source-text.ts';
+import { textOf } from '../../foundation/text/span.ts';
 import { scan } from '../scanner/scan.ts';
 import type { SyntaxTree } from '../syntax/tree/index.ts';
 import { dump, errorNodes, spanViolations, strayBodies } from '../syntax/tree/tree.test-kit.ts';

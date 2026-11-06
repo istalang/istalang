@@ -32,8 +32,8 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - look up, insert or remove an entry in a runtime `MapValue` → `entryPosition`, `entryValue`, `withEntry`, `withoutEntry` (`src/definition/values/equality.ts`)
 - compare compile-time `ConstantForm`s with `==` or build constant maps → `formSemantics` (`src/compiler/checker/surface/constant-form.ts`)
 - tell whether a constant computed again has the form lowering emits alike (map order and lambdas by identity) → `sameForm` (`src/compiler/checker/surface/constant-form.ts`)
-- define `==` and structural map hashing over a value representation → `ValueSemantics` (`src/language/values.ts`)
-- order two `bigint`s or UTF-16 `string`s → `compareOrdered` (`src/language/order.ts`)
+- define `==` and structural map hashing over a value representation → `ValueSemantics` (`src/foundation/language/values.ts`)
+- order two `bigint`s or UTF-16 `string`s → `compareOrdered` (`src/foundation/language/order.ts`)
 - find the `json.Json` type entry, the variant each of its union's members is (found by what the variant holds), or test if a `Value` is `Json` → `jsonTypeIn`, `jsonTypeOf`, `isJsonValue` (`src/definition/values/json-values.ts`)
 - convert between `json.Json` values, JSON text, and host JS values → `jsonText`, `jsonOfText`, `plainOfJson`, `jsonOfPlain` (`src/definition/values/json-values.ts`)
 
@@ -42,4 +42,4 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - Build and read structs, variants, `Optional`, `Result` and `Error` by declared name (`declared-values.ts`, `values/arguments.ts`, `values/results.ts`), never by positional index.
 - Narrow closures with `closureOf` and handles with `handleTarget`, and make handles with `handleTo` (`src/definition/values/values.ts`), never with ad-hoc `isComposite(v) && v.kind === ...` checks or `{ kind: 'handle', … }` literals.
 - Values are immutable: never mutate `fields`, `elements`, `entries` or `captures`; rebuild with `withPart`, `withChildValues`, or `withEntry`/`withoutEntry`.
-- Built-in `==` and map hashing live in `ValueSemantics` (`src/language/values.ts`), shared by `definition/values/equality.ts` and `checker/surface/constant-form.ts`.
+- Built-in `==` and map hashing live in `ValueSemantics` (`src/foundation/language/values.ts`), shared by `definition/values/equality.ts` and `checker/surface/constant-form.ts`.

@@ -6,7 +6,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reportedNothing, reportedOnce } from '../../../../diagnostics/diagnostic.test-kit.ts';
+import {
+  reportedNothing,
+  reportedOnce,
+} from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { bindProgram } from '../../../binder/bind.ts';
 import { idOf } from '../../../program/program.test-kit.ts';

@@ -13,7 +13,7 @@
  */
 
 import type { Register } from '../../../../definition/operands.ts';
-import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import { unitType } from '../../../checker/types/type/primitives.ts';
 import type { Block, Drop, Return, Statement } from '../../../syntax/statements/index.ts';
 import { droppedName, tailExpressionOf } from '../../../syntax/statements/readings.ts';

@@ -10,7 +10,7 @@
  */
 
 import type { Value } from '../../definition/values/values.ts';
-import type { PrimitiveName } from '../../language/primitives.ts';
+import type { PrimitiveName } from '../../foundation/language/primitives.ts';
 import type { Native, NativeContext, Natives } from '../../runtime/natives.ts';
 import type { NativeKeys } from '../std-module.ts';
 import { text } from '../values/arguments.ts';

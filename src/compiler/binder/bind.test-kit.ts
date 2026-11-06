@@ -9,7 +9,7 @@
 import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
 import { invalidPrograms, runPrograms } from '../../../test/corpus/programs.ts';
-import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
+import { type Reported, reportedIn } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { preludeModule, stdlibLoader, stdRoles } from '../../stdlib/stdlib-loader.ts';
 import type { Files } from '../program/program.test-kit.ts';
 import { idOf, moduleAt, programOf } from '../program/program.test-kit.ts';

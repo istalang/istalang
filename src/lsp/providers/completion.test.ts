@@ -23,7 +23,7 @@ import { checkerDiagnostics } from '../../compiler/checker/diagnostics/index.ts'
 import { nodesUnder } from '../../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
-import { isError } from '../../diagnostics/diagnostic.ts';
+import { isError } from '../../foundation/diagnostics/diagnostic.ts';
 import {
   corpusClient,
   programDocuments as documents,

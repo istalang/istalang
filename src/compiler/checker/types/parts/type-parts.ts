@@ -10,8 +10,8 @@
  * `rebuilt`).
  */
 
-import { sameItems } from '../../../../structures/equality.ts';
-import { memo } from '../../../../structures/memo.ts';
+import { sameItems } from '../../../../foundation/structures/equality.ts';
+import { memo } from '../../../../foundation/structures/memo.ts';
 import { mapRecursive } from '../identity/recursive-types.ts';
 import { typeKeys } from '../identity/type-keys.ts';
 import { aliasedAs } from '../type/alias-uses.ts';

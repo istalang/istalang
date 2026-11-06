@@ -12,28 +12,28 @@ tags: [reuse, language, modules, program, binder, names]
 
 ## Units
 
-- list the language's built-in primitive type names, or the one a lowercase leftover (`int`) became → `primitiveNames`, `PrimitiveName`, `primitiveOnceSpelled` (`src/language/primitives.ts`)
-- spell a static function name `Owner.name` (`Time.parse`) → `staticName` (`src/language/static-names.ts`)
-- test a name against the naming conventions, its privacy, whether it is the unnamed `_`, whether a bare name binds in a pattern, or whether a built-in type takes it → `followsConvention`, `Convention`, `isPrivate`, `isUnnamed`, `bindsInPattern`, `isBuiltInTypeName` (`src/language/naming.ts`)
-- spell a module-qualified declaration name `module.name` (`prelude.Future`) → `qualifiedName` (`src/language/well-known/index.ts`)
+- list the language's built-in primitive type names, or the one a lowercase leftover (`int`) became → `primitiveNames`, `PrimitiveName`, `primitiveOnceSpelled` (`src/foundation/language/primitives.ts`)
+- spell a static function name `Owner.name` (`Time.parse`) → `staticName` (`src/foundation/language/static-names.ts`)
+- test a name against the naming conventions, its privacy, whether it is the unnamed `_`, whether a bare name binds in a pattern, or whether a built-in type takes it → `followsConvention`, `Convention`, `isPrivate`, `isUnnamed`, `bindsInPattern`, `isBuiltInTypeName` (`src/foundation/language/naming.ts`)
+- spell a module-qualified declaration name `module.name` (`prelude.Future`) → `qualifiedName` (`src/foundation/language/well-known/index.ts`)
 - spell a checked declaration's module-qualified name or extern/startable key → `qualifiedNameOf`, `keyOf`, `spelledType` (`src/compiler/lowering/tables/names.ts`)
 - build an extern key (`prelude.add(Int, Float)`) from a signature or native table → `externKey`, `nativeKey`, `keyTypeText` (`src/definition/extern-key.ts`)
 - build type descriptors for `nativeKey` → `namedKey`, `primitiveKey`, `functionKey`, `parameterKey` (`src/definition/extern-key.ts`)
 - mark a `nativeKey` parameter as `&` reference or `...` rest → `referenceKey`, `restKey` (`src/definition/extern-key.ts`)
-- look up a language-role module (`prelude`, `time`, `json`, `testing`), the `std:` scheme, or a well-known declaration → `languageModules`, `stdScheme`, `wellKnown` (`src/language/well-known/index.ts`)
-- look up well-known variant and field names (a union's layout, `Result`, a cursor's `Step`) → `unionLayout`, `resultVariants`, `resultFields`, `stepVariants` (`src/language/well-known/variants.ts`); `Json` is a union, whose members json-values.ts finds by what each variant holds
-- look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers` (`src/language/well-known/codecs.ts`)
-- look up well-known testing function names, the test file suffix, or whether a path names a test module → `testingFunctions`, `testModuleSuffix`, `isTestModulePath` (`src/language/well-known/testing.ts`)
-- look up collection, template or pattern function names → `collectionFunctions`, `templateFunctions`, `arrayPatternFunctions` (`src/language/well-known/implicit-calls.ts`)
-- look up `dispose`, `from` or `main` function names, or `self`, the parameter making a function a method, or `Self`, the type meeting a trait → `disposeFunction`, `conversionFunction` (`src/language/well-known/implicit-calls.ts`), `entryFunction`, `receiverParameter`, `selfType` (`src/language/well-known/index.ts`)
-- look up `_inclusiveEnd` or `panic` function names → `inclusiveEndFunction`, `panicFunction` (`src/language/well-known/implicit-calls.ts`)
+- look up a language-role module (`prelude`, `time`, `json`, `testing`), the `std:` scheme, or a well-known declaration → `languageModules`, `stdScheme`, `wellKnown` (`src/foundation/language/well-known/index.ts`)
+- look up well-known variant and field names (a union's layout, `Result`, a cursor's `Step`) → `unionLayout`, `resultVariants`, `resultFields`, `stepVariants` (`src/foundation/language/well-known/variants.ts`); `Json` is a union, whose members json-values.ts finds by what each variant holds
+- look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers` (`src/foundation/language/well-known/codecs.ts`)
+- look up well-known testing function names, the test file suffix, or whether a path names a test module → `testingFunctions`, `testModuleSuffix`, `isTestModulePath` (`src/foundation/language/well-known/testing.ts`)
+- look up collection, template or pattern function names → `collectionFunctions`, `templateFunctions`, `arrayPatternFunctions` (`src/foundation/language/well-known/implicit-calls.ts`)
+- look up `dispose`, `from` or `main` function names, or `self`, the parameter making a function a method, or `Self`, the type meeting a trait → `disposeFunction`, `conversionFunction` (`src/foundation/language/well-known/implicit-calls.ts`), `entryFunction`, `receiverParameter`, `selfType` (`src/foundation/language/well-known/index.ts`)
+- look up `_inclusiveEnd` or `panic` function names → `inclusiveEndFunction`, `panicFunction` (`src/foundation/language/well-known/implicit-calls.ts`)
 - build a branded `ModuleId` from a `URL` → `moduleIdOf`, `ModuleId` (`src/compiler/program/program.ts`)
 - load a `Program` from roots and `ModuleLoader`s (reusing unchanged trees) → `buildProgram`, `Program`, `ModuleLoader` (`src/compiler/program/program.ts`)
 - get a loaded `ProgramModule` by `ModuleId` or test for a test/std module → `programModule`, `isTestModule`, `isStdModule` (`src/compiler/program/program.ts`)
 - create the project files' `ModuleLoader` or locate a single `.ista` file → `fileLoader`, `locateFile`, `sourceExtension` (`src/project/file-loader.ts`)
 - turn a file's absolute path into its module's id, or a module id back into its file → `moduleIdOfFile`, `fileOfModule` (`src/project/file-loader.ts`)
 - read project files from disk, or with an editor's open documents laid over them → `ProjectFiles`, `diskFiles`, `overlaidFiles` (`src/project/project-files.ts`)
-- read an import's path in the toolchain's one syntax: the `.`/`..` it starts with and the names after, or that it is no path → `importPathOf`, `ImportPath` (`src/language/import-paths.ts`)
+- read an import's path in the toolchain's one syntax: the `.`/`..` it starts with and the names after, or that it is no path → `importPathOf`, `ImportPath` (`src/foundation/language/import-paths.ts`)
 - find project `.ista` sources or load a project `Program` with stdlib roles, from given files or std sources, reusing a previous snapshot's trees → `loadProject`, `ProjectOptions`, `findProjectSources`, `findSources` (`src/project/project.ts`)
 - keep an editor's open texts and the program they make, one load per change → `Workspace`, `ProgramLoader`, `OpenTexts` (`src/language-service/workspace.ts`)
 - find the identifier, or the String literal, an editor's cursor is on, inside it or right after it → `identifierAt`, `stringLiteralAt` (`src/language-service/reading/identifier-at.ts`)
@@ -79,7 +79,7 @@ tags: [reuse, language, modules, program, binder, names]
 
 ## One-way rules
 
-- Never spell a language-known module, declaration, variant, annotation or protocol function as a string literal; import it from `src/language/well-known/index.ts`.
-- Ask whether a name is the unnamed `_` with `isUnnamed`, and whether a bare pattern name binds with `bindsInPattern` (`src/language/naming.ts`); never compare against `'_'` or test a letter's case by hand.
+- Never spell a language-known module, declaration, variant, annotation or protocol function as a string literal; import it from `src/foundation/language/well-known/index.ts`.
+- Ask whether a name is the unnamed `_` with `isUnnamed`, and whether a bare pattern name binds with `bindsInPattern` (`src/foundation/language/naming.ts`); never compare against `'_'` or test a letter's case by hand.
 - Spell `Owner.name` with `staticName`, `module.name` with `qualifiedName`, and extern keys with `externKey` (`src/definition/extern-key.ts`).
 - `Program` loading does no I/O and imposes no path syntax; only `src/compiler/compile.ts` coordinates phases after `buildProgram`.

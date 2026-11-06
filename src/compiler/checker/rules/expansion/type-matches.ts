@@ -19,8 +19,8 @@
  * subject would pick, as a generic function calling itself is judged by its calls.
  */
 
-import type { EntryTable } from '../../../../structures/entries/index.ts';
-import { sameItems, sameProperties } from '../../../../structures/equality.ts';
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { sameItems, sameProperties } from '../../../../foundation/structures/equality.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import {
   type AliasDeclaration,

@@ -8,7 +8,7 @@
 
 import fc from 'fast-check';
 import { scan } from '../src/compiler/scanner/scan.ts';
-import { createSourceText } from '../src/text/source-text.ts';
+import { createSourceText } from '../src/foundation/text/source-text.ts';
 
 interface Mutation {
   readonly kind: 'delete' | 'duplicate' | 'swap';

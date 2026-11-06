@@ -11,8 +11,8 @@
  * npm packages may be imported anywhere: a library is a dependency like a lower layer. Node's
  * built-ins only where listed below; the compiler and runtime reach the file system, processes and
  * the clock through seams (architecture, Seams). `definition/` may use `crypto` alone, for content
- * hashes: hashing is computation, not I/O. The runtime may use `text/` for the same reason: it turns
- * a Definition's line starts into positions with the line map's own search.
+ * hashes: hashing is computation, not I/O. The runtime may use `foundation/text/` for the same
+ * reason: it turns a Definition's line starts into positions with the line map's own search.
  *
  * Inside the parser, grammar categories reach one another only through the parsing context, and
  * the shared parts they all use import no category (src/compiler/parser/parser.ts). Inside the
@@ -20,38 +20,43 @@
  */
 
 /**
- * Beneath every other layer: the language's fixed vocabulary and its `==` (`language/`), and the
- * generic structures every phase builds on (`structures/`: kind tables, memo, scoped stacks). Both
- * import nothing.
+ * Beneath every other layer: the language's fixed vocabulary and its `==` (`foundation/language/`),
+ * and the generic structures every phase builds on (`foundation/structures/`: kind tables, memo,
+ * scoped stacks). Both import nothing.
  */
-const foundation = ['structures', 'language'];
+const beneathEveryLayer = ['foundation/structures', 'foundation/language'];
 
 const layers = {
-  structures: [],
-  language: [],
-  text: [],
-  diagnostics: ['text'],
-  'compiler/syntax': ['text', 'diagnostics'],
-  'compiler/scanner': ['text', 'diagnostics', 'compiler/syntax'],
-  'compiler/parser': ['text', 'diagnostics', 'compiler/syntax'],
+  'foundation/structures': [],
+  'foundation/language': [],
+  'foundation/text': [],
+  'foundation/diagnostics': ['foundation/text'],
+  'compiler/syntax': ['foundation/text', 'foundation/diagnostics'],
+  'compiler/scanner': ['foundation/text', 'foundation/diagnostics', 'compiler/syntax'],
+  'compiler/parser': ['foundation/text', 'foundation/diagnostics', 'compiler/syntax'],
   'compiler/program': [
-    'text',
-    'diagnostics',
+    'foundation/text',
+    'foundation/diagnostics',
     'compiler/syntax',
     'compiler/scanner',
     'compiler/parser',
   ],
-  'compiler/binder': ['text', 'diagnostics', 'compiler/syntax', 'compiler/program'],
+  'compiler/binder': [
+    'foundation/text',
+    'foundation/diagnostics',
+    'compiler/syntax',
+    'compiler/program',
+  ],
   'compiler/checker': [
-    'text',
-    'diagnostics',
+    'foundation/text',
+    'foundation/diagnostics',
     'compiler/syntax',
     'compiler/program',
     'compiler/binder',
   ],
   'compiler/lowering': [
-    'text',
-    'diagnostics',
+    'foundation/text',
+    'foundation/diagnostics',
     'compiler/syntax',
     'compiler/program',
     'compiler/binder',
@@ -59,8 +64,8 @@ const layers = {
     'definition',
   ],
   'compiler/compile': [
-    'text',
-    'diagnostics',
+    'foundation/text',
+    'foundation/diagnostics',
     'compiler/syntax',
     'compiler/program',
     'compiler/binder',
@@ -68,12 +73,18 @@ const layers = {
     'compiler/lowering',
     'definition',
   ],
-  stdlib: ['text', 'compiler/program', 'definition', 'runtime'],
-  formatter: ['text', 'diagnostics', 'compiler/syntax', 'compiler/scanner', 'compiler/parser'],
-  project: ['text', 'diagnostics', 'compiler/program', 'stdlib'],
+  stdlib: ['foundation/text', 'compiler/program', 'definition', 'runtime'],
+  formatter: [
+    'foundation/text',
+    'foundation/diagnostics',
+    'compiler/syntax',
+    'compiler/scanner',
+    'compiler/parser',
+  ],
+  project: ['foundation/text', 'foundation/diagnostics', 'compiler/program', 'stdlib'],
   'language-service': [
-    'text',
-    'diagnostics',
+    'foundation/text',
+    'foundation/diagnostics',
     'compiler/syntax',
     'compiler/scanner',
     'compiler/parser',
@@ -84,8 +95,8 @@ const layers = {
     'formatter',
   ],
   lsp: [
-    'text',
-    'diagnostics',
+    'foundation/text',
+    'foundation/diagnostics',
     'compiler/syntax',
     'compiler/program',
     'language-service',
@@ -94,8 +105,8 @@ const layers = {
     'stdlib',
   ],
   cli: [
-    'text',
-    'diagnostics',
+    'foundation/text',
+    'foundation/diagnostics',
     'compiler/program',
     'compiler/compile',
     'stdlib',
@@ -109,7 +120,7 @@ const layers = {
   // server it shares only the protocol's request, so no server code reaches the bundle.
   'vscode-client': ['lsp/std-source-request'],
   definition: [],
-  runtime: ['definition', 'text'],
+  runtime: ['definition', 'foundation/text'],
 };
 
 /**
@@ -274,7 +285,7 @@ export default {
   allowed: [
     ...Object.entries(layers).map(([layer, beneath]) => ({
       from: { path: layerPath([layer]) },
-      to: { path: layerPath([layer, ...beneath, ...foundation]) },
+      to: { path: layerPath([layer, ...beneath, ...beneathEveryLayer]) },
     })),
     { from: { path: '^src/' }, to: { dependencyTypes: ['npm'] } },
     { from: { path: layerPath(nodeLayers) }, to: { dependencyTypes: ['core'] } },

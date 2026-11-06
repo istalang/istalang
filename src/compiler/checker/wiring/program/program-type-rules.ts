@@ -15,8 +15,8 @@
  * Reached again while it expands, it is the error type, as an alias reached again is.
  */
 
-import type { EntryTable } from '../../../../structures/entries/index.ts';
-import { withEmptied } from '../../../../structures/stack.ts';
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { withEmptied } from '../../../../foundation/structures/stack.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { meetsAny } from '../../resolution/conformance/trait-objects.ts';
 import { TypeMatchReductions } from '../../resolution/type-matches/type-matches.ts';

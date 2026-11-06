@@ -11,7 +11,7 @@ Istalang is one layered package in which each phase is a memoized function of an
 @meta locale=en
 @source compile title="Phase coordinator" path=src/compiler/compile.ts lines=38:88
 @source cruiser title="Layer allow-list" path=.dependency-cruiser.mjs lines=116:166
-@source kindtable title="Exhaustive kind tables" path=src/structures/kind-table.ts lines=1:37
+@source kindtable title="Exhaustive kind tables" path=src/foundation/structures/kind-table.ts lines=1:37
 @source program title="buildProgram: load, scan, parse, resolve imports" path=src/compiler/program/program.ts lines=133:153
 @source bind title="bindProgram and per-module binding" path=src/compiler/binder/module/bind-module.ts lines=40:54
 @source link title="Linker: imports, prelude, overloads" path=src/compiler/binder/link/index.ts lines=65:105
@@ -19,7 +19,7 @@ Istalang is one layered package in which each phase is a memoized function of an
 @source host title="Runtime host API and seams" path=src/runtime/host/index.ts lines=129:200
 @source wake title="advance: segment, commit, repeat" path=src/runtime/scheduler/wake.ts lines=117:166
 @source run title="ista run" path=src/cli/commands/run.ts lines=116:140
-@source memo title="memo over immutable inputs" path=src/structures/memo.ts lines=1:50
+@source memo title="memo over immutable inputs" path=src/foundation/structures/memo.ts lines=1:50
 @source workspace title="Language-service workspace" path=src/language-service/workspace.ts lines=1:40
 
 ## Which layers exist, and which way do imports point? {#layers}

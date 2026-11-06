@@ -12,7 +12,7 @@
 
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { Value } from '../../definition/values/values.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { ActiveFrame } from './frames.ts';
 import { resumeAt } from './machine.ts';
 import { clearRegister, readRegister, writeRegister } from './registers.ts';

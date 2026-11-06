@@ -34,10 +34,13 @@ import type {
   TypeReference,
 } from '../../../definition/tables/types.ts';
 import type { Value } from '../../../definition/values/values.ts';
-import { compareOrdered } from '../../../language/order.ts';
-import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
-import { unionLayout } from '../../../language/well-known/variants.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { compareOrdered } from '../../../foundation/language/order.ts';
+import {
+  type WellKnownDeclaration,
+  wellKnown,
+} from '../../../foundation/language/well-known/index.ts';
+import { unionLayout } from '../../../foundation/language/well-known/variants.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker, Disposal } from '../../checker/check.ts';
 import type { CheckedAnnotation } from '../../checker/surface/checked-annotation.ts';
 import { isHostExtern } from '../../checker/surface/host-externs.ts';

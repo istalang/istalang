@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
+import { reportedOnce } from '../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import type { Module } from '../../syntax/declarations/index.ts';
 import { spanIn } from '../../syntax/tree/positions.ts';
 import { dump, handMadeSpan } from '../../syntax/tree/tree.test-kit.ts';

@@ -27,8 +27,8 @@ import { literalNaming } from '../../compiler/syntax/expressions/literals/built-
 import { nodesAt, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import { memo } from '../../structures/memo.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
+import { memo } from '../../foundation/structures/memo.ts';
 import { identifierAt } from '../reading/identifier-at.ts';
 import { argumentParameterAt } from '../signatures/call-at.ts';
 import type { Candidate } from './candidate.ts';

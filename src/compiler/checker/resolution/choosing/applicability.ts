@@ -18,7 +18,7 @@
  *   with that variant), any part of which may be a type parameter still to be inferred.
  */
 
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Binding } from '../../surface/resolved-call.ts';
 import { reshapes } from '../../types/fitting/fit.ts';

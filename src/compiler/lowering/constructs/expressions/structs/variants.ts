@@ -4,7 +4,7 @@
  */
 
 import type { Register } from '../../../../../definition/operands.ts';
-import { unreachable } from '../../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../../checker/check.ts';
 import type { NominalType, Type } from '../../../../checker/types/type/index.ts';
 import type { Expression, StructLiteral } from '../../../../syntax/expressions/index.ts';

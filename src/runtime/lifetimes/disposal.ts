@@ -26,8 +26,8 @@
 import type { FunctionId } from '../../definition/operands.ts';
 import type { TypeDefinition } from '../../definition/tables/types.ts';
 import { closureOf, handleTo, type Value } from '../../definition/values/values.ts';
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Heap, LiveExecution, LiveObject, LiveObjectOf } from '../scheduler/instance/heap.ts';
 import type { WeakSide } from '../scheduler/instance/weak-side.ts';
 import type { FutureState } from '../snapshot/objects.ts';

@@ -10,7 +10,7 @@
  *   it (§3.5), so `f(none)` reads like `const x: T? = none`.
  */
 
-import { unreachable } from '../../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { Entity, VariantNaming } from '../../../../binder/entities.ts';
 import { fieldsFunctionOf } from '../../../../syntax/declarations/field-defaults.ts';
 import type { EnumDeclaration } from '../../../../syntax/declarations/index.ts';

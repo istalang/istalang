@@ -50,13 +50,13 @@ import {
   isBuiltInTypeName,
   isPrivate,
   isUnnamed,
-} from '../../language/naming.ts';
-import { compareOrdered } from '../../language/order.ts';
-import { codecFunctions } from '../../language/well-known/codecs.ts';
-import { entryFunction, receiverParameter } from '../../language/well-known/index.ts';
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import { memo } from '../../structures/memo.ts';
-import type { Span } from '../../text/span.ts';
+} from '../../foundation/language/naming.ts';
+import { compareOrdered } from '../../foundation/language/order.ts';
+import { codecFunctions } from '../../foundation/language/well-known/codecs.ts';
+import { entryFunction, receiverParameter } from '../../foundation/language/well-known/index.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
+import { memo } from '../../foundation/structures/memo.ts';
+import type { Span } from '../../foundation/text/span.ts';
 import {
   type DeclaredAt,
   isSamePlace,

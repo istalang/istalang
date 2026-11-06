@@ -20,7 +20,7 @@
  * so no later round takes it out of order.
  */
 
-import { unreachable } from '../../structures/unreachable.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { LiveObject } from '../scheduler/instance/heap.ts';
 import { type DisposalContext, type DisposalRun, dispose, isDisposable } from './disposal.ts';
 import { heldUnlessAll, type Roots, walkHolds } from './holders.ts';

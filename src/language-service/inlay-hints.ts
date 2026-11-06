@@ -18,7 +18,7 @@ import {
 } from '../compiler/syntax/tree/index.ts';
 import { type Identifier, isMissingName } from '../compiler/syntax/tree/node.ts';
 import { spanIn } from '../compiler/syntax/tree/positions.ts';
-import type { Span } from '../text/span.ts';
+import type { Span } from '../foundation/text/span.ts';
 import { type CheckedModule, checkedModule } from './reading/checked-module.ts';
 
 export interface InlayHint {

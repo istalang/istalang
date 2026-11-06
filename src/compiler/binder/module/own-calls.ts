@@ -4,8 +4,8 @@
  * and a name naming no enclosing async function denotes no call, which is reported.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { entryFunction } from '../../../language/well-known/index.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import { entryFunction } from '../../../foundation/language/well-known/index.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Lambda } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';

@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
+import { reportedOnce } from '../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
 import {
   declaredField,

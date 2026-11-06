@@ -16,7 +16,7 @@
 
 import type { Instruction } from '../../../../../definition/instructions/instruction.ts';
 import type { Register } from '../../../../../definition/operands.ts';
-import { unreachable } from '../../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import { intType } from '../../../../checker/types/type/primitives.ts';
 import { optionalOf } from '../../../../checker/types/unions/unions.ts';
 import type {

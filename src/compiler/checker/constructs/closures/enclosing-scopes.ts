@@ -4,7 +4,7 @@
  * (function-scope.ts). Labels are resolved against it once, by constructs/statements/loops.ts.
  */
 
-import { withPushed } from '../../../../structures/stack.ts';
+import { withPushed } from '../../../../foundation/structures/stack.ts';
 import type { LabelledScope, Loop } from '../../../syntax/statements/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { Enclosing } from '../../contexts/body-context.ts';

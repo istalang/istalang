@@ -19,7 +19,7 @@ The checker is a **lazy, incremental query engine** over one immutable Program. 
 @source calls title="checkCall: callee kinds" path=src/compiler/checker/constructs/expressions/calls.ts lines=63:101
 @source resolve title="resolveCall" path=src/compiler/checker/resolution/calls/resolve.ts lines=85:125
 @source applied title="applyCall" path=src/compiler/checker/resolution/applying/applied-call.ts lines=59:108
-@source entries title="Entries: get, produce, takeOver, replay" path=src/structures/entries/index.ts lines=163:309
+@source entries title="Entries: get, produce, takeOver, replay" path=src/foundation/structures/entries/index.ts lines=163:309
 @source cruiser title="Checker inner layers" path=.dependency-cruiser.mjs lines=116:166
 @source passes title="Passes of a field loop" path=src/compiler/checker/contexts/passes.ts lines=1:20
 

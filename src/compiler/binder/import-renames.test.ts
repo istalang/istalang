@@ -7,8 +7,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reportedNothing, reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
 import { formatText } from '../../formatter/format.ts';
+import { reportedNothing, reportedOnce } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import { boundReport, declaringName, entityOfName, preludeProgramOf } from './bind.test-kit.ts';
 import { bindProgram } from './bind.ts';

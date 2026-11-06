@@ -10,7 +10,7 @@
  *   type model (.dependency-cruiser.mjs).
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import type { Entity, VariableEntity, VariantEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';

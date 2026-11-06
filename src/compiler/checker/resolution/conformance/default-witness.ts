@@ -4,7 +4,7 @@
  * the same one wherever it is used.
  */
 
-import { wellKnown } from '../../../../language/well-known/index.ts';
+import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import type { ResolvedCall } from '../../surface/resolved-call.ts';

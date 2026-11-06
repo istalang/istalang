@@ -6,7 +6,7 @@
  * An initializer is always required. A missing one is reported and stands as a Missing node.
  */
 
-import { isUnnamed } from '../../../../language/naming.ts';
+import { isUnnamed } from '../../../../foundation/language/naming.ts';
 import type { Hold, VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { Parser } from '../../parser.ts';
 import { parseTargets } from '../parts/names.ts';

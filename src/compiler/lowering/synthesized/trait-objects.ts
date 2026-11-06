@@ -20,7 +20,7 @@
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/surface/checked-field.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';
 import type { AnyType, Type } from '../../checker/types/type/index.ts';

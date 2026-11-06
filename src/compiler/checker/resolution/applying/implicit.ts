@@ -19,8 +19,8 @@
  *   (check.ts, `CheckedBody.implicitCallOf`).
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { binaryOperators, type ImplicitOperator } from '../../../syntax/expressions/operators.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';

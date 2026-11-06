@@ -26,8 +26,8 @@ import { patternNamedType } from '../../compiler/syntax/expressions/parameters.t
 import type { Pattern } from '../../compiler/syntax/patterns.ts';
 import type { SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
-import { staticName } from '../../language/static-names.ts';
-import { textOf } from '../../text/span.ts';
+import { staticName } from '../../foundation/language/static-names.ts';
+import { textOf } from '../../foundation/text/span.ts';
 
 /** A signature's text, and where each parameter's text stands in it. */
 export interface Signature {

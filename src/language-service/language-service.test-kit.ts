@@ -6,7 +6,7 @@ import { idOf } from '../compiler/program/program.test-kit.ts';
 import { type ModuleId, type Program, programModule } from '../compiler/program/program.ts';
 import { scan } from '../compiler/scanner/scan.ts';
 import type { SyntaxTree } from '../compiler/syntax/tree/index.ts';
-import { createSourceText } from '../text/source-text.ts';
+import { createSourceText } from '../foundation/text/source-text.ts';
 
 /** `lines` joined as a module's text, parsed. */
 export function treeOf(...lines: readonly string[]): SyntaxTree {

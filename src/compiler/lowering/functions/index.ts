@@ -32,8 +32,8 @@
 import type { FunctionId, Register } from '../../../definition/operands.ts';
 import type { CodeFunction } from '../../../definition/tables/functions.ts';
 import type { Value } from '../../../definition/values/values.ts';
-import { handlerOf } from '../../../structures/kind-table.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { handlerOf } from '../../../foundation/structures/kind-table.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { CheckedBody, ValueSite } from '../../checker/surface/checked-body.ts';

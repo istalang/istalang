@@ -16,7 +16,7 @@
  *   arguments found so, once they are (trait-calls.ts, ../applying/applied-call.ts).
  */
 
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import {
   type FunctionDeclaration,
   type TraitDeclaration,

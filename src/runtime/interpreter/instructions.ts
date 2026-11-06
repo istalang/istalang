@@ -20,8 +20,8 @@ import {
   mapValueOf,
   type Value,
 } from '../../definition/values/values.ts';
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { isReference } from '../snapshot/objects.ts';
 import type { ActiveFrame } from './frames.ts';
 import { currentClosure, type Machine } from './machine.ts';

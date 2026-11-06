@@ -24,7 +24,7 @@ import { nodesAt, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../compiler/syntax/tree/node.ts';
 import { spanIn } from '../compiler/syntax/tree/positions.ts';
 import type { TypeNode } from '../compiler/syntax/types/index.ts';
-import type { Span } from '../text/span.ts';
+import type { Span } from '../foundation/text/span.ts';
 import { type CheckedModule, checkedModule } from './reading/checked-module.ts';
 import { docstringOf } from './reading/docstrings.ts';
 import { identifierAt } from './reading/identifier-at.ts';

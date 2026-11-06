@@ -6,7 +6,7 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
-import { positionIn } from '../../text/line-map.ts';
+import { positionIn } from '../../foundation/text/line-map.ts';
 import type { ActiveFrame } from './frames.ts';
 
 /** What a trace reads of a frame: its entry, and the instruction it is at. */

@@ -7,7 +7,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { soupOf } from '../../../../test/soup.ts';
-import { createSourceText } from '../../../text/source-text.ts';
+import { createSourceText } from '../../../foundation/text/source-text.ts';
 import { scan } from '../../scanner/scan.ts';
 import { errorNodes, spanViolations, strayBodies } from '../../syntax/tree/tree.test-kit.ts';
 import { dumpClean } from '../parse.test-kit.ts';

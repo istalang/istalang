@@ -18,7 +18,7 @@ import { entityType, staticOwnerOf } from '../../../compiler/checker/types/writt
 import type { FunctionDeclaration } from '../../../compiler/syntax/declarations/index.ts';
 import type { Word } from '../../../compiler/syntax/tokens/grammar-words.ts';
 import type { SyntaxNode } from '../../../compiler/syntax/tree/index.ts';
-import { receiverParameter } from '../../../language/well-known/index.ts';
+import { receiverParameter } from '../../../foundation/language/well-known/index.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import type { ParsedPlace } from '../placeholder.ts';

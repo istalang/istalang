@@ -20,7 +20,7 @@ import { type Definition, definitionFormat } from '../../definition/definition.t
 import { listingArguments, runningArguments } from '../../definition/tables/test-runner.ts';
 import { fieldValueOf } from '../../definition/values/declared-values.ts';
 import { elementsOf, type Value } from '../../definition/values/values.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Natives } from '../natives.ts';
 import { seedFrom } from '../snapshot/random.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';

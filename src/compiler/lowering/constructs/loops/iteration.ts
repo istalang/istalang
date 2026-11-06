@@ -7,9 +7,9 @@
  */
 
 import type { Register } from '../../../../definition/operands.ts';
-import { wellKnown } from '../../../../language/well-known/index.ts';
-import { stepVariants } from '../../../../language/well-known/variants.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
+import { stepVariants } from '../../../../foundation/language/well-known/variants.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Iteration } from '../../../checker/surface/checked-body.ts';
 import type { Comprehension, Expression } from '../../../syntax/expressions/index.ts';
 import type { For } from '../../../syntax/statements/index.ts';

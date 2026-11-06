@@ -19,8 +19,8 @@ import {
   variantOf,
 } from '../../definition/values/declared-values.ts';
 import type { Value } from '../../definition/values/values.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { NativeContext } from '../../runtime/natives.ts';
-import { unreachable } from '../../structures/unreachable.ts';
 
 /** The type entry the extern's declared result names: a struct, an enum or an extern type. */
 export function declaredResult(context: NativeContext): TypeId {

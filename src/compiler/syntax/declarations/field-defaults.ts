@@ -14,7 +14,7 @@
  * variant, not a static function's owner type.
  */
 
-import { memo } from '../../../structures/memo.ts';
+import { memo } from '../../../foundation/structures/memo.ts';
 import type { Parameter } from '../expressions/index.ts';
 import type { Invalid } from '../tree/node.ts';
 import {

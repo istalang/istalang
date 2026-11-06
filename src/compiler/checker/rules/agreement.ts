@@ -19,7 +19,7 @@
  * part could convert into.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../contexts/body-context.ts';

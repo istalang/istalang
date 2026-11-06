@@ -21,8 +21,8 @@ import { extentIn, type SyntaxNode, type SyntaxTree } from '../../compiler/synta
 import { type Identifier, type Invalid, isMissingName } from '../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import type { FieldDeclaration } from '../../compiler/syntax/types/index.ts';
-import { staticName } from '../../language/static-names.ts';
-import type { Span } from '../../text/span.ts';
+import { staticName } from '../../foundation/language/static-names.ts';
+import type { Span } from '../../foundation/text/span.ts';
 
 export type SymbolKind =
   | 'function'

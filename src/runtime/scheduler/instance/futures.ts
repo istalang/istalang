@@ -18,7 +18,7 @@
 
 import { awaitedRegisters } from '../../../definition/instructions/flow.ts';
 import { handleTarget, handleTo, type Value } from '../../../definition/values/values.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { readRegister } from '../../interpreter/registers.ts';
 import { Panic } from '../../natives.ts';
 import type { FutureState, Watch } from '../../snapshot/objects.ts';

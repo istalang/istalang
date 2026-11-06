@@ -14,8 +14,12 @@
  * layout being made, so it adds no edge.
  */
 
-import type { EntryTable } from '../../../../structures/entries/index.ts';
-import { sameItems, sameMembers, sameProperties } from '../../../../structures/equality.ts';
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import {
+  sameItems,
+  sameMembers,
+  sameProperties,
+} from '../../../../foundation/structures/equality.ts';
 import {
   type DeclaredField,
   type DeclaredStruct,

@@ -15,7 +15,7 @@ import type { TypeId } from '../../../definition/operands.ts';
 import type { TypeDefinition } from '../../../definition/tables/types.ts';
 import { errorOf, okOf } from '../../../definition/values/declared-values.ts';
 import type { Value } from '../../../definition/values/values.ts';
-import { memo } from '../../../structures/memo.ts';
+import { memo } from '../../../foundation/structures/memo.ts';
 import { type Snapshot, snapshotFormat } from '../../snapshot/snapshot.ts';
 import type { InstanceStore } from '../../store.ts';
 

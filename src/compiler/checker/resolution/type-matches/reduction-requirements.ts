@@ -25,8 +25,8 @@
  *   or the type reduces, whatever its arity: `Bad.Data` on a `struct Bad` reduces where it is used.
  */
 
-import type { EntryTable } from '../../../../structures/entries/index.ts';
-import { sameItems } from '../../../../structures/equality.ts';
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { sameItems } from '../../../../foundation/structures/equality.ts';
 import {
   type FieldsFunction,
   fieldsFunctionOf,

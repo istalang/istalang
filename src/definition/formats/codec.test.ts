@@ -5,7 +5,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { Unreachable } from '../../structures/unreachable.ts';
+import { Unreachable } from '../../foundation/structures/unreachable.ts';
 import { exactJson, looseText, reverseKeys } from './codec.test-kit.ts';
 import { contentHash, decodeJson, encodeJson } from './codec.ts';
 

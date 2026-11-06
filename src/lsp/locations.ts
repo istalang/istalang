@@ -22,11 +22,11 @@ import {
   programModule,
 } from '../compiler/program/program.ts';
 import { type AnchoredSpan, spanIn } from '../compiler/syntax/tree/positions.ts';
+import { lineMapOf } from '../foundation/text/line-map.ts';
+import type { SourceText } from '../foundation/text/source-text.ts';
+import type { Span } from '../foundation/text/span.ts';
 import type { Workspace } from '../language-service/workspace.ts';
 import { moduleIdOfFile } from '../project/file-loader.ts';
-import { lineMapOf } from '../text/line-map.ts';
-import type { SourceText } from '../text/source-text.ts';
-import type { Span } from '../text/span.ts';
 
 /** The module a document's URI stands for. */
 export function moduleIdOfUri(uri: string): ModuleId {

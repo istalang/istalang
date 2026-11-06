@@ -7,8 +7,8 @@
  */
 
 import type { ModuleDiagnostics } from '../compiler/compile.ts';
-import { isError } from '../diagnostics/diagnostic.ts';
-import { renderDiagnostic } from '../diagnostics/render.ts';
+import { isError } from '../foundation/diagnostics/diagnostic.ts';
+import { renderDiagnostic } from '../foundation/diagnostics/render.ts';
 /** Writes every diagnostic of `results` through `write`; how many of them are errors. */
 export function reportDiagnostics(
   results: Iterable<ModuleDiagnostics>,

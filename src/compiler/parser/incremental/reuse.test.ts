@@ -7,7 +7,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { createSourceText } from '../../../text/source-text.ts';
+import { createSourceText } from '../../../foundation/text/source-text.ts';
 import { scan } from '../../scanner/scan.ts';
 import { bodyOf, extentIn, nodesUnder, type SyntaxTree } from '../../syntax/tree/index.ts';
 import type { Segment } from '../../syntax/tree/positions.ts';

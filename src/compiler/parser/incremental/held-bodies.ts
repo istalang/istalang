@@ -7,7 +7,7 @@
  * however it was let go of. Order doesn't matter here, so the walk reads fields as they are.
  */
 
-import { pushAll } from '../../../structures/stack.ts';
+import { pushAll } from '../../../foundation/structures/stack.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Block } from '../../syntax/statements/index.ts';
 import { isNode, type SyntaxNode } from '../../syntax/tree/index.ts';

@@ -12,7 +12,7 @@ import {
   withoutEntry,
 } from '../../definition/values/equality.ts';
 import { mapValueOf, type Value } from '../../definition/values/values.ts';
-import { wellKnown } from '../../language/well-known/index.ts';
+import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { type Native, type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import { checkedIndex } from '../positions.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';

@@ -10,7 +10,8 @@
 import { functionKey, type NativeParameter, parameterKey } from '../../definition/extern-key.ts';
 import { instanceNameOf } from '../../definition/values/instance-handles.ts';
 import { closureOf, type Value } from '../../definition/values/values.ts';
-import { wellKnown } from '../../language/well-known/index.ts';
+import { wellKnown } from '../../foundation/language/well-known/index.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { InstanceState } from '../../runtime/instance-state.ts';
 import {
   type NativeContext,
@@ -19,7 +20,6 @@ import {
   type WithInstances,
   type WithTesting,
 } from '../../runtime/natives.ts';
-import { unreachable } from '../../structures/unreachable.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { arrayOf, given, text } from '../values/arguments.ts';
 import { declaredResult, resultVariant } from '../values/results.ts';

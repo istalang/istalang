@@ -47,7 +47,7 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ### Add a std module
 
 1. Create `src/stdlib/<name>/<name>.ista` (and `natives.ts` if it declares `extern`s, building keys with `keys.of`, `keys.ofStatic`, `keys.type`).
-2. List its source in `src/stdlib/std-sources.ts`, and its natives, if any, in `src/stdlib/std-modules.ts` (and `src/language/well-known/index.ts` + `stdRoles` only if used by language role).
+2. List its source in `src/stdlib/std-sources.ts`, and its natives, if any, in `src/stdlib/std-modules.ts` (and `src/foundation/language/well-known/index.ts` + `stdRoles` only if used by language role).
 3. Add language tests in `src/stdlib/<name>/<name>.test.ista`.
 
 ### Add a native capability

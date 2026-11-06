@@ -18,9 +18,9 @@
  *   checker to pick from.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { PrimitiveName } from '../../language/primitives.ts';
-import { memo, SequenceMemo } from '../../structures/memo.ts';
+import type { Diagnostic } from '../../foundation/diagnostics/diagnostic.ts';
+import type { PrimitiveName } from '../../foundation/language/primitives.ts';
+import { memo, SequenceMemo } from '../../foundation/structures/memo.ts';
 import type { ModuleId } from '../program/program.ts';
 import type {
   AssociatedType,

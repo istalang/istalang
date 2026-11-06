@@ -22,10 +22,10 @@
  * one would have read.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { lineMapOf } from '../../text/line-map.ts';
-import type { SourceText } from '../../text/source-text.ts';
-import { type Span, textOf } from '../../text/span.ts';
+import type { Diagnostic } from '../../foundation/diagnostics/diagnostic.ts';
+import { lineMapOf } from '../../foundation/text/line-map.ts';
+import type { SourceText } from '../../foundation/text/source-text.ts';
+import { type Span, textOf } from '../../foundation/text/span.ts';
 import {
   type Declaration,
   type FunctionDeclaration,

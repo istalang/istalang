@@ -9,7 +9,7 @@
 
 import { test as it } from 'vitest';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
-import { createSourceText } from '../../text/source-text.ts';
+import { createSourceText } from '../../foundation/text/source-text.ts';
 import { scan } from '../scanner/scan.ts';
 import { parse } from './parse.ts';
 

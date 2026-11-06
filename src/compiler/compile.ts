@@ -11,10 +11,14 @@
  */
 
 import type { Definition } from '../definition/definition.ts';
-import { compareDiagnostics, type Diagnostic, isError } from '../diagnostics/diagnostic.ts';
-import { entryFunction } from '../language/well-known/index.ts';
-import { memo } from '../structures/memo.ts';
-import type { SourceText } from '../text/source-text.ts';
+import {
+  compareDiagnostics,
+  type Diagnostic,
+  isError,
+} from '../foundation/diagnostics/diagnostic.ts';
+import { entryFunction } from '../foundation/language/well-known/index.ts';
+import { memo } from '../foundation/structures/memo.ts';
+import type { SourceText } from '../foundation/text/source-text.ts';
 import { bindProgram } from './binder/bind.ts';
 import { checkProgram } from './checker/check.ts';
 import { lower, lowerTests } from './lowering/lower.ts';

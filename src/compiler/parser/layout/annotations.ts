@@ -12,8 +12,8 @@
  * layout decides (index.ts).
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import type { Span } from '../../../text/span.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import type { Span } from '../../../foundation/text/span.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { qualifiedPath } from '../../syntax/expressions/readings.ts';
 import type { Annotatable, Annotation } from '../../syntax/items.ts';

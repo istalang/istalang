@@ -8,9 +8,9 @@
  */
 
 import { soupOf } from '../../../test/soup.ts';
-import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { createSourceText, type SourceText } from '../../text/source-text.ts';
+import { type Reported, reportedIn } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
+import type { Diagnostic } from '../../foundation/diagnostics/diagnostic.ts';
+import { createSourceText, type SourceText } from '../../foundation/text/source-text.ts';
 import { scan } from '../scanner/scan.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import type { Block } from '../syntax/statements/index.ts';

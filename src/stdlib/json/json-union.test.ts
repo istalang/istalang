@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { binderDiagnostics } from '../../compiler/binder/diagnostics.ts';
 import { reported } from '../../compiler/checker/check.test-kit.ts';
 import { lines } from '../../compiler/parser/parse.test-kit.ts';
-import { reportedNothing } from '../../diagnostics/diagnostic.test-kit.ts';
+import { reportedNothing } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { mainGives } from '../prelude/prelude.test-kit.ts';
 
 const jsonImports = lines(

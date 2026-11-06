@@ -9,7 +9,7 @@
  * program runs.
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { TraitDeclaration } from '../../syntax/declarations/index.ts';
 import type { Index, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { FieldDeclaration } from '../../syntax/types/index.ts';

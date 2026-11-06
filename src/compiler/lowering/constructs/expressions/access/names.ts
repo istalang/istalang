@@ -10,7 +10,7 @@
  */
 
 import type { Register } from '../../../../../definition/operands.ts';
-import { unreachable } from '../../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { MemberAccess } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import { emitCall } from '../../../calls/emit-call.ts';

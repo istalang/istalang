@@ -42,7 +42,7 @@ path):
   codec when no declared one is found, as for every trait the compiler derives
   (`checker/resolution/conformance/derived-traits.ts`): a call to the `json` module's
   `_toJson<T>` or `_fromJson<T>`, externs whose bodies lowering writes per type
-  (`language/well-known/index.ts`, `derivedCodecs`). A recursive type counts as meeting the trait while
+  (`foundation/language/well-known/index.ts`, `derivedCodecs`). A recursive type counts as meeting the trait while
   its own parts are decided.
 - `Encodable` and `Decodable` imply Sendable, except where values cross to the host
   (`checker/contexts/use-site.ts`, `toHost`): an extern's parameters and results, an extern constant,

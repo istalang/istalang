@@ -27,8 +27,8 @@
  * at the later declaration.
  */
 
-import { addToGroup } from '../../../../../structures/groups.ts';
-import { memo } from '../../../../../structures/memo.ts';
+import { addToGroup } from '../../../../../foundation/structures/groups.ts';
+import { memo } from '../../../../../foundation/structures/memo.ts';
 import type { ModuleId } from '../../../../program/program.ts';
 import {
   declaredFunctions,

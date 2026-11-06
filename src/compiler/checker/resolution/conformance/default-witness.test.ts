@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../../../compile.test-kit.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

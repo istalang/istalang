@@ -21,7 +21,7 @@
  *   kind (`kindMembers`).
  */
 
-import { sameItems } from '../../../../structures/equality.ts';
+import { sameItems } from '../../../../foundation/structures/equality.ts';
 import { type Entity, typeEntity } from '../../../binder/entities.ts';
 import type { TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Checker } from '../../check.ts';

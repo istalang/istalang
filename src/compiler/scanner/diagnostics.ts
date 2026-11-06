@@ -5,7 +5,7 @@
  * parser sees the structure the author meant and reports no cascade of follow-up errors.
  */
 
-import { defineDiagnostics } from '../../diagnostics/catalog.ts';
+import { defineDiagnostics } from '../../foundation/diagnostics/catalog.ts';
 
 export const scannerDiagnostics = defineDiagnostics('scanner', {
   unexpectedCharacter: {

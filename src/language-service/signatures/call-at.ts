@@ -18,7 +18,7 @@ import type { Call } from '../../compiler/syntax/expressions/index.ts';
 import type { Token } from '../../compiler/syntax/tokens/index.ts';
 import { nodesAt, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
-import { lastIndexAtMost } from '../../structures/sorted.ts';
+import { lastIndexAtMost } from '../../foundation/structures/sorted.ts';
 import type { CheckedModule } from '../reading/checked-module.ts';
 import { closingBracketsOf, codeTokensOf } from '../reading/tokens.ts';
 

@@ -12,7 +12,7 @@
  * values only split its text: a line holding one isn't blank.
  */
 
-import { leadingSpaceCount } from '../../text/line-map.ts';
+import { leadingSpaceCount } from '../../foundation/text/line-map.ts';
 
 /**
  * One piece of a literal's text, before its lines are laid out. A `text` piece is a whole run of

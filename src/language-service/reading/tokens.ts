@@ -15,8 +15,8 @@ import { isBracketOpener, pairBrackets } from '../../compiler/parser/cursor/brac
 import { scan } from '../../compiler/scanner/scan.ts';
 import type { ScanResult, Token } from '../../compiler/syntax/tokens/index.ts';
 import type { SyntaxTree } from '../../compiler/syntax/tree/index.ts';
-import { memo } from '../../structures/memo.ts';
-import { lineMapOf } from '../../text/line-map.ts';
+import { memo } from '../../foundation/structures/memo.ts';
+import { lineMapOf } from '../../foundation/text/line-map.ts';
 
 const scans = new WeakMap<SyntaxTree, ScanResult>();
 const flattened = new WeakMap<SyntaxTree, readonly Token[]>();

@@ -28,7 +28,7 @@
  *   nothing its own resolution doesn't again; any other node resolves as the checker resolves it.
  */
 
-import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import type { Entity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type { TypeAliasDeclaration } from '../../../syntax/declarations/index.ts';

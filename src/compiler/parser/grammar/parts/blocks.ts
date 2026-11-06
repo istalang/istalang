@@ -11,8 +11,8 @@
  * annotations.
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
-import type { Span } from '../../../../text/span.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
+import type { Span } from '../../../../foundation/text/span.ts';
 import type { Declaration } from '../../../syntax/declarations/index.ts';
 import { allowedInBlock, allowedInModule, type Item } from '../../../syntax/items.ts';
 import type { Block, Statement } from '../../../syntax/statements/index.ts';

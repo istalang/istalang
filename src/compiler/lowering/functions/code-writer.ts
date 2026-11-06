@@ -14,8 +14,8 @@
 
 import type { Instruction } from '../../../definition/instructions/instruction.ts';
 import type { Register } from '../../../definition/operands.ts';
-import { addToGroup } from '../../../structures/groups.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { addToGroup } from '../../../foundation/structures/groups.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type AnchoredSpan, type SegmentBases, spanIn } from '../../syntax/tree/positions.ts';
 
 /** A place in the code, known once the code before it has been written. */

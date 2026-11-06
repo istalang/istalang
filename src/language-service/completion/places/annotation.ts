@@ -20,7 +20,7 @@ import type { Statement } from '../../../compiler/syntax/statements/index.ts';
 import { nodesUnder, type SyntaxNode } from '../../../compiler/syntax/tree/index.ts';
 import type { Invalid } from '../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
-import { wellKnown } from '../../../language/well-known/index.ts';
+import { wellKnown } from '../../../foundation/language/well-known/index.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 import type { ParsedPlace } from '../placeholder.ts';

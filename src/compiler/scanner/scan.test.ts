@@ -10,8 +10,8 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
-import { reportedOnce } from '../../diagnostics/diagnostic.test-kit.ts';
-import { textOf } from '../../text/span.ts';
+import { reportedOnce } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
+import { textOf } from '../../foundation/text/span.ts';
 import { keywords } from '../syntax/tokens/index.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
 import {

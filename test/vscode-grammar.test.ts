@@ -9,7 +9,7 @@ import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { z } from 'zod';
 import { keywords } from '../src/compiler/syntax/tokens/index.ts';
-import { primitiveNames } from '../src/language/primitives.ts';
+import { primitiveNames } from '../src/foundation/language/primitives.ts';
 
 const grammarShape = z.object({
   repository: z.object({

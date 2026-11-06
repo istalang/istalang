@@ -20,9 +20,9 @@
  * ProgramChecker composes this unit and answers the layout queries through it.
  */
 
-import type { EntryTable } from '../../../../../structures/entries/index.ts';
-import { sameItems } from '../../../../../structures/equality.ts';
-import { memo } from '../../../../../structures/memo.ts';
+import type { EntryTable } from '../../../../../foundation/structures/entries/index.ts';
+import { sameItems } from '../../../../../foundation/structures/equality.ts';
+import { memo } from '../../../../../foundation/structures/memo.ts';
 import { fieldsFunctionOf } from '../../../../syntax/declarations/field-defaults.ts';
 import type {
   DeclaredStruct,

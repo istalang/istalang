@@ -7,7 +7,7 @@
  * naming a function denotes its call instead (§7, module/local-binder.ts `useBeforeMember`).
  */
 
-import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import type {
   CallArgument,

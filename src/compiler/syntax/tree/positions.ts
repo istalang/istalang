@@ -14,9 +14,9 @@
  * that join or compare two spans therefore require one segment, and throw on two.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
+import type { Span } from '../../../foundation/text/span.ts';
 
 /** A segment of a module's text. The object is its identity; a tree gives its start. */
 export interface Segment {

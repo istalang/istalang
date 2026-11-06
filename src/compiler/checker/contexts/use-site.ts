@@ -7,7 +7,7 @@
  * for no check.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type Witnesses, witnessCallsOf } from '../surface/resolved-call.ts';

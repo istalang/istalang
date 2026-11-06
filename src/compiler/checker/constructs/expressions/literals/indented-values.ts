@@ -18,7 +18,10 @@
  * The literal checked is recorded with the body (`builtLiteralOf`), for lowering and tools.
  */
 
-import { type WellKnownDeclaration, wellKnown } from '../../../../../language/well-known/index.ts';
+import {
+  type WellKnownDeclaration,
+  wellKnown,
+} from '../../../../../foundation/language/well-known/index.ts';
 import type { Entity } from '../../../../binder/entities.ts';
 import { isDeclaredStruct } from '../../../../syntax/declarations/index.ts';
 import type { IndentedEntry, IndentedValue } from '../../../../syntax/expressions/index.ts';

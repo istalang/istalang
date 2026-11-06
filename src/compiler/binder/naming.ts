@@ -1,12 +1,17 @@
 /**
- * The naming rules (language/naming.ts) as the binder reports them: a declared name breaking its
- * convention, or taking a built-in type's name; and a name declared nowhere, which, spelled as a
- * primitive was before type names were all PascalCase (`int`), is told the one it became.
+ * The naming rules (foundation/language/naming.ts) as the binder reports them: a declared name
+ * breaking its convention, or taking a built-in type's name; and a name declared nowhere, which,
+ * spelled as a primitive was before type names were all PascalCase (`int`), is told the one it
+ * became.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { type Convention, followsConvention, isBuiltInTypeName } from '../../language/naming.ts';
-import { primitiveOnceSpelled } from '../../language/primitives.ts';
+import type { Diagnostic } from '../../foundation/diagnostics/diagnostic.ts';
+import {
+  type Convention,
+  followsConvention,
+  isBuiltInTypeName,
+} from '../../foundation/language/naming.ts';
+import { primitiveOnceSpelled } from '../../foundation/language/primitives.ts';
 import { type Identifier, isMissingName } from '../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../syntax/tree/positions.ts';
 import { binderDiagnostics } from './diagnostics.ts';

@@ -21,7 +21,7 @@
  *   its block by the block they stand in.
  */
 
-import { bindsInPattern } from '../../../../../language/naming.ts';
+import { bindsInPattern } from '../../../../../foundation/language/naming.ts';
 import type {
   Expression,
   IndentedEntry,

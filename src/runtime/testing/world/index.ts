@@ -24,8 +24,8 @@
 import type { Definition } from '../../../definition/definition.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
-import { memo } from '../../../structures/memo.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { memo } from '../../../foundation/structures/memo.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { InstanceGroup } from '../../host/instance-group.ts';
 import type { Inspection, LogRecord } from '../../instance-state.ts';
 import type { Natives } from '../../natives.ts';

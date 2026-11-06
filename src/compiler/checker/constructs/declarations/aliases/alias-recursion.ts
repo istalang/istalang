@@ -27,7 +27,7 @@
  *   and an alias whose body is a type `match`, keep their own rules.
  */
 
-import type { EntryTable } from '../../../../../structures/entries/index.ts';
+import type { EntryTable } from '../../../../../foundation/structures/entries/index.ts';
 import type { ModuleId } from '../../../../program/program.ts';
 import {
   type TypeAliasDeclaration,

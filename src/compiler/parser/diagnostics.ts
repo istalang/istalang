@@ -7,7 +7,7 @@
  * was found.
  */
 
-import { defineDiagnostics } from '../../diagnostics/catalog.ts';
+import { defineDiagnostics } from '../../foundation/diagnostics/catalog.ts';
 
 export const parserDiagnostics = defineDiagnostics('parser', {
   expected: {

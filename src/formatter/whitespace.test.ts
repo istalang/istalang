@@ -17,7 +17,7 @@ import { scan } from '../compiler/scanner/scan.ts';
 import type { Token } from '../compiler/syntax/tokens/index.ts';
 import { extentIn, nodesUnder, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
 import { dump } from '../compiler/syntax/tree/tree.test-kit.ts';
-import { encloses, type Span } from '../text/span.ts';
+import { encloses, type Span } from '../foundation/text/span.ts';
 import { commentTexts, formattableInputs, parseText } from './format.test-kit.ts';
 import { formatText } from './format.ts';
 import { nodesInBrackets } from './layout/brackets.ts';

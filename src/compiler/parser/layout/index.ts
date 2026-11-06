@@ -33,8 +33,8 @@
  * docstring starting any other item is reported.
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Span } from '../../../text/span.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
+import type { Span } from '../../../foundation/text/span.ts';
 import type { Annotation } from '../../syntax/items.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Invalid } from '../../syntax/tree/node.ts';

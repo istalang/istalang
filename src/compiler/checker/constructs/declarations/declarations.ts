@@ -19,8 +19,8 @@
  * - Imports declare nothing else to check.
  */
 
-import { entryFunction } from '../../../../language/well-known/index.ts';
-import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
+import { entryFunction } from '../../../../foundation/language/well-known/index.ts';
+import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { fieldsFunctionOf } from '../../../syntax/declarations/field-defaults.ts';
 import {

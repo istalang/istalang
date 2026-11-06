@@ -4,7 +4,7 @@
  * parts share it, so none keeps a second record of what a name of a module denotes.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';

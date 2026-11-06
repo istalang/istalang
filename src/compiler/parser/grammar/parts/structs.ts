@@ -15,7 +15,7 @@
  * only a struct constraint has (`[_]: T`, `name is C`): a type gives each field a type (§3.5).
  */
 
-import { isUnnamed } from '../../../../language/naming.ts';
+import { isUnnamed } from '../../../../foundation/language/naming.ts';
 import type { DeclaredField, TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { Invalid, Missing } from '../../../syntax/tree/node.ts';
 import type { FieldDeclaration, MappedField, StructType } from '../../../syntax/types/index.ts';

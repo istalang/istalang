@@ -24,8 +24,8 @@
  * level stay flat, and only a template's own values nest.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import type { Span } from '../../../text/span.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import type { Span } from '../../../foundation/text/span.ts';
 
 export const keywords = [
   'fn',

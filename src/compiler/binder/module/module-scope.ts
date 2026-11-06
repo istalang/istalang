@@ -15,7 +15,7 @@
  *   a bare one chosen by expected type resolve to the same entity.
  */
 
-import { type Convention, isPrivate } from '../../../language/naming.ts';
+import { type Convention, isPrivate } from '../../../foundation/language/naming.ts';
 import {
   boundName,
   type Declaration,

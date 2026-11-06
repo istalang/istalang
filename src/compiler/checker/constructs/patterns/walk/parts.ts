@@ -10,7 +10,7 @@
  * - A part of a value already in error has the error type, so each mistake is reported once.
  */
 
-import type { Diagnostic } from '../../../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import type { Entity } from '../../../../binder/entities.ts';
 import type { ModuleId } from '../../../../program/program.ts';
 import { type Identifier, lastName } from '../../../../syntax/tree/node.ts';

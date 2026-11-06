@@ -27,9 +27,9 @@
  *   type the call decides (§3.5), so it takes what each item can take (collection-accepts.ts).
  */
 
-import type { Diagnostic } from '../../../../../diagnostics/diagnostic.ts';
-import { inclusiveEndFunction } from '../../../../../language/well-known/implicit-calls.ts';
-import { wellKnown } from '../../../../../language/well-known/index.ts';
+import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
+import { inclusiveEndFunction } from '../../../../../foundation/language/well-known/implicit-calls.ts';
+import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
 import type {
   ArrayLiteral,
   Expression,

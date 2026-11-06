@@ -5,7 +5,7 @@
  * which the checker's own modules import.
  */
 
-import { type MapOf, ValueSemantics } from '../../../language/values.ts';
+import { type MapOf, ValueSemantics } from '../../../foundation/language/values.ts';
 import type { Lambda } from '../../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 import { sameType } from '../types/identity/identity.ts';
@@ -90,9 +90,9 @@ function formStep(
 
 /**
  * `==` and map keys over forms (§3.8, §3.9), by the rules the runtime's values follow too
- * (language/values.ts): a map constant's later entry for an equal key replaces the earlier's.
- * A head's text tells only kinds apart, since a struct's type has none of its own; equal texts
- * are confirmed by `==`.
+ * (foundation/language/values.ts): a map constant's later entry for an equal key replaces the
+ * earlier's. A head's text tells only kinds apart, since a struct's type has none of its own; equal
+ * texts are confirmed by `==`.
  */
 export const formSemantics = new ValueSemantics<ConstantForm>({
   shapeOf: (form) => {

@@ -9,8 +9,11 @@
  * code and message for the same reason.
  */
 
-import { compareDiagnostics, type Diagnostic } from '../../../../diagnostics/diagnostic.ts';
-import type { EntryTable } from '../../../../structures/entries/index.ts';
+import {
+  compareDiagnostics,
+  type Diagnostic,
+} from '../../../../foundation/diagnostics/diagnostic.ts';
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type { Declaration } from '../../../syntax/declarations/index.ts';
 import { diagnosticIn, type SegmentBases } from '../../../syntax/tree/positions.ts';

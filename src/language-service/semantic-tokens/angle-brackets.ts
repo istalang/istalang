@@ -8,8 +8,8 @@
 import type { Token } from '../../compiler/syntax/tokens/index.ts';
 import { nodesUnder, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
-import { memo } from '../../structures/memo.ts';
-import { lastIndexAtMost } from '../../structures/sorted.ts';
+import { memo } from '../../foundation/structures/memo.ts';
+import { lastIndexAtMost } from '../../foundation/structures/sorted.ts';
 import { codeTokensOf } from '../reading/tokens.ts';
 
 const angleTokens: ReadonlySet<string> = new Set(['<', '>', '>>']);

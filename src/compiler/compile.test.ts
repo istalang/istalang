@@ -7,9 +7,9 @@
 import { describe, expect, it } from 'vitest';
 import { invalidPrograms, runPrograms } from '../../test/corpus/programs.ts';
 import { definitionFormat } from '../definition/definition.ts';
-import { reportedIn } from '../diagnostics/diagnostic.test-kit.ts';
+import { reportedIn } from '../foundation/diagnostics/diagnostic.test-kit.ts';
+import { lineMapOf } from '../foundation/text/line-map.ts';
 import { stdlibLoader, stdRoles } from '../stdlib/stdlib-loader.ts';
-import { lineMapOf } from '../text/line-map.ts';
 import { stdProgramOf } from './binder/bind.test-kit.ts';
 import { bindProgram } from './binder/bind.ts';
 import { binderDiagnostics } from './binder/diagnostics.ts';

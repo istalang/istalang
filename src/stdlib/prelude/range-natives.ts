@@ -3,7 +3,7 @@
  * through the one reading of its values (stdlib/ranges.ts).
  */
 
-import { wellKnown } from '../../language/well-known/index.ts';
+import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { bounded, countOf, rangeOf, reaches } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';

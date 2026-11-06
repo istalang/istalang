@@ -11,13 +11,13 @@
  * be in either case.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../foundation/diagnostics/diagnostic.ts';
 import {
   millisecondsPerDay,
   millisecondsPerHour,
   millisecondsPerMinute,
   millisecondsPerSecond,
-} from '../../language/time-units.ts';
+} from '../../foundation/language/time-units.ts';
 import { identifierRunEnd, isDecimalDigit, isHexDigit } from './characters.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
 import type { ScannedLexeme } from './lexeme.ts';

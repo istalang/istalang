@@ -23,7 +23,7 @@ import { nominalType, type Type } from '../../../compiler/checker/types/type/ind
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import type { ModuleId } from '../../../compiler/program/program.ts';
 import { isMethod } from '../../../compiler/syntax/declarations/index.ts';
-import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import { docstringOf } from '../../reading/docstrings.ts';
 import { importedModule } from '../../reading/namespaces.ts';
 import { signatureOf } from '../../signatures/signatures.ts';

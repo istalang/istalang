@@ -9,7 +9,7 @@
  *   one node per template, memoized, so whatever one phase records for the call, the next finds.
  */
 
-import { memo } from '../../../../structures/memo.ts';
+import { memo } from '../../../../foundation/structures/memo.ts';
 import { endOf, spanAcross } from '../../tree/positions.ts';
 import type { ArrayLiteral, Call, Expression, TemplateLiteral } from '../index.ts';
 

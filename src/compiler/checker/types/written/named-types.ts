@@ -15,7 +15,7 @@
  *   its parameters make, keyed by them, so its static functions are reached through it.
  */
 
-import type { PrimitiveName } from '../../../../language/primitives.ts';
+import type { PrimitiveName } from '../../../../foundation/language/primitives.ts';
 import type { Entity, VariantNaming } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type {

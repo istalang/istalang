@@ -28,7 +28,7 @@ import { isCellType } from '../../definition/tables/types.ts';
 import { valueProblems } from '../../definition/validation/references.ts';
 import { isJsonValue, jsonTypeIn } from '../../definition/values/json-values.ts';
 import { handleTarget } from '../../definition/values/values.ts';
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import { Refusal } from '../refusal.ts';
 import { valuesIn } from './holdings.ts';
 import { type Frame, type HeapObject, isReference } from './objects.ts';

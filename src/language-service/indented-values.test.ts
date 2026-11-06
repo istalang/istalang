@@ -6,7 +6,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { textOf } from '../text/span.ts';
+import { textOf } from '../foundation/text/span.ts';
 import { completionsAt } from './completion/index.ts';
 import { hoverAt } from './hover.ts';
 import { mainProgram, programAt, treeOf } from './language-service.test-kit.ts';

@@ -5,7 +5,7 @@
  * (language-service/reading/tokens.ts), so its features see the groups the parser read.
  */
 
-import { lastIndexAtMost } from '../../../structures/sorted.ts';
+import { lastIndexAtMost } from '../../../foundation/structures/sorted.ts';
 import type { Token } from '../../syntax/tokens/index.ts';
 
 /**

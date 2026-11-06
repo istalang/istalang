@@ -28,7 +28,7 @@
 
 import type { FunctionId } from '../../../definition/operands.ts';
 import { handlesIn, type Value } from '../../../definition/values/values.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { LogRecord, SpawnOptions } from '../../instance-state.ts';
 import type { ActiveFrame, FrameEntry, FrameHeap } from '../../interpreter/frames.ts';
 import { newFrame, releaseFrame } from '../../interpreter/machine.ts';

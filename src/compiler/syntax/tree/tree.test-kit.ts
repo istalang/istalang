@@ -1,4 +1,4 @@
-import { encloses } from '../../../text/span.ts';
+import { encloses } from '../../../foundation/text/span.ts';
 import {
   bodyOf,
   childrenOf,

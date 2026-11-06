@@ -19,6 +19,7 @@ import { scan } from '../../src/compiler/scanner/scan.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
 import { definitionFormat } from '../../src/definition/definition.ts';
 import { formatSource } from '../../src/formatter/format.ts';
+import { createSourceText } from '../../src/foundation/text/source-text.ts';
 import { completionsAt } from '../../src/language-service/completion/index.ts';
 import { inlayHintsIn } from '../../src/language-service/inlay-hints.ts';
 import { referencesAt } from '../../src/language-service/navigation/references.ts';
@@ -30,7 +31,6 @@ import { findProjectSources, findSources, loadProject } from '../../src/project/
 import { diskFiles } from '../../src/project/project-files.ts';
 import { runTests } from '../../src/runtime/testing/run-tests.ts';
 import { stdNatives } from '../../src/stdlib/natives.ts';
-import { createSourceText } from '../../src/text/source-text.ts';
 import { round, withCpuProfile } from './cpu-profile.ts';
 import {
   decimalTests,

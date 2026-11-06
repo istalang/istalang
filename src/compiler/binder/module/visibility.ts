@@ -26,7 +26,7 @@
  * or a `for`'s iterable before its body.
  */
 
-import { indentationAt, lineStartAt } from '../../../text/line-map.ts';
+import { indentationAt, lineStartAt } from '../../../foundation/text/line-map.ts';
 import { nodesAt, parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';
 import { type AnchoredSpan, spanIn } from '../../syntax/tree/positions.ts';
 import { type LocalEntity, Scope, type ScopeSnapshot } from './scope.ts';

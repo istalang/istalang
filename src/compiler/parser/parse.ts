@@ -10,7 +10,7 @@
  * edit.
  */
 
-import type { SourceText } from '../../text/source-text.ts';
+import type { SourceText } from '../../foundation/text/source-text.ts';
 import type { ScanResult } from '../syntax/tokens/index.ts';
 import type { SyntaxTree } from '../syntax/tree/index.ts';
 import { parseModule } from './grammar/declarations/declaration.ts';

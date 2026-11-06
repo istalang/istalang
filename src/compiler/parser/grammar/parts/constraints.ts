@@ -6,7 +6,7 @@
  * has (`[_]`, `name is C`) met there is read with `parseConstraintEntry`, then reported.
  */
 
-import { isUnnamed } from '../../../../language/naming.ts';
+import { isUnnamed } from '../../../../foundation/language/naming.ts';
 import type {
   ConstraintNode,
   EntryField,

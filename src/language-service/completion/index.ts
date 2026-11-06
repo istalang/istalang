@@ -11,7 +11,7 @@
  */
 
 import type { ModuleId, Program } from '../../compiler/program/program.ts';
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import { checkedModule } from '../reading/checked-module.ts';
 import type { Candidate } from './candidate.ts';
 import { type Cursor, cursorAt } from './cursor.ts';

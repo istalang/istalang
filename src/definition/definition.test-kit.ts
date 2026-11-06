@@ -8,7 +8,7 @@
 
 import fc from 'fast-check';
 import { subsetDefinition } from '../../test/definitions/subset.ts';
-import { primitiveNames } from '../language/primitives.ts';
+import { primitiveNames } from '../foundation/language/primitives.ts';
 import { type Definition, definitionFormat } from './definition.ts';
 import { type EditableText, editedText } from './formats/format.test-kit.ts';
 import {

@@ -6,7 +6,7 @@
  * loudly.
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { FunctionContext } from '../context.ts';
 

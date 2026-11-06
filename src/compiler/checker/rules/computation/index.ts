@@ -20,7 +20,7 @@
  * needing itself, which would never be finished, so it is refused as endless.
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import type { VariableOwner } from '../../../binder/entities.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type {

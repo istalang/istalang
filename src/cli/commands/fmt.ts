@@ -15,9 +15,9 @@
 import { writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
 import { formatSource } from '../../formatter/format.ts';
+import { createSourceText } from '../../foundation/text/source-text.ts';
 import { findProjectSources } from '../../project/project.ts';
 import { diskFiles } from '../../project/project-files.ts';
-import { createSourceText } from '../../text/source-text.ts';
 import {
   type CliEnvironment,
   type CommandDefinition,

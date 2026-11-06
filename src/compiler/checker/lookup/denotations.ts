@@ -12,7 +12,7 @@
  * it is declared or matched, its enum's own type.
  */
 
-import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import {
   type Entity,
   typeEntity,

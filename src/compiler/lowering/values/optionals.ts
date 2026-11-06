@@ -28,8 +28,8 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import { withPushed } from '../../../structures/stack.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { withPushed } from '../../../foundation/structures/stack.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';
 import type { AnyType, Type, UnionType } from '../../checker/types/type/index.ts';
 import { isPrimitive, noneType } from '../../checker/types/type/primitives.ts';

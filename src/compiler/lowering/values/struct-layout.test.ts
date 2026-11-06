@@ -9,7 +9,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../definition/formats/codec.ts';
-import { compareOrdered } from '../../../language/order.ts';
+import { compareOrdered } from '../../../foundation/language/order.ts';
 import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { compiledDefinition, compiledText } from '../../compile.test-kit.ts';

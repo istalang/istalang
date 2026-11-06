@@ -32,7 +32,7 @@ import {
   type Value,
   withChildValues,
 } from '../../../definition/values/values.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { Panic } from '../../natives.ts';
 import type { LiveExecution, LiveObjectOf } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';

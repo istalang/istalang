@@ -28,7 +28,7 @@ import { type Definition, definitionFormat } from '../../definition/definition.t
 import type { FunctionId } from '../../definition/operands.ts';
 import { JsonError, jsonOfPlain, jsonTypeOf } from '../../definition/values/json-values.ts';
 import type { Value } from '../../definition/values/values.ts';
-import { memo } from '../../structures/memo.ts';
+import { memo } from '../../foundation/structures/memo.ts';
 import { recordExternSignatures } from '../boundary/extern-signatures.ts';
 import { type HostExterns, hostNatives } from '../boundary/host-natives.ts';
 import { outcomeJson, outcomeText } from '../boundary/outbound.ts';

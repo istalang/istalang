@@ -18,7 +18,7 @@
 import type { Argument, Place } from '../../definition/instructions/places.ts';
 import type { Register, TypeId } from '../../definition/operands.ts';
 import { handleTarget, handleTo, type Value } from '../../definition/values/values.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
 import type { ActiveFrame, FrameHeap } from './frames.ts';
 import { partAt, withPart } from './parts.ts';

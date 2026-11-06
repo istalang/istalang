@@ -20,7 +20,7 @@ import {
   reportedIn,
   reportedNothing,
   reportedOnce,
-} from '../../diagnostics/diagnostic.test-kit.ts';
+} from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { preludeProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';

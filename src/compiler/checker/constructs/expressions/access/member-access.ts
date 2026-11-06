@@ -11,7 +11,7 @@
  *   short or not exported was reported already, so it reads as nothing (`readsNothing`).
  */
 
-import type { Diagnostic } from '../../../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import { isMethod as isMethodDeclaration } from '../../../../syntax/declarations/index.ts';
 import { linkOperator } from '../../../../syntax/expressions/chains.ts';
 import type { Expression, MemberAccess } from '../../../../syntax/expressions/index.ts';

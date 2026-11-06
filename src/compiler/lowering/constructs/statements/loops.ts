@@ -11,8 +11,8 @@
  * A labelled loop or block some `hold` names keeps a list around it (holds.ts).
  */
 
-import { withPushed } from '../../../../structures/stack.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { withPushed } from '../../../../foundation/structures/stack.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type {
   Break,
   Continue,

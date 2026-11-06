@@ -20,7 +20,7 @@
  *   yet (`fieldPassesOver`), as a mapped type's value is.
  */
 
-import { compareOrdered } from '../../../../language/order.ts';
+import { compareOrdered } from '../../../../foundation/language/order.ts';
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';

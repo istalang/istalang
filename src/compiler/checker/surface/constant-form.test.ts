@@ -1,15 +1,15 @@
 /**
  * Compile time's constant forms and the runtime's values show their values to the one `==` and
- * map-key rules (language/values.ts) through views of their own. Whatever the value, both views
- * must agree on equality, on which keys a map literal collapses and in what order, and on what a
- * lookup finds; NaN and -0 included.
+ * map-key rules (foundation/language/values.ts) through views of their own. Whatever the value,
+ * both views must agree on equality, on which keys a map literal collapses and in what order, and
+ * on what a lookup finds; NaN and -0 included.
  */
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { entryPosition, mapOf, valuesEqual } from '../../../definition/values/equality.ts';
 import type { Value } from '../../../definition/values/values.ts';
-import type { Primitive } from '../../../language/values.ts';
+import type { Primitive } from '../../../foundation/language/values.ts';
 import { type ConstantForm, formSemantics } from './constant-form.ts';
 
 /** A value both representations can hold, built into each by `asForm` and `asValue`. */

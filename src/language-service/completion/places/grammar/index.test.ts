@@ -18,7 +18,7 @@ import { scan } from '../../../../compiler/scanner/scan.ts';
 import { keywords } from '../../../../compiler/syntax/tokens/index.ts';
 import { nodesUnder } from '../../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
-import { createSourceText } from '../../../../text/source-text.ts';
+import { createSourceText } from '../../../../foundation/text/source-text.ts';
 import { mainProgram, programAt } from '../../../language-service.test-kit.ts';
 import { completionsAt } from '../../index.ts';
 import { ifClauseWords, wordNeeds } from './words.ts';

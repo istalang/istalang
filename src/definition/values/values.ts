@@ -19,9 +19,9 @@
  */
 
 import { z } from 'zod';
-import type { MapOf } from '../../language/values.ts';
-import { pushAll } from '../../structures/stack.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import type { MapOf } from '../../foundation/language/values.ts';
+import { pushAll } from '../../foundation/structures/stack.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { encodeJson } from '../formats/codec.ts';
 import { functionId, objectId, typeId, variantIndex } from '../operands.ts';
 
@@ -124,7 +124,7 @@ const handle = z.strictObject({
 /*
  * The composite shapes, over a child type: `Value` in memory, `ValueOnDisk` on disk. They are
  * interfaces because a recursive type can refer to itself only through one. A map's is the
- * language's (language/values.ts), whose `==` and map keys every representation shares.
+ * language's (foundation/language/values.ts), whose `==` and map keys every representation shares.
  */
 interface TupleOf<Child> {
   kind: 'tuple';

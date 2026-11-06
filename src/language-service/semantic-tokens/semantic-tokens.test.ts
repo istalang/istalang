@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { textOf } from '../../text/span.ts';
+import { textOf } from '../../foundation/text/span.ts';
 import { treeOf } from '../language-service.test-kit.ts';
 import { semanticTokensOf } from './semantic-tokens.ts';
 

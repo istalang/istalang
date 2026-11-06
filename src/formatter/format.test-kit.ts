@@ -9,9 +9,9 @@ import { parse } from '../compiler/parser/parse.ts';
 import { scan } from '../compiler/scanner/scan.ts';
 import { extentIn, nodesUnder, type SyntaxTree } from '../compiler/syntax/tree/index.ts';
 import { dump } from '../compiler/syntax/tree/tree.test-kit.ts';
-import { lineMapOf, splitLines } from '../text/line-map.ts';
-import { createSourceText } from '../text/source-text.ts';
-import { textOf } from '../text/span.ts';
+import { lineMapOf, splitLines } from '../foundation/text/line-map.ts';
+import { createSourceText } from '../foundation/text/source-text.ts';
+import { textOf } from '../foundation/text/span.ts';
 import { formatTree } from './format.ts';
 import { nodesInBrackets } from './layout/brackets.ts';
 

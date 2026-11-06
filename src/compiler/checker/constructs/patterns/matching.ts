@@ -22,7 +22,7 @@
  * - A range pattern's leaf is walk/kinds/ranges.ts's.
  */
 
-import { arrayPatternFunctions } from '../../../../language/well-known/implicit-calls.ts';
+import { arrayPatternFunctions } from '../../../../foundation/language/well-known/implicit-calls.ts';
 import type { Entity, VariantNaming } from '../../../binder/entities.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { binaryOperators, isImplicitOperator } from '../../../syntax/expressions/operators.ts';

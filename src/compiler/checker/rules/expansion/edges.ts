@@ -15,8 +15,8 @@
  * user says what its nodes are, their edges, and the node an edge leads to.
  */
 
-import { edgesReachedFrom } from '../../../../structures/reachable.ts';
-import { stronglyConnected } from '../../../../structures/strongly-connected.ts';
+import { edgesReachedFrom } from '../../../../foundation/structures/reachable.ts';
+import { stronglyConnected } from '../../../../foundation/structures/strongly-connected.ts';
 import {
   type TypeParameter,
   type TypeParameters,

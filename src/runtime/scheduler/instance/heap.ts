@@ -20,8 +20,8 @@
  */
 
 import { handleTarget, type Value } from '../../../definition/values/values.ts';
-import { pushAll } from '../../../structures/stack.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { pushAll } from '../../../foundation/structures/stack.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { ActiveFrame } from '../../interpreter/frames.ts';
 import { heldObjects } from '../../snapshot/holdings.ts';
 import type { HeapObject } from '../../snapshot/objects.ts';

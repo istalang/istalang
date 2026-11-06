@@ -6,7 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it, vi } from 'vitest';
-import { lineMapOf } from '../../../../text/line-map.ts';
+import { lineMapOf } from '../../../../foundation/text/line-map.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../../../compile.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';

@@ -8,7 +8,7 @@
  *   a second type there is reported, since a case gives one type.
  */
 
-import { isUnnamed } from '../../../../language/naming.ts';
+import { isUnnamed } from '../../../../foundation/language/naming.ts';
 import type { AliasBody } from '../../../syntax/declarations/index.ts';
 import type { WildcardPattern } from '../../../syntax/patterns.ts';
 import type { Invalid } from '../../../syntax/tree/node.ts';

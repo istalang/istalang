@@ -1,9 +1,9 @@
 /** The outline of a document (language-service/outline/symbols.ts), as LSP's document symbols. */
 
 import { type DocumentSymbol as LspSymbol, SymbolKind } from 'vscode-languageserver/node';
+import type { SourceText } from '../../../foundation/text/source-text.ts';
 import type { SymbolKind as Kind } from '../../../language-service/outline/symbols.ts';
 import { type DocumentSymbol, symbolsOf } from '../../../language-service/outline/symbols.ts';
-import type { SourceText } from '../../../text/source-text.ts';
 import { moduleIdOfUri, rangeOf } from '../../locations.ts';
 import type { Provider } from '../provider.ts';
 

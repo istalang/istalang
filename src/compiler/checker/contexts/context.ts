@@ -12,9 +12,9 @@
  * (.dependency-cruiser.mjs).
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import type { LanguageModule } from '../../../language/well-known/index.ts';
-import type { Entries } from '../../../structures/entries/index.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import type { LanguageModule } from '../../../foundation/language/well-known/index.ts';
+import type { Entries } from '../../../foundation/structures/entries/index.ts';
 import type { VariantEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type {
@@ -65,8 +65,8 @@ export type ConstraintCheck =
     };
 
 /**
- * What an entry notes while it computes (structures/entries/): a diagnostic reported in a
- * module, or a constraint check to run once that module is checked (`constrainLater`).
+ * What an entry notes while it computes (foundation/structures/entries/): a diagnostic reported in
+ * a module, or a constraint check to run once that module is checked (`constrainLater`).
  */
 export type CheckerNote =
   | {

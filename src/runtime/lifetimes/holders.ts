@@ -20,7 +20,7 @@
  */
 
 import { depthOf, handlesIn, type Value } from '../../definition/values/values.ts';
-import { pushAll } from '../../structures/stack.ts';
+import { pushAll } from '../../foundation/structures/stack.ts';
 import type { Heap, LiveObject } from '../scheduler/instance/heap.ts';
 import {
   frameCells,

@@ -18,8 +18,8 @@
 import { createHash } from 'node:crypto';
 import { parse } from 'lossless-json';
 import { z } from 'zod';
-import { compareOrdered } from '../../language/order.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import { compareOrdered } from '../../foundation/language/order.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 
 const integerSyntax = /^-?\d+$/u;
 

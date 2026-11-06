@@ -6,8 +6,12 @@
  * end (§9). `Result`'s `Ok` and `Err(Error)` are built here once for both (§3.12).
  */
 
-import { resultFields, resultVariants, unionLayout } from '../../language/well-known/variants.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import {
+  resultFields,
+  resultVariants,
+  unionLayout,
+} from '../../foundation/language/well-known/variants.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { TypeId } from '../operands.ts';
 import type { TypeDefinition, TypeReference } from '../tables/types.ts';
 import { isComposite, type Value } from './values.ts';

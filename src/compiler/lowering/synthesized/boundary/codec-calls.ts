@@ -6,7 +6,7 @@
  * codec is the witness its caller gave.
  */
 
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
 import type { JsonDirection } from '../../../checker/surface/json-form.ts';
 import type { Type } from '../../../checker/types/type/index.ts';

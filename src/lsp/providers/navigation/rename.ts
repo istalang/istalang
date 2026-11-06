@@ -13,6 +13,7 @@ import {
 } from 'vscode-languageserver/node';
 import type { Program } from '../../../compiler/program/program.ts';
 import { programModule } from '../../../compiler/program/program.ts';
+import { addToGroup } from '../../../foundation/structures/groups.ts';
 import { spelledName } from '../../../language-service/navigation/declarations.ts';
 import {
   type NameEdit,
@@ -21,7 +22,6 @@ import {
   renamingAt,
 } from '../../../language-service/navigation/rename.ts';
 import type { Workspace } from '../../../language-service/workspace.ts';
-import { addToGroup } from '../../../structures/groups.ts';
 import { documentOffset, locationOf, rangeOf } from '../../locations.ts';
 import type { Provider } from '../provider.ts';
 

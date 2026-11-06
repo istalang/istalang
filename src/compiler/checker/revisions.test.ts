@@ -11,7 +11,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
-import { addToGroup } from '../../structures/groups.ts';
+import { addToGroup } from '../../foundation/structures/groups.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import {
   applied,

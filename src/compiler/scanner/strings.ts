@@ -10,9 +10,9 @@
  * the decoded text stays close to what the author wrote.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { codePointWidth } from '../../text/code-points.ts';
-import { lineBreakLength } from '../../text/line-map.ts';
+import type { Diagnostic } from '../../foundation/diagnostics/diagnostic.ts';
+import { codePointWidth } from '../../foundation/text/code-points.ts';
+import { lineBreakLength } from '../../foundation/text/line-map.ts';
 import { isHexDigit } from './characters.ts';
 import { scannerDiagnostics } from './diagnostics.ts';
 import type { ScannedLexeme } from './lexeme.ts';

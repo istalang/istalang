@@ -15,7 +15,7 @@
  *   once, against its type parameters' constraints (§3.5), and its calls count in its expansion.
  */
 
-import { wellKnown } from '../../../../../language/well-known/index.ts';
+import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
 import { argumentValue } from '../../../../syntax/expressions/arguments.ts';
 import type { Call, Expression, Spawn } from '../../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../../syntax/expressions/readings.ts';

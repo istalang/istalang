@@ -21,9 +21,9 @@
  *   the new parse's.
  */
 
-import { addToGroup } from '../../../structures/groups.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import { lineStartAt } from '../../../text/line-map.ts';
+import { addToGroup } from '../../../foundation/structures/groups.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
+import { lineStartAt } from '../../../foundation/text/line-map.ts';
 import type {
   FunctionDeclaration,
   Module,

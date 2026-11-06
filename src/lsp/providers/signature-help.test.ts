@@ -23,10 +23,10 @@ import type { ModuleId } from '../../compiler/program/program.ts';
 import type { Call } from '../../compiler/syntax/expressions/index.ts';
 import { nodesUnder } from '../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
-import { wellKnown } from '../../language/well-known/index.ts';
+import { wellKnown } from '../../foundation/language/well-known/index.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
+import { createSourceText, type SourceText } from '../../foundation/text/source-text.ts';
 import { signatureOf } from '../../language-service/signatures/signatures.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import {
   corpusClient,
   programDocuments as documents,

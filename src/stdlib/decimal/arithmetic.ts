@@ -26,8 +26,8 @@
  */
 
 import { Decimal as DecimalJs } from 'decimal.js';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import { Panic } from '../../runtime/natives.ts';
-import { unreachable } from '../../structures/unreachable.ts';
 import type { Rounding } from '../math/rounding.ts';
 import { divisionByZero } from '../numeric.ts';
 

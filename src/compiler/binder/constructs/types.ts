@@ -12,7 +12,7 @@
  * later bare `T` names the same part as `infer T`, and its type.
  */
 
-import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
 import type { AliasBody, Field } from '../../syntax/declarations/index.ts';
 import type { Invalid } from '../../syntax/tree/node.ts';
 import type {

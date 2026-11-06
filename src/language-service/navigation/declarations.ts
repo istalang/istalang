@@ -20,8 +20,8 @@ import { type ModuleId, type Program, programModule } from '../../compiler/progr
 import type { StringLiteral } from '../../compiler/syntax/expressions/literals/literals.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/tree/node.ts';
 import { spanIn, startTogether } from '../../compiler/syntax/tree/positions.ts';
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import type { Span } from '../../text/span.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
+import type { Span } from '../../foundation/text/span.ts';
 import { identifierAt, stringLiteralAt } from '../reading/identifier-at.ts';
 
 type Declared = Denotation['declared'];

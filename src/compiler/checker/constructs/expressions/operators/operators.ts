@@ -18,7 +18,7 @@
  * - `??` works on optionals (access/optionals.ts).
  */
 
-import { unreachable } from '../../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import {
   type ComparisonLink,
   comparisonLinkOf,

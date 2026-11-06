@@ -18,11 +18,11 @@ import {
   type KeyType,
   keyTypeText,
 } from '../../../definition/extern-key.ts';
-import { compareOrdered } from '../../../language/order.ts';
-import { staticName } from '../../../language/static-names.ts';
-import { qualifiedName, wellKnown } from '../../../language/well-known/index.ts';
-import { memo } from '../../../structures/memo.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { compareOrdered } from '../../../foundation/language/order.ts';
+import { staticName } from '../../../foundation/language/static-names.ts';
+import { qualifiedName, wellKnown } from '../../../foundation/language/well-known/index.ts';
+import { memo } from '../../../foundation/structures/memo.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import { folded } from '../../checker/types/identity/recursive-types.ts';
 import { substitute, substitutionFor } from '../../checker/types/parts/substitution.ts';

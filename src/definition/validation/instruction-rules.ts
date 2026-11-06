@@ -17,7 +17,7 @@
  * constant values.
  */
 
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
 import { waits } from '../instructions/flow.ts';
 import type { Instruction } from '../instructions/instruction.ts';
 import type { Argument } from '../instructions/places.ts';

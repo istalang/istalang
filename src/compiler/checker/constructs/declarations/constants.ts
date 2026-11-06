@@ -13,11 +13,11 @@
  *   form is lowered from the initializer's checking, which the unit keeps (`bodyOf`).
  * - A constant is checked once, on first demand, and one defined through itself, directly or
  *   through others, is reported at every constant of the cycle, which all stand unchecked
- *   (structures/entries/); their initializers keep their checking.
+ *   (foundation/structures/entries/); their initializers keep their checking.
  */
 
-import type { EntryTable } from '../../../../structures/entries/index.ts';
-import { sameItems } from '../../../../structures/equality.ts';
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { sameItems } from '../../../../foundation/structures/equality.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { targetNames } from '../../../syntax/patterns.ts';
 import type { VariableDeclaration } from '../../../syntax/statements/index.ts';

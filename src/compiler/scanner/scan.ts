@@ -17,10 +17,10 @@
  * is already one token. Their comments join the file's, in source order.
  */
 
-import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import { codePointWidth } from '../../text/code-points.ts';
-import { lineBreakLength } from '../../text/line-map.ts';
-import type { SourceText } from '../../text/source-text.ts';
+import type { Diagnostic } from '../../foundation/diagnostics/diagnostic.ts';
+import { codePointWidth } from '../../foundation/text/code-points.ts';
+import { lineBreakLength } from '../../foundation/text/line-map.ts';
+import type { SourceText } from '../../foundation/text/source-text.ts';
 import { type Comment, isKeyword, type ScanResult, type Token } from '../syntax/tokens/index.ts';
 import {
   identifierRunEnd,

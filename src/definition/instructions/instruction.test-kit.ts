@@ -246,7 +246,8 @@ const generators: { readonly [Kind in InstructionKind]: Generator<Kind> } = {
 
 export function instruction(scope: Scope): fc.Arbitrary<Instruction> {
   const available = Object.entries(generators).flatMap(([kind, generate]) => {
-    // Not a kind-table dispatch (structures/kind-table.ts): every generator runs, for no instruction.
+    // Not a kind-table dispatch (foundation/structures/kind-table.ts): every generator runs, for no
+    // instruction.
     const operands = (generate as Generator<InstructionKind>)(scope);
     return operands === undefined
       ? []

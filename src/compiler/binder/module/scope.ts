@@ -24,8 +24,8 @@
  * moment, though the scope went on to define more.
  */
 
-import { primitiveNames } from '../../../language/primitives.ts';
-import { memo } from '../../../structures/memo.ts';
+import { primitiveNames } from '../../../foundation/language/primitives.ts';
+import { memo } from '../../../foundation/structures/memo.ts';
 import type {
   FunctionDeclaration,
   ImportedName,

@@ -5,9 +5,9 @@
  * it stands for, a shape among them (§3.17).
  */
 
-import type { EntryTable } from '../../../../../structures/entries/index.ts';
-import { sameEntries, sameItems } from '../../../../../structures/equality.ts';
-import { addToGroup } from '../../../../../structures/groups.ts';
+import type { EntryTable } from '../../../../../foundation/structures/entries/index.ts';
+import { sameEntries, sameItems } from '../../../../../foundation/structures/equality.ts';
+import { addToGroup } from '../../../../../foundation/structures/groups.ts';
 import type { ModuleId } from '../../../../program/program.ts';
 import {
   declaredFunctions,

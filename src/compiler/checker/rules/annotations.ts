@@ -19,10 +19,13 @@
  *   are declared, since the clash is in the declaration whether or not the type ever crosses.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import { sameItems } from '../../../structures/equality.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import {
+  type WellKnownDeclaration,
+  wellKnown,
+} from '../../../foundation/language/well-known/index.ts';
+import type { EntryTable } from '../../../foundation/structures/entries/index.ts';
+import { sameItems } from '../../../foundation/structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Declaration, Field, FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';

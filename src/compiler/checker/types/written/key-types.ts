@@ -11,7 +11,7 @@
  *   known yet; one entry at most. Its value is resolved once, its parameter standing for every key.
  */
 
-import { followsConvention, isUnnamed } from '../../../../language/naming.ts';
+import { followsConvention, isUnnamed } from '../../../../foundation/language/naming.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import { isKeyword } from '../../../syntax/tokens/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';

@@ -36,9 +36,9 @@
  *   it holds their placeholders.
  */
 
-import type { EntryTable } from '../../../../structures/entries/index.ts';
-import { withPushed } from '../../../../structures/stack.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { withPushed } from '../../../../foundation/structures/stack.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { AliasDeclaration } from '../../../syntax/declarations/index.ts';
 import { type StructType, unparenthesizedType } from '../../../syntax/types/index.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';

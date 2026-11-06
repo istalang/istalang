@@ -6,14 +6,14 @@
  * point where it starts.
  */
 
-import { wellKnown } from '../../language/well-known/index.ts';
-import type { NativeContext, Natives } from '../../runtime/natives.ts';
+import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import {
   codePointAtPosition,
   codePointCount,
   codePointSlice,
   codePointsAt,
-} from '../../text/code-points.ts';
+} from '../../foundation/text/code-points.ts';
+import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import { atPosition, checkedIndex, selectionOf } from '../positions.ts';
 import { rangeOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';

@@ -9,7 +9,7 @@
  * try is likelier than not to land below `n`.
  */
 
-import { wellKnown } from '../../language/well-known/index.ts';
+import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import { type NativeContext, type Natives, Panic, type WithRandom } from '../../runtime/natives.ts';
 import { bounded, countOf, rangeOf, textOf } from '../ranges.ts';
 import { knownTypeKey, type NativeKeys } from '../std-module.ts';

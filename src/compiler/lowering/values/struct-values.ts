@@ -6,7 +6,7 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { laidOut } from '../../checker/types/type/field-order.ts';
 import type {
   AnonymousStructType,

@@ -8,10 +8,10 @@ import { brokenText } from '../../test/broken.ts';
 import { corpusDirectory, corpusFiles } from '../../test/corpus/programs.ts';
 import { diagnoseModule } from '../compiler/compile.ts';
 import type { Program } from '../compiler/program/program.ts';
+import { lineMapOf } from '../foundation/text/line-map.ts';
 import { moduleIdOfFile } from '../project/file-loader.ts';
 import { tempProject } from '../project/project.test-kit.ts';
 import { findProjectSources, loadProject } from '../project/project.ts';
-import { lineMapOf } from '../text/line-map.ts';
 import { connectedClient } from './server.test-kit.ts';
 
 /** What `ista check` reports in `file` of `program`, as a client receives it. */

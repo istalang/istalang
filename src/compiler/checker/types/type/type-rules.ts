@@ -6,13 +6,13 @@
  * substituted, joined by inference, made optional or widened.
  *
  * - The rules are passed where a type is built, never stored in what describes one: a type or a
- *   substitution is data a later checker may take over (structures/entries/), while the rules
- *   answer for the program of the checker building it.
+ *   substitution is data a later checker may take over (foundation/structures/entries/), while the
+ *   rules answer for the program of the checker building it.
  * - A type computed from others (`T.Data`, `S["meta"]`, §3.5) is reduced here once its parts
  *   allow, so substituting a type parameter in one gives the type it then names.
  * - A rule may need types built by the same rules (conformance substitutes signatures, which may
  *   hold the very union being normalized), so the checker answers each question once per key and a
- *   question reached again while it is answered takes a stand-in (structures/entries/).
+ *   question reached again while it is answered takes a stand-in (foundation/structures/entries/).
  */
 
 import type { AliasDeclaration } from '../../../syntax/declarations/index.ts';

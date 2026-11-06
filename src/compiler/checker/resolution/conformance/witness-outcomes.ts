@@ -16,7 +16,7 @@
  *   how deep it was asked. Otherwise an answer doesn't, so a goal's answer serves it at any depth.
  */
 
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { ResolvedCall } from '../../surface/resolved-call.ts';

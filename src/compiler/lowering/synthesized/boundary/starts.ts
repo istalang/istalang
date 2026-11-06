@@ -15,7 +15,7 @@
 
 import type { FunctionId } from '../../../../definition/operands.ts';
 import type { CodeFunction } from '../../../../definition/tables/functions.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
 import type { FunctionType, Type } from '../../../checker/types/type/index.ts';
 import { futureArgument } from '../../../checker/types/type/well-known.ts';

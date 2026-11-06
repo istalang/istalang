@@ -193,7 +193,7 @@ match status:
 8. **Parser:** `|` in type positions, at its precedence. Literal types in type positions: quoted strings, integers (a leading `-` included), `true` and `false`. `name in Type` in type-parameter lists, and type arguments in struct patterns.
 9. **Member parameters.** A `parameter` type carries its union. Inference (`src/compiler/checker/types/inference/`) fills it only from a type that is one member, giving a literal argument its literal type, and instantiation proceeds per member as for any type argument. Building from an expected union tries each member and keeps the one that fits.
 10. **The standard library.**
-    - `src/language/primitives.ts` gains `None`.
+    - `src/foundation/language/primitives.ts` gains `None`.
     - `prelude.ista`'s `enum Optional<T>` becomes `type Optional<T> = T | None`, keeping `fn Optional.default`. `json.ista`'s `fn Optional.fromJson` and `fn toJson<T>(self: T?)` stay.
     - The `Some{value}` matches in those modules move to the remaining type.
 11. **Extern keys.** `src/definition/extern-key.ts` spells `T?` as `prelude.Optional<T>`. Keep that spelling for `T | None`, through the alias, so existing keys and host tables don't change. Other unions spell their members in key order.

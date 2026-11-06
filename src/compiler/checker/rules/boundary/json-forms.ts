@@ -31,9 +31,9 @@ import {
   type CodecName,
   codecHelpers,
   derivedCodecs,
-} from '../../../../language/well-known/codecs.ts';
-import type { EntryTable } from '../../../../structures/entries/index.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+} from '../../../../foundation/language/well-known/codecs.ts';
+import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { hostSite, searchSite, silent, type UseSite } from '../../contexts/use-site.ts';
 import { callWithTypes } from '../../resolution/applying/silent-choice.ts';

@@ -21,7 +21,7 @@
  * matched value; after a field it renames the field, so a field's own `as` is read first.
  */
 
-import { isUnnamed } from '../../../language/naming.ts';
+import { isUnnamed } from '../../../foundation/language/naming.ts';
 import {
   binaryOperators,
   isComparisonOperator,

@@ -8,7 +8,7 @@
  * which only a program's own arithmetic can reach, so writing one panics (§3.12).
  */
 
-import { wellKnown } from '../../language/well-known/index.ts';
+import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import {
   type Native,
   type NativeContext,

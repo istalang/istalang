@@ -19,10 +19,10 @@
  * names are visible where (visibility.ts).
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { type Convention, isUnnamed } from '../../../language/naming.ts';
-import { memo, SequenceMemo } from '../../../structures/memo.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import { type Convention, isUnnamed } from '../../../foundation/language/naming.ts';
+import { memo, SequenceMemo } from '../../../foundation/structures/memo.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { FunctionDeclaration, Module } from '../../syntax/declarations/index.ts';
 import type {
   Comprehension,

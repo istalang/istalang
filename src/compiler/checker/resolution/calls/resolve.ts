@@ -19,9 +19,9 @@
  *   made (resolution/choosing/calls-made.ts).
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
-import { primitiveOnceSpelled } from '../../../../language/primitives.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
+import { primitiveOnceSpelled } from '../../../../foundation/language/primitives.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';

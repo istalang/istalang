@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../../../test/corpus/programs.ts';
 import { checkProgram } from '../../../../compiler/checker/check.ts';
 import { extentIn, nodesUnder } from '../../../../compiler/syntax/tree/index.ts';
-import { type Diagnostic, isError } from '../../../../diagnostics/diagnostic.ts';
+import { type Diagnostic, isError } from '../../../../foundation/diagnostics/diagnostic.ts';
 import { mainProgram, programAt } from '../../../language-service.test-kit.ts';
 import { checkedModule } from '../../../reading/checked-module.ts';
 import type { Candidate } from '../../candidate.ts';

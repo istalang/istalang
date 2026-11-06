@@ -31,9 +31,9 @@
  * to what an import brought in; the Linker runs both passes as it is made, in that order.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { addToGroup } from '../../../structures/groups.ts';
-import { memo, SequenceMemo } from '../../../structures/memo.ts';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import { addToGroup } from '../../../foundation/structures/groups.ts';
+import { memo, SequenceMemo } from '../../../foundation/structures/memo.ts';
 import { isTestModule, type ModuleId, type Program, programModule } from '../../program/program.ts';
 import type {
   EnumDeclaration,

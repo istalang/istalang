@@ -11,8 +11,8 @@
 
 import { optionalValueOf } from '../../definition/values/declared-values.ts';
 import { isComposite, type Value } from '../../definition/values/values.ts';
+import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { NativeContext } from '../../runtime/natives.ts';
-import { unreachable } from '../../structures/unreachable.ts';
 
 interface ArgumentTypes {
   readonly bigint: bigint;

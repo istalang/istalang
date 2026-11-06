@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 import namesLib from '../../../test/corpus/names/lib.ista';
 import namesMain from '../../../test/corpus/names/main.ista';
 import { invalidPrograms, runPrograms } from '../../../test/corpus/programs.ts';
-import { Unreachable } from '../../structures/unreachable.ts';
+import { Unreachable } from '../../foundation/structures/unreachable.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { isStdModule, type ModuleId, type Program } from '../program/program.ts';
 import { declaredFunctions, type FunctionDeclaration } from '../syntax/declarations/index.ts';

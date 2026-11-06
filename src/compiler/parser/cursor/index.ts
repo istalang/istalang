@@ -34,8 +34,8 @@
  * crossed in the current region since the mark.
  */
 
-import { lastIndexAtMost } from '../../../structures/sorted.ts';
-import type { Span } from '../../../text/span.ts';
+import { lastIndexAtMost } from '../../../foundation/structures/sorted.ts';
+import type { Span } from '../../../foundation/text/span.ts';
 import type { TemplateValue, Token, TokenKind } from '../../syntax/tokens/index.ts';
 import {
   type BracketOpener,

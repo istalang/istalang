@@ -7,7 +7,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reportedNothing } from '../../../../diagnostics/diagnostic.test-kit.ts';
+import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
 import { type Program, programModule } from '../../../program/program.ts';

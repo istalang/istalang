@@ -17,7 +17,7 @@
 import type { Callee } from '../../../definition/instructions/calls.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
 import type { ImplicitRole, ResolvedSite } from '../../checker/surface/resolved-call.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';

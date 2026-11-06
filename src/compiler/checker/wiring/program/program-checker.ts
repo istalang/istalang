@@ -1,7 +1,7 @@
 /**
  * The checker of one Program: every program-wide answer, each computed once as an entry of the
- * checker's tables (structures/entries/), so the checker as a whole is a function of its Program
- * (check.ts keys it on that snapshot), whatever was asked of it first.
+ * checker's tables (foundation/structures/entries/), so the checker as a whole is a function of its
+ * Program (check.ts keys it on that snapshot), whatever was asked of it first.
  *
  * - Checking is lazy. A function's body is checked the first time anything needs it: its module's
  *   diagnostics, lowering, or another function inferring a result from a call to it. Each entry
@@ -17,19 +17,19 @@
  * - Items checked by their module are its top-level items and a trait's members; type parameters
  *   resolve their constraints in the module declaring them (program-inputs.ts).
  * - A checker made with the checker of an earlier snapshot takes over its entries wherever what
- *   they read answers alike (structures/entries/). It reads its Program and Bindings only through
- *   inputs recorded in the entry computing now (program-inputs.ts), so nothing it answers rests on
- *   a read no entry recorded.
+ *   they read answers alike (foundation/structures/entries/). It reads its Program and Bindings
+ *   only through inputs recorded in the entry computing now (program-inputs.ts), so nothing it
+ *   answers rests on a read no entry recorded.
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import {
   type LanguageModule,
   type WellKnownDeclaration,
   wellKnown,
-} from '../../../../language/well-known/index.ts';
-import { Entries, type EntryTable } from '../../../../structures/entries/index.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+} from '../../../../foundation/language/well-known/index.ts';
+import { Entries, type EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import { bindProgram } from '../../../binder/bind.ts';
 import type { Bindings, Entity } from '../../../binder/entities.ts';
 import { type ModuleId, type Program, programModule } from '../../../program/program.ts';

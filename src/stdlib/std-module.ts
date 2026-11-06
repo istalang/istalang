@@ -12,8 +12,11 @@ import {
   nativeKey,
   type WrittenType,
 } from '../definition/extern-key.ts';
-import { staticName } from '../language/static-names.ts';
-import { qualifiedName, type WellKnownDeclaration } from '../language/well-known/index.ts';
+import { staticName } from '../foundation/language/static-names.ts';
+import {
+  qualifiedName,
+  type WellKnownDeclaration,
+} from '../foundation/language/well-known/index.ts';
 import type { Natives } from '../runtime/natives.ts';
 
 export interface StdModule {

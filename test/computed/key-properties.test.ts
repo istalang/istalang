@@ -8,7 +8,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { compareOrdered } from '../../src/language/order.ts';
+import { compareOrdered } from '../../src/foundation/language/order.ts';
 import {
   compareWrittenTypes,
   generatedFieldsArbitrary,

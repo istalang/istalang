@@ -7,7 +7,7 @@
  * `parse`, and a panic everywhere else, since one written into the program is its bug (§3.12).
  *
  * re2js counts UTF-16 units and steps over code points, so positions convert to code points at
- * the edge (text/code-points.ts).
+ * the edge (foundation/text/code-points.ts).
  */
 
 import { LRUCache } from 'lru-cache';
@@ -24,9 +24,9 @@ import {
 } from '../../definition/values/declared-values.ts';
 import { mapOf } from '../../definition/values/equality.ts';
 import type { Value } from '../../definition/values/values.ts';
+import { memo } from '../../foundation/structures/memo.ts';
+import { codePointPositions } from '../../foundation/text/code-points.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
-import { memo } from '../../structures/memo.ts';
-import { codePointPositions } from '../../text/code-points.ts';
 import type { NativeKeys } from '../std-module.ts';
 import { arrayOf, text } from '../values/arguments.ts';
 import {

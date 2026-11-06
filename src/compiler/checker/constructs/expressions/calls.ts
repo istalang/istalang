@@ -27,8 +27,8 @@
  * nothing more.
  */
 
-import { staticName } from '../../../../language/static-names.ts';
-import { conversionFunction } from '../../../../language/well-known/implicit-calls.ts';
+import { staticName } from '../../../../foundation/language/static-names.ts';
+import { conversionFunction } from '../../../../foundation/language/well-known/implicit-calls.ts';
 import type { Entity } from '../../../binder/entities.ts';
 import { isMethod } from '../../../syntax/declarations/index.ts';
 import { misplacedArgument } from '../../../syntax/expressions/arguments.ts';

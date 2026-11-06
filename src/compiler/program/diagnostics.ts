@@ -3,7 +3,7 @@
  * one (§3.13). Each points at the import's path string.
  */
 
-import { defineDiagnostics } from '../../diagnostics/catalog.ts';
+import { defineDiagnostics } from '../../foundation/diagnostics/catalog.ts';
 
 export const programDiagnostics = defineDiagnostics('program', {
   unresolvedImport: {

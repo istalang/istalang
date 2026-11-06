@@ -4,7 +4,7 @@
  * to use.
  */
 
-import { reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
+import { reportedIn } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../compile.test-kit.ts';
 import type { Program } from '../program/program.ts';

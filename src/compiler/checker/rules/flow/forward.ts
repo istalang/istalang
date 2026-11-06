@@ -21,7 +21,7 @@
  *   its initializer before its targets declare their names, and a comprehension runs as a loop.
  */
 
-import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
+import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import { chainStepOf, isOptionallyChained } from '../../../syntax/expressions/chains.ts';
 import type {

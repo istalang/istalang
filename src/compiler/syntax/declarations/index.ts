@@ -18,7 +18,7 @@
  * as an Invalid node, so a tree never holds a top-level statement.
  */
 
-import { receiverParameter } from '../../../language/well-known/index.ts';
+import { receiverParameter } from '../../../foundation/language/well-known/index.ts';
 import type { Expression, Parameter } from '../expressions/index.ts';
 import type { StringLiteral } from '../expressions/literals/literals.ts';
 import type { Annotatable } from '../items.ts';

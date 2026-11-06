@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { reportedNothing } from '../../../../diagnostics/diagnostic.test-kit.ts';
+import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { reported } from '../../check.test-kit.ts';
 
 describe('a constraint', () => {

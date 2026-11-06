@@ -10,8 +10,8 @@
  */
 
 import type { CodeFunction } from '../../../../definition/tables/functions.ts';
-import { derivedCodecs } from '../../../../language/well-known/codecs.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { derivedCodecs } from '../../../../foundation/language/well-known/codecs.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
 import type { DerivedForm, JsonDirection } from '../../../checker/surface/json-form.ts';
 import { substitute } from '../../../checker/types/parts/substitution.ts';

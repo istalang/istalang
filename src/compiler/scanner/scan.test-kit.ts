@@ -12,10 +12,10 @@
 
 import fc from 'fast-check';
 import { soupOf } from '../../../test/soup.ts';
-import { type Reported, reportedIn } from '../../diagnostics/diagnostic.test-kit.ts';
-import { createSourceText, type SourceText } from '../../text/source-text.ts';
-import type { Span } from '../../text/span.ts';
-import { textOf } from '../../text/span.ts';
+import { type Reported, reportedIn } from '../../foundation/diagnostics/diagnostic.test-kit.ts';
+import { createSourceText, type SourceText } from '../../foundation/text/source-text.ts';
+import type { Span } from '../../foundation/text/span.ts';
+import { textOf } from '../../foundation/text/span.ts';
 import type { ScanResult, Token } from '../syntax/tokens/index.ts';
 import { scan } from './scan.ts';
 

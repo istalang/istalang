@@ -7,7 +7,7 @@
 import type { FunctionDefinition } from '../../src/definition/tables/functions.ts';
 import type { Tables } from '../../src/definition/tables/index.ts';
 import type { TypeReference } from '../../src/definition/tables/types.ts';
-import { LineMap } from '../../src/text/line-map.ts';
+import { LineMap } from '../../src/foundation/text/line-map.ts';
 
 interface Span {
   readonly start: number;

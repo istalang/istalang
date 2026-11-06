@@ -18,8 +18,8 @@
  *   (§3.7): a struct, tuple, array or map literal.
  */
 
-import { wellKnown } from '../../../../language/well-known/index.ts';
-import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
+import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
+import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
 import { localFunctionOf } from '../../../binder/entities.ts';
 import type { Expression, IndentedValue, Reference } from '../../../syntax/expressions/index.ts';
 import { literalOf, untypedForm } from '../../../syntax/expressions/literals/indented-values.ts';
