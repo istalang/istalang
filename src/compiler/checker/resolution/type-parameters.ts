@@ -165,7 +165,7 @@ export class TypeParameters {
     if (check.kind === 'reduces') {
       const failure = this.#requirements.failure(check.declaration, check.typeArguments);
       if (failure !== undefined) {
-        site.report((at) => failureDiagnostic(at, failure));
+        site.report((at) => failureDiagnostic(this.#checker.typeMatches, at, failure));
       }
       return;
     }

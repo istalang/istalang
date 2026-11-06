@@ -21,7 +21,8 @@
  *   to check, so its code is never checked for one.
  * - A use no case matches, written as such, is reported where it is written, by its own
  *   instantiation's check, so a declaration's requirements keep only the uses its own parameters
- *   stand in, but for an alias's body, which each use of the alias reduces.
+ *   stand in, but for an alias's body and a type's associated types, which each use of the alias
+ *   or the type reduces, whatever its arity: `Bad.Data` on a `struct Bad` reduces where it is used.
  */
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
@@ -46,19 +47,33 @@ import { type Substitution, substitute, substitutionFor } from '../types/substit
 import type { RecursiveUse, Type, UnreducedUse } from '../types/type.ts';
 import { typeChildren } from '../types/type-children.ts';
 import { typeKeys } from '../types/type-keys.ts';
-import { aliasInstance, matchUse } from '../types/type-match.ts';
+import { aliasInstance, matchUse, type TypeMatchQueries } from '../types/type-match.ts';
 import { isKnown, sameTypeSpelled } from '../types/type-parts.ts';
 import { spellingText, typeText } from '../types/type-text.ts';
 
-/** The diagnostic reporting `failure` at `at`, where the instantiation reaching it is written. */
-export function failureDiagnostic(at: AnchoredSpan, failure: UnreducedUse) {
+/**
+ * The diagnostic reporting `failure` at `at`, where the instantiation reaching it is written, its
+ * use spelled as source writes it (`TypeMatchQueries.spellingOf`): `Bad<Int>.Data`, never the
+ * associated type's own name given its owner's arguments.
+ */
+export function failureDiagnostic(
+  queries: TypeMatchQueries,
+  at: AnchoredSpan,
+  failure: UnreducedUse,
+) {
+  const spelled = ({ declaration, arguments: typeArguments }: RecursiveUse) => {
+    const spelling = queries.spellingOf(declaration, typeArguments);
+    return spelling === undefined
+      ? typeText(matchUse(declaration, typeArguments))
+      : spellingText(spelling);
+  };
   switch (failure.cause) {
     case 'unmatched':
-      return checkerDiagnostics.noCaseMatches(at, matchUseText(failure.use));
+      return checkerDiagnostics.noCaseMatches(at, spelled(failure.use));
     case 'itself':
-      return checkerDiagnostics.aliasCycle(at, matchUseText(failure.use));
+      return checkerDiagnostics.aliasCycle(at, spelled(failure.use));
     case 'holdsItself':
-      return checkerDiagnostics.recursiveField(at, matchUseText(failure.use), failure.field);
+      return checkerDiagnostics.recursiveField(at, spelled(failure.use), failure.field);
     case 'expandsItself':
       return checkerDiagnostics.associatedItself(at, spellingText(failure.use));
     default: {
@@ -66,11 +81,6 @@ export function failureDiagnostic(at: AnchoredSpan, failure: UnreducedUse) {
       return unhandled;
     }
   }
-}
-
-/** A type `match` use as written. */
-function matchUseText(use: RecursiveUse): string {
-  return typeText(matchUse(use.declaration, use.arguments));
 }
 
 export class ReductionRequirements {
@@ -92,7 +102,8 @@ export class ReductionRequirements {
    * `declaration`, instantiated by `typeArguments`, reaches (the banner); undefined for none.
    */
   failure(declaration: Instantiable, typeArguments: Substitution): UnreducedUse | undefined {
-    if (!isGenericDeclaration(declaration) && declaration.kind !== 'TypeAliasDeclaration') {
+    if (declaration.kind === 'FunctionDeclaration' && !isGenericDeclaration(declaration)) {
+      // Its types are all known where they are written, which reduces them.
       return undefined;
     }
     const seen = new Set<string>();
@@ -141,8 +152,11 @@ export class ReductionRequirements {
     if (declaration.kind === 'TypeAliasDeclaration') {
       return [this.#instance(declaration)];
     }
-    const held = this.#held(declaration);
-    return held.filter((type) => !isKnown(type) && this.#standsIn(type));
+    const held = this.#held(declaration).filter((type) => !isKnown(type) && this.#standsIn(type));
+    return declaration.kind === 'FunctionDeclaration' ||
+      declaration.kind === 'ExternStructDeclaration'
+      ? held
+      : [...held, ...associated(this.#checker, declaration)];
   }
 
   /** The type `alias` stands for, its own parameters open: a type `match` use left unreduced. */
@@ -162,7 +176,6 @@ export class ReductionRequirements {
           ...checker
             .declaredVariantsOf(declaration)
             .flatMap(({ fields }) => fields.map((field) => field.type)),
-          ...associated(checker, declaration),
           ...declaration.variants.flatMap((variant) =>
             variant.kind === 'Variant'
               ? this.#defaultsReach(fieldsFunctionOf(declaration, variant))
@@ -174,7 +187,6 @@ export class ReductionRequirements {
       default:
         return [
           ...checker.declaredFieldsOf(declaration).map((field) => field.type),
-          ...associated(checker, declaration),
           ...this.#defaultsReach(fieldsFunctionOf(declaration)),
         ];
     }

@@ -93,18 +93,18 @@ export function defaultArgument(
 
 /**
  * Notes every argument of a constrained parameter in a complete list for its constraints, and the
- * instantiation for the type `match`es it reaches (§3.5, §3.17): a generic declaration's, or a
- * type `match` alias's, whose every use reduces.
+ * instantiation for the type `match`es it reaches (§3.5, §3.17): a type's, whose associated types
+ * each use reduces, whatever its arity, and a generic or type `match` alias's, whose body each use
+ * reduces; a plain alias's body without parameters reduces once, where it is written.
  */
 export function constrainArguments(checker: CheckerContext, module: ModuleId, list: ArgumentList) {
   noteConstraints(checker, module, list);
   const { at, declaration, types: typeArguments } = list;
-  const isMatchAlias =
-    declaration.kind === 'TypeAliasDeclaration' && declaration.type.kind === 'TypeMatch';
-  if (
-    declaration.kind !== 'TraitDeclaration' &&
-    (typeParametersOf(declaration.typeParameters).length > 0 || isMatchAlias)
-  ) {
+  const reducesPerUse =
+    declaration.kind !== 'TypeAliasDeclaration' ||
+    declaration.type.kind === 'TypeMatch' ||
+    typeParametersOf(declaration.typeParameters).length > 0;
+  if (declaration.kind !== 'TraitDeclaration' && reducesPerUse) {
     checker.constrainLater(module, {
       kind: 'reduces',
       at,

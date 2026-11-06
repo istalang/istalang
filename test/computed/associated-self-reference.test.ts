@@ -8,8 +8,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
+import { stdProgramOf } from '../../src/compiler/binder/bind.test-kit.ts';
 import { reported } from '../../src/compiler/checker/check.test-kit.ts';
 import { checkerDiagnostics } from '../../src/compiler/checker/diagnostics/index.ts';
+import { diagnosedAt } from '../../src/compiler/compile.test-kit.ts';
 import { codesOf } from './computed.test-kit.ts';
 
 const associatedItself = checkerDiagnostics.associatedItself('' as never, '').code;
@@ -41,6 +43,15 @@ const dataOf = [
   'fn dataOf<S is struct { [_] is Node }>(g: Group<S>) -> Group<S>.Data:',
   '  panic("never")',
 ];
+
+/** The codes checking `lines` reports, and their messages. */
+function reportedMessages(...lines: readonly string[]) {
+  const { diagnostics } = diagnosedAt(stdProgramOf({ main: lines.join('\n') }), 'main');
+  return {
+    codes: diagnostics.map((diagnostic) => diagnostic.code),
+    messages: diagnostics.map((diagnostic) => diagnostic.message),
+  };
+}
 
 /** The distinct codes checking `lines` reports, and the spans it reports them at. */
 function reportedFor(...lines: readonly string[]) {
@@ -94,5 +105,22 @@ describe('an associated type reaching itself through an instantiation', () => {
         '  dataOf(g)',
       ),
     ).toEqual([]);
+  });
+});
+
+describe('an associated type `match` naming no type', () => {
+  it.each([
+    ['on a type with no parameters', 'struct Bad:', 'Bad.Data', "'Bad.Data'"],
+    ['on a generic type', 'struct Bad<T>:', 'Bad<Int>.Data', "'Bad<Int>.Data'"],
+  ])('is reported %s, spelled as written', (_case, owner, written, spelled) => {
+    const { codes, messages } = reportedMessages(
+      owner,
+      '  x: Int',
+      '  type Data = match Int:',
+      `    case Int: ${written}`,
+      `fn f(x: ${written}) -> Int: 0`,
+    );
+    expect(codes).toContain(checkerDiagnostics.aliasCycle('' as never, '').code);
+    expect(messages.every((message) => message.includes(spelled))).toBe(true);
   });
 });
