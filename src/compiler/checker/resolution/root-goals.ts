@@ -12,9 +12,10 @@
  *   goal also by whether only calls on its values need it.
  * - A search reports only at its root site, so it searches through a site recording its reports,
  *   and each site asking makes them again at its own span: a silent one makes none.
- * - A goal reached again while its own search runs, as deriving a codec asks of a type's parts, is
- *   searched afresh there, outside its entry: an entry reached while it computes would answer a
- *   stand-in for its whole cycle, and no stand-in is what a search finds. The derived codec decided
+ * - A goal reached again while its own entry runs, as deriving a codec asks of a type's parts, or
+ *   as an entry its own read recomputes while it is taken over, is searched afresh there, outside
+ *   its entry: an entry reached while it runs would answer a stand-in for its whole cycle, and no
+ *   stand-in is what a search finds. The derived codec decided
  *   meanwhile (rules/json-forms) is what ends that recursion.
  */
 
@@ -73,22 +74,13 @@ class KeptGoals<Goal, Found> {
   readonly #checker: CheckerContext;
   readonly #kind: KindOfGoal<Goal, Found>;
   readonly #goals: EntryTable<CheckerNote, string, Searched<Found>, Asked<Goal>>;
-  /** The goals whose entries are computing now. */
-  readonly #running = new Set<string>();
 
   constructor(checker: CheckerContext, kind: KindOfGoal<Goal, Found>) {
     this.#checker = checker;
     this.#kind = kind;
     this.#goals = checker.entries.table({
       name: kind.name,
-      compute: (key, asked) => {
-        this.#running.add(key);
-        try {
-          return this.#searched(asked);
-        } finally {
-          this.#running.delete(key);
-        }
-      },
+      compute: (_key, asked) => this.#searched(asked),
     });
   }
 
@@ -96,7 +88,7 @@ class KeptGoals<Goal, Found> {
   found(site: UseSite, goal: Goal): Found {
     const asked = { goal, toHost: site.toHost };
     const key = `${site.toHost ? 'host ' : ''}${this.#kind.keyOf(goal)}`;
-    const searched = this.#running.has(key) ? this.#searched(asked) : this.#goals.get(key, asked);
+    const searched = this.#goals.running(key) ? this.#searched(asked) : this.#goals.get(key, asked);
     for (const report of searched.reports) {
       site.report(report);
     }

@@ -301,6 +301,34 @@ describe('entries', () => {
     expect(table.computed(0)).toBeUndefined();
   });
 
+  it('say an entry is running while it computes and while it is taken over, and not after', () => {
+    const outerRunning: boolean[] = [];
+    let value = 0;
+    const revision = (previous?: Entries<string>) => {
+      const entries = new Entries<string>({ previous });
+      const read = entries.input({ name: 'value', read: () => value });
+      const outer: EntryTable<string, number, number> = entries.table<number, number>({
+        name: 'outer',
+        compute: (key) => inner.get(key),
+      });
+      const inner: EntryTable<string, number, number> = entries.table<number, number>({
+        name: 'inner',
+        compute: (key) => {
+          outerRunning.push(outer.running(key));
+          return read();
+        },
+      });
+      return { entries, outer };
+    };
+    const first = revision();
+    first.outer.get(0);
+    value = 1;
+    // Taking `outer` over replays its read of `inner`, which computes again.
+    revision(first.entries).outer.get(0);
+    expect(outerRunning).toEqual([true, true]);
+    expect(first.outer.running(0)).toBe(false);
+  });
+
   it('answer nothing for a key never asked for', () => {
     const table = new Entries<string>().table<number, number>({
       name: 'unasked',

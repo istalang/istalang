@@ -7,7 +7,7 @@
 
 import { describe, expect, it, vi } from 'vitest';
 import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { idOf } from '../../program/program.test-kit.ts';
+import { type Files, idOf } from '../../program/program.test-kit.ts';
 import { checkedApart } from '../check.test-kit.ts';
 import { checkProgram } from '../check.ts';
 import type { ProgramChecker } from '../program-checker.ts';
@@ -79,9 +79,12 @@ describe('a trait goal asked at the root', () => {
   });
 });
 
-/** The codes and starts a revision reports in `main.ista` after `lib` is edited, and a fresh checker. */
-function afterLibEdit(main: string, before: string, after: string) {
-  const files = { 'main.ista': main, lib: before };
+/**
+ * The codes and starts a revision reports in `main.ista` after `lib` is edited, `beside` modules
+ * left as they are, and a fresh checker's.
+ */
+function afterLibEdit(main: string, before: string, after: string, beside: Files = {}) {
+  const files = { 'main.ista': main, lib: before, ...beside };
   const first = stdProgramOf(files);
   const second = stdProgramOf({ ...files, lib: after }, first);
   const previous = checkedApart(first);
@@ -106,6 +109,7 @@ describe('a revision after an edit changing whether a root goal is met', () => {
       ].join('\n'),
       before: 'trait Shows { fn show(self: Self) -> String }\nfn show(self: Int) -> String: "i"\n',
       after: 'trait Shows { fn show(self: Self) -> String }\nfn show(self: Bool) -> String: "b"\n',
+      reported: 2,
     },
     {
       name: 'a struct goal whose field the edit renames',
@@ -117,10 +121,31 @@ describe('a revision after an edit changing whether a root goal is met', () => {
       ].join('\n'),
       before: 'struct P { x: Int }\n',
       after: 'struct P { y: Int }\n',
+      reported: 2,
     },
-  ])('answers $name as a checker made afresh', ({ main, before, after }) => {
-    const { revision, fresh } = afterLibEdit(main, before, after);
-    expect(fresh).toHaveLength(2);
+    {
+      name: 'a goal a dependency replayed while the goal is taken over asks again',
+      main: [
+        "import MyTrait, A from 'traits'",
+        'struct Holder<T is MyTrait> { item: T }',
+        'fn f(h: Holder<A>): ()',
+      ].join('\n'),
+      before: 'type Ret = Int\n',
+      after: 'type Ret = String\n',
+      beside: {
+        traits: [
+          "import Ret from 'lib'",
+          'trait MyTrait:',
+          '  fn act(self: Self) -> Ret | any MyTrait',
+          'struct A { x: Int }',
+          'fn act(self: A) -> A | any MyTrait: self',
+        ].join('\n'),
+      },
+      reported: 0,
+    },
+  ])('answers $name as a checker made afresh', ({ main, before, after, beside, reported }) => {
+    const { revision, fresh } = afterLibEdit(main, before, after, beside);
+    expect(fresh).toHaveLength(reported);
     expect(revision).toEqual(fresh);
   });
 });

@@ -21,7 +21,8 @@
  *   algorithm, run as entries compute). A member answers its table's stand-in, which is also what
  *   reaching a running entry answers, so every member sees every other as its stand-in whichever
  *   was entered first. A member is never taken over: what it answers depends on its whole cycle.
- *   Reaching an entry of a table with no stand-in while it computes is a broken invariant.
+ *   Reaching an entry of a table with no stand-in while it computes is a broken invariant; a table
+ *   that can answer such a reach itself asks whether the entry is running first.
  * - A note belongs to the entry computing when it is made, and is read back by walking what an
  *   entry read; a note made outside every entry is a broken invariant.
  */
@@ -49,6 +50,11 @@ export interface EntryTable<Note, Key, Value, Context = void> {
   readonly get: (key: Key, context: Context) => Value;
   /** `key`'s answer, read as `get` reads it, if this revision ever had it; else undefined. */
   readonly computed: (key: Key) => Value | undefined;
+  /**
+   * Whether `key`'s entry is running, from its start through being taken over or computed: asking
+   * for it now reaches it running, which answers its table's stand-in.
+   */
+  readonly running: (key: Key) => boolean;
   /** The notes of `key`'s entry and of every entry it read, transitively. */
   readonly notesFrom: (key: Key) => readonly Note[];
 }
@@ -104,6 +110,7 @@ export class Entries<Note> {
         const entry = table.entries.get(key);
         return entry === undefined ? undefined : (this.#read(entry) as Value);
       },
+      running: (key) => table.entries.get(key)?.running === true,
       notesFrom: (key) => {
         const entry = table.entries.get(key);
         return entry === undefined
