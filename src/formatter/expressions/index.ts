@@ -3,7 +3,7 @@
  *
  * Nothing here breaks a line outside brackets (formatter.md, Layout constraints): an operator, a
  * `.member` or a call's `(` can't start a line, and a lambda's body can't leave its `:`'s line, so
- * those print as one run; only their bracketed parts (../lists.ts) break.
+ * those print as one run; only their bracketed parts (../layout/lists.ts) break.
  */
 
 import { builders, utils } from 'prettier/doc';
@@ -16,7 +16,15 @@ import type {
   ExpressionPart,
 } from '../../compiler/syntax/expressions/index.ts';
 import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
-import { angled, bracketed, enclosed, hasComments, hugging, oneLine, tupleList } from '../lists.ts';
+import {
+  angled,
+  bracketed,
+  enclosed,
+  hasComments,
+  hugging,
+  oneLine,
+  tupleList,
+} from '../layout/lists.ts';
 import type { Printer, Printers } from '../printer.ts';
 import { opened } from './indented-values.ts';
 

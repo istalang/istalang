@@ -23,7 +23,9 @@ export interface Printer {
   readonly dangling: (node: SyntaxNode) => builders.Doc;
   /** `node`'s span widened to the comments printed before and after it. */
   readonly extentOf: (node: SyntaxNode) => Span;
-  /** Whether `node` stands in brackets, where a line break may stand anywhere (brackets.ts). */
+  /**
+   * Whether `node` stands in brackets, where a line break may stand anywhere (layout/brackets.ts).
+   */
   readonly inBrackets: (node: SyntaxNode) => boolean;
 }
 

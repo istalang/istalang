@@ -11,7 +11,7 @@
  * also reads: an `else` can't continue a body standing inside any of them.
  */
 
-import { childrenOf, type SyntaxNode, type SyntaxTree } from '../compiler/syntax/tree/index.ts';
+import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 
 /**
  * Where a child stands in its parent, the one list of which delimiters enclose which children:

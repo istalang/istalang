@@ -21,9 +21,9 @@ import {
 import type { Annotation } from '../compiler/syntax/items.ts';
 import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../compiler/syntax/tree/node.ts';
-import { annotated, docBelow, functionBody, indentedBody } from './bodies.ts';
 import { opened } from './expressions/indented-values.ts';
-import { angled, bracketed, bracketedWhenBroken, fieldList, itemLines } from './lists.ts';
+import { annotated, docBelow, functionBody, indentedBody } from './layout/bodies.ts';
+import { angled, bracketed, bracketedWhenBroken, fieldList, itemLines } from './layout/lists.ts';
 import type { Printer, Printers } from './printer.ts';
 import { constraintsAfterIs } from './types.ts';
 

@@ -10,9 +10,9 @@
  */
 
 import { builders, printer as docPrinter, utils } from 'prettier/doc';
-import { extentIn, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
-import { hasBlankLine } from './comments/comments.ts';
-import type { Printer } from './printer.ts';
+import { extentIn, type SyntaxNode } from '../../compiler/syntax/tree/index.ts';
+import { hasBlankLine } from '../comments/comments.ts';
+import type { Printer } from '../printer.ts';
 
 const { breakParent, conditionalGroup, group, hardline, ifBreak, indent, join, line, softline } =
   builders;

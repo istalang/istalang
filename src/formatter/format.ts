@@ -12,8 +12,9 @@
  * pattern (structures/kind-table.ts), so a new node kind fails to compile until it prints.
  *
  * A node's doc depends on the node alone, so each is printed once and kept: a construct offering
- * Prettier two layouts, as a hugged last argument does (lists.ts `hugging`), shares the docs of its
- * parts between them, and nesting such constructs costs no more than printing each part once.
+ * Prettier two layouts, as a hugged last argument does (layout/lists.ts `hugging`), shares the docs
+ * of its parts between them, and nesting such constructs costs no more than printing each part
+ * once.
  */
 
 import { type builders, printer as docPrinter } from 'prettier/doc';
@@ -31,7 +32,6 @@ import { memo } from '../structures/memo.ts';
 import { unreachable } from '../structures/unreachable.ts';
 import { createSourceText, type SourceText } from '../text/source-text.ts';
 import { encloses, type Span } from '../text/span.ts';
-import { nodesInBrackets } from './brackets.ts';
 import { placeComments } from './comments/comment-placement.ts';
 import {
   type CommentsOf,
@@ -45,6 +45,7 @@ import { branchPrinters } from './expressions/branches.ts';
 import { indentedValuePrinters } from './expressions/indented-values.ts';
 import { expressionPrinters } from './expressions/index.ts';
 import { isMultiLine, literalPrinters } from './expressions/literals.ts';
+import { nodesInBrackets } from './layout/brackets.ts';
 import { patternPrinters } from './patterns.ts';
 import type { Printer, Printers } from './printer.ts';
 import { statementPrinters } from './statements.ts';

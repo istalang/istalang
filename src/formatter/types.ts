@@ -11,8 +11,8 @@
 
 import { builders } from 'prettier/doc';
 import type { ConstraintNode, TypeNode, TypePart } from '../compiler/syntax/types/index.ts';
-import { annotated, indentedBody } from './bodies.ts';
-import { angled, bracketed, enclosed, fieldList, tupleList } from './lists.ts';
+import { annotated, indentedBody } from './layout/bodies.ts';
+import { angled, bracketed, enclosed, fieldList, tupleList } from './layout/lists.ts';
 import type { Printer, Printers } from './printer.ts';
 
 const { group, indent, join, line } = builders;

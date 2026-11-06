@@ -6,7 +6,7 @@
 
 import { builders } from 'prettier/doc';
 import type { Pattern, PatternPart, StructPattern } from '../compiler/syntax/patterns.ts';
-import { angled, bracketed, enclosed, tupleList } from './lists.ts';
+import { angled, bracketed, enclosed, tupleList } from './layout/lists.ts';
 import type { Printer, Printers } from './printer.ts';
 
 const { join } = builders;

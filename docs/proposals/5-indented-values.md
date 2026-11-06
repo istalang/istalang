@@ -427,7 +427,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
      - `parser/cursor/recovery.ts` and `parser/grammar/parts/structs.ts`: the brace lists of fields and variants become ordinary `,` lists under note 10. Their message "Expected ';', a line break or '}'" becomes "',', a line break or '}'".
      - A `;` between list items, and a `,` between statements, each get one diagnostic naming the right separator (`parser/diagnostics.ts`).
      - `semicolonAfterInlineBody` (`parser/layout/bodies.ts`) and `blockWithoutSemicolon` (`parser/grammar/expressions/branches.ts`) stay.
-   - **Formatter.** `src/formatter/lists.ts` writes `,` where its field lists write `ifBreak('', ';')`. `branches.ts` keeps `;` for one-line blocks, and `comment-placement.ts` keeps both separators.
+   - **Formatter.** `src/formatter/layout/lists.ts` writes `,` where its field lists write `ifBreak('', ';')`. `branches.ts` keeps `;` for one-line blocks, and `comment-placement.ts` keeps both separators.
    - **The repository's sources: a one-off scripted rewrite through the project's own scanner** (`src/compiler/scanner/scan.ts`), run before the grammar changes, then `ista fmt`. It covers:
      - `src/stdlib/`, `test/` and its corpus, `examples/` and the form builder;
      - the spec's examples;
@@ -445,7 +445,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
     - **Expressions.** The infix and postfix loops (`parser/grammar/expressions/expression.ts`, `postfix.ts`) stop at a separating break, and `postfix.ts` attaches `(`, `[`, `{` and `<` only on their operand's line.
     - **The token sets are derived, never listed again.** What starts an item is the prefix parselet table of `expression.ts`. What continues is its infix table.
     - **Spacing.** Tokens already carry `firstOnLine` (`syntax/tokens/index.ts`). Their spans tell whether `-`, `*`, `&` or `..` is glued to the next token, so the scanner needs no change.
-    - **Formatter.** `src/formatter/lists.ts` and `brackets.ts` print a broken list one item per line without `,`; `literals.ts` follows.
+    - **Formatter.** `src/formatter/layout/lists.ts` and `brackets.ts` print a broken list one item per line without `,`; `literals.ts` follows.
     - **Completion.** The places in `src/language-service/completion/places/` that find "the next item" after a `,` find it after a separating break too.
 11. **Parenthesized imports and renames.**
     - **Syntax.** `NamedImport` holds imported names, each an exported name and an optional alias, and whether they were parenthesized, which the formatter keeps.

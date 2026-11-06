@@ -13,14 +13,14 @@
  */
 
 import { builders } from 'prettier/doc';
-import type { Docstring } from '../compiler/syntax/declarations/index.ts';
-import type { Annotatable, Annotation } from '../compiler/syntax/items.ts';
-import type { Block } from '../compiler/syntax/statements/index.ts';
-import { extentIn, fieldChildrenOf, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
-import { spanIn } from '../compiler/syntax/tree/positions.ts';
+import type { Docstring } from '../../compiler/syntax/declarations/index.ts';
+import type { Annotatable, Annotation } from '../../compiler/syntax/items.ts';
+import type { Block } from '../../compiler/syntax/statements/index.ts';
+import { extentIn, fieldChildrenOf, type SyntaxNode } from '../../compiler/syntax/tree/index.ts';
+import { spanIn } from '../../compiler/syntax/tree/positions.ts';
+import type { Printer } from '../printer.ts';
 import { standingIn } from './brackets.ts';
 import { blankBetween, hasComments, hugging, itemLines } from './lists.ts';
-import type { Printer } from './printer.ts';
 
 const { hardline, indent, line } = builders;
 
