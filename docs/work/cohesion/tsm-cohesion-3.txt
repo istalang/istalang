@@ -1,0 +1,1751 @@
+cohesion of 634 files: 337 misplaced exports, 2 crowded folders, 13 folders with loose files, 44 wide files
+
+misplaced exports, by the folder holding all their users (move each there, or anywhere below it):
+src/cli/  1 export
+  src/foundation/diagnostics/render.ts  renderDiagnostic  used by report.ts  (whole file: move it)
+src/cli/commands/  9 exports
+  src/cli/clock.ts            clock  used by run.ts, test.ts  (whole file: move it)
+  src/cli/directory-store.ts  directoryStore  used by run.ts  (whole file: move it)
+  src/cli/host-module.ts      loadHostModule  used by run.ts
+  src/cli/log-lines.ts        logLine  used by run.ts, test.ts  (whole file: move it)
+  src/cli/report.ts           reportDiagnostics, reportUnreadable  used by check.ts, fmt.ts, run.ts, test.ts  (whole file: move it)
+  src/editor/lsp/server.ts    serveLanguage  used by lsp.ts  (whole file: move it)
+  src/runtime/host/index.ts   createRuntime  used by run.ts
+  src/runtime/host/settle.ts  settle  used by run.ts
+src/compiler/  6 exports
+  src/foundation/diagnostics/catalog.ts          defineDiagnostics  used by binder/ 1, checker/ 1, parser/ 1, program/ 1, +1 more  (whole file: move it)
+  src/foundation/diagnostics/diagnostic.ts       compareDiagnostics  used by checker/ 1, compile.ts
+  src/foundation/language/primitives.ts          primitiveOnceSpelled  used by binder/ 1, checker/ 1
+  src/foundation/language/well-known/testing.ts  testingFunctions  used by checker/ 1, lowering/ 1
+  src/foundation/structures/memo.ts              SequenceMemo  used by binder/ 3, syntax/ 1
+  src/foundation/structures/stack.ts             withPushed  used by checker/ 4, lowering/ 3
+src/compiler/binder/constructs/  6 exports
+  src/compiler/binder/entities.ts             selfEntity  used by declarations.ts
+  src/compiler/binder/module/flow.ts          bindConditionValue, underCondition, underLoop, underFields  used by expressions.ts, statements.ts
+  src/compiler/binder/module/local-binder.ts  holdsNoNames  used by declarations.ts, expressions.ts, patterns.ts, statements.ts, +1 more
+src/compiler/binder/link/  2 exports
+  src/compiler/binder/naming.ts    undeclaredName  used by index.ts
+  src/compiler/program/program.ts  isTestModule  used by index.ts, top-level-rules.ts
+src/compiler/binder/module/  8 exports
+  src/compiler/binder/constructs/declarations.ts  bindDeclaration  used by bind-module.ts
+  src/compiler/binder/constructs/patterns.ts      bindPattern  used by bind-module.ts  (whole file: move it)
+  src/compiler/binder/entities.ts                 isAlias, ownCallEntity, variantEntity, namespaceEntity, functionsEntity  used by local-binder.ts, module-scope.ts
+  src/compiler/binder/naming.ts                   namingViolation  used by local-binder.ts
+src/compiler/checker/  8 exports
+  src/compiler/binder/entities.ts                       VariantNaming  used by constructs/ 3, types/ 1
+  src/compiler/syntax/declarations/index.ts             AliasDeclaration  used by types/ 5, constructs/ 2, check.ts, resolution/ 1, +2 more
+  src/compiler/syntax/expressions/branches.ts           valueBranchesOf  used by constructs/ 3, resolution/ 1  (whole file: move it)
+  src/compiler/syntax/expressions/literals/numbers.ts   signedNumberOf  used by constructs/ 4, rules/ 1, types/ 1
+  src/compiler/syntax/statements/readings.ts            passedParts  used by lookup/ 1, rules/ 1
+  src/compiler/syntax/tree/index.ts                     bodyChildrenOf  used by rules/ 1, surface/ 1
+  src/foundation/language/well-known/implicit-calls.ts  collectionFunctions  used by constructs/ 2, resolution/ 1
+  src/foundation/structures/equality.ts                 sameEntries  used by constructs/ 1, wiring/ 1
+src/compiler/checker/constructs/  16 exports
+  src/compiler/checker/resolution/applying/implicit.ts         preludeCall, implicitOperatorCall  used by expressions/ 4, patterns/ 2
+  src/compiler/checker/resolution/calls/operators.ts           resolveOperator  used by expressions/ 1, statements/ 1
+  src/compiler/checker/resolution/calls/places.ts              checkChangedPlace  used by expressions/ 1, statements/ 1
+  src/compiler/checker/resolution/calls/stopped-operations.ts  stoppedOperation  used by expressions/ 11, closures/ 1, statements/ 1
+  src/compiler/checker/rules/disposal/must-use.ts              checkDiscarded  used by expressions/ 1, statements/ 1
+  src/compiler/checker/types/type/function-types.ts            packRestSlot  used by closures/ 2, declarations/ 1
+  src/compiler/checker/types/type/primitives.ts                floatType  used by expressions/ 1, patterns/ 1
+  src/compiler/checker/types/type/well-known.ts                futureOf  used by closures/ 2, declarations/ 1, expressions/ 1
+  src/compiler/checker/types/unions/equality.ts                fitEqualSides, decidedEquality  used by expressions/ 1, patterns/ 1
+  src/compiler/checker/types/unions/inside-optional.ts         insideOptional  used by expressions/ 5, closures/ 1  (whole file: move it)
+  src/compiler/checker/types/written/named-types.ts            chooseVariant  used by expressions/ 1, patterns/ 1
+  src/compiler/syntax/expressions/operators.ts                 isImplicitOperator  used by expressions/ 1, patterns/ 1
+  src/compiler/syntax/expressions/parameters.ts                parameterSite  used by declarations/ 2, closures/ 1
+  src/compiler/syntax/statements/readings.ts                   tailNodeOf  used by closures/ 1, expressions/ 1
+src/compiler/checker/constructs/closures/  2 exports
+  src/compiler/checker/constructs/declarations/functions/signatures.ts  wholeWrittenTypeOf  used by lambdas.ts
+  src/compiler/syntax/tree/positions.ts                                 encloses  used by functions.ts
+src/compiler/checker/constructs/declarations/  6 exports
+  src/compiler/checker/resolution/type-matches/implied-constraints.ts     impliedConstraints  used by type-parameters.ts  (whole file: move it)
+  src/compiler/checker/resolution/type-matches/reduction-requirements.ts  failureDiagnostic, ReductionRequirements  used by type-parameters.ts  (whole file: move it)
+  src/compiler/checker/rules/boundary/host-boundary.ts                    checkHostBoundary  used by declarations.ts
+  src/compiler/checker/rules/disposal/disposal.ts                         checkDisposeDeclaration  used by declarations.ts
+  src/compiler/checker/rules/testing.ts                                   checkSuite  used by declarations.ts
+src/compiler/checker/constructs/declarations/aliases/  2 exports
+  src/compiler/checker/rules/expansion/type-matches.ts  TypeMatchExpansion  used by index.ts  (whole file: move it)
+  src/compiler/checker/types/written/resolve-type.ts    resolveClosing  used by recursive-bodies.ts
+src/compiler/checker/constructs/declarations/functions/  2 exports
+  src/compiler/checker/types/written/named-types.ts  declaredOwnerOf  used by clashes.ts, statics.ts
+  src/compiler/syntax/expressions/parameters.ts      writesType  used by parameters.ts
+src/compiler/checker/constructs/declarations/layout/  2 exports
+  src/compiler/checker/rules/expansion/types.ts        TypeExpansion  used by index.ts
+  src/compiler/checker/types/properties/finiteness.ts  holdsItself  used by struct-rules.ts
+src/compiler/checker/constructs/expressions/  18 exports
+  src/compiler/checker/constructs/closures/lambdas.ts          lambdaAccepts, checkLambda  used by expressions.ts
+  src/compiler/checker/constructs/closures/value-calls.ts      checkValueCall  used by calls.ts
+  src/compiler/checker/contexts/body-context.ts                PartReader  used by collections/ 1, expressions.ts, literals/ 1, structs/ 1
+  src/compiler/checker/rules/agreement.ts                      producedBy, settleAgreement, decidedSoFar, partsAccept, partsBuild, agreedAccepts  used by collections/ 3, control/ 1, literals/ 1, structs/ 1
+  src/compiler/checker/types/fitting/expected.ts               takingUnfolded, expectedNominal  used by access/ 1, expressions.ts, structs/ 1
+  src/compiler/checker/types/traits/struct-keys.ts             keyOwnerOfValue  used by control/ 1, operators/ 1
+  src/compiler/checker/types/type/primitives.ts                stringType  used by access/ 1, expressions.ts, literals/ 1
+  src/compiler/checker/types/type/well-known.ts                arrayOf  used by collections/ 3, literals/ 1
+  src/compiler/syntax/declarations/index.ts                    isDeclaredStruct  used by structs/ 2, literals/ 1
+  src/compiler/syntax/expressions/literals/indented-values.ts  untypedForm, literalOf  used by expressions.ts, literals/ 1
+src/compiler/checker/constructs/expressions/access/  6 exports
+  src/compiler/checker/constructs/closures/function-values.ts      namedFunctions, checkFunctionValue, functionsAccepted  used by member-access.ts, names.ts
+  src/compiler/checker/constructs/expressions/structs/variants.ts  checkVariantName  used by member-access.ts, names.ts
+  src/compiler/checker/types/written/named-types.ts                fieldlessStructOf  used by names.ts
+  src/foundation/language/well-known/implicit-calls.ts             panicFunction  used by optionals.ts
+src/compiler/checker/constructs/expressions/collections/  4 exports
+  src/compiler/checker/resolution/conformance/default-witness.ts  resolveDefault  used by collections.ts
+  src/compiler/checker/rules/agreement.ts                         wholeWidened, agreedBuilds  used by collection-accepts.ts, comprehensions.ts
+  src/foundation/language/well-known/implicit-calls.ts            inclusiveEndFunction  used by collections.ts
+src/compiler/checker/constructs/expressions/control/  3 exports
+  src/compiler/checker/constructs/closures/own-calls.ts                 ownCallerOf  used by select.ts
+  src/compiler/checker/constructs/patterns/exhaustiveness/remaining.ts  remainingType  used by match.ts
+  src/compiler/checker/constructs/patterns/matching.ts                  checkPattern  used by match.ts
+src/compiler/checker/constructs/expressions/literals/  4 exports
+  src/compiler/checker/constructs/expressions/expressions.ts   openBuildsOf  used by built-members.ts
+  src/compiler/checker/types/fitting/expected.ts               memberBuilt  used by built-members.ts
+  src/compiler/syntax/expressions/literals/indented-values.ts  entriesLeftOut  used by indented-values.ts
+  src/foundation/language/well-known/implicit-calls.ts         templateFunctions  used by templates.ts
+src/compiler/checker/constructs/expressions/operators/  2 exports
+  src/compiler/checker/constructs/expressions/access/optionals.ts  checkNullish  used by operators.ts
+  src/compiler/checker/resolution/calls/operators.ts               unaryApplied  used by operators.ts
+src/compiler/checker/constructs/patterns/  1 export
+  src/foundation/language/well-known/implicit-calls.ts  arrayPatternFunctions  used by matching.ts
+src/compiler/checker/constructs/patterns/walk/  2 exports
+  src/compiler/checker/constructs/patterns/exhaustiveness/exhaustiveness.ts  nothingShape  used by index.ts, pattern-tests.ts
+  src/compiler/checker/surface/checked-pattern.ts                            neverTest  used by index.ts, pattern-tests.ts
+src/compiler/checker/constructs/statements/  5 exports
+  src/compiler/checker/constructs/closures/lambdas.ts  checkLocalFunction  used by statements.ts
+  src/compiler/checker/resolution/calls/operators.ts   binaryApplied  used by assignments.ts
+  src/compiler/checker/resolution/calls/places.ts      checkDistinctPlaces  used by assignments.ts
+  src/compiler/checker/rules/disposal/must-use.ts      checkDrop  used by statements.ts
+  src/compiler/syntax/expressions/operators.ts         compoundOperator  used by assignments.ts
+src/compiler/checker/lookup/  1 export
+  src/compiler/syntax/statements/readings.ts  isOverFields  used by pass-views.ts
+src/compiler/checker/resolution/applying/  2 exports
+  src/compiler/checker/resolution/choosing/choice.ts          choose  used by applied-call.ts, silent-choice.ts
+  src/compiler/checker/resolution/conformance/trait-calls.ts  closedThroughMembers  used by applied-call.ts
+src/compiler/checker/resolution/calls/  2 exports
+  src/compiler/syntax/expressions/operators.ts  CallingBinaryOperator, CallingUnaryOperator  used by operators.ts
+src/compiler/checker/resolution/choosing/  3 exports
+  src/compiler/checker/resolution/conformance/union-traits.ts  traitCallsOn  used by candidates.ts
+  src/compiler/checker/types/fitting/fit.ts                    reshapes  used by applicability.ts
+  src/compiler/checker/types/traits/known-constraints.ts       requirementsNamed  used by candidates.ts
+src/compiler/checker/resolution/conformance/  2 exports
+  src/compiler/checker/resolution/choosing/candidates.ts  witnessCandidates  used by declared-witness.ts
+  src/compiler/checker/types/traits/sendable.ts           constraintsImply  used by shortfalls.ts
+src/compiler/checker/resolution/type-matches/  2 exports
+  src/compiler/checker/types/parts/type-parts.ts    isKnown  used by reduction-requirements.ts, type-match-patterns.ts
+  src/compiler/checker/types/written/type-match.ts  labelOf  used by type-matches.ts
+src/compiler/checker/rules/  2 exports
+  src/compiler/checker/surface/host-externs.ts  isHostType  used by boundary/ 1, disposal/ 1, testing.ts
+  src/compiler/checker/types/unions/unions.ts   literalsBase  used by agreement.ts
+src/compiler/checker/rules/boundary/  4 exports
+  src/compiler/checker/contexts/use-site.ts                        hostSite  used by host-boundary.ts, json-forms.ts
+  src/compiler/checker/resolution/conformance/declared-witness.ts  declaresWitness  used by json-forms.ts
+  src/compiler/checker/resolution/conformance/default-witness.ts   defaultWitness  used by json-forms.ts
+  src/foundation/language/well-known/codecs.ts                     CodecName  used by json-forms.ts
+src/compiler/checker/rules/computation/  1 export
+  src/compiler/checker/surface/constant-form.ts  formSemantics  used by index.ts
+src/compiler/checker/rules/disposal/  4 exports
+  src/compiler/checker/resolution/applying/silent-choice.ts  silentCall  used by disposal.ts
+  src/compiler/checker/rules/flow/forward.ts                 flowThrough  used by dropped.ts
+  src/compiler/checker/types/properties/held.ts              heldType  used by must-use.ts
+  src/foundation/language/well-known/implicit-calls.ts       disposeFunction  used by disposal.ts
+src/compiler/checker/rules/expansion/  4 exports
+  src/compiler/syntax/declarations/field-defaults.ts  functionsOf  used by functions.ts
+  src/foundation/structures/equality.ts               sameMembers, sameProperties  used by functions.ts, type-matches.ts, types.ts
+  src/foundation/structures/reachable.ts              edgesReachedFrom  used by edges.ts  (whole file: move it)
+src/compiler/checker/types/identity/  1 export
+  src/compiler/checker/types/parts/type-children.ts  withTypeChildren  used by recursive-types.ts
+src/compiler/checker/types/parts/  1 export
+  src/compiler/checker/types/identity/recursive-types.ts  mapRecursive  used by type-parts.ts
+src/compiler/checker/types/written/  1 export
+  src/compiler/checker/types/type/computed-types.ts  ownAssociatedType  used by resolve-type.ts, written-matches.ts
+src/compiler/checker/wiring/body/  20 exports
+  src/compiler/checker/constructs/closures/functions.ts                   FunctionScopes  used by body-checker.ts, facts/ 1  (whole file: move it)
+  src/compiler/checker/constructs/closures/lambdas.ts                     inferLambda  used by body-checker.ts
+  src/compiler/checker/constructs/expressions/access/member-access.ts     FieldReads  used by body-checker.ts, facts/ 1
+  src/compiler/checker/constructs/expressions/access/optionals.ts         OptionalChains  used by body-checker.ts, facts/ 1
+  src/compiler/checker/constructs/expressions/collections/collections.ts  CollectionForms  used by body-checker.ts, facts/ 1
+  src/compiler/checker/constructs/expressions/expressions.ts              acceptsOf, expressionHandlers  used by body-checker.ts
+  src/compiler/checker/constructs/expressions/literals/built-members.ts   builtAsChecked  used by body-checker.ts
+  src/compiler/checker/constructs/expressions/literals/literal-items.ts   argumentPartOf  used by body-checker.ts  (whole file: move it)
+  src/compiler/checker/constructs/expressions/structs/literal-sources.ts  StructLiterals  used by body-checker.ts, facts/ 1
+  src/compiler/checker/constructs/loops/iteration.ts                      Iterations  used by body-checker.ts, facts/ 1
+  src/compiler/checker/constructs/patterns/matching.ts                    CheckedPatterns  used by body-checker.ts, facts/ 1
+  src/compiler/checker/constructs/statements/loops.ts                     LabelTargets  used by body-checker.ts, facts/ 1
+  src/compiler/checker/constructs/statements/statements.ts                checkBlock, statementHandlers  used by body-checker.ts
+  src/compiler/checker/constructs/statements/variables.ts                 VariableScope  used by body-checker.ts, facts/ 1
+  src/compiler/checker/resolution/applying/implicit.ts                    ImplicitCalls  used by body-checker.ts, facts/ 1
+  src/compiler/checker/rules/disposal/disposal.ts                         checkDisposeUses  used by body-checker.ts
+  src/compiler/checker/rules/disposal/dropped.ts                          checkDropped  used by body-checker.ts  (whole file: move it)
+  src/compiler/checker/rules/testing.ts                                   checkTestingCalls  used by body-checker.ts
+src/compiler/checker/wiring/body/facts/  1 export
+  src/compiler/checker/types/parts/substitution.ts  substituteKept  used by instantiation.ts
+src/compiler/checker/wiring/program/  21 exports
+  src/compiler/checker/constructs/declarations/aliases/index.ts         Aliases  used by program-checker.ts  (whole file: move it)
+  src/compiler/checker/constructs/declarations/constants.ts             ConstantChecks  used by program-checker.ts
+  src/compiler/checker/constructs/declarations/functions/functions.ts   FunctionChecks  used by program-checker.ts
+  src/compiler/checker/constructs/declarations/functions/parameters.ts  Parameters  used by program-checker.ts
+  src/compiler/checker/constructs/declarations/functions/statics.ts     StaticFunctions  used by program-checker.ts  (whole file: move it)
+  src/compiler/checker/constructs/declarations/layout/index.ts          Layouts  used by program-checker.ts  (whole file: move it)
+  src/compiler/checker/constructs/declarations/module-checks.ts         ModuleChecks  used by program-checker.ts
+  src/compiler/checker/lookup/lookup.ts                                 Lookup  used by program-checker.ts  (whole file: move it)
+  src/compiler/checker/resolution/conformance/conformance.ts            rootSearches  used by program-checker.ts
+  src/compiler/checker/resolution/conformance/root-goals.ts             programRootGoals  used by program-checker.ts  (whole file: move it)
+  src/compiler/checker/resolution/conformance/trait-objects.ts          memberWitnesses  used by program-checker.ts
+  src/compiler/checker/resolution/type-matches/type-matches.ts          TypeMatchReductions  used by program-type-rules.ts  (whole file: move it)
+  src/compiler/checker/rules/boundary/json-forms.ts                     JsonForms  used by program-checker.ts
+  src/compiler/checker/rules/disposal/disposal.ts                       disposalOf  used by program-checker.ts
+  src/compiler/checker/types/traits/any-types.ts                        resolveAnyType  used by program-checker.ts  (whole file: move it)
+  src/compiler/checker/types/traits/known-constraints.ts                associatedTypeOf  used by program-type-rules.ts
+  src/compiler/checker/types/traits/struct-keys.ts                      memberUnionOf, mappedTypeOf  used by program-checker.ts, program-type-rules.ts
+  src/compiler/checker/types/written/resolve-type.ts                    resolveTypeNode  used by program-checker.ts
+  src/compiler/checker/wiring/body/body-checker.ts                      BodyChecker  used by program-checker.ts
+  src/foundation/structures/stack.ts                                    withEmptied  used by program-type-rules.ts
+src/compiler/lowering/  1 export
+  src/compiler/checker/surface/resolved-call.ts  passesAll  used by calls/ 1, tables/ 1
+src/compiler/lowering/constructs/  2 exports
+  src/compiler/lowering/calls/emit-call.ts  emitCallAt, emitImplicitCall  used by expressions/ 4, parts/ 2, loops/ 1, statements/ 1
+src/compiler/lowering/constructs/expressions/  2 exports
+  src/compiler/lowering/constructs/parts/places.ts  enterReferenced, lowerDereference  used by calls.ts, expressions.ts
+src/compiler/lowering/constructs/expressions/access/  3 exports
+  src/compiler/lowering/constructs/expressions/structs/structs.ts   lowerBareStruct  used by names.ts
+  src/compiler/lowering/constructs/expressions/structs/variants.ts  lowerFieldlessVariant  used by names.ts
+  src/compiler/lowering/values/optionals.ts                         presentOr  used by optionals.ts
+src/compiler/lowering/constructs/expressions/collections/  2 exports
+  src/compiler/lowering/calls/emit-call.ts      referenceTo  used by collections.ts
+  src/compiler/lowering/values/keyed-fields.ts  lowerKeyRead  used by collections.ts
+src/compiler/lowering/constructs/expressions/control/  1 export
+  src/compiler/lowering/constructs/parts/patterns.ts  lowerMatching  used by matching.ts
+src/compiler/lowering/constructs/expressions/structs/  1 export
+  src/compiler/lowering/constructs/loops/field-passes.ts  valueInFieldScope  used by structs.ts
+src/compiler/lowering/constructs/loops/  1 export
+  src/foundation/language/well-known/variants.ts  stepVariants  used by iteration.ts
+src/compiler/lowering/constructs/parts/  1 export
+  src/compiler/lowering/values/keyed-fields.ts  writeKeyed  used by places.ts
+src/compiler/lowering/constructs/statements/  3 exports
+  src/compiler/lowering/constructs/expressions/closures.ts  lowerLocalFunction  used by statements.ts
+  src/compiler/lowering/constructs/parts/places.ts          enterAssigned  used by variables.ts
+  src/compiler/syntax/patterns.ts                           hasUnnamedPart  used by variables.ts
+src/compiler/lowering/functions/  5 exports
+  src/compiler/lowering/calls/closed-calls.ts                  closeCallWithin  used by index.ts
+  src/compiler/lowering/constructs/expressions/expressions.ts  expressionHandlers  used by index.ts  (whole file: move it)
+  src/compiler/lowering/constructs/statements/statements.ts    lowerStatement, lowerBlock  used by index.ts
+  src/compiler/lowering/values/unions.ts                       asBase  used by fits.ts
+src/compiler/lowering/synthesized/  1 export
+  src/compiler/lowering/calls/closed-calls.ts  closeWitness  used by trait-objects.ts
+src/compiler/lowering/tables/  3 exports
+  src/compiler/lowering/calls/closed-calls.ts  takingPassed, callOfFilling, closeFunctionCall  used by filling-entry.ts, tables.ts, type-table.ts
+src/compiler/parser/grammar/  9 exports
+  src/compiler/parser/cursor/recovery.ts        parseEnclosed, parseGroup  used by expressions/ 2, parts/ 1, patterns.ts, types.ts
+  src/compiler/parser/layout/annotations.ts     attachAnnotations  used by declarations/ 2, parts/ 2
+  src/compiler/parser/layout/bodies.ts          parseBody  used by parts/ 2, declarations/ 1, expressions/ 1
+  src/compiler/parser/layout/continuations.ts   skipDeeperLines  used by nesting.ts
+  src/compiler/parser/layout/index.ts           parseItemEntries  used by parts/ 2, declarations/ 1
+  src/compiler/parser/layout/item-breaks.ts     eatContinuing, atPostfix  used by expressions/ 3, declarations/ 1, parts/ 1, patterns.ts, +1 more
+  src/compiler/syntax/expressions/operators.ts  operatorLevels  used by expressions/ 1, patterns.ts
+src/compiler/parser/grammar/declarations/  7 exports
+  src/compiler/parser/grammar/parts/blocks.ts   parseDocumentedStatementBody, parseModuleItem  used by declaration.ts, functions.ts
+  src/compiler/parser/grammar/parts/structs.ts  declaredFieldRules  used by type-declarations.ts
+  src/compiler/parser/layout/bodies.ts          parseDocumentedMembers, parseDocstringBelow  used by externs.ts, functions.ts, type-declarations.ts
+  src/compiler/parser/layout/docstrings.ts      documentedBy  used by declaration.ts, externs.ts, functions.ts, type-declarations.ts
+  src/compiler/parser/layout/index.ts           parseModuleLines  used by declaration.ts
+src/compiler/parser/grammar/expressions/  6 exports
+  src/compiler/parser/grammar/parts/spreads.ts  parseSpread  used by literals/ 3, postfix.ts
+  src/compiler/parser/layout/continuations.ts   moveToContinuation  used by branches.ts
+  src/compiler/parser/layout/index.ts           parseBlockBraces  used by branches.ts
+  src/compiler/syntax/expressions/operators.ts  rightOperandLevel  used by operators.ts
+  src/compiler/syntax/tokens/grammar-words.ts   OperandWord, InfixWord  used by expression.ts
+src/compiler/parser/grammar/parts/  3 exports
+  src/compiler/parser/layout/bodies.ts  parseDocumentedBody  used by blocks.ts
+  src/compiler/syntax/items.ts          allowedInModule, allowedInBlock  used by blocks.ts
+src/compiler/parser/grammar/statements/  1 export
+  src/compiler/syntax/expressions/operators.ts  isAssignmentOperator  used by statement.ts
+src/compiler/parser/layout/  1 export
+  src/compiler/syntax/tree/positions.ts  spanCovering  used by annotations.ts
+src/definition/instructions/  3 exports
+  src/definition/operands.ts  fieldIndex, Label, ConstantId  used by data.ts, instruction.ts, places.ts
+src/definition/tables/  1 export
+  src/definition/operands.ts  moduleId  used by functions.ts
+src/definition/validation/  3 exports
+  src/definition/instructions/flow.ts         terminates  used by references.ts
+  src/definition/instructions/instruction.ts  operandsOf  used by references.ts
+  src/definition/tables/test-runner.ts        runnerArity  used by references.ts
+src/definition/values/  1 export
+  src/foundation/language/well-known/variants.ts  resultFields  used by declared-values.ts
+src/editor/language-service/  3 exports
+  src/compiler/checker/types/type/type-text.ts   writtenAndNamedText  used by hover.ts
+  src/compiler/scanner/characters.ts             spellsName  used by completion/ 1, navigation/ 1
+  src/compiler/syntax/expressions/parameters.ts  parameterNames  used by inlay-hints.ts
+src/editor/language-service/completion/  3 exports
+  src/compiler/syntax/expressions/literals/built-types.ts  buildsShared  used by placeholder.ts
+  src/compiler/syntax/statements/targets.ts                ownsTargets  used by placeholder.ts
+  src/editor/language-service/signatures/call-at.ts        argumentParameterAt  used by expected.ts, places/ 1
+src/editor/language-service/completion/places/  3 exports
+  src/editor/language-service/completion/expected.ts  expectedLiterals, isBareVariant  used by grammar/ 1, literal-field.ts, string-text.ts
+  src/editor/language-service/completion/visible.ts   visibleCandidates  used by annotation.ts, literal-field.ts
+src/editor/language-service/completion/places/grammar/  2 exports
+  src/compiler/syntax/items.ts                        moduleItemWords  used by position.ts
+  src/editor/language-service/completion/expected.ts  expectedVariants  used by expression.ts
+src/editor/language-service/navigation/  3 exports
+  src/compiler/syntax/tree/positions.ts                 startTogether  used by declarations.ts
+  src/editor/language-service/reading/identifier-at.ts  stringLiteralAt  used by declarations.ts
+  src/foundation/language/well-known/codecs.ts          codecFunctions  used by rename.ts
+src/editor/language-service/semantic-tokens/  1 export
+  src/compiler/syntax/tokens/index.ts  isContextualWord  used by semantic-tokens.ts
+src/editor/lsp/  1 export
+  src/project/project-files.ts  overlaidFiles  used by project-loader.ts
+src/editor/lsp/providers/  7 exports
+  src/editor/language-service/completion/triggers.ts        completionTriggers  used by completion.ts
+  src/editor/language-service/hover.ts                      hoverAt  used by hover.ts
+  src/editor/language-service/signatures/signature-help.ts  signatureHelpAt  used by signature-help.ts
+  src/editor/lsp/locations.ts                               spanOf, documentOffset  used by navigation/ 3, completion.ts, hover.ts, inlay-hints.ts, +1 more
+  src/stdlib/stdlib-loader.ts                               stdSourceOf, importableStdModules  used by completion.ts, std-source.ts
+src/editor/lsp/providers/navigation/  2 exports
+  src/editor/language-service/navigation/rename.ts  renameEdits  used by rename.ts
+  src/editor/lsp/locations.ts                       locationOf  used by definition.ts, references.ts, rename.ts
+src/editor/lsp/providers/outline/  2 exports
+  src/editor/language-service/outline/folding.ts  foldingRangesOf  used by folding-ranges.ts
+  src/editor/language-service/outline/symbols.ts  symbolsOf  used by document-symbols.ts
+src/formatter/  3 exports
+  src/compiler/syntax/declarations/index.ts  membersAsWritten  used by declarations.ts
+  src/foundation/text/line-map.ts            splitLines  used by comments/ 1, expressions/ 1
+  src/foundation/text/span.ts                encloses  used by comments/ 1, format.ts
+src/formatter/expressions/  1 export
+  src/formatter/layout/lists.ts  oneLine  used by index.ts, literals.ts
+src/project/  1 export
+  src/foundation/language/well-known/testing.ts  isTestModulePath  used by file-loader.ts
+src/runtime/  4 exports
+  src/definition/values/instance-handles.ts  instanceHandle  used by interpreter/ 1, scheduler/ 1
+  src/definition/values/values.ts            handleTo, withChildValues, depthOf  used by scheduler/ 6, interpreter/ 2, lifetimes/ 2
+src/runtime/host/  6 exports
+  src/runtime/boundary/extern-signatures.ts  recordExternSignatures  used by index.ts  (whole file: move it)
+  src/runtime/boundary/host-natives.ts       hostNatives  used by index.ts
+  src/runtime/boundary/outbound.ts           outcomeJson, outcomeText  used by index.ts  (whole file: move it)
+  src/runtime/instance-state.ts              hasEnded  used by instance-group.ts
+  src/runtime/snapshot/check.ts              checkSnapshot  used by index.ts  (whole file: move it)
+src/runtime/scheduler/  5 exports
+  src/runtime/interpreter/function-table.ts  FunctionTable  used by loaded-definition.ts
+  src/runtime/interpreter/machine.ts         newFrame, releaseFrame  used by segment/ 3, instance/ 2
+  src/runtime/interpreter/suspension.ts      resume  used by instance/ 1, segment/ 1
+  src/runtime/snapshot/snapshot.ts           Replay  used by wake.ts
+src/runtime/scheduler/instance/  3 exports
+  src/runtime/lifetimes/holders.ts        heldFrom  used by index.ts
+  src/runtime/scheduler/testing/mocks.ts  reachingMock  used by index.ts
+  src/runtime/snapshot/random.ts          drawOf  used by index.ts
+src/runtime/scheduler/segment/  8 exports
+  src/runtime/interpreter/instructions.ts  runInstruction  used by index.ts  (whole file: move it)
+  src/runtime/interpreter/machine.ts       resumeAfterCall  used by index.ts
+  src/runtime/interpreter/registers.ts     argumentContents, passedValues  used by calls.ts, index.ts, native-calls.ts
+  src/runtime/interpreter/trace.ts         callerTraceOf  used by run-stack.ts
+  src/runtime/lifetimes/collector.ts       Collector  used by index.ts
+  src/runtime/scheduler/testing/mocks.ts   mockedCall, startAnswer  used by calls.ts, index.ts
+src/runtime/scheduler/testing/  1 export
+  src/runtime/scheduler/instance/instance-names.ts  ancestorsOf  used by mocks.ts
+src/runtime/snapshot/  2 exports
+  src/definition/formats/codec.ts  contentHashText  used by snapshot.ts
+  src/definition/tables/types.ts   isCellType  used by check.ts
+src/stdlib/  9 exports
+  src/definition/extern-key.ts               namedKey, functionKey, parameterKey, nativeKey  used by prelude/ 5, futures/ 1, json/ 1, runtime/ 1, +2 more
+  src/definition/values/declared-values.ts   typeArgumentOf, optionalOf  used by regex/ 1, values/ 1
+  src/definition/values/instance-handles.ts  instanceNameOf  used by prelude/ 1, testing/ 1
+  src/foundation/text/code-points.ts         codePointCount, codePointSlice  used by prelude/ 1, strings/ 1
+src/stdlib/json/  2 exports
+  src/definition/values/json-values.ts  jsonOfText  used by natives.ts
+  src/stdlib/values/results.ts          resultErr  used by natives.ts
+src/stdlib/prelude/  10 exports
+  src/definition/extern-key.ts        referenceKey  used by arrays.ts, maps.ts
+  src/foundation/text/code-points.ts  codePointAtPosition  used by strings.ts
+  src/stdlib/numeric.ts               numeric  used by natives.ts
+  src/stdlib/positions.ts             checkedIndex, atPosition, sliced, selectionOf, selected, replaced  used by arrays.ts, maps.ts, strings.ts
+  src/stdlib/ranges.ts                reaches  used by range-natives.ts
+src/stdlib/regex/  1 export
+  src/definition/values/declared-values.ts  fieldTypeOf  used by natives.ts
+src/stdlib/strings/  2 exports
+  src/definition/extern-key.ts        restKey  used by natives.ts
+  src/foundation/text/code-points.ts  codePoints  used by natives.ts
+src/stdlib/testing/  1 export
+  src/stdlib/values/results.ts  resultVariant  used by natives.ts
+src/stdlib/time/  1 export
+  src/stdlib/values/results.ts  resultStruct  used by fields.ts, zones.ts
+src/stdlib/values/  2 exports
+  src/definition/values/declared-values.ts  optionalValueOf, okTypeOf  used by arguments.ts, results.ts
+
+crowded folders (more than 10 files and folders directly inside: group them into sub-folders):
+  23 !!!  src/stdlib
+  11 !!!  src/runtime
+  10      src/compiler/checker
+  10      src/compiler/checker/resolution/conformance
+  10      src/compiler/checker/surface
+  10      src/compiler/checker/types/type
+  10      src/compiler/parser/grammar/parts
+  10      src/compiler/syntax/expressions
+  10      src/editor/language-service/completion
+  10      src/editor/language-service/completion/places
+  10      src/editor/lsp/providers
+  10      src/foundation/structures
+   9      src
+   9      src/cli
+   9      src/compiler/checker/diagnostics
+   9      src/compiler/checker/types
+   9      src/compiler/checker/types/written
+   9      src/compiler/lowering/constructs/expressions
+   9      src/compiler/parser/grammar
+   9      src/compiler/scanner
+   9      src/definition/instructions
+   9      src/editor/language-service
+   9      src/formatter
+   9      src/stdlib/prelude
+   8      src/compiler
+   8      src/compiler/checker/constructs/closures
+   8      src/compiler/checker/constructs/expressions
+   8      src/compiler/checker/resolution/choosing
+   8      src/compiler/checker/rules
+   8      src/compiler/checker/types/traits
+   8      src/compiler/lowering
+   8      src/compiler/parser/grammar/expressions
+   8      src/compiler/syntax
+   8      src/definition
+   8      src/foundation/language
+   8      src/runtime/interpreter
+   8      src/runtime/scheduler/instance
+   7      src/compiler/binder
+   7      src/compiler/binder/module
+   7      src/compiler/checker/constructs/declarations
+   7      src/compiler/checker/constructs/expressions/control
+   7      src/compiler/checker/constructs/patterns/walk
+   7      src/compiler/lowering/synthesized/boundary
+   7      src/compiler/parser
+   7      src/compiler/parser/grammar/declarations
+   7      src/runtime/scheduler/segment
+   6      src/compiler/checker/constructs
+   6      src/compiler/checker/constructs/expressions/literals
+   6      src/compiler/checker/constructs/expressions/structs
+   6      src/compiler/checker/lookup
+   6      src/compiler/checker/resolution/calls
+   6      src/compiler/checker/types/identity
+   6      src/compiler/lowering/functions
+   6      src/compiler/lowering/tables
+   6      src/compiler/parser/layout
+   6      src/editor/language-service/completion/places/grammar
+   6      src/editor/lsp
+   6      src/runtime/scheduler
+   5      src/cli/commands
+   5      src/compiler/binder/constructs
+   5      src/compiler/checker/constructs/declarations/functions
+   5      src/compiler/checker/constructs/expressions/access
+   5      src/compiler/checker/constructs/patterns/walk/kinds
+   5      src/compiler/checker/resolution
+   5      src/compiler/checker/types/unions
+   5      src/compiler/lowering/constructs
+   5      src/compiler/lowering/constructs/expressions/control
+   5      src/compiler/lowering/constructs/statements
+   5      src/compiler/lowering/values
+   5      src/compiler/syntax/expressions/literals
+   5      src/definition/values
+   5      src/editor/language-service/reading
+   5      src/editor/language-service/semantic-tokens
+   5      src/foundation/language/well-known
+   5      src/runtime/snapshot
+
+folders with loose files (more than 4 files beside sub-folders: move them into one):
+  9 !!!  src/compiler/syntax/expressions
+  9 !!!  src/foundation/structures
+  9 !!!  src/stdlib
+  8 !!!  src/cli
+  8 !!!  src/editor/language-service/completion
+  8 !!!  src/editor/lsp/providers
+  7 !!!  src/compiler/parser/grammar/expressions
+  7 !!!  src/editor/language-service/completion/places
+  7 !!!  src/foundation/language
+  6 !!!  src/compiler/checker/constructs/patterns/walk
+  6 !!!  src/formatter
+  5 !!!  src/compiler/parser/grammar
+  5 !!!  src/editor/lsp
+  4      src/compiler/binder
+  4      src/compiler/checker/constructs/declarations
+  4      src/compiler/lowering/constructs/expressions
+  4      src/runtime
+  3      src/compiler/checker/rules
+  3      src/compiler/parser
+  3      src/definition
+  3      src/editor/language-service
+  3      src/runtime/scheduler
+  2      src/compiler/checker/constructs/expressions
+  2      src/compiler/checker/constructs/patterns
+  2      src/compiler/checker/wiring/body
+  2      src/compiler/lowering
+  2      src/compiler/lowering/synthesized
+  2      src/compiler/syntax
+  1      src/compiler
+  1      src/compiler/checker
+  1      src/compiler/lowering/constructs
+  1      src/runtime/testing
+
+long files (more than 500 lines of code, blank and comment lines excluded):
+  348      src/compiler/checker/constructs/expressions/expressions.ts
+  339      src/compiler/checker/resolution/conformance/conformance.ts
+  334      src/compiler/checker/wiring/body/body-checker.ts
+  327      src/compiler/checker/constructs/declarations/aliases/alias-recursion.ts
+  327      src/compiler/checker/wiring/program/program-checker.ts
+  325      src/compiler/checker/wiring/body/facts/index.ts
+  323      src/compiler/checker/constructs/expressions/structs/literal-fields.ts
+  323      src/compiler/checker/resolution/conformance/shortfalls.ts
+  323      src/compiler/checker/types/identity/recursive-terms.ts
+  320      src/compiler/checker/resolution/type-matches/type-matches.ts
+  320      src/compiler/checker/rules/computation/index.ts
+  319      src/compiler/binder/link/index.ts
+  316      src/compiler/checker/types/inference/infer.ts
+  313      src/compiler/checker/constructs/patterns/walk/index.ts
+  312      src/compiler/checker/types/traits/known-constraints.ts
+  310      src/editor/language-service/navigation/rename.ts
+  309      src/compiler/lowering/tables/type-table.ts
+  307      src/compiler/checker/diagnostics/generics.ts
+  307      src/compiler/checker/types/identity/recursive-types.ts
+  304      src/definition/validation/references.ts
+  299      src/compiler/lowering/tables/names.ts
+  298      src/compiler/checker/constructs/patterns/exhaustiveness/exhaustiveness.ts
+  298      src/compiler/checker/rules/flow/forward.ts
+  298      src/runtime/scheduler/segment/index.ts
+  297      src/compiler/checker/constructs/expressions/structs/structs.ts
+  292      src/compiler/checker/lookup/denotations.ts
+  292      src/compiler/parser/parser.ts
+  291      src/compiler/checker/constructs/patterns/matching.ts
+  286      src/compiler/checker/resolution/type-matches/type-match-patterns.ts
+  283      src/definition/values/values.ts
+  283      src/editor/language-service/completion/places/grammar/position.ts
+  282      src/compiler/checker/resolution/calls/places.ts
+  281      src/compiler/parser/cursor/index.ts
+  281      src/editor/language-service/completion/places/patterns/matched-type.ts
+  277      src/formatter/expressions/index.ts
+  277      src/foundation/language/values.ts
+  276      src/compiler/lowering/tables/tables.ts
+  275      src/compiler/lowering/constructs/parts/places.ts
+  274      src/compiler/checker/rules/boundary/json-forms.ts
+  272      src/compiler/checker/constructs/patterns/walk/members.ts
+  270      src/compiler/checker/wiring/body/facts/instantiation.ts
+  269      src/compiler/checker/rules/annotations.ts
+  268      src/compiler/lowering/functions/index.ts
+  266      src/compiler/checker/resolution/calls/resolve.ts
+  266      src/compiler/syntax/expressions/index.ts
+  262      src/compiler/checker/types/written/resolve-type.ts
+  259      src/compiler/checker/constructs/expressions/collections/collections.ts
+  256      src/compiler/checker/types/identity/type-keys.ts
+  252      src/editor/language-service/completion/placeholder.ts
+  252      src/runtime/scheduler/wake.ts
+  251      src/compiler/parser/grammar/patterns.ts
+  251      src/compiler/parser/layout/index.ts
+  251      src/foundation/structures/entries/index.ts
+  251      src/runtime/scheduler/instance/index.ts
+  251      src/runtime/testing/world/index.ts
+  250      src/compiler/checker/rules/agreement.ts
+  247      src/compiler/checker/types/traits/struct-keys.ts
+  245      src/compiler/checker/resolution/conformance/witness-outcomes.ts
+  245      src/compiler/lowering/values/unions.ts
+  243      src/compiler/binder/module/local-binder.ts
+  240      src/compiler/checker/constructs/expressions/structs/struct-comprehensions.ts
+  239      src/compiler/checker/constructs/declarations/type-parameters.ts
+  236      src/runtime/host/index.ts
+  234      src/compiler/checker/resolution/choosing/candidates.ts
+  233      src/runtime/interpreter/instructions.ts
+  232      src/compiler/binder/constructs/declarations.ts
+  230      src/cli/commands/run.ts
+  230      src/formatter/comments/comment-placement.ts
+  225      src/compiler/parser/diagnostics.ts
+  223      src/compiler/checker/constructs/declarations/declarations.ts
+  223      src/compiler/checker/constructs/declarations/functions/signatures.ts
+  219      src/compiler/checker/constructs/closures/lambdas.ts
+  216      src/compiler/checker/constructs/expressions/calls.ts
+  216      src/compiler/lowering/calls/closed-calls.ts
+  216      src/compiler/lowering/constructs/parts/patterns.ts
+  213      src/compiler/checker/types/fitting/fit.ts
+  212      src/compiler/lowering/constructs/expressions/calls.ts
+  212      src/compiler/parser/grammar/types.ts
+  209      src/compiler/lowering/constructs/expressions/collections/collections.ts
+  205      src/compiler/parser/grammar/expressions/operators.ts
+  204      src/runtime/snapshot/check.ts
+  203      src/compiler/parser/grammar/expressions/expression.ts
+  203      src/runtime/scheduler/instance/futures.ts
+  199      src/compiler/parser/cursor/brackets.ts
+  198      src/compiler/parser/grammar/expressions/literals/indented-values.ts
+  196      src/compiler/checker/contexts/body-context.ts
+  196      src/compiler/checker/types/written/pattern-types.ts
+  196      src/compiler/parser/grammar/expressions/postfix.ts
+  194      src/compiler/checker/types/parts/type-children.ts
+  192      src/compiler/lowering/values/holdings.ts
+  191      src/compiler/checker/constructs/patterns/exhaustiveness/shapes.ts
+  190      src/compiler/checker/resolution/type-matches/reduction-requirements.ts
+  188      src/compiler/checker/resolution/choosing/applicability.ts
+  187      src/compiler/checker/constructs/statements/assignments.ts
+  187      src/compiler/parser/cursor/recovery.ts
+  186      src/compiler/binder/constructs/expressions.ts
+  186      src/compiler/checker/types/parts/type-parts.ts
+  185      src/compiler/checker/constructs/expressions/literals/indented-values.ts
+  185      src/compiler/checker/types/type/type-text.ts
+  182      src/compiler/lowering/functions/code-writer.ts
+  182      src/runtime/scheduler/testing/mocks.ts
+  181      src/compiler/checker/constructs/closures/function-values.ts
+  179      src/compiler/checker/constructs/declarations/aliases/index.ts
+  177      src/editor/language-service/completion/places/literal-field.ts
+  175      src/compiler/binder/entities.ts
+  175      src/runtime/scheduler/segment/native-calls.ts
+  174      src/compiler/binder/module/module-scope.ts
+  173      src/compiler/syntax/declarations/index.ts
+  173      src/definition/values/json-values.ts
+  172      src/compiler/checker/constructs/declarations/layout/index.ts
+  172      src/compiler/parser/incremental/reuse.ts
+  171      src/compiler/parser/grammar/declarations/type-declarations.ts
+  170      src/compiler/checker/rules/disposal/disposal.ts
+  170      src/editor/language-service/completion/places/member.ts
+  169      src/compiler/checker/constructs/expressions/collections/collection-accepts.ts
+  169      src/compiler/lowering/constructs/expressions/structs/structs.ts
+  169      src/compiler/lowering/constructs/statements/variables.ts
+  169      src/compiler/lowering/synthesized/boundary/decoder.ts
+  169      src/editor/language-service/completion/places/patterns/pattern.ts
+  168      src/definition/values/declared-values.ts
+  168      src/stdlib/decimal/arithmetic.ts
+  165      src/compiler/lowering/lower.ts
+  164      src/definition/validation/instruction-rules.ts
+  163      src/runtime/scheduler/instance/heap.ts
+  162      src/compiler/checker/types/fitting/expected.ts
+  160      src/compiler/checker/types/type/index.ts
+  159      src/compiler/lowering/calls/emit-call.ts
+  156      src/compiler/checker/rules/expansion/type-matches.ts
+  154      src/compiler/checker/resolution/choosing/binding.ts
+  154      src/compiler/scanner/scan.ts
+  154      src/compiler/syntax/expressions/operators.ts
+  153      src/compiler/binder/constructs/types.ts
+  152      src/compiler/binder/module/scope.ts
+  151      src/compiler/lowering/synthesized/trait-objects.ts
+  150      src/editor/language-service/outline/symbols.ts
+  149      src/compiler/checker/diagnostics/index.ts
+  149      src/formatter/declarations.ts
+  147      src/compiler/lowering/synthesized/boundary/host-externs.ts
+  147      src/formatter/layout/lists.ts
+  146      src/compiler/checker/types/unions/equality.ts
+  146      src/compiler/lowering/constructs/expressions/operators.ts
+  146      src/compiler/lowering/synthesized/boundary/starts.ts
+  146      src/compiler/syntax/tokens/index.ts
+  145      src/compiler/checker/constructs/expressions/operators/operators.ts
+  144      src/compiler/checker/constructs/patterns/walk/parts.ts
+  144      src/compiler/checker/wiring/program/program-inputs.ts
+  143      src/compiler/checker/constructs/patterns/walk/selections.ts
+  143      src/editor/language-service/completion/expected.ts
+  142      src/compiler/checker/contexts/passes.ts
+  141      src/compiler/checker/surface/constant-form.ts
+  141      src/compiler/scanner/templates.ts
+  140      src/compiler/syntax/types/index.ts
+  138      src/compiler/checker/diagnostics/values.ts
+  138      src/editor/language-service/completion/presentation/present.ts
+  138      src/formatter/format.ts
+  137      src/compiler/binder/constructs/patterns.ts
+  137      src/compiler/checker/constructs/declarations/constants.ts
+  137      src/compiler/checker/types/written/key-types.ts
+  136      src/compiler/checker/lookup/members.ts
+  136      src/compiler/checker/resolution/conformance/union-traits.ts
+  135      src/compiler/checker/constructs/expressions/access/member-access.ts
+  135      src/compiler/checker/types/traits/constraints.ts
+  135      src/compiler/lowering/functions/frames.ts
+  135      src/stdlib/time/zones.ts
+  134      src/compiler/checker/resolution/calls/lambda-arguments.ts
+  134      src/compiler/lowering/tables/instances.ts
+  134      src/compiler/parser/layout/bodies.ts
+  134      src/definition/extern-key.ts
+  133      src/formatter/layout/bodies.ts
+  132      src/compiler/checker/resolution/choosing/choice.ts
+  132      src/compiler/lowering/functions/fits.ts
+  132      src/editor/language-service/completion/presentation/entity-items.ts
+  131      src/compiler/checker/constructs/declarations/functions/clashes.ts
+  131      src/compiler/scanner/numbers.ts
+  130      src/compiler/binder/constructs/statements.ts
+  130      src/compiler/checker/rules/testing.ts
+  129      src/compiler/syntax/tree/index.ts
+  128      src/stdlib/prelude/natives.ts
+  126      src/compiler/checker/constructs/expressions/access/optionals.ts
+  126      src/compiler/checker/surface/checked-body.ts
+  126      src/compiler/lowering/synthesized/boundary/encoder.ts
+  126      src/compiler/program/program.ts
+  123      src/compiler/checker/diagnostics/patterns.ts
+  123      src/formatter/comments/comments.ts
+  122      src/runtime/lifetimes/disposal.ts
+  121      src/cli/commands/test.ts
+  120      src/compiler/checker/lookup/key-denotations.ts
+  119      src/formatter/statements.ts
+  118      src/compiler/binder/module/flow.ts
+  117      src/compiler/lowering/synthesized/index.ts
+  116      src/compiler/checker/constructs/declarations/functions/parameters.ts
+  116      src/compiler/checker/constructs/statements/loops.ts
+  114      src/compiler/checker/contexts/context.ts
+  114      src/compiler/checker/types/parts/substitution.ts
+  113      src/compiler/checker/check.ts
+  113      src/compiler/checker/surface/checked-pattern.ts
+  113      src/compiler/lowering/values/optionals.ts
+  110      src/compiler/checker/resolution/applying/implicit.ts
+  110      src/editor/language-service/hover.ts
+  110      src/editor/language-service/signatures/call-at.ts
+  109      src/compiler/syntax/patterns.ts
+  108      src/compiler/checker/constructs/expressions/structs/literal-types.ts
+  108      src/compiler/lowering/constructs/expressions/structs/variants.ts
+  107      src/compiler/checker/constructs/statements/variables.ts
+  107      src/compiler/compile.ts
+  107      src/compiler/lowering/functions/frame-variables.ts
+  107      src/definition/instructions/instruction.ts
+  107      src/definition/tables/types.ts
+  106      src/editor/language-service/completion/places/imports/import.ts
+  105      src/compiler/parser/grammar/expressions/literals/collections.ts
+  104      src/compiler/checker/types/written/named-types.ts
+  104      src/compiler/syntax/expressions/literals/indented-values.ts
+  104      src/stdlib/decimal/natives.ts
+  104      src/stdlib/regex/natives.ts
+  102      src/compiler/checker/resolution/type-matches/implied-constraints.ts
+  102      src/compiler/lowering/constructs/statements/loops.ts
+  102      src/compiler/parser/grammar/expressions/branches.ts
+  101      src/formatter/expressions/literals.ts
+  100      src/compiler/checker/types/unions/unions.ts
+  100      src/editor/language-service/navigation/declarations.ts
+  100      src/editor/language-service/semantic-tokens/name-types.ts
+  100      src/runtime/interpreter/registers.ts
+  100      src/runtime/lifetimes/collector.ts
+   99      src/compiler/checker/resolution/applying/applied-call.ts
+   99      src/compiler/checker/types/written/type-match.ts
+   98      src/compiler/lowering/values/keyed-fields.ts
+   98      src/compiler/scanner/strings.ts
+   98      src/compiler/syntax/statements/targets.ts
+   98      src/stdlib/strings/natives.ts
+   97      src/cli/host-module.ts
+   97      src/compiler/checker/constructs/expressions/structs/variants.ts
+   97      src/compiler/parser/grammar/expressions/literals/struct-literals.ts
+   97      src/compiler/parser/grammar/parts/structs.ts
+   97      src/runtime/scheduler/segment/disposal-runs.ts
+   96      src/compiler/checker/resolution/conformance/trait-calls.ts
+   96      src/foundation/text/line-map.ts
+   96      src/runtime/natives.ts
+   96      src/runtime/testing/run-tests.ts
+   95      src/compiler/binder/diagnostics.ts
+   95      src/compiler/checker/rules/expansion/types.ts
+   95      src/compiler/checker/surface/resolved-call.ts
+   95      src/compiler/checker/types/unions/union-members.ts
+   95      src/compiler/checker/types/written/type-arguments.ts
+   95      src/compiler/checker/types/written/written-matches.ts
+   94      src/compiler/checker/rules/expansion/functions.ts
+   94      src/compiler/checker/types/identity/term-signatures.ts
+   93      src/formatter/expressions/branches.ts
+   93      src/stdlib/time/iso.ts
+   92      src/compiler/checker/types/properties/finiteness.ts
+   91      src/compiler/binder/module/visibility.ts
+   91      src/compiler/checker/constructs/declarations/aliases/recursive-bodies.ts
+   91      src/compiler/checker/lookup/holders.ts
+   91      src/compiler/lowering/constructs/expressions/expressions.ts
+   91      src/compiler/parser/grammar/statements/statement.ts
+   91      src/compiler/syntax/declarations/field-defaults.ts
+   91      src/editor/language-service/semantic-tokens/semantic-tokens.ts
+   89      src/compiler/checker/constructs/expressions/control/match.ts
+   89      src/compiler/scanner/multi-line.ts
+   89      src/definition/formats/format.ts
+   89      src/formatter/types.ts
+   89      src/foundation/structures/entries/entry.ts
+   89      src/runtime/lifetimes/holders.ts
+   88      src/compiler/checker/constructs/closures/returns.ts
+   86      src/compiler/checker/constructs/expressions/access/names.ts
+   86      src/compiler/parser/grammar/declarations/functions.ts
+   85      src/compiler/checker/resolution/applying/argument-fit.ts
+   85      src/compiler/syntax/tokens/grammar-words.ts
+   84      src/compiler/checker/types/type/computed-types.ts
+   84      src/editor/lsp/providers/completion.ts
+   84      src/runtime/snapshot/holdings.ts
+   83      src/compiler/checker/constructs/expressions/control/spawn.ts
+   83      src/definition/formats/codec.ts
+   83      src/editor/language-service/outline/folding.ts
+   83      src/editor/language-service/signatures/signature-help.ts
+   83      src/runtime/boundary/host-natives.ts
+   82      src/compiler/checker/constructs/declarations/functions/functions.ts
+   82      src/compiler/lowering/constructs/parts/part-paths.ts
+   82      src/runtime/snapshot/snapshot.ts
+   82      src/stdlib/prelude/arrays.ts
+   81      src/compiler/checker/types/type/struct-constraint.ts
+   80      src/compiler/syntax/statements/index.ts
+   80      src/editor/lsp/server.ts
+   80      src/stdlib/positions.ts
+   79      src/compiler/checker/resolution/conformance/root-goals.ts
+   78      src/compiler/checker/constructs/closures/value-calls.ts
+   78      src/compiler/checker/types/traits/sendable.ts
+   78      src/compiler/lowering/constructs/statements/scopes.ts
+   78      src/compiler/lowering/constructs/statements/statements.ts
+   77      src/compiler/checker/constructs/expressions/literals/tuples.ts
+   77      src/compiler/checker/constructs/patterns/walk/taking.ts
+   77      src/compiler/checker/diagnostics/boundary.ts
+   77      src/compiler/checker/types/type/function-types.ts
+   77      src/editor/language-service/completion/places/declared-name.ts
+   77      src/formatter/expressions/indented-values.ts
+   77      src/runtime/interpreter/machine.ts
+   76      src/compiler/checker/constructs/expressions/collections/comprehensions.ts
+   76      src/compiler/checker/rules/computation/forms.ts
+   76      src/compiler/lowering/constructs/loops/field-passes.ts
+   76      src/compiler/syntax/items.ts
+   76      src/editor/language-service/completion/places/annotation.ts
+   75      src/compiler/checker/constructs/expressions/operators/decided-conditions.ts
+   75      src/compiler/checker/constructs/expressions/structs/literal-sources.ts
+   75      src/compiler/checker/constructs/loops/iteration.ts
+   75      src/compiler/checker/rules/disposal/must-use.ts
+   75      src/compiler/checker/types/properties/held.ts
+   75      src/compiler/lowering/constructs/expressions/control/matching.ts
+   74      src/compiler/checker/constructs/closures/functions.ts
+   74      src/compiler/checker/constructs/declarations/module-checks.ts
+   73      src/compiler/checker/constructs/expressions/control/branches.ts
+   73      src/compiler/checker/wiring/program/program-type-rules.ts
+   73      src/runtime/scheduler/segment/run-stack.ts
+   72      src/foundation/structures/strongly-connected.ts
+   72      src/runtime/scheduler/instance/slots.ts
+   72      src/runtime/snapshot/objects.ts
+   71      src/compiler/checker/constructs/expressions/control/select.ts
+   71      src/compiler/checker/constructs/statements/statements.ts
+   71      src/compiler/checker/types/written/declared-fields.ts
+   71      src/formatter/layout/brackets.ts
+   70      src/compiler/checker/constructs/expressions/literals/literal-items.ts
+   70      src/compiler/checker/constructs/loops/field-passes.ts
+   70      src/editor/language-service/completion/places/call-argument.ts
+   70      src/editor/lsp/providers/navigation/rename.ts
+   70      src/stdlib/values/results.ts
+   69      src/compiler/lowering/tables/constants.ts
+   69      src/editor/language-service/workspace.ts
+   68      src/definition/instructions/data.ts
+   68      src/editor/language-service/signatures/signatures.ts
+   67      src/compiler/checker/diagnostics/lifetimes.ts
+   67      src/compiler/checker/surface/checked-field.ts
+   67      src/compiler/checker/wiring/body/facts/pass-joins.ts
+   67      src/stdlib/values/arguments.ts
+   66      src/definition/values/equality.ts
+   66      src/editor/language-service/inlay-hints.ts
+   66      src/runtime/lifetimes/orphans.ts
+   65      src/compiler/checker/constructs/expressions/literals/templates.ts
+   65      src/compiler/checker/constructs/patterns/walk/kinds/struct-fields.ts
+   64      src/compiler/checker/types/traits/object-safety.ts
+   64      src/compiler/parser/grammar/declarations/imports.ts
+   64      src/editor/language-service/navigation/references.ts
+   64      src/runtime/interpreter/suspension.ts
+   63      src/compiler/lowering/constructs/expressions/control/select.ts
+   63      src/compiler/lowering/constructs/loops/iteration.ts
+   63      src/foundation/text/code-points.ts
+   63      src/stdlib/testing/natives.ts
+   62      src/compiler/scanner/diagnostics.ts
+   62      src/editor/lsp/diagnostics.ts
+   62      src/stdlib/crypto/natives.ts
+   61      src/compiler/checker/constructs/expressions/access/indexing.ts
+   61      src/formatter/patterns.ts
+   60      src/cli/cli.ts
+   60      src/compiler/checker/constructs/patterns/walk/pattern-tests.ts
+   60      src/compiler/checker/resolution/applying/silent-choice.ts
+   60      src/compiler/parser/grammar/statements/loops.ts
+   60      src/project/file-loader.ts
+   59      src/compiler/checker/surface/denotation.ts
+   59      src/compiler/parser/grammar/statements/variables.ts
+   59      src/editor/language-service/completion/presentation/item.ts
+   58      src/compiler/checker/constructs/patterns/walk/kinds/arrays.ts
+   58      src/compiler/checker/surface/json-form.ts
+   58      src/compiler/lowering/synthesized/boundary/codecs.ts
+   58      src/runtime/scheduler/segment/outcome-encoding.ts
+   58      src/stdlib/random/natives.ts
+   57      src/compiler/lowering/constructs/expressions/control/control.ts
+   57      src/compiler/parser/layout/annotations.ts
+   57      src/editor/language-service/completion/index.ts
+   57      src/editor/language-service/completion/triggers.ts
+   57      src/runtime/scheduler/instance/weak-side.ts
+   57      src/runtime/scheduler/segment/calls.ts
+   57      src/stdlib/prelude/maps.ts
+   56      src/cli/commands/fmt.ts
+   56      src/compiler/parser/grammar/declarations/type-matches.ts
+   56      src/compiler/parser/grammar/parts/blocks.ts
+   56      src/editor/language-service/completion/places/imports/module-paths.ts
+   55      src/compiler/checker/constructs/patterns/walk/kinds/alternatives.ts
+   55      src/compiler/checker/rules/disposal/dropped.ts
+   55      src/compiler/lowering/context.ts
+   55      src/editor/language-service/completion/presentation/presenting.ts
+   55      src/editor/language-service/reading/tokens.ts
+   55      src/stdlib/ranges.ts
+   54      src/compiler/checker/constructs/patterns/walk/kinds/ranges.ts
+   54      src/compiler/checker/resolution/choosing/receivers.ts
+   54      src/compiler/checker/rules/boundary/host-boundary.ts
+   54      src/compiler/checker/types/traits/struct-constraints.ts
+   54      src/foundation/language/well-known/index.ts
+   54      src/runtime/scheduler/instance/live-objects.ts
+   54      src/stdlib/json/natives.ts
+   54      src/stdlib/prelude/text-forms.ts
+   53      src/compiler/checker/constructs/expressions/control/control.ts
+   53      src/compiler/checker/types/type/well-known.ts
+   53      src/compiler/parser/grammar/declarations/declaration.ts
+   53      src/compiler/parser/grammar/parts/constraints.ts
+   53      src/editor/language-service/completion/places/type.ts
+   53      src/runtime/host/instance-group.ts
+   52      src/compiler/checker/diagnostics/collections.ts
+   52      src/compiler/checker/resolution/choosing/call-arguments.ts
+   52      src/compiler/syntax/tree/positions.ts
+   51      src/compiler/checker/constructs/patterns/walk/kinds/downcasts.ts
+   51      src/compiler/checker/resolution/calls/operators.ts
+   51      src/compiler/lowering/constructs/expressions/control/propagate.ts
+   51      src/compiler/syntax/expressions/chains.ts
+   51      src/editor/lsp/providers/semantic-tokens.ts
+   51      src/stdlib/prelude/strings.ts
+   50      src/compiler/checker/resolution/conformance/trait-objects.ts
+   50      src/compiler/lowering/constructs/expressions/closures.ts
+   50      src/editor/language-service/semantic-tokens/angle-brackets.ts
+   50      src/editor/lsp/locations.ts
+   50      src/runtime/scheduler/instance/instance-ends.ts
+   50      src/stdlib/time/natives.ts
+   49      src/compiler/checker/constructs/declarations/layout/struct-rules.ts
+   49      src/compiler/checker/resolution/calls/collection-functions.ts
+   49      src/compiler/lowering/constructs/statements/holds.ts
+   49      src/compiler/parser/grammar/declarations/externs.ts
+   49      src/definition/tables/functions.ts
+   49      src/stdlib/stdlib-loader.ts
+   48      src/compiler/checker/types/traits/known-fields.ts
+   48      src/stdlib/std-module.ts
+   47      src/compiler/checker/resolution/choosing/packs.ts
+   46      src/compiler/checker/surface/checked-annotation.ts
+   46      src/compiler/lowering/synthesized/boundary/inbound.ts
+   46      src/compiler/parser/cursor/regions.ts
+   46      src/editor/language-service/completion/places/grammar/index.ts
+   46      src/runtime/host/settle.ts
+   45      src/compiler/checker/constructs/closures/function-scope.ts
+   45      src/compiler/checker/lookup/lookup.ts
+   45      src/compiler/checker/types/fitting/member-arguments.ts
+   45      src/compiler/checker/types/inference/complete.ts
+   45      src/compiler/parser/grammar/parts/literals.ts
+   45      src/editor/language-service/completion/cursor.ts
+   45      src/project/project.ts
+   44      src/compiler/binder/link/qualifiers.ts
+   44      src/runtime/instance-state.ts
+   43      src/cli/directory-store.ts
+   43      src/compiler/checker/contexts/use-site.ts
+   43      src/compiler/checker/resolution/conformance/derived-traits.ts
+   42      src/compiler/lowering/constructs/expressions/access/optionals.ts
+   42      src/compiler/lowering/values/struct-values.ts
+   42      src/compiler/parser/grammar/parts/functions.ts
+   42      src/foundation/diagnostics/catalog.ts
+   41      src/compiler/checker/constructs/declarations/functions/statics.ts
+   41      src/compiler/lowering/constructs/expressions/access/names.ts
+   41      src/compiler/parser/grammar/statements/simple.ts
+   40      src/compiler/checker/resolution/conformance/declared-witness.ts
+   39      src/compiler/checker/rules/expansion/edges.ts
+   39      src/compiler/parser/grammar/expressions/lambdas.ts
+   39      src/compiler/parser/grammar/expressions/literals/templates.ts
+   39      src/editor/language-service/completion/places/grammar/surroundings.ts
+   39      src/editor/vscode-client/extension.ts
+   38      src/compiler/checker/wiring/body/body-records.ts
+   38      src/compiler/parser/grammar/parts/field-headers.ts
+   38      src/editor/lsp/providers/outline/document-symbols.ts
+   38      src/stdlib/std-sources.ts
+   37      src/compiler/checker/constructs/expressions/literals/built-members.ts
+   37      src/compiler/checker/diagnostics/closures.ts
+   37      src/compiler/scanner/characters.ts
+   37      src/runtime/scheduler/testing/test-world.ts
+   36      src/compiler/lowering/constructs/expressions/collections/comprehensions.ts
+   36      src/runtime/interpreter/function-table.ts
+   36      src/stdlib/std-modules.ts
+   35      src/compiler/checker/types/traits/any-types.ts
+   35      src/compiler/parser/grammar/declarations/type-parameters.ts
+   34      src/compiler/binder/module/bind-module.ts
+   34      src/compiler/checker/types/parts/computed-reduction.ts
+   34      src/compiler/lowering/constructs/expressions/literals/templates.ts
+   34      src/compiler/parser/grammar/index.ts
+   34      src/compiler/syntax/statements/readings.ts
+   34      src/editor/language-service/completion/places/grammar/words.ts
+   34      src/runtime/boundary/extern-signatures.ts
+   33      src/compiler/binder/naming.ts
+   33      src/compiler/checker/constructs/expressions/access/dereference.ts
+   33      src/foundation/structures/equality.ts
+   33      src/foundation/structures/memo.ts
+   33      src/runtime/interpreter/parts.ts
+   32      src/cli/commands/check.ts
+   32      src/compiler/checker/lookup/pass-views.ts
+   32      src/compiler/lowering/tables/filling-entry.ts
+   32      src/runtime/boundary/outbound.ts
+   31      src/compiler/binder/module/own-calls.ts
+   31      src/compiler/checker/constructs/expressions/control/await.ts
+   31      src/compiler/checker/types/type/alias-uses.ts
+   31      src/compiler/syntax/expressions/literals/templates.ts
+   31      src/runtime/testing/world/snapshot-reads.ts
+   31      src/stdlib/numeric.ts
+   30      src/compiler/checker/constructs/patterns/targets.ts
+   30      src/compiler/checker/resolution/calls/stopped-operations.ts
+   30      src/compiler/checker/wiring/body/facts/recorded-body.ts
+   30      src/compiler/parser/layout/continuations.ts
+   30      src/compiler/syntax/expressions/places.ts
+   29      src/compiler/binder/link/top-level-rules.ts
+   29      src/runtime/scheduler/segment/limits.ts
+   29      src/runtime/testing/world/test-host.ts
+   28      src/cli/report.ts
+   28      src/compiler/checker/constructs/patterns/exhaustiveness/remaining.ts
+   28      src/compiler/checker/diagnostics/concurrency.ts
+   28      src/compiler/checker/types/type/primitives.ts
+   28      src/project/project-files.ts
+   27      src/compiler/checker/types/identity/unfolding-pairs.ts
+   27      src/compiler/parser/grammar/parts/names.ts
+   27      src/editor/language-service/completion/places/grammar/expression.ts
+   27      src/editor/language-service/reading/docstrings.ts
+   27      src/editor/lsp/project-loader.ts
+   27      src/runtime/store.ts
+   27      src/stdlib/math/rounding.ts
+   26      src/compiler/checker/types/type/field-order.ts
+   26      src/compiler/parser/grammar/parts/levels.ts
+   26      src/compiler/parser/incremental/held-bodies.ts
+   26      src/compiler/syntax/expressions/readings.ts
+   26      src/editor/lsp/providers/signature-help.ts
+   26      src/foundation/language/naming.ts
+   26      src/runtime/snapshot/random.ts
+   25      src/compiler/checker/resolution/choosing/calls-made.ts
+   25      src/compiler/checker/surface/host-externs.ts
+   25      src/compiler/parser/layout/item-breaks.ts
+   25      src/definition/instructions/flow.ts
+   25      src/definition/tables/index.ts
+   25      src/editor/language-service/completion/places/patterns/pattern-field.ts
+   25      src/editor/lsp/providers/hover.ts
+   25      src/runtime/scheduler/inspect.ts
+   25      src/stdlib/log/natives.ts
+   24      src/compiler/lowering/constructs/expressions/literals/tuples.ts
+   24      src/compiler/parser/grammar/word-parselets.ts
+   24      src/compiler/syntax/expressions/literals/literals.ts
+   24      src/compiler/syntax/expressions/parameters.ts
+   24      src/editor/lsp/providers/inlay-hints.ts
+   24      src/foundation/structures/kind-table.ts
+   24      src/stdlib/strings/format.ts
+   23      src/cli/commands/lsp.ts
+   23      src/compiler/checker/constructs/closures/enclosing-scopes.ts
+   23      src/compiler/checker/constructs/expressions/control/propagate.ts
+   23      src/definition/instructions/calls.ts
+   23      src/editor/language-service/completion/candidate.ts
+   23      src/editor/language-service/semantic-tokens/built-keys.ts
+   23      src/foundation/structures/reachable.ts
+   23      src/runtime/interpreter/frames.ts
+   22      src/compiler/checker/types/identity/identity.ts
+   22      src/compiler/lowering/functions/bodies.ts
+   22      src/compiler/parser/layout/docstrings.ts
+   22      src/compiler/syntax/expressions/branches.ts
+   22      src/compiler/syntax/expressions/literals/numbers.ts
+   22      src/editor/language-service/semantic-tokens/semantic-types.ts
+   22      src/foundation/language/well-known/codecs.ts
+   22      src/foundation/structures/stack.ts
+   22      src/runtime/refusal.ts
+   21      src/compiler/binder/link/module-links.ts
+   21      src/compiler/checker/types/properties/type-cycle.ts
+   21      src/compiler/syntax/expressions/comparisons.ts
+   21      src/definition/tables/test-runner.ts
+   21      src/foundation/structures/entries/tuple-set.ts
+   21      src/runtime/interpreter/trace.ts
+   20      src/cli/command.ts
+   20      src/compiler/syntax/types/type-matches.ts
+   20      src/foundation/diagnostics/diagnostic.ts
+   20      src/foundation/diagnostics/render.ts
+   19      src/compiler/checker/constructs/closures/own-calls.ts
+   19      src/compiler/checker/types/written/named-paths.ts
+   19      src/compiler/syntax/expressions/arguments.ts
+   19      src/compiler/syntax/expressions/literals/built-types.ts
+   19      src/definition/operands.ts
+   19      src/editor/language-service/completion/visible.ts
+   18      src/compiler/lowering/synthesized/boundary/codec-calls.ts
+   18      src/compiler/syntax/tree/node.ts
+   18      src/editor/language-service/completion/place.ts
+   18      src/editor/lsp/providers/navigation/definition.ts
+   18      src/editor/lsp/providers/navigation/references.ts
+   18      src/foundation/language/import-paths.ts
+   18      src/foundation/language/well-known/implicit-calls.ts
+   18      src/foundation/structures/sorted.ts
+   18      src/runtime/scheduler/loaded-definition.ts
+   18      src/stdlib/prelude/weak-natives.ts
+   18      src/stdlib/regex/split.ts
+   17      src/compiler/checker/resolution/conformance/default-witness.ts
+   17      src/definition/instructions/suspension.ts
+   17      src/editor/language-service/reading/identifier-at.ts
+   17      src/editor/lsp/providers/formatting.ts
+   17      src/editor/vscode-client/server-command.ts
+   16      src/compiler/checker/types/unions/inside-optional.ts
+   16      src/compiler/lowering/calls/packs.ts
+   16      src/compiler/lowering/constructs/expressions/literals/literals.ts
+   16      src/compiler/parser/grammar/parts/cases.ts
+   16      src/compiler/parser/parse.ts
+   16      src/definition/instructions/control.ts
+   16      src/stdlib/math/natives.ts
+   15      src/compiler/parser/grammar/nesting.ts
+   15      src/stdlib/time/fields.ts
+   14      src/compiler/binder/bind.ts
+   14      src/compiler/checker/constructs/expressions/literals/literals.ts
+   14      src/definition/values/instance-handles.ts
+   14      src/editor/lsp/providers/outline/folding-ranges.ts
+   14      src/stdlib/prelude/range-natives.ts
+   14      src/stdlib/prelude/slot-natives.ts
+   14      src/stdlib/runtime/natives.ts
+   13      src/cli/main.ts
+   13      src/compiler/checker/types/unions/widening.ts
+   13      src/formatter/printer.ts
+   12      src/compiler/checker/types/type/type-rules.ts
+   12      src/compiler/program/diagnostics.ts
+   12      src/editor/language-service/completion/places/string-text.ts
+   12      src/editor/language-service/reading/checked-module.ts
+   11      src/editor/language-service/reading/namespaces.ts
+   11      src/foundation/text/source-text.ts
+   11      src/foundation/text/span.ts
+   10      src/compiler/checker/rules/flow/chain-parts.ts
+   10      src/definition/instructions/places.ts
+   10      src/editor/lsp/providers/std-source.ts
+   10      src/foundation/language/well-known/testing.ts
+   10      src/runtime/scheduler/instance/instance-names.ts
+   10      src/stdlib/prelude/instance-natives.ts
+    9      src/compiler/lowering/constructs/expressions/control/await.ts
+    9      src/compiler/parser/grammar/expressions/atoms.ts
+    9      src/compiler/scanner/lexeme.ts
+    9      src/compiler/scanner/punctuators.ts
+    9      src/foundation/diagnostics/code-blocks.ts
+    9      src/foundation/language/order.ts
+    9      src/stdlib/futures/natives.ts
+    8      src/compiler/checker/surface/struct-items.ts
+    8      src/compiler/lowering/constructs/never-lowered.ts
+    8      src/compiler/parser/grammar/expressions/parselet.ts
+    8      src/compiler/parser/grammar/parts/spreads.ts
+    8      src/definition/instructions/define-instruction.ts
+    8      src/definition/instructions/lifetimes.ts
+    8      src/foundation/structures/groups.ts
+    7      src/definition/definition.ts
+    7      src/foundation/language/time-units.ts
+    6      src/cli/log-lines.ts
+    6      src/editor/lsp/providers/provider.ts
+    6      src/foundation/structures/unreachable.ts
+    6      src/project/errno.ts
+    5      src/foundation/language/primitives.ts
+    5      src/stdlib/natives.ts
+    4      src/editor/language-service/completion/places/grammar/chain.ts
+    4      src/editor/lsp/std-source-request.ts
+    4      src/foundation/language/well-known/variants.ts
+    4      src/stdlib/ista-source.d.ts
+    3      src/cli/clock.ts
+    3      src/foundation/language/static-names.ts
+
+wide files (more than 10 exports):
+  47 !!!  src/compiler/syntax/expressions/index.ts
+  39 !!!  src/compiler/syntax/declarations/index.ts
+  27 !!!  src/compiler/checker/types/type/index.ts
+  24 !!!  src/compiler/binder/entities.ts
+  24 !!!  src/compiler/syntax/expressions/operators.ts
+  22 !!!  src/compiler/syntax/types/index.ts
+  22 !!!  src/runtime/natives.ts
+  19 !!!  src/compiler/checker/contexts/body-context.ts
+  17 !!!  src/compiler/lowering/tables/instances.ts
+  17 !!!  src/compiler/syntax/statements/index.ts
+  17 !!!  src/definition/operands.ts
+  17 !!!  src/definition/values/values.ts
+  16 !!!  src/compiler/syntax/patterns.ts
+  15 !!!  src/compiler/checker/rules/agreement.ts
+  15 !!!  src/compiler/checker/surface/checked-body.ts
+  15 !!!  src/compiler/checker/types/type/computed-types.ts
+  15 !!!  src/definition/values/declared-values.ts
+  15 !!!  src/stdlib/decimal/arithmetic.ts
+  14 !!!  src/compiler/checker/constructs/patterns/exhaustiveness/exhaustiveness.ts
+  14 !!!  src/compiler/checker/surface/checked-pattern.ts
+  14 !!!  src/compiler/parser/cursor/recovery.ts
+  14 !!!  src/compiler/syntax/tokens/grammar-words.ts
+  14 !!!  src/compiler/syntax/tree/index.ts
+  14 !!!  src/definition/extern-key.ts
+  13 !!!  src/compiler/checker/resolution/conformance/witness-outcomes.ts
+  13 !!!  src/compiler/checker/surface/resolved-call.ts
+  13 !!!  src/compiler/checker/types/type/primitives.ts
+  13 !!!  src/compiler/checker/types/written/pattern-types.ts
+  13 !!!  src/compiler/lowering/calls/closed-calls.ts
+  13 !!!  src/stdlib/values/results.ts
+  12 !!!  src/compiler/checker/types/parts/type-parts.ts
+  12 !!!  src/compiler/checker/types/traits/constraints.ts
+  12 !!!  src/compiler/checker/types/unions/unions.ts
+  12 !!!  src/compiler/lowering/values/holdings.ts
+  12 !!!  src/compiler/syntax/tokens/index.ts
+  11 !!!  src/compiler/checker/constructs/patterns/walk/parts.ts
+  11 !!!  src/compiler/checker/resolution/choosing/candidates.ts
+  11 !!!  src/compiler/checker/types/fitting/expected.ts
+  11 !!!  src/compiler/parser/cursor/regions.ts
+  11 !!!  src/compiler/parser/grammar/expressions/operators.ts
+  11 !!!  src/compiler/program/program.ts
+  11 !!!  src/compiler/syntax/statements/targets.ts
+  11 !!!  src/formatter/layout/lists.ts
+  11 !!!  src/runtime/interpreter/registers.ts
+  10      src/compiler/checker/constructs/declarations/functions/signatures.ts
+  10      src/compiler/checker/contexts/context.ts
+  10      src/compiler/checker/types/fitting/fit.ts
+  10      src/compiler/checker/types/traits/struct-keys.ts
+  10      src/compiler/checker/types/written/named-types.ts
+  10      src/compiler/checker/types/written/type-match.ts
+  10      src/compiler/syntax/tree/positions.ts
+  10      src/definition/tables/types.ts
+  10      src/editor/language-service/completion/presentation/item.ts
+  10      src/foundation/structures/entries/entry.ts
+  10      src/runtime/instance-state.ts
+   9      src/compiler/binder/module/local-binder.ts
+   9      src/compiler/checker/constructs/expressions/structs/struct-comprehensions.ts
+   9      src/compiler/checker/resolution/choosing/binding.ts
+   9      src/compiler/lowering/constructs/expressions/structs/variants.ts
+   9      src/compiler/lowering/constructs/statements/variables.ts
+   9      src/compiler/lowering/functions/frames.ts
+   9      src/compiler/parser/cursor/brackets.ts
+   9      src/compiler/parser/grammar/expressions/postfix.ts
+   9      src/compiler/syntax/expressions/chains.ts
+   9      src/definition/values/json-values.ts
+   9      src/editor/language-service/navigation/declarations.ts
+   9      src/formatter/comments/comments.ts
+   9      src/foundation/language/well-known/index.ts
+   9      src/foundation/text/line-map.ts
+   9      src/runtime/snapshot/objects.ts
+   9      src/stdlib/values/arguments.ts
+   8      src/compiler/checker/constructs/patterns/exhaustiveness/shapes.ts
+   8      src/compiler/checker/constructs/patterns/walk/pattern-tests.ts
+   8      src/compiler/checker/resolution/applying/implicit.ts
+   8      src/compiler/checker/resolution/calls/places.ts
+   8      src/compiler/checker/resolution/calls/resolve.ts
+   8      src/compiler/checker/resolution/conformance/conformance.ts
+   8      src/compiler/checker/surface/checked-field.ts
+   8      src/compiler/checker/surface/json-form.ts
+   8      src/compiler/checker/types/parts/type-children.ts
+   8      src/compiler/checker/types/traits/known-constraints.ts
+   8      src/compiler/checker/wiring/body/facts/pass-joins.ts
+   8      src/compiler/lowering/functions/frame-variables.ts
+   8      src/compiler/lowering/values/unions.ts
+   8      src/compiler/parser/layout/bodies.ts
+   8      src/compiler/parser/layout/index.ts
+   8      src/compiler/syntax/expressions/literals/indented-values.ts
+   8      src/foundation/text/code-points.ts
+   8      src/runtime/scheduler/wake.ts
+   8      src/stdlib/positions.ts
+   7      src/compiler/binder/module/scope.ts
+   7      src/compiler/checker/check.ts
+   7      src/compiler/checker/constructs/expressions/collections/collection-accepts.ts
+   7      src/compiler/checker/constructs/expressions/expressions.ts
+   7      src/compiler/checker/constructs/statements/loops.ts
+   7      src/compiler/checker/resolution/conformance/shortfalls.ts
+   7      src/compiler/checker/resolution/conformance/union-traits.ts
+   7      src/compiler/checker/rules/computation/forms.ts
+   7      src/compiler/checker/types/parts/substitution.ts
+   7      src/compiler/checker/types/type/function-types.ts
+   7      src/compiler/checker/types/type/struct-constraint.ts
+   7      src/compiler/checker/types/type/type-text.ts
+   7      src/compiler/checker/types/type/well-known.ts
+   7      src/compiler/checker/types/unions/equality.ts
+   7      src/compiler/checker/types/unions/union-members.ts
+   7      src/compiler/compile.ts
+   7      src/compiler/lowering/calls/emit-call.ts
+   7      src/compiler/lowering/constructs/statements/loops.ts
+   7      src/compiler/scanner/characters.ts
+   7      src/compiler/syntax/tree/node.ts
+   7      src/editor/language-service/completion/placeholder.ts
+   7      src/formatter/layout/bodies.ts
+   7      src/foundation/language/time-units.ts
+   7      src/foundation/language/well-known/implicit-calls.ts
+   7      src/runtime/lifetimes/disposal.ts
+   7      src/runtime/lifetimes/holders.ts
+   7      src/runtime/scheduler/testing/mocks.ts
+   7      src/runtime/snapshot/holdings.ts
+   7      src/stdlib/ranges.ts
+   6      src/compiler/checker/constructs/expressions/collections/collections.ts
+   6      src/compiler/checker/resolution/calls/operators.ts
+   6      src/compiler/checker/resolution/choosing/call-arguments.ts
+   6      src/compiler/checker/resolution/choosing/choice.ts
+   6      src/compiler/checker/surface/denotation.ts
+   6      src/compiler/checker/types/type/alias-uses.ts
+   6      src/compiler/checker/types/written/type-arguments.ts
+   6      src/compiler/lowering/constructs/expressions/collections/collections.ts
+   6      src/compiler/lowering/constructs/expressions/structs/structs.ts
+   6      src/compiler/lowering/constructs/parts/places.ts
+   6      src/compiler/lowering/constructs/statements/scopes.ts
+   6      src/compiler/lowering/tables/tables.ts
+   6      src/compiler/lowering/values/keyed-fields.ts
+   6      src/compiler/parser/grammar/expressions/literals/struct-literals.ts
+   6      src/compiler/syntax/expressions/readings.ts
+   6      src/compiler/syntax/items.ts
+   6      src/compiler/syntax/statements/readings.ts
+   6      src/definition/formats/codec.ts
+   6      src/definition/tables/functions.ts
+   6      src/editor/language-service/completion/presentation/presenting.ts
+   6      src/editor/language-service/navigation/rename.ts
+   6      src/foundation/language/naming.ts
+   6      src/project/file-loader.ts
+   6      src/runtime/interpreter/machine.ts
+   6      src/runtime/scheduler/instance/heap.ts
+   6      src/stdlib/stdlib-loader.ts
+   5      src/compiler/binder/module/flow.ts
+   5      src/compiler/checker/constructs/expressions/access/member-access.ts
+   5      src/compiler/checker/constructs/expressions/access/names.ts
+   5      src/compiler/checker/constructs/expressions/structs/literal-fields.ts
+   5      src/compiler/checker/constructs/expressions/structs/structs.ts
+   5      src/compiler/checker/constructs/expressions/structs/variants.ts
+   5      src/compiler/checker/constructs/patterns/walk/members.ts
+   5      src/compiler/checker/constructs/patterns/walk/taking.ts
+   5      src/compiler/checker/contexts/passes.ts
+   5      src/compiler/checker/contexts/use-site.ts
+   5      src/compiler/checker/resolution/applying/argument-fit.ts
+   5      src/compiler/checker/rules/disposal/disposal.ts
+   5      src/compiler/checker/surface/checked-annotation.ts
+   5      src/compiler/checker/surface/constant-form.ts
+   5      src/compiler/checker/types/identity/recursive-terms.ts
+   5      src/compiler/checker/types/properties/finiteness.ts
+   5      src/compiler/checker/types/written/key-types.ts
+   5      src/compiler/checker/types/written/resolve-type.ts
+   5      src/compiler/checker/types/written/written-matches.ts
+   5      src/compiler/lowering/constructs/expressions/operators.ts
+   5      src/compiler/lowering/functions/code-writer.ts
+   5      src/compiler/lowering/synthesized/boundary/starts.ts
+   5      src/compiler/lowering/tables/names.ts
+   5      src/compiler/lowering/values/optionals.ts
+   5      src/compiler/parser/cursor/index.ts
+   5      src/compiler/parser/grammar/declarations/type-declarations.ts
+   5      src/compiler/parser/grammar/expressions/branches.ts
+   5      src/compiler/parser/grammar/statements/simple.ts
+   5      src/compiler/scanner/templates.ts
+   5      src/compiler/syntax/declarations/field-defaults.ts
+   5      src/compiler/syntax/expressions/parameters.ts
+   5      src/definition/instructions/instruction.ts
+   5      src/definition/instructions/places.ts
+   5      src/editor/language-service/completion/cursor.ts
+   5      src/editor/language-service/completion/places/grammar/words.ts
+   5      src/editor/language-service/signatures/call-at.ts
+   5      src/editor/lsp/locations.ts
+   5      src/foundation/language/well-known/codecs.ts
+   5      src/foundation/structures/equality.ts
+   5      src/project/project.ts
+   5      src/runtime/host/index.ts
+   5      src/runtime/scheduler/instance/futures.ts
+   5      src/runtime/scheduler/instance/index.ts
+   5      src/runtime/scheduler/testing/test-world.ts
+   5      src/runtime/snapshot/random.ts
+   5      src/runtime/snapshot/snapshot.ts
+   5      src/stdlib/std-module.ts
+   4      src/cli/command.ts
+   4      src/compiler/binder/constructs/statements.ts
+   4      src/compiler/binder/constructs/types.ts
+   4      src/compiler/checker/constructs/closures/function-values.ts
+   4      src/compiler/checker/constructs/closures/lambdas.ts
+   4      src/compiler/checker/constructs/expressions/literals/tuples.ts
+   4      src/compiler/checker/constructs/expressions/operators/decided-conditions.ts
+   4      src/compiler/checker/constructs/loops/iteration.ts
+   4      src/compiler/checker/lookup/holders.ts
+   4      src/compiler/checker/resolution/choosing/applicability.ts
+   4      src/compiler/checker/types/identity/recursive-types.ts
+   4      src/compiler/checker/types/identity/term-signatures.ts
+   4      src/compiler/lowering/constructs/loops/field-passes.ts
+   4      src/compiler/lowering/synthesized/boundary/host-externs.ts
+   4      src/compiler/lowering/synthesized/boundary/inbound.ts
+   4      src/compiler/lowering/synthesized/trait-objects.ts
+   4      src/compiler/parser/grammar/expressions/expression.ts
+   4      src/compiler/parser/grammar/parts/blocks.ts
+   4      src/compiler/parser/grammar/parts/literals.ts
+   4      src/compiler/parser/grammar/parts/structs.ts
+   4      src/compiler/parser/grammar/statements/loops.ts
+   4      src/compiler/parser/grammar/word-parselets.ts
+   4      src/compiler/parser/layout/annotations.ts
+   4      src/compiler/parser/layout/docstrings.ts
+   4      src/compiler/parser/layout/item-breaks.ts
+   4      src/compiler/syntax/expressions/comparisons.ts
+   4      src/compiler/syntax/expressions/literals/templates.ts
+   4      src/compiler/syntax/expressions/places.ts
+   4      src/definition/tables/test-runner.ts
+   4      src/definition/validation/instruction-rules.ts
+   4      src/editor/language-service/completion/expected.ts
+   4      src/editor/language-service/workspace.ts
+   4      src/formatter/format.ts
+   4      src/foundation/diagnostics/diagnostic.ts
+   4      src/foundation/language/values.ts
+   4      src/foundation/language/well-known/variants.ts
+   4      src/foundation/structures/entries/index.ts
+   4      src/runtime/interpreter/suspension.ts
+   4      src/runtime/scheduler/segment/calls.ts
+   4      src/runtime/scheduler/segment/index.ts
+   4      src/runtime/testing/world/index.ts
+   4      src/stdlib/prelude/text-forms.ts
+   4      src/stdlib/time/iso.ts
+   3      src/cli/host-module.ts
+   3      src/compiler/binder/module/own-calls.ts
+   3      src/compiler/checker/constructs/expressions/access/optionals.ts
+   3      src/compiler/checker/constructs/expressions/control/branches.ts
+   3      src/compiler/checker/constructs/expressions/control/match.ts
+   3      src/compiler/checker/constructs/expressions/operators/operators.ts
+   3      src/compiler/checker/constructs/expressions/structs/literal-sources.ts
+   3      src/compiler/checker/constructs/expressions/structs/literal-types.ts
+   3      src/compiler/checker/constructs/patterns/walk/index.ts
+   3      src/compiler/checker/constructs/patterns/walk/kinds/struct-fields.ts
+   3      src/compiler/checker/constructs/patterns/walk/selections.ts
+   3      src/compiler/checker/constructs/statements/statements.ts
+   3      src/compiler/checker/resolution/applying/applied-call.ts
+   3      src/compiler/checker/resolution/calls/collection-functions.ts
+   3      src/compiler/checker/resolution/conformance/declared-witness.ts
+   3      src/compiler/checker/resolution/conformance/trait-calls.ts
+   3      src/compiler/checker/resolution/conformance/trait-objects.ts
+   3      src/compiler/checker/rules/computation/index.ts
+   3      src/compiler/checker/rules/expansion/edges.ts
+   3      src/compiler/checker/rules/flow/forward.ts
+   3      src/compiler/checker/types/identity/identity.ts
+   3      src/compiler/checker/types/identity/type-keys.ts
+   3      src/compiler/checker/types/type/field-order.ts
+   3      src/compiler/checker/types/written/declared-fields.ts
+   3      src/compiler/checker/wiring/program/program-inputs.ts
+   3      src/compiler/checker/wiring/program/program-type-rules.ts
+   3      src/compiler/lowering/constructs/expressions/closures.ts
+   3      src/compiler/lowering/constructs/expressions/literals/tuples.ts
+   3      src/compiler/lowering/constructs/loops/iteration.ts
+   3      src/compiler/lowering/constructs/statements/statements.ts
+   3      src/compiler/lowering/functions/index.ts
+   3      src/compiler/lowering/lower.ts
+   3      src/compiler/lowering/synthesized/boundary/codecs.ts
+   3      src/compiler/lowering/tables/constants.ts
+   3      src/compiler/parser/grammar/declarations/functions.ts
+   3      src/compiler/parser/grammar/parts/constraints.ts
+   3      src/compiler/parser/grammar/parts/names.ts
+   3      src/compiler/parser/grammar/statements/variables.ts
+   3      src/compiler/parser/grammar/types.ts
+   3      src/compiler/parser/parser.ts
+   3      src/compiler/scanner/multi-line.ts
+   3      src/compiler/scanner/strings.ts
+   3      src/compiler/syntax/expressions/literals/built-types.ts
+   3      src/compiler/syntax/expressions/literals/literals.ts
+   3      src/compiler/syntax/types/type-matches.ts
+   3      src/definition/formats/format.ts
+   3      src/definition/instructions/flow.ts
+   3      src/definition/validation/references.ts
+   3      src/editor/language-service/completion/place.ts
+   3      src/editor/language-service/completion/places/literal-field.ts
+   3      src/editor/language-service/completion/places/member.ts
+   3      src/editor/language-service/completion/places/patterns/matched-type.ts
+   3      src/editor/language-service/completion/triggers.ts
+   3      src/editor/language-service/navigation/references.ts
+   3      src/editor/language-service/outline/symbols.ts
+   3      src/editor/language-service/reading/tokens.ts
+   3      src/editor/language-service/signatures/signatures.ts
+   3      src/formatter/expressions/literals.ts
+   3      src/formatter/layout/brackets.ts
+   3      src/foundation/diagnostics/code-blocks.ts
+   3      src/foundation/language/primitives.ts
+   3      src/foundation/language/well-known/testing.ts
+   3      src/foundation/structures/memo.ts
+   3      src/foundation/structures/stack.ts
+   3      src/foundation/text/span.ts
+   3      src/project/project-files.ts
+   3      src/runtime/boundary/host-natives.ts
+   3      src/runtime/host/settle.ts
+   3      src/runtime/interpreter/frames.ts
+   3      src/runtime/interpreter/trace.ts
+   3      src/runtime/scheduler/instance/instance-names.ts
+   3      src/runtime/scheduler/segment/limits.ts
+   3      src/runtime/scheduler/segment/outcome-encoding.ts
+   3      src/runtime/testing/run-tests.ts
+   3      src/stdlib/math/rounding.ts
+   3      src/stdlib/numeric.ts
+   3      src/stdlib/time/fields.ts
+   2      src/cli/report.ts
+   2      src/compiler/binder/constructs/declarations.ts
+   2      src/compiler/binder/link/module-links.ts
+   2      src/compiler/binder/link/qualifiers.ts
+   2      src/compiler/binder/link/top-level-rules.ts
+   2      src/compiler/binder/module/bind-module.ts
+   2      src/compiler/binder/module/module-scope.ts
+   2      src/compiler/binder/module/visibility.ts
+   2      src/compiler/binder/naming.ts
+   2      src/compiler/checker/constructs/closures/own-calls.ts
+   2      src/compiler/checker/constructs/closures/returns.ts
+   2      src/compiler/checker/constructs/closures/value-calls.ts
+   2      src/compiler/checker/constructs/declarations/aliases/alias-recursion.ts
+   2      src/compiler/checker/constructs/declarations/constants.ts
+   2      src/compiler/checker/constructs/declarations/functions/functions.ts
+   2      src/compiler/checker/constructs/declarations/functions/parameters.ts
+   2      src/compiler/checker/constructs/declarations/layout/struct-rules.ts
+   2      src/compiler/checker/constructs/declarations/module-checks.ts
+   2      src/compiler/checker/constructs/expressions/collections/comprehensions.ts
+   2      src/compiler/checker/constructs/expressions/control/await.ts
+   2      src/compiler/checker/constructs/expressions/control/control.ts
+   2      src/compiler/checker/constructs/expressions/control/select.ts
+   2      src/compiler/checker/constructs/expressions/literals/built-members.ts
+   2      src/compiler/checker/constructs/expressions/literals/indented-values.ts
+   2      src/compiler/checker/constructs/loops/field-passes.ts
+   2      src/compiler/checker/constructs/patterns/exhaustiveness/remaining.ts
+   2      src/compiler/checker/constructs/patterns/matching.ts
+   2      src/compiler/checker/constructs/patterns/targets.ts
+   2      src/compiler/checker/constructs/patterns/walk/kinds/alternatives.ts
+   2      src/compiler/checker/constructs/patterns/walk/kinds/downcasts.ts
+   2      src/compiler/checker/constructs/patterns/walk/kinds/ranges.ts
+   2      src/compiler/checker/constructs/statements/variables.ts
+   2      src/compiler/checker/diagnostics/generics.ts
+   2      src/compiler/checker/diagnostics/lifetimes.ts
+   2      src/compiler/checker/lookup/key-denotations.ts
+   2      src/compiler/checker/lookup/pass-views.ts
+   2      src/compiler/checker/resolution/applying/silent-choice.ts
+   2      src/compiler/checker/resolution/calls/stopped-operations.ts
+   2      src/compiler/checker/resolution/choosing/packs.ts
+   2      src/compiler/checker/resolution/conformance/default-witness.ts
+   2      src/compiler/checker/resolution/conformance/derived-traits.ts
+   2      src/compiler/checker/resolution/type-matches/reduction-requirements.ts
+   2      src/compiler/checker/resolution/type-matches/type-match-patterns.ts
+   2      src/compiler/checker/rules/annotations.ts
+   2      src/compiler/checker/rules/boundary/host-boundary.ts
+   2      src/compiler/checker/rules/boundary/json-forms.ts
+   2      src/compiler/checker/rules/disposal/must-use.ts
+   2      src/compiler/checker/rules/expansion/types.ts
+   2      src/compiler/checker/rules/testing.ts
+   2      src/compiler/checker/surface/host-externs.ts
+   2      src/compiler/checker/types/fitting/member-arguments.ts
+   2      src/compiler/checker/types/inference/complete.ts
+   2      src/compiler/checker/types/parts/computed-reduction.ts
+   2      src/compiler/checker/types/properties/held.ts
+   2      src/compiler/checker/types/traits/sendable.ts
+   2      src/compiler/checker/types/traits/struct-constraints.ts
+   2      src/compiler/checker/types/unions/widening.ts
+   2      src/compiler/checker/types/written/named-paths.ts
+   2      src/compiler/checker/wiring/body/body-checker.ts
+   2      src/compiler/checker/wiring/body/body-records.ts
+   2      src/compiler/checker/wiring/body/facts/instantiation.ts
+   2      src/compiler/checker/wiring/program/program-checker.ts
+   2      src/compiler/lowering/calls/packs.ts
+   2      src/compiler/lowering/constructs/expressions/access/names.ts
+   2      src/compiler/lowering/constructs/expressions/access/optionals.ts
+   2      src/compiler/lowering/constructs/expressions/calls.ts
+   2      src/compiler/lowering/constructs/expressions/collections/comprehensions.ts
+   2      src/compiler/lowering/constructs/expressions/control/matching.ts
+   2      src/compiler/lowering/constructs/parts/patterns.ts
+   2      src/compiler/lowering/context.ts
+   2      src/compiler/lowering/functions/bodies.ts
+   2      src/compiler/lowering/functions/fits.ts
+   2      src/compiler/lowering/synthesized/index.ts
+   2      src/compiler/lowering/tables/type-table.ts
+   2      src/compiler/lowering/values/struct-values.ts
+   2      src/compiler/parser/grammar/declarations/declaration.ts
+   2      src/compiler/parser/grammar/expressions/literals/templates.ts
+   2      src/compiler/parser/grammar/expressions/parselet.ts
+   2      src/compiler/parser/grammar/parts/functions.ts
+   2      src/compiler/parser/grammar/parts/levels.ts
+   2      src/compiler/parser/grammar/parts/spreads.ts
+   2      src/compiler/parser/grammar/patterns.ts
+   2      src/compiler/parser/layout/continuations.ts
+   2      src/compiler/syntax/expressions/arguments.ts
+   2      src/compiler/syntax/expressions/literals/numbers.ts
+   2      src/definition/definition.ts
+   2      src/definition/instructions/calls.ts
+   2      src/definition/tables/index.ts
+   2      src/definition/values/instance-handles.ts
+   2      src/editor/language-service/completion/candidate.ts
+   2      src/editor/language-service/completion/index.ts
+   2      src/editor/language-service/completion/places/grammar/expression.ts
+   2      src/editor/language-service/completion/places/grammar/position.ts
+   2      src/editor/language-service/completion/places/grammar/surroundings.ts
+   2      src/editor/language-service/completion/presentation/entity-items.ts
+   2      src/editor/language-service/completion/visible.ts
+   2      src/editor/language-service/hover.ts
+   2      src/editor/language-service/inlay-hints.ts
+   2      src/editor/language-service/outline/folding.ts
+   2      src/editor/language-service/reading/checked-module.ts
+   2      src/editor/language-service/reading/identifier-at.ts
+   2      src/editor/language-service/semantic-tokens/semantic-tokens.ts
+   2      src/editor/language-service/semantic-tokens/semantic-types.ts
+   2      src/editor/language-service/signatures/signature-help.ts
+   2      src/editor/lsp/diagnostics.ts
+   2      src/editor/lsp/providers/completion.ts
+   2      src/editor/vscode-client/extension.ts
+   2      src/formatter/expressions/branches.ts
+   2      src/formatter/expressions/indented-values.ts
+   2      src/formatter/printer.ts
+   2      src/formatter/types.ts
+   2      src/foundation/language/import-paths.ts
+   2      src/foundation/structures/kind-table.ts
+   2      src/foundation/structures/strongly-connected.ts
+   2      src/foundation/structures/unreachable.ts
+   2      src/foundation/text/source-text.ts
+   2      src/project/errno.ts
+   2      src/runtime/boundary/outbound.ts
+   2      src/runtime/interpreter/function-table.ts
+   2      src/runtime/interpreter/parts.ts
+   2      src/runtime/lifetimes/collector.ts
+   2      src/runtime/lifetimes/orphans.ts
+   2      src/runtime/refusal.ts
+   2      src/runtime/scheduler/instance/instance-ends.ts
+   2      src/runtime/scheduler/instance/live-objects.ts
+   2      src/runtime/scheduler/instance/slots.ts
+   2      src/runtime/scheduler/loaded-definition.ts
+   2      src/runtime/scheduler/segment/disposal-runs.ts
+   2      src/runtime/store.ts
+   2      src/runtime/testing/world/snapshot-reads.ts
+   2      src/stdlib/random/natives.ts
+   2      src/stdlib/std-sources.ts
+   1      src/cli/cli.ts
+   1      src/cli/clock.ts
+   1      src/cli/commands/check.ts
+   1      src/cli/commands/fmt.ts
+   1      src/cli/commands/lsp.ts
+   1      src/cli/commands/run.ts
+   1      src/cli/commands/test.ts
+   1      src/cli/directory-store.ts
+   1      src/cli/log-lines.ts
+   1      src/compiler/binder/bind.ts
+   1      src/compiler/binder/constructs/expressions.ts
+   1      src/compiler/binder/constructs/patterns.ts
+   1      src/compiler/binder/diagnostics.ts
+   1      src/compiler/binder/link/index.ts
+   1      src/compiler/checker/constructs/closures/enclosing-scopes.ts
+   1      src/compiler/checker/constructs/closures/function-scope.ts
+   1      src/compiler/checker/constructs/closures/functions.ts
+   1      src/compiler/checker/constructs/declarations/aliases/index.ts
+   1      src/compiler/checker/constructs/declarations/aliases/recursive-bodies.ts
+   1      src/compiler/checker/constructs/declarations/declarations.ts
+   1      src/compiler/checker/constructs/declarations/functions/clashes.ts
+   1      src/compiler/checker/constructs/declarations/functions/statics.ts
+   1      src/compiler/checker/constructs/declarations/layout/index.ts
+   1      src/compiler/checker/constructs/declarations/type-parameters.ts
+   1      src/compiler/checker/constructs/expressions/access/dereference.ts
+   1      src/compiler/checker/constructs/expressions/access/indexing.ts
+   1      src/compiler/checker/constructs/expressions/calls.ts
+   1      src/compiler/checker/constructs/expressions/control/propagate.ts
+   1      src/compiler/checker/constructs/expressions/control/spawn.ts
+   1      src/compiler/checker/constructs/expressions/literals/literal-items.ts
+   1      src/compiler/checker/constructs/expressions/literals/literals.ts
+   1      src/compiler/checker/constructs/expressions/literals/templates.ts
+   1      src/compiler/checker/constructs/patterns/walk/kinds/arrays.ts
+   1      src/compiler/checker/constructs/statements/assignments.ts
+   1      src/compiler/checker/diagnostics/boundary.ts
+   1      src/compiler/checker/diagnostics/closures.ts
+   1      src/compiler/checker/diagnostics/collections.ts
+   1      src/compiler/checker/diagnostics/concurrency.ts
+   1      src/compiler/checker/diagnostics/index.ts
+   1      src/compiler/checker/diagnostics/patterns.ts
+   1      src/compiler/checker/diagnostics/values.ts
+   1      src/compiler/checker/lookup/denotations.ts
+   1      src/compiler/checker/lookup/lookup.ts
+   1      src/compiler/checker/lookup/members.ts
+   1      src/compiler/checker/resolution/calls/lambda-arguments.ts
+   1      src/compiler/checker/resolution/choosing/calls-made.ts
+   1      src/compiler/checker/resolution/choosing/receivers.ts
+   1      src/compiler/checker/resolution/conformance/root-goals.ts
+   1      src/compiler/checker/resolution/type-matches/implied-constraints.ts
+   1      src/compiler/checker/resolution/type-matches/type-matches.ts
+   1      src/compiler/checker/rules/disposal/dropped.ts
+   1      src/compiler/checker/rules/expansion/functions.ts
+   1      src/compiler/checker/rules/expansion/type-matches.ts
+   1      src/compiler/checker/rules/flow/chain-parts.ts
+   1      src/compiler/checker/surface/struct-items.ts
+   1      src/compiler/checker/types/identity/unfolding-pairs.ts
+   1      src/compiler/checker/types/inference/infer.ts
+   1      src/compiler/checker/types/properties/type-cycle.ts
+   1      src/compiler/checker/types/traits/any-types.ts
+   1      src/compiler/checker/types/traits/known-fields.ts
+   1      src/compiler/checker/types/traits/object-safety.ts
+   1      src/compiler/checker/types/type/type-rules.ts
+   1      src/compiler/checker/types/unions/inside-optional.ts
+   1      src/compiler/checker/wiring/body/facts/index.ts
+   1      src/compiler/checker/wiring/body/facts/recorded-body.ts
+   1      src/compiler/lowering/constructs/expressions/control/await.ts
+   1      src/compiler/lowering/constructs/expressions/control/control.ts
+   1      src/compiler/lowering/constructs/expressions/control/propagate.ts
+   1      src/compiler/lowering/constructs/expressions/control/select.ts
+   1      src/compiler/lowering/constructs/expressions/expressions.ts
+   1      src/compiler/lowering/constructs/expressions/literals/literals.ts
+   1      src/compiler/lowering/constructs/expressions/literals/templates.ts
+   1      src/compiler/lowering/constructs/never-lowered.ts
+   1      src/compiler/lowering/constructs/parts/part-paths.ts
+   1      src/compiler/lowering/constructs/statements/holds.ts
+   1      src/compiler/lowering/synthesized/boundary/codec-calls.ts
+   1      src/compiler/lowering/synthesized/boundary/decoder.ts
+   1      src/compiler/lowering/synthesized/boundary/encoder.ts
+   1      src/compiler/lowering/tables/filling-entry.ts
+   1      src/compiler/parser/diagnostics.ts
+   1      src/compiler/parser/grammar/declarations/externs.ts
+   1      src/compiler/parser/grammar/declarations/imports.ts
+   1      src/compiler/parser/grammar/declarations/type-matches.ts
+   1      src/compiler/parser/grammar/declarations/type-parameters.ts
+   1      src/compiler/parser/grammar/expressions/atoms.ts
+   1      src/compiler/parser/grammar/expressions/lambdas.ts
+   1      src/compiler/parser/grammar/expressions/literals/collections.ts
+   1      src/compiler/parser/grammar/expressions/literals/indented-values.ts
+   1      src/compiler/parser/grammar/index.ts
+   1      src/compiler/parser/grammar/nesting.ts
+   1      src/compiler/parser/grammar/parts/cases.ts
+   1      src/compiler/parser/grammar/parts/field-headers.ts
+   1      src/compiler/parser/grammar/statements/statement.ts
+   1      src/compiler/parser/incremental/held-bodies.ts
+   1      src/compiler/parser/incremental/reuse.ts
+   1      src/compiler/parser/parse.ts
+   1      src/compiler/program/diagnostics.ts
+   1      src/compiler/scanner/diagnostics.ts
+   1      src/compiler/scanner/lexeme.ts
+   1      src/compiler/scanner/numbers.ts
+   1      src/compiler/scanner/punctuators.ts
+   1      src/compiler/scanner/scan.ts
+   1      src/compiler/syntax/expressions/branches.ts
+   1      src/definition/instructions/control.ts
+   1      src/definition/instructions/data.ts
+   1      src/definition/instructions/define-instruction.ts
+   1      src/definition/instructions/lifetimes.ts
+   1      src/definition/instructions/suspension.ts
+   1      src/definition/values/equality.ts
+   1      src/editor/language-service/completion/places/annotation.ts
+   1      src/editor/language-service/completion/places/call-argument.ts
+   1      src/editor/language-service/completion/places/declared-name.ts
+   1      src/editor/language-service/completion/places/grammar/chain.ts
+   1      src/editor/language-service/completion/places/grammar/index.ts
+   1      src/editor/language-service/completion/places/imports/import.ts
+   1      src/editor/language-service/completion/places/imports/module-paths.ts
+   1      src/editor/language-service/completion/places/patterns/pattern-field.ts
+   1      src/editor/language-service/completion/places/patterns/pattern.ts
+   1      src/editor/language-service/completion/places/string-text.ts
+   1      src/editor/language-service/completion/places/type.ts
+   1      src/editor/language-service/completion/presentation/present.ts
+   1      src/editor/language-service/reading/docstrings.ts
+   1      src/editor/language-service/reading/namespaces.ts
+   1      src/editor/language-service/semantic-tokens/angle-brackets.ts
+   1      src/editor/language-service/semantic-tokens/built-keys.ts
+   1      src/editor/language-service/semantic-tokens/name-types.ts
+   1      src/editor/lsp/project-loader.ts
+   1      src/editor/lsp/providers/formatting.ts
+   1      src/editor/lsp/providers/hover.ts
+   1      src/editor/lsp/providers/inlay-hints.ts
+   1      src/editor/lsp/providers/navigation/definition.ts
+   1      src/editor/lsp/providers/navigation/references.ts
+   1      src/editor/lsp/providers/navigation/rename.ts
+   1      src/editor/lsp/providers/outline/document-symbols.ts
+   1      src/editor/lsp/providers/outline/folding-ranges.ts
+   1      src/editor/lsp/providers/provider.ts
+   1      src/editor/lsp/providers/semantic-tokens.ts
+   1      src/editor/lsp/providers/signature-help.ts
+   1      src/editor/lsp/providers/std-source.ts
+   1      src/editor/lsp/server.ts
+   1      src/editor/lsp/std-source-request.ts
+   1      src/editor/vscode-client/server-command.ts
+   1      src/formatter/comments/comment-placement.ts
+   1      src/formatter/declarations.ts
+   1      src/formatter/expressions/index.ts
+   1      src/formatter/patterns.ts
+   1      src/formatter/statements.ts
+   1      src/foundation/diagnostics/catalog.ts
+   1      src/foundation/diagnostics/render.ts
+   1      src/foundation/language/order.ts
+   1      src/foundation/language/static-names.ts
+   1      src/foundation/structures/entries/tuple-set.ts
+   1      src/foundation/structures/groups.ts
+   1      src/foundation/structures/reachable.ts
+   1      src/foundation/structures/sorted.ts
+   1      src/runtime/boundary/extern-signatures.ts
+   1      src/runtime/host/instance-group.ts
+   1      src/runtime/interpreter/instructions.ts
+   1      src/runtime/scheduler/inspect.ts
+   1      src/runtime/scheduler/instance/weak-side.ts
+   1      src/runtime/scheduler/segment/native-calls.ts
+   1      src/runtime/scheduler/segment/run-stack.ts
+   1      src/runtime/snapshot/check.ts
+   1      src/runtime/testing/world/test-host.ts
+   1      src/stdlib/crypto/natives.ts
+   1      src/stdlib/decimal/natives.ts
+   1      src/stdlib/futures/natives.ts
+   1      src/stdlib/json/natives.ts
+   1      src/stdlib/log/natives.ts
+   1      src/stdlib/math/natives.ts
+   1      src/stdlib/natives.ts
+   1      src/stdlib/prelude/arrays.ts
+   1      src/stdlib/prelude/instance-natives.ts
+   1      src/stdlib/prelude/maps.ts
+   1      src/stdlib/prelude/natives.ts
+   1      src/stdlib/prelude/range-natives.ts
+   1      src/stdlib/prelude/slot-natives.ts
+   1      src/stdlib/prelude/strings.ts
+   1      src/stdlib/prelude/weak-natives.ts
+   1      src/stdlib/regex/natives.ts
+   1      src/stdlib/regex/split.ts
+   1      src/stdlib/runtime/natives.ts
+   1      src/stdlib/std-modules.ts
+   1      src/stdlib/strings/format.ts
+   1      src/stdlib/strings/natives.ts
+   1      src/stdlib/testing/natives.ts
+   1      src/stdlib/time/natives.ts
+   1      src/stdlib/time/zones.ts
