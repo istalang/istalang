@@ -418,7 +418,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
 7. **`Json`.**
    - `src/stdlib/json/json.ista` declares the alias. Its codecs match members (`case Int as value`), and `natives.ts` builds maps and arrays.
    - `src/definition/values/json-values.ts` finds each member's variant in the union's layout (`unionLayout`, `src/language/well-known/index.ts`), not by variant name, and `jsonVariants` goes.
-   - `lowering/boundary/encoder.ts` and `decoder.ts` build and read members.
+   - `lowering/synthesized/boundary/encoder.ts` and `decoder.ts` build and read members.
    - `time`, `decimal`, `regex` and `log` in `src/stdlib/` drop their `Text{…}` wrappers.
 8. **`,` separates every list.**
    - **Scanner:** unchanged. `;` stays a token.

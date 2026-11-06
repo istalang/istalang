@@ -95,8 +95,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 18. `src/compiler/checker/rules/` (including `rules/json-forms/`)
 - [x] 19. `src/compiler/checker/constructs/declarations/` & `src/compiler/checker/constructs/closures/`
 - [x] 20. `src/compiler/checker/constructs/expressions/`, `src/compiler/checker/constructs/statements/` & `src/compiler/checker/lookup/`
-- [x] 21. `src/compiler/lowering/` — core, tables & function lowering (`lower.ts`, `context.ts`, `tables.ts`, `type-table.ts`, `names.ts`, `constants.ts`, `instances.ts`, `filling-entry.ts`, `async-fits.ts`, `bodies.ts`, `code-writer.ts`, `synthesized-code.ts`, `emit-call.ts`, `iteration.ts`, `places.ts`, `optional-chains.ts`, `patterns.ts`, `packs.ts`, `never-lowered.ts`, `function-lowering/`)
-- [x] 22. `src/compiler/lowering/boundary/` & `src/compiler/lowering/trait-objects/`
+- [x] 21. `src/compiler/lowering/` — core, tables & function lowering (`lower.ts`, `context.ts`, `tables.ts`, `type-table.ts`, `names.ts`, `constants.ts`, `instances.ts`, `filling-entry.ts`, `async-fits.ts`, `bodies.ts`, `code-writer.ts`, `synthesized/index.ts`, `emit-call.ts`, `iteration.ts`, `places.ts`, `optional-chains.ts`, `patterns.ts`, `packs.ts`, `never-lowered.ts`, `function-lowering/`)
+- [x] 22. `src/compiler/lowering/synthesized/boundary/` & `src/compiler/lowering/trait-objects/`
 - [x] 23. `src/compiler/lowering/expressions/` & `src/compiler/lowering/statements/`
 - [x] 24. `src/compiler/compile.ts`
 - [x] 25. `src/runtime/` — core, values, snapshot, lifetimes & interpreter (`natives.ts`, `store.ts`, `refusal.ts`, `random.ts`, `instance-state.ts`, `instance-group.ts`, `settle.ts`, `host.ts`, `values/`, `snapshot/`, `lifetimes/`, `interpreter/`)
@@ -341,22 +341,22 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 21. `src/compiler/lowering/` — core, tables & function lowering
 
-- **`SynthesizedCode` duplicates instruction builders (`struct`, `tuple`, `equal`) instead of sharing `CodeContext` helpers (`src/compiler/lowering/synthesized-code.ts`, `expressions/structs/structs.ts`, `expressions/tuples.ts`, `expressions/operators.ts`):**
+- **`SynthesizedCode` duplicates instruction builders (`struct`, `tuple`, `equal`) instead of sharing `CodeContext` helpers (`src/compiler/lowering/synthesized/index.ts`, `expressions/structs/structs.ts`, `expressions/tuples.ts`, `expressions/operators.ts`):**
   - `SynthesizedCode` delegates `variant`, `constant`, and `call` to shared `CodeContext` helpers (`buildVariant`, `emitConstant`, `emitCall`), but re-implements `struct`, `tuple`, and `equal` because `construct` (`expressions/structs/structs.ts`), `tupleOf` (`expressions/tuples.ts`), and `equal` (`expressions/operators.ts`) are typed as taking `FunctionContext` despite only using `CodeContext`.
   - **Done** (`p2-structural`): the three take `CodeContext`, and `SynthesizedCode` delegates to them.
-- **Duplicate parameter-forwarding logic in `asyncFitEntry`, `fillingEntry`, and `dispatchEntry` (`src/compiler/lowering/functions/fits.ts`, `filling-entry.ts`, `trait-objects/trait-objects.ts`):**
+- **Duplicate parameter-forwarding logic in `asyncFitEntry`, `fillingEntry`, and `dispatchEntry` (`src/compiler/lowering/functions/fits.ts`, `filling-entry.ts`, `synthesized/trait-objects.ts`):**
   - `asyncFitEntry` and `fillingEntry` both map `code.parameters.map((register, index) => references[index] === true ? referenceTo(register) : register)`, and `dispatchEntry` defines its own `passed(register, path, index)` helper for the same reference-forwarding pattern.
   - **Done** (`p2-structural`): `SynthesizedCode.passedOn(index, references, path?)` is the one rule; all three call it.
 - **Quadratic array-spreading multimap in `CodeWriter.#refer` (`src/compiler/lowering/functions/code-writer.ts`):**
   - `CodeWriter.#refer` appends forward-jump patches with `this.#patches.set(label.id, [...(this.#patches.get(label.id) ?? []), patch])`, copying the patch array on every branch targeting the same unplaced label.
   - **Done** (`fast-wins`): Uses `addToGroup` (unit 1).
 
-### 22. `src/compiler/lowering/boundary/` & `src/compiler/lowering/trait-objects/`
+### 22. `src/compiler/lowering/synthesized/boundary/` & `src/compiler/lowering/trait-objects/`
 
-- **`Encoder.#text` builds a `Json.Text` variant by positional array literal (`src/compiler/lowering/boundary/encoder.ts`, `src/definition/values/declared-values.ts`):**
+- **`Encoder.#text` builds a `Json.Text` variant by positional array literal (`src/compiler/lowering/synthesized/boundary/encoder.ts`, `src/definition/values/declared-values.ts`):**
   - Violating the one-way rule in `docs/reuse/values-and-equality.md` (build variants by declared name, never by positional index), `Encoder.#text` constructs `{ kind: 'variant', type: tables.types.index(this.#json), variant: variantIndexOf(checker, this.#json, jsonVariants.text), fields: [name] }` directly.
   - **Done** (`p2-structural`): the tag is built by name, through the encoder's `#variant` (`SynthesizedCode.variant`); `#text` is gone.
-- **`DerivedForm` lacks its `Type`, and `derivedCodecEntry` dispatches on function name (`src/compiler/lowering/boundary/codecs.ts`, `encoder.ts`, `decoder.ts`; tracked as `Q9`).**
+- **`DerivedForm` lacks its `Type`, and `derivedCodecEntry` dispatches on function name (`src/compiler/lowering/synthesized/boundary/codecs.ts`, `encoder.ts`, `decoder.ts`; tracked as `Q9`).**
   - **Done** (`p3-unions`): each `DerivedForm` carries its type, of the kind it is (a record's a struct type, an enum's and a host type's nominal, a tuple's a tuple type, whose elements it no longer copies), and a type with nothing to derive from is the checker's alone (`FormOrNone`, `rules/json-forms/`), so `JsonFormQueries.formOf` guards it once and `Encoder.write` and `Decoder.read` take only the form, with no `unreachable` left in their cases. `derivedCodecDirection` (`codecs.ts`) tells an instance's direction by `derivedCodecs`, a typed table (`bodyWriters`) picks its writer, and its parameter count is its declaration's. `inboundOf` (`inbound.ts`) takes where JSON comes from (`result` or `input`), not a helper name.
 
 ### 23. `src/compiler/lowering/expressions/` & `src/compiler/lowering/statements/`
@@ -364,8 +364,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Duplicated callee/argument preparation between `lowerCall` / `lowerValueCall` and `lowerSpawn` (`src/compiler/lowering/expressions/calls.ts`):**
   - `lowerSpawn` re-implements the `valueCalls.has(...)` branch, `valueCallee`, `receiverAt`, `parametersByArgument`, `Passing` construction, `passedArguments`, and `valueArguments` already in `lowerCall` and `lowerValueCall`.
   - **Done** (`p2-structural`): see Ranked Summary item 5 (`preparedCall`).
-- **Repeated `Result` / `Optional` variant branch-and-unwrap boilerplate (`src/compiler/lowering/expressions/control/propagate.ts`, `unwrap.ts`, `nullish.ts`, `optional-chains.ts`, `iteration.ts`, `synthesized-code.ts`):**
-  - `lowerPropagate` (`expressions/control/propagate.ts`) is an open-coded copy of `SynthesizedCode.ok` (`synthesized-code.ts`), and `lowerUnwrap`, `lowerNullish`, `OptionalChains.target`, and `emitLoop` each repeat the `newLabel` + `variantTestOf` + `branchOnVariant` + `place` + `payloadOf` sequence for `Optional.Some`.
+- **Repeated `Result` / `Optional` variant branch-and-unwrap boilerplate (`src/compiler/lowering/expressions/control/propagate.ts`, `unwrap.ts`, `nullish.ts`, `optional-chains.ts`, `iteration.ts`, `synthesized/index.ts`):**
+  - `lowerPropagate` (`expressions/control/propagate.ts`) is an open-coded copy of `SynthesizedCode.ok` (`synthesized/index.ts`), and `lowerUnwrap`, `lowerNullish`, `OptionalChains.target`, and `emitLoop` each repeat the `newLabel` + `variantTestOf` + `branchOnVariant` + `place` + `payloadOf` sequence for `Optional.Some`.
   - **Done** (`p3-unions`): `payloadOr` (`lowering/expressions/structs/variants.ts`) is the one test-and-unwrap of a variant, which `lowerPropagate` and `SynthesizedCode.ok` share; `lowering/values/optionals.ts` is the one home of how a `T?` is read and built (`noneOf`, `someOf`, `presentOr`, `presentOrJump`), which `none`, the conversion into `T?`, `!`, `??`, optional chains, a range's left-out end and cursor loops all go through, over the union layout of `lowering/values/unions.ts` once proposal 3 made `T?` the union `T | None`.
 
 ### 24. `src/compiler/compile.ts`

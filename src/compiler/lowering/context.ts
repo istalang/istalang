@@ -37,7 +37,7 @@ import type { OptionalChains } from './values/optionals.ts';
 /**
  * What writing code takes, with or without a checked body behind it: the code written, the tables
  * it names, and the checker it asks about types. Code lowering writes with no syntax behind it
- * (boundary/) works through this alone, as do the helpers both kinds share.
+ * (synthesized/boundary/) works through this alone, as do the helpers both kinds share.
  */
 export type CodeContext = Pick<FunctionContext, 'checker' | 'tables' | 'code' | 'constant'>;
 

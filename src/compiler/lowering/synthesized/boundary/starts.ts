@@ -13,24 +13,24 @@
  *   What it returns is encoded as every instance's outcome is, by the runtime as it returns.
  */
 
-import type { CodeFunction } from '../../../definition/functions.ts';
-import type { FunctionId } from '../../../definition/operands.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Checker } from '../../checker/check.ts';
-import type { FunctionType, Type } from '../../checker/types/type/index.ts';
-import { futureArgument } from '../../checker/types/type/well-known.ts';
+import type { CodeFunction } from '../../../../definition/functions.ts';
+import type { FunctionId } from '../../../../definition/operands.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Checker } from '../../../checker/check.ts';
+import type { FunctionType, Type } from '../../../checker/types/type/index.ts';
+import { futureArgument } from '../../../checker/types/type/well-known.ts';
 import type {
   ConstantDeclaration,
   Declaration,
   FunctionDeclaration,
-} from '../../syntax/declarations/index.ts';
-import type { Invalid } from '../../syntax/tree/node.ts';
-import { writtenBodyOf } from '../functions/bodies.ts';
-import { instanceLowering, nestedLowering, type StartEdges } from '../functions/index.ts';
-import { constantValue } from '../tables/constants.ts';
-import { rootInstance } from '../tables/instances.ts';
-import { keyOf } from '../tables/names.ts';
-import type { DefinitionTables, StartTarget } from '../tables/tables.ts';
+} from '../../../syntax/declarations/index.ts';
+import type { Invalid } from '../../../syntax/tree/node.ts';
+import { writtenBodyOf } from '../../functions/bodies.ts';
+import { instanceLowering, nestedLowering, type StartEdges } from '../../functions/index.ts';
+import { constantValue } from '../../tables/constants.ts';
+import { rootInstance } from '../../tables/instances.ts';
+import { keyOf } from '../../tables/names.ts';
+import type { DefinitionTables, StartTarget } from '../../tables/tables.ts';
 import { codecCall } from './codec-calls.ts';
 import { emitInbound, inboundOf } from './inbound.ts';
 

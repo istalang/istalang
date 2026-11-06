@@ -8,20 +8,20 @@
  * `default()`.
  */
 
-import type { Register } from '../../../definition/operands.ts';
-import { type CodecHelper, codecHelpers } from '../../../language/well-known/codecs.ts';
-import { resultVariants } from '../../../language/well-known/variants.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import type { Register } from '../../../../definition/operands.ts';
+import { type CodecHelper, codecHelpers } from '../../../../language/well-known/codecs.ts';
+import { resultVariants } from '../../../../language/well-known/variants.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
 import {
   type DerivedForm,
   type JsonField,
   variantTagKey,
-} from '../../checker/surface/json-form.ts';
-import type { LiteralType, NominalType, Type } from '../../checker/types/type/index.ts';
-import { typeText } from '../../checker/types/type/type-text.ts';
-import { type ClosedCall, closeCall } from '../calls/closed-calls.ts';
-import type { SynthesizedCode } from '../synthesized-code.ts';
-import { literalValue, oneValueIn } from '../values/unions.ts';
+} from '../../../checker/surface/json-form.ts';
+import type { LiteralType, NominalType, Type } from '../../../checker/types/type/index.ts';
+import { typeText } from '../../../checker/types/type/type-text.ts';
+import { type ClosedCall, closeCall } from '../../calls/closed-calls.ts';
+import { literalValue, oneValueIn } from '../../values/unions.ts';
+import type { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';
 
 /** The body of `_fromJson<T>`, written into `code`. */

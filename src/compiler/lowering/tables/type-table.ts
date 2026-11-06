@@ -378,7 +378,7 @@ export class TypeTable {
 
   /**
    * A type entry's disposal: a declared `dispose` is the entry of its instance (§7), and one a host
-   * implements names its native too (boundary/host-externs.ts).
+   * implements names its native too (synthesized/boundary/host-externs.ts).
    */
   #disposal(disposal: Disposal): Extract<TypeDefinition, { kind: 'extern' }>['disposal'] {
     if (disposal.kind !== 'function') {

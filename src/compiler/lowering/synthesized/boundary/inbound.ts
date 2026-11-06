@@ -6,15 +6,15 @@
  * Host extern wrappers and start entries both read JSON this one way.
  */
 
-import type { Register } from '../../../definition/operands.ts';
-import { type CodecHelper, codecHelpers } from '../../../language/well-known/codecs.ts';
-import type { Checker } from '../../checker/check.ts';
-import type { Type } from '../../checker/types/type/index.ts';
-import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import { type ClosedCall, closeCall } from '../calls/closed-calls.ts';
-import { emitFunctionCall } from '../calls/emit-call.ts';
-import type { CodeContext } from '../context.ts';
-import type { FunctionInstance } from '../tables/instances.ts';
+import type { Register } from '../../../../definition/operands.ts';
+import { type CodecHelper, codecHelpers } from '../../../../language/well-known/codecs.ts';
+import type { Checker } from '../../../checker/check.ts';
+import type { Type } from '../../../checker/types/type/index.ts';
+import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
+import { type ClosedCall, closeCall } from '../../calls/closed-calls.ts';
+import { emitFunctionCall } from '../../calls/emit-call.ts';
+import type { CodeContext } from '../../context.ts';
+import type { FunctionInstance } from '../../tables/instances.ts';
 import { codecCall } from './codec-calls.ts';
 
 /** The helper accepting what was read, by whom JSON came from: what a mismatch does. */

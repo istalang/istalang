@@ -9,16 +9,16 @@
  * is which function it is (`derivedCodecs`); what it takes and gives are that function's own.
  */
 
-import type { CodeFunction } from '../../../definition/functions.ts';
-import { derivedCodecs } from '../../../language/well-known/codecs.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Checker } from '../../checker/check.ts';
-import type { DerivedForm, JsonDirection } from '../../checker/surface/json-form.ts';
-import { substitute } from '../../checker/types/parts/substitution.ts';
-import type { Type } from '../../checker/types/type/index.ts';
-import { SynthesizedCode } from '../synthesized-code.ts';
-import { type FunctionInstance, substitutionOf } from '../tables/instances.ts';
-import type { DefinitionTables } from '../tables/tables.ts';
+import type { CodeFunction } from '../../../../definition/functions.ts';
+import { derivedCodecs } from '../../../../language/well-known/codecs.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Checker } from '../../../checker/check.ts';
+import type { DerivedForm, JsonDirection } from '../../../checker/surface/json-form.ts';
+import { substitute } from '../../../checker/types/parts/substitution.ts';
+import type { Type } from '../../../checker/types/type/index.ts';
+import { type FunctionInstance, substitutionOf } from '../../tables/instances.ts';
+import type { DefinitionTables } from '../../tables/tables.ts';
+import { SynthesizedCode } from '../index.ts';
 import { Decoder } from './decoder.ts';
 import { Encoder } from './encoder.ts';
 

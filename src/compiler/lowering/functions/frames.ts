@@ -6,8 +6,8 @@
  * - A default's entry reads its function's defaults' body (§3.1, §3.3), its own entry its own body,
  *   through the instance's substitution; a nested function reads its owner's, or a constant's.
  *   These are the only rules of which body an entry reads.
- * - A start entry is one of these, entered by the host's name for it (boundary/starts.ts), which
- *   its frame's header says from the start.
+ * - A start entry is one of these, entered by the host's name for it
+ *   (synthesized/boundary/starts.ts), which its frame's header says from the start.
  */
 
 import { unreachable } from '../../../structures/unreachable.ts';

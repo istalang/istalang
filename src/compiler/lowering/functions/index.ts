@@ -21,9 +21,9 @@
  * - A default's entry takes the parameters before its own, and gives its default (§3.1, §3.3);
  *   a struct's or variant's fields are parameters of a function of their own
  *   (syntax/declarations/field-defaults.ts), so a field's default is one too.
- * - A start entry (boundary/starts.ts) is a function's own body compiled once more with its
- *   arguments arriving as `Json`, each decoded into its parameter, so a host-started instance runs
- *   as one execution of the function.
+ * - A start entry (synthesized/boundary/starts.ts) is a function's own body compiled once more with
+ *   its arguments arriving as `Json`, each decoded into its parameter, so a host-started instance
+ *   runs as one execution of the function.
  * - Which body an entry reads, and its frame, are frames.ts's; an entry is lowered only through
  *   `instanceLowering` and `nestedLowering`, which put the two together.
  */

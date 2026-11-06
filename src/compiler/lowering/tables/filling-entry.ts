@@ -16,7 +16,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type Binding, parameterOfArgument } from '../../checker/surface/resolved-call.ts';
 import { callOfFilling } from '../calls/closed-calls.ts';
 import type { CodeContext } from '../context.ts';
-import { SynthesizedCode } from '../synthesized-code.ts';
+import { SynthesizedCode } from '../synthesized/index.ts';
 import type { FunctionInstance } from './instances.ts';
 
 /** The code of `instance`, a filling entry filling its function's parameters as `binding` says. */

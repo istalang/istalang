@@ -210,12 +210,12 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 #### 5.1 Re-Derivation of Checker Facts & Implicit Contracts (`src/compiler/lowering/`)
 - **Unrecorded function-value calls relying on `calls.get(node) === undefined` (`src/compiler/lowering/expressions/calls.ts`, Q1):**
   - `lowerCall` treats `context.body.calls.get(node) === undefined` as meaning "call `node.callee` as a closure value" (`lowerValueCall`). Any checker path that forgets to record a resolved call silently compiles into a closure call instead of failing an invariant check.
-- **Re-deriving struct field indices and `any` field dispatches in lowering (`src/compiler/lowering/parts/places.ts`, `expressions/structs/structs.ts`, `trait-objects/trait-objects.ts`, Q12, Q19):**
+- **Re-deriving struct field indices and `any` field dispatches in lowering (`src/compiler/lowering/parts/places.ts`, `expressions/structs/structs.ts`, `synthesized/trait-objects.ts`, Q12, Q19):**
   - `lowerFieldRead` (`lowering/expressions/structs/structs.ts`) re-inspects `base.kind === 'any'` and otherwise calls `fieldIndexOf` (`lowering/parts/places.ts`), which re-runs `fieldsOf(type).findIndex(...)`.
   - Because `x.f(...)` on a function-typed struct field never checks `x.f` (`MemberAccess`) as an expression in the checker, `lowerFieldRead` and `fieldIndexOf` take a `link: Expression = node` workaround parameter to look up `chainOf(link)?.base`.
-  - `anyFieldEntry` (`lowering/trait-objects/trait-objects.ts`) re-scans `on.constraints` with a local `isField` predicate (instead of `requiredFields`) and looks up `(checker.fieldsOf(type) ?? []).findIndex(...)` without guarding against `-1`.
-- **Bidirectional import cycle between `function-lowering/` and `boundary/` (`src/compiler/lowering/functions/index.ts` ↔ `src/compiler/lowering/boundary/starts.ts`, Q12):**
-  - `functions/index.ts` imports `emitInbound` and `Inbound` from `boundary/inbound.ts` to implement `FunctionLowering.lowerStart`, while `boundary/starts.ts` imports `instanceLowering`, `nestedLowering`, and `StartEdges` from `functions/index.ts`.
+  - `anyFieldEntry` (`lowering/synthesized/trait-objects.ts`) re-scans `on.constraints` with a local `isField` predicate (instead of `requiredFields`) and looks up `(checker.fieldsOf(type) ?? []).findIndex(...)` without guarding against `-1`.
+- **Bidirectional import cycle between `function-lowering/` and `boundary/` (`src/compiler/lowering/functions/index.ts` ↔ `src/compiler/lowering/synthesized/boundary/starts.ts`, Q12):**
+  - `functions/index.ts` imports `emitInbound` and `Inbound` from `synthesized/boundary/inbound.ts` to implement `FunctionLowering.lowerStart`, while `synthesized/boundary/starts.ts` imports `instanceLowering`, `nestedLowering`, and `StartEdges` from `functions/index.ts`.
 
 #### 5.2 Duplication & Edge Cases in Construct Lowering (`src/compiler/lowering/`)
 - **Copy-pasted `buildVariant` in `optionalInt` (`src/compiler/lowering/expressions/collections/collections.ts` vs. `variants.ts`):**

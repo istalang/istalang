@@ -29,10 +29,10 @@ import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { closeWitness, type Dispatch } from '../calls/closed-calls.ts';
 import { emitCall } from '../calls/emit-call.ts';
 import type { CodeContext } from '../context.ts';
-import { SynthesizedCode } from '../synthesized-code.ts';
 import { spelledType } from '../tables/names.ts';
 import { heldInAny, type IntoAny } from '../values/holdings.ts';
 import { eachMember, outOfUnion } from '../values/unions.ts';
+import { SynthesizedCode } from './index.ts';
 
 /** What writing an entry takes: the checker and the tables. */
 type Lowering = Pick<CodeContext, 'checker' | 'tables'>;

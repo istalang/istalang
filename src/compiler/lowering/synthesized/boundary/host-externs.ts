@@ -14,22 +14,22 @@
  * - A failure names its path from the extern's qualified name: `purchase.chargeCard.receipt`.
  */
 
-import type { CodeFunction, FunctionDefinition } from '../../../definition/functions.ts';
-import type { FunctionId, Register } from '../../../definition/operands.ts';
-import { wellKnown } from '../../../language/well-known/index.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Checker } from '../../checker/check.ts';
-import type { Type } from '../../checker/types/type/index.ts';
-import { futureArgument } from '../../checker/types/type/well-known.ts';
-import { entityType } from '../../checker/types/written/named-types.ts';
+import type { CodeFunction, FunctionDefinition } from '../../../../definition/functions.ts';
+import type { FunctionId, Register } from '../../../../definition/operands.ts';
+import { wellKnown } from '../../../../language/well-known/index.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Checker } from '../../../checker/check.ts';
+import type { Type } from '../../../checker/types/type/index.ts';
+import { futureArgument } from '../../../checker/types/type/well-known.ts';
+import { entityType } from '../../../checker/types/written/named-types.ts';
 import type {
   ExternConstantDeclaration,
   FunctionDeclaration,
-} from '../../syntax/declarations/index.ts';
-import { SynthesizedCode } from '../synthesized-code.ts';
-import type { FunctionInstance } from '../tables/instances.ts';
-import { keyOf, qualifiedNameOf, spelledType } from '../tables/names.ts';
-import type { DefinitionTables, EntryHeader, HostExternDeclaration } from '../tables/tables.ts';
+} from '../../../syntax/declarations/index.ts';
+import type { FunctionInstance } from '../../tables/instances.ts';
+import { keyOf, qualifiedNameOf, spelledType } from '../../tables/names.ts';
+import type { DefinitionTables, EntryHeader, HostExternDeclaration } from '../../tables/tables.ts';
+import { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';
 import { emitInbound, type Inbound, inboundOf } from './inbound.ts';
 

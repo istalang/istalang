@@ -17,17 +17,18 @@ import type { Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/surface/host-externs.ts';
 import { substitute } from '../checker/types/parts/substitution.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
-import { derivedCodecDirection, derivedCodecEntry } from './boundary/codecs.ts';
+import { writtenBodyOf } from './functions/bodies.ts';
+import { asyncFitEntry } from './functions/fits.ts';
+import { instanceLowering, nestedLowering } from './functions/index.ts';
+import { derivedCodecDirection, derivedCodecEntry } from './synthesized/boundary/codecs.ts';
 import {
   constantNativeEntry,
   hostConstantEntry,
   hostFunctionEntry,
   hostNativeEntry,
-} from './boundary/host-externs.ts';
-import { listStart, startableOf, startables, startEntry } from './boundary/starts.ts';
-import { writtenBodyOf } from './functions/bodies.ts';
-import { asyncFitEntry } from './functions/fits.ts';
-import { instanceLowering, nestedLowering } from './functions/index.ts';
+} from './synthesized/boundary/host-externs.ts';
+import { listStart, startableOf, startables, startEntry } from './synthesized/boundary/starts.ts';
+import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './synthesized/trait-objects.ts';
 import { fillingEntry } from './tables/filling-entry.ts';
 import {
   type FunctionInstance,
@@ -37,7 +38,6 @@ import {
 } from './tables/instances.ts';
 import { keyOf } from './tables/names.ts';
 import { type ClosingEntry, DefinitionTables, type PendingEntry } from './tables/tables.ts';
-import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './trait-objects/trait-objects.ts';
 
 /**
  * The Definition of everything `main` and the program's startable functions reach (§9): `main` is

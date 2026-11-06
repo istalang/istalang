@@ -49,11 +49,11 @@ path):
   `main`'s outcome, a start entry. There only codecs count, so a disposable host type, which isn't
   sendable, crosses to its own host alone or inside other values.
 - Lowering writes each derived codec's body from its form, which carries the type it takes apart
-  and builds (`lowering/boundary/encoder.ts`, `decoder.ts`, one per direction in `codecs.ts`):
+  and builds (`lowering/synthesized/boundary/encoder.ts`, `decoder.ts`, one per direction in `codecs.ts`):
   structs, enums and tuples part by part, each part through its own type's codec, a host type
   through `_encodeHandle` and `_decodeHandle`, and a literal type or union of literals through its
   base's codec, read back only as one of its literals (`_notAmong` names them otherwise). A recursive type's codecs call themselves. Code with no syntax behind it calls a codec as the checker finds it where the code
-  stands (`lowering/boundary/codec-calls.ts`); a generic extern's wrapper finds its declared types'
+  stands (`lowering/synthesized/boundary/codec-calls.ts`); a generic extern's wrapper finds its declared types'
   codecs and closes them within its instance, so a type parameter's codec is the witness its caller
   gave.
 - What is left to natives is leaf work with no program code in it (`stdlib/json/natives.ts`,
@@ -64,11 +64,11 @@ path):
 
 ## Externs a host implements
 
-A host extern is called through a compiled wrapper (`lowering/boundary/host-externs.ts`), the entry
+A host extern is called through a compiled wrapper (`lowering/synthesized/boundary/host-externs.ts`), the entry
 its instance is numbered by, so its native sees only JSON:
 
 - The wrapper encodes each argument, calls the native entry, and reads the result
-  (`boundary/inbound.ts`): a result that doesn't decode panics the instance (`_hostResult`).
+  (`synthesized/boundary/inbound.ts`): a result that doesn't decode panics the instance (`_hostResult`).
 - The native entry keeps the declared key (`purchase.chargeCard(String, Int)`), so a host binds by
   the signature it was written against, and carries its `declaredType` (the result), which the
   runtime holds the host to across deploys (`runtime/boundary/extern-signatures.ts`).
@@ -105,10 +105,10 @@ its instance is numbered by, so its native sees only JSON:
 A startable function (top-level, not generic or extern, or a constant holding a sendable lambda;
 by-value parameters that can be read, an outcome that can be written) gets a start entry, listed in
 the Definition's `starts` under its key. A start entry is the function's own body compiled once
-more with its arguments as JSON (`lowering/boundary/starts.ts`, `instanceLowering` in `functions/index.ts`): it
+more with its arguments as JSON (`lowering/synthesized/boundary/starts.ts`, `instanceLowering` in `functions/index.ts`): it
 decodes each argument, a mismatch failing the host's start, so the instance is one execution of the
 function and its traces and waits are the function's own. `starts` lists it with its outcome's
-encoder, the entry of the codec writing the declared result (`boundary/starts.ts`), which the
+encoder, the entry of the codec writing the declared result (`synthesized/boundary/starts.ts`), which the
 instance keeps for life and its segment calls with the outcome on top of the root's last frame as
 it returns, so what that frame holds is disposed after (`scheduler/segment/outcome-encoding.ts`): a
 finished instance keeps both, the outcome for `result()` and its JSON for the host. A `spawn` names

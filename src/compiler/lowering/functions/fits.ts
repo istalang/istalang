@@ -23,9 +23,9 @@ import { membersOf } from '../../checker/types/unions/unions.ts';
 import { emitCall } from '../calls/emit-call.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { tupleOf } from '../expressions/tuples.ts';
-import { SynthesizedCode } from '../synthesized-code.ts';
+import { SynthesizedCode } from '../synthesized/index.ts';
+import { convertedIntoAny } from '../synthesized/trait-objects.ts';
 import type { AsyncFit, BodyOwner } from '../tables/instances.ts';
-import { convertedIntoAny } from '../trait-objects/trait-objects.ts';
 import { rebuiltAs } from '../values/struct-values.ts';
 import { asBase, intoUnion } from '../values/unions.ts';
 

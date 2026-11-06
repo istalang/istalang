@@ -53,9 +53,10 @@ import { TypeTable } from './type-table.ts';
 
 /**
  * A function-table entry waiting to be lowered: a top-level function's instance, a nested one, an
- * extern a host implements as its native sees it (boundary/host-externs.ts), the read of an extern
- * constant, the wrapper a host starts a function through (boundary/starts.ts), or the async entry
- * of a plain function made async (functions/fits.ts).
+ * extern a host implements as its native sees it (synthesized/boundary/host-externs.ts), the read
+ * of an extern constant, the wrapper a host starts a function through
+ * (synthesized/boundary/starts.ts), or the async entry of a plain function made async
+ * (functions/fits.ts).
  */
 export type PendingEntry =
   | { readonly kind: 'instance'; readonly instance: FunctionInstance }

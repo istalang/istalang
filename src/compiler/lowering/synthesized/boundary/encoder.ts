@@ -8,24 +8,24 @@
  * of `Json`, a map of `Json` by `String`, or a `String`.
  */
 
-import type { Register } from '../../../definition/operands.ts';
-import { codecHelpers } from '../../../language/well-known/codecs.ts';
-import { wellKnown } from '../../../language/well-known/index.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
+import type { Register } from '../../../../definition/operands.ts';
+import { codecHelpers } from '../../../../language/well-known/codecs.ts';
+import { wellKnown } from '../../../../language/well-known/index.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
 import {
   type DerivedForm,
   type JsonField,
   variantTagKey,
-} from '../../checker/surface/json-form.ts';
-import { unfolded } from '../../checker/types/type/computed-types.ts';
-import type { Type, UnionType } from '../../checker/types/type/index.ts';
-import { isPrimitive } from '../../checker/types/type/primitives.ts';
-import { arrayElement, wellKnownArguments } from '../../checker/types/type/well-known.ts';
-import { baseOf } from '../../checker/types/unions/union-members.ts';
-import { closeCall } from '../calls/closed-calls.ts';
-import type { SynthesizedCode } from '../synthesized-code.ts';
-import type { TypedValue } from '../values/holdings.ts';
-import { eachMember, intoUnion } from '../values/unions.ts';
+} from '../../../checker/surface/json-form.ts';
+import { unfolded } from '../../../checker/types/type/computed-types.ts';
+import type { Type, UnionType } from '../../../checker/types/type/index.ts';
+import { isPrimitive } from '../../../checker/types/type/primitives.ts';
+import { arrayElement, wellKnownArguments } from '../../../checker/types/type/well-known.ts';
+import { baseOf } from '../../../checker/types/unions/union-members.ts';
+import { closeCall } from '../../calls/closed-calls.ts';
+import type { TypedValue } from '../../values/holdings.ts';
+import { eachMember, intoUnion } from '../../values/unions.ts';
+import type { SynthesizedCode } from '../index.ts';
 import { codecCall } from './codec-calls.ts';
 
 /** The body of `_toJson<T>`, written into `code`. */

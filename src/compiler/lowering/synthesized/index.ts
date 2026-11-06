@@ -14,26 +14,26 @@
  * one writer.
  */
 
-import type { CodeFunction } from '../../definition/functions.ts';
-import type { Argument } from '../../definition/instructions/places.ts';
-import type { FunctionId, Register } from '../../definition/operands.ts';
-import type { Value } from '../../definition/values/values.ts';
-import { resultVariants } from '../../language/well-known/variants.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { Checker } from '../checker/check.ts';
-import type { AnonymousStructType, NominalType, Type } from '../checker/types/type/index.ts';
-import type { AnchoredSpan } from '../syntax/tree/positions.ts';
-import type { ClosedCall } from './calls/closed-calls.ts';
-import { emitCall, emitFunctionCall } from './calls/emit-call.ts';
-import type { CodeContext } from './context.ts';
-import { equal } from './expressions/operators.ts';
-import { buildVariant, payloadOf, payloadOr } from './expressions/structs/variants.ts';
-import { tupleOf } from './expressions/tuples.ts';
-import { CodeWriter } from './functions/code-writer.ts';
-import type { CellRegister } from './statements/variables.ts';
-import { emitConstant } from './tables/constants.ts';
-import type { DefinitionTables, EntryHeader } from './tables/tables.ts';
-import { construct } from './values/struct-values.ts';
+import type { CodeFunction } from '../../../definition/functions.ts';
+import type { Argument } from '../../../definition/instructions/places.ts';
+import type { FunctionId, Register } from '../../../definition/operands.ts';
+import type { Value } from '../../../definition/values/values.ts';
+import { resultVariants } from '../../../language/well-known/variants.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { Checker } from '../../checker/check.ts';
+import type { AnonymousStructType, NominalType, Type } from '../../checker/types/type/index.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
+import type { ClosedCall } from '../calls/closed-calls.ts';
+import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
+import type { CodeContext } from '../context.ts';
+import { equal } from '../expressions/operators.ts';
+import { buildVariant, payloadOf, payloadOr } from '../expressions/structs/variants.ts';
+import { tupleOf } from '../expressions/tuples.ts';
+import { CodeWriter } from '../functions/code-writer.ts';
+import type { CellRegister } from '../statements/variables.ts';
+import { emitConstant } from '../tables/constants.ts';
+import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
+import { construct } from '../values/struct-values.ts';
 
 /** What a call names: an entry already numbered, or a closed call to number. */
 export type Callee = FunctionId | ClosedCall;

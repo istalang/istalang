@@ -114,7 +114,7 @@ Every program that compiles today compiles unchanged, except overloads that diff
 4. **Lowering.**
    - **Plain functions:** a plain function value made to fit (`lowering/functions/fits.ts`, `madeAsync`) stays: its entry is async and returns at once.
    - **Async values in plain slots:** an async function's value passed where `fn(A) -> Future<R>` was expected needs no wrapper, since calling an async entry gives its future in any frame.
-   - **Type keys:** the `async` flag leaves function type keys (`lowering/tables/type-table.ts`, `lowering/tables/names.ts`) and extern keys (`definition/extern-key.ts`). Entries keep theirs (`synthesized-code.ts`), since an entry is a body.
+   - **Type keys:** the `async` flag leaves function type keys (`lowering/tables/type-table.ts`, `lowering/tables/names.ts`) and extern keys (`definition/extern-key.ts`). Entries keep theirs (`synthesized/index.ts`), since an entry is a body.
 5. **Definition.** A function type's `async` flag goes from the format (`docs/arch/definition.md`), and every extern key is spelled anew. Nothing is released, so hosts re-key as after proposal 1.
 6. **The repository's sources** need no rewrite, since both spellings stay valid. Running `ista fmt` over the repository writes the formatter's spelling: about 140 `.ista` lines spell async function types today.
 7. **Tests** (fast-check, beside the code):
