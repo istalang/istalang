@@ -7,9 +7,9 @@
  */
 
 import type { ModuleId } from '../../program/program.ts';
-import type { Annotation } from '../../syntax/annotations.ts';
 import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/declarations/field-defaults.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import type { Annotation } from '../../syntax/items.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';

@@ -14,10 +14,10 @@
  * under a struct field is sugar for the same type, and is a StructType too.
  */
 
-import type { Annotatable } from '../annotations.ts';
 import type { TypeParameter } from '../declarations/index.ts';
 import type { Unary } from '../expressions/index.ts';
 import type { Literal } from '../expressions/literals/literals.ts';
+import type { Annotatable } from '../items.ts';
 import type { WildcardPattern } from '../patterns.ts';
 import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from '../tree/node.ts';
 

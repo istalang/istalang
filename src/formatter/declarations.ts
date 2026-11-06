@@ -9,7 +9,6 @@
  */
 
 import { builders } from 'prettier/doc';
-import type { Annotation } from '../compiler/syntax/annotations.ts';
 import {
   type Declaration,
   type DeclarationPart,
@@ -19,6 +18,7 @@ import {
   membersAsWritten,
   type TypeParameters,
 } from '../compiler/syntax/declarations/index.ts';
+import type { Annotation } from '../compiler/syntax/items.ts';
 import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../compiler/syntax/tree/node.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './bodies.ts';

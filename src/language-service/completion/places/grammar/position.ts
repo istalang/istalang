@@ -16,7 +16,7 @@
  *   kind of name: a label, a function to spawn, a place a call's argument passes by reference.
  */
 
-import { moduleItemWords } from '../../../../compiler/syntax/placement.ts';
+import { moduleItemWords } from '../../../../compiler/syntax/items.ts';
 import type { LabelledScope } from '../../../../compiler/syntax/statements/index.ts';
 import {
   followers,

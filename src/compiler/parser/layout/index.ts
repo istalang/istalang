@@ -35,7 +35,7 @@
 
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Span } from '../../../text/span.ts';
-import type { Annotation } from '../../syntax/annotations.ts';
+import type { Annotation } from '../../syntax/items.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Invalid } from '../../syntax/tree/node.ts';
 import type { CursorKind } from '../cursor/index.ts';

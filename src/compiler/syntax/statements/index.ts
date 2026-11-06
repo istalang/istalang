@@ -17,10 +17,10 @@
  * block's tail and what runs over a struct's fields in readings.ts.
  */
 
-import type { Annotatable } from '../annotations.ts';
 import type { FunctionDeclaration } from '../declarations/index.ts';
 import type { Expression, FieldHeader } from '../expressions/index.ts';
 import type { AssignmentOperator } from '../expressions/operators.ts';
+import type { Annotatable } from '../items.ts';
 import type { Pattern } from '../patterns.ts';
 import type { Identifier, Invalid, NodeOf } from '../tree/node.ts';
 import type { TypeNode } from '../types/index.ts';

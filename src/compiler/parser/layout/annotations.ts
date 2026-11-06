@@ -14,9 +14,9 @@
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import type { Span } from '../../../text/span.ts';
-import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { qualifiedPath } from '../../syntax/expressions/readings.ts';
+import type { Annotatable, Annotation } from '../../syntax/items.ts';
 import type { SyntaxNode } from '../../syntax/tree/index.ts';
 import type { Invalid } from '../../syntax/tree/node.ts';
 import { spanAcross, spanCovering } from '../../syntax/tree/positions.ts';

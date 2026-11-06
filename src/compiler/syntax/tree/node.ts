@@ -17,7 +17,7 @@
  * The parser reports a diagnostic for each of them.
  */
 
-import type { Annotatable } from '../annotations.ts';
+import type { Annotatable } from '../items.ts';
 import type { AnchoredSpan } from './positions.ts';
 
 export interface NodeOf<Kind extends string> {

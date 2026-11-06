@@ -6,8 +6,8 @@
 
 import type { TypeEntity } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { Annotatable, Annotation } from '../../syntax/annotations.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import type { Annotatable, Annotation } from '../../syntax/items.ts';
 import type { Statement } from '../../syntax/statements/index.ts';
 import { bodyChildrenOf, type SyntaxNode } from '../../syntax/tree/index.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';

@@ -45,7 +45,7 @@ export type DeclarationWord = (typeof declarationWords)[number];
 
 /**
  * What starts a statement (§3.4, §4, §7) other than an expression; where the item each starts may
- * stand is ../placement.ts's.
+ * stand is ../items.ts's.
  */
 export const statementWords = [
   'let',

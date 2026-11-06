@@ -22,7 +22,6 @@
 import { entryFunction } from '../../../../language/well-known/index.ts';
 import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
 import type { ModuleId } from '../../../program/program.ts';
-import type { Annotatable } from '../../../syntax/annotations.ts';
 import { fieldsFunctionOf } from '../../../syntax/declarations/field-defaults.ts';
 import {
   type AliasDeclaration,
@@ -34,6 +33,7 @@ import {
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
 import { parameterSite } from '../../../syntax/expressions/parameters.ts';
+import type { Annotatable } from '../../../syntax/items.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';

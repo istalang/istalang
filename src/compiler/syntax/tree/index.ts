@@ -24,7 +24,6 @@ import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { memo, SequenceMemo } from '../../../structures/memo.ts';
 import type { SourceText } from '../../../text/source-text.ts';
 import type { Span } from '../../../text/span.ts';
-import type { Annotation } from '../annotations.ts';
 import type {
   Declaration,
   DeclarationPart,
@@ -32,6 +31,7 @@ import type {
   Module,
 } from '../declarations/index.ts';
 import type { Expression, ExpressionPart, Lambda } from '../expressions/index.ts';
+import type { Annotation } from '../items.ts';
 import type { Pattern, PatternPart } from '../patterns.ts';
 import type { Block, Statement, StatementPart } from '../statements/index.ts';
 import type { Comment } from '../tokens/index.ts';

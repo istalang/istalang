@@ -23,7 +23,6 @@ import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
 import { type Convention, isUnnamed } from '../../../language/naming.ts';
 import { memo, SequenceMemo } from '../../../structures/memo.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import type { Annotatable } from '../../syntax/annotations.ts';
 import type { FunctionDeclaration, Module } from '../../syntax/declarations/index.ts';
 import type {
   Comprehension,
@@ -32,6 +31,7 @@ import type {
   Lambda,
   Parameter,
 } from '../../syntax/expressions/index.ts';
+import type { Annotatable } from '../../syntax/items.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import type { Block, For, VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { SyntaxNode, SyntaxTree } from '../../syntax/tree/index.ts';

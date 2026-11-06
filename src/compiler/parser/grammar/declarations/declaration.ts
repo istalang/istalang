@@ -5,7 +5,7 @@
  * The dispatch tables cover the declarations that have a word of their own (`declarationWords`,
  * syntax/tokens/grammar-words.ts). Functions and `const` are statements as well (a local `fn`, a
  * local `const`). Which item may stand where is decided once, for modules and blocks alike
- * (syntax/placement.ts, grammar/parts/blocks.ts).
+ * (syntax/items.ts, grammar/parts/blocks.ts).
  *
  * `struct` and `type` start a declaration only when a name follows: `struct{…}` is an anonymous
  * struct literal, and `type` is a keyword only before a declared name (§2). `shared` is one only

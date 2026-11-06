@@ -2,7 +2,7 @@
  * Items and the blocks of statements that hold them.
  *
  * An item of a module or of a block is parsed whole wherever it stands, then kept only where it
- * may stand (syntax/placement.ts), so a misplaced one costs one diagnostic and the code after it
+ * may stand (syntax/items.ts), so a misplaced one costs one diagnostic and the code after it
  * still parses.
  *
  * A block is the Block node each body becomes (syntax/statements/index.ts), shared by every
@@ -14,7 +14,7 @@
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
 import type { Span } from '../../../../text/span.ts';
 import type { Declaration } from '../../../syntax/declarations/index.ts';
-import { allowedInBlock, allowedInModule, type Item } from '../../../syntax/placement.ts';
+import { allowedInBlock, allowedInModule, type Item } from '../../../syntax/items.ts';
 import type { Block, Statement } from '../../../syntax/statements/index.ts';
 import type { Invalid } from '../../../syntax/tree/node.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
