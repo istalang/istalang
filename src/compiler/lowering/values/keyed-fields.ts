@@ -9,8 +9,8 @@
  *   type the read gives: the union of the fields' types, or the one type of that part.
  * - Writing converts the value into each field's own type: the checker made sure it fits each
  *   (constructs/statements/assignments.ts), and how it converts is derived here from the types the
- *   instantiation made concrete, as a `?`'s error is (expressions/control/propagate.ts), so a key
- *   the instantiation left one name converts by the same rule (`fittedInto`).
+ *   instantiation made concrete, as a `?`'s error is (constructs/expressions/control/propagate.ts),
+ *   so a key the instantiation left one name converts by the same rule (`fittedInto`).
  * - A key of one name never switches: it reads as the name does (checked-field.ts).
  */
 

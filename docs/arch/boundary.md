@@ -138,4 +138,4 @@ declarations, which the definition layer's schemas aren't.
 
 - An instance `runtime.isolate` or `testing.spawnCrashingEveryAwait` spawns has no encoder: their
   natives are given the function to spawn, not the codec of what it gives, so a host can't read
-  its outcome as JSON. A `spawn` names its encoder (`lowering/expressions/calls.ts`).
+  its outcome as JSON. A `spawn` names its encoder (`lowering/constructs/expressions/calls.ts`).

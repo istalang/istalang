@@ -1,8 +1,8 @@
 /**
  * Where a value of one type sits in a value of another (§2, §3.5), as an instantiation made both:
  * the one derivation every way in and out of a union or `any` type reads (unions.ts,
- * ../parts/patterns.ts, optionals.ts, ../trait-objects/), so a layout an instantiation changed is
- * never patched afterwards.
+ * ../constructs/parts/patterns.ts, optionals.ts, ../trait-objects/), so a layout an instantiation
+ * changed is never patched afterwards.
  *
  * - A union's value is the variant of its enum holding a member (tables/type-table.ts): the
  *   member's own, its literal's base, whose value a literal is, or the `any` member that took it

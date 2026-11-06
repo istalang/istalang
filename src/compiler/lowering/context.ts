@@ -27,10 +27,10 @@ import type { Block, Statement } from '../syntax/statements/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../syntax/tree/positions.ts';
 import type { ClosedCall } from './calls/closed-calls.ts';
+import type { HoldScopes } from './constructs/statements/holds.ts';
+import type { LoopStack } from './constructs/statements/loops.ts';
+import type { VariableRegisters } from './constructs/statements/variables.ts';
 import type { CodeWriter } from './functions/code-writer.ts';
-import type { HoldScopes } from './statements/holds.ts';
-import type { LoopStack } from './statements/loops.ts';
-import type { VariableRegisters } from './statements/variables.ts';
 import type { DefinitionTables } from './tables/tables.ts';
 import type { OptionalChains } from './values/optionals.ts';
 

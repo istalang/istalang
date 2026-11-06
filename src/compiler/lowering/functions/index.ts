@@ -15,7 +15,7 @@
  *   caller's reference, and a captured cell's register the cell its closure carries.
  * - A parameter with a pattern (§3.3) takes its argument whole, in a register of its own, named
  *   only by its `as` name; once the frame is laid out, the argument is taken apart into the
- *   pattern's names as a declaration's targets take its value (statements/variables.ts).
+ *   pattern's names as a declaration's targets take its value (constructs/statements/variables.ts).
  * - A lambda or local function (§3.14) answers to its own name through the closure it runs,
  *   taken once at its entry (`currentClosure`).
  * - A default's entry takes the parameters before its own, and gives its default (§3.1, §3.3);
@@ -55,13 +55,17 @@ import type { Identifier, Invalid, NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { type ClosedCall, closeCallWithin } from '../calls/closed-calls.ts';
 import { packElements } from '../calls/packs.ts';
+import { expressionHandlers } from '../constructs/expressions/expressions.ts';
+import { tupleOf } from '../constructs/expressions/tuples.ts';
+import { HoldScopes } from '../constructs/statements/holds.ts';
+import { LoopStack } from '../constructs/statements/loops.ts';
+import { lowerBlock, lowerBody, lowerStatement } from '../constructs/statements/statements.ts';
+import {
+  bindTargets,
+  declareVariable,
+  VariableRegisters,
+} from '../constructs/statements/variables.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
-import { expressionHandlers } from '../expressions/expressions.ts';
-import { tupleOf } from '../expressions/tuples.ts';
-import { HoldScopes } from '../statements/holds.ts';
-import { LoopStack } from '../statements/loops.ts';
-import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
-import { bindTargets, declareVariable, VariableRegisters } from '../statements/variables.ts';
 import { emitConstant } from '../tables/constants.ts';
 import {
   type BodyOwner,

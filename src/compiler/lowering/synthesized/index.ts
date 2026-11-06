@@ -25,12 +25,12 @@ import type { AnonymousStructType, NominalType, Type } from '../../checker/types
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { ClosedCall } from '../calls/closed-calls.ts';
 import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
+import { equal } from '../constructs/expressions/operators.ts';
+import { buildVariant, payloadOf, payloadOr } from '../constructs/expressions/structs/variants.ts';
+import { tupleOf } from '../constructs/expressions/tuples.ts';
+import type { CellRegister } from '../constructs/statements/variables.ts';
 import type { CodeContext } from '../context.ts';
-import { equal } from '../expressions/operators.ts';
-import { buildVariant, payloadOf, payloadOr } from '../expressions/structs/variants.ts';
-import { tupleOf } from '../expressions/tuples.ts';
 import { CodeWriter } from '../functions/code-writer.ts';
-import type { CellRegister } from '../statements/variables.ts';
 import { emitConstant } from '../tables/constants.ts';
 import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 import { construct } from '../values/struct-values.ts';

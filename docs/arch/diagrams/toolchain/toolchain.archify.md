@@ -135,7 +135,7 @@ The CLI picks every implementation at its composition root: `memoryStore` or `di
 | Binder handlers | node kind | `binder/constructs/`: `declarations.ts`, `expressions.ts`, `statements.ts`, `patterns.ts`, `types.ts` |
 | Checker handlers | node kind (six tables) | `checker/constructs/expressions/expressions.ts`, `statements/`, `declarations/`, `types/written/resolve-type.ts` |
 | Flow constructs | node kind | `checker/rules/flow/forward.ts` |
-| Lowering handlers | node kind | `lowering/expressions/expressions.ts`, `lowering/statements/statements.ts` |
+| Lowering handlers | node kind | `lowering/constructs/expressions/expressions.ts`, `lowering/constructs/statements/statements.ts` |
 | Interpreter | instruction kind | `runtime/interpreter/instructions.ts` |
 | Completion | place kind and subject kind | `language-service/completion/` |
 | LSP providers, CLI commands, std natives | request, command, extern key | `lsp/providers/`, `cli/commands/`, `stdlib/natives.ts` |

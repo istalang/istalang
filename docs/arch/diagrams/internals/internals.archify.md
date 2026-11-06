@@ -24,8 +24,8 @@ They meet on **node identity**. The binder memoizes one `VariableEntity` per dec
 @source passes title="Passes and PassTable" path=src/compiler/checker/contexts/passes.ts lines=27:198
 @source targets title="declareTargets" path=src/compiler/checker/constructs/patterns/targets.ts lines=15:26
 @source bodychecker title="BodyChecker tables and #checkedAt" path=src/compiler/checker/wiring/body/body-checker.ts lines=91:400
-@source lowervars title="Lowering: registers by declaring Identifier" path=src/compiler/lowering/statements/variables.ts lines=161:206
-@source lowernames title="Lowering: a name read" path=src/compiler/lowering/expressions/access/names.ts lines=31:58
+@source lowervars title="Lowering: registers by declaring Identifier" path=src/compiler/lowering/constructs/statements/variables.ts lines=161:206
+@source lowernames title="Lowering: a name read" path=src/compiler/lowering/constructs/expressions/access/names.ts lines=31:58
 @source passbody title="Lowering: reading a field pass's body" path=src/compiler/lowering/functions/frames.ts lines=97:116
 @source denotations title="Hover: a variable's declared type" path=src/compiler/checker/lookup/denotations.ts lines=346:366
 
