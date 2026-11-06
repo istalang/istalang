@@ -209,21 +209,21 @@ function ruleShortfall(
   rule: EntryRule,
   meets: Meets,
 ): string | undefined {
-  const field = `field '${name}: ${typeText(fieldType)}'`;
+  const field = () => `field '${name}: ${typeText(fieldType)}'`;
   if (rule.kind === 'type') {
-    return sameType(fieldType, rule.type) ? undefined : `${field} isn't ${typeText(rule.type)}`;
+    return sameType(fieldType, rule.type) ? undefined : `${field()} isn't ${typeText(rule.type)}`;
   }
   const rules = checker.typeRules;
   const unmet = rule.traits.find(
     (trait) => !meets(fieldType, constraintOn(trait, fieldType, rules)),
   );
   if (unmet !== undefined) {
-    return `${field} doesn't meet ${unmet.trait.name.text}`;
+    return `${field()} doesn't meet ${unmet.trait.name.text}`;
   }
   for (const struct of rule.structs) {
     const shortfall = structShortfall(checker, fieldType, struct, meets);
     if (shortfall !== undefined) {
-      return `in ${field}, ${shortfall}`;
+      return `in ${field()}, ${shortfall}`;
     }
   }
   return undefined;

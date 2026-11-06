@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-29
-last_updated: 2026-10-29
+last_updated: 2026-11-06
 tags: [plan, m7, p5, incremental, checker, syntax]
 ---
 
@@ -33,7 +33,7 @@ The modules are project test modules over the shipped std. Each other open docum
   - the pending constraint checks of `TypeParameters.constrainLater`;
   - `Annotations`' checked bodies;
   - `Annotations.ofField`'s memo, which checks the type of whatever instance asked first, an order dependence.
-- **Conformance stays uncached.** It depends on its site (`toHost`), reports there, and uses coinductive state, so it runs inside the entry that asks.
+- **Conformance stays outside entries.** It depends on its site (`toHost`), reports there, and uses coinductive state, so it runs inside the entry that asks. One search judges each goal once (`resolution/witness-outcomes.ts` `SearchGoals`); what it keeps lives as long as the search, so nothing is read across entries.
 
 **What an entry records, while it computes:**
 - **Its reads**, each with the value it saw:

@@ -16,7 +16,8 @@
  *   union, any other trait's is met through its members (union-traits.ts, §6).
  * - Struct-constraint field checks (shortfalls.ts) and union-member checks (`throughMembers`) are
  *   coinductive on the active search stack for concrete types: a `(struct, struct constraint)` or
- *   `(union, constraint)` goal already active counts as met (`silentMeets`).
+ *   `(union, constraint)` goal already active counts as met (`silentMeets`). A search judges each
+ *   goal once (witness-outcomes.ts `SearchGoals`), finding a failure again where its site reports.
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
  * - The required result is what the call is expected to give, so a type parameter no argument
@@ -52,10 +53,12 @@ import {
 } from './shortfalls.ts';
 import { type MembersMeeting, membersCall, membersShortfall } from './union-traits.ts';
 import {
+  boundReached,
   type ConformanceOutcome,
   deeper,
   endlessAt,
   type Failure,
+  goalKey,
   isFailure,
   maximumDepth,
   meetsWith,
@@ -132,7 +135,10 @@ function witnessesOf(
     const met: (readonly ResolvedCall[])[] = [];
     for (const constraint of site.checker.constraintsOf(parameter)) {
       const mapped = substituteConstraint(constraint, substitution, site.checker.typeRules);
-      const witnessesOfConstraint = conform({ site, type: argument, constraint: mapped }, search);
+      const meeting = { site, type: argument, constraint: mapped };
+      const witnessesOfConstraint = search.goals.witnessesReported(meetingKey(meeting), () =>
+        conform(meeting, search),
+      );
       if (isFailure(witnessesOfConstraint)) {
         return witnessesOfConstraint;
       }
@@ -234,11 +240,17 @@ interface Meeting {
   readonly onValues?: boolean;
 }
 
+/** The goal `meeting` is, as a search keeps it (`SearchGoals`). */
+function meetingKey({ site, type, constraint }: Meeting): string {
+  return goalKey(site.checker.typeKeys, type, constraint);
+}
+
 /** How a search judges traits and active goals (`Meets`, shortfalls.ts) without reporting unmet ones. */
 export function silentMeets(site: UseSite, search: Search = startSearch()): Meets {
-  return meetsWith(site, search, (type, constraint) =>
-    conform({ site: silent(site), type, constraint }, deeper(search)),
-  );
+  return meetsWith(site, search, (type, constraint) => {
+    const meeting = { site: silent(site), type, constraint };
+    return search.goals.witnesses(meetingKey(meeting), () => conform(meeting, deeper(search)));
+  });
 }
 
 /** Reports that the type lacks `missing` to meet the constraint. */
@@ -307,7 +319,7 @@ function functionWitnesses(
   for (const declaration of requiredFunctions(constraint.trait)) {
     const required = { declaration, substitution };
     const witness: WitnessOutcome =
-      search.depth < maximumDepth ? witnessOf(site, type, required, search) : { kind: 'endless' };
+      search.depth < maximumDepth ? witnessOf(site, type, required, search) : boundReached(search);
     switch (witness.kind) {
       case 'call':
         witnesses.push(witness.call);
