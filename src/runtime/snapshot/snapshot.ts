@@ -32,9 +32,9 @@ import { contentHashText } from '../../definition/formats/codec.ts';
 import { defineFormat } from '../../definition/formats/format.ts';
 import { count, functionId, objectId } from '../../definition/operands.ts';
 import { integer, value } from '../../definition/values/values.ts';
-import { seedText } from '../random.ts';
 import { referencedObjects } from './holdings.ts';
 import { heapObject } from './objects.ts';
+import { seedText } from './random.ts';
 
 /** The call a new instance runs: an entry, a closure's captures, and its arguments (§9). */
 const instanceCall = z.strictObject({

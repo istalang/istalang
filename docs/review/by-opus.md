@@ -23,7 +23,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
    - `const e: Array<fn(int) -> int> = [fn(x): x + 1]` checks clean.
 
    D84 and D102 are instances of this. Fix: give the expression table an `accepts` facet, exhaustive per kind and recursing through tuple, array, map, block and `if`. Check an argument against its parameter once the candidates agree on that parameter's type. This also removes the overloads→closures and overloads→expressions imports (D135). *If unfixed:* every literal form repeats the bug, and users must annotate where the language says they needn't.
-2. **`NativeContext` is a 16-member context every native receives** (ISP, OCP). It lives in `runtime/natives.ts` and reaches everything from `add(int, int)` up. Each runtime capability is wired through `natives.ts`, `scheduler/native-calls.ts` and `host.ts`, and M4 adds about ten std modules plus the Logger seam. Fix: split it into capability interfaces that a natives module declares, assembled at the composition root. Land these with it:
+2. **`NativeContext` is a 16-member context every native receives** (ISP, OCP). It lives in `runtime/natives.ts` and reaches everything from `add(int, int)` up. Each runtime capability is wired through `natives.ts`, `scheduler/segment/native-calls.ts` and `host/index.ts`, and M4 adds about ten std modules plus the Logger seam. Fix: split it into capability interfaces that a natives module declares, assembled at the composition root. Land these with it:
    - D79: the key helper copied in four files;
    - D128: static names spelled in many places;
    - the parse→`Result` helper duplicated in `prelude/text-forms.ts` and `time/natives.ts`.

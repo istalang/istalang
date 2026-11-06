@@ -7,17 +7,17 @@
  * - The end is read from the store, where every instance commits, so an outcome is copied from one
  *   snapshot into another and never passes through a host (§9). A test's runtime resolves it here
  *   too, from the store its world keeps; the world answers only a test's own waits (§10).
- * - Which instances an instance waits for this way is what a host reads (`watching`, wake.ts) to
+ * - Which instances an instance waits for this way is what a host reads (`watching`, ../wake.ts) to
  *   know whom to wake once one of them has ended.
  */
 
-import type { TypeId } from '../../definition/operands.ts';
-import type { TypeDefinition } from '../../definition/tables/types.ts';
-import { errorOf, okOf } from '../../definition/values/declared-values.ts';
-import type { Value } from '../../definition/values/values.ts';
-import { memo } from '../../structures/memo.ts';
-import { type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
-import type { InstanceStore } from '../store.ts';
+import type { TypeId } from '../../../definition/operands.ts';
+import type { TypeDefinition } from '../../../definition/tables/types.ts';
+import { errorOf, okOf } from '../../../definition/values/declared-values.ts';
+import type { Value } from '../../../definition/values/values.ts';
+import { memo } from '../../../structures/memo.ts';
+import { type Snapshot, snapshotFormat } from '../../snapshot/snapshot.ts';
+import type { InstanceStore } from '../../store.ts';
 
 /** The `code` of the `Error` a wait on an instance gets for its panic (§9). */
 const panicCode = 'panic';

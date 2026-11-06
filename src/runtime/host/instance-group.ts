@@ -9,7 +9,7 @@
  * spawned come first, so a parent's children run before a wait on the parent wakes its watcher.
  */
 
-import { type Advanced, hasEnded, type InstanceState } from './instance-state.ts';
+import { type Advanced, hasEnded, type InstanceState } from '../instance-state.ts';
 
 export class InstanceGroup {
   readonly #states = new Map<string, InstanceState>();

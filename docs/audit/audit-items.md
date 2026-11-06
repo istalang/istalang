@@ -239,7 +239,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - However, `lifetimes/holders.ts` (`holdsOf`, `valuesOf`), `lifetimes/orphans.ts` (`orphansFrom`), and `scheduler/instance/heap.ts` (`#noteHoldings`) check only `object.kind === 'execution'`, ignoring `'answer'`.
 - **Two different patterns for exhaustive `HeapObject['kind']` tables (`src/runtime/snapshot/check.ts` vs. `holdings.ts` & `lifetimes/disposal.ts`, D165):**
   - `snapshot/check.ts` uses `Handlers` from `src/structures/kind-table.ts`, while `snapshot/holdings.ts` and `lifetimes/disposal.ts` hand-roll mapped types with unsafe `as` casts in `entryOf` / `stateEntry`, and `FutureState` is defined in both `scheduler/instance/futures.ts` and `snapshot/holdings.ts`.
-- **Ambiguous `weakRef` with `target: undefined` & mixed id/handle API on `WeakSide` (`src/runtime/snapshot/objects.ts`, `scheduler/instance/weak-side.ts`, `scheduler/native-calls.ts`, D115, D116):**
+- **Ambiguous `weakRef` with `target: undefined` & mixed id/handle API on `WeakSide` (`src/runtime/snapshot/objects.ts`, `scheduler/instance/weak-side.ts`, `scheduler/segment/native-calls.ts`, D115, D116):**
   - A `weakRef` with `target === undefined` represents both a disposed referent (`w.disposed()` resolves immediately) and a returned async call (`worker.disposing()` never resolves); the persisted state cannot distinguish them.
   - `WeakSide` takes/returns object IDs (`number`) on `reference`, `target`, `disposed`, and `onReturned`, but `Value` handles on `watch` and `whenDisposed`, forcing `nativeWeakSideOf` to adapt two methods and forward two.
 
@@ -247,8 +247,8 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 - **Same-instance mock calls bypass `arriving`, breaking resource disposal in tests (`src/runtime/scheduler/testing/mocks.ts`, D182):**
   - When a child instance calls a mock held by a parent test (`relayCall`), the result passes through `arriving(instance, given.value)`, wrapping any disposable host extern (`isResourceType`) into a heap `resource` object so its `dispose` mock runs when dropped.
   - When code in the test's *own* instance calls a mock held by the test's own instance (`mockedCall`), `arriving` is never called: `testing.handle<T>()` stays a raw `{ kind: 'extern' }` value and is never disposed.
-- **Uncached snapshot decoding in `storedEnds` vs. cached `#snapshotOf` in `World` (`src/runtime/scheduler/instance-ends.ts` vs. `testing/world/index.ts`, D184, D212):**
-  - `World.#snapshotOf` caches `{ text, snapshot }` per instance so unchanged snapshots are parsed once, whereas `storedEnds` (`scheduler/instance-ends.ts`) calls `snapshotFormat.read(text)` (full Zod validation + reference check) on every watched instance at the start of every segment.
+- **Uncached snapshot decoding in `storedEnds` vs. cached `#snapshotOf` in `World` (`src/runtime/scheduler/instance/instance-ends.ts` vs. `testing/world/index.ts`, D184, D212):**
+  - `World.#snapshotOf` caches `{ text, snapshot }` per instance so unchanged snapshots are parsed once, whereas `storedEnds` (`scheduler/instance/instance-ends.ts`) calls `snapshotFormat.read(text)` (full Zod validation + reference check) on every watched instance at the start of every segment.
   - `World` also queries `snapshot.objects` inline in three places (`#withdrawAnswersTo` twice and `#watchHolds`) with inconsistent status checks.
 - **Bag-of-optionals `AdvanceFirst` & incomplete `replayOf` (`src/runtime/scheduler/wake.ts`, D199):**
   - `AdvanceFirst` has three mutually exclusive optional fields (`arrival`, `answering`, `withdrawn`) instead of a discriminated union, and `replayOf` only preserves `arrival` on panic.
@@ -256,7 +256,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - Instead of a null-object `TestWorld` for production runtimes, the scheduler checks `loaded.world !== undefined` across three modules.
 - **Upward type-imports in `runtime/natives.ts` (`src/runtime/natives.ts`, D179) & duplicate `namedType` in `native-calls.ts` (Q17):**
   - `runtime/natives.ts` (imported by every `stdlib/` module) type-imports `TestWatch` from `scheduler/instance/futures.ts` and `Inspection` from `scheduler/inspect.ts`.
-  - `scheduler/native-calls.ts` defines a private `namedType(type: TypeReference): TypeId | undefined` beside `definition/values/declared-values.ts`'s throwing `namedType`.
+  - `scheduler/segment/native-calls.ts` defines a private `namedType(type: TypeReference): TypeId | undefined` beside `definition/values/declared-values.ts`'s throwing `namedType`.
 - **Unbounded call-frame stack in the VM (`src/runtime/scheduler/segment/index.ts`, `limits.ts`, D155):**
   - Because `SegmentRunner.call` allocates frames on the heap (`execution.frames` and `#runStack`), unbounded recursion (`fn loop(): loop()`) grows the array until V8 crashes with out-of-memory instead of throwing a `Panic` at a maximum frame depth in `limits.ts` (the way `requireDepth` bounds value nesting at `maximumDepth`).
 - **Spawned instance outcomes lack JSON encoding for host inspection (`src/runtime/boundary/outbound.ts`, `compiler/lowering/constructs/expressions/calls.ts`, B4):**

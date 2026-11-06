@@ -22,7 +22,7 @@ import { fieldValueOf } from '../../definition/values/declared-values.ts';
 import { elementsOf, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Natives } from '../natives.ts';
-import { seedFrom } from '../random.ts';
+import { seedFrom } from '../snapshot/random.ts';
 import type { InstanceCall } from '../snapshot/snapshot.ts';
 import { type Ended, type Failed, World } from './world/index.ts';
 

@@ -8,7 +8,7 @@
  *   its externs are recorded, so deploying it again writes nothing.
  * - An instance lives in the store between calls; the options it starts with (`crashEveryAwait`,
  *   §10) hold for its whole life. Starting or waking one advances it as far as it goes without
- *   waiting, committing every segment (scheduler/wake.ts), and says where it stands: waiting
+ *   waiting, committing every segment (../scheduler/wake.ts), and says where it stands: waiting
  *   until its next timer, finished with its outcome, or panicked with a message and a trace
  *   (§3.12), and which instances it spawned (§9), which the host wakes like any other. The host
  *   decides when to wake each again (settle.ts drives that loop for a host that only waits); the
@@ -18,27 +18,26 @@
  * - Waking reads the instance's snapshot and the Definition it names from the store, so a fresh
  *   runtime on the same store continues where an earlier one committed (§5).
  * - Values cross as JSON (§9), so a host never reads the runtime's value shapes: the externs it
- *   implements take and give JSON (boundary/host-natives.ts), it starts a function by its key with
+ *   implements take and give JSON (../boundary/host-natives.ts), it starts a function by its key with
  *   JSON arguments and reads the outcome as JSON (`outcome`) or its text (`outcomeText`), and it
  *   fills a future it named with JSON.
  *   JSON that doesn't fit what it was given for refuses the host's call, and nothing commits.
  */
 
-import { type Definition, definitionFormat } from '../definition/definition.ts';
-import type { FunctionId } from '../definition/operands.ts';
-import { JsonError, jsonOfPlain, jsonTypeOf } from '../definition/values/json-values.ts';
-import type { Value } from '../definition/values/values.ts';
-import { memo } from '../structures/memo.ts';
-import { recordExternSignatures } from './boundary/extern-signatures.ts';
-import { type HostExterns, hostNatives } from './boundary/host-natives.ts';
-import { outcomeJson, outcomeText } from './boundary/outbound.ts';
-import type { Advanced, Finished, Inspection, StartOptions } from './instance-state.ts';
-import type { Natives } from './natives.ts';
-import { seedTextOf } from './random.ts';
-import { Refusal } from './refusal.ts';
-import { inspection } from './scheduler/inspect.ts';
-import { spawnedSeparator } from './scheduler/instance-names.ts';
-import { type LoadedDefinition, loadDefinition } from './scheduler/loaded-definition.ts';
+import { type Definition, definitionFormat } from '../../definition/definition.ts';
+import type { FunctionId } from '../../definition/operands.ts';
+import { JsonError, jsonOfPlain, jsonTypeOf } from '../../definition/values/json-values.ts';
+import type { Value } from '../../definition/values/values.ts';
+import { memo } from '../../structures/memo.ts';
+import { recordExternSignatures } from '../boundary/extern-signatures.ts';
+import { type HostExterns, hostNatives } from '../boundary/host-natives.ts';
+import { outcomeJson, outcomeText } from '../boundary/outbound.ts';
+import type { Advanced, Finished, Inspection, StartOptions } from '../instance-state.ts';
+import type { Natives } from '../natives.ts';
+import { Refusal } from '../refusal.ts';
+import { inspection } from '../scheduler/inspect.ts';
+import { spawnedSeparator } from '../scheduler/instance/instance-names.ts';
+import { type LoadedDefinition, loadDefinition } from '../scheduler/loaded-definition.ts';
 import {
   type AdvanceFirst,
   advance,
@@ -46,10 +45,11 @@ import {
   stateOf,
   terminate,
   unstarted,
-} from './scheduler/wake.ts';
-import { checkSnapshot } from './snapshot/check.ts';
-import { type PanickedSnapshot, type Snapshot, snapshotFormat } from './snapshot/snapshot.ts';
-import type { InstanceStore } from './store.ts';
+} from '../scheduler/wake.ts';
+import { checkSnapshot } from '../snapshot/check.ts';
+import { seedTextOf } from '../snapshot/random.ts';
+import { type PanickedSnapshot, type Snapshot, snapshotFormat } from '../snapshot/snapshot.ts';
+import type { InstanceStore } from '../store.ts';
 
 export interface RuntimeSeams {
   readonly natives: Natives;
@@ -57,9 +57,9 @@ export interface RuntimeSeams {
   /** Milliseconds since the Unix epoch: when each segment starts (§5). */
   readonly now: () => bigint;
   /**
-   * A new secret seed, `seedBytes` random bytes (random.ts), for each instance a host starts:
-   * the source of its random values (§3.8 `random`). An instance it spawns is seeded from it in
-   * turn. A seed of another length refuses the start.
+   * A new secret seed, `seedBytes` random bytes (../snapshot/random.ts), for each instance a host
+   * starts: the source of its random values (§3.8 `random`). An instance it spawns is seeded from
+   * it in turn. A seed of another length refuses the start.
    */
   readonly seed: () => Uint8Array;
   /**

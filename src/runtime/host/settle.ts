@@ -13,8 +13,8 @@
  * what both ask of the group is instance-group.ts's.
  */
 
+import type { Advanced, InstanceState } from '../instance-state.ts';
 import { InstanceGroup } from './instance-group.ts';
-import type { Advanced, InstanceState } from './instance-state.ts';
 
 /** An instance its host advanced while the group waited, by filling a future it waits on (§9). */
 export interface Arrived {

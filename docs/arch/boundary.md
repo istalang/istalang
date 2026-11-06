@@ -117,7 +117,7 @@ in a generic body against its constraints, so its calls count in the body's expa
 as JavaScript values (`outcome`) like everything else it exchanges, or as text (`outcomeText`),
 which `ista run` prints (`runtime/boundary/outbound.ts`).
 
-The host API (`runtime/host.ts`) starts by key with JSON arguments (`start`), fills a named future
+The host API (`runtime/host/index.ts`) starts by key with JSON arguments (`start`), fills a named future
 (`fill`), inspects, and operates panicked instances: `retry` re-runs the failed segment from the
 last commit at the time it first started, `terminate` ends it from its last commit: its root stops, so what
 it held is disposed as any release disposes it, a disposed call's `disposing()` cleanup included,

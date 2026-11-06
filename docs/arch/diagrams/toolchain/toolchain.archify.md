@@ -16,7 +16,7 @@ Istalang is one layered package in which each phase is a memoized function of an
 @source bind title="bindProgram and per-module binding" path=src/compiler/binder/module/bind-module.ts lines=40:54
 @source link title="Linker: imports, prelude, overloads" path=src/compiler/binder/link/index.ts lines=65:105
 @source lower title="lower: start entries and the worklist" path=src/compiler/lowering/lower.ts lines=46:92
-@source host title="Runtime host API and seams" path=src/runtime/host.ts lines=129:200
+@source host title="Runtime host API and seams" path=src/runtime/host/index.ts lines=129:200
 @source wake title="advance: segment, commit, repeat" path=src/runtime/scheduler/wake.ts lines=117:166
 @source run title="ista run" path=src/cli/commands/run.ts lines=116:140
 @source memo title="memo over immutable inputs" path=src/structures/memo.ts lines=1:50

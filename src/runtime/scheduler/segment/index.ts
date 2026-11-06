@@ -49,12 +49,12 @@ import type { HeapObject } from '../../snapshot/objects.ts';
 import type { InstanceCall } from '../../snapshot/snapshot.ts';
 import type { LiveExecution } from '../instance/heap.ts';
 import { type Instance, topFrame } from '../instance/index.ts';
-import { NativeCalls } from '../native-calls.ts';
 import { startAnswer } from '../testing/mocks.ts';
 import type { MockCall } from '../testing/test-world.ts';
 import { type Caller, returnedValue, startCall } from './calls.ts';
 import { DisposalRuns } from './disposal-runs.ts';
 import { panicOf, requireDepth } from './limits.ts';
+import { NativeCalls } from './native-calls.ts';
 import { type Outcome, OutcomeEncoding } from './outcome-encoding.ts';
 import { RunStack } from './run-stack.ts';
 

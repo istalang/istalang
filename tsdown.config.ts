@@ -22,7 +22,7 @@ export default defineConfig([
   {
     entry: [
       'src/cli/main.ts',
-      'src/runtime/host.ts',
+      'src/runtime/host/index.ts',
       'src/stdlib/natives.ts',
       'src/formatter/format.ts',
     ],

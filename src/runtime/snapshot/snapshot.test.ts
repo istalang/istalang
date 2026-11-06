@@ -24,9 +24,9 @@ import {
 import { FormatError } from '../../definition/formats/format.ts';
 import { nested, valueArbitrary } from '../../definition/values/values.test-kit.ts';
 import { maximumDepth, type Value } from '../../definition/values/values.ts';
-import { seedBytes, seedTextOf } from '../random.ts';
 import { testSeed } from '../runtime.test-kit.ts';
 import type { HeapObject } from './objects.ts';
+import { seedBytes, seedTextOf } from './random.ts';
 import { type Snapshot, snapshotFormat } from './snapshot.ts';
 
 const { revertible, duration } = broadcastTypes;

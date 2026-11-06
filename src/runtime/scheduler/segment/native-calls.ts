@@ -10,13 +10,18 @@
  * resources through the instance's heap (§7).
  */
 
-import type { FunctionId } from '../../definition/operands.ts';
-import type { FunctionDefinition } from '../../definition/tables/functions.ts';
-import { namedTypeOf } from '../../definition/values/declared-values.ts';
-import { instanceHandle } from '../../definition/values/instance-handles.ts';
-import { closureOf, handleTarget, handleTo, type Value } from '../../definition/values/values.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import { passedValues, writeReference } from '../interpreter/registers.ts';
+import type { FunctionId } from '../../../definition/operands.ts';
+import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
+import { namedTypeOf } from '../../../definition/values/declared-values.ts';
+import { instanceHandle } from '../../../definition/values/instance-handles.ts';
+import {
+  closureOf,
+  handleTarget,
+  handleTo,
+  type Value,
+} from '../../../definition/values/values.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import { passedValues, writeReference } from '../../interpreter/registers.ts';
 import type {
   FullNativeContext,
   Native,
@@ -28,12 +33,12 @@ import type {
   NativeResources,
   NativeSlots,
   NativeTesting,
-} from '../natives.ts';
-import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
-import type { Futures } from './instance/futures.ts';
-import { type Heap, handleObject } from './instance/heap.ts';
-import type { Instance } from './instance/index.ts';
-import type { Slots } from './instance/slots.ts';
+} from '../../natives.ts';
+import { isReference, type Reference, type RegisterContents } from '../../snapshot/objects.ts';
+import type { Futures } from '../instance/futures.ts';
+import { type Heap, handleObject } from '../instance/heap.ts';
+import type { Instance } from '../instance/index.ts';
+import type { Slots } from '../instance/slots.ts';
 
 export class NativeCalls {
   readonly #instance: Instance;

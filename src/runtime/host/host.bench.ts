@@ -9,8 +9,8 @@
  */
 
 import { test as it } from 'vitest';
-import { compiledText } from '../compiler/compile.test-kit.ts';
-import { testRuntime } from './runtime.test-kit.ts';
+import { compiledText } from '../../compiler/compile.test-kit.ts';
+import { testRuntime } from '../runtime.test-kit.ts';
 
 const text = compiledText(`
 import * as strings from 'strings'

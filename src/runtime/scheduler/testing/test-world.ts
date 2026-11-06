@@ -46,7 +46,8 @@ export interface TestWorld {
   readonly answer: (holder: string, call: MockCall) => MockAnswer;
   /**
    * What a test's pending wait on `instance` resolves with once `until` holds; undefined until
-   * then. A wait on an instance's end is the scheduler's, as anywhere else (../instance-ends.ts).
+   * then. A wait on an instance's end is the scheduler's, as anywhere else
+   * (../instance/instance-ends.ts).
    */
   readonly watched: (instance: string, until: TestWatch) => Value | undefined;
   /** Panics unless the instance runs inside `ista test` (§10). */

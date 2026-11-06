@@ -6,12 +6,12 @@
 import type { Value } from '../definition/values/values.ts';
 import { stdNatives } from '../stdlib/natives.ts';
 import type { HostExterns } from './boundary/host-natives.ts';
-import { createRuntime, type DeployedProgram, type Runtime } from './host.ts';
+import { createRuntime, type DeployedProgram, type Runtime } from './host/index.ts';
+import { type Settled, settle } from './host/settle.ts';
 import type { Advanced, StartOptions } from './instance-state.ts';
 import type { FullNativeContext, Natives } from './natives.ts';
-import { seedBytes } from './random.ts';
 import { Refusal } from './refusal.ts';
-import { type Settled, settle } from './settle.ts';
+import { seedBytes } from './snapshot/random.ts';
 import { type InstanceStore, memoryStore } from './store.ts';
 
 /** A clock that reads `at` until a test moves it. */

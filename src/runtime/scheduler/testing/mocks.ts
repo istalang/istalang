@@ -2,9 +2,9 @@
  * Mocks as the scheduler runs them (§10): which mock a call reaches, what each call records, and
  * the calls that reach a mock another instance holds.
  *
- * - A call reaches the newest mock held for its target: its instance's own, or else the one of
- *   the nearest instance it descends from that holds one (../instance-names.ts), which only a test
- *   world has (test-world.ts). Releasing a mock therefore brings back the one before it. Every
+ * - A call reaches the newest mock held for its target: its instance's own, or else the one of the
+ *   nearest instance it descends from that holds one (../instance/instance-names.ts), which only a
+ *   test world has (test-world.ts). Releasing a mock therefore brings back the one before it. Every
  *   call path asks `mockedCall` (segment/calls.ts): a written call, a function value's, a
  *   disposal's. Starting an instance isn't a call, so an instance started or spawned with a mocked
  *   function runs it.
@@ -36,8 +36,8 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { Panic } from '../../natives.ts';
 import type { LiveExecution, LiveObjectOf } from '../instance/heap.ts';
 import type { Instance } from '../instance/index.ts';
-import { ancestorsOf } from '../instance-names.ts';
-import type { NativeCalls } from '../native-calls.ts';
+import { ancestorsOf } from '../instance/instance-names.ts';
+import type { NativeCalls } from '../segment/native-calls.ts';
 import type { MockCall } from './test-world.ts';
 
 /** Of the mocks held for one target, the one a call reaches: the newest. */

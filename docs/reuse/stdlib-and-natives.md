@@ -53,5 +53,5 @@ tags: [reuse, stdlib, natives, ranges, positions, time, decimal]
 ### Add a native capability
 
 1. Define `NativeXxx` and `WithXxx` in `src/runtime/natives.ts` and add `WithXxx` to `NativeCapabilities`.
-2. Build and wire the capability for each segment in `capabilitiesOf` (`src/runtime/scheduler/native-calls.ts`).
+2. Build and wire the capability for each segment in `capabilitiesOf` (`src/runtime/scheduler/segment/native-calls.ts`).
 3. Type the natives that use it as `Native<NativeContext & WithXxx>` / `Natives<NativeContext & WithXxx>`.

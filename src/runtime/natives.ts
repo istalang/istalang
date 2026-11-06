@@ -139,7 +139,7 @@ export interface NativeTesting {
   readonly handle: (type: TypeId) => Value;
 }
 
-/** The running instance's random source (§3.8 `random`, random.ts). */
+/** The running instance's random source (§3.8 `random`, snapshot/random.ts). */
 export interface NativeRandom {
   /** The next draw, 32 bytes; a segment that runs again draws the same ones (§5). */
   readonly draw: () => Uint8Array;

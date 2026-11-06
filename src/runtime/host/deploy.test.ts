@@ -6,10 +6,10 @@
  */
 
 import { describe, expect, it, vi } from 'vitest';
-import { subsetDefinition, subsetOutcome } from '../../test/definitions/subset.ts';
-import { definitionFormat } from '../definition/definition.ts';
-import { stdNatives } from '../stdlib/natives.ts';
-import { recordingStore, testRuntime } from './runtime.test-kit.ts';
+import { subsetDefinition, subsetOutcome } from '../../../test/definitions/subset.ts';
+import { definitionFormat } from '../../definition/definition.ts';
+import { stdNatives } from '../../stdlib/natives.ts';
+import { recordingStore, testRuntime } from '../runtime.test-kit.ts';
 
 const { text } = definitionFormat.write(subsetDefinition);
 

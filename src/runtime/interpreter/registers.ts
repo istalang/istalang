@@ -6,8 +6,8 @@
  * - a reference parameter's register holds a reference: a cell and a path into its value (§3.7);
  * - a closure's capture of a `let` holds the cell the closure carries, a cell register too (§3.14);
  * - any other register holds its value.
- * A path holds field positions only (values/parts.ts), so reading or writing a register never runs
- * code.
+ * A path holds field positions only (interpreter/parts.ts), so reading or writing a register never
+ * runs code.
  *
  * Whatever a register lets go of, overwritten or emptied, and whatever a frame held when it ends,
  * is reported to the heap (`released`): it may have been the last holder of something disposable,
@@ -20,8 +20,8 @@ import type { Register, TypeId } from '../../definition/operands.ts';
 import { handleTarget, handleTo, type Value } from '../../definition/values/values.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { isReference, type Reference, type RegisterContents } from '../snapshot/objects.ts';
-import { partAt, withPart } from '../values/parts.ts';
 import type { ActiveFrame, FrameHeap } from './frames.ts';
+import { partAt, withPart } from './parts.ts';
 
 /** The value in `register` of `frame`; loading checks indexes, so an empty one is a bug. */
 export function readRegister(frame: ActiveFrame, register: Register): Value {

@@ -22,12 +22,12 @@
  *   is then terminated at once, as an operator would (§9). Its log records are lost with it, as a
  *   discarded run's are: only a commit reports a segment's logs (§3.8 `log`).
  * - A segment also starts by resolving the watches whose condition holds: another instance's end,
- *   read from its last commit in the store (instance-ends.ts), and under a test (§10) a test's own
- *   waits, which only the test world can tell. Under a test, an advance may also start by
- *   answering another instance's call to one of this instance's mocks. The answers a segment
+ *   read from its last commit in the store (instance/instance-ends.ts), and under a test (§10) a
+ *   test's own waits, which only the test world can tell. Under a test, an advance may also start
+ *   by answering another instance's call to one of this instance's mocks. The answers a segment
  *   gives are, like its spawns, effects of its commit, which the advance reports for the world to
- *   deliver; it ends at that commit, so the answers arrive, and the instances they wake run,
- *   before this instance runs on.
+ *   deliver; it ends at that commit, so the answers arrive, and the instances they wake run, before
+ *   this instance runs on.
  * - Where the instance stands afterwards is read from the last commit (`stateOf`), the one place
  *   a host's view of an instance comes from.
  */
@@ -46,7 +46,7 @@ import {
 import type { InstanceStore } from '../store.ts';
 import type { Answered } from './instance/futures.ts';
 import { Instance } from './instance/index.ts';
-import { storedEnds } from './instance-ends.ts';
+import { storedEnds } from './instance/instance-ends.ts';
 import type { LoadedDefinition } from './loaded-definition.ts';
 import { endInstance, runSegment, type SegmentEnd } from './segment/index.ts';
 import { arriving } from './testing/mocks.ts';

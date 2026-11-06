@@ -1,8 +1,8 @@
 /**
  * An instance's random values (§3.8 `random`, §5): a secret seed and a count of the draws its
  * committed segments made, both in its snapshot. The seed is `seedBytes` bytes, which a host gives
- * for each instance it starts (the `seed` seam, host.ts), and a snapshot keeps as lowercase hex. A
- * spawned instance's seed is a draw from its parent's source, which is as long.
+ * for each instance it starts (the `seed` seam, ../host/index.ts), and a snapshot keeps as lowercase
+ * hex. A spawned instance's seed is a draw from its parent's source, which is as long.
  *
  * Draw `n` is HMAC-SHA-256 keyed by the seed over `n`, 32 bytes, so a segment that runs again from
  * its snapshot draws what it drew before, and no draw can be told from the others without the
@@ -12,7 +12,7 @@
 
 import { createHmac } from 'node:crypto';
 import { z } from 'zod';
-import { Refusal } from './refusal.ts';
+import { Refusal } from '../refusal.ts';
 
 /** How many bytes a seed has. */
 export const seedBytes = 32;

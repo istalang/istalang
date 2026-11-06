@@ -14,10 +14,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ## Ranked Summary
 
-1. **`[high]` Redundant `Definition` JSON encode/decode/validate round-trips on every host operation and CLI run (`src/runtime/host.ts:75`, `src/runtime/testing/run-tests.ts:36`, `src/cli/commands/run.ts:116`, `src/cli/commands/test.ts:71`)**
-   - `programBinder` (`src/runtime/host.ts:75–80`) runs `definitionFormat.read(text)` (including `checkReferences`) and then `definitionFormat.write(definition)` just to compute `hash` before consulting `memo(bound, hash, ...)`. Because `storedInstance` calls `bind(definition)` on every `wake`, `inspect`, `fill`, `retry`, and `terminate`, every host operation re-parses, re-validates, and re-serializes the entire `Definition` JSON even when it is already bound. On top of that, `cli/commands/run.ts:116` and `cli/commands/test.ts:71` serialize `compilation.definition` to text only for `deploy` / `runTests` to immediately re-parse and re-serialize it (four full passes on `ista run`).
+1. **`[high]` Redundant `Definition` JSON encode/decode/validate round-trips on every host operation and CLI run (`src/runtime/host/index.ts:75`, `src/runtime/testing/run-tests.ts:36`, `src/cli/commands/run.ts:116`, `src/cli/commands/test.ts:71`)**
+   - `programBinder` (`src/runtime/host/index.ts:75–80`) runs `definitionFormat.read(text)` (including `checkReferences`) and then `definitionFormat.write(definition)` just to compute `hash` before consulting `memo(bound, hash, ...)`. Because `storedInstance` calls `bind(definition)` on every `wake`, `inspect`, `fill`, `retry`, and `terminate`, every host operation re-parses, re-validates, and re-serializes the entire `Definition` JSON even when it is already bound. On top of that, `cli/commands/run.ts:116` and `cli/commands/test.ts:71` serialize `compilation.definition` to text only for `deploy` / `runTests` to immediately re-parse and re-serialize it (four full passes on `ista run`).
    - **Fix:** Key `programBinder`'s outer memo by the raw `text` string (or pass a pre-verified `{ definition, text, hash }` bundle from `compileProgram` / `definitionFormat`), computing `definitionFormat.read` and `definitionFormat.write` at most once per unique `Definition`.
-   - **Done** (`fast-wins`): `programBinder` keys its memo by the text, so each text is read, validated and written back once (`Format.readCanonical`) and each later host operation on it binds from the memo; `deploy` stores the canonical text that read gave. `inspect` on a finished instance (`runtime/host.bench.ts`): 1.94 ms → 14.6 µs mean. `runTests` reads through `readCanonical` too. Still open: the CLI writes a compiled Definition to text only for `deploy`/`runTests` to read it back, since both take text.
+   - **Done** (`fast-wins`): `programBinder` keys its memo by the text, so each text is read, validated and written back once (`Format.readCanonical`) and each later host operation on it binds from the memo; `deploy` stores the canonical text that read gave. `inspect` on a finished instance (`runtime/host/host.bench.ts`): 1.94 ms → 14.6 µs mean. `runTests` reads through `readCanonical` too. Still open: the CLI writes a compiled Definition to text only for `deploy`/`runTests` to read it back, since both take text.
 
 2. **`[high]` Unmemoized `extentIn(tree, node)` and repeated token re-scanning across parser and language service (`src/compiler/syntax/tree/index.ts:127`, `src/language-service/reading/tokens.ts:24`, `src/compiler/parser/cursor/brackets.ts:34`; widens `B21`, `P17`)**
    - Despite `src/compiler/syntax/tree/index.ts`'s banner stating that a node's extent is memoized on the immutable node or tree, `extentIn(tree, node)` (`src/compiler/syntax/tree/index.ts:127–135`) is unmemoized and walks down `childrenOf` and `lastChildOf` to the leaves on every call — including at every sibling tested by `nodesAt(tree, offset)` (`tree/index.ts:141–156`).
@@ -99,7 +99,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 22. `src/compiler/lowering/synthesized/boundary/` & `src/compiler/lowering/trait-objects/`
 - [x] 23. `src/compiler/lowering/constructs/expressions/` & `src/compiler/lowering/constructs/statements/`
 - [x] 24. `src/compiler/compile.ts`
-- [x] 25. `src/runtime/` — core, values, snapshot, lifetimes & interpreter (`natives.ts`, `store.ts`, `refusal.ts`, `random.ts`, `instance-state.ts`, `instance-group.ts`, `settle.ts`, `host.ts`, `values/`, `snapshot/`, `lifetimes/`, `interpreter/`)
+- [x] 25. `src/runtime/` — core, values, snapshot, lifetimes & interpreter (`natives.ts`, `store.ts`, `refusal.ts`, `random.ts`, `instance-state.ts`, `instance-group.ts`, `settle.ts`, `host/index.ts`, `values/`, `snapshot/`, `lifetimes/`, `interpreter/`)
 - [x] 26. `src/runtime/scheduler/`, `src/runtime/boundary/` & `src/runtime/testing/`
 - [x] 27. `src/stdlib/` — infrastructure & prelude (`std-sources.ts`, `stdlib-loader.ts`, `std-module.ts`, `std-modules.ts`, `natives.ts`, `values/arguments.ts`, `numeric.ts`, `positions.ts`, `ranges.ts`, `prelude/`)
 - [x] 28. `src/stdlib/` — standard library modules (`collections/`, `crypto/`, `decimal/`, `fanout/`, `futures/`, `inbox/`, `json/`, `log/`, `math/`, `random/`, `regex/`, `rpc/`, `runtime/`, `strings/`, `testing/`, `time/`)
@@ -376,13 +376,13 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 25. `src/runtime/` — core, values, snapshot, lifetimes & interpreter
 
-- **Redundant `definitionFormat.read` + `definitionFormat.write` round-trips in `programBinder` and `runTests` (`src/runtime/host.ts`, `src/runtime/testing/run-tests.ts`):**
-  - In `src/runtime/host.ts`, `programBinder` calls `definitionFormat.read(text)` and then `definitionFormat.write(definition)` just to compute `hash` before consulting `memo(bound, hash, ...)`. Because `storedInstance` calls `bind(definition)` on every `wake`, `inspect`, `fill`, `retry`, and `terminate`, every host operation re-decodes, re-validates (`checkReferences`), and re-encodes the entire `Definition` JSON even when it was already bound! And on `deploy(text)`, `definitionFormat.write(program.definition)` is called a second time when `isNew` is true.
+- **Redundant `definitionFormat.read` + `definitionFormat.write` round-trips in `programBinder` and `runTests` (`src/runtime/host/index.ts`, `src/runtime/testing/run-tests.ts`):**
+  - In `src/runtime/host/index.ts`, `programBinder` calls `definitionFormat.read(text)` and then `definitionFormat.write(definition)` just to compute `hash` before consulting `memo(bound, hash, ...)`. Because `storedInstance` calls `bind(definition)` on every `wake`, `inspect`, `fill`, `retry`, and `terminate`, every host operation re-decodes, re-validates (`checkReferences`), and re-encodes the entire `Definition` JSON even when it was already bound! And on `deploy(text)`, `definitionFormat.write(program.definition)` is called a second time when `isNew` is true.
   - `runTests` (`src/runtime/testing/run-tests.ts`) repeats the same `definitionFormat.read(text)` + `definitionFormat.write(definition)` pair.
   - **Done** (`fast-wins`): See ranked summary #1.
 - **Duplicate `call` capture/argument validation in `callProblems` (`src/runtime/snapshot/check.ts`) vs. `instruction-rules.ts` (`src/definition/validation/instruction-rules.ts`):**
   - `callProblems` in `snapshot/check.ts` re-implements the capture-count, parameter-count, and `takesReference` checks already in `closureProblem` and `argumentsProblem` (`src/definition/validation/instruction-rules.ts`).
-- **Repeated `closureOf(v) ?? unreachable(...)` unpacking across 4 runtime modules (`src/runtime/interpreter/instructions.ts`, `lifetimes/disposal.ts`, `scheduler/testing/mocks.ts`, `scheduler/native-calls.ts`):**
+- **Repeated `closureOf(v) ?? unreachable(...)` unpacking across 4 runtime modules (`src/runtime/interpreter/instructions.ts`, `lifetimes/disposal.ts`, `scheduler/testing/mocks.ts`, `scheduler/segment/native-calls.ts`):**
   - `calledFunction` (`instructions.ts`), `callOf` (`disposal.ts`), `replacementOf` (`mocks.ts`), and `nativeInstancesOf.spawn` (`native-calls.ts`) each narrow a `Value` with `closureOf` and throw `unreachable` on non-closures.
 
 ### 26. `src/runtime/scheduler/`, `src/runtime/boundary/` & `src/runtime/testing/`
@@ -475,7 +475,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 34. `src/cli/` (including `commands/`) & `src/vscode-client/`
 
-- **Quadruple `Definition` validation/serialization across `cli/commands/run.ts` (`test.ts`) and `runtime/host.ts` (`runtime/testing/run-tests.ts`):**
+- **Quadruple `Definition` validation/serialization across `cli/commands/run.ts` (`test.ts`) and `runtime/host/index.ts` (`runtime/testing/run-tests.ts`):**
   - `start` (`src/cli/commands/run.ts`) encodes `compilation.definition` via `definitionFormat.write(compilation.definition)` and passes `text` to `runtime.deploy(text)`, which calls `definitionFormat.read(text)`, then `definitionFormat.write(definition)` (in `programBinder`), and then `definitionFormat.write(program.definition)` (in `deploy`). `test` (`src/cli/commands/test.ts`) and `runTests` (`src/runtime/testing/run-tests.ts`) do the same encode-then-decode-then-encode sequence.
   - **Done** (`fast-wins`): Host operations after the first no longer read the text again (ranked summary #1); the CLI write before `deploy`/`runTests` stays, as both take text.
 - **Unexported `memoryStore` / `directoryStore` on package surface (`B7`) and VS Code client Windows / reload gaps (`F10`) (`src/cli/directory-store.ts`, `src/runtime/store.ts`, `src/vscode-client/`; tracked in `tracker.md`).**

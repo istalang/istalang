@@ -15,8 +15,8 @@
   },
   "exports": {
     "./runtime": {
-      "types": "./dist/runtime/host.d.ts",
-      "default": "./dist/runtime/host.js"
+      "types": "./dist/runtime/host/index.d.ts",
+      "default": "./dist/runtime/host/index.js"
     },
     "./stdlib": {
       "types": "./dist/stdlib/natives.d.ts",

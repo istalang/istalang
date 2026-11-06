@@ -26,7 +26,7 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - read a result's type argument or build `Ok` native results → `resultTypeArgument`, `resultOk`, `okStruct`, `okExtern` (`src/stdlib/values/results.ts`)
 - build `Err` or `parse` native return values → `resultErr`, `resultError`, `parseFailure`, `parseResult` (`src/stdlib/values/results.ts`)
 - read or build `time.Time` and `time.Duration` millisecond values → `millisecondsOf`, `resultMilliseconds`, `okMilliseconds` (`src/stdlib/time/fields.ts`)
-- read or write a nested part of an immutable `Value` along field positions → `partAt`, `withPart` (`src/runtime/values/parts.ts`)
+- read or write a nested part of an immutable `Value` along field positions → `partAt`, `withPart` (`src/runtime/interpreter/parts.ts`)
 - read a nested part of a compile-time `ConstantForm` along a target's steps (a struct pattern's rest built by name), or build a duration form → `formAt`, `durationForm` (`src/compiler/checker/surface/constant-form.ts`)
 - compare runtime `Value`s with `==` or build a `MapValue` → `valuesEqual`, `mapOf` (`src/definition/values/equality.ts`)
 - look up, insert or remove an entry in a runtime `MapValue` → `entryPosition`, `entryValue`, `withEntry`, `withoutEntry` (`src/definition/values/equality.ts`)

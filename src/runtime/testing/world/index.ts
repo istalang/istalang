@@ -12,7 +12,7 @@
  * - Each pass runs what can run now: answers to deliver, ready instances, then instances whose
  *   watches hold. When nothing can, the world waits for the earliest timer, on real time unless
  *   the test mocked it (§10), and that wait is the caller's to make, as `settle` leaves it
- *   (runtime/settle.ts), so the runtime never sleeps. A wait past the deadline ends the test.
+ *   (runtime/host/settle.ts), so the runtime never sleeps. A wait past the deadline ends the test.
  * - The test ends when its own instance finishes, or when any instance panics, which fails it at
  *   once with that panic (§10), unless an instance waits for its end (`result()`, as `expectPanic`
  *   does). Such a wait ends once it is answered, so the world remembers each panic waited for as it
@@ -26,12 +26,12 @@ import type { FunctionId } from '../../../definition/operands.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import { memo } from '../../../structures/memo.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import { InstanceGroup } from '../../instance-group.ts';
+import { InstanceGroup } from '../../host/instance-group.ts';
 import type { Inspection, LogRecord } from '../../instance-state.ts';
 import type { Natives } from '../../natives.ts';
 import { inspection } from '../../scheduler/inspect.ts';
 import type { Answered } from '../../scheduler/instance/futures.ts';
-import { storedSnapshot } from '../../scheduler/instance-ends.ts';
+import { storedSnapshot } from '../../scheduler/instance/instance-ends.ts';
 import { type LoadedDefinition, loadDefinition } from '../../scheduler/loaded-definition.ts';
 import type { MockAnswer, MockCall, TestWorld } from '../../scheduler/testing/test-world.ts';
 import {

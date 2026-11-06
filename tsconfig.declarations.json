@@ -9,7 +9,7 @@
   },
   "include": [],
   "files": [
-    "src/runtime/host.ts",
+    "src/runtime/host/index.ts",
     "src/stdlib/natives.ts",
     "src/formatter/format.ts",
     "src/stdlib/ista-source.d.ts"

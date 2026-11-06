@@ -16,9 +16,9 @@ import { randomUUID } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import type { HostCall, HostExterns } from '../runtime/boundary/host-natives.ts';
-import type { Runtime } from '../runtime/host.ts';
+import type { Runtime } from '../runtime/host/index.ts';
+import type { Arrived } from '../runtime/host/settle.ts';
 import { Refusal } from '../runtime/refusal.ts';
-import type { Arrived } from '../runtime/settle.ts';
 
 /** A JSON value a promise gave, for the future `token` of `instance`. */
 interface PromisedFill {
