@@ -23,7 +23,6 @@ import type {
 import type { Parameter } from '../syntax/expressions/index.ts';
 import type { Identifier } from '../syntax/node.ts';
 import type { VariableDeclaration } from '../syntax/statements/index.ts';
-import { type CheckerOptions, ProgramChecker } from './program/program-checker.ts';
 import type { AnnotationQueries } from './surface/checked-annotation.ts';
 import type { CheckedBody } from './surface/checked-body.ts';
 import type { ConstantForm } from './surface/constant-form.ts';
@@ -41,6 +40,7 @@ import type {
   Type,
 } from './types/type/index.ts';
 import type { TypeRules } from './types/type-rules.ts';
+import { type CheckerOptions, ProgramChecker } from './wiring/program/program-checker.ts';
 
 /** A variant of an enum type, its fields substituted for the type's arguments. */
 export interface VariantMember {

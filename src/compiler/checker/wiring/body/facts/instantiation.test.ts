@@ -4,28 +4,28 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { runPrograms } from '../../../../../test/corpus/programs.ts';
-import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { idOf } from '../../../program/program.test-kit.ts';
-import { programModule } from '../../../program/program.ts';
+import { runPrograms } from '../../../../../../test/corpus/programs.ts';
+import { stdProgramOf } from '../../../../binder/bind.test-kit.ts';
+import { idOf } from '../../../../program/program.test-kit.ts';
+import { programModule } from '../../../../program/program.ts';
 import {
   type FunctionDeclaration,
   type TypeParameter,
   typeParametersOf,
-} from '../../../syntax/declarations/index.ts';
-import type { Expression, Match, MemberAccess } from '../../../syntax/expressions/index.ts';
-import { casesOf } from '../../../syntax/expressions/readings.ts';
-import type { Pattern } from '../../../syntax/patterns.ts';
-import type { For } from '../../../syntax/statements/index.ts';
-import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
-import { bodyOf, nodesUnder, type SyntaxNode } from '../../../syntax/tree.ts';
-import { checkProgram } from '../../check.ts';
-import type { CheckedBody } from '../../surface/checked-body.ts';
-import { namesBound, type PartStep } from '../../surface/checked-pattern.ts';
-import { parametersIn } from '../../types/parts/type-parts.ts';
-import { substitutionFor } from '../../types/substitution.ts';
-import { intType, stringType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type-text.ts';
+} from '../../../../syntax/declarations/index.ts';
+import type { Expression, Match, MemberAccess } from '../../../../syntax/expressions/index.ts';
+import { casesOf } from '../../../../syntax/expressions/readings.ts';
+import type { Pattern } from '../../../../syntax/patterns.ts';
+import type { For } from '../../../../syntax/statements/index.ts';
+import { tailExpressionOf } from '../../../../syntax/statements/readings.ts';
+import { bodyOf, nodesUnder, type SyntaxNode } from '../../../../syntax/tree.ts';
+import { checkProgram } from '../../../check.ts';
+import type { CheckedBody } from '../../../surface/checked-body.ts';
+import { namesBound, type PartStep } from '../../../surface/checked-pattern.ts';
+import { parametersIn } from '../../../types/parts/type-parts.ts';
+import { substitutionFor } from '../../../types/substitution.ts';
+import { intType, stringType } from '../../../types/type/primitives.ts';
+import { typeText } from '../../../types/type-text.ts';
 
 describe('an instantiated body', () => {
   it("gives a loop's cursor the item type of its instantiation", () => {

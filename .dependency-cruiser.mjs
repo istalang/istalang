@@ -175,10 +175,10 @@ const checkerFolder = (names) => `^src/compiler/checker/(${names.join('|')})/`;
 
 /**
  * The modules wiring a body and a program together, which may import any folder and which no
- * folder imports: program/ (the program's checker and what it reads of its Program) and body/ (a
- * body's checker, its records, and the facts table reading them).
+ * folder imports: wiring/program/ (the program's checker and what it reads of its Program) and
+ * wiring/body/ (a body's checker, its records, and the facts table reading them).
  */
-const checkerWiring = '^src/compiler/checker/(program|body)/';
+const checkerWiring = '^src/compiler/checker/wiring/';
 
 /** The checker's contracts: its entry, the contexts every check runs in, the models it surfaces. */
 const checkerContracts = '^src/compiler/checker/([^/]+\\.ts$|contexts/|surface/)';

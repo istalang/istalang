@@ -30,7 +30,7 @@ import { nodesUnder } from '../syntax/tree.ts';
 import { checkedApart } from './check.test-kit.ts';
 import { type Checker, checkProgram } from './check.ts';
 import { answersAt } from './lookup/lookup.test-kit.ts';
-import type { CheckerOptions, ProgramChecker } from './program/program-checker.ts';
+import type { CheckerOptions, ProgramChecker } from './wiring/program/program-checker.ts';
 
 /** The checker of the program `edited` builds after a revision's, made from `previous`. */
 type Route = (

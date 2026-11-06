@@ -2,7 +2,7 @@
  * How a field read reaches its field, as the checker finds it and lowering emits it (§3.1, §3.10):
  * lowering reads the record and never looks a field up by name again. A read through a type
  * parameter's constraint can't be resolved by the generic body checked once; each instantiation
- * resolves it into one of the others (body/facts/instantiation.ts), by the reads here.
+ * resolves it into one of the others (wiring/body/facts/instantiation.ts), by the reads here.
  *
  * A field is read by its name, `s.name`, or by a key, `s[k]` (§3.9): a key that is one name once
  * known reads as the name does, and several keys read the field the key's value names when the

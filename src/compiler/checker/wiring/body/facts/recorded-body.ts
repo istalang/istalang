@@ -4,17 +4,17 @@
  * The body checker is all of its units (body-checker.ts).
  */
 
-import type { FunctionScopes } from '../../closures/functions.ts';
-import type { FieldReads } from '../../expressions/access/member-access.ts';
-import type { OptionalChains } from '../../expressions/access/optionals.ts';
-import type { CollectionForms } from '../../expressions/collections/collections.ts';
-import type { StructLiterals } from '../../expressions/structs/literal-sources.ts';
-import type { CheckedPatterns } from '../../patterns/matching.ts';
-import type { ImplicitCalls } from '../../resolution/implicit.ts';
-import type { Iterations } from '../../rules/loops/iteration.ts';
-import type { LabelTargets } from '../../statements/loops.ts';
-import type { VariableScope } from '../../statements/variables.ts';
-import type { Type } from '../../types/type/index.ts';
+import type { FunctionScopes } from '../../../closures/functions.ts';
+import type { FieldReads } from '../../../expressions/access/member-access.ts';
+import type { OptionalChains } from '../../../expressions/access/optionals.ts';
+import type { CollectionForms } from '../../../expressions/collections/collections.ts';
+import type { StructLiterals } from '../../../expressions/structs/literal-sources.ts';
+import type { CheckedPatterns } from '../../../patterns/matching.ts';
+import type { ImplicitCalls } from '../../../resolution/implicit.ts';
+import type { Iterations } from '../../../rules/loops/iteration.ts';
+import type { LabelTargets } from '../../../statements/loops.ts';
+import type { VariableScope } from '../../../statements/variables.ts';
+import type { Type } from '../../../types/type/index.ts';
 import type { bodyRecords } from '../body-records.ts';
 
 type BodyRecords = ReturnType<typeof bodyRecords>;

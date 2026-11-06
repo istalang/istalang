@@ -21,17 +21,17 @@
  *   a read no entry recorded.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
 import {
   type LanguageModule,
   type WellKnownDeclaration,
   wellKnown,
-} from '../../../language/well-known/index.ts';
-import { Entries, type EntryTable } from '../../../structures/entries/index.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import { bindProgram } from '../../binder/bind.ts';
-import type { Bindings, Entity } from '../../binder/entities.ts';
-import { type ModuleId, type Program, programModule } from '../../program/program.ts';
+} from '../../../../language/well-known/index.ts';
+import { Entries, type EntryTable } from '../../../../structures/entries/index.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import { bindProgram } from '../../../binder/bind.ts';
+import type { Bindings, Entity } from '../../../binder/entities.ts';
+import { type ModuleId, type Program, programModule } from '../../../program/program.ts';
 import type {
   AliasDeclaration,
   Declaration,
@@ -41,47 +41,46 @@ import type {
   RequiredAssociatedType,
   TypeAliasDeclaration,
   TypeParameter,
-} from '../../syntax/declarations/index.ts';
-import type { Identifier, NodeOf } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { VariableDeclaration } from '../../syntax/statements/index.ts';
-import type { TypeNode } from '../../syntax/types/index.ts';
-import { BodyChecker, type BodyKind } from '../body/body-checker.ts';
-import type { CheckedConstant, Disposal, SignatureParameter, VariantMember } from '../check.ts';
+} from '../../../syntax/declarations/index.ts';
+import type { Identifier, NodeOf } from '../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
+import type { TypeNode } from '../../../syntax/types/index.ts';
+import type { CheckedConstant, Disposal, SignatureParameter, VariantMember } from '../../check.ts';
 import type {
   CheckerContext,
   CheckerNote,
   ConstraintCheck,
   ProgramInputs,
   RootGoals,
-} from '../contexts/context.ts';
-import { Aliases } from '../declarations/aliases/index.ts';
-import { ConstantChecks } from '../declarations/constants.ts';
-import { FunctionChecks } from '../declarations/functions/functions.ts';
-import { type DefaultsBody, Parameters } from '../declarations/functions/parameters.ts';
-import { writtenByReference } from '../declarations/functions/signatures.ts';
-import { StaticFunctions } from '../declarations/functions/statics.ts';
-import { Layouts } from '../declarations/layout/index.ts';
-import { ModuleChecks } from '../declarations/module-checks.ts';
-import { Lookup } from '../lookup/lookup.ts';
-import { declareParameter } from '../patterns/targets.ts';
-import { rootSearches } from '../resolution/conformance/conformance.ts';
-import { programRootGoals } from '../resolution/conformance/root-goals.ts';
-import { memberWitnesses } from '../resolution/conformance/trait-objects.ts';
-import { programTypeRules } from '../resolution/program-type-rules.ts';
-import { TypeParameters } from '../resolution/type-parameters.ts';
-import { Annotations } from '../rules/annotations.ts';
-import { JsonForms } from '../rules/boundary/json-forms.ts';
-import { disposalOf } from '../rules/disposal/disposal.ts';
-import { Expansion } from '../rules/expansion/functions.ts';
-import type { CheckedBody } from '../surface/checked-body.ts';
-import type { ResolvedCall } from '../surface/resolved-call.ts';
-import { resolveAnyType } from '../traits/any-types.ts';
-import { memberUnionOf } from '../traits/struct-keys.ts';
-import { type Fit, type Fitting, fitOf } from '../types/fitting/fit.ts';
-import { typeKeys } from '../types/identity/type-keys.ts';
-import { sameTypeSpelled, unaliased } from '../types/parts/type-parts.ts';
-import type { ConstraintSet, StructConstraintModel } from '../types/struct-constraint.ts';
+} from '../../contexts/context.ts';
+import { Aliases } from '../../declarations/aliases/index.ts';
+import { ConstantChecks } from '../../declarations/constants.ts';
+import { FunctionChecks } from '../../declarations/functions/functions.ts';
+import { type DefaultsBody, Parameters } from '../../declarations/functions/parameters.ts';
+import { writtenByReference } from '../../declarations/functions/signatures.ts';
+import { StaticFunctions } from '../../declarations/functions/statics.ts';
+import { Layouts } from '../../declarations/layout/index.ts';
+import { ModuleChecks } from '../../declarations/module-checks.ts';
+import { Lookup } from '../../lookup/lookup.ts';
+import { declareParameter } from '../../patterns/targets.ts';
+import { rootSearches } from '../../resolution/conformance/conformance.ts';
+import { programRootGoals } from '../../resolution/conformance/root-goals.ts';
+import { memberWitnesses } from '../../resolution/conformance/trait-objects.ts';
+import { programTypeRules } from '../../resolution/program-type-rules.ts';
+import { TypeParameters } from '../../resolution/type-parameters.ts';
+import { Annotations } from '../../rules/annotations.ts';
+import { JsonForms } from '../../rules/boundary/json-forms.ts';
+import { disposalOf } from '../../rules/disposal/disposal.ts';
+import { Expansion } from '../../rules/expansion/functions.ts';
+import type { CheckedBody } from '../../surface/checked-body.ts';
+import type { ResolvedCall } from '../../surface/resolved-call.ts';
+import { resolveAnyType } from '../../traits/any-types.ts';
+import { memberUnionOf } from '../../traits/struct-keys.ts';
+import { type Fit, type Fitting, fitOf } from '../../types/fitting/fit.ts';
+import { typeKeys } from '../../types/identity/type-keys.ts';
+import { sameTypeSpelled, unaliased } from '../../types/parts/type-parts.ts';
+import type { ConstraintSet, StructConstraintModel } from '../../types/struct-constraint.ts';
 import {
   type AnonymousStructType,
   type AnyType,
@@ -90,11 +89,12 @@ import {
   isNominalEntity,
   type NominalType,
   type Type,
-} from '../types/type/index.ts';
-import type { TypeRules } from '../types/type-rules.ts';
-import type { StaticOwner } from '../types/written/named-types.ts';
-import { resolveTypeNode } from '../types/written/resolve-type.ts';
-import type { TypeMatchQueries } from '../types/written/type-match.ts';
+} from '../../types/type/index.ts';
+import type { TypeRules } from '../../types/type-rules.ts';
+import type { StaticOwner } from '../../types/written/named-types.ts';
+import { resolveTypeNode } from '../../types/written/resolve-type.ts';
+import type { TypeMatchQueries } from '../../types/written/type-match.ts';
+import { BodyChecker, type BodyKind } from '../body/body-checker.ts';
 import { declaringInputs, programInputs, recordedBindings } from './program-inputs.ts';
 
 /** What a checker is made with, beside its program. */

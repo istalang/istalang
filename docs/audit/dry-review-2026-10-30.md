@@ -335,7 +335,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - Both map a `DeclaredField | FieldDeclaration` syntax node back to its resolved `FieldMember` in its enclosing `StructDeclaration`, `SharedStructDeclaration`, `EnumDeclaration` (`Variant`), or `TraitDeclaration`, using two different lookup mechanisms (`itemsOf(module).find(declaresField)` vs. `ancestorsOf`).
   - **Done** (`p2-structural`): see Ranked Summary item 8.
 - **Duplicate variable-type resolution in `variableType` (`src/compiler/checker/expressions/access/names.ts`) and `declaredVariableType` (`src/compiler/checker/lookup/denotations.ts`):**
-  - Both switch on `variable.owner.kind` (`ExternConstantDeclaration` vs. body/constant variables) to resolve a `VariableEntity`'s declared type.
+  - Both switch on `variable.owner.kind` (`ExternConstantDeclaration` vs. wiring/body/constant variables) to resolve a `VariableEntity`'s declared type.
   - **Done** (`p2-structural`): see Ranked Summary item 8.
 - **Inconsistent method recognition between `noField` / `callMethod` and `lookup/members.ts` (`src/compiler/checker/expressions/structs/structs.ts`, `calls.ts`, `lookup/members.ts`; tracked as `B22`) and duplicate struct-literal constraint checks (`literal-fields.ts`; tracked as `Q6`).**
 

@@ -26,37 +26,37 @@
  *   it is captured where it is used (`useEntity`).
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { handlerOf } from '../../../structures/kind-table.ts';
-import { withPushed } from '../../../structures/stack.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Entity, VariantEntity } from '../../binder/entities.ts';
-import type { ModuleId } from '../../program/program.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import { handlerOf } from '../../../../structures/kind-table.ts';
+import { withPushed } from '../../../../structures/stack.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Entity, VariantEntity } from '../../../binder/entities.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type {
   Call,
   Expression,
   FieldHeader,
   IndentedValue,
-} from '../../syntax/expressions/index.ts';
-import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
-import { unparenthesized } from '../../syntax/expressions/readings.ts';
-import type { Identifier, Invalid } from '../../syntax/node.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+} from '../../../syntax/expressions/index.ts';
+import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
+import { unparenthesized } from '../../../syntax/expressions/readings.ts';
+import type { Identifier, Invalid } from '../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type {
   Assignment,
   Block,
   Statement,
   VariableDeclaration,
-} from '../../syntax/statements/index.ts';
-import type { SyntaxNode } from '../../syntax/tree.ts';
-import type { TypeNode } from '../../syntax/types/index.ts';
-import type { SignatureParameter } from '../check.ts';
-import { FunctionScope } from '../closures/function-scope.ts';
-import { FunctionScopes } from '../closures/functions.ts';
-import { inferLambda } from '../closures/lambdas.ts';
-import { declareOwnCall } from '../closures/own-calls.ts';
-import { blockTail, ReturnScope } from '../closures/returns.ts';
+} from '../../../syntax/statements/index.ts';
+import type { SyntaxNode } from '../../../syntax/tree.ts';
+import type { TypeNode } from '../../../syntax/types/index.ts';
+import type { SignatureParameter } from '../../check.ts';
+import { FunctionScope } from '../../closures/function-scope.ts';
+import { FunctionScopes } from '../../closures/functions.ts';
+import { inferLambda } from '../../closures/lambdas.ts';
+import { declareOwnCall } from '../../closures/own-calls.ts';
+import { blockTail, ReturnScope } from '../../closures/returns.ts';
 import type {
   AcceptedPart,
   Accepts,
@@ -64,43 +64,43 @@ import type {
   CheckedPasses,
   Enclosing,
   Returns,
-} from '../contexts/body-context.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import type { FieldPassType } from '../contexts/passes.ts';
-import { Passes } from '../contexts/passes.ts';
-import { useSite } from '../contexts/use-site.ts';
-import { FieldReads } from '../expressions/access/member-access.ts';
-import { OptionalChains } from '../expressions/access/optionals.ts';
-import { builtAsChecked, builtMember } from '../expressions/built-members.ts';
-import { CollectionForms } from '../expressions/collections/collections.ts';
+} from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import type { FieldPassType } from '../../contexts/passes.ts';
+import { Passes } from '../../contexts/passes.ts';
+import { useSite } from '../../contexts/use-site.ts';
+import { FieldReads } from '../../expressions/access/member-access.ts';
+import { OptionalChains } from '../../expressions/access/optionals.ts';
+import { builtAsChecked, builtMember } from '../../expressions/built-members.ts';
+import { CollectionForms } from '../../expressions/collections/collections.ts';
 import {
   acceptedPartOf,
   acceptsOf,
   checkedPartOf,
   expressionHandlers,
   isBuiltLiteral,
-} from '../expressions/expressions.ts';
-import { argumentPartOf } from '../expressions/literal-items.ts';
-import { StructLiterals } from '../expressions/structs/literal-sources.ts';
-import { CheckedPatterns } from '../patterns/matching.ts';
-import { declareParameter, declareTargets } from '../patterns/targets.ts';
-import { reportUnmet } from '../resolution/conformance/trait-objects.ts';
-import { ImplicitCalls } from '../resolution/implicit.ts';
-import { checkDisposeUses } from '../rules/disposal/disposal.ts';
-import { checkDropped } from '../rules/disposal/dropped.ts';
-import { Iterations } from '../rules/loops/iteration.ts';
-import { checkTestingCalls } from '../rules/testing.ts';
-import { LabelTargets } from '../statements/loops.ts';
-import { checkBlock, statementHandlers } from '../statements/statements.ts';
-import { VariableScope } from '../statements/variables.ts';
-import { statementPlace } from '../surface/checked-annotation.ts';
-import type { CheckedBody, ValueSite } from '../surface/checked-body.ts';
-import type { ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
-import { unfolded } from '../types/computed-types.ts';
-import { exactFit, type Fit, isExact, misfitOf } from '../types/fitting/fit.ts';
-import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';
-import { errorType, unitType } from '../types/type/primitives.ts';
-import { keysOwner } from '../types/written/key-types.ts';
+} from '../../expressions/expressions.ts';
+import { argumentPartOf } from '../../expressions/literal-items.ts';
+import { StructLiterals } from '../../expressions/structs/literal-sources.ts';
+import { CheckedPatterns } from '../../patterns/matching.ts';
+import { declareParameter, declareTargets } from '../../patterns/targets.ts';
+import { reportUnmet } from '../../resolution/conformance/trait-objects.ts';
+import { ImplicitCalls } from '../../resolution/implicit.ts';
+import { checkDisposeUses } from '../../rules/disposal/disposal.ts';
+import { checkDropped } from '../../rules/disposal/dropped.ts';
+import { Iterations } from '../../rules/loops/iteration.ts';
+import { checkTestingCalls } from '../../rules/testing.ts';
+import { LabelTargets } from '../../statements/loops.ts';
+import { checkBlock, statementHandlers } from '../../statements/statements.ts';
+import { VariableScope } from '../../statements/variables.ts';
+import { statementPlace } from '../../surface/checked-annotation.ts';
+import type { CheckedBody, ValueSite } from '../../surface/checked-body.ts';
+import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
+import { unfolded } from '../../types/computed-types.ts';
+import { exactFit, type Fit, isExact, misfitOf } from '../../types/fitting/fit.ts';
+import type { FieldMember, FunctionType, Type } from '../../types/type/index.ts';
+import { errorType, unitType } from '../../types/type/primitives.ts';
+import { keysOwner } from '../../types/written/key-types.ts';
 import { bodyRecords } from './body-records.ts';
 import { checkedAt } from './facts/index.ts';
 
