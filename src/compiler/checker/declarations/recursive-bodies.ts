@@ -12,6 +12,10 @@
  *   placeholder needs no arguments.
  * - Each alias of a group closes the group on its own, its own body first, so what it closes to
  *   depends on its group alone, whichever alias was asked first.
+ * - A group closing to the error type none of its bodies holds is a cycle no guard breaks once its
+ *   aliases and type `match`es are expanded: reported as one (5106), so no error type is left
+ *   unexplained (alias-recursion.ts decides guards from what aliases do with their arguments, so
+ *   this is what it can't see).
  */
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
@@ -23,7 +27,7 @@ import { closeRecursive } from '../types/recursive-types.ts';
 import { parameterType, resolveClosing } from '../types/resolve-type.ts';
 import { substitute, substitutionFor } from '../types/substitution.ts';
 import { errorType, type Type } from '../types/type.ts';
-import { sameTypeSpelled } from '../types/type-parts.ts';
+import { mentionsError, sameTypeSpelled } from '../types/type-parts.ts';
 import type { AliasRecursions } from './alias-recursion.ts';
 
 export class RecursiveBodies {
@@ -71,7 +75,7 @@ export class RecursiveBodies {
           ),
     );
     const indexes = new Map(group.map((member, index) => [member, index] as const));
-    const [closed] = closeRecursive({
+    const [closed = errorType] = closeRecursive({
       bodies,
       placeholderOf: (type) =>
         type.kind === 'parameter' && type.declaration.kind === 'TypeAliasDeclaration'
@@ -84,7 +88,15 @@ export class RecursiveBodies {
       })),
       rules,
     });
-    return closed ?? errorType;
+    if (mentionsError(closed) && !bodies.some(mentionsError)) {
+      // A cycle no guard breaks once its aliases and type `match`es are expanded names no type.
+      this.#checker.report(
+        this.#moduleOf(alias),
+        checkerDiagnostics.aliasCycle(alias.name.span, alias.name.text),
+      );
+      return errorType;
+    }
+    return closed;
   }
 
   #bodyOf(alias: TypeAliasDeclaration): Type {

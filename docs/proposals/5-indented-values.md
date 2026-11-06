@@ -102,7 +102,7 @@ type List = { head: Int, tail: List? }
 ```
 
 - **Self-reference.** An alias may refer to itself, directly or through other aliases, when each reference stands inside a type built from others:
-  - a type argument: `Array<Tree<T>>`, `Map<String, Json>`;
+  - a nominal type's argument: `Array<Tree<T>>`, `Map<String, Json>`; an alias's argument only where the alias's body puts its parameter guarded (`Cell<A>` for `type Cell<T> = { v: T }`, never `Id<A>` for `type Id<T> = T`), and a type `match` alias's where every case's type does and no case's pattern inspects it;
   - a trait's argument in an `any` type: `kids: any Iterable<Tree>`;
   - a field of a shape;
   - a tuple element;

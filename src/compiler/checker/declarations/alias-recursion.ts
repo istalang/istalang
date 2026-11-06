@@ -3,10 +3,15 @@
  * resolved: resolving an alias's body needs to know first whether a use of it inside stands for the
  * alias (a placeholder while its group closes) or would resolve the body again (a cycle, reported where aliases resolve).
  *
- * - A reference to an alias is guarded where it stands inside a type built from others: a type
- *   argument, a trait's argument in an `any` type, a field of a shape, a tuple element, a function
- *   type's parameter or result. It is unguarded as the whole body, a union's member, an optional's
- *   inner type or in parentheses.
+ * - A reference to an alias is guarded where it stands inside a type built from others: a nominal
+ *   type's argument, a trait's argument in an `any` type, a field of a shape, a tuple element, a
+ *   function type's parameter or result. It is unguarded as the whole body, a union's member, an
+ *   optional's inner type or in parentheses.
+ * - An alias's argument stands where the alias's body puts its parameter (`parameterStandings`):
+ *   guarded only where every use of it there is, so `Id<A>` for `type Id<T> = T` stands as `A`
+ *   does. A type `match` alias's argument the match inspects (a case pattern other than `_` or a
+ *   bare `infer`) must be known first; else it stands as every case's type uses it, or what each
+ *   case infers from it whole.
  * - It blocks where what it names must be known first, guarded or not: `A.Data`, `A[K]`, `keyof A`.
  *   Closing a group resolves its bodies with each use a placeholder (recursive-bodies.ts), which
  *   nothing can be asked of.
@@ -23,8 +28,13 @@
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import type { ModuleId } from '../../program/program.ts';
-import type { TypeAliasDeclaration } from '../../syntax/declarations.ts';
-import type { NamedType, TypeNode } from '../../syntax/types.ts';
+import {
+  type TypeAliasDeclaration,
+  type TypeParameter,
+  typeParametersOf,
+} from '../../syntax/declarations.ts';
+import { inferTypesIn } from '../../syntax/type-matches.ts';
+import type { NamedType, TypeMatch, TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isMatchAlias } from '../types/computed-types.ts';
@@ -37,6 +47,15 @@ interface AliasReference {
   readonly blocking: boolean;
 }
 
+/** How a type stands where it is written: guarded or not, and whether it must be known first. */
+interface Standing {
+  readonly guards: boolean;
+  readonly blocks: boolean;
+}
+
+const guardedStanding: Standing = { guards: true, blocks: false };
+const unguardedStanding: Standing = { guards: false, blocks: false };
+
 /**
  * What an alias's body makes of it: nothing recursive, a recursive alias, one reaching itself
  * unguarded (a cycle), or a recursive one that isn't regular.
@@ -48,6 +67,7 @@ export class AliasRecursions {
   readonly #moduleOf: (alias: TypeAliasDeclaration) => ModuleId;
   readonly #references: EntryTable<CheckerNote, TypeAliasDeclaration, readonly AliasReference[]>;
   readonly #recursions: EntryTable<CheckerNote, TypeAliasDeclaration, AliasRecursion>;
+  readonly #parameterStandings: EntryTable<CheckerNote, TypeAliasDeclaration, readonly Standing[]>;
 
   constructor(checker: CheckerContext, moduleOf: (alias: TypeAliasDeclaration) => ModuleId) {
     this.#checker = checker;
@@ -59,6 +79,14 @@ export class AliasRecursions {
     this.#recursions = checker.entries.table({
       name: 'alias recursion',
       compute: (alias) => this.#recursionOf(alias),
+    });
+    this.#parameterStandings = checker.entries.table({
+      name: 'alias parameter standings',
+      compute: (alias) => this.#standingsOf(alias),
+      // A parameter reached again while its standing is found stands unguarded.
+      cyclic: {
+        standIn: (alias) => typeParametersOf(alias.typeParameters).map(() => unguardedStanding),
+      },
     });
   }
 
@@ -100,7 +128,9 @@ export class AliasRecursions {
         return true;
       }
     }
-    return typeChildrenOf(node).some(({ child }) => this.writesReference(module, child, aliases));
+    return typeChildrenOf(node, () => []).some(({ child }) =>
+      this.writesReference(module, child, aliases),
+    );
   }
 
   /** What `alias`'s body makes of it (the banner); an irregular one is reported once. */
@@ -207,40 +237,130 @@ export class AliasRecursions {
       return [];
     }
     const module = this.#moduleOf(alias);
-    const references: AliasReference[] = [];
-    const visit = (node: TypeNode, guarded: boolean, blocked: boolean): void => {
-      for (const { child, guards, blocks } of typeChildrenOf(node)) {
-        visit(child, guarded || guards, blocked || blocks);
-      }
-      if (node.kind !== 'NamedType') {
-        return;
-      }
+    return this.#namedIn(module, body, unguardedStanding).flatMap(({ node, standing }) => {
       const [name, ...members] = node.path;
       const entity = name === undefined ? undefined : this.#checker.bindings.entityOf(module, name);
-      if (
-        entity?.kind === 'type' &&
+      return entity?.kind === 'type' &&
         entity.declaration.kind === 'TypeAliasDeclaration' &&
         !isMatchAlias(entity.declaration)
-      ) {
-        // `A.Data` needs `A` known first.
-        references.push({
-          node,
-          target: entity.declaration,
-          guarded,
-          blocking: blocked || members.length > 0,
-        });
+        ? [
+            {
+              node,
+              target: entity.declaration,
+              guarded: standing.guards,
+              // `A.Data` needs `A` known first.
+              blocking: standing.blocks || members.length > 0,
+            },
+          ]
+        : [];
+    });
+  }
+
+  /** Each named type `node` writes, at any depth, innermost first, with how it stands there. */
+  #namedIn(
+    module: ModuleId,
+    node: TypeNode,
+    standing: Standing,
+  ): readonly { readonly node: NamedType; readonly standing: Standing }[] {
+    const named: { readonly node: NamedType; readonly standing: Standing }[] = [];
+    const visit = (each: TypeNode, at: Standing): void => {
+      const children = typeChildrenOf(each, (argumentsOf) =>
+        this.#argumentStandings(module, argumentsOf),
+      );
+      for (const { child, guards, blocks } of children) {
+        visit(child, { guards: at.guards || guards, blocks: at.blocks || blocks });
+      }
+      if (each.kind === 'NamedType') {
+        named.push({ node: each, standing: at });
       }
     };
-    visit(body, false, false);
-    return references;
+    visit(node, standing);
+    return named;
   }
+
+  /**
+   * How each type argument `node` writes stands (the banner): where the alias it names puts its
+   * parameter; guarded for any other type, which builds a type from them.
+   */
+  #argumentStandings(module: ModuleId, node: NamedType): readonly Standing[] {
+    const [name, ...members] = node.path;
+    const entity = name === undefined ? undefined : this.#checker.bindings.entityOf(module, name);
+    return members.length === 0 &&
+      entity?.kind === 'type' &&
+      entity.declaration.kind === 'TypeAliasDeclaration'
+      ? this.#parameterStandings.get(entity.declaration)
+      : [];
+  }
+
+  /** How each of `alias`'s parameters stands in its body (the banner), in order. */
+  #standingsOf(alias: TypeAliasDeclaration): readonly Standing[] {
+    const module = this.#moduleOf(alias);
+    const body = alias.type;
+    return typeParametersOf(alias.typeParameters).map((parameter) =>
+      body.kind === 'TypeMatch'
+        ? this.#matchStanding(module, body, parameter)
+        : jointStanding(this.#usesOf(module, body, [parameter])),
+    );
+  }
+
+  /**
+   * How `parameter` stands in the type `match` `body`: known first where a case inspects the
+   * subject holding it; else as every case's type uses it, or what the case infers from it whole.
+   */
+  #matchStanding(module: ModuleId, body: TypeMatch, parameter: TypeParameter): Standing {
+    const inSubject = this.#usesOf(module, body.subject, [parameter]).length > 0;
+    const cases = body.cases.flatMap((each) => (each.kind === 'TypeCase' ? [each] : []));
+    const inspects = cases.some(
+      ({ pattern }) => pattern.kind !== 'WildcardPattern' && pattern.kind !== 'InferType',
+    );
+    if (inSubject && inspects) {
+      return { guards: false, blocks: true };
+    }
+    return jointStanding(
+      cases.flatMap((each) =>
+        this.#usesOf(module, each.type, [
+          parameter,
+          ...(inSubject ? inferTypesIn(each.pattern).map((infer) => infer.parameter) : []),
+        ]),
+      ),
+    );
+  }
+
+  /** How each use of one of `parameters` in `node`, the whole of a type, stands there. */
+  #usesOf(
+    module: ModuleId,
+    node: TypeNode,
+    parameters: readonly TypeParameter[],
+  ): readonly Standing[] {
+    return this.#namedIn(module, node, unguardedStanding).flatMap(({ node: named, standing }) => {
+      const [name, ...members] = named.path;
+      const entity = name === undefined ? undefined : this.#checker.bindings.entityOf(module, name);
+      return members.length === 0 &&
+        entity?.kind === 'type' &&
+        entity.declaration.kind === 'TypeParameter' &&
+        parameters.includes(entity.declaration)
+        ? [standing]
+        : [];
+    });
+  }
+}
+
+/** How a parameter used where `uses` stand stands: guarded only where every use is. */
+function jointStanding(uses: readonly Standing[]): Standing {
+  return {
+    guards: uses.every((use) => use.guards),
+    blocks: uses.some((use) => use.blocks),
+  };
 }
 
 /**
  * The type nodes `node` is built from, one level down, each with whether it stands guarded there,
  * and whether what it names must be known first (the banner).
  */
-function typeChildrenOf(node: TypeNode): readonly {
+function typeChildrenOf(
+  node: TypeNode,
+  argumentStandings: (node: NamedType) => readonly Standing[],
+): readonly {
   readonly child: TypeNode;
   readonly guards: boolean;
   readonly blocks: boolean;
@@ -252,8 +372,13 @@ function typeChildrenOf(node: TypeNode): readonly {
   const blocking = (children: readonly TypeNode[]) =>
     children.map((child) => ({ child, guards: false, blocks: true }));
   switch (node.kind) {
-    case 'NamedType':
-      return guarded(node.typeArguments);
+    case 'NamedType': {
+      const standings = argumentStandings(node);
+      return node.typeArguments.map((child, index) => ({
+        child,
+        ...(standings[index] ?? guardedStanding),
+      }));
+    }
     case 'OptionalType':
     case 'ParenthesizedType':
       return unguarded([node.inner]);
