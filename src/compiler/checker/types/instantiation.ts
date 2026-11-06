@@ -1,13 +1,21 @@
 /**
- * A checked body read through a substitution (§3.5): a body is checked once, generically, so what
- * runs for one instantiation reads it with every type it records substituted. The calls it records
- * stay as checked: closing one takes the instantiation's witnesses too, which its reader has, so
- * the reader closes it (lowering/closed-calls.ts `closeCall`, rules/computation.ts for a default's).
- * Lowering reads a function instance's body this way, and compile time a field's default for the
- * literal running it.
+ * What one instantiation does to each part a checked body records (§3.5): a body is checked once,
+ * generically, so what runs for one instantiation reads it with every type it records substituted.
+ * The body's facts table (body-facts.ts) says which part each fact is made of; the parts are
+ * substituted here. The calls a body records stay as checked: closing one takes the
+ * instantiation's witnesses too, which its reader has, so the reader closes it
+ * (lowering/closed-calls.ts `closeCall`, rules/computation.ts for a default's). Lowering reads a
+ * function instance's body this way, and compile time a field's default for the literal running it.
  */
 
-import type { AssignedPart, CheckedBody, CheckedFunction, Checker, FieldPass } from '../check.ts';
+import type {
+  AssignedPart,
+  ChainLink,
+  CheckedFunction,
+  Checker,
+  FieldPass,
+  IterationForm,
+} from '../check.ts';
 import { type FieldRead, instantiatedRead } from '../checked-field.ts';
 import type {
   CheckedPattern,
@@ -25,68 +33,51 @@ import type { FieldMember, Type } from './type.ts';
 import type { TypeRules } from './type-rules.ts';
 import { membersOf } from './unions.ts';
 
-/**
- * `body` as one instantiation sees it: every type it records substituted by `substitution`, and
- * each field read through a type parameter resolved for the type it stands for. Every table is
- * listed, substituted or kept as checked, so a table added to CheckedBody fails to typecheck here
- * until it says how an instantiation reads it.
- */
-export function instantiatedBody(
-  body: CheckedBody,
+/** One instantiation: each kind of part a body records, as it reads it. */
+export interface Instantiation {
+  readonly substitution: Substitution;
+  readonly checker: Pick<Checker, 'fieldsOf' | 'typeRules'>;
+  /** A type as substituted, a recursive one unfolded (§3.17): what an expression is read as. */
+  readonly concrete: (type: Type) => Type;
+  readonly fit: (fit: Fit) => Fit;
+  readonly field: (field: FieldMember) => FieldMember;
+  readonly fieldRead: (read: FieldRead) => FieldRead;
+  readonly target: (binding: TargetBinding) => TargetBinding;
+  readonly assigned: (part: AssignedPart) => AssignedPart;
+  readonly function: (checked: CheckedFunction) => CheckedFunction;
+  readonly pattern: (checked: CheckedPattern) => CheckedPattern;
+  readonly iteration: (form: IterationForm) => IterationForm;
+  readonly chain: (link: ChainLink) => ChainLink;
+  /** A field loop's pass: its key and value substituted, and its body read the same way. */
+  readonly pass: (pass: FieldPass) => FieldPass;
+}
+
+/** The instantiation `substitution` makes, for reading a body checked once (§3.5). */
+export function instantiationBy(
   substitution: Substitution,
   checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
-): CheckedBody {
-  const concrete = (type: Type) => unfolded(substitute(type, substitution, checker.typeRules));
-  const concreteFit = (fit: Fit) => substitutedFit(fit, substitution, checker.typeRules);
-  const concreteField = (field: FieldMember) => ({ ...field, type: concrete(field.type) });
-  const concreteRead = (read: FieldRead): FieldRead => instantiatedRead(checker, read, concrete);
+): Instantiation {
+  const rules = checker.typeRules;
+  const concrete = (type: Type) => unfolded(substitute(type, substitution, rules));
   return {
-    typeOf: (expression) => mapDefined(body.typeOf(expression), concrete),
-    expectedOf: (site) => mapDefined(body.expectedOf(site), concrete),
-    resolved: body.resolved,
-    valueCalls: body.valueCalls,
-    madeCalls: body.madeCalls,
-    implicitCallOf: body.implicitCallOf,
-    collectionFormOf: body.collectionFormOf,
-    iterationOf: (iteration) => {
-      const form = body.iterationOf(iteration);
-      return form.kind === 'cursor' ? { ...form, item: concrete(form.item) } : form;
-    },
-    fitAt: (site) => concreteFit(body.fitAt(site)),
-    targetsOf: (owner) =>
-      body.targetsOf(owner).map((binding) => instantiatedTarget(binding, substitution, checker)),
-    assignedOf: (assignment) =>
-      body.assignedOf(assignment).map((part) => instantiatedPart(part, substitution, checker)),
-    inCell: body.inCell,
-    functionOf: (node) =>
-      mapDefined(body.functionOf(node), (checked) =>
-        instantiatedFunction(checked, substitution, checker.typeRules),
-      ),
-    sourcesOf: body.sourcesOf,
-    literalFieldsOf: (literal) =>
-      mapDefined(body.literalFieldsOf(literal), (fields) => fields.map(concreteField)),
-    patternOf: (pattern) =>
-      mapDefined(body.patternOf(pattern), (checked) =>
-        instantiatedPattern(checked, substitution, checker.typeRules),
-      ),
-    chainOf: (link) =>
-      mapDefined(body.chainOf(link), (chained) => ({
-        base: concrete(chained.base),
-        carried: concrete(chained.carried),
-      })),
-    fieldReadOf: (access) => mapDefined(body.fieldReadOf(access), concreteRead),
-    declaredTypeOf: (name) => mapDefined(body.declaredTypeOf(name), concrete),
-    namedFieldOf: (name) => mapDefined(body.namedFieldOf(name), concreteField),
-    keyOwnerOf: (literal) => mapDefined(body.keyOwnerOf(literal), concrete),
-    builtLiteralOf: body.builtLiteralOf,
-    chosenVariantOf: body.chosenVariantOf,
-    candidatesAt: body.candidatesAt,
-    labels: body.labels,
-    passesOf: (header) => instantiatedPasses(body.passesOf(header), substitution, checker),
-    isRuledOut: body.isRuledOut,
-    stopsAt: body.stopsAt,
-    decidedOf: body.decidedOf,
-    result: concrete(body.result),
+    substitution,
+    checker,
+    concrete,
+    fit: (fit) => substitutedFit(fit, substitution, rules),
+    field: (field) => ({ ...field, type: concrete(field.type) }),
+    fieldRead: (read) => instantiatedRead(checker, read, concrete),
+    target: (binding) => instantiatedTarget(binding, substitution, rules),
+    assigned: (part) => instantiatedPart(part, substitution, rules),
+    function: (checked) => instantiatedFunction(checked, substitution, rules),
+    pattern: (checked) => instantiatedPattern(checked, substitution, rules),
+    iteration: (form) => (form.kind === 'cursor' ? { ...form, item: concrete(form.item) } : form),
+    chain: (link) => ({ base: concrete(link.base), carried: concrete(link.carried) }),
+    pass: ({ visits, key, value, body }) => ({
+      visits,
+      key: substitute(key, substitution, rules),
+      value: substitute(value, substitution, rules),
+      body: body.instantiated(substitution, checker),
+    }),
   };
 }
 
@@ -94,7 +85,7 @@ export function instantiatedBody(
 function instantiatedPart(
   part: AssignedPart,
   substitution: Substitution,
-  { typeRules: rules }: Pick<Checker, 'typeRules'>,
+  rules: TypeRules,
 ): AssignedPart {
   return {
     ...part,
@@ -121,27 +112,12 @@ function instantiatedFunction(
   };
 }
 
-/** A field loop's passes as one instantiation reads them: their types and bodies substituted. */
-function instantiatedPasses(
-  passes: readonly FieldPass[],
-  substitution: Substitution,
-  checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
-): readonly FieldPass[] {
-  return passes.map(({ visits, key, value, body }) => ({
-    visits,
-    key: substitute(key, substitution, checker.typeRules),
-    value: substitute(value, substitution, checker.typeRules),
-    body: instantiatedBody(body, substitution, checker),
-  }));
-}
-
 /** What a target binds, as one instantiation sees it: its type and its path's types substituted. */
 function instantiatedTarget(
   binding: TargetBinding,
   substitution: Substitution,
-  checker: Pick<Checker, 'typeRules'>,
+  rules: TypeRules,
 ): TargetBinding {
-  const rules = checker.typeRules;
   return {
     ...binding,
     type: substitute(binding.type, substitution, rules),
@@ -158,11 +134,6 @@ function instantiatedTargetPath(
   return path.map((step) =>
     typeof step === 'number' ? step : instantiatedStructStep(step, substitution, rules),
   );
-}
-
-/** `f(value)`, or undefined for an undefined value: a table's answer, read through `f`. */
-function mapDefined<T, R>(value: T | undefined, f: (defined: T) => R): R | undefined {
-  return value === undefined ? undefined : f(value);
 }
 
 /**

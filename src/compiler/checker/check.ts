@@ -66,6 +66,7 @@ import type {
 } from './resolved-call.ts';
 import type { Fit } from './types/fit.ts';
 import type { RestSlot } from './types/function-types.ts';
+import type { Substitution } from './types/substitution.ts';
 import type {
   AnonymousStructType,
   AnyType,
@@ -196,8 +197,12 @@ export interface LabelResolution {
   readonly isHoldScope: (scope: LabelledScope) => boolean;
 }
 
-/** What checking a function body found, for lowering (architecture: phase contracts). */
-export interface CheckedBody {
+/**
+ * What checking a function body found of its nodes, for lowering (architecture: phase contracts).
+ * Every fact is one entry of the body's facts table (body-facts.ts), which says how it is read as
+ * a pass checked it, through an instantiation, and across a field loop's passes.
+ */
+export interface BodyFacts {
   /** The type of an expression of this body; undefined for one never checked. */
   readonly typeOf: (expression: Expression) => Type | undefined;
   /**
@@ -290,6 +295,23 @@ export interface CheckedBody {
   readonly decidedOf: (condition: Expression) => boolean | undefined;
   /** What the body produces: `T` for an async function returning `Future<T>`. */
   readonly result: Type;
+}
+
+/** A checked body: its facts, and the views of it every fact is read through alike. */
+export interface CheckedBody extends BodyFacts {
+  /**
+   * The body as one instantiation reads it (§3.5): checked once, generically, it records types of
+   * its type parameters, each substituted here (types/instantiation.ts).
+   */
+  readonly instantiated: (
+    substitution: Substitution,
+    checker: Pick<Checker, 'fieldsOf' | 'typeRules'>,
+  ) => CheckedBody;
+  /**
+   * The passes of the field loop `header` heads read as one body, as tools read a node inside it
+   * (§4, lookup/pass-views.ts); this body where the loop has no pass.
+   */
+  readonly passesJoined: (header: FieldHeader, rules: TypeRules) => CheckedBody;
 }
 
 /**

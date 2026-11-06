@@ -146,13 +146,13 @@ A field loop over `{ id: Int, label: String }` checks its body once per field. T
 - A pass is just `{ outer }`. `PassTable.set` writes into the current pass's map; `get` walks `pass.outer` to the root, so a node outside the loop answers inside it.[](source:passes)
 - Facts every pass shares stay out of pass tables: `#changed`, `#inCell`, `#references`, label targets, and a function's returns.
 - A diagnostic made inside a pass is held, then reported once; a "never runs" diagnostic only when every pass made it.
-- A pass for fields a struct constraint leaves unnamed is read through `instantiatedBody` with the field's key substituted.[](source:passbody)
+- A pass for fields a struct constraint leaves unnamed is read through `CheckedBody.instantiated` with the field's key substituted.[](source:passbody)
 
 ## Who reads these records later? {#readers}
 
 | Reader | Asks | Gets it from |
 | --- | --- | --- |
-| Lowering, a declaration | `targetsOf(owner)`, `inCell(name)` | `VariableScope.#targets`, `#inCell`, through `instantiatedBody` |
+| Lowering, a declaration | `targetsOf(owner)`, `inCell(name)` | `VariableScope.#targets`, `#inCell`, through `CheckedBody.instantiated` |
 | Lowering, a name read | `entityOf(name)`, then `registerOf(entity.name)` | binder, then lowering's own `#registers` |
 | Lowering, a closure | `functionOf(lambda).captures` | `FunctionScopes.#checked` |
 | Lowering, any value | `typeOf(node)`, `fitAt(site)` | `BodyChecker.#types`, `#fits`, substituted per instance |

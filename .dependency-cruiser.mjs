@@ -115,7 +115,7 @@ const layers = {
 /**
  * The checker's folders, lowest first: each may import the folders before it, never one after, and
  * a folder not listed may import none. Its root modules are its entry, contexts and contracts,
- * which any folder may import, except the classes wiring a body and a program together; so they
+ * which any folder may import, except the modules wiring a body and a program together; so they
  * import no folder above the type model, or every folder would reach every other through them.
  * Type-only imports count, as the swc parser reports them: a cycle of types is a cycle of knowledge.
  */
@@ -163,7 +163,6 @@ const checkerSurface = [
   'types/recursive-types.ts',
   'types/type-keys.ts',
   'types/type-text.ts',
-  'types/instantiation.ts',
   'types/well-known.ts',
 ];
 
@@ -215,7 +214,8 @@ export default {
       severity: 'error',
       from: {
         path: '^src/compiler/checker/[^/]+\\.ts$',
-        pathNot: '^src/compiler/checker/(body-checker|body-records|program-checker)\\.ts$',
+        pathNot:
+          '^src/compiler/checker/(body-checker|body-records|body-facts|program-checker)\\.ts$',
       },
       to: { path: checkerFolder(checkerLayers.filter((layer) => !checkerModel.includes(layer))) },
     },
@@ -223,7 +223,9 @@ export default {
       name: 'checker-folder-imports-wiring',
       severity: 'error',
       from: { path: '^src/compiler/checker/[^/]+/' },
-      to: { path: '^src/compiler/checker/(body-checker|body-records|program-checker)\\.ts$' },
+      to: {
+        path: '^src/compiler/checker/(body-checker|body-records|body-facts|program-checker)\\.ts$',
+      },
     },
     {
       // Compiling or editing a program loads std sources without natives or the runtime they reach.

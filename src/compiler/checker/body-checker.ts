@@ -49,7 +49,8 @@ import type {
   Enclosing,
   Returns,
 } from './body-context.ts';
-import { bodyRecords, checkedAt } from './body-records.ts';
+import { checkedAt } from './body-facts.ts';
+import { bodyRecords } from './body-records.ts';
 import type { CheckedBody, SignatureParameter, ValueSite } from './check.ts';
 import { statementPlace } from './checked-annotation.ts';
 import { FunctionScope } from './closures/function-scope.ts';
@@ -195,7 +196,7 @@ export class BodyChecker implements BodyContext {
     }
     const calls = this.#records.resolved.entries();
     checkDisposeUses(this, calls, checkTestingCalls(this, calls));
-    return checkedAt(this.#records, this, this.#passes.root, result);
+    return checkedAt({ records: this.#records, units: this, result }, this.#passes.root);
   }
 
   expression(node: Expression, given?: Type): Type {

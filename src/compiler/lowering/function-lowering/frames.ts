@@ -18,7 +18,6 @@ import type {
   NestedFunction,
   SignatureParameter,
 } from '../../checker/check.ts';
-import { instantiatedBody } from '../../checker/types/instantiation.ts';
 import type { Type } from '../../checker/types/type.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
@@ -103,7 +102,7 @@ export function passBody(checker: Checker, body: CheckedBody, step: FieldPassSte
   const others =
     passes.find((pass) => pass.visits.kind === 'others') ??
     unreachable(`No pass of a field loop reads the field '${step.field}'.`);
-  return instantiatedBody(others.body, passBindings([step]), checker);
+  return others.body.instantiated(passBindings([step]), checker);
 }
 
 /**
@@ -112,7 +111,7 @@ export function passBody(checker: Checker, body: CheckedBody, step: FieldPassSte
  */
 function ownBodyOf(checker: Checker, instance: FunctionInstance): CheckedBody | undefined {
   const body = bodyOfEntry(checker, instance);
-  return body === undefined ? undefined : instantiatedBody(body, substitutionOf(instance), checker);
+  return body?.instantiated(substitutionOf(instance), checker);
 }
 
 function bodyOfEntry(checker: Checker, instance: FunctionInstance): CheckedBody | undefined {

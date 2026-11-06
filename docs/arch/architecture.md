@@ -62,7 +62,8 @@ src/
                         placeholder per name until linked, bound as its alias where renamed (`aliasOf`)
     checker/            check.ts is the entry and the surface later phases read
       context.ts body-context.ts program-checker.ts body-checker.ts  contexts and the classes that wire them; body-records.ts: what a
-                                                                 body records of its nodes, per pass, and the CheckedBody read through them
+                                                                 body records of its nodes, per pass; body-facts.ts: each fact a
+                                                                 CheckedBody answers, read per pass, instantiated and joined
       use-site.ts                                                where a check reports
       resolved-call.ts checked-pattern.ts                        models the surface names: what calls resolved to, patterns and targets as checked,
       constant-form.ts json-form.ts checked-annotation.ts        computed constants, derived JSON forms, annotations,

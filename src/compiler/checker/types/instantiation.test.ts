@@ -20,7 +20,6 @@ import { type For, tailExpressionOf } from '../../syntax/statements.ts';
 import { bodyOf, nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
 import { type CheckedBody, checkProgram } from '../check.ts';
 import { namesBound, type PartStep } from '../checked-pattern.ts';
-import { instantiatedBody } from './instantiation.ts';
 import { substitutionFor } from './substitution.ts';
 import { intType, stringType } from './type.ts';
 import { parametersIn } from './type-parts.ts';
@@ -36,11 +35,9 @@ describe('an instantiated body', () => {
     const count = tree.root.items[0] as FunctionDeclaration;
     const loop = bodyOf(tree, count)?.statements[1] as For;
     const body = checker.bodyOf(count);
-    const form =
-      body &&
-      instantiatedBody(body, substitutionFor(count.typeParameters, [intType]), checker).iterationOf(
-        loop,
-      );
+    const form = body
+      ?.instantiated(substitutionFor(count.typeParameters, [intType]), checker)
+      .iterationOf(loop);
     expect(form?.kind === 'cursor' && typeText(form.item)).toBe('Int');
   });
 
@@ -64,10 +61,9 @@ describe('an instantiated body', () => {
     const body = checker.bodyOf(first);
     const checked =
       alternatives &&
-      body &&
-      instantiatedBody(body, substitutionFor(first.typeParameters, [intType]), checker).patternOf(
-        alternatives.pattern,
-      );
+      body
+        ?.instantiated(substitutionFor(first.typeParameters, [intType]), checker)
+        .patternOf(alternatives.pattern);
     expect(checked && namesBound(checked).map(({ type }) => typeText(type))).toEqual(['Int']);
   });
 
@@ -104,8 +100,8 @@ describe('an instantiated body', () => {
     const body = checker.bodyOf(boxed);
     const read = (typeArgument: typeof intType) =>
       taken &&
-      body &&
-      instantiatedBody(body, substitutionFor(boxed.typeParameters, [typeArgument]), checker)
+      body
+        ?.instantiated(substitutionFor(boxed.typeParameters, [typeArgument]), checker)
         .patternOf(taken.pattern)
         ?.bindings.map(({ path, narrowedFrom }) => ({
           path: path.map(stepRead),
@@ -143,7 +139,7 @@ describe('an instantiated body', () => {
       const type = kinds && checker.parametersOf(kinds)[index]?.type;
       const substitution = sizeOf && type && substitutionFor(sizeOf.typeParameters, [type]);
       return access && body && substitution
-        ? instantiatedBody(body, substitution, checker).fieldReadOf(access)
+        ? body.instantiated(substitution, checker).fieldReadOf(access)
         : undefined;
     };
     expect(access && body?.fieldReadOf(access)?.kind).toBe('required');
@@ -208,8 +204,7 @@ describe('a generic function instantiated as lowering reads it', () => {
       ) {
         return [];
       }
-      const instance = instantiatedBody(
-        body,
+      const instance = body.instantiated(
         substitutionFor(generic.typeParameters, call.typeArguments),
         checker,
       );

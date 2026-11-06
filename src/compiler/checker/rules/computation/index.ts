@@ -43,7 +43,6 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { FunctionCall } from '../../resolved-call.ts';
 import { laidOut } from '../../types/field-order.ts';
 import { isExact } from '../../types/fit.ts';
-import { instantiatedBody } from '../../types/instantiation.ts';
 import { type Substitution, substitute, substitutionFor } from '../../types/substitution.ts';
 import { computed, fittedForm, itemsOf, type Outcome, pairOf, refused, unknown } from './forms.ts';
 
@@ -280,7 +279,7 @@ class Computation {
     const scope: ComputationScope = {
       checker,
       constant: undefined,
-      checked: instantiatedBody(checked, substitution, checker),
+      checked: checked.instantiated(substitution, checker),
       valueNamed: (name) => {
         const entity = checker.bindings.entityOf(module, name);
         const field = entity?.kind === 'variable' ? fields.get(entity.owner) : undefined;
