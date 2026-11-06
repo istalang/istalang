@@ -1,5 +1,5 @@
 /**
- * `if` as an expression (§4): its branches agree on its type (rules/branches.ts). An `if` without
+ * `if` as an expression (§4): its branches agree on its type (expressions/control/branches.ts). An `if` without
  * `else` produces nothing, so its branches must be `Unit`.
  *
  * A condition its operands' types decide (rules/decided-conditions.ts) rules out the branch that
@@ -11,11 +11,11 @@ import { valueBranchesOf } from '../../syntax/expressions/branches.ts';
 import type { Expression, If } from '../../syntax/expressions/index.ts';
 import type { Accepts, BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { decidedValue } from '../rules/decided-conditions.ts';
 import { isAssignable } from '../types/identity.ts';
 import { boolType, type Type, unitType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { Branches, branchesAccepts } from './control/branches.ts';
 
 export function checkIf(context: BodyContext, node: If, expected: Type | undefined): Type {
   const branches = new Branches(context, expected);

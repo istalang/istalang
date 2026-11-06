@@ -8,7 +8,7 @@
  *   the future's value; a case without `as` discards it, so a value that must be used (§7), such
  *   as a `Result`, is reported as a bare expression's would be.
  * - The case bodies and `else` agree on the select's type as an `if`'s branches do
- *   (rules/branches.ts).
+ *   (expressions/control/branches.ts).
  * - A case on the function's own call's `disposing()` runs while the call is being disposed, so
  *   an `await` in its body stops the call instead of waiting (§7), which is warned about. The
  *   runtime decides cleanup by the future; the warning sees it where the case calls `disposing`
@@ -22,12 +22,12 @@ import { selectCasesOf, unparenthesized } from '../../syntax/expressions/reading
 import type { Accepts, BodyContext } from '../body-context.ts';
 import { ownCallerOf } from '../closures/own-calls.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { checkDiscarded } from '../rules/disposal/must-use.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument } from '../types/well-known.ts';
 import { reportWait } from './await.ts';
+import { Branches, branchesAccepts } from './control/branches.ts';
 
 export function checkSelect(context: BodyContext, node: Select, expected: Type | undefined): Type {
   reportForm(context, node);

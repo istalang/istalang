@@ -11,18 +11,18 @@
  * Passed to a call that decides their type (§3.5), they take what their tails agree on.
  */
 
-import { type Block, tailExpressionOf, tailNodeOf } from '../../syntax/statements.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../body-context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { neverType, type Type } from '../types/type.ts';
-import { typeText } from '../types/type-text.ts';
+import { type Block, tailExpressionOf, tailNodeOf } from '../../../syntax/statements.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../../body-context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import {
   agreedAccepts,
   decidedSoFar,
   type Produced,
   producedBy,
   settleAgreement,
-} from './agreement.ts';
+} from '../../rules/agreement.ts';
+import { neverType, type Type } from '../../types/type.ts';
+import { typeText } from '../../types/type-text.ts';
 
 export class Branches {
   readonly #context: BodyContext;

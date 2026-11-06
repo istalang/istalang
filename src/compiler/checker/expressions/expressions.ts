@@ -28,7 +28,6 @@ import type { Identifier } from '../../syntax/node.ts';
 import { type Block, tailExpressionOf } from '../../syntax/statements.ts';
 import type { AcceptedPart, Accepts, BodyContext, PartReader, TypedPart } from '../body-context.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
-import { blockAccepts } from '../rules/branches.ts';
 import { takingUnfolded } from '../types/expected.ts';
 import {
   boolType,
@@ -54,6 +53,7 @@ import {
 } from './collection-accepts.ts';
 import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections.ts';
 import { checkComprehension, checkFieldComprehension } from './comprehensions.ts';
+import { blockAccepts } from './control/branches.ts';
 import { checkIf, ifAccepts } from './control.ts';
 import { checkDereference } from './dereference.ts';
 import { checkIndentedValue, indentedAccepts } from './indented-values.ts';

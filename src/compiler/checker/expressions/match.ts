@@ -2,7 +2,7 @@
  * `match` and `is` (§3.11, §4).
  *
  * - A `match` is an expression: its cases' bodies agree on its type, as an `if`'s branches do
- *   (rules/branches.ts). Each case's pattern is checked against the subject's type, then its
+ *   (expressions/control/branches.ts). Each case's pattern is checked against the subject's type, then its
  *   guard, then its body, in source order.
  * - It must be exhaustive: the cases without a guard must cover every value of the subject's type
  *   (patterns/exhaustiveness.ts). A comparison other than `==` against a literal or variant acts
@@ -26,10 +26,10 @@ import { analyze, anyShape, type CaseShape } from '../patterns/exhaustiveness.ts
 import { checkPattern } from '../patterns/matching.ts';
 import { remainingType } from '../patterns/remaining.ts';
 import { signatureOf, witnessText } from '../patterns/shapes.ts';
-import { Branches, branchesAccepts } from '../rules/branches.ts';
 import { decideComparison } from '../rules/decided-conditions.ts';
 import { keyOwnerOfValue, recordPatternKeys } from '../traits/struct-keys.ts';
 import { boolType, type Type } from '../types/type.ts';
+import { Branches, branchesAccepts } from './control/branches.ts';
 
 export function checkMatch(context: BodyContext, node: Match, expected: Type | undefined): Type {
   const subject = context.expression(node.subject);
