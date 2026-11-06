@@ -1,14 +1,14 @@
 /**
- * Array comprehensions (§4): the loop every iterating construct runs (iteration.ts), appending the
+ * Array comprehensions (§4): the loop every iterating construct runs (loops/iteration.ts), appending the
  * body's value for each item the condition keeps (collections.ts); over a struct's fields, the
- * body's value of each field's pass, in name order (field-passes.ts).
+ * body's value of each field's pass, in name order (loops/field-passes.ts).
  */
 
 import type { Register } from '../../../definition/operands.ts';
 import type { Comprehension, FieldComprehension } from '../../syntax/expressions/index.ts';
 import type { FunctionContext } from '../context.ts';
-import { fieldsVisited, inFieldScope } from '../field-passes.ts';
-import { emitLoopOver } from '../iteration.ts';
+import { fieldsVisited, inFieldScope } from '../loops/field-passes.ts';
+import { emitLoopOver } from '../loops/iteration.ts';
 import { appendElement } from './collections.ts';
 
 export function lowerComprehension(context: FunctionContext, node: Comprehension): Register {

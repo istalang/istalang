@@ -12,7 +12,7 @@ import type { FieldReads } from '../expressions/member-access.ts';
 import type { OptionalChains } from '../expressions/optionals.ts';
 import type { CheckedPatterns } from '../patterns/matching.ts';
 import type { ImplicitCalls } from '../resolution/implicit.ts';
-import type { Iterations } from '../rules/iteration.ts';
+import type { Iterations } from '../rules/loops/iteration.ts';
 import type { LabelTargets } from '../statements/loops.ts';
 import type { VariableScope } from '../statements/variables.ts';
 import type { Type } from '../types/type.ts';

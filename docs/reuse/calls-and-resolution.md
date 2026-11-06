@@ -51,7 +51,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - what static functions on a type are declared on (a nominal declaration, a primitive, a shape's key), and what a static function's owner names → `staticOwnerOf`, `declaredOwnerOf`, `StaticOwner` (`src/compiler/checker/types/named-types.ts`); never resolve a static's owner another way
 - the type a pattern naming an entity tests for, what it downcasts an `any` value to, or whether it names a value's own type → `patternTypeOf`, `downcastTargetOf`, `namesOwnType` (`src/compiler/checker/types/named-types.ts`); the checker's patterns and completion both read them, never their own copy
 - choose a bare or qualified enum variant against an expected type → `chooseVariant` (`src/compiler/checker/resolution/named.ts`)
-- check `for`/comprehension/spread iteration → `checkIterated`, `iteratedItem`, `checkLoopOver` (`src/compiler/checker/rules/iteration.ts`)
+- check `for`/comprehension/spread iteration → `checkIterated`, `iteratedItem`, `checkLoopOver` (`src/compiler/checker/rules/loops/iteration.ts`)
 
 ## One-way rules
 

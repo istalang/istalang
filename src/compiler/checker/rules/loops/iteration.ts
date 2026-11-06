@@ -15,20 +15,20 @@
  *   `(key, value)`, so `for key, value in m:` works directly.
  */
 
-import { collectionFunctions, wellKnown } from '../../../language/well-known.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Comprehension, Expression } from '../../syntax/expressions/index.ts';
-import type { For } from '../../syntax/statements.ts';
-import type { BodyContext, IterationRecord } from '../body-context.ts';
-import type { Checker, Iteration, IterationForm } from '../check.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Pass, Passes, PassTable } from '../passes.ts';
-import { declareTargets } from '../patterns/targets.ts';
-import { topLevelCandidates } from '../resolution/candidates.ts';
-import { implicitCall } from '../resolution/implicit.ts';
-import { errorType, type Type } from '../types/type.ts';
-import { typeText } from '../types/type-text.ts';
-import { wellKnownArguments } from '../types/well-known.ts';
+import { collectionFunctions, wellKnown } from '../../../../language/well-known.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Comprehension, Expression } from '../../../syntax/expressions/index.ts';
+import type { For } from '../../../syntax/statements.ts';
+import type { BodyContext, IterationRecord } from '../../body-context.ts';
+import type { Checker, Iteration, IterationForm } from '../../check.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Pass, Passes, PassTable } from '../../passes.ts';
+import { declareTargets } from '../../patterns/targets.ts';
+import { topLevelCandidates } from '../../resolution/candidates.ts';
+import { implicitCall } from '../../resolution/implicit.ts';
+import { errorType, type Type } from '../../types/type.ts';
+import { typeText } from '../../types/type-text.ts';
+import { wellKnownArguments } from '../../types/well-known.ts';
 
 /** How each iteration in one body runs. */
 export class Iterations implements IterationRecord {

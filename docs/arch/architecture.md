@@ -123,7 +123,7 @@ src/
                                                                  checked pattern, its tests then its bindings; the part of a value a
                                                                  pattern or target reaches, along the checker's steps
       struct-values.ts                                           structs built by their fields' names, beneath every builder of one
-      iteration.ts emit-call.ts                                  the one loop of every iterating construct; the one place a `call` is written
+      loops/ emit-call.ts                                        loops: the one loop of every iterating construct and the passes over a struct's fields; the one place a `call` is written
       synthesized-code.ts                                        writing code with no syntax behind it, which boundary/ and trait-objects/ use
       boundary/                                                  code with no syntax behind it (docs/arch/boundary.md): derived json
                                                                  codecs, host extern wrappers, start entries, reading inbound JSON

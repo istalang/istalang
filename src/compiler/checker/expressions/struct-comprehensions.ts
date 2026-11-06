@@ -1,6 +1,6 @@
 /**
  * Struct comprehensions (§3.1, §4): `struct{id, for k, v in ...x: [k]: e}` gives each field of
- * `x` a field of its own, of `e`'s value as that field's pass checks it (rules/field-passes.ts),
+ * `x` a field of its own, of `e`'s value as that field's pass checks it (rules/loops/field-passes.ts),
  * after the fields the literal names. The literal gives every field itself, so it has no spread
  * and leaves no field to a default.
  *
@@ -28,7 +28,7 @@ import type { FieldSource } from '../check.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Inference } from '../inference/infer.ts';
 import type { FieldPassType } from '../passes.ts';
-import { checkedFieldPasses, inFieldPasses } from '../rules/field-passes.ts';
+import { checkedFieldPasses, inFieldPasses } from '../rules/loops/field-passes.ts';
 import { sameType } from '../types/identity.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import type { FieldMember, Type } from '../types/type.ts';

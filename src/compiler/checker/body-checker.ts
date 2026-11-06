@@ -81,7 +81,7 @@ import { reportUnmet } from './resolution/trait-objects.ts';
 import type { ResolvedCall, ResolvedSite } from './resolved-call.ts';
 import { checkDisposeUses } from './rules/disposal/disposal.ts';
 import { checkDropped } from './rules/disposal/dropped.ts';
-import { Iterations } from './rules/iteration.ts';
+import { Iterations } from './rules/loops/iteration.ts';
 import { checkTestingCalls } from './rules/testing.ts';
 import { LabelTargets } from './statements/loops.ts';
 import { checkBlock, statementHandlers } from './statements/statements.ts';

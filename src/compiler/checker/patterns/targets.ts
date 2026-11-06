@@ -2,7 +2,7 @@
  * Declaring targets (§3.15): a declaration's, a `for`'s and a comprehension's targets take a value
  * apart (walk.ts), and each name they bind is declared with its part's type; a field loop's key and
  * value take apart the pair of its field's name and value, and a parameter's pattern its argument
- * (§3.3). Declarations (statements/variables.ts), loops (rules/iteration.ts,
+ * (§3.3). Declarations (statements/variables.ts), loops (rules/loops/iteration.ts,
  * statements/field-loops.ts) and every body a function's parameters are declared in (its own, its
  * defaults', a lambda's) all declare through here, so a pattern is refused or taken apart alike
  * wherever it binds.

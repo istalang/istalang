@@ -1,7 +1,7 @@
 /**
  * Loops and labelled blocks (§3.4, §4): `while` tests its condition at the top; `continue` jumps
  * back to the test and `break` past the loop, both ending the blocks they leave as their ends
- * would. A `for` runs the loop every iterating construct runs (iteration.ts), binding its targets
+ * would. A `for` runs the loop every iterating construct runs (loops/iteration.ts), binding its targets
  * to each item; `continue` goes on to the next item. A field loop is written out once per field. A labelled `break` or `continue` goes to the
  * loop the checker found its label naming (CheckedBody `labels`). A labelled block is a block a
  * `hold` may name.
@@ -25,8 +25,8 @@ import type {
 } from '../../syntax/statements.ts';
 import type { Label } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
-import { fieldsVisited, inFieldScope } from '../field-passes.ts';
-import { emitLoopOver } from '../iteration.ts';
+import { fieldsVisited, inFieldScope } from '../loops/field-passes.ts';
+import { emitLoopOver } from '../loops/iteration.ts';
 import { endScope, lowerGuarded } from './scopes.ts';
 
 /** Where `break` and `continue` go inside a loop, and how many blocks were open around it. */
@@ -100,7 +100,7 @@ export function lowerFor(context: FunctionContext, node: For): void {
 
 /**
  * A field loop (§4): its body written out once per field of its subject's struct, in name order
- * (field-passes.ts); `continue` goes on to the next field, `break` past the last.
+ * (loops/field-passes.ts); `continue` goes on to the next field, `break` past the last.
  */
 export function lowerFieldLoop(context: FunctionContext, node: FieldLoop): void {
   const { code } = context;

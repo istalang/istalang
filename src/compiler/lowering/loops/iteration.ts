@@ -3,21 +3,21 @@
  * construct lowers"): a `for`, a comprehension, and a spread its literal doesn't copy whole. Each
  * calls `iterate` on what it runs over, which gives a cursor, then calls the cursor until it gives
  * `Done`, running the body with the item each `Next` holds. `iterate` is the call the checker made
- * for the construct (checker rules/iteration.ts), so there is one loop for all.
+ * for the construct (checker rules/loops/iteration.ts), so there is one loop for all.
  */
 
-import type { Register } from '../../definition/operands.ts';
-import { stepVariants, wellKnown } from '../../language/well-known.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { Iteration } from '../checker/check.ts';
-import type { Comprehension, Expression } from '../syntax/expressions/index.ts';
-import type { For } from '../syntax/statements.ts';
-import type { FunctionContext } from './context.ts';
-import { emitCall, emitImplicitCall } from './emit-call.ts';
-import { payloadOr } from './expressions/variants.ts';
-import type { LoopTargets } from './statements/loops.ts';
-import { endScope } from './statements/scopes.ts';
-import { bindTargets } from './statements/variables.ts';
+import type { Register } from '../../../definition/operands.ts';
+import { stepVariants, wellKnown } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { Iteration } from '../../checker/check.ts';
+import type { Comprehension, Expression } from '../../syntax/expressions/index.ts';
+import type { For } from '../../syntax/statements.ts';
+import type { FunctionContext } from '../context.ts';
+import { emitCall, emitImplicitCall } from '../emit-call.ts';
+import { payloadOr } from '../expressions/variants.ts';
+import type { LoopTargets } from '../statements/loops.ts';
+import { endScope } from '../statements/scopes.ts';
+import { bindTargets } from '../statements/variables.ts';
 
 /** The cursor `node` runs: `iterate` called on `iterable`'s value. */
 export function cursorOf(

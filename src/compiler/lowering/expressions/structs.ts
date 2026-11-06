@@ -27,7 +27,7 @@ import { itemValue } from '../../syntax/expressions/readings.ts';
 import { defaultEntryOf } from '../closed-calls.ts';
 import type { FunctionContext } from '../context.ts';
 import { emitCall } from '../emit-call.ts';
-import { fieldsVisited, valueInFieldScope } from '../field-passes.ts';
+import { fieldsVisited, valueInFieldScope } from '../loops/field-passes.ts';
 import { construct } from '../struct-values.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
@@ -100,7 +100,7 @@ export function literalFields(context: FunctionContext, node: FieldsLiteral): Li
 
 /**
  * The fields a struct comprehension gives (§3.1), one per field of its subject's struct, in name
- * order, each the value it gives in that field's pass (field-passes.ts).
+ * order, each the value it gives in that field's pass (loops/field-passes.ts).
  */
 function comprehendedFields(
   context: FunctionContext,

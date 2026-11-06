@@ -324,7 +324,7 @@ export interface CollectionRecord {
   readonly record: (literal: ArrayLiteral | MapLiteral, form: CollectionForm) => void;
 }
 
-/** How each iteration runs (rules/iteration.ts). */
+/** How each iteration runs (rules/loops/iteration.ts). */
 export interface IterationRecord {
   readonly record: (iteration: Iteration, form: IterationForm) => void;
 }

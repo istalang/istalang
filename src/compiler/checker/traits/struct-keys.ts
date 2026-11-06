@@ -22,14 +22,13 @@
 
 import { compareOrdered } from '../../../language/order.ts';
 import type { TypeParameter } from '../../syntax/declarations.ts';
-import type { Expression, FieldHeader } from '../../syntax/expressions/index.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Pattern } from '../../syntax/patterns.ts';
 import { parentOf } from '../../syntax/tree.ts';
 import type { StructType } from '../../syntax/types.ts';
 import type { BodyContext } from '../body-context.ts';
 import type { CheckerContext } from '../context.ts';
-import type { FieldPassType } from '../passes.ts';
 import { isOpaque, type MappedParts } from '../types/computed-types.ts';
 import { keysOwner } from '../types/key-types.ts';
 import { substitute } from '../types/substitution.ts';
@@ -57,7 +56,7 @@ export function isStructType(type: Type): type is StructValueType {
 }
 
 /** The names a struct type's fields have as keys, a String literal's value; undefined for others. */
-function keyName(key: Type): string | undefined {
+export function keyName(key: Type): string | undefined {
   return key.kind === 'literal' && typeof key.value === 'string' ? key.value : undefined;
 }
 
@@ -297,57 +296,6 @@ export function mappedTypeOf(
   });
   return shapeType(parts.origin, [...parts.named, ...mapped]);
 }
-
-/**
- * The passes a field loop's body is checked in over a value of `subject` (§4): one per key a
- * literal names, its value that field's type; and, for the keys not known yet, one pass whose key
- * is a member parameter keyed by `header` ranging over them, its value the field that key names;
- * a struct with no field, or a subject with no value (§2), one pass visiting none (`noFieldPass`).
- * Undefined when `subject` has no keys.
- */
-export function fieldPassesOver(
-  checker: CheckerContext,
-  subject: Type,
-  header: FieldHeader,
-): readonly FieldPassType[] | undefined {
-  if (isPrimitive(subject, 'Never')) {
-    return [noFieldPass];
-  }
-  const keys = keysOf(checker, subject, []);
-  if (keys.kind === 'error') {
-    return undefined;
-  }
-  const members = membersOf(keys).filter((member) => !isPrimitive(member, 'Never'));
-  if (members.length === 0) {
-    return [noFieldPass];
-  }
-  const named = members.flatMap((member): FieldPassType[] => {
-    const name = keyName(member);
-    return name === undefined
-      ? []
-      : [
-          {
-            visits: { kind: 'field', name },
-            key: member,
-            value: fieldTypeOf(checker, subject, member),
-          },
-        ];
-  });
-  const others = members.filter((member) => keyName(member) === undefined);
-  if (others.length === 0) {
-    return named;
-  }
-  const within = unionOf(others, checker.typeRules);
-  const key: Type = { kind: 'parameter', declaration: header, within };
-  return [...named, { visits: { kind: 'others' }, key, value: fieldTypeOf(checker, subject, key) }];
-}
-
-/**
- * The pass over a struct with no field: its body never runs, so it is checked once for the mistakes
- * that don't depend on a field, its key and value of type `Never` (`keyof {}`), whose operations
- * report nothing (calls/stopped-operations.ts).
- */
-const noFieldPass: FieldPassType = { visits: { kind: 'none' }, key: neverType, value: neverType };
 
 /**
  * The struct the value of `value` is a key of, as checked: its type a struct's keys, or a member

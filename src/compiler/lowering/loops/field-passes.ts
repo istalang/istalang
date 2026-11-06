@@ -7,15 +7,15 @@
  * instantiated, so nothing is left to run time.
  */
 
-import type { Register } from '../../definition/operands.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import { type FieldMember, isPrimitive } from '../checker/types/type.ts';
-import type { FieldHeader } from '../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { FunctionContext } from './context.ts';
-import { tupleOf } from './expressions/tuples.ts';
-import { endScope, valueInBlock } from './statements/scopes.ts';
-import { bindTargets } from './statements/variables.ts';
+import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import { type FieldMember, isPrimitive } from '../../checker/types/type.ts';
+import type { FieldHeader } from '../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { FunctionContext } from '../context.ts';
+import { tupleOf } from '../expressions/tuples.ts';
+import { endScope, valueInBlock } from '../statements/scopes.ts';
+import { bindTargets } from '../statements/variables.ts';
 
 /** A field loop's header, the struct it runs over, evaluated, and its fields in name order. */
 export interface VisitedFields {
