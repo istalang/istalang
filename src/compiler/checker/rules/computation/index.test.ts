@@ -6,11 +6,11 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reportedOnce } from '../../../diagnostics/diagnostic.test-kit.ts';
-import { startToEnd, testRuntime } from '../../../runtime/runtime.test-kit.ts';
-import { compiledText } from '../../compile.test-kit.ts';
-import { reported } from '../check.test-kit.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { reportedOnce } from '../../../../diagnostics/diagnostic.test-kit.ts';
+import { startToEnd, testRuntime } from '../../../../runtime/runtime.test-kit.ts';
+import { compiledText } from '../../../compile.test-kit.ts';
+import { reported } from '../../check.test-kit.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
 /** A type to write values of, and how source writes it. */
 type Shape =

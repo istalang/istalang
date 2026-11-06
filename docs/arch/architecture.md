@@ -116,8 +116,12 @@ src/
                                                                  the walk dispatches to, a struct pattern's fields by name and its rest
                                                                  (struct-fields.ts) among them; the order a body's code runs in, which
                                                                  flow rules follow (forward data flow, one table of how each construct runs)
-      rules/                                                     semantic rules: derived JSON codecs, annotations, compile-time computation,
-                                                                 what externs may take, disposal, must-use, `drop`
+      rules/                                                     semantic rules shared by constructs, one folder per feature: producers
+                                                                 agreeing on a type, annotations, tests' rules (testing.ts) at its root;
+                                                                 computation/ (compile-time computation), disposal/ (disposal, must-use,
+                                                                 `drop`), boundary/ (what externs may take, derived JSON codecs),
+                                                                 expansion/ (generics needing endlessly many instantiations), loops/
+                                                                 (iteration, passes over a struct's fields)
       declarations/ closures/ expressions/ statements/           per-construct rules; closures/: the functions a body nests (§3.14), their
                                                                  scopes, returns and captures, lambdas and local fns, function values;
                                                                  declarations/: the handler table, a module's check and constants at its
