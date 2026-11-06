@@ -14,7 +14,9 @@ export interface CheckedModule {
   readonly tree: SyntaxTree;
 }
 
-/** `module` of `program`, with the program's checker; undefined when the program doesn't hold it. */
+/**
+ * `module` of `program`, with the program's checker; undefined when the program doesn't hold it.
+ */
 export function checkedModule(program: Program, module: ModuleId): CheckedModule | undefined {
   const tree = program.modules.get(module)?.tree;
   return tree && { checker: checkProgram(program), module, tree };

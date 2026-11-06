@@ -51,7 +51,9 @@ type ExpressionKind = Exclude<
   }
 >;
 
-/** A member link's `.`, or `?.` through an optional (§4); nothing after `->`, which is its own link. */
+/**
+ * A member link's `.`, or `?.` through an optional (§4); nothing after `->`, which is its own link.
+ */
 function memberLink(target: Expression, isOptional: boolean): string {
   return target.kind === 'Dereference' && target.operator === '->'
     ? ''

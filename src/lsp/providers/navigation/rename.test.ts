@@ -58,7 +58,9 @@ const renamable: readonly NamePlace[] = [...corpusProgram.modules].flatMap(([mod
       }),
 );
 
-/** Whether a name denoting what `declaring` declares is a shorthand, naming a field and a variable. */
+/**
+ * Whether a name denoting what `declaring` declares is a shorthand, naming a field and a variable.
+ */
 function hasShorthand(declaring: NamePlace): boolean {
   return namesDenoting(corpusProgram, declaring).some(({ module, name }) => {
     const holder = parentOf(programModule(corpusProgram, module).tree, name);
@@ -73,7 +75,10 @@ const writtenNames = new Set(
   [...corpusProgram.modules.values()].flatMap(({ tree }) => namesOf(tree).map(spelledName)),
 );
 
-/** A program's diagnostics, each as its module, line, code and message, the names in it as `spell` spells them. */
+/**
+ * A program's diagnostics, each as its module, line, code and message, the names in it as `spell`
+ * spells them.
+ */
 function diagnosticsOf(program: Program, spell: (message: string) => string): readonly string[] {
   return [...program.modules.keys()].flatMap((module) => {
     const { source, diagnostics } = diagnoseModule(program, module);

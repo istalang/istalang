@@ -53,7 +53,9 @@ export interface ProgramDocument {
   readonly tree: SyntaxTree;
 }
 
-/** Every document of `corpusDocuments` that `corpusProgram` holds: what a test states answers from. */
+/**
+ * Every document of `corpusDocuments` that `corpusProgram` holds: what a test states answers from.
+ */
 export const programDocuments: readonly ProgramDocument[] = corpusDocuments.flatMap(({ uri }) => {
   const module = moduleIdOfUri(uri);
   const tree = corpusProgram.modules.get(module)?.tree;

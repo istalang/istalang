@@ -162,7 +162,10 @@ function fits(checker: Checker, found: Type, expected: Type | undefined): boolea
 /** The groups whose fitting items may be preselected; an item of no group is a place's own. */
 const guessedFrom: ReadonlySet<RankGroup | undefined> = new Set([undefined, 'local', 'module']);
 
-/** `items` with the first of those fitting the expected type preselected, of the groups guessed from. */
+/**
+ * `items` with the first of those fitting the expected type preselected, of the groups guessed
+ * from.
+ */
 function withFirstPreselected(items: readonly Completion[]): readonly Completion[] {
   const best = items
     .filter(({ rank }) => rank?.fitsExpected === true && guessedFrom.has(rank.group))

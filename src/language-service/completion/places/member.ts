@@ -41,9 +41,9 @@ import { type Cursor, touchingBefore } from '../cursor.ts';
 
 /**
  * Where a member is written: after a namespace or a type, `head` names it, or, after a type written
- * with more than a name (`Field<Int>.Data`), `owner` is that type; after a value, `access` reads it.
- * A qualified name in a type or a pattern has a head alone; after a `.` where no member can stand,
- * none is known. `names` is what the member names: a value or a value's member, a type, or a
+ * with more than a name (`Field<Int>.Data`), `owner` is that type; after a value, `access` reads
+ * it. A qualified name in a type or a pattern has a head alone; after a `.` where no member can
+ * stand, none is known. `names` is what the member names: a value or a value's member, a type, or a
  * struct or variant a literal builds or a pattern matches.
  */
 export interface MemberPlace {

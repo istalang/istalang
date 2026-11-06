@@ -50,8 +50,8 @@ export interface DeclaredAt {
 }
 
 /**
- * The declarations `name` of `module` denotes, each once: two for a shorthand, the field a key names
- * for a String literal, none for nothing.
+ * The declarations `name` of `module` denotes, each once: two for a shorthand, the field a key
+ * names for a String literal, none for nothing.
  */
 function declarationsOf(
   checker: Checker,

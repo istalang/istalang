@@ -223,7 +223,9 @@ const meansMoreAs: Handlers<Naming, DeclaredAt['declared'], [], boolean> = {
   namespace: () => false,
 };
 
-/** Whether `entity` is an associated type (§3.1), by whose name a type meets a trait's requirement. */
+/**
+ * Whether `entity` is an associated type (§3.1), by whose name a type meets a trait's requirement.
+ */
 function isAssociated(
   entity: Extract<DeclaredAt['declared'], { kind: 'type' }>['entity'],
 ): boolean {

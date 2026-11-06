@@ -70,7 +70,10 @@ function projectRootOf(params: InitializeParams, cwd: string): string {
   return uri === undefined || uri === null ? cwd : fileURLToPath(uri);
 }
 
-/** Keeps the workspace's texts as the client's, publishing diagnostics after every change until shutdown. */
+/**
+ * Keeps the workspace's texts as the client's, publishing diagnostics after every change until
+ * shutdown.
+ */
 function syncDocuments(connection: Connection, workspace: Workspace): void {
   const diagnostics = diagnosticsPublisher(connection, workspace);
   connection.onDidOpenTextDocument(({ textDocument }) => {

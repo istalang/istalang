@@ -5,12 +5,12 @@
  * and code being typed, broken or unfinished, is read the way the parser recovers it. The
  * placeholder joins any name half written at the cursor, a keyword's spelling included.
  *
- * The placeholder's nearest enclosing node that decides a role names the place: a type (but for
- * a literal's or a struct pattern's name, which the tree holds as one and which writes a value or
- * a pattern), a declared name, a pattern (a `case` or `is` pattern, which tests; a `let`, `for` or
+ * The placeholder's nearest enclosing node that decides a role names the place: a type (but for a
+ * literal's or a struct pattern's name, which the tree holds as one and which writes a value or a
+ * pattern), a declared name, a pattern (a `case` or `is` pattern, which tests; a `let`, `for` or
  * parameter pattern declares names instead, as an `as` in any pattern does), a struct pattern's
- * field, a call's argument, an import, an annotation. An expression inside one of these (a
- * compared field's value, an argument's or a field's value) is the grammar's again. A few positions the
+ * field, a call's argument, an import, an annotation. An expression inside one of these (a compared
+ * field's value, an argument's or a field's value) is the grammar's again. A few positions the
  * parser can't tell apart from others are read from the tokens: `new` (a type follows), `async`
  * (only `fn` follows, where the parser reads a lambda's parameter), a line opening with `import` or
  * `@`, and a `<` touching a callee (type arguments, not a comparison).
@@ -38,7 +38,9 @@ import { createSourceText } from '../../text/source-text.ts';
 import { codeTokensOf } from '../tokens.ts';
 import type { Cursor } from './cursor.ts';
 
-/** The places this reading decides with code around them: all but a member's and a literal field's. */
+/**
+ * The places this reading decides with code around them: all but a member's and a literal field's.
+ */
 type ParsedPlaceKind =
   | 'grammar'
   | 'stringText'
@@ -106,7 +108,9 @@ function kindAt(cursor: Cursor, parsed: PlaceholderParse): ParsedPlaceKind | 'no
   );
 }
 
-/** The module's text with the placeholder at the cursor, parsed reusing what the edit left alike. */
+/**
+ * The module's text with the placeholder at the cursor, parsed reusing what the edit left alike.
+ */
 function placeholderParse({ tree, offset }: Cursor): PlaceholderParse {
   const { path, text } = tree.source;
   const source = createSourceText(path, text.slice(0, offset) + placeholder + text.slice(offset));
@@ -146,7 +150,10 @@ function lineOpensWith({ tree, offset }: Cursor, opener: TokenKind): boolean {
   return first?.kind === opener && !tree.source.text.slice(first.span.start, offset).includes('\n');
 }
 
-/** `new` before the name: a shared struct's name follows (§3.1), read by the parser only with its `{`. */
+/**
+ * `new` before the name: a shared struct's name follows (§3.1), read by the parser only with its
+ * `{`.
+ */
 export function followsNew({ tree, before }: Cursor): boolean {
   return (
     before?.kind === 'identifier' &&

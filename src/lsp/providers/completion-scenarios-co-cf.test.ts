@@ -1,7 +1,7 @@
 /**
- * Completion scenarios CO, CF of docs/work/completion/ (collections, lambdas, templates; control flow), one test each.
- * A test named `<ID> <title>` pinned with `fails` is a scenario the server does not meet yet
- * (completion-scenarios.test-kit.ts).
+ * Completion scenarios CO, CF of docs/work/completion/ (collections, lambdas, templates; control
+ * flow), one test each. A test named `<ID> <title>` pinned with `fails` is a scenario the server
+ * does not meet yet (completion-scenarios.test-kit.ts).
  */
 
 import { describeScenarios, type Scenario } from './completion-scenarios.test-kit.ts';

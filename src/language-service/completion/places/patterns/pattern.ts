@@ -5,12 +5,12 @@
  * - Where a pattern starts, or a struct pattern's name is written, what it may refer to, never a
  *   variable, since a bare camelCase name binds one: the variants of the type it matches, bare, of
  *   a union's members those whose name selects one member; the names of that type and of what a
- *   pattern on a union selects (§3.11, checker/types/written/pattern-types.ts), and the namespaces, which qualify a
- *   variant, a struct or a constant; against an `any` type the types a downcast may name; `_`; and
- *   the literal keywords whose literal selects a member (`true` and `false` a `Bool`, `none` an
- *   optional), all of them where the type isn't known, as a literal pattern has the matched value's
- *   own type. A variant another case of the `match` already takes whole is marked covered, for
- *   ranking.
+ *   pattern on a union selects (§3.11, checker/types/written/pattern-types.ts), and the namespaces,
+ *   which qualify a variant, a struct or a constant; against an `any` type the types a downcast may
+ *   name; `_`; and the literal keywords whose literal selects a member (`true` and `false` a
+ *   `Bool`, `none` an optional), all of them where the type isn't known, as a literal pattern has
+ *   the matched value's own type. A variant another case of the `match` already takes whole is
+ *   marked covered, for ranking.
  * - After a struct pattern item's field name, `as` or `is`; a comparison is an operator.
  * - After a case's whole pattern, once a space parts them, `if` for a guard and `as` for the whole.
  * - Anywhere else, as a rest's name or a range's end, nothing.
@@ -112,8 +112,8 @@ function referringNames(cursor: Cursor, type: Type | undefined): readonly Candid
 
 /**
  * A namespace, which qualifies what it exports; a name of `type` itself, or, against a union, one a
- * pattern selects members by (checker/types/written/pattern-types.ts), but a variant's, offered by its owner above; and
- * against an `any` type, a type a downcast may name, one it may hold (§3.10).
+ * pattern selects members by (checker/types/written/pattern-types.ts), but a variant's, offered by
+ * its owner above; and against an `any` type, a type a downcast may name, one it may hold (§3.10).
  */
 function mayRefer(checker: Checker, entity: Entity, type: Type | undefined): boolean {
   if (entity.kind === 'namespace') {

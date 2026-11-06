@@ -1,7 +1,7 @@
 /**
- * Completion scenarios TR, OR of docs/work/completion/ (opening and staying open; item shape, order, kinds), one test each.
- * A test named `<ID> <title>` pinned with `fails` is a scenario the server does not meet yet
- * (completion-scenarios.test-kit.ts).
+ * Completion scenarios TR, OR of docs/work/completion/ (opening and staying open; item shape,
+ * order, kinds), one test each. A test named `<ID> <title>` pinned with `fails` is a scenario the
+ * server does not meet yet (completion-scenarios.test-kit.ts).
  */
 
 import { describeScenarios, type Scenario } from './completion-scenarios.test-kit.ts';

@@ -18,8 +18,8 @@
  * An end-of-line comment prints at the end of its line, wherever its node stands, so it trails the
  * preceding child, or leads the following one, or after an opening bracket is left to its owner. A
  * comment right after a header's `:`, before the body or docstring opening on the next line, is
- * left to that body, which prints it before the line break, so it stays on the header's line instead of
- * trailing a parameter list and breaking it.
+ * left to that body, which prints it before the line break, so it stays on the header's line
+ * instead of trailing a parameter list and breaking it.
  *
  * A child counts as preceding a comment only with no opening bracket between them: `g( # note`
  * belongs to the call's arguments, not to `g`, or whether the arguments break would depend on

@@ -3,8 +3,9 @@
  * the grammar lets something else stand first.
  *
  * - A top-level function's name may first name the type a static is declared on (`fn Duration.
- *   zero()`, §3.7): whatever the checker's static functions may be declared on (types/written/named-types.ts),
- *   an alias of a shape among them (§3.17); a trait's function, `Self` (§3.10).
+ *   zero()`, §3.7): whatever the checker's static functions may be declared on
+ *   (types/written/named-types.ts), an alias of a shape among them (§3.17); a trait's function,
+ *   `Self` (§3.10).
  * - `extern` is followed by `fn`, `struct` or `sendable`, or by the constant's name; `extern
  *   sendable` by `struct` (§3.6).
  * - A method's first parameter may be the receiver, `self`: a top-level or a trait's function,
@@ -69,7 +70,9 @@ function namesOwner(declaration: FunctionDeclaration, name: SyntaxNode | undefin
   );
 }
 
-/** `extern sendable ‸`: the parser takes the name for an extern struct's, whose `struct` is to come. */
+/**
+ * `extern sendable ‸`: the parser takes the name for an extern struct's, whose `struct` is to come.
+ */
 function followsSendable({ tree, before }: Cursor): boolean {
   return (
     before !== undefined &&
@@ -77,7 +80,10 @@ function followsSendable({ tree, before }: Cursor): boolean {
   );
 }
 
-/** Whether `declaration`, held by `holder`, may be a method: a top-level or a trait's function, no static. */
+/**
+ * Whether `declaration`, held by `holder`, may be a method: a top-level or a trait's function, no
+ * static.
+ */
 function mayTakeSelf(declaration: FunctionDeclaration, holder: SyntaxNode | undefined): boolean {
   return (
     declaration.owner === undefined &&
@@ -87,7 +93,9 @@ function mayTakeSelf(declaration: FunctionDeclaration, holder: SyntaxNode | unde
 
 const externWords: readonly Word[] = ['fn', 'struct', 'sendable'];
 
-/** A method's receiver is the parameter named `self`, a name the language gives a role, like a word. */
+/**
+ * A method's receiver is the parameter named `self`, a name the language gives a role, like a word.
+ */
 const receiver: Candidate = { name: receiverParameter, subject: { kind: 'keyword' } };
 
 /** The types a function declared in `holder` may be a static of. */

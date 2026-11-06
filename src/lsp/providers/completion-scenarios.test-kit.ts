@@ -98,7 +98,9 @@ export interface Scenario {
   readonly src: readonly Variant[];
   /** The character whose typing asks for the list; absent: invoked. */
   readonly trigger?: string;
-  /** Where the snippet stands: the fixture's end (`top`), `fn t`'s body, `async fn t`'s, or alone. */
+  /**
+   * Where the snippet stands: the fixture's end (`top`), `fn t`'s body, `async fn t`'s, or alone.
+   */
   readonly where?: 'top' | 'async' | 'empty';
   /** Text after the cursor's line; the default keeps a body's block from being empty. */
   readonly tail?: string;

@@ -57,8 +57,8 @@ export function calleesOf(body: JoinedBody, call: Call): readonly FunctionDeclar
 }
 
 /**
- * The parameter the argument at `offset` gives, of the first function its call resolved to, else
- * of the first it chose among; undefined in a function value's call, or where no parameter takes it.
+ * The parameter the argument at `offset` gives, of the first function its call resolved to, else of
+ * the first it chose among; undefined in a function value's call, or where no parameter takes it.
  */
 export function argumentParameterAt(
   checked: CheckedModule,
@@ -102,7 +102,9 @@ export function writtenParameter(
   return last?.kind === 'Parameter' && last.isRest ? parameters.length - 1 : undefined;
 }
 
-/** The parameters `call` gives before its arguments: a method's `self`, when written before a dot. */
+/**
+ * The parameters `call` gives before its arguments: a method's `self`, when written before a dot.
+ */
 function receiversOf(declaration: FunctionDeclaration, call: Call): 0 | 1 {
   return call.callee.kind === 'MemberAccess' && isMethod(declaration) ? 1 : 0;
 }
@@ -150,7 +152,9 @@ function nextTokenIndex(tokens: readonly Token[], offset: number): number {
   return lastIndexAtMost(tokens, (token) => token.span.start, offset - 1) + 1;
 }
 
-/** Where the first token of `tree`'s code at or after `offset` starts; the text's end past the last. */
+/**
+ * Where the first token of `tree`'s code at or after `offset` starts; the text's end past the last.
+ */
 function nextTokenStart(tree: SyntaxTree, offset: number): number {
   const tokens = codeTokensOf(tree);
   return tokens[nextTokenIndex(tokens, offset)]?.span.start ?? tree.source.text.length;

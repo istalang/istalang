@@ -12,7 +12,9 @@ import type { NamePlace } from './declarations.ts';
 import { spanOfUse } from './declarations.ts';
 import type { NameEdit } from './rename.ts';
 
-/** A program of `files`, keyed by import path, and its names, the `nth` written as `text` in `key`. */
+/**
+ * A program of `files`, keyed by import path, and its names, the `nth` written as `text` in `key`.
+ */
 export function navigable(files: Readonly<Record<string, string>>) {
   const program = stdProgramOf(files);
   const named = (key: string, text: string, nth = 0): NamePlace => {

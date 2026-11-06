@@ -23,7 +23,9 @@ export function expressionCandidates(cursor: Cursor, place: ParsedPlace): readon
   return operandCandidates(cursor, place, surroundingsOf(parsed.tree, parsed.chain));
 }
 
-/** What an operand written at `place` may start with, in a body of the kind `surroundings` gives. */
+/**
+ * What an operand written at `place` may start with, in a body of the kind `surroundings` gives.
+ */
 export function operandCandidates(
   cursor: Cursor,
   place: ParsedPlace,

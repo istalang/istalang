@@ -19,7 +19,9 @@ interface Fold {
   readonly endLine: number;
 }
 
-/** What must fold, and the earliest line its fold may start on: any line up to the one it starts on. */
+/**
+ * What must fold, and the earliest line its fold may start on: any line up to the one it starts on.
+ */
 interface Foldable {
   readonly what: string;
   readonly span: Span;

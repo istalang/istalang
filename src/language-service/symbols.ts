@@ -163,7 +163,9 @@ export function symbolsOf(tree: SyntaxTree): readonly DocumentSymbol[] {
   });
 }
 
-/** `found` with its places in `tree`'s text: the whole declaration, through any body, and its name. */
+/**
+ * `found` with its places in `tree`'s text: the whole declaration, through any body, and its name.
+ */
 function placed(tree: SyntaxTree, found: OutlineSymbol): DocumentSymbol {
   const { name, kind, node, nameNode, children } = found;
   return {

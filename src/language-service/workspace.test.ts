@@ -119,7 +119,8 @@ describe('a workspace', () => {
       const diagnosed = workspace.diagnosticsOf(main);
       const last = workspace.program;
       const declarations = last.modules.get(main)?.tree.root.items;
-      // A body no checker had checked yet, such as a std function's whose result completion shows, is checked once.
+      // A body no checker had checked yet, such as a std function's whose result completion shows,
+      // is checked once.
       const rechecked = checked
         .get(last)
         ?.filter((body) => checkedBefore.has(body) || body === declarations?.[0]);

@@ -65,7 +65,9 @@ export const patternPrinters: Printers<PatternKind> = {
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
-/** What names a struct pattern's struct: its type, `struct`, or nothing in a parameter's short form. */
+/**
+ * What names a struct pattern's struct: its type, `struct`, or nothing in a parameter's short form.
+ */
 function structHead(printer: Printer, node: StructPattern): builders.Doc {
   if (node.type !== undefined) {
     return printer.print(node.type);

@@ -81,7 +81,10 @@ const nextNames = [
   ...new Set([...project.flatMap((name) => name.split('/')), ...importableStdModules, 'prelude']),
 ];
 
-/** Whether `path` names a module an import of `purchase/approve` may name: not itself, nor the prelude. */
+/**
+ * Whether `path` names a module an import of `purchase/approve` may name: not itself, nor the
+ * prelude.
+ */
 function namesImportable(path: string): boolean {
   const module = loaded(path);
   return (
@@ -91,7 +94,9 @@ function namesImportable(path: string): boolean {
   );
 }
 
-/** Whether `path` is a folder holding a project module, at any depth: the module loads through it. */
+/**
+ * Whether `path` is a folder holding a project module, at any depth: the module loads through it.
+ */
 function holdsModule(path: string): boolean {
   return project.some((name) => {
     const parts = name.split('/');

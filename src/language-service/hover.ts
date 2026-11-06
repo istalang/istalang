@@ -63,7 +63,9 @@ export function hoverAt(program: Program, module: ModuleId, offset: number): Hov
   return ending && nameHover(checked, ending);
 }
 
-/** `type` as hover shows it: as written and what it names, and, opaque, the bounds it is known by. */
+/**
+ * `type` as hover shows it: as written and what it names, and, opaque, the bounds it is known by.
+ */
 function shownText(checker: Checker, type: Type): string {
   const text = writtenAndNamedText(type);
   const bounds = isOpaque(type) ? checker.lookup.constraintsOf(type) : [];
@@ -86,7 +88,10 @@ function nodeHover(checked: CheckedModule, node: SyntaxNode): Hover | undefined 
   );
 }
 
-/** Whether `node` may name a declaration: an identifier, or a String literal naming a field as its key. */
+/**
+ * Whether `node` may name a declaration: an identifier, or a String literal naming a field as its
+ * key.
+ */
 function isName(node: SyntaxNode): node is Identifier | StringLiteral {
   return node.kind === 'Identifier' || node.kind === 'StringLiteral';
 }

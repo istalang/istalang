@@ -14,7 +14,10 @@ import { nodesUnder } from '../../../compiler/syntax/tree.ts';
 import { type MainProgram, mainProgram, programAt } from '../../language-service.test-kit.ts';
 import { completionsAt } from '../index.ts';
 
-/** A field unknown to the literal's type (5013), one left without a value (5014), or one given twice (5015). */
+/**
+ * A field unknown to the literal's type (5013), one left without a value (5014), or one given twice
+ * (5015).
+ */
 const fieldMistakes = new Set([5013, 5014, 5015]);
 
 interface LiteralSite {

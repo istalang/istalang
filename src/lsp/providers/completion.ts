@@ -94,7 +94,10 @@ function insertion(insert: Insertion): Pick<CompletionItem, 'insertText' | 'inse
     : { insertText: insert.snippet, insertTextFormat: InsertTextFormat.Snippet };
 }
 
-/** Digits of each key of a `sortText`: fitting, group, priority and order, so every item's keys line up. */
+/**
+ * Digits of each key of a `sortText`: fitting, group, priority and order, so every item's keys line
+ * up.
+ */
 const keyDigits = [1, 2, String(lowestPriority).length, String(lowestPriority).length] as const;
 
 /** The rank's keys, then the name. */

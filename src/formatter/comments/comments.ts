@@ -4,8 +4,9 @@
  * comment-placement.ts's.
  *
  * A `#` comment always ends its line, so it is either own-line (only whitespace before it) or
- * end-of-line. An own-line comment prints on a line of its own; an end-of-line one at the end of the
- * line its node ends, through a line suffix, so nothing printed after it on that line can be eaten.
+ * end-of-line. An own-line comment prints on a line of its own; an end-of-line one at the end of
+ * the line its node ends, through a line suffix, so nothing printed after it on that line can be
+ * eaten.
  */
 
 import { builders, utils } from 'prettier/doc';
@@ -92,7 +93,10 @@ function ownLineAfterDoc(comment: PlacedComment): builders.Doc {
   return [lineSuffix([hardline, comment.blankBefore ? hardline : '', comment.text]), breakParent];
 }
 
-/** Comments printed before their node: an own-line one on its line, an end-of-line one after the code. */
+/**
+ * Comments printed before their node: an own-line one on its line, an end-of-line one after the
+ * code.
+ */
 export function leadingDocs(comments: readonly PlacedComment[]): builders.Doc[] {
   return comments.map((comment) =>
     comment.ownLine

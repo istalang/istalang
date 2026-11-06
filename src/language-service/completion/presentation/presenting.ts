@@ -22,7 +22,10 @@ export interface Presenting {
   readonly place: Place;
   /** Whether the place writes a value or a pattern, which a call or a variant's braces may open. */
   readonly writesValue: boolean;
-  /** The kind of the token after the name being written on its line, which may open its call or braces. */
+  /**
+   * The kind of the token after the name being written on its line, which may open its call or
+   * braces.
+   */
   readonly follows: TokenKind | undefined;
 }
 
@@ -34,7 +37,9 @@ export interface Shown extends Omit<Completion, 'name' | 'rank' | 'preselect'> {
   readonly priority?: number;
   /** Its place among kin its declaration orders (`Rank.order`). */
   readonly order?: number;
-  /** The types of the values accepting it writes: a variable's, a call's result, a variant's enum. */
+  /**
+   * The types of the values accepting it writes: a variable's, a call's result, a variant's enum.
+   */
   readonly gives?: readonly Type[];
 }
 

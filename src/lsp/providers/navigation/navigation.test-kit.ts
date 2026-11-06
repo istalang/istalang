@@ -13,7 +13,9 @@ import { lineMapOf } from '../../../text/line-map.ts';
 import type { SourceText } from '../../../text/source-text.ts';
 import type { TestClient } from '../../server.test-kit.ts';
 
-/** Every name written in `tree`, and every String literal, which names a field where it is a key. */
+/**
+ * Every name written in `tree`, and every String literal, which names a field where it is a key.
+ */
 export function namesOf(tree: SyntaxTree): readonly (Identifier | StringLiteral)[] {
   return nodesUnder(tree, tree.root).filter(
     (node): node is Identifier | StringLiteral =>

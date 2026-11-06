@@ -18,7 +18,9 @@ beforeAll(async () => {
   client = await corpusClient();
 });
 
-/** Every name of every document, by the place of each declaration going to its definition lands on. */
+/**
+ * Every name of every document, by the place of each declaration going to its definition lands on.
+ */
 async function namesByDeclaration(): Promise<ReadonlyMap<string, readonly string[]>> {
   const landings = await Promise.all(
     corpusDocuments.flatMap(({ uri, tree }) =>

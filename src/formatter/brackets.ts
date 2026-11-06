@@ -1,10 +1,10 @@
 /**
- * Which nodes stand in brackets, where the printer may break a line inside an item (spec §2): inside
- * `()`, `[]` and a struct literal's or pattern's `{}`. A break it makes after an operator or an
- * opening bracket continues the item, since only one before a token that starts an item separates
- * two. A block nested there makes line breaks count again (parser/cursor/), a field list is
- * printed an entry per line, never broken inside one, and a template's `${…}` keeps a single-line
- * template on its line.
+ * Which nodes stand in brackets, where the printer may break a line inside an item (spec §2):
+ * inside `()`, `[]` and a struct literal's or pattern's `{}`. A break it makes after an operator or
+ * an opening bracket continues the item, since only one before a token that starts an item
+ * separates two. A block nested there makes line breaks count again (parser/cursor/), a field list
+ * is printed an entry per line, never broken inside one, and a template's `${…}` keeps a
+ * single-line template on its line.
  *
  * Derived once per tree, from the tree alone, so a printer asks instead of being told by its
  * caller. Which delimiters enclose which children is listed once (`standingIn`), which bodies.ts

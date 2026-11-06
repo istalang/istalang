@@ -3,12 +3,11 @@
  * read.
  *
  * The names are found by asking the identifier query of every identifier in every module, std
- * modules included, and the key query of every String literal outside std (§3.1 Key types): fields, methods and statics are resolved by type, so only the checker knows
- * which names reach them, and asking one query of every name keeps references, renaming and going
- * to a definition in agreement. This is the program's one index of the names denoting each
- * declaration. The answer
- * depends on the whole program, so it is made once per program, on the first question, and kept
- * with it.
+ * modules included, and the key query of every String literal outside std (§3.1 Key types): fields,
+ * methods and statics are resolved by type, so only the checker knows which names reach them, and
+ * asking one query of every name keeps references, renaming and going to a definition in agreement.
+ * This is the program's one index of the names denoting each declaration. The answer depends on the
+ * whole program, so it is made once per program, on the first question, and kept with it.
  */
 
 import { checkProgram } from '../../compiler/checker/check.ts';
@@ -45,7 +44,10 @@ function placeKeyOf(program: Program, use: NamePlace): PlaceKey {
   return `${use.module} ${spanOfUse(program, use).start}`;
 }
 
-/** The names denoting what the name at `offset` of `module` stands for (`NameAt.targets`), each once. */
+/**
+ * The names denoting what the name at `offset` of `module` stands for (`NameAt.targets`), each
+ * once.
+ */
 export function referencesAt(
   program: Program,
   module: ModuleId,
@@ -83,9 +85,9 @@ function indexOf(program: Program): ReadonlyMap<PlaceKey, readonly NamePlace[]> 
 }
 
 /**
- * Whether `node` may name a declaration: an identifier, or a String literal outside std, which may be
- * a key naming a field (§3.1 Key types). A std module can name no field of the program's own, and
- * reading its literals would check each of its bodies.
+ * Whether `node` may name a declaration: an identifier, or a String literal outside std, which may
+ * be a key naming a field (§3.1 Key types). A std module can name no field of the program's own,
+ * and reading its literals would check each of its bodies.
  */
 function isName(program: Program, module: ModuleId, node: SyntaxNode): node is WrittenName {
   if (node.kind === 'Identifier') {

@@ -137,7 +137,9 @@ function expectedOfValue(cursor: Cursor, { parsed }: ParsedPlace): Type | undefi
   return checked ?? parameterGiven(cursor, parsed, value);
 }
 
-/** What the checker expects of the String literal the cursor writes in, a key of a struct among it. */
+/**
+ * What the checker expects of the String literal the cursor writes in, a key of a struct among it.
+ */
 function expectedOfString(cursor: Cursor, { parsed }: ParsedPlace): Type | undefined {
   const literal = parsed.chain.at(-1);
   return literal?.kind === 'StringLiteral'
@@ -169,7 +171,9 @@ function expectedOfPatternStart(cursor: Cursor, { parsed }: ParsedPlace): Type |
   return pattern === undefined ? undefined : matchedTypeOf(cursor, parsed, pattern);
 }
 
-/** What the checker expects of the value the name `written` writes, the program's tree holding it. */
+/**
+ * What the checker expects of the value the name `written` writes, the program's tree holding it.
+ */
 function expectedOfWritten(
   { checker, module, tree }: Cursor,
   written: Identifier,

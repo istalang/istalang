@@ -69,7 +69,9 @@ const itemFor = (answer: Answer, label: string) =>
 const missing = (answer: Answer, labels: readonly string[]) =>
   labels.filter((label) => !answer.labels.includes(label)).map((label) => `missing ${label}`);
 
-/** For each `[label, want]`, the problem a check finds in the label's item, or that it is missing. */
+/**
+ * For each `[label, want]`, the problem a check finds in the label's item, or that it is missing.
+ */
 function perItem<W>(
   answer: Answer,
   wanted: readonly (readonly [string, W])[],

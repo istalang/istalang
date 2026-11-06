@@ -43,7 +43,10 @@ beforeAll(async () => {
   client = await corpusClient();
 });
 
-/** What the active signature must be, at each written argument: its label's start, and the parameter's. */
+/**
+ * What the active signature must be, at each written argument: its label's start, and the
+ * parameter's.
+ */
 interface Active {
   readonly kind: 'active';
   readonly label: (label: string) => boolean;
@@ -104,7 +107,9 @@ function expectedAt(module: ModuleId, call: Call): Expected | undefined {
   };
 }
 
-/** Where `help` at the written argument `argument` isn't what `expected` says; empty where it is. */
+/**
+ * Where `help` at the written argument `argument` isn't what `expected` says; empty where it is.
+ */
 function mismatchOf(help: SignatureHelp | null, expected: Expected, argument: number): string {
   if (expected.kind === 'none') {
     const shown = help?.signatures.map((signature) => signature.label) ?? [];

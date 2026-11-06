@@ -51,7 +51,9 @@ function declaredBy(declaration: Declaration): readonly Declared[] {
 /** Where a name stands, as a range's key. */
 type KeyOf = (span: AnchoredSpan) => string;
 
-/** Each declared name with no symbol selecting it, or whose symbol isn't under its declaration's. */
+/**
+ * Each declared name with no symbol selecting it, or whose symbol isn't under its declaration's.
+ */
 function misplaced(
   declared: readonly Declared[],
   parent: DocumentSymbol | undefined,

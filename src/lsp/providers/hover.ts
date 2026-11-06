@@ -1,4 +1,6 @@
-/** Hovers (language-service/hover.ts), as Markdown: the code in a fenced block, then the docstring. */
+/**
+ * Hovers (language-service/hover.ts), as Markdown: the code in a fenced block, then the docstring.
+ */
 
 import { MarkupKind } from 'vscode-languageserver/node';
 import { hoverAt } from '../../language-service/hover.ts';

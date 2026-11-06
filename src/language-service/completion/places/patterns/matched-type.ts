@@ -147,9 +147,9 @@ function memberSelected(
 }
 
 /**
- * The members `pattern` selects (checker/types/written/pattern-types.ts): those its type's name names, the instance its
- * type arguments give, or those of its kind, a `struct{…}` pattern's the shapes having the fields
- * its items other than the one being written name.
+ * The members `pattern` selects (checker/types/written/pattern-types.ts): those its type's name
+ * names, the instance its type arguments give, or those of its kind, a `struct{…}` pattern's the
+ * shapes having the fields its items other than the one being written name.
  */
 function membersSelected(
   cursor: Cursor,
@@ -242,8 +242,8 @@ function entityNamed(cursor: Cursor, parsed: Parsed, name: Identifier): Entity |
 }
 
 /**
- * The type a downcast of a value of `from` to the type `pattern` names tests for (checker/types/written/pattern-types.ts);
- * `struct{…}` names none.
+ * The type a downcast of a value of `from` to the type `pattern` names tests for
+ * (checker/types/written/pattern-types.ts); `struct{…}` names none.
  */
 function downcastOf(
   cursor: Cursor,
