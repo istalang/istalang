@@ -32,7 +32,7 @@ import type {
   ExternRole,
   TypeDefinition,
   TypeReference,
-} from '../../../definition/types.ts';
+} from '../../../definition/tables/types.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import { compareOrdered } from '../../../language/order.ts';
 import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
@@ -99,8 +99,8 @@ function anyEnum(entry: AnyEntry): TypeDefinition {
 }
 
 /**
- * The std type each role of an extern type entry is (definition/types.ts); a shared struct's role
- * comes from its declaration's kind instead (§3.18).
+ * The std type each role of an extern type entry is (definition/tables/types.ts); a shared struct's
+ * role comes from its declaration's kind instead (§3.18).
  */
 const externRoles = {
   cell: wellKnown.cell,
@@ -109,7 +109,7 @@ const externRoles = {
 } as const satisfies Record<Exclude<ExternRole, 'shared'>, WellKnownDeclaration>;
 
 /**
- * The std type each role of an enum entry is (definition/types.ts): `json.Json`, a recursive
+ * The std type each role of an enum entry is (definition/tables/types.ts): `json.Json`, a recursive
  * alias whose union is an enum entry (§3.17).
  */
 const enumRoles = {

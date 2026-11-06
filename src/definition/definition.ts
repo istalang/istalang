@@ -13,7 +13,7 @@
 
 import type { z } from 'zod';
 import { defineFormat } from './formats/format.ts';
-import { tables } from './tables.ts';
+import { tables } from './tables/index.ts';
 import { checkReferences } from './validation/references.ts';
 
 const definition = tables.superRefine(checkReferences);

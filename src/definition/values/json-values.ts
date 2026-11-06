@@ -5,9 +5,9 @@
  * values into `Json` and back (docs/arch/boundary.md); this module only moves `Json` across, for
  * the json module's natives and the runtime's host boundary alike.
  *
- * - A `Json` value is its union's enum's variant (definition/types.ts): each member's variant is
- *   found in the entry by what its one field holds, `None` by holding nothing, never by a variant's
- *   name, which is the member as the compiler spells it.
+ * - A `Json` value is its union's enum's variant (definition/tables/types.ts): each member's
+ *   variant is found in the entry by what its one field holds, `None` by holding nothing, never by
+ *   a variant's name, which is the member as the compiler spells it.
  * - A host sees what `JSON.parse` of the text would give it, except that every integer is a
  *   `bigint`, so none loses digits and a host can tell an `Int` from a `Float`. Coming back, a
  *   bigint or a whole number is an `Int`, any other number a `Float`, so a host need not say which
@@ -27,7 +27,7 @@ import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { decodeJson, encodeJson, NestingError } from '../formats/codec.ts';
 import type { TypeId } from '../operands.ts';
-import { hasRole, type TypeDefinition, type TypeReference } from '../types.ts';
+import { hasRole, type TypeDefinition, type TypeReference } from '../tables/types.ts';
 import { mapOf } from './equality.ts';
 import { elementsOf, isComposite, mapValueOf, maximumDepth, type Value } from './values.ts';
 

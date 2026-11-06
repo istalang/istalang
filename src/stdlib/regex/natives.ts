@@ -13,7 +13,7 @@
 import { LRUCache } from 'lru-cache';
 import { RE2JS, RE2JSException } from 're2js';
 import type { TypeId } from '../../definition/operands.ts';
-import type { TypeDefinition } from '../../definition/types.ts';
+import type { TypeDefinition } from '../../definition/tables/types.ts';
 import {
   fieldTypeOf,
   fieldValueOf,

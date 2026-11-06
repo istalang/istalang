@@ -20,11 +20,11 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
-import { encoderProblem, takesReference } from '../../definition/functions.ts';
 import { awaitedRegisters, waits } from '../../definition/instructions/flow.ts';
 import type { Instruction } from '../../definition/instructions/instruction.ts';
 import type { FunctionId } from '../../definition/operands.ts';
-import { isCellType } from '../../definition/types.ts';
+import { encoderProblem, takesReference } from '../../definition/tables/functions.ts';
+import { isCellType } from '../../definition/tables/types.ts';
 import { valueProblems } from '../../definition/validation/references.ts';
 import { isJsonValue, jsonTypeIn } from '../../definition/values/json-values.ts';
 import { handleTarget } from '../../definition/values/values.ts';

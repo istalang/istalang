@@ -17,9 +17,9 @@
  *   once lowering reached every type converted so far, and again when it reaches another.
  */
 
-import type { FunctionDefinition } from '../../../definition/functions.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
+import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/surface/checked-field.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';

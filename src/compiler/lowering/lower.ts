@@ -9,7 +9,7 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
-import type { FunctionDefinition } from '../../definition/functions.ts';
+import type { FunctionDefinition } from '../../definition/tables/functions.ts';
 import { languageModules } from '../../language/well-known/index.ts';
 import { testingFunctions } from '../../language/well-known/testing.ts';
 import { unreachable } from '../../structures/unreachable.ts';

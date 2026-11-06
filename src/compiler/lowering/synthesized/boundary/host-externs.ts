@@ -14,8 +14,8 @@
  * - A failure names its path from the extern's qualified name: `purchase.chargeCard.receipt`.
  */
 
-import type { CodeFunction, FunctionDefinition } from '../../../../definition/functions.ts';
 import type { FunctionId, Register } from '../../../../definition/operands.ts';
+import type { CodeFunction, FunctionDefinition } from '../../../../definition/tables/functions.ts';
 import { wellKnown } from '../../../../language/well-known/index.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';

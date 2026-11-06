@@ -12,8 +12,8 @@
  * it points at where the value was made async.
  */
 
-import type { CodeFunction } from '../../../definition/functions.ts';
 import type { Register } from '../../../definition/operands.ts';
+import type { CodeFunction } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { ValueSite } from '../../checker/surface/checked-body.ts';
 import { type Fit, singleElement } from '../../checker/types/fitting/fit.ts';

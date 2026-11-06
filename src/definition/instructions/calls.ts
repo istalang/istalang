@@ -2,7 +2,7 @@
  * Calls, and the contexts calls create.
  *
  * Every call targets a function-table entry, directly or through a function value. Externs are
- * entries too (functions.ts), so there is one call path, where a mock replaces a function whatever
+ * entries too (../tables/functions.ts), so there is one call path, where a mock replaces a function whatever
  * it is, and one place extern results are seen (spec §10).
  *
  * Calling an async function starts a new execution right away and gives `dst` its future (spec

@@ -6,7 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { TypeDefinition, TypeReference } from '../types.ts';
+import type { TypeDefinition, TypeReference } from '../tables/types.ts';
 import { valuesEqual } from './equality.ts';
 import {
   JsonError,

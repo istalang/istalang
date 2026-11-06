@@ -10,7 +10,7 @@ import { runPrograms } from '../../../test/corpus/programs.ts';
 import { specExamples } from '../../../test/corpus/spec-examples.ts';
 import { subsetSource } from '../../../test/definitions/subset.ts';
 import { definitionFormat } from '../../definition/definition.ts';
-import { typesIn } from '../../definition/types.ts';
+import { typesIn } from '../../definition/tables/types.ts';
 import { isError } from '../../diagnostics/diagnostic.ts';
 import { runToEnd, testRuntime } from '../../runtime/runtime.test-kit.ts';
 import { stdProgramOf } from '../binder/bind.test-kit.ts';

@@ -14,10 +14,10 @@
  */
 
 import { z } from 'zod';
-import { instruction } from './instructions/instruction.ts';
-import { count, moduleId, register, span, typeId } from './operands.ts';
+import { instruction } from '../instructions/instruction.ts';
+import { count, moduleId, register, span, typeId } from '../operands.ts';
+import { value } from '../values/values.ts';
 import { typeReference } from './types.ts';
-import { value } from './values/values.ts';
 
 const common = {
   /** Qualified and instantiated, `inbox.send<Verdict>`: for traces, waypoints and messages. */
@@ -31,7 +31,7 @@ const common = {
 
 /**
  * A register that holds a cell, and the `_Cell<T>` entry the cell is created as, so its
- * disposability is known wherever the runtime creates it (definition/types.ts).
+ * disposability is known wherever the runtime creates it (definition/tables/types.ts).
  */
 const cell = z.strictObject({ register, type: typeId });
 

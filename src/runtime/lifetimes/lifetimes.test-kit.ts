@@ -6,7 +6,7 @@
  */
 
 import fc from 'fast-check';
-import type { TypeDefinition } from '../../definition/types.ts';
+import type { TypeDefinition } from '../../definition/tables/types.ts';
 import { valueArbitrary } from '../../definition/values/values.test-kit.ts';
 import { Heap, type LiveObject } from '../scheduler/instance/heap.ts';
 import type { HoldingFrame } from '../snapshot/holdings.ts';

@@ -4,9 +4,9 @@
  * and line starts come from that text through LineMap, so a fixture stays readable and honest.
  */
 
-import type { FunctionDefinition } from '../../src/definition/functions.ts';
-import type { Tables } from '../../src/definition/tables.ts';
-import type { TypeReference } from '../../src/definition/types.ts';
+import type { FunctionDefinition } from '../../src/definition/tables/functions.ts';
+import type { Tables } from '../../src/definition/tables/index.ts';
+import type { TypeReference } from '../../src/definition/tables/types.ts';
 import { LineMap } from '../../src/text/line-map.ts';
 
 interface Span {

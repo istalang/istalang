@@ -9,8 +9,8 @@
  */
 
 import fc from 'fast-check';
-import { capturesOf, type FunctionDefinition, takesReference } from '../functions.ts';
-import type { TypeDefinition } from '../types.ts';
+import { capturesOf, type FunctionDefinition, takesReference } from '../tables/functions.ts';
+import type { TypeDefinition } from '../tables/types.ts';
 import type { Instruction, InstructionKind } from './instruction.ts';
 import type { Argument, Place } from './places.ts';
 

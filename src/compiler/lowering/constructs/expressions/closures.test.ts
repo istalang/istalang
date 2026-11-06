@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vitest';
 import type { Definition } from '../../../../definition/definition.ts';
-import type { CodeFunction } from '../../../../definition/functions.ts';
+import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { compiledDefinition } from '../../../compile.test-kit.ts';
 

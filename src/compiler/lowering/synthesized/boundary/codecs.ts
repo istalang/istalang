@@ -9,7 +9,7 @@
  * is which function it is (`derivedCodecs`); what it takes and gives are that function's own.
  */
 
-import type { CodeFunction } from '../../../../definition/functions.ts';
+import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { derivedCodecs } from '../../../../language/well-known/codecs.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';

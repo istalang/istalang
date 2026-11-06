@@ -24,7 +24,7 @@
  */
 
 import type { FunctionId } from '../../definition/operands.ts';
-import type { TypeDefinition } from '../../definition/types.ts';
+import type { TypeDefinition } from '../../definition/tables/types.ts';
 import { closureOf, handleTo, type Value } from '../../definition/values/values.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { unreachable } from '../../structures/unreachable.ts';

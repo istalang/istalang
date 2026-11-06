@@ -11,9 +11,9 @@
 
 import { z } from 'zod';
 import { encodeJson } from '../../../definition/formats/codec.ts';
-import type { FunctionDefinition } from '../../../definition/functions.ts';
 import type { FunctionId } from '../../../definition/operands.ts';
-import type { Tables } from '../../../definition/tables.ts';
+import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
+import type { Tables } from '../../../definition/tables/index.ts';
 import { type Value, value } from '../../../definition/values/values.ts';
 import { memo } from '../../../structures/memo.ts';
 import { unreachable } from '../../../structures/unreachable.ts';

@@ -29,8 +29,8 @@
  *   `instanceLowering` and `nestedLowering`, which put the two together.
  */
 
-import type { CodeFunction } from '../../../definition/functions.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
+import type { CodeFunction } from '../../../definition/tables/functions.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import { handlerOf } from '../../../structures/kind-table.ts';
 import { unreachable } from '../../../structures/unreachable.ts';

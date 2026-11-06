@@ -95,7 +95,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 - **Spec rule:** Spec §3.6 has two separate mechanisms for opaque host objects:
   1. **Host handles (`hostHandleOf`)**: an extern returning `Shared<S>` where `S` is a struct of function fields (such as `inbox.Revertible<T>`), for which lowering synthesizes `<externKey>.<field>` native entries and closure wrappers capturing the host's JSON token.
-  2. **Disposable host types (`isResourceType` in `src/definition/types.ts`)**: an `extern struct` with a declared `dispose` function, whose values wrap the host’s JSON in a `resource` heap object via `_decodeHandle` and unwrap it via `_encodeHandle`.
+  2. **Disposable host types (`isResourceType` in `src/definition/tables/types.ts`)**: an `extern struct` with a declared `dispose` function, whose values wrap the host’s JSON in a `resource` heap object via `_decodeHandle` and unwrap it via `_encodeHandle`.
 - **Generalization:** Both represent a **host-backed capability handle** holding opaque host JSON identity with method/dispose dispatch back to the host. Unifying `HostHandle` with `extern struct` resource handles eliminates the special `handleField` and `handleFieldNative` entry kinds in `src/compiler/lowering/lower.ts` and `src/compiler/lowering/synthesized/boundary/host-externs.ts`.
 
 ### 3.3 Context-Dependent / Target-Typed Call Arguments (`src/compiler/checker/overloads/decided.ts`, `src/compiler/checker/constructs/closures/lambda-arguments.ts`)

@@ -58,7 +58,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - Moving `fieldNamed` (as `fieldValueOf`) and exporting `variantShape` in `src/definition/values/declared-values.ts` gives all TypeScript-side reading and building of declared values a single home.
 - **Missing `closureOf(value)` narrowing helper (`src/definition/values/values.ts`, Q15):**
   - `values.ts` exports `elementsOf`, `mapValueOf`, `handleTarget`, and `isComposite`, but no `closureOf(candidate)`, leaving 7 sites across `runtime/` and `stdlib/` to repeat `isComposite(v) && v.kind === 'closure'`.
-- **Ambiguous `'cell'` role in `ExternRole` (`src/definition/types.ts`, Q4):**
+- **Ambiguous `'cell'` role in `ExternRole` (`src/definition/tables/types.ts`, Q4):**
   - `externRole = z.enum(['cell', 'future', 'instance'])` conflates user-declared `shared struct` handles with compiler-synthesized `_Cell<T>` mutable variable cells, forcing `isResourceType` to add `&& entry.role !== 'cell'`.
 - **Overlapping boolean flags in `KeyParameter` (`src/definition/extern-key.ts`, D219):**
   - `KeyParameter` has `{ readonly type: KeyType; readonly reference: boolean; readonly rest?: boolean }` instead of a mutually exclusive `passing?: 'reference' | 'rest'` union.
@@ -326,7 +326,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
    - Because `agreedAccepts` returns `undefined` whenever `producers[0]` has a known type, `f(["a", none])` fails while `f([none, "a"])` succeeds; because `agreedAccepts` and `tupleAccepts` replace typed siblings with `?? true`, `[none, "a"]` and `(1, none)` lose their known element types during overload resolution; and because `checkDecidedLambdas` only checks top-level lambdas, a lambda inside a tuple or branch never binds call type parameters.
 2. **Compile-Time Constant Evaluation Ignoring Recorded `Fit`s (`src/compiler/checker/rules/computation.ts`, D216):**
    - Top-level constants (`const x: int? = 1`, `const t: (int,) = 1`, `const f: async fn() -> int = fn(): 1`) are type-checked with full implicit conversions (`fitAt`), but `computeConstant` ignores `fitAt` and emits the unconverted value.
-3. **`shared struct` (`isShared`) and `new X{…}` (`isNew`) as Boolean Flags on `StructDeclaration` / `StructLiteral` (`src/compiler/syntax/`, `definition/types.ts`, Q4):**
+3. **`shared struct` (`isShared`) and `new X{…}` (`isNew`) as Boolean Flags on `StructDeclaration` / `StructLiteral` (`src/compiler/syntax/`, `definition/tables/types.ts`, Q4):**
    - Modelling `shared struct` as a boolean flag on `StructDeclaration` and `role: 'cell'` (shared with `_Cell<T>`) forces ~12 special-case checks across the compiler and runtime.
 
 ### 4. Modularity: Are Phases Standalone Plugin Registries?

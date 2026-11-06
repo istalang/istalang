@@ -13,8 +13,8 @@
  *   What it returns is encoded as every instance's outcome is, by the runtime as it returns.
  */
 
-import type { CodeFunction } from '../../../../definition/functions.ts';
 import type { FunctionId } from '../../../../definition/operands.ts';
+import type { CodeFunction } from '../../../../definition/tables/functions.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { Checker } from '../../../checker/check.ts';
 import type { FunctionType, Type } from '../../../checker/types/type/index.ts';

@@ -18,7 +18,7 @@
  *   host names each future by a token it can fill from anywhere.
  */
 
-import { hasRole } from '../../definition/types.ts';
+import { hasRole } from '../../definition/tables/types.ts';
 import {
   JsonError,
   jsonOfPlain,

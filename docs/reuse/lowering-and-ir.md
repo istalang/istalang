@@ -51,16 +51,16 @@ tags: [reuse, lowering, definition, ir, instructions]
 - release block variables or statement temporaries → `endScope`, `headerTemporaries`, `lowerGuarded`, `release` (`src/compiler/lowering/constructs/statements/scopes.ts`)
 - list an instruction's operands → `operandsOf` (`src/definition/instructions/instruction.ts`)
 - inspect instruction wait/termination flow → `awaitedRegisters`, `waits`, `terminates` (`src/definition/instructions/flow.ts`)
-- inspect `Definition` function parameters or captures → `takesReference`, `capturesOf` (`src/definition/functions.ts`)
-- check an entry can encode an instance's outcome → `encoderProblem` (`src/definition/functions.ts`)
-- inspect `Definition` type references, roles, cell or resource types → `typesIn`, `isResourceType`, `isCellType`, `hasRole` (`src/definition/types.ts`)
+- inspect `Definition` function parameters or captures → `takesReference`, `capturesOf` (`src/definition/tables/functions.ts`)
+- check an entry can encode an instance's outcome → `encoderProblem` (`src/definition/tables/functions.ts`)
+- inspect `Definition` type references, roles, cell or resource types → `typesIn`, `isResourceType`, `isCellType`, `hasRole` (`src/definition/tables/types.ts`)
 - validate `Definition` table references or value shapes → `checkReferences`, `valueProblems` (`src/definition/validation/references.ts`)
 
 ## One-way rules
 
 - Emit every `call` through `emitCall` / `emitFunctionCall`, every loop through `emitLoop`, and every value conversion through `FunctionContext.fitted`.
 - Lower every checked body through `instanceLowering` or `nestedLowering` (`functions/index.ts`), and syntaxless code through `SynthesizedCode`.
-- Never recognize a `Definition` type by name string at runtime; use `TypeDefinition.role` (`hasRole`, `isResourceType` in `src/definition/types.ts`).
+- Never recognize a `Definition` type by name string at runtime; use `TypeDefinition.role` (`hasRole`, `isResourceType` in `src/definition/tables/types.ts`).
 
 ## Recipes
 

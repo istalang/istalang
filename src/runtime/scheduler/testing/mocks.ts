@@ -21,7 +21,7 @@
  */
 
 import type { FunctionId } from '../../../definition/operands.ts';
-import { isResourceType } from '../../../definition/types.ts';
+import { isResourceType } from '../../../definition/tables/types.ts';
 import {
   type CompositeValue,
   childValues,

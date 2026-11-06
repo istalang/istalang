@@ -13,7 +13,7 @@
  */
 
 import { parameterKey } from '../../definition/extern-key.ts';
-import { isResourceType } from '../../definition/types.ts';
+import { isResourceType } from '../../definition/tables/types.ts';
 import {
   JsonError,
   jsonOfPlain,

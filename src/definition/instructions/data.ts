@@ -13,7 +13,7 @@
  *
  * Writing a register that holds a cell (a variable passed by `&` or captured by a closure) or a
  * reference parameter goes through it; the function's metadata says which registers those are
- * (functions.ts).
+ * (../tables/functions.ts).
  */
 
 import { z } from 'zod';

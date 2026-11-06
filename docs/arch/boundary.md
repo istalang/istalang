@@ -81,7 +81,7 @@ its instance is numbered by, so its native sees only JSON:
   the native once per instance and pins the value in the snapshot (`pinned`).
 - A host type a `dispose` makes disposable (an extern its host implements, or code passing the
   value to the host's externs) has values with an identity of their own: `_decodeHandle` keeps
-  the host's JSON in a `resource` object (`definition/types.ts`, `isResourceType`), `_encodeHandle`
+  the host's JSON in a `resource` object (`definition/tables/types.ts`, `isResourceType`), `_encodeHandle`
   gives that JSON back, and the type entry's disposal calls the `dispose` at release. It can't be
   declared sendable (5910) and, where values don't cross to the host, isn't `Encodable` or
   `Decodable`, which imply Sendable, so it crosses only to its own host; an extern constant, one

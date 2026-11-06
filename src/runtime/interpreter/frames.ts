@@ -6,8 +6,8 @@
  * stores.
  */
 
-import type { CodeFunction } from '../../definition/functions.ts';
 import type { FunctionId, TypeId } from '../../definition/operands.ts';
+import type { CodeFunction } from '../../definition/tables/functions.ts';
 import type { Value } from '../../definition/values/values.ts';
 import type { RegisterContents } from '../snapshot/objects.ts';
 

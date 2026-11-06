@@ -11,7 +11,7 @@
  * value, as one the function starts itself does (§3.3).
  */
 
-import type { CodeFunction } from '../../../definition/functions.ts';
+import type { CodeFunction } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { type Binding, parameterOfArgument } from '../../checker/surface/resolved-call.ts';
 import { callOfFilling } from '../calls/closed-calls.ts';

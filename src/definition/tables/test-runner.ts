@@ -5,8 +5,8 @@
  * functions are top-level.
  */
 
-import type { FunctionId } from './operands.ts';
-import type { Value } from './values/values.ts';
+import type { FunctionId } from '../operands.ts';
+import type { Value } from '../values/values.ts';
 
 /** A test to run: its suite's function and title, and its own position and title in the listing. */
 export interface ListedTest {

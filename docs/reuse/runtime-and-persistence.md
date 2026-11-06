@@ -44,7 +44,7 @@ tags: [reuse, runtime, snapshot, persistence, scheduler, lifetimes, host]
 - load a `--host` JS module or format a `LogRecord` as JSON → `loadHostModule` (`src/cli/host-module.ts`), `logLine` (`src/cli/log-lines.ts`)
 - read the CLI clock or check for an OS `errno` error → `clock` (`src/cli/clock.ts`), `isSystemError` (`src/project/errno.ts`)
 - run a test `Definition`'s suites or a single test's `World` → `runTests` (`src/runtime/testing/run-tests.ts`), `World` (`src/runtime/testing/world/index.ts`)
-- build or check the arguments of the testing runner's `_list`/`_run` calls → `listingArguments`, `runningArguments`, `runnerArity` (`src/definition/test-runner.ts`)
+- build or check the arguments of the testing runner's `_list`/`_run` calls → `listingArguments`, `runningArguments`, `runnerArity` (`src/definition/tables/test-runner.ts`)
 
 ## One-way rules
 

@@ -5,7 +5,7 @@
 
 import { describe, expect, it } from 'vitest';
 import { subsetDefinition } from '../../../test/definitions/subset.ts';
-import type { CodeFunction } from '../../definition/functions.ts';
+import type { CodeFunction } from '../../definition/tables/functions.ts';
 import { callerTraceOf, traceOf } from './trace.ts';
 
 /** The subset's code entries, by name. */

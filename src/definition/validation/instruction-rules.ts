@@ -18,18 +18,18 @@
  */
 
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
+import { waits } from '../instructions/flow.ts';
+import type { Instruction } from '../instructions/instruction.ts';
+import type { Argument } from '../instructions/places.ts';
 import {
   type CodeFunction,
   capturesOf,
   encoderProblem,
   type FunctionDefinition,
   takesReference,
-} from '../functions.ts';
-import { waits } from '../instructions/flow.ts';
-import type { Instruction } from '../instructions/instruction.ts';
-import type { Argument } from '../instructions/places.ts';
-import type { Tables } from '../tables.ts';
-import { hasRole } from '../types.ts';
+} from '../tables/functions.ts';
+import type { Tables } from '../tables/index.ts';
+import { hasRole } from '../tables/types.ts';
 
 /** A struct or enum value being built: by an instruction or as a constant. */
 export interface Construction {

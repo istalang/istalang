@@ -50,7 +50,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 | D135 | All 12 checker folders form one import cycle. `rules/` has no entry and about 50 importers, and traits↔overloads is one engine split across two folders. Lowering imports checker internals besides `check.ts`. Extract a `resolution/` unit, move variant naming out of `expressions/`, and have dependency-cruiser enforce the inner layers. |
 | Q3 | `CheckedBody` grows a side table per feature: 15 now, and every M3 slice changed `check.ts`. Decide before M7: keep per-concern records, or have the checker produce an elaborated tree (Roslyn's BoundTree, rustc's THIR). |
 | P5 | The checker is memoized per Program, so every edit re-checks every body the LSP asks for. Plan M7 with early cutoff. |
-| D138 | The Definition and the runtime recognize `prelude.Shared` and `prelude.Future` by name (`definition/types.ts`, `host-natives.ts`). Give extern type entries a role instead. |
+| D138 | The Definition and the runtime recognize `prelude.Shared` and `prelude.Future` by name (`definition/tables/types.ts`, `host-natives.ts`). Give extern type entries a role instead. |
 
 ## Modularity: are features plugins?
 

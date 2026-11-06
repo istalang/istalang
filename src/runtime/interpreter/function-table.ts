@@ -8,8 +8,8 @@
  */
 
 import type { Definition } from '../../definition/definition.ts';
-import type { CodeFunction } from '../../definition/functions.ts';
 import type { FunctionId } from '../../definition/operands.ts';
+import type { CodeFunction } from '../../definition/tables/functions.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Native, Natives } from '../natives.ts';
 import { Refusal } from '../refusal.ts';

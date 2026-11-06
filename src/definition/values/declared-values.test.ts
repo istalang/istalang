@@ -6,7 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { TypeDefinition } from '../types.ts';
+import type { TypeDefinition } from '../tables/types.ts';
 import { fieldValueOf, structOf, variantOf } from './declared-values.ts';
 import { valueArbitrary } from './values.test-kit.ts';
 
