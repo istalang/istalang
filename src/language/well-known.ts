@@ -161,8 +161,8 @@ export function qualifiedName({
 export const disposeFunction = 'dispose';
 
 /**
- * How a union's enum lays out its values (§2, lowering/type-table.ts): a variant per member, named
- * as the member is spelled, so `none`'s is `None`, holding a member's value in its one field.
+ * How a union's enum lays out its values (§2, lowering/tables/type-table.ts): a variant per member,
+ * named as the member is spelled, so `none`'s is `None`, holding a member's value in its one field.
  */
 export const unionLayout = { noneVariant: 'None', valueField: 'value' } as const;
 

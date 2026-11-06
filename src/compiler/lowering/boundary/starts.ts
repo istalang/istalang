@@ -26,11 +26,11 @@ import type {
 } from '../../syntax/declarations.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { writtenBodyOf } from '../bodies.ts';
-import { constantValue } from '../constants.ts';
 import { instanceLowering, nestedLowering, type StartEdges } from '../function-lowering/index.ts';
-import { rootInstance } from '../instances.ts';
-import { keyOf } from '../names.ts';
-import type { DefinitionTables, StartTarget } from '../tables.ts';
+import { constantValue } from '../tables/constants.ts';
+import { rootInstance } from '../tables/instances.ts';
+import { keyOf } from '../tables/names.ts';
+import type { DefinitionTables, StartTarget } from '../tables/tables.ts';
 import { codecCall } from './codec-calls.ts';
 import { emitInbound, inboundOf } from './inbound.ts';
 

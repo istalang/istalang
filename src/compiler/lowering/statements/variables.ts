@@ -33,10 +33,10 @@ import {
   hasUnnamedTarget,
   type VariableDeclaration,
 } from '../../syntax/statements.ts';
+import { emitCallAt } from '../calls/emit-call.ts';
 import type { FunctionContext } from '../context.ts';
-import { emitCallAt } from '../emit-call.ts';
-import { readPartAlong } from '../part-paths.ts';
-import { type AssignedPlace, cellRegister, enterAssigned } from '../places.ts';
+import { readPartAlong } from '../parts/part-paths.ts';
+import { type AssignedPlace, cellRegister, enterAssigned } from '../parts/places.ts';
 
 /** A register holding a cell, and the `_Cell<T>` type entry it is created as. */
 export interface CellRegister {

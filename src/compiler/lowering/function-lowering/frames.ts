@@ -27,8 +27,8 @@ import {
   type NestedInstance,
   passBindings,
   substitutionOf,
-} from '../instances.ts';
-import type { DefinitionTables, EntryHeader } from '../tables.ts';
+} from '../tables/instances.ts';
+import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 
 /** What lowering an entry needs from the program: its checking and the Definition's tables. */
 export interface Lowering {

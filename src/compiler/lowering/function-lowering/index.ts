@@ -6,7 +6,7 @@
  *   constant: its types are concrete, and its calls target the instances they close to.
  * - A value the checker fitted (§2) is converted and wrapped once it is computed (fits.ts), so no
  *   handler needs to know about fitting. An optional chain is lowered from its last link
- *   (../optionals.ts); a link's handler only reads its target through `chains.target`.
+ *   (../values/optionals.ts); a link's handler only reads its target through `chains.target`.
  * - The body's value is returned at its end; a body ending in `return` leaves that last `return`
  *   unreachable but harmless, and the code always ends in one, as loading requires.
  * - The frame (frames.ts) is laid out as the Definition says: the parameters, in order, a pack's
@@ -54,26 +54,26 @@ import type { Pattern } from '../../syntax/patterns.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Block, Statement } from '../../syntax/statements.ts';
 import { writtenBodyOf } from '../bodies.ts';
-import { type ClosedCall, closeCallWithin } from '../closed-calls.ts';
+import { type ClosedCall, closeCallWithin } from '../calls/closed-calls.ts';
+import { packElements } from '../calls/packs.ts';
 import { CodeWriter, type WrittenInstruction } from '../code-writer.ts';
-import { emitConstant } from '../constants.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { expressionHandlers } from '../expressions/expressions.ts';
 import { tupleOf } from '../expressions/tuples.ts';
+import { HoldScopes } from '../statements/holds.ts';
+import { LoopStack } from '../statements/loops.ts';
+import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
+import { bindTargets, declareVariable, VariableRegisters } from '../statements/variables.ts';
+import { emitConstant } from '../tables/constants.ts';
 import {
   type BodyOwner,
   type FunctionInstance,
   type NestedInstance,
   ownerDeclaration,
   ownerSubstitution,
-} from '../instances.ts';
-import { OptionalChains } from '../optionals.ts';
-import { packElements } from '../packs.ts';
-import { HoldScopes } from '../statements/holds.ts';
-import { LoopStack } from '../statements/loops.ts';
-import { lowerBlock, lowerBody, lowerStatement } from '../statements/statements.ts';
-import { bindTargets, declareVariable, VariableRegisters } from '../statements/variables.ts';
-import type { DefinitionTables, EntryHeader } from '../tables.ts';
+} from '../tables/instances.ts';
+import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
+import { OptionalChains } from '../values/optionals.ts';
 import { fittedValue } from './fits.ts';
 import {
   defaultValueOf,

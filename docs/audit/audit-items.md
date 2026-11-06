@@ -28,8 +28,8 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 #### 1.1 `src/structures/` & `src/language/`
 - **`ValueSemantics` map-key equality recursion (`src/language/values.ts`, D100):**
   - `ValueSemantics.equal` and `structuralKey` use explicit heap stacks so deep values never overflow the JS stack, and the banner states *"Every walk keeps its own stack"*. However, `#sameKeys` calls `this.entryValue(other, key)` → `this.entryPosition(map, key)` → `this.equal(entry[0], key)`, recursing on the host JS stack when maps are nested inside map keys.
-- **Three separate implementations of module-qualified naming (`src/language/well-known.ts`, `src/compiler/lowering/names.ts`, `src/definition/extern-key.ts`, D174):**
-  - `qualifiedName({ module, name })` in `src/language/well-known.ts`, `qualifiedNameOf` in `src/compiler/lowering/names.ts`, and `${signature.module}.${signature.name}` in `src/definition/extern-key.ts` all format `${module}.${name}` independently, even though `stdlib/std-module.ts` relies on `qualifiedName` matching lowering's type-table names and extern keys.
+- **Three separate implementations of module-qualified naming (`src/language/well-known.ts`, `src/compiler/lowering/tables/names.ts`, `src/definition/extern-key.ts`, D174):**
+  - `qualifiedName({ module, name })` in `src/language/well-known.ts`, `qualifiedNameOf` in `src/compiler/lowering/tables/names.ts`, and `${signature.module}.${signature.name}` in `src/definition/extern-key.ts` all format `${module}.${name}` independently, even though `stdlib/std-module.ts` relies on `qualifiedName` matching lowering's type-table names and extern keys.
 
 #### 1.2 `src/text/`
 - **Double standard & OOM hazard in `codePoints` vs. `codePointWidth` (`src/text/code-points.ts`, D195):**
@@ -210,8 +210,8 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 #### 5.1 Re-Derivation of Checker Facts & Implicit Contracts (`src/compiler/lowering/`)
 - **Unrecorded function-value calls relying on `calls.get(node) === undefined` (`src/compiler/lowering/expressions/calls.ts`, Q1):**
   - `lowerCall` treats `context.body.calls.get(node) === undefined` as meaning "call `node.callee` as a closure value" (`lowerValueCall`). Any checker path that forgets to record a resolved call silently compiles into a closure call instead of failing an invariant check.
-- **Re-deriving struct field indices and `any` field dispatches in lowering (`src/compiler/lowering/places.ts`, `expressions/structs.ts`, `trait-objects/trait-objects.ts`, Q12, Q19):**
-  - `lowerFieldRead` (`lowering/expressions/structs.ts`) re-inspects `base.kind === 'any'` and otherwise calls `fieldIndexOf` (`lowering/places.ts`), which re-runs `fieldsOf(type).findIndex(...)`.
+- **Re-deriving struct field indices and `any` field dispatches in lowering (`src/compiler/lowering/parts/places.ts`, `expressions/structs.ts`, `trait-objects/trait-objects.ts`, Q12, Q19):**
+  - `lowerFieldRead` (`lowering/expressions/structs.ts`) re-inspects `base.kind === 'any'` and otherwise calls `fieldIndexOf` (`lowering/parts/places.ts`), which re-runs `fieldsOf(type).findIndex(...)`.
   - Because `x.f(...)` on a function-typed struct field never checks `x.f` (`MemberAccess`) as an expression in the checker, `lowerFieldRead` and `fieldIndexOf` take a `link: Expression = node` workaround parameter to look up `chainOf(link)?.base`.
   - `anyFieldEntry` (`lowering/trait-objects/trait-objects.ts`) re-scans `on.constraints` with a local `isField` predicate (instead of `requiredFields`) and looks up `(checker.fieldsOf(type) ?? []).findIndex(...)` without guarding against `-1`.
 - **Bidirectional import cycle between `function-lowering/` and `boundary/` (`src/compiler/lowering/function-lowering/index.ts` ↔ `src/compiler/lowering/boundary/starts.ts`, Q12):**
@@ -220,13 +220,13 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 #### 5.2 Duplication & Edge Cases in Construct Lowering (`src/compiler/lowering/`)
 - **Copy-pasted `buildVariant` in `optionalInt` (`src/compiler/lowering/expressions/collections.ts` vs. `variants.ts`):**
   - `optionalInt` in `lowering/expressions/collections.ts` manually allocates a register, looks up `tables.types.index(optional)` and `variantIndexOf(context.checker, optional, name)`, and emits `{ kind: 'variant', ... }`, duplicating `buildVariant` from `lowering/expressions/variants.ts` (from which `collections.ts` already imports `variantIndexOf`).
-- **Three copies of comparison/equality/negation emission (`src/compiler/lowering/expressions/operators.ts` vs. `lowering/patterns.ts`, D226):**
+- **Three copies of comparison/equality/negation emission (`src/compiler/lowering/expressions/operators.ts` vs. `lowering/parts/patterns.ts`, D226):**
   - `lowerBinary` (`operators.ts`), `compared` (`operators.ts` for `ChainedComparison`), and `passed` (`patterns.ts` for pattern tests) all emit `equal` + `not` and `compare` + `order` separately, with `patterns.ts` defining its own local `equal` helper.
 - **Case-less `select` with `else:` emits invalid bytecode (`src/compiler/lowering/expressions/select.ts`, D149):**
   - `select:\n  else: v` passes type-checking, and `lowerSelect` emits a `select` instruction with `cases: []`, which fails Definition schema validation (`cases: z.array(selectCase).min(1)` in `definition/instructions/suspension.ts`).
 - **Spread elements cannot wrap `T` into `T?` (`src/compiler/lowering/expressions/collections.ts`, `checker/expressions/collections/collections.ts`, B8):**
   - `[0, ...xs]` where `xs: Array<int>` and `Array<int?>` is expected is rejected because a spread copies or iterates its items without per-item conversion/wrapping.
-- **10-kind closed worklist in `DefinitionTables` (`src/compiler/lowering/tables.ts`, `lower.ts`):**
+- **10-kind closed worklist in `DefinitionTables` (`src/compiler/lowering/tables/tables.ts`, `lower.ts`):**
   - `PendingEntry | ClosingEntry` hard-codes 10 entry kinds (`instance`, `nested`, `hostNative`, `constantNative`, `externConstant`, `start`, `asyncFit`, `dispatch`, `anyConversion`, `anyField`), each with its own indexing method on `DefinitionTables` and dispatch arm in `lower.ts`.
 
 ---
@@ -305,7 +305,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
    - `flow/forward.ts` models intra-function control flow (skipping nested functions via `nestsFunction`), while `waits` (`annotations.ts`), `checkSelfStays` (`disposal.ts`), and `firstEffect` (`suites.ts`) each hand-roll recursive AST walks over `childrenOf` / `bodyChildrenOf`.
 3. **Coinductive Type-Graph Traversal (`src/compiler/checker/traits/sendable.ts`, `rules/json-forms/index.ts`, `types/properties/held.ts`, `declarations/layout/struct-rules.ts`, Q7):**
    - Four modules walk composite/nominal `Type` graphs with their own visited-set cycle guards (`deciding`, `#deciding`, `walked`, `seen`). Extracting a cycle-safe type-graph reducer unifies all four.
-4. **Comparison & Membership Checking and Lowering (`src/compiler/checker/expressions/operators.ts`, `patterns/matching.ts`, `src/compiler/lowering/expressions/operators.ts`, `lowering/patterns.ts`, D226):**
+4. **Comparison & Membership Checking and Lowering (`src/compiler/checker/expressions/operators.ts`, `patterns/matching.ts`, `src/compiler/lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):**
    - Binary comparisons/memberships (`a < b`, `x in c`), chained comparisons (`a < b in c`), and pattern ordering tests (`amount > 1000`, `1..=5`, `[a, ...rest]`) are checked and lowered through three separate code paths. Unifying them into one `ComparisonLink` / ordering helper eliminates the triplication.
 5. **Declared-Value Field & Variant Readers (`src/definition/declared-values.ts` vs. `stdlib/native-values.ts`, `definition/json-values.ts`, `runtime/testing/run-tests.ts`, Q16, Q17, D201):**
    - `declared-values.ts` builds structs and variants by declared name, but lacks `fieldValueOf` (reading a struct field by name) and keeps `variantShape` private, causing 3 other modules to re-implement field/variant index lookup.
@@ -335,7 +335,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - Parser (`prefixParselets`, `infixParselets`, `typeParselets`, `patternParselets`, `statementParselets`, `topLevelParselets`), Binder (`declarationHandlers`, `statementHandlers`, `expressionHandlers`, `patternHandlers`, `typeHandlers`), Checker (`declarationHandlers`, `statementHandlers`, `expressionHandlers`, `acceptsHandlers`, `typeHandlers`, `patternHandlers`, `flow/forward.ts` `constructs`), Lowering (`expressionHandlers`, `statementHandlers`), Definition (`operandTable`, `instruction-rules.ts`), and Runtime (`interpreter/instructions.ts`) all use exhaustive `Handlers` tables.
 - **Where plugin modularity still breaks down:**
   1. **`CheckedBody` / `BodyContext` / `instantiatedBody` (`src/compiler/checker/check.ts`, `context.ts`, `types/instantiation.ts`, Q3, Q13):** Every feature adds side-table methods to `CheckedBody`, concrete class imports to `context.ts`, and manual substitution wrappers to `instantiatedBody`.
-  2. **`DefinitionTables` worklist (`src/compiler/lowering/tables.ts`, `lower.ts`):** `PendingEntry | ClosingEntry` is a closed 10-variant union with 10 separate indexing methods.
+  2. **`DefinitionTables` worklist (`src/compiler/lowering/tables/tables.ts`, `lower.ts`):** `PendingEntry | ClosingEntry` is a closed 10-variant union with 10 separate indexing methods.
   3. **Runtime `HeapObject` tables (`src/runtime/snapshot/holdings.ts`, `lifetimes/disposal.ts`, `snapshot/check.ts`, D165, D198):** Split across 3 files with 2 different table patterns and 6 inconsistent `isRoot` checks.
 
 ### 5. Cross-Module Dependencies on Extractable Shared Solutions
@@ -351,8 +351,8 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | Concept / Rule | Home 1 | Home 2 (+ others) |
 | --- | --- | --- |
 | 5-step implicit conversion (`Fit` vs. `Inference`) | `checker/types/fitting/fit.ts` (`fitOf`) | `checker/inference/infer.ts` (`Inference.match`) (D222) |
-| Binary vs. chained vs. pattern comparisons | `checker/expressions/operators.ts` (`checkBinary`) & `lowering/expressions/operators.ts` (`lowerBinary`) | `checkChainedComparison` / `compared` & `patterns/matching.ts` / `lowering/patterns.ts` (D226) |
-| Module-qualified name `${module}.${name}` | `language/well-known.ts` (`qualifiedName`) | `lowering/names.ts` (`qualifiedNameOf`), `definition/extern-key.ts` (`externKey`) (D174) |
+| Binary vs. chained vs. pattern comparisons | `checker/expressions/operators.ts` (`checkBinary`) & `lowering/expressions/operators.ts` (`lowerBinary`) | `checkChainedComparison` / `compared` & `patterns/matching.ts` / `lowering/parts/patterns.ts` (D226) |
+| Module-qualified name `${module}.${name}` | `language/well-known.ts` (`qualifiedName`) | `lowering/tables/names.ts` (`qualifiedNameOf`), `definition/extern-key.ts` (`externKey`) (D174) |
 | Member-access chain → `QualifiedName` | `parser/parts/names.ts` (`qualifiedPath`) | `binder/expressions.ts` (`qualifiedPathOf`) |
 | Millisecond time unit constants | `scanner/numbers.ts` | `stdlib/time/iso.ts` |
 | `<` / `===` ordered comparator | `language/values.ts` (`compareCodeUnits`) | `stdlib/prelude/natives.ts` (`compareOrdered`) |
@@ -395,7 +395,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | **7** | **Guard host process against VM frame-depth OOM, `[...s]` string-length OOM, and unbounded `decimal` places (`src/runtime/scheduler/segment/limits.ts`, `src/text/code-points.ts`, `src/stdlib/decimal/arithmetic.ts`, D155, D194, D195):** Enforce max frame depth in `SegmentRunner.call`, add $O(1)$-space `codePointCount`, and cap `decimal` places. | Resilience / Safety | 5 files | S |
 | **8** | **Leaf DRY extractions (`qualifiedName` [D174], `qualifiedPath`, time-unit constants, `compareOrdered`, `closureOf` [Q15], `fieldValueOf` in `declared-values.ts` [Q16, Q17, D201], `optionalInt` → `buildVariant`, `arrayElement` in `types/well-known.ts` [Q8]):** Deduplicate leaf helpers from foundation upward. | DRY | ~18 leaf files | S |
 | **9** | **Unify 5-step implicit conversion logic between `types/fitting/fit.ts` and `inference/infer.ts` (D222) + `never` return type assignability (D180):** Extract shared conversion matcher parameterized by leaf comparison. | Generalization / DRY | 3 files in `checker/` | M |
-| **10** | **Unify comparison & membership checking and lowering (`expressions/operators.ts`, `patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/patterns.ts`, D226):** One checker function and one lowering function over `ComparisonLink` and pattern ordering tests. | DRY / Generalization | 4 files in `compiler/` | M |
+| **10** | **Unify comparison & membership checking and lowering (`expressions/operators.ts`, `patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):** One checker function and one lowering function over `ComparisonLink` and pattern ordering tests. | DRY / Generalization | 4 files in `compiler/` | M |
 | **11** | **Unify runtime `HeapObject` kind tables, `isRoot`, and `WeakSide` handle surface (`src/runtime/snapshot/holdings.ts`, `lifetimes/`, `scheduler/`, D115, D116, D165, D198):** One `isRoot(object)` in `holdings.ts`, `Handlers` for all kind tables, and consistent handle/id methods on `WeakSide`. | Architecture / DRY | 6 files in `runtime/` | M |
 | **12** | **Remove upward type-imports in contracts (`checker/context.ts` [Q13], `checker/resolution/choosing/choice.ts` [D230], `runtime/natives.ts` [D179]) and enable type-import cycle checking:** Move shared vocabularies to lower modules. | Layering / DIP | 8 files | M |
 

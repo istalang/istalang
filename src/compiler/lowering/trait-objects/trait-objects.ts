@@ -26,13 +26,13 @@ import { sameType } from '../../checker/types/identity/identity.ts';
 import type { AnyType, Type } from '../../checker/types/type/index.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
-import { closeWitness, type Dispatch } from '../closed-calls.ts';
+import { closeWitness, type Dispatch } from '../calls/closed-calls.ts';
+import { emitCall } from '../calls/emit-call.ts';
 import type { CodeContext } from '../context.ts';
-import { emitCall } from '../emit-call.ts';
-import { heldInAny, type IntoAny } from '../holdings.ts';
-import { spelledType } from '../names.ts';
 import { SynthesizedCode } from '../synthesized-code.ts';
-import { eachMember, outOfUnion } from '../unions.ts';
+import { spelledType } from '../tables/names.ts';
+import { heldInAny, type IntoAny } from '../values/holdings.ts';
+import { eachMember, outOfUnion } from '../values/unions.ts';
 
 /** What writing an entry takes: the checker and the tables. */
 type Lowering = Pick<CodeContext, 'checker' | 'tables'>;

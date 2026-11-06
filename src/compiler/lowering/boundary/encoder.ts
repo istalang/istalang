@@ -21,10 +21,10 @@ import type { Type, UnionType } from '../../checker/types/type/index.ts';
 import { isPrimitive } from '../../checker/types/type/primitives.ts';
 import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { arrayElement, wellKnownArguments } from '../../checker/types/well-known.ts';
-import { closeCall } from '../closed-calls.ts';
-import type { TypedValue } from '../holdings.ts';
+import { closeCall } from '../calls/closed-calls.ts';
 import type { SynthesizedCode } from '../synthesized-code.ts';
-import { eachMember, intoUnion } from '../unions.ts';
+import type { TypedValue } from '../values/holdings.ts';
+import { eachMember, intoUnion } from '../values/unions.ts';
 import { codecCall } from './codec-calls.ts';
 
 /** The body of `_toJson<T>`, written into `code`. */

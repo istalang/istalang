@@ -24,11 +24,11 @@ import type {
   StructLiteral,
 } from '../../syntax/expressions/index.ts';
 import { itemValue } from '../../syntax/expressions/readings.ts';
-import { defaultEntryOf } from '../closed-calls.ts';
+import { defaultEntryOf } from '../calls/closed-calls.ts';
+import { emitCall } from '../calls/emit-call.ts';
 import type { FunctionContext } from '../context.ts';
-import { emitCall } from '../emit-call.ts';
 import { fieldsVisited, valueInFieldScope } from '../loops/field-passes.ts';
-import { construct } from '../struct-values.ts';
+import { construct } from '../values/struct-values.ts';
 
 export function lowerStructLiteral(context: FunctionContext, node: StructLiteral): Register {
   const fields = namedFields(literalFields(context, node));

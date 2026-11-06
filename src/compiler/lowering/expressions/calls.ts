@@ -29,11 +29,11 @@ import type { RestSlot } from '../../checker/types/function-types.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import type { Call, Expression, Spawn } from '../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../syntax/expressions/readings.ts';
-import { type ClosedCall, calledParameters } from '../closed-calls.ts';
+import { type ClosedCall, calledParameters } from '../calls/closed-calls.ts';
+import { emitCall, emitFunctionCall } from '../calls/emit-call.ts';
+import { packElementsOf } from '../calls/packs.ts';
 import type { FunctionContext } from '../context.ts';
-import { emitCall, emitFunctionCall } from '../emit-call.ts';
-import { packElementsOf } from '../packs.ts';
-import { enterReferenced } from '../places.ts';
+import { enterReferenced } from '../parts/places.ts';
 import { spreadArray } from './collections.ts';
 import { lowerFieldRead, readsField } from './structs.ts';
 

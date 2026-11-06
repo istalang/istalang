@@ -182,7 +182,7 @@ match status:
    - A value goes into the member of its own type, or else into the one member it converts into.
    - A union converts into a wider one.
    - A literal type's value, or a union of literals', converts to its base.
-4. **Lowering: a union is an enum** in the type table (`src/compiler/lowering/type-table.ts`), one variant per member, in key order, holding the member's value, as `any` is lowered today. `Bool` stays the primitive.
+4. **Lowering: a union is an enum** in the type table (`src/compiler/lowering/tables/type-table.ts`), one variant per member, in key order, holding the member's value, as `any` is lowered today. `Bool` stays the primitive.
    - A literal member is a variant without fields: a literal type's value carries no data, and a union of literals is just a tag.
    - The conversion into a union picks the member's variant; between unions it maps variant indexes, and to a base type it writes the tag's literal.
    - Each instantiation builds its own union after substitution, so collapsed members are one variant, and the `match` it lowers keeps the first arm.

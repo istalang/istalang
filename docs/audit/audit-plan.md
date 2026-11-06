@@ -30,9 +30,9 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 | **Group A** | **Front-End: Scanner, Parser, Program & Binder** | `src/compiler/scanner/**`<br>`src/compiler/parser/**`<br>`src/compiler/syntax/expressions/index.ts`<br>`src/compiler/program/**`<br>`src/compiler/binder/**`<br>`src/cli/file-loader.ts` | **D186, D197, D209, D210, D220, D221**, `qualifiedPath` deduplication, stale `>>` comment in `punctuators.ts` |
 | **Group B** | **Checker Core: Types, Inference, Resolution, Target-Typing, Closures & Places** | `src/compiler/checker/types/{type,fit,type-text,well-known,widening}.ts`<br>`src/compiler/checker/inference/**`<br>`src/compiler/checker/resolution/{call-arguments,choice,applicability,binding,packs,typed-call,conformance,declared-witness,default-witness}.ts`<br>`src/compiler/checker/calls/**`<br>`src/compiler/checker/closures/**`<br>`src/compiler/checker/declarations/functions/signatures.ts`<br>`src/compiler/checker/rules/{agreement,branches,clashes}.ts`<br>`src/compiler/checker/expressions/{expressions,tuples,collections,calls}.ts`<br>`src/compiler/checker/statements/assignments.ts` | **D101, D122, D144, D153, D160, Q8, D168, D173, D180, D190, D217, D219, D222, D223, D229, D230**, `agreedAccepts`/`tupleAccepts` partial-type bug, `typeText` entity check |
 | **Group C** | **Checker Declarations, Field Defaults, Compile-Time Constants, Annotations, JSON & Rules** | `src/compiler/syntax/field-defaults.ts`<br>`src/compiler/checker/declarations/{declarations,constants,struct-rules}.ts`<br>`src/compiler/checker/types/properties/held.ts`<br>`src/compiler/checker/rules/{computation,annotations,disposal,must-use,suites}.ts`<br>`src/compiler/checker/rules/json-forms/**`<br>`src/compiler/checker/diagnostics/{boundary,lifetimes}.ts` | **D120, Q5, Q7, Q9, D216**, `waits` on non-blocking `select`, `suites.ts` `madeCalls()`, stale `${name}$` in 5702 |
-| **Group D** | **Patterns, Exhaustiveness, Chained Comparisons & Lowering** | `src/compiler/syntax/patterns.ts`<br>`src/compiler/checker/checked-pattern.ts`<br>`src/compiler/checker/patterns/**`<br>`src/compiler/checker/resolution/implicit.ts`<br>`src/compiler/checker/expressions/{operators,optionals,templates}.ts`<br>`src/compiler/lowering/**` (except `lowering/names.ts`) | **B8, D149, Q12, D214, Q19, D224, B11, D226**, `optionalInt` → `buildVariant` |
+| **Group D** | **Patterns, Exhaustiveness, Chained Comparisons & Lowering** | `src/compiler/syntax/patterns.ts`<br>`src/compiler/checker/checked-pattern.ts`<br>`src/compiler/checker/patterns/**`<br>`src/compiler/checker/resolution/implicit.ts`<br>`src/compiler/checker/expressions/{operators,optionals,templates}.ts`<br>`src/compiler/lowering/**` (except `lowering/tables/names.ts`) | **B8, D149, Q12, D214, Q19, D224, B11, D226**, `optionalInt` → `buildVariant` |
 | **Group E** | **Runtime: Interpreter, Scheduler, Lifetimes, Snapshot & Testing** | `src/runtime/**` | **D115, D116, D130, D155, D165, D176, D179, D182, D184, D198, D199, D203, D212** |
-| **Group F** | **Foundation, Definition, Stdlib, CLI & Guide Examples** | `src/language/**`<br>`src/text/**`<br>`src/definition/**`<br>`src/compiler/lowering/names.ts`<br>`src/stdlib/**`<br>`docs/guide.md`<br>`test/corpus/spec-examples.ts`<br>`test/spec-suites/purchase.test.ista` | **D100, D174, Q15 (definition+stdlib side), Q16 (definition side), D183, D188, Q17 (definition+stdlib side), D194, D195, D201, D202, D219 (extern-key side)**, time-unit constants, `compareOrdered` |
+| **Group F** | **Foundation, Definition, Stdlib, CLI & Guide Examples** | `src/language/**`<br>`src/text/**`<br>`src/definition/**`<br>`src/compiler/lowering/tables/names.ts`<br>`src/stdlib/**`<br>`docs/guide.md`<br>`test/corpus/spec-examples.ts`<br>`test/spec-suites/purchase.test.ista` | **D100, D174, Q15 (definition+stdlib side), Q16 (definition side), D183, D188, Q17 (definition+stdlib side), D194, D195, D201, D202, D219 (extern-key side)**, time-unit constants, `compareOrdered` |
 
 ---
 
@@ -143,12 +143,12 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 - `src/compiler/checker/patterns/{downcasts,exhaustiveness,matching,parts,pattern-tests,shapes,struct-items,taking,walk}.ts` (+ `*.test.ts`)
 - `src/compiler/checker/resolution/implicit.ts`
 - `src/compiler/checker/expressions/{operators,optionals,templates}.ts`
-- `src/compiler/lowering/**` *(excluding `src/compiler/lowering/names.ts`, which Group F owns)*
+- `src/compiler/lowering/**` *(excluding `src/compiler/lowering/tables/names.ts`, which Group F owns)*
 
 **Tasks in Group D:**
-1. **Unify comparison & membership checking and lowering across binary operators, chains, and patterns (D226 — `checker/checked-pattern.ts`, `checker/expressions/operators.ts`, `checker/patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/patterns.ts`):**
+1. **Unify comparison & membership checking and lowering across binary operators, chains, and patterns (D226 — `checker/checked-pattern.ts`, `checker/expressions/operators.ts`, `checker/patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`):**
    - Give binary and chained comparisons/memberships one checker function and one lowering function over a `ComparisonLink` (where a `Binary` comparison is a single link).
-   - Unify pattern ordering tests (`CompareFieldPattern`, `RangePattern` bound, `ArrayPattern` rest length) into one ordering test representation so `lowering/patterns.ts` (`passed`) and `lowering/expressions/operators.ts` share `ordered` and `equal`.
+   - Unify pattern ordering tests (`CompareFieldPattern`, `RangePattern` bound, `ArrayPattern` rest length) into one ordering test representation so `lowering/parts/patterns.ts` (`passed`) and `lowering/expressions/operators.ts` share `ordered` and `equal`.
 2. **Separate written pattern shapes from matrix shapes in exhaustiveness (D224 — `checker/patterns/exhaustiveness/exhaustiveness.ts`, `checker/patterns/exhaustiveness/shapes.ts`):**
    - Split `Shape` into `WrittenShape` (which includes `or` and `array`) and `MatrixShape` / `WitnessShape` (`any` and `constructor` only, with a structured constructor key instead of parsing `key.endsWith('+]')`), removing the `unreachable` guards in `Matrix.useful`, `specialize`, and `witnessText`.
 3. **Remove `walk.downcasts` side channel & move `unparenthesized` for patterns to `syntax/patterns.ts` (D214 — `syntax/patterns.ts`, `checker/patterns/walk.ts`):**
@@ -160,7 +160,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - When `cases.length === 0` and `node.elseClause !== undefined`, lower `node.elseClause.body` directly without emitting an empty `select` instruction (which `definition/instructions/suspension.ts` rejects).
 6. **Wrap spread elements when `Array<T?>` is expected (B8 — `lowering/expressions/collections.ts`) & replace `optionalInt` with `buildVariant`:**
    - Replace `optionalInt` in `src/compiler/lowering/expressions/collections.ts` with `buildVariant` from `./variants.ts`.
-7. **Clean up lowering re-derivations and `function-lowering` ↔ `boundary` cycle (Q12, Q19 — `lowering/places.ts`, `lowering/expressions/structs.ts`, `lowering/trait-objects/trait-objects.ts`, `lowering/function-lowering/index.ts`, `lowering/boundary/starts.ts`):**
+7. **Clean up lowering re-derivations and `function-lowering` ↔ `boundary` cycle (Q12, Q19 — `lowering/parts/places.ts`, `lowering/expressions/structs.ts`, `lowering/trait-objects/trait-objects.ts`, `lowering/function-lowering/index.ts`, `lowering/boundary/starts.ts`):**
    - In `lowering/trait-objects/trait-objects.ts` (`anyFieldEntry`), use `requiredFields` and guard `index < 0` with `unreachable`.
    - Break the bidirectional import between `lowering/function-lowering/index.ts` and `lowering/boundary/inbound.ts` / `starts.ts`.
 
@@ -202,15 +202,15 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 - `src/language/{primitives,static-names,values,well-known}.ts` (+ `*.test.ts`)
 - `src/text/code-points.ts` (+ `*.test.ts`)
 - `src/definition/{codec,declared-values,equality,extern-key,json-values,references,types,values}.ts` (+ `*.test.ts`)
-- `src/compiler/lowering/names.ts`
+- `src/compiler/lowering/tables/names.ts`
 - `src/stdlib/**`
 - `docs/guide.md`
 - `test/corpus/spec-examples.ts`
 - `test/spec-suites/purchase.test.ista`
 
 **Tasks in Group F:**
-1. **Unify `qualifiedName` across `language/`, `lowering/names.ts`, and `definition/extern-key.ts` (D174) & make `KeyParameter` passing an enum (D219):**
-   - Use `qualifiedName` from `src/language/well-known.ts` in `src/compiler/lowering/names.ts` (`qualifiedNameOf`) and `src/definition/extern-key.ts` (`externKey`).
+1. **Unify `qualifiedName` across `language/`, `lowering/tables/names.ts`, and `definition/extern-key.ts` (D174) & make `KeyParameter` passing an enum (D219):**
+   - Use `qualifiedName` from `src/language/well-known.ts` in `src/compiler/lowering/tables/names.ts` (`qualifiedNameOf`) and `src/definition/extern-key.ts` (`externKey`).
    - In `src/definition/extern-key.ts`, replace `reference: boolean; rest?: boolean` on `KeyParameter` with `passing: 'value' | 'reference' | 'rest'`.
 2. **Add `fieldValueOf` and export `variantShape` in `definition/declared-values.ts`, and `closureOf` in `definition/values.ts` (Q15, Q16, Q17, D201):**
    - Add `fieldValueOf(types, structValue, fieldName)` and export `variantShape` in `src/definition/declared-values.ts`.
@@ -265,8 +265,8 @@ Three agents in parallel, one worktree each. Wave 2 crosses contracts, so owners
 
 | Group | Items | Owns |
 | --- | --- | --- |
-| G — checker↔lowering contract | 1 (Q13), 2 (Q1, Q2), 8 (Q12, Q19); Q11's `lowering/places.ts` part | `checker/check.ts`, `checker/context.ts`, `checker/body-checker.ts`, `checker/expressions/structs/structs.ts`, `lowering/`, `.dependency-cruiser.mjs`; the `entityOf` rename at its callers anywhere in `checker/` |
-| H — checker expressions, operators, resolution | 6 (B8), 7 (B11), 9, 10; Q8, Q11 (but `lowering/places.ts`), Q24 | `compiler/syntax/`, the rest of `checker/`; additive edits to `check.ts`'s `ValueSite`/`IterationForm` for B8 |
+| G — checker↔lowering contract | 1 (Q13), 2 (Q1, Q2), 8 (Q12, Q19); Q11's `lowering/parts/places.ts` part | `checker/check.ts`, `checker/context.ts`, `checker/body-checker.ts`, `checker/expressions/structs/structs.ts`, `lowering/`, `.dependency-cruiser.mjs`; the `entityOf` rename at its callers anywhere in `checker/` |
+| H — checker expressions, operators, resolution | 6 (B8), 7 (B11), 9, 10; Q8, Q11 (but `lowering/parts/places.ts`), Q24 | `compiler/syntax/`, the rest of `checker/`; additive edits to `check.ts`'s `ValueSite`/`IterationForm` for B8 |
 | I — cross-phase wiring, test modules | 3 (Q15–Q18, Q25), 4 (B2), 11 (Q26), 12; Q20, Q22, Q23, Q27 | `runtime/`, `stdlib/`, `definition/`, `language/`, `cli/`, `compiler/scanner/`, `program.test-kit.ts`, parse and check tests |
 
 Agents don't edit `docs/work/tracker.md` or `docs/audit/*`; each reports the ids it closed, narrowed or filed, and the orchestrator updates the tracker.

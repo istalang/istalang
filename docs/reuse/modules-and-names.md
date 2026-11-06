@@ -16,7 +16,7 @@ tags: [reuse, language, modules, program, binder, names]
 - spell a static function name `Owner.name` (`Time.parse`) → `staticName` (`src/language/static-names.ts`)
 - test a name against the naming conventions, its privacy, whether it is the unnamed `_`, whether a bare name binds in a pattern, or whether a built-in type takes it → `followsConvention`, `Convention`, `isPrivate`, `isUnnamed`, `bindsInPattern`, `isBuiltInTypeName` (`src/language/naming.ts`)
 - spell a module-qualified declaration name `module.name` (`prelude.Future`) → `qualifiedName` (`src/language/well-known.ts`)
-- spell a checked declaration's module-qualified name or extern/startable key → `qualifiedNameOf`, `keyOf`, `spelledType` (`src/compiler/lowering/names.ts`)
+- spell a checked declaration's module-qualified name or extern/startable key → `qualifiedNameOf`, `keyOf`, `spelledType` (`src/compiler/lowering/tables/names.ts`)
 - build an extern key (`prelude.add(Int, Float)`) from a signature or native table → `externKey`, `nativeKey`, `keyTypeText` (`src/definition/extern-key.ts`)
 - build type descriptors for `nativeKey` → `namedKey`, `primitiveKey`, `functionKey`, `parameterKey` (`src/definition/extern-key.ts`)
 - mark a `nativeKey` parameter as `&` reference or `...` rest → `referenceKey`, `restKey` (`src/definition/extern-key.ts`)

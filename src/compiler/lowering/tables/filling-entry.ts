@@ -1,9 +1,9 @@
 /**
  * A filling entry (instances.ts): code taking a call's arguments as the call passes them, which
  * runs the function's own entry with every parameter, those the call leaves out computed by their
- * defaults' entries (emit-call.ts), the same as a call written in code fills them. It is what an
- * entry called later gets: a function named as a value of a shorter function type (§3.14), a
- * spawned call (§9), so the new instance computes the defaults, and a call the runtime makes.
+ * defaults' entries (../calls/emit-call.ts), the same as a call written in code fills them. It is
+ * what an entry called later gets: a function named as a value of a shorter function type (§3.14),
+ * a spawned call (§9), so the new instance computes the defaults, and a call the runtime makes.
  *
  * Its parameters are the arguments in the order passed, each taken as its parameter takes it; a
  * reference is passed on as the reference it was given (§3.7). For an async function it is async
@@ -11,13 +11,13 @@
  * value, as one the function starts itself does (§3.3).
  */
 
-import type { CodeFunction } from '../../definition/functions.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import { type Binding, parameterOfArgument } from '../checker/surface/resolved-call.ts';
-import { callOfFilling } from './closed-calls.ts';
-import type { CodeContext } from './context.ts';
+import type { CodeFunction } from '../../../definition/functions.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import { type Binding, parameterOfArgument } from '../../checker/surface/resolved-call.ts';
+import { callOfFilling } from '../calls/closed-calls.ts';
+import type { CodeContext } from '../context.ts';
+import { SynthesizedCode } from '../synthesized-code.ts';
 import type { FunctionInstance } from './instances.ts';
-import { SynthesizedCode } from './synthesized-code.ts';
 
 /** The code of `instance`, a filling entry filling its function's parameters as `binding` says. */
 export function fillingEntry(

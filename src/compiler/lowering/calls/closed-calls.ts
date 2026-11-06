@@ -1,44 +1,44 @@
 /**
  * Closing a call (§3.5, §3.10): what a call the checker resolved inside a generic body targets in
- * one instance (instances.ts) of that body, every type concrete.
+ * one instance (tables/instances.ts) of that body, every type concrete.
  *
  * - Type arguments naming the instance's own parameters are substituted, and a call to a
  *   requirement becomes the witness the instance was given for it, closed inside the requirement's
  *   own instance; a requirement on a computed type an instantiation made known takes that type's
  *   witness, which the program gives (`Closer`).
  * - A requirement on an `any` value, or a call through a union's trait (§6), stays a dispatch on
- *   the value's own type (`Dispatch`), which trait-objects/ writes once the program is reached.
+ *   the value's own type (`Dispatch`), which ../trait-objects/ writes once the program is reached.
  * - A closed call runs its function's own entry with the call's binding; an entry handed out to be
  *   called later takes the arguments as passed (`takingPassed`), a filling entry when the call
  *   leaves parameters out or passes them out of order.
  */
 
-import { unreachable } from '../../structures/unreachable.ts';
-import type { Checker, SignatureParameter } from '../checker/check.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { Checker, SignatureParameter } from '../../checker/check.ts';
 import {
   type Binding,
   type FunctionCall,
   passesAll,
   type ResolvedCall,
   type Witnesses,
-} from '../checker/surface/resolved-call.ts';
-import { isOpaque } from '../checker/types/computed-types.ts';
+} from '../../checker/surface/resolved-call.ts';
+import { isOpaque } from '../../checker/types/computed-types.ts';
 import {
   type Substitution,
   substitute,
   substituteAny,
   substitutionFor,
-} from '../checker/types/substitution.ts';
-import type { AnyType, Type } from '../checker/types/type/index.ts';
-import { typeText } from '../checker/types/type-text.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
+} from '../../checker/types/substitution.ts';
+import type { AnyType, Type } from '../../checker/types/type/index.ts';
+import { typeText } from '../../checker/types/type-text.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
 import {
   type BodyOwner,
   type FunctionInstance,
   ownEntry,
   ownerSubstitution,
   substitutionOf,
-} from './instances.ts';
+} from '../tables/instances.ts';
 
 /** `resolved`, a call made inside the body `within` owns, closed there as `program` says. */
 export function closeCallWithin(
@@ -137,8 +137,9 @@ type ClosingInstance = Pick<FunctionInstance, 'declaration' | 'typeArguments' | 
 
 /**
  * What closing reads of the body a call is closed inside: how it maps type parameters, the keys of
- * the field loops it is lowered in among them (instances.ts `passBindings`), and the witnesses its
- * instance was given. A constant's value is within no instance, so it maps no type parameter.
+ * the field loops it is lowered in among them (tables/instances.ts `passBindings`), and the
+ * witnesses its instance was given. A constant's value is within no instance, so it maps no type
+ * parameter.
  */
 interface Closing {
   readonly substitution: Substitution;

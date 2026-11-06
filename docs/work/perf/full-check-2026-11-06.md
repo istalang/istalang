@@ -125,7 +125,7 @@ Lowering is most of the form builder's compile. Its own files are only 9% of its
 ### 5. Lowering re-spells types for names: 6.7% of the form builder compile
 
 - `names.spelledType` → `extern-key.keyTypeText` spells a whole type recursively for every instance frame (`instances` → `instanceName` → `entryHeader`) and every type-table entry. Nothing is memoized, and the form builder's types are deep structs.
-- **Fix:** memoize `spelledType` per type key in `lowering/names.ts`.
+- **Fix:** memoize `spelledType` per type key in `lowering/tables/names.ts`.
 
 ### 6. Type-match placement builds whole-tree parent maps: 3.9% plus 7.4% syntax in the std tests, 17% of the corpus, 9.7% of decimal16
 

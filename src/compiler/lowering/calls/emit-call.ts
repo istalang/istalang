@@ -2,34 +2,34 @@
  * The one place lowering writes a `call` instruction (docs/arch/definition.md, "Calls"): to a
  * function-table entry or a function value, with each argument a value or a place passed by `&`.
  *
- * A resolved call (`emitFunctionCall`) runs its function's own entry with every parameter: the
- * ones the call passes, and before them, in parameter order, each one it leaves out computed by
- * its default's entry from the parameters before it (§3.1, §3.3). So a default sees those
- * parameters however the call gave them, and every call fills its defaults one way, a filling
- * entry's included (instances.ts). A dispatch on an `any` value's own type binds the required
- * function's parameters the same way, then runs its dispatch entry (§3.10).
+ * A resolved call (`emitFunctionCall`) runs its function's own entry with every parameter: the ones
+ * the call passes, and before them, in parameter order, each one it leaves out computed by its
+ * default's entry from the parameters before it (§3.1, §3.3). So a default sees those parameters
+ * however the call gave them, and every call fills its defaults one way, a filling entry's included
+ * (tables/instances.ts). A dispatch on an `any` value's own type binds the required function's
+ * parameters the same way, then runs its dispatch entry (§3.10).
  *
  * This is the one place a rest parameter is made of what a call passes: an array of its items, a
  * spread's spliced in, or, for a pack, its items as single parameters and a spread's tuple as its
  * elements, as the instantiation flattens the pack (packs.ts).
  */
 
-import type { Callee } from '../../definition/instructions/calls.ts';
-import type { Argument } from '../../definition/instructions/places.ts';
-import type { FunctionId, Register } from '../../definition/operands.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { SignatureParameter } from '../checker/check.ts';
-import type { ImplicitRole, ResolvedSite } from '../checker/surface/resolved-call.ts';
-import { substitute } from '../checker/types/substitution.ts';
-import type { NodeOf } from '../syntax/node.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
+import type { Callee } from '../../../definition/instructions/calls.ts';
+import type { Argument } from '../../../definition/instructions/places.ts';
+import type { FunctionId, Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { SignatureParameter } from '../../checker/check.ts';
+import type { ImplicitRole, ResolvedSite } from '../../checker/surface/resolved-call.ts';
+import { substitute } from '../../checker/types/substitution.ts';
+import type { NodeOf } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { CodeContext, FunctionContext } from '../context.ts';
 import {
   type ClosedCall,
   calledParameters,
   defaultEntryOf,
   substitutionOfCall,
 } from './closed-calls.ts';
-import type { CodeContext, FunctionContext } from './context.ts';
 import { packElementsOf } from './packs.ts';
 
 /** A call to write: where it is written, what it calls, and its arguments. */

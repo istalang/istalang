@@ -10,31 +10,31 @@
  */
 
 import { z } from 'zod';
-import { encodeJson } from '../../definition/codec.ts';
-import type { FunctionDefinition } from '../../definition/functions.ts';
-import type { FunctionId } from '../../definition/operands.ts';
-import type { Tables } from '../../definition/tables.ts';
-import { type Value, value } from '../../definition/values.ts';
-import { memo } from '../../structures/memo.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import { lineMapOf } from '../../text/line-map.ts';
-import type { Checker } from '../checker/check.ts';
-import type { RequiredField } from '../checker/surface/checked-field.ts';
-import { passesAll } from '../checker/surface/resolved-call.ts';
-import type { AnyType, Type } from '../checker/types/type/index.ts';
+import { encodeJson } from '../../../definition/codec.ts';
+import type { FunctionDefinition } from '../../../definition/functions.ts';
+import type { FunctionId } from '../../../definition/operands.ts';
+import type { Tables } from '../../../definition/tables.ts';
+import { type Value, value } from '../../../definition/values.ts';
+import { memo } from '../../../structures/memo.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import { lineMapOf } from '../../../text/line-map.ts';
+import type { Checker } from '../../checker/check.ts';
+import type { RequiredField } from '../../checker/surface/checked-field.ts';
+import { passesAll } from '../../checker/surface/resolved-call.ts';
+import type { AnyType, Type } from '../../checker/types/type/index.ts';
 
-import { type ModuleId, programModule } from '../program/program.ts';
+import { type ModuleId, programModule } from '../../program/program.ts';
 import type {
   ConstantDeclaration,
   ExternConstantDeclaration,
   FunctionDeclaration,
-} from '../syntax/declarations.ts';
-import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
-import type { SyntaxTree } from '../syntax/tree.ts';
-import { nestedSpanOf } from './bodies.ts';
-import { type ClosedCall, type Dispatch, takingPassed } from './closed-calls.ts';
+} from '../../syntax/declarations.ts';
+import { type AnchoredSpan, spanIn } from '../../syntax/positions.ts';
+import type { SyntaxTree } from '../../syntax/tree.ts';
+import { nestedSpanOf } from '../bodies.ts';
+import { type ClosedCall, type Dispatch, takingPassed } from '../calls/closed-calls.ts';
+import { laidOutAs } from '../values/holdings.ts';
 import { annotationValues } from './constants.ts';
-import { laidOutAs } from './holdings.ts';
 import {
   type AsyncFit,
   asyncFitKey,

@@ -18,30 +18,30 @@
  * - A binding reads its part into a fresh variable, a cell when it is referenced.
  */
 
-import type { Register } from '../../definition/operands.ts';
-import { unreachable } from '../../structures/unreachable.ts';
+import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
 import {
   type CheckedPattern,
   namesBound,
   type PatternTest,
   type PatternValue,
-} from '../checker/surface/checked-pattern.ts';
-import { sameType } from '../checker/types/identity/identity.ts';
-import type { LiteralType, Type } from '../checker/types/type/index.ts';
-import { baseOf } from '../checker/types/unions/union-members.ts';
-import { hasMember } from '../checker/types/unions/unions.ts';
-import type { Identifier } from '../syntax/node.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { Label } from './code-writer.ts';
-import { constantValue, emitConstant } from './constants.ts';
-import type { FunctionContext } from './context.ts';
-import { emitImplicitCall } from './emit-call.ts';
-import { equal, ordered } from './expressions/operators.ts';
-import { branchOnVariant } from './expressions/variants.ts';
-import { branchOnHeld, laidOutAs, type TypedValue } from './holdings.ts';
+} from '../../checker/surface/checked-pattern.ts';
+import { sameType } from '../../checker/types/identity/identity.ts';
+import type { LiteralType, Type } from '../../checker/types/type/index.ts';
+import { baseOf } from '../../checker/types/unions/union-members.ts';
+import { hasMember } from '../../checker/types/unions/unions.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { emitImplicitCall } from '../calls/emit-call.ts';
+import type { Label } from '../code-writer.ts';
+import type { FunctionContext } from '../context.ts';
+import { equal, ordered } from '../expressions/operators.ts';
+import { branchOnVariant } from '../expressions/variants.ts';
+import { declareVariable } from '../statements/variables.ts';
+import { constantValue, emitConstant } from '../tables/constants.ts';
+import { branchOnHeld, laidOutAs, type TypedValue } from '../values/holdings.ts';
+import { outOfUnion } from '../values/unions.ts';
 import { readPartAlong } from './part-paths.ts';
-import { declareVariable } from './statements/variables.ts';
-import { outOfUnion } from './unions.ts';
 
 /** A value being matched, in a register, and the pattern it is matched against. */
 export interface Matching {
@@ -140,10 +140,11 @@ function lowerTest(
 }
 
 /**
- * A member test: a `switch` on the variants holding the members (holdings.ts). An instantiation
- * may have collapsed the union (§3.5): into one type, whose value the part then is, which a member
- * of that type passes and no other; a literal member into its base, whose value is then compared
- * with the literal; or a member into the `any` type that took it whole, whose variant is tested.
+ * A member test: a `switch` on the variants holding the members (values/holdings.ts). An
+ * instantiation may have collapsed the union (§3.5): into one type, whose value the part then is,
+ * which a member of that type passes and no other; a literal member into its base, whose value is
+ * then compared with the literal; or a member into the `any` type that took it whole, whose variant
+ * is tested.
  */
 function lowerMemberTest(
   context: FunctionContext,
@@ -171,7 +172,7 @@ function lowerMemberTest(
   }
 }
 
-/** The value of `member` `value` holds (holdings.ts), jumping to `otherwise` when it holds another. */
+/** The value of `member` `value` holds (values/holdings.ts), jumping to `otherwise` when it holds another. */
 function heldOrJump(
   context: FunctionContext,
   value: TypedValue,

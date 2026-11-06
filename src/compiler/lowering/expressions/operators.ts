@@ -28,8 +28,8 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import { binaryOperators, type Relation, unaryOperators } from '../../syntax/operators.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { emitCallAt, emitFunctionCall } from '../calls/emit-call.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
-import { emitCallAt, emitFunctionCall } from '../emit-call.ts';
 import { lowerNullish } from './optionals.ts';
 
 export function lowerBinary(context: FunctionContext, node: Binary): Register {

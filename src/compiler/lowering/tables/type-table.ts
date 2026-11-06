@@ -26,23 +26,23 @@
  * comes through `TypeTableSeams`, which the function and constant tables implement.
  */
 
-import type { FunctionId, TypeId } from '../../definition/operands.ts';
+import type { FunctionId, TypeId } from '../../../definition/operands.ts';
 import type {
   EnumRole,
   ExternRole,
   TypeDefinition,
   TypeReference,
-} from '../../definition/types.ts';
-import type { Value } from '../../definition/values.ts';
-import { compareOrdered } from '../../language/order.ts';
-import { unionLayout, type WellKnownDeclaration, wellKnown } from '../../language/well-known.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { Checker, Disposal } from '../checker/check.ts';
-import type { CheckedAnnotation } from '../checker/surface/checked-annotation.ts';
-import { isHostExtern } from '../checker/surface/host-externs.ts';
-import { type RecursiveType, unfoldRecursive } from '../checker/types/computed-types.ts';
-import { sameType } from '../checker/types/identity/identity.ts';
-import { folded } from '../checker/types/identity/recursive-types.ts';
+} from '../../../definition/types.ts';
+import type { Value } from '../../../definition/values.ts';
+import { compareOrdered } from '../../../language/order.ts';
+import { unionLayout, type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { Checker, Disposal } from '../../checker/check.ts';
+import type { CheckedAnnotation } from '../../checker/surface/checked-annotation.ts';
+import { isHostExtern } from '../../checker/surface/host-externs.ts';
+import { type RecursiveType, unfoldRecursive } from '../../checker/types/computed-types.ts';
+import { sameType } from '../../checker/types/identity/identity.ts';
+import { folded } from '../../checker/types/identity/recursive-types.ts';
 import type {
   AnonymousStructType,
   AnyType,
@@ -50,11 +50,11 @@ import type {
   NominalType,
   Type,
   UnionType,
-} from '../checker/types/type/index.ts';
-import { baseOf } from '../checker/types/unions/union-members.ts';
-import { hasOneValue } from '../checker/types/unions/unions.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import { closeFunctionCall } from './closed-calls.ts';
+} from '../../checker/types/type/index.ts';
+import { baseOf } from '../../checker/types/unions/union-members.ts';
+import { hasOneValue } from '../../checker/types/unions/unions.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import { closeFunctionCall } from '../calls/closed-calls.ts';
 import type { FunctionInstance } from './instances.ts';
 import { qualifiedNameOf, recursiveName, spelledType, unionName } from './names.ts';
 

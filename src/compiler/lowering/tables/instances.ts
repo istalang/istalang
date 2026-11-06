@@ -6,7 +6,7 @@
  *   giving one parameter its default (§3.1, §3.3), or code filling a call's left-out parameters.
  * - A body is checked once, generically (checker), so lowering one instance reads the body
  *   through its substitution (checker/body/facts/instantiation.ts), and closes every call it makes
- *   (closed-calls.ts).
+ *   (../calls/closed-calls.ts).
  * - Two instances are one entry when their key is: the declaration, its arguments' types, and which
  *   entry. Witnesses are coherent (§3.10), the same for the same types wherever they are found, so
  *   the types decide them.
@@ -16,16 +16,16 @@
  *   value is one entry, owned by the constant, which has no type parameters to substitute.
  */
 
-import type { Checker } from '../checker/check.ts';
-import type { ValueSite } from '../checker/surface/checked-body.ts';
-import type { Binding, Witnesses } from '../checker/surface/resolved-call.ts';
-import type { TypeKeys } from '../checker/types/identity/type-keys.ts';
-import { type Substitution, substitutionFor } from '../checker/types/substitution.ts';
-import type { FunctionType, Type } from '../checker/types/type/index.ts';
-import { literalType } from '../checker/types/unions/unions.ts';
-import type { FunctionDeclaration } from '../syntax/declarations.ts';
-import type { FieldHeader, Lambda } from '../syntax/expressions/index.ts';
-import type { VariableDeclaration } from '../syntax/statements.ts';
+import type { Checker } from '../../checker/check.ts';
+import type { ValueSite } from '../../checker/surface/checked-body.ts';
+import type { Binding, Witnesses } from '../../checker/surface/resolved-call.ts';
+import type { TypeKeys } from '../../checker/types/identity/type-keys.ts';
+import { type Substitution, substitutionFor } from '../../checker/types/substitution.ts';
+import type { FunctionType, Type } from '../../checker/types/type/index.ts';
+import { literalType } from '../../checker/types/unions/unions.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations.ts';
+import type { FieldHeader, Lambda } from '../../syntax/expressions/index.ts';
+import type { VariableDeclaration } from '../../syntax/statements.ts';
 import { qualifiedNameOf, spelledType } from './names.ts';
 
 /** One function-table entry's function: a closed call, with every type concrete. */

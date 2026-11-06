@@ -1,9 +1,10 @@
 /**
  * Where a value of one type sits in a value of another (§2, §3.5), as an instantiation made both:
- * the one derivation every way in and out of a union or `any` type reads (unions.ts, patterns.ts,
- * optionals.ts, trait-objects/), so a layout an instantiation changed is never patched afterwards.
+ * the one derivation every way in and out of a union or `any` type reads (unions.ts,
+ * ../parts/patterns.ts, optionals.ts, ../trait-objects/), so a layout an instantiation changed is
+ * never patched afterwards.
  *
- * - A union's value is the variant of its enum holding a member (type-table.ts): the member's own,
+ * - A union's value is the variant of its enum holding a member (tables/type-table.ts): the member's own,
  *   its literal's base, whose value a literal is, or the `any` member that took it whole.
  * - An `any` type's value is the variant of its enum holding a concrete type's value, its base's
  *   for a literal. Where an instantiation let an `any` type take a member whole (`T | any
@@ -15,16 +16,16 @@
  * - A member with one value, a literal or `none`, holds nothing in its own variant.
  */
 
-import type { Register } from '../../definition/operands.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import { unfoldRecursive } from '../checker/types/computed-types.ts';
-import { sameType } from '../checker/types/identity/identity.ts';
-import type { AnyType, Type, UnionType } from '../checker/types/type/index.ts';
-import { absorbingMember, baseOf } from '../checker/types/unions/union-members.ts';
-import { hasMember, hasOneValue } from '../checker/types/unions/unions.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { Label } from './code-writer.ts';
-import type { CodeContext } from './context.ts';
+import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import { unfoldRecursive } from '../../checker/types/computed-types.ts';
+import { sameType } from '../../checker/types/identity/identity.ts';
+import type { AnyType, Type, UnionType } from '../../checker/types/type/index.ts';
+import { absorbingMember, baseOf } from '../../checker/types/unions/union-members.ts';
+import { hasMember, hasOneValue } from '../../checker/types/unions/unions.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { Label } from '../code-writer.ts';
+import type { CodeContext } from '../context.ts';
 
 /** A value in a register, with its type. */
 export interface TypedValue {

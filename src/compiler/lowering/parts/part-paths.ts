@@ -10,14 +10,14 @@
  *   step reads that new value.
  */
 
-import type { Register } from '../../definition/operands.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { ArrayStep, PartStep, StructStep } from '../checker/surface/checked-pattern.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { FunctionContext } from './context.ts';
-import { emitImplicitCall } from './emit-call.ts';
-import { heldPositions, holdingOf } from './holdings.ts';
-import { rebuiltAs } from './struct-values.ts';
+import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { ArrayStep, PartStep, StructStep } from '../../checker/surface/checked-pattern.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { emitImplicitCall } from '../calls/emit-call.ts';
+import type { FunctionContext } from '../context.ts';
+import { heldPositions, holdingOf } from '../values/holdings.ts';
+import { rebuiltAs } from '../values/struct-values.ts';
 
 /** A step that makes a new value of the part it stands at, rather than reading a place in it. */
 type BuildingStep = ArrayStep | Extract<StructStep, { kind: 'fieldRest' }>;
@@ -71,7 +71,7 @@ function builtAt(
 /**
  * The positions `step` reads as a place: an element's or variant field's own, a named field's in
  * the struct an instantiation made, the one field of the variant an `any`'s value is held in, or where a union
- * holds its member's value as an instantiation made it (holdings.ts): none where the union
+ * holds its member's value as an instantiation made it (values/holdings.ts): none where the union
  * collapsed into that one type (§3.5), inside the `any` type that took the member whole.
  */
 function positionsOf(

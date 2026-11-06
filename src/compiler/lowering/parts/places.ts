@@ -9,7 +9,7 @@
  *   runtime, so lowering emits the same instructions whatever the variable's storage is.
  * - A field reached by a key of one name (`s["x"]`, §3.9) is a field position as `s.x` is; one
  *   reached by a key of several names is the field the key's value names, a switch on it
- *   (keyed-fields.ts), each case reaching its field and the field positions past it. Nothing
+ *   (values/keyed-fields.ts), each case reaching its field and the field positions past it. Nothing
  *   passes it by `&`, nor reaches an accessor past it, which takes its container by `&`.
  * - A value written where a key of several names reads the place converts into whichever field
  *   the key names (`WrittenFit`), derived from the concrete field types: in each case of the
@@ -30,26 +30,31 @@
  *   by `&`.
  */
 
-import type { Place } from '../../definition/instructions/places.ts';
-import type { Register, TypeId } from '../../definition/operands.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { WrittenFit } from '../checker/surface/checked-body.ts';
-import type { FieldMember, Type } from '../checker/types/type/index.ts';
-import { chainStepOf } from '../syntax/expressions/chains.ts';
-import type { Dereference, Expression, Index, MemberAccess } from '../syntax/expressions/index.ts';
-import { type PlaceStep, placePath } from '../syntax/expressions/places.ts';
-import type { Identifier } from '../syntax/node.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { CodeContext, FunctionContext } from './context.ts';
-import { emitFunctionCall } from './emit-call.ts';
-import type { TypedValue } from './holdings.ts';
+import type { Place } from '../../../definition/instructions/places.ts';
+import type { Register, TypeId } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { WrittenFit } from '../../checker/surface/checked-body.ts';
+import type { FieldMember, Type } from '../../checker/types/type/index.ts';
+import { chainStepOf } from '../../syntax/expressions/chains.ts';
+import type {
+  Dereference,
+  Expression,
+  Index,
+  MemberAccess,
+} from '../../syntax/expressions/index.ts';
+import { type PlaceStep, placePath } from '../../syntax/expressions/places.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { emitFunctionCall } from '../calls/emit-call.ts';
+import type { CodeContext, FunctionContext } from '../context.ts';
+import type { TypedValue } from '../values/holdings.ts';
 import {
   eachKeyedField,
   fittedInto,
   type KeyedField,
   readKeyed,
   writeKeyed,
-} from './keyed-fields.ts';
+} from '../values/keyed-fields.ts';
 
 /**
  * A part of a place reached through a read and a write (§3.7, §3.9). An element is read with its
@@ -333,7 +338,7 @@ export function lowerDereference(context: FunctionContext, node: Dereference): R
 
 /**
  * The value behind the shared struct a place's root `node` reads, computing it (§3.9); `x->` reads
- * its handle as a link of an optional chain (optionals.ts).
+ * its handle as a link of an optional chain (values/optionals.ts).
  */
 function sharedAccessor(context: FunctionContext, node: Expression): Accessor {
   if (node.kind !== 'Dereference') {

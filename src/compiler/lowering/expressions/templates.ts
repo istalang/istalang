@@ -8,8 +8,8 @@
 import type { Register } from '../../../definition/operands.ts';
 import type { TemplateLiteral } from '../../syntax/expressions/index.ts';
 import { constantTextOf, isTagged, taggedCall } from '../../syntax/expressions/templates.ts';
+import { emitImplicitCall } from '../calls/emit-call.ts';
 import type { FunctionContext } from '../context.ts';
-import { emitImplicitCall } from '../emit-call.ts';
 
 export function lowerTemplate(context: FunctionContext, node: TemplateLiteral): Register {
   if (isTagged(node)) {

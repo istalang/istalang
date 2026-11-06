@@ -115,7 +115,7 @@ Measured with jscpd 4 over `src/**/*.ts`, without `*.test.ts` and `*.test-kit.ts
 - The largest clones checked by hand are boilerplate, not repeated logic:
   - the same import lists in `checker/expressions/operators.ts` and `lowering/expressions/operators.ts`, and in the two `collections.ts`;
   - the same constructor in `runtime/scheduler/slots.ts` and `weak-side.ts`;
-  - the tail of an emit loop in `lowering/unions.ts`.
+  - the tail of an emit loop in `lowering/values/unions.ts`.
 
   So 0.4% is an upper bound on copied logic.
 - jscpd finds only copied text. It can't find one rule implemented twice in different code, such as a conversion rule in both the checker and lowering. Finding those takes a review per subsystem.

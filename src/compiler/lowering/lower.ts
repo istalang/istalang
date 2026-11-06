@@ -2,11 +2,10 @@
  * Lowering's entry: a checked program, compiled into a Definition (docs/arch/definition.md).
  *
  * Lowering starts from `main`, or from a test program's suites (§10), and compiles every function
- * instance it reaches, through a worklist (tables.ts, instances.ts): a function with a body
- * becomes code, an extern an entry bound to its native by key, and a call leaving parameters to
- * their defaults an entry computing them.
- * Lowering runs only on a program the checker accepted, so it reports nothing; anything it can't
- * lower is a bug in an earlier phase and throws.
+ * instance it reaches, through a worklist (tables/tables.ts, tables/instances.ts): a function with
+ * a body becomes code, an extern an entry bound to its native by key, and a call leaving parameters
+ * to their defaults an entry computing them. Lowering runs only on a program the checker accepted,
+ * so it reports nothing; anything it can't lower is a bug in an earlier phase and throws.
  */
 
 import type { Definition } from '../../definition/definition.ts';
@@ -26,17 +25,17 @@ import {
   hostNativeEntry,
 } from './boundary/host-externs.ts';
 import { listStart, startableOf, startables, startEntry } from './boundary/starts.ts';
-import { fillingEntry } from './filling-entry.ts';
 import { asyncFitEntry } from './function-lowering/fits.ts';
 import { instanceLowering, nestedLowering } from './function-lowering/index.ts';
+import { fillingEntry } from './tables/filling-entry.ts';
 import {
   type FunctionInstance,
   type NestedInstance,
   rootInstance,
   substitutionOf,
-} from './instances.ts';
-import { keyOf } from './names.ts';
-import { type ClosingEntry, DefinitionTables, type PendingEntry } from './tables.ts';
+} from './tables/instances.ts';
+import { keyOf } from './tables/names.ts';
+import { type ClosingEntry, DefinitionTables, type PendingEntry } from './tables/tables.ts';
 import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './trait-objects/trait-objects.ts';
 
 /**
@@ -132,9 +131,9 @@ function pendingEntry(
 }
 
 /**
- * The entry for `instance`: a filling entry, or one giving a parameter its default (instances.ts,
- * §3.3); else its function's own: code for a function with a body, or an extern bound to its
- * native.
+ * The entry for `instance`: a filling entry, or one giving a parameter its default
+ * (tables/instances.ts, §3.3); else its function's own: code for a function with a body, or an
+ * extern bound to its native.
  */
 function entryOf(
   checker: Checker,

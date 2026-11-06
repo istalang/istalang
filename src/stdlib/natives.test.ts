@@ -4,7 +4,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { keyOf } from '../compiler/lowering/names.ts';
+import { keyOf } from '../compiler/lowering/tables/names.ts';
 import { declaredFunctions } from '../compiler/syntax/declarations.ts';
 import { derivedCodecs, disposeFunction, languageModules } from '../language/well-known.ts';
 import { stdNatives } from './natives.ts';

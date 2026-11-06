@@ -20,7 +20,7 @@ import { compileProgram, diagnose } from '../compile.ts';
 import { idOf } from '../program/program.test-kit.ts';
 import type { Program } from '../program/program.ts';
 import { declaredFunctions } from '../syntax/declarations.ts';
-import { keyOf } from './names.ts';
+import { keyOf } from './tables/names.ts';
 
 const specModules = specExamples
   .filter((example) => example.form === 'module')

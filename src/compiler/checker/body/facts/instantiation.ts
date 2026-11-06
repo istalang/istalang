@@ -1,11 +1,11 @@
 /**
  * What one instantiation does to each part a checked body records (§3.5): a body is checked once,
  * generically, so what runs for one instantiation reads it with every type it records substituted.
- * The body's facts table (index.ts) says which part each fact is made of; the parts are
- * substituted here. The calls a body records stay as checked: closing one takes the
- * instantiation's witnesses too, which its reader has, so the reader closes it
- * (lowering/closed-calls.ts `closeCall`, rules/computation.ts for a default's). Lowering reads a
- * function instance's body this way, and compile time a field's default for the literal running it.
+ * The body's facts table (index.ts) says which part each fact is made of; the parts are substituted
+ * here. The calls a body records stay as checked: closing one takes the instantiation's witnesses
+ * too, which its reader has, so the reader closes it (lowering/calls/closed-calls.ts `closeCall`,
+ * rules/computation.ts for a default's). Lowering reads a function instance's body this way, and
+ * compile time a field's default for the literal running it.
  */
 
 import { memo } from '../../../../structures/memo.ts';

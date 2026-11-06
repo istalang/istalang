@@ -1,6 +1,6 @@
 /**
  * Union values in lowered code (§2): the one place that knows how a value of `A | B` is laid out,
- * an enum with a variant per member (type-table.ts), which conversions, `none`, the optional
+ * an enum with a variant per member (tables/type-table.ts), which conversions, `none`, the optional
  * operators and patterns all go through.
  *
  * - Into a union, a value of a member becomes that member's variant; a union becomes the wider
@@ -20,17 +20,17 @@
  *   here, from the types as the instantiation made them, for every way in or out.
  */
 
-import type { Register } from '../../definition/operands.ts';
-import type { Value } from '../../definition/values.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import { sameType } from '../checker/types/identity/identity.ts';
-import type { AnyType, LiteralType, Type, UnionType } from '../checker/types/type/index.ts';
-import { isPrimitive } from '../checker/types/type/primitives.ts';
-import { baseOf } from '../checker/types/unions/union-members.ts';
-import { hasOneValue } from '../checker/types/unions/unions.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import { emitConstant } from './constants.ts';
-import type { CodeContext } from './context.ts';
+import type { Register } from '../../../definition/operands.ts';
+import type { Value } from '../../../definition/values.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import { sameType } from '../../checker/types/identity/identity.ts';
+import type { AnyType, LiteralType, Type, UnionType } from '../../checker/types/type/index.ts';
+import { isPrimitive } from '../../checker/types/type/primitives.ts';
+import { baseOf } from '../../checker/types/unions/union-members.ts';
+import { hasOneValue } from '../../checker/types/unions/unions.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { CodeContext } from '../context.ts';
+import { emitConstant } from '../tables/constants.ts';
 import {
   branchOnHeld,
   heldIn,

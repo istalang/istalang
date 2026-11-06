@@ -19,7 +19,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - keep the methods a call through a member access may mean, `&self` ones only through a place → `callableThrough` (`src/compiler/checker/resolution/choosing/candidates.ts`)
 - apply a call: choose among candidates, report ambiguity or a caller's `none`, instantiate, fit the arguments (conversions and wraps), give the result → `applyCall` (`src/compiler/checker/resolution/applied-call.ts`); written calls (`resolveCall`) and implicit ones (`implicitCall`) both go through it, and add only what they record
 - look up static or trait witness candidates → `staticCandidates`, `staticTargetOf` (a type known only per instantiation, `R.Data` among them, is a `constrained` target), `witnessCandidates` (`src/compiler/checker/resolution/choosing/candidates.ts`); a type named in value position, an associated type through its owner (`R.Data.default()`) → `namedType` (`src/compiler/checker/resolution/named.ts`)
-- a requirement on a computed type (`T.Data`, `S["meta"]`) → `ComputedRequirement` (`src/compiler/checker/surface/resolved-call.ts`), closed at instantiation through the concrete type's witness (`closeCall`'s `Closer`, `lowering/instances.ts`)
+- a requirement on a computed type (`T.Data`, `S["meta"]`) → `ComputedRequirement` (`src/compiler/checker/surface/resolved-call.ts`), closed at instantiation through the concrete type's witness (`closeCall`'s `Closer`, `lowering/tables/instances.ts`)
 - list the modules a module sees (its own, its imports, the prelude), or every static function on a type they declare → `modulesSeenFrom`, `staticFunctionsAmong` (`src/compiler/checker/resolution/choosing/candidates.ts`)
 - bind call or function-value arguments to parameter slots → `bindArguments`, `bindValue`, `positionalCounts` (`src/compiler/checker/resolution/choosing/binding.ts`)
 - test for a valid binding → `isBinding` (`src/compiler/checker/resolution/choosing/binding.ts`); the slot each argument of a chosen call fills → `Application.slots`, computed once by `takenBy` (never rebuilt from the binding by a caller)
@@ -66,4 +66,4 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 1. Spell the function's name once in `src/language/well-known.ts`.
 2. Add its role to `ImplicitRole` in `src/compiler/checker/surface/resolved-call.ts`.
 3. In the checker handler, call `preludeCall` (prelude-owned) or `implicitCall` with `topLevelCandidates` (`src/compiler/checker/resolution/implicit.ts`).
-4. In lowering, read `context.body.implicitCallOf(node, role)` and emit it with `emitImplicitCall` / `emitCall` (`src/compiler/lowering/emit-call.ts`).
+4. In lowering, read `context.body.implicitCallOf(node, role)` and emit it with `emitImplicitCall` / `emitCall` (`src/compiler/lowering/calls/emit-call.ts`).

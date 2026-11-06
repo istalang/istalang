@@ -10,12 +10,12 @@
  *   elements (emit-call.ts; expressions/calls.ts for a function value's call).
  */
 
-import type { Register } from '../../definition/operands.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import type { Type } from '../checker/types/type/index.ts';
-import { tupleElements } from '../checker/types/type/primitives.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { CodeContext } from './context.ts';
+import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { Type } from '../../checker/types/type/index.ts';
+import { tupleElements } from '../../checker/types/type/primitives.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { CodeContext } from '../context.ts';
 
 /** The element types of a pack, `concrete` as an instantiation substitutes it: a tuple's. */
 export function packElements(concrete: Type): readonly Type[] {

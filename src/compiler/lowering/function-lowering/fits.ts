@@ -20,14 +20,14 @@ import { type Fit, singleElement } from '../../checker/types/fitting/fit.ts';
 import type { FunctionType, StructValueType, Type } from '../../checker/types/type/index.ts';
 import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { membersOf } from '../../checker/types/unions/unions.ts';
+import { emitCall } from '../calls/emit-call.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
-import { emitCall } from '../emit-call.ts';
 import { tupleOf } from '../expressions/tuples.ts';
-import type { AsyncFit, BodyOwner } from '../instances.ts';
-import { rebuiltAs } from '../struct-values.ts';
 import { SynthesizedCode } from '../synthesized-code.ts';
+import type { AsyncFit, BodyOwner } from '../tables/instances.ts';
 import { convertedIntoAny } from '../trait-objects/trait-objects.ts';
-import { asBase, intoUnion } from '../unions.ts';
+import { rebuiltAs } from '../values/struct-values.ts';
+import { asBase, intoUnion } from '../values/unions.ts';
 
 /** A register and the type of the value it holds. */
 interface TypedRegister {

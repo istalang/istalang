@@ -6,8 +6,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { stdProgramOf } from '../binder/bind.test-kit.ts';
-import { compiledDefinition } from '../compile.test-kit.ts';
+import { stdProgramOf } from '../../binder/bind.test-kit.ts';
+import { compiledDefinition } from '../../compile.test-kit.ts';
 
 const modules = {
   'a.ista': 'type FormTree<T> = T | Array<FormTree<T>>',

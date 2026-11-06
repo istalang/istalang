@@ -23,10 +23,10 @@ import type { Type } from '../../checker/types/type/index.ts';
 import { futureArgument } from '../../checker/types/well-known.ts';
 import { entityType } from '../../checker/types/written/named-types.ts';
 import type { ExternConstantDeclaration, FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { FunctionInstance } from '../instances.ts';
-import { keyOf, qualifiedNameOf, spelledType } from '../names.ts';
 import { SynthesizedCode } from '../synthesized-code.ts';
-import type { DefinitionTables, EntryHeader, HostExternDeclaration } from '../tables.ts';
+import type { FunctionInstance } from '../tables/instances.ts';
+import { keyOf, qualifiedNameOf, spelledType } from '../tables/names.ts';
+import type { DefinitionTables, EntryHeader, HostExternDeclaration } from '../tables/tables.ts';
 import { codecCall } from './codec-calls.ts';
 import { emitInbound, type Inbound, inboundOf } from './inbound.ts';
 

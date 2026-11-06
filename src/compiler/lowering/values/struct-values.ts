@@ -5,17 +5,17 @@
  * in. The units below every builder of structs, so none of them imports another to build one.
  */
 
-import type { Register } from '../../definition/operands.ts';
-import { unreachable } from '../../structures/unreachable.ts';
-import { laidOut } from '../checker/types/field-order.ts';
+import type { Register } from '../../../definition/operands.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import { laidOut } from '../../checker/types/field-order.ts';
 import type {
   AnonymousStructType,
   NominalType,
   StructValueType,
   Type,
-} from '../checker/types/type/index.ts';
-import type { AnchoredSpan } from '../syntax/positions.ts';
-import type { CodeContext } from './context.ts';
+} from '../../checker/types/type/index.ts';
+import type { AnchoredSpan } from '../../syntax/positions.ts';
+import type { CodeContext } from '../context.ts';
 
 /** Builds a struct of `type`, each of its fields taken by its name from `named`. */
 export function construct(

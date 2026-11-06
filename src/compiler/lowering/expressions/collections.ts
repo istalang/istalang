@@ -30,13 +30,13 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
+import { emitCallAt, emitImplicitCall, referenceTo } from '../calls/emit-call.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
-import { emitCallAt, emitImplicitCall, referenceTo } from '../emit-call.ts';
-import { lowerKeyRead } from '../keyed-fields.ts';
 import { cursorOf, emitLoop } from '../loops/iteration.ts';
-import { noneOf, someOf } from '../optionals.ts';
-import { cellRegister } from '../places.ts';
-import { construct } from '../struct-values.ts';
+import { cellRegister } from '../parts/places.ts';
+import { lowerKeyRead } from '../values/keyed-fields.ts';
+import { noneOf, someOf } from '../values/optionals.ts';
+import { construct } from '../values/struct-values.ts';
 
 /** An element of an `array` instruction. */
 type ArrayItem = Extract<Instruction, { kind: 'array' }>['elements'][number];
