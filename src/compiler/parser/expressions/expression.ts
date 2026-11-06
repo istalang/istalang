@@ -25,7 +25,7 @@ import {
 } from '../../syntax/operators.ts';
 import { isKeyword } from '../../syntax/tokens.ts';
 import type { CursorKind } from '../cursor/index.ts';
-import { misplacedDocstring } from '../docstrings.ts';
+import { misplacedDocstring } from '../layout/docstrings.ts';
 import { atPostfix, breakSeparatesItems } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
 import { parseLiteral } from '../parts/literals.ts';

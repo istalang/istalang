@@ -28,10 +28,10 @@ import type {
 } from '../../syntax/declarations/index.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import { spanAcross } from '../../syntax/positions.ts';
-import { attachAnnotations } from '../annotations.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { documentedBy, type WithDocstring } from '../docstrings.ts';
+import { attachAnnotations } from '../layout/annotations.ts';
 import { parseDocstringBelow, parseDocumentedMembers } from '../layout/bodies.ts';
+import { documentedBy, type WithDocstring } from '../layout/docstrings.ts';
 import { type ItemRules, type Items, parseItemEntries } from '../layout/index.ts';
 import { atPostfix } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';

@@ -38,7 +38,6 @@ import type { Span } from '../../../text/span.ts';
 import type { Annotation } from '../../syntax/annotations.ts';
 import type { Invalid } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
-import { annotationOpener, parseAnnotation, rejectAnnotations } from '../annotations.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import {
   atRegionEnd,
@@ -50,8 +49,9 @@ import {
   skipToSeparator,
 } from '../cursor/recovery.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { misplacedDocstring, parseDocstring, type WithDocstring } from '../docstrings.ts';
 import type { Parser } from '../parser.ts';
+import { annotationOpener, parseAnnotation, rejectAnnotations } from './annotations.ts';
+import { misplacedDocstring, parseDocstring, type WithDocstring } from './docstrings.ts';
 
 /** How to parse one kind of item, what separates two of them, and how they take annotations. */
 export interface ItemRules<Item extends SyntaxNode> {

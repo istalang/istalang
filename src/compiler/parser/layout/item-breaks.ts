@@ -29,9 +29,9 @@
  */
 
 import type { Token, TokenKind } from '../../syntax/tokens.ts';
-import { annotationOpener } from '../annotations.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import type { Parser } from '../parser.ts';
+import { annotationOpener } from './annotations.ts';
 
 /**
  * Whether the line break before the token `ahead` positions on separates two items of the

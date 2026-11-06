@@ -10,8 +10,8 @@ import type {
   ExternStructDeclaration,
   FunctionDeclaration,
 } from '../../syntax/declarations/index.ts';
-import { documentedBy } from '../docstrings.ts';
 import { parseDocstringBelow } from '../layout/bodies.ts';
+import { documentedBy } from '../layout/docstrings.ts';
 import type { Parser } from '../parser.ts';
 import { parseFunction } from './functions.ts';
 import { parseTypeParameters } from './type-parameters.ts';

@@ -14,9 +14,9 @@
 
 import type { Declaration, Module } from '../../syntax/declarations/index.ts';
 import type { DeclarationWord } from '../../syntax/grammar-words.ts';
-import { attachAnnotations } from '../annotations.ts';
 import type { CursorKind } from '../cursor/index.ts';
-import { documentedBy } from '../docstrings.ts';
+import { attachAnnotations } from '../layout/annotations.ts';
+import { documentedBy } from '../layout/docstrings.ts';
 import { type ItemRules, parseModuleLines } from '../layout/index.ts';
 import type { Parser } from '../parser.ts';
 import { parseModuleItem } from '../parts/items.ts';

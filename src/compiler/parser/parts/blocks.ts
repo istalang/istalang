@@ -6,9 +6,9 @@
  */
 
 import type { Block, Statement } from '../../syntax/statements/index.ts';
-import { attachAnnotations } from '../annotations.ts';
-import type { WithDocstring } from '../docstrings.ts';
+import { attachAnnotations } from '../layout/annotations.ts';
 import { type BodyEntry, parseBody, parseDocumentedBody } from '../layout/bodies.ts';
+import type { WithDocstring } from '../layout/docstrings.ts';
 import type { ItemRules } from '../layout/index.ts';
 import type { Parser } from '../parser.ts';
 import { parseBlockItem } from './items.ts';

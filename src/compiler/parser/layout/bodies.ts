@@ -17,8 +17,8 @@ import { spanAcross } from '../../syntax/positions.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import { atRegionEnd } from '../cursor/recovery.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
-import { parseDocstring, type WithDocstring } from '../docstrings.ts';
 import type { Parser } from '../parser.ts';
+import { parseDocstring, type WithDocstring } from './docstrings.ts';
 import { type ItemRules, type Items, parseAnnotatedItems, parseLines } from './index.ts';
 
 /** A list of items after a declaration's `:`, and where its header ends: before the list. */
