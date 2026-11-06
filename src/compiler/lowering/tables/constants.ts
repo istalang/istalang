@@ -12,7 +12,7 @@ import type { CheckedAnnotation } from '../../checker/surface/checked-annotation
 import type { ConstantForm } from '../../checker/surface/constant-form.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { CodeWriter } from '../code-writer.ts';
+import type { CodeWriter } from '../functions/code-writer.ts';
 import type { DefinitionTables } from './tables.ts';
 
 /** Allocates a register and emits a `constant` instruction loading `value` into it. */

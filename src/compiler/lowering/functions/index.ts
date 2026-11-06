@@ -53,10 +53,8 @@ import type { Pattern } from '../../syntax/patterns.ts';
 import type { Block, Statement } from '../../syntax/statements/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import { writtenBodyOf } from '../bodies.ts';
 import { type ClosedCall, closeCallWithin } from '../calls/closed-calls.ts';
 import { packElements } from '../calls/packs.ts';
-import { CodeWriter, type WrittenInstruction } from '../code-writer.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
 import { expressionHandlers } from '../expressions/expressions.ts';
 import { tupleOf } from '../expressions/tuples.ts';
@@ -74,6 +72,8 @@ import {
 } from '../tables/instances.ts';
 import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 import { OptionalChains } from '../values/optionals.ts';
+import { writtenBodyOf } from './bodies.ts';
+import { CodeWriter, type WrittenInstruction } from './code-writer.ts';
 import { fittedValue } from './fits.ts';
 import {
   defaultValueOf,

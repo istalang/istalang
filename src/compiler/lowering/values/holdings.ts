@@ -25,8 +25,8 @@ import type { AnyType, Type, UnionType } from '../../checker/types/type/index.ts
 import { absorbingMember, baseOf } from '../../checker/types/unions/union-members.ts';
 import { hasMember, hasOneValue } from '../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { Label } from '../code-writer.ts';
 import type { CodeContext } from '../context.ts';
+import type { Label } from '../functions/code-writer.ts';
 
 /** A value in a register, with its type. */
 export interface TypedValue {

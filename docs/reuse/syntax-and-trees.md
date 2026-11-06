@@ -33,7 +33,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - read where a node stands in the text: its own span → `spanIn`; it and everything under it, through a function's body or a trait's members → `extentIn` (`src/compiler/syntax/tree/positions.ts`, `src/compiler/syntax/tree/index.ts`)
 - join or compare spans of one segment: first to last, covering several, the empty span at an end, containment, one place → `spanAcross`, `spanCovering`, `endOf`, `encloses`, `startTogether` (`src/compiler/syntax/tree/positions.ts`)
 - turn a phase's anchored diagnostic into one at text positions as it leaves → `diagnosticIn` (`src/compiler/syntax/tree/positions.ts`)
-- the text a lambda or local function covers, header and body → `nestedFunctionSpan` (`src/compiler/syntax/declarations/index.ts`); lowering's, from the tree → `nestedSpanOf` (`src/compiler/lowering/bodies.ts`)
+- the text a lambda or local function covers, header and body → `nestedFunctionSpan` (`src/compiler/syntax/declarations/index.ts`); lowering's, from the tree → `nestedSpanOf` (`src/compiler/lowering/functions/bodies.ts`)
 - list a node and every node under it in source order, each before its children (explicit stack) → `nodesUnder` (`src/compiler/syntax/tree/index.ts`)
 - list direct children that run in the same function body (skipping nested functions) → `bodyChildrenOf`, `nestsFunction` (`src/compiler/syntax/tree/index.ts`)
 - look up operator precedence, associativity and meaning → `binaryOperators`, `unaryOperators`, `operatorLevels` (`src/compiler/syntax/expressions/operators.ts`)

@@ -160,9 +160,9 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - When `cases.length === 0` and `node.elseClause !== undefined`, lower `node.elseClause.body` directly without emitting an empty `select` instruction (which `definition/instructions/suspension.ts` rejects).
 6. **Wrap spread elements when `Array<T?>` is expected (B8 — `lowering/expressions/collections/collections.ts`) & replace `optionalInt` with `buildVariant`:**
    - Replace `optionalInt` in `src/compiler/lowering/expressions/collections/collections.ts` with `buildVariant` from `./variants.ts`.
-7. **Clean up lowering re-derivations and `function-lowering` ↔ `boundary` cycle (Q12, Q19 — `lowering/parts/places.ts`, `lowering/expressions/structs/structs.ts`, `lowering/trait-objects/trait-objects.ts`, `lowering/function-lowering/index.ts`, `lowering/boundary/starts.ts`):**
+7. **Clean up lowering re-derivations and `function-lowering` ↔ `boundary` cycle (Q12, Q19 — `lowering/parts/places.ts`, `lowering/expressions/structs/structs.ts`, `lowering/trait-objects/trait-objects.ts`, `lowering/functions/index.ts`, `lowering/boundary/starts.ts`):**
    - In `lowering/trait-objects/trait-objects.ts` (`anyFieldEntry`), use `requiredFields` and guard `index < 0` with `unreachable`.
-   - Break the bidirectional import between `lowering/function-lowering/index.ts` and `lowering/boundary/inbound.ts` / `starts.ts`.
+   - Break the bidirectional import between `lowering/functions/index.ts` and `lowering/boundary/inbound.ts` / `starts.ts`.
 
 ---
 

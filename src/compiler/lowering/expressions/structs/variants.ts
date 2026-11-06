@@ -10,8 +10,8 @@ import type { NominalType, Type } from '../../../checker/types/type/index.ts';
 import type { Expression, StructLiteral } from '../../../syntax/expressions/index.ts';
 import { lastName } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
-import type { Label } from '../../code-writer.ts';
 import type { CodeContext, FunctionContext } from '../../context.ts';
+import type { Label } from '../../functions/code-writer.ts';
 import { literalFields } from './structs.ts';
 
 /** The index of the variant `name` of the enum `type`. */

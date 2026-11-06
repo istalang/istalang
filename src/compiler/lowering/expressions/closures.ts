@@ -15,8 +15,8 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Lambda, MemberAccess } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
-import { nestedSpanOf } from '../bodies.ts';
 import type { FunctionContext } from '../context.ts';
+import { nestedSpanOf } from '../functions/bodies.ts';
 import { declareVariable } from '../statements/variables.ts';
 
 export function lowerLambda(context: FunctionContext, node: Lambda): Register {

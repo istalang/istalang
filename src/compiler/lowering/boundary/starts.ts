@@ -25,8 +25,8 @@ import type {
   FunctionDeclaration,
 } from '../../syntax/declarations/index.ts';
 import type { Invalid } from '../../syntax/tree/node.ts';
-import { writtenBodyOf } from '../bodies.ts';
-import { instanceLowering, nestedLowering, type StartEdges } from '../function-lowering/index.ts';
+import { writtenBodyOf } from '../functions/bodies.ts';
+import { instanceLowering, nestedLowering, type StartEdges } from '../functions/index.ts';
 import { constantValue } from '../tables/constants.ts';
 import { rootInstance } from '../tables/instances.ts';
 import { keyOf } from '../tables/names.ts';
@@ -141,7 +141,7 @@ export function listStart(
 }
 
 /**
- * The start entry of `startable`: its own body, taking its arguments as JSON (function-lowering/).
+ * The start entry of `startable`: its own body, taking its arguments as JSON (functions/).
  */
 export function startEntry(
   lowering: { readonly checker: Checker; readonly tables: DefinitionTables },

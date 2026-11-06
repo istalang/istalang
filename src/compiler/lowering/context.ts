@@ -1,7 +1,7 @@
 /**
  * What lowering one function works through, as an interface, so the per-construct modules depend
  * on it and never on each other (the parser's and the checker's seam, again): expression and
- * statement handlers recurse through the context, and function-lowering/ wires them.
+ * statement handlers recurse through the context, and functions/ wires them.
  *
  * Code is linear register code (docs/arch/definition.md, "Frames"). Every expression lowers to the
  * register that holds its value; a statement lowers to instructions alone. What lowering one body
@@ -27,7 +27,7 @@ import type { Block, Statement } from '../syntax/statements/index.ts';
 import type { Identifier, Invalid, NodeOf } from '../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../syntax/tree/positions.ts';
 import type { ClosedCall } from './calls/closed-calls.ts';
-import type { CodeWriter } from './code-writer.ts';
+import type { CodeWriter } from './functions/code-writer.ts';
 import type { HoldScopes } from './statements/holds.ts';
 import type { LoopStack } from './statements/loops.ts';
 import type { VariableRegisters } from './statements/variables.ts';

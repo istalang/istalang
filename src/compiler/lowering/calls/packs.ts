@@ -5,7 +5,7 @@
  * pack of `(Int, String)`, which keeps one calling convention for every call.
  *
  * - The entry takes the elements as parameters, and builds the pack's variable, the tuple, from
- *   them (function-lowering).
+ *   them (functions/).
  * - A call passes a pack's arguments as single values, and a spread of a pack's value as its
  *   elements (emit-call.ts; expressions/calls.ts for a function value's call).
  */

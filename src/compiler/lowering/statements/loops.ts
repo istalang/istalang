@@ -23,8 +23,8 @@ import type {
   Loop,
   While,
 } from '../../syntax/statements/index.ts';
-import type { Label } from '../code-writer.ts';
 import type { FunctionContext } from '../context.ts';
+import type { Label } from '../functions/code-writer.ts';
 import { fieldsVisited, inFieldScope } from '../loops/field-passes.ts';
 import { emitLoopOver } from '../loops/iteration.ts';
 import { endScope, lowerGuarded } from './scopes.ts';

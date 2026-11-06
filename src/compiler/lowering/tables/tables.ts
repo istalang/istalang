@@ -31,8 +31,8 @@ import type {
 } from '../../syntax/declarations/index.ts';
 import type { SyntaxTree } from '../../syntax/tree/index.ts';
 import { type AnchoredSpan, spanIn } from '../../syntax/tree/positions.ts';
-import { nestedSpanOf } from '../bodies.ts';
 import { type ClosedCall, type Dispatch, takingPassed } from '../calls/closed-calls.ts';
+import { nestedSpanOf } from '../functions/bodies.ts';
 import { laidOutAs } from '../values/holdings.ts';
 import { annotationValues } from './constants.ts';
 import {
@@ -55,7 +55,7 @@ import { TypeTable } from './type-table.ts';
  * A function-table entry waiting to be lowered: a top-level function's instance, a nested one, an
  * extern a host implements as its native sees it (boundary/host-externs.ts), the read of an extern
  * constant, the wrapper a host starts a function through (boundary/starts.ts), or the async entry
- * of a plain function made async (function-lowering/fits.ts).
+ * of a plain function made async (functions/fits.ts).
  */
 export type PendingEntry =
   | { readonly kind: 'instance'; readonly instance: FunctionInstance }

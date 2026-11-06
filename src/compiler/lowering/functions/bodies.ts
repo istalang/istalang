@@ -4,12 +4,12 @@
  * in the tree of the module declaring it.
  */
 
-import { type ModuleId, type Program, programModule } from '../program/program.ts';
-import { type FunctionDeclaration, nestedFunctionSpan } from '../syntax/declarations/index.ts';
-import type { Lambda } from '../syntax/expressions/index.ts';
-import type { Block } from '../syntax/statements/index.ts';
-import { bodyOf } from '../syntax/tree/index.ts';
-import type { AnchoredSpan } from '../syntax/tree/positions.ts';
+import { type ModuleId, type Program, programModule } from '../../program/program.ts';
+import { type FunctionDeclaration, nestedFunctionSpan } from '../../syntax/declarations/index.ts';
+import type { Lambda } from '../../syntax/expressions/index.ts';
+import type { Block } from '../../syntax/statements/index.ts';
+import { bodyOf } from '../../syntax/tree/index.ts';
+import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 
 /**
  * The body written for `declaration`, a function of `module`; undefined for one written without.

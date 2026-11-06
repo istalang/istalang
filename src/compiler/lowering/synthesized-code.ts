@@ -1,7 +1,7 @@
 /**
  * Code lowering writes with no syntax behind it: a type's codecs, a host extern's wrapper and a
  * start wrapper (docs/arch/boundary.md), a dispatch on an `any` value's own type (§3.10), a filling
- * entry (tables/filling-entry.ts) and a plain function made async (function-lowering/fits.ts). It
+ * entry (tables/filling-entry.ts) and a plain function made async (functions/fits.ts). It
  * works through the same CodeContext as code with a body, so the helpers both share build its
  * variants and calls, and every instruction carries the span of the declaration it stands for,
  * which is where a trace through it points.
@@ -25,11 +25,11 @@ import type { AnonymousStructType, NominalType, Type } from '../checker/types/ty
 import type { AnchoredSpan } from '../syntax/tree/positions.ts';
 import type { ClosedCall } from './calls/closed-calls.ts';
 import { emitCall, emitFunctionCall } from './calls/emit-call.ts';
-import { CodeWriter } from './code-writer.ts';
 import type { CodeContext } from './context.ts';
 import { equal } from './expressions/operators.ts';
 import { buildVariant, payloadOf, payloadOr } from './expressions/structs/variants.ts';
 import { tupleOf } from './expressions/tuples.ts';
+import { CodeWriter } from './functions/code-writer.ts';
 import type { CellRegister } from './statements/variables.ts';
 import { emitConstant } from './tables/constants.ts';
 import type { DefinitionTables, EntryHeader } from './tables/tables.ts';

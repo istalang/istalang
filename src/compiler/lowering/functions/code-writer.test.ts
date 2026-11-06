@@ -5,8 +5,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { spanIn } from '../syntax/tree/positions.ts';
-import { handMadeBases, handMadeSpan } from '../syntax/tree/tree.test-kit.ts';
+import { spanIn } from '../../syntax/tree/positions.ts';
+import { handMadeBases, handMadeSpan } from '../../syntax/tree/tree.test-kit.ts';
 import { CodeWriter, type Label } from './code-writer.ts';
 
 const span = handMadeSpan(0);

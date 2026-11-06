@@ -105,7 +105,7 @@ its instance is numbered by, so its native sees only JSON:
 A startable function (top-level, not generic or extern, or a constant holding a sendable lambda;
 by-value parameters that can be read, an outcome that can be written) gets a start entry, listed in
 the Definition's `starts` under its key. A start entry is the function's own body compiled once
-more with its arguments as JSON (`lowering/boundary/starts.ts`, `instanceLowering` in `function-lowering/index.ts`): it
+more with its arguments as JSON (`lowering/boundary/starts.ts`, `instanceLowering` in `functions/index.ts`): it
 decodes each argument, a mismatch failing the host's start, so the instance is one execution of the
 function and its traces and waits are the function's own. `starts` lists it with its outcome's
 encoder, the entry of the codec writing the declared result (`boundary/starts.ts`), which the
