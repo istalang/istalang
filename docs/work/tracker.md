@@ -29,7 +29,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F25, P22, Q44, B35. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F25, P22, Q45, B35. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -103,6 +103,7 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q36 | An `Invalid` node now holds the annotations the parser rejected, and the binder binds them at each list site that skips `Invalid` items (module, blocks, fields, variants, match and select cases): a new list site must remember to, and every generic tree walker (semantic tokens, hover) sees those names. One binding rule for an `Invalid`'s annotations would remove the per-site duty. | small | none; can be done now | completion End fix E4 report 2026-10-30 |
 | Q40 | Completion's `places/matched-type.ts` restates the checker's pattern walk (tuple elements, array items, struct and variant fields, downcasts, and now a union's member selection); the checked body could record what each pattern node matched, as it records a literal's fields, and completion read it from its placeholder check. | medium | none; can be done now | p3-unions 2026-11-05 |
 | Q43 | `examples/FormBuilder/generate.ts` doesn't run under Node's type stripping: its CLI block is CommonJS, so `node generate.ts *.form.json` fails and regenerating the `*.gen.ista` modules needs an ESM wrapper. | easy | none; can be done now | p5 rebase 2026-11-06 |
+| Q44 | Units used by exactly one other unit are filed by kind, not beside what they serve (Q42's body-facts move was one case): a first scan finds 264 exported units whose only user is in another folder. Research, triage and file per destination: `docs/work/cohesion/`. | big | none; research first | cohesion scan 2026-11-06 |
 
 ### Behaviour and correctness (B)
 
