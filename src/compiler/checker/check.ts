@@ -370,7 +370,7 @@ export interface Checker {
    * for another type.
    */
   readonly sharedValueOf: (type: Type) => AnonymousStructType | undefined;
-  /** Who disposes a value of `type` (rules/disposal.ts). */
+  /** Who disposes a value of `type` (rules/disposal/disposal.ts). */
   readonly disposalOf: (type: NominalType) => Disposal;
   /**
    * The calls a value of `member` inside the `any` type `type` is called through (§3.10): what

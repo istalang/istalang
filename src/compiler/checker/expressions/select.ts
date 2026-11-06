@@ -23,7 +23,7 @@ import type { Accepts, BodyContext } from '../body-context.ts';
 import { ownCallerOf } from '../closures/own-calls.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { Branches, branchesAccepts } from '../rules/branches.ts';
-import { checkDiscarded } from '../rules/must-use.ts';
+import { checkDiscarded } from '../rules/disposal/must-use.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { futureArgument } from '../types/well-known.ts';

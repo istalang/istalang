@@ -79,7 +79,7 @@ import { memberWitnesses } from './resolution/trait-objects.ts';
 import { TypeParameters } from './resolution/type-parameters.ts';
 import type { ResolvedCall } from './resolved-call.ts';
 import { Annotations } from './rules/annotations.ts';
-import { disposalOf } from './rules/disposal.ts';
+import { disposalOf } from './rules/disposal/disposal.ts';
 import { Expansion } from './rules/expansion/functions.ts';
 import { JsonForms } from './rules/json-forms/index.ts';
 import { resolveAnyType } from './traits/any-types.ts';

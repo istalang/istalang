@@ -1,6 +1,6 @@
 /**
  * Calls the toolchain makes on its own to plain functions it knows (§3.9, §3.10), with no written
- * call to report at: a type's `dispose` (rules/disposal.ts), a json-module helper a codec calls
+ * call to report at: a type's `dispose` (rules/disposal/disposal.ts), a json-module helper a codec calls
  * (rules/json-forms/), or the defaults a struct literal leaves fields to
  * (expressions/literal-fields.ts). Each is chosen, instantiated and made as a written call is
  * (choice.ts, conformance.ts, calls-made.ts), its constraints' witnesses found as anywhere, but

@@ -14,13 +14,13 @@
  *   its own variables flow within its own body.
  */
 
-import type { VariableEntity } from '../../binder/entities.ts';
-import type { Identifier } from '../../syntax/node.ts';
-import { droppedName } from '../../syntax/statements.ts';
-import type { SyntaxNode } from '../../syntax/tree.ts';
-import type { BodyContext } from '../body-context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { flowThrough } from '../flow/forward.ts';
+import type { VariableEntity } from '../../../binder/entities.ts';
+import type { Identifier } from '../../../syntax/node.ts';
+import { droppedName } from '../../../syntax/statements.ts';
+import type { SyntaxNode } from '../../../syntax/tree.ts';
+import type { BodyContext } from '../../body-context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { flowThrough } from '../../flow/forward.ts';
 
 /** The variables dropped on some path to a point. */
 type Dropped = ReadonlySet<VariableEntity>;

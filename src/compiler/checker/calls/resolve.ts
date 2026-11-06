@@ -149,7 +149,7 @@ export interface Chosen {
 
 /**
  * Records the call `chosen` makes. That it may make it at all, since only the runtime calls a
- * `dispose` (§7), is checked once the body is (rules/disposal.ts).
+ * `dispose` (§7), is checked once the body is (rules/disposal/disposal.ts).
  */
 export function recordChosen(context: BodyContext, chosen: Chosen): void {
   const { site, application, instantiation, receiver } = chosen;

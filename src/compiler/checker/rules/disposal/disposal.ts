@@ -17,24 +17,24 @@
  *   test's mock target (§10), checked over a body's calls once it is checked.
  */
 
-import { disposeFunction } from '../../../language/well-known.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations.ts';
-import type { Parameter } from '../../syntax/expressions/index.ts';
-import type { NodeOf } from '../../syntax/node.ts';
-import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../syntax/tree.ts';
-import type { BodyContext } from '../body-context.ts';
-import type { Disposal } from '../check.ts';
-import type { CheckerContext } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { isHostExtern, isHostType } from '../host-externs.ts';
-import { callCandidates, namedInModule } from '../resolution/candidates.ts';
-import { silentCall } from '../resolution/silent-choice.ts';
-import type { FunctionCall, ResolvedCall, ResolvedSite } from '../resolved-call.ts';
-import { requiredFunctions } from '../traits/constraints.ts';
-import { knownConstraints } from '../traits/known-constraints.ts';
-import { sameType } from '../types/identity.ts';
-import { type NominalType, type Type, unitType } from '../types/type.ts';
-import { typeText } from '../types/type-text.ts';
+import { disposeFunction } from '../../../../language/well-known.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations.ts';
+import type { Parameter } from '../../../syntax/expressions/index.ts';
+import type { NodeOf } from '../../../syntax/node.ts';
+import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree.ts';
+import type { BodyContext } from '../../body-context.ts';
+import type { Disposal } from '../../check.ts';
+import type { CheckerContext } from '../../context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { isHostExtern, isHostType } from '../../host-externs.ts';
+import { callCandidates, namedInModule } from '../../resolution/candidates.ts';
+import { silentCall } from '../../resolution/silent-choice.ts';
+import type { FunctionCall, ResolvedCall, ResolvedSite } from '../../resolved-call.ts';
+import { requiredFunctions } from '../../traits/constraints.ts';
+import { knownConstraints } from '../../traits/known-constraints.ts';
+import { sameType } from '../../types/identity.ts';
+import { type NominalType, type Type, unitType } from '../../types/type.ts';
+import { typeText } from '../../types/type-text.ts';
 
 const none: Disposal = { kind: 'none' };
 

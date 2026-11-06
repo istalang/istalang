@@ -7,26 +7,26 @@
  *   ignoring it ignores a failure, and any other disposable because it would be disposed at once.
  *   Any of them makes a value holding it must-use too, at any depth (types/held.ts): a `Result?`
  *   that `?.` gives, a tuple or a struct with a future in it. A value of a type parameter is
- *   disposable when its constraints require a `dispose` (rules/disposal.ts).
+ *   disposable when its constraints require a `dispose` (rules/disposal/disposal.ts).
  * - A statement's value is discarded unless it is its block's value, and a block run for its
  *   effects, like a loop's body, discards even its last.
  * - `drop e` discards `e` on purpose (§7), whatever it is. `drop x` on a variable also releases
- *   the variable, which then can't be used (rules/dropped.ts); only a variable this function holds
+ *   the variable, which then can't be used (rules/disposal/dropped.ts); only a variable this function holds
  *   itself can be: neither a capture, which belongs to the closure, nor a reference parameter,
  *   whose value is its caller's.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
-import type { VariableEntity } from '../../binder/entities.ts';
-import { localFunctionOf } from '../../binder/entities.ts';
-import type { NodeOf } from '../../syntax/node.ts';
-import { type Drop, droppedName } from '../../syntax/statements.ts';
-import type { BodyContext } from '../body-context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { heldType } from '../types/held.ts';
-import { type Type, unitType } from '../types/type.ts';
-import { typeText } from '../types/type-text.ts';
-import { futureArgument, wellKnownArguments } from '../types/well-known.ts';
+import { wellKnown } from '../../../../language/well-known.ts';
+import type { VariableEntity } from '../../../binder/entities.ts';
+import { localFunctionOf } from '../../../binder/entities.ts';
+import type { NodeOf } from '../../../syntax/node.ts';
+import { type Drop, droppedName } from '../../../syntax/statements.ts';
+import type { BodyContext } from '../../body-context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { heldType } from '../../types/held.ts';
+import { type Type, unitType } from '../../types/type.ts';
+import { typeText } from '../../types/type-text.ts';
+import { futureArgument, wellKnownArguments } from '../../types/well-known.ts';
 import { isDisposable } from './disposal.ts';
 
 /** How a must-use value is used, besides being kept or dropped. */

@@ -73,7 +73,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - check whether an extern's types cross the host JSON boundary → `checkHostBoundary`, `crossesToHost` (`src/compiler/checker/rules/host-boundary.ts`)
 - check whether a type is `Sendable` → `isSendable` (`src/compiler/checker/traits/sendable.ts`)
 - check whether a trait is a well-known one → `isWellKnownTrait` (`src/compiler/checker/types/well-known.ts`)
-- check whether a type is `Disposable` or a function is `dispose` → `isDisposable`, `disposalOf`, `isDisposeFunction` (`src/compiler/checker/rules/disposal.ts`)
+- check whether a type is `Disposable` or a function is `dispose` → `isDisposable`, `disposalOf`, `isDisposeFunction` (`src/compiler/checker/rules/disposal/disposal.ts`)
 - get a well-known constraint or a trait's members → `wellKnownConstraint`, `requiredFunctions`, `requiredFields`, `requiredAssociatedTypes` (`src/compiler/checker/traits/constraints.ts`)
 - find the field `x.f` reads and how → `fieldOf` (`src/compiler/checker/traits/known-fields.ts`); a struct's field, a required one, one a struct constraint names, or one a key reads (`s[k]`, §3.9), on a type known or known only per instantiation → `structFieldOf`, `requiredFieldRead`, `namedFieldRead`, `keyedFieldRead` (`src/compiler/checker/checked-field.ts`), and as an instantiation reads it → `Instantiation.fieldRead` (`src/compiler/checker/body-facts/instantiation.ts`); what a value written through a key of several fields must fit → `severalKeyedFields` (`src/compiler/checker/calls/places.ts`)
 - whether a function takes a value as its receiver, a probe that chooses and reports nothing → `takesAsSelf` (`src/compiler/checker/resolution/receivers.ts`)

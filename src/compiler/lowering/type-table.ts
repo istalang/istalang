@@ -6,7 +6,7 @@
  *   through the table (§3.1).
  * - Every nominal type can be laid out: a struct by its fields, an enum by its variants, an extern
  *   type by who disposes it, which the checker derives from the `dispose` declared for it
- *   (checker/rules/disposal.ts).
+ *   (checker/rules/disposal/disposal.ts).
  * - A shape is a struct entry without a name, one per shape: every place writing equal fields
  *   shares it (§3.1), its fields in the name order the shape keeps.
  * - A recursive type (§3.17) is the entry of what it unfolds to, the same key, whose layout refers
