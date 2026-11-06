@@ -38,11 +38,10 @@ import { parserDiagnostics } from '../diagnostics.ts';
 import { atPostfix } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
 import { namedTypeFrom } from '../parts/names.ts';
-import { spreadOpener } from '../parts/spreads.ts';
+import { parseSpread, spreadOpener } from '../parts/spreads.ts';
 import { parseStructLiteralBody } from './literals/struct-literals.ts';
 import { parseReference } from './operators.ts';
 import type { InfixParselet } from './parselet.ts';
-import { parseSpread } from './spread.ts';
 
 /** `name<…>(…)` or `name<…>{…}`, or undefined when the `<` is a comparison. */
 export function parseTypeApplication(parser: Parser, left: Expression): Expression | undefined {

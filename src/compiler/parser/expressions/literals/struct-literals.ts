@@ -28,9 +28,8 @@ import { atPostfix, breakSeparatesItems } from '../../layout/item-breaks.ts';
 import type { Parser } from '../../parser.ts';
 import { parseFieldHeaderAfter } from '../../parts/field-headers.ts';
 import { parseTargets } from '../../parts/names.ts';
-import { spreadOpener } from '../../parts/spreads.ts';
+import { parseSpread, spreadOpener } from '../../parts/spreads.ts';
 import { afterStructKeyword } from '../../parts/structs.ts';
-import { parseSpread } from '../spread.ts';
 
 /** What opens a struct comprehension, the last item of a struct literal. */
 export const structComprehensionOpener = 'for';

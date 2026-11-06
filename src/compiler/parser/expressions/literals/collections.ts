@@ -24,8 +24,7 @@ import { parserDiagnostics } from '../../diagnostics.ts';
 import type { Parser } from '../../parser.ts';
 import { parseFieldHeaderAfter } from '../../parts/field-headers.ts';
 import { parseTargets } from '../../parts/names.ts';
-import { spreadOpener } from '../../parts/spreads.ts';
-import { parseSpread } from '../spread.ts';
+import { parseSpread, spreadOpener } from '../../parts/spreads.ts';
 
 type CollectionItem = Expression | Spread | MapEntry;
 

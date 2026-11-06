@@ -36,8 +36,7 @@ import { parseBlockBelow } from '../../layout/bodies.ts';
 import { type ItemRules, parseLines } from '../../layout/index.ts';
 import { nested } from '../../nesting.ts';
 import type { Parser } from '../../parser.ts';
-import { spreadOpener } from '../../parts/spreads.ts';
-import { parseSpread } from '../spread.ts';
+import { parseSpread, spreadOpener } from '../../parts/spreads.ts';
 import {
   parseStructComprehension,
   reportAfterComprehension,
