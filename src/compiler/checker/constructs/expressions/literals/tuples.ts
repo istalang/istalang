@@ -10,16 +10,16 @@
  * the parameter's type where they fit it and its own type doesn't (§3.7).
  */
 
-import type { Tuple, TupleElement } from '../../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext, PartReader } from '../../contexts/body-context.ts';
-import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
-import { partsAccept, partsBuild } from '../../rules/agreement.ts';
-import { expectedTuple } from '../../types/fitting/expected.ts';
-import type { Type } from '../../types/type/index.ts';
-import { errorType, unitType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type/type-text.ts';
-import { insideOptional } from '../../types/unions/inside-optional.ts';
+import type { Tuple, TupleElement } from '../../../../syntax/expressions/index.ts';
+import type { Accepts, BodyContext, PartReader } from '../../../contexts/body-context.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
+import { partsAccept, partsBuild } from '../../../rules/agreement.ts';
+import { expectedTuple } from '../../../types/fitting/expected.ts';
+import type { Type } from '../../../types/type/index.ts';
+import { errorType, unitType } from '../../../types/type/primitives.ts';
+import { typeText } from '../../../types/type/type-text.ts';
+import { insideOptional } from '../../../types/unions/inside-optional.ts';
 
 export function checkTuple(context: BodyContext, node: Tuple, expected: Type | undefined): Type {
   if (node.elements.length === 0) {

@@ -1,7 +1,7 @@
 /**
  * An argument literal whose items' types only checking tells (§3.7): its items are checked before
  * its call is chosen, as every argument is, so its part reads the types they were checked to have
- * (expressions.ts `acceptedPartOf`). A literal whose items then agree on no one type has none of
+ * (../expressions.ts `acceptedPartOf`). A literal whose items then agree on no one type has none of
  * its own, and the call decides it, as it decides one of items with types of their own that
  * disagree: `g([t(), "a"])` takes a `Json` parameter as `g([1, "a"])` does, each item then fitted
  * to the chosen parameter's item. One whose items agree keeps the type they agree on, which takes
@@ -14,10 +14,10 @@
  * after `return`.
  */
 
-import type { Expression } from '../../../syntax/expressions/index.ts';
-import { itemValue } from '../../../syntax/expressions/readings.ts';
-import type { AcceptedPart, BodyContext } from '../../contexts/body-context.ts';
-import { isBuiltLiteral, untypedLiteral } from './expressions.ts';
+import type { Expression } from '../../../../syntax/expressions/index.ts';
+import { itemValue } from '../../../../syntax/expressions/readings.ts';
+import type { AcceptedPart, BodyContext } from '../../../contexts/body-context.ts';
+import { isBuiltLiteral, untypedLiteral } from '../expressions.ts';
 
 /**
  * How `node`, passed to a call, takes part in choosing it: as read before checking, or, for a

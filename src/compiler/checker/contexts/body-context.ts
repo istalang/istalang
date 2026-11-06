@@ -75,7 +75,7 @@ export interface BodyContext {
   /**
    * How `node`, passed to a call, takes part in choosing it (§3.7): as `acceptedPart` reads it, a
    * literal's items whose types only checking tells checked first
-   * (constructs/expressions/literal-items.ts).
+   * (constructs/expressions/literals/literal-items.ts).
    */
   readonly argumentPart: (node: Expression) => AcceptedPart;
   /** How `node`, already checked, takes part in building a literal as another type (§3.7). */
@@ -150,7 +150,7 @@ export interface BodyContext {
   readonly recordKey: (value: Expression, owner: Type | undefined) => void;
   /**
    * Records the literal the indented value `value` was checked as
-   * (constructs/expressions/indented-values.ts).
+   * (constructs/expressions/literals/indented-values.ts).
    */
   readonly recordBuilt: (value: IndentedValue, literal: BuiltLiteral) => void;
   /** Records the variant the bare name `name` chose (types/written/named-types.ts). */
@@ -158,15 +158,15 @@ export interface BodyContext {
   /** Records that `node` calls a function value (§3.14). */
   readonly recordValueCall: (node: Call) => void;
   /**
-   * Records that `body`, a branch or a case, never runs: a condition decided by types rules it
-   * out (constructs/expressions/decided-conditions.ts), so it is neither checked nor lowered.
+   * Records that `body`, a branch or a case, never runs: a condition decided by types rules it out
+   * (constructs/expressions/operators/decided-conditions.ts), so it is neither checked nor lowered.
    */
   readonly ruleOut: (body: Block) => void;
   /** Records that `operation` never runs past `operands`, the last of which has no value (§2). */
   readonly stopAt: (operation: Expression | Assignment, operands: readonly Expression[]) => void;
   /**
    * Records the value `condition` always has, by its operands' types
-   * (constructs/expressions/decided-conditions.ts).
+   * (constructs/expressions/operators/decided-conditions.ts).
    */
   readonly decide: (condition: Expression, value: boolean) => void;
   /**

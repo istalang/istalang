@@ -11,8 +11,8 @@
  *   a type of its own. A part still to be inferred can be anything.
  * - Own type (`knownTypeHandlers`): for a sibling inside a composite argument, the type it has on
  *   its own without running expression checking or reporting (`acceptedPartOf`); an item already
- *   checked, as an argument literal's may be (literal-items.ts), has the type it was checked to
- *   have.
+ *   checked, as an argument literal's may be (literals/literal-items.ts), has the type it was
+ *   checked to have.
  * - Building (`buildsHandlers`): a literal of items each with a type of its own has that type when
  *   choosing, and, where its own type doesn't fit, is built as a parameter's type its items fit
  *   (§3.7): a struct, tuple, array or map literal.
@@ -72,9 +72,11 @@ import { checkIs, checkMatch, matchAccepts } from './control/match.ts';
 import { checkPropagate } from './control/propagate.ts';
 import { checkSelect, selectAccepts } from './control/select.ts';
 import { checkSpawn } from './control/spawn.ts';
-import { checkIndentedValue, indentedAccepts } from './indented-values.ts';
-import { checkDurationLiteral } from './literals.ts';
-import { checkBinary, checkChainedComparison, checkUnary } from './operators.ts';
+import { checkIndentedValue, indentedAccepts } from './literals/indented-values.ts';
+import { checkDurationLiteral } from './literals/literals.ts';
+import { checkTemplate } from './literals/templates.ts';
+import { checkTuple, checkTupleElement, tupleAccepts, tupleBuilds } from './literals/tuples.ts';
+import { checkBinary, checkChainedComparison, checkUnary } from './operators/operators.ts';
 import {
   checkNamedLiteral,
   checkStructLiteral,
@@ -83,8 +85,6 @@ import {
   structLiteralKnownType,
 } from './structs/structs.ts';
 import { checkNone, noneAccepted } from './structs/variants.ts';
-import { checkTemplate } from './templates.ts';
-import { checkTuple, checkTupleElement, tupleAccepts, tupleBuilds } from './tuples.ts';
 
 /** Missing and invalid nodes were reported by the parser. */
 const alreadyReported = (): Type => errorType;

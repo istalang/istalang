@@ -195,7 +195,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - `disposeSelfEscapes` (code 5702) still reads: `"In 'dispose', '${name}' can only be used as '${name}$' or passed to an extern function..."`, referencing the removed `x$` syntax instead of `*${name}` / `${name}->f`.
 
 #### 4.4 `src/compiler/checker/constructs/expressions/` & `src/compiler/checker/constructs/statements/`
-- **Duplicated comparison & membership checking across binary operators, chains, and patterns (`src/compiler/checker/constructs/expressions/operators.ts`, `constructs/patterns/matching.ts`, D226):**
+- **Duplicated comparison & membership checking across binary operators, chains, and patterns (`src/compiler/checker/constructs/expressions/operators/operators.ts`, `constructs/patterns/matching.ts`, D226):**
   - `checkBinary` and `checkMembership` resolve binary `<` / `==` / `in` one way (via `resolveOperator`, recording in `body.calls`), while `checkChainedComparison` and `checkLinkCall` resolve chained `a < b == c in d` a second way (via `implicitCall`, recording at `link.right` in `body.implicitCallOf`).
   - Meanwhile, ordering tests in patterns are split across three representations (`compare` test on `CompareFieldPattern`, `bound` test on `RangePattern`, and `length` + implicit `compare` on `ArrayPattern`).
 - **Single-target vs. destructuring assignment split and `_ = e` error suppression (`src/compiler/checker/constructs/statements/assignments.ts`, `resolution/calls/places.ts`, D101, D168):**
@@ -305,7 +305,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
    - `rules/flow/forward.ts` models intra-function control flow (skipping nested functions via `nestsFunction`), while `waits` (`annotations.ts`), `checkSelfStays` (`disposal.ts`), and `firstEffect` (`suites.ts`) each hand-roll recursive AST walks over `childrenOf` / `bodyChildrenOf`.
 3. **Coinductive Type-Graph Traversal (`src/compiler/checker/types/traits/sendable.ts`, `rules/json-forms/index.ts`, `types/properties/held.ts`, `constructs/declarations/layout/struct-rules.ts`, Q7):**
    - Four modules walk composite/nominal `Type` graphs with their own visited-set cycle guards (`deciding`, `#deciding`, `walked`, `seen`). Extracting a cycle-safe type-graph reducer unifies all four.
-4. **Comparison & Membership Checking and Lowering (`src/compiler/checker/constructs/expressions/operators.ts`, `constructs/patterns/matching.ts`, `src/compiler/lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):**
+4. **Comparison & Membership Checking and Lowering (`src/compiler/checker/constructs/expressions/operators/operators.ts`, `constructs/patterns/matching.ts`, `src/compiler/lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):**
    - Binary comparisons/memberships (`a < b`, `x in c`), chained comparisons (`a < b in c`), and pattern ordering tests (`amount > 1000`, `1..=5`, `[a, ...rest]`) are checked and lowered through three separate code paths. Unifying them into one `ComparisonLink` / ordering helper eliminates the triplication.
 5. **Declared-Value Field & Variant Readers (`src/definition/values/declared-values.ts` vs. `stdlib/values/arguments.ts`, `definition/values/json-values.ts`, `runtime/testing/run-tests.ts`, Q16, Q17, D201):**
    - `declared-values.ts` builds structs and variants by declared name, but lacks `fieldValueOf` (reading a struct field by name) and keeps `variantShape` private, causing 3 other modules to re-implement field/variant index lookup.
@@ -351,7 +351,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | Concept / Rule | Home 1 | Home 2 (+ others) |
 | --- | --- | --- |
 | 5-step implicit conversion (`Fit` vs. `Inference`) | `checker/types/fitting/fit.ts` (`fitOf`) | `checker/types/inference/infer.ts` (`Inference.match`) (D222) |
-| Binary vs. chained vs. pattern comparisons | `checker/constructs/expressions/operators.ts` (`checkBinary`) & `lowering/expressions/operators.ts` (`lowerBinary`) | `checkChainedComparison` / `compared` & `constructs/patterns/matching.ts` / `lowering/parts/patterns.ts` (D226) |
+| Binary vs. chained vs. pattern comparisons | `checker/constructs/expressions/operators/operators.ts` (`checkBinary`) & `lowering/expressions/operators.ts` (`lowerBinary`) | `checkChainedComparison` / `compared` & `constructs/patterns/matching.ts` / `lowering/parts/patterns.ts` (D226) |
 | Module-qualified name `${module}.${name}` | `language/well-known/index.ts` (`qualifiedName`) | `lowering/tables/names.ts` (`qualifiedNameOf`), `definition/extern-key.ts` (`externKey`) (D174) |
 | Member-access chain → `QualifiedName` | `parser/parts/names.ts` (`qualifiedPath`) | `binder/constructs/expressions.ts` (`qualifiedPathOf`) |
 | Millisecond time unit constants | `scanner/numbers.ts` | `stdlib/time/iso.ts` |

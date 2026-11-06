@@ -146,7 +146,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 - `src/compiler/lowering/**` *(excluding `src/compiler/lowering/tables/names.ts`, which Group F owns)*
 
 **Tasks in Group D:**
-1. **Unify comparison & membership checking and lowering across binary operators, chains, and patterns (D226 — `checker/checked-pattern.ts`, `checker/constructs/expressions/operators.ts`, `checker/constructs/patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`):**
+1. **Unify comparison & membership checking and lowering across binary operators, chains, and patterns (D226 — `checker/checked-pattern.ts`, `checker/constructs/expressions/operators/operators.ts`, `checker/constructs/patterns/matching.ts`, `lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`):**
    - Give binary and chained comparisons/memberships one checker function and one lowering function over a `ComparisonLink` (where a `Binary` comparison is a single link).
    - Unify pattern ordering tests (`CompareFieldPattern`, `RangePattern` bound, `ArrayPattern` rest length) into one ordering test representation so `lowering/parts/patterns.ts` (`passed`) and `lowering/expressions/operators.ts` share `ordered` and `equal`.
 2. **Separate written pattern shapes from matrix shapes in exhaustiveness (D224 — `checker/constructs/patterns/exhaustiveness/exhaustiveness.ts`, `checker/constructs/patterns/exhaustiveness/shapes.ts`):**
@@ -154,7 +154,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 3. **Remove `walk.downcasts` side channel & move `unparenthesized` for patterns to `syntax/patterns.ts` (D214 — `syntax/patterns.ts`, `checker/constructs/patterns/walk/index.ts`):**
    - Export `unparenthesizedPattern(node: Pattern): Pattern` from `src/compiler/syntax/patterns.ts`.
    - Have `walk.take` in `checker/constructs/patterns/walk/index.ts` return both `{ shape, part }` (or pass the narrowed `ValuePart` directly to `AsPattern`) so `walk.downcasts` is deleted.
-4. **Prelude-invariant implicit calls without fake user diagnostics (B11 — `checker/resolution/applying/implicit.ts`, `checker/constructs/patterns/matching.ts`, `checker/constructs/expressions/access/optionals.ts`, `checker/constructs/expressions/templates.ts`):**
+4. **Prelude-invariant implicit calls without fake user diagnostics (B11 — `checker/resolution/applying/implicit.ts`, `checker/constructs/patterns/matching.ts`, `checker/constructs/expressions/access/optionals.ts`, `checker/constructs/expressions/literals/templates.ts`):**
    - Add a `preludeCall` helper (or make `failure` optional for prelude-owned calls) in `src/compiler/checker/resolution/applying/implicit.ts` that calls `unreachable` if a toolchain-owned prelude function (`panic`, `_inclusiveEnd`, `length`, `_patternItem`, `_patternRest`, `compare`, `join`) is missing, removing the bogus user-diagnostic callbacks at those call sites.
 5. **Fix case-less `select:` with `else:` in lowering (D149 — `lowering/expressions/control/select.ts`):**
    - When `cases.length === 0` and `node.elseClause !== undefined`, lower `node.elseClause.body` directly without emitting an empty `select` instruction (which `definition/instructions/suspension.ts` rejects).

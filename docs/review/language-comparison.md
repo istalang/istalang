@@ -113,7 +113,7 @@ Measured with jscpd 4 over `src/**/*.ts`, without `*.test.ts` and `*.test-kit.ts
 
 - At the lower threshold, the 58 clones have 116 ends: `compiler/checker` 51, `compiler/lowering` 15, `formatter` 14, `compiler/parser` 10, `runtime/scheduler` 6, others 20. The largest clone is 15 lines.
 - The largest clones checked by hand are boilerplate, not repeated logic:
-  - the same import lists in `checker/constructs/expressions/operators.ts` and `lowering/expressions/operators.ts`, and in the two `collections.ts`;
+  - the same import lists in `checker/constructs/expressions/operators/operators.ts` and `lowering/expressions/operators.ts`, and in the two `collections.ts`;
   - the same constructor in `runtime/scheduler/instance/slots.ts` and `weak-side.ts`;
   - the tail of an emit loop in `lowering/values/unions.ts`.
 

@@ -8,12 +8,12 @@
  * is built as, at any depth, so a value goes into a union inside a union through each in turn.
  */
 
-import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { AcceptedPart, BodyContext } from '../../contexts/body-context.ts';
-import { memberBuilt } from '../../types/fitting/expected.ts';
-import { unfolded } from '../../types/type/computed-types.ts';
-import type { Type } from '../../types/type/index.ts';
-import { isBuiltLiteral, openBuildsOf } from './expressions.ts';
+import type { Expression } from '../../../../syntax/expressions/index.ts';
+import type { AcceptedPart, BodyContext } from '../../../contexts/body-context.ts';
+import { memberBuilt } from '../../../types/fitting/expected.ts';
+import { unfolded } from '../../../types/type/computed-types.ts';
+import type { Type } from '../../../types/type/index.ts';
+import { isBuiltLiteral, openBuildsOf } from '../expressions.ts';
 
 /** The type a value read as `part` is built as where `expected` is expected, at any depth. */
 export function builtMember(

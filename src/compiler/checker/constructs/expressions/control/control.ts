@@ -3,9 +3,10 @@
  * (constructs/expressions/control/branches.ts). An `if` without `else` produces nothing, so its
  * branches must be `Unit`.
  *
- * A condition its operands' types decide (constructs/expressions/decided-conditions.ts) rules out
- * the branch that never runs: its own when always false, every one after it when always true. A
- * branch ruled out is neither checked nor lowered, and doesn't take part in the `if`'s type.
+ * A condition its operands' types decide (constructs/expressions/operators/decided-conditions.ts)
+ * rules out the branch that never runs: its own when always false, every one after it when always
+ * true. A branch ruled out is neither checked nor lowered, and doesn't take part in the `if`'s
+ * type.
  */
 
 import { valueBranchesOf } from '../../../../syntax/expressions/branches.ts';
@@ -16,7 +17,7 @@ import { isAssignable } from '../../../types/identity/identity.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { boolType, unitType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
-import { decidedValue } from '../decided-conditions.ts';
+import { decidedValue } from '../operators/decided-conditions.ts';
 import { Branches, branchesAccepts } from './branches.ts';
 
 export function checkIf(context: BodyContext, node: If, expected: Type | undefined): Type {
@@ -52,7 +53,8 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
 
 /**
  * Checks `condition`, recording the value its operands' types fix, if any; the comparison or `is`
- * deciding it warned of it where it stands (constructs/expressions/decided-conditions.ts).
+ * deciding it warned of it where it stands
+ * (constructs/expressions/operators/decided-conditions.ts).
  */
 function checkCondition(context: BodyContext, condition: Expression): boolean | undefined {
   context.expect(condition, boolType);

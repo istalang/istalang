@@ -165,7 +165,7 @@ Two annotations the prelude declares, ordinary structs as every annotation is (Â
    - **Warnings:** a call or value of a `@Warn` function reports the new warning with the struct's message, from the one place a call's target is recorded, so calls, method calls, operators and values all warn.
    - **The std additions:** `unique` and `set` are std functions (`stdlib/prelude/`), `set` carrying its `@Warn`.
 4. **Literals as `Float` or `Decimal`.**
-   - **Checking:** the literal's check (`checker/constructs/expressions/literals.ts`, `literal-types.ts`) reads the expected type through `types/fitting/expected.ts`, which already decides the member a value goes into.
+   - **Checking:** the literal's check (`checker/constructs/expressions/literals/literals.ts`, `literal-types.ts`) reads the expected type through `types/fitting/expected.ts`, which already decides the member a value goes into.
    - **Choosing:** overload choice (`resolution/`) ranks an exact `Int` first, as it ranks exact fits today.
    - **Values:** computation (`rules/computation/`) and lowering emit a `Float` constant, or the `Decimal` that `Decimal(n)` builds.
    - **Patterns:** literal patterns (`constructs/patterns/matching.ts`) take the subject's number type.

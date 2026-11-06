@@ -14,12 +14,12 @@
  *   it is built as is decided (§3.7: a call's argument, a producer agreeing with others), is built
  *   again as that type (`rebuild`): its own literals are checked again as their parts, and every
  *   other item keeps what it was checked to have, fitted to its part, as an item an argument
- *   literal checked ahead of it does (constructs/expressions/literal-items.ts). So is a tuple or
- *   struct literal whose items' types only checking tells, and a collection literal an `any` member
- *   might take whole, where its own type doesn't go into the union expected: as the one member its
- *   checked items build it as (§2, constructs/expressions/built-members.ts). Any other collection
- *   literal is built as its member before its items are checked, so they agree on that member's
- *   item.
+ *   literal checked ahead of it does (constructs/expressions/literals/literal-items.ts). So is a
+ *   tuple or struct literal whose items' types only checking tells, and a collection literal an
+ *   `any` member might take whole, where its own type doesn't go into the union expected: as the
+ *   one member its checked items build it as (§2,
+ *   constructs/expressions/literals/built-members.ts). Any other collection literal is built as its
+ *   member before its items are checked, so they agree on that member's item.
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. What they record of a
  *   node is kept per pass of a field loop (passes.ts), so the body reads as each pass checked it. A
@@ -61,7 +61,6 @@ import { declareOwnCall } from '../../constructs/closures/own-calls.ts';
 import { blockTail, ReturnScope } from '../../constructs/closures/returns.ts';
 import { FieldReads } from '../../constructs/expressions/access/member-access.ts';
 import { OptionalChains } from '../../constructs/expressions/access/optionals.ts';
-import { builtAsChecked, builtMember } from '../../constructs/expressions/built-members.ts';
 import { CollectionForms } from '../../constructs/expressions/collections/collections.ts';
 import {
   acceptedPartOf,
@@ -70,7 +69,11 @@ import {
   expressionHandlers,
   isBuiltLiteral,
 } from '../../constructs/expressions/expressions.ts';
-import { argumentPartOf } from '../../constructs/expressions/literal-items.ts';
+import {
+  builtAsChecked,
+  builtMember,
+} from '../../constructs/expressions/literals/built-members.ts';
+import { argumentPartOf } from '../../constructs/expressions/literals/literal-items.ts';
 import { StructLiterals } from '../../constructs/expressions/structs/literal-sources.ts';
 import { Iterations } from '../../constructs/loops/iteration.ts';
 import { CheckedPatterns } from '../../constructs/patterns/matching.ts';

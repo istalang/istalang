@@ -18,10 +18,10 @@
  * The literal checked is recorded with the body (`builtLiteralOf`), for lowering and tools.
  */
 
-import { type WellKnownDeclaration, wellKnown } from '../../../../language/well-known/index.ts';
-import type { Entity } from '../../../binder/entities.ts';
-import { isDeclaredStruct } from '../../../syntax/declarations/index.ts';
-import type { IndentedEntry, IndentedValue } from '../../../syntax/expressions/index.ts';
+import { type WellKnownDeclaration, wellKnown } from '../../../../../language/well-known/index.ts';
+import type { Entity } from '../../../../binder/entities.ts';
+import { isDeclaredStruct } from '../../../../syntax/declarations/index.ts';
+import type { IndentedEntry, IndentedValue } from '../../../../syntax/expressions/index.ts';
 import {
   entriesLeftOut,
   isItem,
@@ -29,16 +29,16 @@ import {
   type LiteralForm,
   literalOf,
   untypedForm,
-} from '../../../syntax/expressions/literals/indented-values.ts';
-import { lastName } from '../../../syntax/node.ts';
-import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
-import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { builtFrom, collectionTarget } from '../../types/fitting/expected.ts';
-import type { Type } from '../../types/type/index.ts';
-import { errorType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type/type-text.ts';
-import { literalType, membersOf } from '../../types/unions/unions.ts';
-import { aliasedShape } from './structs/literal-types.ts';
+} from '../../../../syntax/expressions/literals/indented-values.ts';
+import { lastName } from '../../../../syntax/node.ts';
+import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import { builtFrom, collectionTarget } from '../../../types/fitting/expected.ts';
+import type { Type } from '../../../types/type/index.ts';
+import { errorType } from '../../../types/type/primitives.ts';
+import { typeText } from '../../../types/type/type-text.ts';
+import { literalType, membersOf } from '../../../types/unions/unions.ts';
+import { aliasedShape } from '../structs/literal-types.ts';
 
 /** What a value is built as, and the type its literal is checked against. */
 interface Building {

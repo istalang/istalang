@@ -12,46 +12,50 @@
  *   optional for one of them; the first and the last may be, as in a single comparison.
  * - `==` and `!=` are built in for every type and can't be overloaded (types/unions/equality.ts).
  *   The left side's type is what the right one is expected to have, so `x == none` reads naturally.
- *   One whose sides' types fix its value is decided (constructs/expressions/decided-conditions.ts).
+ *   One whose sides' types fix its value is decided
+ *   (constructs/expressions/operators/decided-conditions.ts).
  * - `and`, `or` and `not` take and give `Bool`; they short-circuit, so they are never calls.
  * - `??` works on optionals (access/optionals.ts).
  */
 
-import { unreachable } from '../../../../structures/unreachable.ts';
+import { unreachable } from '../../../../../structures/unreachable.ts';
 import {
   type ComparisonLink,
   comparisonLinkOf,
   comparisonLinksOf,
   linkSpan,
-} from '../../../syntax/expressions/comparisons.ts';
+} from '../../../../syntax/expressions/comparisons.ts';
 import type {
   Binary,
   ChainedComparison,
   Expression,
   Unary,
-} from '../../../syntax/expressions/index.ts';
+} from '../../../../syntax/expressions/index.ts';
 import {
   type BinaryMeaning,
   binaryOperators,
   type ImplicitOperator,
   isImplicitOperator,
-} from '../../../syntax/operators.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import type { BodyContext } from '../../contexts/body-context.ts';
-import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { type ImplicitOperand, implicitOperatorCall } from '../../resolution/applying/implicit.ts';
+} from '../../../../syntax/operators.ts';
+import type { AnchoredSpan } from '../../../../syntax/positions.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import {
+  type ImplicitOperand,
+  implicitOperatorCall,
+} from '../../../resolution/applying/implicit.ts';
 import {
   applied,
   type Operand,
   resolveOperator,
   unaryApplied,
-} from '../../resolution/calls/operators.ts';
-import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
-import type { Type } from '../../types/type/index.ts';
-import { boolType, isPrimitive } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type/type-text.ts';
-import { literalOrBase, writtenLiteral } from '../../types/unions/unions.ts';
-import { checkNullish } from './access/optionals.ts';
+} from '../../../resolution/calls/operators.ts';
+import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
+import type { Type } from '../../../types/type/index.ts';
+import { boolType, isPrimitive } from '../../../types/type/primitives.ts';
+import { typeText } from '../../../types/type/type-text.ts';
+import { literalOrBase, writtenLiteral } from '../../../types/unions/unions.ts';
+import { checkNullish } from '../access/optionals.ts';
 import { checkEquality } from './decided-conditions.ts';
 
 export function checkBinary(context: BodyContext, node: Binary, expected: Type | undefined): Type {

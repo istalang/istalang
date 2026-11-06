@@ -14,13 +14,17 @@
  * - Nothing narrows: an undecided condition leaves its operands' types as they are.
  */
 
-import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import type { BodyContext } from '../../contexts/body-context.ts';
-import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { keyOwnerOfValue } from '../../types/traits/struct-keys.ts';
-import { typeText } from '../../types/type/type-text.ts';
-import { decidedEquality, type EqualitySide, fitEqualSides } from '../../types/unions/equality.ts';
+import type { Expression } from '../../../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../../../syntax/positions.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import { keyOwnerOfValue } from '../../../types/traits/struct-keys.ts';
+import { typeText } from '../../../types/type/type-text.ts';
+import {
+  decidedEquality,
+  type EqualitySide,
+  fitEqualSides,
+} from '../../../types/unions/equality.ts';
 
 /** The value `condition` always has, by its operands' types; undefined when they don't fix it. */
 export function decidedValue(context: BodyContext, condition: Expression): boolean | undefined {

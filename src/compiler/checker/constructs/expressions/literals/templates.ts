@@ -11,26 +11,26 @@
  *   as any written call is, so the tag's parameters decide what its values must be.
  */
 
-import { templateFunctions } from '../../../../language/well-known/implicit-calls.ts';
-import type { TemplateLiteral } from '../../../syntax/expressions/index.ts';
+import { templateFunctions } from '../../../../../language/well-known/implicit-calls.ts';
+import type { TemplateLiteral } from '../../../../syntax/expressions/index.ts';
 import {
   constantTextOf,
   isTagged,
   taggedCall,
-} from '../../../syntax/expressions/literals/templates.ts';
-import type { BodyContext } from '../../contexts/body-context.ts';
-import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { implicitCall, preludeCall } from '../../resolution/applying/implicit.ts';
+} from '../../../../syntax/expressions/literals/templates.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import { implicitCall, preludeCall } from '../../../resolution/applying/implicit.ts';
 import {
   type StoppingOperand,
   stoppedOperation,
-} from '../../resolution/calls/stopped-operations.ts';
-import { topLevelCandidates } from '../../resolution/choosing/candidates.ts';
-import { sameType } from '../../types/identity/identity.ts';
-import type { Type } from '../../types/type/index.ts';
-import { stringType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type/type-text.ts';
-import { arrayOf } from '../../types/type/well-known.ts';
+} from '../../../resolution/calls/stopped-operations.ts';
+import { topLevelCandidates } from '../../../resolution/choosing/candidates.ts';
+import { sameType } from '../../../types/identity/identity.ts';
+import type { Type } from '../../../types/type/index.ts';
+import { stringType } from '../../../types/type/primitives.ts';
+import { typeText } from '../../../types/type/type-text.ts';
+import { arrayOf } from '../../../types/type/well-known.ts';
 
 export function checkTemplate(
   context: BodyContext,

@@ -30,7 +30,7 @@ import { analyze, anyShape, type CaseShape } from '../../patterns/exhaustiveness
 import { remainingType } from '../../patterns/exhaustiveness/remaining.ts';
 import { signatureOf, witnessText } from '../../patterns/exhaustiveness/shapes.ts';
 import { checkPattern } from '../../patterns/matching.ts';
-import { decideComparison } from '../decided-conditions.ts';
+import { decideComparison } from '../operators/decided-conditions.ts';
 import { Branches, branchesAccepts } from './branches.ts';
 
 export function checkMatch(context: BodyContext, node: Match, expected: Type | undefined): Type {

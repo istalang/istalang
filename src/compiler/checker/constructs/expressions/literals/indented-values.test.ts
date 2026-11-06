@@ -8,20 +8,20 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reportedNothing, reportedOnce } from '../../../../diagnostics/diagnostic.test-kit.ts';
-import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
-import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { lines } from '../../../parser/parse.test-kit.ts';
-import { idOf } from '../../../program/program.test-kit.ts';
-import { programModule } from '../../../program/program.ts';
-import type { Identifier } from '../../../syntax/node.ts';
-import { nodesUnder } from '../../../syntax/tree.ts';
-import { reported } from '../../check.test-kit.ts';
-import { checkProgram } from '../../check.ts';
-import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { sameType } from '../../types/identity/identity.ts';
-import type { Type } from '../../types/type/index.ts';
-import { typeText } from '../../types/type/type-text.ts';
+import { reportedNothing, reportedOnce } from '../../../../../diagnostics/diagnostic.test-kit.ts';
+import { mainGives } from '../../../../../stdlib/prelude/prelude.test-kit.ts';
+import { stdProgramOf } from '../../../../binder/bind.test-kit.ts';
+import { lines } from '../../../../parser/parse.test-kit.ts';
+import { idOf } from '../../../../program/program.test-kit.ts';
+import { programModule } from '../../../../program/program.ts';
+import type { Identifier } from '../../../../syntax/node.ts';
+import { nodesUnder } from '../../../../syntax/tree.ts';
+import { reported } from '../../../check.test-kit.ts';
+import { checkProgram } from '../../../check.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import { sameType } from '../../../types/identity/identity.ts';
+import type { Type } from '../../../types/type/index.ts';
+import { typeText } from '../../../types/type/type-text.ts';
 
 function constantTypeOf(source: string, name = 'target'): Type | undefined {
   const program = stdProgramOf({ 'main.ista': source });
