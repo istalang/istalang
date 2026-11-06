@@ -183,7 +183,7 @@ export interface BodyFacts {
   readonly madeCalls: () => readonly MadeCall[];
   /**
    * A call the language makes for the construct `node`, in `role`, with no call written for it
-   * (resolution/implicit.ts); undefined for a role the construct doesn't need.
+   * (resolution/applying/implicit.ts); undefined for a role the construct doesn't need.
    */
   readonly implicitCallOf: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;
   /** What a collection literal builds (§2). */

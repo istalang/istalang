@@ -9,17 +9,17 @@
  * - A spread's items are copied or iterated as they are (§3.3), so a spread isn't fitted either.
  */
 
-import type { Expression } from '../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext } from '../contexts/body-context.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import { substitute } from '../types/parts/substitution.ts';
-import type { LiteralType, Type } from '../types/type/index.ts';
-import type { TypeRules } from '../types/type/type-rules.ts';
-import { typeText } from '../types/type/type-text.ts';
-import { givenKeysOwner } from '../types/written/key-types.ts';
-import type { CallArgument } from './choosing/call-arguments.ts';
-import type { Application } from './choosing/choice.ts';
-import type { Instantiation } from './conformance/conformance.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { substitute } from '../../types/parts/substitution.ts';
+import type { LiteralType, Type } from '../../types/type/index.ts';
+import type { TypeRules } from '../../types/type/type-rules.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import { givenKeysOwner } from '../../types/written/key-types.ts';
+import type { CallArgument } from '../choosing/call-arguments.ts';
+import type { Application } from '../choosing/choice.ts';
+import type { Instantiation } from '../conformance/conformance.ts';
 
 /**
  * An argument as fitting sees it; its type is undefined when the chosen function decides it, and,

@@ -19,8 +19,8 @@ import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { ImplicitRole, ResolvedCall } from '../../surface/resolved-call.ts';
 import type { Type } from '../../types/type/index.ts';
+import { implicitCall } from '../applying/implicit.ts';
 import { topLevelCandidates } from '../choosing/candidates.ts';
-import { implicitCall } from '../implicit.ts';
 
 /** An element written: by which construct and role, into what, and what to report when it can't. */
 export interface ElementWrite {

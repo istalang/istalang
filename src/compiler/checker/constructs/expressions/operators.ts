@@ -39,6 +39,7 @@ import {
 import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { type ImplicitOperand, implicitOperatorCall } from '../../resolution/applying/implicit.ts';
 import {
   applied,
   type Operand,
@@ -46,7 +47,6 @@ import {
   unaryApplied,
 } from '../../resolution/calls/operators.ts';
 import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
-import { type ImplicitOperand, implicitOperatorCall } from '../../resolution/implicit.ts';
 import type { Type } from '../../types/type/index.ts';
 import { boolType, isPrimitive } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';

@@ -53,7 +53,7 @@ import {
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
-import { callMade } from '../calls-made.ts';
+import { callMade } from '../choosing/calls-made.ts';
 import { type Application, type Choice, type Signature, signatureOf } from '../choosing/choice.ts';
 import { chooseWitness, chooseWitnessAmong } from './declared-witness.ts';
 import { type Derivation, derivationOf } from './derived-traits.ts';

@@ -13,7 +13,7 @@ import type { Iterations } from '../../../constructs/loops/iteration.ts';
 import type { CheckedPatterns } from '../../../constructs/patterns/matching.ts';
 import type { LabelTargets } from '../../../constructs/statements/loops.ts';
 import type { VariableScope } from '../../../constructs/statements/variables.ts';
-import type { ImplicitCalls } from '../../../resolution/implicit.ts';
+import type { ImplicitCalls } from '../../../resolution/applying/implicit.ts';
 import type { Type } from '../../../types/type/index.ts';
 import type { bodyRecords } from '../body-records.ts';
 

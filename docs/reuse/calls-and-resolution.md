@@ -17,7 +17,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - look up call candidates with ADL and type-parameter requirements → `topLevelCandidates`, `callCandidates` (`src/compiler/checker/resolution/choosing/candidates.ts`); `topLevelCandidates` adds a call on a union through the visible traits requiring its name (§6)
 - a union's trait met through its members: the trait as `any` takes it, the call dispatching over members, why members fall short, a candidate's union requirement → `traitAsAny` (`types/traits/constraints.ts`), `traitMetBy`, `membersCall`, `membersShortfall`, `membersRequirementOf`, `traitCallsOn` (`src/compiler/checker/resolution/conformance/union-traits.ts`); keep only the trait calls a union meets, or the function declared for it in their place → `metThroughTraits` (`src/compiler/checker/resolution/conformance/trait-calls.ts`), which choosing and member lookup both read; a trait's parameters without a default are `Requirement.inferred`, found by the call's own inference, and the chosen call is judged and closed with them by `closedThroughMembers` (same file, read by `applyCall`), never by a second pipeline
 - keep the methods a call through a member access may mean, `&self` ones only through a place → `callableThrough` (`src/compiler/checker/resolution/choosing/candidates.ts`)
-- apply a call: choose among candidates, report ambiguity or a caller's `none`, instantiate, fit the arguments (conversions and wraps), give the result → `applyCall` (`src/compiler/checker/resolution/applied-call.ts`); written calls (`resolveCall`) and implicit ones (`implicitCall`) both go through it, and add only what they record
+- apply a call: choose among candidates, report ambiguity or a caller's `none`, instantiate, fit the arguments (conversions and wraps), give the result → `applyCall` (`src/compiler/checker/resolution/applying/applied-call.ts`); written calls (`resolveCall`) and implicit ones (`implicitCall`) both go through it, and add only what they record
 - look up static or trait witness candidates → `staticCandidates`, `staticTargetOf` (a type known only per instantiation, `R.Data` among them, is a `constrained` target), `witnessCandidates` (`src/compiler/checker/resolution/choosing/candidates.ts`); a type named in value position, an associated type through its owner (`R.Data.default()`) → `namedType` (`src/compiler/checker/resolution/named.ts`)
 - a requirement on a computed type (`T.Data`, `S["meta"]`) → `ComputedRequirement` (`src/compiler/checker/surface/resolved-call.ts`), closed at instantiation through the concrete type's witness (`closeCall`'s `Closer`, `lowering/tables/instances.ts`)
 - list the modules a module sees (its own, its imports, the prelude), or every static function on a type they declare → `modulesSeenFrom`, `staticFunctionsAmong` (`src/compiler/checker/resolution/choosing/candidates.ts`)
@@ -33,13 +33,13 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - check for or choose a declared witness for a trait requirement → `declaresWitness`, `chooseWitness`, `chooseWitnessAmong` for given candidates (`src/compiler/checker/resolution/conformance/declared-witness.ts`)
 - derive a trait by a rule over a type's form where no witness is declared (`Sendable`, `Encodable`, `Decodable`) → one `Derivation` in the table `derivationOf` reads (`src/compiler/checker/resolution/conformance/derived-traits.ts`), never a branch in `conform`; a new kind of type is a case in each derivation's rule
 - resolve a type's `Default` witness (`default()`) → `defaultWitness`, `resolveDefault` (`src/compiler/checker/resolution/conformance/default-witness.ts`); what an `@JsonSkip` field reads back as, for its form and for where the annotation may stand alike → `CheckerContext.json.skippedDefaultOf` (`src/compiler/checker/surface/json-form.ts`, decided in `rules/boundary/json-forms.ts`)
-- build a `ResolvedCall` (`function` or `requirement`) from an `Application` and `Instantiation` → `callMade` (`src/compiler/checker/resolution/calls-made.ts`)
-- make a call the toolchain makes on its own to a plain function (no written call site), by its arguments or by explicit `typeArguments` → `silentCall`, `callWithTypes` (`src/compiler/checker/resolution/silent-choice.ts`)
-- resolve and record an implicit construct call → `implicitCall` (`src/compiler/checker/resolution/implicit.ts`)
-- resolve an implicit `compare` or `includes` operator call → `implicitOperatorCall` (`src/compiler/checker/resolution/implicit.ts`)
-- resolve and record a prelude-owned helper call (panics if absent) → `preludeCall` (`src/compiler/checker/resolution/implicit.ts`)
+- build a `ResolvedCall` (`function` or `requirement`) from an `Application` and `Instantiation` → `callMade` (`src/compiler/checker/resolution/choosing/calls-made.ts`)
+- make a call the toolchain makes on its own to a plain function (no written call site), by its arguments or by explicit `typeArguments` → `silentCall`, `callWithTypes` (`src/compiler/checker/resolution/applying/silent-choice.ts`)
+- resolve and record an implicit construct call → `implicitCall` (`src/compiler/checker/resolution/applying/implicit.ts`)
+- resolve an implicit `compare` or `includes` operator call → `implicitOperatorCall` (`src/compiler/checker/resolution/applying/implicit.ts`)
+- resolve and record a prelude-owned helper call (panics if absent) → `preludeCall` (`src/compiler/checker/resolution/applying/implicit.ts`)
 - resolve a written call in a body → `resolveCall`, `recordChosen`, `explain` (`src/compiler/checker/resolution/calls/resolve.ts`)
-- fit a chosen call's arguments (written or implicit) to the types they fill, or spell its argument list in a report → `filledTypes`, `fitArguments`, `argumentListText` (`src/compiler/checker/resolution/argument-fit.ts`)
+- fit a chosen call's arguments (written or implicit) to the types they fill, or spell its argument list in a report → `filledTypes`, `fitArguments`, `argumentListText` (`src/compiler/checker/resolution/applying/argument-fit.ts`)
 - infer untyped lambda arguments after overload choice → `checkDecidedLambdas` (`src/compiler/checker/resolution/calls/lambda-arguments.ts`)
 - resolve a prefix or binary operator call in a body → `resolveOperator`, `binaryApplied`, `unaryApplied`, `applied` (`src/compiler/checker/resolution/calls/operators.ts`)
 - check `setIndex` element writes or synchronous collection calls → `writeElement`, `runsAtOnce` (`src/compiler/checker/resolution/calls/collection-functions.ts`)
@@ -55,7 +55,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 
 ## One-way rules
 
-- Every resolved call is built through `callMade` (`src/compiler/checker/resolution/calls-made.ts`).
+- Every resolved call is built through `callMade` (`src/compiler/checker/resolution/choosing/calls-made.ts`).
 - Extensible protocol calls (`iterate`, `setIndex`, `compare`, `includes`, `toString`) use `implicitCall`; prelude-owned helpers use `preludeCall`.
 - Silent resolution without a written call site uses `silentCall`, or `callWithTypes` when type arguments are given (`silent-choice.ts`).
 
@@ -65,5 +65,5 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 
 1. Spell the function's name once in `src/language/well-known/implicit-calls.ts`.
 2. Add its role to `ImplicitRole` in `src/compiler/checker/surface/resolved-call.ts`.
-3. In the checker handler, call `preludeCall` (prelude-owned) or `implicitCall` with `topLevelCandidates` (`src/compiler/checker/resolution/implicit.ts`).
+3. In the checker handler, call `preludeCall` (prelude-owned) or `implicitCall` with `topLevelCandidates` (`src/compiler/checker/resolution/applying/implicit.ts`).
 4. In lowering, read `context.body.implicitCallOf(node, role)` and emit it with `emitImplicitCall` / `emitCall` (`src/compiler/lowering/calls/emit-call.ts`).

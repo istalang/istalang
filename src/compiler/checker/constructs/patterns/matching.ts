@@ -38,7 +38,7 @@ import type {
 import type { BodyContext, PatternRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { implicitOperatorCall, preludeCall } from '../../resolution/implicit.ts';
+import { implicitOperatorCall, preludeCall } from '../../resolution/applying/implicit.ts';
 import { chooseVariant, nameNodeOf } from '../../resolution/named.ts';
 import {
   type CheckedPattern,

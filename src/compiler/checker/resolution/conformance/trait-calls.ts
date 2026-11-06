@@ -1,9 +1,9 @@
 /**
  * Calls on a union through a trait (§6, union-traits.ts), kept only where the union meets the
  * trait: through its members, as such a call dispatches, or through a function declared for the
- * union whole, which is called in its place. Choosing a call (../applied-call.ts) and what tools
- * offer after a union (lookup/members.ts) read candidates through here, so they agree on what a
- * call on a union may mean.
+ * union whole, which is called in its place. Choosing a call (../applying/applied-call.ts) and what
+ * tools offer after a union (lookup/members.ts) read candidates through here, so they agree on what
+ * a call on a union may mean.
  *
  * A trait's arguments the call infers (`Requirement.inferred`) are known only once it is chosen, so
  * such a candidate is kept for choosing, and `closedThroughMembers` judges it the same way once

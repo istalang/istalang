@@ -14,7 +14,7 @@
 import type { Call, Expression } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { fitArguments } from '../../resolution/argument-fit.ts';
+import { fitArguments } from '../../resolution/applying/argument-fit.ts';
 import { checkReferencedPlaces } from '../../resolution/calls/places.ts';
 import { callArgumentOf, explain, type WrittenArgument } from '../../resolution/calls/resolve.ts';
 import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';

@@ -173,7 +173,7 @@ export type ResolvedSite = NodeOf<
 
 /**
  * What a call the language makes for a construct, with no call written, does there
- * (resolution/implicit.ts).
+ * (resolution/applying/implicit.ts).
  */
 export type ImplicitRole =
   /** `iterate`, which an iteration through a cursor calls on what it runs over (§3.10). */

@@ -14,23 +14,23 @@
  *   union meets requiring the function called on it are reported as such.
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext } from '../contexts/body-context.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import { useSite } from '../contexts/use-site.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { substitute } from '../types/parts/substitution.ts';
-import type { Type } from '../types/type/index.ts';
-import { typeText } from '../types/type/type-text.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { useSite } from '../../contexts/use-site.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { substitute } from '../../types/parts/substitution.ts';
+import type { Type } from '../../types/type/index.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import type { CallArgument, Inapplicability } from '../choosing/call-arguments.ts';
+import type { Candidate } from '../choosing/candidates.ts';
+import { type Application, choose } from '../choosing/choice.ts';
+import { type Instantiation, instantiate } from '../conformance/conformance.ts';
+import { closedThroughMembers, metThroughTraits } from '../conformance/trait-calls.ts';
+import { membersRequirementOf, traitMetBy } from '../conformance/union-traits.ts';
 import { argumentListText, filledTypes, fitArguments, recordArgumentKeys } from './argument-fit.ts';
-import type { CallArgument, Inapplicability } from './choosing/call-arguments.ts';
-import type { Candidate } from './choosing/candidates.ts';
-import { type Application, choose } from './choosing/choice.ts';
-import { type Instantiation, instantiate } from './conformance/conformance.ts';
-import { closedThroughMembers, metThroughTraits } from './conformance/trait-calls.ts';
-import { membersRequirementOf, traitMetBy } from './conformance/union-traits.ts';
 
 /** A call to apply: where it stands, how reports name it, what it may call and is given. */
 export interface CallApplication {

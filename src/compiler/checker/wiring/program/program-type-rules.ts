@@ -15,20 +15,20 @@
  * Reached again while it expands, it is the error type, as an alias reached again is.
  */
 
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import { withEmptied } from '../../../structures/stack.ts';
-import type { CheckerContext, CheckerNote } from '../contexts/context.ts';
-import type { Fitting } from '../types/fitting/fit.ts';
-import { typeKeys } from '../types/identity/type-keys.ts';
-import { sameTypeSpelled } from '../types/parts/type-parts.ts';
-import { associatedTypeOf, type Expansion } from '../types/traits/known-constraints.ts';
-import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../types/traits/struct-keys.ts';
-import { unfolded } from '../types/type/computed-types.ts';
-import type { AnonymousStructType, AnyType, Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import type { TypeRules } from '../types/type/type-rules.ts';
-import { meetsAny } from './conformance/trait-objects.ts';
-import { TypeMatchReductions } from './type-matches/type-matches.ts';
+import type { EntryTable } from '../../../../structures/entries/index.ts';
+import { withEmptied } from '../../../../structures/stack.ts';
+import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
+import { meetsAny } from '../../resolution/conformance/trait-objects.ts';
+import { TypeMatchReductions } from '../../resolution/type-matches/type-matches.ts';
+import type { Fitting } from '../../types/fitting/fit.ts';
+import { typeKeys } from '../../types/identity/type-keys.ts';
+import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
+import { associatedTypeOf, type Expansion } from '../../types/traits/known-constraints.ts';
+import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../../types/traits/struct-keys.ts';
+import { unfolded } from '../../types/type/computed-types.ts';
+import type { AnonymousStructType, AnyType, Type } from '../../types/type/index.ts';
+import { errorType } from '../../types/type/primitives.ts';
+import type { TypeRules } from '../../types/type/type-rules.ts';
 
 /** An associated type asked for: its owner and its name. */
 interface Associated {

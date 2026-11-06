@@ -5,9 +5,9 @@
  *   `Next` of the next item, and `Done` once there are no more. A `Step`, never `T?`, since `T??`
  *   is `T?`: an item that is itself `none` would read as the end. Any type with an `iterate` is
  *   iterable; `iterate` is found like an operator's function, so a program's types join in
- *   (resolution/implicit.ts). Lowering calls the cursor until it gives `Done`, so the loop makes
- *   no call of the language's own. Whatever its call reports, an ambiguity or an unmet constraint
- *   among them, falls on the iterable, not the whole loop.
+ *   (resolution/applying/implicit.ts). Lowering calls the cursor until it gives `Done`, so the loop
+ *   makes no call of the language's own. Whatever its call reports, an ambiguity or an unmet
+ *   constraint among them, falls on the iterable, not the whole loop.
  * - How each iteration runs is recorded (`IterationForm`): through its cursor, of its items' type,
  *   or, for a spread of the collection its literal builds, copied whole
  *   (constructs/expressions/collections/collections.ts).
@@ -24,8 +24,8 @@ import type { Checker } from '../../check.ts';
 import type { BodyContext, IterationRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { implicitCall } from '../../resolution/applying/implicit.ts';
 import { topLevelCandidates } from '../../resolution/choosing/candidates.ts';
-import { implicitCall } from '../../resolution/implicit.ts';
 import type { Iteration, IterationForm } from '../../surface/checked-body.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';

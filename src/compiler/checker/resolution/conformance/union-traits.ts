@@ -13,7 +13,7 @@
  *   trait's arguments there, so a parameter with a default takes it, and one without is found from
  *   the call's arguments, as the function's own type parameters are (`Requirement.inferred`).
  *   Whether the union meets the trait is conformance's to say, where the call is chosen, or, for
- *   arguments found so, once they are (trait-calls.ts, ../applied-call.ts).
+ *   arguments found so, once they are (trait-calls.ts, ../applying/applied-call.ts).
  */
 
 import { unreachable } from '../../../../structures/unreachable.ts';

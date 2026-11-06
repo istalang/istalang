@@ -18,7 +18,7 @@ The checker is a **lazy, incremental query engine** over one immutable Program. 
 @source handlers title="Expression handler table" path=src/compiler/checker/constructs/expressions/expressions.ts lines=88:127
 @source calls title="checkCall: callee kinds" path=src/compiler/checker/constructs/expressions/calls.ts lines=63:101
 @source resolve title="resolveCall" path=src/compiler/checker/resolution/calls/resolve.ts lines=85:125
-@source applied title="applyCall" path=src/compiler/checker/resolution/applied-call.ts lines=59:108
+@source applied title="applyCall" path=src/compiler/checker/resolution/applying/applied-call.ts lines=59:108
 @source entries title="Entries: get, produce, takeOver, replay" path=src/structures/entries/index.ts lines=163:309
 @source cruiser title="Checker inner layers" path=.dependency-cruiser.mjs lines=116:166
 @source passes title="Passes of a field loop" path=src/compiler/checker/contexts/passes.ts lines=1:20
@@ -101,7 +101,7 @@ The checker's folders are layers too. Each folder imports only the folders liste
 | Candidates | `resolution/choosing/candidates.ts` | The binder's overload set with the prelude's, ADL on argument types, requirements of type-parameter constraints, traits a union meets |
 | Choice | `resolution/choosing/choice.ts`, `applicability.ts` | Each candidate binds the arguments and infers type parameters; concrete beats generic, no-rest beats rest, no conversion beats conversion; any other tie is ambiguous |
 | Instantiation | `resolution/conformance/conformance.ts` | Open parameters come from the expected type, then defaults; each constraint is met by a coherent witness |
-| Fit | `resolution/argument-fit.ts` | Each argument is fitted to its parameter type, and its implicit conversion is recorded |
+| Fit | `resolution/applying/argument-fit.ts` | Each argument is fitted to its parameter type, and its implicit conversion is recorded |
 | Record | `resolution/calls/resolve.ts` `recordChosen` | The `ResolvedCall` (function or requirement, type arguments, witnesses, binding, receiver) goes into the body's `resolved` table.[](source:resolve) |
 
 @callout level=note title="Calls are chosen from the arguments alone"

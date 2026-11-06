@@ -333,7 +333,10 @@ export interface Enclosing {
   readonly isOwnName: (name: Identifier) => boolean;
 }
 
-/** The calls the language makes for constructs with no call written (resolution/implicit.ts). */
+/**
+ * The calls the language makes for constructs with no call written
+ * (resolution/applying/implicit.ts).
+ */
 export interface ImplicitRecord {
   readonly record: (node: NodeOf<string>, role: ImplicitRole, call: ResolvedCall) => void;
   readonly of: (node: NodeOf<string>, role: ImplicitRole) => ResolvedCall | undefined;

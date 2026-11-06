@@ -3,9 +3,9 @@
  * call to report at: a type's `dispose` (rules/disposal/disposal.ts), a json-module helper a codec
  * calls (rules/boundary/json-forms.ts), or the defaults a struct literal leaves fields to
  * (constructs/expressions/structs/literal-fields.ts). Each is chosen, instantiated and made as a
- * written call is (choosing/choice.ts, conformance/conformance.ts, calls-made.ts), its constraints'
- * witnesses found as anywhere, but nothing is reported: failing gives undefined, and each caller
- * says what that means.
+ * written call is (choosing/choice.ts, conformance/conformance.ts, ../choosing/calls-made.ts), its
+ * constraints' witnesses found as anywhere, but nothing is reported: failing gives undefined, and
+ * each caller says what that means.
  *
  * - The candidates are plain functions, never a type parameter's requirement, so the call made is
  *   always a function call.
@@ -13,16 +13,16 @@
  *   candidates are chosen per arity, each with as many arguments as it takes.
  */
 
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import { searchSite } from '../contexts/use-site.ts';
-import type { FunctionCall } from '../surface/resolved-call.ts';
-import type { Type } from '../types/type/index.ts';
-import { callMade } from './calls-made.ts';
-import type { CallArgument } from './choosing/call-arguments.ts';
-import type { Candidate } from './choosing/candidates.ts';
-import { type Application, choose } from './choosing/choice.ts';
-import { instantiate } from './conformance/conformance.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { searchSite } from '../../contexts/use-site.ts';
+import type { FunctionCall } from '../../surface/resolved-call.ts';
+import type { Type } from '../../types/type/index.ts';
+import type { CallArgument } from '../choosing/call-arguments.ts';
+import { callMade } from '../choosing/calls-made.ts';
+import type { Candidate } from '../choosing/candidates.ts';
+import { type Application, choose } from '../choosing/choice.ts';
+import { instantiate } from '../conformance/conformance.ts';
 
 /**
  * The call to the one function of `candidates` taking `callArguments`; undefined when none or

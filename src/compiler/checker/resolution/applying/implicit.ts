@@ -19,22 +19,22 @@
  *   (check.ts, `CheckedBody.implicitCallOf`).
  */
 
-import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
-import type { NodeOf } from '../../syntax/node.ts';
-import { binaryOperators, type ImplicitOperator } from '../../syntax/operators.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
-import type { BodyContext, ImplicitRecord } from '../contexts/body-context.ts';
-import type { Pass, Passes, PassTable } from '../contexts/passes.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { ImplicitRole, MadeCall, ResolvedCall } from '../surface/resolved-call.ts';
-import type { Type } from '../types/type/index.ts';
-import { typeText } from '../types/type/type-text.ts';
+import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import type { NodeOf } from '../../../syntax/node.ts';
+import { binaryOperators, type ImplicitOperator } from '../../../syntax/operators.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
+import type { BodyContext, ImplicitRecord } from '../../contexts/body-context.ts';
+import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { ImplicitRole, MadeCall, ResolvedCall } from '../../surface/resolved-call.ts';
+import type { Type } from '../../types/type/index.ts';
+import { typeText } from '../../types/type/type-text.ts';
+import type { CallArgument } from '../choosing/call-arguments.ts';
+import { callMade } from '../choosing/calls-made.ts';
+import { type Candidate, topLevelCandidates } from '../choosing/candidates.ts';
 import { applyCall } from './applied-call.ts';
-import { callMade } from './calls-made.ts';
-import type { CallArgument } from './choosing/call-arguments.ts';
-import { type Candidate, topLevelCandidates } from './choosing/candidates.ts';
 
 /** The implicit calls of one body, by construct and role. */
 export class ImplicitCalls implements ImplicitRecord {

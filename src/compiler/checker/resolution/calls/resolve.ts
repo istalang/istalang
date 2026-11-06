@@ -1,8 +1,9 @@
 /**
  * Resolving a call in a body (§3.3, §3.7, §3.9): applied as every call is
- * (resolution/applied-call.ts), chosen, instantiated with its constraints met and its arguments
- * fitted, so their implicit conversions are too, then recorded for lowering with what only a
- * written call has: its receiver, the places it changes, and a report about a call nothing takes.
+ * (resolution/applying/applied-call.ts), chosen, instantiated with its constraints met and its
+ * arguments fitted, so their implicit conversions are too, then recorded for lowering with what
+ * only a written call has: its receiver, the places it changes, and a report about a call nothing
+ * takes.
  *
  * - An argument whose type the chosen function decides (`none`, a bare variant, a lambda with an
  *   untyped parameter, an empty `[]`, a literal holding one) is checked only after choosing,
@@ -15,7 +16,7 @@
  *   doesn't fit it, as choosing decided it, so an explanation never disagrees with the choice.
  * - Calling `dispose` directly is refused, since the runtime calls it once nothing holds a value
  *   (§7). The rules every call obeys, witnesses of constraints included, apply where the call is
- *   made (resolution/calls-made.ts).
+ *   made (resolution/choosing/calls-made.ts).
  */
 
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
@@ -31,11 +32,11 @@ import { misfitOf } from '../../types/fitting/fit.ts';
 import type { LiteralType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
-import { applyCall } from '../applied-call.ts';
-import { argumentListText } from '../argument-fit.ts';
-import { callMade } from '../calls-made.ts';
+import { applyCall } from '../applying/applied-call.ts';
+import { argumentListText } from '../applying/argument-fit.ts';
 import type { BindingFailure } from '../choosing/binding.ts';
 import type { CallArgument, Inapplicability, Misfit, Passing } from '../choosing/call-arguments.ts';
+import { callMade } from '../choosing/calls-made.ts';
 import type { Candidate } from '../choosing/candidates.ts';
 import type { Application } from '../choosing/choice.ts';
 import type { Instantiation } from '../conformance/conformance.ts';

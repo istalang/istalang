@@ -5,10 +5,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { idOf } from '../../program/program.test-kit.ts';
-import { checkedApart } from '../check.test-kit.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
+import { idOf } from '../../../program/program.test-kit.ts';
+import { checkedApart } from '../../check.test-kit.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
 const main = idOf('main.ista');
 

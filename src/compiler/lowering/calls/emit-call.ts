@@ -201,8 +201,8 @@ export function emitCallAt(
 
 /**
  * Calls the function the checker made for `node` in `role`, a call no source call stands for
- * (checker resolution/implicit.ts); a register argument is passed by value. The register of its
- * result.
+ * (checker resolution/applying/implicit.ts); a register argument is passed by value. The register
+ * of its result.
  */
 export function emitImplicitCall(
   context: FunctionContext,

@@ -2,9 +2,9 @@
  * Templates (§2).
  *
  * - An untagged template is a `String`. Each value is written as text by its `toString`, found as
- *   an operator's function is (resolution/implicit.ts), so a program's types, a type parameter's
- *   requirement, an `any Stringable` and a union's trait (§6) all take part; its texts and values
- *   are then joined by the prelude's `join`. A template without values is its text.
+ *   an operator's function is (resolution/applying/implicit.ts), so a program's types, a type
+ *   parameter's requirement, an `any Stringable` and a union's trait (§6) all take part; its texts
+ *   and values are then joined by the prelude's `join`. A template without values is its text.
  * - A value converts to what its `toString` takes, as an argument does, so a union of literals is
  *   written by its base's (§2).
  * - A tagged template is the call it stands for (syntax/expressions/literals/templates.ts), checked
@@ -20,12 +20,12 @@ import {
 } from '../../../syntax/expressions/literals/templates.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { implicitCall, preludeCall } from '../../resolution/applying/implicit.ts';
 import {
   type StoppingOperand,
   stoppedOperation,
 } from '../../resolution/calls/stopped-operations.ts';
 import { topLevelCandidates } from '../../resolution/choosing/candidates.ts';
-import { implicitCall, preludeCall } from '../../resolution/implicit.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import type { Type } from '../../types/type/index.ts';
 import { stringType } from '../../types/type/primitives.ts';

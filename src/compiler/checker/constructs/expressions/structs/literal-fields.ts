@@ -42,7 +42,7 @@ import { lastName } from '../../../../syntax/node.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { callWithTypes } from '../../../resolution/silent-choice.ts';
+import { callWithTypes } from '../../../resolution/applying/silent-choice.ts';
 import type { FunctionCall } from '../../../surface/resolved-call.ts';
 import { itemField } from '../../../surface/struct-items.ts';
 import { completeInference } from '../../../types/inference/complete.ts';

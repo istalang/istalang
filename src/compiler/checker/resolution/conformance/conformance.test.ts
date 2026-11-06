@@ -17,7 +17,7 @@ import { checkedApart, reported } from '../../check.test-kit.ts';
 import { checkProgram } from '../../check.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { intType, stringType } from '../../types/type/primitives.ts';
-import { callWithTypes } from '../silent-choice.ts';
+import { callWithTypes } from '../applying/silent-choice.ts';
 import { formNodeLibrary } from './conformance.test-kit.ts';
 
 const { endlessConformance, notConforming, unmetStructConstraint } = checkerDiagnostics;

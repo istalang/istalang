@@ -12,8 +12,8 @@
  *   is defined through itself (§3).
  * - What one kind of declaration needs lives in a unit beside its rules, which this class composes
  *   (constructs/declarations/: functions, constants, layouts, parameters, aliases, static
- *   functions; resolution/: type parameters, the type rules and fitting; rules/: expansion), as
- *   BodyChecker composes a body's units.
+ *   functions, type parameters; program-type-rules.ts: the type rules and fitting; rules/:
+ *   expansion), as BodyChecker composes a body's units.
  * - Items checked by their module are its top-level items and a trait's members; type parameters
  *   resolve their constraints in the module declaring them (program-inputs.ts).
  * - A checker made with the checker of an earlier snapshot takes over its entries wherever what
@@ -59,6 +59,7 @@ import { writtenByReference } from '../../constructs/declarations/functions/sign
 import { StaticFunctions } from '../../constructs/declarations/functions/statics.ts';
 import { Layouts } from '../../constructs/declarations/layout/index.ts';
 import { ModuleChecks } from '../../constructs/declarations/module-checks.ts';
+import { TypeParameters } from '../../constructs/declarations/type-parameters.ts';
 import { declareParameter } from '../../constructs/patterns/targets.ts';
 import type {
   CheckerContext,
@@ -71,8 +72,6 @@ import { Lookup } from '../../lookup/lookup.ts';
 import { rootSearches } from '../../resolution/conformance/conformance.ts';
 import { programRootGoals } from '../../resolution/conformance/root-goals.ts';
 import { memberWitnesses } from '../../resolution/conformance/trait-objects.ts';
-import { programTypeRules } from '../../resolution/program-type-rules.ts';
-import { TypeParameters } from '../../resolution/type-parameters.ts';
 import { Annotations } from '../../rules/annotations.ts';
 import { JsonForms } from '../../rules/boundary/json-forms.ts';
 import { disposalOf } from '../../rules/disposal/disposal.ts';
@@ -100,6 +99,7 @@ import { resolveTypeNode } from '../../types/written/resolve-type.ts';
 import type { TypeMatchQueries } from '../../types/written/type-match.ts';
 import { BodyChecker, type BodyKind } from '../body/body-checker.ts';
 import { declaringInputs, programInputs, recordedBindings } from './program-inputs.ts';
+import { programTypeRules } from './program-type-rules.ts';
 
 /** What a checker is made with, beside its program. */
 export interface CheckerOptions {

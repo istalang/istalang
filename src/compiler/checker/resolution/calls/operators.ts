@@ -1,7 +1,7 @@
 /**
  * Operators as calls (§3.9): `a + b` calls `add(a, b)`. Which function an operator calls is its
  * entry's in syntax/operators.ts; the orderings and `in`, which call `compare` and `includes`, are
- * the language's implicit calls (resolution/implicit.ts).
+ * the language's implicit calls (resolution/applying/implicit.ts).
  *
  * An operator's function is found like any call's: by its name where the operator is written, the
  * prelude's included, which declares the operators on primitives as externs; through the modules

@@ -3,7 +3,7 @@
  * once, and the arguments given for those constraints, checked once the module that gave them is
  * checked (types/written/resolve-type.ts explains why later, and why every check is noted by then),
  * with the type `match`es an instantiation reaches, which must all reduce
- * (type-matches/reduction-requirements.ts).
+ * (resolution/type-matches/reduction-requirements.ts).
  *
  * A check is noted in the entry that resolved the arguments, so the module's check finds each
  * one among what it read, whatever was asked before. Each runs once per site and what it checks;
@@ -12,44 +12,47 @@
  * running it again, whether the entry noting it was taken over or computed again alike.
  */
 
-import type { EntryTable } from '../../../structures/entries/index.ts';
-import { sameItems } from '../../../structures/equality.ts';
-import { memo } from '../../../structures/memo.ts';
-import type { ModuleId } from '../../program/program.ts';
+import type { EntryTable } from '../../../../structures/entries/index.ts';
+import { sameItems } from '../../../../structures/equality.ts';
+import { memo } from '../../../../structures/memo.ts';
+import type { ModuleId } from '../../../program/program.ts';
 import type {
   RequiredAssociatedType,
   TraitDeclaration,
   TypeParameter,
-} from '../../syntax/declarations/index.ts';
-import type { AnchoredSpan } from '../../syntax/positions.ts';
+} from '../../../syntax/declarations/index.ts';
+import type { AnchoredSpan } from '../../../syntax/positions.ts';
 import type {
   CheckerContext,
   CheckerNote,
   ConstraintCheck,
   ConstraintNote,
   Instantiable,
-} from '../contexts/context.ts';
-import { useSite } from '../contexts/use-site.ts';
-import { standsForMember } from '../types/fitting/member-arguments.ts';
-import { typeKeys } from '../types/identity/type-keys.ts';
-import { substituteConstraint } from '../types/parts/substitution.ts';
-import { sameConstraintSpelled } from '../types/parts/type-parts.ts';
-import { resolveConstraint } from '../types/traits/constraints.ts';
+} from '../../contexts/context.ts';
+import { useSite } from '../../contexts/use-site.ts';
+import { meets } from '../../resolution/conformance/conformance.ts';
+import { meetsStructConstraints } from '../../resolution/conformance/shortfalls.ts';
+import { impliedConstraints } from '../../resolution/type-matches/implied-constraints.ts';
+import {
+  failureDiagnostic,
+  ReductionRequirements,
+} from '../../resolution/type-matches/reduction-requirements.ts';
+import { standsForMember } from '../../types/fitting/member-arguments.ts';
+import { typeKeys } from '../../types/identity/type-keys.ts';
+import { substituteConstraint } from '../../types/parts/substitution.ts';
+import { sameConstraintSpelled } from '../../types/parts/type-parts.ts';
+import { resolveConstraint } from '../../types/traits/constraints.ts';
 import {
   resolveConstraintSet,
   resolveStructConstraint,
-} from '../types/traits/struct-constraints.ts';
-import type { Constraint, Type } from '../types/type/index.ts';
+} from '../../types/traits/struct-constraints.ts';
+import type { Constraint, Type } from '../../types/type/index.ts';
 import {
   type ConstraintSet,
   type StructConstraintModel,
   sameStructConstraint,
-} from '../types/type/struct-constraint.ts';
-import { parameterType } from '../types/written/resolve-type.ts';
-import { meets } from './conformance/conformance.ts';
-import { meetsStructConstraints } from './conformance/shortfalls.ts';
-import { impliedConstraints } from './type-matches/implied-constraints.ts';
-import { failureDiagnostic, ReductionRequirements } from './type-matches/reduction-requirements.ts';
+} from '../../types/type/struct-constraint.ts';
+import { parameterType } from '../../types/written/resolve-type.ts';
 
 export class TypeParameters {
   readonly #checker: CheckerContext;
