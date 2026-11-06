@@ -1,7 +1,7 @@
 /**
  * Values built and read through their type entry's declaration: a struct's fields and an enum's
  * variants by name, never by position, so a value and its declaration can't drift apart
- * unnoticed. Std natives build their results this way (stdlib/native-values.ts), and so does the
+ * unnoticed. Std natives build their results this way (stdlib/native-results.ts), and so does the
  * scheduler where it hands an instance a value no instruction made, such as another instance's
  * end (§9). `Result`'s `Ok` and `Err(Error)` are built here once for both (§3.12).
  */
