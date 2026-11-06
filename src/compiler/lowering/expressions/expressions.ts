@@ -22,6 +22,7 @@ import { lowerDurationLiteral } from './literals.ts';
 import { lowerIs, lowerMatch } from './matching.ts';
 import { lowerName, lowerNamed } from './names.ts';
 import { lowerBinary, lowerChainedComparison, lowerUnary } from './operators.ts';
+import { lowerUnwrap } from './optionals.ts';
 import { lowerPropagate } from './propagate.ts';
 import { lowerSelect } from './select.ts';
 import {
@@ -32,7 +33,6 @@ import {
 } from './structs.ts';
 import { lowerTemplate } from './templates.ts';
 import { lowerTuple, lowerTupleElement } from './tuples.ts';
-import { lowerUnwrap } from './unwrap.ts';
 import { isEnum, lowerVariantLiteral } from './variants.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
