@@ -24,7 +24,7 @@ import {
   membersNamed,
   namesOwnType,
   variantOwners,
-} from '../../../compiler/checker/types/named-types.ts';
+} from '../../../compiler/checker/types/pattern-types.ts';
 import { noneType } from '../../../compiler/checker/types/primitives.ts';
 import type { Type } from '../../../compiler/checker/types/type.ts';
 import { literalType, membersOf } from '../../../compiler/checker/types/unions.ts';

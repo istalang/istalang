@@ -34,7 +34,7 @@ import {
   namesOwnType,
   patternTypeOf,
   variantOwners,
-} from '../types/named-types.ts';
+} from '../types/pattern-types.ts';
 import type { AnyType, Type } from '../types/type.ts';
 import { baseOf } from '../types/union-members.ts';
 import { literalTypeOf, memberTaken, selectsMember, unionPart } from './members.ts';

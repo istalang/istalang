@@ -21,7 +21,7 @@ import {
   membersNamed,
   namesOwnType,
   patternTypeOf,
-} from '../../../compiler/checker/types/named-types.ts';
+} from '../../../compiler/checker/types/pattern-types.ts';
 import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type.ts';
 import { unionOf } from '../../../compiler/checker/types/unions.ts';
 import { arrayElement } from '../../../compiler/checker/types/well-known.ts';

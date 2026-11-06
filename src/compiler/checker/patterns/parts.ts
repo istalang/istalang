@@ -5,7 +5,7 @@
  *
  * - A tuple pattern takes a tuple of exactly its size; a struct pattern a struct value, its own
  *   type named or taken with `struct{…}`, as a `struct{…}` literal takes the expected type (§3.1).
- *   A name names the value's type as a type pattern's does (types/named-types.ts): through an
+ *   A name names the value's type as a type pattern's does (types/pattern-types.ts): through an
  *   alias, and a generic struct without its arguments, which the value has.
  * - A part of a value already in error has the error type, so each mistake is reported once.
  */
@@ -21,7 +21,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { FieldStep, PartStep } from '../surface/checked-pattern.ts';
 import { itemField } from '../surface/struct-items.ts';
 import { unfolded } from '../types/computed-types.ts';
-import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
+import { namesOwnType, patternTypeOf } from '../types/pattern-types.ts';
 import { errorType } from '../types/primitives.ts';
 import type { AnyType, FieldMember, Type, UnionType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';

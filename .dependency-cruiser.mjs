@@ -158,6 +158,7 @@ const checkerSurface = [
   'types/field-order.ts',
   'types/identity.ts',
   'types/named-types.ts',
+  'types/pattern-types.ts',
   'types/substitution.ts',
   'types/type-rules.ts',
   'types/fit.ts',

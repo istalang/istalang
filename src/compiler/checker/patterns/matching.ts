@@ -12,7 +12,7 @@
  *   counts as a pattern for exhaustiveness (`opt == none` takes an optional's `None`).
  * - A name that refers is a variant without fields, tested like one; a type, a struct without
  *   fields among them, which matches every value of the part's own type with no test, as `_`
- *   does (named-types.ts); or a top-level constant (named qualified, since a bare camelCase name
+ *   does (types/pattern-types.ts); or a top-level constant (named qualified, since a bare camelCase name
  *   binds), compared with `==` and acting as a guard for exhaustiveness.
  * - A struct pattern naming a variant tests that variant, then takes its fields apart. The part's
  *   enum is the expected type, so a bare variant name is enough (§3.11).
@@ -44,7 +44,7 @@ import { type CheckedPattern, namesBound, type PatternTest } from '../surface/ch
 import type { ImplicitRole } from '../surface/resolved-call.ts';
 import { unfolded } from '../types/computed-types.ts';
 import { comparable, decidedEquality, fitEqualSides, isKnown } from '../types/equality.ts';
-import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
+import { namesOwnType, patternTypeOf } from '../types/pattern-types.ts';
 import { errorType, intType, isPrimitive, noneType } from '../types/primitives.ts';
 import type { NominalDeclaration, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
