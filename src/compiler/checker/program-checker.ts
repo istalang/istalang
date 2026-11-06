@@ -14,7 +14,7 @@
  *   resolution/: type parameters, the type rules and fitting; rules/: expansion), as BodyChecker
  *   composes a body's units.
  * - Items checked by their module are its top-level items and a trait's members; type parameters
- *   resolve their constraints in the module declaring them (declaring-modules.ts).
+ *   resolve their constraints in the module declaring them (program-inputs.ts).
  * - A checker made with the checker of an earlier snapshot takes over its entries wherever what
  *   they read answers alike (structures/entries/). It reads its Program and Bindings only through
  *   inputs recorded in the entry computing now (program-inputs.ts), so nothing it answers rests on
