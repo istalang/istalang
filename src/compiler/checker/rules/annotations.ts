@@ -6,7 +6,7 @@
  * whatever instance of its struct asks, and an annotation's value is checked on its own.
  *
  * - An annotation is checked as a value of its own in its module, and computed as a top-level
- *   constant is (computation.ts), so the two can't disagree on what compile time
+ *   constant is (computation/), so the two can't disagree on what compile time
  *   computes. A value that isn't a struct is no annotation.
  * - What an annotation means decides where it may stand, and none on a shape's field, which has no
  *   declaration to carry one (§3.16): the json module's on fields (`@JsonSkip` only on a field

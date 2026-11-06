@@ -1,7 +1,7 @@
 /**
  * Statement blocks, shared by every category with a body: the Block node each body becomes
  * (syntax/statements.ts), whether it was written indented, on the same line, or in braces. Layout
- * itself is in layout.ts; this only says that a block's items are statements (parts/items.ts),
+ * itself is in layout/; this only says that a block's items are statements (parts/items.ts),
  * which may carry annotations.
  */
 

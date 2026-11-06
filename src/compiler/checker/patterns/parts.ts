@@ -181,8 +181,8 @@ export interface TakenFields<Step extends PartStep> {
 
 /**
  * The part of a struct or variant value of `part` that the field `item` gives holds, among
- * `taken`'s fields (../struct-items.ts); an item giving none is reported, and its part has the
- * error type.
+ * `taken`'s fields (../surface/struct-items.ts); an item giving none is reported, and its part has
+ * the error type.
  */
 export function fieldPart<Step extends PartStep>(
   scope: Pick<PatternScope, 'report' | 'recordField'>,

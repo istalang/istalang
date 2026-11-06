@@ -7,7 +7,7 @@
  *   annotation, which the initializer must fit, or else the initializer's own.
  * - Its targets take the value apart as a local declaration's do (patterns/walk.ts), so
  *   each name is a constant of its own: its part's type, and its part of the computed value.
- * - One walk both decides what compile time computes and computes it (rules/computation.ts), into a
+ * - One walk both decides what compile time computes and computes it (rules/computation/), into a
  *   `ConstantForm` lowering only maps to a value. What it refuses is reported here. A lambda's
  *   form is lowered from the initializer's checking, which the unit keeps (`bodyOf`).
  * - A constant is checked once, on first demand, and one defined through itself, directly or

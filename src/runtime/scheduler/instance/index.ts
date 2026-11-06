@@ -1,7 +1,7 @@
 /**
  * A running instance in memory: its heap, the executions ready to run, and what its segment
  * spawned (spec §5, §9). It is made from a snapshot, a new instance's `unstarted` one included,
- * and turned back into a snapshot at every commit; the scheduler runs it in between (segment.ts,
+ * and turned back into a snapshot at every commit; the scheduler runs it in between (../segment/,
  * wake.ts).
  *
  * - An execution waits at its top frame's `await` or `select`: what it waits on is read from that

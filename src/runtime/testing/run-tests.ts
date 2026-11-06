@@ -1,6 +1,6 @@
 /**
  * Running a test Definition's suites (§10): each suite's tests are listed in an instance of their
- * own, then each test that runs gets a fresh world (world.ts), so nothing one test leaves behind
+ * own, then each test that runs gets a fresh world (world/), so nothing one test leaves behind
  * reaches the next.
  *
  * - A suite function is a function value, which can't cross to a new instance, so every instance

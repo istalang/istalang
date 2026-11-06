@@ -2,7 +2,7 @@
  * The expressions with bodies: braced blocks, `if`, `match` and `select` (spec §4, §8).
  *
  * An `if` chain's `elif` and `else` stand at the indentation of the line the `if` starts on, which
- * is where a hard line break puts them (parser/layout.ts). Written as a statement, each clause
+ * is where a hard line break puts them (parser/layout/). Written as a statement, each clause
  * starts a line; as a value, the chain stays on one line when it fits, as `const size = if n < 10:
  * "small" else: "large"` does.
  *

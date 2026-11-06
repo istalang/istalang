@@ -1,6 +1,6 @@
 /**
  * A running instance's heap: the objects handles point at, by id, with executions holding live
- * frames (spec §5). The scheduler's parts (futures.ts, slots.ts, instance.ts) read and change it.
+ * frames (spec §5). The scheduler's parts (futures.ts, slots.ts, instance/) read and change it.
  *
  * - Ids grow with creation, so id order is creation order (snapshot/objects.ts). Counting starts
  *   one past the highest id the heap was made with, so the next id is never stored; an id a commit
@@ -221,7 +221,8 @@ export class Heap {
 
 /**
  * Whether `object` notes its own releases as its registers change (interpreter/machine.ts), rather
- * than when the heap replaces or removes it, as every other object, an `answer` root included, does.
+ * than when the heap replaces or removes it, as every other object, an `answer` root included,
+ * does.
  */
 function notesOwnReleases(object: LiveObject): object is LiveExecution {
   return object.kind === 'execution';

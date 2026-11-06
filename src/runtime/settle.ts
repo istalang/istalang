@@ -9,7 +9,7 @@
  * waits however it does, then resumes it with what its host filled meanwhile (`Runtime.fill`),
  * and every instance due by then is woken. Resumed with nothing while no timer waits, the loop
  * ends: nothing can wake the group any more. A test's world runs a loop of its own, which also
- * delivers answers, resolves watches and ends at a panic or a deadline (runtime/testing/world.ts);
+ * delivers answers, resolves watches and ends at a panic or a deadline (runtime/testing/world/);
  * what both ask of the group is instance-group.ts's.
  */
 
