@@ -18,7 +18,7 @@ import type { Expression } from '../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { keyOwnerOfValue } from '../traits/struct-keys.ts';
+import { keyOwnerOfValue } from '../types/traits/struct-keys.ts';
 import { typeText } from '../types/type-text.ts';
 import { decidedEquality, type EqualitySide, fitEqualSides } from '../types/unions/equality.ts';
 

@@ -2,8 +2,8 @@
  * A union and the traits it meets through its members (§6). A union has no module and no functions
  * of its own, so it meets a trait through functions declared for it, as a shape does
  * (conformance.ts), or else through its members: when every member meets the trait and the trait
- * could follow `any` (traits/object-safety.ts), its functions run the function of whichever member
- * a value is, as a value of `any` that trait would.
+ * could follow `any` (types/traits/object-safety.ts), its functions run the function of whichever
+ * member a value is, as a value of `any` that trait would.
  *
  * - The trait is held as `any` takes it (`MembersRequirement.through`): `any Stringable`, an
  *   argument that is the union itself its trait's own `Self`. So the union and each member read it
@@ -25,15 +25,15 @@ import {
 } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { MembersRequirement } from '../../surface/resolved-call.ts';
+import { sameType } from '../../types/identity/identity.ts';
+import { substitute } from '../../types/substitution.ts';
 import {
   constraintOn,
   constraintSubstitution,
   type Requirement,
   requiredFunctions,
-} from '../../traits/constraints.ts';
-import { objectUnsafety } from '../../traits/object-safety.ts';
-import { sameType } from '../../types/identity/identity.ts';
-import { substitute } from '../../types/substitution.ts';
+} from '../../types/traits/constraints.ts';
+import { objectUnsafety } from '../../types/traits/object-safety.ts';
 import type { AnyType, Constraint, ParameterKey, Type, UnionType } from '../../types/type/index.ts';
 import type { TypeRules } from '../../types/type-rules.ts';
 import { typeText } from '../../types/type-text.ts';

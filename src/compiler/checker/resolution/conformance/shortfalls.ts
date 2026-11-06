@@ -21,17 +21,6 @@ import type { RequiredAssociatedType, TypeParameter } from '../../../syntax/decl
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import {
-  constraintOn,
-  constraintSubstitution,
-  requiredAssociatedTypes,
-  requiredFields,
-  requiredFieldType,
-} from '../../traits/constraints.ts';
-import { structConstraintsOn } from '../../traits/known-constraints.ts';
-import { fieldOf } from '../../traits/known-fields.ts';
-import { constraintsImply } from '../../traits/sendable.ts';
-import { isStructType } from '../../traits/struct-keys.ts';
 import { isOpaque, unfolded } from '../../types/computed-types.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import {
@@ -42,6 +31,17 @@ import {
   substituteStructConstraint,
 } from '../../types/struct-constraint.ts';
 import { type Substitution, substituteConstraint } from '../../types/substitution.ts';
+import {
+  constraintOn,
+  constraintSubstitution,
+  requiredAssociatedTypes,
+  requiredFields,
+  requiredFieldType,
+} from '../../types/traits/constraints.ts';
+import { structConstraintsOn } from '../../types/traits/known-constraints.ts';
+import { fieldOf } from '../../types/traits/known-fields.ts';
+import { constraintsImply } from '../../types/traits/sendable.ts';
+import { isStructType } from '../../types/traits/struct-keys.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type-text.ts';
 import { literalType } from '../../types/unions/unions.ts';

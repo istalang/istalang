@@ -3,8 +3,8 @@
  * `U`, so its argument, to a call or to a type, written or inferred, must be one: a member, or a
  * member parameter whose own union's members all are, which each instantiation makes one of them.
  * Never several, nor a type outside `U`, nor a type parameter that could be any type. Inference
- * fills one only so (inference/infer.ts `#filling`), and an argument is checked here; both read
- * the rule `isOneMember` states.
+ * fills one only so (types/inference/infer.ts `#filling`), and an argument is checked here; both
+ * read the rule `isOneMember` states.
  */
 
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';

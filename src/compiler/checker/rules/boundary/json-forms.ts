@@ -51,11 +51,11 @@ import {
   variantTagKey,
 } from '../../surface/json-form.ts';
 import type { FunctionCall, ResolvedCall } from '../../surface/resolved-call.ts';
-import { wellKnownConstraint } from '../../traits/constraints.ts';
 import { unfolded } from '../../types/computed-types.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { unaliased } from '../../types/parts/type-parts.ts';
 import { TypeCycle } from '../../types/properties/type-cycle.ts';
+import { wellKnownConstraint } from '../../types/traits/constraints.ts';
 import type {
   FieldMember,
   LiteralType,

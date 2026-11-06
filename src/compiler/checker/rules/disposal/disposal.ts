@@ -30,9 +30,9 @@ import { callCandidates, namedInModule } from '../../resolution/choosing/candida
 import { silentCall } from '../../resolution/silent-choice.ts';
 import { isHostExtern, isHostType } from '../../surface/host-externs.ts';
 import type { FunctionCall, ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
-import { requiredFunctions } from '../../traits/constraints.ts';
-import { knownConstraints } from '../../traits/known-constraints.ts';
 import { sameType } from '../../types/identity/identity.ts';
+import { requiredFunctions } from '../../types/traits/constraints.ts';
+import { knownConstraints } from '../../types/traits/known-constraints.ts';
 import type { NominalType, Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type-text.ts';

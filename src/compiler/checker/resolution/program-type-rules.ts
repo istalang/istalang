@@ -11,19 +11,19 @@
  *
  * An associated type asked for with nothing under way is an entry too, keyed by its owner's spelled
  * key, so what expanding it reads is logged like any entry's reads and an edit changing it is seen.
- * One under way expands as its expansion stands (traits/known-constraints.ts), never kept. Reached
- * again while it expands, it is the error type, as an alias reached again is.
+ * One under way expands as its expansion stands (types/traits/known-constraints.ts), never kept.
+ * Reached again while it expands, it is the error type, as an alias reached again is.
  */
 
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import { withEmptied } from '../../../structures/stack.ts';
 import type { CheckerContext, CheckerNote } from '../contexts/context.ts';
-import { associatedTypeOf, type Expansion } from '../traits/known-constraints.ts';
-import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../traits/struct-keys.ts';
 import { unfolded } from '../types/computed-types.ts';
 import type { Fitting } from '../types/fitting/fit.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
 import { sameTypeSpelled } from '../types/parts/type-parts.ts';
+import { associatedTypeOf, type Expansion } from '../types/traits/known-constraints.ts';
+import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../types/traits/struct-keys.ts';
 import type { AnonymousStructType, AnyType, Type } from '../types/type/index.ts';
 import { errorType } from '../types/type/primitives.ts';
 import type { TypeRules } from '../types/type-rules.ts';

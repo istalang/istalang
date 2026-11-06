@@ -35,9 +35,9 @@ import type { CallArgument, Inapplicability, SignatureSlot } from './call-argume
 import type { Candidate } from './candidates.ts';
 
 /**
- * What a candidate takes and gives, with a requirement's trait mapped (traits/constraints.ts).
- * Choosing never looks at results (§3.7), and a result may only be known by checking a body, so
- * `result` is computed only when asked, for the function chosen.
+ * What a candidate takes and gives, with a requirement's trait mapped
+ * (types/traits/constraints.ts). Choosing never looks at results (§3.7), and a result may only be
+ * known by checking a body, so `result` is computed only when asked, for the function chosen.
  */
 export interface Signature {
   readonly declaration: FunctionDeclaration;
@@ -64,7 +64,8 @@ export type Choice =
 /**
  * The signature of `declaration`, with a requirement's trait mapped by `substitution`; a trait's
  * parameters it leaves `inferred` are found as the function's own are, after them, so type
- * arguments written at the call give the function's own (traits/constraints.ts `Requirement`).
+ * arguments written at the call give the function's own (types/traits/constraints.ts
+ * `Requirement`).
  */
 export function signatureOf(
   checker: CheckerContext,

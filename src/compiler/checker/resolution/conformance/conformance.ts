@@ -35,13 +35,17 @@ import type { FunctionDeclaration, TypeParameter } from '../../../syntax/declara
 import type { RootGoals } from '../../contexts/context.ts';
 import { silent, type UseSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { type Completion, completeInference } from '../../inference/complete.ts';
 import type { ResolvedCall, Witnesses } from '../../surface/resolved-call.ts';
-import { constraintSubstitution, requiredFunctions, traitAsAny } from '../../traits/constraints.ts';
 import { standsForMember } from '../../types/fitting/member-arguments.ts';
 import { sameType } from '../../types/identity/identity.ts';
+import { type Completion, completeInference } from '../../types/inference/complete.ts';
 import { mentionsError } from '../../types/parts/type-parts.ts';
 import { type Substitution, substitute, substituteConstraint } from '../../types/substitution.ts';
+import {
+  constraintSubstitution,
+  requiredFunctions,
+  traitAsAny,
+} from '../../types/traits/constraints.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type-text.ts';

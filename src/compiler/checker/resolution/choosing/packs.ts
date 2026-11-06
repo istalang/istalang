@@ -6,9 +6,9 @@
  * only one it fills.
  */
 
-import type { Inference } from '../../inference/infer.ts';
 import type { Binding } from '../../surface/resolved-call.ts';
 import { isPack } from '../../types/function-types.ts';
+import type { Inference } from '../../types/inference/infer.ts';
 import type { Type } from '../../types/type/index.ts';
 import { tupleType } from '../../types/type/primitives.ts';
 import type { CallArgument, Inapplicability, Takes } from './call-arguments.ts';

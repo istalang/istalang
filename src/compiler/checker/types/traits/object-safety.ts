@@ -14,12 +14,12 @@
  * (constraints.ts).
  */
 
-import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import { parametersIn } from '../types/parts/type-parts.ts';
-import { substitute } from '../types/substitution.ts';
-import type { Constraint, Type } from '../types/type/index.ts';
-import { parameterType } from '../types/written/resolve-type.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { parametersIn } from '../parts/type-parts.ts';
+import { substitute } from '../substitution.ts';
+import type { Constraint, Type } from '../type/index.ts';
+import { parameterType } from '../written/resolve-type.ts';
 import {
   constraintSubstitution,
   requiredFields,

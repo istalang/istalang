@@ -40,7 +40,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { checkHostBoundary, crossesToHost } from '../rules/boundary/host-boundary.ts';
 import { checkDisposeDeclaration, isDisposeFunction } from '../rules/disposal/disposal.ts';
 import { checkSuite } from '../rules/testing.ts';
-import { namesMemberParameter } from '../traits/struct-keys.ts';
+import { namesMemberParameter } from '../types/traits/struct-keys.ts';
 import { futureArgument } from '../types/well-known.ts';
 import type { GenericDeclaration } from '../types/written/type-arguments.ts';
 import { checkFiniteAlias, checkFiniteFields } from './layout/struct-rules.ts';

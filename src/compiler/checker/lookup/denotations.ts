@@ -33,7 +33,7 @@ import type { CheckerContext } from '../contexts/context.ts';
 import { declaredOutsideBodies } from '../expressions/access/names.ts';
 import { namedType } from '../resolution/named.ts';
 import type { Denotation, JoinedBody } from '../surface/denotation.ts';
-import { associatedDeclarationsOn } from '../traits/known-constraints.ts';
+import { associatedDeclarationsOn } from '../types/traits/known-constraints.ts';
 import { type FieldMember, nominalType, type Type } from '../types/type/index.ts';
 import { declaredFieldOf } from '../types/written/declared-fields.ts';
 import { entityType } from '../types/written/named-types.ts';

@@ -6,12 +6,12 @@
  * calls and literals report it alike.
  */
 
-import type { TypeParameter } from '../../syntax/declarations/index.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import { type Substitution, substitute } from '../types/substitution.ts';
-import type { Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
-import { defaultArgument, type GenericDeclaration } from '../types/written/type-arguments.ts';
+import type { TypeParameter } from '../../../syntax/declarations/index.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { type Substitution, substitute } from '../substitution.ts';
+import type { Type } from '../type/index.ts';
+import { errorType } from '../type/primitives.ts';
+import { defaultArgument, type GenericDeclaration } from '../written/type-arguments.ts';
 import type { Inference } from './infer.ts';
 
 export type Completion =

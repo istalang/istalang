@@ -5,12 +5,12 @@
  * (object-safety.ts), and none may be named twice.
  */
 
-import type { ModuleId } from '../../program/program.ts';
-import type { TypeNode } from '../../syntax/types/index.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { Constraint, Type } from '../types/type/index.ts';
-import { errorType } from '../types/type/primitives.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import type { TypeNode } from '../../../syntax/types/index.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Constraint, Type } from '../type/index.ts';
+import { errorType } from '../type/primitives.ts';
 import { resolveAnyConstraints } from './constraints.ts';
 import { objectUnsafety } from './object-safety.ts';
 

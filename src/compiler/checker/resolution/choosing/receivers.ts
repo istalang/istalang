@@ -11,7 +11,7 @@ import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import { isMethod } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { searchSite } from '../../contexts/use-site.ts';
-import type { Inference } from '../../inference/infer.ts';
+import type { Inference } from '../../types/inference/infer.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
 import { substituteConstraint } from '../../types/substitution.ts';
 import type { ParameterKey, Type } from '../../types/type/index.ts';

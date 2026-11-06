@@ -17,9 +17,9 @@ import { unparenthesized } from '../../syntax/expressions/readings.ts';
 import type { Block } from '../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../syntax/statements/readings.ts';
 import type { BodyContext } from '../contexts/body-context.ts';
-import type { Inference } from '../inference/infer.ts';
 import type { Application } from '../resolution/choosing/choice.ts';
 import { collectionTarget, expectedFunction, expectedTuple } from '../types/fitting/expected.ts';
+import type { Inference } from '../types/inference/infer.ts';
 import { parametersIn } from '../types/parts/type-parts.ts';
 import type { Type } from '../types/type/index.ts';
 

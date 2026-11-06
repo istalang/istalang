@@ -13,35 +13,35 @@
  *   known-constraints.ts's; struct constraints (§3.5) are resolved in struct-constraints.ts.
  */
 
-import type { WellKnownDeclaration } from '../../../language/well-known/index.ts';
-import { unreachable } from '../../../structures/unreachable.ts';
-import type { ModuleId } from '../../program/program.ts';
+import type { WellKnownDeclaration } from '../../../../language/well-known/index.ts';
+import { unreachable } from '../../../../structures/unreachable.ts';
+import type { ModuleId } from '../../../program/program.ts';
 import type {
   FunctionDeclaration,
   RequiredAssociatedType,
   TraitDeclaration,
   TypeParameter,
-} from '../../syntax/declarations/index.ts';
-import { lastName } from '../../syntax/node.ts';
+} from '../../../syntax/declarations/index.ts';
+import { lastName } from '../../../syntax/node.ts';
 import {
   type FieldDeclaration,
   type TypeNode,
   unparenthesizedType,
-} from '../../syntax/types/index.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { RequirementOrigin } from '../surface/resolved-call.ts';
-import { sameType } from '../types/identity/identity.ts';
+} from '../../../syntax/types/index.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { RequirementOrigin } from '../../surface/resolved-call.ts';
+import { sameType } from '../identity/identity.ts';
 import {
   type Substitution,
   substitute,
   substituteConstraint,
   substitutionFor,
-} from '../types/substitution.ts';
-import type { AnyType, Constraint, ParameterKey, Type } from '../types/type/index.ts';
-import type { TypeRules } from '../types/type-rules.ts';
-import { parameterType } from '../types/written/resolve-type.ts';
-import { typeArgumentsFor } from '../types/written/type-arguments.ts';
+} from '../substitution.ts';
+import type { AnyType, Constraint, ParameterKey, Type } from '../type/index.ts';
+import type { TypeRules } from '../type-rules.ts';
+import { parameterType } from '../written/resolve-type.ts';
+import { typeArgumentsFor } from '../written/type-arguments.ts';
 
 /** The well-known trait `declaration` names, as a constraint with no type arguments. */
 export function wellKnownConstraint(

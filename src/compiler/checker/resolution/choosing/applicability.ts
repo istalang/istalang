@@ -7,7 +7,7 @@
  *   receiver takes its `&` implicitly, so it is passed either way, whichever its `self` asks for. A
  *   reference names the caller's own variable, so its type must be the parameter's exactly, with no
  *   implicit wrap (§3.7). A generic function's type parameters are inferred from the arguments
- *   meanwhile (inference/infer.ts); written type arguments are taken as given (§3.5).
+ *   meanwhile (types/inference/infer.ts); written type arguments are taken as given (§3.5).
  * - A rest parameter's items, and a spread's items, are matched against its array's element type.
  *   A pack's (§3.5) are matched together against the pack: single values as the tuple of their
  *   types, or one spread of a value of a pack as that pack, exactly.
@@ -20,10 +20,10 @@
 
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
-import { Inference } from '../../inference/infer.ts';
 import type { Binding } from '../../surface/resolved-call.ts';
 import { reshapes } from '../../types/fitting/fit.ts';
 import { fillsPack } from '../../types/function-types.ts';
+import { Inference } from '../../types/inference/infer.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
 import type { Substitution } from '../../types/substitution.ts';
 import type { ParameterSlot, Type } from '../../types/type/index.ts';

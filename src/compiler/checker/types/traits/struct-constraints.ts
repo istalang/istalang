@@ -12,19 +12,15 @@
  *   One `[_]` entry at most is reported here, where the constraint is resolved.
  */
 
-import type { ModuleId } from '../../program/program.ts';
-import { isMissingName } from '../../syntax/node.ts';
-import type { ConstraintNode, FieldEntry, StructConstraint } from '../../syntax/types/index.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { inFieldOrder } from '../types/field-order.ts';
-import type {
-  ConstraintSet,
-  EntryRule,
-  StructConstraintModel,
-} from '../types/struct-constraint.ts';
-import type { Constraint } from '../types/type/index.ts';
-import { parameterType } from '../types/written/resolve-type.ts';
+import type { ModuleId } from '../../../program/program.ts';
+import { isMissingName } from '../../../syntax/node.ts';
+import type { ConstraintNode, FieldEntry, StructConstraint } from '../../../syntax/types/index.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { inFieldOrder } from '../field-order.ts';
+import type { ConstraintSet, EntryRule, StructConstraintModel } from '../struct-constraint.ts';
+import type { Constraint } from '../type/index.ts';
+import { parameterType } from '../written/resolve-type.ts';
 import { type ConstraintSite, resolveConstraint } from './constraints.ts';
 
 /**

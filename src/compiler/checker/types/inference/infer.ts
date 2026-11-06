@@ -37,14 +37,14 @@
  *   had their say (`bindNeverWhereOpen`), as `expectPanic(fn(): panic("x"))` needs.
  */
 
-import { type Fitting, fitOf, matchConversion } from '../types/fitting/fit.ts';
-import { isOneMember } from '../types/fitting/member-arguments.ts';
-import { fillsPack, functionFits, isPack } from '../types/function-types.ts';
-import { sameType } from '../types/identity/identity.ts';
-import { UnfoldingPairs } from '../types/identity/unfolding-pairs.ts';
-import { typeChildren } from '../types/parts/type-children.ts';
-import { parametersIn } from '../types/parts/type-parts.ts';
-import { noSubstitution, type Substitution, substitute } from '../types/substitution.ts';
+import { type Fitting, fitOf, matchConversion } from '../fitting/fit.ts';
+import { isOneMember } from '../fitting/member-arguments.ts';
+import { fillsPack, functionFits, isPack } from '../function-types.ts';
+import { sameType } from '../identity/identity.ts';
+import { UnfoldingPairs } from '../identity/unfolding-pairs.ts';
+import { typeChildren } from '../parts/type-children.ts';
+import { parametersIn } from '../parts/type-parts.ts';
+import { noSubstitution, type Substitution, substitute } from '../substitution.ts';
 import type {
   AnonymousStructType,
   AnyType,
@@ -53,11 +53,11 @@ import type {
   ParameterKey,
   Type,
   UnionType,
-} from '../types/type/index.ts';
-import { errorType, isPrimitive, neverType } from '../types/type/primitives.ts';
-import { baseOf } from '../types/unions/union-members.ts';
-import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions/unions.ts';
-import { parameterType } from '../types/written/resolve-type.ts';
+} from '../type/index.ts';
+import { errorType, isPrimitive, neverType } from '../type/primitives.ts';
+import { baseOf } from '../unions/union-members.ts';
+import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../unions/unions.ts';
+import { parameterType } from '../written/resolve-type.ts';
 
 /** What a collection of an inference reads as before its first item. */
 const noParameters: ReadonlySet<ParameterKey> = new Set();

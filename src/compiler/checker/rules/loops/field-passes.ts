@@ -1,8 +1,8 @@
 /**
  * Running over a struct's fields (§4): a field loop, an array comprehension and a struct
- * comprehension each check their subject once, then what their header heads once per pass over
- * its fields (traits/struct-keys.ts `fieldPassesOver`), the header's key and value taking apart the
- * pair of the pass's key and value. A subject with no fields to visit is reported, and what the
+ * comprehension each check their subject once, then what their header heads once per pass over its
+ * fields (types/traits/struct-keys.ts `fieldPassesOver`), the header's key and value taking apart
+ * the pair of the pass's key and value. A subject with no fields to visit is reported, and what the
  * header heads checked once with nothing known of them, so each mistake in it is still found.
  */
 
@@ -12,7 +12,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldPassType } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { declareTargets } from '../../patterns/targets.ts';
-import { fieldTypeOf, keyName, keysOf } from '../../traits/struct-keys.ts';
+import { fieldTypeOf, keyName, keysOf } from '../../types/traits/struct-keys.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, isPrimitive, neverType, tupleType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type-text.ts';

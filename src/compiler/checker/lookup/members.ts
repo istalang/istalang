@@ -36,13 +36,13 @@ import {
 import { takesAsSelf } from '../resolution/choosing/receivers.ts';
 import { metThroughTraits } from '../resolution/conformance/trait-calls.ts';
 import type { TypeMembers } from '../surface/denotation.ts';
-import { requiredFields, requiredFunctions } from '../traits/constraints.ts';
+import { requiredFields, requiredFunctions } from '../types/traits/constraints.ts';
 import {
   associatedDeclarationsOn,
   knownConstraints,
   structConstraintsOn,
-} from '../traits/known-constraints.ts';
-import { fieldOf } from '../traits/known-fields.ts';
+} from '../types/traits/known-constraints.ts';
+import { fieldOf } from '../types/traits/known-fields.ts';
 import type { FieldMember, Type } from '../types/type/index.ts';
 import { tupleElements } from '../types/type/primitives.ts';
 

@@ -29,7 +29,7 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { topLevelCandidates } from '../../resolution/choosing/candidates.ts';
 import { namedType, nameNodeOf } from '../../resolution/named.ts';
 import type { FieldRead, FieldReading, FoundField } from '../../surface/checked-field.ts';
-import { fieldOf } from '../../traits/known-fields.ts';
+import { fieldOf } from '../../types/traits/known-fields.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type-text.ts';

@@ -88,7 +88,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 11. `src/compiler/binder/`
 - [x] 12. `src/compiler/checker/` — root contracts, contexts & wiring (`check.ts`, `context.ts`, `program-inputs.ts`, `program-checker.ts`, `body-checker.ts`, `use-site.ts`, `resolved-call.ts`, `checked-pattern.ts`, `checked-field.ts`, `constant-form.ts`, `json-form.ts`, `checked-annotation.ts`, `struct-items.ts`, `denotation.ts`, `host-externs.ts`, `declaring-modules.ts`, `diagnostics/`)
 - [x] 13. `src/compiler/checker/types/`
-- [x] 14. `src/compiler/checker/inference/` & `src/compiler/checker/traits/`
+- [x] 14. `src/compiler/checker/types/inference/` & `src/compiler/checker/types/traits/`
 - [x] 15. `src/compiler/checker/resolution/`
 - [x] 16. `src/compiler/checker/calls/`
 - [x] 17. `src/compiler/checker/patterns/` & `src/compiler/checker/flow/`
@@ -251,22 +251,22 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `optionalInner(type, checker.optionalEntity)` checks `type.entity === optional` using `ProgramChecker`'s cached `#optional` entry, whereas `optionalArgument(checker, type)` calls `wellKnownArguments(checker, wellKnown.optional, type)` (allocating a fresh `NominalType` via `checker.wellKnownType(wellKnown.optional)` on every call) to answer the exact same question.
 - **Duplicate array equality (`sameTypes`), anonymous-struct child extraction, and function compatibility (`src/compiler/checker/types/type/index.ts`, `type-parts.ts`, `src/structures/equality.ts`):**
   - `sameTypes` in `type.ts` re-implements `sameItems(sameType)` (`src/structures/equality.ts`).
-  - `sameType`'s `'anonymous'` branch manually compares `isSharedValueType(first) ? first.arguments : []` and `first.fields.map((field) => field.type)` instead of comparing `typeChildren` (`type-parts.ts`), which `Inference.#matchExact` (`inference/infer.ts`) uses.
-  - `isAssignable` (`type.ts`) and `Inference.#matchFunction` (`inference/infer.ts`) duplicate the function-header check `given.isAsync === declared.isAsync && (given.isSendable || !declared.isSendable) && sameShape(...)`.
+  - `sameType`'s `'anonymous'` branch manually compares `isSharedValueType(first) ? first.arguments : []` and `first.fields.map((field) => field.type)` instead of comparing `typeChildren` (`type-parts.ts`), which `Inference.#matchExact` (`types/inference/infer.ts`) uses.
+  - `isAssignable` (`type.ts`) and `Inference.#matchFunction` (`types/inference/infer.ts`) duplicate the function-header check `given.isAsync === declared.isAsync && (given.isSendable || !declared.isSendable) && sameShape(...)`.
   - **Done** (`fast-wins`): `sameTypes` is `sameItems(sameType)`.
   - **Done** (`p2-structural`): `sameType` is key equality (`types/identity/identity.ts`), with no structural walk left, and the shared value's arguments are gone from shapes; `functionFits` (`types/type/index.ts`) is the one function-header rule, which `isAssignable` and `Inference.#matchFunction` both call.
 - **`heldType` hand-rolls a visited set instead of using `TypeCycle` (`src/compiler/checker/types/properties/held.ts`, `type-cycle.ts`; widens `Q7`):**
   - `heldType` maintains `const walked = new Set<string>()` keyed by `checker.typeKeys.typeKey(part)` instead of using `TypeCycle` (`type-cycle.ts`).
   - **Done** (`fast-wins`): `heldType` guards its walk with `TypeCycle`. A type reached on two branches is walked on each (the visited set walked it once); the answer is the same.
 
-### 14. `src/compiler/checker/inference/` & `src/compiler/checker/traits/`
+### 14. `src/compiler/checker/types/inference/` & `src/compiler/checker/types/traits/`
 
-- **Duplicate `isPack` predicate (`src/compiler/checker/inference/infer.ts`, `src/compiler/checker/types/type/index.ts`):**
+- **Duplicate `isPack` predicate (`src/compiler/checker/types/inference/infer.ts`, `src/compiler/checker/types/type/index.ts`):**
   - `infer.ts` defines a local `isPack(parameter: ParameterKey)` alongside `isPack(type: Type)` in `types/type/index.ts`.
   - **Done** (`fast-wins`): `infer.ts` asks `types/type/index.ts`'s `isPack` of `parameterType(parameter)`.
-- **`unsafetyOf` manually resolves and substitutes trait fields instead of using `requiredFieldType` / `constraintSubstitution` (`src/compiler/checker/traits/any-types.ts`, `constraints.ts`):**
+- **`unsafetyOf` manually resolves and substitutes trait fields instead of using `requiredFieldType` / `constraintSubstitution` (`src/compiler/checker/types/traits/any-types.ts`, `constraints.ts`):**
   - `unsafetyOf` (`any-types.ts`) manually builds `substitutionFor(trait.typeParameters, constraint.arguments)` and calls `checker.resolveType(checker.moduleOf(trait), field.type)` instead of calling `requiredFieldType(checker, constraint, field, parameterType(trait))` and `constraintSubstitution(constraint, parameterType(trait))` from `constraints.ts`.
-  - **Done** (`p3-unions`): object safety is one exported rule, `objectUnsafety` (`traits/object-safety.ts`), reading a trait's fields and functions through `requiredFieldType` and `constraintSubstitution` with the trait's own `Self`; `any` types ask it (`any-types.ts`), and so will a union meeting a trait through its members (proposal 3, §6).
+  - **Done** (`p3-unions`): object safety is one exported rule, `objectUnsafety` (`types/traits/object-safety.ts`), reading a trait's fields and functions through `requiredFieldType` and `constraintSubstitution` with the trait's own `Self`; `any` types ask it (`any-types.ts`), and so will a union meeting a trait through its members (proposal 3, §6).
 
 ### 15. `src/compiler/checker/resolution/`
 
@@ -278,7 +278,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`p2-structural`): both go through `typeOfEntity` (`types/written/resolve-type.ts`), given the arguments each finds: a written type's, defaults filled, or none for a name in a value's place, which names a generic declaration, an alias too, as a whole.
 - **Derived traits if-chain in `conform` (`src/compiler/checker/resolution/conformance/conformance.ts`; tracked as `Q7`):**
   - `conform` branches on `isSendableTrait`, then `jsonDirectionOf` (`codecWitness`), before checking trait fields and functions (`Q7`).
-  - **Done** (`p3-unions`): the derived traits are one table (`derivationOf`, `resolution/conformance/derived-traits.ts`): each well-known trait's `Derivation` says what it asks of every type (`lacking`: Sendable's rule; the codecs' implied Sendable, except at the host, and the nested-optional refusal) and derives the witness of a required function none is declared for (`derive`). `conform` asks the table and branches on no trait; a form with nothing to derive from says nothing (`DerivedCodec.missing`), so a missing codec is reported as any missing function is. Each rule switches on the type's kind (`traits/sendable.ts`, `rules/json-forms/`), so a new kind of type is one case per rule. `isSendableTrait` is gone, and `traits/sendable.ts` no longer imports `json-form.ts`.
+  - **Done** (`p3-unions`): the derived traits are one table (`derivationOf`, `resolution/conformance/derived-traits.ts`): each well-known trait's `Derivation` says what it asks of every type (`lacking`: Sendable's rule; the codecs' implied Sendable, except at the host, and the nested-optional refusal) and derives the witness of a required function none is declared for (`derive`). `conform` asks the table and branches on no trait; a form with nothing to derive from says nothing (`DerivedCodec.missing`), so a missing codec is reported as any missing function is. Each rule switches on the type's kind (`types/traits/sendable.ts`, `rules/json-forms/`), so a new kind of type is one case per rule. `isSendableTrait` is gone, and `types/traits/sendable.ts` no longer imports `json-form.ts`.
 
 ### 16. `src/compiler/checker/calls/`
 

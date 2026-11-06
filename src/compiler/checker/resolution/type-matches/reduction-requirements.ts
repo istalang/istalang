@@ -13,7 +13,7 @@
  * - An instantiation substitutes them, and any use whose arguments are then all known reduces:
  *   one naming no type (matching no case, being itself, or recursive with values that would hold
  *   themselves, types/properties/finiteness.ts; an associated type on a cycle of expansions,
- *   traits/known-constraints.ts), the error type carrying it, is reported where the
+ *   types/traits/known-constraints.ts), the error type carrying it, is reported where the
  *   instantiation is written, its arguments written or inferred alike. A nominal type reached on
  *   the way brings its declaration's requirements, through its own arguments, and a recursive type
  *   what it unfolds to, each once.

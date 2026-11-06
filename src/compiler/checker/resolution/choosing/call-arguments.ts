@@ -40,7 +40,7 @@ export type Passing = 'value' | 'reference' | 'receiver';
  * An argument as choosing sees it: its type, or, when the chosen function decides it, which
  * parameter types it can take; how it is passed; its name when named; for a spread, the type of
  * its items; and for a literal written in place, its literal type, which it has where a parameter
- * expects one (§2, inference/infer.ts `literalType`), its type being its base's.
+ * expects one (§2, types/inference/infer.ts `literalType`), its type being its base's.
  */
 export interface CallArgument {
   readonly type: Type | undefined;

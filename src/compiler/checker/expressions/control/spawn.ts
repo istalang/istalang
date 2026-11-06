@@ -21,7 +21,7 @@ import type { Call, Expression, Spawn } from '../../../syntax/expressions/index.
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { isSendable } from '../../traits/sendable.ts';
+import { isSendable } from '../../types/traits/sendable.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type-text.ts';

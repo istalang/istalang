@@ -20,29 +20,29 @@
  *   yet (`fieldPassesOver`), as a mapped type's value is.
  */
 
-import { compareOrdered } from '../../../language/order.ts';
-import type { TypeParameter } from '../../syntax/declarations/index.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
-import { unparenthesized } from '../../syntax/expressions/readings.ts';
-import type { Pattern } from '../../syntax/patterns.ts';
-import { parentOf } from '../../syntax/tree.ts';
-import type { StructType } from '../../syntax/types/index.ts';
-import type { BodyContext } from '../contexts/body-context.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import { isOpaque, type MappedParts } from '../types/computed-types.ts';
-import { typeKeys } from '../types/identity/type-keys.ts';
-import { substitute } from '../types/substitution.ts';
-import { aliasedAs } from '../types/type/alias-uses.ts';
+import { compareOrdered } from '../../../../language/order.ts';
+import type { TypeParameter } from '../../../syntax/declarations/index.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../../syntax/expressions/readings.ts';
+import type { Pattern } from '../../../syntax/patterns.ts';
+import { parentOf } from '../../../syntax/tree.ts';
+import type { StructType } from '../../../syntax/types/index.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import { isOpaque, type MappedParts } from '../computed-types.ts';
+import { typeKeys } from '../identity/type-keys.ts';
+import { substitute } from '../substitution.ts';
+import { aliasedAs } from '../type/alias-uses.ts';
 import {
   isMemberParameter,
   type ParameterKey,
   type StructValueType,
   shapeType,
   type Type,
-} from '../types/type/index.ts';
-import { errorType, isPrimitive, neverType } from '../types/type/primitives.ts';
-import { literalType, membersOf, unionOf } from '../types/unions/unions.ts';
-import { keysOwner } from '../types/written/key-types.ts';
+} from '../type/index.ts';
+import { errorType, isPrimitive, neverType } from '../type/primitives.ts';
+import { literalType, membersOf, unionOf } from '../unions/unions.ts';
+import { keysOwner } from '../written/key-types.ts';
 import { entryRules, structConstraintsOn } from './known-constraints.ts';
 
 /**

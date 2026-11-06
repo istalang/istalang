@@ -118,13 +118,15 @@ const layers = {
  * models later phases read) may be imported by any folder, so they import no folder above the type
  * model, or every folder would reach every other through them; the modules wiring a body and a
  * program together are no contracts.
+ * A layer may sit inside another's folder (`types/inference`): it is a layer of its own, and the
+ * outer layer is the rest of the folder.
  * Type-only imports count, as the swc parser reports them: a cycle of types is a cycle of knowledge.
  */
 const checkerLayers = [
   'diagnostics',
   'types', // the type model, written types resolved, and the rules over types alone
-  'inference',
-  'traits',
+  'types/inference',
+  'types/traits',
   'resolution', // what a call or a name may mean, choosing among overloads, conformance
   'calls', // a call in a body: its arguments checked, the places it changes
   'patterns',
@@ -171,7 +173,15 @@ const checkerSurface = [
   'types/well-known.ts',
 ];
 
-const checkerFolder = (names) => `^src/compiler/checker/(${names.join('|')})/`;
+/** A layer's modules: its folder, less the folders of the layers inside it. */
+const layerModules = (layer) => {
+  const inner = checkerLayers
+    .filter((other) => other.startsWith(`${layer}/`))
+    .map((other) => other.slice(layer.length + 1));
+  return inner.length === 0 ? `${layer}/` : `${layer}/(?!(?:${inner.join('|')})/)`;
+};
+
+const checkerFolder = (names) => `^src/compiler/checker/(${names.map(layerModules).join('|')})`;
 
 /**
  * The modules wiring a body and a program together, which may import any folder and which no
@@ -183,7 +193,7 @@ const checkerWiring = '^src/compiler/checker/wiring/';
 /** The checker's contracts: its entry, the contexts every check runs in, the models it surfaces. */
 const checkerContracts = '^src/compiler/checker/([^/]+\\.ts$|contexts/|surface/)';
 
-/** The checker folders its contracts may name: diagnostics and the type model beneath everything. */
+/** The layers its contracts may name: diagnostics and the type model beneath everything. */
 const checkerModel = ['diagnostics', 'types'];
 
 /**
@@ -213,7 +223,7 @@ export default {
       to: { path: parserCategory },
     },
     ...checkerLayers.slice(0, -1).map((layer, index) => ({
-      name: `checker-${layer}-imports-above`,
+      name: `checker-${layer.replaceAll('/', '-')}-imports-above`,
       severity: 'error',
       from: { path: checkerFolder([layer]) },
       to: { path: checkerFolder(checkerLayers.slice(index + 1)) },

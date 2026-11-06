@@ -30,8 +30,6 @@ import type {
   Instantiable,
 } from '../contexts/context.ts';
 import { useSite } from '../contexts/use-site.ts';
-import { resolveConstraint } from '../traits/constraints.ts';
-import { resolveConstraintSet, resolveStructConstraint } from '../traits/struct-constraints.ts';
 import { standsForMember } from '../types/fitting/member-arguments.ts';
 import { typeKeys } from '../types/identity/type-keys.ts';
 import { sameConstraintSpelled } from '../types/parts/type-parts.ts';
@@ -41,6 +39,11 @@ import {
   sameStructConstraint,
 } from '../types/struct-constraint.ts';
 import { substituteConstraint } from '../types/substitution.ts';
+import { resolveConstraint } from '../types/traits/constraints.ts';
+import {
+  resolveConstraintSet,
+  resolveStructConstraint,
+} from '../types/traits/struct-constraints.ts';
 import type { Constraint, Type } from '../types/type/index.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
 import { meets } from './conformance/conformance.ts';

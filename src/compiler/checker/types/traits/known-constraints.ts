@@ -19,31 +19,31 @@
  *   chosen once an instantiation makes the type known (`ComputedRequirement`).
  */
 
-import { withPushed } from '../../../structures/stack.ts';
+import { withPushed } from '../../../../structures/stack.ts';
 import type {
   AssociatedType,
   RequiredAssociatedType,
   TypeParameter,
-} from '../../syntax/declarations/index.ts';
-import type { CheckerContext } from '../contexts/context.ts';
-import type { RequirementOrigin } from '../surface/resolved-call.ts';
-import { type ComputedType, isMatchAlias, isOpaque } from '../types/computed-types.ts';
-import { inFieldOrder } from '../types/field-order.ts';
-import { sameConstraint, sameType } from '../types/identity/identity.ts';
-import { typeKeys } from '../types/identity/type-keys.ts';
-import { parametersIn } from '../types/parts/type-parts.ts';
+} from '../../../syntax/declarations/index.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
+import type { RequirementOrigin } from '../../surface/resolved-call.ts';
+import { type ComputedType, isMatchAlias, isOpaque } from '../computed-types.ts';
+import { inFieldOrder } from '../field-order.ts';
+import { sameConstraint, sameType } from '../identity/identity.ts';
+import { typeKeys } from '../identity/type-keys.ts';
+import { parametersIn } from '../parts/type-parts.ts';
 import {
   type EntryRule,
   type StructConstraintModel,
   substituteStructConstraint,
-} from '../types/struct-constraint.ts';
-import { substitute, substituteConstraint, substitutionFor } from '../types/substitution.ts';
-import { aliasedAs } from '../types/type/alias-uses.ts';
-import type { AnyType, Constraint, Type } from '../types/type/index.ts';
-import { errorType, isPrimitive } from '../types/type/primitives.ts';
-import { literalType, membersOf, unionOf } from '../types/unions/unions.ts';
-import { parameterType } from '../types/written/resolve-type.ts';
-import { aliasInstance } from '../types/written/type-match.ts';
+} from '../struct-constraint.ts';
+import { substitute, substituteConstraint, substitutionFor } from '../substitution.ts';
+import { aliasedAs } from '../type/alias-uses.ts';
+import type { AnyType, Constraint, Type } from '../type/index.ts';
+import { errorType, isPrimitive } from '../type/primitives.ts';
+import { literalType, membersOf, unionOf } from '../unions/unions.ts';
+import { parameterType } from '../written/resolve-type.ts';
+import { aliasInstance } from '../written/type-match.ts';
 import {
   constraintOn,
   constraintSubstitution,

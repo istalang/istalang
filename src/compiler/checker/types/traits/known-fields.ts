@@ -1,19 +1,19 @@
 /**
  * A field of a type by what the type is (§3.5, §3.10): a struct's, or, on a type known only per
  * instantiation, one a trait of its constraints requires or one its struct constraints name
- * (traits/known-constraints.ts). One rule for a field read, a field called and conformance.
+ * (types/traits/known-constraints.ts). One rule for a field read, a field called and conformance.
  */
 
-import type { CheckerContext } from '../contexts/context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import {
   type FoundField,
   namedFieldRead,
   requiredFieldRead,
   structFieldOf,
-} from '../surface/checked-field.ts';
-import { unfolded } from '../types/computed-types.ts';
-import type { Type } from '../types/type/index.ts';
-import { literalType } from '../types/unions/unions.ts';
+} from '../../surface/checked-field.ts';
+import { unfolded } from '../computed-types.ts';
+import type { Type } from '../type/index.ts';
+import { literalType } from '../unions/unions.ts';
 import { requiredFields, requiredFieldType } from './constraints.ts';
 import { knownConstraints, structConstraintsOn } from './known-constraints.ts';
 

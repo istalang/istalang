@@ -5,9 +5,9 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { diagnosedAt } from '../../compile.test-kit.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
+import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
+import { diagnosedAt } from '../../../compile.test-kit.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 
 const { notObjectSafe } = checkerDiagnostics;
 

@@ -2,7 +2,7 @@
  * A struct constraint's model (§3.5), the part of the type model constraints after `is` share: the
  * fields its entries name, in name order as every struct's fields are (§3.1), each an exact type or
  * a constraint set, and what every other field must be. Resolving one from syntax is
- * traits/struct-constraints.ts's; here it is substituted, compared and spelled.
+ * types/traits/struct-constraints.ts's; here it is substituted, compared and spelled.
  */
 
 import { sameItems } from '../../../structures/equality.ts';

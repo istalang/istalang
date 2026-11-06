@@ -12,7 +12,7 @@
  */
 
 import type { CheckerContext } from '../../contexts/context.ts';
-import { constraintSubstitution, requiredFunctions } from '../../traits/constraints.ts';
+import { constraintSubstitution, requiredFunctions } from '../../types/traits/constraints.ts';
 import type { Constraint, Type } from '../../types/type/index.ts';
 import { baseOf } from '../../types/unions/union-members.ts';
 import type { CallArgument } from '../choosing/call-arguments.ts';
