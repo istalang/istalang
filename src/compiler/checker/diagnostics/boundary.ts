@@ -1,10 +1,11 @@
 /**
- * The checker's diagnostics of the host boundary, codes 5900–5949 (§3.6, §3.16, §9): externs a
- * host implements and annotations; a type that can't cross as JSON is a constraint not met
- * (generics.ts). A part of the checker's one catalog (index.ts).
+ * The checker's diagnostics of the host boundary and of tests, codes 5900–5999 (§3.6, §3.16, §9,
+ * §10): a part of the checker's one catalog (index.ts), a block of codes per family below. A type
+ * that can't cross as JSON is a constraint not met (generics.ts).
  */
 
 export const boundaryTemplates = {
+  // The host boundary, 5900–5949 (§3.6, §3.16, §9): externs a host implements, and annotations.
   hostReference: {
     code: 5901,
     message: () =>
@@ -60,5 +61,27 @@ export const boundaryTemplates = {
     code: 5912,
     message: () =>
       "A shape's field takes no annotation, since no declaration carries it; a field that needs one belongs to a struct.",
+  },
+
+  // Tests, 5950–5999 (§10): suite functions, and the testing module's calls whose arguments
+  // its signatures can't constrain.
+  suiteSignature: {
+    code: 5950,
+    message: () => "A suite is a plain 'fn' taking nothing and returning Array<Test>.",
+  },
+  suiteEffect: {
+    code: 5951,
+    message: () =>
+      "A suite function only builds its list of tests: it can't call an extern or touch a shared struct or a slot, so every call builds the same list.",
+  },
+  mockTarget: {
+    code: 5952,
+    message: () =>
+      "A mock's target must name a function: a lambda or a variable has no identity to replace.",
+  },
+  handleOfNonExtern: {
+    code: 5953,
+    message: (type: string) =>
+      `testing.handle makes a value of a host type, and ${type} isn't one.`,
   },
 } as const;

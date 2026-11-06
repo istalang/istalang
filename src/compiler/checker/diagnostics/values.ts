@@ -1,10 +1,18 @@
 /**
- * The checker's diagnostics of struct literals, indented values, tuples, destructuring, methods and
- * references, codes 5200–5299 (§2, §3.1, §3.7, §3.15): a part of the checker's one catalog
- * (index.ts).
+ * The checker's diagnostics of values, codes 5060–5079 and 5200–5299 (§2, §3.1, §3.7, §3.15): a
+ * part of the checker's one catalog (index.ts), a block of codes per family below.
  */
 
 export const valueTemplates = {
+  // Templates, 5060–5079 (§2): what a template's values need.
+  notStringable: {
+    code: 5060,
+    message: (type: string) =>
+      `A template writes each value as text with its toString, and no 'toString' takes ${type} and gives a String (§2).`,
+  },
+
+  // Struct literals, indented values, tuples, destructuring, methods and references, 5200–5299
+  // (§2, §3.1, §3.7, §3.15).
   notTuple: {
     code: 5200,
     message: (found: string) => `${found} is not a tuple.`,

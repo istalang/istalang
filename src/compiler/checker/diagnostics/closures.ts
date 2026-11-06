@@ -3,7 +3,7 @@
  * of the checker's one catalog (index.ts).
  */
 
-import { spelledParameter } from './spelling.ts';
+import { spelledParameter } from './generics.ts';
 
 export const closureTemplates = {
   nestedFunctionForm: {

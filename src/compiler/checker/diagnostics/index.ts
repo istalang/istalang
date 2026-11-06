@@ -1,7 +1,7 @@
 /**
  * Diagnostics of checking types, codes 5000–5999 (§2–§4): one catalog. The codes every feature
- * shares (5000–5099) are here; a feature slice with a block of its own keeps its templates in a
- * part beside this one, named for the feature.
+ * shares (5000–5059) are here; a feature keeps its blocks of codes in a part beside this one, named
+ * for the feature.
  *
  * Messages name types the way source writes them (types/type/type-text.ts), so the caller passes
  * text. A diagnostic about a value points at the expression that has it; one about a declaration
@@ -14,14 +14,8 @@ import { closureTemplates } from './closures.ts';
 import { collectionTemplates } from './collections.ts';
 import { concurrencyTemplates } from './concurrency.ts';
 import { genericTemplates } from './generics.ts';
-import { keyTemplates } from './keys.ts';
 import { lifetimeTemplates, weakSideTemplates } from './lifetimes.ts';
-import { packTemplates } from './packs.ts';
 import { patternTemplates } from './patterns.ts';
-import { templateTemplates } from './templates.ts';
-import { testingTemplates } from './testing.ts';
-import { traitObjectTemplates } from './trait-objects.ts';
-import { typeMatchTemplates } from './type-matches.ts';
 import { valueTemplates } from './values.ts';
 
 export const checkerDiagnostics = defineDiagnostics('checker', {
@@ -155,10 +149,6 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
       "This value's field defaults build a value needing those defaults again, so it would never be finished.",
   },
   ...genericTemplates,
-  ...keyTemplates,
-  ...packTemplates,
-  ...traitObjectTemplates,
-  ...typeMatchTemplates,
   ...valueTemplates,
   ...collectionTemplates,
   ...patternTemplates,
@@ -167,6 +157,4 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   ...lifetimeTemplates,
   ...weakSideTemplates,
   ...boundaryTemplates,
-  ...testingTemplates,
-  ...templateTemplates,
 });
