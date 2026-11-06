@@ -10,21 +10,21 @@
  * - A part of a value already in error has the error type, so each mistake is reported once.
  */
 
-import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
-import type { Entity } from '../../../binder/entities.ts';
-import type { ModuleId } from '../../../program/program.ts';
-import { type Identifier, lastName } from '../../../syntax/node.ts';
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import type { NamedType, TypeNode } from '../../../syntax/types/index.ts';
-import type { Checker } from '../../check.ts';
-import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import type { FieldStep, PartStep } from '../../surface/checked-pattern.ts';
-import { itemField } from '../../surface/struct-items.ts';
-import { unfolded } from '../../types/type/computed-types.ts';
-import type { AnyType, FieldMember, Type, UnionType } from '../../types/type/index.ts';
-import { errorType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type/type-text.ts';
-import { namesOwnType, patternTypeOf } from '../../types/written/pattern-types.ts';
+import type { Diagnostic } from '../../../../../diagnostics/diagnostic.ts';
+import type { Entity } from '../../../../binder/entities.ts';
+import type { ModuleId } from '../../../../program/program.ts';
+import { type Identifier, lastName } from '../../../../syntax/node.ts';
+import type { AnchoredSpan } from '../../../../syntax/positions.ts';
+import type { NamedType, TypeNode } from '../../../../syntax/types/index.ts';
+import type { Checker } from '../../../check.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import type { FieldStep, PartStep } from '../../../surface/checked-pattern.ts';
+import { itemField } from '../../../surface/struct-items.ts';
+import { unfolded } from '../../../types/type/computed-types.ts';
+import type { AnyType, FieldMember, Type, UnionType } from '../../../types/type/index.ts';
+import { errorType } from '../../../types/type/primitives.ts';
+import { typeText } from '../../../types/type/type-text.ts';
+import { namesOwnType, patternTypeOf } from '../../../types/written/pattern-types.ts';
 
 /** What a pattern reads and where it reports, in a body or in a top-level constant. */
 export interface PatternScope {
@@ -181,8 +181,8 @@ export interface TakenFields<Step extends PartStep> {
 
 /**
  * The part of a struct or variant value of `part` that the field `item` gives holds, among
- * `taken`'s fields (../../surface/struct-items.ts); an item giving none is reported, and its part
- * has the error type.
+ * `taken`'s fields (../../../surface/struct-items.ts); an item giving none is reported, and its
+ * part has the error type.
  */
 export function fieldPart<Step extends PartStep>(
   scope: Pick<PatternScope, 'report' | 'recordField'>,

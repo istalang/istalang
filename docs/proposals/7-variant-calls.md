@@ -141,7 +141,7 @@ const ctx = struct{...sc.ctx, search}                         # sc.ctx's fields,
 2. **Checker.**
    - **Arguments:** binding a call's arguments to a variant's fields reuses the binding of arguments to parameters (`checker/resolution/calls/`, `takenBy`), fed the variant's fields as parameters. Defaults and rest come with it, and no second binding rule exists.
    - **The value:** the built value is the brace literal's (`expressions/structs/variants.ts`).
-   - **Patterns:** call patterns read the fields through `constructs/patterns/constructs/struct-fields.ts`, positions mapped to declared order.
+   - **Patterns:** call patterns read the fields through `constructs/patterns/walk/kinds/struct-fields.ts`, positions mapped to declared order.
 3. **Widening.**
    - **Checker:** `struct{...x, items}` is checked as the struct comprehension it stands for (`constructs/expressions/structs/struct-comprehensions.ts`), given the items' names. It records the comprehension it builds, as an indented value records the literal it builds (proposal 5), so lowering and computation need nothing new.
    - **Expected type:** the update or widen decision reads it through `types/fitting/expected.ts`.

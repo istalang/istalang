@@ -41,7 +41,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
   - `declarations.ts`'s banner states: *"The tree keeps each declaration form apart where the forms hold different things, so a consumer never meets a combination the syntax can't produce."* Yet `shared struct` is modeled as `isShared: boolean` on `StructDeclaration` (requiring ~12 call sites across checker and lowering to check `isShared`), and `new X{…}` is modeled as `isNew: boolean` on `StructLiteral`.
   - Similarly, optional chaining uses `isOptional: boolean` on `MemberAccess`, `TupleElement`, `Index`, and `Call`, but `operator: '*' | '->' | '?->'` on `Dereference` (`expressions/chains.ts`).
 - **Missing `unparenthesized` helper for `Pattern` and `TypeNode` (`src/compiler/syntax/patterns.ts`, `types.ts`, D214):**
-  - `src/compiler/syntax/expressions/index.ts` exports `unparenthesized(node: Expression): Expression`, which every phase uses. `syntax/patterns.ts` has `ParenthesizedPattern` and `syntax/types/index.ts` has `ParenthesizedType`, but neither exports an `unparenthesized` helper, forcing `src/compiler/checker/constructs/patterns/walk.ts` to define a local `unparenthesized(pattern: Pattern)` copy.
+  - `src/compiler/syntax/expressions/index.ts` exports `unparenthesized(node: Expression): Expression`, which every phase uses. `syntax/patterns.ts` has `ParenthesizedPattern` and `syntax/types/index.ts` has `ParenthesizedType`, but neither exports an `unparenthesized` helper, forcing `src/compiler/checker/constructs/patterns/walk/index.ts` to define a local `unparenthesized(pattern: Pattern)` copy.
 - **Parallel destructuring-target helpers split across `syntax/statements/index.ts` and `syntax/patterns.ts`:**
   - Because `VariableDeclaration.targets` and `For.targets` are `Pattern[]` while `Assignment.targets` are `Expression[]`, `syntax/statements/index.ts` defines `destructuringOf`, `isTarget`, `destructures`, `targetParts`, `isUnnamedTarget`, and `hasUnnamedTarget`, while `syntax/patterns.ts` defines `targetLeaves`, `targetNames`, and `hasUnnamedPart`.
 - **Synthetic field-default functions tracked via a module-global `WeakSet` (`src/compiler/syntax/declarations/field-defaults.ts`, B9, Q5):**
@@ -176,7 +176,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 - **Two stages conflated in `exhaustiveness.ts` `Shape` union & string-encoded array lengths (D224):**
   - `Shape` in `constructs/patterns/exhaustiveness/exhaustiveness.ts` combines pre-normalization AST shapes (`or`, `array`) with matrix-specialization shapes (`any`, `constructor`), forcing `Matrix.useful`, `specialize`, and `shapes.ts` `witnessText` to guard against `array` / `or` with `unreachable`.
   - Array-length constructors encode their semantics in strings (`[3]` vs. `[3+]`) and parse them back via `isLongerKey` (`key.endsWith('+]')`).
-- **Side-channel `walk.downcasts` map and duplicate `unparenthesized` in `constructs/patterns/walk.ts` (D214):**
+- **Side-channel `walk.downcasts` map and duplicate `unparenthesized` in `constructs/patterns/walk/index.ts` (D214):**
   - `takeDowncast` writes the narrowed `ValuePart` into `walk.downcasts` keyed by AST node, and `AsPattern` reads it back through a file-private `unparenthesized(node: Pattern)` helper instead of `walk.take` returning the matched `ValuePart` directly.
 - **False user diagnostics on prelude-owned pattern and operator helpers (`constructs/patterns/matching.ts`, `expressions/access/optionals.ts`, `expressions/literals/collections.ts`, `expressions/templates.ts`, B11):**
   - Calls to toolchain-invariant prelude functions (`_patternItem`, `_patternRest`, `length`, `compare`, `_inclusiveEnd`, `panic`, `join`) go through `implicitCall`, which requires a user-facing `failure: () => Diagnostic` callback that invents impossible user errors if the prelude lacks them.
@@ -362,7 +362,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | Unpacking `Array<T>` element type in checker | `wellKnownArguments(checker, wellKnown.array, type)?.[0]` at 7 sites | No `arrayElement` helper in `checker/types/type/well-known.ts` (Q8) |
 | What heap objects are roots | `scheduler/instance/index.ts` (`'execution' \| 'answer'`) | `lifetimes/holders.ts`, `lifetimes/orphans.ts`, `scheduler/instance/heap.ts` (`'execution'` only) (D165, D198) |
 | Building an `Optional<int>` variant in lowering | `lowering/expressions/structs/variants.ts` (`buildVariant`) | `lowering/expressions/collections/collections.ts` (`optionalInt`) |
-| Unparenthesizing AST nodes | `syntax/expressions/index.ts` (`unparenthesized`) | `checker/constructs/patterns/walk.ts` (private `unparenthesized` for patterns) (D214) |
+| Unparenthesizing AST nodes | `syntax/expressions/index.ts` (`unparenthesized`) | `checker/constructs/patterns/walk/index.ts` (private `unparenthesized` for patterns) (D214) |
 
 ### 7. Language Pitfalls Solved vs. Pitfalls Remaining
 

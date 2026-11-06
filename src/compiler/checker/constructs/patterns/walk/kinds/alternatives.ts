@@ -1,20 +1,20 @@
 /**
  * What an or-pattern's alternatives agree on (§3.11): the names they bind, each with one type, and
  * what of the part they select between them, which a name bound to the whole (`A | B as x`) has.
- * The walk takes each alternative (../walk.ts); these rules read what it found.
+ * The walk takes each alternative (../index.ts); these rules read what it found.
  *
- * - Alternatives selecting members of the part's union select the union of those members: `case
- *   Int | String as v` binds `v: Int | String`, as far as earlier cases left them (../members.ts
+ * - Alternatives selecting members of the part's union select the union of those members: `case Int
+ *   | String as v` binds `v: Int | String`, as far as earlier cases left them (../members.ts
  *   `leftOf`). Alternatives downcasting a part of an `any` type, or selecting literals through it,
- *   select the union of what they select (`case Int | String as v`). Where one selects nothing,
- *   the whole part is bound.
+ *   select the union of what they select (`case Int | String as v`). Where one selects nothing, the
+ *   whole part is bound.
  */
 
-import type { PartBinding, PatternTest } from '../../../surface/checked-pattern.ts';
-import { sameType } from '../../../types/identity/identity.ts';
-import type { AnyType, Type } from '../../../types/type/index.ts';
-import type { TypeRules } from '../../../types/type/type-rules.ts';
-import { unionOf } from '../../../types/unions/unions.ts';
+import type { PartBinding, PatternTest } from '../../../../surface/checked-pattern.ts';
+import { sameType } from '../../../../types/identity/identity.ts';
+import type { AnyType, Type } from '../../../../types/type/index.ts';
+import type { TypeRules } from '../../../../types/type/type-rules.ts';
+import { unionOf } from '../../../../types/unions/unions.ts';
 import { leftOf, unionPart } from '../members.ts';
 import type { ValuePart } from '../parts.ts';
 

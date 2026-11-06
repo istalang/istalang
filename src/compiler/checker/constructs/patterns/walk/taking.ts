@@ -1,15 +1,15 @@
 /**
  * Taking a value apart into targets (§3.11, §3.15): one target takes it whole, several a tuple of
- * as many, and a tuple or struct destructuring each of its parts. A pattern's walk (walk.ts) and an
- * assignment's (constructs/statements/assignments.ts) take apart the same way; only what stands at
- * their leaves differs, which each says through its own `take`.
+ * as many, and a tuple or struct destructuring each of its parts. A pattern's walk (walk/index.ts)
+ * and an assignment's (constructs/statements/assignments.ts) take apart the same way; only what
+ * stands at their leaves differs, which each says through its own `take`.
  */
 
-import type { AnchoredSpan } from '../../../syntax/positions.ts';
-import type { Destructuring, FieldTarget } from '../../../syntax/statements/targets.ts';
-import type { FieldStep, PartStep } from '../../surface/checked-pattern.ts';
-import { anyShape, type Shape } from './exhaustiveness/exhaustiveness.ts';
-import { structKey, tupleKey } from './exhaustiveness/shapes.ts';
+import type { AnchoredSpan } from '../../../../syntax/positions.ts';
+import type { Destructuring, FieldTarget } from '../../../../syntax/statements/targets.ts';
+import type { FieldStep, PartStep } from '../../../surface/checked-pattern.ts';
+import { anyShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
+import { structKey, tupleKey } from '../exhaustiveness/shapes.ts';
 import {
   elementParts,
   fieldPart,

@@ -8,16 +8,16 @@
  * - A type that doesn't meet the `any` type's constraints is never inside it, so the pattern is
  *   ruled out (§3.11): it never matches.
  * - The types inside an `any` type are an open set, so a downcast covers none of them for
- *   exhaustiveness: a `match` on one needs `case _` (../walk.ts).
+ *   exhaustiveness: a `match` on one needs `case _` (../index.ts).
  */
 
-import { lastName } from '../../../../syntax/node.ts';
-import type { NamePattern, StructPattern } from '../../../../syntax/patterns.ts';
-import type { BodyContext } from '../../../contexts/body-context.ts';
-import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import type { PatternTest } from '../../../surface/checked-pattern.ts';
-import type { AnyType, Type } from '../../../types/type/index.ts';
-import { downcastTargetOf } from '../../../types/written/pattern-types.ts';
+import { lastName } from '../../../../../syntax/node.ts';
+import type { NamePattern, StructPattern } from '../../../../../syntax/patterns.ts';
+import type { BodyContext } from '../../../../contexts/body-context.ts';
+import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
+import type { PatternTest } from '../../../../surface/checked-pattern.ts';
+import type { AnyType, Type } from '../../../../types/type/index.ts';
+import { downcastTargetOf } from '../../../../types/written/pattern-types.ts';
 import type { ValuePart } from '../parts.ts';
 
 /** A downcast: its test, and the part it matches the rest of the pattern against. */

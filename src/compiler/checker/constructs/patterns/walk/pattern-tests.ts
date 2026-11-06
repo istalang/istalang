@@ -1,11 +1,11 @@
 /**
  * What the walk asks of whoever checks a pattern that may fail (§3.11): each construct that could
  * fail to match, checked into the tests lowering runs and a shape for exhaustiveness. A `match`
- * case or `is` provides them (matching.ts); a target has none, so the walk refuses those
- * constructs there (walk.ts).
+ * case or `is` provides them (../matching.ts); a target has none, so the walk refuses those
+ * constructs there (walk/index.ts).
  */
 
-import type { VariantNaming } from '../../../binder/entities.ts';
+import type { VariantNaming } from '../../../../binder/entities.ts';
 import type {
   ArrayPattern,
   CompareFieldPattern,
@@ -13,12 +13,12 @@ import type {
   NamePattern,
   RangePattern,
   StructPattern,
-} from '../../../syntax/patterns.ts';
-import { neverTest, type PatternTest } from '../../surface/checked-pattern.ts';
-import type { AnyType, FieldMember, Type } from '../../types/type/index.ts';
-import { neverType } from '../../types/type/primitives.ts';
-import type { Downcast } from './constructs/downcasts.ts';
-import { nothingShape, type Shape } from './exhaustiveness/exhaustiveness.ts';
+} from '../../../../syntax/patterns.ts';
+import { neverTest, type PatternTest } from '../../../surface/checked-pattern.ts';
+import type { AnyType, FieldMember, Type } from '../../../types/type/index.ts';
+import { neverType } from '../../../types/type/primitives.ts';
+import { nothingShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
+import type { Downcast } from './kinds/downcasts.ts';
 import type { ValuePart } from './parts.ts';
 
 /** What a refutable construct gives the walk: its tests, and its shape (undefined: a guard). */

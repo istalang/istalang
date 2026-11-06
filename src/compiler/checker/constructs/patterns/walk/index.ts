@@ -5,8 +5,8 @@
  *
  * - The walk owns the structure every use shares: names and `_`, `as`, tuples, struct field items,
  *   arrays, or-patterns, and the parts each reaches (parts.ts). A tuple or struct is taken apart
- *   as an assignment's target is (taking.ts). What could fail to match (a literal, a comparison, a
- *   referring name, a variant, an array's length, a range) goes to `PatternTests`, which a
+ *   as an assignment's target is (taking.ts). What could fail to match (a literal, a comparison,
+ *   a referring name, a variant, an array's length, a range) goes to `PatternTests`, which a
  *   `match` case or `is` provides. A target has none, so each such construct is refused there: a
  *   target must always match.
  * - A bare name binds when the binder made it a variable, as it does for every bare name of a
@@ -14,42 +14,43 @@
  * - Tests come out in the order lowering runs them: a variant is tested before its fields are read.
  * - An or-pattern walks each alternative on its own, into one `or` test. Its alternatives bind the
  *   first's variables (binder), so a binding is named by its variable's declaring name, and the
- *   alternatives must agree on the names and their types (constructs/alternatives.ts). An
+ *   alternatives must agree on the names and their types (walk/kinds/alternatives.ts). An
  *   alternative its part's type rules out (a `never` test, §3.11) is left out; with none left, the
  *   pattern never matches.
- * - What a pattern selects of its part comes first (selections.ts): a downcast of an `any` value,
- *   or the members of a union's. Type arguments are written only there, on a union's members, and
- *   in a parameter's own pattern, whose head names the parameter's type (§3.3, `typed`).
+ * - What a pattern selects of its part comes first (selections.ts): a downcast of an `any`
+ *   value, or the members of a union's. Type arguments are written only there, on a union's
+ *   members, and in a parameter's own pattern, whose head names the parameter's type (§3.3,
+ *   `typed`).
  * - A shape is undefined when the pattern acts as a guard for exhaustiveness: it compares by more
  *   than `==` against a literal or variant, tests one field twice, or is a range (§3.11).
  */
 
-import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
-import { unreachable } from '../../../../structures/unreachable.ts';
-import { type Identifier, isMissingName, lastName } from '../../../syntax/node.ts';
+import { type Handlers, handlerOf } from '../../../../../structures/kind-table.ts';
+import { unreachable } from '../../../../../structures/unreachable.ts';
+import { type Identifier, isMissingName, lastName } from '../../../../syntax/node.ts';
 import type {
   NamePattern,
   OrPattern,
   Pattern,
   PatternPart,
   StructPattern,
-} from '../../../syntax/patterns.ts';
-import { targetNames, unparenthesizedPattern } from '../../../syntax/patterns.ts';
-import { type AnchoredSpan, spanAcross } from '../../../syntax/positions.ts';
-import { checkerDiagnostics } from '../../diagnostics/index.ts';
+} from '../../../../syntax/patterns.ts';
+import { targetNames, unparenthesizedPattern } from '../../../../syntax/patterns.ts';
+import { type AnchoredSpan, spanAcross } from '../../../../syntax/positions.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import {
   cantMatch,
   neverTest,
   type PartBinding,
   type PatternTest,
   type TargetBinding,
-} from '../../surface/checked-pattern.ts';
-import type { Type } from '../../types/type/index.ts';
-import { errorType, isPrimitive, neverType } from '../../types/type/primitives.ts';
-import { partSelected, sameNames } from './constructs/alternatives.ts';
-import { takeArray } from './constructs/arrays.ts';
-import { isStructNotKnown, restBinding, takeFieldsByName } from './constructs/struct-fields.ts';
-import { anyShape, nothingShape, type Shape } from './exhaustiveness/exhaustiveness.ts';
+} from '../../../surface/checked-pattern.ts';
+import type { Type } from '../../../types/type/index.ts';
+import { errorType, isPrimitive, neverType } from '../../../types/type/primitives.ts';
+import { anyShape, nothingShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
+import { partSelected, sameNames } from './kinds/alternatives.ts';
+import { takeArray } from './kinds/arrays.ts';
+import { isStructNotKnown, restBinding, takeFieldsByName } from './kinds/struct-fields.ts';
 import { type PatternScope, type ValuePart, variantFieldStep } from './parts.ts';
 import type { Leaf, PatternTests, Selection } from './pattern-tests.ts';
 import { literalPart, refuseTypeArguments, selectionOf } from './selections.ts';

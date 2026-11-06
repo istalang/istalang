@@ -1,7 +1,7 @@
 /**
  * The members of a union a pattern selects (§3.11): against a union, every pattern that could fail
  * to match tests which member the value is, then matches the rest of itself against that member's
- * value, as a downcast does on an `any` value (constructs/downcasts.ts). What a name, a literal or
+ * value, as a downcast does on an `any` value (walk/kinds/downcasts.ts). What a name, a literal or
  * a pattern's kind selects is types/written/pattern-types.ts's rule, which completion reads too;
  * this module applies it to a written pattern and reports what goes wrong.
  *
@@ -17,26 +17,26 @@
  *   the alias the pattern names when that is all of them.
  */
 
-import type { Entity } from '../../../binder/entities.ts';
-import type { Expression } from '../../../syntax/expressions/index.ts';
-import { signedNumberOf } from '../../../syntax/expressions/literals/numbers.ts';
-import { isMissingName, lastName } from '../../../syntax/node.ts';
-import type { NamePattern, Pattern, PatternPart } from '../../../syntax/patterns.ts';
-import type { TypeNode } from '../../../syntax/types/index.ts';
-import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import type { PatternTest } from '../../surface/checked-pattern.ts';
-import { sameType } from '../../types/identity/identity.ts';
-import type { Type, UnionType } from '../../types/type/index.ts';
-import { floatType, noneType } from '../../types/type/primitives.ts';
-import { typeText } from '../../types/type/type-text.ts';
-import { baseOf } from '../../types/unions/union-members.ts';
+import type { Entity } from '../../../../binder/entities.ts';
+import type { Expression } from '../../../../syntax/expressions/index.ts';
+import { signedNumberOf } from '../../../../syntax/expressions/literals/numbers.ts';
+import { isMissingName, lastName } from '../../../../syntax/node.ts';
+import type { NamePattern, Pattern, PatternPart } from '../../../../syntax/patterns.ts';
+import type { TypeNode } from '../../../../syntax/types/index.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import type { PatternTest } from '../../../surface/checked-pattern.ts';
+import { sameType } from '../../../types/identity/identity.ts';
+import type { Type, UnionType } from '../../../types/type/index.ts';
+import { floatType, noneType } from '../../../types/type/primitives.ts';
+import { typeText } from '../../../types/type/type-text.ts';
+import { baseOf } from '../../../types/unions/union-members.ts';
 import {
   hasMember,
   hasOneValue,
   membersOf,
   unionOfNormalized,
   writtenLiteral,
-} from '../../types/unions/unions.ts';
+} from '../../../types/unions/unions.ts';
 import {
   instancesWith,
   kindMembers,
@@ -45,10 +45,10 @@ import {
   membersOfType,
   patternTypeOf,
   variantOwners,
-} from '../../types/written/pattern-types.ts';
-import { typeOfEntity } from '../../types/written/resolve-type.ts';
-import { anyShape } from './exhaustiveness/exhaustiveness.ts';
-import { memberShape } from './exhaustiveness/shapes.ts';
+} from '../../../types/written/pattern-types.ts';
+import { typeOfEntity } from '../../../types/written/resolve-type.ts';
+import { anyShape } from '../exhaustiveness/exhaustiveness.ts';
+import { memberShape } from '../exhaustiveness/shapes.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import { ruledOutSelection, type Selection } from './pattern-tests.ts';
 

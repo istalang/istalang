@@ -2,9 +2,9 @@
  * Assignments (§3.4, §3.9, §3.15).
  *
  * - A target is a place, or a tuple or struct literal of targets that takes the value apart, by the
- *   walk a declaration's targets take (constructs/patterns/walk.ts); several targets are a tuple of
- *   them. Taking a value apart checks the value on its own first, then fits each part to the place
- *   it goes to.
+ *   walk a declaration's targets take (constructs/patterns/walk/index.ts); several targets are a
+ *   tuple of them. Taking a value apart checks the value on its own first, then fits each part to
+ *   the place it goes to.
  * - In a struct target, the shorthand `first` assigns the variable `first`, and a struct with one
  *   field takes a positional target, as a literal takes a positional value (§3.1).
  * - Only a `let` is reassigned. A parameter is the function's own copy (§3.1), so it may be too;
@@ -50,8 +50,8 @@ import type { FieldStep } from '../../surface/checked-pattern.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, tupleType } from '../../types/type/primitives.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness/exhaustiveness.ts';
-import { bodyScope, type ValuePart } from '../patterns/parts.ts';
-import { type Taking, takeApart, takeTargets } from '../patterns/taking.ts';
+import { bodyScope, type ValuePart } from '../patterns/walk/parts.ts';
+import { type Taking, takeApart, takeTargets } from '../patterns/walk/taking.ts';
 
 export function checkAssignment(context: BodyContext, node: Assignment): void {
   const [only, ...more] = node.targets;
@@ -178,7 +178,7 @@ function writtenFit(
 }
 
 /**
- * Taking an assigned value apart (constructs/patterns/taking.ts): where the places written are
+ * Taking an assigned value apart (constructs/patterns/walk/taking.ts): where the places written are
  * collected. Its parts are tuple positions and struct fields, since an assignment's targets read no
  * array's items.
  */

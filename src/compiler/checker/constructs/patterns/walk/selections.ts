@@ -1,8 +1,8 @@
 /**
  * What a pattern selects of a value before taking it apart (§3.10, §3.11): against an `any` value,
- * the type a downcast names (constructs/downcasts.ts); against a union's, the members it matches
+ * the type a downcast names (walk/kinds/downcasts.ts); against a union's, the members it matches
  * (members.ts). Either is a test, then the rest of the pattern against the value it selected, so
- * the walk takes both alike (walk.ts).
+ * the walk takes both alike (walk/index.ts).
  *
  * - A name that binds selects nothing, nor does a name naming the part's own type, which matches
  *   every value of it: an `any` type's, or a union's through its alias.
@@ -18,26 +18,26 @@
  *   (exhaustiveness/shapes.ts).
  */
 
-import { lastName } from '../../../syntax/node.ts';
+import { lastName } from '../../../../syntax/node.ts';
 import type {
   LiteralPattern,
   NamePattern,
   Pattern,
   PatternPart,
   StructPattern,
-} from '../../../syntax/patterns.ts';
-import { spanAcross } from '../../../syntax/positions.ts';
-import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { sameType } from '../../types/identity/identity.ts';
-import type { AnyType, Type } from '../../types/type/index.ts';
-import { isKnown } from '../../types/unions/equality.ts';
-import { baseOf } from '../../types/unions/union-members.ts';
+} from '../../../../syntax/patterns.ts';
+import { spanAcross } from '../../../../syntax/positions.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import { sameType } from '../../../types/identity/identity.ts';
+import type { AnyType, Type } from '../../../types/type/index.ts';
+import { isKnown } from '../../../types/unions/equality.ts';
+import { baseOf } from '../../../types/unions/union-members.ts';
 import {
   literalMembers,
   namesOwnType,
   patternTypeOf,
   variantOwners,
-} from '../../types/written/pattern-types.ts';
+} from '../../../types/written/pattern-types.ts';
 import { literalTypeOf, memberTaken, selectsMember, unionPart } from './members.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import { type PatternTests, ruledOutSelection, type Selection } from './pattern-tests.ts';

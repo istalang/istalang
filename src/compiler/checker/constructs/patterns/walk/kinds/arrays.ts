@@ -2,13 +2,13 @@
  * Array patterns (§3.11): `[first, ...rest, last]` tests its part's length first, then takes each
  * item against the item it names, counted from the start before the rest and from the end after
  * it; the rest is the items between. A target never takes one, since the length can fail
- * (../walk.ts), so only a walk with tests comes here.
+ * (../index.ts), so only a walk with tests comes here.
  */
 
-import type { ArrayPattern, Pattern, PatternPart } from '../../../../syntax/patterns.ts';
-import type { PatternTest } from '../../../surface/checked-pattern.ts';
-import { errorType } from '../../../types/type/primitives.ts';
-import { anyShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
+import type { ArrayPattern, Pattern, PatternPart } from '../../../../../syntax/patterns.ts';
+import type { PatternTest } from '../../../../surface/checked-pattern.ts';
+import { errorType } from '../../../../types/type/primitives.ts';
+import { anyShape, type Shape } from '../../exhaustiveness/exhaustiveness.ts';
 import type { ValuePart } from '../parts.ts';
 import type { PatternTests } from '../pattern-tests.ts';
 import type { Taking } from '../taking.ts';

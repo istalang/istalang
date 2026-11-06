@@ -12,16 +12,16 @@
  *   makes them known otherwise, so field loops, comprehensions and keys take it as any other.
  */
 
-import type { Identifier } from '../../../../syntax/node.ts';
-import type { RestPattern } from '../../../../syntax/patterns.ts';
-import type { FieldTarget } from '../../../../syntax/statements/targets.ts';
-import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import type { PartBinding } from '../../../surface/checked-pattern.ts';
-import type { Type, TypeParameterType } from '../../../types/type/index.ts';
-import type { TypeRules } from '../../../types/type/type-rules.ts';
-import { typeText } from '../../../types/type/type-text.ts';
-import { literalType } from '../../../types/unions/unions.ts';
-import { anyShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
+import type { Identifier } from '../../../../../syntax/node.ts';
+import type { RestPattern } from '../../../../../syntax/patterns.ts';
+import type { FieldTarget } from '../../../../../syntax/statements/targets.ts';
+import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
+import type { PartBinding } from '../../../../surface/checked-pattern.ts';
+import type { Type, TypeParameterType } from '../../../../types/type/index.ts';
+import type { TypeRules } from '../../../../types/type/type-rules.ts';
+import { typeText } from '../../../../types/type/type-text.ts';
+import { literalType } from '../../../../types/unions/unions.ts';
+import { anyShape, type Shape } from '../../exhaustiveness/exhaustiveness.ts';
 import { type PatternScope, structFieldStep, type ValuePart } from '../parts.ts';
 import type { Taking } from '../taking.ts';
 

@@ -1,11 +1,11 @@
 /**
  * Patterns that may fail to match (§3.11): a `match` case's and an `is`'s. The walk is shared with
- * targets (walk.ts); this module checks what only these patterns have, and keeps what lowering
- * reads of them.
+ * targets (walk/index.ts); this module checks what only these patterns have, and keeps what
+ * lowering reads of them.
  *
  * - A literal is compared with `==`, so it has the part's own type. On a union's value it first
- *   selects its member (members.ts), so `case 1` against an `Int?` compares the `Int` held, and
- *   `case none` selects `None`. One the part's type can't hold is ruled out (§3.11), a `never`
+ *   selects its member (walk/members.ts), so `case 1` against an `Int?` compares the `Int` held,
+ *   and `case none` selects `None`. One the part's type can't hold is ruled out (§3.11), a `never`
  *   test (checked-pattern.ts), and so is a field's `==` its type fixes to fail.
  * - A field compared with `==` or `!=` follows `==`'s rule (types/unions/equality.ts); any other
  *   comparison calls `compare`. Compared with `==` with a value fitting the field's type, it
@@ -19,7 +19,7 @@
  * - An array pattern tests its part's length, then reads its items and rest, all through prelude
  *   calls made here, at the pattern: `length`, `compare` against the fixed count when there is a
  *   rest, and `_patternItem` and `_patternRest` (the prelude's, so no program's replaces them).
- * - A range pattern's leaf is constructs/ranges.ts's.
+ * - A range pattern's leaf is walk/kinds/ranges.ts's.
  */
 
 import { arrayPatternFunctions } from '../../../../language/well-known/implicit-calls.ts';
@@ -59,12 +59,13 @@ import {
 import { optionalInner } from '../../types/unions/unions.ts';
 import { chooseVariant, nameNodeOf } from '../../types/written/named-types.ts';
 import { namesOwnType, patternTypeOf } from '../../types/written/pattern-types.ts';
-import { downcastOf } from './constructs/downcasts.ts';
-import { compareFunction, rangeLeaf } from './constructs/ranges.ts';
 import { anyShape } from './exhaustiveness/exhaustiveness.ts';
 import { subjectPart } from './exhaustiveness/remaining.ts';
 import { literalShape, memberShape, nullaryShape } from './exhaustiveness/shapes.ts';
-import { bodyScope, otherTypeNamed, type ValuePart } from './parts.ts';
+import { type WalkedPattern, walkPattern } from './walk/index.ts';
+import { downcastOf } from './walk/kinds/downcasts.ts';
+import { compareFunction, rangeLeaf } from './walk/kinds/ranges.ts';
+import { bodyScope, otherTypeNamed, type ValuePart } from './walk/parts.ts';
 import {
   type ArrayPart,
   failed,
@@ -72,8 +73,7 @@ import {
   type PatternTests,
   ruledOutLeaf,
   type VariantPart,
-} from './pattern-tests.ts';
-import { type WalkedPattern, walkPattern } from './walk.ts';
+} from './walk/pattern-tests.ts';
 
 /** The patterns of one body as checked, for lowering. */
 export class CheckedPatterns implements PatternRecord {

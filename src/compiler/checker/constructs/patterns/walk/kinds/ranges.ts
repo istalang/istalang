@@ -3,15 +3,15 @@
  * `compare` made at that bound, and acts as a guard for exhaustiveness; an empty range is reported.
  */
 
-import { signedNumberOf } from '../../../../syntax/expressions/literals/numbers.ts';
-import { binaryOperators, type Relation } from '../../../../syntax/operators.ts';
-import type { LiteralPattern, RangePattern } from '../../../../syntax/patterns.ts';
-import type { BodyContext } from '../../../contexts/body-context.ts';
-import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { preludeCall } from '../../../resolution/applying/implicit.ts';
-import type { PatternTest } from '../../../surface/checked-pattern.ts';
-import { intType, isPrimitive } from '../../../types/type/primitives.ts';
-import { typeText } from '../../../types/type/type-text.ts';
+import { signedNumberOf } from '../../../../../syntax/expressions/literals/numbers.ts';
+import { binaryOperators, type Relation } from '../../../../../syntax/operators.ts';
+import type { LiteralPattern, RangePattern } from '../../../../../syntax/patterns.ts';
+import type { BodyContext } from '../../../../contexts/body-context.ts';
+import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
+import { preludeCall } from '../../../../resolution/applying/implicit.ts';
+import type { PatternTest } from '../../../../surface/checked-pattern.ts';
+import { intType, isPrimitive } from '../../../../types/type/primitives.ts';
+import { typeText } from '../../../../types/type/type-text.ts';
 import type { ValuePart } from '../parts.ts';
 import { failed, type Leaf } from '../pattern-tests.ts';
 
