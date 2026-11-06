@@ -134,7 +134,7 @@ The CLI picks every implementation at its composition root: `memoryStore` or `di
 | Operators | operator text: level, associativity, meaning | `syntax/operators.ts` |
 | Binder handlers | node kind | `binder/constructs/`: `declarations.ts`, `expressions.ts`, `statements.ts`, `patterns.ts`, `types.ts` |
 | Checker handlers | node kind (six tables) | `checker/expressions/expressions.ts`, `statements/`, `declarations/`, `types/written/resolve-type.ts` |
-| Flow constructs | node kind | `checker/flow/forward.ts` |
+| Flow constructs | node kind | `checker/rules/flow/forward.ts` |
 | Lowering handlers | node kind | `lowering/expressions/expressions.ts`, `lowering/statements/statements.ts` |
 | Interpreter | instruction kind | `runtime/interpreter/instructions.ts` |
 | Completion | place kind and subject kind | `language-service/completion/` |

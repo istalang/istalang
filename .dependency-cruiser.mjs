@@ -130,7 +130,7 @@ const checkerLayers = [
   'resolution', // what a call or a name may mean, choosing among overloads, conformance
   'resolution/calls', // a call in a body: its arguments checked, the places it changes
   'patterns',
-  'flow', // the order a body's code runs in, which flow rules follow
+  'rules/flow', // the order a body's code runs in, which flow rules follow
   'rules',
   'declarations',
   'closures',

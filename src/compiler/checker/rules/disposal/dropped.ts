@@ -4,7 +4,7 @@
  * again makes it usable, and a declaration run again, as in a loop's next iteration, is a fresh
  * variable.
  *
- * - A body is walked once its checking is done, as the code runs (flow/forward.ts): what was
+ * - A body is walked once its checking is done, as the code runs (rules/flow/forward.ts): what was
  *   dropped on any path flows on, joining where paths meet, so a drop late in a loop's body is
  *   seen by a use early in it.
  * - A name is a use unless it is the one that declares its variable. Patterns, loop targets and
@@ -20,7 +20,7 @@ import { droppedName } from '../../../syntax/statements/readings.ts';
 import type { SyntaxNode } from '../../../syntax/tree.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { flowThrough } from '../../flow/forward.ts';
+import { flowThrough } from '../flow/forward.ts';
 
 /** The variables dropped on some path to a point. */
 type Dropped = ReadonlySet<VariableEntity>;

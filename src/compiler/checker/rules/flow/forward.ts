@@ -21,18 +21,18 @@
  *   its initializer before its targets declare their names, and a comprehension runs as a loop.
  */
 
-import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
-import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
-import { chainStepOf, isOptionallyChained } from '../../syntax/expressions/chains.ts';
+import { type Handlers, handlerOf } from '../../../../structures/kind-table.ts';
+import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
+import { chainStepOf, isOptionallyChained } from '../../../syntax/expressions/chains.ts';
 import type {
   Expression,
   MatchCase,
   SelectCase,
   StructComprehension,
-} from '../../syntax/expressions/index.ts';
-import { casesOf, selectCasesOf, unparenthesized } from '../../syntax/expressions/readings.ts';
-import type { Identifier } from '../../syntax/node.ts';
-import { binaryOperators } from '../../syntax/operators.ts';
+} from '../../../syntax/expressions/index.ts';
+import { casesOf, selectCasesOf, unparenthesized } from '../../../syntax/expressions/readings.ts';
+import type { Identifier } from '../../../syntax/node.ts';
+import { binaryOperators } from '../../../syntax/operators.ts';
 import type {
   Assignment,
   Block,
@@ -40,11 +40,11 @@ import type {
   Continue,
   Drop,
   Statement,
-} from '../../syntax/statements/index.ts';
-import { type OverFields, passedParts } from '../../syntax/statements/readings.ts';
-import { targetParts } from '../../syntax/statements/targets.ts';
-import { fieldChildrenOf, type SyntaxNode } from '../../syntax/tree.ts';
-import type { LabelResolution } from '../surface/checked-body.ts';
+} from '../../../syntax/statements/index.ts';
+import { type OverFields, passedParts } from '../../../syntax/statements/readings.ts';
+import { targetParts } from '../../../syntax/statements/targets.ts';
+import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree.ts';
+import type { LabelResolution } from '../../surface/checked-body.ts';
 import { partsBeside } from './chain-parts.ts';
 
 /** What a flow rule decides: its states, where paths meet, and what its own events do. */

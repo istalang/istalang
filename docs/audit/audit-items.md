@@ -181,9 +181,9 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 - **False user diagnostics on prelude-owned pattern and operator helpers (`patterns/matching.ts`, `expressions/access/optionals.ts`, `expressions/literals/collections.ts`, `expressions/templates.ts`, B11):**
   - Calls to toolchain-invariant prelude functions (`_patternItem`, `_patternRest`, `length`, `compare`, `_inclusiveEnd`, `panic`, `join`) go through `implicitCall`, which requires a user-facing `failure: () => Diagnostic` callback that invents impossible user errors if the prelude lacks them.
 
-#### 4.3 `src/compiler/checker/flow/` & `src/compiler/checker/rules/`
-- **Ad-hoc recursive AST walks outside `flow/forward.ts` (`rules/annotations.ts`, `rules/disposal.ts`, `rules/suites.ts`):**
-  - `flow/forward.ts` provides an exhaustive table-driven control-flow walk for `rules/dropped.ts`, but three other body rules still hand-roll AST walks over `childrenOf` / `bodyChildrenOf`:
+#### 4.3 `src/compiler/checker/rules/flow/` & `src/compiler/checker/rules/`
+- **Ad-hoc recursive AST walks outside `rules/flow/forward.ts` (`rules/annotations.ts`, `rules/disposal.ts`, `rules/suites.ts`):**
+  - `rules/flow/forward.ts` provides an exhaustive table-driven control-flow walk for `rules/dropped.ts`, but three other body rules still hand-roll AST walks over `childrenOf` / `bodyChildrenOf`:
     1. `waits(node)` in `rules/annotations.ts` (which also checks `node.kind === 'Select'` without checking `node.awaits`, treating a non-blocking `select:` with `else:` as a waiting statement for `@Waypoint`).
     2. `checkSelfStays` in `rules/disposal.ts` (walking `childrenOf(node)` with parent-chain array slicing).
     3. `firstEffect` in `rules/suites.ts` (walking `bodyChildrenOf(node)` and checking only `body.calls` — missing implicit calls and struct field-default calls in `body.madeCalls()`).
@@ -301,8 +301,8 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 
 1. **Unified Implicit-Conversion Matcher (`src/compiler/checker/types/fitting/fit.ts` & `src/compiler/checker/types/inference/infer.ts`, D222):**
    - Both `fitOf` and `Inference.match` implement the exact same 5-step conversion hierarchy (exact/assignable → plain-to-async function → 1-tuple ↔ element → `any` trait object → `Optional` wrapping), differing only in how leaf types compare. Extracting one parameterized conversion matcher makes adding or changing an implicit conversion a single-file edit.
-2. **Whole-Body AST / Control-Flow Analysis (`src/compiler/checker/flow/forward.ts` vs. `rules/annotations.ts`, `rules/disposal.ts`, `rules/suites.ts`):**
-   - `flow/forward.ts` models intra-function control flow (skipping nested functions via `nestsFunction`), while `waits` (`annotations.ts`), `checkSelfStays` (`disposal.ts`), and `firstEffect` (`suites.ts`) each hand-roll recursive AST walks over `childrenOf` / `bodyChildrenOf`.
+2. **Whole-Body AST / Control-Flow Analysis (`src/compiler/checker/rules/flow/forward.ts` vs. `rules/annotations.ts`, `rules/disposal.ts`, `rules/suites.ts`):**
+   - `rules/flow/forward.ts` models intra-function control flow (skipping nested functions via `nestsFunction`), while `waits` (`annotations.ts`), `checkSelfStays` (`disposal.ts`), and `firstEffect` (`suites.ts`) each hand-roll recursive AST walks over `childrenOf` / `bodyChildrenOf`.
 3. **Coinductive Type-Graph Traversal (`src/compiler/checker/types/traits/sendable.ts`, `rules/json-forms/index.ts`, `types/properties/held.ts`, `declarations/layout/struct-rules.ts`, Q7):**
    - Four modules walk composite/nominal `Type` graphs with their own visited-set cycle guards (`deciding`, `#deciding`, `walked`, `seen`). Extracting a cycle-safe type-graph reducer unifies all four.
 4. **Comparison & Membership Checking and Lowering (`src/compiler/checker/expressions/operators.ts`, `patterns/matching.ts`, `src/compiler/lowering/expressions/operators.ts`, `lowering/parts/patterns.ts`, D226):**
@@ -332,7 +332,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 ### 4. Modularity: Are Phases Standalone Plugin Registries?
 
 - **Within each phase's AST / bytecode dispatch: Yes.**
-  - Parser (`prefixParselets`, `infixParselets`, `typeParselets`, `patternParselets`, `statementParselets`, `topLevelParselets`), Binder (`declarationHandlers`, `statementHandlers`, `expressionHandlers`, `patternHandlers`, `typeHandlers`), Checker (`declarationHandlers`, `statementHandlers`, `expressionHandlers`, `acceptsHandlers`, `typeHandlers`, `patternHandlers`, `flow/forward.ts` `constructs`), Lowering (`expressionHandlers`, `statementHandlers`), Definition (`operandTable`, `instruction-rules.ts`), and Runtime (`interpreter/instructions.ts`) all use exhaustive `Handlers` tables.
+  - Parser (`prefixParselets`, `infixParselets`, `typeParselets`, `patternParselets`, `statementParselets`, `topLevelParselets`), Binder (`declarationHandlers`, `statementHandlers`, `expressionHandlers`, `patternHandlers`, `typeHandlers`), Checker (`declarationHandlers`, `statementHandlers`, `expressionHandlers`, `acceptsHandlers`, `typeHandlers`, `patternHandlers`, `rules/flow/forward.ts` `constructs`), Lowering (`expressionHandlers`, `statementHandlers`), Definition (`operandTable`, `instruction-rules.ts`), and Runtime (`interpreter/instructions.ts`) all use exhaustive `Handlers` tables.
 - **Where plugin modularity still breaks down:**
   1. **`CheckedBody` / `BodyContext` / `instantiatedBody` (`src/compiler/checker/check.ts`, `context.ts`, `types/instantiation.ts`, Q3, Q13):** Every feature adds side-table methods to `CheckedBody`, concrete class imports to `context.ts`, and manual substitution wrappers to `instantiatedBody`.
   2. **`DefinitionTables` worklist (`src/compiler/lowering/tables/tables.ts`, `lower.ts`):** `PendingEntry | ClosingEntry` is a closed 10-variant union with 10 separate indexing methods.

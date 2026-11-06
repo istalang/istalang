@@ -91,7 +91,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 14. `src/compiler/checker/types/inference/` & `src/compiler/checker/types/traits/`
 - [x] 15. `src/compiler/checker/resolution/`
 - [x] 16. `src/compiler/checker/resolution/calls/`
-- [x] 17. `src/compiler/checker/patterns/` & `src/compiler/checker/flow/`
+- [x] 17. `src/compiler/checker/patterns/` & `src/compiler/checker/rules/flow/`
 - [x] 18. `src/compiler/checker/rules/` (including `rules/json-forms/`)
 - [x] 19. `src/compiler/checker/declarations/` & `src/compiler/checker/closures/`
 - [x] 20. `src/compiler/checker/expressions/`, `src/compiler/checker/statements/` & `src/compiler/checker/lookup/`
@@ -289,11 +289,11 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - `explainNone` (`resolution/calls/resolve.ts`), `implicitOperatorCall` (`resolution/implicit.ts`), and `checkEqualSides` (`types/unions/equality.ts`) each format operand type lists with `.join(' and ')` at the call site instead of `checkerDiagnostics.operatorTypes` formatting an array of operand strings.
   - **Done** (`fast-wins`): `operatorTypes` takes the operand list and joins it.
 
-### 17. `src/compiler/checker/patterns/` & `src/compiler/checker/flow/`
+### 17. `src/compiler/checker/patterns/` & `src/compiler/checker/rules/flow/`
 
-- **Manual `MatchCase` / `SelectCase` filtering in `FlowWalk` (`src/compiler/checker/flow/forward.ts`, `src/compiler/syntax/expressions/index.ts`):**
-  - `constructs.Match` in `flow/forward.ts` writes `node.cases.filter((each) => each.kind === 'MatchCase')` instead of calling `casesOf(node)` (`src/compiler/syntax/expressions/index.ts`).
-  - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `flow/forward.ts`, `binder/constructs/expressions.ts`, `checker/resolution/calls/lambda-arguments.ts`, `checker/expressions/control/select.ts`, and `lowering/expressions/control/select.ts` each filter `each.kind === 'SelectCase'` by hand.
+- **Manual `MatchCase` / `SelectCase` filtering in `FlowWalk` (`src/compiler/checker/rules/flow/forward.ts`, `src/compiler/syntax/expressions/index.ts`):**
+  - `constructs.Match` in `rules/flow/forward.ts` writes `node.cases.filter((each) => each.kind === 'MatchCase')` instead of calling `casesOf(node)` (`src/compiler/syntax/expressions/index.ts`).
+  - Similarly, `Select` has no `selectCasesOf(node)` helper alongside `casesOf(node)` in `syntax/expressions/index.ts`, so `rules/flow/forward.ts`, `binder/constructs/expressions.ts`, `checker/resolution/calls/lambda-arguments.ts`, `checker/expressions/control/select.ts`, and `lowering/expressions/control/select.ts` each filter `each.kind === 'SelectCase'` by hand.
   - **Done** (`fast-wins`): `FlowWalk` calls `casesOf`; `selectCasesOf` beside it serves the five select sites.
 - **Three separate implementations of negative numeric literal unwrapping (`src/compiler/checker/patterns/matching.ts`, `patterns/exhaustiveness/shapes.ts`, `rules/computation.ts`):**
   - `intValueOf` (`patterns/matching.ts`), `literalKey` (`patterns/exhaustiveness/shapes.ts`), and `Computation.#own` / `isNumberLiteral` (`rules/computation.ts`) each inspect `Unary` with `operator === '-'` over numeric literals independently (and `literalKey` formats `-0` as `'-IntegerLiteral:0'` vs. `'IntegerLiteral:0'` for `0`, even though `-0 == 0`).

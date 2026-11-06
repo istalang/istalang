@@ -95,4 +95,4 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 
 1. Declare the interface extending `NodeOf<'Kind'>` in `src/compiler/syntax/` and add it to its union in `src/compiler/syntax/tree.ts`.
 2. Parse it in `src/compiler/parser/` using `nested` (`nesting.ts`) and `parseEnclosed` / `parseDelimited` (`recovery.ts`).
-3. Add its handler to every exhaustive `Handlers` table across `binder/`, `checker/` (including `flow/forward.ts`), and `lowering/`.
+3. Add its handler to every exhaustive `Handlers` table across `binder/`, `checker/` (including `rules/flow/forward.ts`), and `lowering/`.
