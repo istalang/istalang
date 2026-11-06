@@ -36,6 +36,12 @@ const unaliasedTypes = new WeakMap<Type, Type>();
 /** Each type's parameters (`parametersIn`). */
 const mentionedParameters = new WeakMap<Type, readonly ParameterKey[]>();
 
+/** Each type's `any` types (`anyTypesIn`). */
+const mentionedAnyTypes = new WeakMap<Type, readonly AnyType[]>();
+
+/** Each type's computed types (`computedTypesIn`). */
+const mentionedComputed = new WeakMap<Type, readonly ComputedType[]>();
+
 /**
  * Whether two types are alike in every part: their spelled keys are equal (type-keys.ts), so they
  * are the same type, written alike at every level, at the same nodes. A checker result computed
@@ -103,16 +109,17 @@ export function nominalsIn(type: Type): readonly NominalType[] {
 
 /** The `any` types `type` is or is built from, outermost first. */
 export function anyTypesIn(type: Type): readonly AnyType[] {
-  const inner = typeChildren(type).flatMap(anyTypesIn);
-  return type.kind === 'any' ? [type, ...inner] : inner;
+  return memo(mentionedAnyTypes, type, () => {
+    const inner = typeChildren(type).flatMap(anyTypesIn);
+    return type.kind === 'any' ? [type, ...inner] : inner;
+  });
 }
 
 /** The types computed from types not known yet that `type` is or is built from, outermost first. */
 export function computedTypesIn(type: Type): readonly ComputedType[] {
-  if (isComputed(type)) {
-    return [type];
-  }
-  return typeChildren(type).flatMap(computedTypesIn);
+  return memo(mentionedComputed, type, () =>
+    isComputed(type) ? [type] : typeChildren(type).flatMap(computedTypesIn),
+  );
 }
 
 /** Whether `type` holds no type that isn't known yet: no type parameter, nothing computed. */
