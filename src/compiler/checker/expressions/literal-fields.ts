@@ -55,7 +55,7 @@ import { type Substitution, substitute } from '../types/substitution.ts';
 import type { FieldMember, ParameterKey, Type } from '../types/type.ts';
 import { constrainArguments, typeArgumentsFor } from '../types/type-arguments.ts';
 import { typeText } from '../types/type-text.ts';
-import { writtenLiteral } from '../types/unions.ts';
+import { writtenLiteral } from '../types/unions/unions.ts';
 import { type LiteralGiven, sourcesOf } from './literal-sources.ts';
 import { checkComprehended, comprehendedGiven, fitComprehended } from './struct-comprehensions.ts';
 

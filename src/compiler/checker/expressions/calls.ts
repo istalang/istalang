@@ -53,11 +53,11 @@ import {
 } from '../resolution/candidates.ts';
 import { namedType } from '../resolution/named.ts';
 import { fieldOf } from '../traits/known-fields.ts';
-import { insideOptional } from '../types/inside-optional.ts';
 import { errorType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { writtenLiteral } from '../types/unions.ts';
+import { insideOptional } from '../types/unions/inside-optional.ts';
+import { writtenLiteral } from '../types/unions/unions.ts';
 import { spreadArgumentType } from './collections.ts';
 import { readsNothing, recordFieldRead } from './member-access.ts';
 

@@ -10,7 +10,7 @@
  *   implicit, at their right operands, since the chain is one node.
  *   An operand between two links is compared on both sides, so it is never wrapped into an
  *   optional for one of them; the first and the last may be, as in a single comparison.
- * - `==` and `!=` are built in for every type and can't be overloaded (types/equality.ts). The
+ * - `==` and `!=` are built in for every type and can't be overloaded (types/unions/equality.ts). The
  *   left side's type is what the right one is expected to have, so `x == none` reads naturally.
  *   One whose sides' types fix its value is decided (expressions/decided-conditions.ts).
  * - `and`, `or` and `not` take and give `Bool`; they short-circuit, so they are never calls.
@@ -45,7 +45,7 @@ import { type ImplicitOperand, implicitOperatorCall } from '../resolution/implic
 import { boolType, isPrimitive } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { literalOrBase, writtenLiteral } from '../types/unions.ts';
+import { literalOrBase, writtenLiteral } from '../types/unions/unions.ts';
 import { checkEquality } from './decided-conditions.ts';
 import { checkNullish } from './optionals.ts';
 

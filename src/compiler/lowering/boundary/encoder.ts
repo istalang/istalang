@@ -19,7 +19,7 @@ import {
 import { unfolded } from '../../checker/types/computed-types.ts';
 import { isPrimitive } from '../../checker/types/primitives.ts';
 import type { Type, UnionType } from '../../checker/types/type.ts';
-import { baseOf } from '../../checker/types/union-members.ts';
+import { baseOf } from '../../checker/types/unions/union-members.ts';
 import { arrayElement, wellKnownArguments } from '../../checker/types/well-known.ts';
 import { closeCall } from '../closed-calls.ts';
 import type { TypedValue } from '../holdings.ts';

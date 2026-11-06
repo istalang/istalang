@@ -3,7 +3,7 @@
  *
  * - A declaration's type is its annotation, which the initializer must fit, or else the
  *   initializer's own type, widened for a `let`, which later values may replace
- *   (types/widening.ts). Its targets take that value apart (patterns/targets.ts).
+ *   (types/unions/widening.ts). Its targets take that value apart (patterns/targets.ts).
  * - A `let` that nothing reassigns or changes gets a warning once the whole body has been seen
  *   (§3.4), so the body's VariableScope keeps which ones were, as assignments and places note
  *   them (assignments.ts, calls/places.ts).
@@ -28,7 +28,7 @@ import type { AssignedPart } from '../surface/checked-body.ts';
 import type { TargetBinding, TargetOwner } from '../surface/checked-pattern.ts';
 import { errorType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
-import { widened } from '../types/widening.ts';
+import { widened } from '../types/unions/widening.ts';
 import { checkHoldScope } from './loops.ts';
 
 /**

@@ -16,10 +16,10 @@ import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { partsAccept, partsBuild } from '../rules/agreement.ts';
 import { expectedTuple } from '../types/expected.ts';
-import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, unitType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { insideOptional } from '../types/unions/inside-optional.ts';
 
 export function checkTuple(context: BodyContext, node: Tuple, expected: Type | undefined): Type {
   if (node.elements.length === 0) {

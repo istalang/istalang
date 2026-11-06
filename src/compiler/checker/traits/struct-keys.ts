@@ -42,7 +42,7 @@ import {
   shapeType,
   type Type,
 } from '../types/type.ts';
-import { literalType, membersOf, unionOf } from '../types/unions.ts';
+import { literalType, membersOf, unionOf } from '../types/unions/unions.ts';
 import { entryRules, structConstraintsOn } from './known-constraints.ts';
 
 /** Whether `type` is a struct type (§3.5): a struct declaration's, not shared or extern, or a shape. */

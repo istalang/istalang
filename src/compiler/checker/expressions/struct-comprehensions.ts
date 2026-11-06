@@ -34,7 +34,7 @@ import { parametersIn } from '../types/parts/type-parts.ts';
 import { type Substitution, substitute } from '../types/substitution.ts';
 import type { FieldMember, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { literalType, unionOf } from '../types/unions.ts';
+import { literalType, unionOf } from '../types/unions/unions.ts';
 import type { LiteralGiven } from './literal-sources.ts';
 
 /** The struct comprehension ending `node`'s items, if it has one. */

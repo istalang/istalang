@@ -20,7 +20,7 @@ import type { PartBinding } from '../surface/checked-pattern.ts';
 import type { Type, TypeParameterType } from '../types/type.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';
-import { literalType } from '../types/unions.ts';
+import { literalType } from '../types/unions/unions.ts';
 import { anyShape, type Shape } from './exhaustiveness.ts';
 import { type PatternScope, structFieldStep, type ValuePart } from './parts.ts';
 import type { Taking } from './taking.ts';

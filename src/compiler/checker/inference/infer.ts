@@ -56,8 +56,8 @@ import type {
   Type,
   UnionType,
 } from '../types/type.ts';
-import { baseOf } from '../types/union-members.ts';
-import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions.ts';
+import { baseOf } from '../types/unions/union-members.ts';
+import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../types/unions/unions.ts';
 
 /** What a collection of an inference reads as before its first item. */
 const noParameters: ReadonlySet<ParameterKey> = new Set();

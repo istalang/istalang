@@ -16,7 +16,7 @@
 import type { Register } from '../../definition/operands.ts';
 import { withPushed } from '../../structures/stack.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { optionalOf } from '../checker/types/unions.ts';
+import { optionalOf } from '../checker/types/unions/unions.ts';
 import { chainStepOf, isOptionalStep } from '../syntax/expressions/chains.ts';
 import type { Expression } from '../syntax/expressions/index.ts';
 import type { Label } from './code-writer.ts';

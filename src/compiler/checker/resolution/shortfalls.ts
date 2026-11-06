@@ -44,7 +44,7 @@ import { type Substitution, substituteConstraint } from '../types/substitution.t
 import type { Constraint, Type } from '../types/type.ts';
 
 import { typeText } from '../types/type-text.ts';
-import { literalType } from '../types/unions.ts';
+import { literalType } from '../types/unions/unions.ts';
 import type { UseSite } from '../use-site.ts';
 
 /**

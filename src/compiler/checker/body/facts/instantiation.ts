@@ -42,7 +42,7 @@ import {
 } from '../../types/substitution.ts';
 import type { FieldMember, Type } from '../../types/type.ts';
 import type { TypeRules } from '../../types/type-rules.ts';
-import { membersOf } from '../../types/unions.ts';
+import { membersOf } from '../../types/unions/unions.ts';
 
 /** One instantiation: each kind of part a body records, as it reads it. */
 export interface Instantiation {

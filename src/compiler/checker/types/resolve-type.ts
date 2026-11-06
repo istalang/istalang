@@ -60,7 +60,7 @@ import {
 import { constrainArguments, noteConstraints, typeArgumentsFor } from './type-arguments.ts';
 import { aliasInstance } from './type-match.ts';
 import { typeText } from './type-text.ts';
-import { optionalOf, unionOf, writtenLiteral } from './unions.ts';
+import { optionalOf, unionOf, writtenLiteral } from './unions/unions.ts';
 import {
   asWrittenInMatch,
   inCasePattern,

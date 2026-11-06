@@ -10,7 +10,7 @@ import type { Register } from '../../definition/operands.ts';
 import type { Value } from '../../definition/values.ts';
 import type { CheckedAnnotation } from '../checker/surface/checked-annotation.ts';
 import type { ConstantForm } from '../checker/surface/constant-form.ts';
-import { hasOneValue } from '../checker/types/unions.ts';
+import { hasOneValue } from '../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { CodeWriter } from './code-writer.ts';
 import type { DefinitionTables } from './tables.ts';

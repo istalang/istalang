@@ -16,7 +16,7 @@ import { fieldTypeOf, keyName, keysOf } from '../../traits/struct-keys.ts';
 import { errorType, isPrimitive, neverType, tupleType } from '../../types/primitives.ts';
 import type { Type } from '../../types/type.ts';
 import { typeText } from '../../types/type-text.ts';
-import { membersOf, unionOf } from '../../types/unions.ts';
+import { membersOf, unionOf } from '../../types/unions/unions.ts';
 
 /** The passes over the fields of `header`'s subject, which this checks. */
 export function checkedFieldPasses(

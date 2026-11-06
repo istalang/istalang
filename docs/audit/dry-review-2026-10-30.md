@@ -285,8 +285,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Second recursive walk over composite expressions in `inferNestedLambdas` (`src/compiler/checker/calls/lambda-arguments.ts`):**
   - `inferNestedLambdas` and `branchBodiesOf` switch over `Lambda`, `BlockExpression`, `If`, `Match`, `Select`, `Tuple`, `ArrayLiteral`, and `MapLiteral`, duplicating the composite expected-type decomposition and branch collection already implemented for `Accepts` in `expressions/` and `rules/branches.ts`.
   - **Done** (`p3-unions`): `types/expected.ts` is the one home for taking an expected type apart (`builtFrom`, `expectedTuple`, `collectionTarget`, `expectedFunction`, `sameNominal`, `enumsExpected`), which the literals, lambdas, function values and `inferNestedLambdas` all read; `valueBranchesOf` (`syntax/expressions/branches.ts`) lists the blocks giving an `if`, `match` or `select` its value, for their `Accepts` and for the lambdas inferred in them.
-- **Repeated `operands.join(' and ')` formatting for `operatorTypes` (`src/compiler/checker/calls/resolve.ts`, `resolution/implicit.ts`, `types/equality.ts`):**
-  - `explainNone` (`calls/resolve.ts`), `implicitOperatorCall` (`resolution/implicit.ts`), and `checkEqualSides` (`types/equality.ts`) each format operand type lists with `.join(' and ')` at the call site instead of `checkerDiagnostics.operatorTypes` formatting an array of operand strings.
+- **Repeated `operands.join(' and ')` formatting for `operatorTypes` (`src/compiler/checker/calls/resolve.ts`, `resolution/implicit.ts`, `types/unions/equality.ts`):**
+  - `explainNone` (`calls/resolve.ts`), `implicitOperatorCall` (`resolution/implicit.ts`), and `checkEqualSides` (`types/unions/equality.ts`) each format operand type lists with `.join(' and ')` at the call site instead of `checkerDiagnostics.operatorTypes` formatting an array of operand strings.
   - **Done** (`fast-wins`): `operatorTypes` takes the operand list and joins it.
 
 ### 17. `src/compiler/checker/patterns/` & `src/compiler/checker/flow/`

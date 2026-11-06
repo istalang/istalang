@@ -36,7 +36,7 @@ import { builtFrom, collectionTarget } from '../types/expected.ts';
 import { errorType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { literalType, membersOf } from '../types/unions.ts';
+import { literalType, membersOf } from '../types/unions/unions.ts';
 import { aliasedShape } from './literal-types.ts';
 
 /** What a value is built as, and the type its literal is checked against. */

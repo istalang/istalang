@@ -15,14 +15,14 @@
  *   (`unionOfNormalized`), what a `case` leaves to the cases after it, takes no rules.
  */
 
-import type { Expression } from '../../syntax/expressions/index.ts';
-import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
-import { unfolded, unfoldRecursive } from './computed-types.ts';
-import { folded } from './identity/recursive-types.ts';
-import { typeKeys } from './identity/type-keys.ts';
-import { isPrimitive, neverType, noneType } from './primitives.ts';
-import { isMemberParameter, type LiteralType, type LiteralValue, type Type } from './type.ts';
-import type { TypeRules } from './type-rules.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import { signedNumberOf } from '../../../syntax/expressions/numbers.ts';
+import { unfolded, unfoldRecursive } from '../computed-types.ts';
+import { folded } from '../identity/recursive-types.ts';
+import { typeKeys } from '../identity/type-keys.ts';
+import { isPrimitive, neverType, noneType } from '../primitives.ts';
+import { isMemberParameter, type LiteralType, type LiteralValue, type Type } from '../type.ts';
+import type { TypeRules } from '../type-rules.ts';
 import {
   absorbingMember,
   baseOf,

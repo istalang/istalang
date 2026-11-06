@@ -23,12 +23,17 @@
  *   and neither does `Never`, whose value can't exist, nor the error type, already explained.
  */
 
-import type { Expression } from '../../syntax/expressions/index.ts';
-import type { BodyContext } from '../body-context.ts';
-import { isOpaque } from './computed-types.ts';
-import { sameType } from './identity/identity.ts';
-import { isPrimitive } from './primitives.ts';
-import { isMemberParameter, type LiteralValue, type Type, type TypeParameterType } from './type.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import type { BodyContext } from '../../body-context.ts';
+import { isOpaque } from '../computed-types.ts';
+import { sameType } from '../identity/identity.ts';
+import { isPrimitive } from '../primitives.ts';
+import {
+  isMemberParameter,
+  type LiteralValue,
+  type Type,
+  type TypeParameterType,
+} from '../type.ts';
 import { baseOf } from './union-members.ts';
 import { membersOf, writtenLiteral } from './unions.ts';
 
@@ -107,7 +112,7 @@ export function fitEqualSides(
 /**
  * Whether values of `left` and `right` are always (true) or never (false) equal by their types,
  * as the module's banner says; undefined when only running tells. `compare` is whether `==` takes
- * the two sides at all (types/equality.ts `fitEqualSides`).
+ * the two sides at all (types/unions/equality.ts `fitEqualSides`).
  */
 export function decidedEquality(
   left: ComparedSide,

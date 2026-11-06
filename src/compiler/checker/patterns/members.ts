@@ -38,14 +38,14 @@ import { floatType, noneType } from '../types/primitives.ts';
 import { typeOfEntity } from '../types/resolve-type.ts';
 import type { Type, UnionType } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { baseOf } from '../types/union-members.ts';
+import { baseOf } from '../types/unions/union-members.ts';
 import {
   hasMember,
   hasOneValue,
   membersOf,
   unionOfNormalized,
   writtenLiteral,
-} from '../types/unions.ts';
+} from '../types/unions/unions.ts';
 import { anyShape } from './exhaustiveness.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import { ruledOutSelection, type Selection } from './pattern-tests.ts';

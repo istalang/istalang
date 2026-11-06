@@ -24,7 +24,7 @@ import { unreachable } from '../../../structures/unreachable.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/surface/checked-field.ts';
 import { sameType } from '../../checker/types/identity/identity.ts';
 import type { AnyType, Type } from '../../checker/types/type.ts';
-import { hasOneValue } from '../../checker/types/unions.ts';
+import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import { closeWitness, type Dispatch } from '../closed-calls.ts';
 import type { CodeContext } from '../context.ts';

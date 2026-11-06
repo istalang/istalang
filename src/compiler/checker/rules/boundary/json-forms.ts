@@ -63,8 +63,8 @@ import type {
 } from '../../types/type.ts';
 import { TypeCycle } from '../../types/type-cycle.ts';
 import { typeText } from '../../types/type-text.ts';
-import { baseOf } from '../../types/union-members.ts';
-import { optionalInner } from '../../types/unions.ts';
+import { baseOf } from '../../types/unions/union-members.ts';
+import { optionalInner } from '../../types/unions/unions.ts';
 import { hostSite, searchSite, silent, type UseSite } from '../../use-site.ts';
 import type { Annotations } from '../annotations.ts';
 

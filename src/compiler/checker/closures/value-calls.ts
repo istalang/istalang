@@ -21,10 +21,10 @@ import { takenBy } from '../resolution/applicability.ts';
 import { fitArguments } from '../resolution/argument-fit.ts';
 import { bindArguments } from '../resolution/binding.ts';
 import { packRestSlot } from '../types/function-types.ts';
-import { insideOptional } from '../types/inside-optional.ts';
 import { errorType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { insideOptional } from '../types/unions/inside-optional.ts';
 import { futureOf } from '../types/well-known.ts';
 
 /** A call as written: where it stands, with its arguments and any type arguments. */

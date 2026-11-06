@@ -23,7 +23,7 @@ import {
   patternTypeOf,
 } from '../../../compiler/checker/types/pattern-types.ts';
 import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type.ts';
-import { unionOf } from '../../../compiler/checker/types/unions.ts';
+import { unionOf } from '../../../compiler/checker/types/unions/unions.ts';
 import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
 import type { Parameter } from '../../../compiler/syntax/expressions/index.ts';
 import { type Identifier, lastName } from '../../../compiler/syntax/node.ts';

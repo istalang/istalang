@@ -14,7 +14,7 @@ import type { Fitting } from './fit.ts';
 import { type Substitution, substitute } from './substitution.ts';
 import type { Type } from './type.ts';
 import { typeText } from './type-text.ts';
-import { hasMember, membersOf } from './unions.ts';
+import { hasMember, membersOf } from './unions/unions.ts';
 
 /** Whether `type` stands for one member of `union`, as a member parameter's argument must. */
 export function isOneMember(

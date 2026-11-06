@@ -24,7 +24,7 @@ import { errorType } from './primitives.ts';
 import { type Substitution, substitute } from './substitution.ts';
 import { type ParameterKey, shapeType, type Type } from './type.ts';
 import { typeText } from './type-text.ts';
-import { membersOf } from './unions.ts';
+import { membersOf } from './unions/unions.ts';
 
 /** Where a type is written: the checker resolving it, and its module. */
 interface Written {

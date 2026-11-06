@@ -17,7 +17,7 @@ import {
   type ResolvedCall,
 } from '../compiler/checker/surface/resolved-call.ts';
 import type { FunctionType } from '../compiler/checker/types/type.ts';
-import { presentType } from '../compiler/checker/types/unions.ts';
+import { presentType } from '../compiler/checker/types/unions/unions.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';
 import type { Call } from '../compiler/syntax/expressions/index.ts';
 import { callAt, calleesOf, writtenParameter } from './call-at.ts';

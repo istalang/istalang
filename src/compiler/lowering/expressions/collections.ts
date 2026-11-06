@@ -18,7 +18,7 @@ import type { Instruction } from '../../../definition/instructions/instruction.t
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { intType } from '../../checker/types/primitives.ts';
-import { optionalOf } from '../../checker/types/unions.ts';
+import { optionalOf } from '../../checker/types/unions/unions.ts';
 import type {
   ArrayLiteral,
   Expression,

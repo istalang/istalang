@@ -21,7 +21,7 @@ import type { Checker } from '../check.ts';
 import { type ShapeKey, typeKeys } from './identity/type-keys.ts';
 import { typeOfEntity } from './resolve-type.ts';
 import type { NominalDeclaration, Type } from './type.ts';
-import { optionalInner } from './unions.ts';
+import { optionalInner } from './unions/unions.ts';
 
 export type Aliases = Pick<Checker, 'aliasedType' | 'typeRules'>;
 

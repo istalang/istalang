@@ -30,7 +30,7 @@ import type { ChainLink } from '../surface/checked-body.ts';
 import { errorType, isPrimitive, stringType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { optionalOf, presentType } from '../types/unions.ts';
+import { optionalOf, presentType } from '../types/unions/unions.ts';
 
 /**
  * The links of optional chains in one body: what each one's step works on, and the value it

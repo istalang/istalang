@@ -38,7 +38,7 @@ import {
   unitType,
 } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
-import { literalOrBase } from '../types/unions.ts';
+import { literalOrBase } from '../types/unions/unions.ts';
 import { wellKnownOf } from '../types/well-known.ts';
 import { checkAwait } from './await.ts';
 import { checkCall } from './calls.ts';

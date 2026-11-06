@@ -29,8 +29,8 @@ import { type Aliases, entityType } from './named-types.ts';
 import { isPrimitive, tupleElements } from './primitives.ts';
 import type { AnyType, NominalDeclaration, Type } from './type.ts';
 import type { TypeRules } from './type-rules.ts';
-import { absorbingMember, baseOf } from './union-members.ts';
-import { hasMember } from './unions.ts';
+import { absorbingMember, baseOf } from './unions/union-members.ts';
+import { hasMember } from './unions/unions.ts';
 import { arrayElement } from './well-known.ts';
 
 /** A generic type a pattern names: a nominal one. */

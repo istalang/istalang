@@ -13,7 +13,7 @@ import { type Fit, fitOf } from './fit.ts';
 import { boolType, errorType, intType, neverType, stringType, unitType } from './primitives.ts';
 import type { Type } from './type.ts';
 import { noProgramRules } from './type-rules.test-kit.ts';
-import { optionalInner, optionalOf, unionOf } from './unions.ts';
+import { optionalInner, optionalOf, unionOf } from './unions/unions.ts';
 
 /** Fitting in a program no `any` type is met in. */
 const fitting = {

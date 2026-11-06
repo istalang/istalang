@@ -15,7 +15,7 @@
  *   its declaration.
  * - A literal type (§2) is the one value of a `String`, `Int` or `Bool` literal: `"draft"`, `-1`,
  *   `true`. Its base is derived from its value, never stored beside it.
- * - `A | B` (§2) is a value of one of its members, a set: unions.ts normalizes it, so no value sits
+ * - `A | B` (§2) is a value of one of its members, a set: unions/unions.ts normalizes it, so no value sits
  *   in two members and no union holds another. Its members keep the order they were first written
  *   in, which only its text reads; identity sorts them (identity/type-keys.ts). `T?` is `T | None`, `None`
  *   being the primitive whose one value is `none`.
@@ -271,7 +271,7 @@ export interface LiteralType extends WrittenThrough {
   readonly value: LiteralValue;
 }
 
-/** `A | B` (§2): a value of one of its members, two or more, normalized (unions.ts). */
+/** `A | B` (§2): a value of one of its members, two or more, normalized (unions/unions.ts). */
 export interface UnionType extends WrittenThrough {
   readonly kind: 'union';
   readonly members: readonly Type[];

@@ -20,7 +20,7 @@ import { checkProgram } from '../../compiler/checker/check.ts';
 import { enumsExpected, sameNominal } from '../../compiler/checker/types/expected.ts';
 import type { Type } from '../../compiler/checker/types/type.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
-import { membersOf } from '../../compiler/checker/types/unions.ts';
+import { membersOf } from '../../compiler/checker/types/unions/unions.ts';
 import type { ModuleId, Program } from '../../compiler/program/program.ts';
 import { literalNaming } from '../../compiler/syntax/expressions/built-types.ts';
 import type { Expression } from '../../compiler/syntax/expressions/index.ts';

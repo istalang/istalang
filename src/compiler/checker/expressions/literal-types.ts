@@ -24,7 +24,7 @@ import {
   type NominalEntity,
   type Type,
 } from '../types/type.ts';
-import { literalOrBase, writtenLiteral } from '../types/unions.ts';
+import { literalOrBase, writtenLiteral } from '../types/unions/unions.ts';
 import { knownArguments, type LiteralShape } from './literal-fields.ts';
 
 /** What a literal naming a type builds: a declared struct, or a shape an alias names. */

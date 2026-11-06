@@ -57,7 +57,7 @@ import {
   rebuilt,
   type TypeMatchForm,
 } from '../types/type-match.ts';
-import { unionOf } from '../types/unions.ts';
+import { unionOf } from '../types/unions/unions.ts';
 import { matchCase } from './type-match-patterns.ts';
 
 /** A use of a type `match` alias, by its declaration and arguments. */

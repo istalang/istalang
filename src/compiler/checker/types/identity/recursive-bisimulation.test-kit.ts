@@ -2,7 +2,7 @@
  * A reference bisimulation over the generated groups of recursive bodies
  * (recursive-types.test-kit.ts), written apart from the term graph it checks
  * (recursive-types.test.ts): a union's members flattened, then normalized by the rules of §2 as
- * stated here, not as ../unions.ts states them.
+ * stated here, not as ../unions/unions.ts states them.
  */
 
 import { boolType } from '../primitives.ts';

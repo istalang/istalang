@@ -38,7 +38,7 @@ import type {
   UnionType,
 } from '../checker/types/type.ts';
 import { parameterText, typeText } from '../checker/types/type-text.ts';
-import { optionalInner } from '../checker/types/unions.ts';
+import { optionalInner } from '../checker/types/unions/unions.ts';
 import { isStdModule, type ModuleId, programModule } from '../program/program.ts';
 import type {
   ExternConstantDeclaration,

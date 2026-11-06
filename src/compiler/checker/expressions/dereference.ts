@@ -12,10 +12,10 @@ import type { Dereference } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../body-context.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { insideOptional } from '../types/inside-optional.ts';
 import { errorType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
+import { insideOptional } from '../types/unions/inside-optional.ts';
 
 export function checkDereference(context: BodyContext, node: Dereference): Type {
   const isLink = chainStepOf(node) !== undefined;

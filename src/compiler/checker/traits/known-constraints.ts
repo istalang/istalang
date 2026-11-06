@@ -43,7 +43,7 @@ import {
 import { substitute, substituteConstraint, substitutionFor } from '../types/substitution.ts';
 import type { AnyType, Constraint, Type } from '../types/type.ts';
 import { aliasInstance } from '../types/type-match.ts';
-import { literalType, membersOf, unionOf } from '../types/unions.ts';
+import { literalType, membersOf, unionOf } from '../types/unions/unions.ts';
 import {
   constraintOn,
   constraintSubstitution,

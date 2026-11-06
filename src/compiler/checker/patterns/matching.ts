@@ -7,7 +7,7 @@
  *   selects its member (members.ts), so `case 1` against an `Int?` compares the `Int` held, and
  *   `case none` selects `None`. One the part's type can't hold is ruled out (§3.11), a `never`
  *   test (checked-pattern.ts), and so is a field's `==` its type fixes to fail.
- * - A field compared with `==` or `!=` follows `==`'s rule (types/equality.ts); any other
+ * - A field compared with `==` or `!=` follows `==`'s rule (types/unions/equality.ts); any other
  *   comparison calls `compare`. Compared with `==` with a value fitting the field's type, it
  *   counts as a pattern for exhaustiveness (`opt == none` takes an optional's `None`).
  * - A name that refers is a variant without fields, tested like one; a type, a struct without
@@ -43,12 +43,12 @@ import { chooseVariant, nameNodeOf } from '../resolution/named.ts';
 import { type CheckedPattern, namesBound, type PatternTest } from '../surface/checked-pattern.ts';
 import type { ImplicitRole } from '../surface/resolved-call.ts';
 import { unfolded } from '../types/computed-types.ts';
-import { comparable, decidedEquality, fitEqualSides, isKnown } from '../types/equality.ts';
 import { namesOwnType, patternTypeOf } from '../types/pattern-types.ts';
 import { errorType, intType, isPrimitive, noneType } from '../types/primitives.ts';
 import type { NominalDeclaration, Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { optionalInner } from '../types/unions.ts';
+import { comparable, decidedEquality, fitEqualSides, isKnown } from '../types/unions/equality.ts';
+import { optionalInner } from '../types/unions/unions.ts';
 import { arrayElement } from '../types/well-known.ts';
 import { downcastOf } from './downcasts.ts';
 import { anyShape } from './exhaustiveness.ts';
@@ -157,7 +157,7 @@ function arrayTest(
 
 /**
  * A literal compared with its part by `==`; ruled out where the part's type can't hold it
- * (types/equality.ts): `none` where no value of a known type is `none`.
+ * (types/unions/equality.ts): `none` where no value of a known type is `none`.
  */
 function literal(context: BodyContext, node: LiteralPattern, part: ValuePart): Leaf {
   const { value } = node;

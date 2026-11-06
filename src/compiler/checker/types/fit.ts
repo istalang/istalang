@@ -39,8 +39,8 @@ import { isPrimitive } from './primitives.ts';
 import type { AnonymousStructType, AnyType, Type, TypeParameterType, UnionType } from './type.ts';
 import type { TypeRules } from './type-rules.ts';
 import { typeText } from './type-text.ts';
-import { absorbingMember, baseOf } from './union-members.ts';
-import { hasMember, membersOf } from './unions.ts';
+import { absorbingMember, baseOf } from './unions/union-members.ts';
+import { hasMember, membersOf } from './unions/unions.ts';
 
 /**
  * What converts a value itself, before it goes into a union: nothing, the conversion into an `any`

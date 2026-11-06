@@ -42,7 +42,7 @@ import {
   type UnionType,
 } from './type.ts';
 import { typeArgumentsFor } from './type-arguments.ts';
-import { membersOf, optionalInner } from './unions.ts';
+import { membersOf, optionalInner } from './unions/unions.ts';
 import { arrayElement, wellKnownArguments } from './well-known.ts';
 
 /**

@@ -26,7 +26,7 @@ import type {
   UnionType,
 } from '../type.ts';
 import type { TypeRules } from '../type-rules.ts';
-import { unionOf, unionOfNormalized } from '../unions.ts';
+import { unionOf, unionOfNormalized } from '../unions/unions.ts';
 import { mappedParts, reducedComputed } from './computed-reduction.ts';
 import { boundParameters, typeChildren } from './type-children.ts';
 
@@ -150,7 +150,7 @@ export function errorIn(type: Type): ErrorType | undefined {
  * `type` with each type it is built from, one level down, replaced by what `map` gives; `type`
  * itself when `map` changes none and it is no computed type (the banner). The alias `type` was
  * written through comes along: a caller changing what it wrote drops it (../type.ts). A union is built
- * again by the program's `rules` (../unions.ts), so its members may merge into fewer, or into one.
+ * again by the program's `rules` (../unions/unions.ts), so its members may merge into fewer, or into one.
  */
 export function mapChildren(type: Type, map: (child: Type) => Type, rules: TypeRules): Type {
   const rebuilt = rebuiltBy(type, map, rules);

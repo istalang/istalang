@@ -32,7 +32,7 @@ import {
   type UnionType,
 } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { hasOneValue, membersOf } from '../types/unions.ts';
+import { hasOneValue, membersOf } from '../types/unions/unions.ts';
 import { arrayElement } from '../types/well-known.ts';
 import type { ConstructorOf, Shape, Signature, WitnessShape } from './exhaustiveness.ts';
 

@@ -13,7 +13,7 @@ import {
 } from '../surface/checked-field.ts';
 import { unfolded } from '../types/computed-types.ts';
 import type { Type } from '../types/type.ts';
-import { literalType } from '../types/unions.ts';
+import { literalType } from '../types/unions/unions.ts';
 import { requiredFields, requiredFieldType } from './constraints.ts';
 import { knownConstraints, structConstraintsOn } from './known-constraints.ts';
 

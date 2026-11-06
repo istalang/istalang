@@ -53,7 +53,7 @@ export interface RecursiveGroup {
   /** How each body reads: the alias, or associated type, it is written as, if any. */
   readonly labels: readonly (RecursiveLabel | undefined)[];
   /**
-   * The rules of the program, which normalize unions the graph flattens (../union-members.ts) and
+   * The rules of the program, which normalize unions the graph flattens (../unions/union-members.ts) and
    * reduce computed types built from its nodes (../parts/computed-reduction.ts).
    */
   readonly rules: TypeRules;

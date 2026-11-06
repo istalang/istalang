@@ -16,7 +16,7 @@ import type { PassAnswers } from '../../lookup/pass-views.ts';
 import type { PassRecords } from '../../passes.ts';
 import type { Type } from '../../types/type.ts';
 import type { TypeRules } from '../../types/type-rules.ts';
-import { unionOf } from '../../types/unions.ts';
+import { unionOf } from '../../types/unions/unions.ts';
 
 /**
  * A type by node: every pass's that has one, joined into their union; one body's own, as written,

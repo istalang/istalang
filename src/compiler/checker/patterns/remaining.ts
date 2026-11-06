@@ -9,7 +9,7 @@
  */
 
 import type { Type } from '../types/type.ts';
-import { unionOfNormalized } from '../types/unions.ts';
+import { unionOfNormalized } from '../types/unions/unions.ts';
 import { analyze, anyShape, type CaseShape } from './exhaustiveness.ts';
 import type { ValuePart } from './parts.ts';
 import { memberShape, type ShapeChecker, signatureOf } from './shapes.ts';

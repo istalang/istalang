@@ -30,11 +30,11 @@ import { topLevelCandidates } from '../resolution/candidates.ts';
 import { namedType, nameNodeOf } from '../resolution/named.ts';
 import type { FieldRead, FieldReading, FoundField } from '../surface/checked-field.ts';
 import { fieldOf } from '../traits/known-fields.ts';
-import { insideOptional } from '../types/inside-optional.ts';
 import { errorType } from '../types/primitives.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
-import { optionalInner } from '../types/unions.ts';
+import { insideOptional } from '../types/unions/inside-optional.ts';
+import { optionalInner } from '../types/unions/unions.ts';
 import { entityValueType } from './names.ts';
 import { checkVariantName } from './variants.ts';
 

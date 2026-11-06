@@ -27,7 +27,6 @@ import type {
 } from '../../syntax/patterns.ts';
 import { spanAcross } from '../../syntax/positions.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { isKnown } from '../types/equality.ts';
 import { sameType } from '../types/identity/identity.ts';
 import {
   literalMembers,
@@ -36,7 +35,8 @@ import {
   variantOwners,
 } from '../types/pattern-types.ts';
 import type { AnyType, Type } from '../types/type.ts';
-import { baseOf } from '../types/union-members.ts';
+import { isKnown } from '../types/unions/equality.ts';
+import { baseOf } from '../types/unions/union-members.ts';
 import { literalTypeOf, memberTaken, selectsMember, unionPart } from './members.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import { type PatternTests, ruledOutSelection, type Selection } from './pattern-tests.ts';
@@ -73,7 +73,7 @@ export function selectionOf(
 /**
  * Whether `node` names a type, or a variant, that no value of `type` is, so the part's type rules
  * the pattern out (§3.11): `type` must be known where the pattern is checked, not only per
- * instantiation (types/equality.ts `isKnown`). A generic alias names no one type, which is
+ * instantiation (types/unions/equality.ts `isKnown`). A generic alias names no one type, which is
  * reported where the pattern stands, not ruled out.
  */
 function namesOtherType(scope: PatternScope, node: Pattern | PatternPart, type: Type): boolean {
