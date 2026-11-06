@@ -16,9 +16,9 @@ import { idOf } from '../../src/compiler/program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
 import type { Definition } from '../../src/definition/definition.ts';
 import { decodeJson } from '../../src/definition/formats/codec.ts';
-import { completionsAt } from '../../src/language-service/completion/index.ts';
-import { hoverAt } from '../../src/language-service/hover.ts';
-import { programAt } from '../../src/language-service/language-service.test-kit.ts';
+import { completionsAt } from '../../src/editor/language-service/completion/index.ts';
+import { hoverAt } from '../../src/editor/language-service/hover.ts';
+import { programAt } from '../../src/editor/language-service/language-service.test-kit.ts';
 import { startToEnd, testRuntime } from '../../src/runtime/runtime.test-kit.ts';
 
 /** A checked program with `declarations` and a probe function `fn _probe(...parameters)`. */

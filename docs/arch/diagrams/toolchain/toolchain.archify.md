@@ -20,7 +20,7 @@ Istalang is one layered package in which each phase is a memoized function of an
 @source wake title="advance: segment, commit, repeat" path=src/runtime/scheduler/wake.ts lines=117:166
 @source run title="ista run" path=src/cli/commands/run.ts lines=116:140
 @source memo title="memo over immutable inputs" path=src/foundation/structures/memo.ts lines=1:50
-@source workspace title="Language-service workspace" path=src/language-service/workspace.ts lines=1:40
+@source workspace title="Language-service workspace" path=src/editor/language-service/workspace.ts lines=1:40
 
 ## Which layers exist, and which way do imports point? {#layers}
 
@@ -137,8 +137,8 @@ The CLI picks every implementation at its composition root: `memoryStore` or `di
 | Flow constructs | node kind | `checker/rules/flow/forward.ts` |
 | Lowering handlers | node kind | `lowering/constructs/expressions/expressions.ts`, `lowering/constructs/statements/statements.ts` |
 | Interpreter | instruction kind | `runtime/interpreter/instructions.ts` |
-| Completion | place kind and subject kind | `language-service/completion/` |
-| LSP providers, CLI commands, std natives | request, command, extern key | `lsp/providers/`, `cli/commands/`, `stdlib/natives.ts` |
+| Completion | place kind and subject kind | `editor/language-service/completion/` |
+| LSP providers, CLI commands, std natives | request, command, extern key | `editor/lsp/providers/`, `cli/commands/`, `stdlib/natives.ts` |
 
 | Seam | Owner | Implementations |
 | --- | --- | --- |

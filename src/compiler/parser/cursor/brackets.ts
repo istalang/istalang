@@ -2,7 +2,7 @@
  * The brackets the grammar pairs, and which of them group: what the cursor's regions (regions.ts)
  * and recovery (recovery.ts) read as opening and closing, how a token list's brackets pair, and
  * where a bracket left open ends. The language service pairs brackets here too
- * (language-service/reading/tokens.ts), so its features see the groups the parser read.
+ * (editor/language-service/reading/tokens.ts), so its features see the groups the parser read.
  */
 
 import { lastIndexAtMost } from '../../../foundation/structures/sorted.ts';

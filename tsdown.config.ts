@@ -37,7 +37,7 @@ export default defineConfig([
     plugins: [istaTextPlugin()],
   },
   {
-    entry: { extension: 'src/vscode-client/extension.ts' },
+    entry: { extension: 'src/editor/vscode-client/extension.ts' },
     outDir: '.vscode/extensions/ista/dist',
     format: 'cjs',
     platform: 'node',

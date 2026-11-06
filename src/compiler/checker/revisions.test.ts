@@ -247,7 +247,7 @@ describe('a checker made after an earlier one', () => {
   /**
    * How the checker of an edit's program is made from the checker before: directly, or tentatively
    * from a checker of the same text made from it and never asked, as completion makes its own
-   * while the edit's diagnostics wait (language-service/completion/expected.ts).
+   * while the edit's diagnostics wait (editor/language-service/completion/expected.ts).
    */
   const routes: readonly { readonly route: string; readonly checker: Route }[] = [
     {

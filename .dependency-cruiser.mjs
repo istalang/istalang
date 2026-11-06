@@ -82,7 +82,7 @@ const layers = {
     'compiler/parser',
   ],
   project: ['foundation/text', 'foundation/diagnostics', 'compiler/program', 'stdlib'],
-  'language-service': [
+  'editor/language-service': [
     'foundation/text',
     'foundation/diagnostics',
     'compiler/syntax',
@@ -94,12 +94,12 @@ const layers = {
     'compiler/compile',
     'formatter',
   ],
-  lsp: [
+  'editor/lsp': [
     'foundation/text',
     'foundation/diagnostics',
     'compiler/syntax',
     'compiler/program',
-    'language-service',
+    'editor/language-service',
     'formatter',
     'project',
     'stdlib',
@@ -114,11 +114,11 @@ const layers = {
     'runtime',
     'formatter',
     'project',
-    'lsp',
+    'editor/lsp',
   ],
   // The VS Code client, bundled on its own into the extension (.vscode/extensions/ista): of the
   // server it shares only the protocol's request, so no server code reaches the bundle.
-  'vscode-client': ['lsp/std-source-request'],
+  'editor/vscode-client': ['editor/lsp/std-source-request'],
   definition: [],
   runtime: ['definition', 'foundation/text'],
 };
@@ -212,7 +212,7 @@ const checkerModel = ['diagnostics', 'types'];
  * Layers that may use Node's built-ins: the apps, which wire Node's I/O into the seams, and
  * `project/`, which reads a project's files for both of them.
  */
-const nodeLayers = ['cli', 'lsp', 'project', 'vscode-client'];
+const nodeLayers = ['cli', 'editor/lsp', 'project', 'editor/vscode-client'];
 
 /** A layer is a folder (`compiler/program`) or a single module (`compiler/compile` is compile.ts). */
 const layerPath = (names) => `^src/(${names.join('|')})(/|\\.ts$)`;
@@ -292,7 +292,7 @@ export default {
     {
       // The VS Code client is bundled whole at build time, so what it imports are the package's
       // devDependencies; the package's own code, which runs from node_modules, may import none.
-      from: { path: layerPath(['vscode-client']) },
+      from: { path: layerPath(['editor/vscode-client']) },
       to: { dependencyTypes: ['npm-dev'] },
     },
     {

@@ -19,9 +19,9 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - **Fix:** Key `programBinder`'s outer memo by the raw `text` string (or pass a pre-verified `{ definition, text, hash }` bundle from `compileProgram` / `definitionFormat`), computing `definitionFormat.read` and `definitionFormat.write` at most once per unique `Definition`.
    - **Done** (`fast-wins`): `programBinder` keys its memo by the text, so each text is read, validated and written back once (`Format.readCanonical`) and each later host operation on it binds from the memo; `deploy` stores the canonical text that read gave. `inspect` on a finished instance (`runtime/host/host.bench.ts`): 1.94 ms → 14.6 µs mean. `runTests` reads through `readCanonical` too. Still open: the CLI writes a compiled Definition to text only for `deploy`/`runTests` to read it back, since both take text.
 
-2. **`[high]` Unmemoized `extentIn(tree, node)` and repeated token re-scanning across parser and language service (`src/compiler/syntax/tree/index.ts:127`, `src/language-service/reading/tokens.ts:24`, `src/compiler/parser/cursor/brackets.ts:34`; widens `B21`, `P17`)**
+2. **`[high]` Unmemoized `extentIn(tree, node)` and repeated token re-scanning across parser and language service (`src/compiler/syntax/tree/index.ts:127`, `src/editor/language-service/reading/tokens.ts:24`, `src/compiler/parser/cursor/brackets.ts:34`; widens `B21`, `P17`)**
    - Despite `src/compiler/syntax/tree/index.ts`'s banner stating that a node's extent is memoized on the immutable node or tree, `extentIn(tree, node)` (`src/compiler/syntax/tree/index.ts:127–135`) is unmemoized and walks down `childrenOf` and `lastChildOf` to the leaves on every call — including at every sibling tested by `nodesAt(tree, offset)` (`tree/index.ts:141–156`).
-   - Separately, `parse(source, scanned)` (`src/compiler/parser/parse.ts:28`) discards `scanned.tokens`, so `scannedOf(tree)` (`src/language-service/reading/tokens.ts:24`) re-runs `scan(tree.source)` from scratch, and `pairBrackets` (`src/compiler/parser/cursor/brackets.ts:34`) re-walks the token stream a second time.
+   - Separately, `parse(source, scanned)` (`src/compiler/parser/parse.ts:28`) discards `scanned.tokens`, so `scannedOf(tree)` (`src/editor/language-service/reading/tokens.ts:24`) re-runs `scan(tree.source)` from scratch, and `pairBrackets` (`src/compiler/parser/cursor/brackets.ts:34`) re-walks the token stream a second time.
    - **Fix:** Memoize `extentIn` per `(tree, node)` via `WeakMap` in `tree/index.ts`; retain `tokens` on `SyntaxTree` (or memoize `scan(source)` on `SourceText` as `lineMapOf` does) and compute bracket pairs once.
    - **Done** (`fast-wins`): `extentIn` is memoized per (tree, node) in a `SequenceMemo`, as the banner says (formatter, language-service and `tree.test.ts` suites: 5.45 s → 3.38 s). The token re-scan and bracket re-walk stay open.
 
@@ -29,7 +29,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - `notesOfReads(entry)` walks the full transitive `entry.reads` graph from scratch (allocating `seen = new Set`, `pending = [...entry.reads]`, and `notes = []`) on every call to `notesFrom(entry)`, `Entries.notesReached()`, and `#replays` (`case 'notes'`), even after an entry is closed (`!entry.running && !entry.open`) and multiple times within one computing entry.
    - **Fix:** Memoize transitive notes on closed `Entry` nodes and track visited read subgraphs across `notesReached()` calls within an active computation.
 
-4. **`[high]` Three parallel static-function owner resolvers; `checkClashes` misses static overload clashes across type aliases (`src/compiler/checker/constructs/declarations/functions/statics.ts:81`, `src/compiler/checker/rules/clashes.ts:121`, `src/language-service/completion/places/declared-name.ts:47`)**
+4. **`[high]` Three parallel static-function owner resolvers; `checkClashes` misses static overload clashes across type aliases (`src/compiler/checker/constructs/declarations/functions/statics.ts:81`, `src/compiler/checker/rules/clashes.ts:121`, `src/editor/language-service/completion/places/declared-name.ts:47`)**
    - `StaticFunctions.#ownerOf` (`constructs/declarations/functions/statics.ts:81–93`) unwraps `TypeAliasDeclaration` via `checker.aliasedType(owner)` so `fn Alias.f()` and `fn Target.f()` share one `StaticOwner`.
    - `ownerKeyOf` (`rules/clashes.ts:121–131`) resolves `declaration.owner` separately using `checker.typeKeys.identityOf(entity.declaration)` *without* unwrapping `TypeAliasDeclaration`, so `checkClashes` misses overload clashes when one static function is declared on a type alias and another on the aliased type.
    - `ownsStatics` (`completion/places/declared-name.ts:47–59`) defines a third list (`staticOwnerKinds`) that also omits `TypeAliasDeclaration`.
@@ -59,9 +59,9 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
    - **Fix:** Record declaration-to-module ownership once during binding (covering trait members and `FieldsFunction`s) and centralize `fieldMemberOf` and `variableTypeOf` on `Checker`.
    - **Done** (`p2-structural`): fields and variables. `declaredFieldOf` (`types/written/declared-fields.ts`) maps a field's declaring node and its owner to its `FieldMember`, which annotations (owner from the module's items) and denotations (owner from the node's ancestors) both read; `declaredOutsideBodies` (`expressions/access/names.ts`) is the one rule for an extern or top-level constant's type, which `variableType` and `declaredVariableType` both read. `DeclaringModules` stays (`Q30` open): trait members and fields functions have no entity, so the binder would need a node-to-module index of its own, a second map rather than one.
 
-9. **`[medium]` Formatter exponential re-printing of huggable call arguments and duplicated `LineMap` / indentation / bracket helpers (`src/formatter/expressions/index.ts:198`, `src/formatter/layout/bodies.ts:74`, `src/foundation/text/line-map.ts:27`, `src/foundation/diagnostics/render.ts:77`, `src/lsp/providers/semantic-tokens.ts:53`)**
+9. **`[medium]` Formatter exponential re-printing of huggable call arguments and duplicated `LineMap` / indentation / bracket helpers (`src/formatter/expressions/index.ts:198`, `src/formatter/layout/bodies.ts:74`, `src/foundation/text/line-map.ts:27`, `src/foundation/diagnostics/render.ts:77`, `src/editor/lsp/providers/semantic-tokens.ts:53`)**
    - `callArguments` (`src/formatter/expressions/index.ts:198–221`) prints every argument in `bracketed(...)` and then, when the last argument is huggable, prints `front` and `last` a second time ($O(2^d)$ work on nested huggable calls).
-   - `LineMap` (`src/foundation/text/line-map.ts:27`) duplicates `splitLines` (`line-map.ts:92`) and hides `#lineEnds`, forcing both `renderDiagnostic` (`src/foundation/diagnostics/render.ts:77`) and `linesOf` (`src/lsp/providers/semantic-tokens.ts:53`) to pass `column: Number.MAX_SAFE_INTEGER` to `lines.offsetAt`.
+   - `LineMap` (`src/foundation/text/line-map.ts:27`) duplicates `splitLines` (`line-map.ts:92`) and hides `#lineEnds`, forcing both `renderDiagnostic` (`src/foundation/diagnostics/render.ts:77`) and `linesOf` (`src/editor/lsp/providers/semantic-tokens.ts:53`) to pass `column: Number.MAX_SAFE_INTEGER` to `lines.offsetAt`.
    - **Fix:** Reuse the already-printed argument `Doc`s in `callArguments`, and expose `lineSpan(line)` on `LineMap`.
    - **Done** (`fast-wins`): Formatter part: `TreePrinter.print` keeps each node's doc, so `callArguments` (and `body`, which printed a hugged block twice too) reuse what they printed. `formatter/format.bench.ts`, calls hugging their last argument 16 deep: 458 ms → 0.39 ms mean. The `LineMap` part is done under unit 3.
 
@@ -105,10 +105,10 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - [x] 28. `src/stdlib/` — standard library modules (`collections/`, `crypto/`, `decimal/`, `fanout/`, `futures/`, `inbox/`, `json/`, `log/`, `math/`, `random/`, `regex/`, `rpc/`, `runtime/`, `strings/`, `testing/`, `time/`)
 - [x] 29. `src/formatter/`
 - [x] 30. `src/project/`
-- [x] 31. `src/language-service/` — core, navigation, semantic-tokens & editor queries (`workspace.ts`, `checked-module.ts`, `tokens.ts`, `identifier-at.ts`, `call-at.ts`, `signatures.ts`, `docstrings.ts`, `namespaces.ts`, `folding.ts`, `symbols.ts`, `hover.ts`, `inlay-hints.ts`, `signature-help.ts`, `navigation/`, `semantic-tokens/`)
-- [x] 32. `src/language-service/completion/` (including `grammar/` and `places/`)
-- [x] 33. `src/lsp/` (including `providers/`)
-- [x] 34. `src/cli/` (including `commands/`) & `src/vscode-client/`
+- [x] 31. `src/editor/language-service/` — core, navigation, semantic-tokens & editor queries (`workspace.ts`, `checked-module.ts`, `tokens.ts`, `identifier-at.ts`, `call-at.ts`, `signatures.ts`, `docstrings.ts`, `namespaces.ts`, `folding.ts`, `symbols.ts`, `hover.ts`, `inlay-hints.ts`, `signature-help.ts`, `navigation/`, `semantic-tokens/`)
+- [x] 32. `src/editor/language-service/completion/` (including `grammar/` and `places/`)
+- [x] 33. `src/editor/lsp/` (including `providers/`)
+- [x] 34. `src/cli/` (including `commands/`) & `src/editor/vscode-client/`
 - [x] 35. `docs/spec.md` — Cheat sheet, §1 Overview, §2 Lexical structure and types
 - [x] 36. `docs/spec.md` — §3 Declarations
 - [x] 37. `docs/spec.md` — §4 Expressions and control flow, §5 Persistence, §6 Slots and inboxes, §7 Lifetimes and disposal, §8 `select`
@@ -184,8 +184,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 ### 7. `src/compiler/scanner/`
 
-- **Bracket pairing re-scans the token stream instead of deriving from the scanner's pass (`src/compiler/scanner/scan.ts`, `src/compiler/parser/cursor/brackets.ts`, `src/language-service/reading/tokens.ts`; widens `P17`):**
-  - `Scanner.#scanTokens` already walks every token in order and tracks brace depth (`braceChange`), yet `unclosedBracketEnds` (`src/compiler/parser/cursor/brackets.ts`) and `closingBracketsOf` (`src/language-service/reading/tokens.ts`) re-walk the entire token array from scratch in `pairBrackets`.
+- **Bracket pairing re-scans the token stream instead of deriving from the scanner's pass (`src/compiler/scanner/scan.ts`, `src/compiler/parser/cursor/brackets.ts`, `src/editor/language-service/reading/tokens.ts`; widens `P17`):**
+  - `Scanner.#scanTokens` already walks every token in order and tracks brace depth (`braceChange`), yet `unclosedBracketEnds` (`src/compiler/parser/cursor/brackets.ts`) and `closingBracketsOf` (`src/editor/language-service/reading/tokens.ts`) re-walk the entire token array from scratch in `pairBrackets`.
 - **Repeated `[...run]` allocations in `scanRadixInteger` (`src/compiler/scanner/numbers.ts`):**
   - `scanRadixInteger` spreads the ASCII identifier run `[...run]` twice (once for `.filter(radix.isDigit)` and once for `.findIndex(...)`) and adds the code-point index `invalidAt` to the UTF-16 offset `digitsStart`.
 
@@ -207,7 +207,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
   - **Done** (`fast-wins`): `parseWildcard` and `startsHeldVariableAt` call `isUnnamed`.
 - **Duplicate `RangePattern` construction in `parseRangePattern` and `parseOpenRangePattern` (`src/compiler/parser/grammar/patterns.ts`):**
   - Unlike `expressions/operators.ts` (where `parseOpenRange` and `rangeParselet` delegate to `parseRangeRest`), `parseRangePattern` and `parseOpenRangePattern` in `patterns.ts` duplicate the operator-kind check, `parseRangeBound`, and `RangePattern` node construction.
-- **Closed parselet dispatch tables duplicated in completion (`src/compiler/parser/`, `src/language-service/completion/places/grammar/words.ts`; tracked as `Q35`):**
+- **Closed parselet dispatch tables duplicated in completion (`src/compiler/parser/`, `src/editor/language-service/completion/places/grammar/words.ts`; tracked as `Q35`):**
   - `typeParselets`/`wordParselets`, `patternParselets`, `prefixParselets`/`infixParselets`, `statementParselets`, and `topLevelParselets` are internal to `parser/`, forcing `completion/places/grammar/words.ts` to restate the keyword sets (`Q35`).
   - **Done** (`p3-unions`): each position's words have one home, `syntax/tokens/grammar-words.ts` (`declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers`). Every parselet table above `satisfies` its list both ways (`StartParselets` for keywords, `WordParselets` for contextual words, `parser/grammar/word-parselets.ts`), and the lookaheads of `shared`, `sendable`, `hold` and `async` read `followers`. Completion offers the lists and names only the words that need surroundings (`wordNeeds`). Its property test now runs both ways: each keyword the parser takes at a corpus statement or operand is offered, unless it needs surroundings.
 
@@ -224,8 +224,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Duplicate qualification predicates `mayQualify` and `qualifies` (`src/compiler/binder/module/local-binder.ts`, `src/compiler/binder/link.ts`; related to `B25`):**
   - `mayQualify(head)` in `local-binder.ts` and `qualifies(entity)` in `link.ts` duplicate the check `entity.kind === 'namespace' || (entity.kind === 'type' && entity.declaration.kind === 'EnumDeclaration')` instead of sharing `qualifies` from `entities.ts`.
   - **Done** (`fast-wins`): `qualifies` moved to `entities.ts`; `mayQualify` adds only what a head unlinked yet may be (none, or an import) and asks `qualifies` for the rest.
-- **Duplicate namespace-to-module resolution in `Linker.#importedBy` and `language-service/reading/namespaces.ts` (`src/compiler/binder/link.ts`, `src/language-service/reading/namespaces.ts`):**
-  - `Linker.#importedBy(namespace)` (`link.ts`) and `importedModule(program, bindings, namespace)` (`language-service/reading/namespaces.ts`) compute the exact same lookup (`program.modules.get(importer)?.imports.get(namespace.declaration)`). Exposing `importedBy` on `Bindings` would eliminate the duplicate helper in `language-service/`.
+- **Duplicate namespace-to-module resolution in `Linker.#importedBy` and `editor/language-service/reading/namespaces.ts` (`src/compiler/binder/link.ts`, `src/editor/language-service/reading/namespaces.ts`):**
+  - `Linker.#importedBy(namespace)` (`link.ts`) and `importedModule(program, bindings, namespace)` (`editor/language-service/reading/namespaces.ts`) compute the exact same lookup (`program.modules.get(importer)?.imports.get(namespace.declaration)`). Exposing `importedBy` on `Bindings` would eliminate the duplicate helper in `language-service/`.
 - **`bindTrait` misses annotations on `Invalid` trait members (`src/compiler/binder/constructs/declarations.ts`; widens `Q36`):**
   - `Q36` notes that list sites skipping `Invalid` items must remember to bind their rejected annotations (`bindModule`, `bindBlock`, `bindRejectedAnnotations` in `expressions.ts`). In `bindTrait` (`declarations.ts`), `bindFields` binds annotations on non-function members (including `Invalid` only because `Invalid !== 'FunctionDeclaration'`), which is fragile and implicit compared to a single generic rule for `Invalid` annotations.
 - **Repeated array-spreading multimaps in `functionSets` and `Linker.#index` (`src/compiler/binder/module/module-scope.ts`, `src/compiler/binder/link.ts`):**
@@ -435,50 +435,50 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 
 - **`projectRoot` hard-coded to `cwd` (`src/project/project.ts`; tracked as `F1`).**
 
-### 31. `src/language-service/` — core, navigation, semantic-tokens & editor queries
+### 31. `src/editor/language-service/` — core, navigation, semantic-tokens & editor queries
 
-- **Re-scanning `tree.source` in `scannedOf(tree)` instead of memoizing `scan` on `SourceText` or keeping tokens on `SyntaxTree` (`src/language-service/reading/tokens.ts`, `src/compiler/scanner/scan.ts`):**
-  - `parse(source, scanned)` (`src/compiler/parser/parse.ts`) receives `scanned: ScanResult` and keeps `scanned.comments` and `scanned.diagnostics` on `SyntaxTree`, but drops `scanned.tokens`. As a result, `scannedOf(tree)` in `language-service/reading/tokens.ts` has to re-run `scan(tree.source)` from scratch whenever any language-service feature requests tokens or bracket pairs. Memoizing `scan(source)` on the branded, immutable `SourceText` (as `lineMapOf(source)` does in `src/foundation/text/line-map.ts`) eliminates the duplicate scan.
-- **Manual `Owner.name` string formatting in `symbols.ts` and `signatures.ts` instead of `staticName` (`src/language-service/outline/symbols.ts`, `src/language-service/signatures/signatures.ts`, `src/foundation/language/static-names.ts`):**
+- **Re-scanning `tree.source` in `scannedOf(tree)` instead of memoizing `scan` on `SourceText` or keeping tokens on `SyntaxTree` (`src/editor/language-service/reading/tokens.ts`, `src/compiler/scanner/scan.ts`):**
+  - `parse(source, scanned)` (`src/compiler/parser/parse.ts`) receives `scanned: ScanResult` and keeps `scanned.comments` and `scanned.diagnostics` on `SyntaxTree`, but drops `scanned.tokens`. As a result, `scannedOf(tree)` in `editor/language-service/reading/tokens.ts` has to re-run `scan(tree.source)` from scratch whenever any language-service feature requests tokens or bracket pairs. Memoizing `scan(source)` on the branded, immutable `SourceText` (as `lineMapOf(source)` does in `src/foundation/text/line-map.ts`) eliminates the duplicate scan.
+- **Manual `Owner.name` string formatting in `symbols.ts` and `signatures.ts` instead of `staticName` (`src/editor/language-service/outline/symbols.ts`, `src/editor/language-service/signatures/signatures.ts`, `src/foundation/language/static-names.ts`):**
   - Violating the one-way rule in `docs/reuse/modules-and-names.md` (*"Spell `Owner.name` with `staticName`"*), `symbolsOfDeclaration.FunctionDeclaration` (`symbols.ts`) formats `` `${owner.text}.${name.text}` `` directly, and `signatureOf` (`signatures.ts`) formats ``owner === undefined ? '' : `${owner.text}.` `` directly.
   - **Done** (`fast-wins`): Both spell it with `staticName`.
-- **`isName(text)` in `rename.ts` runs `createSourceText` + `scan` to validate an identifier (`src/language-service/navigation/rename.ts`, `src/compiler/scanner/characters.ts`):**
+- **`isName(text)` in `rename.ts` runs `createSourceText` + `scan` to validate an identifier (`src/editor/language-service/navigation/rename.ts`, `src/compiler/scanner/characters.ts`):**
   - `isName` constructs a `SourceText` and runs the full scanner instead of checking `isIdentifierStart(text[0]) && identifierRunEnd(text, 0) === text.length && !isKeyword(text)`.
   - **Done** (`fast-wins`): `isName` checks `isIdentifierStart`, `identifierRunEnd` and `isKeyword`.
-- **Rename missing JSON-codec fields and externs (`B19`), and inlay hints checking `type.kind !== 'error'` instead of `!mentionsError(type)` (`B20`) (`src/language-service/navigation/rename.ts`, `inlay-hints.ts`; tracked in `tracker.md`).**
+- **Rename missing JSON-codec fields and externs (`B19`), and inlay hints checking `type.kind !== 'error'` instead of `!mentionsError(type)` (`B20`) (`src/editor/language-service/navigation/rename.ts`, `inlay-hints.ts`; tracked in `tracker.md`).**
 
-### 32. `src/language-service/completion/` (including `grammar/` and `places/`)
+### 32. `src/editor/language-service/completion/` (including `grammar/` and `places/`)
 
 - **Duplicate `ownsStatics` / `staticOwnerKinds` in `completion/places/declared-name.ts` vs. `isNominalEntity` (`src/compiler/checker/types/type/index.ts`):**
   - `declared-name.ts` defines `staticOwnerKinds = new Set(['StructDeclaration', 'SharedStructDeclaration', 'ExternStructDeclaration', 'EnumDeclaration'])` and `ownsStatics`, duplicating `isNominalEntity` (`src/compiler/checker/types/type/index.ts`) and omitting type aliases (`StaticFunctions.#ownerOf` in `checker/constructs/declarations/functions/statics.ts`).
   - **Done** (`p2-structural`): `staticOwners` asks `staticOwnerOf(entityType(…))` (`types/written/named-types.ts`), so an alias, of a shape too, is offered.
-- **Hard-coded `'self'` string literal in `completion/places/declared-name.ts` (`src/language-service/completion/places/declared-name.ts`, `src/foundation/language/well-known/index.ts`):**
+- **Hard-coded `'self'` string literal in `completion/places/declared-name.ts` (`src/editor/language-service/completion/places/declared-name.ts`, `src/foundation/language/well-known/index.ts`):**
   - `declared-name.ts` writes `const receiver: Candidate = { name: 'self', subject: { kind: 'keyword' } }` instead of importing `receiverParameter` from `src/foundation/language/well-known/index.ts` (violating the one-way rule in `docs/reuse/modules-and-names.md`).
   - **Done** (`fast-wins`): `receiver` names `receiverParameter`.
-- **Duplicate `isChangeable` in `completion/places/grammar/index.ts` vs. `VariableScope.isChangeable` / `writtenByReference` (`src/language-service/completion/places/grammar/index.ts`, `src/compiler/checker/constructs/statements/variables.ts`, `constructs/declarations/functions/signatures.ts`):**
+- **Duplicate `isChangeable` in `completion/places/grammar/index.ts` vs. `VariableScope.isChangeable` / `writtenByReference` (`src/editor/language-service/completion/places/grammar/index.ts`, `src/compiler/checker/constructs/statements/variables.ts`, `constructs/declarations/functions/signatures.ts`):**
   - `isChangeable` in `completion/places/grammar/index.ts` re-implements `owner.kind === 'VariableDeclaration' && owner.isMutable` and `owner.kind === 'Parameter' && owner.type?.kind === 'ReferenceType'` (missing lambda parameters whose `&` reference comes from an expected function type).
-- **Duplicate inline-whitespace check between `goesOn` (`src/language-service/completion/triggers.ts`) and `adjoins` (`src/language-service/completion/places/grammar/position.ts`):**
+- **Duplicate inline-whitespace check between `goesOn` (`src/editor/language-service/completion/triggers.ts`) and `adjoins` (`src/editor/language-service/completion/places/grammar/position.ts`):**
   - Both slice `tree.source.text` from `before.span.end` to `name?.span.start ?? offset` and test `[...between].every(isInlineWhitespace)`. Placing `adjoinsBefore(cursor)` beside `touchingBefore(cursor)` in `completion/cursor.ts` unifies both.
   - **Done** (`fast-wins`): `adjoinsBefore(cursor)` in `completion/cursor.ts` serves both.
 - **Duplicate `any` downcast target rules across `completion/places/patterns/matched-type.ts` (`downcastTo`), `completion/places/patterns/pattern.ts` (`mayRefer`), and `checker/constructs/patterns/walk/kinds/downcasts.ts` (`namedTypeOf`).**
 - **Tracked completion items (`P13`–`P16`, `P19`, `Q34`, `Q35`, `B23`, `F14`, `F15`; tracked in `tracker.md`).**
 
-### 33. `src/lsp/` (including `providers/`)
+### 33. `src/editor/lsp/` (including `providers/`)
 
-- **Second `Number.MAX_SAFE_INTEGER` column workaround for `LineMap` line bounds in `linesOf` (`src/lsp/providers/semantic-tokens.ts`, `src/foundation/text/line-map.ts`, `src/foundation/diagnostics/render.ts`):**
+- **Second `Number.MAX_SAFE_INTEGER` column workaround for `LineMap` line bounds in `linesOf` (`src/editor/lsp/providers/semantic-tokens.ts`, `src/foundation/text/line-map.ts`, `src/foundation/diagnostics/render.ts`):**
   - `linesOf` in `semantic-tokens.ts` reconstructs each line's `[start, end)` bounds via `lines.offsetAt({ line, column: 0 })` and `lines.offsetAt({ line, column: Number.MAX_SAFE_INTEGER })`, repeating the same workaround as `renderDiagnostic` (`src/foundation/diagnostics/render.ts`) because `LineMap` does not expose its stored `#lineEnds`.
   - **Done** (`fast-wins`): `linesOf` reads `lines.lineSpan(line)`.
-- **Duplicate offset-to-LSP-`Position` conversion in `rangeOf` (`src/lsp/locations.ts`) and `inlayHints` (`src/lsp/providers/inlay-hints.ts`):**
+- **Duplicate offset-to-LSP-`Position` conversion in `rangeOf` (`src/editor/lsp/locations.ts`) and `inlayHints` (`src/editor/lsp/providers/inlay-hints.ts`):**
   - `rangeOf` and `inlayHints` both convert `lines.positionAt(offset)` to `{ line, character: column }`.
-- **Full-project `globSync`, `statSync`, and `readFileSync` on every editor keystroke in `projectProgramLoader` (`src/lsp/project-loader.ts`, `src/project/project.ts`, `src/compiler/program/program.ts`; widens `F11`):**
+- **Full-project `globSync`, `statSync`, and `readFileSync` on every editor keystroke in `projectProgramLoader` (`src/editor/lsp/project-loader.ts`, `src/project/project.ts`, `src/compiler/program/program.ts`; widens `F11`):**
   - On every edit, `projectProgramLoader` runs `findProjectSources(root)` (`globSync`), `locateFile` (`statSync` on every non-open file), and `buildProgram` (`readFileSync` on every non-open module).
 
-### 34. `src/cli/` (including `commands/`) & `src/vscode-client/`
+### 34. `src/cli/` (including `commands/`) & `src/editor/vscode-client/`
 
 - **Quadruple `Definition` validation/serialization across `cli/commands/run.ts` (`test.ts`) and `runtime/host/index.ts` (`runtime/testing/run-tests.ts`):**
   - `start` (`src/cli/commands/run.ts`) encodes `compilation.definition` via `definitionFormat.write(compilation.definition)` and passes `text` to `runtime.deploy(text)`, which calls `definitionFormat.read(text)`, then `definitionFormat.write(definition)` (in `programBinder`), and then `definitionFormat.write(program.definition)` (in `deploy`). `test` (`src/cli/commands/test.ts`) and `runTests` (`src/runtime/testing/run-tests.ts`) do the same encode-then-decode-then-encode sequence.
   - **Done** (`fast-wins`): Host operations after the first no longer read the text again (ranked summary #1); the CLI write before `deploy`/`runTests` stays, as both take text.
-- **Unexported `memoryStore` / `directoryStore` on package surface (`B7`) and VS Code client Windows / reload gaps (`F10`) (`src/cli/directory-store.ts`, `src/runtime/store.ts`, `src/vscode-client/`; tracked in `tracker.md`).**
+- **Unexported `memoryStore` / `directoryStore` on package surface (`B7`) and VS Code client Windows / reload gaps (`F10`) (`src/cli/directory-store.ts`, `src/runtime/store.ts`, `src/editor/vscode-client/`; tracked in `tracker.md`).**
 
 ### 35. `docs/spec.md` — Cheat sheet, §1 Overview, §2 Lexical structure and types
 

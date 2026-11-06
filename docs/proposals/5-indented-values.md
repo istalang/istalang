@@ -403,10 +403,10 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
    One adapter reads the entries as those checks read items. The checked form is the literal's, so `src/compiler/lowering/` needs nothing.
 4. **The formatter** prints an indented value as it was written (`src/formatter/expressions/literals.ts`, `bodies.ts`), never turning braces into a block or back.
 5. **The language service:**
-   - completion of field names and map keys in an indented value, as inside braces (`src/language-service/completion/places/`);
-   - hover and go-to-definition on keys (`src/language-service/navigation/`);
-   - folding for the block (`src/language-service/outline/folding.ts`);
-   - semantic tokens: a map's bare key is a String, a struct's a field (`src/language-service/semantic-tokens/`);
+   - completion of field names and map keys in an indented value, as inside braces (`src/editor/language-service/completion/places/`);
+   - hover and go-to-definition on keys (`src/editor/language-service/navigation/`);
+   - folding for the block (`src/editor/language-service/outline/folding.ts`);
+   - semantic tokens: a map's bare key is a String, a struct's a field (`src/editor/language-service/semantic-tokens/`);
    - the VS Code grammar (`.vscode/extensions/ista/syntaxes/`) gains `- ` items.
 6. **Recursive aliases.**
    - `checker/constructs/declarations/aliases/index.ts` reports 5106 only for an unguarded, blocking or irregular reference. A guarded group closes through `closeRecursive` (`checker/types/identity/recursive-types.ts`) into the `RecursiveType` of `checker/types/type/computed-types.ts`: a node of a minimized graph, the bodies resolved with placeholders (`constructs/declarations/aliases/recursive-bodies.ts`).
@@ -438,7 +438,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
     - **Syntax.** The `Parameter` node (`src/compiler/syntax/expressions/index.ts`) holds a target pattern where it holds a name. `parser/grammar/parts/functions.ts` reads one with the declaration-target parser of `parser/grammar/statements/variables.ts`.
     - **Checker.** `checker/constructs/patterns/targets.ts`'s `declareTargets`, the one home for declaration targets, declares a parameter's names too, and refutability is checked as it is for targets. A pattern's own type comes from `patternTypeOf` (`checker/types/written/named-types.ts`). Named arguments and `self` read a parameter's `as` name.
     - **Lowering.** The function takes the argument as one hidden parameter and takes it apart at entry, through the same lowering a destructuring `const` uses (`lowering/constructs/statements/variables.ts`).
-    - **Language service.** Signatures and hovers print the pattern (`src/language-service/signatures/signatures.ts`, `hover.ts`).
+    - **Language service.** Signatures and hovers print the pattern (`src/editor/language-service/signatures/signatures.ts`, `hover.ts`).
 10. **Line breaks between items.**
     - **The rule's one home** is one predicate in `parser/layout/index.ts`, where every decision to move past a line break already lives: does this break separate two items of the enclosing list?
     - **Lists.** `parseDelimited` in `parser/cursor/recovery.ts`, through which every bracketed list already goes, takes a separating break as it takes `,`.
@@ -446,7 +446,7 @@ Otherwise, each new form takes over syntax that is a compile error today, and to
     - **The token sets are derived, never listed again.** What starts an item is the prefix parselet table of `expression.ts`. What continues is its infix table.
     - **Spacing.** Tokens already carry `firstOnLine` (`syntax/tokens/index.ts`). Their spans tell whether `-`, `*`, `&` or `..` is glued to the next token, so the scanner needs no change.
     - **Formatter.** `src/formatter/layout/lists.ts` and `brackets.ts` print a broken list one item per line without `,`; `literals.ts` follows.
-    - **Completion.** The places in `src/language-service/completion/places/` that find "the next item" after a `,` find it after a separating break too.
+    - **Completion.** The places in `src/editor/language-service/completion/places/` that find "the next item" after a `,` find it after a separating break too.
 11. **Parenthesized imports and renames.**
     - **Syntax.** `NamedImport` holds imported names, each an exported name and an optional alias, and whether they were parenthesized, which the formatter keeps.
     - **Parser** (`parser/grammar/declarations/imports.ts`): `(` reads the names through `parseDelimited`, so §6's rule and recovery come with it; the bare form reads `,`-separated names on one line, as today.

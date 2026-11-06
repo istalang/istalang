@@ -1,6 +1,6 @@
 /**
- * `ista lsp`: the language server (lsp/server.ts), speaking LSP over standard input and output for
- * the project of the editor that starts it.
+ * `ista lsp`: the language server (editor/lsp/server.ts), speaking LSP over standard input and
+ * output for the project of the editor that starts it.
  *
  * Standard input and output are its one transport; editors pass `--stdio` to say so, which it
  * accepts. It runs until the client closes its input. The client's `exit` ends the process at once,
@@ -13,7 +13,7 @@ import {
   StreamMessageReader,
   StreamMessageWriter,
 } from 'vscode-languageserver/node';
-import { serveLanguage } from '../../lsp/server.ts';
+import { serveLanguage } from '../../editor/lsp/server.ts';
 import { type CommandDefinition, exitCodes } from '../command.ts';
 
 export const defineLspCommand: CommandDefinition = (cli, { environment, exitWith }) => {

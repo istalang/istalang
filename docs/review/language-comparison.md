@@ -89,11 +89,11 @@ Measured on branch `p4-computed` at `cfd9b3c2`, whose `docs/spec.md` includes pr
 | ↳ `syntax/` | 3,167 |
 | ↳ `scanner/` | 1,177 |
 | `src/runtime/` | 7,291 |
-| `src/language-service/` | 5,862 |
+| `src/editor/language-service/` | 5,862 |
 | `src/definition/` | 3,548 |
 | `src/stdlib/` (TypeScript) | 2,939 |
 | `src/formatter/` | 2,239 |
-| `src/lsp/` | 1,522 |
+| `src/editor/lsp/` | 1,522 |
 | `src/cli/` | 1,073 |
 | the rest | 2,393 |
 

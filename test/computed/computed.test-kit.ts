@@ -18,13 +18,13 @@ import { idOf } from '../../src/compiler/program/program.test-kit.ts';
 import type { FunctionDeclaration } from '../../src/compiler/syntax/declarations/index.ts';
 import { dump } from '../../src/compiler/syntax/tree/tree.test-kit.ts';
 import { decodeJson } from '../../src/definition/formats/codec.ts';
+import { completionsAt } from '../../src/editor/language-service/completion/index.ts';
+import { hoverAt } from '../../src/editor/language-service/hover.ts';
+import { programAt } from '../../src/editor/language-service/language-service.test-kit.ts';
+import { nameAt } from '../../src/editor/language-service/navigation/declarations.ts';
+import { placeOf } from '../../src/editor/language-service/navigation/navigation.test-kit.ts';
 import { parseText } from '../../src/formatter/format.test-kit.ts';
 import { formatText } from '../../src/formatter/format.ts';
-import { completionsAt } from '../../src/language-service/completion/index.ts';
-import { hoverAt } from '../../src/language-service/hover.ts';
-import { programAt } from '../../src/language-service/language-service.test-kit.ts';
-import { nameAt } from '../../src/language-service/navigation/declarations.ts';
-import { placeOf } from '../../src/language-service/navigation/navigation.test-kit.ts';
 import { startToEnd, testRuntime } from '../../src/runtime/runtime.test-kit.ts';
 
 /** A checked program with `declarations` and a probe function `fn _probe(...parameters)`. */

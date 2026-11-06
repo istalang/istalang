@@ -8,7 +8,7 @@
  *
  * What a test or a benchmark imports from the build (`dist/`) Node loads itself, as an app does,
  * not the module runner, whose export getters cost a call across modules more than the call:
- * language-service/edit.bench.ts times the code that ships.
+ * editor/language-service/edit.bench.ts times the code that ships.
  */
 
 import { defineConfig } from 'vitest/config';

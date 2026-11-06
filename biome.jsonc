@@ -75,7 +75,7 @@
     {
       // `vscode` is the editor's own module, given to an extension at run time; no package
       // provides it, and its types come from @types/vscode.
-      "includes": ["src/vscode-client/extension.ts"],
+      "includes": ["src/editor/vscode-client/extension.ts"],
       "linter": { "rules": { "correctness": { "noUndeclaredDependencies": "off" } } }
     },
     {
