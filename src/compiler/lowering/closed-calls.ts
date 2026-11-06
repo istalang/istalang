@@ -21,7 +21,7 @@ import {
   passesAll,
   type ResolvedCall,
   type Witnesses,
-} from '../checker/resolved-call.ts';
+} from '../checker/surface/resolved-call.ts';
 import { isOpaque } from '../checker/types/computed-types.ts';
 import {
   type Substitution,

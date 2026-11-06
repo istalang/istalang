@@ -17,9 +17,9 @@ import { type Identifier, lastName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { NamedType, TypeNode } from '../../syntax/types.ts';
 import type { Checker } from '../check.ts';
-import type { FieldStep, PartStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { itemField } from '../struct-items.ts';
+import type { FieldStep, PartStep } from '../surface/checked-pattern.ts';
+import { itemField } from '../surface/struct-items.ts';
 import { unfolded } from '../types/computed-types.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';
 import {

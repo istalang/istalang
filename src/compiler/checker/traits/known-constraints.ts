@@ -26,7 +26,7 @@ import type {
   TypeParameter,
 } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import type { RequirementOrigin } from '../resolved-call.ts';
+import type { RequirementOrigin } from '../surface/resolved-call.ts';
 import { type ComputedType, isMatchAlias, isOpaque } from '../types/computed-types.ts';
 import { inFieldOrder } from '../types/field-order.ts';
 import { sameConstraint, sameType } from '../types/identity.ts';

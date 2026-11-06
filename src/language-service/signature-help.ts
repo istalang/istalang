@@ -11,8 +11,11 @@
  */
 
 import type { Checker } from '../compiler/checker/check.ts';
-import type { JoinedBody } from '../compiler/checker/denotation.ts';
-import { parameterOfArgument, type ResolvedCall } from '../compiler/checker/resolved-call.ts';
+import type { JoinedBody } from '../compiler/checker/surface/denotation.ts';
+import {
+  parameterOfArgument,
+  type ResolvedCall,
+} from '../compiler/checker/surface/resolved-call.ts';
 import type { FunctionType } from '../compiler/checker/types/type.ts';
 import { presentType } from '../compiler/checker/types/unions.ts';
 import type { ModuleId, Program } from '../compiler/program/program.ts';

@@ -14,7 +14,7 @@ import type { Identifier } from '../syntax/node.ts';
 import type { Assignment, Block } from '../syntax/statements.ts';
 import type { ValueSite } from './check.ts';
 import type { FieldPassType, Pass, Passes } from './passes.ts';
-import type { ResolvedCall, ResolvedSite } from './resolved-call.ts';
+import type { ResolvedCall, ResolvedSite } from './surface/resolved-call.ts';
 import type { Fit } from './types/fit.ts';
 import type { FieldMember, Type } from './types/type.ts';
 

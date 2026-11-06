@@ -6,7 +6,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import type { Binding } from '../resolved-call.ts';
+import type { Binding } from '../surface/resolved-call.ts';
 import { type BoundArgument, type BoundSlot, bindArguments, bindValue } from './binding.ts';
 
 /** `count` parameters named `p0`…, the last `defaults` with a default, and maybe a rest one after. */

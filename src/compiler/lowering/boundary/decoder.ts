@@ -11,7 +11,11 @@
 import type { Register } from '../../../definition/operands.ts';
 import { type CodecHelper, codecHelpers, resultVariants } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
+import {
+  type DerivedForm,
+  type JsonField,
+  variantTagKey,
+} from '../../checker/surface/json-form.ts';
 import type { LiteralType, NominalType, Type } from '../../checker/types/type.ts';
 import { typeText } from '../../checker/types/type-text.ts';
 import { type ClosedCall, closeCall } from '../closed-calls.ts';

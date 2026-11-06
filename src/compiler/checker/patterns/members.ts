@@ -22,8 +22,8 @@ import { signedNumberOf } from '../../syntax/expressions/numbers.ts';
 import { isMissingName, lastName } from '../../syntax/node.ts';
 import type { NamePattern, Pattern, PatternPart } from '../../syntax/patterns.ts';
 import type { TypeNode } from '../../syntax/types.ts';
-import type { PatternTest } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { PatternTest } from '../surface/checked-pattern.ts';
 import { sameType } from '../types/identity.ts';
 import {
   instancesWith,

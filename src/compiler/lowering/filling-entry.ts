@@ -13,7 +13,7 @@
 
 import type { CodeFunction } from '../../definition/functions.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import { type Binding, parameterOfArgument } from '../checker/resolved-call.ts';
+import { type Binding, parameterOfArgument } from '../checker/surface/resolved-call.ts';
 import { callOfFilling } from './closed-calls.ts';
 import type { CodeContext } from './context.ts';
 import type { FunctionInstance } from './instances.ts';

@@ -28,7 +28,7 @@ import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext, ImplicitRecord } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
-import type { ImplicitRole, MadeCall, ResolvedCall } from '../resolved-call.ts';
+import type { ImplicitRole, MadeCall, ResolvedCall } from '../surface/resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { typeText } from '../types/type-text.ts';
 import { applyCall } from './applied-call.ts';

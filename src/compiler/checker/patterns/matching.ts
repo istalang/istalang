@@ -36,12 +36,12 @@ import type {
   StructPattern,
 } from '../../syntax/patterns.ts';
 import type { BodyContext, PatternRecord } from '../body-context.ts';
-import { type CheckedPattern, namesBound, type PatternTest } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
 import { implicitOperatorCall, preludeCall } from '../resolution/implicit.ts';
 import { chooseVariant, nameNodeOf } from '../resolution/named.ts';
-import type { ImplicitRole } from '../resolved-call.ts';
+import { type CheckedPattern, namesBound, type PatternTest } from '../surface/checked-pattern.ts';
+import type { ImplicitRole } from '../surface/resolved-call.ts';
 import { unfolded } from '../types/computed-types.ts';
 import { comparable, decidedEquality, fitEqualSides, isKnown } from '../types/equality.ts';
 import { namesOwnType, patternTypeOf } from '../types/named-types.ts';

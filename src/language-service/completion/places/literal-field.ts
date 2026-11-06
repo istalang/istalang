@@ -14,7 +14,7 @@
  * only where it may stand, as the first item.
  */
 
-import { itemField } from '../../../compiler/checker/struct-items.ts';
+import { itemField } from '../../../compiler/checker/surface/struct-items.ts';
 import type { FieldMember, Type } from '../../../compiler/checker/types/type.ts';
 import { membersOf } from '../../../compiler/checker/types/unions.ts';
 import { spellsName } from '../../../compiler/scanner/characters.ts';

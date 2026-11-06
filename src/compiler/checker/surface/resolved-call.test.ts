@@ -5,13 +5,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { runPrograms } from '../../../test/corpus/programs.ts';
-import { stdProgramOf } from '../binder/bind.test-kit.ts';
-import { idOf } from '../program/program.test-kit.ts';
-import { programModule } from '../program/program.ts';
-import { functionsOf } from '../syntax/field-defaults.ts';
-import { bodyOf, nodesUnder } from '../syntax/tree.ts';
-import { checkProgram } from './check.ts';
+import { runPrograms } from '../../../../test/corpus/programs.ts';
+import { stdProgramOf } from '../../binder/bind.test-kit.ts';
+import { idOf } from '../../program/program.test-kit.ts';
+import { programModule } from '../../program/program.ts';
+import { functionsOf } from '../../syntax/field-defaults.ts';
+import { bodyOf, nodesUnder } from '../../syntax/tree.ts';
+import { checkProgram } from '../check.ts';
 
 describe('a checked body', () => {
   it.each(runPrograms)('records each call $name writes as resolved or a value call', ({ text }) => {

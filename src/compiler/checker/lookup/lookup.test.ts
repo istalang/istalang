@@ -15,8 +15,8 @@ import type { Call } from '../../syntax/expressions/index.ts';
 import type { Identifier } from '../../syntax/node.ts';
 import { nodesUnder, parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree.ts';
 import { type Checker, checkProgram } from '../check.ts';
-import type { Denotation, JoinedBody } from '../denotation.ts';
-import type { ResolvedSite } from '../resolved-call.ts';
+import type { Denotation, JoinedBody } from '../surface/denotation.ts';
+import type { ResolvedSite } from '../surface/resolved-call.ts';
 import type { Type } from '../types/type.ts';
 import { answersAt } from './lookup.test-kit.ts';
 

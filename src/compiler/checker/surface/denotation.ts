@@ -15,21 +15,26 @@
  *   each pass apart (check.ts `CheckedBody`), one call per site.
  */
 
-import type { Entity, NamespaceEntity, VariableEntity, VariantEntity } from '../binder/entities.ts';
-import type { ModuleId } from '../program/program.ts';
+import type {
+  Entity,
+  NamespaceEntity,
+  VariableEntity,
+  VariantEntity,
+} from '../../binder/entities.ts';
+import type { ModuleId } from '../../program/program.ts';
 import type {
   AssociatedType,
   FunctionDeclaration,
   RequiredAssociatedType,
-} from '../syntax/declarations.ts';
-import type { Lambda, MemberAccess } from '../syntax/expressions/index.ts';
-import type { StringLiteral } from '../syntax/expressions/literals.ts';
-import type { Identifier, NodeOf } from '../syntax/node.ts';
-import type { SyntaxNode } from '../syntax/tree.ts';
-import type { TypeNode } from '../syntax/types.ts';
-import type { BodyFacts, CheckedFunction, VariantMember } from './check.ts';
+} from '../../syntax/declarations.ts';
+import type { Lambda, MemberAccess } from '../../syntax/expressions/index.ts';
+import type { StringLiteral } from '../../syntax/expressions/literals.ts';
+import type { Identifier, NodeOf } from '../../syntax/node.ts';
+import type { SyntaxNode } from '../../syntax/tree.ts';
+import type { TypeNode } from '../../syntax/types.ts';
+import type { BodyFacts, CheckedFunction, VariantMember } from '../check.ts';
+import type { Constraint, FieldMember, Type } from '../types/type.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
-import type { Constraint, FieldMember, Type } from './types/type.ts';
 
 /** What names a type: a declared one, a primitive, or `Self` inside a trait. */
 type TypeNaming = Extract<Entity, { readonly kind: 'type' | 'primitive' | 'self' }>;

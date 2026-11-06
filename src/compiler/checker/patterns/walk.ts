@@ -36,14 +36,14 @@ import type {
 } from '../../syntax/patterns.ts';
 import { targetNames, unparenthesizedPattern } from '../../syntax/patterns.ts';
 import { type AnchoredSpan, spanAcross } from '../../syntax/positions.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
   cantMatch,
   neverTest,
   type PartBinding,
   type PatternTest,
   type TargetBinding,
-} from '../checked-pattern.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
+} from '../surface/checked-pattern.ts';
 import { errorType, isPrimitive, neverType, type Type } from '../types/type.ts';
 import { partSelected, sameNames } from './alternatives.ts';
 import { takeArray } from './arrays.ts';

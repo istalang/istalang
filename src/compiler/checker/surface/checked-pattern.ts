@@ -10,12 +10,12 @@ import type {
   FieldHeader,
   Parameter,
   SelectCase,
-} from '../syntax/expressions/index.ts';
-import type { Identifier } from '../syntax/node.ts';
-import type { Relation } from '../syntax/operators.ts';
-import type { ArrayPattern, CompareFieldPattern, LiteralPattern } from '../syntax/patterns.ts';
-import type { For, VariableDeclaration } from '../syntax/statements.ts';
-import type { AnyType, Type } from './types/type.ts';
+} from '../../syntax/expressions/index.ts';
+import type { Identifier } from '../../syntax/node.ts';
+import type { Relation } from '../../syntax/operators.ts';
+import type { ArrayPattern, CompareFieldPattern, LiteralPattern } from '../../syntax/patterns.ts';
+import type { For, VariableDeclaration } from '../../syntax/statements.ts';
+import type { AnyType, Type } from '../types/type.ts';
 
 /**
  * What binds targets (§3.15): a declaration, a `for` or comprehension for each item, a parameter's

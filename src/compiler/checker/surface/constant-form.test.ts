@@ -7,9 +7,9 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { entryPosition, mapOf, valuesEqual } from '../../definition/equality.ts';
-import type { Value } from '../../definition/values.ts';
-import type { Primitive } from '../../language/values.ts';
+import { entryPosition, mapOf, valuesEqual } from '../../../definition/equality.ts';
+import type { Value } from '../../../definition/values.ts';
+import type { Primitive } from '../../../language/values.ts';
 import { type ConstantForm, formSemantics } from './constant-form.ts';
 
 /** A value both representations can hold, built into each by `asForm` and `asValue`. */

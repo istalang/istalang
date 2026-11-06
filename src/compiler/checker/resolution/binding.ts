@@ -18,7 +18,7 @@
  *   collects into it too. Which arguments a pack takes is choosing's to judge (choice.ts).
  */
 
-import { type Binding, parameterOfArgument } from '../resolved-call.ts';
+import { type Binding, parameterOfArgument } from '../surface/resolved-call.ts';
 import type { RestSlot } from '../types/function-types.ts';
 import type { ParameterSlot } from '../types/type.ts';
 

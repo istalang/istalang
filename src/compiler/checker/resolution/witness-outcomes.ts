@@ -18,7 +18,7 @@
 
 import { unreachable } from '../../../structures/unreachable.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import type { ResolvedCall } from '../resolved-call.ts';
+import type { ResolvedCall } from '../surface/resolved-call.ts';
 import type { EntryRule, StructConstraintModel } from '../types/struct-constraint.ts';
 import type { Constraint, Type } from '../types/type.ts';
 import type { TypeKeys } from '../types/type-keys.ts';

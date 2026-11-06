@@ -12,7 +12,7 @@ import type { Identifier } from '../../syntax/node.ts';
 import type { SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import type { CheckerContext } from '../context.ts';
-import type { Denotation, JoinedBody, LookupQueries, TypeMembers } from '../denotation.ts';
+import type { Denotation, JoinedBody, LookupQueries, TypeMembers } from '../surface/denotation.ts';
 import { knownConstraints } from '../traits/known-constraints.ts';
 import type { Constraint, Type } from '../types/type.ts';
 import { denotationsOf } from './denotations.ts';

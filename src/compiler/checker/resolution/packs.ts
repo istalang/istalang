@@ -7,7 +7,7 @@
  */
 
 import type { Inference } from '../inference/infer.ts';
-import type { Binding } from '../resolved-call.ts';
+import type { Binding } from '../surface/resolved-call.ts';
 import { isPack } from '../types/function-types.ts';
 import { type Type, tupleType } from '../types/type.ts';
 import type { CallArgument, Inapplicability, Takes } from './call-arguments.ts';

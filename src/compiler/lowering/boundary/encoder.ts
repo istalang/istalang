@@ -11,7 +11,11 @@
 import type { Register } from '../../../definition/operands.ts';
 import { codecHelpers, wellKnown } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import { type DerivedForm, type JsonField, variantTagKey } from '../../checker/json-form.ts';
+import {
+  type DerivedForm,
+  type JsonField,
+  variantTagKey,
+} from '../../checker/surface/json-form.ts';
 import { unfolded } from '../../checker/types/computed-types.ts';
 import { isPrimitive, type Type, type UnionType } from '../../checker/types/type.ts';
 import { baseOf } from '../../checker/types/union-members.ts';

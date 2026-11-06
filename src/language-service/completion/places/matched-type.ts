@@ -13,7 +13,7 @@
  */
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
-import type { Denotation } from '../../../compiler/checker/denotation.ts';
+import type { Denotation } from '../../../compiler/checker/surface/denotation.ts';
 import {
   downcastTargetOf,
   instancesWith,

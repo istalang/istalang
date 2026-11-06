@@ -24,7 +24,7 @@ import {
   typeParametersOf,
 } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import type { MembersRequirement } from '../resolved-call.ts';
+import type { MembersRequirement } from '../surface/resolved-call.ts';
 import {
   constraintOn,
   constraintSubstitution,

@@ -6,7 +6,7 @@
 
 import { wellKnown } from '../../../language/well-known.ts';
 import type { CheckerContext } from '../context.ts';
-import type { ResolvedCall } from '../resolved-call.ts';
+import type { ResolvedCall } from '../surface/resolved-call.ts';
 import { wellKnownConstraint } from '../traits/constraints.ts';
 import type { Constraint, Type } from '../types/type.ts';
 import type { UseSite } from '../use-site.ts';

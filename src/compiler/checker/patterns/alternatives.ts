@@ -10,7 +10,7 @@
  *   the whole part is bound.
  */
 
-import type { PartBinding, PatternTest } from '../checked-pattern.ts';
+import type { PartBinding, PatternTest } from '../surface/checked-pattern.ts';
 import { sameType } from '../types/identity.ts';
 import type { AnyType, Type } from '../types/type.ts';
 import type { TypeRules } from '../types/type-rules.ts';

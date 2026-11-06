@@ -1,6 +1,6 @@
 /**
  * The built-in `==` and map keys (§3.8, §3.9), written once for every representation of values:
- * the runtime's (definition/equality.ts) and compile time's constant forms (checker/constant-form.ts).
+ * the runtime's (definition/equality.ts) and compile time's constant forms (checker/surface/constant-form.ts).
  * A representation shows its values through a `ValueView`; the rules live here alone, so compile
  * time and run time can't disagree on them.
  *

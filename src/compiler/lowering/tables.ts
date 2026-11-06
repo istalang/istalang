@@ -19,8 +19,8 @@ import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { lineMapOf } from '../../text/line-map.ts';
 import type { Checker } from '../checker/check.ts';
-import type { RequiredField } from '../checker/checked-field.ts';
-import { passesAll } from '../checker/resolved-call.ts';
+import type { RequiredField } from '../checker/surface/checked-field.ts';
+import { passesAll } from '../checker/surface/resolved-call.ts';
 import type { AnyType, Type } from '../checker/types/type.ts';
 
 import { type ModuleId, programModule } from '../program/program.ts';

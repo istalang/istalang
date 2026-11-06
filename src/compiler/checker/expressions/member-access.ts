@@ -19,7 +19,6 @@ import { isMissingName } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Accepts, BodyContext, FieldReadRecord } from '../body-context.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
-import type { FieldRead, FieldReading, FoundField } from '../checked-field.ts';
 import {
   checkFunctionValue,
   functionsAccepted,
@@ -29,6 +28,7 @@ import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { namedType, nameNodeOf } from '../resolution/named.ts';
+import type { FieldRead, FieldReading, FoundField } from '../surface/checked-field.ts';
 import { fieldOf } from '../traits/known-fields.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';

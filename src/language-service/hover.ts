@@ -13,7 +13,7 @@
  */
 
 import type { Checker } from '../compiler/checker/check.ts';
-import type { Denotation } from '../compiler/checker/denotation.ts';
+import type { Denotation } from '../compiler/checker/surface/denotation.ts';
 import { isOpaque } from '../compiler/checker/types/computed-types.ts';
 import type { Type } from '../compiler/checker/types/type.ts';
 import { constraintText, writtenAndNamedText } from '../compiler/checker/types/type-text.ts';

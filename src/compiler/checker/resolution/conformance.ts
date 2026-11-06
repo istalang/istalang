@@ -35,7 +35,7 @@ import type { FunctionDeclaration, TypeParameter } from '../../syntax/declaratio
 import type { RootGoals } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { type Completion, completeInference } from '../inference/complete.ts';
-import type { ResolvedCall, Witnesses } from '../resolved-call.ts';
+import type { ResolvedCall, Witnesses } from '../surface/resolved-call.ts';
 import { constraintSubstitution, requiredFunctions, traitAsAny } from '../traits/constraints.ts';
 import { sameType } from '../types/identity.ts';
 import { standsForMember } from '../types/member-arguments.ts';

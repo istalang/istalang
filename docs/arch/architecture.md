@@ -65,10 +65,13 @@ src/
                                                                  body records of its nodes, per pass; body-facts/: each fact a
                                                                  CheckedBody answers, read per pass, instantiated and joined
       use-site.ts                                                where a check reports
-      resolved-call.ts checked-pattern.ts                        models the surface names: what calls resolved to, patterns and targets as checked,
-      constant-form.ts json-form.ts checked-annotation.ts        computed constants, derived JSON forms, annotations,
-      checked-field.ts host-externs.ts struct-items.ts           how field reads reach their fields, the externs a host implements,
-                                                                 which field a struct item gives
+      surface/                                                   the models the surface names, contracts like the root's: what calls resolved to
+                                                                 (resolved-call.ts), patterns and targets as checked (checked-pattern.ts),
+                                                                 computed constants (constant-form.ts), derived JSON forms (json-form.ts),
+                                                                 annotations (checked-annotation.ts), how field reads reach their fields
+                                                                 (checked-field.ts), the externs a host implements (host-externs.ts), which
+                                                                 field a struct item gives (struct-items.ts), and what tools ask by position,
+                                                                 a body read at a node among it (denotation.ts)
                                                                  folders, lowest layer first (Layers):
       diagnostics/ types/                                        the catalog; the type model, identity as key equality (identity.ts: a shape
                                                                  is its fields in name order), written types resolved, rules over types and the
@@ -192,8 +195,8 @@ text · diagnostics                      foundation; the runtime may use text/ f
 language · structures                   beneath every layer; they import nothing
 ```
 
-- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`text/`, `diagnostics/`) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`constant-form.ts`, `json-form.ts`, `checked-annotation.ts`, `struct-items.ts`, `denotation.ts`, `host-externs.ts`, `types/type.ts`, `types/computed-types.ts`, `types/function-types.ts`, `types/field-order.ts`, `types/identity.ts`, `types/named-types.ts`, `types/substitution.ts`, `types/type-rules.ts`, `types/fit.ts`, `types/expected.ts`, `types/unions.ts`, `types/union-members.ts`, `types/recursive-types.ts`, `types/type-keys.ts`, `types/type-text.ts`, `types/well-known.ts`), which lowering reads module by module.
-- Inside the checker, folders are layers too, from the type model up to the constructs: `diagnostics`, `types`, `inference`, `traits`, `resolution`, `calls`, `patterns`, `flow`, `rules`, `declarations`, `closures`, `expressions`, `statements`, `lookup`. A folder imports only those beneath it, so engines never import constructs. Its root modules are its entry, contexts and contracts, which every folder may import, except the modules that wire a body and a program together (`body-checker.ts`, `body-records.ts`, `program-checker.ts`).
+- A phase or feature folder is used only through its entry module, which is named for what it does (`scanner/scan.ts`, `parser/parse.ts`). Nothing reaches into another folder's internals. The foundation folders (`text/`, `diagnostics/`) are small vocabularies, used module by module. The checker's surface is its entry and the models it names (`surface/`, `types/type.ts`, `types/computed-types.ts`, `types/function-types.ts`, `types/field-order.ts`, `types/identity.ts`, `types/named-types.ts`, `types/substitution.ts`, `types/type-rules.ts`, `types/fit.ts`, `types/expected.ts`, `types/unions.ts`, `types/union-members.ts`, `types/recursive-types.ts`, `types/type-keys.ts`, `types/type-text.ts`, `types/well-known.ts`), which lowering reads module by module.
+- Inside the checker, folders are layers too, from the type model up to the constructs: `diagnostics`, `types`, `inference`, `traits`, `resolution`, `calls`, `patterns`, `flow`, `rules`, `declarations`, `closures`, `expressions`, `statements`, `lookup`. A folder imports only those beneath it, so engines never import constructs. Its contracts, its root modules (its entry and contexts) and `surface/` (the models later phases read), may be imported by every folder, except the modules that wire a body and a program together (`body-checker.ts`, `body-records.ts`, `program-checker.ts`).
 - `syntax/` and `definition/` are contracts with high fan-in. Change them deliberately, and update every caller in the same change.
 - Mechanisms:
   - Biome `noExcessiveLinesPerFile` enforces the 400-line limit.

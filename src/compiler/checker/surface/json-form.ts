@@ -10,10 +10,10 @@ import {
   type CodecHelper,
   type WellKnownDeclaration,
   wellKnown,
-} from '../../language/well-known.ts';
+} from '../../../language/well-known.ts';
+import type { LiteralType, NominalType, StructValueType, TupleType, Type } from '../types/type.ts';
+import type { UseSite } from '../use-site.ts';
 import type { FunctionCall, ResolvedCall } from './resolved-call.ts';
-import type { LiteralType, NominalType, StructValueType, TupleType, Type } from './types/type.ts';
-import type { UseSite } from './use-site.ts';
 
 /** Which way a value crosses as JSON (§9): written to it, or read from it. */
 export type JsonDirection = 'write' | 'read';

@@ -48,10 +48,10 @@ tags: [reuse, language, modules, program, binder, names]
 - ask the checker about a node of completion's placeholder parse (one ending before the cursor) → `checkedTwinOf` (`src/language-service/completion/checked-twin.ts`)
 - the type a `case`, `is` or parameter pattern being written matches, or the fields its struct pattern names → `matchedTypeOf`, `fieldsMatchedBy` (`src/language-service/completion/places/matched-type.ts`)
 - offer the module paths an import's path may go on with, one segment at a time, from the importer or the project root → `modulePathsAt` (`src/language-service/completion/places/module-paths.ts`)
-- tell whether a type may annotate (§3.16: a struct, not a shared or extern one) → `canAnnotate` (`src/compiler/checker/checked-annotation.ts`)
+- tell whether a type may annotate (§3.16: a struct, not a shared or extern one) → `canAnnotate` (`src/compiler/checker/surface/checked-annotation.ts`)
 - turn completion candidates into items, or an item into an LSP item → `present` (`src/language-service/completion/present.ts`), `completionItem` (`src/lsp/providers/completion.ts`)
 - the type expected where a cursor writes a value, and the variants that may be written bare there → `expectedTypeAt`, `expectedVariants`, `isBareVariant` (`src/language-service/completion/expected.ts`)
-- read a checked body at a node as tools do, the passes of the field loops around it read as one (§4) → `checker.lookup.bodyHolding`, a `JoinedBody` (`src/compiler/checker/denotation.ts`): its types joined, and every pass's call or lambda listed (`callsAt`, `implicitCallsOf`, `functionsOf`); never a pass's single call, which lowering alone reads
+- read a checked body at a node as tools do, the passes of the field loops around it read as one (§4) → `checker.lookup.bodyHolding`, a `JoinedBody` (`src/compiler/checker/surface/denotation.ts`): its types joined, and every pass's call or lambda listed (`callsAt`, `implicitCallsOf`, `functionsOf`); never a pass's single call, which lowering alone reads
 - the type expected of a value in a checked body → `CheckedBody.expectedOf`; whether a type fits another → `Checker.fitOf` (`src/compiler/checker/check.ts`)
 - check an edit tried out without cutting the program's incremental history → `checkProgram(program, { previous, tentative: true })`
 - the docstring of what a name denotes → `docstringOf` (`src/language-service/docstrings.ts`)
@@ -69,7 +69,7 @@ tags: [reuse, language, modules, program, binder, names]
 - list the names visible at an offset, each with what it denotes there → `Bindings.visibleAt` (`src/compiler/binder/entities.ts`)
 - find the module declaring any declaration, a local one included → `Checker.moduleOf` (`src/compiler/checker/program-inputs.ts`, `DeclaringModules`)
 - read a module's items, imports, roles or tree, or the bare variant an expected enum chooses, inside the checker → `CheckerContext.inputs` (`src/compiler/checker/program-inputs.ts`); whether a module is std → `Checker.isStd`
-- ask what an identifier denotes, the body holding a node, a written type's type or a type's members (tools, by position) → `Checker.lookup` (`src/compiler/checker/denotation.ts`)
+- ask what an identifier denotes, the body holding a node, a written type's type or a type's members (tools, by position) → `Checker.lookup` (`src/compiler/checker/surface/denotation.ts`)
 - list bare variant candidates or look up a top-level/prelude name → `Bindings.candidatesOf`, `Bindings.topLevelNamed` (`src/compiler/binder/entities.ts`)
 - find the hidden variable an async function holds its own call in, which its name before a `.` reads (§7) → `Bindings.ownCallOf` (`src/compiler/binder/entities.ts`)
 - check whether a `VariableEntity` is the own name of a local `fn` or named `Lambda` → `localFunctionOf` (`src/compiler/binder/entities.ts`)

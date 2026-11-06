@@ -16,7 +16,7 @@ import {
   SignatureHelpRequest,
 } from 'vscode-languageserver/node';
 import { checkProgram } from '../../compiler/checker/check.ts';
-import { parameterOfArgument } from '../../compiler/checker/resolved-call.ts';
+import { parameterOfArgument } from '../../compiler/checker/surface/resolved-call.ts';
 import { typeText } from '../../compiler/checker/types/type-text.ts';
 import { wellKnownArguments } from '../../compiler/checker/types/well-known.ts';
 import type { ModuleId } from '../../compiler/program/program.ts';

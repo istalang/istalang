@@ -17,7 +17,7 @@
  */
 
 import type { Checker, ValueSite } from '../checker/check.ts';
-import type { Binding, Witnesses } from '../checker/resolved-call.ts';
+import type { Binding, Witnesses } from '../checker/surface/resolved-call.ts';
 import { type Substitution, substitutionFor } from '../checker/types/substitution.ts';
 import type { FunctionType, Type } from '../checker/types/type.ts';
 import type { TypeKeys } from '../checker/types/type-keys.ts';

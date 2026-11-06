@@ -25,7 +25,6 @@ import {
 } from '../../syntax/declarations.ts';
 import type { MemberAccess } from '../../syntax/expressions/index.ts';
 import type { CheckerContext } from '../context.ts';
-import type { TypeMembers } from '../denotation.ts';
 import {
   callableThrough,
   modulesSeenFrom,
@@ -36,6 +35,7 @@ import {
 } from '../resolution/candidates.ts';
 import { takesAsSelf } from '../resolution/receivers.ts';
 import { metThroughTraits } from '../resolution/trait-calls.ts';
+import type { TypeMembers } from '../surface/denotation.ts';
 import { requiredFields, requiredFunctions } from '../traits/constraints.ts';
 import {
   associatedDeclarationsOn,

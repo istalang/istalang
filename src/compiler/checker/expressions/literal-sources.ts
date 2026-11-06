@@ -14,7 +14,7 @@ import type {
 import type { LiteralSources } from '../body-context.ts';
 import type { FieldSource } from '../check.ts';
 import type { Pass, Passes, PassTable } from '../passes.ts';
-import type { FunctionCall, MadeCall } from '../resolved-call.ts';
+import type { FunctionCall, MadeCall } from '../surface/resolved-call.ts';
 import type { FieldMember } from '../types/type.ts';
 
 /**

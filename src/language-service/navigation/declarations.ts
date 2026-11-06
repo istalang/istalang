@@ -15,7 +15,7 @@
  */
 
 import { type Checker, checkProgram } from '../../compiler/checker/check.ts';
-import type { Denotation } from '../../compiler/checker/denotation.ts';
+import type { Denotation } from '../../compiler/checker/surface/denotation.ts';
 import { type ModuleId, type Program, programModule } from '../../compiler/program/program.ts';
 import type { StringLiteral } from '../../compiler/syntax/expressions/literals.ts';
 import { type Identifier, isMissingName } from '../../compiler/syntax/node.ts';

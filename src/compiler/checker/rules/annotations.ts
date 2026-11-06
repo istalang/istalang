@@ -30,15 +30,15 @@ import type { Invalid, NodeOf } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { Statement } from '../../syntax/statements.ts';
 import type { CheckedBody } from '../check.ts';
+import type { AnnotationChecks, CheckerContext, CheckerNote } from '../context.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import {
   type AnnotationPlace,
   type CheckedAnnotation,
   canAnnotate,
   statementPlace,
-} from '../checked-annotation.ts';
-import { sameForm } from '../constant-form.ts';
-import type { AnnotationChecks, CheckerContext, CheckerNote } from '../context.ts';
-import { checkerDiagnostics } from '../diagnostics/index.ts';
+} from '../surface/checked-annotation.ts';
+import { sameForm } from '../surface/constant-form.ts';
 import { declaredFieldOf, type FieldOwner } from '../types/declared-fields.ts';
 import { errorType, type FieldMember, type Type } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';

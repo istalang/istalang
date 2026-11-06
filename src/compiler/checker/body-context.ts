@@ -52,11 +52,11 @@ import type {
   SignatureParameter,
   ValueSite,
 } from './check.ts';
-import type { FieldRead, FieldReading } from './checked-field.ts';
-import type { CheckedPattern, TargetBinding, TargetOwner } from './checked-pattern.ts';
 import type { CheckerContext } from './context.ts';
 import type { FieldPassType } from './passes.ts';
-import type { ImplicitRole, ResolvedCall, ResolvedSite } from './resolved-call.ts';
+import type { FieldRead, FieldReading } from './surface/checked-field.ts';
+import type { CheckedPattern, TargetBinding, TargetOwner } from './surface/checked-pattern.ts';
+import type { ImplicitRole, ResolvedCall, ResolvedSite } from './surface/resolved-call.ts';
 import type { Fit } from './types/fit.ts';
 import type { FieldMember, FunctionType, Type } from './types/type.ts';
 

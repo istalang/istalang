@@ -49,21 +49,26 @@ import type {
   Return,
   VariableDeclaration,
 } from '../syntax/statements.ts';
-import type { AnnotationQueries } from './checked-annotation.ts';
-import type { FieldRead, FieldReading } from './checked-field.ts';
-import type { CheckedPattern, TargetBinding, TargetOwner, TargetStep } from './checked-pattern.ts';
-import type { ConstantForm } from './constant-form.ts';
-import type { JoinedBody, LookupQueries } from './denotation.ts';
-import type { JsonFormQueries } from './json-form.ts';
 import type { FieldPassType, PassRecords } from './passes.ts';
 import { type CheckerOptions, ProgramChecker } from './program-checker.ts';
+import type { AnnotationQueries } from './surface/checked-annotation.ts';
+import type { FieldRead, FieldReading } from './surface/checked-field.ts';
+import type {
+  CheckedPattern,
+  TargetBinding,
+  TargetOwner,
+  TargetStep,
+} from './surface/checked-pattern.ts';
+import type { ConstantForm } from './surface/constant-form.ts';
+import type { JoinedBody, LookupQueries } from './surface/denotation.ts';
+import type { JsonFormQueries } from './surface/json-form.ts';
 import type {
   FunctionCall,
   ImplicitRole,
   MadeCall,
   ResolvedCall,
   ResolvedSite,
-} from './resolved-call.ts';
+} from './surface/resolved-call.ts';
 import type { Fit } from './types/fit.ts';
 import type { RestSlot } from './types/function-types.ts';
 import type { Substitution } from './types/substitution.ts';

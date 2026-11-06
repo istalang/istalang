@@ -11,7 +11,10 @@
  */
 
 import type { Entity, TypeEntity } from '../../../compiler/binder/entities.ts';
-import { canAnnotate, statementPlace } from '../../../compiler/checker/checked-annotation.ts';
+import {
+  canAnnotate,
+  statementPlace,
+} from '../../../compiler/checker/surface/checked-annotation.ts';
 import { parserDiagnostics } from '../../../compiler/parser/diagnostics.ts';
 import type { Invalid } from '../../../compiler/syntax/node.ts';
 import { spanIn } from '../../../compiler/syntax/positions.ts';

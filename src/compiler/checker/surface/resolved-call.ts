@@ -4,10 +4,10 @@
  * apart from the body model because the call model grows with every calling convention.
  */
 
-import type { FunctionDeclaration, TypeParameter } from '../syntax/declarations.ts';
-import type { Expression } from '../syntax/expressions/index.ts';
-import type { NodeOf } from '../syntax/node.ts';
-import type { AnyType, Type } from './types/type.ts';
+import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
+import type { Expression } from '../../syntax/expressions/index.ts';
+import type { NodeOf } from '../../syntax/node.ts';
+import type { AnyType, Type } from '../types/type.ts';
 
 /**
  * What a call resolved to (§3.5, §3.7, §3.10). Generics are compiled per instantiation, so a call

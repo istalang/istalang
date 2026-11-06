@@ -9,13 +9,13 @@
  * program runs.
  */
 
-import { unreachable } from '../../structures/unreachable.ts';
-import type { TraitDeclaration } from '../syntax/declarations.ts';
-import type { Index, MemberAccess } from '../syntax/expressions/index.ts';
-import type { FieldDeclaration } from '../syntax/types.ts';
-import type { Checker } from './check.ts';
-import { isOpaque } from './types/computed-types.ts';
-import type { AnyType, FieldMember, Type } from './types/type.ts';
+import { unreachable } from '../../../structures/unreachable.ts';
+import type { TraitDeclaration } from '../../syntax/declarations.ts';
+import type { Index, MemberAccess } from '../../syntax/expressions/index.ts';
+import type { FieldDeclaration } from '../../syntax/types.ts';
+import type { Checker } from '../check.ts';
+import { isOpaque } from '../types/computed-types.ts';
+import type { AnyType, FieldMember, Type } from '../types/type.ts';
 
 /** A field a trait requires (§3.10): the trait, and its field's declaration. */
 export interface RequiredField {

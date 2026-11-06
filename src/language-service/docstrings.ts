@@ -5,7 +5,7 @@
 
 import { localFunctionOf } from '../compiler/binder/entities.ts';
 import type { Checker } from '../compiler/checker/check.ts';
-import type { Denotation } from '../compiler/checker/denotation.ts';
+import type { Denotation } from '../compiler/checker/surface/denotation.ts';
 import { importedModule } from './namespaces.ts';
 
 /** The docstring of what `declared` names, for the declarations that may have one (§2). */

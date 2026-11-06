@@ -12,7 +12,7 @@ import type { CodeFunction } from '../../../definition/functions.ts';
 import { derivedCodecs } from '../../../language/well-known.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
-import type { DerivedForm, JsonDirection } from '../../checker/json-form.ts';
+import type { DerivedForm, JsonDirection } from '../../checker/surface/json-form.ts';
 import { substitute } from '../../checker/types/substitution.ts';
 import type { Type } from '../../checker/types/type.ts';
 import { type FunctionInstance, substitutionOf } from '../instances.ts';

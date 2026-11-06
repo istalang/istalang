@@ -19,7 +19,7 @@ import type { Pattern } from '../../syntax/patterns.ts';
 import { type For, tailExpressionOf } from '../../syntax/statements.ts';
 import { bodyOf, nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
 import { type CheckedBody, checkProgram } from '../check.ts';
-import { namesBound, type PartStep } from '../checked-pattern.ts';
+import { namesBound, type PartStep } from '../surface/checked-pattern.ts';
 import { substitutionFor } from '../types/substitution.ts';
 import { intType, stringType } from '../types/type.ts';
 import { parametersIn } from '../types/type-parts.ts';

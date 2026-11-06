@@ -12,7 +12,7 @@
 
 import type { FunctionDeclaration, TypeParameter } from '../../syntax/declarations.ts';
 import type { CheckerContext } from '../context.ts';
-import type { MembersRequirement } from '../resolved-call.ts';
+import type { MembersRequirement } from '../surface/resolved-call.ts';
 import { constraintSubstitution } from '../traits/constraints.ts';
 import { type Substitution, substituteAny } from '../types/substitution.ts';
 import { errorType } from '../types/type.ts';

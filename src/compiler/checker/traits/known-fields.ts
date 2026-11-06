@@ -4,13 +4,13 @@
  * (traits/known-constraints.ts). One rule for a field read, a field called and conformance.
  */
 
+import type { CheckerContext } from '../context.ts';
 import {
   type FoundField,
   namedFieldRead,
   requiredFieldRead,
   structFieldOf,
-} from '../checked-field.ts';
-import type { CheckerContext } from '../context.ts';
+} from '../surface/checked-field.ts';
 import { unfolded } from '../types/computed-types.ts';
 import type { Type } from '../types/type.ts';
 import { literalType } from '../types/unions.ts';

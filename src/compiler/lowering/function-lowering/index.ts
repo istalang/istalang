@@ -35,9 +35,13 @@ import { handlerOf } from '../../../structures/kind-table.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Entity } from '../../binder/entities.ts';
 import type { CheckedBody, Checker, SignatureParameter, ValueSite } from '../../checker/check.ts';
-import type { FieldRead, FieldReading } from '../../checker/checked-field.ts';
-import type { CheckedPattern } from '../../checker/checked-pattern.ts';
-import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../../checker/resolved-call.ts';
+import type { FieldRead, FieldReading } from '../../checker/surface/checked-field.ts';
+import type { CheckedPattern } from '../../checker/surface/checked-pattern.ts';
+import type {
+  ImplicitRole,
+  ResolvedCall,
+  ResolvedSite,
+} from '../../checker/surface/resolved-call.ts';
 import type { Fit } from '../../checker/types/fit.ts';
 import { substitute } from '../../checker/types/substitution.ts';
 import type { Type } from '../../checker/types/type.ts';

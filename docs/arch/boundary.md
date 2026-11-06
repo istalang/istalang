@@ -34,7 +34,7 @@ path):
   declaring neither codec, beside it or in the `json` module, has both derived. A union crosses
   only so or as `T | None`, through the `json` module's codecs of `T?`: any other union's member
   would need a tag JSON doesn't carry, so it has neither (spec §9). The checker decides its derived form once (`checker/rules/boundary/json-forms.ts`,
-  memoized per type key; the model is `checker/json-form.ts`, which later phases read through
+  memoized per type key; the model is `checker/surface/json-form.ts`, which later phases read through
   `Checker.json`): field names after `@JsonName`, `@JsonBigInt` fields, what a `@JsonSkip` field
   reads back as (its type's `Default` witness). Its parts cross through their own codecs, and
   witnesses are coherent (spec §3.10): found beside the types they take or the trait, never where

@@ -34,7 +34,11 @@ import {
 import type { EntryTable } from '../../../../structures/entries/index.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';
-import { isHostType } from '../../host-externs.ts';
+import { witnessesFor } from '../../resolution/conformance.ts';
+import { declaresWitness } from '../../resolution/declared-witness.ts';
+import { defaultWitness } from '../../resolution/default-witness.ts';
+import { callWithTypes } from '../../resolution/silent-choice.ts';
+import { isHostType } from '../../surface/host-externs.ts';
 import {
   type DerivedCodec,
   type DerivedForm,
@@ -43,12 +47,8 @@ import {
   type JsonField,
   jsonTraits,
   variantTagKey,
-} from '../../json-form.ts';
-import { witnessesFor } from '../../resolution/conformance.ts';
-import { declaresWitness } from '../../resolution/declared-witness.ts';
-import { defaultWitness } from '../../resolution/default-witness.ts';
-import { callWithTypes } from '../../resolution/silent-choice.ts';
-import type { FunctionCall, ResolvedCall } from '../../resolved-call.ts';
+} from '../../surface/json-form.ts';
+import type { FunctionCall, ResolvedCall } from '../../surface/resolved-call.ts';
 import { wellKnownConstraint } from '../../traits/constraints.ts';
 import { unfolded } from '../../types/computed-types.ts';
 import { sameType } from '../../types/identity.ts';

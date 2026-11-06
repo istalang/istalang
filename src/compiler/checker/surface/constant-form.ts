@@ -5,14 +5,14 @@
  * which the checker's own modules import.
  */
 
-import { type MapOf, ValueSemantics } from '../../language/values.ts';
-import type { Lambda } from '../syntax/expressions/index.ts';
-import type { VariableDeclaration } from '../syntax/statements.ts';
+import { type MapOf, ValueSemantics } from '../../../language/values.ts';
+import type { Lambda } from '../../syntax/expressions/index.ts';
+import type { VariableDeclaration } from '../../syntax/statements.ts';
+import { laidOut, namedValues } from '../types/field-order.ts';
+import { sameType } from '../types/identity.ts';
+import type { FieldMember, NominalType, StructValueType, Type, UnionType } from '../types/type.ts';
+import { sameTypeSpelled } from '../types/type-parts.ts';
 import type { TargetStep } from './checked-pattern.ts';
-import { laidOut, namedValues } from './types/field-order.ts';
-import { sameType } from './types/identity.ts';
-import type { FieldMember, NominalType, StructValueType, Type, UnionType } from './types/type.ts';
-import { sameTypeSpelled } from './types/type-parts.ts';
 
 /**
  * A primitive (`Unit` is `null`), a struct of a struct type with its fields in declaration order,

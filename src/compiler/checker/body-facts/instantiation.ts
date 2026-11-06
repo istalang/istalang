@@ -22,7 +22,7 @@ import {
   keyedFieldRead,
   namedFieldRead,
   requiredFieldRead,
-} from '../checked-field.ts';
+} from '../surface/checked-field.ts';
 import type {
   CheckedPattern,
   PartStep,
@@ -30,7 +30,7 @@ import type {
   StructStep,
   TargetBinding,
   TargetStep,
-} from '../checked-pattern.ts';
+} from '../surface/checked-pattern.ts';
 import { unfolded } from '../types/computed-types.ts';
 import type { Fit } from '../types/fit.ts';
 import { sameType } from '../types/identity.ts';

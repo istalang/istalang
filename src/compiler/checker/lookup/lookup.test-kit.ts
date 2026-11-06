@@ -15,7 +15,7 @@ import type { VariableDeclaration } from '../../syntax/statements.ts';
 import { nodesUnder, type SyntaxNode } from '../../syntax/tree.ts';
 import type { TypeNode } from '../../syntax/types.ts';
 import { type Checker, checkProgram } from '../check.ts';
-import type { ResolvedSite } from '../resolved-call.ts';
+import type { ResolvedSite } from '../surface/resolved-call.ts';
 
 export function checkedMain(text: string, imported: Readonly<Record<string, string>> = {}) {
   const program = stdProgramOf({ 'main.ista': text, ...imported });

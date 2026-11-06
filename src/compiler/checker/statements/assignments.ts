@@ -45,11 +45,11 @@ import {
 } from '../calls/places.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
 import type { AssignedPart, WrittenFit } from '../check.ts';
-import type { FieldStep } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { anyShape, type Shape } from '../patterns/exhaustiveness.ts';
 import { bodyScope, type ValuePart } from '../patterns/parts.ts';
 import { type Taking, takeApart, takeTargets } from '../patterns/taking.ts';
+import type { FieldStep } from '../surface/checked-pattern.ts';
 import { errorType, type Type, tupleType } from '../types/type.ts';
 
 export function checkAssignment(context: BodyContext, node: Assignment): void {

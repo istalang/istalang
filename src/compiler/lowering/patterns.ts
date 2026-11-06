@@ -25,7 +25,7 @@ import {
   namesBound,
   type PatternTest,
   type PatternValue,
-} from '../checker/checked-pattern.ts';
+} from '../checker/surface/checked-pattern.ts';
 import { sameType } from '../checker/types/identity.ts';
 import type { LiteralType, Type } from '../checker/types/type.ts';
 import { baseOf } from '../checker/types/union-members.ts';

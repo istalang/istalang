@@ -21,7 +21,7 @@ import type { FunctionDefinition } from '../../../definition/functions.ts';
 import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
-import { type RequiredField, requiredFieldRead } from '../../checker/checked-field.ts';
+import { type RequiredField, requiredFieldRead } from '../../checker/surface/checked-field.ts';
 import { sameType } from '../../checker/types/identity.ts';
 import type { AnyType, Type } from '../../checker/types/type.ts';
 import { hasOneValue } from '../../checker/types/unions.ts';

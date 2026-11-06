@@ -12,7 +12,7 @@
 
 import type { Register } from '../../definition/operands.ts';
 import { unreachable } from '../../structures/unreachable.ts';
-import type { ArrayStep, PartStep, StructStep } from '../checker/checked-pattern.ts';
+import type { ArrayStep, PartStep, StructStep } from '../checker/surface/checked-pattern.ts';
 import type { AnchoredSpan } from '../syntax/positions.ts';
 import type { FunctionContext } from './context.ts';
 import { emitImplicitCall } from './emit-call.ts';

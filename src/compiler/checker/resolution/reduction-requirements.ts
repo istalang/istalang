@@ -41,7 +41,7 @@ import { isWrittenType } from '../../syntax/types.ts';
 import type { CheckedBody } from '../check.ts';
 import type { CheckerContext, CheckerNote, Instantiable } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
-import { functionCallsWithin } from '../resolved-call.ts';
+import { functionCallsWithin } from '../surface/resolved-call.ts';
 import { unfoldRecursive } from '../types/computed-types.ts';
 import { type Substitution, substitute, substitutionFor } from '../types/substitution.ts';
 import type { RecursiveUse, Type, UnreducedUse } from '../types/type.ts';

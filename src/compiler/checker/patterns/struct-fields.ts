@@ -15,8 +15,8 @@
 import type { Identifier } from '../../syntax/node.ts';
 import type { RestPattern } from '../../syntax/patterns.ts';
 import type { FieldTarget } from '../../syntax/statements.ts';
-import type { PartBinding } from '../checked-pattern.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
+import type { PartBinding } from '../surface/checked-pattern.ts';
 import type { Type, TypeParameterType } from '../types/type.ts';
 import type { TypeRules } from '../types/type-rules.ts';
 import { typeText } from '../types/type-text.ts';

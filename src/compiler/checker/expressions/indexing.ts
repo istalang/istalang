@@ -15,9 +15,9 @@ import type { Index } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../body-context.ts';
 import { resolveCall } from '../calls/resolve.ts';
 import { stoppedOperation } from '../calls/stopped-operations.ts';
-import { keyedFieldRead } from '../checked-field.ts';
 import { topLevelCandidates } from '../resolution/candidates.ts';
 import { takesAsSelf } from '../resolution/receivers.ts';
+import { keyedFieldRead } from '../surface/checked-field.ts';
 import { insideOptional } from '../types/inside-optional.ts';
 import { errorType, type Type } from '../types/type.ts';
 

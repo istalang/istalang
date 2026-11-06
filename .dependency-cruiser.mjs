@@ -114,9 +114,10 @@ const layers = {
 
 /**
  * The checker's folders, lowest first: each may import the folders before it, never one after, and
- * a folder not listed may import none. Its root modules are its entry, contexts and contracts,
- * which any folder may import, except the modules wiring a body and a program together; so they
- * import no folder above the type model, or every folder would reach every other through them.
+ * a folder not listed may import none. Its contracts, its root modules (entry and contexts) and
+ * surface/ (the models later phases read), may be imported by any folder, so they import no folder
+ * above the type model, or every folder would reach every other through them; the modules wiring a
+ * body and a program together are no contracts.
  * Type-only imports count, as the swc parser reports them: a cycle of types is a cycle of knowledge.
  */
 const checkerLayers = [
@@ -139,15 +140,15 @@ const checkerLayers = [
 /** What later phases may import of the checker: its entry and the models its surface names. */
 const checkerSurface = [
   'check.ts',
-  'resolved-call.ts',
-  'checked-pattern.ts',
-  'checked-field.ts',
-  'constant-form.ts',
-  'json-form.ts',
-  'checked-annotation.ts',
-  'struct-items.ts',
-  'denotation.ts',
-  'host-externs.ts',
+  'surface/resolved-call.ts',
+  'surface/checked-pattern.ts',
+  'surface/checked-field.ts',
+  'surface/constant-form.ts',
+  'surface/json-form.ts',
+  'surface/checked-annotation.ts',
+  'surface/struct-items.ts',
+  'surface/denotation.ts',
+  'surface/host-externs.ts',
   'types/type.ts',
   'types/computed-types.ts',
   'types/function-types.ts',
@@ -174,6 +175,9 @@ const checkerFolder = (names) => `^src/compiler/checker/(${names.join('|')})/`;
  */
 const checkerWiring =
   '^src/compiler/checker/((body-checker|body-records|program-checker)\\.ts$|body-facts/)';
+
+/** The checker's contracts: its root modules and the models its surface names (surface/). */
+const checkerContracts = '^src/compiler/checker/([^/]+\\.ts$|surface/)';
 
 /** The checker folders its contracts may name: diagnostics and the type model beneath everything. */
 const checkerModel = ['diagnostics', 'types'];
@@ -215,7 +219,7 @@ export default {
       severity: 'error',
       from: {
         path: '^src/compiler/checker/[^/]+/',
-        pathNot: `${checkerFolder(checkerLayers)}|${checkerWiring}`,
+        pathNot: `${checkerFolder(checkerLayers)}|${checkerWiring}|${checkerContracts}`,
       },
       to: { path: '^src/compiler/checker/' },
     },
@@ -223,7 +227,7 @@ export default {
       name: 'checker-contract-imports-above-model',
       severity: 'error',
       from: {
-        path: '^src/compiler/checker/[^/]+\\.ts$',
+        path: checkerContracts,
         pathNot: checkerWiring,
       },
       to: { path: checkerFolder(checkerLayers.filter((layer) => !checkerModel.includes(layer))) },

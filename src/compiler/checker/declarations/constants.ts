@@ -22,11 +22,11 @@ import type { Identifier } from '../../syntax/node.ts';
 import { targetNames } from '../../syntax/patterns.ts';
 import type { VariableDeclaration } from '../../syntax/statements.ts';
 import type { CheckedBody, CheckedConstant } from '../check.ts';
-import type { TargetBinding } from '../checked-pattern.ts';
-import { formAt, sameForm } from '../constant-form.ts';
 import type { CheckerContext, CheckerNote } from '../context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { computeConstant, refusalOf } from '../rules/computation/index.ts';
+import type { TargetBinding } from '../surface/checked-pattern.ts';
+import { formAt, sameForm } from '../surface/constant-form.ts';
 import { errorType, type Type } from '../types/type.ts';
 import { sameTypeSpelled } from '../types/type-parts.ts';
 
