@@ -10,7 +10,8 @@
 
 import type { Definition } from '../../definition/definition.ts';
 import type { FunctionDefinition } from '../../definition/functions.ts';
-import { languageModules, testingFunctions } from '../../language/well-known.ts';
+import { languageModules } from '../../language/well-known/index.ts';
+import { testingFunctions } from '../../language/well-known/testing.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/surface/host-externs.ts';

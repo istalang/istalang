@@ -21,7 +21,7 @@ import {
   moduleIdOf,
 } from '../compiler/program/program.ts';
 import { importPathOf } from '../language/import-paths.ts';
-import { isTestModulePath } from '../language/well-known.ts';
+import { isTestModulePath } from '../language/well-known/testing.ts';
 import { diskFiles, type ProjectFiles } from './project-files.ts';
 
 export const sourceExtension = '.ista';

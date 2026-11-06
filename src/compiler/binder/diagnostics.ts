@@ -7,7 +7,7 @@
  */
 
 import { defineDiagnostics } from '../../diagnostics/catalog.ts';
-import { testModuleSuffix } from '../../language/well-known.ts';
+import { testModuleSuffix } from '../../language/well-known/testing.ts';
 
 export const binderDiagnostics = defineDiagnostics('binder', {
   undeclared: {

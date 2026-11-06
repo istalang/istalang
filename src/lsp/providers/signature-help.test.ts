@@ -23,7 +23,7 @@ import type { ModuleId } from '../../compiler/program/program.ts';
 import type { Call } from '../../compiler/syntax/expressions/index.ts';
 import { spanIn } from '../../compiler/syntax/positions.ts';
 import { nodesUnder } from '../../compiler/syntax/tree.ts';
-import { wellKnown } from '../../language/well-known.ts';
+import { wellKnown } from '../../language/well-known/index.ts';
 import { signatureOf } from '../../language-service/signatures.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { createSourceText, type SourceText } from '../../text/source-text.ts';

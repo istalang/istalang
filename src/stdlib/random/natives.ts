@@ -9,7 +9,7 @@
  * try is likelier than not to land below `n`.
  */
 
-import { wellKnown } from '../../language/well-known.ts';
+import { wellKnown } from '../../language/well-known/index.ts';
 import { type NativeContext, type Natives, Panic, type WithRandom } from '../../runtime/natives.ts';
 import { given } from '../native-values.ts';
 import { bounded, countOf, rangeOf, textOf } from '../ranges.ts';

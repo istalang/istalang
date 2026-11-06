@@ -4,7 +4,7 @@
  * any module while the name `Duration` is visible only where imported.
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
+import { wellKnown } from '../../../language/well-known/index.ts';
 import type { DurationLiteral } from '../../syntax/expressions/literals/literals.ts';
 import type { BodyContext } from '../body-context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';

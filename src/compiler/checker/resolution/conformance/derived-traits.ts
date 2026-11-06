@@ -12,7 +12,7 @@
  *   from its JSON form.
  */
 
-import { type WellKnownDeclaration, wellKnown } from '../../../../language/well-known.ts';
+import { type WellKnownDeclaration, wellKnown } from '../../../../language/well-known/index.ts';
 import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
 import type { CheckerContext } from '../../context.ts';
 import { type DerivedCodec, type JsonDirection, jsonTraits } from '../../surface/json-form.ts';

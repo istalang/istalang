@@ -17,7 +17,7 @@
  *   member took `None` whole, such as `any Sendable`; anything else is reported.
  */
 
-import { panicFunction } from '../../../../language/well-known.ts';
+import { panicFunction } from '../../../../language/well-known/implicit-calls.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import { type ChainStep, chainStepOf, isOptionalStep } from '../../../syntax/expressions/chains.ts';
 import type { Binary, Expression, Unwrap } from '../../../syntax/expressions/index.ts';

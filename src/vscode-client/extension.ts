@@ -13,7 +13,7 @@
 
 import { type ExtensionContext, languages, type TextDocument, workspace } from 'vscode';
 import { LanguageClient } from 'vscode-languageclient/node';
-import { stdScheme } from '../language/well-known.ts';
+import { stdScheme } from '../language/well-known/index.ts';
 import { stdSourceRequest } from '../lsp/std-source-request.ts';
 import { serverExecutable } from './server-command.ts';
 

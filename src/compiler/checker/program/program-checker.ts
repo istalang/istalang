@@ -26,7 +26,7 @@ import {
   type LanguageModule,
   type WellKnownDeclaration,
   wellKnown,
-} from '../../../language/well-known.ts';
+} from '../../../language/well-known/index.ts';
 import { Entries, type EntryTable } from '../../../structures/entries/index.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import { bindProgram } from '../../binder/bind.ts';

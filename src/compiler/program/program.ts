@@ -26,7 +26,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { LanguageModule } from '../../language/well-known.ts';
+import type { LanguageModule } from '../../language/well-known/index.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { createSourceText, type SourceText } from '../../text/source-text.ts';
 import { parse } from '../parser/parse.ts';
@@ -87,7 +87,10 @@ export interface ProgramModule {
 
 export interface Program {
   readonly roots: readonly ModuleId[];
-  /** The std modules the language refers to (language/well-known.ts), as the app supplied them. */
+  /**
+   * The std modules the language refers to (language/well-known/index.ts), as the app supplied
+   * them.
+   */
   readonly roles: Readonly<Partial<Record<LanguageModule, ModuleId>>>;
   /** Every module reachable from the roots, in load order. */
   readonly modules: ReadonlyMap<ModuleId, ProgramModule>;

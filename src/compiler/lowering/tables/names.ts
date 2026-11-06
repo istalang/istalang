@@ -20,7 +20,7 @@ import {
 } from '../../../definition/extern-key.ts';
 import { compareOrdered } from '../../../language/order.ts';
 import { staticName } from '../../../language/static-names.ts';
-import { qualifiedName, wellKnown } from '../../../language/well-known.ts';
+import { qualifiedName, wellKnown } from '../../../language/well-known/index.ts';
 import { memo } from '../../../structures/memo.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';

@@ -9,7 +9,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { LanguageModule, WellKnownDeclaration } from '../../language/well-known.ts';
+import type { LanguageModule, WellKnownDeclaration } from '../../language/well-known/index.ts';
 import { memo } from '../../structures/memo.ts';
 import type { Bindings, Entity } from '../binder/entities.ts';
 import type { ModuleId, Program } from '../program/program.ts';
@@ -123,7 +123,9 @@ export interface Checker {
   ) => readonly ResolvedCall[];
   /** `_Cell<T>` for `type`, what a variable passed by `&` or captured lives in (§3.7, §3.14). */
   readonly cellOf: (type: Type) => NominalType;
-  /** What a well-known name (language/well-known.ts) denotes; undefined without its module. */
+  /**
+   * What a well-known name (language/well-known/index.ts) denotes; undefined without its module.
+   */
   readonly wellKnownEntity: (declaration: WellKnownDeclaration) => Entity | undefined;
   /** The functions of `name` a language module declares, private ones included (§3.13). */
   readonly languageFunctions: (

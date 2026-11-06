@@ -28,8 +28,8 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 #### 1.1 `src/structures/` & `src/language/`
 - **`ValueSemantics` map-key equality recursion (`src/language/values.ts`, D100):**
   - `ValueSemantics.equal` and `structuralKey` use explicit heap stacks so deep values never overflow the JS stack, and the banner states *"Every walk keeps its own stack"*. However, `#sameKeys` calls `this.entryValue(other, key)` → `this.entryPosition(map, key)` → `this.equal(entry[0], key)`, recursing on the host JS stack when maps are nested inside map keys.
-- **Three separate implementations of module-qualified naming (`src/language/well-known.ts`, `src/compiler/lowering/tables/names.ts`, `src/definition/extern-key.ts`, D174):**
-  - `qualifiedName({ module, name })` in `src/language/well-known.ts`, `qualifiedNameOf` in `src/compiler/lowering/tables/names.ts`, and `${signature.module}.${signature.name}` in `src/definition/extern-key.ts` all format `${module}.${name}` independently, even though `stdlib/std-module.ts` relies on `qualifiedName` matching lowering's type-table names and extern keys.
+- **Three separate implementations of module-qualified naming (`src/language/well-known/index.ts`, `src/compiler/lowering/tables/names.ts`, `src/definition/extern-key.ts`, D174):**
+  - `qualifiedName({ module, name })` in `src/language/well-known/index.ts`, `qualifiedNameOf` in `src/compiler/lowering/tables/names.ts`, and `${signature.module}.${signature.name}` in `src/definition/extern-key.ts` all format `${module}.${name}` independently, even though `stdlib/std-module.ts` relies on `qualifiedName` matching lowering's type-table names and extern keys.
 
 #### 1.2 `src/text/`
 - **Double standard & OOM hazard in `codePoints` vs. `codePointWidth` (`src/text/code-points.ts`, D195):**
@@ -352,7 +352,7 @@ Systematic unit-by-unit and module-by-module review of `src/`, `docs/spec.md`, a
 | --- | --- | --- |
 | 5-step implicit conversion (`Fit` vs. `Inference`) | `checker/types/fitting/fit.ts` (`fitOf`) | `checker/inference/infer.ts` (`Inference.match`) (D222) |
 | Binary vs. chained vs. pattern comparisons | `checker/expressions/operators.ts` (`checkBinary`) & `lowering/expressions/operators.ts` (`lowerBinary`) | `checkChainedComparison` / `compared` & `patterns/matching.ts` / `lowering/parts/patterns.ts` (D226) |
-| Module-qualified name `${module}.${name}` | `language/well-known.ts` (`qualifiedName`) | `lowering/tables/names.ts` (`qualifiedNameOf`), `definition/extern-key.ts` (`externKey`) (D174) |
+| Module-qualified name `${module}.${name}` | `language/well-known/index.ts` (`qualifiedName`) | `lowering/tables/names.ts` (`qualifiedNameOf`), `definition/extern-key.ts` (`externKey`) (D174) |
 | Member-access chain → `QualifiedName` | `parser/parts/names.ts` (`qualifiedPath`) | `binder/constructs/expressions.ts` (`qualifiedPathOf`) |
 | Millisecond time unit constants | `scanner/numbers.ts` | `stdlib/time/iso.ts` |
 | `<` / `===` ordered comparator | `language/values.ts` (`compareCodeUnits`) | `stdlib/prelude/natives.ts` (`compareOrdered`) |

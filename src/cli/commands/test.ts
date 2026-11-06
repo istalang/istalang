@@ -16,7 +16,7 @@ import { resolve } from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { compileTests, diagnose } from '../../compiler/compile.ts';
 import { definitionFormat } from '../../definition/definition.ts';
-import { testModuleSuffix } from '../../language/well-known.ts';
+import { testModuleSuffix } from '../../language/well-known/testing.ts';
 import { findSources, loadProject } from '../../project/project.ts';
 import { runTests, type TestReport } from '../../runtime/testing/run-tests.ts';
 import { stdNatives } from '../../stdlib/natives.ts';

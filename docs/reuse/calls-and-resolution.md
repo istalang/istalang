@@ -63,7 +63,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 
 ### Add an implicit construct or prelude call
 
-1. Spell the function's name once in `src/language/well-known.ts`.
+1. Spell the function's name once in `src/language/well-known/implicit-calls.ts`.
 2. Add its role to `ImplicitRole` in `src/compiler/checker/surface/resolved-call.ts`.
 3. In the checker handler, call `preludeCall` (prelude-owned) or `implicitCall` with `topLevelCandidates` (`src/compiler/checker/resolution/implicit.ts`).
 4. In lowering, read `context.body.implicitCallOf(node, role)` and emit it with `emitImplicitCall` / `emitCall` (`src/compiler/lowering/calls/emit-call.ts`).

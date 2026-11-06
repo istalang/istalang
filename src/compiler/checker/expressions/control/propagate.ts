@@ -4,7 +4,7 @@
  * apart by `?`; `??` and `match` do that (§4).
  */
 
-import { wellKnown } from '../../../../language/well-known.ts';
+import { wellKnown } from '../../../../language/well-known/index.ts';
 import type { Propagate } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../body-context.ts';
 import { stoppedOperation } from '../../calls/stopped-operations.ts';

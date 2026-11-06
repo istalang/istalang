@@ -121,7 +121,9 @@ export class ValueSemantics<Value> {
       entries: [],
     });
 
-  /** Runs `step`, pushing any follow-up steps or candidate search frame; false when it disagrees. */
+  /**
+   * Runs `step`, pushing any follow-up steps or candidate search frame; false when it disagrees.
+   */
   #step(step: EqualStep<Value>, steps: EqualStep<Value>[], frames: EqualFrame<Value>[]): boolean {
     if (step.kind === 'pair') {
       return this.#agreeAtTop(step.left, step.right, steps);

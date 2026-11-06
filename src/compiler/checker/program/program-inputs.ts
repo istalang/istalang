@@ -20,7 +20,7 @@
  *   its module.
  */
 
-import type { LanguageModule } from '../../../language/well-known.ts';
+import type { LanguageModule } from '../../../language/well-known/index.ts';
 import type { Entries } from '../../../structures/entries/index.ts';
 import { sameEntries, sameItems } from '../../../structures/equality.ts';
 import { memo } from '../../../structures/memo.ts';

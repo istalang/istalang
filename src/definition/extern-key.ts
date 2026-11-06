@@ -19,7 +19,7 @@
  */
 
 import type { PrimitiveName } from '../language/primitives.ts';
-import { qualifiedName } from '../language/well-known.ts';
+import { qualifiedName } from '../language/well-known/index.ts';
 
 /** A declared type, as a key spells it. */
 export type KeyType =

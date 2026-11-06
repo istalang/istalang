@@ -27,7 +27,8 @@
  */
 
 import type { Diagnostic } from '../../../../diagnostics/diagnostic.ts';
-import { inclusiveEndFunction, wellKnown } from '../../../../language/well-known.ts';
+import { inclusiveEndFunction } from '../../../../language/well-known/implicit-calls.ts';
+import { wellKnown } from '../../../../language/well-known/index.ts';
 import type {
   ArrayLiteral,
   Expression,

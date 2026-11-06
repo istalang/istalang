@@ -20,7 +20,7 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
+import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
 import type { EntryTable } from '../../../structures/entries/index.ts';
 import { sameItems } from '../../../structures/equality.ts';
 import type { ModuleId } from '../../program/program.ts';

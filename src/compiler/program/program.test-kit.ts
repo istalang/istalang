@@ -6,7 +6,7 @@
  * labelled with its key, so diagnostics and assertions read as the files they come from.
  */
 
-import { isTestModulePath } from '../../language/well-known.ts';
+import { isTestModulePath } from '../../language/well-known/testing.ts';
 import type { Span } from '../../text/span.ts';
 import { type AnchoredSpan, spanIn } from '../syntax/positions.ts';
 import {

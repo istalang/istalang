@@ -165,9 +165,9 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **`hasRole` narrowed to `ExternRole` only (`src/definition/types.ts`, `src/definition/values/json-values.ts`):**
   - `hasRole(types, type, role)` only accepts `ExternRole` (`'shared' | 'cell' | 'future' | 'instance'`) and checks `entry?.kind === 'extern'`, forcing `findJsonType` (`src/definition/values/json-values.ts`) to hand-write `candidate.kind === 'enum' && candidate.role === 'json'` instead of calling `hasRole(types, index, 'json')`.
   - **Done** (`p5-indented`): `hasRole` takes an extern's role or an enum's, which `findJsonType` asks.
-- **Hard-coded variant/struct field names in `declared-values.ts` (`src/definition/values/declared-values.ts`, `src/language/well-known.ts`):**
-  - `optionalOf`, `okTypeOf`, `okOf`, `errOf`, and `errorOf` import `optionalVariants` and `resultVariants` from `src/language/well-known.ts`, but hard-code the field names `'value'` and `'error'` as string literals.
-  - **Done** (`p3-unions`): `resultFields` and `optionalValueField` (`language/well-known.ts`) name the fields once; `optionalValueOf` (`declared-values.ts`) reads an optional by its declared variant and field.
+- **Hard-coded variant/struct field names in `declared-values.ts` (`src/definition/values/declared-values.ts`, `src/language/well-known/index.ts`):**
+  - `optionalOf`, `okTypeOf`, `okOf`, `errOf`, and `errorOf` import `optionalVariants` and `resultVariants` from `src/language/well-known/index.ts`, but hard-code the field names `'value'` and `'error'` as string literals.
+  - **Done** (`p3-unions`): `resultFields` and `optionalValueField` (`language/well-known/index.ts`) name the fields once; `optionalValueOf` (`declared-values.ts`) reads an optional by its declared variant and field.
 
 ### 6. `src/compiler/syntax/` (including `expressions/`)
 
@@ -452,8 +452,8 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Duplicate `ownsStatics` / `staticOwnerKinds` in `completion/places/declared-name.ts` vs. `isNominalEntity` (`src/compiler/checker/types/type/index.ts`):**
   - `declared-name.ts` defines `staticOwnerKinds = new Set(['StructDeclaration', 'SharedStructDeclaration', 'ExternStructDeclaration', 'EnumDeclaration'])` and `ownsStatics`, duplicating `isNominalEntity` (`src/compiler/checker/types/type/index.ts`) and omitting type aliases (`StaticFunctions.#ownerOf` in `checker/declarations/functions/statics.ts`).
   - **Done** (`p2-structural`): `staticOwners` asks `staticOwnerOf(entityType(…))` (`types/written/named-types.ts`), so an alias, of a shape too, is offered.
-- **Hard-coded `'self'` string literal in `completion/places/declared-name.ts` (`src/language-service/completion/places/declared-name.ts`, `src/language/well-known.ts`):**
-  - `declared-name.ts` writes `const receiver: Candidate = { name: 'self', subject: { kind: 'keyword' } }` instead of importing `receiverParameter` from `src/language/well-known.ts` (violating the one-way rule in `docs/reuse/modules-and-names.md`).
+- **Hard-coded `'self'` string literal in `completion/places/declared-name.ts` (`src/language-service/completion/places/declared-name.ts`, `src/language/well-known/index.ts`):**
+  - `declared-name.ts` writes `const receiver: Candidate = { name: 'self', subject: { kind: 'keyword' } }` instead of importing `receiverParameter` from `src/language/well-known/index.ts` (violating the one-way rule in `docs/reuse/modules-and-names.md`).
   - **Done** (`fast-wins`): `receiver` names `receiverParameter`.
 - **Duplicate `isChangeable` in `completion/places/grammar.ts` vs. `VariableScope.isChangeable` / `writtenByReference` (`src/language-service/completion/places/grammar.ts`, `src/compiler/checker/statements/variables.ts`, `declarations/functions/signatures.ts`):**
   - `isChangeable` in `completion/places/grammar.ts` re-implements `owner.kind === 'VariableDeclaration' && owner.isMutable` and `owner.kind === 'Parameter' && owner.type?.kind === 'ReferenceType'` (missing lambda parameters whose `&` reference comes from an expected function type).

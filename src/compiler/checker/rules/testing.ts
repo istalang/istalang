@@ -16,7 +16,8 @@
  *   targets are what checking gives back.
  */
 
-import { languageModules, testingFunctions, wellKnown } from '../../../language/well-known.ts';
+import { languageModules, wellKnown } from '../../../language/well-known/index.ts';
+import { testingFunctions } from '../../../language/well-known/testing.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';

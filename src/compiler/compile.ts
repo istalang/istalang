@@ -12,7 +12,7 @@
 
 import type { Definition } from '../definition/definition.ts';
 import { compareDiagnostics, type Diagnostic, isError } from '../diagnostics/diagnostic.ts';
-import { entryFunction } from '../language/well-known.ts';
+import { entryFunction } from '../language/well-known/index.ts';
 import { memo } from '../structures/memo.ts';
 import type { SourceText } from '../text/source-text.ts';
 import { bindProgram } from './binder/bind.ts';

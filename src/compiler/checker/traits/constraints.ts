@@ -13,7 +13,7 @@
  *   known-constraints.ts's; struct constraints (§3.5) are resolved in struct-constraints.ts.
  */
 
-import type { WellKnownDeclaration } from '../../../language/well-known.ts';
+import type { WellKnownDeclaration } from '../../../language/well-known/index.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type {

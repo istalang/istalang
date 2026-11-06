@@ -47,7 +47,8 @@ import {
   isUnnamed,
 } from '../../language/naming.ts';
 import { compareOrdered } from '../../language/order.ts';
-import { codecFunctions, entryFunction, receiverParameter } from '../../language/well-known.ts';
+import { codecFunctions } from '../../language/well-known/codecs.ts';
+import { entryFunction, receiverParameter } from '../../language/well-known/index.ts';
 import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { memo } from '../../structures/memo.ts';
 import type { Span } from '../../text/span.ts';

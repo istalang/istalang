@@ -10,7 +10,7 @@
 import { functionKey, type NativeParameter, parameterKey } from '../../definition/extern-key.ts';
 import { instanceNameOf } from '../../definition/values/instance-handles.ts';
 import { closureOf, type Value } from '../../definition/values/values.ts';
-import { wellKnown } from '../../language/well-known.ts';
+import { wellKnown } from '../../language/well-known/index.ts';
 import type { InstanceState } from '../../runtime/instance-state.ts';
 import {
   type NativeContext,

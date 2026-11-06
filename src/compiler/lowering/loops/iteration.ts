@@ -7,7 +7,8 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import { stepVariants, wellKnown } from '../../../language/well-known.ts';
+import { wellKnown } from '../../../language/well-known/index.ts';
+import { stepVariants } from '../../../language/well-known/variants.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Iteration } from '../../checker/surface/checked-body.ts';
 import type { Comprehension, Expression } from '../../syntax/expressions/index.ts';

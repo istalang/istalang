@@ -210,7 +210,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
 
 **Tasks in Group F:**
 1. **Unify `qualifiedName` across `language/`, `lowering/tables/names.ts`, and `definition/extern-key.ts` (D174) & make `KeyParameter` passing an enum (D219):**
-   - Use `qualifiedName` from `src/language/well-known.ts` in `src/compiler/lowering/tables/names.ts` (`qualifiedNameOf`) and `src/definition/extern-key.ts` (`externKey`).
+   - Use `qualifiedName` from `src/language/well-known/index.ts` in `src/compiler/lowering/tables/names.ts` (`qualifiedNameOf`) and `src/definition/extern-key.ts` (`externKey`).
    - In `src/definition/extern-key.ts`, replace `reference: boolean; rest?: boolean` on `KeyParameter` with `passing: 'value' | 'reference' | 'rest'`.
 2. **Add `fieldValueOf` and export `variantShape` in `definition/values/declared-values.ts`, and `closureOf` in `definition/values/values.ts` (Q15, Q16, Q17, D201):**
    - Add `fieldValueOf(types, structValue, fieldName)` and export `variantShape` in `src/definition/values/declared-values.ts`.
@@ -219,7 +219,7 @@ Companion to `docs/audit/audit-items.md`. This plan partitions all actionable bu
    - Make `valueProblems` in `src/definition/validation/references.ts` iterative (or bounded) and make `ValueSemantics.#sameKeys` in `src/language/values.ts` push onto `pending` or bound key depth (D100).
 3. **Deduplicate time-unit constants and `compareOrdered` (`language/`, `stdlib/prelude/natives.ts`, `stdlib/time/iso.ts`):**
    - Export `compareCodeUnits` / `compareOrdered` from `src/language/values.ts` and use it in `src/stdlib/prelude/natives.ts`.
-   - Export time-unit millisecond constants from `src/language/well-known.ts` (or `src/language/time-units.ts`) and use them in `src/stdlib/time/iso.ts`.
+   - Export time-unit millisecond constants from `src/language/well-known/index.ts` (or `src/language/time-units.ts`) and use them in `src/stdlib/time/iso.ts`.
 4. **Fix $O(N)$ array allocation in string length/indexing (D195 — `text/code-points.ts`, `stdlib/prelude/strings.ts`, `stdlib/strings/natives.ts`) & bound `decimal` places/exponent work (D194 — `stdlib/decimal/arithmetic.ts`):**
    - Add non-allocating `codePointCount(s: string): number` (and `codePointAtPosition`) in `src/text/code-points.ts`, and use them in `src/stdlib/prelude/strings.ts` (`length`, `at`, `index`) and `src/stdlib/strings/natives.ts` (`padding`) so large strings do not crash V8 with OOM.
    - Bound `places` and negative exponent work in `src/stdlib/decimal/arithmetic.ts` so `decimal.divide` and `power` panic immediately on unreasonable precision instead of stalling the host thread for minutes.
@@ -257,7 +257,7 @@ These items touch shared phase contracts (`src/compiler/checker/check.ts`, `src/
 9. **Operator classification, one home:** export `BinaryOperatorOf` from `syntax/operators.ts`, write `ImplicitOperator = BinaryOperatorOf<'order' | 'membership'>`, move `isImplicitOperator` beside `isChainingOperator`; build a single binary's `ComparisonLink` in `syntax/expressions/comparisons.ts`; share `fitArguments`/`typesText` between `calls/resolve.ts` and `resolution/implicit.ts`.
 10. **`rules/iteration.ts`:** `iteratedItem`'s implicit call passes `span: iterable.span`, so 5101/5003 fall on the iterable.
 11. **Weak side:** remove `NativeWeakSide.whenDisposed`, switch `stdlib/prelude/weak-natives.ts` to `watch`, delete `nativeWeakSideOf`; a production `handleTo(id)` in `definition/values/values.ts` replaces the inline `{kind: 'handle', object}` literals.
-12. **Test modules:** one test-suffix predicate in `language/well-known.ts`, used by `cli/file-loader.ts` and `program.test-kit.ts`; `parse.test.ts` titles become `$document:$line`, and `section` drops its `${path} › ` prefix.
+12. **Test modules:** one test-suffix predicate in `language/well-known/index.ts`, used by `cli/file-loader.ts` and `program.test-kit.ts`; `parse.test.ts` titles become `$document:$line`, and `section` drops its `${path} › ` prefix.
 
 ### Wave 2 groups
 

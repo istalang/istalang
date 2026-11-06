@@ -13,7 +13,7 @@ import {
   type WrittenType,
 } from '../definition/extern-key.ts';
 import { staticName } from '../language/static-names.ts';
-import { qualifiedName, type WellKnownDeclaration } from '../language/well-known.ts';
+import { qualifiedName, type WellKnownDeclaration } from '../language/well-known/index.ts';
 import type { Natives } from '../runtime/natives.ts';
 
 export interface StdModule {

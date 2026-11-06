@@ -10,7 +10,7 @@
  *   (`currentCall`).
  */
 
-import { wellKnown } from '../../../language/well-known.ts';
+import { wellKnown } from '../../../language/well-known/index.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { BodyContext } from '../body-context.ts';
 import type { NestedFunction } from '../surface/checked-body.ts';

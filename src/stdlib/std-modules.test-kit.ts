@@ -3,7 +3,7 @@
 import { stdProgramOf } from '../compiler/binder/bind.test-kit.ts';
 import { type Checker, checkProgram } from '../compiler/checker/check.ts';
 import type { ModuleId, ProgramModule } from '../compiler/program/program.ts';
-import { languageModules } from '../language/well-known.ts';
+import { languageModules } from '../language/well-known/index.ts';
 import { stdModuleSources } from './std-sources.ts';
 
 export interface EveryStdModule {

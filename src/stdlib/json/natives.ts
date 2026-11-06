@@ -23,7 +23,8 @@ import {
   plainOfJson,
 } from '../../definition/values/json-values.ts';
 import { handleTarget, type Value } from '../../definition/values/values.ts';
-import { codecHelpers, wellKnown } from '../../language/well-known.ts';
+import { codecHelpers } from '../../language/well-known/codecs.ts';
+import { wellKnown } from '../../language/well-known/index.ts';
 import type { NativeContext, Natives, WithResources } from '../../runtime/natives.ts';
 import { Refusal } from '../../runtime/refusal.ts';
 import { unreachable } from '../../structures/unreachable.ts';

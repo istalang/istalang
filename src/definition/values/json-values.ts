@@ -22,7 +22,7 @@
  *   form is walked, so deep input is refused instead of overflowing the host's stack.
  */
 
-import { qualifiedName, wellKnown } from '../../language/well-known.ts';
+import { qualifiedName, wellKnown } from '../../language/well-known/index.ts';
 import { memo } from '../../structures/memo.ts';
 import { unreachable } from '../../structures/unreachable.ts';
 import { decodeJson, encodeJson, NestingError } from '../formats/codec.ts';

@@ -10,7 +10,7 @@
  */
 
 import { primitiveNames } from './primitives.ts';
-import { selfType } from './well-known.ts';
+import { selfType } from './well-known/index.ts';
 
 export type Convention = 'type' | 'value';
 
@@ -26,7 +26,9 @@ export function followsConvention(name: string, convention: Convention): boolean
 
 const builtInTypeNames: ReadonlySet<string> = new Set([...primitiveNames, selfType]);
 
-/** Whether `name` is a built-in type's, which no declaration takes (§2): a primitive's or `Self`. */
+/**
+ * Whether `name` is a built-in type's, which no declaration takes (§2): a primitive's or `Self`.
+ */
 export function isBuiltInTypeName(name: string): boolean {
   return builtInTypeNames.has(name);
 }

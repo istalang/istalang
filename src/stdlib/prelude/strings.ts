@@ -6,7 +6,7 @@
  * point where it starts.
  */
 
-import { wellKnown } from '../../language/well-known.ts';
+import { wellKnown } from '../../language/well-known/index.ts';
 import type { NativeContext, Natives } from '../../runtime/natives.ts';
 import {
   codePointAtPosition,

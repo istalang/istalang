@@ -5,7 +5,7 @@
  * editing a program never imports a native.
  */
 
-import { languageModules } from '../language/well-known.ts';
+import { languageModules } from '../language/well-known/index.ts';
 import type { Natives } from '../runtime/natives.ts';
 import { cryptoNatives } from './crypto/natives.ts';
 import { decimalNatives } from './decimal/natives.ts';

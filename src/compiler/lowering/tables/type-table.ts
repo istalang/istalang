@@ -35,7 +35,8 @@ import type {
 } from '../../../definition/types.ts';
 import type { Value } from '../../../definition/values/values.ts';
 import { compareOrdered } from '../../../language/order.ts';
-import { unionLayout, type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
+import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
+import { unionLayout } from '../../../language/well-known/variants.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker, Disposal } from '../../checker/check.ts';
 import type { CheckedAnnotation } from '../../checker/surface/checked-annotation.ts';

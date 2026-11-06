@@ -5,7 +5,7 @@
  */
 
 import { jsonTypeOf, plainOfJson } from '../../definition/values/json-values.ts';
-import { wellKnown } from '../../language/well-known.ts';
+import { wellKnown } from '../../language/well-known/index.ts';
 import type { LogLevel } from '../../runtime/instance-state.ts';
 import type { NativeContext, Natives, WithLogs } from '../../runtime/natives.ts';
 import { given, text, variantEntry } from '../native-values.ts';

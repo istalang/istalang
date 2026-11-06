@@ -19,7 +19,7 @@
  * - Imports declare nothing else to check.
  */
 
-import { entryFunction } from '../../../language/well-known.ts';
+import { entryFunction } from '../../../language/well-known/index.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import type { ModuleId } from '../../program/program.ts';
 import type { Annotatable } from '../../syntax/annotations.ts';

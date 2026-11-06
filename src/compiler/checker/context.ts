@@ -13,7 +13,7 @@
  */
 
 import type { Diagnostic } from '../../diagnostics/diagnostic.ts';
-import type { LanguageModule } from '../../language/well-known.ts';
+import type { LanguageModule } from '../../language/well-known/index.ts';
 import type { Entries } from '../../structures/entries/index.ts';
 import type { VariantEntity } from '../binder/entities.ts';
 import type { ModuleId } from '../program/program.ts';

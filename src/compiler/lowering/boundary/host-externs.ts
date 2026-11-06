@@ -16,7 +16,7 @@
 
 import type { CodeFunction, FunctionDefinition } from '../../../definition/functions.ts';
 import type { FunctionId, Register } from '../../../definition/operands.ts';
-import { wellKnown } from '../../../language/well-known.ts';
+import { wellKnown } from '../../../language/well-known/index.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import type { Checker } from '../../checker/check.ts';
 import type { Type } from '../../checker/types/type/index.ts';

@@ -22,7 +22,7 @@
  * - A range pattern's leaf is constructs/ranges.ts's.
  */
 
-import { arrayPatternFunctions } from '../../../language/well-known.ts';
+import { arrayPatternFunctions } from '../../../language/well-known/implicit-calls.ts';
 import type { Entity, VariantNaming } from '../../binder/entities.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import { lastName } from '../../syntax/node.ts';

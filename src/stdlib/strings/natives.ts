@@ -15,7 +15,7 @@
 
 import { restKey } from '../../definition/extern-key.ts';
 import { elementsOf } from '../../definition/values/values.ts';
-import { wellKnown } from '../../language/well-known.ts';
+import { wellKnown } from '../../language/well-known/index.ts';
 import { type NativeContext, type Natives, Panic } from '../../runtime/natives.ts';
 import {
   codePointCount,

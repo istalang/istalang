@@ -19,7 +19,7 @@
  *   around the function, which inside a trait includes `Self`.
  */
 
-import { selfType } from '../../../language/well-known.ts';
+import { selfType } from '../../../language/well-known/index.ts';
 import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
 import { fieldsFunctionOf } from '../../syntax/declarations/field-defaults.ts';
 import {

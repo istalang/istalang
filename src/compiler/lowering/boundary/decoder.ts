@@ -9,7 +9,8 @@
  */
 
 import type { Register } from '../../../definition/operands.ts';
-import { type CodecHelper, codecHelpers, resultVariants } from '../../../language/well-known.ts';
+import { type CodecHelper, codecHelpers } from '../../../language/well-known/codecs.ts';
+import { resultVariants } from '../../../language/well-known/variants.ts';
 import { unreachable } from '../../../structures/unreachable.ts';
 import {
   type DerivedForm,

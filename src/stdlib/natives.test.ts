@@ -6,7 +6,9 @@
 import { describe, expect, it } from 'vitest';
 import { keyOf } from '../compiler/lowering/tables/names.ts';
 import { declaredFunctions } from '../compiler/syntax/declarations/index.ts';
-import { derivedCodecs, disposeFunction, languageModules } from '../language/well-known.ts';
+import { derivedCodecs } from '../language/well-known/codecs.ts';
+import { disposeFunction } from '../language/well-known/implicit-calls.ts';
+import { languageModules } from '../language/well-known/index.ts';
 import { stdNatives } from './natives.ts';
 import { everyStdModule } from './std-modules.test-kit.ts';
 

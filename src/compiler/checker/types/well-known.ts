@@ -1,11 +1,11 @@
 /**
- * Recognizing the well-known types (language/well-known.ts) in checked types: whether a type is,
- * say, a `Future<T>` or an `Array<T>`, and with which type arguments. A type is recognized by its
- * declaration's entity, the one the prelude or `time` declares, never by its name, so a program's
- * own `Array` would be a different type.
+ * Recognizing the well-known types (language/well-known/index.ts) in checked types: whether a type
+ * is, say, a `Future<T>` or an `Array<T>`, and with which type arguments. A type is recognized by
+ * its declaration's entity, the one the prelude or `time` declares, never by its name, so a
+ * program's own `Array` would be a different type.
  */
 
-import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
+import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
 import type { TraitDeclaration } from '../../syntax/declarations/index.ts';
 import type { Checker } from '../check.ts';
 import type { CheckerContext } from '../context.ts';

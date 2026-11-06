@@ -12,7 +12,7 @@
  */
 
 import type { Diagnostic } from '../../../diagnostics/diagnostic.ts';
-import { collectionFunctions } from '../../../language/well-known.ts';
+import { collectionFunctions } from '../../../language/well-known/implicit-calls.ts';
 import type { NodeOf } from '../../syntax/node.ts';
 import type { AnchoredSpan } from '../../syntax/positions.ts';
 import type { BodyContext } from '../body-context.ts';

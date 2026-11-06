@@ -14,7 +14,7 @@
  * a `dispose` makes disposable has one, yet isn't sendable: its values have an identity.
  */
 
-import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known.ts';
+import { type WellKnownDeclaration, wellKnown } from '../../../language/well-known/index.ts';
 import type { CheckerContext } from '../context.ts';
 import { sameConstraint } from '../types/identity/identity.ts';
 import { heldParts } from '../types/properties/held.ts';

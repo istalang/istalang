@@ -31,7 +31,7 @@ import {
   type CodecName,
   codecHelpers,
   derivedCodecs,
-} from '../../../../language/well-known.ts';
+} from '../../../../language/well-known/codecs.ts';
 import type { EntryTable } from '../../../../structures/entries/index.ts';
 import { unreachable } from '../../../../structures/unreachable.ts';
 import type { CheckerContext, CheckerNote } from '../../context.ts';

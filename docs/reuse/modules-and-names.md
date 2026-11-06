@@ -15,18 +15,18 @@ tags: [reuse, language, modules, program, binder, names]
 - list the language's built-in primitive type names, or the one a lowercase leftover (`int`) became → `primitiveNames`, `PrimitiveName`, `primitiveOnceSpelled` (`src/language/primitives.ts`)
 - spell a static function name `Owner.name` (`Time.parse`) → `staticName` (`src/language/static-names.ts`)
 - test a name against the naming conventions, its privacy, whether it is the unnamed `_`, whether a bare name binds in a pattern, or whether a built-in type takes it → `followsConvention`, `Convention`, `isPrivate`, `isUnnamed`, `bindsInPattern`, `isBuiltInTypeName` (`src/language/naming.ts`)
-- spell a module-qualified declaration name `module.name` (`prelude.Future`) → `qualifiedName` (`src/language/well-known.ts`)
+- spell a module-qualified declaration name `module.name` (`prelude.Future`) → `qualifiedName` (`src/language/well-known/index.ts`)
 - spell a checked declaration's module-qualified name or extern/startable key → `qualifiedNameOf`, `keyOf`, `spelledType` (`src/compiler/lowering/tables/names.ts`)
 - build an extern key (`prelude.add(Int, Float)`) from a signature or native table → `externKey`, `nativeKey`, `keyTypeText` (`src/definition/extern-key.ts`)
 - build type descriptors for `nativeKey` → `namedKey`, `primitiveKey`, `functionKey`, `parameterKey` (`src/definition/extern-key.ts`)
 - mark a `nativeKey` parameter as `&` reference or `...` rest → `referenceKey`, `restKey` (`src/definition/extern-key.ts`)
-- look up a language-role module (`prelude`, `time`, `json`, `testing`), the `std:` scheme, or a well-known declaration → `languageModules`, `stdScheme`, `wellKnown` (`src/language/well-known.ts`)
-- look up well-known variant and field names (a union's layout, `Result`, a cursor's `Step`) → `unionLayout`, `resultVariants`, `resultFields`, `stepVariants` (`src/language/well-known.ts`); `Json` is a union, whose members json-values.ts finds by what each variant holds
-- look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers` (`src/language/well-known.ts`)
-- look up well-known testing function names, the test file suffix, or whether a path names a test module → `testingFunctions`, `testModuleSuffix`, `isTestModulePath` (`src/language/well-known.ts`)
-- look up collection, template or pattern function names → `collectionFunctions`, `templateFunctions`, `arrayPatternFunctions` (`src/language/well-known.ts`)
-- look up `dispose`, `from` or `main` function names, or `self`, the parameter making a function a method, or `Self`, the type meeting a trait → `disposeFunction`, `conversionFunction`, `entryFunction`, `receiverParameter`, `selfType` (`src/language/well-known.ts`)
-- look up `_inclusiveEnd` or `panic` function names → `inclusiveEndFunction`, `panicFunction` (`src/language/well-known.ts`)
+- look up a language-role module (`prelude`, `time`, `json`, `testing`), the `std:` scheme, or a well-known declaration → `languageModules`, `stdScheme`, `wellKnown` (`src/language/well-known/index.ts`)
+- look up well-known variant and field names (a union's layout, `Result`, a cursor's `Step`) → `unionLayout`, `resultVariants`, `resultFields`, `stepVariants` (`src/language/well-known/variants.ts`); `Json` is a union, whose members json-values.ts finds by what each variant holds
+- look up well-known codec function names and helpers → `codecFunctions`, `derivedCodecs`, `codecHelpers` (`src/language/well-known/codecs.ts`)
+- look up well-known testing function names, the test file suffix, or whether a path names a test module → `testingFunctions`, `testModuleSuffix`, `isTestModulePath` (`src/language/well-known/testing.ts`)
+- look up collection, template or pattern function names → `collectionFunctions`, `templateFunctions`, `arrayPatternFunctions` (`src/language/well-known/implicit-calls.ts`)
+- look up `dispose`, `from` or `main` function names, or `self`, the parameter making a function a method, or `Self`, the type meeting a trait → `disposeFunction`, `conversionFunction` (`src/language/well-known/implicit-calls.ts`), `entryFunction`, `receiverParameter`, `selfType` (`src/language/well-known/index.ts`)
+- look up `_inclusiveEnd` or `panic` function names → `inclusiveEndFunction`, `panicFunction` (`src/language/well-known/implicit-calls.ts`)
 - build a branded `ModuleId` from a `URL` → `moduleIdOf`, `ModuleId` (`src/compiler/program/program.ts`)
 - load a `Program` from roots and `ModuleLoader`s (reusing unchanged trees) → `buildProgram`, `Program`, `ModuleLoader` (`src/compiler/program/program.ts`)
 - get a loaded `ProgramModule` by `ModuleId` or test for a test/std module → `programModule`, `isTestModule`, `isStdModule` (`src/compiler/program/program.ts`)
@@ -79,7 +79,7 @@ tags: [reuse, language, modules, program, binder, names]
 
 ## One-way rules
 
-- Never spell a language-known module, declaration, variant, annotation or protocol function as a string literal; import it from `src/language/well-known.ts`.
+- Never spell a language-known module, declaration, variant, annotation or protocol function as a string literal; import it from `src/language/well-known/index.ts`.
 - Ask whether a name is the unnamed `_` with `isUnnamed`, and whether a bare pattern name binds with `bindsInPattern` (`src/language/naming.ts`); never compare against `'_'` or test a letter's case by hand.
 - Spell `Owner.name` with `staticName`, `module.name` with `qualifiedName`, and extern keys with `externKey` (`src/definition/extern-key.ts`).
 - `Program` loading does no I/O and imposes no path syntax; only `src/compiler/compile.ts` coordinates phases after `buildProgram`.

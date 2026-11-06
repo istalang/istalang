@@ -6,7 +6,8 @@
  */
 
 import { parameterKey } from '../../definition/extern-key.ts';
-import { conversionFunction, wellKnown } from '../../language/well-known.ts';
+import { conversionFunction } from '../../language/well-known/implicit-calls.ts';
+import { wellKnown } from '../../language/well-known/index.ts';
 import type { NativeContext, Natives, WithWeakSide } from '../../runtime/natives.ts';
 import { resultOptional } from '../native-results.ts';
 import { given } from '../native-values.ts';

@@ -14,7 +14,7 @@
 
 import { type ModuleId, type Program, programModule } from '../../../compiler/program/program.ts';
 import { importPathOf } from '../../../language/import-paths.ts';
-import { languageModules } from '../../../language/well-known.ts';
+import { languageModules } from '../../../language/well-known/index.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
 

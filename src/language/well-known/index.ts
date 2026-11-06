@@ -1,8 +1,10 @@
 /**
- * What the toolchain knows by name (§2, §3.8, §3.13, §9): the std modules the language itself refers
- * to by role, the declarations in them it treats specially, and the functions every program and
- * every disposable type are expected to name. Each name is spelled here once, for the compiler, the
- * Definition, the runtime and the std modules alike.
+ * What the toolchain knows by name (§2, §3.8, §3.13, §9): the std modules the language itself
+ * refers to by role, the declarations in them it treats specially, and the names a program and its
+ * methods are expected to spell. Each name is spelled once in this folder, for the compiler, the
+ * Definition, the runtime and the std modules alike: beside this module, the functions constructs
+ * call (implicit-calls.ts), the variants the toolchain builds and takes apart (variants.ts), the
+ * json module's codecs (codecs.ts) and the testing module's names (testing.ts).
  */
 
 /**
@@ -66,7 +68,9 @@ export const wellKnown = {
   call: { module: 'prelude', name: '_Call' },
   /** The future a call's disposal resolves, whose `select` case is the call's cleanup (§7). */
   disposing: { module: 'prelude', name: 'disposing' },
-  /** A type with a value to start from (§3.10): a map literal's, and a skipped JSON field's (§9). */
+  /**
+   * A type with a value to start from (§3.10): a map literal's, and a skipped JSON field's (§9).
+   */
   default: { module: 'prelude', name: 'Default' },
   /** How a type is written as text, and read back (§3.10): map keys in JSON (§9). */
   stringable: { module: 'prelude', name: 'Stringable' },
@@ -75,7 +79,9 @@ export const wellKnown = {
   waypoint: { module: 'prelude', name: 'Waypoint' },
   /** JSON as a value: what the codecs turn typed values into and back from (§9). */
   json: { module: 'json', name: 'Json' },
-  /** The traits of types that cross as JSON, written and read (§3.10, §9), each implying Sendable. */
+  /**
+   * The traits of types that cross as JSON, written and read (§3.10, §9), each implying Sendable.
+   */
   encodable: { module: 'json', name: 'Encodable' },
   decodable: { module: 'json', name: 'Decodable' },
   /** Annotations the boundary mapping reads on fields (§3.16, §9). */
@@ -88,64 +94,6 @@ export const wellKnown = {
   test: { module: 'testing', name: 'Test' },
 } as const satisfies Record<string, WellKnownDeclaration>;
 
-/**
- * The testing module's functions the toolchain calls or checks (§10): the runner's listing and
- * running of a suite's tests, `mock`, whose target must name a function, and `handle`, whose type
- * must be an extern type.
- */
-export const testingFunctions = {
-  list: '_list',
-  run: '_run',
-  mock: 'mock',
-  handle: 'handle',
-} as const;
-
-/** What a test module's file name ends with (§10). */
-export const testModuleSuffix = '.test.ista';
-
-/** Whether the file at `path` holds a test module (§10), by its name. */
-export function isTestModulePath(path: string): boolean {
-  return path.endsWith(testModuleSuffix);
-}
-
-/** The functions `Encodable` and `Decodable` require (§3.10): a type's codecs, by direction. */
-export const codecFunctions = { write: 'toJson', read: 'fromJson' } as const;
-
-/**
- * The json module's functions whose bodies the compiler writes per type (docs/arch/boundary.md):
- * the codecs it derives for a struct, an enum, a tuple or a host type declaring none of its own.
- */
-export const derivedCodecs = { write: '_toJson', read: '_fromJson' } as const;
-
-/**
- * The json module's helpers derived codecs and wrappers call (docs/arch/boundary.md): writing and
- * reading an `@JsonBigInt` field and a host type's JSON, taking JSON apart, and accepting what a
- * host gave.
- */
-export const codecHelpers = {
-  encodeBigInt: '_encodeBigInt',
-  decodeBigInt: '_decodeBigInt',
-  encodeHandle: '_encodeHandle',
-  decodeHandle: '_decodeHandle',
-  fields: '_fields',
-  field: '_field',
-  optionalField: '_optionalField',
-  fieldPath: '_fieldPath',
-  tag: '_tag',
-  unknownVariant: '_unknownVariant',
-  notAmong: '_notAmong',
-  elements: '_elements',
-  element: '_element',
-  elementPath: '_elementPath',
-  hostResult: '_hostResult',
-  hostInput: '_hostInput',
-} as const;
-
-export type CodecHelper = (typeof codecHelpers)[keyof typeof codecHelpers];
-
-/** A json-module function the compiler calls: a derived codec or a helper. */
-export type CodecName = (typeof derivedCodecs)[keyof typeof derivedCodecs] | CodecHelper;
-
 /** A declaration's module-qualified name, as a Definition spells it: `prelude.Future`. */
 export function qualifiedName({
   module,
@@ -157,43 +105,6 @@ export function qualifiedName({
   return `${module}.${name}`;
 }
 
-/** The function `Disposable` requires (§3.10, §7). */
-export const disposeFunction = 'dispose';
-
-/**
- * How a union's enum lays out its values (§2, lowering/tables/type-table.ts): a variant per member,
- * named as the member is spelled, so `none`'s is `None`, holding a member's value in its one field.
- */
-export const unionLayout = { noneVariant: 'None', valueField: 'value' } as const;
-
-/** The variants of `Result` (§3.12): `?` passes on an `Err` and takes the `Ok` value. */
-export const resultVariants = { ok: 'Ok', err: 'Err' } as const;
-
-/** The one field of each of `Result`'s variants (§3.12): `Ok`'s value and `Err`'s error. */
-export const resultFields = { ok: 'value', err: 'error' } as const;
-
-/** The variants of `Step` (§3.10): a loop runs its body on a `Next`'s one field, and ends on `Done`. */
-export const stepVariants = { next: 'Next', done: 'Done' } as const;
-
-/** The static function a conversion `T(x)` calls (§3.10). */
-export const conversionFunction = 'from';
-
-/** The functions collections go through (§3.9, §3.10): `x[k]`, `x[k] = v`, `for` and spreads. */
-export const collectionFunctions = {
-  index: 'index',
-  setIndex: 'setIndex',
-  iterate: 'iterate',
-} as const;
-
-/**
- * The functions an untagged template calls (§2): each value's `toString`, found as an operator's
- * function is, and the prelude's `join` of its texts and values.
- */
-export const templateFunctions = {
-  toString: 'toString',
-  join: 'join',
-} as const;
-
 /** The function every program starts from (§9). */
 export const entryFunction = 'main';
 
@@ -202,19 +113,3 @@ export const receiverParameter = 'self';
 
 /** What a trait calls the type meeting it (§3.10). */
 export const selfType = 'Self';
-
-/** The end `..=` stores, one past the written end in the step's direction (§3.8). */
-export const inclusiveEndFunction = '_inclusiveEnd';
-
-/** What `x!` calls on none (§4), and what a program calls to panic (§3.12). */
-export const panicFunction = 'panic';
-
-/**
- * What an array pattern calls in the prelude once its length test passed (§3.11): its length, an
- * item counted from the start or, when negative, from the end, and the items between.
- */
-export const arrayPatternFunctions = {
-  length: 'length',
-  item: '_patternItem',
-  rest: '_patternRest',
-} as const;

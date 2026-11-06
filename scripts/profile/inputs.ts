@@ -26,7 +26,7 @@ const { stdlibLoader, stdRoles } =
 const { stdModuleSources } =
   await built<typeof import('../../src/stdlib/std-sources.ts')>('stdlib/std-sources.js');
 const { languageModules } =
-  await built<typeof import('../../src/language/well-known.ts')>('language/well-known.js');
+  await built<typeof import('../../src/language/well-known/index.ts')>('language/well-known.js');
 
 export const repoRoot = resolve(import.meta.dirname, '../..');
 export const formBuilderDir = resolve(repoRoot, 'examples/FormBuilder');

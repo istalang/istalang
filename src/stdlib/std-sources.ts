@@ -2,8 +2,8 @@
  * The one list of std modules (§3.8), as their sources: adding a module is adding its source here.
  * The loader (stdlib-loader.ts) reads this list, and the modules with their natives
  * (std-modules.ts) attach to it by name. A module the language refers to by role is named by its
- * role (language/well-known.ts); every other module's name is spelled here, and wherever else it
- * appears it is typed as one of these names.
+ * role (language/well-known/index.ts); every other module's name is spelled here, and wherever else
+ * it appears it is typed as one of these names.
  *
  * The list holds sources alone, so whatever loads std modules to compile or edit them imports no
  * natives and nothing of the runtime they reach (a dependency-cruiser rule holds the loader to it).
@@ -11,7 +11,7 @@
  * touches a file system.
  */
 
-import { languageModules } from '../language/well-known.ts';
+import { languageModules } from '../language/well-known/index.ts';
 import collectionsSource from './collections/collections.ista';
 import cryptoSource from './crypto/crypto.ista';
 import decimalSource from './decimal/decimal.ista';
