@@ -76,18 +76,24 @@ src/
                                                                  field a struct item gives (struct-items.ts), and what tools ask by position,
                                                                  a body read at a node among it (denotation.ts)
                                                                  folders, lowest layer first (Layers):
-      diagnostics/ types/                                        the catalog; the type model, identity as key equality (identity.ts: a shape
-                                                                 is its fields in name order), written types resolved, rules over types and the
-                                                                 diagnostics they make, a checked body read through a substitution, the type a
-                                                                 name names in a value's place or a pattern (named-types.ts); unions and
-                                                                 literal types built normalized (unions.ts, by union-members.ts), `T?` being `T | None`, and what
-                                                                 a value built from an expected type takes of it (expected.ts); types computed
-                                                                 from others (computed-types.ts), recursive types as minimized graphs,
-                                                                 equi-recursive, closed by one constructor (recursive-types.ts), and
-                                                                 type `match`es resolved, given, placed and
-                                                                 unfolded (type-match.ts, written-matches.ts); the rules
-                                                                 building a type needs of the program (type-rules.ts), which the checker
-                                                                 implements once and every type-building path takes
+      diagnostics/ types/                                        the catalog; the type model (type/: the types, their primitives, the aliases
+                                                                 they were written through), types computed from others (computed-types.ts),
+                                                                 substitution, a type's text, and the rules building a type needs of the
+                                                                 program (type-rules.ts), which the checker implements once and every
+                                                                 type-building path takes; by sub-feature:
+        identity/                                                identity as key equality (a shape is its fields in name order), and
+                                                                 recursive types as minimized graphs, equi-recursive, closed by one
+                                                                 constructor (recursive-types.ts)
+        parts/                                                   a type's parts one level down, and walking them
+        unions/                                                  unions and literal types built normalized (unions.ts, by union-members.ts),
+                                                                 `T?` being `T | None`, widening, and what types decide of `==`
+        fitting/                                                 a value fitted where a type is expected, and what a value built from an
+                                                                 expected type takes of it (expected.ts)
+        written/                                                 written types resolved: the type a name names in a value's place
+                                                                 (named-types.ts) or a pattern (pattern-types.ts), key types, type
+                                                                 arguments, and type `match`es resolved, given, placed and unfolded
+                                                                 (type-match.ts, written-matches.ts)
+        properties/                                              what a type holds or reaches: finite values, held values, the cycle guard
       inference/ traits/                                         inference of type arguments; constraints, the derived `Sendable`,
                                                                  `any` types, and the object safety they need (object-safety.ts);
                                                                  struct constraints (struct-constraints.ts), and what a type meets by
