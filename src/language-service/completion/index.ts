@@ -3,7 +3,7 @@
  * answered in three steps, each with one home:
  * - the place the cursor is in, decided once (place.ts);
  * - what may be written there, by that place's provider, one per kind of place (`offers`);
- * - how each candidate shows, ranks and inserts (present.ts).
+ * - how each candidate shows, ranks and inserts (presentation/present.ts).
  *
  * A request made by typing a trigger character is answered only at the places it opens
  * (triggers.ts). The editor filters by what has been typed, so every candidate is offered whatever
@@ -15,21 +15,21 @@ import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
 import { checkedModule } from '../checked-module.ts';
 import type { Candidate } from './candidate.ts';
 import { type Cursor, cursorAt } from './cursor.ts';
-import type { Completion } from './item.ts';
 import { type Place, placeAt } from './place.ts';
 import { offerAnnotation } from './places/annotation.ts';
 import { offerCallArgument } from './places/call-argument.ts';
 import { offerDeclaredName } from './places/declared-name.ts';
 import { offerGrammar } from './places/grammar/index.ts';
-import { offerImport } from './places/import.ts';
+import { offerImport } from './places/imports/import.ts';
 import { offerLiteralFields } from './places/literal-field.ts';
 import { offerMembers } from './places/member.ts';
 import { offerNothing } from './places/nothing.ts';
-import { offerPattern } from './places/pattern.ts';
-import { offerPatternFields } from './places/pattern-field.ts';
+import { offerPattern } from './places/patterns/pattern.ts';
+import { offerPatternFields } from './places/patterns/pattern-field.ts';
 import { offerStringText } from './places/string-text.ts';
 import { offerType } from './places/type.ts';
-import { present } from './present.ts';
+import type { Completion } from './presentation/item.ts';
+import { present } from './presentation/present.ts';
 import { placesOpenedAt } from './triggers.ts';
 
 /** What a request says beyond where it stands. */

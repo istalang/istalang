@@ -6,7 +6,11 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { CompletionItemKind, InsertTextFormat, MarkupKind } from 'vscode-languageserver/node';
-import { type Completion, type Rank, rankGroups } from '../../language-service/completion/item.ts';
+import {
+  type Completion,
+  type Rank,
+  rankGroups,
+} from '../../language-service/completion/presentation/item.ts';
 import { completionItem } from './completion.ts';
 
 const ranked = fc.record({

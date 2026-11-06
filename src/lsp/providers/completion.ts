@@ -24,7 +24,7 @@ import {
   lowestPriority,
   type Rank,
   rankKeys,
-} from '../../language-service/completion/item.ts';
+} from '../../language-service/completion/presentation/item.ts';
 import { completionTriggers } from '../../language-service/completion/triggers.ts';
 import { importableStdModules } from '../../stdlib/stdlib-loader.ts';
 import { documentOffset } from '../locations.ts';

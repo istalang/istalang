@@ -5,8 +5,8 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { programAt } from '../language-service.test-kit.ts';
-import { completionsAt } from './index.ts';
+import { programAt } from '../../language-service.test-kit.ts';
+import { completionsAt } from '../index.ts';
 import { type Completion, ranksBefore } from './item.ts';
 
 const declarations = [

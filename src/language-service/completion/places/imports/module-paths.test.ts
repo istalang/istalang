@@ -12,11 +12,11 @@ import {
   type LocatedModule,
   type ModuleId,
   type Program,
-} from '../../../compiler/program/program.ts';
-import { fileLoader, locateFile, moduleIdOfFile } from '../../../project/file-loader.ts';
-import type { ProjectFiles } from '../../../project/project-files.ts';
-import { importableStdModules, stdlibLoader, stdRoles } from '../../../stdlib/stdlib-loader.ts';
-import { completionsAt } from '../index.ts';
+} from '../../../../compiler/program/program.ts';
+import { fileLoader, locateFile, moduleIdOfFile } from '../../../../project/file-loader.ts';
+import type { ProjectFiles } from '../../../../project/project-files.ts';
+import { importableStdModules, stdlibLoader, stdRoles } from '../../../../stdlib/stdlib-loader.ts';
+import { completionsAt } from '../../index.ts';
 
 const places = { projectRoot: '/p', cwd: '/p' };
 const project = [

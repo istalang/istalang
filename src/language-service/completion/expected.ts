@@ -36,7 +36,7 @@ import type { Cursor } from './cursor.ts';
 import type { Place } from './place.ts';
 import type { ParsedPlace, PlaceholderParse } from './placeholder.ts';
 import { holderIn } from './places/grammar/chain.ts';
-import { matchedTypeOf, patternStartedBy } from './places/matched-type.ts';
+import { matchedTypeOf, patternStartedBy } from './places/patterns/matched-type.ts';
 import { visibleNames } from './visible.ts';
 
 /** The type expected of what `cursor` writes at `place`; undefined where nothing is expected. */
@@ -160,7 +160,9 @@ function parameterGiven(
   return isArgument ? argumentParameterAt(cursor, cursor.offset)?.type : undefined;
 }
 
-/** Where a pattern starts, the type it matches (places/matched-type.ts); its variants fit. */
+/**
+ * Where a pattern starts, the type it matches (places/patterns/matched-type.ts); its variants fit.
+ */
 function expectedOfPatternStart(cursor: Cursor, { parsed }: ParsedPlace): Type | undefined {
   const holder = parsed.chain.at(-2);
   const pattern = holder === undefined ? undefined : patternStartedBy(parsed.chain, holder);

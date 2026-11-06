@@ -4,10 +4,10 @@
  * test yet. A pattern has no positional items, so nothing else may stand there.
  */
 
-import type { StructPattern } from '../../../compiler/syntax/patterns.ts';
-import type { Candidate } from '../candidate.ts';
-import type { Cursor } from '../cursor.ts';
-import type { ParsedPlace } from '../placeholder.ts';
+import type { StructPattern } from '../../../../compiler/syntax/patterns.ts';
+import type { Candidate } from '../../candidate.ts';
+import type { Cursor } from '../../cursor.ts';
+import type { ParsedPlace } from '../../placeholder.ts';
 import { fieldsMatchedBy } from './matched-type.ts';
 
 type PatternFieldPlace = Extract<ParsedPlace, { readonly kind: 'patternField' }>;

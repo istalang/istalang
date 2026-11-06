@@ -3,9 +3,10 @@
  * to the candidate model can't go unpresented, and the list's order decided once, here, never by
  * the providers, which only say what may be written.
  *
- * - An item ranks first when a value it writes fits the type expected at the place (expected.ts),
- *   then by where its name comes from (locals, the module, imports, the prelude, keywords), then
- *   by its presenter's priority, then in its declaration's order (an enum's variants as declared).
+ * - An item ranks first when a value it writes fits the type expected at the place
+ *   (../expected.ts), then by where its name comes from (locals, the module, imports, the prelude,
+ *   keywords), then by its presenter's priority, then in its declaration's order (an enum's
+ *   variants as declared).
  * - The first item that fits is preselected, so the list opens on it, but only one of the code
  *   being written, a local or the module's, or a place's own (a member, a field, an argument):
  *   a prelude or imported name fitting by its type alone is no guess worth accepting with Enter.
@@ -17,20 +18,20 @@
  *   the rest.
  */
 
-import type { Checker } from '../../compiler/checker/check.ts';
-import type { Type } from '../../compiler/checker/types/type/index.ts';
-import { boolType } from '../../compiler/checker/types/type/primitives.ts';
-import { slotText, typeText } from '../../compiler/checker/types/type-text.ts';
-import { hasDefault } from '../../compiler/syntax/declarations/index.ts';
-import { type Handlers, handlerOf } from '../../structures/kind-table.ts';
-import { docstringOf } from '../docstrings.ts';
-import { signatureOf } from '../signatures.ts';
-import type { Candidate, Subject } from './candidate.ts';
-import type { Cursor } from './cursor.ts';
+import type { Checker } from '../../../compiler/checker/check.ts';
+import type { Type } from '../../../compiler/checker/types/type/index.ts';
+import { boolType } from '../../../compiler/checker/types/type/primitives.ts';
+import { slotText, typeText } from '../../../compiler/checker/types/type-text.ts';
+import { hasDefault } from '../../../compiler/syntax/declarations/index.ts';
+import { type Handlers, handlerOf } from '../../../structures/kind-table.ts';
+import { docstringOf } from '../../docstrings.ts';
+import { signatureOf } from '../../signatures.ts';
+import type { Candidate, Subject } from '../candidate.ts';
+import type { Cursor } from '../cursor.ts';
+import { expectedTypeAt } from '../expected.ts';
+import type { Place, PlaceKind } from '../place.ts';
 import { groupOf, shownEntity } from './entity-items.ts';
-import { expectedTypeAt } from './expected.ts';
 import { type Completion, lowestPriority, type RankGroup, ranksBefore } from './item.ts';
-import type { Place, PlaceKind } from './place.ts';
 import {
   called,
   constructed,

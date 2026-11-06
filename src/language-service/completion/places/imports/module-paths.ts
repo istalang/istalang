@@ -12,11 +12,15 @@
  * Std modules have one-name paths and no folders; `testing` is a test module's alone (§10).
  */
 
-import { type ModuleId, type Program, programModule } from '../../../compiler/program/program.ts';
-import { importPathOf } from '../../../language/import-paths.ts';
-import { languageModules } from '../../../language/well-known/index.ts';
-import type { Candidate } from '../candidate.ts';
-import type { Cursor } from '../cursor.ts';
+import {
+  type ModuleId,
+  type Program,
+  programModule,
+} from '../../../../compiler/program/program.ts';
+import { importPathOf } from '../../../../language/import-paths.ts';
+import { languageModules } from '../../../../language/well-known/index.ts';
+import type { Candidate } from '../../candidate.ts';
+import type { Cursor } from '../../cursor.ts';
 
 /** The paths going on from `written`, the path's text before the cursor. */
 export function modulePathsAt(

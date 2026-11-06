@@ -1,7 +1,7 @@
 /**
- * What a place offers: a name and what it names, before presentation (present.ts) decides how it
- * shows and what accepting it writes. Providers only say what may be written; kinds, details,
- * insert text and ranking are derived in one place, from the subject and the place.
+ * What a place offers: a name and what it names, before presentation (presentation/present.ts)
+ * decides how it shows and what accepting it writes. Providers only say what may be written; kinds,
+ * details, insert text and ranking are derived in one place, from the subject and the place.
  */
 
 import type { Entity } from '../../compiler/binder/entities.ts';

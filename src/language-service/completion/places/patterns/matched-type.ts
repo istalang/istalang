@@ -16,11 +16,11 @@
  * the placeholder.
  */
 
-import type { Entity } from '../../../compiler/binder/entities.ts';
-import type { Denotation } from '../../../compiler/checker/surface/denotation.ts';
-import type { AnyType, FieldMember, Type } from '../../../compiler/checker/types/type/index.ts';
-import { unionOf } from '../../../compiler/checker/types/unions/unions.ts';
-import { arrayElement } from '../../../compiler/checker/types/well-known.ts';
+import type { Entity } from '../../../../compiler/binder/entities.ts';
+import type { Denotation } from '../../../../compiler/checker/surface/denotation.ts';
+import type { AnyType, FieldMember, Type } from '../../../../compiler/checker/types/type/index.ts';
+import { unionOf } from '../../../../compiler/checker/types/unions/unions.ts';
+import { arrayElement } from '../../../../compiler/checker/types/well-known.ts';
 import {
   downcastTargetOf,
   instancesWith,
@@ -28,25 +28,25 @@ import {
   membersNamed,
   namesOwnType,
   patternTypeOf,
-} from '../../../compiler/checker/types/written/pattern-types.ts';
-import type { Parameter } from '../../../compiler/syntax/expressions/index.ts';
-import { type Identifier, lastName } from '../../../compiler/syntax/node.ts';
+} from '../../../../compiler/checker/types/written/pattern-types.ts';
+import type { Parameter } from '../../../../compiler/syntax/expressions/index.ts';
+import { type Identifier, lastName } from '../../../../compiler/syntax/node.ts';
 import type {
   ArrayPattern,
   NamePattern,
   StructPattern,
-} from '../../../compiler/syntax/patterns.ts';
+} from '../../../../compiler/syntax/patterns.ts';
 import {
   extentIn,
   nodesAt,
   parentOf,
   type SyntaxNode,
   type SyntaxTree,
-} from '../../../compiler/syntax/tree.ts';
-import type { NamedType } from '../../../compiler/syntax/types/index.ts';
-import type { Cursor } from '../cursor.ts';
-import type { ParsedPlace } from '../placeholder.ts';
-import { holderIn } from './grammar/chain.ts';
+} from '../../../../compiler/syntax/tree.ts';
+import type { NamedType } from '../../../../compiler/syntax/types/index.ts';
+import type { Cursor } from '../../cursor.ts';
+import type { ParsedPlace } from '../../placeholder.ts';
+import { holderIn } from '../grammar/chain.ts';
 
 type Parsed = ParsedPlace['parsed'];
 

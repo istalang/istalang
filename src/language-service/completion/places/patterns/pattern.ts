@@ -16,30 +16,30 @@
  * - Anywhere else, as a rest's name or a range's end, nothing.
  */
 
-import type { Entity } from '../../../compiler/binder/entities.ts';
-import type { Checker } from '../../../compiler/checker/check.ts';
-import type { Type } from '../../../compiler/checker/types/type/index.ts';
-import { noneType } from '../../../compiler/checker/types/type/primitives.ts';
-import { literalType, membersOf } from '../../../compiler/checker/types/unions/unions.ts';
+import type { Entity } from '../../../../compiler/binder/entities.ts';
+import type { Checker } from '../../../../compiler/checker/check.ts';
+import type { Type } from '../../../../compiler/checker/types/type/index.ts';
+import { noneType } from '../../../../compiler/checker/types/type/primitives.ts';
+import { literalType, membersOf } from '../../../../compiler/checker/types/unions/unions.ts';
 import {
   downcastTargetOf,
   literalMembers,
   membersNamed,
   namesOwnType,
   variantOwners,
-} from '../../../compiler/checker/types/written/pattern-types.ts';
-import { casesOf } from '../../../compiler/syntax/expressions/readings.ts';
-import type { PatternWord } from '../../../compiler/syntax/grammar-words.ts';
-import { lastName } from '../../../compiler/syntax/node.ts';
-import type { NamePattern, Pattern, StructPattern } from '../../../compiler/syntax/patterns.ts';
-import { spanIn } from '../../../compiler/syntax/positions.ts';
-import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
-import type { Candidate } from '../candidate.ts';
-import { type Cursor, touchingBefore } from '../cursor.ts';
-import { expectedTypeAt } from '../expected.ts';
-import type { ParsedPlace } from '../placeholder.ts';
-import { visibleNames } from '../visible.ts';
-import { wordCandidates } from './grammar/words.ts';
+} from '../../../../compiler/checker/types/written/pattern-types.ts';
+import { casesOf } from '../../../../compiler/syntax/expressions/readings.ts';
+import type { PatternWord } from '../../../../compiler/syntax/grammar-words.ts';
+import { lastName } from '../../../../compiler/syntax/node.ts';
+import type { NamePattern, Pattern, StructPattern } from '../../../../compiler/syntax/patterns.ts';
+import { spanIn } from '../../../../compiler/syntax/positions.ts';
+import type { SyntaxNode } from '../../../../compiler/syntax/tree.ts';
+import type { Candidate } from '../../candidate.ts';
+import { type Cursor, touchingBefore } from '../../cursor.ts';
+import { expectedTypeAt } from '../../expected.ts';
+import type { ParsedPlace } from '../../placeholder.ts';
+import { visibleNames } from '../../visible.ts';
+import { wordCandidates } from '../grammar/words.ts';
 import { patternStartedBy } from './matched-type.ts';
 
 type PatternPlace = Extract<ParsedPlace, { readonly kind: 'pattern' }>;

@@ -460,7 +460,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Duplicate inline-whitespace check between `goesOn` (`src/language-service/completion/triggers.ts`) and `adjoins` (`src/language-service/completion/places/grammar/position.ts`):**
   - Both slice `tree.source.text` from `before.span.end` to `name?.span.start ?? offset` and test `[...between].every(isInlineWhitespace)`. Placing `adjoinsBefore(cursor)` beside `touchingBefore(cursor)` in `completion/cursor.ts` unifies both.
   - **Done** (`fast-wins`): `adjoinsBefore(cursor)` in `completion/cursor.ts` serves both.
-- **Duplicate `any` downcast target rules across `completion/places/matched-type.ts` (`downcastTo`), `completion/places/pattern.ts` (`mayRefer`), and `checker/patterns/constructs/downcasts.ts` (`namedTypeOf`).**
+- **Duplicate `any` downcast target rules across `completion/places/patterns/matched-type.ts` (`downcastTo`), `completion/places/patterns/pattern.ts` (`mayRefer`), and `checker/patterns/constructs/downcasts.ts` (`namedTypeOf`).**
 - **Tracked completion items (`P13`–`P16`, `P19`, `Q34`, `Q35`, `B23`, `F14`, `F15`; tracked in `tracker.md`).**
 
 ### 33. `src/lsp/` (including `providers/`)

@@ -4,10 +4,10 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { checkProgram } from '../../../compiler/checker/check.ts';
-import { stdModuleSources } from '../../../stdlib/std-sources.ts';
-import { mainProgram, programAt } from '../../language-service.test-kit.ts';
-import { completionsAt } from '../index.ts';
+import { checkProgram } from '../../../../compiler/checker/check.ts';
+import { stdModuleSources } from '../../../../stdlib/std-sources.ts';
+import { mainProgram, programAt } from '../../../language-service.test-kit.ts';
+import { completionsAt } from '../../index.ts';
 
 function names(...lines: readonly string[]): readonly string[] {
   const { program, module, offset } = programAt(...lines);

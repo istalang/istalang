@@ -17,21 +17,21 @@
  * `from`), and offered only right after a name or the alias, in an import that doesn't have it.
  */
 
-import { programModule } from '../../../compiler/program/program.ts';
+import { programModule } from '../../../../compiler/program/program.ts';
 import {
   type ImportDeclaration,
   importedNames,
   type NamedImport,
-} from '../../../compiler/syntax/declarations/index.ts';
-import type { Identifier } from '../../../compiler/syntax/node.ts';
-import { spanIn } from '../../../compiler/syntax/positions.ts';
-import type { Token } from '../../../compiler/syntax/tokens.ts';
-import type { SyntaxNode } from '../../../compiler/syntax/tree.ts';
-import { lineStartAt } from '../../../text/line-map.ts';
-import { codeTokensOf } from '../../tokens.ts';
-import type { Candidate } from '../candidate.ts';
-import type { Cursor } from '../cursor.ts';
-import type { ParsedPlace } from '../placeholder.ts';
+} from '../../../../compiler/syntax/declarations/index.ts';
+import type { Identifier } from '../../../../compiler/syntax/node.ts';
+import { spanIn } from '../../../../compiler/syntax/positions.ts';
+import type { Token } from '../../../../compiler/syntax/tokens.ts';
+import type { SyntaxNode } from '../../../../compiler/syntax/tree.ts';
+import { lineStartAt } from '../../../../text/line-map.ts';
+import { codeTokensOf } from '../../../tokens.ts';
+import type { Candidate } from '../../candidate.ts';
+import type { Cursor } from '../../cursor.ts';
+import type { ParsedPlace } from '../../placeholder.ts';
 import { modulePathsAt } from './module-paths.ts';
 
 type ImportPlace = Extract<ParsedPlace, { readonly kind: 'import' }>;
