@@ -167,7 +167,8 @@ export interface VariantCall {
  * instantiated as any call's function is (§3.3, §3.5). With no type arguments written, the
  * expected type's are given when it is the variant's enum, so an argument fits its field as it
  * would in the literal. A variant without fields is called with no arguments, as the value it
- * names, its written type arguments completed and constrained as a written type's are.
+ * names, its written type arguments completed and constrained as a written type's are; with none,
+ * the `()` says nothing its name alone doesn't, so it is warned of (§3.11).
  */
 export function checkVariantCall(
   context: BodyContext,
@@ -199,9 +200,11 @@ export function checkVariantCall(
     context.report(checkerDiagnostics.argumentCount(call.node.span, qualified, 0, count, false));
     return errorType;
   }
-  return call.typeArguments === undefined
-    ? expectedNominal(context, callee.span, entity, call.expected)
-    : writtenNominal(context, call.node.span, entity, call.typeArguments);
+  if (call.typeArguments === undefined) {
+    context.report(checkerDiagnostics.fieldlessCalled(call.node.span, name.text));
+    return expectedNominal(context, callee.span, entity, call.expected);
+  }
+  return writtenNominal(context, call.node.span, entity, call.typeArguments);
 }
 
 /** The type arguments of `expected` when it is a generic `declaration`'s type; else none. */

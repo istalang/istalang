@@ -117,6 +117,12 @@ export const genericTemplates = {
     message: (name: string, value: string) =>
       `A variant's fields are given by position in a call, not in braces: write '${name}(${value})' (§3.11).`,
   },
+  fieldlessCalled: {
+    code: 5138,
+    severity: 'warning',
+    message: (name: string) =>
+      `The variant '${name}' has no fields, so it is a value: write '${name}', without '()' (§3.11).`,
+  },
   disposeCall: {
     code: 5110,
     message: () =>

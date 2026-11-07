@@ -4,7 +4,9 @@
  * named in any order, defaults left out and a rest collecting the extra positional arguments, the
  * value a call builds is the one the literal naming every field it gives builds. A variant named
  * as a value (§3.14), as any function type its fields fit, builds what calling it does, and is a
- * function value capturing nothing: sendable, and equal to another naming it.
+ * function value capturing nothing: sendable, and equal to another naming it. A variant without
+ * fields called with `()` is warned of, its name alone saying as much; one whose fields all default
+ * or are a rest, or given type arguments only a call carries, needs its `()`.
  */
 
 import fc from 'fast-check';
@@ -12,6 +14,8 @@ import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../../../../runtime/runtime.test-kit.ts';
 import { compiledText } from '../../../../compile.test-kit.ts';
+import { reported } from '../../../check.test-kit.ts';
+import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 
 /** A variant of Int fields, the first `required` without a default, maybe ending in a rest. */
 interface GeneratedVariant {
@@ -153,5 +157,32 @@ describe('a variant named as a value', () => {
       ),
       { numRuns: 40 },
     );
+  });
+});
+
+const fieldlessCalled = checkerDiagnostics.fieldlessCalled.code;
+
+describe('a variant without fields called with `()`', () => {
+  const declared = [
+    'enum Verdict:',
+    '  Approved',
+    '  Rejected(by: String = "ops", reason = "no reason given")',
+    'enum Bag { Items(...xs: Array<Int>), Nothing }',
+    'enum Opt<T> { Some(value: T), Nothing }',
+    '',
+  ].join('\n');
+  const warnedOf = (body: string) =>
+    reported(`${declared}fn f() -> Array<Verdict>:\n  ${body}\nasync fn main(): 0\n`);
+
+  it('is warned of, bare or qualified, its name alone saying as much (§3.11)', () => {
+    expect(warnedOf('[Approved(), Verdict.Approved()]')).toEqual({
+      codes: [fieldlessCalled, fieldlessCalled],
+      spanTexts: ['Approved()', 'Verdict.Approved()'],
+    });
+  });
+
+  it("isn't when its fields all default or are a rest, or its type arguments need the call", () => {
+    const body = '_ = Bag.Items()\n  _ = Opt.Nothing<Int>()\n  [Rejected(), Verdict.Rejected()]';
+    expect(warnedOf(body)).toEqual({ codes: [], spanTexts: [] });
   });
 });

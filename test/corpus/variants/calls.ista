@@ -2,7 +2,7 @@
 # A variant with fields is a function of its enum (§3.11): a call binds its arguments to the fields
 # as to parameters, by position, then by name, leaving defaults out and a rest collecting the
 # others; the expected enum gives its type arguments, those written give theirs and the arguments
-# infer the rest, and a variant without fields called is its value. A spawned call starts the
+# infer the rest; a variant without fields is its name alone. A spawned call starts the
 # constructor as any function. A field named `self` is a field, never a receiver, and a
 # `struct{…}` comprehension takes the field's type, as in braces: built as it where its fields are
 # known, waiting for it where they aren't or its values need it.
@@ -124,7 +124,7 @@ async fn main() -> Future<String>:
     both,
     describe(Rejected(by: "legal")),
     describe(Verdict.Rejected("ops", "late")),
-    describe(Approved()),
+    describe(Approved),
     shown,
     String(count(Node.Group(title: "u"))),
     String(spawned),

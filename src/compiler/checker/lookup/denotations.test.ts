@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import { checkerDiagnostics } from '../diagnostics/index.ts';
 import type { Denotation } from '../surface/denotation.ts';
 import { intType, stringType, tupleType } from '../types/type/primitives.ts';
 import { typeText } from '../types/type/type-text.ts';
@@ -131,6 +133,14 @@ describe('what an identifier denotes', () => {
   });
 });
 
+/** The codes of `diagnostics`, in order. */
+function codesOf(diagnostics: readonly Diagnostic[]): readonly number[] {
+  return diagnostics.map(({ code }) => code);
+}
+
+/** A variant without fields called with `()`, warned of yet still checked (§3.11). */
+const fieldlessCalled = checkerDiagnostics.fieldlessCalled.code;
+
 describe('what a called variant denotes', () => {
   const { checker, module, named } = checkedMain(
     `enum Opt<T> { Some(value: T), Empty }
@@ -141,7 +151,7 @@ fn main() -> (Opt<Int>, Opt<Int>, Opt<Int>, Opt<Int>): (Some(value: 1), Opt.Some
     described(checker.lookup.denotationsOf(module, named(name, nth)));
 
   it('answers its name with the variant, of the enum type the call has', () => {
-    expect(checker.diagnosticsOf(module)).toEqual([]);
+    expect(codesOf(checker.diagnosticsOf(module))).toEqual([fieldlessCalled, fieldlessCalled]);
     expect(at('Some', 1)).toEqual(['variant Some: Opt<Int>']);
     expect(at('Some', 2)).toEqual(['variant Some: Opt<Int>']);
     expect(at('Empty', 1)).toEqual(['variant Empty: Opt<Int>']);
@@ -167,7 +177,7 @@ fn f(p: Pair):
     );
     const atLoop = (name: string, nth: number) =>
       described(looped.checker.lookup.denotationsOf(looped.module, looped.named(name, nth)));
-    expect(looped.checker.diagnosticsOf(looped.module)).toEqual([]);
+    expect(codesOf(looped.checker.diagnosticsOf(looped.module))).toEqual([fieldlessCalled]);
     expect(atLoop('Some', 1)).toEqual(['variant Some: Opt<Int>', 'variant Some: Opt<String>']);
     expect(atLoop('value', 1)).toEqual(['field value: Int', 'field value: String']);
     expect(atLoop('Empty', 1)).toEqual(['variant Empty: Opt<Int>']);

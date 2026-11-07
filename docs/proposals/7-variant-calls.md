@@ -37,7 +37,7 @@ fn titleOf(n: Node) -> String:
 
 ## Status
 
-Implemented on `refactor/folders` (`fb190abc` onward), with one point open: the formatter dropping the `()` after a variant without fields (Rule 2, Implementation note 5). The formatter reads only the tree, and its output parses to the same tree (`docs/arch/architecture.md`, format). Whether `V()` names a variant without fields, so `V` means the same, or builds one whose fields all have defaults or are a rest, as `List()` builds `List` with `items: []` and needs its `()`, only checking knows. Either the formatter takes the checker's answer at its composition roots (`ista fmt` then checks the project; the language server's formatting reads the workspace's checker), its contract widened for this rewrite, or `Expired()` stays as written and Rule 2 drops its formatter clause. That is the human's to decide.
+Implemented on `refactor/folders` (`fb190abc` onward).
 
 ## Rules
 
@@ -63,7 +63,7 @@ Implemented on `refactor/folders` (`fb190abc` onward), with one point open: the 
 - **Its type is the enum.** `Ok(1)` is a `Result<Int>`. A variant isn't a type (§3.11): it is the function that builds its enum's value, and the tag that value carries.
 - **Naming the variant** works as in braces (§3.11): qualified, `Prop.Fixed(1)`; or bare, `Fixed(1)`, where the expected type gives the enum. Type arguments go where the brace form takes them.
 - **No clash with conversions.** A variant isn't a type, so `T(x)` as a conversion (`T.from(x)`, §3.10) never applies to a variant's name.
-- **A variant without fields** is a value, not a function: just its name. `Expired()` is valid, though formatter will remove parenthesis.
+- **A variant without fields** is a value, not a function: just its name. `Expired()` and `Decision.Expired()` are still `Expired`, warned of, since the name alone says as much; the formatter prints them as written. A variant whose fields all have defaults or are a rest is called with `()`, as `List()` builds `List` with `items: []`, and isn't warned of, nor is a call given type arguments, which only a call carries (`Opt.Nothing<Int>()`).
 
 ### 3. A variant is a function value
 
@@ -115,7 +115,7 @@ Implemented on `refactor/folders` (`fb190abc` onward), with one point open: the 
 | `case Rejected(...) as r: r.by` | an error: `r` is a `Verdict` | unchanged |
 | `Ok{(v)}`, `Ok{42}` | the single-field positional form | an error naming `Ok(v)`, `Ok(42)` |
 | `Ok{v}` | errors 5013 and 5014 | still an error, now naming `Ok(v)` |
-| `Expired()` | error 5103: no function 'Expired' | `Expired`; the formatter drops the `()` |
+| `Expired()` | error 5103: no function 'Expired' | `Expired`, with a warning naming `Expired` |
 
 ## What changes in power
 
@@ -150,7 +150,7 @@ Implemented on `refactor/folders` (`fb190abc` onward), with one point open: the 
 - **§3.11.** Variants:
   - **Declaration** in parentheses, as parameters, with defaults trailing and a rest; braces refused;
   - every example: `Rejected(by: String, reason: String)`, `Pending`, `Approved`;
-  - **A variant is a function** of its enum, `fn E.V<P…>(fields) -> E<P…>`, called and named as a value as functions are; its type is the enum; `Expired()` is `Expired`;
+  - **A variant is a function** of its enum, `fn E.V<P…>(fields) -> E<P…>`, called and named as a value as functions are; its type is the enum; `Expired()` is `Expired`, warned of;
   - call patterns: positional, named, and `...`; told apart by their tag; `as` binds the enum;
   - **Referring names:** a variant with fields is written with braces or as a call pattern.
 - **§3.14.** **Functions named as values** gains a variant with fields: qualified, or bare where an expected function type's result is its enum.
@@ -175,7 +175,7 @@ Implemented on `refactor/folders` (`fb190abc` onward), with one point open: the 
    - Hover on a variant's name shows its signature, and completion offers it where a function value is expected.
    - The formatter prints a variant's declaration as a parameter list: on one line when it fits, else one field per line.
    - Hover on a call pattern's position names the field.
-   - The formatter prints calls and call patterns as written, but drops `()` after a variant without fields.
+   - The formatter prints calls and call patterns as written, `Expired()` included: only checking knows that `()` adds nothing there.
 6. **Tests** (fast-check, beside the code):
    - a variant called with generated positional and named arguments equals its brace literal;
    - a variant named as a value and called equals its direct call, over generated arguments, and its equality and sendability are a static function's;
@@ -190,4 +190,5 @@ Implemented on `refactor/folders` (`fb190abc` onward), with one point open: the 
 3. **A variant is a function of its enum,** in every enum, called and named as a value as any function is. Its type is the enum, and patterns tell variants apart by their tag.
 4. **Variants aren't types, and the enum stays the one sum.** A union lowers into one, and neither is sugar for the other in the checker (**Why a variant is a function, not a type**).
 5. **The JSON tag is `_type`,** landed on its own, so a variant's field may be named `type`.
-6. **Call patterns may leave fields out as a call does** (Rule 4, **Fields left out**): a field with a default or the rest field left out matches anything, and a last `...` leaves the others, so `case Rejected("legal", ...)` stands as written.
+6. **`Expired()` stays as written, warned of.** The formatter never drops it, since only checking tells it from `List()`, whose `()` builds a value with its defaults.
+7. **Call patterns may leave fields out as a call does** (Rule 4, **Fields left out**): a field with a default or the rest field left out matches anything, and a last `...` leaves the others, so `case Rejected("legal", ...)` stands as written.
