@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-30
-last_updated: 2026-10-30
+last_updated: 2026-11-07
 tags: [plan, completion, lsp]
 ---
 
@@ -977,7 +977,7 @@ fn g():
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** The scrutinee type's variants, bare (`Approved Rejected Expired`), `true false none` only where the scrutinee's type can hold them (a `Decision` cannot), `_`, and the enum name `Decision`.
 - **Not:** Variables, parameters, functions, statement keywords, clause words — a camelCase bare name binds, so naming a variable would be a misreading (§3.11).
-- **Accept:** Variant with fields: the name, then the user types `{`; (optional snippet `Approved{by}`). `_`: `_`.
+- **Accept:** Variant with fields: its call pattern, `Approved($0)`, then its fields' labels (PA-03c); the user may type `{` for braces instead. `_`: `_`.
 - **Basis:** spec §3.11 (patterns); TS/Kotlin/RA fill match arms from the type.
 
 ### PA-02 · Variants already covered come last · P3 · ✅ pass
@@ -1020,6 +1020,24 @@ fn g():
 - **Offer:** `by`.
 - **Not:** `reason`.
 - **Basis:** as LI-03.
+
+### PA-03c · Field labels in a call pattern · P2 · ✅ pass
+
+```
+  match d:
+    case Rejected(‸
+---
+  match d:
+    case Rejected("legal", ‸
+---
+  match d:
+    case Rejected(reason: "r", ‸
+```
+- **Where / trigger:** in `fn t`; typing `(`, `,` or invoked
+- **Offer:** The labels of the fields no other argument gives, `by:` and `reason:` (after `"legal",`: `reason:`), beside what a pattern there starts with; after a named argument, the labels alone (`by:`), as in a call (§3.3).
+- **Not:** A field another argument gives by position or name.
+- **Accept:** `reason: ` and re-trigger, as a call's argument name does (CA).
+- **Basis:** spec §3.11 (call patterns bind as a call's arguments do).
 
 ### PA-04 · After a pattern field · P2 · ✅ pass
 

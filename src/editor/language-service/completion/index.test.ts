@@ -268,7 +268,7 @@ describe('completion', () => {
     ]);
   });
 
-  it("writes a call's parentheses or a variant's braces only where none follow", () => {
+  it("writes a call's parentheses only where none, nor a variant's braces, follow", () => {
     const decision = ['enum Decision:', '  Approved(by: String)', '  Expired', ''];
     const inserted = (...lines: readonly string[]) => {
       const { program, module, offset } = programAt(...decision, ...lines);
@@ -277,10 +277,12 @@ describe('completion', () => {
       );
     };
     const bare = inserted('fn f() -> Decision:', '  Decision.‸', '  Decision.Expired');
-    expect(bare.get('Approved')).toEqual({ kind: 'snippet', snippet: 'Approved{$0}' });
+    expect(bare.get('Approved')).toEqual({ kind: 'snippet', snippet: 'Approved($0)' });
     expect(bare.get('Expired')).toBeUndefined();
     const braced = inserted('fn f() -> Decision:', '  Decision.Appr‸{by: "x"}');
     expect(braced.get('Approved')).toBeUndefined();
+    const called = inserted('fn f() -> Decision:', '  Decision.Appr‸(by: "x")');
+    expect(called.get('Approved')).toBeUndefined();
     const call = { kind: 'snippet', snippet: 'f($0)' };
     expect(inserted('fn f() -> Int:', '  f‸', '  1').get('f')).toEqual(call);
     expect(inserted('fn f() -> Int:', '  f‸()', '  1').get('f')).toBeUndefined();

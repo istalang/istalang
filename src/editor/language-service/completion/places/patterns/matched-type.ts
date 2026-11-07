@@ -91,11 +91,14 @@ export function matchedTypeOf(
   }, undefined);
 }
 
-/** The fields a struct pattern's items name: its variant's, or its struct's. */
+/**
+ * The fields a struct pattern's items or a call pattern's arguments name: its variant's, or its
+ * struct's.
+ */
 export function fieldsMatchedBy(
   cursor: Cursor,
   parsed: Parsed,
-  pattern: StructPattern,
+  pattern: StructPattern | VariantCallPattern,
 ): readonly FieldMember[] {
   const type = matchedTypeOf(cursor, parsed, pattern);
   return type === undefined ? [] : fieldsOf(cursor, parsed, pattern, type);

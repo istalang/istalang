@@ -10,7 +10,9 @@
  *   name; `_`; and the literal keywords whose literal selects a member (`true` and `false` a
  *   `Bool`, `none` an optional), all of them where the type isn't known, as a literal pattern has
  *   the matched value's own type. A variant another case of the `match` already takes whole is
- *   marked covered, for ranking.
+ *   marked covered, for ranking. As a call pattern's argument by position, also the names
+ *   labelling the fields its other arguments don't give, `by:`; after a named one, those alone, as
+ *   in a call (§3.3).
  * - After a struct pattern item's field name, `as` or `is`; a comparison is an operator.
  * - After a case's whole pattern, once a space parts them, `if` for a guard and `as` for the whole.
  * - Anywhere else, as a rest's name or a range's end, nothing.
@@ -18,6 +20,7 @@
 
 import type { Entity } from '../../../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../../../compiler/checker/check.ts';
+import { argumentsReach } from '../../../../../compiler/checker/surface/struct-items.ts';
 import type { Type } from '../../../../../compiler/checker/types/type/index.ts';
 import { noneType } from '../../../../../compiler/checker/types/type/primitives.ts';
 import { literalType, membersOf } from '../../../../../compiler/checker/types/unions/unions.ts';
@@ -46,7 +49,7 @@ import { expectedTypeAt } from '../../expected.ts';
 import type { ParsedPlace } from '../../placeholder.ts';
 import { visibleNames } from '../../visible.ts';
 import { wordCandidates } from '../grammar/words.ts';
-import { patternStartedBy } from './matched-type.ts';
+import { fieldsMatchedBy, patternStartedBy } from './matched-type.ts';
 
 type PatternPlace = Extract<ParsedPlace, { readonly kind: 'pattern' }>;
 
@@ -95,7 +98,43 @@ function patternStarts(
       ? [name]
       : [],
   );
-  return [...variants, ...referringNames(cursor, type), ...wordCandidates(words)];
+  const labels = fieldLabels(cursor, place.parsed, pattern);
+  return labels.namedOnward
+    ? labels.names
+    : [...labels.names, ...variants, ...referringNames(cursor, type), ...wordCandidates(words)];
+}
+
+/**
+ * Where `pattern` is a call pattern's argument by position, the names labelling the fields its
+ * other arguments don't give, each as `name:` (§3.11), and whether an argument up to it is named,
+ * so only names may follow, as in a call (§3.3); none elsewhere.
+ */
+function fieldLabels(
+  cursor: Cursor,
+  parsed: Parsed,
+  pattern: HeadedPattern,
+): { readonly names: readonly Candidate[]; readonly namedOnward: boolean } {
+  const call = parsed.chain[parsed.chain.indexOf(pattern) - 1];
+  if (call?.kind !== 'VariantCallPattern') {
+    return { names: [], namedOnward: false };
+  }
+  const written: readonly SyntaxNode[] = call.arguments;
+  const at = written.indexOf(pattern);
+  const others = call.arguments.filter(
+    (argument, index) => index !== at && argument.kind !== 'OtherFieldsPattern',
+  );
+  const fields = fieldsMatchedBy(cursor, parsed, call);
+  const given = new Set(argumentsReach(fields, others).map((reached) => reached?.index));
+  return {
+    names: fields.flatMap((field, index): Candidate[] =>
+      given.has(index)
+        ? []
+        : [{ name: `${field.name}:`, subject: { kind: 'fieldArgument', field } }],
+    ),
+    namedOnward: call.arguments
+      .slice(0, at + 1)
+      .some(({ kind }) => kind === 'NamedPatternArgument'),
+  };
 }
 
 /**

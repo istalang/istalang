@@ -557,7 +557,7 @@ struct S { ‸ }
 - **Where / trigger:** in `fn t`; typing `.`
 - **Offer:** The variants (`Approved Rejected Expired`), payload shown as detail.
 - **Not:** Scope.
-- **Accept:** A variant with fields inserts `Approved{$0}`; one without, `Expired`.
+- **Accept:** A variant with fields inserts its call, `Approved($0)`, and opens signature help; one without, `Expired`. Where a function value is expected, `const f: fn(String) -> Decision = Decision.‸`, a variant with fields is written alone, as a function or a static is (§3.14).
 - **Basis:** spec §3.11.
 
 ### ME-04 · Namespaces · P1 · ✅ pass

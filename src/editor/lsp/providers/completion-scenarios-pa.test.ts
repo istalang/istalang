@@ -50,6 +50,24 @@ const scenarios: readonly Scenario[] = [
     expect: { exact: ['by'] },
   },
   {
+    id: 'PA-03c',
+    place: 'pattern',
+    title: 'Field labels in a call pattern',
+    src: ['  match d:\n    case Rejected(‸', '  match d:\n    case Rejected("legal", ‸'],
+    expect: {
+      has: ['reason:', '_'],
+      lacks: ['xs', 'plus', 'let'],
+      insert: [['reason:', 'reason: ']],
+    },
+  },
+  {
+    id: 'PA-03c',
+    place: 'pattern',
+    title: 'Field labels in a call pattern after a named one',
+    src: ['  match d:\n    case Rejected(reason: "r", ‸'],
+    expect: { exact: ['by:'] },
+  },
+  {
     id: 'PA-04',
     place: 'pattern',
     title: 'After a pattern field',

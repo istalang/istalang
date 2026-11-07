@@ -28,7 +28,14 @@ import { docstringOf } from '../../reading/docstrings.ts';
 import { importedModule } from '../../reading/namespaces.ts';
 import { signatureOf } from '../../signatures/signatures.ts';
 import type { CompletionKind, RankGroup } from './item.ts';
-import { called, constructed, documented, type Presenting, type Shown } from './presenting.ts';
+import {
+  annotationValue,
+  calledOrNamed,
+  constructed,
+  documented,
+  type Presenting,
+  type Shown,
+} from './presenting.ts';
 
 /** How `entity`, offered as `name`, shows. */
 export function shownEntity(presenting: Presenting, entity: Entity, name: string): Shown {
@@ -98,7 +105,11 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
       gives: overloads.flatMap((overload) =>
         isMethod(overload) ? [] : [checker.resultOf(overload)],
       ),
-      ...called(presenting, name),
+      ...calledOrNamed(
+        presenting,
+        name,
+        overloads.map((overload) => checker.resultOf(overload)),
+      ),
     };
   },
   type: (presenting, entity, name) => {
@@ -110,7 +121,7 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
       ...documented(docstringOf(checker, { kind: 'type', entity })),
       commit: goesOn,
       ...(presenting.place.kind === 'annotation'
-        ? constructed(
+        ? annotationValue(
             presenting,
             name,
             (checker.fieldsOf(nominalType(entity, []))?.length ?? 0) > 0,
@@ -124,7 +135,7 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
     kind: 'variant',
     detail: declaration.name.text,
     order: declaration.variants.indexOf(variant),
-    ...constructed(presenting, name, variant.fields.length > 0),
+    ...constructed(presenting, name, { hasFields: variant.fields.length > 0, enums: [] }),
   }),
   variants: () => ({ kind: 'variant' }),
   namespace: ({ cursor: { checker } }, entity) => {

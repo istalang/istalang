@@ -11,6 +11,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { runPrograms } from '../../../../../../test/corpus/programs.ts';
 import { checkProgram } from '../../../../../compiler/checker/check.ts';
+import { patternHead } from '../../../../../compiler/syntax/patterns.ts';
 import { extentIn, nodesUnder } from '../../../../../compiler/syntax/tree/index.ts';
 import { type Diagnostic, isError } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import { mainProgram, programAt } from '../../../language-service.test-kit.ts';
@@ -26,6 +27,11 @@ interface Site {
   readonly text: string;
   readonly start: number;
   readonly end: number;
+  /**
+   * Whether its name is given type arguments, `Some<Int>(n)`, which select among a union's
+   * instances of one generic type where the name alone, as offered, would match several (§3.11).
+   */
+  readonly typed: boolean;
 }
 
 /** The patterns `case` and `is` test in the corpus's programs, with their programs' trees. */
@@ -39,6 +45,7 @@ const tested = runPrograms.flatMap(({ text }) => {
 const patternSites: readonly Site[] = tested.map(({ text, tree, pattern }) => ({
   text,
   ...extentIn(tree, pattern),
+  typed: (patternHead(pattern)?.typeArguments.length ?? 0) > 0,
 }));
 
 /** The struct patterns among them naming their type, with the `{` opening their fields. */
@@ -96,16 +103,16 @@ function misfitsOf({ text, start, end }: Site): readonly string[] {
 /**
  * The word `site`'s pattern starts with, if a pattern start offers it: a variant or a type named
  * bare, the first name of a qualified one, `_` or a literal keyword. A camelCase bare name binds a
- * variable (§3.11), which nothing offers.
+ * variable (§3.11), which nothing offers, and a name given type arguments selects by them.
  */
-function startWordOf({ text, start, end }: Site): string | undefined {
+function startWordOf({ text, start, end, typed }: Site): string | undefined {
   const word = leadingWord.exec(text.slice(start, end))?.[0];
   const binds =
     word !== undefined &&
     camelCase.test(word) &&
     !patternKeywords.has(word) &&
     !text.startsWith('.', start + word.length);
-  return binds ? undefined : word;
+  return binds || typed ? undefined : word;
 }
 
 const leadingWord = /^[A-Za-z_]\w*/u;
@@ -228,6 +235,18 @@ describe('a pattern place', () => {
     expect(nested('Result<Decision>', 'Ok(‸')).toContain('Approved');
     expect(nested('Result<Decision>', 'Ok(value: ‸')).toContain('Approved');
     expect(nested('Result<Int>', 'Err(Error{‸')).toContain('message');
+  });
+
+  it("labels the fields a call pattern's other arguments don't give, only those after a named one", () => {
+    const cases = [...decision, 'fn f(d: Decision) -> Int:', '  match d:'];
+    const labels = (pattern: string) =>
+      labelsAt(...cases, `    case ${pattern}: 1`).filter((name) => name.endsWith(':'));
+    expect(labels('Rejected(‸)')).toEqual(['by:', 'reason:']);
+    expect(labels('Rejected("legal", ‸)')).toEqual(['reason:']);
+    expect(labels('Rejected(reason: "r", ‸)')).toEqual(['by:']);
+    expect(labelsAt(...cases, '    case Rejected(reason: "r", ‸): 1')).toEqual(['by:']);
+    expect(labels('Rejected(by: ‸)')).toEqual([]);
+    expect(labels('Rejected{‸}')).toEqual([]);
   });
 
   it('reads the member a struct or tuple pattern selects of a union', () => {

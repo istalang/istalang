@@ -32,6 +32,7 @@ import { groupOf, shownEntity } from './entity-items.ts';
 import { type Completion, lowestPriority, type RankGroup, ranksBefore } from './item.ts';
 import {
   called,
+  calledOrNamed,
   constructed,
   documented,
   fitsExpected,
@@ -112,13 +113,21 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
       ...documented(docstringOf(checker, { kind: 'function', declaration })),
       priority: 1,
       gives: [checker.resultOf(declaration)],
-      ...called(presenting, name),
+      ...(through === 'type'
+        ? calledOrNamed(presenting, name, [checker.resultOf(declaration)])
+        : called(presenting, name)),
     };
   },
   argument: (_presenting, { parameter }, name) => ({
     kind: 'variable',
     detail: slotText(parameter),
     insert: { kind: 'text', text: `${name} ${parameter.reference ? '&' : ''}` },
+    next: 'completion',
+  }),
+  fieldArgument: (_presenting, { field }, name) => ({
+    kind: 'field',
+    detail: typeText(field.type),
+    insert: { kind: 'text', text: `${name} ` },
     next: 'completion',
   }),
   variant: (presenting, { variant, enum: type }, name) => {
@@ -134,7 +143,7 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
           }
         : {}),
       gives: [type],
-      ...constructed(presenting, name, variant.fields.length > 0),
+      ...constructed(presenting, name, { hasFields: variant.fields.length > 0, enums: [type] }),
     };
   },
   literal: (_presenting, { type }) => ({ kind: 'constant', detail: typeText(type), gives: [type] }),

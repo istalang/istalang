@@ -16,15 +16,24 @@
  */
 
 import type { Entity } from '../../../compiler/binder/entities.ts';
-import { checkProgram } from '../../../compiler/checker/check.ts';
-import { enumsExpected, sameNominal } from '../../../compiler/checker/types/fitting/expected.ts';
+import { type Checker, checkProgram, type VariantMember } from '../../../compiler/checker/check.ts';
+import {
+  enumsExpected,
+  expectedFunction,
+  sameNominal,
+} from '../../../compiler/checker/types/fitting/expected.ts';
 import type { Type } from '../../../compiler/checker/types/type/index.ts';
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import { membersOf } from '../../../compiler/checker/types/unions/unions.ts';
 import type { ModuleId, Program } from '../../../compiler/program/program.ts';
 import type { Expression } from '../../../compiler/syntax/expressions/index.ts';
 import { literalNaming } from '../../../compiler/syntax/expressions/literals/built-types.ts';
-import { nodesAt, type SyntaxNode, type SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
+import {
+  nodesAt,
+  parentOf,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../../../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
@@ -36,6 +45,7 @@ import type { Cursor } from './cursor.ts';
 import type { Place } from './place.ts';
 import type { ParsedPlace, PlaceholderParse } from './placeholder.ts';
 import { holderIn } from './places/grammar/chain.ts';
+import type { MemberPlace } from './places/member.ts';
 import { matchedTypeOf, patternStartedBy } from './places/patterns/matched-type.ts';
 import { visibleNames } from './visible.ts';
 
@@ -47,30 +57,43 @@ export function expectedTypeAt(cursor: Cursor, place: Place): Type | undefined {
 /**
  * The variants that may be written bare at `place`: those of the enums a value expected there may
  * be a variant of, its own and those inside its optionals, outermost first, as checking chooses
- * among them (§3.11); a name two of them share is the outermost's. Where a type is expected that
- * checking could not tell (an error, reported where it is written), any variant may be the one
- * meant, so the visible ones all stand.
+ * among them (§3.11); a name two of them share is the outermost's. Where a function value is
+ * expected, the variants with fields of the enum its result is, their constructors (§3.14). Where a
+ * type is expected that checking could not tell (an error, reported where it is written), any
+ * variant may be the one meant, so the visible ones all stand.
  */
 export function expectedVariants(cursor: Cursor, place: Place): readonly Candidate[] {
-  const { checker } = cursor;
   const expected = expectedTypeAt(cursor, place);
   if (expected?.kind === 'error') {
     return visibleNames(cursor, isVariantEntity);
   }
-  const candidates = enumsExpected(expected).flatMap((declaration) => {
+  const result = expectedFunction(expected)?.result;
+  const candidates = [
+    ...variantsOf(cursor.checker, expected, () => true),
+    ...variantsOf(cursor.checker, result, (variant) => variant.fields.length > 0),
+  ];
+  return candidates.filter(
+    ({ name }, index) => candidates.findIndex((each) => each.name === name) === index,
+  );
+}
+
+/** The variants `expected`'s enums have that `admits` lets stand, as bare names. */
+function variantsOf(
+  checker: Checker,
+  expected: Type | undefined,
+  admits: (variant: VariantMember) => boolean,
+): readonly Candidate[] {
+  return enumsExpected(expected).flatMap((declaration) => {
     const enumType = sameNominal(expected, declaration);
     return enumType === undefined
       ? []
-      : (checker.variantsOf(enumType) ?? []).map(
+      : (checker.variantsOf(enumType) ?? []).filter(admits).map(
           (variant): Candidate => ({
             name: variant.name,
             subject: { kind: 'variant', variant, enum: enumType },
           }),
         );
   });
-  return candidates.filter(
-    ({ name }, index) => candidates.findIndex((each) => each.name === name) === index,
-  );
 }
 
 /**
@@ -108,7 +131,7 @@ const expecters: Handlers<Cursor, Place, [], Type | undefined> = {
   grammar: expectedOfValue,
   stringText: expectedOfString,
   callArgument: expectedOfValue,
-  member: nothingExpected,
+  member: expectedOfQualified,
   literalField: nothingExpected,
   nothing: nothingExpected,
   type: nothingExpected,
@@ -118,6 +141,24 @@ const expecters: Handlers<Cursor, Place, [], Type | undefined> = {
   import: nothingExpected,
   annotation: nothingExpected,
 };
+
+/**
+ * After a type's name, where a value is written, what the checker expects of the static or variant
+ * named through it, as of a name written alone (§3.14): the program's tree holds that member access
+ * as it stands. A value's member has no expectation of its own to rank by.
+ */
+function expectedOfQualified(
+  cursor: Cursor,
+  { names, head, access }: MemberPlace,
+): Type | undefined {
+  const { checker, module, tree } = cursor;
+  const qualified = names === 'value' && head !== undefined ? access : undefined;
+  return (
+    qualified &&
+    (checker.lookup.bodyHolding(module, qualified)?.expectedOf(qualified) ??
+      argumentParameter(cursor, parentOf(tree, qualified)))
+  );
+}
 
 /**
  * What the checker expects of the value written at `place`; for a call's argument, which stops a
@@ -157,7 +198,11 @@ function parameterGiven(
   parsed: PlaceholderParse,
   value: Expression,
 ): Type | undefined {
-  const holder = holderIn(parsed.chain, value);
+  return argumentParameter(cursor, holderIn(parsed.chain, value));
+}
+
+/** Where `holder` holds the value written as a call's argument, the parameter it gives's type. */
+function argumentParameter(cursor: Cursor, holder: SyntaxNode | undefined): Type | undefined {
   const isArgument = holder?.kind === 'Call' || holder?.kind === 'NamedArgument';
   return isArgument ? argumentParameterAt(cursor, cursor.offset)?.type : undefined;
 }

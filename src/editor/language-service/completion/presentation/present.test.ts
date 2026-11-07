@@ -81,13 +81,29 @@ describe("an enum's variants", () => {
 });
 
 describe('what accepting an item writes', () => {
-  it("opens a call or a variant's braces unless the same line already does", () => {
+  it("opens a function's or a variant's call unless the same line already opens it", () => {
+    const nothing = { insert: undefined, next: undefined };
     const call = { insert: { kind: 'snippet', snippet: 'pl($0)' }, next: 'signatureHelp' };
     expect(insertOf('pl', 'fn t():', '  pl‸', '  (1, 2)')).toEqual(call);
-    expect(insertOf('pl', 'fn t():', '  pl‸(1)')).toEqual({ insert: undefined, next: undefined });
-    expect(insertOf('pl', 'fn t():', '  ‸(1)')).toEqual({ insert: undefined, next: undefined });
-    const braces = { insert: { kind: 'snippet', snippet: 'Rejected{$0}' }, next: 'completion' };
-    expect(insertOf('Rejected', 'fn t():', '  Decision.‸', '  {', '    1', '  }')).toEqual(braces);
+    expect(insertOf('pl', 'fn t():', '  pl‸(1)')).toEqual(nothing);
+    expect(insertOf('pl', 'fn t():', '  ‸(1)')).toEqual(nothing);
+    const built = { insert: { kind: 'snippet', snippet: 'Rejected($0)' }, next: 'signatureHelp' };
+    expect(insertOf('Rejected', 'fn t():', '  Decision.‸', '  {', '    1', '  }')).toEqual(built);
+    expect(insertOf('Rejected', 'fn t():', '  Decision.Rej‸{by: "x"}')).toEqual(nothing);
+    const taken = { insert: { kind: 'snippet', snippet: 'Rejected($0)' }, next: 'completion' };
+    expect(insertOf('Rejected', 'fn t(d: Decision):', '  match d:', '    case Rej‸')).toEqual(
+      taken,
+    );
+  });
+
+  it('writes a function or a variant alone where a function value is expected (§3.14)', () => {
+    const nothing = { insert: undefined, next: undefined };
+    expect(insertOf('pl', 'fn t(xs: Array<Int>):', '  _ = xs.map(p‸)')).toEqual(nothing);
+    expect(insertOf('pl', 'const f: fn(Int) -> Int = p‸')).toEqual(nothing);
+    expect(insertOf('Rejected', 'const r: fn(String) -> Decision = Decision.‸')).toEqual(nothing);
+    expect(insertOf('Rejected', 'const r: fn(String) -> Decision = Rej‸')).toEqual(nothing);
+    const call = { insert: { kind: 'snippet', snippet: 'pl($0)' }, next: 'signatureHelp' };
+    expect(insertOf('pl', 'fn t() -> Int: p‸')).toEqual(call);
   });
 
   it("opens an annotation's braces where its struct has fields", () => {

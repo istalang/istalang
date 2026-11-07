@@ -2,13 +2,16 @@
  * What every subject's presenter works from and says (present.ts): the request, read once, and
  * an item's own part of the list, before the list ranks it.
  *
- * What accepting a callable or a variant with fields writes depends on the place alone: only
- * where a value or a pattern is written does a name open its parentheses or braces, never in an
- * import, a type or a declared name; an annotation is a struct's value. A `(` or `{` already after
- * the cursor on its line is the call's or the literal's own, so the name is written alone there;
- * one on a later line starts a statement of its own (a tuple, a block).
+ * What accepting a callable or a variant with fields writes depends on the place: only where a
+ * value or a pattern is written does a name open its call, a variant's as a function's (§3.11),
+ * never in an import, a type or a declared name; an annotation is a struct's value, in braces.
+ * Where a function value is expected that the call's result doesn't fit, a function or a variant
+ * with fields is that value, its name alone (§3.14). A `(` or `{` already after the cursor on its
+ * line is the call's or the literal's own, so the name is written alone there; one on a later line
+ * starts a statement of its own (a tuple, a block).
  */
 
+import { expectedFunction } from '../../../../compiler/checker/types/fitting/expected.ts';
 import type { Type } from '../../../../compiler/checker/types/type/index.ts';
 import type { TokenKind } from '../../../../compiler/syntax/tokens/index.ts';
 import { codeTokensOf } from '../../reading/tokens.ts';
@@ -86,16 +89,51 @@ export function fitsExpected({ cursor, expected }: Presenting, found: Type): boo
 
 /**
  * Accepting a callable named `name`: its call, the cursor between the parentheses, and its
- * signature shown. A name is an identifier, so it holds nothing a snippet escapes.
+ * signature shown; in a pattern, a variant's call pattern, whose fields' names are listed next. A
+ * name is an identifier, so it holds nothing a snippet escapes.
  */
-export function called({ writesValue, follows }: Presenting, name: string): Partial<Shown> {
+export function called(presenting: Presenting, name: string): Partial<Shown> {
+  const { writesValue, follows, place } = presenting;
   return writesValue && follows !== '('
-    ? { insert: { kind: 'snippet', snippet: `${name}($0)` }, next: 'signatureHelp' }
+    ? {
+        insert: { kind: 'snippet', snippet: `${name}($0)` },
+        next: place.kind === 'pattern' ? 'completion' : 'signatureHelp',
+      }
     : { commit: ['('] };
 }
 
-/** Accepting a variant: with fields, its literal's braces, whose fields are listed next. */
+/**
+ * Accepting a function or a variant with fields, either of which may be named as a value (§3.14):
+ * where a function value is expected that none of `results`, what its call gives, fits, the name
+ * alone; else its call.
+ */
+export function calledOrNamed(
+  presenting: Presenting,
+  name: string,
+  results: readonly Type[],
+): Partial<Shown> {
+  const { place, expected } = presenting;
+  const namesValue =
+    place.kind !== 'pattern' &&
+    expectedFunction(expected) !== undefined &&
+    !results.some((result) => fitsExpected(presenting, result));
+  return namesValue ? { commit: ['('] } : called(presenting, name);
+}
+
+/**
+ * Accepting a variant: with fields, its call, unless braces after it already build it, `Ok{…}`; a
+ * variant without fields is a value, its name alone (§3.11).
+ */
 export function constructed(
+  presenting: Presenting,
+  name: string,
+  { hasFields, enums }: { readonly hasFields: boolean; readonly enums: readonly Type[] },
+): Partial<Shown> {
+  return hasFields && presenting.follows !== '{' ? calledOrNamed(presenting, name, enums) : {};
+}
+
+/** Accepting a struct as an annotation's value: with fields, its braces, listed next (§3.16). */
+export function annotationValue(
   { writesValue, follows }: Presenting,
   name: string,
   hasFields: boolean,

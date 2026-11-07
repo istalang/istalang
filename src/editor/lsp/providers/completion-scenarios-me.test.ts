@@ -40,7 +40,7 @@ const scenarios: readonly Scenario[] = [
       has: ['Approved', 'Rejected', 'Expired'],
       lacks: ['let', 'xs'],
       insert: [
-        ['Approved', 'Approved{$0}'],
+        ['Approved', 'Approved($0)'],
         ['Expired', 'Expired'],
       ],
     },
