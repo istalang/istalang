@@ -1,17 +1,18 @@
 /**
- * Field defaults (§3.1): the fields of a struct or a variant, when one has a default, read as the
- * parameters of a function of their own, each with its type and default, so a field's default is
- * taken as a parameter's (§3.3): it sees the fields before it, a field without a written type takes
- * its default's, and a default reaching its own field is a cycle. Its parameters are the fields in
- * order, so a layout's field `i` is its parameter `i`. It is called by no name: a literal leaving
- * field `i` out calls its default entry for parameter `i`, given the fields before it, as a call
- * leaving a parameter out does.
+ * Field defaults (§3.1): the fields of a struct or a variant, when one has a default or a variant's
+ * ends in a rest, read as the parameters of a function of their own, each with its type and default,
+ * so a field is held to a parameter's rules (§3.3): a default sees the fields before it, a field
+ * without a written type takes its default's, a default reaching its own field is a cycle, and a
+ * rest is last, an array, with no default. Its parameters are the fields in order, so a layout's
+ * field `i` is its parameter `i`. It is called by no name: a literal leaving field `i` out calls its
+ * default entry for parameter `i`, given the fields before it, as a call leaving a parameter out
+ * does.
  *
  * Each such function is made once from its declaration's own nodes and is checked and lowered as a
- * written one is, but where it differs it says whose fields it reads (`fieldsOwner`): its defaults
- * needn't trail, since a literal names its fields
- * (constructs/declarations/functions/signatures.ts), and its entries are named after the struct or
- * variant, not a static function's owner type.
+ * written one is, but where it differs it says whose fields it reads (`fieldsOwner`): a struct's
+ * defaults needn't trail, since only a literal gives its fields, by name, while a variant's do, as
+ * a call gives them in order (§3.11, constructs/declarations/functions/signatures.ts); and its
+ * entries are named after the struct or variant, not a static function's owner type.
  */
 
 import { memo } from '../../../foundation/structures/memo.ts';
@@ -71,8 +72,16 @@ export function isFieldsFunction(declaration: FunctionDeclaration): declaration 
 }
 
 /**
+ * Whether calls give `declaration`'s parameters in order, so its defaults trail (§3.3): any
+ * function's but a struct's fields', which only a literal gives, by name.
+ */
+export function takesArgumentsInOrder(declaration: FunctionDeclaration): boolean {
+  return !(isFieldsFunction(declaration) && 'struct' in declaration.fieldsOwner);
+}
+
+/**
  * The function whose parameters are the fields of a struct, or of an enum's `variant` (§3.1);
- * undefined when none of them has a default.
+ * undefined when none of them has a default or is a rest.
  */
 export function fieldsFunctionOf(declaration: DeclaredStruct): FieldsFunction | undefined;
 export function fieldsFunctionOf(
@@ -89,7 +98,7 @@ export function fieldsFunctionOf(
   }
   const owner = 'struct' in fieldsOwner ? fieldsOwner.struct : fieldsOwner.variant;
   return memo(fieldsFunctions, owner, () =>
-    owner.fields.some(hasDefault)
+    owner.fields.some((field) => hasDefault(field) || isRestField(field))
       ? {
           kind: 'FunctionDeclaration',
           span: owner.span,
@@ -122,8 +131,12 @@ function fieldParameter(field: DeclaredField | Invalid): Parameter | Invalid {
   if (field.kind === 'Invalid') {
     return field;
   }
-  const { span, name, type, defaultValue } = field;
-  return { kind: 'Parameter', span, isRest: false, name, pattern: undefined, type, defaultValue };
+  const { span, isRest, name, type, defaultValue } = field;
+  return { kind: 'Parameter', span, isRest, name, pattern: undefined, type, defaultValue };
+}
+
+function isRestField(field: DeclaredField | Invalid): boolean {
+  return field.kind === 'DeclaredField' && field.isRest;
 }
 
 function present<T>(value: T | undefined): readonly T[] {

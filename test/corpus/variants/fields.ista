@@ -1,0 +1,25 @@
+# outcome: "2 t false 0"
+# A variant's fields are declared as a function's parameters (§3.11): in parentheses, one per line
+# when they don't fit, defaults trailing, and the last may be a rest, an Array<T> holding what it
+# collected, which a literal gives and a pattern reads as the field it is.
+
+enum Node:
+  Text(value: String)
+  Group(
+    title: String
+    open: Bool = false
+    ...children: Array<Node>
+  )
+  Empty
+
+fn countOf(node: Node) -> Int:
+  match node:
+    case Node.Group{children}: children.length()
+    case _: 0
+
+async fn main() -> Future<String>:
+  const group = Node.Group{title: "t", children: [Node.Text{value: "a"}, Node.Empty]}
+  const empty = Node.Group{title: "u", children: []}
+  match group:
+    case Node.Group{title, open}: `${countOf(group)} ${title} ${open} ${countOf(empty)}`
+    case _: ""

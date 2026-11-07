@@ -1,0 +1,17 @@
+# error: 5113 at 11:20
+# error: 5115 at 12:12
+# error: 5116 at 13:16
+# error: 5117 at 14:13
+# error: 5115 at 15:12
+# A variant's fields are its parameters (§3.11): a call gives them in order, so every field after
+# one with a default has one too; a rest is the last, one at most, an Array<T> with no default.
+
+enum Bad:
+  Fine(a: Int, b: Int = 1, ...rest: Array<Int>)
+  Late(a: Int = 0, b: Int)
+  First(...xs: Array<Int>, y: Int)
+  Plain(...xs: Int)
+  Filled(...xs: Array<Int> = [])
+  Twice(...xs: Array<Int>, ...ys: Array<Int>)
+
+async fn main(): 0

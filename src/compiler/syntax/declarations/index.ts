@@ -147,6 +147,8 @@ export function isDeclaredStruct(
  * are a kind of their own beside a type's or a trait's `FieldDeclaration`.
  */
 export interface DeclaredField extends NodeOf<'DeclaredField'>, Annotatable {
+  /** `...children: Array<Node>`: a variant's rest, collecting a call's further arguments (§3.11). */
+  readonly isRest: boolean;
   readonly name: Identifier;
   /** Undefined only beside a default, which gives the type. */
   readonly type: TypeNode | undefined;
@@ -210,7 +212,7 @@ export function membersAsWritten(
   );
 }
 
-/** `Expired`, or `Rejected { by: String, reason: String }`. */
+/** `Expired`, or `Rejected(by: String, reason: String)` (§3.11). */
 export interface Variant extends NodeOf<'Variant'>, Annotatable {
   readonly name: Identifier;
   readonly fields: readonly (DeclaredField | Invalid)[];

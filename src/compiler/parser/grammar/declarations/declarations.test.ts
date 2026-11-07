@@ -19,6 +19,7 @@ import {
   named,
   parseAs,
   reported,
+  restField,
 } from '../../parse.test-kit.ts';
 
 const { expected, topLevelStatement, externWithBody } = parserDiagnostics;
@@ -85,12 +86,26 @@ describe('type declarations', () => {
       `(StructDeclaration Node [(TypeParameter T _ [${named('Sendable')} ${named('Comparable')}] ${int})] [${declaredField('value', named('T'))}] [])`,
     ],
     [
-      lines('enum Decision:', '    Approved { by: String }', '    Expired'),
+      lines('enum Decision:', '    Approved(by: String)', '    Expired'),
       `(EnumDeclaration Decision [] [(Variant Approved [${declaredField('by', string)}]) (Variant Expired [])] [])`,
     ],
     [
       'enum Color { Red, Green, Blue }',
       '(EnumDeclaration Color [] [(Variant Red []) (Variant Green []) (Variant Blue [])] [])',
+    ],
+    [
+      'enum Node { Group(title: String, open = false, ...children: Array<Node>) }',
+      `(EnumDeclaration Node [] [(Variant Group [${declaredField('title', string)} ${declaredField('open', '_', 'false')} ${restField('children', '(NamedType [Array] [(NamedType [Node] [])])')}])] [])`,
+    ],
+    [
+      lines(
+        'enum Decision:',
+        '    Rejected(',
+        '        by: String',
+        '        reason: String',
+        '    )',
+      ),
+      `(EnumDeclaration Decision [] [(Variant Rejected [${declaredField('by', string)} ${declaredField('reason', string)}])] [])`,
     ],
     [
       lines(
@@ -119,7 +134,7 @@ describe('type declarations', () => {
       `(StructDeclaration Retry [] [${declaredField('times', int, '3')} ${declaredField('backoff', '_', '(Binary times * 2)')}] [])`,
     ],
     [
-      'enum Shape { Circle { r: Float = 1.0 } }',
+      'enum Shape { Circle(r: Float = 1.0) }',
       `(EnumDeclaration Shape [] [(Variant Circle [${declaredField('r', named('Float'), '1')}])] [])`,
     ],
   ])('parses %s', (text, tree) => {

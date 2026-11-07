@@ -120,12 +120,16 @@ export function parseBlockBraces<Item extends SyntaxNode>(
   return parseEnclosedIn(parser, '{', enter, () => parseLines(parser, rules));
 }
 
-/** `{ a: Int, b: Int }`: `rules` items as a list (§2), each with its annotations. */
+/**
+ * `{ a: Int, b: Int }`, or a variant's `(a: Int, b: Int)`: `rules` items as a list (§2), each with
+ * its annotations; the cursor must be at `opener`.
+ */
 export function parseItemEntries<Item extends SyntaxNode>(
   parser: Parser,
+  opener: '{' | '(',
   rules: ItemRules<Item>,
 ): Enclosed<Items<Item>> {
-  return parseList(parser, '{', () =>
+  return parseList(parser, opener, () =>
     parseCommaSeparated(parser, () => parseListItem(parser, rules)).items.flat(),
   );
 }

@@ -33,7 +33,6 @@ export function standingIn(parent: SyntaxNode, child: SyntaxNode): Standing {
     case 'BlockExpression':
     case 'StructType':
     case 'StructConstraint':
-    case 'Variant':
     case 'TemplateLiteral':
       return 'braces';
     case 'ArrayLiteral':
@@ -69,6 +68,8 @@ export function standingIn(parent: SyntaxNode, child: SyntaxNode): Standing {
     case 'FunctionDeclaration':
     case 'FunctionType':
       return listedIn(parent.parameters, child);
+    case 'Variant':
+      return listedIn(parent.fields, child);
     default:
       return 'outside';
   }

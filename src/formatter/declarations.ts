@@ -23,7 +23,7 @@ import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../compiler/syntax/tree/node.ts';
 import { opened } from './expressions/indented-values.ts';
 import { annotated, docBelow, functionBody, indentedBody } from './layout/bodies.ts';
-import { angled, bracketed, bracketedWhenBroken, fieldList, itemLines } from './layout/lists.ts';
+import { angled, bracketed, bracketedWhenBroken, itemLines } from './layout/lists.ts';
 import type { Printer, Printers } from './printer.ts';
 import { constraintsAfterIs } from './types.ts';
 
@@ -114,10 +114,11 @@ export const declarationPrinters: Printers<DeclarationKind> = {
       printer.print(node.name),
       constraintsAfterIs(printer, node.constraints),
     ]),
+  // A variant's fields are its parameters (spec §3.11), so they print as a parameter list.
   Variant: (printer, node) =>
     annotated(printer, node, [
       printer.print(node.name),
-      node.fields.length === 0 ? '' : [' ', fieldList(printer, node, node.fields)],
+      node.fields.length === 0 ? '' : bracketed(printer, node, ['(', ')'], node.fields),
     ]),
   TraitDeclaration: (printer, node) =>
     annotated(printer, node, [
@@ -165,6 +166,7 @@ export const declarationPrinters: Printers<DeclarationKind> = {
   ],
   DeclaredField: (printer, node) =>
     annotated(printer, node, [
+      node.isRest ? '...' : '',
       printer.print(node.name),
       node.type === undefined ? '' : [': ', printer.print(node.type)],
       node.defaultValue === undefined ? '' : [' ', opened(printer, '=', node.defaultValue)],

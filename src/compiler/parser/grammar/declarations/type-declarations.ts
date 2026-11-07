@@ -36,7 +36,7 @@ import { type ItemRules, type Items, parseItemEntries } from '../../layout/index
 import { atPostfix } from '../../layout/item-breaks.ts';
 import type { Parser } from '../../parser.ts';
 import { parseConstraints } from '../parts/constraints.ts';
-import { declaredFieldRules, parseField } from '../parts/structs.ts';
+import { declaredFieldRules, parseField, variantFieldRules } from '../parts/structs.ts';
 import { parseFunction } from './functions.ts';
 import { parseAliasBody } from './type-matches.ts';
 import { parseTypeParameters } from './type-parameters.ts';
@@ -196,15 +196,23 @@ function parseMembers<Item extends DeclaredField | Variant | AssociatedType | Tr
     const segmentsStart = value.headedSegments ? value.headerEnd : undefined;
     return { value: value.items, doc, segmentsStart };
   }
-  const items = cursor.at('{') ? parseItemEntries(parser, rules).value : [];
+  const items = cursor.at('{') ? parseItemEntries(parser, '{', rules).value : [];
   return { value: items, doc: parseDocstringBelow(parser, headerStart), segmentsStart: undefined };
 }
 
-/** `Expired`, or `Rejected { by: String, reason: String }`. */
+/** `Expired`, or `Rejected(by: String, reason: String)`. */
 function parseVariant(parser: Parser): Variant {
   const name = parser.identifier('a variant name');
-  const fields = atPostfix(parser, '{') ? parseItemEntries(parser, declaredFieldRules).value : [];
+  const fields = parseVariantFields(parser);
   return { kind: 'Variant', span: parser.spanFrom(parser.startOf(name)), name, fields };
+}
+
+/** A variant's fields after its name, in parentheses or in braces; none when neither follows. */
+function parseVariantFields(parser: Parser): Variant['fields'] {
+  if (atPostfix(parser, '(')) {
+    return parseItemEntries(parser, '(', variantFieldRules).value;
+  }
+  return atPostfix(parser, '{') ? parseItemEntries(parser, '{', declaredFieldRules).value : [];
 }
 
 const variantRules: ItemRules<Variant> = {

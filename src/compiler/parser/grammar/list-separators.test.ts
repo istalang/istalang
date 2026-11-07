@@ -64,9 +64,9 @@ describe('every list in §4 separates its items with ","', () => {
       ),
     ],
     [
-      'variant fields in braces: Rejected { by: String, reason: String }',
+      'variant fields in parentheses: Rejected(by: String, reason: String)',
       'module' as const,
-      'enum Decision { Rejected { by: String, reason: String }, Expired }',
+      'enum Decision { Rejected(by: String, reason: String), Expired }',
       moduleOf(
         `(EnumDeclaration Decision [] [(Variant Rejected [${declaredField('by', string)} ${declaredField('reason', string)}]) (Variant Expired [])] [])`,
       ),
@@ -175,7 +175,7 @@ describe('";" between list items and "," between statements are errors (§4, not
     ],
     ['enum variants in braces', 'module' as const, 'enum Color { Red; Green; Blue }'],
     ['enum variants indented on one line', 'module' as const, 'enum Color:\n  Red; Green'],
-    ['variant fields in braces', 'module' as const, 'enum E { V { a: Int; b: String } }'],
+    ['variant fields in parentheses', 'module' as const, 'enum E { V(a: Int; b: String) }'],
     [
       'trait members in braces',
       'module' as const,

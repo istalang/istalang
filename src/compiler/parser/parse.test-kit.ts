@@ -126,6 +126,11 @@ export function declaredField(name: string, type: string, defaultValue = '_'): s
   return `(DeclaredField ${name} ${type} ${defaultValue})`;
 }
 
+/** The dump of a variant's rest field, `...name: type` (§3.11). */
+export function restField(name: string, type: string): string {
+  return `(DeclaredField isRest ${name} ${type} _)`;
+}
+
 /** The dump of a named type without type arguments. */
 export function named(name: string): string {
   return `(NamedType [${name}] [])`;

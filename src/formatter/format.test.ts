@@ -226,6 +226,16 @@ describe('the canonical style', () => {
     );
   });
 
+  it("prints a variant's fields as parameters: on its line when they fit, else one per line", () => {
+    expect(
+      formatText('enum Node { Group(title: String, open = false, ...children: Array<Node>) }\n'),
+    ).toBe(lines('enum Node:', '  Group(title: String, open = false, ...children: Array<Node>)'));
+    const long = `${'f'.repeat(80)}: String`;
+    expect(formatText(lines('enum Wide:', `  Pair(${long}, second: Int = 1)`))).toBe(
+      lines('enum Wide:', '  Pair(', `    ${long}`, '    second: Int = 1', '  )'),
+    );
+  });
+
   it('keeps one blank line where the source had any between items', () => {
     expect(formatText(lines('const a = 1', '', '', '', 'const b = 2', 'const c = 3'))).toBe(
       lines('const a = 1', '', 'const b = 2', 'const c = 3'),

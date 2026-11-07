@@ -10,6 +10,8 @@
  * where `F` is a member type parameter of the union, so it is read as one. How many a type holds
  * is the checker's to judge, as a struct's repeated field names are.
  *
+ * A variant's fields are a function's parameters (§3.11), so only they may end in a rest, `...`.
+ *
  * Only a struct's or a variant's declaration gives its fields defaults (§3.1); a default anywhere
  * else is read, so recovery goes on past it, then reported and left out of the tree. So is an entry
  * only a struct constraint has (`[_]: T`, `name is C`): a type gives each field a type (§3.5).
@@ -27,6 +29,7 @@ import { type ItemRules, parseItemEntries } from '../../layout/index.ts';
 import type { Parser } from '../../parser.ts';
 import { nested } from '../nesting.ts';
 import { parseConstraintEntry } from './constraints.ts';
+import { spreadOpener } from './spreads.ts';
 
 /**
  * What `parseBraced` parses after an optional `struct`, which must be followed by `{`: a missing
@@ -53,7 +56,7 @@ export function parseField(parser: Parser): FieldDeclaration {
 function parseDeclaredField(parser: Parser): DeclaredField {
   const name = parser.identifier('a field name');
   const start = parser.startOf(name);
-  const field = { kind: 'DeclaredField', name } as const;
+  const field = { kind: 'DeclaredField', isRest: false, name } as const;
   if (parser.cursor.eat('=') !== undefined) {
     const defaultValue = parser.value(start);
     return { ...field, span: parser.spanFrom(start), type: undefined, defaultValue };
@@ -125,16 +128,32 @@ const fieldRules: ItemRules<FieldDeclaration | MappedField | Invalid> = {
   annotate: attachAnnotations,
 };
 
-/** The fields of a struct's or a variant's declaration, which may have defaults. */
+/** The fields of a struct's declaration, which may have defaults. */
 export const declaredFieldRules: ItemRules<DeclaredField> = {
   parseItem: (parser) => nested(parser, () => parseDeclaredField(parser)),
   separator: ',',
   annotate: attachAnnotations,
 };
 
+/** A variant's field: a declared field, or the rest, `...children: Array<Node>` (§3.11). */
+function parseVariantField(parser: Parser): DeclaredField {
+  const rest = parser.cursor.eat(spreadOpener);
+  const field = parseDeclaredField(parser);
+  return rest === undefined
+    ? field
+    : { ...field, isRest: true, span: parser.spanFrom(rest.span.start) };
+}
+
+/** The fields of a variant's declaration, read as a function's parameters are (§3.11). */
+export const variantFieldRules: ItemRules<DeclaredField> = {
+  parseItem: (parser) => nested(parser, () => parseVariantField(parser)),
+  separator: ',',
+  annotate: attachAnnotations,
+};
+
 /** `{ a: A, b: B }`, the fields separated by `,` or line breaks; the cursor must be at the `{`. */
 export function parseFieldEntries(parser: Parser): Enclosed<StructType['fields']> {
-  return parseItemEntries(parser, fieldRules);
+  return parseItemEntries(parser, '{', fieldRules);
 }
 
 function parseFieldBlock(parser: Parser, headerStart: number): StructType {

@@ -10,15 +10,16 @@
  * - A parameter's default (§3.3) is checked as part of one body per function, in which each default
  *   sees the parameters before it (`DefaultValues`). A parameter with a default may omit its type,
  *   which is then the default's. Every parameter after one with a default has one too, since a call
- *   gives its arguments in order; a struct's or a variant's fields, read as parameters
- *   (syntax/declarations/field-defaults.ts), are named in a literal, so any of them may have one.
+ *   gives its arguments in order, as it does a variant's fields; a struct's fields, read as
+ *   parameters (syntax/declarations/field-defaults.ts), are named in a literal, so any of them may
+ *   have one.
  * - A rest parameter is the last, an `Array<T>` with no default (§3.3): a call it collects nothing
  *   into gives it an empty array.
  */
 
 import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../../../program/program.ts';
-import { isFieldsFunction } from '../../../../syntax/declarations/field-defaults.ts';
+import { takesArgumentsInOrder } from '../../../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
 import type { Expression, Parameter } from '../../../../syntax/expressions/index.ts';
 import { parameterSite, patternNamedType } from '../../../../syntax/expressions/parameters.ts';
@@ -55,7 +56,7 @@ export function declaredParameters(
   defaults: DefaultValues | undefined,
 ): readonly SignatureParameter[] {
   let afterDefault = false;
-  const inOrder = !isFieldsFunction(declaration);
+  const inOrder = takesArgumentsInOrder(declaration);
   const last = declaration.parameters.at(-1);
   return declaration.parameters.flatMap((node) => {
     if (node.kind === 'Invalid') {
