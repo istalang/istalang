@@ -1,19 +1,28 @@
-# error: 5107 at 19:21
-# error: 5107 at 20:29
-# error: 5107 at 21:13
-# error: 5109 at 22:26
-# error: 5109 at 23:22
-# error: 5503 at 24:13
-# error: 5001 at 25:30
-# A variant with fields named without a call is a function value only where no enum is expected:
+# error: 5107 at 28:21
+# error: 5107 at 29:29
+# error: 5107 at 30:13
+# error: 5109 at 31:26
+# error: 5109 at 32:22
+# error: 5503 at 33:13
+# error: 5001 at 34:30
+# error: 5001 at 35:20
+# error: 5001 at 36:33
+# error: 5507 at 37:21
+# A variant with fields named without a call is a function value unless its own enum is expected:
 # bare, it needs the expected function type's result to give its enum, so `map`, whose result is
 # still open, names the variant to write; where its enum is expected it is given its fields, and a
-# generic one needs a function type, as any generic function does. A variant without fields is a
-# value, never a function.
+# generic one needs a function type, as any generic function does. Where another enum, or a
+# function type its parameters don't take, is expected, it is its own function, which doesn't fit;
+# a generic one fits none, its parameters taking the expected ones exactly. A variant without
+# fields is a value, never a function.
 
 enum Verdict:
   Approved
   Rejected(by: String, reason = "no reason given")
+
+enum Color { Red, Green }
+
+enum Wrap<T> { Item(value: T?) }
 
 fn main() -> Int:
   const a = [1].map(Ok)
@@ -23,4 +32,7 @@ fn main() -> Int:
   const e: Verdict = Rejected
   const f = Result.Ok
   const g: fn() -> Verdict = Verdict.Approved
+  const h: Color = Verdict.Rejected
+  const i: fn(Int) -> Verdict = Rejected
+  const j = [1].map(Wrap.Item)
   0

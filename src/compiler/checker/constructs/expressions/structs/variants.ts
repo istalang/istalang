@@ -38,6 +38,7 @@ import {
 } from '../../../types/fitting/expected.ts';
 import { type NominalType, nominalType, type Type } from '../../../types/type/index.ts';
 import { errorType, noneType } from '../../../types/type/primitives.ts';
+import { membersOf } from '../../../types/unions/unions.ts';
 import { chooseVariant, nominalEntityOf } from '../../../types/written/named-types.ts';
 import { checkFunctionValue } from '../../closures/function-values.ts';
 import { checkLiteralFields } from './literal-fields.ts';
@@ -66,19 +67,21 @@ export function variantsAccepted(
 
 /**
  * For a bare variant's name passed to a call that decides it (§3.5), the types it can take: an
- * enum having a variant of that name, or a function type its constructor can be.
+ * enum having a variant of that name without fields, the value it names, or a function type the
+ * constructor of one with fields can be.
  */
 export function variantNameAccepts(
   context: BodyContext,
   node: Identifier,
   naming: VariantsEntity,
 ): Accepts {
+  const { checker } = context;
   const constructors = namedFunctions(context, node);
   const asFunction =
     constructors === undefined ? undefined : functionsAccepted(context, constructors);
-  const asValue = variantsAccepted(context, naming);
   return (expected, isOpen) =>
-    asValue?.(expected, isOpen) === true || asFunction?.(expected, isOpen) === true;
+    checker.inputs.variantNamed(naming.name, enumsExpected(expected))?.variant.fields.length ===
+      0 || asFunction?.(expected, isOpen) === true;
 }
 
 /** For a call of a bare variant, `Ok(v)`, the enum types that have a variant of that name. */
@@ -97,7 +100,7 @@ export function checkNone(): Type {
 
 /**
  * The type of a variant named without a call, bare or qualified: its constructor as a function
- * value where no enum is expected and its enum is known (§3.14), else the variant as a value.
+ * value where its enum is known and isn't asked for (§3.14), else the variant as a value.
  */
 export function checkVariantValue(
   context: BodyContext,
@@ -107,10 +110,24 @@ export function checkVariantValue(
 ): Type {
   const constructors = namedFunctions(context, node);
   return constructors !== undefined &&
-    enumsExpected(expected).length === 0 &&
+    !asksForVariant(expected, naming) &&
     constructors.candidates(expected).length > 0
     ? checkFunctionValue(context, constructors, expected)
     : checkVariantName(context, node, naming, expected);
+}
+
+/**
+ * Whether `expected` asks for a value of an enum `naming` may name and for no function, so the
+ * variant named there is that value (§3.11): a qualified variant's own enum, or, for a bare name,
+ * which chooses among the enums so expected, any.
+ */
+function asksForVariant(expected: Type | undefined, naming: VariantNaming): boolean {
+  const members = expected === undefined ? [] : membersOf(expected);
+  const enums = enumsExpected(expected);
+  return (
+    members.every((member) => member.kind !== 'function') &&
+    (naming.kind === 'variant' ? enums.includes(naming.enum) : enums.length > 0)
+  );
 }
 
 /** The type of a variant named as a value, which needs it to have no fields. */

@@ -1,14 +1,23 @@
-# outcome: "1 2 3|4|legal: late|ops: no reason given|2 t|true false|5 6|x: no reason given"
+# outcome: "1 2 3|4|legal: late|ops: no reason given|2 t|true false|5 6|x: no reason given|function a: b 2"
 # A variant with fields is a function value (§3.14) named as a static function is: qualified, as
 # `Result.Ok` passed to `map`, whose result it infers as a lambda's would, or bare where the
-# expected function type's result is its enum. It fits a function type leaving defaulted fields
-# out, computing them at each call, also as an argument, and takes its rest as one array; it
-# captures nothing, so its type is sendable, and it equals another value naming it with the same
-# type arguments, never one naming another variant.
+# expected function type's result is its enum, also as a member of an expected union or a
+# parameter of one overload of several. It fits a function type leaving defaulted fields out,
+# computing them at each call, and takes its rest as one array; passed where no function type is
+# known, a qualified one is its own whole function, so a generic call infers from it, in each pass
+# of a field loop as that pass's types make it. It captures nothing, so its type is sendable, and
+# it equals another value naming it with the same type arguments, never one naming another
+# variant.
 
 enum Verdict:
   Approved
   Rejected(by: String, reason = "no reason given")
+
+enum Action:
+  Now(value: Int)
+  Later
+
+type Move = Action | fn(Int) -> Action
 
 enum Node:
   Text(value: String)
@@ -34,6 +43,22 @@ fn apply(f: fn(Int) -> Result<Int>, value: Int) -> Result<Int>: f(value)
 
 fn sent(make: sendable fn(String) -> Verdict) -> String: describe(make("x"))
 
+fn kept<T>(value: T) -> T: value
+
+struct Pair:
+  a: Int
+  b: String
+
+fn each(pair: Pair) -> Int:
+  let count = 0
+  for _, value in ...pair:
+    count = count + [value].map(Result.Ok).length()
+  count
+
+fn chosen(action: Action) -> String: "value"
+
+fn chosen(make: fn(Int) -> Action) -> String: "function"
+
 async fn main() -> Future<String>:
   const results = [1, 2, 3].map(Result.Ok)
   const wrap: fn(Int) -> Result<Int> = Ok
@@ -48,4 +73,7 @@ async fn main() -> Future<String>:
   const same = `${wrap == again} ${succeeding == failing}`
   const passed = `${valueOf(apply(Ok, 5))} ${valueOf(apply(Result.Ok, 6))}`
   const made = describe(reject("legal", "late"))
-  `${values}|${valueOf(wrap(4))}|${made}|${describe(short("ops"))}|${shown(group("t", true, [Node.Empty, Node.Text("a")]))}|${same}|${passed}|${sent(Verdict.Rejected)}`
+  const whole = kept(Verdict.Rejected)
+  const move: Move = Now
+  const picked = `${chosen(Now)} ${describe(whole("a", "b"))}`
+  `${values}|${valueOf(wrap(4))}|${made}|${describe(short("ops"))}|${shown(group("t", true, [Node.Empty, Node.Text("a")]))}|${same}|${passed}|${sent(Rejected)}|${picked} ${each(Pair{a: 1, b: "x"})}`

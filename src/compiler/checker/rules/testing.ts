@@ -9,8 +9,9 @@
  *   functions it calls and the tests it builds run elsewhere or later, so only its own body is; the
  *   runner checks each test's title at its position as it runs it.
  * - The testing module's calls whose arguments its signatures can't constrain: a mock's target must
- *   name a function, since a lambda or a variable has no identity to replace, and is never made
- *   async to fit (§3.14), since the function made async would be another; and the type `handle`
+ *   name a function, since a lambda or a variable has no identity to replace, nor a variant, built
+ *   where it is called (§3.11), and is never made async to fit (§3.14), since the function made
+ *   async would be another; and the type `handle`
  *   makes a value of must be a host type. Each is checked over the calls a body resolved. A mock's
  *   target is also the one place a `dispose` may be named (rules/disposal/disposal.ts), so the
  *   targets are what checking gives back.
@@ -19,6 +20,7 @@
 import { languageModules, wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { testingFunctions } from '../../../foundation/language/well-known/testing.ts';
 import type { ModuleId } from '../../program/program.ts';
+import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import { argumentValue } from '../../syntax/expressions/arguments.ts';
 import type { Call, Expression } from '../../syntax/expressions/index.ts';
@@ -67,9 +69,11 @@ function checkTarget(context: BodyContext, site: Call, mock: FunctionCall): Expr
   const [source] = mock.binding;
   const argument = source?.kind === 'argument' ? site.arguments[source.index] : undefined;
   const target = argument === undefined ? undefined : unparenthesized(argumentValue(argument));
-  const names =
-    (target?.kind === 'Identifier' || target?.kind === 'MemberAccess') &&
-    context.callAt(target)?.kind === 'function';
+  const named =
+    target?.kind === 'Identifier' || target?.kind === 'MemberAccess'
+      ? context.callAt(target)
+      : undefined;
+  const names = named?.kind === 'function' && constructedVariant(named.function) === undefined;
   if (target === undefined || !names) {
     context.report(checkerDiagnostics.mockTarget((argument ?? site).span));
     return undefined;

@@ -40,4 +40,9 @@ export const closureTemplates = {
     code: 5506,
     message: (found: string) => `A ${found} can't be called: it isn't a function.`,
   },
+  functionValueMisfit: {
+    code: 5507,
+    message: (name: string, expected: string) =>
+      `'${name}' fits no ${expected}: none of the functions it names takes those parameters as they are.`,
+  },
 } as const;

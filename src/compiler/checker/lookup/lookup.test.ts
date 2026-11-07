@@ -1,9 +1,9 @@
 /**
  * The lookup queries over every corpus program, valid and invalid: no query throws at any node,
  * every name binding or checking resolved in a body is answered with the declaration they chose,
- * a called variant's name with the variant, of the type its call made, and every name of a variant
- * with its enum's type. Checking a program twice is the costly part, so one pass per program asks
- * all of it.
+ * a called variant's name, or one named as a function value, with the variant, of each type its
+ * call or its value made and only those, and every name of a variant with its enum's type.
+ * Checking a program twice is the costly part, so one pass per program asks all of it.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -51,12 +51,19 @@ function disagreementsAt(checked: CheckedModule, node: SyntaxNode): readonly str
   }
   const denotations = checker.lookup.denotationsOf(module, node);
   const made = madeBy(checked, node, body);
-  const notAsMade = denotations
-    .filter(({ declared, type }) => declared.kind === 'variant' && !isMade(made, type))
+  const variants = denotations.filter(({ declared }) => declared.kind === 'variant');
+  const notAsMade = variants
+    .filter(({ type }) => !isMade(made, type))
     .map(() => `${node.text} at ${node.span.from} not of the type its call made`);
+  const unnamed = (variants.length === 0 ? [] : (made ?? []))
+    .filter(
+      (type) => type.kind === 'nominal' && !variants.some((each) => sameTypes(each.type, type)),
+    )
+    .map(() => `${node.text} at ${node.span.from} missing a type its call made`);
   return [
     ...outsideItsEnum,
     ...notAsMade,
+    ...unnamed,
     ...chosenFor(checked, node, body)
       .filter((chosen) => !denotations.some(chosen))
       .map(() => `${node.text} at ${node.span.from}`),
@@ -68,26 +75,46 @@ function isEnumOf(variant: VariantEntity, type: Type | undefined): boolean {
   return type?.kind === 'nominal' && type.entity.declaration === variant.enum;
 }
 
-/** What the call `name` names the callee of made, bare or qualified; undefined for no call. */
-function madeBy({ tree }: CheckedModule, name: Identifier, body: JoinedBody): Type | undefined {
+/**
+ * What `name` made, one type per pass of the field loops around it: a call of it, bare or
+ * qualified, the value it gives, and a function value it names, the value its calls give;
+ * undefined for neither.
+ */
+function madeBy(
+  { tree }: CheckedModule,
+  name: Identifier,
+  body: JoinedBody,
+): readonly Type[] | undefined {
   const parent = parentOf(tree, name);
   const member = parent?.kind === 'MemberAccess' && parent.member === name ? parent : undefined;
   const call =
     callWith(name, parent) ??
     callWith(member, member === undefined ? undefined : parentOf(tree, member));
-  return call === undefined ? undefined : body.typeOf(call);
+  if (call !== undefined) {
+    const made = body.typeOf(call);
+    return made === undefined ? undefined : membersOf(made);
+  }
+  const site = member ?? name;
+  const value = body.callsAt(site).length > 0 ? body.typeOf(site) : undefined;
+  return value === undefined
+    ? undefined
+    : membersOf(value).flatMap((each) => (each.kind === 'function' ? [each.result] : []));
 }
 
 /**
- * Whether `type` is a type the call `made`, one per pass of a field loop, as a variant called
- * names it; any, with no call.
+ * Whether `type` is a type `made`, one per pass of a field loop, as a variant called or named as a
+ * function value names it; any, where nothing was made or what was is unknown.
  */
-function isMade(made: Type | undefined, type: Type | undefined): boolean {
+function isMade(made: readonly Type[] | undefined, type: Type | undefined): boolean {
   return (
     made === undefined ||
-    made.kind === 'error' ||
-    (type !== undefined && membersOf(made).some((member) => sameType(member, type)))
+    made.some((each) => each.kind === 'error') ||
+    made.some((each) => sameTypes(type, each))
   );
+}
+
+function sameTypes(first: Type | undefined, second: Type): boolean {
+  return first !== undefined && sameType(first, second);
 }
 
 /** `call` when it is a call of `callee`. */

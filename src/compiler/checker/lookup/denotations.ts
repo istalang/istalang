@@ -257,7 +257,9 @@ function associatedNamed(checker: CheckerContext, type: Type | undefined): reado
 function calleeDenotations(site: NameSite, call: Call): readonly Denotation[] {
   const entity = site.checker.bindings.entityOf(site.module, site.name);
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
-    return madeTypes(site, call).flatMap((made) => named(site, made));
+    return (
+      calledAt(site, call, undefined) ?? madeTypes(site, call).flatMap((made) => named(site, made))
+    );
   }
   const called = calledAt(site, call, undefined) ?? [];
   const bound = named(site);
@@ -281,8 +283,8 @@ function heldFunction(site: NameSite, hold: Hold): readonly Denotation[] {
 }
 
 /**
- * The types `call` made, one per pass of the field loops around it that made a different one; a
- * call never checked made none known.
+ * The types `call`, of a variant without fields, which calls no function, made: one per pass of
+ * the field loops around it that made a different one; a call never checked made none known.
  */
 function madeTypes({ body }: NameSite, call: Call): readonly (Type | undefined)[] {
   const made = body?.typeOf(call);
@@ -296,13 +298,12 @@ function madeTypes({ body }: NameSite, call: Call): readonly (Type | undefined)[
 function parameterNamed(site: NameSite, call: SyntaxNode | undefined): readonly Denotation[] {
   const { checker, name } = site;
   const calls = call?.kind === 'Call' ? (site.body?.callsAt(call) ?? []) : [];
-  return calls.flatMap(({ function: called }): readonly Denotation[] => {
+  return calls.flatMap((each): readonly Denotation[] => {
+    const called = each.function;
     const built = constructedVariant(called);
-    if (built !== undefined && call?.kind === 'Call') {
+    if (built !== undefined) {
       const variant = built.variant.name.text;
-      return madeTypes(site, call).flatMap((made) =>
-        fieldDenotation(builtField(checker, made, variant, name.text)),
-      );
+      return fieldDenotation(builtField(checker, builtType(each), variant, name.text));
     }
     const parameter = checker
       .parametersOf(called)
@@ -396,10 +397,11 @@ function fromEntity(site: NameSite, entity: Entity, type: Type | undefined): rea
     case 'self':
       return [{ declared: { kind: 'type', entity }, type: type ?? entityType(checker, entity) }];
     case 'variant':
-      return [variantDenotation(entity, type)];
+      return calledAt(site, name, type) ?? [variantDenotation(entity, type)];
     case 'variants': {
       const chosen = body?.chosenVariantOf(name);
-      return chosen === undefined ? [] : [variantDenotation(chosen, type)];
+      const asValue = chosen === undefined ? [] : [variantDenotation(chosen, type)];
+      return calledAt(site, name, type) ?? asValue;
     }
     case 'namespace':
       return [{ declared: { kind: 'namespace', entity }, type: undefined }];

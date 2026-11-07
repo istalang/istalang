@@ -4,7 +4,9 @@
  * expected of it, made a closure with no captures and recorded as a site at the expression naming
  * it (check.ts). A bare variant's name records the variant its constructor builds (§3.11), as a
  * call of it does, for what tools and lowering read of the name. A name none of whose functions
- * is chosen is reported.
+ * is chosen is reported: as needing a function type where none is expected, else as fitting none
+ * of the one expected; a lone function that doesn't fit is its own value, which the expected type
+ * reports as any value's.
  */
 
 import { variantEntity } from '../../../binder/entities.ts';
@@ -21,6 +23,7 @@ import {
 import { expectedFunction } from '../../types/fitting/expected.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, expectsError } from '../../types/type/primitives.ts';
+import { typeText } from '../../types/type/type-text.ts';
 
 /** The type of the function `named` names as a value; the error type after a report. */
 export function checkFunctionValue(
@@ -33,7 +36,11 @@ export function checkFunctionValue(
   const application = chosenValue(context, named, shape);
   if (application === undefined) {
     if (!expectsError(expected)) {
-      context.report(checkerDiagnostics.functionValueUnchosen(site.span, name));
+      context.report(
+        shape === undefined
+          ? checkerDiagnostics.functionValueUnchosen(site.span, name)
+          : checkerDiagnostics.functionValueMisfit(site.span, name, typeText(shape)),
+      );
     }
     return errorType;
   }

@@ -1,13 +1,12 @@
-# outcome: "8 6 7 120 15 0 1 9 3 100 5 0 20 7 hi x"
+# outcome: "8 6 7 120 15 0 1 9 3 100 5 0 20 7"
 # Functions are values (§3.14): a lambda takes its parameter types from the function type it is
 # passed as, and a generic function infers its type arguments from the lambda's result (§3.5), or
 # from that of a generic or overloaded function named as a value, chosen by the other arguments; a
 # named lambda calls itself, its result given by the expected type; a local `fn` calls itself
 # with a declared result; a top-level, static or overloaded function names a function value, the
-# expected type choosing among overloads, also a call's parameter type, and one with defaults
-# fits a parameter's function type leaving them out; a field of a function type is called as
-# `x.f(…)` when no method shares its name, or as `(x.f)(…)`, and through `?.` as a link of the
-# chain; an async function value's call is awaited.
+# expected type choosing among overloads, also a call's parameter type; a field of a function type
+# is called as `x.f(…)` when no method shares its name, or as `(x.f)(…)`, and through `?.` as a
+# link of the chain; an async function value's call is awaited.
 
 struct Op { run: fn(Int) -> Int }
 
@@ -18,10 +17,6 @@ fn apply<T, U>(value: T, f: fn(T) -> U) -> U: f(value)
 fn inc(n: Int) -> Int: n + 1
 
 fn id<T>(value: T) -> T: value
-
-fn greet(name: String, greeting = "hi") -> String: `${greeting} ${name}`
-
-fn run(f: fn(String) -> String) -> String: f("x")
 
 fn pick(n: Int) -> Int: n * 3
 
@@ -52,4 +47,4 @@ async fn main():
   const e = twice(Op.scale, 1)
   const scaled = apply(2, Op.scale)
   const same = apply(7, id)
-  String(a) + " " + String(b) + " " + String(c) + " " + String(fact(5)) + " " + String(sumTo(5)) + " " + String((op.run)(0)) + " " + String(op.run(1)) + " " + String(thrice(3)) + " " + String(d) + " " + String(e) + " " + String(viaChain(op)) + " " + String(viaChain(none)) + " " + String(scaled) + " " + String(same) + " " + run(greet)
+  String(a) + " " + String(b) + " " + String(c) + " " + String(fact(5)) + " " + String(sumTo(5)) + " " + String((op.run)(0)) + " " + String(op.run(1)) + " " + String(thrice(3)) + " " + String(d) + " " + String(e) + " " + String(viaChain(op)) + " " + String(viaChain(none)) + " " + String(scaled) + " " + String(same)

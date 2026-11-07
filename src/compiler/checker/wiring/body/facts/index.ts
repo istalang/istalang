@@ -7,6 +7,8 @@
  * entry says all three, and no view passes a fact through unread.
  */
 
+import { sameItems } from '../../../../../foundation/structures/equality.ts';
+import { constructedVariant } from '../../../../syntax/declarations/field-defaults.ts';
 import type { Pass } from '../../../contexts/passes.ts';
 import type { PassAnswers } from '../../../lookup/pass-views.ts';
 import type { BodyFacts, CheckedBody } from '../../../surface/checked-body.ts';
@@ -344,10 +346,19 @@ function isListed(name: FactName): name is ListedName {
   return Object.hasOwn(listedFacts, name);
 }
 
-/** Whether two calls call one function: a call's target, as tools name it. */
+/**
+ * Whether two calls call one function: a call's target, as tools name it. A variant's constructor
+ * is named by the enum type it makes (§3.11), so its calls making two are two.
+ */
 function sameCallee(one: ResolvedCall, other: ResolvedCall): boolean {
-  return one.function === other.function;
+  return (
+    one.function === other.function &&
+    (constructedVariant(one.function) === undefined ||
+      sameTypes(one.typeArguments, other.typeArguments))
+  );
 }
+
+const sameTypes = sameItems(sameType);
 
 /** A fact by node with each answer read through `part`, the answer of none staying none. */
 function readThrough<Args extends unknown[], Answer>(

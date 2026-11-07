@@ -15,8 +15,11 @@
  *   rest parameter is one array (binding.ts). A top-level name also finds what argument-dependent
  *   lookup does from those types (§3.13).
  * - With no expected function type, only a lone non-generic function can be named; any other
- *   name needs one (§3.14), which a call it is passed to gives (`functionsAccepted`), as it does
- *   for a lone one with defaults, whose type the parameter it fills decides.
+ *   name needs one (§3.14), which a call it is passed to gives (`functionsAccepted`). A lone one
+ *   whose parameters don't take the expected type's is its own function all the same, so the
+ *   type it is expected as reports the mismatch, as for any value.
+ * - A function value's parameters take exactly the expected type's, with none of a call's
+ *   conversions (§3.14): a value of `fn(Int?)` is no `fn(Int)`.
  * - A function's type as a value has the `T` an `await` yields as an async function's result.
  */
 
@@ -168,22 +171,25 @@ export function functionValueType(
   shape: FunctionType,
 ): FunctionType | undefined {
   const named = namedFunctions(context, node);
-  const application = named === undefined ? undefined : chosenValue(context, named, shape);
+  const application =
+    named === undefined ? undefined : chosenFor(context, named.candidates(shape), shape);
   return application === undefined
     ? undefined
     : instantiatedValue(context, application, searchSite(context.checker), undefined)?.type;
 }
 
-/** The function `named` means taking `shape`'s parameters, or its lone function with no shape. */
+/**
+ * The function `named` means taking `shape`'s parameters, else its lone non-generic function,
+ * whatever its parameters are.
+ */
 export function chosenValue(
   context: BodyContext,
   named: NamedFunctions,
   shape: FunctionType | undefined,
 ): Application | undefined {
-  const candidates = named.candidates(shape);
-  return shape === undefined
-    ? loneFunction(context, candidates)
-    : chosenFor(context, candidates, shape);
+  const chosen =
+    shape === undefined ? undefined : chosenFor(context, named.candidates(shape), shape);
+  return chosen ?? loneFunction(context, named.candidates(shape));
 }
 
 /**
@@ -227,15 +233,13 @@ export function instantiatedValue(
 
 /**
  * For functions named as an argument, the function types they can be passed as, so the call
- * decides which (§3.5); undefined for a lone non-generic function without defaults, which has one
- * type of its own, while one with defaults also fits the types leaving them out (§3.14).
+ * decides which (§3.5); undefined for a lone non-generic function, which has its own type.
  */
 export function functionsAccepted(
   context: BodyContext,
   named: NamedFunctions,
 ): Accepts | undefined {
-  const lone = loneFunction(context, named.candidates(undefined));
-  if (lone?.signature.parameters.every((slot) => !slot.hasDefault) === true) {
+  if (loneFunction(context, named.candidates(undefined)) !== undefined) {
     return undefined;
   }
   return (expected) => {
@@ -280,6 +284,7 @@ function chosenFor(
   const arguments_ = shape.parameters.map((slot) => ({
     type: slot.type,
     passing: passingOf(slot.reference),
+    exact: true,
   }));
   const choice = chooseAsValue(context.checker, candidates, arguments_);
   return choice.kind === 'chosen' ? choice.application : undefined;

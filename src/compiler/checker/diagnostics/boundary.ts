@@ -77,7 +77,7 @@ export const boundaryTemplates = {
   mockTarget: {
     code: 5952,
     message: () =>
-      "A mock's target must name a function: a lambda or a variable has no identity to replace.",
+      "A mock's target must name a function: a lambda or a variable has no identity to replace, and a variant is built where it is called.",
   },
   handleOfNonExtern: {
     code: 5953,
