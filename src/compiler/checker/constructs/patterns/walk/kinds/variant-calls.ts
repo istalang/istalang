@@ -14,9 +14,10 @@
  *   length included (arrays.ts), the call pattern standing as their site, and a last `...` leaves
  *   the items past them too; a lone spread takes the rest field whole, with nothing to test.
  * - Arguments that can't all bind are reported once. Each still takes the field it names or stands
- *   at where it can (`fieldsReached`), so its field is recorded and its names bind at the field's
- *   type, else at the error type; the pattern then covers its variant whatever its fields hold, as
- *   a struct pattern naming a field its variant lacks does, so nothing more is reported around it.
+ *   at where it can (`argumentsReach`, surface/struct-items.ts), so its field is recorded and its
+ *   names bind at the field's type, else at the error type; the pattern then covers its variant
+ *   whatever its fields hold, as a struct pattern naming a field its variant lacks does, so nothing
+ *   more is reported around it.
  */
 
 import type { Diagnostic } from '../../../../../../foundation/diagnostics/diagnostic.ts';
@@ -39,6 +40,7 @@ import {
   isBinding,
 } from '../../../../resolution/choosing/binding.ts';
 import type { Binding } from '../../../../surface/resolved-call.ts';
+import { argumentsReach } from '../../../../surface/struct-items.ts';
 import type { FieldMember } from '../../../../types/type/index.ts';
 import { errorType } from '../../../../types/type/primitives.ts';
 import { anyShape, type Shape } from '../../exhaustiveness/exhaustiveness.ts';
@@ -224,8 +226,9 @@ function takeRestItems(
 }
 
 /**
- * Each argument of `call`, which can't all bind, over the field it reaches (`fieldsReached`), its
- * field recorded if it names it; one reaching none over the error type.
+ * Each argument of `call`, which can't all bind, over the field it reaches (`argumentsReach`,
+ * surface/struct-items.ts), its field recorded if it names it; one reaching none over the error
+ * type.
  */
 function takeReached(
   walk: ItemTaking,
@@ -233,9 +236,11 @@ function takeReached(
   variant: VariantPart,
   part: ValuePart,
 ): void {
-  const reached = fieldsReached(call);
+  const reached = argumentsReach(variant.fields, call.given);
   for (const [index, argument] of call.given.entries()) {
-    const at = reached[index];
+    const fieldReached = reached[index];
+    // An item of the rest field is matched by no array test here: its names take the error type.
+    const at = fieldReached?.isItem === false ? fieldReached.index : undefined;
     const field = at === undefined ? undefined : variant.fields[at];
     if (at === undefined || field === undefined) {
       walk.take(argument, { type: errorType, path: part.path });
@@ -246,36 +251,6 @@ function takeReached(
       walk.take(argument, fieldPart(part, field, at));
     }
   }
-}
-
-/**
- * By argument, the field each of `call`'s arguments reaches though they can't all bind: a fixed
- * field its position gives, before any spread; the rest field, for the first spread; the field a
- * name names, unless an earlier argument took it. Any other reaches none.
- */
-function fieldsReached({ slots, given }: BoundCall): readonly (number | undefined)[] {
-  const restAt = slots.findIndex((slot) => slot.rest !== undefined);
-  const fixed = restAt === -1 ? slots.length : restAt;
-  const spreadAt = given.findIndex((argument) => argument.kind === 'RestPattern');
-  const positional = given.filter(
-    (argument, index) =>
-      argument.kind !== 'NamedPatternArgument' && (spreadAt === -1 || index < spreadAt),
-  );
-  const byPosition = Math.min(positional.length, fixed);
-  return given.map((argument, index) => {
-    if (argument.kind === 'NamedPatternArgument') {
-      const field = slots.findIndex((slot) => slot.name === argument.name.text);
-      const first = given.findIndex(
-        (other) => other.kind === 'NamedPatternArgument' && other.name.text === argument.name.text,
-      );
-      return field === -1 || field < byPosition || first !== index ? undefined : field;
-    }
-    if (index === spreadAt) {
-      return restAt === -1 ? undefined : restAt;
-    }
-    const at = positional.indexOf(argument);
-    return at === -1 || at >= fixed ? undefined : at;
-  });
 }
 
 /** The report saying why `call`'s arguments can't bind to `variant`'s fields. */
