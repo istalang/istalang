@@ -25,6 +25,7 @@ import {
   buildsShared,
   literalNaming,
 } from '../../../compiler/syntax/expressions/literals/built-types.ts';
+import { isTakingApart, patternHead } from '../../../compiler/syntax/patterns.ts';
 import {
   declaredTargets,
   ownsTargets,
@@ -228,9 +229,7 @@ function builtNameRole({ parsed, node, holder }: Link<SyntaxNode>): ParsedPlaceK
   if (literal !== undefined) {
     return buildsShared(literal) ? undefined : 'grammar';
   }
-  const heads =
-    (holder?.kind === 'StructPattern' && holder.type === node) ||
-    (holder?.kind === 'VariantCallPattern' && holder.callee === node);
+  const heads = holder !== undefined && isTakingApart(holder) && patternHead(holder) === node;
   return heads && isTested(parsed, holder) ? 'pattern' : undefined;
 }
 

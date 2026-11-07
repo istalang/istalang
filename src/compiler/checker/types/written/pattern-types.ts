@@ -36,7 +36,7 @@ import { hasMember } from '../unions/unions.ts';
 import { type Aliases, entityType } from './named-types.ts';
 
 /** A generic type a pattern names: a nominal one. */
-export type GenericDeclaration = NominalDeclaration;
+type GenericDeclaration = NominalDeclaration;
 
 /** The type a pattern naming an entity tests a value for. */
 export type PatternType =
@@ -209,7 +209,7 @@ export function membersOfType(
  * Of the generic type `declaration`'s instances among `members`, the one instantiating it with
  * `typeArguments`.
  */
-export function instancesWith(
+function instancesWith(
   members: readonly Type[],
   declaration: GenericDeclaration,
   typeArguments: readonly Type[],
@@ -218,6 +218,45 @@ export function instancesWith(
     const instance = instanceOf(member, declaration);
     return instance !== undefined && sameItems(sameType)(instance, typeArguments);
   });
+}
+
+/**
+ * The members among `named`, those a pattern naming `entity` selects (`membersNamed`), that type
+ * arguments `given` instantiate (§3.11): a generic type's instances with them, a variant's its
+ * enum's; undefined when what `entity` names takes no such arguments.
+ */
+export function instancesNamed(
+  checker: Aliases,
+  entity: Entity,
+  named: readonly Type[],
+  given: readonly Type[],
+): readonly Type[] | undefined {
+  if (entity.kind === 'variant' || entity.kind === 'variants') {
+    return variantInstancesWith(named, given);
+  }
+  const pattern = patternTypeOf(checker, entity);
+  return pattern.kind === 'generic' && pattern.declaration.typeParameters.length === given.length
+    ? instancesWith(named, pattern.declaration, given)
+    : undefined;
+}
+
+/**
+ * The members among `owners`, enums declaring a variant a pattern names, whose enum `typeArguments`
+ * instantiate: those of each owning enum taking that many; undefined when none takes them.
+ */
+function variantInstancesWith(
+  owners: readonly Type[],
+  typeArguments: readonly Type[],
+): readonly Type[] | undefined {
+  const enums = new Set(
+    owners.flatMap((owner) => (owner.kind === 'nominal' ? [owner.entity.declaration] : [])),
+  );
+  const taking = [...enums].filter(
+    (declaration) => declaration.typeParameters.length === typeArguments.length,
+  );
+  return taking.length === 0
+    ? undefined
+    : taking.flatMap((declaration) => instancesWith(owners, declaration, typeArguments));
 }
 
 /**

@@ -47,7 +47,8 @@ function parseParameter(parser: Parser): Parameter {
 
 /**
  * Whether a pattern, not a plain name, starts at the cursor: anything but a name, or a name a
- * struct pattern's `{`, a qualifier's `.` or type arguments' `<` follows on its line.
+ * struct pattern's `{`, a call pattern's `(`, a qualifier's `.` or type arguments' `<` follows on
+ * its line.
  */
 function startsPattern(parser: Parser): boolean {
   const { cursor } = parser;
@@ -55,7 +56,9 @@ function startsPattern(parser: Parser): boolean {
     return !missingParameterBefore.has(cursor.kind);
   }
   const next = cursor.kindAt(1);
-  return next === '.' || ((next === '{' || next === '<') && !cursor.startsLineInList(1));
+  return (
+    next === '.' || ((next === '{' || next === '(' || next === '<') && !cursor.startsLineInList(1))
+  );
 }
 
 /** What stands where a parameter is missing: its list's end, or what follows a parameter's name. */

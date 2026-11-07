@@ -191,6 +191,16 @@ function targetLeaves(node: Pattern | PatternPart | Invalid): readonly TargetLea
   return handlerOf(targetLeafHandlers, node)(undefined, node);
 }
 
+/** A pattern naming a type or variant: a name, or one taking it apart, in braces or as a call. */
+export type HeadedPattern = NamePattern | StructPattern | VariantCallPattern;
+
+/** Whether `node` takes apart what its head names, in braces or as a call (`patternHead`). */
+export function isTakingApart<Node extends { readonly kind: string }>(
+  node: Node,
+): node is Extract<Node, { readonly kind: 'StructPattern' | 'VariantCallPattern' }> {
+  return node.kind === 'StructPattern' || node.kind === 'VariantCallPattern';
+}
+
 /**
  * The name `node` names a type or variant by, with any type arguments: a name pattern itself, or
  * a struct or call pattern's head; undefined for any other.

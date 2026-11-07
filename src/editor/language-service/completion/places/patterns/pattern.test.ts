@@ -195,6 +195,13 @@ describe('a pattern place', () => {
     expect(labelsAt(...cases, '  match n:', '    case + ‸')).toEqual([]);
   });
 
+  it("offers at a call pattern's head what it offers at a struct pattern's", () => {
+    const cases = [...decision, 'fn f(d: Decision) -> Int:', '  match d:'];
+    const called = labelsAt(...cases, '    case Appr‸(by): 1');
+    expect(called).toContain('Approved');
+    expect(called).toEqual(labelsAt(...cases, '    case Appr‸{by}: 1'));
+  });
+
   it("reads the type a tuple's element, an array's item or a nested field matches", () => {
     const held = 'struct Held { decision: Decision? }';
     const nested = (subject: string, pattern: string) =>

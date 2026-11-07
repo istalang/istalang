@@ -22,6 +22,7 @@
  */
 
 import { isUnnamed } from '../../../foundation/language/naming.ts';
+import { givenOutOfOrder } from '../../syntax/expressions/arguments.ts';
 import {
   binaryOperators,
   isComparisonOperator,
@@ -254,8 +255,9 @@ function parseNamedPattern(parser: Parser, inner: NestedPattern): Pattern {
 /**
  * `Ok(v)`, `Rejected(by: "legal")`, `Group(title, ...children)`, `Group(title, ...)`, at the `(`
  * after `callee`: arguments as a call's are written, by position, then by name, a spread taking
- * the rest field (§3.11). A second spread is reported, as in an array pattern, and so is a `...`
- * leaving the other fields anywhere but last; each still stands, so its names bind.
+ * the rest field (§3.11). A second spread is reported, as in an array pattern, and so are a `...`
+ * leaving the other fields anywhere but last and an argument by position after one by name, as in
+ * a call; each still stands, so its names bind.
  */
 function parseVariantCallPattern(
   parser: Parser,
@@ -270,12 +272,28 @@ function parseVariantCallPattern(
   for (const misplaced of others.filter((item) => item !== items.at(-1))) {
     parser.report(parserDiagnostics.otherFieldsLast(parser.textSpanOf(misplaced.span)));
   }
+  const afterNamed = givenOutOfOrder(items, givenAs);
+  if (afterNamed !== undefined) {
+    parser.report(parserDiagnostics.positionalAfterNamed(parser.textSpanOf(afterNamed.span)));
+  }
   return {
     kind: 'VariantCallPattern',
     span: parser.spanFrom(parser.startOf(callee)),
     callee,
     arguments: items,
   };
+}
+
+/** How a call pattern's argument is given, for the order named ones keep: `...` neither way. */
+function givenAs(argument: PatternArgument): 'name' | 'position' | undefined {
+  switch (argument.kind) {
+    case 'NamedPatternArgument':
+      return 'name';
+    case 'OtherFieldsPattern':
+      return undefined;
+    default:
+      return 'position';
+  }
 }
 
 /**
@@ -285,7 +303,7 @@ function parseVariantCallPattern(
 function parsePatternArgument(parser: Parser, inner: NestedPattern): PatternArgument {
   const { cursor } = parser;
   if (cursor.at(spreadOpener)) {
-    return cursor.kindAt(1) === 'identifier'
+    return cursor.kindAt(1) === 'identifier' && !cursor.startsLineInList(1)
       ? parseRestPattern(parser)
       : { kind: 'OtherFieldsPattern', span: parser.anchor(cursor.advance().span) };
   }

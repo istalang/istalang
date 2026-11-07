@@ -1,19 +1,28 @@
-# error: 5428 at 32:10
-# error: 5427 at 37:25
-# error: 5013 at 42:19
-# error: 5429 at 47:24
-# error: 5109 at 52:10
-# error: 5430 at 57:15
-# error: 2071 at 62:27
-# error: 2072 at 67:16
-# error: 5426 at 72:10
-# error: 5203 at 75:9
-# error: 5428 at 80:10
+# error: 5428 at 41:10
+# error: 5427 at 46:25
+# error: 5013 at 51:19
+# error: 5429 at 56:24
+# error: 5109 at 61:10
+# error: 5430 at 66:15
+# error: 2071 at 71:27
+# error: 2072 at 76:16
+# error: 5426 at 81:10
+# error: 5203 at 84:9
+# error: 5428 at 89:10
+# error: 5426 at 94:10
+# error: 5426 at 98:9
+# error: 5203 at 101:10
+# error: 5428 at 105:10
+# error: 5001 at 106:22
+# error: 5429 at 112:28
+# error: 2050 at 117:30
 # A call pattern binds its arguments as a call binds them (§3.11): a field no default or rest lets
 # a call leave out must be given, or left with a last `...`; arguments past the fields, a name no
-# field has, a field given twice and a spread with no rest field to take it are refused, as is a
-# second spread and a `...` anywhere but last. A bare variant with fields names its call; only a
-# variant is taken apart as a call is written, and a target, which must always match, takes none.
+# field has, a field given twice and a spread with no rest field to take it are refused, as are a
+# second spread, a `...` anywhere but last and an argument by position after one by name; what
+# can't bind still takes the field it names, typed as it is. A bare variant with fields names its
+# call; only a variant is taken apart as a call is written, whatever is matched, in a target too,
+# and a target or parameter, which must always match, takes none.
 
 enum Verdict:
   Approved
@@ -78,4 +87,32 @@ fn target(r: Result<Int>) -> Int:
 fn byName(n: Node) -> Int:
   match n:
     case Group(open: true): 1
+    case _: 0
+
+fn otherType(s: Int) -> Int:
+  match s:
+    case Point(x, y): x + y
+    case _: 0
+
+fn structTarget(p: Point) -> Int:
+  const Point(x, y) = p
+  x + y
+
+fn param(Ok(value): Result<Int>) -> Int: value
+
+fn reached(v: Verdict) -> String:
+  match v:
+    case Rejected(reason: r):
+      const n: Int = r
+      ""
+    case _: ""
+
+fn twiceByName(v: Verdict) -> Int:
+  match v:
+    case Rejected(by: "a", by: "b", ...): 1
+    case _: 0
+
+fn afterNamed(v: Verdict) -> Int:
+  match v:
+    case Rejected(reason: r, b): 1
     case _: 0

@@ -52,7 +52,7 @@ import { anyShape, nothingShape, type Shape } from '../exhaustiveness/exhaustive
 import { partSelected, sameNames } from './kinds/alternatives.ts';
 import { takeArray } from './kinds/arrays.ts';
 import { isStructNotKnown, restBinding, takeFieldsByName } from './kinds/struct-fields.ts';
-import { takeVariantCall } from './kinds/variant-calls.ts';
+import { calledVariant, takeVariantCall } from './kinds/variant-calls.ts';
 import { type PatternScope, type ValuePart, variantFieldStep } from './parts.ts';
 import type { Leaf, PatternTests, Selection } from './pattern-tests.ts';
 import { literalPart, refuseTypeArguments, selectionOf } from './selections.ts';
@@ -194,11 +194,9 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /**
- * `node` matched at `part`, what it selects of the part first (selections.ts). A part already in
- * error, or a selection refused, was reported where it arose; it takes anything, for
- * exhaustiveness, and a refused one still binds its names, at the error type (`bindAt`). A part of
- * type `Never` has no value (§2), so the pattern never runs: it takes anything and binds its names
- * at `Never`, testing and reporting nothing (resolution/calls/stopped-operations.ts).
+ * `node` matched at `part`: an or-pattern's alternatives each on its own, a call pattern naming no
+ * variant refused before anything else is asked of it (`refusedCall`), any other pattern as
+ * `takeSelecting` takes it.
  */
 function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart): Matched {
   const node =
@@ -206,6 +204,34 @@ function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart
   if (node.kind === 'OrPattern') {
     return takeAlternatives(walk, node, part);
   }
+  return refusedCall(walk, node, part) ?? takeSelecting(walk, node, part);
+}
+
+/**
+ * `node`, a call pattern naming no variant, reported (`calledVariant`): it takes anything, as any
+ * pattern refused after a report does, and binds its names at the error type; undefined for any
+ * other pattern.
+ */
+function refusedCall(
+  walk: Walk,
+  node: Pattern | PatternPart,
+  part: ValuePart,
+): Matched | undefined {
+  if (node.kind !== 'VariantCallPattern' || calledVariant(walk.scope, node) !== undefined) {
+    return undefined;
+  }
+  bindAt(walk, node, part, errorType);
+  return { shape: anyShape, part };
+}
+
+/**
+ * `node`, no or-pattern, matched at `part`, what it selects of the part first (selections.ts). A
+ * part already in error, or a selection refused, was reported where it arose; it takes anything,
+ * for exhaustiveness, and a refused one still binds its names, at the error type (`bindAt`). A part
+ * of type `Never` has no value (§2), so the pattern never runs: it takes anything and binds its
+ * names at `Never`, testing and reporting nothing (resolution/calls/stopped-operations.ts).
+ */
+function takeSelecting(walk: Walk, node: Pattern | PatternPart, part: ValuePart): Matched {
   const isBinding = node.kind === 'NamePattern' && binds(walk, node);
   if (!isBinding && isPrimitive(part.type, 'Never')) {
     bindAt(walk, node, part, neverType);

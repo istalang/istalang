@@ -30,14 +30,16 @@ import {
 } from '../../../../../compiler/checker/types/written/pattern-types.ts';
 import { casesOf } from '../../../../../compiler/syntax/expressions/readings.ts';
 import type {
-  NamePattern,
+  HeadedPattern,
   Pattern,
+  PatternArgument,
   StructPattern,
 } from '../../../../../compiler/syntax/patterns.ts';
 import type { PatternWord } from '../../../../../compiler/syntax/tokens/grammar-words.ts';
 import type { SyntaxNode } from '../../../../../compiler/syntax/tree/index.ts';
 import { lastName } from '../../../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../../../compiler/syntax/tree/positions.ts';
+import { bindsInPattern } from '../../../../../foundation/language/naming.ts';
 import type { Candidate } from '../../candidate.ts';
 import { type Cursor, touchingBefore } from '../../cursor.ts';
 import { expectedTypeAt } from '../../expected.ts';
@@ -67,7 +69,7 @@ export function offerPattern(cursor: Cursor, place: PatternPlace): readonly Cand
 function patternStarts(
   cursor: Cursor,
   place: PatternPlace,
-  pattern: NamePattern | StructPattern,
+  pattern: HeadedPattern,
 ): readonly Candidate[] {
   const { checker, module } = cursor;
   const type = expectedTypeAt(cursor, place);
@@ -140,10 +142,7 @@ function mayRefer(checker: Checker, entity: Entity, type: Type | undefined): boo
  * The variants the unguarded cases of a `match` take whole, when `pattern` stands at its case's
  * top, past alternatives, parentheses and `as` only; none elsewhere.
  */
-function variantsCovered(
-  { chain }: Parsed,
-  pattern: NamePattern | StructPattern,
-): ReadonlySet<string> {
+function variantsCovered({ chain }: Parsed, pattern: HeadedPattern): ReadonlySet<string> {
   const depth = chain.indexOf(pattern);
   const caseDepth = chain.slice(0, depth).findLastIndex(({ kind }) => kind === 'MatchCase');
   const match = chain[caseDepth - 1];
@@ -170,6 +169,8 @@ function variantsTakenWhole(pattern: Pattern): readonly string[] {
       return pattern.type !== undefined && bindsOnly(pattern)
         ? [lastName(pattern.type.path).text]
         : [];
+    case 'VariantCallPattern':
+      return pattern.arguments.every(argumentBindsOnly) ? [lastName(pattern.callee.path).text] : [];
     case 'OrPattern':
       return pattern.alternatives.flatMap(variantsTakenWhole);
     case 'ParenthesizedPattern':
@@ -182,6 +183,22 @@ function variantsTakenWhole(pattern: Pattern): readonly string[] {
 
 function bindsOnly({ fields }: StructPattern): boolean {
   return fields.every(({ kind }) => kind === 'BindFieldPattern');
+}
+
+/** Whether a call pattern's argument matches anything: binds a name, `_`, a spread or `...`. */
+function argumentBindsOnly(argument: PatternArgument): boolean {
+  switch (argument.kind) {
+    case 'NamedPatternArgument':
+      return argumentBindsOnly(argument.pattern);
+    case 'NamePattern':
+      return argument.path.length === 1 && bindsInPattern(lastName(argument.path).text);
+    case 'WildcardPattern':
+    case 'RestPattern':
+    case 'OtherFieldsPattern':
+      return true;
+    default:
+      return false;
+  }
 }
 
 /** Whether the cursor follows an item's field name alone, as `reason` in `Rejected{reason ‸`. */

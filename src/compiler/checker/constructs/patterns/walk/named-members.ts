@@ -1,8 +1,8 @@
 /**
  * The members of a union a name written in a pattern selects (§3.11): a type, a variant or a
  * constant, as types/written/pattern-types.ts says, and with type arguments the instances they
- * give. members.ts applies it to a pattern, reporting what selects several members where it must
- * select one.
+ * give, a variant's those of its enum (`case Some<Int>(x)`). members.ts applies it to a pattern,
+ * reporting what selects several members where it must select one.
  */
 
 import type { Entity } from '../../../../binder/entities.ts';
@@ -15,9 +15,10 @@ import type { Type, UnionType } from '../../../types/type/index.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { baseOf } from '../../../types/unions/union-members.ts';
 import {
-  instancesWith,
+  instancesNamed,
   membersNamed,
   membersOfType,
+  type PatternType,
   patternTypeOf,
   variantOwners,
 } from '../../../types/written/pattern-types.ts';
@@ -62,9 +63,9 @@ export function namedMembers(
 }
 
 /**
- * The instance of the generic type `entity` names that `written`'s type arguments give, among
- * `named`, or among `members` the type a generic alias stands for with them; undefined after
- * reporting arguments the type doesn't take, or naming a type in error.
+ * The instances among `named` that `written`'s type arguments give (`instancesNamed`), or among
+ * `members` the type a generic alias stands for with them; undefined after reporting arguments
+ * what it names doesn't take, or naming a type in error.
  */
 function instanceNamed(
   scope: PatternScope,
@@ -73,29 +74,38 @@ function instanceNamed(
   { named, members }: { readonly named: readonly Type[]; readonly members: readonly Type[] },
 ): readonly Type[] | undefined {
   const pattern = patternTypeOf(scope, entity);
-  const declared =
-    pattern.kind === 'generic' || pattern.kind === 'genericAlias'
-      ? pattern.declaration.typeParameters.length
-      : 0;
-  const { typeArguments } = written;
-  if (pattern.kind === 'genericAlias' && typeArguments.length === declared) {
-    const given = typeArguments.map((argument) => scope.resolveType(argument));
+  const given = written.typeArguments.map((argument) => scope.resolveType(argument));
+  if (
+    pattern.kind === 'genericAlias' &&
+    given.length === pattern.declaration.typeParameters.length
+  ) {
     const type = typeOfEntity(scope, entity, () => given);
     return type === undefined || type.kind === 'error'
       ? undefined
       : membersOfType(scope, type, members);
   }
-  if (pattern.kind !== 'generic' || typeArguments.length !== declared) {
-    const { text } = lastName(written.path);
-    scope.report(
-      checkerDiagnostics.typeArgumentCount(written.span, text, declared, typeArguments.length),
-    );
+  if (given.some((type) => type.kind === 'error')) {
     return undefined;
   }
-  const given = typeArguments.map((argument) => scope.resolveType(argument));
-  return given.some((type) => type.kind === 'error')
-    ? undefined
-    : instancesWith(named, pattern.declaration, given);
+  const instances = instancesNamed(scope, entity, named, given);
+  if (instances === undefined) {
+    const { text } = lastName(written.path);
+    const declared = typeParameterCount(pattern, named);
+    scope.report(checkerDiagnostics.typeArgumentCount(written.span, text, declared, given.length));
+  }
+  return instances;
+}
+
+/**
+ * How many type arguments what a pattern names takes, as a message says: its declaration's, or the
+ * enum's owning a variant among `owners`.
+ */
+function typeParameterCount(pattern: PatternType, owners: readonly Type[]): number {
+  if (pattern.kind === 'generic' || pattern.kind === 'genericAlias') {
+    return pattern.declaration.typeParameters.length;
+  }
+  const [owner] = owners;
+  return owner?.kind === 'nominal' ? owner.entity.declaration.typeParameters.length : 0;
 }
 
 /** A name a pattern writes, with the type arguments written after it. */

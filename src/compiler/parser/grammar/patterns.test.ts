@@ -106,6 +106,10 @@ describe('call patterns (§3.11)', () => {
   it.each([
     ['Group(v, ...a, ...b)', parserDiagnostics.secondRest.code, '...b'],
     ['Group(..., v)', parserDiagnostics.otherFieldsLast.code, '...'],
+    ['Group(\n  ...\n  v\n)', parserDiagnostics.otherFieldsLast.code, '...'],
+    ['Rejected(reason: r, v)', parserDiagnostics.positionalAfterNamed.code, 'v'],
+    ['Group(open: true, v, ...c)', parserDiagnostics.positionalAfterNamed.code, 'v'],
+    ['Group(open: true, ...c)', parserDiagnostics.positionalAfterNamed.code, '...c'],
     ['Ok(v', unclosedBracket.code, '('],
   ])('reports %j once', (text, code, spanText) => {
     expect(reported('pattern', text)).toEqual(reportedOnce(code, spanText));

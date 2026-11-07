@@ -9,8 +9,9 @@
  *   match. Any other pattern takes one member's value apart, so it must select exactly one.
  * - A pattern selecting no member never matches, a case its union rules out (§3.11). One selecting
  *   several where it must name one is refused: a variant several member enums declare is qualified,
- *   a generic type several members instantiate is given its type arguments, written in full, since
- *   the member names them all (`case Box<Int>{value}`), and several shapes having the fields are
+ *   a generic type several members instantiate, or a variant of one, is given its type arguments,
+ *   written in full, since the member names them all (`case Box<Int>{value}`, `case Some<Int>(x)`,
+ *   named-members.ts), and several shapes having the fields are
  *   named through their aliases (`case Point as p`). A type's name a member enum's variant shares
  *   is qualified too.
  * - What binds the selection has the members selected that earlier cases left (`leftOf`), through
@@ -19,7 +20,12 @@
 
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../../../syntax/expressions/literals/numbers.ts';
-import type { NamePattern, Pattern, PatternPart } from '../../../../syntax/patterns.ts';
+import {
+  type NamePattern,
+  type Pattern,
+  type PatternPart,
+  patternHead,
+} from '../../../../syntax/patterns.ts';
 import { isMissingName, lastName } from '../../../../syntax/tree/node.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { PatternTest } from '../../../surface/checked-pattern.ts';
@@ -196,7 +202,8 @@ function selectedMembers(
   const text = typeText(union);
   if (single && members.length > 1) {
     const texts = members.map(typeText);
-    scope.report(checkerDiagnostics.severalMembers(node.span, text, texts, telling(node, texts)));
+    const how = variantTelling(scope, node, members) ?? telling(node, texts);
+    scope.report(checkerDiagnostics.severalMembers(node.span, text, texts, how));
     return undefined;
   }
   return members;
@@ -215,11 +222,38 @@ function telling(node: Pattern | PatternPart, texts: readonly string[]): string 
       return node.type === undefined
         ? "name the member through its alias, as in 'case Point as p'"
         : `give its type arguments, as in 'case ${first}{…}'`;
-    case 'VariantCallPattern':
-      return `give its type arguments, as in 'case ${first}(…)'`;
     default:
       return `name the one it takes apart, as in 'case ${first} as x'`;
   }
+}
+
+/**
+ * How a pattern taking apart a variant's fields, in braces or as a call, names one of the enum
+ * `members` declaring it: qualified by its enum among several enums, else with the type arguments
+ * of one instance; undefined for any other pattern.
+ */
+function variantTelling(
+  scope: PatternScope,
+  node: Pattern | PatternPart,
+  members: readonly Type[],
+): string | undefined {
+  if (node.kind !== 'StructPattern' && node.kind !== 'VariantCallPattern') {
+    return undefined;
+  }
+  const name = patternHead(node)?.path;
+  const variant = name === undefined ? undefined : lastName(name);
+  const entity = variant === undefined ? undefined : scope.entityOf(variant);
+  const [first] = members;
+  if ((entity?.kind !== 'variant' && entity?.kind !== 'variants') || first?.kind !== 'nominal') {
+    return undefined;
+  }
+  const fields = node.kind === 'VariantCallPattern' ? '(…)' : '{…}';
+  const { declaration } = first.entity;
+  return members.every(
+    (member) => member.kind === 'nominal' && member.entity.declaration === declaration,
+  )
+    ? `give its type arguments, as in 'case ${variant?.text}<${first.arguments.map(typeText).join(', ')}>${fields}'`
+    : `qualify it, as in 'case ${declaration.name.text}.${variant?.text}${fields}'`;
 }
 
 /** The members `node` may select, as its kind says; undefined for a name naming nothing. */

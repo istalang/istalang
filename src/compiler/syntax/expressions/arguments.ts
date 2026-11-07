@@ -1,7 +1,7 @@
 /**
  * How a call's arguments read (§3.3): the value each gives, and where the order named arguments
- * keep is broken. One home, so the parser, binder, checker and lowering agree on what an argument
- * is.
+ * keep is broken, a call pattern's too (§3.11). One home, so the parser, binder, checker and
+ * lowering agree on what an argument is.
  */
 
 import type { CallArgument, Expression } from './index.ts';
@@ -13,10 +13,24 @@ import type { CallArgument, Expression } from './index.ts';
 export function misplacedArgument(
   callArguments: readonly CallArgument[],
 ): CallArgument | undefined {
-  const named = callArguments.findIndex((argument) => argument.kind === 'NamedArgument');
+  return givenOutOfOrder(callArguments, (argument) =>
+    argument.kind === 'NamedArgument' ? 'name' : 'position',
+  );
+}
+
+/**
+ * The first of `items` given by position, or spread, after one given by name, as `givenAs` says
+ * each is given: out of the order named arguments keep, in a call (§3.3) or a call pattern
+ * (§3.11), whose last `...` is given neither way.
+ */
+export function givenOutOfOrder<Item>(
+  items: readonly Item[],
+  givenAs: (item: Item) => 'name' | 'position' | undefined,
+): Item | undefined {
+  const named = items.findIndex((item) => givenAs(item) === 'name');
   return named === -1
     ? undefined
-    : callArguments.slice(named + 1).find((argument) => argument.kind !== 'NamedArgument');
+    : items.slice(named + 1).find((item) => givenAs(item) === 'position');
 }
 
 /** The expression an argument gives: itself, what it spreads, or the value it names. */

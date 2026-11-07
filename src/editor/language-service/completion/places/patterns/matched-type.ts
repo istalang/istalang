@@ -27,17 +27,18 @@ import { arrayElement } from '../../../../../compiler/checker/types/type/well-kn
 import { unionOf } from '../../../../../compiler/checker/types/unions/unions.ts';
 import {
   downcastTargetOf,
-  instancesWith,
+  instancesNamed,
   kindMembers,
   membersNamed,
   namesOwnType,
-  patternTypeOf,
 } from '../../../../../compiler/checker/types/written/pattern-types.ts';
 import type { Parameter } from '../../../../../compiler/syntax/expressions/index.ts';
-import type {
-  ArrayPattern,
-  NamePattern,
-  StructPattern,
+import {
+  type ArrayPattern,
+  type HeadedPattern,
+  isTakingApart,
+  patternHead,
+  type StructPattern,
 } from '../../../../../compiler/syntax/patterns.ts';
 import {
   extentIn,
@@ -56,17 +57,19 @@ type Parsed = ParsedPlace['parsed'];
 
 /**
  * The pattern the placeholder's name starts, its holder in `chain` being `holder`: a bare name,
- * or the struct pattern it names (`case Ok‸{value}`); undefined elsewhere.
+ * or the struct or call pattern it names (`case Ok‸{value}`, `case Ok‸(v)`); undefined elsewhere.
  */
 export function patternStartedBy(
   chain: readonly SyntaxNode[],
   holder: SyntaxNode,
-): NamePattern | StructPattern | undefined {
+): HeadedPattern | undefined {
   if (holder.kind === 'NamePattern') {
     return holder;
   }
   const pattern = holderIn(chain, holder);
-  return pattern?.kind === 'StructPattern' && pattern.type === holder ? pattern : undefined;
+  return pattern !== undefined && isTakingApart(pattern) && patternHead(pattern) === holder
+    ? pattern
+    : undefined;
 }
 
 /** The type `pattern`, a node of `parsed`'s chain, matches; undefined where it isn't known. */
@@ -197,10 +200,9 @@ function membersNamedBy(
     const type = checked && cursor.checker.lookup.typeOfNode(cursor.module, checked);
     return type === undefined ? [] : [type];
   });
-  const pattern = entity === undefined ? undefined : patternTypeOf(cursor.checker, entity);
-  return pattern?.kind === 'generic' && given.length === named.typeArguments.length
-    ? instancesWith(selected, pattern.declaration, given)
-    : [];
+  return entity === undefined || given.length !== named.typeArguments.length
+    ? []
+    : (instancesNamed(cursor.checker, entity, selected, given) ?? []);
 }
 
 /**

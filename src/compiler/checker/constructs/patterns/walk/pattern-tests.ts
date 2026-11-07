@@ -36,10 +36,14 @@ export const failed: Leaf = { tests: [], shape: undefined };
 /** A construct its part's type rules out (§3.11): it never matches, so it covers nothing. */
 export const ruledOutLeaf: Leaf = { tests: [neverTest], shape: nothingShape };
 
-/** Items matched against an array's in order, one of them a rest at most, and where (`ArraySite`). */
+/**
+ * Items matched against an array's in order, one of them a rest at most, and where (`ArraySite`);
+ * open when the items past them match anything, as a call pattern's last `...` leaves them.
+ */
 export interface ArrayItems {
   readonly site: ArraySite;
   readonly elements: readonly (Pattern | RestPattern)[];
+  readonly isOpen?: boolean;
 }
 
 /** What an array pattern tests of its part, an array: its length, and the type of its items. */

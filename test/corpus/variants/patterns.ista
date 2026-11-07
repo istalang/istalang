@@ -1,10 +1,11 @@
-# outcome: "approved|legal|ops: late|x|t|a +2|u 0|2 Empty|t: 3|2|oops|s|1|yes|no|1 2"
+# outcome: "approved|legal|ops: late|x|t|a +2|u 0|2 Empty|t: 3|2|oops|s|1|yes|no|1 2|starts with a|7"
 # A call pattern takes a variant apart as a call builds it (§3.11): its arguments bind to the
 # fields by position, then by name, a field a call may leave out matching anything, and a last
 # `...` leaving the others. A spread takes the rest field whole; arguments past the fixed fields
-# match its items as an array pattern's do. Call patterns nest, select a union's member, bind the
-# enum with `as`, cover their variants for exhaustiveness and stand in `is`, and a variant without
-# fields matches called with no arguments, as it is built.
+# match its items as an array pattern's do, and a last `...` leaves the items past them. Call
+# patterns nest, select a union's member, its enum's type arguments telling apart its instances,
+# bind the enum with `as`, cover their variants for exhaustiveness and stand in `is`, and a variant
+# without fields matches called with no arguments, as it is built.
 
 enum Verdict:
   Approved
@@ -56,6 +57,21 @@ fn covered(verdict: Verdict) -> String:
     case Approved: "a"
     case Rejected(by, ...) as whole: if whole == Rejected(by): "s" else: "r"
 
+fn started(n: Node) -> String:
+  match n:
+    case Group("t", true, Text("a"), ...): "starts with a"
+    case _: "-"
+
+enum Opt<T>:
+  Some(value: T)
+  Nothing
+
+fn picked(u: Opt<Int> | Opt<String>) -> Int:
+  match u:
+    case Some<Int>(n): n
+    case Opt.Some<String>{value}: value.length()
+    case _: 0
+
 enum Pair:
   Both(first: Int, second: Int)
 
@@ -66,6 +82,8 @@ fn swapped(p: Pair) -> String:
 async fn main() -> Future<String>:
   const g = Node.Group("t", true, Node.Text("a"), Node.Empty, Node.Text("b"))
   const flat = Node.Group(title: "t", children: [Node.Text("x"), Node.Empty, Node.Empty])
+  const word: Opt<Int> | Opt<String> = Opt.Some<String>("abc")
+  const number: Opt<Int> | Opt<String> = Opt.Some<Int>(4)
   [
     describe(Approved),
     describe(Rejected("legal")),
@@ -83,4 +101,6 @@ async fn main() -> Future<String>:
     if g is Group(open: true, ...): "yes" else: "no",
     if flat is Group(_, true, ...): "yes" else: "no",
     swapped(Both(2, 1)),
+    started(g),
+    String(picked(word) + picked(number)),
   ].join("|")
