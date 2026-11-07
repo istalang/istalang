@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-30
-last_updated: 2026-10-30
+last_updated: 2026-11-08
 tags: [plan, completion, lsp]
 ---
 
@@ -396,7 +396,7 @@ fn g(a: int):
   0
 ---
   match d:
-    case Approved{by}:
+    case Approved(by):
       ‸
     case _: 0
 ```
@@ -411,7 +411,7 @@ fn g(a: int):
     ‸
   0
 ---
-  if r is Ok{value as y}:
+  if r is Ok(y):
     ‸
   0
 ```

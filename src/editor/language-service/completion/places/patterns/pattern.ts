@@ -224,10 +224,6 @@ function variantsTakenWhole(pattern: Pattern, fieldsOf: FieldsOfVariant): readon
   switch (pattern.kind) {
     case 'NamePattern':
       return [lastName(pattern.path).text];
-    case 'StructPattern':
-      return pattern.type !== undefined && bindsOnly(pattern)
-        ? [lastName(pattern.type.path).text]
-        : [];
     case 'VariantCallPattern': {
       const { text } = lastName(pattern.callee.path);
       const reached = argumentsReach(fieldsOf(text), pattern.arguments);
@@ -246,10 +242,6 @@ function variantsTakenWhole(pattern: Pattern, fieldsOf: FieldsOfVariant): readon
     default:
       return [];
   }
-}
-
-function bindsOnly({ fields }: StructPattern): boolean {
-  return fields.every(({ kind }) => kind === 'BindFieldPattern');
 }
 
 /**

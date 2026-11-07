@@ -1,7 +1,8 @@
 /**
  * What a `patternField` place offers: where a struct pattern's item names its field (§3.11), the
- * fields of the variant or struct the pattern names (matched-type.ts) that its other items don't
- * test yet. A pattern has no positional items, so nothing else may stand there.
+ * fields of the struct the pattern names (matched-type.ts) that its other items don't test yet,
+ * none in braces after a variant's name, which only its call pattern takes apart. A struct pattern
+ * has no positional items, so nothing else may stand there.
  */
 
 import type { StructPattern } from '../../../../../compiler/syntax/patterns.ts';

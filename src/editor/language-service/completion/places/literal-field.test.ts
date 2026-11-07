@@ -1,5 +1,5 @@
 /**
- * Completion inside a struct or variant literal's braces offers exactly the fields it may set: a
+ * Completion inside a struct literal's braces offers exactly the fields it may set: a
  * corpus literal naming its type, emptied, offers fields which, each written in with a value that
  * fits any field, leave none unknown, missing or given twice.
  */
@@ -69,7 +69,7 @@ describe('field completion offers exactly what a literal may set', () => {
     literalSites(mainProgram(text)),
   );
 
-  it('in the struct and variant literals of the corpus', () => {
+  it('in the struct literals of the corpus', () => {
     fc.assert(
       fc.property(fc.constantFrom(...corpusSites), (site) => {
         expect(fieldMistakesOf(site)).toEqual([]);

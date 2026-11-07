@@ -2,9 +2,9 @@
  * A member's place: after a member's operator (`.`, `?.`, `->`, `?->`), what the value before it
  * has: its fields, and the methods and statics a call through it may choose (checker
  * lookup/members.ts); after a namespace, what its module exports; after a type, its statics and
- * variants. A qualified name offers only what its place takes: in a type, a namespace's types and
- * nothing of a type's; naming what a literal builds or a pattern matches, a namespace's types and a
- * type's variants.
+ * variants. A qualified name offers only what its place takes: in a type, or before braces, a
+ * namespace's types and a type's associated types; naming what a pattern matches, a namespace's
+ * types and a type's variants.
  *
  * Only a member can follow a `.` or `?.`, so where none can stand there, as after a name on a line
  * of its own at the top level, the place is still a member's and nothing is offered: never the
@@ -59,19 +59,12 @@ export interface MemberPlace {
 }
 
 /**
- * What builds or matches the struct or variant its NamedType names, in braces or as a call
- * pattern; `new` builds no variant.
+ * What the qualified name `holder` holds names: a variant in a pattern's name or a call pattern's,
+ * a type before braces, which build and take apart only structs, a variant being built and taken
+ * apart by its call (§3.11).
  */
-const namingVariants: ReadonlySet<string> = new Set([
-  'StructLiteral',
-  'StructPattern',
-  'VariantCallPattern',
-]);
-
-/** What the qualified name `holder` holds names. */
 function namedBy(tree: SyntaxTree, holder: NamedType | NamePattern): 'type' | 'variant' {
-  const parent = parentOf(tree, holder);
-  return holder.kind === 'NamePattern' || (parent !== undefined && namingVariants.has(parent.kind))
+  return holder.kind === 'NamePattern' || parentOf(tree, holder)?.kind === 'VariantCallPattern'
     ? 'variant'
     : 'type';
 }

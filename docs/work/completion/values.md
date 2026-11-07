@@ -119,9 +119,9 @@ fn g() -> Color:
 ### ET-09 · Variant payload fields · P2 · ✅ pass
 
 ```
-  Decision.Rejected{by: "x", reason: ‸
+  Decision.Rejected(by: "x", reason: ‸
 ---
-  const e: Decision = Rejected{by: ‸
+  const e: Decision = Rejected(by: ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** Values of the payload field's type first.

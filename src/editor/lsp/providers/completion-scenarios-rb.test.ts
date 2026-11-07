@@ -22,7 +22,7 @@ const scenarios: readonly Scenario[] = [
     src: [
       '  if n:\n    ‸\n  0',
       '  for i in xs:\n    ‸\n  0',
-      '  match d:\n    case Approved{by}:\n      ‸\n    case _: 0',
+      '  match d:\n    case Approved(by):\n      ‸\n    case _: 0',
     ],
     expect: { has: ['xs', 'n'] },
   },
@@ -30,7 +30,7 @@ const scenarios: readonly Scenario[] = [
     id: 'RB-02b',
     place: 'grammar',
     title: 'Bindings in a freshly opened block',
-    src: ['  for i in xs:\n    ‸\n  0', '  if r is Ok{value as y}:\n    ‸\n  0'],
+    src: ['  for i in xs:\n    ‸\n  0', '  if r is Ok(y):\n    ‸\n  0'],
     expect: { anyOf: ['i', 'y'] },
   },
   {

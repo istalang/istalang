@@ -406,8 +406,8 @@ The view nodes are `FieldView`, `RepeatView`, `VariantView` (with `CaseView`s), 
 2. **Return.** If the form was submitted and the drawing is valid, return `model.read()`: the typed `Group<M>.Data`.
 3. **Send** the tree to the `views` inbox.
 4. **Wait** for the next event:
-   - `Set{key, value}` routes to the input registered under `key`, which parses the JSON value into its type.
-   - `Search{key, text}` stores the typed text, and the field's options run again.
+   - `Set(key, value)` routes to the input registered under `key`, which parses the JSON value into its type.
+   - `Search(key, text)` stores the typed text, and the field's options run again.
    - `AddRow` and `RemoveRow` change a list.
    - `Submit` marks the form submitted.
    - `Resolved` just redraws.

@@ -154,6 +154,14 @@ describe('hover', () => {
     ).toEqual([signature, '(variant) Some: Opt<T>']);
   });
 
+  it('shows a bare variant named before refused braces, as the expected type chooses it', () => {
+    const decision = ['enum Decision { Approved(by: String), Expired }', ''];
+    expect(hover(...decision, 'fn f() -> Decision: Appro‸ved{by: "x"}')?.code).toEqual([
+      'fn Decision.Approved(by: String) -> Decision',
+      '(variant) Approved: Decision',
+    ]);
+  });
+
   it("names the field a call pattern's argument gives by position, beside what it holds", () => {
     const verdict = [
       'enum Verdict:',

@@ -20,6 +20,7 @@ import type { Token } from '../../../compiler/syntax/tokens/index.ts';
 import { nodesAt, type SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { lastIndexAtMost } from '../../../foundation/structures/sorted.ts';
+import { lineStartAt } from '../../../foundation/text/line-map.ts';
 import type { CheckedModule } from '../reading/checked-module.ts';
 import { closingBracketsOf, codeTokensOf } from '../reading/tokens.ts';
 
@@ -133,14 +134,18 @@ function callAround(tree: SyntaxTree, offset: number): Call | undefined {
 }
 
 /**
- * The number of the written argument at `offset`: the one it is in, or after but for whitespace,
- * unless the next one has begun there, as one a line break separates does (§2).
+ * The number of the written argument at `offset`: the one it is in, or after but for whitespace on
+ * that argument's own line, unless the next one has begun there; a line break separates two
+ * arguments as a `,` does (§2).
  */
 function argumentAt(tree: SyntaxTree, call: Call, offset: number): number {
+  const lineStart = lineStartAt(tree.source.text, offset);
   const index = call.arguments.findIndex((argument, at) => {
+    const { end } = spanIn(tree, argument.span);
     const next = call.arguments[at + 1];
     return (
-      offset <= nextTokenStart(tree, spanIn(tree, argument.span).end) &&
+      offset <= nextTokenStart(tree, end) &&
+      lineStart <= end &&
       (next === undefined || offset < spanIn(tree, next.span).start)
     );
   });

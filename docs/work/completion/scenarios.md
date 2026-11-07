@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-30
-last_updated: 2026-10-30
+last_updated: 2026-11-08
 tags: [plan, completion, lsp, vscode]
 ---
 
@@ -113,9 +113,9 @@ The spec says nothing about editors, so these are decisions the approval covers:
 | SC | Scope | 29 | 29 | 0 | statements.md |
 | CO | Collections, lambdas, templates | 11 | 10 | 1 | statements.md |
 | CF | Control flow | 7 | 7 | 0 | statements.md |
-| PA | Patterns | 16 | 16 | 0 | statements.md |
+| PA | Patterns | 15 | 15 | 0 | statements.md |
 | ET | Expected type | 13 | 13 | 0 | values.md |
-| LI | Struct and variant literals | 27 | 27 | 0 | values.md |
+| LI | Struct literals | 25 | 25 | 0 | values.md |
 | ME | Members | 21 | 21 | 0 | values.md |
 | CA | Calls | 13 | 13 | 0 | values.md |
 | NO | Where nothing is offered | 8 | 8 | 0 | mechanics.md |
@@ -123,12 +123,12 @@ The spec says nothing about editors, so these are decisions the approval covers:
 | OR | Item shape, order, kinds | 8 | 8 | 0 | mechanics.md |
 | RB | Resilience | 15 | 15 | 0 | mechanics.md |
 | VC | VS Code client | 3 | 3 | 0 | mechanics.md |
-| | **Total** | **266** | **264** | **2** | |
+| | **Total** | **263** | **261** | **2** | |
 
 | Priority | Scenarios | Pass | Fail |
 | --- | ---: | ---: | ---: |
-| P1 | 147 | 147 | 0 |
-| P2 | 81 | 79 | 2 |
+| P1 | 145 | 145 | 0 |
+| P2 | 80 | 78 | 2 |
 | P3 | 38 | 38 | 0 |
 
 ## Unmet

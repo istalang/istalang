@@ -125,7 +125,7 @@ const scenarios: readonly Scenario[] = [
     id: 'CF-05',
     place: 'declaredName',
     title: 'Binding after as',
-    src: ['  select:\n    case work(1) as ‸', '  match d:\n    case Approved{by} as ‸'],
+    src: ['  select:\n    case work(1) as ‸', '  match d:\n    case Approved(by) as ‸'],
     where: 'async',
     expect: { none: true },
   },
@@ -141,7 +141,7 @@ const scenarios: readonly Scenario[] = [
     id: 'CF-07',
     place: 'grammar',
     title: 'Line-start case in a nested match',
-    src: ['  match d:\n    case Approved{by}:\n      match o:\n        ‸'],
+    src: ['  match d:\n    case Approved(by):\n      match o:\n        ‸'],
     expect: { has: ['case'], lacks: ['xs', 'let'] },
   },
 ];

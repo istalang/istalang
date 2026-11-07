@@ -8,6 +8,7 @@ import { placeAt } from './place.ts';
 
 const declarations = [
   'enum Color { Red, Green }',
+  'enum Verdict<T> { Approved(by: T), Rejected(by: T, reason: Int), Expired }',
   'struct Cfg { color: Color, n: Int, note: String }',
   'fn paint(c: Color, n: Int) -> Int: n',
   'fn show(cfg: Cfg) -> Int: cfg.n',
@@ -51,6 +52,16 @@ describe('the type expected where a value is written', () => {
     ['a name already written', '  let c: Color = co‸l', 'Color'],
     ["an argument's literal, its name being written", '  show(Cf‸{n: 1})', 'Cfg'],
     ["a `match` case's pattern", '  match col:\n    case ‸', 'Color'],
+    [
+      "a variant's field, the others not written yet",
+      '  const v: Verdict<Color> = Rejected(‸',
+      'Color',
+    ],
+    [
+      "a variant's named field, the others not written yet",
+      '  const v: Verdict<Color> = Rejected(by: ‸',
+      'Color',
+    ],
   ])('is the checker’s at %s', (_construct, body, expected) => {
     expect(expectedAt(body)).toBe(expected);
   });

@@ -77,7 +77,7 @@ const scenarios: readonly Scenario[] = [
     id: 'ET-09',
     place: 'grammar',
     title: 'Variant payload fields',
-    src: ['  Decision.Rejected{by: "x", reason: ‸', '  const e: Decision = Rejected{by: ‸'],
+    src: ['  Decision.Rejected(by: "x", reason: ‸', '  const e: Decision = Rejected(by: ‸'],
     expect: { has: ['xs'] },
   },
   {

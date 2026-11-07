@@ -38,11 +38,13 @@ describe('signature help', () => {
   });
 
   it('marks the argument a line starts, where line breaks separate the arguments (§2)', () => {
-    const add = 'fn add(a: Int, b: Int, c: Int) -> Int: a + b + c';
-    expect(help(add, 'fn f() -> Int: add(', '  1', '  ‸2', '  3', ')')?.parameter).toBe('b: Int');
-    expect(help(add, 'fn f() -> Int: add(', '  a: 1', '  ‸c: 3', '  b: 2', ')')?.parameter).toBe(
+    const mix = 'fn mix(a: Int, b: Int, c: Int) -> Int: a + b + c';
+    expect(help(mix, 'fn f() -> Int: mix(', '  1', '  ‸2', '  3', ')')?.parameter).toBe('b: Int');
+    expect(help(mix, 'fn f() -> Int: mix(', '  a: 1', '  ‸c: 3', '  b: 2', ')')?.parameter).toBe(
       'c: Int',
     );
+    expect(help(mix, 'fn f() -> Int: mix(', '  1', '  ‸', ')')?.parameter).toBe('b: Int');
+    expect(help(mix, 'fn f() -> Int: mix(', '  1', '  ‸', '  3', ')')?.parameter).toBe('b: Int');
   });
 
   it('helps with a call being typed, before it resolves', () => {

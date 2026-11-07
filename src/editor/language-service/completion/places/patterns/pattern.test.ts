@@ -202,14 +202,11 @@ describe('a pattern place', () => {
     expect(labelsAt(...cases, '  match n:', '    case + ‸')).toEqual([]);
   });
 
-  it("offers at a call pattern's head what it offers at a struct pattern's", () => {
+  it("offers the variants at a call pattern's head, and none qualified before braces", () => {
     const cases = [...decision, 'fn f(d: Decision) -> Int:', '  match d:'];
-    const called = labelsAt(...cases, '    case Appr‸(by): 1');
-    expect(called).toContain('Approved');
-    expect(called).toEqual(labelsAt(...cases, '    case Appr‸{by}: 1'));
-    const qualified = labelsAt(...cases, '    case Decision.‸(by): 1');
-    expect(qualified).toContain('Approved');
-    expect(qualified).toEqual(labelsAt(...cases, '    case Decision.‸{by}: 1'));
+    expect(labelsAt(...cases, '    case Appr‸(by): 1')).toContain('Approved');
+    expect(labelsAt(...cases, '    case Decision.‸(by): 1')).toContain('Approved');
+    expect(labelsAt(...cases, '    case Decision.‸{by}: 1')).not.toContain('Approved');
   });
 
   it("reads the type a tuple's element, an array's item or a nested field matches", () => {

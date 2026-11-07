@@ -929,7 +929,7 @@ fn g():
     case work(1) as ‸
 ---
   match d:
-    case Approved{by} as ‸
+    case Approved(by) as ‸
 ```
 - **Where / trigger:** in `async fn t`; invoked, or typing on
 - **Offer:** Nothing.
@@ -951,7 +951,7 @@ fn g():
 
 ```
   match d:
-    case Approved{by}:
+    case Approved(by):
       match o:
         ‸
 ```
