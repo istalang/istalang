@@ -66,6 +66,26 @@ describe('signature help', () => {
     });
   });
 
+  it("lists a variant's fields as its constructor's parameters, its enum qualifying it (§3.11)", () => {
+    const node = [
+      'enum Node:',
+      '  Leaf',
+      '  Group(title: String, open: Bool = false, ...children: Array<Node>)',
+    ];
+    const label = 'fn Node.Group(title: String, open: Bool = …, ...children: Array<Node>) -> Node';
+    expect(help(...node, 'fn f() -> Node: Group(‸')).toEqual({ label, parameter: 'title: String' });
+    expect(help(...node, 'fn f() -> Node: Node.Group("t", open: ‸true)')?.parameter).toBe(
+      'open: Bool = …',
+    );
+    expect(help(...node, 'fn f() -> Node: Group("t", true, Leaf, ‸Leaf)')?.parameter).toBe(
+      '...children: Array<Node>',
+    );
+    expect(help('fn f() -> Result<Int>: Ok(‸1)')).toEqual({
+      label: 'fn Result.Ok<T, E>(value: T) -> Result<T, E>',
+      parameter: 'value: T',
+    });
+  });
+
   it("starts a generic call's help at its `(`, not at its type arguments", () => {
     expect(help('fn id<T>(x: T) -> T: x', 'fn f() -> Int: id<Int>‸(1)')).toBeUndefined();
   });
