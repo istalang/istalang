@@ -18,7 +18,6 @@
  *   the rest.
  */
 
-import type { Checker } from '../../../../compiler/checker/check.ts';
 import type { Type } from '../../../../compiler/checker/types/type/index.ts';
 import { boolType } from '../../../../compiler/checker/types/type/primitives.ts';
 import { slotText, typeText } from '../../../../compiler/checker/types/type/type-text.ts';
@@ -28,7 +27,6 @@ import { docstringOf } from '../../reading/docstrings.ts';
 import { signatureOf } from '../../signatures/signatures.ts';
 import type { Candidate, Subject } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
-import { expectedTypeAt } from '../expected.ts';
 import type { Place, PlaceKind } from '../place.ts';
 import { groupOf, shownEntity } from './entity-items.ts';
 import { type Completion, lowestPriority, type RankGroup, ranksBefore } from './item.ts';
@@ -36,6 +34,7 @@ import {
   called,
   constructed,
   documented,
+  fitsExpected,
   type Presenting,
   presentingAt,
   type Shown,
@@ -48,7 +47,6 @@ export function present(
   candidates: readonly Candidate[],
 ): readonly Completion[] {
   const presenting = presentingAt(cursor, place);
-  const expected = expectedTypeAt(cursor, place);
   const items = candidates.map(({ name, subject, covered }): Completion => {
     const {
       group,
@@ -57,13 +55,13 @@ export function present(
       gives = [],
       ...shown
     } = handlerOf(presenters, subject)(presenting, subject, name);
-    const fitsExpected = gives.some((type) => fits(cursor.checker, type, expected));
+    const fitting = gives.some((type) => fitsExpected(presenting, type));
     const ranked = covered === true ? Math.min(priority + coveredAfter, lowestPriority) : priority;
     return {
       name,
       ...shown,
       rank: {
-        fitsExpected,
+        fitsExpected: fitting,
         ...(group === undefined ? {} : { group }),
         priority: ranked,
         ...(order === undefined ? {} : { order: Math.min(order, lowestPriority) }),
@@ -144,20 +142,6 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
     to === 'module' ? { kind: 'module' } : { kind: 'folder', next: 'completion' },
   label: () => ({ kind: 'label' }),
 };
-
-/**
- * Whether a value of `found` fits where `expected` is. An erroneous type fits nothing, and `Never`,
- * which fits everywhere, tells nothing about where it belongs.
- */
-function fits(checker: Checker, found: Type, expected: Type | undefined): boolean {
-  return (
-    expected !== undefined &&
-    expected.kind !== 'error' &&
-    found.kind !== 'error' &&
-    !(found.kind === 'primitive' && found.name === 'Never') &&
-    checker.fitOf(found, expected) !== undefined
-  );
-}
 
 /** The groups whose fitting items may be preselected; an item of no group is a place's own. */
 const guessedFrom: ReadonlySet<RankGroup | undefined> = new Set([undefined, 'local', 'module']);

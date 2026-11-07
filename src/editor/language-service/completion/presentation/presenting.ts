@@ -13,6 +13,7 @@ import type { Type } from '../../../../compiler/checker/types/type/index.ts';
 import type { TokenKind } from '../../../../compiler/syntax/tokens/index.ts';
 import { codeTokensOf } from '../../reading/tokens.ts';
 import type { Cursor } from '../cursor.ts';
+import { expectedTypeAt } from '../expected.ts';
 import type { Place, PlaceKind } from '../place.ts';
 import type { Completion, RankGroup } from './item.ts';
 
@@ -27,6 +28,8 @@ export interface Presenting {
    * braces.
    */
   readonly follows: TokenKind | undefined;
+  /** The type expected of what is written at the place (../expected.ts). */
+  readonly expected: Type | undefined;
 }
 
 /** What a presenter says of one item: everything but its name and its place in the list. */
@@ -63,7 +66,22 @@ export function presentingAt(cursor: Cursor, place: Place): Presenting {
     place,
     writesValue: valuePlaces.has(place.kind),
     follows: onLine ? next.kind : undefined,
+    expected: expectedTypeAt(cursor, place),
   };
+}
+
+/**
+ * Whether a value of `found` fits the type expected at the place. An erroneous type fits nothing,
+ * and `Never`, which fits everywhere, tells nothing about where it belongs.
+ */
+export function fitsExpected({ cursor, expected }: Presenting, found: Type): boolean {
+  return (
+    expected !== undefined &&
+    expected.kind !== 'error' &&
+    found.kind !== 'error' &&
+    !(found.kind === 'primitive' && found.name === 'Never') &&
+    cursor.checker.fitOf(found, expected) !== undefined
+  );
 }
 
 /**
