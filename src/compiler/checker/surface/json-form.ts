@@ -51,7 +51,7 @@ export interface JsonField {
  * The key naming an enum value's variant in its JSON object (§9), which the json module's helpers
  * are given, so no field of a variant may take it.
  */
-export const variantTagKey = 'type';
+export const variantTagKey = '_type';
 
 interface JsonVariant {
   readonly name: string;

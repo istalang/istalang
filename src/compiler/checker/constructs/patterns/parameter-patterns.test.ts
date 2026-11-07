@@ -95,7 +95,7 @@ describe('parameter patterns in declared functions and lambdas (§5)', () => {
       '  x * 1000 + y * 100 + p.x * 10 + a + b',
     );
     const body = 'await spawn sum(Point{x: 1, y: 2}, (3, 4)).result()';
-    expect(mainGives('Result<Int>', body, decls)).toEqual({ type: 'Ok', value: 1217 });
+    expect(mainGives('Result<Int>', body, decls)).toEqual({ _type: 'Ok', value: 1217 });
   });
 
   it('detects overload clashes between a pattern parameter and a plain parameter of the same type', () => {

@@ -119,7 +119,7 @@ const specHost = [
   "  'main.receive(main.Queue<T>)': next,",
   "  'main.chargeCard(String, Int)': (id, amount) => {",
   "    log('charge ' + id + ' ' + amount);",
-  "    return { type: 'Ok', value: 'r-' + id + '-' + amount };",
+  "    return { _type: 'Ok', value: 'r-' + id + '-' + amount };",
   '  },',
   '};',
   '',
@@ -171,7 +171,7 @@ describe('ista run --host', () => {
   it('runs the host externs: a host type, a promised future, a constant and a result', async () => {
     const run = await runWith(
       "{ id: 'o-' + queue, amount: 50 }",
-      "({ type: 'Ok', value: 'r-' + id + '-' + amount })",
+      "({ _type: 'Ok', value: 'r-' + id + '-' + amount })",
     );
     expect(run).toEqual({ code: 0, out: '"paid r-o-orders-50"\n', err: '' });
   });
@@ -179,20 +179,20 @@ describe('ista run --host', () => {
   it('reads a host value against the declared type, an Err as data', async () => {
     const run = await runWith(
       "{ id: 'o1', amount: 50 }",
-      "({ type: 'Err', error: { message: 'declined', code: 'card', trace: '' } })",
+      "({ _type: 'Err', error: { message: 'declined', code: 'card', trace: '' } })",
     );
     expect(run).toEqual({ code: 0, out: '"failed declined"\n', err: '' });
   });
 
   it('panics the instance on a host result of the wrong type', async () => {
-    const run = await runWith("{ id: 'o1', amount: 50 }", "({ type: 'Ok', value: 5 })");
+    const run = await runWith("{ id: 'o1', amount: 50 }", "({ _type: 'Ok', value: 5 })");
     expect(run.code).toBe(1);
     expect(run.out).toBe('');
     expect(run.err).toMatch(wrongResult);
   });
 
   it("fails the host's fill on JSON that doesn't fit, leaving the future to wait", async () => {
-    const run = await runWith("{ id: 'o1', amount: 'many' }", "({ type: 'Ok', value: 'r' })");
+    const run = await runWith("{ id: 'o1', amount: 'many' }", "({ _type: 'Ok', value: 'r' })");
     expect(run.code).toBe(1);
     expect(run.out).toBe('');
     expect(run.err).toMatch(unfitFill);

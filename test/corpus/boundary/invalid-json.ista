@@ -4,11 +4,11 @@
 # error: 5101 at 32:8
 # error: 5101 at 34:20
 # json writes and reads only what is Encodable, or Decodable (§9): not a function, not a map whose
-# keys aren't Stringable, not an enum with a variant field named type,
-# which the tag uses; and a type that declares a toJson but no fromJson can be written but not
-# read, since nothing is derived for it. main's outcome is written as JSON for its host.
-
+# keys aren't Stringable, not an enum with a variant field keyed _type, which the tag uses; and a
+# type declaring a toJson but no fromJson is written but not read, since nothing is derived for it.
+# main's outcome is written as JSON for its host.
 import * as json from 'json'
+import JsonName from 'json'
 
 struct Point:
   x: Int
@@ -20,13 +20,13 @@ fn toJson(self: Label) -> json.Json:
   json.encode(self.text)
 
 enum Event:
-  Typed { type: String }
+  Typed { kind: String @JsonName{"_type"} }
 
 fn uses():
   const add = fn(n: Int): n + 1
   _ = json.stringify(add)
   _ = json.stringify([Point{x: 1}: 1])
-  const event: Event = Typed{type: "t"}
+  const event: Event = Typed{kind: "t"}
   _ = json.stringify(event)
   _ = json.stringify(Label{text: "ok"})
   drop json.parse<Label>("\"ok\"")

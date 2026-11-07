@@ -1,4 +1,4 @@
-# outcome: [{"type":"Ok","value":10},{"type":"Ok","value":6},{"type":"Ok","value":3}]
+# outcome: [{"_type":"Ok","value":10},{"_type":"Ok","value":6},{"_type":"Ok","value":3}]
 # A spawned call passes what a rest parameter collects as a call does, spreads included, and the
 # new instance fills its parameters (§3.3, §3.5, §9).
 fn total(...xs: Array<Int>) -> Int:
