@@ -18,6 +18,7 @@ import {
   typeText,
 } from '../../../compiler/checker/types/type/type-text.ts';
 import { programModule } from '../../../compiler/program/program.ts';
+import { declaredFunctionName } from '../../../compiler/syntax/declarations/field-defaults.ts';
 import {
   type FunctionDeclaration,
   typeParametersOf,
@@ -26,7 +27,6 @@ import { patternNamedType } from '../../../compiler/syntax/expressions/parameter
 import type { Pattern } from '../../../compiler/syntax/patterns.ts';
 import type { SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
-import { staticName } from '../../../foundation/language/static-names.ts';
 import { textOf } from '../../../foundation/text/span.ts';
 
 /** A signature's text, and where each parameter's text stands in it. */
@@ -40,14 +40,14 @@ type ParameterLabel = readonly [start: number, end: number];
 
 /** The signature `declaration` declares. */
 export function signatureOf(checker: Checker, declaration: FunctionDeclaration): Signature {
-  const { isAsync, owner, name, typeParameters } = declaration;
+  const { isAsync, typeParameters } = declaration;
   const generics = typeParametersOf(typeParameters).map(
     (parameter) => `${parameter.isPack ? '...' : ''}${parameter.name.text}`,
   );
   const head = [
     isAsync ? 'async ' : '',
     'fn ',
-    owner === undefined ? name.text : staticName(owner.text, name.text),
+    declaredFunctionName(declaration),
     generics.length === 0 ? '' : `<${generics.join(', ')}>`,
   ].join('');
   const { tree } = programModule(checker.program, checker.moduleOf(declaration));

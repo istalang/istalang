@@ -1,8 +1,9 @@
 /**
  * The lookup queries over every corpus program, valid and invalid: no query throws at any node,
  * every name binding or checking resolved in a body is answered with the declaration they chose,
- * a called variant's name with the variant, and every name of a variant with its enum's type. Checking a program twice is the costly part,
- * so one pass per program asks all of it.
+ * a called variant's name with the variant, of the type its call made, and every name of a variant
+ * with its enum's type. Checking a program twice is the costly part, so one pass per program asks
+ * all of it.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -19,6 +20,7 @@ import type { Identifier } from '../../syntax/tree/node.ts';
 import { type Checker, checkProgram } from '../check.ts';
 import type { Denotation, JoinedBody } from '../surface/denotation.ts';
 import type { ResolvedSite } from '../surface/resolved-call.ts';
+import { sameType } from '../types/identity/identity.ts';
 import type { Type } from '../types/type/index.ts';
 import { answersAt } from './lookup.test-kit.ts';
 
@@ -47,8 +49,13 @@ function disagreementsAt(checked: CheckedModule, node: SyntaxNode): readonly str
     return outsideItsEnum;
   }
   const denotations = checker.lookup.denotationsOf(module, node);
+  const made = madeBy(checked, node, body);
+  const notAsMade = denotations
+    .filter(({ declared, type }) => declared.kind === 'variant' && !isMade(made, type))
+    .map(() => `${node.text} at ${node.span.from} not of the type its call made`);
   return [
     ...outsideItsEnum,
+    ...notAsMade,
     ...chosenFor(checked, node, body)
       .filter((chosen) => !denotations.some(chosen))
       .map(() => `${node.text} at ${node.span.from}`),
@@ -58,6 +65,23 @@ function disagreementsAt(checked: CheckedModule, node: SyntaxNode): readonly str
 /** Whether `type` is the enum declaring `variant`, with whatever type arguments. */
 function isEnumOf(variant: VariantEntity, type: Type | undefined): boolean {
   return type?.kind === 'nominal' && type.entity.declaration === variant.enum;
+}
+
+/** What the call `name` names the callee of made, bare or qualified; undefined for no call. */
+function madeBy({ tree }: CheckedModule, name: Identifier, body: JoinedBody): Type | undefined {
+  const parent = parentOf(tree, name);
+  const member = parent?.kind === 'MemberAccess' && parent.member === name ? parent : undefined;
+  const call =
+    callWith(name, parent) ??
+    callWith(member, member === undefined ? undefined : parentOf(tree, member));
+  return call === undefined ? undefined : body.typeOf(call);
+}
+
+/** Whether `type` is the type a call `made`, as a variant called names it; any, with no call. */
+function isMade(made: Type | undefined, type: Type | undefined): boolean {
+  return (
+    made === undefined || made.kind === 'error' || (type !== undefined && sameType(made, type))
+  );
 }
 
 /** `call` when it is a call of `callee`. */

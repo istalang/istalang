@@ -32,6 +32,8 @@ function declaredName(declared: Denotation['declared']): string {
       return declared.declaration.name.text;
     case 'variable':
       return declared.entity.name.text;
+    case 'variant':
+      return declared.entity.variant.name.text;
     default:
       return declared.kind;
   }
@@ -126,6 +128,28 @@ describe('what an identifier denotes', () => {
     expect(members?.fields.map(({ name }) => name)).toEqual(['size']);
     expect(members?.methods.map(({ name }) => name.text)).toEqual(['measure']);
     expect(members?.statics.map(({ name }) => name.text)).toEqual(['unit']);
+  });
+});
+
+describe('what a called variant denotes', () => {
+  const { checker, module, named } = checkedMain(
+    `enum Opt<T> { Some(value: T), Empty }
+fn main() -> (Opt<Int>, Opt<Int>, Opt<Int>, Opt<Int>): (Some(value: 1), Opt.Some(2), Empty(), Opt.Empty())
+`,
+  );
+  const at = (name: string, nth: number) =>
+    described(checker.lookup.denotationsOf(module, named(name, nth)));
+
+  it('answers its name with the variant, of the enum type the call has', () => {
+    expect(checker.diagnosticsOf(module)).toEqual([]);
+    expect(at('Some', 1)).toEqual(['variant Some: Opt<Int>']);
+    expect(at('Some', 2)).toEqual(['variant Some: Opt<Int>']);
+    expect(at('Empty', 1)).toEqual(['variant Empty: Opt<Int>']);
+    expect(at('Empty', 2)).toEqual(['variant Empty: Opt<Int>']);
+  });
+
+  it('answers a named argument with the field it gives', () => {
+    expect(at('value', 1)).toEqual(['field value: Int']);
   });
 });
 

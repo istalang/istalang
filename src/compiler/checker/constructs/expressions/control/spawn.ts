@@ -22,12 +22,12 @@ import type { Call, Expression, Spawn } from '../../../../syntax/expressions/ind
 import { unparenthesized } from '../../../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import { calledVariant } from '../../../surface/named-variants.ts';
 import { isSendable } from '../../../types/traits/sendable.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { futureArgument, wellKnownOf } from '../../../types/type/well-known.ts';
-import { calledVariant } from '../structs/variants.ts';
 
 export function checkSpawn(context: BodyContext, node: Spawn): Type {
   const call = unparenthesized(node.call);
@@ -79,10 +79,10 @@ function refusalOf(
     };
   }
   const resolved = context.callAt(call);
-  const variant = calledVariant(context, call);
-  if (resolved === undefined && variant !== undefined) {
+  const variant = calledVariant(context, call)?.variant;
+  if (variant?.fields.length === 0) {
     return {
-      callee: `'${variant.text}'`,
+      callee: `'${variant.name.text}'`,
       why: 'a variant without fields is a value, not a function',
     };
   }

@@ -31,6 +31,7 @@
  *   the bound is reported as such at the root use site.
  */
 
+import { declaredFunctionName } from '../../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration, TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { RootGoals } from '../../contexts/context.ts';
 import { silent, type UseSite } from '../../contexts/use-site.ts';
@@ -122,7 +123,8 @@ function instantiateAt(
   const completion = completeInference(checker, declaration, typeParameters, inference);
   if (completion.kind === 'open') {
     const parameter = completion.parameter.name.text;
-    site.report((at) => checkerDiagnostics.cannotInfer(at, declaration.name.text, parameter));
+    const name = declaredFunctionName(declaration);
+    site.report((at) => checkerDiagnostics.cannotInfer(at, name, parameter));
     return 'failed';
   }
   const { typeArguments, substitution } = completion;

@@ -4,9 +4,9 @@
  * default, so a field is held to a parameter's rules (§3.3): a default sees the fields before it, a
  * field without a written type takes its default's, a default reaching its own field is a cycle,
  * and a rest is last, an array, with no default. Its parameters are the fields in order, so a
- * layout's field `i` is its parameter `i`, and it gives the value its fields make. A literal leaving
- * field `i` out calls its default entry for parameter `i`, given the fields before it, as a call
- * leaving a parameter out does.
+ * layout's field `i` is its parameter `i`, and it gives the value its fields make. A literal
+ * leaving field `i` out calls its default entry for parameter `i`, given the fields before it, as a
+ * call leaving a parameter out does.
  *
  * A variant's is also its constructor, `fn E.V<P…>(fields) -> E<P…>`: calling the variant calls it,
  * binding arguments as any call's (§3.3), so it exists for every variant with fields, while a
@@ -24,6 +24,7 @@ import { staticName } from '../../../foundation/language/static-names.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import type { Parameter } from '../expressions/index.ts';
 import type { Invalid } from '../tree/node.ts';
+import { type TypeNode, unparenthesizedType } from '../types/index.ts';
 import {
   type Declaration,
   type DeclaredField,
@@ -145,13 +146,23 @@ function fieldsOwnerOf(
   return variant === undefined ? undefined : { enumeration: declaration, variant };
 }
 
-/** The parameter a field reads as. */
+/**
+ * The parameter a field reads as. A field holds a value, never a place, so a `&T` the parser
+ * refused on one (§3.7) reads as its referent, and its parameter takes no reference.
+ */
 function fieldParameter(field: DeclaredField | Invalid): Parameter | Invalid {
   if (field.kind === 'Invalid') {
     return field;
   }
-  const { span, isRest, name, type, defaultValue } = field;
+  const { span, isRest, name, defaultValue } = field;
+  const type = field.type === undefined ? undefined : valueType(field.type);
   return { kind: 'Parameter', span, isRest, name, pattern: undefined, type, defaultValue };
+}
+
+/** `type` with any `&` before it, parentheses aside, left out. */
+function valueType(type: TypeNode): TypeNode {
+  const written = unparenthesizedType(type);
+  return written.kind === 'ReferenceType' ? written.referent : type;
 }
 
 function present<T>(value: T | undefined): readonly T[] {

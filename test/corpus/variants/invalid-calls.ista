@@ -1,16 +1,52 @@
-# error: 5137 at 16:29
-# error: 5137 at 17:29
-# error: 5137 at 18:29
-# error: 5004 at 19:22
-# error: 5004 at 20:22
-# error: 5107 at 21:13
+# error: 2004 at 49:9
+# error: 5137 at 52:29
+# error: 5137 at 53:29
+# error: 5137 at 54:29
+# error: 5004 at 55:22
+# error: 5004 at 56:22
+# error: 5107 at 57:13
+# error: 5137 at 58:32
+# error: 5137 at 59:31
+# error: 5204 at 60:39
+# error: 5020 at 64:13
+# error: 5101 at 65:13
+# error: 5131 at 66:13
+# error: 5170 at 67:13
+# error: 5004 at 74:14
+# error: 5001 at 75:31
 # A variant's field is given by position only in a call (§3.11): in braces every field is named, so
-# `Ok{42}`, `Ok{(v)}` and `Ok{v}` name the call they mean. A variant without fields takes no
-# arguments, and a call needs the arguments its fields do, and a bare variant an expected enum.
+# `Ok{42}`, `Ok{(v)}`, `Ok{v}` and `Ok{"a"}` name the call they mean, and so does a lone shorthand
+# naming no field where one argument would do, leaving no field missing; a variant without fields
+# takes no value at all. A variant without fields takes no arguments, a call needs the arguments its
+# fields do, and a bare variant an expected enum. A call's written type arguments are counted once,
+# and met, constraints and type `match`es alike, with or without fields. A failed call of a variant
+# with fields can't be spawned for its own failure only, and a field's `&`, refused, takes no
+# reference.
 
 enum Verdict:
   Approved
   Rejected(by: String, reason = "no reason given")
+
+enum Box<A, B>:
+  Val(x: A)
+
+enum Gate<T is Sendable>:
+  Open
+
+shared struct Lock:
+  n: Int
+
+enum Keyed<K in "a" | "b">:
+  Nil
+
+enum Picked<T>:
+  Full(value: T)
+  Empty
+  type Data = match T:
+    case Int: String
+
+enum Held:
+  Of(x: &Int)
 
 fn f(v: Int) -> Int:
   const a: Result<Int> = Ok{42}
@@ -19,6 +55,25 @@ fn f(v: Int) -> Int:
   const d: Verdict = Approved(1)
   const e: Verdict = Rejected()
   const g = Rejected("x")
+  const h: Result<String> = Ok{"a"}
+  const i: Verdict = Rejected{v}
+  const j: Verdict = Verdict.Approved{42}
   v
+
+fn typed():
+  const a = Box.Val<Int>(1)
+  const b = Gate.Open<Lock>()
+  const c = Keyed.Nil<"c">()
+  const d = Picked.Full("x")
+  drop a
+  drop b
+  drop c
+  drop d
+
+fn spawned():
+  drop spawn Verdict.Rejected()
+  drop spawn Verdict.Rejected(1)
+
+fn held() -> Held: Held.Of(1)
 
 async fn main(): 0

@@ -25,7 +25,8 @@ import {
   type Type,
 } from '../../../types/type/index.ts';
 import { literalOrBase, writtenLiteral } from '../../../types/unions/unions.ts';
-import { knownArguments, type LiteralShape } from './literal-fields.ts';
+import { typeArgumentsFor } from '../../../types/written/type-arguments.ts';
+import type { LiteralShape } from './literal-fields.ts';
 
 /** What a literal naming a type builds: a declared struct, or a shape an alias names. */
 export type Built =
@@ -36,6 +37,37 @@ export type Built =
       readonly known: readonly Type[] | undefined;
     }
   | { readonly kind: 'shape'; readonly shape: LiteralShape };
+
+/**
+ * The type arguments a literal of `owner` is given before its items: those written after the
+ * type's name, its defaults completing them, else the expected type's when it is a type of
+ * `owner`.
+ */
+export function knownArguments(
+  context: BodyContext,
+  typeNode: NamedType,
+  owner: Exclude<LiteralShape['owner'], undefined>,
+  expected: Type | undefined,
+): readonly Type[] | undefined {
+  if (typeNode.typeArguments.length === 0) {
+    return argumentsFor(owner, expected);
+  }
+  const written = typeNode.typeArguments.map((argument) => context.resolveType(argument));
+  const list = { at: typeNode.span, declaration: owner, types: written };
+  return typeArgumentsFor(context.checker, context.module, list);
+}
+
+/** The type arguments of `type` when it is a type of `owner`; else undefined. */
+function argumentsFor(
+  owner: LiteralShape['owner'],
+  type: Type | undefined,
+): readonly Type[] | undefined {
+  const alias = type?.alias;
+  if (alias?.kind === 'alias' && alias.declaration === owner) {
+    return alias.arguments;
+  }
+  return type?.kind === 'nominal' && type.entity.declaration === owner ? type.arguments : undefined;
+}
 
 /**
  * What a literal naming `entity` builds: a declared struct, with the type arguments written or

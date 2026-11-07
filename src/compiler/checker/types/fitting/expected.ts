@@ -43,7 +43,7 @@ import {
 import { errorType, expectsError } from '../type/primitives.ts';
 import { arrayElement, wellKnownArguments } from '../type/well-known.ts';
 import { membersOf, optionalInner } from '../unions/unions.ts';
-import { typeArgumentsFor } from '../written/type-arguments.ts';
+import { constrainArguments, typeArgumentsFor } from '../written/type-arguments.ts';
 
 /**
  * What taking an expected type apart needs of the program: its well-known types, and its rules,
@@ -250,7 +250,26 @@ export function expectedNominal(
     context.report(checkerDiagnostics.cannotInfer(at, declaration.name.text, open.name.text));
     return errorType;
   }
-  const list = { at, declaration, types: [] };
-  const typeArguments = typeArgumentsFor(context.checker, context.module, list);
-  return typeArguments === undefined ? errorType : nominalType(entity, typeArguments);
+  return writtenNominal(context, at, entity, []);
+}
+
+/**
+ * The type of `entity` given `written` type arguments at `at`, the defaults of those left out
+ * completing them, noted for their constraints and the type `match`es they reach as a written
+ * type's are (§3.5); the error type after reporting too few or too many.
+ */
+export function writtenNominal(
+  context: BodyContext,
+  at: AnchoredSpan,
+  entity: NominalEntity,
+  written: readonly Type[],
+): Type {
+  const { checker, module } = context;
+  const list = { at, declaration: entity.declaration, types: written };
+  const typeArguments = typeArgumentsFor(checker, module, list);
+  if (typeArguments === undefined) {
+    return errorType;
+  }
+  constrainArguments(checker, module, { ...list, types: typeArguments });
+  return nominalType(entity, typeArguments);
 }

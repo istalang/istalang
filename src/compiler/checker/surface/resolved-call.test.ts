@@ -13,19 +13,18 @@ import { programModule } from '../../program/program.ts';
 import { functionsOf } from '../../syntax/declarations/field-defaults.ts';
 import type { Call } from '../../syntax/expressions/index.ts';
 import { bodyOf, nodesUnder } from '../../syntax/tree/index.ts';
+import type { Identifier } from '../../syntax/tree/node.ts';
 import { type Checker, checkProgram } from '../check.ts';
 import type { JoinedBody } from './denotation.ts';
+import { calledVariant } from './named-variants.ts';
 
 /** Whether `call` names a variant without fields, bare or qualified, as checking chose it. */
 function namesFieldlessVariant(checker: Checker, body: JoinedBody, call: Call): boolean {
-  const { callee } = call;
-  const name = callee.kind === 'MemberAccess' ? callee.member : callee;
-  if (name.kind !== 'Identifier') {
-    return false;
-  }
-  const entity = checker.bindings.entityOf(idOf('main'), name);
-  const named = entity?.kind === 'variants' ? body.chosenVariantOf(name) : entity;
-  return named?.kind === 'variant' && named.variant.fields.length === 0;
+  const names = {
+    entityOf: (name: Identifier) => checker.bindings.entityOf(idOf('main'), name),
+    chosenVariantOf: body.chosenVariantOf,
+  };
+  return calledVariant(names, call)?.variant.fields.length === 0;
 }
 
 describe('a checked body', () => {

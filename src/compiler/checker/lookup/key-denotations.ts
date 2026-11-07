@@ -16,9 +16,11 @@ import { type TypeParameters, typeParametersOf } from '../../syntax/declarations
 import { literalNaming } from '../../syntax/expressions/literals/built-types.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';
+import type { Identifier } from '../../syntax/tree/node.ts';
 import type { LiteralType } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import type { Denotation } from '../surface/denotation.ts';
+import { calledVariant } from '../surface/named-variants.ts';
 import { substitutionFor } from '../types/parts/substitution.ts';
 import type { Type } from '../types/type/index.ts';
 import { givenKeysOwner } from '../types/written/key-types.ts';
@@ -110,8 +112,8 @@ interface Instantiated {
 
 /**
  * What `node`, a type or call taking type arguments, instantiates, with the arguments it was given:
- * a nominal type or an alias written in a type, a struct literal's type, or each function a generic
- * call calls.
+ * a nominal type or an alias written in a type, a struct literal's type, each function a generic
+ * call calls, or the enum a variant without fields called makes, its value (§3.11).
  */
 function instantiationsAt(
   checker: CheckerContext,
@@ -120,7 +122,18 @@ function instantiationsAt(
   node: SyntaxNode,
 ): readonly Instantiated[] {
   if (node.kind === 'Call') {
-    const calls = bodyHolding(checker, module, node)?.callsAt(node) ?? [];
+    const body = bodyHolding(checker, module, node);
+    const calls = body?.callsAt(node) ?? [];
+    const made = body?.typeOf(node);
+    if (calls.length === 0 && made?.kind === 'nominal' && body !== undefined) {
+      const names = {
+        entityOf: (name: Identifier) => checker.bindings.entityOf(module, name),
+        chosenVariantOf: body.chosenVariantOf,
+      };
+      return calledVariant(names, node) === undefined
+        ? []
+        : [{ parameters: made.entity.declaration.typeParameters, typeArguments: made.arguments }];
+    }
     return calls.flatMap((call) =>
       call.kind === 'function'
         ? [{ parameters: call.function.typeParameters, typeArguments: call.typeArguments }]

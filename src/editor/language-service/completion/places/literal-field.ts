@@ -6,15 +6,16 @@
  * through the literal checking built it as: a struct's fields, or the keys a map's key type
  * spells, as names where they are names and quoted where not.
  *
- * Right after its `{`, a literal building one field also takes that field's value without its name
- * (§3.1), so a value may stand there too, and the visible names are offered beside the field when
- * completion is invoked, bare variants aside, as no enum is expected of a name there; typing the
- * `{` asks for fields alone. A visible variable named like a field
+ * Right after its `{`, a struct literal building one field also takes that field's value without
+ * its name (§3.1), so a value may stand there too, and the visible names are offered beside the
+ * field when completion is invoked, bare variants aside, as no enum is expected of a name there;
+ * typing the `{` asks for fields alone. A variant's literal names its fields: only a call gives one
+ * by position (§3.11). A visible variable named like a field
  * not given yet is offered too, as the shorthand writing both (`Pair{first}`); the leading spread
  * only where it may stand, as the first item.
  */
 
-import { itemField } from '../../../../compiler/checker/surface/struct-items.ts';
+import { itemField, variantItemField } from '../../../../compiler/checker/surface/struct-items.ts';
 import type { FieldMember, Type } from '../../../../compiler/checker/types/type/index.ts';
 import { membersOf } from '../../../../compiler/checker/types/unions/unions.ts';
 import { spellsName } from '../../../../compiler/scanner/characters.ts';
@@ -164,7 +165,13 @@ export function offerLiteralFields(
   const fields =
     built === undefined || !isFieldsLiteral(built) ? [] : (body?.literalFieldsOf(built) ?? []);
   const startsItems = first && (opens || literal.kind === 'IndentedValue');
-  return literalItems(cursor, { fields, others, opens, startsItems });
+  const isVariant = built !== undefined && buildsEnum(body?.typeOf(built));
+  return literalItems(cursor, { fields, others, opens, startsItems, isVariant });
+}
+
+/** Whether a literal checked as `type` builds a variant of an enum, whose fields braces name. */
+function buildsEnum(type: Type | undefined): boolean {
+  return type?.kind === 'nominal' && type.entity.declaration.kind === 'EnumDeclaration';
 }
 
 function isFieldItem(item: FieldsLiteral['items'][number] | IndentedEntry): item is FieldItem {
@@ -203,27 +210,30 @@ interface LiteralItemSlot {
   readonly opens: boolean;
   /** Whether it is the first item, where the leading spread may stand. */
   readonly startsItems: boolean;
+  /** Whether the literal builds a variant, which takes no value by position in braces (§3.11). */
+  readonly isVariant: boolean;
 }
 
 /**
  * The candidates for an item of a literal building `fields`: those its `others` don't give, each
  * after a variable that would write it as shorthand; the leading spread where the first item
- * stands; and, after the `{` of a literal building one field, invoked, the values it may take
- * unnamed.
+ * stands; and, after the `{` of a struct literal building one field, invoked, the values it may
+ * take unnamed.
  */
 function literalItems(
   cursor: Cursor,
-  { fields, others, opens, startsItems }: LiteralItemSlot,
+  { fields, others, opens, startsItems, isVariant }: LiteralItemSlot,
 ): readonly Candidate[] {
   const visible = visibleCandidates(cursor);
-  const given = new Set(others.map((named) => fields[itemField(named, fields)]));
+  const fieldGiven = isVariant ? variantItemField : itemField;
+  const given = new Set(others.map((named) => fields[fieldGiven(named, fields)]));
   const offered = fields
     .filter((field) => !given.has(field))
     .flatMap((field): readonly Candidate[] => [
       ...shorthandFor(visible, field.name),
       { name: field.name, subject: { kind: 'field', field } },
     ]);
-  const takesValue = opens && fields.length === 1 && cursor.trigger === undefined;
+  const takesValue = opens && !isVariant && fields.length === 1 && cursor.trigger === undefined;
   const values = takesValue ? visible.filter((candidate) => !isBareVariant(candidate)) : [];
   return [...offered, ...(startsItems && fields.length > 0 ? [spread] : []), ...values];
 }

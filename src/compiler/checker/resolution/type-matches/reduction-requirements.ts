@@ -6,10 +6,11 @@
  *
  * - A declaration's requirements are the types it holds that a type `match` use or an associated
  *   type with arguments not known yet stands in: its fields, variants and associated types, an
- *   alias's body, and a function's written types, signature and body alike, with the type
- *   arguments its calls give and their callees' requirements, read through those arguments; a
- *   struct's or variant's field defaults bring what their calls reach alike. A function reached
- *   again while its requirements are found adds none: the cycle's own uses are among the others'.
+ *   alias's body, and a function's written types, signature and body alike, and its result, with
+ *   the type arguments its calls give and their callees' requirements, read through those
+ *   arguments; a struct's or variant's field defaults bring what their calls reach alike. A
+ *   function reached again while its requirements are found adds none: the cycle's own uses are
+ *   among the others'.
  * - An instantiation substitutes them, and any use whose arguments are then all known reduces:
  *   one naming no type (matching no case, being itself, or recursive with values that would hold
  *   themselves, types/properties/finiteness.ts; an associated type on a cycle of expansions,
@@ -198,8 +199,9 @@ export class ReductionRequirements {
   }
 
   /**
-   * A function's types: those written in it, once its signature and code are checked, and those
-   * the calls its code makes reach, read through each call's type arguments.
+   * A function's types: those written in it, once its signature and code are checked, its result,
+   * which a variant's constructor never writes (§3.11), and those the calls its code makes reach,
+   * read through each call's type arguments.
    */
   #functionTypes(declaration: FunctionDeclaration): readonly Type[] {
     const checker = this.#checker;
@@ -208,14 +210,14 @@ export class ReductionRequirements {
     }
     const bodies = [checker.bodyOf(declaration), checker.defaultsOf(declaration)];
     checker.parametersOf(declaration);
-    checker.resultOf(declaration);
+    const result = checker.resultOf(declaration);
     const tree = checker.inputs.treeOf(checker.moduleOf(declaration));
     const written = nodesUnder(tree, declaration).flatMap((node) => {
       const type =
         isWrittenType(node) && node.kind !== 'RestType' ? checker.resolvedTypeOf(node) : undefined;
       return type === undefined ? [] : [type];
     });
-    return [...written, ...this.#calledThrough(bodies)];
+    return [...written, result, ...this.#calledThrough(bodies)];
   }
 
   /**

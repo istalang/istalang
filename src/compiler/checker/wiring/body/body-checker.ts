@@ -413,6 +413,10 @@ export class BodyChecker implements BodyContext {
     this.#records.chosenVariants.set(name, variant);
   }
 
+  chosenVariantOf(name: Identifier): VariantEntity | undefined {
+    return this.#records.chosenVariants.get(name);
+  }
+
   ruleOut(body: Block): void {
     this.#records.ruledOut.set(body, true);
   }

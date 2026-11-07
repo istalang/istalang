@@ -162,6 +162,7 @@ const checkerSurface = [
   'surface/json-form.ts',
   'surface/checked-annotation.ts',
   'surface/struct-items.ts',
+  'surface/named-variants.ts',
   'surface/denotation.ts',
   'surface/host-externs.ts',
   'types/type/index.ts',

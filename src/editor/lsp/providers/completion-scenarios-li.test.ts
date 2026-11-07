@@ -92,9 +92,16 @@ const scenarios: readonly Scenario[] = [
     id: 'LI-09',
     place: 'literalField',
     title: 'Single-field struct: field or positional value',
-    src: ['  UserId{‸}', '  const e: Result<Int> = Ok{‸}'],
+    src: ['  UserId{‸}'],
     trigger: '{',
-    expect: { anyOf: ['id', 'value'], lacks: ['xs', 'plus', 'u'] },
+    expect: { has: ['id'], lacks: ['xs', 'plus', 'u'] },
+  },
+  {
+    id: 'LI-09b',
+    place: 'literalField',
+    title: 'Single-field variant: the field alone, invoked',
+    src: ['  const e: Result<Int> = Ok{‸}', '  const e: Result<Int> = Ok{va‸}'],
+    expect: { has: ['value'], lacks: ['xs', 'plus', 'u'] },
   },
   {
     id: 'LI-10',

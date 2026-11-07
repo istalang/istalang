@@ -155,6 +155,8 @@ export interface BodyContext {
   readonly recordBuilt: (value: IndentedValue, literal: BuiltLiteral) => void;
   /** Records the variant the bare name `name` chose (types/written/named-types.ts). */
   readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
+  /** The variant the bare name `name` chose; undefined for one not checked yet or naming none. */
+  readonly chosenVariantOf: (name: Identifier) => VariantEntity | undefined;
   /** Records that `node` calls a function value (§3.14). */
   readonly recordValueCall: (node: Call) => void;
   /**

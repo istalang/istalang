@@ -1,8 +1,9 @@
-# outcome: "1 2|legal: no reason given|ops: late|approved|3 t true|0|7|5"
+# outcome: "1 2|legal: no reason given|ops: late|approved|3 t true|0|7|5|boom 1|1 a"
 # A variant with fields is a function of its enum (§3.11): a call binds its arguments to the fields
 # as to parameters, by position, then by name, leaving defaults out and a rest collecting the
-# others; the expected enum gives its type arguments, and a variant without fields called is its
-# value. A spawned call starts the constructor as any function.
+# others; the expected enum gives its type arguments, those written give theirs and the arguments
+# infer the rest, and a variant without fields called is its value. A spawned call starts the
+# constructor as any function. A field named `self` is a field, never a receiver.
 
 enum Verdict:
   Approved
@@ -34,6 +35,20 @@ fn sum(pair: Pair<Int>) -> Int:
 
 fn wrapped(value: Int?) -> Result<Int?, String>: Ok(value)
 
+enum Named:
+  Of(self: Int, other: String)
+
+fn named() -> String:
+  match Named.Of(self: 1, other: "a"):
+    case Of{self, other}: `${self} ${other}`
+
+fn inferred() -> String:
+  const failed = Result.Err<Int>("boom")
+  const passed: Result<Int, String> = Result.Ok<Int>(1)
+  match (failed, passed):
+    case (Err{error}, Ok{value}): `${error} ${value}`
+    case _: ""
+
 async fn main() -> Future<String>:
   const pair: Pair<Int> = Both(1, 2)
   const both = match pair:
@@ -59,4 +74,6 @@ async fn main() -> Future<String>:
     String(count(Node.Group(title: "u"))),
     String(spawned),
     String(kept),
+    inferred(),
+    named(),
   ].join("|")

@@ -207,6 +207,25 @@ describe('renaming', () => {
     }
   });
 
+  it('renames a key given as a type argument to a variant call, with or without fields', () => {
+    const { program, named } = navigable({
+      main: [
+        'struct Settings { retries: Int, region: String }',
+        'enum Slot<S is struct, K in keyof S> { Empty, Full(key: K) }',
+        'fn slots() -> (Slot<Settings, "region">, Slot<Settings, "region">):',
+        '  (Slot.Empty<Settings, "region">(), Slot.Full<Settings, "region">("region"))',
+        '',
+      ].join('\n'),
+    });
+    const regionRenamed = renamed(program, named('main', 'region'), 'area');
+    for (const renamedUse of [
+      'Slot.Empty<Settings, "area">()',
+      'Slot.Full<Settings, "area">("area")',
+    ]) {
+      expect(regionRenamed).toEqual({ main: expect.stringContaining(renamedUse) });
+    }
+  });
+
   it('refuses an associated type a trait requires by its name', () => {
     const { program, named } = navigable({
       main: [

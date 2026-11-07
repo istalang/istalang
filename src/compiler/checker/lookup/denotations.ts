@@ -172,26 +172,34 @@ function functionDenotation(declaration: FunctionDeclaration, type: Type | undef
 }
 
 /**
- * The functions the checker resolved `site` to, `call` or a function value: one, or in a field
- * loop each one a pass resolved it to; undefined for none.
+ * The functions the checker resolved `site` to, `call` or a function value of type `type`: one,
+ * or in a field loop each one a pass resolved it to; undefined for none. A call's value is `made`.
  */
 function calledAt(
   { body }: NameSite,
   call: Call | MemberAccess | Identifier,
   type: Type | undefined,
+  made?: Type,
 ): readonly Denotation[] | undefined {
   const calls = body?.callsAt(call) ?? [];
   return calls.length === 0
     ? undefined
-    : calls.map((each) => calledDenotation(each.function, type));
+    : calls.map((each) => calledDenotation(each.function, type, made));
 }
 
-/** What a call of `called` names: the function, or the variant a constructor builds (§3.11). */
-function calledDenotation(called: FunctionDeclaration, type: Type | undefined): Denotation {
+/**
+ * What a call of `called` names: the function, of `type` as a value; or the variant a constructor
+ * builds (§3.11), of the enum type `made` where a call made one.
+ */
+function calledDenotation(
+  called: FunctionDeclaration,
+  type: Type | undefined,
+  made: Type | undefined,
+): Denotation {
   const built = constructedVariant(called);
   return built === undefined
     ? functionDenotation(called, type)
-    : variantDenotation(variantEntity(built.enumeration, built.variant), type);
+    : variantDenotation(variantEntity(built.enumeration, built.variant), made);
 }
 
 /** A member: a field read, a method, a static function or a namespace's, or a qualified part. */
@@ -237,11 +245,15 @@ function associatedNamed(checker: CheckerContext, type: Type | undefined): reado
 
 /**
  * What a call's callee denotes: the function the call resolved to. A callee naming a type makes a
- * conversion, `T(x)`, so it denotes the type too, beside the function converting.
+ * conversion, `T(x)`, so it denotes the type too, beside the function converting. A variant called
+ * is of the enum type the call made, with or without fields (§3.11).
  */
 function calleeDenotations(site: NameSite, call: Call): readonly Denotation[] {
-  const called = calledAt(site, call, undefined) ?? [];
-  const bound = named(site);
+  const made = site.body?.typeOf(call);
+  const called = calledAt(site, call, undefined, made) ?? [];
+  const entity = site.checker.bindings.entityOf(site.module, site.name);
+  const bound =
+    entity?.kind === 'variant' || entity?.kind === 'variants' ? named(site, made) : named(site);
   if (called.length === 0) {
     return bound;
   }
@@ -261,11 +273,19 @@ function heldFunction(site: NameSite, hold: Hold): readonly Denotation[] {
   return own?.name?.text === name.text ? denotationsOf(checker, module, own.name) : [];
 }
 
-/** The parameter a named argument names, of each function its call resolved to. */
+/**
+ * The parameter a named argument names, of each function its call resolved to; of a variant's
+ * constructor, the field it gives, of the enum type the call made (§3.11).
+ */
 function parameterNamed(site: NameSite, call: SyntaxNode | undefined): readonly Denotation[] {
   const { checker, name } = site;
   const calls = call?.kind === 'Call' ? (site.body?.callsAt(call) ?? []) : [];
   return calls.flatMap(({ function: called }): readonly Denotation[] => {
+    const built = constructedVariant(called);
+    if (built !== undefined) {
+      const made = call?.kind === 'Call' ? site.body?.typeOf(call) : undefined;
+      return fieldDenotation(builtField(checker, made, built.variant.name.text, name.text));
+    }
     const parameter = checker
       .parametersOf(called)
       .find(({ node }) => node.name?.text === name.text);
@@ -278,6 +298,19 @@ function parameterNamed(site: NameSite, call: SyntaxNode | undefined): readonly 
       ? [{ declared: { kind: 'variable', entity }, type: parameter?.type }]
       : [];
   });
+}
+
+/** The field `field` of the variant `variant` of the enum type `made`; undefined for none. */
+function builtField(
+  checker: CheckerContext,
+  made: Type | undefined,
+  variant: string,
+  field: string,
+): FieldMember | undefined {
+  const variants = made?.kind === 'nominal' ? checker.variantsOf(made) : undefined;
+  return variants
+    ?.find((each) => each.name === variant)
+    ?.fields.find((each) => each.name === field);
 }
 
 /** The field a field's declaring name declares, as its owner's layout has it. */

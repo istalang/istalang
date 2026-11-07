@@ -1,6 +1,6 @@
 /**
- * Struct and variant literals (§3.1): `Pair{first: 1}`, `Pair{first}`, `Ok{42}`, `Req{...r, a: 0}`,
- * `struct{id, for k, v in ...rest: [k]: f(v)}`.
+ * Struct and variant literals (§3.1): `Pair{first: 1}`, `Pair{first}`, `UserId{"u-1"}`,
+ * `Req{...r, a: 0}`, `struct{id, for k, v in ...rest: [k]: f(v)}`.
  *
  * The item forms are told apart by their first two tokens alone, without knowing the struct's
  * fields, as the spec requires:
@@ -9,8 +9,9 @@
  * - `for` starts a struct comprehension, a field loop's header and `[key]: value`, which gives
  *   the literal's other fields itself: it is the last item, beside no spread, and its brackets
  *   hold the loop's key, so the entry never reads as a field's declaration
- * - anything else is a positional value, which must be the only item. `Ok{(x)}` is how a variable
- *   is passed positionally.
+ * - anything else is a positional value, which must be the only item. `UserId{(x)}` is how a
+ *   variable is passed positionally. Only a struct takes one: the checker refuses it in a variant's
+ *   literal, naming the call (§3.11).
  */
 
 import type {

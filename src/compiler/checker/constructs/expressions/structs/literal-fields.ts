@@ -4,11 +4,12 @@
  *
  * - Every field is given exactly once, each value fitting the field's type, by the one rule of
  *   which field an item gives (struct-items.ts): by name, by the shorthand `first` for
- *   `first: first`, or positionally when there is one field. With names alone, every field must
- *   be given, but for those with a default; a struct literal's leading spread gives the rest, and a
- *   positional value is the only item (the parser enforces that), so neither leaves fields to
- *   report as missing. A variant can't be spread into: which variant a value holds isn't known
- *   when compiling.
+ *   `first: first`, or positionally when a struct has one field. With names alone, every field
+ *   must be given, but for those with a default; a struct literal's leading spread gives the rest,
+ *   and a positional value is the only item (the parser enforces that), so neither leaves fields to
+ *   report as missing. A variant's fields are named: one given by position, or a lone shorthand
+ *   naming none where one argument would do, is the call's (§3.11), and is reported as such. A
+ *   variant can't be spread into: which variant a value holds isn't known when compiling.
  * - A generic type's arguments are written, taken from the expected type or the spread value when
  *   it is the same type, or inferred from the values (§3.5): a value whose field type is already
  *   known is checked against it, any other is checked on its own and matched. Defaults fill what
@@ -39,13 +40,11 @@ import type {
 } from '../../../../syntax/expressions/index.ts';
 import { itemName, itemValue, unparenthesized } from '../../../../syntax/expressions/readings.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
-import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
-import type { NamedType } from '../../../../syntax/types/index.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { callWithTypes } from '../../../resolution/applying/silent-choice.ts';
 import type { FunctionCall } from '../../../surface/resolved-call.ts';
-import { itemField } from '../../../surface/struct-items.ts';
+import { itemField, variantItemField } from '../../../surface/struct-items.ts';
 import { completeInference } from '../../../types/inference/complete.ts';
 import { Inference } from '../../../types/inference/infer.ts';
 import { type Substitution, substitute } from '../../../types/parts/substitution.ts';
@@ -56,7 +55,7 @@ import { typeText } from '../../../types/type/type-text.ts';
 import { writtenLiteral } from '../../../types/unions/unions.ts';
 import { givenKeysOwner } from '../../../types/written/key-types.ts';
 import { parameterType } from '../../../types/written/resolve-type.ts';
-import { constrainArguments, typeArgumentsFor } from '../../../types/written/type-arguments.ts';
+import { constrainArguments } from '../../../types/written/type-arguments.ts';
 import { type LiteralGiven, sourcesOf } from './literal-sources.ts';
 import { checkComprehended, comprehendedGiven, fitComprehended } from './struct-comprehensions.ts';
 
@@ -195,50 +194,6 @@ function spreadGiven(
   return { from: spread.node.expression, names };
 }
 
-/**
- * The type arguments a literal of `owner` is given before its items: those written after the
- * type's name, else the expected type's when it is a type of `owner` (`argumentsKnown`).
- */
-export function knownArguments(
-  context: BodyContext,
-  typeNode: NamedType,
-  owner: Exclude<LiteralShape['owner'], undefined>,
-  expected: Type | undefined,
-): readonly Type[] | undefined {
-  const written = typeNode.typeArguments.map((argument) => context.resolveType(argument));
-  return argumentsKnown(context, { at: typeNode.span, written }, owner, expected);
-}
-
-/**
- * The type arguments of `owner` known before the values that build it, a literal's items or a
- * variant call's arguments: `written` at `at`, its defaults completing them, or, with none written,
- * the expected type's when it is a type of `owner`.
- */
-export function argumentsKnown(
-  context: BodyContext,
-  { at, written }: { readonly at: AnchoredSpan; readonly written: readonly Type[] },
-  owner: Exclude<LiteralShape['owner'], undefined>,
-  expected: Type | undefined,
-): readonly Type[] | undefined {
-  if (written.length === 0) {
-    return argumentsFor(owner, expected);
-  }
-  const list = { at, declaration: owner, types: written };
-  return typeArgumentsFor(context.checker, context.module, list);
-}
-
-/** The type arguments of `type` when it is a type of `owner`; else undefined. */
-function argumentsFor(
-  owner: LiteralShape['owner'],
-  type: Type | undefined,
-): readonly Type[] | undefined {
-  const alias = type?.alias;
-  if (alias?.kind === 'alias' && alias.declaration === owner) {
-    return alias.arguments;
-  }
-  return type?.kind === 'nominal' && type.entity.declaration === owner ? type.arguments : undefined;
-}
-
 /** The type arguments known before the items, written or expected; a spread's are inferred. */
 function decidedArguments(
   { known }: LiteralShape,
@@ -318,8 +273,7 @@ function checkItem(
     return;
   }
   if (item.kind === 'Spread') {
-    const isVariant = items.shape.owner?.kind === 'EnumDeclaration';
-    const report = isVariant
+    const report = buildsVariant(items.shape)
       ? checkerDiagnostics.variantSpread
       : checkerDiagnostics.misplacedSpread;
     context.report(report(item.span));
@@ -329,7 +283,7 @@ function checkItem(
   }
   const { shape, inference, given } = items;
   const name = itemName(item);
-  const index = itemField(name, shape.fields);
+  const index = (buildsVariant(shape) ? variantItemField : itemField)(name, shape.fields);
   const field = shape.fields[index];
   if (field !== undefined && name !== undefined) {
     context.recordField(name, field);
@@ -353,14 +307,20 @@ function checkItem(
   given.set(index, { node: value, type, declared: field.type });
 }
 
-/** An item giving no field of its own: no field by that name or position, or one given twice. */
+/**
+ * An item giving no field of its own: no field by that name or position, or one given twice. A
+ * variant's field given by position is the call's (§3.11), so that is what is reported.
+ */
 function reportMisfit(
   context: BodyContext,
   { node, shape }: LiteralItems,
   item: FieldItem,
   field: FieldMember | undefined,
 ): void {
-  if (item.kind === 'PositionalInitializer') {
+  if (givesByPosition(node, shape, item)) {
+    const value = simpleText(unparenthesized(itemValue(item)));
+    context.report(checkerDiagnostics.variantByPosition(item.span, literalName(node), value));
+  } else if (item.kind === 'PositionalInitializer') {
     const count = shape.fields.length;
     context.report(checkerDiagnostics.positionalNeedsOneField(item.span, literalName(node), count));
   } else if (field === undefined) {
@@ -369,6 +329,50 @@ function reportMisfit(
     );
   } else {
     context.report(checkerDiagnostics.repeatedField(item.name.span, field.name));
+  }
+}
+
+/** Whether `shape` builds a variant, whose fields braces give by name alone (§3.11). */
+function buildsVariant(shape: LiteralShape): boolean {
+  return shape.owner?.kind === 'EnumDeclaration';
+}
+
+/**
+ * Whether `item` reads as a variant's field given by position, as a call would take it (§3.11): a
+ * value without a name, or the one item, a shorthand naming no field, where one argument would do.
+ */
+function givesByPosition(node: FieldsLiteral, shape: LiteralShape, item: FieldItem): boolean {
+  const { fields } = shape;
+  if (!buildsVariant(shape) || fields.length === 0) {
+    return false;
+  }
+  if (item.kind === 'PositionalInitializer') {
+    return true;
+  }
+  const required = fields.filter((field) => !declaresDefault(field)).length;
+  return (
+    item.value === undefined &&
+    node.items.length === 1 &&
+    required <= 1 &&
+    variantItemField(item.name, fields) === -1
+  );
+}
+
+/** A value as a message writes it: a name or a literal as written, anything else elided. */
+function simpleText(value: Expression): string {
+  switch (value.kind) {
+    case 'Identifier':
+      return value.text;
+    case 'IntegerLiteral':
+    case 'FloatLiteral':
+    case 'BooleanLiteral':
+      return String(value.value);
+    case 'StringLiteral':
+      return JSON.stringify(value.value);
+    case 'NoneLiteral':
+      return 'none';
+    default:
+      return '…';
   }
 }
 
@@ -385,7 +389,7 @@ function reportMissing(
 ): void {
   const named = node.items.every(
     (item) =>
-      item.kind === 'FieldInitializer' ||
+      (item.kind === 'FieldInitializer' && !givesByPosition(node, shape, item)) ||
       item.kind === 'StructComprehension' ||
       item.kind === 'Invalid',
   );
@@ -403,7 +407,7 @@ function reportMissing(
   }
 }
 
-/** Whether `field` declares a default (§3.1), as only a declared struct's field can. */
+/** Whether `field` declares a default (§3.1), as only a declared struct's or variant's can. */
 export function declaresDefault(field: FieldMember | undefined): boolean {
   const declared = field?.declared?.node;
   return declared !== undefined && hasDefault(declared);

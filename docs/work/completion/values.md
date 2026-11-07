@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-30
-last_updated: 2026-10-30
+last_updated: 2026-11-07
 tags: [plan, completion, lsp]
 ---
 
@@ -299,14 +299,24 @@ fn g(c: Color = ‸
 
 ```
   UserId{‸}
----
-  const e: Result<int> = Ok{‸}
 ```
 - **Where / trigger:** in `fn t`; typing `{`
-- **Offer:** The field (`id: ` / `value: `), plus values that are not bare names (literals, calls, constructors); a variable may be offered only as `(name)`.
+- **Offer:** The field (`id: `), plus values that are not bare names (literals, calls, constructors); a variable may be offered only as `(name)`.
 - **Not:** A bare variable name (`UserId{u}` means the field `u`, not a value).
 - **Accept:** Field: `id: `. Variable: `(u)` with the parentheses.
 - **Basis:** spec §3.1 ("as long as that value isn't a bare name … wrap it in parentheses").
+
+### LI-09b · Single-field variant: the field alone, invoked · P1 · ✅ pass
+
+```
+  const e: Result<Int> = Ok{‸}
+---
+  const e: Result<Int> = Ok{va‸}
+```
+- **Where / trigger:** in `fn t`; invoked
+- **Offer:** The field (`value: `).
+- **Not:** Values: a variant's field is given by position only in a call, `Ok(42)`.
+- **Basis:** spec §3.11 ("A field is never given in braces by position").
 
 ### LI-10 · Shorthand · P2 · ✅ pass
 
