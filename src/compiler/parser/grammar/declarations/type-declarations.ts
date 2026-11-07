@@ -210,8 +210,8 @@ function parseVariant(parser: Parser): Variant {
 
 /**
  * A variant's fields after its name, in parentheses; none when they don't follow. Fields in braces,
- * as a struct lists them, are read, so checking goes on, then refused once, naming the
- * parenthesized form.
+ * as a struct lists them, are read as a variant's, so checking goes on, then refused once, naming
+ * what to write: the parenthesized form, or the name alone for no fields.
  */
 function parseVariantFields(parser: Parser, name: Identifier): Variant['fields'] {
   if (atPostfix(parser, '(')) {
@@ -220,10 +220,10 @@ function parseVariantFields(parser: Parser, name: Identifier): Variant['fields']
   if (!atPostfix(parser, '{')) {
     return [];
   }
-  const { value, span } = parseItemEntries(parser, '{', declaredFieldRules);
-  const fields = value.map((field) => parser.textOf({ span: parser.textSpanOf(field.span) }));
-  const parenthesized = `${name.text}(${fields.join(', ')})`;
-  parser.report(parserDiagnostics.bracedVariant(parser.textSpanOf(span), parenthesized));
+  const { value, span } = parseItemEntries(parser, '{', variantFieldRules);
+  const written = value.map((field) => parser.textOfNode(field)).filter((text) => text !== '');
+  const corrected = written.length === 0 ? name.text : `${name.text}(${written.join(', ')})`;
+  parser.report(parserDiagnostics.bracedVariant(parser.textSpanOf(span), corrected));
   return value;
 }
 

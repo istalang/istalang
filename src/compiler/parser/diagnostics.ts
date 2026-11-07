@@ -125,8 +125,8 @@ export const parserDiagnostics = defineDiagnostics('parser', {
   },
   bracedVariant: {
     code: 2043,
-    message: (parenthesized: string) =>
-      `A variant's fields are its parameters, declared in parentheses: ${parenthesized} (§3.11).`,
+    message: (corrected: string) =>
+      `A variant's fields are its parameters, in parentheses after its name, and one without fields is its name alone: write ${corrected} (§3.11).`,
   },
   rangeBound: {
     code: 2026,

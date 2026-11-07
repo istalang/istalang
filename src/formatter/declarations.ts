@@ -2,7 +2,7 @@
  * Declarations and the module (spec §3). Every declaration with members prints them indented
  * under its `:`, one per line, so the braced form `struct Req { id: Int, value: String }` reads as
  * the indented one: the tree doesn't record which was written, and one canonical form is the
- * point. A variant's fields have only the braced form.
+ * point. A variant's fields are its parameters, listed in parentheses as a function's are.
  *
  * A docstring stands first in an indented body; a declaration without one takes it on the next
  * line, deeper (§2).
@@ -114,11 +114,14 @@ export const declarationPrinters: Printers<DeclarationKind> = {
       printer.print(node.name),
       constraintsAfterIs(printer, node.constraints),
     ]),
-  // A variant's fields are its parameters (spec §3.11), so they print as a parameter list.
+  // A variant's fields are its parameters (spec §3.11), so they print as a parameter list; one
+  // without fields is its name alone, but for comments its parentheses hold.
   Variant: (printer, node) =>
     annotated(printer, node, [
       printer.print(node.name),
-      node.fields.length === 0 ? '' : bracketed(printer, node, ['(', ')'], node.fields),
+      node.fields.length === 0 && printer.dangling(node) === ''
+        ? ''
+        : bracketed(printer, node, ['(', ')'], node.fields),
     ]),
   TraitDeclaration: (printer, node) =>
     annotated(printer, node, [

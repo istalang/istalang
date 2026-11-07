@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-05
-last_updated: 2026-11-05
+last_updated: 2026-11-07
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
 
@@ -65,6 +65,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - check for a `self` method, a field default, or a struct declared with fields, shared or not → `isMethod`, `hasDefault`, `isDeclaredStruct` (`src/compiler/syntax/declarations/index.ts`); a shared struct is its own kind, `SharedStructDeclaration`, never a flag
 - get the synthesized default function for a struct's or variant's fields → `fieldsFunctionOf`, `fieldsFunctionsOf` (`src/compiler/syntax/declarations/field-defaults.ts`)
 - list all functions in a module or test for a fields function → `functionsOf`, `isFieldsFunction` (`src/compiler/syntax/declarations/field-defaults.ts`)
+- tell whether calls give a function's parameters in order, so its defaults trail (any function's but a struct's fields') → `takesArgumentsInOrder` (`src/compiler/syntax/declarations/field-defaults.ts`)
 - list identifiers bound by a target pattern or check whether it contains `_` → `targetNames`, `hasUnnamedPart` (`src/compiler/syntax/patterns.ts`)
 - read a parameter (§3.3): it binds a `name` (the whole argument's, a plain parameter's or a pattern's `as` name), a `pattern` taking the argument apart, or both, never a one-name pattern (`Parameter`, `src/compiler/syntax/expressions/index.ts`); what a diagnostic about it points at, the names it binds, the type its pattern names, whether it writes its type at all, the struct pattern heading it → `parameterSite`, `parameterNames`, `patternNamedType`, `writesType`, `typingPattern` (`src/compiler/syntax/expressions/parameters.ts`); its pattern's targets beside a declaration's, and whether a node declares targets at all → `declaredTargets`, `ownsTargets`, `TargetOwner` (`src/compiler/syntax/statements/index.ts`); parse a parameter's pattern, where `{…}` is short for `struct{…}` at any depth → `parser.parameterPattern()` (`parseParameterPattern`, a `patternGrammar` over one more start, `src/compiler/parser/grammar/patterns.ts`), the short form kept as `StructPattern.isShort` for the formatter
 - decompose or validate an assignment target → `destructuringOf`, `destructures`, `targetParts`, `isTarget` (`src/compiler/syntax/statements/index.ts`)

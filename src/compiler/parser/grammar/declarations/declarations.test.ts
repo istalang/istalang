@@ -150,17 +150,26 @@ describe('type declarations', () => {
     );
   });
 
-  it("refuses a variant's fields in braces once, naming them in parentheses", () => {
-    const text = 'enum E { V { a: Int, b: String = "x" @JsonName{"bee"} } }';
-    expect(reported('module', text)).toEqual(
-      reportedOnce(
-        parserDiagnostics.bracedVariant.code,
-        '{ a: Int, b: String = "x" @JsonName{"bee"} }',
-      ),
-    );
-    expect(parseAs('module', text).diagnostics[0]?.message).toContain(
+  it.each([
+    [
+      'enum E { V { a: Int, b: String = "x" @JsonName{"bee"} } }',
       'V(a: Int, b: String = "x" @JsonName{"bee"})',
-    );
+    ],
+    ['enum E { V { a: Int, ...b: Array<Int> } }', 'V(a: Int, ...b: Array<Int>)'],
+    ['enum E { V {} }', 'write V '],
+  ])("refuses a variant's fields in braces once, naming what to write: %s", (text, corrected) => {
+    const { diagnostics } = parseAs('module', text);
+    expect(diagnostics.map((diagnostic) => diagnostic.code)).toEqual([
+      parserDiagnostics.bracedVariant.code,
+    ]);
+    expect(diagnostics[0]?.message).toContain(corrected);
+  });
+
+  it("reads a variant's field type on its line, never as an indented block of fields", () => {
+    expect(reported('module', 'enum E:\n  V(a:\n  B').codes).toEqual([
+      expected.code,
+      parserDiagnostics.unclosedBracket.code,
+    ]);
   });
 
   it('reads `shared` as a name where no `struct` follows it', () => {

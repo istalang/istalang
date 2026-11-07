@@ -345,6 +345,11 @@ export class Parser implements SegmentBases {
     return textOf(this.#source, token.span);
   }
 
+  /** The text `node`, which this parser made, covers. */
+  textOfNode(node: { readonly span: AnchoredSpan }): string {
+    return textOf(this.#source, this.textSpanOf(node.span));
+  }
+
   /** Whether the cursor stands at `word`, a keyword only in one position, a name elsewhere (§2). */
   atWord(word: ContextualWord): boolean {
     return this.cursor.at('identifier') && this.textOf(this.cursor.token) === word;

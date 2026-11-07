@@ -230,6 +230,9 @@ describe('the canonical style', () => {
     expect(
       formatText('enum Node { Group(title: String, open = false, ...children: Array<Node>) }\n'),
     ).toBe(lines('enum Node:', '  Group(title: String, open = false, ...children: Array<Node>)'));
+    expect(formatText('enum E { V(), W(\n  # none yet\n) }\n')).toBe(
+      lines('enum E:', '  V', '  W(', '    # none yet', '  )'),
+    );
     const long = `${'f'.repeat(80)}: String`;
     expect(formatText(lines('enum Wide:', `  Pair(${long}, second: Int = 1)`))).toBe(
       lines('enum Wide:', '  Pair(', `    ${long}`, '    second: Int = 1', '  )'),

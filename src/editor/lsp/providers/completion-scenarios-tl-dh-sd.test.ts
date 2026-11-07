@@ -220,6 +220,19 @@ const scenarios: readonly Scenario[] = [
     expect: { has: ['Int', 'Pair'], lacks: ['plus', 'Red', 'let'] },
   },
   {
+    id: 'SD-03c',
+    place: 'declaredName',
+    title: "Variant field name: a variant's parameters declare no associated type",
+    src: [
+      'enum E { A(‸) }',
+      'enum E { A(x: Int, ‸) }',
+      'enum E { A(...‸) }',
+      'enum E:\n  A(\n    ‸\n  )',
+    ],
+    where: 'top',
+    expect: { none: true },
+  },
+  {
     id: 'SD-04',
     place: 'declaredName',
     title: 'Declaring a name after struct, enum, trait, type',

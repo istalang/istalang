@@ -11,16 +11,22 @@
  * - A method's first parameter may be the receiver, `self`: a top-level or a trait's function,
  *   never a static or a local one (§3.7).
  * - A struct's, an enum's or a trait's member may be an associated type instead, `type Data = T`
- *   (§3.1, §3.10), and a trait's a function.
+ *   (§3.1, §3.10), and a trait's a function; a variant's field, one of its parameters (§3.11), may
+ *   not.
  */
 
 import {
   entityType,
   staticOwnerOf,
 } from '../../../../compiler/checker/types/written/named-types.ts';
-import type { FunctionDeclaration } from '../../../../compiler/syntax/declarations/index.ts';
+import type {
+  DeclaredField,
+  FunctionDeclaration,
+  Variant,
+} from '../../../../compiler/syntax/declarations/index.ts';
 import type { Word } from '../../../../compiler/syntax/tokens/grammar-words.ts';
 import type { SyntaxNode } from '../../../../compiler/syntax/tree/index.ts';
+import type { FieldDeclaration } from '../../../../compiler/syntax/types/index.ts';
 import { receiverParameter } from '../../../../foundation/language/well-known/index.ts';
 import type { Candidate } from '../candidate.ts';
 import type { Cursor } from '../cursor.ts';
@@ -46,11 +52,8 @@ export function offerDeclaredName(
       return followsSendable(cursor) ? wordCandidates(['struct']) : [];
     case 'DeclaredField':
     case 'Variant':
-      return declaring.name === name ? wordCandidates(['type']) : [];
     case 'FieldDeclaration':
-      return declaring.name === name && holder?.kind === 'TraitDeclaration'
-        ? wordCandidates(['type', 'fn'])
-        : [];
+      return declaring.name === name ? wordCandidates(memberWords(declaring, holder)) : [];
     case 'Parameter':
       return holder?.kind === 'FunctionDeclaration' &&
         holder.parameters[0] === declaring &&
@@ -92,6 +95,20 @@ function mayTakeSelf(declaration: FunctionDeclaration, holder: SyntaxNode | unde
     declaration.owner === undefined &&
     (holder?.kind === 'Module' || holder?.kind === 'TraitDeclaration')
   );
+}
+
+/**
+ * What may stand first instead of a member's name in `holder`'s list: a struct's or an enum's
+ * associated type, and a trait's function too; nothing in a variant's parameters or a struct type.
+ */
+function memberWords(
+  member: DeclaredField | Variant | FieldDeclaration,
+  holder: SyntaxNode | undefined,
+): readonly Word[] {
+  if (member.kind === 'FieldDeclaration') {
+    return holder?.kind === 'TraitDeclaration' ? ['type', 'fn'] : [];
+  }
+  return holder?.kind === 'Variant' ? [] : ['type'];
 }
 
 const externWords: readonly Word[] = ['fn', 'struct', 'sendable'];
