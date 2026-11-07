@@ -239,6 +239,27 @@ describe('the canonical style', () => {
     );
   });
 
+  it("prints a call pattern's arguments as a call's: on its line when they fit, else one per line", () => {
+    const matching = (pattern: string) =>
+      lines('fn f(n: Node) -> Int:', '  match n:', `    case ${pattern}: 1`);
+    expect(formatText(matching('Group( title ,open: true,...kids )'))).toBe(
+      matching('Group(title, open: true, ...kids)'),
+    );
+    expect(formatText(matching('Rejected("legal",...)'))).toBe(matching('Rejected("legal", ...)'));
+    const long = `"${'t'.repeat(80)}"`;
+    expect(formatText(matching(`Group(${long}, ...)`))).toBe(
+      lines(
+        'fn f(n: Node) -> Int:',
+        '  match n:',
+        '    case Group(',
+        `      ${long}`,
+        '      ...',
+        '    ):',
+        '      1',
+      ),
+    );
+  });
+
   it('keeps one blank line where the source had any between items', () => {
     expect(formatText(lines('const a = 1', '', '', '', 'const b = 2', 'const c = 3'))).toBe(
       lines('const a = 1', '', 'const b = 2', 'const c = 3'),

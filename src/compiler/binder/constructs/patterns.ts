@@ -78,6 +78,24 @@ const patternHandlers: Handlers<LocalBinder, Pattern, [Binding], void> = {
       defineRest(binder, node.rest, binding);
     }
   },
+  // Which field each argument takes is the checker's to bind, as for a call's arguments.
+  VariantCallPattern: (binder, node, binding) => {
+    binder.constructedType(node.callee, binding.scope);
+    for (const argument of node.arguments) {
+      switch (argument.kind) {
+        case 'RestPattern':
+          defineRest(binder, argument, binding);
+          break;
+        case 'NamedPatternArgument':
+          walk(binder, argument.pattern, binding);
+          break;
+        case 'OtherFieldsPattern':
+          break;
+        default:
+          walk(binder, argument, binding);
+      }
+    }
+  },
 };
 
 /** `...name` binds `name`; `..._` nothing. */

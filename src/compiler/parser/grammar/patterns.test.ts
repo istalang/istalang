@@ -1,6 +1,6 @@
 /**
- * Pattern grammar (§3.11): every pattern form, every field test, `as` on a field and on a whole
- * pattern, and one diagnostic per malformed pattern.
+ * Pattern grammar (§3.11): every pattern form, every field test, a call pattern's arguments, `as`
+ * on a field and on a whole pattern, and one diagnostic per malformed pattern.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -68,6 +68,47 @@ describe('struct patterns', () => {
     ['Ok{}', `(StructPattern ${named('Ok')} [] _)`],
   ])('parses %j', (text, tree) => {
     expect(dumpClean('pattern', text)).toBe(tree);
+  });
+});
+
+describe('call patterns (§3.11)', () => {
+  const v = '(NamePattern [v] [])';
+
+  it.each([
+    ['Ok(v)', `(VariantCallPattern ${named('Ok')} [${v}])`],
+    ['Expired()', `(VariantCallPattern ${named('Expired')} [])`],
+    [
+      'Rejected(by: "legal")',
+      `(VariantCallPattern ${named('Rejected')} [(NamedPatternArgument by (LiteralPattern "legal"))])`,
+    ],
+    [
+      'Group(title, ...)',
+      `(VariantCallPattern ${named('Group')} [(NamePattern [title] []) (OtherFieldsPattern)])`,
+    ],
+    ['Group(v, ...kids)', `(VariantCallPattern ${named('Group')} [${v} (RestPattern kids)])`],
+    [
+      'Node.Group(_, ..._)',
+      '(VariantCallPattern (NamedType [Node Group] []) [(WildcardPattern) (RestPattern (WildcardPattern))])',
+    ],
+    [
+      'Ok(Some(v)) as o',
+      `(AsPattern (VariantCallPattern ${named('Ok')} [(VariantCallPattern ${named('Some')} [${v}])]) o)`,
+    ],
+    ['Box<Int>(v)', `(VariantCallPattern (NamedType [Box] [${named('Int')}]) [${v}])`],
+    [
+      'Group(\n  v,\n  ...\n)',
+      `(VariantCallPattern ${named('Group')} [${v} (OtherFieldsPattern)])`,
+    ],
+  ])('parses %j', (text, tree) => {
+    expect(dumpClean('pattern', text)).toBe(tree);
+  });
+
+  it.each([
+    ['Group(v, ...a, ...b)', parserDiagnostics.secondRest.code, '...b'],
+    ['Group(..., v)', parserDiagnostics.otherFieldsLast.code, '...'],
+    ['Ok(v', unclosedBracket.code, '('],
+  ])('reports %j once', (text, code, spanText) => {
+    expect(reported('pattern', text)).toEqual(reportedOnce(code, spanText));
   });
 });
 

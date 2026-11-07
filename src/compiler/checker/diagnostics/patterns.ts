@@ -120,6 +120,30 @@ export const patternTemplates = {
     message: () =>
       "A pattern takes a value apart, while '&' passes a place: a parameter taking a reference is a name (§3.3, §3.7).",
   },
+  notVariantCalled: {
+    code: 5426,
+    message: (name: string) =>
+      `'${name}' isn't a variant: only a variant is taken apart as a call is written; take a struct apart in braces (§3.11).`,
+  },
+  callPatternArity: {
+    code: 5427,
+    message: (variant: string, maximum: number, found: number) =>
+      `'${variant}' has ${maximum} field${maximum === 1 ? '' : 's'} to match by position, found ${found} (§3.11).`,
+  },
+  callPatternMissing: {
+    code: 5428,
+    message: (variant: string, field: string) =>
+      `This pattern gives no '${field}' of '${variant}': give it, or end the pattern with '...' to leave the fields it doesn't give (§3.11).`,
+  },
+  callPatternTwice: {
+    code: 5429,
+    message: (field: string) => `This pattern gives the field '${field}' twice (§3.11).`,
+  },
+  callPatternSpread: {
+    code: 5430,
+    message: (variant: string) =>
+      `'${variant}' has no rest field for a spread to take; a lone '...' leaves the fields the pattern doesn't give (§3.11).`,
+  },
   insideOptional: {
     code: 5409,
     message: (found: string, operator: string) =>

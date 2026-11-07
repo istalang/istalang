@@ -42,6 +42,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - compute precedence levels for operator parsing and printing → `tighterLevel`, `rightOperandLevel`, `bindingPower` (`src/compiler/syntax/expressions/operators.ts`)
 - strip outer parentheses from an `Expression` → `unparenthesized` (`src/compiler/syntax/expressions/readings.ts`)
 - strip outer parentheses from a `Pattern` → `unparenthesizedPattern` (`src/compiler/syntax/patterns.ts`)
+- the name a pattern names a type or variant by, with its type arguments (a name pattern, or a struct or call pattern's head) → `patternHead` (`src/compiler/syntax/patterns.ts`); a call pattern keeps its arguments as written (`VariantCallPattern`: patterns, `NamedPatternArgument`, a spread `RestPattern`, a last `OtherFieldsPattern`), and the checker binds them to the fields as a call's arguments (`takeVariantCall`, `src/compiler/checker/constructs/patterns/walk/kinds/variant-calls.ts`, through `bindArguments`)
 - strip outer parentheses from a `TypeNode` before asking its kind → `unparenthesizedType` (`src/compiler/syntax/types/index.ts`)
 - check whether a node writes a type, a function type's rest included, never by a list of kinds of your own → `isWrittenType` (`src/compiler/syntax/types/index.ts`)
 - read a `QualifiedName` from an `Identifier` or non-optional `MemberAccess` chain → `qualifiedPath` (`src/compiler/syntax/expressions/readings.ts`)

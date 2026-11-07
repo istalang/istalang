@@ -25,6 +25,7 @@ import {
   type PatternPart,
   patternHead,
   type StructPattern,
+  type VariantCallPattern,
 } from '../../../../syntax/patterns.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
 import { spanAcross } from '../../../../syntax/tree/positions.ts';
@@ -101,15 +102,15 @@ function namesOtherType(scope: PatternScope, node: Pattern | PatternPart, type: 
 
 /**
  * Whether `node`, against a part of the `any` type `type`, names a type to downcast to: a struct
- * pattern, or a name not naming `type` itself.
+ * or call pattern, or a name not naming `type` itself.
  */
 function isDowncasting(
   scope: PatternScope,
   node: Pattern | PatternPart,
   type: AnyType,
-): node is StructPattern | NamePattern {
+): node is StructPattern | VariantCallPattern | NamePattern {
   if (node.kind !== 'NamePattern') {
-    return node.kind === 'StructPattern';
+    return node.kind === 'StructPattern' || node.kind === 'VariantCallPattern';
   }
   const entity = scope.entityOf(lastName(node.path));
   return entity === undefined || !namesOwnType(scope, entity, type);
@@ -121,7 +122,7 @@ function isDowncasting(
  */
 function downcastSelection(
   tests: PatternTests,
-  node: StructPattern | NamePattern,
+  node: StructPattern | VariantCallPattern | NamePattern,
   part: ValuePart & { readonly type: AnyType },
 ): Selection | 'refused' {
   const downcast = tests.downcast(node, part);

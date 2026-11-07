@@ -140,6 +140,7 @@ export function selectsMember(
     case 'TuplePattern':
     case 'ArrayPattern':
     case 'StructPattern':
+    case 'VariantCallPattern':
       return true;
     case 'NamePattern': {
       const name = lastName(node.path);
@@ -221,6 +222,8 @@ function telling(node: Pattern | PatternPart, texts: readonly string[]): string 
       return node.type === undefined
         ? "name the member through its alias, as in 'case Point as p'"
         : `give its type arguments, as in 'case ${first}{…}'`;
+    case 'VariantCallPattern':
+      return `give its type arguments, as in 'case ${first}(…)'`;
     default:
       return `name the one it takes apart, as in 'case ${first} as x'`;
   }
@@ -246,6 +249,8 @@ function candidates(
       return kindMembers(scope, { kind: 'array' }, members);
     case 'NamePattern':
       return namedMembers(scope, node, union);
+    case 'VariantCallPattern':
+      return namedMembers(scope, node.callee, union);
     case 'StructPattern': {
       if (node.type !== undefined) {
         return namedMembers(scope, node.type, union);

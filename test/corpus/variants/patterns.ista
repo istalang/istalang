@@ -1,0 +1,86 @@
+# outcome: "approved|legal|ops: late|x|t|a +2|u 0|2 Empty|t: 3|2|oops|s|1|yes|no|1 2"
+# A call pattern takes a variant apart as a call builds it (§3.11): its arguments bind to the
+# fields by position, then by name, a field a call may leave out matching anything, and a last
+# `...` leaving the others. A spread takes the rest field whole; arguments past the fixed fields
+# match its items as an array pattern's do. Call patterns nest, select a union's member, bind the
+# enum with `as`, cover their variants for exhaustiveness and stand in `is`, and a variant without
+# fields matches called with no arguments, as it is built.
+
+enum Verdict:
+  Approved
+  Rejected(by: String, reason = "no reason given")
+
+enum Node:
+  Text(value: String)
+  Group(title: String, open: Bool = false, ...children: Array<Node>)
+  Empty
+
+fn describe(verdict: Verdict) -> String:
+  match verdict:
+    case Approved(): "approved"
+    case Rejected("legal", ...): "legal"
+    case Verdict.Rejected(by: who, reason: r): `${who}: ${r}`
+
+fn titleOf(n: Node) -> String:
+  match n:
+    case Text(value): value
+    case Group(title, ...): title
+    case Empty: "Empty"
+
+fn kids(n: Node) -> String:
+  match n:
+    case Group(_, _, first, ...others): `${titleOf(first)} +${others.length()}`
+    case Group(t, ...all): `${t} ${all.length()}`
+    case _: "-"
+
+fn named(n: Node) -> String:
+  match n:
+    case Group(open: true, children: [_, second, ..._], ...): `2 ${titleOf(second)}`
+    case Group(title, children: rest): `${title}: ${rest.length()}`
+    case _: "-"
+
+fn total(r: Result<Node>) -> Int:
+  match r:
+    case Ok(Group(_, _, Text("x"), ...rest)) | Ok(Group(_, _, _, _, ...rest)): rest.length()
+    case Ok(_): 1
+    case Err(_): 0
+
+fn shown(x: Result<String> | Int) -> String:
+  match x:
+    case Ok(text): text
+    case Err(Error{message}): message
+    case Int: "n"
+
+fn covered(verdict: Verdict) -> String:
+  match verdict:
+    case Approved: "a"
+    case Rejected(by, ...) as whole: if whole == Rejected(by): "s" else: "r"
+
+enum Pair:
+  Both(first: Int, second: Int)
+
+fn swapped(p: Pair) -> String:
+  match p:
+    case Both(a, b): `${b} ${a}`
+
+async fn main() -> Future<String>:
+  const g = Node.Group("t", true, Node.Text("a"), Node.Empty, Node.Text("b"))
+  const flat = Node.Group(title: "t", children: [Node.Text("x"), Node.Empty, Node.Empty])
+  [
+    describe(Approved),
+    describe(Rejected("legal")),
+    describe(Rejected("ops", "late")),
+    titleOf(Text("x")),
+    titleOf(g),
+    kids(g),
+    kids(Node.Group("u")),
+    named(g),
+    named(flat),
+    String(total(Ok(flat))),
+    shown(Err(Error{message: "oops", code: "E"})),
+    covered(Rejected("legal")),
+    if Verdict.Rejected("x") is Rejected(_, reason: "no reason given"): "1" else: "0",
+    if g is Group(open: true, ...): "yes" else: "no",
+    if flat is Group(_, true, ...): "yes" else: "no",
+    swapped(Both(2, 1)),
+  ].join("|")

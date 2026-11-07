@@ -4,7 +4,8 @@
  * targets, a `match` case's and an `is`'s.
  *
  * - The walk owns the structure every use shares: names and `_`, `as`, tuples, struct field items,
- *   arrays, or-patterns, and the parts each reaches (parts.ts). A tuple or struct is taken apart
+ *   arrays, call patterns' arguments (walk/kinds/variant-calls.ts), or-patterns, and the parts each
+ *   reaches (parts.ts). A tuple or struct is taken apart
  *   as an assignment's target is (taking.ts). What could fail to match (a literal, a comparison,
  *   a referring name, a variant, an array's length, a range) goes to `PatternTests`, which a
  *   `match` case or `is` provides. A target has none, so each such construct is refused there: a
@@ -51,6 +52,7 @@ import { anyShape, nothingShape, type Shape } from '../exhaustiveness/exhaustive
 import { partSelected, sameNames } from './kinds/alternatives.ts';
 import { takeArray } from './kinds/arrays.ts';
 import { isStructNotKnown, restBinding, takeFieldsByName } from './kinds/struct-fields.ts';
+import { takeVariantCall } from './kinds/variant-calls.ts';
 import { type PatternScope, type ValuePart, variantFieldStep } from './parts.ts';
 import type { Leaf, PatternTests, Selection } from './pattern-tests.ts';
 import { literalPart, refuseTypeArguments, selectionOf } from './selections.ts';
@@ -175,6 +177,12 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
   TuplePattern: (walk, node, part) =>
     takeApart(walk, { kind: 'tuple', elements: node.elements, span: node.span }, part),
   StructPattern: (walk, node, part) => takeStruct(walk, node, part),
+  VariantCallPattern: (walk, node, part) =>
+    walk.tests === undefined
+      ? refused(walk, node, part)
+      : takeVariantCall(walk, walk.tests, node, part),
+  NamedPatternArgument: (walk, item, part) => walk.take(item.pattern, part),
+  OtherFieldsPattern: () => anyShape,
   BindFieldPattern: (walk, item, part) => {
     walk.bindings.push({ name: item.alias ?? item.field, ...part });
     return anyShape;

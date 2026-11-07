@@ -67,8 +67,8 @@ async fn purchase(req: PurchaseRequest) -> Future<String>:
     if not verdict.ok:
         return "rejected by " + verdict.role
     match chargeCard(req.id, req.amount):
-        case Ok{value as receipt}: "paid: " + receipt
-        case Err{error}: "failed: " + error.message
+        case Ok(receipt): "paid: " + receipt
+        case Err(error): "failed: " + error.message
 ```
 
 A file holds only declarations: imports, `struct`, `shared struct`, `enum`, `trait`, `type`, `fn`, `extern`, and compile-time `const` (no top-level statements or mutable globals).
@@ -233,15 +233,15 @@ const evens = [for x in xs if x % 2 == 0: x * 2]          # comprehension
 const t = { const base = price * qty; base + tax(base) }  # block expression
 
 const text = match decision:          # must cover every variant, or end with case _
-    case Approved{by}: "approved by " + by
+    case Approved(by): "approved by " + by    # a call pattern: fields as a call gives them
     case Rejected{reason as why} if why != "": "rejected: " + why
-    case Rejected{by}: "rejected by " + by
+    case Rejected(by, ...): "rejected by " + by   # ... leaves the other fields
     case Expired: "expired"
 
-if r is Ok{value as y} and y > 0: use(y)                  # a pattern outside match
+if r is Ok(y) and y > 0: use(y)                           # a pattern outside match
 ```
 
-Patterns: `field`, `field as name`, `field == expr`, `field is Pattern`, `...rest` (on structs and arrays: `const struct{title, ...rest} = form`, `case [first, ...rest]:`), alternatives `A | B`, int ranges `0..=59`, and type patterns `case Int as n:` (on unions and `any` values).
+Patterns: a variant's fields as a call gives them, `case Rejected("legal", reason)`, `case Rejected(by: "legal", ...)` (`...` leaves the others, `...children` takes a rest field); in braces `field`, `field as name`, `field == expr`, `field is Pattern`, `...rest` (on structs and arrays: `const struct{title, ...rest} = form`, `case [first, ...rest]:`); alternatives `A | B`, int ranges `0..=59`, and type patterns `case Int as n:` (on unions and `any` values).
 
 ### 2.7 Errors (§3.12)
 
@@ -350,7 +350,7 @@ Only `*.test.ista` files may import `'testing'` (`Suite`, `Test`, `test`, `group
 - **`,` separates every list's items; `;` only statements.** `{ sku: String, qty: Int }`, `enum Color { Red, Green, Blue }`, `trait Shape { fn area(self: Self) -> Float, type Measure }`; `;` between items, or `,` between statements, is a compile error (`a, b = (b, a)` is one tuple assignment).
 - **A line break separates a broken list's items** where an item can end and the next line can start one, so `[` / `(1, "a")` / `(2, "b")` / `]` on four lines is two tuples, not a call. A line starting with a binary operator, `.`, `?.`, `->`, or `-`/`*` followed by a space continues the item; `-1`, `*x` and `&x` glued to their operand start one. `,` at a line's end or start still separates.
 - **A parameter pattern can't fail and has no name.** `fn f(Ok{value})` is an error (use `match`). A destructured parameter is passed only by position, unless named with `as` (`fn length(Point{x, y} as self)` is a method). No patterns on `&` or rest parameters, externs, trait requirements, function types, or the paren-less `fn x: …`.
-- **A variant with fields is called, not given a field by position in braces:** `Ok(v)`, `Err(e)`, `Rejected(by: "legal")`, its arguments binding to the fields as to a function's parameters (defaults and a rest included). `Ok{42}`, `Ok{(v)}` and `Ok{v}` are errors naming `Ok(…)`; braces name every field, `Ok{value: v}`. A struct with one field still takes its value positionally: `UserId{"u-1"}`, `UserId{(id)}`. Patterns never take positional fields: `case Ok{value as v}`. Named without a call, a variant with fields is a function value: `vs.map(Result.Ok)`, or bare `Ok` where the expected function type's result gives the enum (`xs.map(Ok)` is an error naming `Result.Ok`).
+- **A variant with fields is called, not given a field by position in braces:** `Ok(v)`, `Err(e)`, `Rejected(by: "legal")`, its arguments binding to the fields as to a function's parameters (defaults and a rest included). `Ok{42}`, `Ok{(v)}` and `Ok{v}` are errors naming `Ok(…)`; braces name every field, `Ok{value: v}`. A struct with one field still takes its value positionally: `UserId{"u-1"}`, `UserId{(id)}`. A pattern takes a variant's fields as a call gives them, `case Ok(v)`, `case Rejected(by: "legal", ...)`, a field without a default given or left with a last `...`; braces take them by name only, `case Ok{value as v}`. Named without a call, a variant with fields is a function value: `vs.map(Result.Ok)`, or bare `Ok` where the expected function type's result gives the enum (`xs.map(Ok)` is an error naming `Result.Ok`).
 - **Struct spread does not add new fields (unlike TS `{ ...ctx, search }`).** `Req{...r, a: 2}` and `struct{...r, a: 2}` only override existing fields of `r`'s own type. To build a wider shape with an extra field, use a struct comprehension: `struct{search, for k, v in ...ctx: [k]: v}`.
 - **Template interpolation of optionals:** `${x}` and `String(x)` require `x is Stringable`. `None` is not `Stringable`, so `x: T?` fails to interpolate directly; write `${x ?? ""}` or convert through a helper taking `T?`.
 - **`while true:` has type `Unit`, not `Never`.** A value-returning function whose body ends in a `while true:` loop (returning inside the loop) must follow the loop with `panic("unreachable")`.

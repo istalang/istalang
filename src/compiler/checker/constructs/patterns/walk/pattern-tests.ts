@@ -14,6 +14,7 @@ import type {
   RangePattern,
   RestPattern,
   StructPattern,
+  VariantCallPattern,
 } from '../../../../syntax/patterns.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
 import { type ArraySite, neverTest, type PatternTest } from '../../../surface/checked-pattern.ts';
@@ -47,7 +48,7 @@ export interface ArrayPart {
   readonly items: Type;
 }
 
-/** The variant a struct pattern names: the test for it, its key among shapes, and its fields. */
+/** The variant a struct or call pattern names: the test for it, its key among shapes, its fields. */
 export interface VariantPart {
   readonly test: PatternTest;
   readonly key: string;
@@ -87,7 +88,7 @@ export interface PatternTests {
   readonly comparison: (item: CompareFieldPattern, part: ValuePart) => Leaf;
   /** A name that refers: a variant, a type, or a constant. */
   readonly reference: (node: NamePattern, part: ValuePart) => Leaf;
-  /** The variant `naming` names at `callee`, a struct pattern's; undefined after a report. */
+  /** The variant `naming` names at `callee`, a struct or call pattern's; undefined after a report. */
   readonly variant: (
     callee: NamedType,
     naming: VariantNaming,
@@ -102,7 +103,7 @@ export interface PatternTests {
    * never inside it; undefined for none.
    */
   readonly downcast: (
-    node: StructPattern | NamePattern,
+    node: StructPattern | VariantCallPattern | NamePattern,
     part: ValuePart & { readonly type: AnyType },
   ) => Downcast | 'ruledOut' | undefined;
 }

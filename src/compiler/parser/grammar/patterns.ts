@@ -31,12 +31,14 @@ import {
 import type {
   LiteralPattern,
   Pattern,
+  PatternArgument,
   RestPattern,
   StructPattern,
+  VariantCallPattern,
   WildcardPattern,
 } from '../../syntax/patterns.ts';
 import type { PatternWord } from '../../syntax/tokens/grammar-words.ts';
-import type { TypeNode } from '../../syntax/types/index.ts';
+import type { NamedType, TypeNode } from '../../syntax/types/index.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import { parseDelimited, parseGroup } from '../cursor/recovery.ts';
 import { parserDiagnostics } from '../diagnostics.ts';
@@ -238,11 +240,67 @@ function parseNamedPattern(parser: Parser, inner: NestedPattern): Pattern {
   const path = parseQualifiedName(parser);
   const start = parser.startOf(path[0]);
   const typeArguments = parsePatternTypeArguments(parser);
+  if (atPostfix(parser, '(')) {
+    const callee = namedTypeFrom(parser, path, typeArguments);
+    return parseVariantCallPattern(parser, inner, callee);
+  }
   if (!atPostfix(parser, '{')) {
     return { kind: 'NamePattern', span: parser.spanFrom(start), path, typeArguments };
   }
   const type = namedTypeFrom(parser, path, typeArguments);
   return parseStructPattern(parser, inner, { type, isShort: false }, start);
+}
+
+/**
+ * `Ok(v)`, `Rejected(by: "legal")`, `Group(title, ...children)`, `Group(title, ...)`, at the `(`
+ * after `callee`: arguments as a call's are written, by position, then by name, a spread taking
+ * the rest field (§3.11). A second spread is reported, as in an array pattern, and so is a `...`
+ * leaving the other fields anywhere but last; each still stands, so its names bind.
+ */
+function parseVariantCallPattern(
+  parser: Parser,
+  inner: NestedPattern,
+  callee: NamedType,
+): VariantCallPattern {
+  const { items } = parseDelimited(parser, '(', () => parsePatternArgument(parser, inner));
+  for (const extra of items.filter((item) => item.kind === 'RestPattern').slice(1)) {
+    parser.report(parserDiagnostics.secondRest(parser.textSpanOf(extra.span)));
+  }
+  const others = items.filter((item) => item.kind === 'OtherFieldsPattern');
+  for (const misplaced of others.filter((item) => item !== items.at(-1))) {
+    parser.report(parserDiagnostics.otherFieldsLast(parser.textSpanOf(misplaced.span)));
+  }
+  return {
+    kind: 'VariantCallPattern',
+    span: parser.spanFrom(parser.startOf(callee)),
+    callee,
+    arguments: items,
+  };
+}
+
+/**
+ * One argument of a call pattern: `name: pattern`, a spread, a lone `...` (one no name follows on
+ * its line), or a pattern.
+ */
+function parsePatternArgument(parser: Parser, inner: NestedPattern): PatternArgument {
+  const { cursor } = parser;
+  if (cursor.at(spreadOpener)) {
+    return cursor.kindAt(1) === 'identifier'
+      ? parseRestPattern(parser)
+      : { kind: 'OtherFieldsPattern', span: parser.anchor(cursor.advance().span) };
+  }
+  if (cursor.at('identifier') && cursor.kindAt(1) === ':') {
+    const name = parser.identifier('a field name');
+    cursor.advance();
+    const pattern = inner(parser);
+    return {
+      kind: 'NamedPatternArgument',
+      span: parser.spanFrom(parser.startOf(name)),
+      name,
+      pattern,
+    };
+  }
+  return inner(parser);
 }
 
 /**

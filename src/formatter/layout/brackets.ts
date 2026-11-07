@@ -54,6 +54,7 @@ export function standingIn(parent: SyntaxNode, child: SyntaxNode): Standing {
     case 'IndentedValue':
       return child === parent.type ? 'outside' : 'lines';
     case 'Call':
+    case 'VariantCallPattern':
       return child === parent.callee ? 'outside' : 'brackets';
     case 'Index':
       return child === parent.index ? 'brackets' : 'outside';

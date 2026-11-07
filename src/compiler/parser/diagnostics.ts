@@ -221,7 +221,13 @@ export const parserDiagnostics = defineDiagnostics('parser', {
   },
   secondRest: {
     code: 2071,
-    message: () => 'An array pattern has one rest at most: which items would each take? (§3.11)',
+    message: () =>
+      'An array or call pattern has one rest at most: which items would each take? (§3.11)',
+  },
+  otherFieldsLast: {
+    code: 2072,
+    message: () =>
+      "A call pattern's '...' is its last argument: it leaves the fields the others don't give (§3.11).",
   },
   emptyTemplateValue: {
     code: 2100,

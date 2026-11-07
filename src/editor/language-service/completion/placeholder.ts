@@ -218,19 +218,20 @@ function roleIn(link: Link<SyntaxNode>): ParsedPlaceKind | undefined {
 }
 
 /**
- * The name a struct or variant literal builds, or a struct pattern tests, which the tree holds as
- * a written type: a value is written there (`Ok‸{(v)}`, `Ok‸:`), or a pattern (`case Ok‸{value}`).
- * A shared struct's literal (`new P‸{…}`) and a struct pattern a declaration destructures with
- * (`const Pair‸{first} = p`) name a type.
+ * The name a struct or variant literal builds, or a struct or call pattern tests, which the tree
+ * holds as a written type: a value is written there (`Ok‸{value: v}`, `Ok‸:`), or a pattern
+ * (`case Ok‸{value}`, `case Ok‸(v)`). A shared struct's literal (`new P‸{…}`) and a struct pattern
+ * a declaration destructures with (`const Pair‸{first} = p`) name a type.
  */
 function builtNameRole({ parsed, node, holder }: Link<SyntaxNode>): ParsedPlaceKind | undefined {
   const literal = literalNaming(holder, node);
   if (literal !== undefined) {
     return buildsShared(literal) ? undefined : 'grammar';
   }
-  return holder?.kind === 'StructPattern' && holder.type === node && isTested(parsed, holder)
-    ? 'pattern'
-    : undefined;
+  const heads =
+    (holder?.kind === 'StructPattern' && holder.type === node) ||
+    (holder?.kind === 'VariantCallPattern' && holder.callee === node);
+  return heads && isTested(parsed, holder) ? 'pattern' : undefined;
 }
 
 /** Whether `pattern` is tested, by a `case` or an `is`, rather than declaring names. */

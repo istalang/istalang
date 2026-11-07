@@ -1,8 +1,9 @@
 /**
  * Array patterns (§3.11): `[first, ...rest, last]` tests its part's length first, then takes each
  * item against the item it names, counted from the start before the rest and from the end after
- * it; the rest is the items between. A target never takes them, since the length can fail
- * (../index.ts), so only a walk with tests comes here.
+ * it; the rest is the items between. A call pattern's arguments past its variant's fixed fields
+ * match the rest field's items the same way (variant-calls.ts). A target never takes them, since
+ * the length can fail (../index.ts), so only a walk with tests comes here.
  */
 
 import type { Pattern, PatternPart } from '../../../../../syntax/patterns.ts';
@@ -14,7 +15,7 @@ import type { ArrayItems, PatternTests } from '../pattern-tests.ts';
 import type { Taking } from '../taking.ts';
 
 /** A walk taking an array's items: each takes its part, and its tests are found. */
-interface ItemTaking extends Taking<Pattern | PatternPart> {
+export interface ItemTaking extends Taking<Pattern | PatternPart> {
   readonly found: PatternTest[];
 }
 

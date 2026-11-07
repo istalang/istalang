@@ -1,0 +1,81 @@
+# error: 5428 at 32:10
+# error: 5427 at 37:25
+# error: 5013 at 42:19
+# error: 5429 at 47:24
+# error: 5109 at 52:10
+# error: 5430 at 57:15
+# error: 2071 at 62:27
+# error: 2072 at 67:16
+# error: 5426 at 72:10
+# error: 5203 at 75:9
+# error: 5428 at 80:10
+# A call pattern binds its arguments as a call binds them (§3.11): a field no default or rest lets
+# a call leave out must be given, or left with a last `...`; arguments past the fields, a name no
+# field has, a field given twice and a spread with no rest field to take it are refused, as is a
+# second spread and a `...` anywhere but last. A bare variant with fields names its call; only a
+# variant is taken apart as a call is written, and a target, which must always match, takes none.
+
+enum Verdict:
+  Approved
+  Rejected(by: String, reason = "no reason given")
+
+enum Node:
+  Text(value: String)
+  Group(title: String, open: Bool = false, ...children: Array<Node>)
+
+struct Point:
+  x: Int
+  y: Int
+
+fn missing(v: Verdict) -> Int:
+  match v:
+    case Rejected(): 1
+    case _: 0
+
+fn tooMany(v: Verdict) -> Int:
+  match v:
+    case Rejected(p, q, r): 2
+    case _: 0
+
+fn unnamed(v: Verdict) -> Int:
+  match v:
+    case Rejected(x: "1"): 3
+    case _: 0
+
+fn twice(v: Verdict) -> Int:
+  match v:
+    case Rejected("a", by: "b"): 4
+    case _: 0
+
+fn bare(v: Verdict) -> Int:
+  match v:
+    case Rejected: 6
+    case _: 0
+
+fn noRest(n: Node) -> Int:
+  match n:
+    case Text(...rest): 1
+    case _: 0
+
+fn twoSpreads(n: Node) -> Int:
+  match n:
+    case Group(t, ...one, ...two): 2
+    case _: 0
+
+fn othersFirst(n: Node) -> Int:
+  match n:
+    case Group(..., t): 3
+    case _: 0
+
+fn structNamed(p: Point) -> Int:
+  match p:
+    case Point(x, y): x + y
+
+fn target(r: Result<Int>) -> Int:
+  const Ok(value) = r
+  value
+
+fn byName(n: Node) -> Int:
+  match n:
+    case Group(open: true): 1
+    case _: 0

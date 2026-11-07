@@ -1,7 +1,8 @@
 /**
  * Patterns (spec §3.11, §3.15), printed as written: a struct pattern's braces hold a comma list
- * like a struct literal's (`Pair{first, second as s}`), which may break as brackets do, and a
- * parameter's `{…}` stays the short form of `struct{…}` it was written as (§3.3).
+ * like a struct literal's (`Pair{first, second as s}`), and a call pattern's parentheses one like a
+ * call's (`Rejected(by: "legal", ...)`), which may break as brackets do; a parameter's `{…}` stays
+ * the short form of `struct{…}` it was written as (§3.3).
  */
 
 import { builders } from 'prettier/doc';
@@ -35,6 +36,16 @@ export const patternPrinters: Printers<PatternKind> = {
       [...node.fields, ...(node.rest === undefined ? [] : [node.rest])],
     ),
   ],
+  VariantCallPattern: (printer, node) => [
+    printer.print(node.callee),
+    bracketed(printer, node, ['(', ')'], node.arguments),
+  ],
+  NamedPatternArgument: (printer, node) => [
+    printer.print(node.name),
+    ': ',
+    printer.print(node.pattern),
+  ],
+  OtherFieldsPattern: () => '...',
   BindFieldPattern: (printer, node) => [
     printer.print(node.field),
     node.alias === undefined ? '' : [' as ', printer.print(node.alias)],

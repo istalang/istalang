@@ -12,7 +12,12 @@ import type {
   SelectCase,
 } from '../../syntax/expressions/index.ts';
 import type { Relation } from '../../syntax/expressions/operators.ts';
-import type { ArrayPattern, CompareFieldPattern, LiteralPattern } from '../../syntax/patterns.ts';
+import type {
+  ArrayPattern,
+  CompareFieldPattern,
+  LiteralPattern,
+  VariantCallPattern,
+} from '../../syntax/patterns.ts';
 import type { For, VariableDeclaration } from '../../syntax/statements/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import type { AnyType, Type } from '../types/type/index.ts';
@@ -69,8 +74,11 @@ export interface FieldStep {
 /** A step a target's part is reached by: a tuple element's position, or a struct step. */
 export type TargetStep = number | StructStep;
 
-/** Where an array's items are matched, which its prelude calls are made at: an array pattern. */
-export type ArraySite = ArrayPattern;
+/**
+ * Where an array's items are matched, which its prelude calls are made at: an array pattern, or a
+ * call pattern whose arguments past its variant's fixed fields match the rest field's (§3.11).
+ */
+export type ArraySite = ArrayPattern | VariantCallPattern;
 
 /** A step an array pattern takes through a prelude call (`PartStep`). */
 export type ArrayStep =

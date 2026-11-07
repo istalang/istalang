@@ -261,7 +261,7 @@ function reference(context: BodyContext, node: NamePattern, part: ValuePart): Le
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
     const chosen = namedVariant(context, node, entity, part);
     if (chosen !== undefined && chosen.fields.length > 0) {
-      context.report(checkerDiagnostics.variantFields(node.span, name.text, `${name.text}{…}`));
+      context.report(checkerDiagnostics.variantFields(node.span, name.text, `${name.text}(…)`));
     }
     return chosen === undefined ? failed : variantLeaf(chosen);
   }

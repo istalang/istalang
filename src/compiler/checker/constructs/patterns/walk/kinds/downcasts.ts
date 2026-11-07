@@ -15,6 +15,7 @@ import {
   type NamePattern,
   patternHead,
   type StructPattern,
+  type VariantCallPattern,
 } from '../../../../../syntax/patterns.ts';
 import { lastName } from '../../../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
@@ -36,7 +37,7 @@ export interface Downcast {
  */
 export function downcastOf(
   context: BodyContext,
-  node: StructPattern | NamePattern,
+  node: StructPattern | VariantCallPattern | NamePattern,
   { type: from, path }: ValuePart & { readonly type: AnyType },
 ): Downcast | 'ruledOut' | undefined {
   const to = namedTypeOf(context, node, from);
@@ -55,7 +56,7 @@ export function downcastOf(
  */
 function namedTypeOf(
   context: BodyContext,
-  node: StructPattern | NamePattern,
+  node: StructPattern | VariantCallPattern | NamePattern,
   from: AnyType,
 ): Type | 'ruledOut' | undefined {
   const path = patternHead(node)?.path;

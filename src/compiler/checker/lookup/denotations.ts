@@ -80,6 +80,7 @@ type NameHolder = Extract<
       | 'BindFieldPattern'
       | 'CompareFieldPattern'
       | 'NestedFieldPattern'
+      | 'NamedPatternArgument'
       | 'NamedArgument'
       | 'Call'
       | 'TemplateLiteral'
@@ -105,6 +106,7 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
     site.name === node.field ? fieldOrShorthand(site, node.alias === undefined) : undefined,
   CompareFieldPattern: (site, node) => (site.name === node.field ? fieldNamed(site) : undefined),
   NestedFieldPattern: (site, node) => (site.name === node.field ? fieldNamed(site) : undefined),
+  NamedPatternArgument: (site, node) => (site.name === node.name ? fieldNamed(site) : undefined),
   NamedArgument: (site, node) =>
     site.name === node.name ? parameterNamed(site, site.holders[1]) : undefined,
   Call: (site, node) => (site.name === node.callee ? calleeDenotations(site, node) : undefined),

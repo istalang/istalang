@@ -5,7 +5,9 @@
  * A bare name (`Expired`, `Decision.Expired`, or `a` inside `(a, _)`) is a NamePattern whatever it
  * turns out to be. Whether it names a variant, a constant or a new binding is resolved by name
  * lookup, not by syntax. Inside a struct pattern's braces each item tests one field, by name
- * only: the spec has no positional field patterns.
+ * only. A name followed by `(` on its line is a call pattern, which takes a variant's fields as a
+ * call gives them, by position or by name: which field each argument takes is the checker's to
+ * bind, as for a call's arguments, so the node keeps them as written.
  */
 
 import { type Handlers, handlerOf } from '../../foundation/structures/kind-table.ts';
@@ -59,6 +61,27 @@ export interface StructPattern extends NodeOf<'StructPattern'> {
   readonly rest: RestPattern | undefined;
 }
 
+/**
+ * `Ok(v)`, `Rejected(by: "legal")`, `Group(title, ...children)`, `Group(title, ...)`: a variant
+ * taken apart as a call builds it (§3.11), each argument matching the field it binds to.
+ */
+export interface VariantCallPattern extends NodeOf<'VariantCallPattern'> {
+  readonly callee: NamedType;
+  readonly arguments: readonly PatternArgument[];
+}
+
+/** What a call pattern's parentheses hold, in the order written. */
+export type PatternArgument = Pattern | RestPattern | NamedPatternArgument | OtherFieldsPattern;
+
+/** `by: "legal"` in a call pattern: the field of its name, matched against `pattern`. */
+interface NamedPatternArgument extends NodeOf<'NamedPatternArgument'> {
+  readonly name: Identifier;
+  readonly pattern: Pattern;
+}
+
+/** `...`, last in a call pattern: the fields no argument gives, matching anything (§3.11). */
+export type OtherFieldsPattern = NodeOf<'OtherFieldsPattern'>;
+
 /** `by` binds the field to a variable of the same name; `reason as why` renames it. */
 export interface BindFieldPattern extends NodeOf<'BindFieldPattern'> {
   readonly field: Identifier;
@@ -90,7 +113,8 @@ export interface ArrayPattern extends NodeOf<'ArrayPattern'> {
 
 /**
  * `...rest`: in an array pattern, the elements between those matched before and after it; last in
- * a struct pattern, a struct of the fields the pattern doesn't name (§3.11).
+ * a struct pattern, a struct of the fields the pattern doesn't name; in a call pattern, a spread
+ * into the variant's rest field, as a call's is (§3.11).
  */
 export interface RestPattern extends NodeOf<'RestPattern'> {
   readonly target: Identifier | WildcardPattern;
@@ -116,6 +140,7 @@ export type Pattern =
   | TuplePattern
   | ParenthesizedPattern
   | StructPattern
+  | VariantCallPattern
   | AsPattern
   | OrPattern
   | ArrayPattern
@@ -124,7 +149,13 @@ export type Pattern =
   | Invalid;
 
 /** Nodes that occur only as parts of a pattern. */
-export type PatternPart = BindFieldPattern | CompareFieldPattern | NestedFieldPattern | RestPattern;
+export type PatternPart =
+  | BindFieldPattern
+  | CompareFieldPattern
+  | NestedFieldPattern
+  | RestPattern
+  | NamedPatternArgument
+  | OtherFieldsPattern;
 
 /** A part of a declaration's or loop's target that takes a value: a name, or `_`. */
 type TargetLeaf = Identifier | WildcardPattern;
@@ -139,6 +170,9 @@ const targetLeafHandlers: Handlers<undefined, Pattern | PatternPart, [], readonl
   TuplePattern: (_, node) => node.elements.flatMap(targetLeaves),
   StructPattern: (_, node) =>
     [...node.fields, ...(node.rest === undefined ? [] : [node.rest])].flatMap(targetLeaves),
+  VariantCallPattern: (_, node) => node.arguments.flatMap(targetLeaves),
+  NamedPatternArgument: (_, node) => targetLeaves(node.pattern),
+  OtherFieldsPattern: () => [],
   // Every alternative binds the first's names (§3.11).
   OrPattern: (_, node) =>
     node.alternatives[0] === undefined ? [] : targetLeaves(node.alternatives[0]),
@@ -159,7 +193,7 @@ function targetLeaves(node: Pattern | PatternPart | Invalid): readonly TargetLea
 
 /**
  * The name `node` names a type or variant by, with any type arguments: a name pattern itself, or
- * a struct pattern's head; undefined for any other.
+ * a struct or call pattern's head; undefined for any other.
  */
 export function patternHead(node: Pattern | PatternPart): NamePattern | NamedType | undefined {
   switch (node.kind) {
@@ -167,6 +201,8 @@ export function patternHead(node: Pattern | PatternPart): NamePattern | NamedTyp
       return node;
     case 'StructPattern':
       return node.type;
+    case 'VariantCallPattern':
+      return node.callee;
     default:
       return undefined;
   }

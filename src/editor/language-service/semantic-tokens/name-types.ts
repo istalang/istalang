@@ -87,6 +87,7 @@ const rolesOf: RolesOf = {
   BindFieldPattern: (node) => [[node.field, 'property']],
   CompareFieldPattern: (node) => [[node.field, 'property']],
   NestedFieldPattern: (node) => [[node.field, 'property']],
+  NamedPatternArgument: (node) => [[node.name, 'property']],
   MemberAccess: (node) => [[node.member, 'property']],
   Call: (node) => calledName(node.callee),
   TemplateLiteral: (node) => (node.tag === undefined ? [] : calledName(node.tag)),
