@@ -32,7 +32,7 @@
 import { staticName } from '../../../../foundation/language/static-names.ts';
 import { conversionFunction } from '../../../../foundation/language/well-known/implicit-calls.ts';
 import type { Entity } from '../../../binder/entities.ts';
-import { isMethod } from '../../../syntax/declarations/index.ts';
+import { isMethod } from '../../../syntax/declarations/methods.ts';
 import { misplacedArgument } from '../../../syntax/expressions/arguments.ts';
 import type {
   Call,

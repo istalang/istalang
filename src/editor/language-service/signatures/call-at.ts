@@ -13,7 +13,8 @@
 
 import type { SignatureParameter } from '../../../compiler/checker/check.ts';
 import type { JoinedBody } from '../../../compiler/checker/surface/denotation.ts';
-import { type FunctionDeclaration, isMethod } from '../../../compiler/syntax/declarations/index.ts';
+import type { FunctionDeclaration } from '../../../compiler/syntax/declarations/index.ts';
+import { isMethod } from '../../../compiler/syntax/declarations/methods.ts';
 import type { Call } from '../../../compiler/syntax/expressions/index.ts';
 import type { Token } from '../../../compiler/syntax/tokens/index.ts';
 import { nodesAt, type SyntaxTree } from '../../../compiler/syntax/tree/index.ts';

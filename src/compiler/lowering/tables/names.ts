@@ -19,7 +19,6 @@ import {
   keyTypeText,
 } from '../../../definition/extern-key.ts';
 import { compareOrdered } from '../../../foundation/language/order.ts';
-import { staticName } from '../../../foundation/language/static-names.ts';
 import { qualifiedName, wellKnown } from '../../../foundation/language/well-known/index.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
@@ -40,7 +39,7 @@ import type {
 import { parameterText, typeText } from '../../checker/types/type/type-text.ts';
 import { optionalInner } from '../../checker/types/unions/unions.ts';
 import { isStdModule, type ModuleId, programModule } from '../../program/program.ts';
-import { isFieldsFunction } from '../../syntax/declarations/field-defaults.ts';
+import { declaredFunctionName } from '../../syntax/declarations/field-defaults.ts';
 import type {
   ExternConstantDeclaration,
   FunctionDeclaration,
@@ -54,21 +53,6 @@ import type { VariableDeclaration } from '../../syntax/statements/index.ts';
 /** The canonical name a module's declarations are qualified with. */
 function moduleName(checker: Checker, module: ModuleId): string {
   return programModule(checker.program, module).name;
-}
-
-/**
- * A function's name as declared, with its owner type for a static function (`Slot.create`); a
- * fields function's is its struct's or variant's, the variant's with its enum (`Shape.Circle`).
- */
-function declaredName(declaration: FunctionDeclaration): string {
-  if (isFieldsFunction(declaration)) {
-    const { fieldsOwner } = declaration;
-    return 'struct' in fieldsOwner
-      ? fieldsOwner.struct.name.text
-      : staticName(fieldsOwner.enumeration.name.text, fieldsOwner.variant.name.text);
-  }
-  const { owner, name } = declaration;
-  return owner === undefined ? name.text : staticName(owner.text, name.text);
 }
 
 /** A declaration lowering names: a function, a type, a top-level constant or an extern one. */
@@ -94,7 +78,7 @@ export function qualifiedNameOf(checker: Checker, declaration: NamedDeclaration)
 function nameOf(declaration: NamedDeclaration): string {
   switch (declaration.kind) {
     case 'FunctionDeclaration':
-      return declaredName(declaration);
+      return declaredFunctionName(declaration);
     case 'VariableDeclaration':
       return declaration.targets.flatMap(targetNames)[0]?.text ?? '_';
     default:

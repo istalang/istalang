@@ -8,7 +8,7 @@
  */
 
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
-import { isMethod } from '../../../syntax/declarations/index.ts';
+import { isMethod } from '../../../syntax/declarations/methods.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { searchSite } from '../../contexts/use-site.ts';
 import type { Inference } from '../../types/inference/infer.ts';

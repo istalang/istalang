@@ -18,7 +18,6 @@
  * as an Invalid node, so a tree never holds a top-level statement.
  */
 
-import { receiverParameter } from '../../../foundation/language/well-known/index.ts';
 import type { Expression, Parameter } from '../expressions/index.ts';
 import type { StringLiteral } from '../expressions/literals/literals.ts';
 import type { Annotatable } from '../items.ts';
@@ -85,12 +84,6 @@ export function nestedFunctionSpan(
   return body === undefined ? declaration.span : spanAcross(declaration.span, body.span);
 }
 
-/** Whether `declaration` is a method: its first parameter is named `self` (§3.7). */
-export function isMethod(declaration: FunctionDeclaration): boolean {
-  const [first] = declaration.parameters;
-  return first?.kind === 'Parameter' && first.name?.text === receiverParameter;
-}
-
 /**
  * `type Data = T` in a struct's or an enum's body (§3.1): an alias its type's own type arguments
  * complete, read as `Field<Int>.Data`. The body's fields, variants and other associated types name
@@ -147,7 +140,9 @@ export function isDeclaredStruct(
  * are a kind of their own beside a type's or a trait's `FieldDeclaration`.
  */
 export interface DeclaredField extends NodeOf<'DeclaredField'>, Annotatable {
-  /** `...children: Array<Node>`: a variant's rest, collecting a call's further arguments (§3.11). */
+  /**
+   * `...children: Array<Node>`: a variant's rest, collecting a call's further arguments (§3.11).
+   */
   readonly isRest: boolean;
   readonly name: Identifier;
   /** Undefined only beside a default, which gives the type. */

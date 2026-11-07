@@ -16,13 +16,13 @@
  * report about a failed call explains the reason it found.
  */
 
-import { receiverParameter } from '../../../../foundation/language/well-known/index.ts';
 import { memo } from '../../../../foundation/structures/memo.ts';
 import {
   type FunctionDeclaration,
   type TypeParameter,
   typeParametersOf,
 } from '../../../syntax/declarations/index.ts';
+import { isMethod } from '../../../syntax/declarations/methods.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { noSubstitution, type Substitution, substitute } from '../../types/parts/substitution.ts';
@@ -75,13 +75,14 @@ export function signatureOf(
 ): Signature {
   const { typeRules: rules } = checker;
   const parameters = checker.parametersOf(declaration);
+  const receives = isMethod(declaration);
   return {
     declaration,
     typeParameters: [...typeParametersOf(declaration.typeParameters), ...inferred],
     parameters:
       substitution.size === 0
-        ? memo(ownSlots, parameters, () => slotsOf(parameters, substitution, rules))
-        : slotsOf(parameters, substitution, rules),
+        ? memo(ownSlots, parameters, () => slotsOf(parameters, receives, substitution, rules))
+        : slotsOf(parameters, receives, substitution, rules),
     result: () => substitute(checker.resultOf(declaration), substitution, rules),
   };
 }
@@ -93,14 +94,18 @@ export function signatureOf(
  */
 const ownSlots = new WeakMap<readonly SignatureParameter[], readonly SignatureSlot[]>();
 
-/** The slots of `parameters` as choosing takes them, their types mapped by `substitution`. */
+/**
+ * The slots of `parameters` as choosing takes them, their types mapped by `substitution`; the first
+ * is the receiver when they are a method's (`receives`).
+ */
 function slotsOf(
   parameters: readonly SignatureParameter[],
+  receives: boolean,
   substitution: Substitution,
   rules: TypeRules,
 ): readonly SignatureSlot[] {
   return parameters.map(({ node, type, reference, rest }, index) => {
-    const isReceiver = index === 0 && node.name?.text === receiverParameter;
+    const isReceiver = receives && index === 0;
     return {
       type: substitute(type, substitution, rules),
       reference,

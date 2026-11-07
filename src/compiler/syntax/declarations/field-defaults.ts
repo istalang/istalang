@@ -20,6 +20,7 @@
  * static function's owner type.
  */
 
+import { staticName } from '../../../foundation/language/static-names.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import type { Parameter } from '../expressions/index.ts';
 import type { Invalid } from '../tree/node.ts';
@@ -155,4 +156,19 @@ function fieldParameter(field: DeclaredField | Invalid): Parameter | Invalid {
 
 function present<T>(value: T | undefined): readonly T[] {
   return value === undefined ? [] : [value];
+}
+
+/**
+ * A function's name as declared, with its owner type for a static function (`Slot.create`); a
+ * fields function's is its struct's or variant's, the variant's with its enum (`Shape.Circle`).
+ */
+export function declaredFunctionName(declaration: FunctionDeclaration): string {
+  if (isFieldsFunction(declaration)) {
+    const { fieldsOwner } = declaration;
+    return 'struct' in fieldsOwner
+      ? fieldsOwner.struct.name.text
+      : staticName(fieldsOwner.enumeration.name.text, fieldsOwner.variant.name.text);
+  }
+  const { owner, name } = declaration;
+  return owner === undefined ? name.text : staticName(owner.text, name.text);
 }

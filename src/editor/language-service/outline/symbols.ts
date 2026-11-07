@@ -13,9 +13,9 @@ import {
   type Declaration,
   type DeclaredField,
   importedNames,
-  isMethod,
   type Variant,
 } from '../../../compiler/syntax/declarations/index.ts';
+import { isMethod } from '../../../compiler/syntax/declarations/methods.ts';
 import { targetNames } from '../../../compiler/syntax/patterns.ts';
 import { extentIn, type SyntaxNode, type SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
 import {
