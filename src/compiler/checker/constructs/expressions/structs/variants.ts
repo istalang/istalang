@@ -8,6 +8,7 @@
  *   syntax/declarations/field-defaults.ts): a call binds its arguments to the fields as any call's
  *   to parameters (§3.3), and builds what the literal with those fields builds. Naming it bare is
  *   an error. A variant without fields is a value, so `Expired()` is `Expired`.
+ * - A variant's fields are given in braces by name only: `Ok{42}` is written `Ok(42)`.
  * - `none` needs an optional type to be expected (§3.11).
  * - Where a call's chosen function decides an argument's type, `none`, a bare variant and a call
  *   of one wait for it (§3.5), so `f(none)` reads like `const x: T? = none`.
@@ -17,13 +18,25 @@ import { staticName } from '../../../../../foundation/language/static-names.ts';
 import type { Entity, VariantNaming } from '../../../../binder/entities.ts';
 import { fieldsFunctionOf } from '../../../../syntax/declarations/field-defaults.ts';
 import type { EnumDeclaration } from '../../../../syntax/declarations/index.ts';
-import type { Call, FieldsLiteral, MemberAccess } from '../../../../syntax/expressions/index.ts';
+import type {
+  Call,
+  Expression,
+  FieldItem,
+  FieldsLiteral,
+  MemberAccess,
+} from '../../../../syntax/expressions/index.ts';
+import { itemValue, unparenthesized } from '../../../../syntax/expressions/readings.ts';
 import { type Identifier, lastName } from '../../../../syntax/tree/node.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { resolveCall, type WrittenArgument } from '../../../resolution/calls/resolve.ts';
 import { enumsExpected, expectedNominal, sameNominal } from '../../../types/fitting/expected.ts';
-import { type NominalType, nominalType, type Type } from '../../../types/type/index.ts';
+import {
+  type FieldMember,
+  type NominalType,
+  nominalType,
+  type Type,
+} from '../../../types/type/index.ts';
 import { errorType, noneType } from '../../../types/type/primitives.ts';
 import { chooseVariant, nominalEntityOf } from '../../../types/written/named-types.ts';
 import { argumentsKnown, checkLiteralFields, knownArguments } from './literal-fields.ts';
@@ -153,7 +166,11 @@ export function checkVariantCall(
   return known === undefined ? errorType : nominalType(entity, known);
 }
 
-/** The type of a variant built with braces: `Rejected{by: "legal"}`. */
+/**
+ * The type of a variant built with braces, `Rejected{by: "legal"}`, whose fields are named: a
+ * value given without its field's name is the call's (`Ok(42)`), and so is a shorthand naming no
+ * field of a variant with one (`Ok{v}`), which reads as `Ok(v)` meant.
+ */
 export function checkVariantLiteral(
   context: BodyContext,
   node: FieldsLiteral,
@@ -174,6 +191,14 @@ export function checkVariantLiteral(
   const fields = checker
     .declaredVariantsOf(chosen.enum)
     .find((candidate) => candidate.name === chosen.variant.name.text)?.fields;
+  const positional = positionalItem(node, fields ?? []);
+  if (positional !== undefined) {
+    const value = itemValue(positional);
+    const text = simpleText(unparenthesized(value));
+    context.report(checkerDiagnostics.variantByPosition(positional.span, name.text, text));
+    context.expression(value);
+    return errorType;
+  }
   const shape = {
     owner: chosen.enum,
     defaults: fieldsFunctionOf(chosen.enum, chosen.variant),
@@ -182,6 +207,40 @@ export function checkVariantLiteral(
     typeOf: (typeArguments: readonly Type[]) => enumType(context, chosen.enum, typeArguments),
   };
   return checkLiteralFields(context, node, shape);
+}
+
+/**
+ * The one item of a variant literal giving its field by position, as a call does: a value without
+ * a name, or a shorthand naming no field of a variant with one.
+ */
+function positionalItem(
+  node: FieldsLiteral,
+  fields: readonly FieldMember[],
+): FieldItem | undefined {
+  const [item, ...others] = node.items;
+  if (item === undefined || others.length > 0) {
+    return undefined;
+  }
+  if (item.kind === 'PositionalInitializer') {
+    return item;
+  }
+  if (item.kind !== 'FieldInitializer' || item.value !== undefined || fields.length !== 1) {
+    return undefined;
+  }
+  return fields.some((field) => field.name === item.name.text) ? undefined : item;
+}
+
+/** A value as a message writes it: a name or a literal as written, anything else elided. */
+function simpleText(value: Expression): string {
+  switch (value.kind) {
+    case 'Identifier':
+      return value.text;
+    case 'IntegerLiteral':
+    case 'BooleanLiteral':
+      return String(value.value);
+    default:
+      return '…';
+  }
 }
 
 function enumType(

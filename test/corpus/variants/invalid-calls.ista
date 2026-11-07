@@ -1,0 +1,24 @@
+# error: 5137 at 16:29
+# error: 5137 at 17:29
+# error: 5137 at 18:29
+# error: 5004 at 19:22
+# error: 5004 at 20:22
+# error: 5107 at 21:13
+# A variant's field is given by position only in a call (§3.11): in braces every field is named, so
+# `Ok{42}`, `Ok{(v)}` and `Ok{v}` name the call they mean. A variant without fields takes no
+# arguments, and a call needs the arguments its fields do, and a bare variant an expected enum.
+
+enum Verdict:
+  Approved
+  Rejected(by: String, reason = "no reason given")
+
+fn f(v: Int) -> Int:
+  const a: Result<Int> = Ok{42}
+  const b: Result<Int> = Ok{(v)}
+  const c: Result<Int> = Ok{v}
+  const d: Verdict = Approved(1)
+  const e: Verdict = Rejected()
+  const g = Rejected("x")
+  v
+
+async fn main(): 0

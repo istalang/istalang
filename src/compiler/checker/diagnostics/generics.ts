@@ -110,6 +110,11 @@ export const genericTemplates = {
     message: (name: string) =>
       `The variant '${name}' has fields; write it with braces, as in '${name}{…}'.`,
   },
+  variantByPosition: {
+    code: 5137,
+    message: (name: string, value: string) =>
+      `A variant's fields are given by position in a call, not in braces: write '${name}(${value})' (§3.11).`,
+  },
   disposeCall: {
     code: 5110,
     message: () =>

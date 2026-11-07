@@ -124,7 +124,10 @@ export interface FieldInitializer extends NodeOf<'FieldInitializer'> {
   readonly value: Expression | undefined;
 }
 
-/** The value of a single-field struct given without its name: `Ok{42}`, `Ok{(receipt)}`. */
+/**
+ * The value of a single-field struct given without its name: `UserId{"u-1"}`, `UserId{(id)}`. A
+ * variant's literal names its fields, its call giving them by position (§3.11).
+ */
 interface PositionalInitializer extends NodeOf<'PositionalInitializer'> {
   readonly value: Expression;
 }
