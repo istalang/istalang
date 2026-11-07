@@ -10,9 +10,10 @@
  *   name; `_`; and the literal keywords whose literal selects a member (`true` and `false` a
  *   `Bool`, `none` an optional), all of them where the type isn't known, as a literal pattern has
  *   the matched value's own type. A variant another case of the `match` already takes whole is
- *   marked covered, for ranking. As a call pattern's argument by position, also the names
- *   labelling the fields its other arguments don't give, `by:`; after a named one, those alone, as
- *   in a call (§3.3).
+ *   marked covered, for ranking, a call pattern's when it binds what its fields hold whole. As a
+ *   call pattern's argument by position, also the names labelling the fields its other arguments
+ *   don't give, `by:`; after a named one, those alone, as in a call (§3.3), and those alone where
+ *   a named one's label is being written.
  * - After a struct pattern item's field name, `as` or `is`; a comparison is an operator.
  * - After a case's whole pattern, once a space parts them, `if` for a guard and `as` for the whole.
  * - Anywhere else, as a rest's name or a range's end, nothing.
@@ -21,7 +22,7 @@
 import type { Entity } from '../../../../../compiler/binder/entities.ts';
 import type { Checker } from '../../../../../compiler/checker/check.ts';
 import { argumentsReach } from '../../../../../compiler/checker/surface/struct-items.ts';
-import type { Type } from '../../../../../compiler/checker/types/type/index.ts';
+import type { FieldMember, Type } from '../../../../../compiler/checker/types/type/index.ts';
 import { noneType } from '../../../../../compiler/checker/types/type/primitives.ts';
 import { literalType, membersOf } from '../../../../../compiler/checker/types/unions/unions.ts';
 import {
@@ -58,6 +59,9 @@ type Parsed = PatternPlace['parsed'];
 export function offerPattern(cursor: Cursor, place: PatternPlace): readonly Candidate[] {
   const { parsed } = place;
   const [holder, innermost] = parsed.chain.slice(-2);
+  if (holder?.kind === 'NamedPatternArgument' && innermost === holder.name) {
+    return fieldLabels(cursor, parsed, holder).names;
+  }
   const started = holder === undefined ? undefined : patternStartedBy(parsed.chain, holder);
   if (started !== undefined) {
     return patternStarts(cursor, place, started);
@@ -78,7 +82,11 @@ function patternStarts(
   const type = expectedTypeAt(cursor, place);
   const known = type !== undefined && type.kind !== 'error';
   const members = known ? membersOf(type) : [];
-  const covered = variantsCovered(place.parsed, pattern);
+  const fieldsOfVariant: FieldsOfVariant = (name) =>
+    members
+      .flatMap((member) => checker.lookup.membersOf(module, member).variants)
+      .find((variant) => variant.name === name)?.fields ?? [];
+  const covered = variantsCovered(place.parsed, pattern, fieldsOfVariant);
   const variants = members.flatMap((member) =>
     checker.lookup
       .membersOf(module, member)
@@ -105,26 +113,28 @@ function patternStarts(
 }
 
 /**
- * Where `pattern` is a call pattern's argument by position, the names labelling the fields its
- * other arguments don't give, each as `name:` (§3.11), and whether an argument up to it is named,
- * so only names may follow, as in a call (§3.3); none elsewhere.
+ * Where `argument` is a call pattern's argument being written, by position or the name of a named
+ * one, the names labelling the fields its other arguments don't give, each as `name:` (§3.11), and
+ * whether an argument up to it is named, so only names may follow, as in a call (§3.3); none
+ * elsewhere.
  */
 function fieldLabels(
   cursor: Cursor,
   parsed: Parsed,
-  pattern: HeadedPattern,
+  argument: SyntaxNode,
 ): { readonly names: readonly Candidate[]; readonly namedOnward: boolean } {
-  const call = parsed.chain[parsed.chain.indexOf(pattern) - 1];
+  const call = parsed.chain[parsed.chain.indexOf(argument) - 1];
   if (call?.kind !== 'VariantCallPattern') {
     return { names: [], namedOnward: false };
   }
   const written: readonly SyntaxNode[] = call.arguments;
-  const at = written.indexOf(pattern);
-  const others = call.arguments.filter(
-    (argument, index) => index !== at && argument.kind !== 'OtherFieldsPattern',
-  );
+  const at = written.indexOf(argument);
   const fields = fieldsMatchedBy(cursor, parsed, call);
-  const given = new Set(argumentsReach(fields, others).map((reached) => reached?.index));
+  const given = new Set(
+    argumentsReach(fields, call.arguments).flatMap((reached, index) =>
+      index === at || reached === undefined ? [] : [reached.index],
+    ),
+  );
   return {
     names: fields.flatMap((field, index): Candidate[] =>
       given.has(index)
@@ -177,11 +187,18 @@ function mayRefer(checker: Checker, entity: Entity, type: Type | undefined): boo
   return type.kind === 'any' && downcastTargetOf(checker, entity, type).kind === 'type';
 }
 
+/** The fields of the matched type's variant of a name; none for a name no variant has. */
+type FieldsOfVariant = (name: string) => readonly FieldMember[];
+
 /**
  * The variants the unguarded cases of a `match` take whole, when `pattern` stands at its case's
  * top, past alternatives, parentheses and `as` only; none elsewhere.
  */
-function variantsCovered({ chain }: Parsed, pattern: HeadedPattern): ReadonlySet<string> {
+function variantsCovered(
+  { chain }: Parsed,
+  pattern: HeadedPattern,
+  fieldsOf: FieldsOfVariant,
+): ReadonlySet<string> {
   const depth = chain.indexOf(pattern);
   const caseDepth = chain.slice(0, depth).findLastIndex(({ kind }) => kind === 'MatchCase');
   const match = chain[caseDepth - 1];
@@ -192,15 +209,18 @@ function variantsCovered({ chain }: Parsed, pattern: HeadedPattern): ReadonlySet
   return new Set(
     casesOf(match)
       .filter(({ guard }) => guard === undefined)
-      .flatMap(({ pattern: each }) => variantsTakenWhole(each)),
+      .flatMap(({ pattern: each }) => variantsTakenWhole(each, fieldsOf)),
   );
 }
 
 /** Patterns matching what the pattern inside them matches. */
 const wholeKinds: ReadonlySet<string> = new Set(['OrPattern', 'ParenthesizedPattern', 'AsPattern']);
 
-/** The variants `pattern` matches every value of: by name, or with fields it only binds. */
-function variantsTakenWhole(pattern: Pattern): readonly string[] {
+/**
+ * The variants `pattern` matches every value of: by name, or with fields it only binds, a call
+ * pattern testing no item of the rest field, whose length that would test (§3.11).
+ */
+function variantsTakenWhole(pattern: Pattern, fieldsOf: FieldsOfVariant): readonly string[] {
   switch (pattern.kind) {
     case 'NamePattern':
       return [lastName(pattern.path).text];
@@ -208,13 +228,21 @@ function variantsTakenWhole(pattern: Pattern): readonly string[] {
       return pattern.type !== undefined && bindsOnly(pattern)
         ? [lastName(pattern.type.path).text]
         : [];
-    case 'VariantCallPattern':
-      return pattern.arguments.every(argumentBindsOnly) ? [lastName(pattern.callee.path).text] : [];
+    case 'VariantCallPattern': {
+      const { text } = lastName(pattern.callee.path);
+      const reached = argumentsReach(fieldsOf(text), pattern.arguments);
+      const takesWhole = pattern.arguments.every(
+        (argument, index) => argumentBindsOnly(argument) && reached[index]?.isItem !== true,
+      );
+      return takesWhole ? [text] : [];
+    }
     case 'OrPattern':
-      return pattern.alternatives.flatMap(variantsTakenWhole);
+      return pattern.alternatives.flatMap((alternative) =>
+        variantsTakenWhole(alternative, fieldsOf),
+      );
     case 'ParenthesizedPattern':
     case 'AsPattern':
-      return variantsTakenWhole(pattern.pattern);
+      return variantsTakenWhole(pattern.pattern, fieldsOf);
     default:
       return [];
   }
@@ -224,10 +252,15 @@ function bindsOnly({ fields }: StructPattern): boolean {
   return fields.every(({ kind }) => kind === 'BindFieldPattern');
 }
 
-/** Whether a call pattern's argument matches anything: binds a name, `_`, a spread or `...`. */
+/**
+ * Whether a call pattern's argument matches anything: binds a name, `_`, a spread or `...`, or so
+ * inside parentheses or before `as`.
+ */
 function argumentBindsOnly(argument: PatternArgument): boolean {
   switch (argument.kind) {
     case 'NamedPatternArgument':
+    case 'ParenthesizedPattern':
+    case 'AsPattern':
       return argumentBindsOnly(argument.pattern);
     case 'NamePattern':
       return argument.path.length === 1 && bindsInPattern(lastName(argument.path).text);

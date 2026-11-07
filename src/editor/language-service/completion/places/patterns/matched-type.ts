@@ -110,7 +110,8 @@ export function fieldsMatchedBy(
  * checking resolved it, or `type`'s own struct, a shape an alias names among them (§3.17); against
  * an `any` type, the type it downcasts to, a struct, a shape or a qualified variant's enum, none
  * generic (§3.10); against a union, the member it selects. `struct{…}` names that type's own
- * fields. A trait's required fields are no pattern's (constructs/patterns/walk/parts.ts).
+ * fields; a call pattern naming a struct, refused, names none. A trait's required fields are no
+ * pattern's (constructs/patterns/walk/parts.ts).
  */
 function fieldsOf(
   cursor: Cursor,
@@ -133,7 +134,9 @@ function fieldsOf(
   const name = lastName(head.path);
   const declared = denotationOf(cursor, parsed, name)?.declared;
   if (declared?.kind === 'type') {
-    return namesOwnType(checker, declared.entity, own) ? (checker.fieldsOf(own) ?? []) : [];
+    const takesStruct =
+      pattern.kind === 'StructPattern' && namesOwnType(checker, declared.entity, own);
+    return takesStruct ? (checker.fieldsOf(own) ?? []) : [];
   }
   const choosesByName = head.path.length === 1 && type.kind !== 'any';
   return variantFieldsOf(checker, own, { name, declared, choosesByName });
@@ -367,9 +370,8 @@ const steps: { readonly [Kind in SyntaxNode['kind']]?: Step<Extract<SyntaxNode, 
         return;
       }
       const fields = fieldsOf(cursor, link.parsed, node, type);
-      const given = node.arguments.filter(({ kind }) => kind !== 'OtherFieldsPattern');
-      const written: readonly SyntaxNode[] = given;
-      const reached = argumentsReach(fields, given)[written.indexOf(child)];
+      const written: readonly SyntaxNode[] = node.arguments;
+      const reached = argumentsReach(fields, node.arguments)[written.indexOf(child)];
       const field = reached === undefined ? undefined : fields[reached.index];
       if (field === undefined || reached?.isItem !== true) {
         return field?.type;

@@ -249,6 +249,33 @@ describe('a pattern place', () => {
     expect(labels('Rejected{‸}')).toEqual([]);
   });
 
+  it('labels the fields as the arguments around the one written give them, a label being edited too', () => {
+    const cases = [...decision, 'fn f(d: Decision) -> Int:', '  match d:'];
+    const labels = (pattern: string) =>
+      labelsAt(...cases, `    case ${pattern}: 1`).filter((name) => name.endsWith(':'));
+    expect(labels('Rejected(‸, "no contract")')).toEqual(['by:']);
+    expect(labels('Rejected(rea‸: "r")')).toEqual(['by:', 'reason:']);
+    expect(labels('Rejected(reason: "r", ‸, _)')).toEqual(['by:']);
+  });
+
+  it("reads the rest field's items past a spread, and no fields of a struct a call pattern names", () => {
+    const node = 'enum Node { Group(title: String, ...children: Array<Node>), Leaf }';
+    const point = 'struct Point { x: Int, y: Int }';
+    const started = (subject: string, pattern: string) =>
+      labelsAt(
+        ...decision,
+        node,
+        point,
+        `fn f(x: ${subject}) -> Int:`,
+        '  match x:',
+        `    case ${pattern}: 1`,
+      );
+    expect(started('Node', 'Group("t", ...middle, ‸)')).toEqual(
+      expect.arrayContaining(['Group', 'Leaf']),
+    );
+    expect(started('Point', 'Point(‸)')).not.toContain('x:');
+  });
+
   it('reads the member a struct or tuple pattern selects of a union', () => {
     const optionals = [...decision, 'fn f(x: (Int, Decision)?, d: Decision?) -> Int:'];
     expect(labelsAt(...optionals, '  match x:', '    case (_, ‸')).toContain('Approved');
@@ -270,6 +297,27 @@ describe('a pattern place', () => {
       ({ name, covered: is }) => (is ? [name] : []),
     );
     expect(covered).toEqual(['Approved']);
+  });
+
+  it("marks a call pattern's variant covered only when it binds what its fields hold whole", () => {
+    const coveredBy = (subject: string, cases: readonly string[]) => {
+      const text = [
+        ...decision,
+        'enum Node { Group(title: String, ...children: Array<Node>), Leaf }',
+        `fn f(x: ${subject}) -> Int:`,
+        '  match x:',
+        ...cases.map((each) => `    ${each}`),
+        '    case ‸',
+        '  0',
+      ].join('\n');
+      return candidatesIn(text.replace('‸', ''), text.indexOf('‸')).flatMap(
+        ({ name, covered: is }) => (is ? [name] : []),
+      );
+    };
+    expect(coveredBy('Node', ['case Group(title, first): 1'])).toEqual([]);
+    expect(coveredBy('Node', ['case Group(title, ...kids): 1'])).toEqual(['Group']);
+    expect(coveredBy('Decision', ['case Approved(by as who): 1'])).toEqual(['Approved']);
+    expect(coveredBy('Decision', ['case Approved((by)): 1'])).toEqual(['Approved']);
   });
 
   it('offers the types a downcast may name against an `any` value, those meeting its traits', () => {

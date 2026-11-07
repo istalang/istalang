@@ -197,6 +197,42 @@ describe('hover', () => {
       '(field) title: String',
       '(variable) name: String',
     ]);
+    expect(grouped('Group(_, ...middle, la‸st)')).toEqual([
+      '(field) children: Array<Node>',
+      '(variable) last: Node',
+    ]);
+  });
+
+  it("names the field as checking recorded it: at the subject's type arguments, past any pattern but one taking a value apart", () => {
+    const verdict = 'enum Verdict { Approved, Rejected(by: String, reason: String = "none") }';
+    const score = 'enum Score { Points(n: Int) }';
+    const cased = (subject: string, pattern: string) =>
+      hover(
+        verdict,
+        score,
+        `fn f(x: ${subject}) -> Int:`,
+        '  match x:',
+        `    case ${pattern}: 1`,
+        '    case _: 0',
+      )?.code;
+    expect(cased('Result<Int, String>', 'Ok(va‸l)')).toEqual([
+      '(field) value: Int',
+      '(variable) val: Int',
+    ]);
+    expect(cased('Result<Int, String>', 'Err(er‸r)')).toEqual([
+      '(field) error: String',
+      '(variable) err: String',
+    ]);
+    expect(cased('Verdict', 'Rejected(who‸, _)')).toEqual([
+      '(field) by: String',
+      '(variable) who: String',
+    ]);
+    expect(cased('Verdict', 'Rejected("le‸gal" | "ops", _)')?.[0]).toBe('(field) by: String');
+    expect(cased('Verdict', 'Rejected("legal" as w‸ho, _)')?.[0]).toBe('(field) by: String');
+    expect(cased('Verdict', 'Rejected((w‸ho), _)')?.[0]).toBe('(field) by: String');
+    expect(cased('Score', 'Points(1‸..=5)')?.[0]).toBe('(field) n: Int');
+    expect(cased('Result<Int>', 'Err(Error{‸message})')).not.toContain('(field) error: Error');
+    expect(cased('Verdict', 'Rejected(by: "a", w‸ho)')).not.toContain('(field) by: String');
   });
 
   it('shows unions, literal types and `None` as written, an alias with what it names, and the type a case leaves', () => {

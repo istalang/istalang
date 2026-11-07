@@ -165,6 +165,8 @@ const checkerSurface = [
   'surface/named-variants.ts',
   'surface/denotation.ts',
   'surface/host-externs.ts',
+  // How arguments fill a function's parameters, the one rule tools judging a function value read.
+  'resolution/choosing/binding.ts',
   'types/type/index.ts',
   'types/type/primitives.ts',
   'types/type/alias-uses.ts',

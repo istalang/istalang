@@ -1,9 +1,10 @@
 /**
- * Call patterns (§3.11): `Ok(v)`, `Rejected(by: "legal")`, `Group(title, ...children)`. The
- * variant is tested first, as a struct pattern naming it is; then the arguments bind to its fields
- * as a call's bind to its constructor's parameters (resolution/choosing/binding.ts), so a value is
- * taken apart as it was built: by position in declared order, then by name, a spread starting the
- * rest field.
+ * Call patterns (§3.11): `Ok(v)`, `Rejected(by: "legal")`, `Group(title, ...children)`. The variant
+ * is tested first, as a struct pattern naming it is; then the arguments bind to its fields as a
+ * call's bind to its constructor's parameters (resolution/choosing/binding.ts), so a value is taken
+ * apart as it was built: by position in declared order, then by name, a spread starting the rest
+ * field. Each argument's field is recorded, by its name or as itself (`fieldGivenBy`), for tools to
+ * read what it gives.
  *
  * - Only a variant is taken apart as a call: one naming anything else is reported before anything
  *   else is asked of it, in a target too, and then takes anything (`calledVariant`, walk/index.ts).
@@ -27,12 +28,7 @@ import type { Diagnostic } from '../../../../../../foundation/diagnostics/diagno
 import { unreachable } from '../../../../../../foundation/structures/unreachable.ts';
 import type { VariantNaming } from '../../../../../binder/entities.ts';
 import { hasDefault, isRestField } from '../../../../../syntax/declarations/index.ts';
-import type {
-  NamedPatternArgument,
-  OtherFieldsPattern,
-  PatternArgument,
-  VariantCallPattern,
-} from '../../../../../syntax/patterns.ts';
+import type { NamedPatternArgument, VariantCallPattern } from '../../../../../syntax/patterns.ts';
 import { lastName } from '../../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
@@ -43,7 +39,11 @@ import {
   isBinding,
 } from '../../../../resolution/choosing/binding.ts';
 import type { Binding } from '../../../../surface/resolved-call.ts';
-import { argumentsReach } from '../../../../surface/struct-items.ts';
+import {
+  argumentsReach,
+  type BoundPatternArgument,
+  callPatternArguments,
+} from '../../../../surface/struct-items.ts';
 import type { FieldMember } from '../../../../types/type/index.ts';
 import { errorType } from '../../../../types/type/primitives.ts';
 import { anyShape, type Shape } from '../../exhaustiveness/exhaustiveness.ts';
@@ -53,7 +53,6 @@ import { constructed } from '../taking.ts';
 import { type ItemTaking, takeArray } from './arrays.ts';
 
 /** A call pattern's argument that binds to a field: any but a last `...`. */
-type BoundPatternArgument = Exclude<PatternArgument, OtherFieldsPattern>;
 
 /**
  * The variant `node` names; undefined after reporting that it names something else, or for a name
@@ -97,7 +96,7 @@ export function takeVariantCall(
   if (naming?.kind !== 'variant' && naming?.kind !== 'variants') {
     return unreachable('A call pattern naming no variant is refused before it is taken.');
   }
-  const { given, refused } = argumentsOf(node);
+  const { given, refused } = callPatternArguments(node.arguments);
   const variant = tests.variant(node.callee, naming, part);
   for (const argument of variant === undefined ? [...given, ...refused] : refused) {
     walk.take(argument, { type: errorType, path: part.path });
@@ -145,31 +144,6 @@ function warnEmpty(walk: ItemTaking, node: VariantCallPattern, slots: readonly B
   }
 }
 
-/**
- * A call pattern's arguments as binding takes them: those it binds, and those the parser refused
- * (one it recovered, one by position after one by name, a second spread), which bind nothing, so
- * nothing more is reported of them; a last `...` is neither.
- */
-function argumentsOf(node: VariantCallPattern): {
-  readonly given: readonly BoundPatternArgument[];
-  readonly refused: readonly BoundPatternArgument[];
-} {
-  const bound = node.arguments.filter(
-    (argument): argument is BoundPatternArgument => argument.kind !== 'OtherFieldsPattern',
-  );
-  const named = bound.findIndex(({ kind }) => kind === 'NamedPatternArgument');
-  const spread = bound.findIndex(({ kind }) => kind === 'RestPattern');
-  const isRefused = (argument: BoundPatternArgument, index: number) =>
-    argument.kind === 'Invalid' ||
-    argument.kind === 'Missing' ||
-    (argument.kind !== 'NamedPatternArgument' && named !== -1 && index > named) ||
-    (argument.kind === 'RestPattern' && index !== spread);
-  return {
-    given: bound.filter((argument, index) => !isRefused(argument, index)),
-    refused: bound.filter(isRefused),
-  };
-}
-
 /** The parameter a field is to a call pattern's arguments: one it may leave out, if `leaves`. */
 function slotOf(field: FieldMember, leaves: boolean): BoundSlot {
   const declared = field.declared?.node;
@@ -210,16 +184,20 @@ function takeField(
   switch (source?.kind) {
     case 'argument': {
       const argument = call.given[source.index];
-      if (argument?.kind === 'NamedPatternArgument') {
-        walk.scope.recordField(argument.name, field);
+      if (argument === undefined) {
+        return anyShape;
       }
-      return argument === undefined ? anyShape : walk.take(argument, part);
+      recordGiven(walk, argument, field);
+      return walk.take(argument, part);
     }
     case 'rest': {
       const elements = source.items.flatMap(({ index }) => {
         const item = call.given[index];
         return item === undefined || item.kind === 'NamedPatternArgument' ? [] : [item];
       });
+      for (const item of elements) {
+        recordGiven(walk, item, field);
+      }
       const items = { site: call.node, elements, isOpen: call.leavesOthers };
       return takeRestItems(walk, tests, items, part);
     }
@@ -250,8 +228,7 @@ function takeRestItems(
 
 /**
  * Each argument of `call`, which can't all bind, over the field it reaches (`argumentsReach`,
- * surface/struct-items.ts), its field recorded if it names it; one reaching none over the error
- * type.
+ * surface/struct-items.ts), its field recorded; one reaching none over the error type.
  */
 function takeReached(
   walk: ItemTaking,
@@ -262,18 +239,25 @@ function takeReached(
   const reached = argumentsReach(variant.fields, call.given);
   for (const [index, argument] of call.given.entries()) {
     const fieldReached = reached[index];
+    const field = fieldReached === undefined ? undefined : variant.fields[fieldReached.index];
+    if (field !== undefined) {
+      recordGiven(walk, argument, field);
+    }
     // An item of the rest field is matched by no array test here: its names take the error type.
-    const at = fieldReached?.isItem === false ? fieldReached.index : undefined;
-    const field = at === undefined ? undefined : variant.fields[at];
-    if (at === undefined || field === undefined) {
+    if (fieldReached === undefined || fieldReached.isItem || field === undefined) {
       walk.take(argument, { type: errorType, path: part.path });
     } else {
-      if (argument.kind === 'NamedPatternArgument') {
-        walk.scope.recordField(argument.name, field);
-      }
-      walk.take(argument, fieldPart(part, field, at));
+      walk.take(argument, fieldPart(part, field, fieldReached.index));
     }
   }
+}
+
+/** Records the field `argument` gives: by its name, or as itself, written by position (§3.11). */
+function recordGiven(walk: ItemTaking, argument: BoundPatternArgument, field: FieldMember): void {
+  walk.scope.recordField(
+    argument.kind === 'NamedPatternArgument' ? argument.name : argument,
+    field,
+  );
 }
 
 /** The report saying why `call`'s arguments can't bind to `variant`'s fields. */

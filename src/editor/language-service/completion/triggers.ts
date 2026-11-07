@@ -7,9 +7,9 @@
  * request is answered with nothing, so the list stays closed.
  *
  * `{`, `,` and a space go on a list of names (a literal's or a pattern's fields, an annotation's,
- * a call's arguments, an import's) after a `{` or `,` with nothing but spaces since, not a
- * block's, a collection's or a parameter list's; a space also opens a value right after the
- * `name:` labelling it, a field's or an argument's, and stays silent anywhere else. A space is a
+ * a call's or a call pattern's arguments, an import's) after a `{` or `,` with nothing but spaces
+ * since, not a block's, a collection's or a parameter list's; a space also opens a value right
+ * after the `name:` labelling it, a field's or an argument's, and stays silent anywhere else. A space is a
  * trigger because VS Code closes a list on any character that is neither a word's nor a trigger,
  * so one typed after `, ` would close it. `:` itself is no trigger: accepting a field or an
  * argument writes `name: ` and asks again, and a list opened by `:` would close on the space
@@ -36,7 +36,18 @@ const kinds =
   (place) =>
     opened.includes(place.kind);
 
-const nameLists = kinds('literalField', 'patternField', 'annotation', 'callArgument', 'import');
+/** A call pattern's argument starts by position, which a field's name may label (§3.11). */
+const startsPatternArgument: PlaceTest = (place) => {
+  if (place.kind !== 'pattern') {
+    return false;
+  }
+  const [call, pattern] = place.parsed.chain.slice(0, -1).slice(-2);
+  return call?.kind === 'VariantCallPattern' && pattern?.kind === 'NamePattern';
+};
+
+const listedNames = kinds('literalField', 'patternField', 'annotation', 'callArgument', 'import');
+
+const nameLists: PlaceTest = (place) => listedNames(place) || startsPatternArgument(place);
 
 const always =
   (places: PlaceTest): Opening =>
@@ -49,21 +60,21 @@ const endsArrow: Opening = (cursor) => {
   return kind === '->' || kind === '?->' ? kinds('member', 'type') : undefined;
 };
 
-/** Nodes whose `value` follows a name and its `:`: a literal's field, a call's argument. */
-const labelling: ReadonlySet<string> = new Set(['FieldInitializer', 'NamedArgument']);
-
-/** The cursor starts a value right after the `name:` labelling it, as in `Pair{first: ‸`. */
+/**
+ * The cursor starts a value right after the `name:` labelling it: a literal's field's or a call's
+ * argument's, as in `Pair{first: ‸`, or a call pattern's argument's pattern, `Rejected(by: ‸`.
+ */
 const startsLabelledValue: PlaceTest = (place) => {
   if (!('parsed' in place)) {
     return false;
   }
-  const [holder, value] = place.parsed.chain.slice(-2);
-  return (
-    holder !== undefined &&
-    labelling.has(holder.kind) &&
-    'value' in holder &&
-    holder.value === value
-  );
+  const { chain } = place.parsed;
+  const [holder, value] = chain.slice(-2);
+  const [argument, pattern] = chain.slice(0, -1).slice(-2);
+  const labelsValue =
+    (holder?.kind === 'FieldInitializer' || holder?.kind === 'NamedArgument') &&
+    holder.value === value;
+  return labelsValue || (argument?.kind === 'NamedPatternArgument' && argument.pattern === pattern);
 };
 
 /** What goes on after each token: names after `{` or `,`, a value after `:`. */

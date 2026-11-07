@@ -11,8 +11,19 @@
  * starts a statement of its own (a tuple, a block).
  */
 
+import type { VariantMember } from '../../../../compiler/checker/check.ts';
+import { bindValue, isBinding } from '../../../../compiler/checker/resolution/choosing/binding.ts';
 import { expectedFunction } from '../../../../compiler/checker/types/fitting/expected.ts';
+import { sameType } from '../../../../compiler/checker/types/identity/identity.ts';
 import type { Type } from '../../../../compiler/checker/types/type/index.ts';
+import { errorType } from '../../../../compiler/checker/types/type/primitives.ts';
+import {
+  type FunctionDeclaration,
+  hasDefault,
+  isRestField,
+  typeParametersOf,
+} from '../../../../compiler/syntax/declarations/index.ts';
+import { isMethod } from '../../../../compiler/syntax/declarations/methods.ts';
 import type { TokenKind } from '../../../../compiler/syntax/tokens/index.ts';
 import { codeTokensOf } from '../../reading/tokens.ts';
 import type { Cursor } from '../cursor.ts';
@@ -87,19 +98,101 @@ export function fitsExpected({ cursor, expected }: Presenting, found: Type): boo
   );
 }
 
+/** A parameter as a function value's type binds it (§3.14): its type, and how it may be left. */
+interface ValueParameter {
+  readonly type: Type;
+  readonly hasDefault: boolean;
+  readonly isRest: boolean;
+}
+
+/**
+ * Where a function value is expected, the expected type when a function taking `parameters` and
+ * giving `result` fits it as a value (§3.14), as checking binds one: by position, trailing
+ * parameters left to their defaults and a rest taken as one array, each matching the expected
+ * parameter exactly and the result fitting; nothing otherwise, a generic one among them, whose
+ * instance only checking finds.
+ */
+function givenAsValue(
+  presenting: Presenting,
+  parameters: readonly ValueParameter[],
+  result: Type,
+): readonly Type[] {
+  const { cursor, expected } = presenting;
+  const shape = expectedFunction(expected);
+  if (shape === undefined || expected === undefined || shape.pack !== undefined) {
+    return [];
+  }
+  const slots = parameters.map((parameter) => ({
+    hasDefault: parameter.hasDefault,
+    rest: parameter.isRest ? { kind: 'array' as const } : undefined,
+  }));
+  const binding = bindValue(
+    slots,
+    shape.parameters.map(() => ({})),
+  );
+  const matches =
+    isBinding(binding) &&
+    binding.every(
+      (bound, index) =>
+        bound?.kind !== 'argument' ||
+        sameType(
+          shape.parameters[bound.index]?.type ?? errorType,
+          parameters[index]?.type ?? errorType,
+        ),
+    ) &&
+    cursor.checker.fitOf(result, shape.result) !== undefined;
+  return matches ? [expected] : [];
+}
+
+/** `givenAsValue` of a declared function: none for a generic one or a method. */
+export function functionGivenAsValue(
+  presenting: Presenting,
+  declaration: FunctionDeclaration,
+): readonly Type[] {
+  const { checker } = presenting.cursor;
+  if (typeParametersOf(declaration.typeParameters).length > 0 || isMethod(declaration)) {
+    return [];
+  }
+  const parameters = checker.parametersOf(declaration).map(({ node, type }) => ({
+    type,
+    hasDefault: node.defaultValue !== undefined,
+    isRest: node.isRest,
+  }));
+  return givenAsValue(presenting, parameters, checker.resultOf(declaration));
+}
+
+/** `givenAsValue` of a variant's constructor at its enum's type `enumType` (§3.11). */
+export function variantGivenAsValue(
+  presenting: Presenting,
+  variant: VariantMember,
+  enumType: Type,
+): readonly Type[] {
+  const parameters = variant.fields.map(({ type, declared }) => ({
+    type,
+    hasDefault: declared !== undefined && hasDefault(declared.node),
+    isRest: declared !== undefined && isRestField(declared.node),
+  }));
+  return parameters.length === 0 ? [] : givenAsValue(presenting, parameters, enumType);
+}
+
 /**
  * Accepting a callable named `name`: its call, the cursor between the parentheses, and its
  * signature shown; in a pattern, a variant's call pattern, whose fields' names are listed next. A
  * name is an identifier, so it holds nothing a snippet escapes.
  */
 export function called(presenting: Presenting, name: string): Partial<Shown> {
-  const { writesValue, follows, place } = presenting;
+  const { writesValue, follows } = presenting;
   return writesValue && follows !== '('
     ? {
         insert: { kind: 'snippet', snippet: `${name}($0)` },
-        next: place.kind === 'pattern' ? 'completion' : 'signatureHelp',
+        next: writesPattern(presenting) ? 'completion' : 'signatureHelp',
       }
     : { commit: ['('] };
+}
+
+/** Whether the place writes a pattern: one starting, or a variant qualified in one. */
+function writesPattern({ place }: Presenting): boolean {
+  return place.kind === 'pattern' || (place.kind === 'member' && place.names === 'variant');
 }
 
 /**
@@ -112,10 +205,9 @@ export function calledOrNamed(
   name: string,
   results: readonly Type[],
 ): Partial<Shown> {
-  const { place, expected } = presenting;
   const namesValue =
-    place.kind !== 'pattern' &&
-    expectedFunction(expected) !== undefined &&
+    !writesPattern(presenting) &&
+    expectedFunction(presenting.expected) !== undefined &&
     !results.some((result) => fitsExpected(presenting, result));
   return namesValue ? { commit: ['('] } : called(presenting, name);
 }

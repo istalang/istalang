@@ -1033,8 +1033,8 @@ fn g():
   match d:
     case Rejected(reason: "r", ‸
 ```
-- **Where / trigger:** in `fn t`; typing `(`, `,` or invoked
-- **Offer:** The labels of the fields no other argument gives, `by:` and `reason:` (after `"legal",`: `reason:`), beside what a pattern there starts with; after a named argument, the labels alone (`by:`), as in a call (§3.3).
+- **Where / trigger:** in `fn t`; typing `,` or a space after it, or invoked; a space after a label's `:` opens the pattern's list
+- **Offer:** The labels of the fields no other argument gives, `by:` and `reason:` (after `"legal",`: `reason:`), beside what a pattern there starts with; after a named argument, the labels alone (`by:`), as in a call (§3.3), and those alone while a label is written (`Rejected(rea‸: "r")`), accepting it then writing the name alone.
 - **Not:** A field another argument gives by position or name.
 - **Accept:** `reason: ` and re-trigger, as a call's argument name does (CA).
 - **Basis:** spec §3.11 (call patterns bind as a call's arguments do).

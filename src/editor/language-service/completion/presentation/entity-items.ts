@@ -33,6 +33,7 @@ import {
   calledOrNamed,
   constructed,
   documented,
+  functionGivenAsValue,
   type Presenting,
   type Shown,
 } from './presenting.ts';
@@ -103,7 +104,9 @@ const entityItems: Handlers<Presenting, Entity, [name: string], Shown> = {
             ...documented(docstringOf(checker, { kind: 'function', declaration: first })),
           }),
       gives: overloads.flatMap((overload) =>
-        isMethod(overload) ? [] : [checker.resultOf(overload)],
+        isMethod(overload)
+          ? []
+          : [checker.resultOf(overload), ...functionGivenAsValue(presenting, overload)],
       ),
       ...calledOrNamed(
         presenting,

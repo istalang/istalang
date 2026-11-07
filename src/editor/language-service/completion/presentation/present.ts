@@ -11,8 +11,10 @@
  *   being written, a local or the module's, or a place's own (a member, a field, an argument):
  *   a prelude or imported name fitting by its type alone is no guess worth accepting with Enter.
  * - A field named in a literal or an annotation inserts `name: ` and asks for the next list, its
- *   value's (§3.1).
+ *   value's (§3.1), as an argument's label does, but alone where its `:` already follows.
  *   Its priority puts a field with no default first, as it must be given.
+ * - Where a function value is expected, a function or a variant's constructor fitting it as a
+ *   value, as checking binds one (`givenAsValue`, presenting.ts), fits too (§3.14).
  * - Within a member's list, fields and variants come before methods, a variant reached through its
  *   enum being no name a scope offers, of no group; a value another case already tests ranks after
  *   the rest.
@@ -36,9 +38,11 @@ import {
   constructed,
   documented,
   fitsExpected,
+  functionGivenAsValue,
   type Presenting,
   presentingAt,
   type Shown,
+  variantGivenAsValue,
 } from './presenting.ts';
 
 /** The completions `candidates` make at `cursor` in `place`, in their order. */
@@ -112,24 +116,33 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
       detail: signatureOf(checker, declaration).label,
       ...documented(docstringOf(checker, { kind: 'function', declaration })),
       priority: 1,
-      gives: [checker.resultOf(declaration)],
+      gives: [
+        checker.resultOf(declaration),
+        ...(through === 'type' ? functionGivenAsValue(presenting, declaration) : []),
+      ],
       ...(through === 'type'
         ? calledOrNamed(presenting, name, [checker.resultOf(declaration)])
         : called(presenting, name)),
     };
   },
-  argument: (_presenting, { parameter }, name) => ({
+  argument: (presenting, { parameter }, name) => ({
     kind: 'variable',
     detail: slotText(parameter),
-    insert: { kind: 'text', text: `${name} ${parameter.reference ? '&' : ''}` },
-    next: 'completion',
+    ...labelled(
+      presenting,
+      parameter.node.name?.text ?? '',
+      `${name} ${parameter.reference ? '&' : ''}`,
+    ),
   }),
-  fieldArgument: (_presenting, { field }, name) => ({
-    kind: 'field',
-    detail: typeText(field.type),
-    insert: { kind: 'text', text: `${name} ` },
-    next: 'completion',
-  }),
+  fieldArgument: (presenting, { field }, name) => {
+    const { declared } = field;
+    return {
+      kind: 'field',
+      detail: typeText(field.type),
+      ...(declared === undefined ? {} : { priority: hasDefault(declared.node) ? 1 : 0 }),
+      ...labelled(presenting, field.name, `${name} `),
+    };
+  },
   variant: (presenting, { variant, enum: type }, name) => {
     const { checker, module } = presenting.cursor;
     const bare = presenting.place.kind !== 'member';
@@ -142,7 +155,7 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
             order: checker.variantsOf(type)?.findIndex((each) => each.name === variant.name) ?? 0,
           }
         : {}),
-      gives: [type],
+      gives: [type, ...variantGivenAsValue(presenting, variant, type)],
       ...constructed(presenting, name, { hasFields: variant.fields.length > 0, enums: [type] }),
     };
   },
@@ -151,6 +164,16 @@ const presenters: Handlers<Presenting, Subject, [name: string], Shown> = {
     to === 'module' ? { kind: 'module' } : { kind: 'folder', next: 'completion' },
   label: () => ({ kind: 'label' }),
 };
+
+/**
+ * Accepting the name labelling an argument, `labelled` its text with its `:`: that, asking for the
+ * value's list next, unless the `:` already follows the cursor, where the name alone is written.
+ */
+function labelled(presenting: Presenting, name: string, labelledText: string): Partial<Shown> {
+  return presenting.follows === ':'
+    ? { insert: { kind: 'text', text: name } }
+    : { insert: { kind: 'text', text: labelledText }, next: 'completion' };
+}
 
 /** The groups whose fitting items may be preselected; an item of no group is a place's own. */
 const guessedFrom: ReadonlySet<RankGroup | undefined> = new Set([undefined, 'local', 'module']);

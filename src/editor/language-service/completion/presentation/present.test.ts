@@ -96,6 +96,44 @@ describe('what accepting an item writes', () => {
     );
   });
 
+  it('asks for the fields next after a variant qualified in a pattern', () => {
+    const taken = { insert: { kind: 'snippet', snippet: 'Rejected($0)' }, next: 'completion' };
+    const cases = ['fn t(d: Decision):', '  match d:'];
+    expect(insertOf('Rejected', ...cases, '    case Decision.Rej‸')).toEqual(taken);
+  });
+
+  it("writes an argument's label alone where its `:` already follows", () => {
+    const decls = 'enum Verdict { Approved, Rejected(by: String, reason: String = "none") }';
+    const called = insertOf(
+      'reason:',
+      decls,
+      'fn t() -> Verdict: Verdict.Rejected(by: "x", rea‸: "r")',
+    );
+    expect(called).toEqual({ insert: { kind: 'text', text: 'reason' }, next: undefined });
+    const cases = [decls, 'fn t(v: Verdict) -> Int:', '  match v:'];
+    expect(insertOf('reason:', ...cases, '    case Rejected(rea‸: "r"): 1')).toEqual({
+      insert: { kind: 'text', text: 'reason' },
+      next: undefined,
+    });
+  });
+
+  it('ranks first the functions and constructors a function value expected fits (§3.14)', () => {
+    const decls = [
+      'enum Choice { Plain, Other(n: Int), Picked(by: String, why: String = "") }',
+      'fn shout(s: String) -> Choice: Choice.Picked(s)',
+      'fn count(n: Int) -> Choice: Choice.Other(n)',
+    ];
+    const fitting = (...lines: readonly string[]) =>
+      listed(...decls, ...lines)
+        .filter(({ rank }) => rank?.fitsExpected === true)
+        .map(({ name }) => name);
+    expect(fitting('const r: fn(String) -> Choice = Choice.‸')).toEqual(['Picked']);
+    expect(fitting('const r: fn(String) -> Choice = ‸')).toEqual(
+      expect.arrayContaining(['Picked', 'shout']),
+    );
+    expect(fitting('const r: fn(String) -> Choice = ‸')).not.toContain('count');
+  });
+
   it('writes a function or a variant alone where a function value is expected (§3.14)', () => {
     const nothing = { insert: undefined, next: undefined };
     expect(insertOf('pl', 'fn t(xs: Array<Int>):', '  _ = xs.map(p‸)')).toEqual(nothing);

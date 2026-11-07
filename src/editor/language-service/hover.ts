@@ -10,15 +10,15 @@
  * through the key query, as the field it names. A shorthand, `Pair{first}`, names a field and a
  * variable, and shows both. A function shows its signature, which spells its type with its
  * parameters' names, and so does a variant with fields, its constructor's (§3.11), before its enum.
- * A call pattern's argument written by position shows the field it gives, as a named one's name
- * does, before what its own text shows; inside a pattern nested in it, only that pattern's.
+ * A call pattern's argument written by position shows the field it gives, as checking recorded it
+ * and as a named one's name does, before what its own text shows; inside a pattern taking a value
+ * apart, itself included, only that pattern's parts show what they give.
  */
 
 import type { Checker } from '../../compiler/checker/check.ts';
 import type { Denotation } from '../../compiler/checker/surface/denotation.ts';
-import { argumentsReach } from '../../compiler/checker/surface/struct-items.ts';
 import { isOpaque } from '../../compiler/checker/types/type/computed-types.ts';
-import type { FieldMember, Type } from '../../compiler/checker/types/type/index.ts';
+import type { Type } from '../../compiler/checker/types/type/index.ts';
 import {
   constraintText,
   writtenAndNamedText,
@@ -29,7 +29,7 @@ import type { Expression } from '../../compiler/syntax/expressions/index.ts';
 import type { StringLiteral } from '../../compiler/syntax/expressions/literals/literals.ts';
 import type { PatternArgument, VariantCallPattern } from '../../compiler/syntax/patterns.ts';
 import { nodesAt, type SyntaxNode } from '../../compiler/syntax/tree/index.ts';
-import { type Identifier, lastName } from '../../compiler/syntax/tree/node.ts';
+import type { Identifier } from '../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../compiler/syntax/tree/positions.ts';
 import type { TypeNode } from '../../compiler/syntax/types/index.ts';
 import type { Span } from '../../foundation/text/span.ts';
@@ -62,11 +62,13 @@ export function hoverAt(program: Program, module: ModuleId, offset: number): Hov
     return undefined;
   }
   const chain = nodesAt(checked.tree, offset);
-  const position = positionalArgumentOf(chain);
-  if (position !== undefined) {
-    return argumentHover(checked, position, chain.slice(position.depth));
-  }
   const ending = identifierAt(checked.tree, offset);
+  // Right after a name, the name is the one under the cursor, as `nameHover` reads it below.
+  const around = ending === undefined ? chain : nodesAt(checked.tree, offset - 1);
+  const position = positionalArgumentOf(chain) ?? positionalArgumentOf(around);
+  if (position !== undefined) {
+    return argumentHover(checked, position);
+  }
   return innermostHover(checked, chain) ?? (ending && nameHover(checked, ending));
 }
 
@@ -81,17 +83,20 @@ function innermostHover(checked: CheckedModule, nodes: readonly SyntaxNode[]): H
   return undefined;
 }
 
-/** A call pattern's argument written by position, and where it stands in a chain of nodes. */
+/**
+ * A call pattern's argument written by position (§3.11), its call pattern, and the nodes from it
+ * to the one under the cursor.
+ */
 interface PositionalArgument {
   readonly call: VariantCallPattern;
   readonly argument: PatternArgument;
-  readonly depth: number;
+  readonly inside: readonly SyntaxNode[];
 }
 
 /**
- * The argument by position of the innermost call pattern in `chain` (§3.11) that the chain ends in
- * the text of: a name, a literal or a spread whole, any other pattern only on its own punctuation,
- * not inside a pattern nested in it; undefined elsewhere.
+ * The argument by position of the innermost call pattern in `chain` that the chain ends in, short
+ * of a pattern taking a value apart in it, itself included, whose own parts say what they give;
+ * undefined elsewhere.
  */
 function positionalArgumentOf(chain: readonly SyntaxNode[]): PositionalArgument | undefined {
   const depth = chain.findLastIndex(({ kind }) => kind === 'VariantCallPattern') + 1;
@@ -102,18 +107,19 @@ function positionalArgumentOf(chain: readonly SyntaxNode[]): PositionalArgument 
   }
   const given: readonly SyntaxNode[] = call.arguments;
   const written = given.includes(argument) ? (argument as PatternArgument) : undefined;
-  if (written === undefined || !byPosition(written)) {
-    return undefined;
-  }
-  const isWhole = depth === chain.length - 1 || wholeArguments.has(written.kind);
-  return isWhole ? { call, argument: written, depth } : undefined;
+  const inside = chain.slice(depth);
+  const takesApart = inside.some(({ kind }) => takingApart.has(kind));
+  return written === undefined || !byPosition(written) || takesApart
+    ? undefined
+    : { call, argument: written, inside };
 }
 
-/** Arguments whose every node is their own text: a name, a literal, or a spread and its name. */
-const wholeArguments: ReadonlySet<string> = new Set([
-  'NamePattern',
-  'LiteralPattern',
-  'RestPattern',
+/** Patterns taking a value apart, each of whose parts gives what it matches its own way. */
+const takingApart: ReadonlySet<SyntaxNode['kind']> = new Set([
+  'StructPattern',
+  'VariantCallPattern',
+  'TuplePattern',
+  'ArrayPattern',
 ]);
 
 function byPosition({ kind }: PatternArgument): boolean {
@@ -121,51 +127,28 @@ function byPosition({ kind }: PatternArgument): boolean {
 }
 
 /**
- * A call pattern's argument by position: the field it gives (§3.11), as a named one's name shows
- * it, then what the text under the cursor shows, inside the argument.
+ * A call pattern's argument by position: the field it gives as checking recorded it (§3.11), as a
+ * named one's name shows it, then what the text under the cursor shows, inside the argument.
  */
 function argumentHover(
   checked: CheckedModule,
-  { call, argument }: PositionalArgument,
-  inside: readonly SyntaxNode[],
+  { call, argument, inside }: PositionalArgument,
 ): Hover | undefined {
+  const { checker, module, tree } = checked;
   const found = innermostHover(checked, inside);
-  const fields = fieldsGivenBy(checked, call, argument).flatMap((field) =>
-    denotationLines(checked.checker, field.name, {
-      declared: { kind: 'field', field },
-      type: field.type,
-    }),
-  );
-  if (fields.length === 0) {
+  const field = checker.lookup.bodyHolding(module, call)?.fieldGivenBy(argument);
+  if (field === undefined) {
     return found;
   }
+  const fieldLines = denotationLines(checker, field.name, {
+    declared: { kind: 'field', field },
+    type: field.type,
+  });
   return {
-    span: found?.span ?? spanIn(checked.tree, argument.span),
-    code: [...new Set(fields), ...(found?.code ?? [])],
+    span: found?.span ?? spanIn(tree, argument.span),
+    code: [...fieldLines, ...(found?.code ?? [])],
     doc: found?.doc,
   };
-}
-
-/**
- * The field `argument` of `call` gives, by the variant its head denotes as checked: one, or in a
- * field loop each pass's (§4); none where it gives none.
- */
-function fieldsGivenBy(
-  { checker, module }: CheckedModule,
-  call: VariantCallPattern,
-  argument: PatternArgument,
-): readonly FieldMember[] {
-  const head = lastName(call.callee.path);
-  const given = call.arguments.filter(({ kind }) => kind !== 'OtherFieldsPattern');
-  return checker.lookup.denotationsOf(module, head).flatMap(({ declared, type }) => {
-    const variant =
-      declared.kind === 'variant' && type !== undefined
-        ? checker.lookup.membersOf(module, type).variants.find(({ name }) => name === head.text)
-        : undefined;
-    const reached = variant && argumentsReach(variant.fields, given)[given.indexOf(argument)];
-    const field = reached && variant?.fields[reached.index];
-    return field === undefined ? [] : [field];
-  });
 }
 
 /**
