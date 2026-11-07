@@ -1,13 +1,14 @@
-# outcome: "1 2 3|4|legal: late|ops: no reason given|2 t|true false|5 6|x: no reason given|function a: b 2"
+# outcome: "1 2 3|4|legal: late|ops: no reason given|2 t|true false|5 6|x: no reason given|function a: b 2|x: no reason given z: no reason given|value result|oops 0 l"
 # A variant with fields is a function value (§3.14) named as a static function is: qualified, as
 # `Result.Ok` passed to `map`, whose result it infers as a lambda's would, or bare where the
 # expected function type's result is its enum, also as a member of an expected union or a
-# parameter of one overload of several. It fits a function type leaving defaulted fields out,
-# computing them at each call, and takes its rest as one array; passed where no function type is
-# known, a qualified one is its own whole function, so a generic call infers from it, in each pass
-# of a field loop as that pass's types make it. It captures nothing, so its type is sendable, and
-# it equals another value naming it with the same type arguments, never one naming another
-# variant.
+# parameter of one overload of several, which its result tells apart. It fits a function type
+# leaving defaulted fields or its rest out, as a value or an argument, computing them at each
+# call, and takes its rest as one array; where nothing gives its parameters it is its whole
+# function, so a generic call infers from it, in each pass of a field loop as that pass's types
+# make it, and a result the call knows in part gives what its fields don't. It captures nothing,
+# so its type is sendable, and it equals another value naming it with the same type arguments,
+# never one naming another variant.
 
 enum Verdict:
   Approved
@@ -45,6 +46,14 @@ fn sent(make: sendable fn(String) -> Verdict) -> String: describe(make("x"))
 
 fn kept<T>(value: T) -> T: value
 
+fn grouped(make: fn(String) -> Node) -> String: shown(make("l"))
+
+fn told(make: fn(Int) -> Result<Int>) -> String: "result"
+
+fn told(make: fn(String) -> String) -> String: "string"
+
+fn failed<A, E>(value: A, make: fn(A) -> Result<String, E>) -> Result<String, E>: make(value)
+
 struct Pair:
   a: Int
   b: String
@@ -76,4 +85,10 @@ async fn main() -> Future<String>:
   const whole = kept(Verdict.Rejected)
   const move: Move = Now
   const picked = `${chosen(Now)} ${describe(whole("a", "b"))}`
-  `${values}|${valueOf(wrap(4))}|${made}|${describe(short("ops"))}|${shown(group("t", true, [Node.Empty, Node.Text("a")]))}|${same}|${passed}|${sent(Rejected)}|${picked} ${each(Pair{a: 1, b: "x"})}`
+  const shorter = ["z"].map(Verdict.Rejected)
+  const left = `${sent(Verdict.Rejected)} ${describe(shorter[0])}`
+  const result = `${chosen(Action.Later)} ${told(Result.Ok)}`
+  const failure = match failed("oops", Result.Err):
+    case Err{error}: `${error} ${grouped(Node.Group)}`
+    case _: ""
+  `${values}|${valueOf(wrap(4))}|${made}|${describe(short("ops"))}|${shown(group("t", true, [Node.Empty, Node.Text("a")]))}|${same}|${passed}|${sent(Rejected)}|${picked} ${each(Pair{a: 1, b: "x"})}|${left}|${result}|${failure}`

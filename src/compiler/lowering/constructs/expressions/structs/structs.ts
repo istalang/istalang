@@ -160,10 +160,10 @@ export function lowerBareStruct(context: FunctionContext, node: Expression): Reg
 
 /**
  * Whether `a.b` reads a field, rather than naming a namespace's or a type's member
- * (../access/names.ts).
+ * (../access/names.ts), a static function the checker resolved it to among them.
  */
 export function readsField(context: FunctionContext, access: MemberAccess): boolean {
-  return context.entityOf(access.member) === undefined;
+  return context.entityOf(access.member) === undefined && !context.body.resolved.has(access);
 }
 
 /**

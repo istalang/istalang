@@ -10,10 +10,12 @@
  * types come from there, and what it gives binds the type parameters of its result, as
  * `xs.map(fn x: x * 2)` binds `U` from `x * 2` and `xs.map(Result.Ok)` from `Ok`'s result. A
  * lambda's result nothing has bound is left for its body to decide (`BodyContext.inferLambda`); a
- * named function is chosen and instantiated without its result (`functionValueType`), which
- * records nothing, so the argument is checked once, against the parameter's type, when the
- * arguments are fitted. One whose parameter types still mention a type parameter nothing has
- * bound is left for instantiating to report.
+ * named function is chosen and instantiated against what is known of its result
+ * (`functionValueType`), which records nothing, so the argument is checked once, against the
+ * parameter's type, when the arguments are fitted. A lambda whose parameter types still mention a
+ * type parameter nothing has bound is left for instantiating to report, as is a named function,
+ * unless it is a lone one, whose whole type binds them. The call's expected type has its say only
+ * once its function is instantiated, after these, for a named function as for a lambda.
  */
 
 import { valueBranchesOf } from '../../../syntax/expressions/branches.ts';
@@ -76,8 +78,10 @@ function inferLambdaAt(
 }
 
 /**
- * Binds what the function `node` names gives when its parameters are known and its result isn't,
- * choosing it by them; a name of anything else, or with nothing to bind, is left to fitting.
+ * Binds what the function `node` names gives: chosen by the parameters `expected` gives, when they
+ * are known and its result isn't; else, nothing giving them, a lone function's whole type, so a
+ * function with defaults passed to `T` is its whole self. A name of anything else, or with nothing
+ * to bind, is left to fitting.
  */
 function inferNamedAt(
   context: BodyContext,
@@ -86,12 +90,13 @@ function inferNamedAt(
   inference: Inference,
 ): void {
   const partial = knownParameters(expected, inference);
-  if (partial === undefined || !isOpen(partial.result, inference)) {
+  if (partial !== undefined && !isOpen(partial.result, inference)) {
     return;
   }
-  const type = functionValueType(context, node, partial);
+  const open = (part: Type) => isOpen(part, inference);
+  const type = functionValueType(context, node, partial, open);
   if (type !== undefined) {
-    inference.match(partial, type);
+    inference.match(partial ?? expected, type);
   }
 }
 

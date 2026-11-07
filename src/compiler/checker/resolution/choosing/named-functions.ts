@@ -25,19 +25,24 @@
 
 import { staticName } from '../../../../foundation/language/static-names.ts';
 import type { Entity, FunctionsEntity, VariantNaming } from '../../../binder/entities.ts';
-import { fieldsFunctionOf } from '../../../syntax/declarations/field-defaults.ts';
+import {
+  declaredFunctionName,
+  fieldsFunctionOf,
+} from '../../../syntax/declarations/field-defaults.ts';
 import type { MemberAccess } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
 import { enumsExpected, expectedFunction } from '../../types/fitting/expected.ts';
-import { substitute } from '../../types/parts/substitution.ts';
+import { type Substitution, substitute } from '../../types/parts/substitution.ts';
+import { parametersIn } from '../../types/parts/type-parts.ts';
 import { withPack } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { futureArgument, futureOf } from '../../types/type/well-known.ts';
 import { namedType } from '../../types/written/named-types.ts';
+import { parameterType } from '../../types/written/resolve-type.ts';
 import { type Instantiation, instantiate } from '../conformance/conformance.ts';
 import type { Passing } from './call-arguments.ts';
 import { type Candidate, callCandidates, staticCandidates, staticTargetOf } from './candidates.ts';
@@ -125,9 +130,10 @@ function topLevelFunctions(
 }
 
 /**
- * The constructor a variant's name may mean (§3.11): a qualified variant's own, or, for a bare
- * name, that of the variant of the enum an expected function type's result is. Undefined when no
- * variant so named has fields, since a variant without fields is a value, not a function.
+ * The constructor a variant's name may mean (§3.11): a qualified variant's own, undefined for one
+ * without fields, a value and never a function; or, for a bare name, that of the variant of the
+ * enum an expected function type's result is, found by name among those enums only, as a bare
+ * variant is (program-inputs.ts), so no other enum's variants are read.
  */
 function variantConstructors(
   context: BodyContext,
@@ -135,47 +141,89 @@ function variantConstructors(
   naming: VariantNaming,
 ): NamedFunctions | undefined {
   const { checker } = context;
-  const named = naming.kind === 'variant' ? [naming] : checker.bindings.candidatesOf(naming);
-  if (named.every((each) => fieldsFunctionOf(each.enum, each.variant) === undefined)) {
-    return undefined;
+  if (naming.kind === 'variant') {
+    const constructs = fieldsFunctionOf(naming.enum, naming.variant);
+    return constructs === undefined
+      ? undefined
+      : {
+          site,
+          name: declaredFunctionName(constructs),
+          candidates: () => [{ declaration: constructs }],
+        };
   }
   return {
     site,
-    name:
-      naming.kind === 'variant'
-        ? staticName(naming.enum.name.text, naming.variant.name.text)
-        : naming.name,
+    name: naming.name,
     candidates: (expected) => {
-      const chosen =
-        naming.kind === 'variant'
-          ? naming
-          : checker.inputs.variantNamed(
-              naming.name,
-              enumsExpected(expectedFunction(expected)?.result),
-            );
+      const enums = enumsExpected(expectedFunction(expected)?.result);
+      const chosen = checker.inputs.variantNamed(naming.name, enums);
       const constructs = chosen && fieldsFunctionOf(chosen.enum, chosen.variant);
       return constructs === undefined ? [] : [{ declaration: constructs }];
     },
   };
 }
 
+/** Which parts of an expected type a call is still finding, as choosing asks them (§3.5). */
+export type OpenParts = (part: Type) => boolean;
+
 /**
- * The type of the function `node` names as a value where one taking `shape`'s parameters is
- * expected and its result is still to be found, as a call it is passed to finds it (§3.5);
- * undefined when it names none, or none such is chosen or can be instantiated. It records and
- * reports nothing.
+ * The type of the function `node` names as a value where a value of `shape` is expected, as a call
+ * it is passed to judges it (§3.5): chosen by `shape`'s parameters, instantiated against its result
+ * and fitting it, the parts `isOpen` says the call is still finding taken as anything; with no
+ * shape, nothing giving the parameters, a lone non-generic function's whole type. Undefined when it
+ * names none, or none fits. It records and reports nothing.
  */
 export function functionValueType(
   context: BodyContext,
   node: Identifier | MemberAccess,
-  shape: FunctionType,
+  shape: FunctionType | undefined,
+  isOpen: OpenParts,
 ): FunctionType | undefined {
   const named = namedFunctions(context, node);
-  const application =
-    named === undefined ? undefined : chosenFor(context, named.candidates(shape), shape);
-  return application === undefined
-    ? undefined
-    : instantiatedValue(context, application, searchSite(context.checker), undefined)?.type;
+  return named === undefined ? undefined : fittedValue(context, named, shape, isOpen);
+}
+
+/**
+ * `functionValueType` of what `named` means. Its result fits `shape`'s where that is known whole;
+ * where a call is still finding part of it, instantiating matched what is known of it.
+ */
+function fittedValue(
+  context: BodyContext,
+  named: NamedFunctions,
+  shape: FunctionType | undefined,
+  isOpen: OpenParts,
+): FunctionType | undefined {
+  const { checker } = context;
+  const site = searchSite(checker);
+  if (shape === undefined) {
+    const lone = loneFunction(context, named.candidates(undefined));
+    return lone === undefined ? undefined : instantiatedValue(context, lone, site, undefined)?.type;
+  }
+  const holes = holesIn(shape, isOpen);
+  const known = holes.size === 0 ? shape : substitute(shape, holes, checker.typeRules);
+  const knownShape = known.kind === 'function' ? known : shape;
+  const application = chosenFor(context, named, knownShape);
+  const value =
+    application === undefined
+      ? undefined
+      : instantiatedValue(context, application, site, knownShape.result)?.type;
+  const isWhole = parametersIn(shape.result).every((parameter) => !holes.has(parameter));
+  return value !== undefined && (!isWhole || checker.fitOf(value, shape) !== undefined)
+    ? value
+    : undefined;
+}
+
+/**
+ * The parameters `type` mentions that `isOpen` says a call is still finding, each read as the
+ * error type, which fits anything and binds nothing (types/inference/infer.ts), so only what is
+ * known of `type` is matched.
+ */
+function holesIn(type: Type, isOpen: OpenParts): Substitution {
+  return new Map(
+    parametersIn(type)
+      .filter((parameter) => isOpen(parameterType(parameter)))
+      .map((parameter) => [parameter, errorType] as const),
+  );
 }
 
 /**
@@ -187,8 +235,7 @@ export function chosenValue(
   named: NamedFunctions,
   shape: FunctionType | undefined,
 ): Application | undefined {
-  const chosen =
-    shape === undefined ? undefined : chosenFor(context, named.candidates(shape), shape);
+  const chosen = shape === undefined ? undefined : chosenFor(context, named, shape);
   return chosen ?? loneFunction(context, named.candidates(shape));
 }
 
@@ -233,19 +280,45 @@ export function instantiatedValue(
 
 /**
  * For functions named as an argument, the function types they can be passed as, so the call
- * decides which (§3.5); undefined for a lone non-generic function, which has its own type.
+ * decides which (§3.5): those whose parameters choose one that, instantiated, fits the type, or,
+ * while the call is still finding a parameter's type, those whose count one takes. Undefined for a
+ * lone non-generic function with neither defaults nor a rest, which has one type of its own; a
+ * lone one with either fits the types leaving them out too (§3.14), so the call decides it, and
+ * one nothing gives the parameters of is its whole function (../calls/function-arguments.ts).
  */
 export function functionsAccepted(
   context: BodyContext,
   named: NamedFunctions,
 ): Accepts | undefined {
-  if (loneFunction(context, named.candidates(undefined)) !== undefined) {
+  const lone = loneFunction(context, named.candidates(undefined));
+  if (lone?.signature.parameters.every((slot) => !slot.hasDefault && slot.rest === undefined)) {
     return undefined;
   }
-  return (expected) => {
+  return (expected, isOpen) => {
     const shape = expectedFunction(expected);
-    return shape !== undefined && chosenFor(context, named.candidates(shape), shape) !== undefined;
+    if (shape === undefined) {
+      return false;
+    }
+    const isFinding =
+      shape.pack !== undefined ||
+      shape.parameters.some(({ type }) => holesIn(type, isOpen).size > 0);
+    return isFinding
+      ? takesCount(context, named, shape)
+      : fittedValue(context, named, shape, isOpen) !== undefined;
   };
+}
+
+/** Whether one of the functions `named` means takes as many parameters as `shape`, or a pack. */
+function takesCount(context: BodyContext, named: NamedFunctions, shape: FunctionType): boolean {
+  const candidates = takingAsync(named.candidates(shape), shape);
+  if (shape.pack !== undefined) {
+    return candidates.length > 0;
+  }
+  const arguments_ = shape.parameters.map((slot) => ({
+    type: undefined,
+    passing: passingOf(slot.reference),
+  }));
+  return chooseAsValue(context.checker, candidates, arguments_).kind !== 'none';
 }
 
 /** The application of the one candidate, when there is one and it isn't generic. */
@@ -270,12 +343,13 @@ function loneFunction(
 }
 
 /**
- * The candidate that takes `shape`'s parameters, as a call passing them would choose it; none for
- * a shape ending in a pack, whose parameters are known only once a function is chosen (§3.5).
+ * The function `named` means that takes `shape`'s parameters exactly, as a call passing them would
+ * choose it; none for a shape ending in a pack, whose parameters are known only once a function
+ * is chosen (§3.5).
  */
 function chosenFor(
   context: BodyContext,
-  candidates: readonly Candidate[],
+  named: NamedFunctions,
   shape: FunctionType,
 ): Application | undefined {
   if (shape.pack !== undefined) {
@@ -286,8 +360,14 @@ function chosenFor(
     passing: passingOf(slot.reference),
     exact: true,
   }));
+  const candidates = takingAsync(named.candidates(shape), shape);
   const choice = chooseAsValue(context.checker, candidates, arguments_);
   return choice.kind === 'chosen' ? choice.application : undefined;
+}
+
+/** `candidates` a value of `shape` may be: an async function only where `shape` is async (§3.14). */
+function takingAsync(candidates: readonly Candidate[], shape: FunctionType): readonly Candidate[] {
+  return shape.isAsync ? candidates : candidates.filter(({ declaration }) => !declaration.isAsync);
 }
 
 function passingOf(reference: boolean): Passing {

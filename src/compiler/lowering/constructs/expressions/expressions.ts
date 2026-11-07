@@ -15,7 +15,7 @@ import { lowerDereference } from '../parts/places.ts';
 import { lowerName, lowerNamed } from './access/names.ts';
 import { lowerUnwrap } from './access/optionals.ts';
 import { lowerCall, lowerSpawn } from './calls.ts';
-import { lowerFunctionValue, lowerLambda } from './closures.ts';
+import { lowerLambda } from './closures.ts';
 import {
   lowerArrayLiteral,
   lowerIndex,
@@ -92,14 +92,10 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
 /**
- * `a.b`: a function named as a value through a namespace or its type (closures.ts), anything else
- * a qualified member names, such as a variant or a namespace's constant, read as its name reads
- * (access/names.ts), or a field read.
+ * `a.b`: a field read, or what a qualified member names, read as its name reads (access/names.ts):
+ * a function named as a value through a namespace or its type, a variant, a namespace's constant.
  */
 function lowerMemberAccess(context: FunctionContext, node: MemberAccess): Register {
-  if (context.body.resolved.has(node)) {
-    return lowerFunctionValue(context, node);
-  }
   return readsField(context, node)
     ? lowerFieldRead(context, node)
     : lowerNamed(context, node.member, node);

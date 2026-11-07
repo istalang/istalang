@@ -2,15 +2,12 @@
  * A function named as a value, checked (§3.14): the one the name means where its value is wanted,
  * chosen as resolution/choosing/named-functions.ts chooses it, then instantiated against what is
  * expected of it, made a closure with no captures and recorded as a site at the expression naming
- * it (check.ts). A bare variant's name records the variant its constructor builds (§3.11), as a
- * call of it does, for what tools and lowering read of the name. A name none of whose functions
- * is chosen is reported: as needing a function type where none is expected, else as fitting none
+ * it (check.ts), a variant's constructor (§3.11) as any function, which tools read the variant it
+ * builds from. A name none of whose functions is chosen is reported: as needing a function type where none is expected, else as fitting none
  * of the one expected; a lone function that doesn't fit is its own value, which the expected type
  * reports as any value's.
  */
 
-import { variantEntity } from '../../../binder/entities.ts';
-import { constructedVariant } from '../../../syntax/declarations/field-defaults.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
@@ -54,9 +51,5 @@ export function checkFunctionValue(
     return errorType;
   }
   recordChosen(context, { site, application, instantiation: value.instantiation });
-  const built = constructedVariant(application.signature.declaration);
-  if (built !== undefined && site.kind === 'Identifier') {
-    context.recordVariant(site, variantEntity(built.enumeration, built.variant));
-  }
   return value.type;
 }
