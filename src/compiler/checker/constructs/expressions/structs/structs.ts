@@ -52,6 +52,7 @@ import {
   checkOpaqueComprehended,
   comprehensionOf,
   freshComprehended,
+  opaqueComprehendedAccepts,
 } from './struct-comprehensions.ts';
 import { checkVariantLiteral, variantsAccepted } from './variants.ts';
 
@@ -279,8 +280,10 @@ function checkValuesAlone(context: BodyContext, node: FieldsLiteral): void {
 
 /**
  * Which types a literal the call it is passed to decides can take (§3.5): a bare variant's
- * (`Rejected{by: "legal"}`) its enums; a `struct{…}`, once a value it gives needs the type expected
- * of it, a struct type with a field of each name it gives, each value taking that field's type.
+ * (`Rejected{by: "legal"}`) its enums; a `struct{…}` comprehending fields not all known, the struct
+ * types with its keys (struct-comprehensions.ts); any other `struct{…}`, once a value it gives
+ * needs the type expected of it, a struct type with a field of each name it gives, each value
+ * taking that field's type.
  */
 export function structLiteralAccepts(
   context: BodyContext,
@@ -289,10 +292,13 @@ export function structLiteralAccepts(
   if (node.type !== undefined) {
     return variantsAccepted(context, context.entityOf(lastName(node.type.path)));
   }
-  return fieldsTaking(context, node, {
-    combine: partsAccept,
-    read: (value) => context.acceptedPart(value),
-  });
+  return (
+    opaqueComprehendedAccepts(context, node) ??
+    fieldsTaking(context, node, {
+      combine: partsAccept,
+      read: (value) => context.acceptedPart(value),
+    })
+  );
 }
 
 /**

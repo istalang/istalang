@@ -1,9 +1,10 @@
-# outcome: "1 2|legal: no reason given|ops: late|approved|3 t true|0|7|5|boom 1|1 a"
+# outcome: "1 2|legal: no reason given|ops: late|approved|3 t true|0|7|5|boom 1|1 a|2 4|t 6"
 # A variant with fields is a function of its enum (§3.11): a call binds its arguments to the fields
 # as to parameters, by position, then by name, leaving defaults out and a rest collecting the
 # others; the expected enum gives its type arguments, those written give theirs and the arguments
 # infer the rest, and a variant without fields called is its value. A spawned call starts the
-# constructor as any function. A field named `self` is a field, never a receiver.
+# constructor as any function. A field named `self` is a field, never a receiver, and a
+# `struct{…}` comprehending fields not all known takes the field's type, as in braces.
 
 enum Verdict:
   Approved
@@ -38,9 +39,31 @@ fn wrapped(value: Int?) -> Result<Int?, String>: Ok(value)
 enum Named:
   Of(self: Int, other: String)
 
+struct Bag<S is struct { [_]: Int }>:
+  fields: S
+  type Doubled = match S:
+    case _: { [F in keyof S]: Int }
+
+fn doubled<S is struct { [_]: Int }>(bag: Bag<S>) -> Result<Bag<S>.Doubled>:
+  Ok(struct{for f, n in ...bag.fields: [f]: n * 2})
+
+fn tagged<S is struct { [_]: Int }>(
+  bag: Bag<S>,
+) -> Result<{ tag: String, value: Bag<S>.Doubled }>:
+  Ok(struct{tag: "t", value: struct{for f, n in ...bag.fields: [f]: n * 3}})
+
 fn named() -> String:
   match Named.Of(self: 1, other: "a"):
     case Of{self, other}: `${self} ${other}`
+
+fn comprehended() -> String:
+  const two = match doubled(Bag{fields: struct{a: 1, b: 2}}):
+    case Ok{value}: `${value.a} ${value.b}`
+    case _: ""
+  const one = match tagged(Bag{fields: struct{a: 2}}):
+    case Ok{value}: `${value.tag} ${value.value.a}`
+    case _: ""
+  `${two}|${one}`
 
 fn inferred() -> String:
   const failed = Result.Err<Int>("boom")
@@ -76,4 +99,5 @@ async fn main() -> Future<String>:
     String(kept),
     inferred(),
     named(),
+    comprehended(),
   ].join("|")

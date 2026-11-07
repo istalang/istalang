@@ -23,10 +23,11 @@ import type {
 } from '../../../../syntax/expressions/index.ts';
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
-import type { BodyContext, CheckedPasses } from '../../../contexts/body-context.ts';
+import type { Accepts, BodyContext, CheckedPasses } from '../../../contexts/body-context.ts';
 import type { FieldPassType } from '../../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
+import { builtFrom } from '../../../types/fitting/expected.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import type { Inference } from '../../../types/inference/infer.ts';
 import { type Substitution, substitute } from '../../../types/parts/substitution.ts';
@@ -34,7 +35,11 @@ import { parametersIn } from '../../../types/parts/type-parts.ts';
 import type { FieldMember, Type } from '../../../types/type/index.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { literalType, unionOf } from '../../../types/unions/unions.ts';
-import { checkedFieldPasses, inFieldPasses } from '../../loops/field-passes.ts';
+import {
+  checkedFieldPasses,
+  inFieldPasses,
+  visitsUnknownFields,
+} from '../../loops/field-passes.ts';
 import type { LiteralGiven } from './literal-sources.ts';
 
 /** The struct comprehension ending `node`'s items, if it has one. */
@@ -217,6 +222,48 @@ export function checkComprehensionAlone(context: BodyContext, node: StructCompre
 }
 
 /**
+ * The struct types a `struct{…}` ending in a comprehension over a value whose fields aren't all
+ * known can be built as, the call it is passed to deciding (§3.5): those whose keys are exactly its
+ * named items' and its subject's, as `checkOpaqueComprehended` builds them, since it has no type of
+ * its own. Undefined for any other literal, and while its subject's type is known only by checking
+ * it, which a call's argument does first (constructs/expressions/literals/literal-items.ts).
+ */
+export function opaqueComprehendedAccepts(
+  context: BodyContext,
+  node: StructLiteral,
+): Accepts | undefined {
+  const comprehension = comprehensionOf(node);
+  const part = comprehension && context.acceptedPart(comprehension.header.subject);
+  const subject = part?.kind === 'typed' ? part.type : undefined;
+  const { checker } = context;
+  if (
+    comprehension === undefined ||
+    subject === undefined ||
+    !visitsUnknownFields(checker, subject, comprehension.header)
+  ) {
+    return undefined;
+  }
+  const named = node.items.flatMap((item) =>
+    item.kind === 'FieldInitializer' ? [literalType(item.name.text)] : [],
+  );
+  return (expected) => {
+    const target = builtFrom(expected);
+    return target !== undefined && givesKeysOf(context, named, subject, target);
+  };
+}
+
+/** Whether `named` keys and those of `subject`, a comprehension's, are exactly `target`'s. */
+function givesKeysOf(
+  context: BodyContext,
+  named: readonly Type[],
+  subject: Type,
+  target: Type,
+): boolean {
+  const { typeRules: rules } = context.checker;
+  return sameType(unionOf([...named, rules.keysOf(subject, [])], rules), rules.keysOf(target, []));
+}
+
+/**
  * A `struct{…}` ending in a comprehension, building `expected`, a struct type whose fields aren't
  * all known: each named item's value checked against the field it names, each pass's against the
  * field its key names, and the keys of both together exactly `expected`'s. Its type is `expected`.
@@ -247,8 +294,7 @@ export function checkOpaqueComprehended(
     context.expect(comprehension.value, rules.fieldType(expected, pass.key));
   });
   const subject = context.typeOf(comprehension.header.subject);
-  const given = unionOf([...named.keys, rules.keysOf(subject, [])], rules);
-  if (subject.kind !== 'error' && !sameType(given, rules.keysOf(expected, []))) {
+  if (subject.kind !== 'error' && !givesKeysOf(context, named.keys, subject, expected)) {
     context.report(checkerDiagnostics.comprehendedFields(node.span, typeText(expected)));
   } else if (fits) {
     context.literals.record(node, [...named.sources, comprehensionSource(comprehension)]);

@@ -30,7 +30,7 @@ export const formNodeLibrary = [
   '  type Seen = match S:',
   '    case _: { [F in keyof S]: S[F].Seen }',
   'fn seen<S is struct { [_] is FormNode }>(self: Group<S>) -> Group<S>.Seen: struct{for f, node in ...self.fields: [f]: node.seen()}',
-  'fn read<S is struct { [_] is FormNode }>(self: Group<S>) -> Result<Group<S>.Data>: Ok{value: struct{for f, node in ...self.fields: [f]: node.read()?}}',
+  'fn read<S is struct { [_] is FormNode }>(self: Group<S>) -> Result<Group<S>.Data>: Ok(struct{for f, node in ...self.fields: [f]: node.read()?})',
   'fn load<S is struct { [_] is FormNode }>(self: Group<S>, v: Group<S>.Seen):',
   '  for f, node in ...self.fields: node.load(v[f])',
 ].join('\n');

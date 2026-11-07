@@ -45,6 +45,19 @@ export function inFieldPasses(
 }
 
 /**
+ * Whether a field loop `header` heads over a value of `subject` has a pass of its own for the keys
+ * not known yet (§4): its subject's fields aren't all known.
+ */
+export function visitsUnknownFields(
+  checker: CheckerContext,
+  subject: Type,
+  header: FieldHeader,
+): boolean {
+  const passes = fieldPassesOver(checker, subject, header);
+  return passes?.some(({ visits }) => visits.kind === 'others') === true;
+}
+
+/**
  * The passes a field loop's body is checked in over a value of `subject` (§4): one per key a
  * literal names, its value that field's type; and, for the keys not known yet, one pass whose key
  * is a member parameter keyed by `header` ranging over them, its value the field that key names;

@@ -14,7 +14,7 @@
  * after `return`.
  */
 
-import type { Expression } from '../../../../syntax/expressions/index.ts';
+import type { Expression, StructLiteral } from '../../../../syntax/expressions/index.ts';
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { AcceptedPart, BodyContext } from '../../../contexts/body-context.ts';
 import { isBuiltLiteral, untypedLiteral } from '../expressions.ts';
@@ -64,8 +64,10 @@ function hasTypeOnlyChecked(part: AcceptedPart): boolean {
 /**
  * The items a literal of items (`isBuiltLiteral`) gives values by: a tuple's elements, an array
  * literal's elements and its spreads' operands, a map literal's keys, values and spreads'
- * operands, a `struct{…}`'s field values, and those of the literal an indented value naming no
- * type reads as; no struct comprehension, nor a struct's spread, which gives fields, not items.
+ * operands, a `struct{…}`'s field values and its comprehension's subject, whose fields decide
+ * whether it has a type of its own (structs/struct-comprehensions.ts), and those of the literal an
+ * indented value naming no type reads as; no comprehension's value, checked once per field, nor a
+ * struct's spread, which gives fields, not items.
  */
 function literalItems(node: Expression): readonly Expression[] {
   switch (node.kind) {
@@ -87,19 +89,26 @@ function literalItems(node: Expression): readonly Expression[] {
         }
       });
     case 'StructLiteral':
-      return node.type === undefined
-        ? node.items.flatMap((item) =>
-            item.kind === 'FieldInitializer' || item.kind === 'PositionalInitializer'
-              ? [itemValue(item)]
-              : [],
-          )
-        : [];
+      return node.type === undefined ? node.items.flatMap(structItemValues) : [];
     case 'IndentedValue': {
       const literal = untypedLiteral(node);
       return literal === undefined ? [] : literalItems(literal);
     }
     case 'Parenthesized':
       return literalItems(node.expression);
+    default:
+      return [];
+  }
+}
+
+/** What a `struct{…}`'s item gives values by: a field's value, or a comprehension's subject. */
+function structItemValues(item: StructLiteral['items'][number]): readonly Expression[] {
+  switch (item.kind) {
+    case 'FieldInitializer':
+    case 'PositionalInitializer':
+      return [itemValue(item)];
+    case 'StructComprehension':
+      return [item.header.subject];
     default:
       return [];
   }
