@@ -5,7 +5,8 @@
  * Structs, enums and traits list their members the same way: an indented block after `:`, or
  * braces on one line (`struct Req { id: Int, value: String }`, `enum Color { Red, Green }`). A
  * struct may also have no member list at all. One helper reads all three, with each declaration
- * supplying how a member is parsed.
+ * supplying how a member is parsed. A variant's own fields are its parameters, so they stand in
+ * parentheses after its name (§3.11).
  *
  * `type` before a name declares an associated type among the members (§3.1, §3.10): `type Data =
  * T` in a struct or enum, `type Key is C` in a trait. Anywhere else among them it is a field's
@@ -26,7 +27,7 @@ import type {
   TypeAliasDeclaration,
   Variant,
 } from '../../../syntax/declarations/index.ts';
-import type { Invalid } from '../../../syntax/tree/node.ts';
+import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import { spanAcross } from '../../../syntax/tree/positions.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { attachAnnotations } from '../../layout/annotations.ts';
@@ -203,16 +204,27 @@ function parseMembers<Item extends DeclaredField | Variant | AssociatedType | Tr
 /** `Expired`, or `Rejected(by: String, reason: String)`. */
 function parseVariant(parser: Parser): Variant {
   const name = parser.identifier('a variant name');
-  const fields = parseVariantFields(parser);
+  const fields = parseVariantFields(parser, name);
   return { kind: 'Variant', span: parser.spanFrom(parser.startOf(name)), name, fields };
 }
 
-/** A variant's fields after its name, in parentheses or in braces; none when neither follows. */
-function parseVariantFields(parser: Parser): Variant['fields'] {
+/**
+ * A variant's fields after its name, in parentheses; none when they don't follow. Fields in braces,
+ * as a struct lists them, are read, so checking goes on, then refused once, naming the
+ * parenthesized form.
+ */
+function parseVariantFields(parser: Parser, name: Identifier): Variant['fields'] {
   if (atPostfix(parser, '(')) {
     return parseItemEntries(parser, '(', variantFieldRules).value;
   }
-  return atPostfix(parser, '{') ? parseItemEntries(parser, '{', declaredFieldRules).value : [];
+  if (!atPostfix(parser, '{')) {
+    return [];
+  }
+  const { value, span } = parseItemEntries(parser, '{', declaredFieldRules);
+  const fields = value.map((field) => parser.textOf({ span: parser.textSpanOf(field.span) }));
+  const parenthesized = `${name.text}(${fields.join(', ')})`;
+  parser.report(parserDiagnostics.bracedVariant(parser.textSpanOf(span), parenthesized));
+  return value;
 }
 
 const variantRules: ItemRules<Variant> = {

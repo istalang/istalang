@@ -150,6 +150,19 @@ describe('type declarations', () => {
     );
   });
 
+  it("refuses a variant's fields in braces once, naming them in parentheses", () => {
+    const text = 'enum E { V { a: Int, b: String = "x" @JsonName{"bee"} } }';
+    expect(reported('module', text)).toEqual(
+      reportedOnce(
+        parserDiagnostics.bracedVariant.code,
+        '{ a: Int, b: String = "x" @JsonName{"bee"} }',
+      ),
+    );
+    expect(parseAs('module', text).diagnostics[0]?.message).toContain(
+      'V(a: Int, b: String = "x" @JsonName{"bee"})',
+    );
+  });
+
   it('reads `shared` as a name where no `struct` follows it', () => {
     expect(dumpClean('module', 'const shared = 1')).toBe(
       moduleOf('(VariableDeclaration _ [(NamePattern [shared] [])] _ 1)'),

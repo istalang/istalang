@@ -123,6 +123,11 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: (text: string) =>
       `A tuple element is named by its position, a decimal number such as 0 or 1, not '${text}'.`,
   },
+  bracedVariant: {
+    code: 2043,
+    message: (parenthesized: string) =>
+      `A variant's fields are its parameters, declared in parentheses: ${parenthesized} (§3.11).`,
+  },
   rangeBound: {
     code: 2026,
     message: () => "A range pattern's bounds are literals.",
