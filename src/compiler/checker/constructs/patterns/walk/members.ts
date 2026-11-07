@@ -17,19 +17,16 @@
  *   the alias the pattern names when that is all of them.
  */
 
-import type { Entity } from '../../../../binder/entities.ts';
 import type { Expression } from '../../../../syntax/expressions/index.ts';
 import { signedNumberOf } from '../../../../syntax/expressions/literals/numbers.ts';
 import type { NamePattern, Pattern, PatternPart } from '../../../../syntax/patterns.ts';
 import { isMissingName, lastName } from '../../../../syntax/tree/node.ts';
-import type { TypeNode } from '../../../../syntax/types/index.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { PatternTest } from '../../../surface/checked-pattern.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import type { Type, UnionType } from '../../../types/type/index.ts';
 import { floatType, noneType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
-import { baseOf } from '../../../types/unions/union-members.ts';
 import {
   hasMember,
   hasOneValue,
@@ -38,17 +35,13 @@ import {
   writtenLiteral,
 } from '../../../types/unions/unions.ts';
 import {
-  instancesWith,
   kindMembers,
   literalMembers,
-  membersNamed,
-  membersOfType,
   patternTypeOf,
-  variantOwners,
 } from '../../../types/written/pattern-types.ts';
-import { typeOfEntity } from '../../../types/written/resolve-type.ts';
 import { anyShape } from '../exhaustiveness/exhaustiveness.ts';
 import { memberShape } from '../exhaustiveness/shapes.ts';
+import { namedMembers } from './named-members.ts';
 import type { PatternScope, ValuePart } from './parts.ts';
 import { ruledOutSelection, type Selection } from './pattern-tests.ts';
 
@@ -285,85 +278,4 @@ export function literalTypeOf(value: Expression): Type | undefined {
     return noneType;
   }
   return writtenLiteral(value) ?? (signedNumberOf(value) === undefined ? undefined : floatType);
-}
-
-/** A name a pattern writes, with the type arguments written after it. */
-interface WrittenName {
-  readonly path: NamePattern['path'];
-  readonly typeArguments: readonly TypeNode[];
-  readonly span: NamePattern['span'];
-}
-
-/**
- * The members a pattern naming a type, variant or constant selects (types/written/pattern-types.ts
- * `membersNamed`), a constant those of its base, and with type arguments the instance they give;
- * undefined after a report, or for a name naming nothing, reported where it was written. A type's
- * name sharing a member enum's variant's (`case Shared` where the prelude declares the type) is
- * qualified instead (§3.11).
- */
-function namedMembers(
-  scope: PatternScope,
-  written: WrittenName,
-  union: UnionType,
-): readonly Type[] | undefined {
-  const name = lastName(written.path);
-  const entity = scope.entityOf(name);
-  if (entity === undefined) {
-    return undefined;
-  }
-  const { members } = union;
-  if (entity.kind === 'variable') {
-    const type = scope.constantType(name);
-    return type === undefined ? [] : members.filter((member) => sameType(member, baseOf(type)));
-  }
-  const named = membersNamed(scope, entity, members);
-  const owners = entity.kind === 'type' ? variantOwners(scope, members, name.text) : [];
-  if (named.length === 0 && owners.length > 0) {
-    const texts = owners.map(typeText);
-    const qualified = `qualify it, as in '${texts[0]}.${name.text}'`;
-    scope.report(
-      checkerDiagnostics.severalMembers(written.span, typeText(union), texts, qualified),
-    );
-    return undefined;
-  }
-  return written.typeArguments.length === 0
-    ? named
-    : instanceNamed(scope, entity, written, { named, members });
-}
-
-/**
- * The instance of the generic type `entity` names that `written`'s type arguments give, among
- * `named`, or among `members` the type a generic alias stands for with them; undefined after
- * reporting arguments the type doesn't take, or naming a type in error.
- */
-function instanceNamed(
-  scope: PatternScope,
-  entity: Entity,
-  written: WrittenName,
-  { named, members }: { readonly named: readonly Type[]; readonly members: readonly Type[] },
-): readonly Type[] | undefined {
-  const pattern = patternTypeOf(scope, entity);
-  const declared =
-    pattern.kind === 'generic' || pattern.kind === 'genericAlias'
-      ? pattern.declaration.typeParameters.length
-      : 0;
-  const { typeArguments } = written;
-  if (pattern.kind === 'genericAlias' && typeArguments.length === declared) {
-    const given = typeArguments.map((argument) => scope.resolveType(argument));
-    const type = typeOfEntity(scope, entity, () => given);
-    return type === undefined || type.kind === 'error'
-      ? undefined
-      : membersOfType(scope, type, members);
-  }
-  if (pattern.kind !== 'generic' || typeArguments.length !== declared) {
-    const { text } = lastName(written.path);
-    scope.report(
-      checkerDiagnostics.typeArgumentCount(written.span, text, declared, typeArguments.length),
-    );
-    return undefined;
-  }
-  const given = typeArguments.map((argument) => scope.resolveType(argument));
-  return given.some((type) => type.kind === 'error')
-    ? undefined
-    : instancesWith(named, pattern.declaration, given);
 }
