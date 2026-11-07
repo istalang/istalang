@@ -124,11 +124,23 @@ describe('hover', () => {
         '    case Green: 2',
       )?.code,
     ).toEqual([shown]);
+  });
+
+  it("shows a variant with fields by its constructor's signature, then its enum (§3.11)", () => {
     const opt = ['enum Opt<T>:', '  Some(value: T)', '  None', ''];
-    expect(hover(...opt, 'fn f() -> Opt<Int>: So‸me{value: 1}')?.code).toEqual([
-      '(variant) Some: Opt<Int>',
+    const signature = 'fn Opt.Some<T>(value: T) -> Opt<T>';
+    expect(hover('enum Opt<T> { So‸me(value: T), None }')?.code).toEqual([
+      signature,
+      '(variant) Some: Opt<T>',
     ]);
-    expect(hover(...opt, 'fn f() -> Opt<Int>: Opt.So‸me{value: 1}')?.code).toEqual([
+    for (const built of ['So‸me{value: 1}', 'Opt.So‸me{value: 1}', 'So‸me(1)', 'Opt.So‸me(1)']) {
+      expect(hover(...opt, `fn f() -> Opt<Int>: ${built}`)?.code).toEqual([
+        signature,
+        '(variant) Some: Opt<Int>',
+      ]);
+    }
+    expect(hover(...opt, 'const wrap: fn(Int) -> Opt<Int> = Opt.So‸me')?.code).toEqual([
+      signature,
       '(variant) Some: Opt<Int>',
     ]);
     expect(
@@ -139,7 +151,52 @@ describe('hover', () => {
         '    case So‸me{value}: value',
         '    case None: 0',
       )?.code,
-    ).toEqual(['(variant) Some: Opt<T>']);
+    ).toEqual([signature, '(variant) Some: Opt<T>']);
+  });
+
+  it("names the field a call pattern's argument gives by position, beside what it holds", () => {
+    const verdict = [
+      'enum Verdict:',
+      '  Approved',
+      '  Rejected(by: String, reason: String = "none")',
+      'enum Node { Group(title: String, ...children: Array<Node>), Leaf }',
+      '',
+    ];
+    const cased = (pattern: string) =>
+      hover(
+        ...verdict,
+        'fn f(v: Verdict) -> Int:',
+        '  match v:',
+        `    case ${pattern}: 1`,
+        '    case _: 0',
+      )?.code;
+    expect(cased('Rejected(w‸ho, _)')).toEqual(['(field) by: String', '(variable) who: String']);
+    expect(cased('Rejected("le‸gal", ...)')).toEqual(['(field) by: String', 'String']);
+    expect(cased('Rejected(_, ‸_)')).toEqual(['(field) reason: String']);
+    expect(cased('Rejected(by: w‸ho)')).toEqual(['(variable) who: String']);
+    const grouped = (pattern: string) =>
+      hover(
+        ...verdict,
+        'fn f(n: Node) -> Int:',
+        '  match n:',
+        `    case ${pattern}: 1`,
+        '    case _: 0',
+      )?.code;
+    expect(grouped('Group(_, fi‸rst)')).toEqual([
+      '(field) children: Array<Node>',
+      '(variable) first: Node',
+    ]);
+    expect(grouped('Group(_, ...ki‸ds)')).toEqual([
+      '(field) children: Array<Node>',
+      '(variable) kids: Array<Node>',
+    ]);
+    expect(grouped('Group(_, Gro‸up(t, ...))')?.[0]).toBe(
+      'fn Node.Group(title: String, ...children: Array<Node>) -> Node',
+    );
+    expect(grouped('Group(_, Group(na‸me, ...))')).toEqual([
+      '(field) title: String',
+      '(variable) name: String',
+    ]);
   });
 
   it('shows unions, literal types and `None` as written, an alias with what it names, and the type a case leaves', () => {
