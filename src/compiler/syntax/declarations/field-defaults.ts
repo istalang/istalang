@@ -23,7 +23,7 @@
 import { staticName } from '../../../foundation/language/static-names.ts';
 import { memo } from '../../../foundation/structures/memo.ts';
 import type { Parameter } from '../expressions/index.ts';
-import type { Invalid } from '../tree/node.ts';
+import { type Invalid, isMissingName } from '../tree/node.ts';
 import { type TypeNode, unparenthesizedType } from '../types/index.ts';
 import {
   type Declaration,
@@ -102,6 +102,7 @@ export function takesArgumentsInOrder(declaration: FunctionDeclaration): boolean
 /**
  * The function whose parameters are the fields of a struct, or of an enum's `variant` (§3.1): a
  * struct's when one of its fields has a default, a variant's, its constructor, when it has fields.
+ * A declaration the parser found no name for declares no type, so its fields make no value.
  */
 export function fieldsFunctionOf(declaration: DeclaredStruct): FieldsFunction | undefined;
 export function fieldsFunctionOf(
@@ -113,7 +114,7 @@ export function fieldsFunctionOf(
   variant?: Variant,
 ): FieldsFunction | undefined {
   const fieldsOwner = fieldsOwnerOf(declaration, variant);
-  if (fieldsOwner === undefined) {
+  if (fieldsOwner === undefined || isMissingName(declaration.name)) {
     return undefined;
   }
   const owner = 'struct' in fieldsOwner ? fieldsOwner.struct : fieldsOwner.variant;

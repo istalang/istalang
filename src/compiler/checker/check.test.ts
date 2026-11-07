@@ -390,6 +390,16 @@ describe('checking is total', () => {
     }
   });
 
+  it('never throws on a declaration the parser found no name for, whose fields make no value', () => {
+    const nameless = [
+      'enum<T>:\n  Some(value: T)\n  Empty\nfn f() -> Int: 1',
+      'struct<T>:\n  b: Int = 1\nfn f() -> Int: 1',
+    ];
+    for (const text of nameless) {
+      expect(() => reported(text)).not.toThrow();
+    }
+  });
+
   it('never throws on broken programs', () => {
     fc.assert(
       fc.property(brokenText([subsetSource, ...corpusTexts, ...modules]), (text) => {
