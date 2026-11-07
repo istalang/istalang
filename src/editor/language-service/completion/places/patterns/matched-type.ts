@@ -18,6 +18,7 @@
 
 import type { Entity } from '../../../../../compiler/binder/entities.ts';
 import type { Denotation } from '../../../../../compiler/checker/surface/denotation.ts';
+import { argumentsReach } from '../../../../../compiler/checker/surface/struct-items.ts';
 import type {
   AnyType,
   FieldMember,
@@ -39,6 +40,7 @@ import {
   isTakingApart,
   patternHead,
   type StructPattern,
+  type VariantCallPattern,
 } from '../../../../../compiler/syntax/patterns.ts';
 import {
   extentIn,
@@ -100,17 +102,17 @@ export function fieldsMatchedBy(
 }
 
 /**
- * The fields `pattern`'s items may name against a value of `type`, by what its name denotes as
- * checked: a variant of `type`'s enum, which a bare name chooses by its name even before checking
- * resolved it, or `type`'s own struct, a shape an alias names among them (§3.17); against an `any`
- * type, the type it downcasts to, a struct, a shape or a qualified variant's enum, none generic
- * (§3.10); against a union, the member it selects. `struct{…}` names that type's own fields. A
- * trait's required fields are no pattern's (constructs/patterns/walk/parts.ts).
+ * The fields `pattern`'s items or arguments may name against a value of `type`, by what its name
+ * denotes as checked: a variant of `type`'s enum, which a bare name chooses by its name even before
+ * checking resolved it, or `type`'s own struct, a shape an alias names among them (§3.17); against
+ * an `any` type, the type it downcasts to, a struct, a shape or a qualified variant's enum, none
+ * generic (§3.10); against a union, the member it selects. `struct{…}` names that type's own
+ * fields. A trait's required fields are no pattern's (constructs/patterns/walk/parts.ts).
  */
 function fieldsOf(
   cursor: Cursor,
   parsed: Parsed,
-  pattern: StructPattern,
+  pattern: StructPattern | VariantCallPattern,
   type: Type,
 ): readonly FieldMember[] {
   const { checker } = cursor;
@@ -118,23 +120,28 @@ function fieldsOf(
     type.kind === 'any'
       ? downcastOf(cursor, parsed, pattern, type)
       : memberSelected(cursor, parsed, pattern, type);
+  const head = patternHead(pattern);
   if (own === undefined) {
     return [];
   }
-  if (pattern.type === undefined) {
+  if (head === undefined) {
     return checker.fieldsOf(own) ?? [];
   }
-  const name = lastName(pattern.type.path);
+  const name = lastName(head.path);
   const declared = denotationOf(cursor, parsed, name)?.declared;
   if (declared?.kind === 'type') {
     return namesOwnType(checker, declared.entity, own) ? (checker.fieldsOf(own) ?? []) : [];
   }
-  const choosesByName = pattern.type.path.length === 1 && type.kind !== 'any';
+  const choosesByName = head.path.length === 1 && type.kind !== 'any';
   return variantFieldsOf(checker, own, { name, declared, choosesByName });
 }
 
 /** A pattern that takes a value apart, and so selects one member of a union first. */
-type TakingPattern = StructPattern | ArrayPattern | Extract<SyntaxNode, { kind: 'TuplePattern' }>;
+type TakingPattern =
+  | StructPattern
+  | VariantCallPattern
+  | ArrayPattern
+  | Extract<SyntaxNode, { kind: 'TuplePattern' }>;
 
 /**
  * The member of `type` that `pattern` selects (§3.11), `type` itself where it is no union;
@@ -170,6 +177,8 @@ function membersSelected(
       return kindMembers(checker, { kind: 'tuple', count: pattern.elements.length }, members);
     case 'ArrayPattern':
       return kindMembers(checker, { kind: 'array' }, members);
+    case 'VariantCallPattern':
+      return membersNamedBy(cursor, parsed, pattern.callee, members);
     default: {
       if (pattern.type !== undefined) {
         return membersNamedBy(cursor, parsed, pattern.type, members);
@@ -254,10 +263,11 @@ function entityNamed(cursor: Cursor, parsed: Parsed, name: Identifier): Entity |
 function downcastOf(
   cursor: Cursor,
   parsed: Parsed,
-  pattern: StructPattern,
+  pattern: StructPattern | VariantCallPattern,
   from: AnyType,
 ): Type | undefined {
-  const entity = pattern.type && entityNamed(cursor, parsed, lastName(pattern.type.path));
+  const head = patternHead(pattern);
+  const entity = head && entityNamed(cursor, parsed, lastName(head.path));
   const target = entity === undefined ? undefined : downcastTargetOf(cursor.checker, entity, from);
   return target?.kind === 'type' ? target.type : undefined;
 }
@@ -348,6 +358,22 @@ const steps: { readonly [Kind in SyntaxNode['kind']]?: Step<Extract<SyntaxNode, 
         ?.type;
     },
     NestedFieldPattern: (link) => (link.child === link.node.pattern ? link.type : undefined),
+    VariantCallPattern: (link) => {
+      const { cursor, node, child, type } = link;
+      if (type === undefined) {
+        return;
+      }
+      const fields = fieldsOf(cursor, link.parsed, node, type);
+      const given = node.arguments.filter(({ kind }) => kind !== 'OtherFieldsPattern');
+      const written: readonly SyntaxNode[] = given;
+      const reached = argumentsReach(fields, given)[written.indexOf(child)];
+      const field = reached === undefined ? undefined : fields[reached.index];
+      if (field === undefined || reached?.isItem !== true) {
+        return field?.type;
+      }
+      return arrayElement(cursor.checker, field.type);
+    },
+    NamedPatternArgument: (link) => (link.child === link.node.pattern ? link.type : undefined),
   };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 

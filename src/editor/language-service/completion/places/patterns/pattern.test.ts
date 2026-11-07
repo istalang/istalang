@@ -222,6 +222,14 @@ describe('a pattern place', () => {
     );
   });
 
+  it("reads the type a call pattern's argument matches: its field's, by position or name", () => {
+    const nested = (subject: string, pattern: string) =>
+      labelsAt(...decision, `fn f(x: ${subject}) -> Int:`, '  match x:', `    case ${pattern}`);
+    expect(nested('Result<Decision>', 'Ok(‸')).toContain('Approved');
+    expect(nested('Result<Decision>', 'Ok(value: ‸')).toContain('Approved');
+    expect(nested('Result<Int>', 'Err(Error{‸')).toContain('message');
+  });
+
   it('reads the member a struct or tuple pattern selects of a union', () => {
     const optionals = [...decision, 'fn f(x: (Int, Decision)?, d: Decision?) -> Int:'];
     expect(labelsAt(...optionals, '  match x:', '    case (_, ‸')).toContain('Approved');
