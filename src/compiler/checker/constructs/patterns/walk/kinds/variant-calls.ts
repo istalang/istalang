@@ -30,6 +30,8 @@ import type { VariantNaming } from '../../../../../binder/entities.ts';
 import { hasDefault, isRestField } from '../../../../../syntax/declarations/index.ts';
 import type {
   NamedPatternArgument,
+  Pattern,
+  PatternPart,
   StructPattern,
   VariantCallPattern,
 } from '../../../../../syntax/patterns.ts';
@@ -49,7 +51,7 @@ import {
   type BoundPatternArgument,
   callPatternArguments,
 } from '../../../../surface/struct-items.ts';
-import type { FieldMember } from '../../../../types/type/index.ts';
+import type { FieldMember, Type } from '../../../../types/type/index.ts';
 import { errorType } from '../../../../types/type/primitives.ts';
 import { anyShape, type Shape } from '../../exhaustiveness/exhaustiveness.ts';
 import type { PatternScope, ValuePart } from '../parts.ts';
@@ -60,34 +62,77 @@ import { type ItemTaking, takeArray } from './arrays.ts';
 /** A call pattern's argument that binds to a field: any but a last `...`. */
 
 /**
- * A variant named before braces, `case Rejected{by}`, reported where it is walked (§3.11): its
- * items are taken over the error type, so their names bind and what they compare with is checked,
- * and it still tests its variant, covering it when its items match anything, as the call pattern
- * it stands for would, so nothing more is reported of its `match`.
+ * A struct pattern naming a variant, `case Rejected{by}`, which only its call pattern takes apart.
+ */
+export interface VariantBraced {
+  readonly node: StructPattern;
+  readonly type: NamedType;
+  readonly named: VariantNaming;
+  /** The variant's name, as the refusal writes it. */
+  readonly name: string;
+}
+
+/** `node` when it is a struct pattern naming a variant (§3.11); undefined for any other. */
+export function variantBraced(
+  scope: Pick<PatternScope, 'entityOf'>,
+  node: Pattern | PatternPart,
+): VariantBraced | undefined {
+  if (node.kind !== 'StructPattern' || node.type === undefined) {
+    return undefined;
+  }
+  const head = lastName(node.type.path);
+  const named = scope.entityOf(head);
+  return named?.kind === 'variant' || named?.kind === 'variants'
+    ? { node, type: node.type, named, name: head.text }
+    : undefined;
+}
+
+/**
+ * A variant named before braces, `case Rejected{by}`, refused where it is matched (../index.ts,
+ * §3.11): its items are taken over the error type, so their names bind and what they compare with
+ * is checked. Against its own enum it still tests its variant, covering it when its items only
+ * bind, as the call pattern it stands for would, so nothing more is reported of its `match`;
+ * against anything else it covers nothing.
  */
 export function takeVariantBraces(
   walk: ItemTaking,
   tests: PatternTests,
-  braced: { readonly node: StructPattern; readonly type: NamedType; readonly named: VariantNaming },
+  braced: VariantBraced,
   part: ValuePart,
 ): Shape | undefined {
   const { node } = braced;
   const errorPart = { type: errorType, path: part.path };
-  const items = [...node.fields, ...(node.rest === undefined ? [] : [node.rest])];
-  const matchesAnything = items
-    .map((item) => walk.take(item, errorPart))
-    .every((shape) => shape === anyShape);
-  const variant = tests.variant(braced.type, braced.named, part);
+  for (const item of [...node.fields, ...(node.rest === undefined ? [] : [node.rest])]) {
+    walk.take(item, errorPart);
+  }
+  const variant = declaresVariant(part.type, braced)
+    ? tests.variant(braced.type, braced.named, part)
+    : undefined;
   if (variant === undefined) {
-    return anyShape;
+    return undefined;
   }
   walk.found.push(variant.test);
-  return matchesAnything
+  const bindsOnly =
+    node.rest === undefined && node.fields.every(({ kind }) => kind === 'BindFieldPattern');
+  return bindsOnly
     ? constructed(
         variant.key,
         variant.fields.map(() => anyShape),
       )
     : undefined;
+}
+
+/** Whether `type` is an enum's that declares the variant `braced` names. */
+function declaresVariant(type: Type, { named, name }: VariantBraced): boolean {
+  if (type.kind !== 'nominal' || type.entity.declaration.kind !== 'EnumDeclaration') {
+    return false;
+  }
+  const { declaration } = type.entity;
+  return named.kind === 'variant'
+    ? named.enum === declaration
+    : declaration.variants.some(
+        (variant) => variant.kind === 'Variant' && variant.name.text === name,
+      );
 }
 
 /**

@@ -12,7 +12,7 @@
  *   makes them known otherwise, so field loops, comprehensions and keys take it as any other.
  */
 
-import type { RestPattern } from '../../../../../syntax/patterns.ts';
+import type { RestPattern, StructPattern } from '../../../../../syntax/patterns.ts';
 import type { FieldTarget } from '../../../../../syntax/statements/targets.ts';
 import type { Identifier } from '../../../../../syntax/tree/node.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
@@ -70,18 +70,21 @@ function fieldTypeNamed(scope: PatternScope, part: ValuePart, name: Identifier):
 }
 
 /**
- * What `rest` binds of `part`, a struct of which the pattern names the fields `named`: the struct
- * of the others (`restType`), built anew from them by name. `..._` binds nothing.
+ * What `pattern`'s rest binds of `part`, a struct of which its items name some fields: the struct
+ * of the others (`restType`), built anew from them by name. No rest, or `..._`, binds nothing.
  */
 export function restBinding(
   rules: TypeRules,
-  rest: RestPattern,
-  named: readonly string[],
+  pattern: StructPattern,
   part: ValuePart,
 ): PartBinding | undefined {
-  if (rest.target.kind !== 'Identifier') {
+  const { rest } = pattern;
+  if (rest === undefined || rest.target.kind !== 'Identifier') {
     return undefined;
   }
+  const named = pattern.fields.flatMap((item) =>
+    item.kind === 'Invalid' ? [] : [item.field.text],
+  );
   const type = restType(rules, part.type, named, rest);
   const path = [...part.path, { kind: 'fieldRest', from: part.type, to: type } as const];
   return { name: rest.target, type, path };

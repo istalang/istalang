@@ -199,7 +199,8 @@ describe('a variant without fields called with `()`', () => {
 describe("a variant call's arguments", () => {
   const declared = [
     'struct Item<T> { value: T }',
-    'enum Options<T> { Items(items: Array<Item<T>>), One(item: Item<T>), Link(next: Options<T>?), Empty }',
+    'enum Options<T> { Items(items: Array<Item<T>>), One(item: Item<T>), Link(next: Options<T>?), Group(title: String, ...items: Array<Item<T>>), Empty }',
+    'enum Tagged<T> { Entry(items: Array<Item<"s" | "m">>, value: T) }',
     'struct View<T> { options: Options<T>? = none }',
     '',
   ].join('\n');
@@ -210,10 +211,44 @@ describe("a variant call's arguments", () => {
       'fn inOptional() -> View<"s" | "m">: View<"s" | "m">{options: Options.One(Item{value: "m"})}',
       'fn qualifiedInside() -> Options<Int>: Options.Link(Options.Empty)',
       'fn written() -> Options<"s">: Options.Items<"s">([Item{value: "s"}])',
+      'fn defaulted() -> Result<Options<Int>>: Result.Ok<Options<Int>>(Options.Empty)',
+      'fn spread() -> Options<"s" | "m">: Options.Group("t", ...[Item{value: "s"}])',
+      'fn fixed() -> Tagged<Int>: Tagged.Entry([Item{value: "s"}], 42)',
     ].join('\n');
     expect(reported(`${declared}${functions}\nasync fn main(): 0\n`)).toEqual({
       codes: [],
       spanTexts: [],
     });
+  });
+
+  it("take no type arguments from a union holding several of the enum's instances", () => {
+    const text = [
+      'enum Opt<T> { Val(v: T), Empty }',
+      'enum Entry<K, V> { Pair(key: K, value: V) }',
+      'fn f() -> Opt<Int> | Opt<String>: Opt.Val("b")',
+      'fn g() -> Opt<Int> | Opt<String>: Val("b")',
+      'fn k() -> Entry<"retries", Int> | Entry<"region", String>: Entry.Pair("region", "eu")',
+      'async fn main(): 0',
+    ].join('\n');
+    expect(reported(text)).toEqual({ codes: [], spanTexts: [] });
+  });
+
+  it('are each judged against a field, beside one in error, and a call short of one is counted', () => {
+    const text = [
+      'enum Pair<T> { Make(a: T, xs: Array<T>) }',
+      'enum Both<T> { Make(a: T, b: T) }',
+      'enum Two { Make(opt: Options<Int>, reason: Int) }',
+      'fn f() -> Pair<Int>: Pair.Make("bad", [1, "wrong"])',
+      'fn g() -> Both<Int>: Both.Make("not an int", missing)',
+      'fn h() -> Two: Two.Make(Options.Empty)',
+      'async fn main(): 0',
+    ].join('\n');
+    expect(reported(`${declared}${text}`).codes).toEqual([5001, 5001, 5001, 4000, 5004]);
+  });
+
+  it('report an argument by position after a named one only as the parser did', () => {
+    const items = 'enum Pick { Items(a: Array<String>, b: Int) }\n';
+    const text = `${items}fn f() -> Pick: Pick.Items(b: 1, [123])\nasync fn main(): 0\n`;
+    expect(reported(text).codes).toEqual([2050]);
   });
 });

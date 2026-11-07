@@ -11,8 +11,10 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../../../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../../../../../runtime/runtime.test-kit.ts';
-import { compiledText } from '../../../../../compile.test-kit.ts';
+import { stdProgramOf } from '../../../../../binder/bind.test-kit.ts';
+import { compiledText, diagnosedAt } from '../../../../../compile.test-kit.ts';
 import { reported } from '../../../../check.test-kit.ts';
+import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 
 /** A variant of Int fields, the first `required` without a default, maybe ending in a rest. */
 interface GeneratedVariant {
@@ -294,5 +296,44 @@ describe('a call pattern reports each mistake once', () => {
   it('takes no argument the parser recovered for a field', () => {
     const text = matching('Verdict', 'String', ['case Rejected(by, reason, +): by', 'case _: ""']);
     expect(reported(text).codes.every((code) => code < 3000)).toBe(true);
+  });
+});
+
+describe("braces after a variant's name in a pattern", () => {
+  const refusal = checkerDiagnostics.variantInBracesPattern.code;
+
+  it.each([
+    ['against its own enum', 'Opt<Int>', ['case Some{value}: value', 'case Nothing: 0']],
+    ['against a type that rules it out', 'Int', ['case Opt.Some{value}: value', 'case _: 0']],
+    ['against Never', 'Never', ['case Opt.Some{value}: value']],
+    [
+      'against a union of two instances',
+      'Opt<Int> | Opt<String>',
+      ['case Some{value}: 1', 'case _: 0'],
+    ],
+  ])('are refused %s (§3.11)', (_, subject, cases) => {
+    expect(reported(matching(subject, 'Int', cases)).codes).toContain(refusal);
+  });
+
+  it('report nothing more, whatever they select, while a call pattern is told apart as a call', () => {
+    const braced = matching('Opt<Int> | Opt<String>', 'Int', ['case Some{value}: 1', 'case _: 0']);
+    expect(reported(braced).codes).toEqual([refusal]);
+    const called = matching('Opt<Int> | Opt<String>', 'Int', ['case Some(value): 1', 'case _: 0']);
+    const { diagnostics } = diagnosedAt(stdProgramOf({ 'main.ista': called }), 'main.ista');
+    const telling = diagnostics.filter(
+      ({ code }) => code === checkerDiagnostics.severalMembers.code,
+    );
+    expect(telling.map(({ message }) => message)).toEqual([
+      expect.stringContaining('Some<Int>(…)'),
+    ]);
+  });
+
+  it('cover their variant only when their items only bind', () => {
+    const text = matching('Verdict', 'Int', [
+      'case Rejected{reason == "late"}: 1',
+      'case Rejected(by, reason): 2',
+      'case Approved: 0',
+    ]);
+    expect(reported(text).codes).toEqual([refusal]);
   });
 });

@@ -107,6 +107,13 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
     ]);
   });
 
+  it('refuses a variant named before a block whatever its entries, items or quoted keys', () => {
+    for (const entry of ['- 42', '"value": 42']) {
+      const text = lines('fn f() -> Result<Int>:', '  return Ok:', `    ${entry}`);
+      expect(reported(text).codes).toEqual([checkerDiagnostics.variantInBraces.code]);
+    }
+  });
+
   it('supports shorthand names, a leading spread, and a trailing struct comprehension', () => {
     const decls = 'struct Scores { a: Int, b: Int, c: Int }';
     const body = lines(

@@ -6,9 +6,9 @@
  *   it is the same enum, else from the arguments and defaults.
  * - A variant with fields is a function of its enum, its constructor (§3.11,
  *   syntax/declarations/field-defaults.ts), and is built only by calling it: a call binds its
- *   arguments to the fields as any call's to parameters (§3.3). Once its type arguments are known
- *   before its arguments, each argument is checked against its field's type
- *   (`variantFieldTypes`). Named without a call, it is that function as a value (§3.14,
+ *   arguments to the fields as any call's to parameters (§3.3). Its arguments filling fields whose
+ *   types are known before them are checked against them (`calledConstructor`,
+ *   resolution/calls/known-parameters.ts). Named without a call, it is that function as a value (§3.14,
  *   closures/function-values.ts) wherever no enum is expected of it: qualified, or bare where an
  *   expected function type's result gives its enum. A variant without fields is a value, so
  *   `Expired()` is `Expired`.
@@ -23,25 +23,29 @@ import {
   declaredFunctionName,
   fieldsFunctionOf,
 } from '../../../../syntax/declarations/field-defaults.ts';
-import { type EnumDeclaration, typeParametersOf } from '../../../../syntax/declarations/index.ts';
+import type {
+  EnumDeclaration,
+  FunctionDeclaration,
+} from '../../../../syntax/declarations/index.ts';
 import type { Call, MemberAccess } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { resolveCall, type WrittenArgument } from '../../../resolution/calls/resolve.ts';
-import { bindArguments, isBinding } from '../../../resolution/choosing/binding.ts';
-import type { SignatureSlot } from '../../../resolution/choosing/call-arguments.ts';
-import { signatureOf } from '../../../resolution/choosing/choice.ts';
+import {
+  callArgumentOf,
+  resolveCall,
+  type WrittenArgument,
+} from '../../../resolution/calls/resolve.ts';
+import { choose } from '../../../resolution/choosing/choice.ts';
 import { functionsAccepted, namedFunctions } from '../../../resolution/choosing/named-functions.ts';
-import type { Binding } from '../../../surface/resolved-call.ts';
 import {
   enumsExpected,
   expectedNominal,
   sameNominal,
   writtenNominal,
 } from '../../../types/fitting/expected.ts';
-import { substitutionFor } from '../../../types/parts/substitution.ts';
-import type { Type } from '../../../types/type/index.ts';
+import type { NominalType, Type } from '../../../types/type/index.ts';
 import { errorType, noneType } from '../../../types/type/primitives.ts';
 import { membersOf } from '../../../types/unions/unions.ts';
 import { chooseVariant, nominalEntityOf } from '../../../types/written/named-types.ts';
@@ -185,7 +189,10 @@ export function checkVariantCall(
       name: declaredFunctionName(constructs),
       candidates: [{ declaration: constructs }],
       arguments: call.written,
-      typeArguments: call.typeArguments ?? expectedArguments(call.expected, chosen.enum),
+      typeArguments:
+        call.typeArguments ??
+        expectedArguments(call.expected, chosen.enum) ??
+        instanceTaking(context, constructs, call),
       expected: call.expected,
       form: 'call',
     });
@@ -205,42 +212,40 @@ export function checkVariantCall(
 }
 
 /**
- * By argument written, the type of the field each argument of a call of a variant with fields gives
- * (§3.11), once the enum's type arguments are known before the arguments: written, else the
- * expected type's when it is the same enum, or none for an enum without type parameters. Each
- * argument is checked against it, so a value that takes its type from where it stands
- * (`Item{value: "s"}`, `Options.Empty`) takes it from its field. Undefined when they aren't known
- * or the arguments don't bind, which choosing then reports.
+ * Refuses a variant named before braces or a block, `Rejected{by: "legal"}` or `Rejected:` (§3.11),
+ * a variant being built only by its call; its caller checks the values alone. A bare one the
+ * expected type chooses is still recorded, so tools read what it names.
  */
-export function variantFieldTypes(
+export function refuseVariantLiteral(
+  context: BodyContext,
+  at: AnchoredSpan,
+  name: Identifier,
+  { naming, expected }: { readonly naming: VariantNaming; readonly expected: Type | undefined },
+): Type {
+  context.report(checkerDiagnostics.variantInBraces(at, name.text));
+  const chosen =
+    naming.kind === 'variants'
+      ? context.checker.inputs.variantNamed(naming.name, enumsExpected(expected))
+      : undefined;
+  if (chosen !== undefined) {
+    context.recordVariant(name, chosen);
+  }
+  return errorType;
+}
+
+/**
+ * The constructor a call of a variant with fields calls (§3.11, syntax/declarations/field-defaults.ts),
+ * a bare variant as the expected type chooses it: the call's one candidate, whose parameters, its
+ * fields, are known before its arguments once its type arguments are
+ * (resolution/calls/known-parameters.ts). Undefined for any other call.
+ */
+export function calledConstructor(
   context: BodyContext,
   node: Call,
   expected: Type | undefined,
-  typeArguments: readonly Type[] | undefined,
-): readonly (Type | undefined)[] | undefined {
+): FunctionDeclaration | undefined {
   const chosen = variantCalled(context, node, expected);
-  const constructs =
-    chosen === undefined ? undefined : fieldsFunctionOf(chosen.enum, chosen.variant);
-  if (chosen === undefined || constructs === undefined) {
-    return undefined;
-  }
-  const known = typeArguments ?? expectedArguments(expected, chosen.enum) ?? [];
-  if (known.length !== typeParametersOf(chosen.enum.typeParameters).length) {
-    return undefined;
-  }
-  const { parameters } = signatureOf(
-    context.checker,
-    constructs,
-    substitutionFor(chosen.enum.typeParameters, known),
-  );
-  const binding = bindArguments(
-    parameters,
-    node.arguments.map((argument) => ({
-      name: argument.kind === 'NamedArgument' ? argument.name.text : undefined,
-      isSpread: argument.kind === 'Spread',
-    })),
-  );
-  return isBinding(binding) ? argumentTypes(parameters, binding, node.arguments.length) : undefined;
+  return chosen === undefined ? undefined : fieldsFunctionOf(chosen.enum, chosen.variant);
 }
 
 /**
@@ -264,24 +269,30 @@ function variantCalled(
     : undefined;
 }
 
-/** By argument, the type of the parameter `binding` passes it to; an item's for a rest's item. */
-function argumentTypes(
-  parameters: readonly SignatureSlot[],
-  binding: Binding,
-  count: number,
-): readonly (Type | undefined)[] {
-  const types: (Type | undefined)[] = Array.from({ length: count }, () => undefined);
-  for (const [index, source] of binding.entries()) {
-    const slot = parameters[index];
-    if (source.kind === 'argument') {
-      types[source.index] = slot?.type;
-    } else if (source.kind === 'rest' && slot?.rest?.kind === 'array') {
-      for (const item of source.items) {
-        types[item.index] = item.isSpread ? slot.type : slot.rest.item;
-      }
-    }
+/**
+ * Where the expected type holds several instances of the enum (`Entry<"a", Int> | Entry<"b",
+ * String>`), the type arguments of the one whose constructor takes the arguments, as a struct
+ * literal's union member is chosen by its fields (literal-types.ts); none where not exactly one.
+ */
+function instanceTaking(
+  context: BodyContext,
+  constructs: FunctionDeclaration,
+  call: VariantCall,
+): readonly Type[] | undefined {
+  const result = context.checker.resultOf(constructs);
+  if (result.kind !== 'nominal' || call.expected === undefined) {
+    return undefined;
   }
-  return types;
+  const callArguments = call.written.map(callArgumentOf);
+  const taking = membersOf(call.expected).filter(
+    (member): member is NominalType =>
+      member.kind === 'nominal' &&
+      member.entity.declaration === result.entity.declaration &&
+      choose(context.checker, [{ declaration: constructs }], callArguments, member.arguments)
+        .kind === 'chosen',
+  );
+  const [only, ...others] = taking;
+  return only !== undefined && others.length === 0 ? only.arguments : undefined;
 }
 
 /** The type arguments of `expected` when it is a generic `declaration`'s type; else none. */

@@ -7,9 +7,9 @@
  * - a type and a static function (`Duration.zero()`, `T.zero()`, `time.Duration.zero()`);
  * - a type alone, a conversion (`Float(3)`), which calls the type's static `from` (§3.10);
  * - a variant with fields, bare or qualified (`Ok(v)`, `Verdict.Rejected(by: "legal")`), which
- *   calls its constructor (structs/variants.ts, §3.11). Its one candidate's parameters are its
- *   fields, so once its type arguments are known (written, or the expected enum's), each argument
- *   is checked against its field's type (`variantFieldTypes`).
+ *   calls its constructor (structs/variants.ts, §3.11), its one candidate, whose parameters, its
+ *   fields, are known before the arguments where its type arguments are: each argument filling
+ *   one is checked against it, a misfit reported there (resolution/calls/known-parameters.ts).
  *
  * - a method called on a receiver (`x.f()`): a function whose first parameter is `self`, found by
  *   its name where the call is written and through the receiver's type (argument-dependent
@@ -46,9 +46,11 @@ import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import { knownParameterTypes } from '../../resolution/calls/known-parameters.ts';
 import { checkChangedPlace } from '../../resolution/calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../../resolution/calls/resolve.ts';
 import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
+import { boundArgumentOf } from '../../resolution/choosing/binding.ts';
 import {
   callableThrough,
   callCandidates,
@@ -66,7 +68,7 @@ import { namedType } from '../../types/written/named-types.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import { readsNothing, recordFieldRead } from './access/member-access.ts';
 import { spreadArgumentType } from './collections/collections.ts';
-import { checkVariantCall, variantFieldTypes } from './structs/variants.ts';
+import { calledConstructor, checkVariantCall } from './structs/variants.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const misplaced = misplacedArgument(node.arguments);
@@ -74,14 +76,24 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
     node.typeArguments.length === 0
       ? undefined
       : node.typeArguments.map((argument) => context.resolveType(argument));
-  const fieldTypes = variantFieldTypes(context, node, expected, typeArguments);
+  const constructs = calledConstructor(context, node, expected);
+  const known =
+    constructs === undefined
+      ? []
+      : knownParameterTypes(context.checker, constructs, {
+          typeArguments,
+          expected,
+          arguments: node.arguments.map(boundArgumentOf),
+        });
   const call: WrittenCall = {
     node,
     expected,
     typeArguments,
     written: node.arguments.map((argument, index) => {
-      const written = writtenArgument(context, argument, fieldTypes?.[index]);
-      return argument === misplaced ? { ...written, type: errorType } : written;
+      if (argument === misplaced) {
+        return { ...writtenArgument(context, argument, undefined), type: errorType };
+      }
+      return writtenArgument(context, argument, known[index]);
     }),
   };
   const { callee } = node;
@@ -120,7 +132,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
  */
 /**
  * A call's argument as choosing takes it; one whose parameter's type is known before choosing,
- * `known` (a variant's field, `variantFieldTypes`), is checked against it.
+ * `known` (known-parameters.ts; a spread's items' type), is checked against it.
  */
 function writtenArgument(
   context: BodyContext,
@@ -132,7 +144,7 @@ function writtenArgument(
       return {
         node: argument.expression,
         passing: 'value',
-        type: spreadArgumentType(context, argument),
+        type: spreadArgumentType(context, argument, known),
         isSpread: true,
       };
     case 'NamedArgument':
@@ -153,7 +165,14 @@ function valueArgument(
   }
   const literal = writtenLiteral(unparenthesized(argument));
   if (known !== undefined) {
-    return { node: argument, passing: 'value', type: context.expression(argument, known), literal };
+    const type = context.expression(argument, known);
+    // Reported here, as a literal's field is, so an argument beside one in error is still judged;
+    // it then counts as the error type, so the call reports nothing more of it.
+    if (type.kind !== 'error' && context.checker.fitOf(type, known) === undefined) {
+      context.fit(type, known, argument);
+      return { node: argument, passing: 'value', type: errorType, literal };
+    }
+    return { node: argument, passing: 'value', type, literal };
   }
   const part = context.argumentPart(argument);
   if (part.kind === 'decided') {

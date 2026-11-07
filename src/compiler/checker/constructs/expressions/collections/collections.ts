@@ -257,9 +257,14 @@ function insertEntry(
  * What a call's spread passes (§3.3, §3.5): a pack's value is the pack, which fills a rest of
  * that pack; anything else gives its items, which a rest parameter collects.
  */
-export function spreadArgumentType(context: BodyContext, spread: Spread): Type {
-  const type = context.expression(spread.expression);
-  return isPack(type) ? type : itemsOf(context, spread, type);
+export function spreadArgumentType(
+  context: BodyContext,
+  spread: Spread,
+  item: Type | undefined,
+): Type {
+  const expected = item === undefined ? undefined : arrayOf(context.checker, item);
+  const type = context.expression(spread.expression, expected);
+  return isPack(type) ? type : itemsOf(context, spread, type, item);
 }
 
 /** The items `spread` gives, as an array literal's element, its items expected to be `item`s. */

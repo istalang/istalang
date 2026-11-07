@@ -9,8 +9,8 @@
  * holding it; a name standing anywhere else is the binder's.
  *
  * A name's type is the one it has where it stands: a written type's as it resolved, type arguments
- * included; a variant's, that of the value it makes, bare, qualified or as a literal, else, where
- * it is declared or matched, its enum's own type.
+ * included; a variant's, that of the value it makes, bare, qualified or called, else, where it is
+ * declared or matched, its enum's own type.
  */
 
 import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
@@ -356,7 +356,8 @@ function declaredField(site: NameSite): readonly Denotation[] {
 
 /**
  * The last name of a written type: the type it resolved to; or, for a literal's, what the literal
- * makes, a variant among them, with the literal's type.
+ * makes, with the literal's type; a variant named before refused braces, the variant its expected
+ * type chose.
  */
 function writtenTypeName(
   site: NameSite,

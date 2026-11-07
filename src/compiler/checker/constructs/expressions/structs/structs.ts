@@ -55,6 +55,7 @@ import {
   freshComprehended,
   opaqueComprehendedAccepts,
 } from './struct-comprehensions.ts';
+import { refuseVariantLiteral } from './variants.ts';
 
 export function checkStructLiteral(
   context: BodyContext,
@@ -91,9 +92,8 @@ export function checkNamedLiteral(
   const name = lastName(typeNode.path);
   const entity = context.entityOf(name);
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
-    context.report(checkerDiagnostics.variantInBraces(node.span, name.text));
     checkValuesAlone(context, node);
-    return errorType;
+    return refuseVariantLiteral(context, node.span, name, { naming: entity, expected });
   }
   if (entity === undefined) {
     return errorType;

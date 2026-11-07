@@ -199,15 +199,20 @@ export function collectionTarget(
   return entry === undefined ? { kind: 'declared', type } : { kind: 'map', type, arguments: entry };
 }
 
-/** The nominal type of `declaration` that `expected` asks for: it, or its member. */
+/**
+ * The nominal type of `declaration` that `expected` asks for: it, or its one member of that
+ * declaration; none where a union holds several of its instances (`Opt<Int> | Opt<String>`), whose
+ * type arguments then come from elsewhere.
+ */
 export function sameNominal(
   expected: Type | undefined,
   declaration: NominalDeclaration,
 ): NominalType | undefined {
-  return candidatesOf(expected).find(
+  const [only, ...others] = candidatesOf(expected).filter(
     (candidate): candidate is NominalType =>
       candidate.kind === 'nominal' && candidate.entity.declaration === declaration,
   );
+  return others.length === 0 ? only : undefined;
 }
 
 /** The enums a bare variant of `expected` may be of, as `sameNominal` finds them. */

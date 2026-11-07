@@ -228,16 +228,16 @@ function telling(node: Pattern | PatternPart, texts: readonly string[]): string 
 }
 
 /**
- * How a pattern taking apart a variant's fields, as a call or in refused braces, names one of the
- * enum `members` declaring it: qualified by its enum among several enums, else with the type
- * arguments of one instance; undefined for any other pattern.
+ * How a call pattern names one of the enum `members` declaring its variant: qualified by its enum
+ * among several enums, else with the type arguments of one instance; undefined for any other
+ * pattern.
  */
 function variantTelling(
   scope: PatternScope,
   node: Pattern | PatternPart,
   members: readonly Type[],
 ): string | undefined {
-  if (node.kind !== 'StructPattern' && node.kind !== 'VariantCallPattern') {
+  if (node.kind !== 'VariantCallPattern') {
     return undefined;
   }
   const name = patternHead(node)?.path;
@@ -247,13 +247,12 @@ function variantTelling(
   if ((entity?.kind !== 'variant' && entity?.kind !== 'variants') || first?.kind !== 'nominal') {
     return undefined;
   }
-  const fields = node.kind === 'VariantCallPattern' ? '(…)' : '{…}';
   const { declaration } = first.entity;
   return members.every(
     (member) => member.kind === 'nominal' && member.entity.declaration === declaration,
   )
-    ? `give its type arguments, as in 'case ${variant?.text}<${first.arguments.map(typeText).join(', ')}>${fields}'`
-    : `qualify it, as in 'case ${declaration.name.text}.${variant?.text}${fields}'`;
+    ? `give its type arguments, as in 'case ${variant?.text}<${first.arguments.map(typeText).join(', ')}>(…)'`
+    : `qualify it, as in 'case ${declaration.name.text}.${variant?.text}(…)'`;
 }
 
 /** The members `node` may select, as its kind says; undefined for a name naming nothing. */

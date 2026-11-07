@@ -4,8 +4,10 @@
  * (syntax/expressions/literals/indented-values.ts), so every rule of literals keeps its one home
  * (structs/structs.ts, collections/collections.ts).
  *
- * - `T:` naming a struct, a variant, or an alias of a struct or a shape builds a struct, `T{…}`;
- *   naming any other type, a map or an array of that type, as `[…]` built where `T` is expected.
+ * - `T:` naming a struct, or an alias of a struct or a shape, builds a struct, `T{…}`; naming any
+ *   other type, a map or an array of that type, as `[…]` built where `T` is expected. Naming a
+ *   variant it is refused whatever its entries, naming the call, a variant being built only by its
+ *   call (§3.11, structs/variants.ts).
  * - With no `T`, the expected type decides, as for `struct{…}` and `[…]`: a struct type builds a
  *   struct; a type a map literal builds, a map; an array type, an array. A union is built as the
  *   one member the value fits, which choosing found before (types/fitting/expected.ts). A value
@@ -42,6 +44,7 @@ import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { literalType, membersOf } from '../../../types/unions/unions.ts';
 import { aliasedShape } from '../structs/literal-types.ts';
+import { refuseVariantLiteral } from '../structs/variants.ts';
 
 /** What a value is built as, and the type its literal is checked against. */
 interface Building {
@@ -54,6 +57,12 @@ export function checkIndentedValue(
   node: IndentedValue,
   expected: Type | undefined,
 ): Type {
+  const head = node.type === undefined ? undefined : lastName(node.type.path);
+  const naming = head === undefined ? undefined : context.entityOf(head);
+  if (head !== undefined && (naming?.kind === 'variant' || naming?.kind === 'variants')) {
+    checkValuesAlone(context, node.entries);
+    return refuseVariantLiteral(context, node.span, head, { naming, expected });
+  }
   const { form, target } = buildingOf(context, node, expected);
   const fits = reportLeftOut(context, node, form) && keysFit(context, node, form, target);
   if (!fits) {
@@ -95,13 +104,10 @@ function anonymousForm(
 }
 
 /**
- * Whether a literal naming `entity` builds a struct: a variant, a struct other than an `Array` or
- * a `Map`, which collection literals build, or an alias of a shape.
+ * Whether a literal naming `entity` builds a struct: a struct other than an `Array` or a `Map`,
+ * which collection literals build, or an alias of a shape.
  */
 function namesStruct(context: BodyContext, entity: Entity): boolean {
-  if (entity.kind === 'variant' || entity.kind === 'variants') {
-    return true;
-  }
   if (entity.kind !== 'type' || collections.some((each) => isWellKnown(context, entity, each))) {
     return false;
   }
@@ -228,11 +234,11 @@ function checkValuesAlone(context: BodyContext, entries: readonly IndentedEntry[
 /**
  * Which types `node` can be built as where a call or a union decides (types/fitting/expected.ts):
  * for each, whether the literal of the form that type asks for takes it, its entries all held
- * there. A value naming its type is taken as its literal is, a variant's by its enums.
+ * there. A value naming its type has that type.
  */
 export function indentedAccepts(context: BodyContext, node: IndentedValue): Accepts | undefined {
   if (node.type !== undefined) {
-    return context.accepts(literalOf(node, 'struct'));
+    return undefined;
   }
   return (expected, isOpen) => {
     const form = anonymousForm(context, node, expected);

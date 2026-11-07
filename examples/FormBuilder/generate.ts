@@ -637,7 +637,10 @@ class ViewGen {
     const translated = (p: string) =>
       typeof ui[p] === 'string' && !ENUM_PROPS[p] && !!this.doc.localization?.[ui[p] as string];
     const body = props.length
-      ? variantCall(`${info.enumName}.${info.variant}`, props.map((p) => [p, field(p, ui[p])]))
+      ? variantCall(
+          `${info.enumName}.${info.variant}`,
+          props.map((p) => [p, field(p, ui[p])]),
+        )
       : `${info.enumName}.${info.variant}`;
     const computed = props.some((p) => isExpr(ui[p]) || translated(p));
     if (!computed) return `Prop.Fixed(${body})`;
@@ -657,7 +660,10 @@ class ViewGen {
       info.childUi?.[k]?.startsWith('Float') ? litFloat(val) : lit(val);
     const body = variantCall(
       `ParentUi.${info.variant}`,
-      props.map((k) => [k, p[k] === undefined ? 'none' : isExpr(p[k]) ? `(${p[k].expr})` : asLit(k, p[k])]),
+      props.map((k) => [
+        k,
+        p[k] === undefined ? 'none' : isExpr(p[k]) ? `(${p[k].expr})` : asLit(k, p[k]),
+      ]),
     );
     if (!anyExpr) return `Prop.Fixed(${body})`;
     return awaits(body)
