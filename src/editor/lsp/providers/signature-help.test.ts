@@ -21,6 +21,7 @@ import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
 import { wellKnownArguments } from '../../../compiler/checker/types/type/well-known.ts';
 import type { ModuleId } from '../../../compiler/program/program.ts';
 import type { Call } from '../../../compiler/syntax/expressions/index.ts';
+import { withoutTypeArguments } from '../../../compiler/syntax/expressions/readings.ts';
 import { nodesUnder } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { wellKnown } from '../../../foundation/language/well-known/index.ts';
@@ -88,7 +89,9 @@ function expectedAt(module: ModuleId, call: Call): Expected | undefined {
       },
     };
   }
-  const callee = body?.valueCalls.has(call) ? body.typeOf(call.callee) : undefined;
+  const callee = body?.valueCalls.has(call)
+    ? body.typeOf(withoutTypeArguments(call.callee))
+    : undefined;
   const type =
     call.isOptional && callee
       ? wellKnownArguments(checker, wellKnown.optional, callee)?.[0]

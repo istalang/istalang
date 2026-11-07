@@ -64,6 +64,7 @@ type NameHolder = Extract<
       | 'NamedPatternArgument'
       | 'NamedArgument'
       | 'Call'
+      | 'TypeApplication'
       | 'TemplateLiteral'
       | 'DeclaredField'
       | 'FieldDeclaration'
@@ -81,7 +82,7 @@ type NameHolder = Extract<
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undefined> = {
   MemberAccess: (site, node) =>
-    site.name === node.member ? memberDenotations(site, node, site.holders[1]) : undefined,
+    site.name === node.member ? memberDenotations(site, node) : undefined,
   FieldInitializer: (site, node) => (site.name === node.name ? itemNamed(site, node) : undefined),
   BindFieldPattern: (site, node) =>
     site.name === node.field ? fieldOrShorthand(site, node.alias === undefined) : undefined,
@@ -91,6 +92,10 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
   NamedArgument: (site, node) =>
     site.name === node.name ? parameterNamed(site, site.holders[1]) : undefined,
   Call: (site, node) => (site.name === node.callee ? calleeDenotations(site, node) : undefined),
+  TypeApplication: (site, node) => {
+    const call = site.name === node.target ? callCalling(node, site.holders.slice(1)) : undefined;
+    return call === undefined ? undefined : calleeDenotations(site, call);
+  },
   TemplateLiteral: (site, node) =>
     isTagged(node) && site.name === node.tag
       ? calledAt(site, taggedCall(node), undefined)
@@ -153,17 +158,15 @@ function fieldDenotation(field: FieldMember | undefined): readonly Denotation[] 
 }
 
 /** A member: a field read, a method, a static function or a namespace's, or a qualified part. */
-function memberDenotations(
-  site: NameSite,
-  access: MemberAccess,
-  holder: SyntaxNode | undefined,
-): readonly Denotation[] {
+function memberDenotations(site: NameSite, access: MemberAccess): readonly Denotation[] {
   const read = fieldNamed(site);
   if (read.length > 0) {
     return read;
   }
-  if (holder?.kind === 'Call' && holder.callee === access) {
-    return calleeDenotations(site, holder);
+  const [, holder] = site.holders;
+  const call = callCalling(access, site.holders.slice(1));
+  if (call !== undefined) {
+    return calleeDenotations(site, call);
   }
   if (holder?.kind === 'TemplateLiteral' && isTagged(holder) && holder.tag === access) {
     return calledAt(site, taggedCall(holder), undefined) ?? named(site);
@@ -171,6 +174,18 @@ function memberDenotations(
   const type = site.body?.typeOf(access);
   const associated = associatedNamed(site.checker, namedType(namingAt(site), access));
   return calledAt(site, access, type) ?? (associated.length > 0 ? associated : named(site, type));
+}
+
+/**
+ * The call whose callee is `callee`, through the type arguments written after it, among `holders`,
+ * the nodes holding `callee`, innermost first; undefined when it is no callee.
+ */
+function callCalling(callee: SyntaxNode, holders: readonly SyntaxNode[]): Call | undefined {
+  const [holder] = holders;
+  if (holder?.kind === 'TypeApplication' && holder.target === callee) {
+    return callCalling(holder, holders.slice(1));
+  }
+  return holder?.kind === 'Call' && holder.callee === callee ? holder : undefined;
 }
 
 /** What naming a type in value position reads where `site` stands. */

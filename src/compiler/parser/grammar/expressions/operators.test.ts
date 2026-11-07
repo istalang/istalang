@@ -24,7 +24,7 @@ describe('levels and associativity', () => {
     ['a * *b', '(Binary a * (Dereference * b))'],
     ['*a.b', '(Dereference * (MemberAccess a b))'],
     ['*a->b', '(Dereference * (MemberAccess (Dereference -> a) b))'],
-    ['await a.b()', '(Await (Call (MemberAccess a b) [] []))'],
+    ['await a.b()', '(Await (Call (MemberAccess a b) []))'],
     ['a ?? b ?? c', '(Binary (Binary a ?? b) ?? c)'],
     ['name ?? "anonymous"', '(Binary name ?? "anonymous")'],
     ['(a ?? b) or c', '(Binary (Parenthesized (Binary a ?? b)) or c)'],

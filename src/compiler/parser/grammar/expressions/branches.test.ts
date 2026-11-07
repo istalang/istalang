@@ -48,7 +48,7 @@ describe('match', () => {
 });
 
 describe('select', () => {
-  const receive = '(Call (MemberAccess box receive) [] [])';
+  const receive = '(Call (MemberAccess box receive) [])';
 
   it('is one node with await when it waits', () => {
     const text = lines(
@@ -58,7 +58,7 @@ describe('select', () => {
     );
     expect(dumpClean('statement', text)).toBe(
       expressionStatement(
-        `(Select awaits [(SelectCase ${receive} msg ${body('msg')}) (SelectCase (Call (MemberAccess time delay) [] [432000000ms]) _ ${body('none')})] _)`,
+        `(Select awaits [(SelectCase ${receive} msg ${body('msg')}) (SelectCase (Call (MemberAccess time delay) [432000000ms]) _ ${body('none')})] _)`,
       ),
     );
   });

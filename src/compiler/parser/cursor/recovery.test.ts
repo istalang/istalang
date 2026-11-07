@@ -125,7 +125,7 @@ describe('recovery stays inside its brackets', () => {
   it('stops an unclosed inner list at the enclosing closer', () => {
     const text = 'f([1, 2).x';
     expect(dumpOf(parseAs('expression', text))).toBe(
-      '(MemberAccess (Call f [] [(ArrayLiteral [1 2])]) x)',
+      '(MemberAccess (Call f [(ArrayLiteral [1 2])]) x)',
     );
     expect(reported('expression', text)).toEqual(
       reportedOnce(parserDiagnostics.unclosedBracket.code, '['),
@@ -133,7 +133,7 @@ describe('recovery stays inside its brackets', () => {
   });
 
   it('skips junk to the next comma and keeps it as an Invalid item', () => {
-    expect(dumpOf(parseAs('expression', 'f(a b c, d)'))).toBe('(Call f [] [a ! d])');
+    expect(dumpOf(parseAs('expression', 'f(a b c, d)'))).toBe('(Call f [a ! d])');
     expect(reported('expression', 'f(a b c, d)')).toEqual(
       reportedOnce(parserDiagnostics.expected.code, 'b'),
     );
@@ -141,22 +141,19 @@ describe('recovery stays inside its brackets', () => {
 
   it('skips a whole bracket group inside junk', () => {
     const parsed = parseAs('expression', 'f(a 1 (b, ]) [d], e)');
-    expect(dumpOf(parsed)).toBe('(Call f [] [a ! e])');
+    expect(dumpOf(parsed)).toBe('(Call f [a ! e])');
     expect(parsed.rest).toBe(0);
   });
 
   it('consumes a stray closer that closes nothing', () => {
     const parsed = parseAs('expression', 'f(a ], b)');
-    expect(dumpOf(parsed)).toBe('(Call f [] [a ! b])');
+    expect(dumpOf(parsed)).toBe('(Call f [a ! b])');
     expect(parsed.rest).toBe(0);
   });
 });
 
 describe('a bracket never closed', () => {
-  const calls = block(
-    expressionStatement('(Call g [] [1 2])'),
-    expressionStatement('(Call h [] [])'),
-  );
+  const calls = block(expressionStatement('(Call g [1 2])'), expressionStatement('(Call h [])'));
 
   it('ends before the first later line that stands no deeper than its opener’s', () => {
     const parsed = parseAs('module', lines('fn broken(:', '  1', '', 'fn g(): 2', ''));
@@ -193,7 +190,7 @@ describe('a bracket never closed', () => {
   it('closes the bracket a closer first on its line lines up with, the deeper one left open', () => {
     const text = lines('fn f():', '  h(', '    g(1,', '  )', '');
     expect(dumpOf(parseAs('module', text))).toBe(
-      moduleOf(functionOf('f', bodyOf('(Call h [] [(Call g [] [1])])'))),
+      moduleOf(functionOf('f', bodyOf('(Call h [(Call g [1])])'))),
     );
     expect(reported('module', text)).toEqual(
       reportedOnce(parserDiagnostics.unclosedBracket.code, '('),
@@ -203,7 +200,7 @@ describe('a bracket never closed', () => {
   it('lines closers up level by level, each deeper bracket left open in turn', () => {
     const text = lines('fn f():', '  h(', '    g(', '      k(1,', '    )', '  )', '');
     expect(dumpOf(parseAs('module', text))).toBe(
-      moduleOf(functionOf('f', bodyOf('(Call h [] [(Call g [] [(Call k [] [1])])])'))),
+      moduleOf(functionOf('f', bodyOf('(Call h [(Call g [(Call k [1])])])'))),
     );
     expect(reported('module', text)).toEqual(
       reportedOnce(parserDiagnostics.unclosedBracket.code, '('),
@@ -214,17 +211,17 @@ describe('a bracket never closed', () => {
     [
       'a group closed around it later',
       lines('fn f():', '  [', '    b(', '      [', '        d(1,', '    ), x', '  ]', ''),
-      '(ArrayLiteral [(Call b [] [(ArrayLiteral [(Call d [] [1])])]) x])',
+      '(ArrayLiteral [(Call b [(ArrayLiteral [(Call d [1])])]) x])',
     ],
     [
       'a group re-paired around it',
       lines('fn f():', '  h(', '    g([', '      k(1,', '    )', '  )', ''),
-      '(Call h [] [(Call g [] [(ArrayLiteral [(Call k [] [1])])])])',
+      '(Call h [(Call g [(ArrayLiteral [(Call k [1])])])])',
     ],
     [
       'a group re-paired around one re-paired before',
       lines('fn f():', '  h(', '    [', '      [1,', '    ],', '    g(2,', '  )', ''),
-      '(Call h [] [(ArrayLiteral [(ArrayLiteral [1])]) (Call g [] [2])])',
+      '(Call h [(ArrayLiteral [(ArrayLiteral [1])]) (Call g [2])])',
     ],
   ])('ends the brackets left open inside %s at its closer', (_, text, expression) => {
     expect(dumpOf(parseAs('module', text))).toBe(moduleOf(functionOf('f', bodyOf(expression))));
@@ -238,7 +235,7 @@ describe('a bracket never closed', () => {
     [
       'a block',
       lines('fn f(): {', '  g(1,', '    2', '  h()', '}', ''),
-      expressionStatement('(Call h [] [])'),
+      expressionStatement('(Call h [])'),
     ],
     [
       'a struct’s fields',

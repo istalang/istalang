@@ -42,7 +42,7 @@ import type {
   Expression,
   MemberAccess,
 } from '../../../syntax/expressions/index.ts';
-import { unparenthesized } from '../../../syntax/expressions/readings.ts';
+import { unparenthesized, withoutTypeArguments } from '../../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
@@ -73,9 +73,9 @@ import { calledConstructor, checkVariantCall } from './structs/variants.ts';
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const misplaced = misplacedArgument(node.arguments);
   const typeArguments =
-    node.typeArguments.length === 0
-      ? undefined
-      : node.typeArguments.map((argument) => context.resolveType(argument));
+    node.callee.kind === 'TypeApplication'
+      ? node.callee.typeArguments.map((argument) => context.resolveType(argument))
+      : undefined;
   const constructs = calledConstructor(context, node, expected);
   const known =
     constructs === undefined
@@ -96,7 +96,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
       return writtenArgument(context, argument, known[index]);
     }),
   };
-  const { callee } = node;
+  const callee = withoutTypeArguments(node.callee);
   if (node.isOptional) {
     return checkValueCall(context, call, callee, context.chains.target(context, node));
   }
@@ -257,7 +257,7 @@ function callEntity(
       const { checker } = context;
       const named = checker.bindings.overloadsOf(entity);
       const types = call.written.map(({ type }) => type);
-      const throughNamespace = call.node.callee.kind === 'MemberAccess';
+      const throughNamespace = callee.kind === 'MemberAccess';
       const candidates = throughNamespace
         ? named.map((declaration) => ({ declaration }))
         : callCandidates(checker, named, name, types);
@@ -266,17 +266,17 @@ function callEntity(
     case undefined:
       return errorType;
     case 'variable':
-      return checkValueCall(context, call, call.node.callee);
+      return checkValueCall(context, call, callee);
     case 'variant':
     case 'variants':
       return checkVariantCall(context, call, callee, entity);
     case 'type':
     case 'primitive': {
-      const owner = namedType(context, call.node.callee);
+      const owner = namedType(context, callee);
       return owner === undefined ? errorType : callStatic(context, call, owner, conversionFunction);
     }
     default:
-      context.report(checkerDiagnostics.notCallable(call.node.callee.span, name));
+      context.report(checkerDiagnostics.notCallable(callee.span, name));
       return errorType;
   }
 }

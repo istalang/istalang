@@ -267,8 +267,11 @@ export const expressionPrinters: Printers<ExpressionKind> = {
   Call: (printer, node) => [
     printer.print(node.callee),
     node.isOptional ? optionalPrefix : '',
-    angled(printer, node.typeArguments),
     callArguments(printer, node),
+  ],
+  TypeApplication: (printer, node) => [
+    printer.print(node.target),
+    angled(printer, node.typeArguments),
   ],
   NamedArgument: (printer, node) => [printer.print(node.name), ': ', printer.print(node.value)],
   Spawn: (printer, node) => ['spawn ', printer.print(node.call)],

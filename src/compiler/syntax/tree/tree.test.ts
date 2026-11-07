@@ -45,7 +45,6 @@ describe('fieldChildrenOf', () => {
       span: at(0, 7),
       callee,
       isOptional: false,
-      typeArguments: [],
       arguments: [first, second],
     };
     expect(fieldChildrenOf(call)).toEqual([callee, first, second]);

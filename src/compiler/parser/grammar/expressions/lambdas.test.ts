@@ -17,7 +17,7 @@ describe('lambda forms', () => {
     ['fn(): 5', '(Lambda _ [] _ 5)'],
     [
       'async fn(msg): await handle(msg)',
-      `(Lambda isAsync _ [${param('msg')}] _ (Await (Call handle [] [msg])))`,
+      `(Lambda isAsync _ [${param('msg')}] _ (Await (Call handle [msg])))`,
     ],
     [
       'fn(x: Int, y: Int) -> Int: x * y',
@@ -42,10 +42,10 @@ describe('lambda forms', () => {
 
   it('ends a body at the next comma or closing parenthesis', () => {
     expect(dumpClean('expression', 'f(fn(x): x, y)')).toBe(
-      `(Call f [] [(Lambda _ [${param('x')}] _ x) y])`,
+      `(Call f [(Lambda _ [${param('x')}] _ x) y])`,
     );
     expect(dumpClean('expression', 'xs.filter(fn a: a > 0)')).toBe(
-      `(Call (MemberAccess xs filter) [] [(Lambda _ [${param('a')}] _ (Binary a > 0))])`,
+      `(Call (MemberAccess xs filter) [(Lambda _ [${param('a')}] _ (Binary a > 0))])`,
     );
   });
 

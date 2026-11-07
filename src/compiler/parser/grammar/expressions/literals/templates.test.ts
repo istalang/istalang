@@ -14,7 +14,7 @@ describe('templates', () => {
     ['`a ${x} b`', '(TemplateLiteral _ [(TemplateText a ) (TemplateText  b)] [x])'],
     [
       '`${a + b}${f(c)}`',
-      '(TemplateLiteral _ [(TemplateText ) (TemplateText ) (TemplateText )] [(Binary a + b) (Call f [] [c])])',
+      '(TemplateLiteral _ [(TemplateText ) (TemplateText ) (TemplateText )] [(Binary a + b) (Call f [c])])',
     ],
     [
       '`${\n  x\n    + y\n}`',
@@ -31,7 +31,7 @@ describe('templates', () => {
   it.each([
     ['sql`a ${x}`', '(TemplateLiteral sql [(TemplateText a ) (TemplateText )] [x])'],
     ['db.sql`q`', '(TemplateLiteral (MemberAccess db sql) [(TemplateText q)] [])'],
-    ['f(x)`q`.size', '(MemberAccess (TemplateLiteral (Call f [] [x]) [(TemplateText q)] []) size)'],
+    ['f(x)`q`.size', '(MemberAccess (TemplateLiteral (Call f [x]) [(TemplateText q)] []) size)'],
   ])('takes the expression before it as its tag: %j', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });

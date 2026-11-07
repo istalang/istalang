@@ -29,10 +29,10 @@ import type {
   Dereference,
   Expression,
   Index,
+  TypeApplication,
 } from '../../../syntax/expressions/index.ts';
 import { isPlace } from '../../../syntax/expressions/places.ts';
 import { qualifiedPath } from '../../../syntax/expressions/readings.ts';
-import type { TypeNode } from '../../../syntax/types/index.ts';
 import { parseDelimited, parseEnclosed } from '../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { atPostfix } from '../../layout/item-breaks.ts';
@@ -45,6 +45,9 @@ import type { InfixParselet } from './parselet.ts';
 
 /** `name<…>(…)` or `name<…>{…}`, or undefined when the `<` is a comparison. */
 export function parseTypeApplication(parser: Parser, left: Expression): Expression | undefined {
+  if (left.kind !== 'Identifier' && left.kind !== 'MemberAccess') {
+    return undefined;
+  }
   const path = qualifiedPath(left);
   if (path === undefined) {
     return undefined;
@@ -56,21 +59,21 @@ export function parseTypeApplication(parser: Parser, left: Expression): Expressi
   if (typeArguments === undefined) {
     return undefined;
   }
-  if (atPostfix(parser, '(')) {
-    return parseCall(parser, left, false, typeArguments);
+  if (atPostfix(parser, '{')) {
+    return parseStructLiteralBody(
+      parser,
+      namedTypeFrom(parser, path, typeArguments),
+      parser.startOf(left),
+    );
   }
-  return parseStructLiteralBody(
-    parser,
-    namedTypeFrom(parser, path, typeArguments),
-    parser.startOf(left),
-  );
+  const span = parser.spanFrom(parser.startOf(left));
+  return parseCall(parser, { kind: 'TypeApplication', span, target: left, typeArguments }, false);
 }
 
 function parseCall(
   parser: Parser,
-  callee: Expression,
+  callee: Expression | TypeApplication,
   isOptional: boolean,
-  typeArguments: readonly TypeNode[],
 ): Call {
   const { items } = parseDelimited(parser, '(', () => parseArgument(parser));
   const span = parser.spanFrom(parser.startOf(callee));
@@ -78,7 +81,7 @@ function parseCall(
   if (misplaced !== undefined && misplaced.kind !== 'Invalid') {
     parser.report(parserDiagnostics.positionalAfterNamed(parser.textSpanOf(misplaced.span)));
   }
-  return { kind: 'Call', span, callee, isOptional, typeArguments, arguments: items };
+  return { kind: 'Call', span, callee, isOptional, arguments: items };
 }
 
 /** An argument: a spread, a value named by its parameter, or a value. */
@@ -116,7 +119,7 @@ function parseArgumentValue(parser: Parser): Expression {
 
 export const callParselet: InfixParselet = {
   level: 'postfix',
-  parse: (parser, left) => parseCall(parser, left, false, []),
+  parse: (parser, left) => parseCall(parser, left, false),
 };
 
 export const indexParselet: InfixParselet = {
@@ -150,7 +153,7 @@ export const optionalParselet: InfixParselet = {
   parse(parser, left) {
     parser.cursor.advance();
     if (parser.cursor.at('(')) {
-      return parseCall(parser, left, true, []);
+      return parseCall(parser, left, true);
     }
     return parser.cursor.at('[') ? parseIndex(parser, left, true) : parseMember(parser, left, true);
   },

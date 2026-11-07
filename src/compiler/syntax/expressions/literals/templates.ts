@@ -43,7 +43,6 @@ export function taggedCall(template: TaggedTemplate): Call {
       span: template.span,
       callee: tag,
       isOptional: false,
-      typeArguments: [],
       arguments: [texts, ...template.values],
     };
   });

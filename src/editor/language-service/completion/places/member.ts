@@ -213,11 +213,13 @@ function valueMembers(
 
 /**
  * The link of an optional chain `access` is read by, if it is one (§4): a method call takes the
- * access's step, so its call is the link; any other access is its own.
+ * access's step, so its call is the link, type arguments written after the access or not; any
+ * other access is its own.
  */
 function linkOf(tree: SyntaxTree, access: MemberAccess): Expression {
   const parent = parentOf(tree, access);
-  return parent?.kind === 'Call' && chainStepOf(parent)?.target === access.target ? parent : access;
+  const holder = parent?.kind === 'TypeApplication' ? parentOf(tree, parent) : parent;
+  return holder?.kind === 'Call' && chainStepOf(holder)?.target === access.target ? holder : access;
 }
 
 /** One candidate per name, overloads alike, naming one of them. */

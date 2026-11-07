@@ -131,9 +131,9 @@ describe('block expressions', () => {
     const text = lines('f(fn(x): {', '    if x:', '        g()', '    h()', '})');
     expect(dumpClean('statement', text)).toBe(
       statement(
-        `(Call f [] [(Lambda _ [(Parameter x _ _ _)] _ (BlockExpression ${block(
-          statement(ifThen('x', bodyOf('(Call g [] [])'))),
-          statement('(Call h [] [])'),
+        `(Call f [(Lambda _ [(Parameter x _ _ _)] _ (BlockExpression ${block(
+          statement(ifThen('x', bodyOf('(Call g [])'))),
+          statement('(Call h [])'),
         )}))])`,
       ),
     );
@@ -155,12 +155,10 @@ describe('block expressions', () => {
       statement(
         `(BlockExpression ${block(
           `(VariableDeclaration _ [(NamePattern [f] [])] _ (Lambda _ [] _ (BlockExpression ${block(
-            statement('(Call a [] [])'),
-            statement('(Call b [] [])'),
+            statement('(Call a [])'),
+            statement('(Call b [])'),
           )})))`,
-          statement(
-            `(Call retry [] [(Lambda _ [] _ (BlockExpression ${bodyOf('(Call f [] [])')})) 2])`,
-          ),
+          statement(`(Call retry [(Lambda _ [] _ (BlockExpression ${bodyOf('(Call f [])')})) 2])`),
         )})`,
       ),
     );

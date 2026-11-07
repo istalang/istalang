@@ -108,7 +108,7 @@ describe('new (§3.18)', () => {
       created(`(NamedType [Shared] [${named('Int')}])`, '(FieldInitializer value 1)'),
     ],
     ['new m.Box{...*other}', created('(NamedType [m Box] [])', '(Spread (Dereference * other))')],
-    ['new Inbox{}.send(1)', `(Call (MemberAccess ${created(named('Inbox'), '')} send) [] [1])`],
+    ['new Inbox{}.send(1)', `(Call (MemberAccess ${created(named('Inbox'), '')} send) [1])`],
     ['new', 'new'],
     ['new.x', '(MemberAccess new x)'],
   ])('parses %s', (text, tree) => {

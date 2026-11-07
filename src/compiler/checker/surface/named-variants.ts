@@ -6,6 +6,7 @@
 
 import type { Entity, VariantEntity } from '../../binder/entities.ts';
 import type { Call } from '../../syntax/expressions/index.ts';
+import { withoutTypeArguments } from '../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 
 /** How a body's names read: what each binds, and the variant a bare one chose. */
@@ -28,7 +29,7 @@ function variantNamed(names: VariantNames, name: Identifier): VariantEntity | un
  * other call, an optional one (`f?.()`) included, which calls a function value.
  */
 export function calledVariant(names: VariantNames, call: Call): VariantEntity | undefined {
-  const { callee } = call;
+  const callee = withoutTypeArguments(call.callee);
   const name = callee.kind === 'MemberAccess' ? callee.member : callee;
   return call.isOptional || name.kind !== 'Identifier' ? undefined : variantNamed(names, name);
 }

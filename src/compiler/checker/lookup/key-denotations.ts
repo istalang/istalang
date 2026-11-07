@@ -13,6 +13,7 @@
 
 import type { ModuleId } from '../../program/program.ts';
 import { type TypeParameters, typeParametersOf } from '../../syntax/declarations/index.ts';
+import type { Call } from '../../syntax/expressions/index.ts';
 import { literalNaming } from '../../syntax/expressions/literals/built-types.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
 import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';
@@ -88,7 +89,7 @@ function typeKeyOwners(
     return parent.key === key ? [checker.resolvedTypeOf(parent.owner) ?? []].flat() : [];
   }
   const index =
-    parent?.kind === 'NamedType' || parent?.kind === 'Call'
+    parent?.kind === 'NamedType' || parent?.kind === 'TypeApplication'
       ? parent.typeArguments.indexOf(key)
       : -1;
   const given = parent === undefined ? [] : instantiationsAt(checker, module, tree, parent);
@@ -105,16 +106,16 @@ function typeKeyOwners(
   });
 }
 
-/** What a type or call taking type arguments instantiates, with the arguments it was given. */
+/** What a type or function taking type arguments instantiates, with the arguments it was given. */
 interface Instantiated {
   readonly parameters: TypeParameters;
   readonly typeArguments: readonly Type[];
 }
 
 /**
- * What `node`, a type or call taking type arguments, instantiates, with the arguments it was given:
- * a nominal type or an alias written in a type, a struct literal's type, each function a generic
- * call calls, or the enum a variant without fields called makes, its value, in each pass (§3.11).
+ * What `node`, a type or a name taking type arguments, instantiates, with the arguments it was
+ * given: a nominal type or an alias written in a type, a struct literal's type, or what the call
+ * of a name given type arguments makes (`callInstantiations`).
  */
 function instantiationsAt(
   checker: CheckerContext,
@@ -122,24 +123,37 @@ function instantiationsAt(
   tree: SyntaxTree,
   node: SyntaxNode,
 ): readonly Instantiated[] {
-  if (node.kind === 'Call') {
-    const body = bodyHolding(checker, module, node);
-    const calls = body?.callsAt(node) ?? [];
-    const made = body?.typeOf(node);
-    if (calls.length === 0 && made !== undefined && body !== undefined) {
-      const names = {
-        entityOf: (name: Identifier) => checker.bindings.entityOf(module, name),
-        chosenVariantOf: body.chosenVariantOf,
-      };
-      return calledVariant(names, node) === undefined ? [] : membersOf(made).flatMap(enumMade);
-    }
-    return calls.flatMap((call) =>
-      call.kind === 'function'
-        ? [{ parameters: call.function.typeParameters, typeArguments: call.typeArguments }]
-        : [],
-    );
+  if (node.kind !== 'TypeApplication') {
+    return [instantiationOfType(checker, module, tree, node) ?? []].flat();
   }
-  return [instantiationOfType(checker, module, tree, node) ?? []].flat();
+  const call = parentOf(tree, node);
+  return call?.kind === 'Call' ? callInstantiations(checker, module, call) : [];
+}
+
+/**
+ * What `call` instantiates: each function a generic call calls, or the enum a variant without
+ * fields called makes, its value, in each pass (§3.11).
+ */
+function callInstantiations(
+  checker: CheckerContext,
+  module: ModuleId,
+  call: Call,
+): readonly Instantiated[] {
+  const body = bodyHolding(checker, module, call);
+  const calls = body?.callsAt(call) ?? [];
+  const made = body?.typeOf(call);
+  if (calls.length === 0 && made !== undefined && body !== undefined) {
+    const names = {
+      entityOf: (name: Identifier) => checker.bindings.entityOf(module, name),
+      chosenVariantOf: body.chosenVariantOf,
+    };
+    return calledVariant(names, call) === undefined ? [] : membersOf(made).flatMap(enumMade);
+  }
+  return calls.flatMap((each) =>
+    each.kind === 'function'
+      ? [{ parameters: each.function.typeParameters, typeArguments: each.typeArguments }]
+      : [],
+  );
 }
 
 /** What a variant without fields called made, `type`, in one pass, instantiates: its enum. */

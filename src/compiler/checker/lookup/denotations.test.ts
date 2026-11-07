@@ -196,3 +196,27 @@ describe('what a function imported or named through a module denotes', () => {
     ).toEqual(['function read: -']);
   });
 });
+
+describe('what a callee given type arguments denotes', () => {
+  const { checker, module, named } = checkedMain(
+    `struct Box<T> { item: T }
+fn Box.of<T>(item: T) -> Box<T>: Box{item}
+fn wrap<T>(item: T) -> Box<T>: Box{item}
+fn wrap(a: String, b: String) -> Box<String>: Box{item: a + b}
+fn mapped<T, U>(self: Box<T>, f: fn(T) -> U) -> Box<U>: Box{item: f(self.item)}
+enum Opt<T> { Some(value: T), Empty }
+fn main(b: Box<Int>) -> (Box<Int>, Box<Int>, Box<String>, Opt<Int>):
+  (wrap<Int>(1), Box.of<Int>(2), b.mapped<Int, String>(fn(n): "x"), Opt.Some<Int>(4))
+`,
+  );
+  const at = (name: string, nth: number) =>
+    described(checker.lookup.denotationsOf(module, named(name, nth)));
+
+  it('answers it as its call resolved, plain, static, a method or a variant', () => {
+    expect(checker.diagnosticsOf(module)).toEqual([]);
+    expect(at('wrap', 2)).toEqual(['function wrap: -']);
+    expect(at('of', 1)).toEqual(['function of: -']);
+    expect(at('mapped', 1)).toEqual(['function mapped: -']);
+    expect(at('Some', 1)).toEqual(['variant Some: Opt<Int>']);
+  });
+});

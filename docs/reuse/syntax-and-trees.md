@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-05
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
 
@@ -46,6 +46,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - strip outer parentheses from a `TypeNode` before asking its kind → `unparenthesizedType` (`src/compiler/syntax/types/index.ts`)
 - check whether a node writes a type, a function type's rest included, never by a list of kinds of your own → `isWrittenType` (`src/compiler/syntax/types/index.ts`)
 - read a `QualifiedName` from an `Identifier` or non-optional `MemberAccess` chain → `qualifiedPath` (`src/compiler/syntax/expressions/readings.ts`)
+- read a call's callee, or any expression, without the type arguments written after its name → `withoutTypeArguments` (`src/compiler/syntax/expressions/readings.ts`); an expression's type arguments stand only on a `TypeApplication` (`f<Int>`), a call's callee among them, never on the `Call`
 - read the value or field name of a struct literal's `FieldItem` → `itemValue`, `itemName` (`src/compiler/syntax/expressions/readings.ts`)
 - read an indented value (spec §2) as the brace or bracket literal it builds (typed by its form), tell items from keys, find the entries a form can't hold, or the String a map's bare key reads as, once per entry so what checking records of it tools read → `literalOf`, `untypedForm`, `isItem`, `isKeyed`, `entriesLeftOut`, `bareKeyOf` (`src/compiler/syntax/expressions/literals/indented-values.ts`)
 - tell whether a written type is the type a value literal names as the one it builds (`P` of `P{…}`, `new P{…}`, `P:`, `new P:`), and whether that literal builds a shared struct, whose name is a type's → `literalNaming`, `buildsShared` (`src/compiler/syntax/expressions/literals/built-types.ts`); a tool asking what such a name is asks there, never a `kind ===` list of its own

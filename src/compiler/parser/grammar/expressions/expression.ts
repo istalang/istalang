@@ -217,7 +217,7 @@ function parseSpawn(parser: Parser): Expression {
 
 /**
  * One step of a spawned callee: a member, an element, a struct literal, or type arguments; the
- * first call, which a `?.(` or type arguments may already have made, ends it.
+ * first call, which a `?.(` may already have made, ends it.
  */
 function calleeStep(parser: Parser, callee: Expression): Expression | undefined {
   const { kind } = parser.cursor;

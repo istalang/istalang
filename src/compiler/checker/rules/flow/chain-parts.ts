@@ -7,7 +7,8 @@ import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree/index.ts'
 
 /**
  * The parts of `node` other than its step's `target`, a child or, for a method call, the callee's
- * child (`chainStepOf`): a callee holding the target is opened up into its other parts.
+ * child (`chainStepOf`): a callee holding the target is opened up into its other parts, through
+ * the type arguments written after its name.
  */
 export function partsBeside(node: SyntaxNode, target: SyntaxNode): readonly SyntaxNode[] {
   return fieldChildrenOf(node).flatMap((child) => {
@@ -15,6 +16,9 @@ export function partsBeside(node: SyntaxNode, target: SyntaxNode): readonly Synt
       return [];
     }
     const parts = fieldChildrenOf(child);
-    return parts.includes(target) ? parts.filter((part) => part !== target) : [child];
+    if (parts.includes(target)) {
+      return parts.filter((part) => part !== target);
+    }
+    return child.kind === 'TypeApplication' ? partsBeside(child, target) : [child];
   });
 }

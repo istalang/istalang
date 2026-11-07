@@ -11,6 +11,7 @@
 
 import { isMethod } from '../../../compiler/syntax/declarations/methods.ts';
 import type { Expression } from '../../../compiler/syntax/expressions/index.ts';
+import { withoutTypeArguments } from '../../../compiler/syntax/expressions/readings.ts';
 import {
   nodesUnder,
   type SyntaxNode,
@@ -89,7 +90,7 @@ const rolesOf: RolesOf = {
   NestedFieldPattern: (node) => [[node.field, 'property']],
   NamedPatternArgument: (node) => [[node.name, 'property']],
   MemberAccess: (node) => [[node.member, 'property']],
-  Call: (node) => calledName(node.callee),
+  Call: (node) => calledName(withoutTypeArguments(node.callee)),
   TemplateLiteral: (node) => (node.tag === undefined ? [] : calledName(node.tag)),
   // An annotation is a struct value (§3.16); written bare, its name is still the struct's.
   Annotation: (node) => (node.value.kind === 'Identifier' ? [[node.value, 'type']] : []),

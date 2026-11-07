@@ -16,6 +16,7 @@ import type {
   IndentedValue,
   MatchCase,
   SelectCase,
+  TypeApplication,
 } from '../../syntax/expressions/index.ts';
 import { casesOf, qualifiedPath, selectCasesOf } from '../../syntax/expressions/readings.ts';
 import type { Identifier, Invalid } from '../../syntax/tree/node.ts';
@@ -26,8 +27,33 @@ import {
   underFields,
   underLoop,
 } from '../module/flow.ts';
-import { holdsNoNames, type LocalBinder } from '../module/local-binder.ts';
+import { holdsNoNames, type LocalBinder, type Role } from '../module/local-binder.ts';
 import type { Scope } from '../module/scope.ts';
+
+/**
+ * An expression that may name what it means, used as `role` says: a name, or one given type
+ * arguments (§3.5), whose types are bound too; any other expression is bound as itself.
+ */
+function bindNamed(
+  binder: LocalBinder,
+  node: Expression | TypeApplication,
+  scope: Scope,
+  role: Role,
+): void {
+  switch (node.kind) {
+    case 'Identifier':
+      binder.use(node, scope, role);
+      return;
+    case 'TypeApplication':
+      bindNamed(binder, node.target, scope, role);
+      for (const argument of node.typeArguments) {
+        binder.walk.type(binder, argument, scope);
+      }
+      return;
+    default:
+      bindExpression(binder, node, scope);
+  }
+}
 
 /** A struct literal's or an indented value's type and entries (§3.1, §2). */
 function bindLiteral(binder: LocalBinder, node: FieldsLiteral | IndentedValue, scope: Scope): void {
@@ -84,14 +110,7 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
   Index: (binder, node, scope) => bindAll(binder, [node.target, node.index], scope),
   Range: (binder, node, scope) => bindAll(binder, [node.start, node.end, node.step], scope),
   Call: (binder, node, scope) => {
-    if (node.callee.kind === 'Identifier') {
-      binder.use(node.callee, scope, 'callee');
-    } else {
-      bindExpression(binder, node.callee, scope);
-    }
-    for (const argument of node.typeArguments) {
-      binder.walk.type(binder, argument, scope);
-    }
+    bindNamed(binder, node.callee, scope, 'callee');
     bindAll(binder, node.arguments, scope);
   },
   TupleElement: (binder, node, scope) => bindExpression(binder, node.target, scope),

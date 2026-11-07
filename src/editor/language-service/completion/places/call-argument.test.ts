@@ -57,7 +57,7 @@ function argumentMistakesOf({ main, call }: CallSite, kept: number): readonly nu
 }
 
 function calleeEnd({ tree }: MainProgram, call: Call): number {
-  return spanIn(tree, (call.typeArguments.at(-1) ?? call.callee).span).end;
+  return spanIn(tree, call.callee.span).end;
 }
 
 /**

@@ -203,12 +203,23 @@ export interface Lambda extends NodeOf<'Lambda'> {
   readonly body: Expression;
 }
 
-/** `f(…)`, or `f?.(…)` when `isOptional`, calling the function inside an optional (§4). */
+/**
+ * `f(…)`, or `f?.(…)` when `isOptional`, calling the function inside an optional (§4). Type
+ * arguments written after the callee's name make it a `TypeApplication`: `f<Int>(x)`.
+ */
 export interface Call extends NodeOf<'Call'> {
-  readonly callee: Expression;
+  readonly callee: Expression | TypeApplication;
   readonly isOptional: boolean;
-  readonly typeArguments: readonly TypeNode[];
   readonly arguments: readonly CallArgument[];
+}
+
+/**
+ * `f<Int>`, `Result.Ok<Int, String>`: type arguments written after a name or a qualified name
+ * (§3.5), as a call's callee.
+ */
+export interface TypeApplication extends NodeOf<'TypeApplication'> {
+  readonly target: Identifier | MemberAccess;
+  readonly typeArguments: readonly TypeNode[];
 }
 
 /** `name: value` among a call's arguments, naming the parameter it gives (§3.3). */
@@ -422,6 +433,7 @@ export type Expression =
 
 /** Nodes that occur only as parts of an expression. */
 export type ExpressionPart =
+  | TypeApplication
   | Spread
   | NamedArgument
   | TemplateText

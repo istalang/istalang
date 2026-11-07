@@ -28,6 +28,7 @@ import type {
   FunctionDeclaration,
 } from '../../../../syntax/declarations/index.ts';
 import type { Call, MemberAccess } from '../../../../syntax/expressions/index.ts';
+import { withoutTypeArguments } from '../../../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
@@ -80,10 +81,9 @@ export function variantNameAccepts(
 
 /** For a call of a bare variant, `Ok(v)`, the enum types that have a variant of that name. */
 export function variantCallAccepts(context: BodyContext, node: Call): Accepts | undefined {
+  const callee = withoutTypeArguments(node.callee);
   const naming =
-    node.callee.kind === 'Identifier' && !node.isOptional
-      ? context.entityOf(node.callee)
-      : undefined;
+    callee.kind === 'Identifier' && !node.isOptional ? context.entityOf(callee) : undefined;
   if (naming?.kind !== 'variants') {
     return undefined;
   }
@@ -256,7 +256,7 @@ function variantCalled(
   node: Call,
   expected: Type | undefined,
 ): VariantEntity | undefined {
-  const { callee } = node;
+  const callee = withoutTypeArguments(node.callee);
   if (node.isOptional || (callee.kind !== 'Identifier' && callee.kind !== 'MemberAccess')) {
     return undefined;
   }

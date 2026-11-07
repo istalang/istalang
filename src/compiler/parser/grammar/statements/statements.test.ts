@@ -71,7 +71,7 @@ describe('destructuring declarations (§3.15)', () => {
 
 describe('assignments', () => {
   it.each([
-    ['_ = startSomething()', '(Assignment [_] = (Call startSomething [] []))'],
+    ['_ = startSomething()', '(Assignment [_] = (Call startSomething []))'],
     ['count += 1', '(Assignment [count] += 1)'],
     ['x[k] //= 2', '(Assignment [(Index x k)] //= 2)'],
     ['u->name = "x"', '(Assignment [(MemberAccess (Dereference -> u) name)] = "x")'],
@@ -120,7 +120,7 @@ describe('assignments', () => {
 
   it('leaves a comma to an enclosing call when no assignment follows', () => {
     expect(dumpClean('statement', 'f(if a: x, y)')).toBe(
-      expressionStatement(`(Call f [] [${ifThen('a', bodyOf('x'))} y])`),
+      expressionStatement(`(Call f [${ifThen('a', bodyOf('x'))} y])`),
     );
   });
 });
@@ -131,14 +131,14 @@ describe('keyword statements', () => {
     ['return x + 1', '(Return (Binary x + 1))'],
     ['break', '(Break _)'],
     ['continue', '(Continue _)'],
-    ['defer fn(): log("exited")', '(Defer (Lambda _ [] _ (Call log [] ["exited"])))'],
-    ['drop audit.record(event)', '(Drop (Call (MemberAccess audit record) [] [event]))'],
-    ['spawn purchase(req)', '(ExpressionStatement (Spawn (Call purchase [] [req])))'],
+    ['defer fn(): log("exited")', '(Defer (Lambda _ [] _ (Call log ["exited"])))'],
+    ['drop audit.record(event)', '(Drop (Call (MemberAccess audit record) [event]))'],
+    ['spawn purchase(req)', '(ExpressionStatement (Spawn (Call purchase [req])))'],
     [
       'for key, value in m: use(key)',
-      `(For _ [(NamePattern [key] []) (NamePattern [value] [])] m ${bodyOf('(Call use [] [key])')})`,
+      `(For _ [(NamePattern [key] []) (NamePattern [value] [])] m ${bodyOf('(Call use [key])')})`,
     ],
-    ['while pending: wait()', `(While _ pending ${bodyOf('(Call wait [] [])')})`],
+    ['while pending: wait()', `(While _ pending ${bodyOf('(Call wait [])')})`],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('statement', text)).toBe(tree);
   });
@@ -152,12 +152,12 @@ describe('fn and async at the start of a statement', () => {
     ],
     [
       'async fn f() -> Future<Int>: await g()',
-      `(FunctionDeclaration isAsync _ f [] [] (NamedType [Future] [${int}]) ${bodyOf('(Await (Call g [] []))')})`,
+      `(FunctionDeclaration isAsync _ f [] [] (NamedType [Future] [${int}]) ${bodyOf('(Await (Call g []))')})`,
     ],
     ['fn(x): x * 2', '(ExpressionStatement (Lambda _ [(Parameter x _ _ _)] _ (Binary x * 2)))'],
     [
       'async fn(msg): await handle(msg)',
-      '(ExpressionStatement (Lambda isAsync _ [(Parameter msg _ _ _)] _ (Await (Call handle [] [msg]))))',
+      '(ExpressionStatement (Lambda isAsync _ [(Parameter msg _ _ _)] _ (Await (Call handle [msg]))))',
     ],
     ['fn x: x > 0', '(ExpressionStatement (Lambda _ [(Parameter x _ _ _)] _ (Binary x > 0)))'],
     ['struct{value: 1}', '(ExpressionStatement (StructLiteral _ [(FieldInitializer value 1)]))'],
@@ -197,8 +197,8 @@ describe('labels, `hold` and spawn as a value', () => {
       'batch:\n  hold(batch) _ = x',
       '(LabelledBlock batch (Block [(VariableDeclaration (Hold batch) [(WildcardPattern)] _ x)]))',
     ],
-    ['hold(x)', '(ExpressionStatement (Call hold [] [x]))'],
-    ['spawn f(x)', '(ExpressionStatement (Spawn (Call f [] [x])))'],
+    ['hold(x)', '(ExpressionStatement (Call hold [x]))'],
+    ['spawn f(x)', '(ExpressionStatement (Spawn (Call f [x])))'],
     ['x **= 2', '(Assignment [x] **= 2)'],
     ['x >>= 1', '(Assignment [x] >>= 1)'],
   ])('parses %s', (text, tree) => {

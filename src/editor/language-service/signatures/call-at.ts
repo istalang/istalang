@@ -16,6 +16,7 @@ import type { JoinedBody } from '../../../compiler/checker/surface/denotation.ts
 import type { FunctionDeclaration } from '../../../compiler/syntax/declarations/index.ts';
 import { isMethod } from '../../../compiler/syntax/declarations/methods.ts';
 import type { Call } from '../../../compiler/syntax/expressions/index.ts';
+import { withoutTypeArguments } from '../../../compiler/syntax/expressions/readings.ts';
 import type { Token } from '../../../compiler/syntax/tokens/index.ts';
 import { nodesAt, type SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
@@ -110,14 +111,14 @@ export function writtenParameter(
  * The parameters `call` gives before its arguments: a method's `self`, when written before a dot.
  */
 function receiversOf(declaration: FunctionDeclaration, call: Call): 0 | 1 {
-  return call.callee.kind === 'MemberAccess' && isMethod(declaration) ? 1 : 0;
+  return withoutTypeArguments(call.callee).kind === 'MemberAccess' && isMethod(declaration) ? 1 : 0;
 }
 
 function callAround(tree: SyntaxTree, offset: number): Call | undefined {
   const tokens = codeTokensOf(tree);
   const closings = closingBracketsOf(tree);
   const holds = (call: Call) => {
-    const before = spanIn(tree, (call.typeArguments.at(-1) ?? call.callee).span).end;
+    const before = spanIn(tree, call.callee.span).end;
     const opening = openingAfter(tokens, before);
     if (opening === undefined) {
       return false;

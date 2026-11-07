@@ -14,15 +14,15 @@ import { dumpClean, named, parseAs, reported } from '../../parse.test-kit.ts';
 
 describe('calls', () => {
   it.each([
-    ['f()', '(Call f [] [])'],
-    ['f(a, b)', '(Call f [] [a b])'],
-    ['f(a, b,)', '(Call f [] [a b])'],
-    ['f(\n  a,\n  b\n)', '(Call f [] [a b])'],
-    ['f(&value)', '(Call f [] [(Reference value)])'],
-    ['f(&s.items, x)', '(Call f [] [(Reference (MemberAccess s items)) x])'],
-    ['log("info", "a", ...more)', '(Call log [] ["info" "a" (Spread more)])'],
-    ['Float(3)', '(Call Float [] [3])'],
-    ['f(a)(b)', '(Call (Call f [] [a]) [] [b])'],
+    ['f()', '(Call f [])'],
+    ['f(a, b)', '(Call f [a b])'],
+    ['f(a, b,)', '(Call f [a b])'],
+    ['f(\n  a,\n  b\n)', '(Call f [a b])'],
+    ['f(&value)', '(Call f [(Reference value)])'],
+    ['f(&s.items, x)', '(Call f [(Reference (MemberAccess s items)) x])'],
+    ['log("info", "a", ...more)', '(Call log ["info" "a" (Spread more)])'],
+    ['Float(3)', '(Call Float [3])'],
+    ['f(a)(b)', '(Call (Call f [a]) [b])'],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
@@ -59,18 +59,27 @@ describe('calls', () => {
 
 describe('type arguments (§3.5)', () => {
   it.each([
-    ['swap<Int, String>(p)', `(Call swap [${named('Int')} ${named('String')}] [p])`],
-    ['Slot.create<Verdict>()', `(Call (MemberAccess Slot create) [${named('Verdict')}] [])`],
+    [
+      'swap<Int, String>(p)',
+      `(Call (TypeApplication swap [${named('Int')} ${named('String')}]) [p])`,
+    ],
+    [
+      'Slot.create<Verdict>()',
+      `(Call (TypeApplication (MemberAccess Slot create) [${named('Verdict')}]) [])`,
+    ],
     [
       'Shared<Future<Unit>?>(x)',
-      `(Call Shared [(OptionalType (NamedType [Future] [${named('Unit')}]))] [x])`,
+      `(Call (TypeApplication Shared [(OptionalType (NamedType [Future] [${named('Unit')}]))]) [x])`,
     ],
-    ['a < b > (c)', `(Call a [${named('b')}] [c])`],
-    ['a + f<T>(x)', `(Binary a + (Call f [${named('T')}] [x]))`],
-    ['xs.map<Int>(f)', `(Call (MemberAccess xs map) [${named('Int')}] [f])`],
-    ['a < 1 > (b)', '(Call a [(LiteralType 1)] [b])'],
-    ['a < -1 > (b)', '(Call a [(LiteralType (Unary - 1))] [b])'],
-    ['a < b | c > (d)', `(Call a [(UnionType [${named('b')} ${named('c')}])] [d])`],
+    ['a < b > (c)', `(Call (TypeApplication a [${named('b')}]) [c])`],
+    ['a + f<T>(x)', `(Binary a + (Call (TypeApplication f [${named('T')}]) [x]))`],
+    ['xs.map<Int>(f)', `(Call (TypeApplication (MemberAccess xs map) [${named('Int')}]) [f])`],
+    ['a < 1 > (b)', '(Call (TypeApplication a [(LiteralType 1)]) [b])'],
+    ['a < -1 > (b)', '(Call (TypeApplication a [(LiteralType (Unary - 1))]) [b])'],
+    [
+      'a < b | c > (d)',
+      `(Call (TypeApplication a [(UnionType [${named('b')} ${named('c')}])]) [d])`,
+    ],
     [
       'get<S, "region">{}',
       `(StructLiteral (NamedType [get] [${named('S')} (LiteralType "region")]) [])`,
@@ -86,7 +95,7 @@ describe('type arguments (§3.5)', () => {
     ['(a < 1) > (c)', '(Binary (Parenthesized (Binary a < 1)) > (Parenthesized c))'],
     ['a < 1.5 > (c)', '(ChainedComparison [a 1.5 (Parenthesized c)] [< >])'],
     ['a < b + c > (d)', '(ChainedComparison [a (Binary b + c) (Parenthesized d)] [< >])'],
-    ['f() < b > (c)', '(ChainedComparison [(Call f [] []) b (Parenthesized c)] [< >])'],
+    ['f() < b > (c)', '(ChainedComparison [(Call f []) b (Parenthesized c)] [< >])'],
   ])('reads %s as comparisons, reporting nothing', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
   });
@@ -109,18 +118,18 @@ describe('indexing, members and postfix operators', () => {
     ['a.b', '(MemberAccess a b)'],
     ['a.type', '(MemberAccess a type)'],
     ['user?.name', '(MemberAccess user isOptional name)'],
-    ['a?.m()', '(Call (MemberAccess a isOptional m) [] [])'],
-    ['f?.()', '(Call f isOptional [] [])'],
+    ['a?.m()', '(Call (MemberAccess a isOptional m) [])'],
+    ['f?.()', '(Call f isOptional [])'],
     ['xs?.[0]', '(Index xs isOptional 0)'],
     ['t?.0', '(TupleElement t isOptional 0)'],
     ['t?.0.1', '(TupleElement (TupleElement t isOptional 0) 1)'],
     ['m?.["a"]', '(Index m isOptional "a")'],
     ['a?.b?.[i].c', '(MemberAccess (Index (MemberAccess a isOptional b) isOptional i) c)'],
-    ['s.f?.(1, x)', '(Call (MemberAccess s f) isOptional [] [1 x])'],
-    ['a?.f?.(x)', '(Call (MemberAccess a isOptional f) isOptional [] [x])'],
-    ['2.pow(10)', '(Call (MemberAccess 2 pow) [] [10])'],
-    ['T.zero()', '(Call (MemberAccess T zero) [] [])'],
-    ['chargeCard(id)?', '(Propagate (Call chargeCard [] [id]))'],
+    ['s.f?.(1, x)', '(Call (MemberAccess s f) isOptional [1 x])'],
+    ['a?.f?.(x)', '(Call (MemberAccess a isOptional f) isOptional [x])'],
+    ['2.pow(10)', '(Call (MemberAccess 2 pow) [10])'],
+    ['T.zero()', '(Call (MemberAccess T zero) [])'],
+    ['chargeCard(id)?', '(Propagate (Call chargeCard [id]))'],
     ['u->name', '(MemberAccess (Dereference -> u) name)'],
     ['u->name.first', '(MemberAccess (MemberAccess (Dereference -> u) name) first)'],
     ['users[0]->name', '(MemberAccess (Dereference -> (Index users 0)) name)'],
@@ -143,7 +152,7 @@ describe('tuple elements (§3.15)', () => {
     ['t.12', '(TupleElement t 12)'],
     ['t.0.1', '(TupleElement (TupleElement t 0) 1)'],
     ['t.1.0.2', '(TupleElement (TupleElement (TupleElement t 1) 0) 2)'],
-    ['f().1.name', '(MemberAccess (TupleElement (Call f [] []) 1) name)'],
+    ['f().1.name', '(MemberAccess (TupleElement (Call f []) 1) name)'],
     ['p.pair.0', '(TupleElement (MemberAccess p pair) 0)'],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
@@ -191,21 +200,18 @@ describe('`!`, named arguments and `spawn`', () => {
     ['a?.b!', '(Unwrap (MemberAccess a isOptional b))'],
     [
       'f(times: 5, backoff: 2s)',
-      '(Call f [] [(NamedArgument times 5) (NamedArgument backoff 2000ms)])',
+      '(Call f [(NamedArgument times 5) (NamedArgument backoff 2000ms)])',
     ],
-    ['f(1, target: &x)', '(Call f [] [1 (NamedArgument target (Reference x))])'],
+    ['f(1, target: &x)', '(Call f [1 (NamedArgument target (Reference x))])'],
     [
       'spawn w.run(job).result()',
-      '(Call (MemberAccess (Spawn (Call (MemberAccess w run) [] [job])) result) [] [])',
+      '(Call (MemberAccess (Spawn (Call (MemberAccess w run) [job])) result) [])',
     ],
-    ['spawn f<Int>(x)', '(Spawn (Call f [(NamedType [Int] [])] [x]))'],
-    [
-      'await spawn f(x).result()',
-      '(Await (Call (MemberAccess (Spawn (Call f [] [x])) result) [] []))',
-    ],
+    ['spawn f<Int>(x)', '(Spawn (Call (TypeApplication f [(NamedType [Int] [])]) [x]))'],
+    ['await spawn f(x).result()', '(Await (Call (MemberAccess (Spawn (Call f [x])) result) []))'],
     [
       'spawn Job{a}.run()',
-      '(Spawn (Call (MemberAccess (StructLiteral (NamedType [Job] []) [(FieldInitializer a _)]) run) [] []))',
+      '(Spawn (Call (MemberAccess (StructLiteral (NamedType [Job] []) [(FieldInitializer a _)]) run) []))',
     ],
   ])('parses %s', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
