@@ -7,7 +7,8 @@
  *   closure and this code share it.
  * - A local `fn` is a `const` bound to its closure (§3.14).
  * - A top-level or static function named as a value is a closure without captures, of the
- *   instance the checker resolved for the name.
+ *   instance the checker resolved for the name, as is a variant's constructor (§3.11), whose entry
+ *   builds the variant (synthesized/constructors.ts).
  */
 
 import type { Register } from '../../../../definition/operands.ts';

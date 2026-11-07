@@ -32,7 +32,7 @@ import { insideOptional } from '../../../types/unions/inside-optional.ts';
 import { optionalInner } from '../../../types/unions/unions.ts';
 import { namedType, nameNodeOf } from '../../../types/written/named-types.ts';
 import { checkFunctionValue } from '../../closures/function-values.ts';
-import { checkVariantName } from '../structs/variants.ts';
+import { checkVariantValue } from '../structs/variants.ts';
 import { entityValueType } from './names.ts';
 
 export function checkMemberAccess(
@@ -46,7 +46,7 @@ export function checkMemberAccess(
   }
   const qualified = node.isOptional ? undefined : context.entityOf(node.member);
   if (qualified?.kind === 'variant') {
-    return checkVariantName(context, node, qualified, expected);
+    return checkVariantValue(context, node, qualified, expected);
   }
   const functions = namedFunctions(context, node);
   if (functions !== undefined) {

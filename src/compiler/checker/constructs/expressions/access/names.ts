@@ -17,7 +17,7 @@ import { isNominalEntity, type Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { fieldlessStructOf } from '../../../types/written/named-types.ts';
 import { checkFunctionValue } from '../../closures/function-values.ts';
-import { checkVariantName, variantsAccepted } from '../structs/variants.ts';
+import { checkVariantValue, variantNameAccepts } from '../structs/variants.ts';
 
 export function checkName(
   context: BodyContext,
@@ -29,13 +29,16 @@ export function checkName(
 
 /**
  * Which types a name passed to a call can take when the call decides its type (§3.5): a function
- * among several or a generic one the function types it can be, a bare variant the enums having it.
+ * among several or a generic one the function types it can be, a bare variant the enums having it
+ * and the function types its constructor can be.
  */
 export function nameAccepts(context: BodyContext, node: Identifier): Accepts | undefined {
+  const entity = context.entityOf(node);
+  if (entity?.kind === 'variants') {
+    return variantNameAccepts(context, node, entity);
+  }
   const functions = namedFunctions(context, node);
-  return functions === undefined
-    ? variantsAccepted(context, context.entityOf(node))
-    : functionsAccepted(context, functions);
+  return functions === undefined ? undefined : functionsAccepted(context, functions);
 }
 
 /** The type of the value `entity` denotes where `node` names it. */
@@ -58,7 +61,7 @@ export function entityValueType(
     }
     case 'variant':
     case 'variants':
-      return checkVariantName(context, node, entity, expected);
+      return checkVariantValue(context, node, entity, expected);
     default: {
       const bare =
         entity === undefined ? undefined : bareStructValue(context, node, entity, expected);

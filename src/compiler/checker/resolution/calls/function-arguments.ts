@@ -1,27 +1,34 @@
 /**
- * Lambdas passed as arguments (§3.5, §3.14). A lambda with an untyped parameter takes its types
- * from the parameter it is passed to, so the call decides it, as it decides `none`: choosing a
- * function looks only at whether the lambda's shape can fit (resolution/choosing/choice.ts).
+ * Functions passed as arguments whose types the call decides (§3.5, §3.14): a lambda with an
+ * untyped parameter takes its types from the parameter it is passed to, and a generic function or
+ * a set of overloads named as a value is chosen by them, so the call decides it, as it decides
+ * `none`: choosing a function looks only at whether such an argument can fit
+ * (resolution/choosing/choice.ts).
  *
- * Once a function is chosen, such a lambda is checked after the other arguments, which have bound
- * what they can of the type parameters, and before the call is instantiated: its parameter types
- * come from there, and what its body produces binds the type parameters of its result, as
- * `xs.map(fn x: x * 2)` binds `U` from `x * 2`: a result nothing has bound is left for the body
- * to decide (`BodyContext.inferLambda`). A lambda whose parameter types still mention a type
- * parameter nothing has bound is left for instantiating to report.
+ * Once a function is chosen, such an argument is judged after the other arguments, which have
+ * bound what they can of the type parameters, and before the call is instantiated: its parameter
+ * types come from there, and what it gives binds the type parameters of its result, as
+ * `xs.map(fn x: x * 2)` binds `U` from `x * 2` and `xs.map(Result.Ok)` from `Ok`'s result. A
+ * lambda's result nothing has bound is left for its body to decide (`BodyContext.inferLambda`); a
+ * named function is chosen and instantiated without its result (`functionValueType`), which
+ * records nothing, so the argument is checked once, against the parameter's type, when the
+ * arguments are fitted. One whose parameter types still mention a type parameter nothing has
+ * bound is left for instantiating to report.
  */
 
 import { valueBranchesOf } from '../../../syntax/expressions/branches.ts';
-import type { Expression, Lambda } from '../../../syntax/expressions/index.ts';
+import type { Expression, Lambda, MemberAccess } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { collectionTarget, expectedFunction, expectedTuple } from '../../types/fitting/expected.ts';
 import type { Inference } from '../../types/inference/infer.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
-import type { Type } from '../../types/type/index.ts';
+import type { FunctionType, Type } from '../../types/type/index.ts';
 import type { Application } from '../choosing/choice.ts';
+import { functionValueType } from '../choosing/named-functions.ts';
 
 /** An argument of a call being resolved: its node, and its type unless the call decides it. */
 interface Argument {
@@ -30,9 +37,9 @@ interface Argument {
 }
 
 /**
- * Checks the lambdas among `written` that `application` decides, binding what their results give;
- * each checked lambda is recorded on `context.functions`, so `checkLambda` reuses its type when
- * `fitArguments` checks the enclosing argument.
+ * Judges the functions among `written` that `application` decides, binding what their results
+ * give; each checked lambda is recorded on `context.functions`, so `checkLambda` reuses its type
+ * when `fitArguments` checks the enclosing argument.
  */
 export function checkDecidedFunctions(
   context: BodyContext,
@@ -58,12 +65,8 @@ function inferLambdaAt(
   expected: Type,
   inference: Inference,
 ): void {
-  const partial = expectedFunction(expected);
-  if (
-    partial === undefined ||
-    partial.parameters.some((parameter) => isOpen(parameter.type, inference)) ||
-    (partial.pack !== undefined && isOpen(partial.pack, inference))
-  ) {
+  const partial = knownParameters(expected, inference);
+  if (partial === undefined) {
     return;
   }
   const checked = isOpen(partial.result, inference)
@@ -72,7 +75,37 @@ function inferLambdaAt(
   inference.match(partial, checked);
 }
 
-/** Walks `node` and `expected` together, inferring any decided lambdas inside `node`. */
+/**
+ * Binds what the function `node` names gives when its parameters are known and its result isn't,
+ * choosing it by them; a name of anything else, or with nothing to bind, is left to fitting.
+ */
+function inferNamedAt(
+  context: BodyContext,
+  node: Identifier | MemberAccess,
+  expected: Type,
+  inference: Inference,
+): void {
+  const partial = knownParameters(expected, inference);
+  if (partial === undefined || !isOpen(partial.result, inference)) {
+    return;
+  }
+  const type = functionValueType(context, node, partial);
+  if (type !== undefined) {
+    inference.match(partial, type);
+  }
+}
+
+/** The function type `expected` is, when inference has found all of its parameters' types. */
+function knownParameters(expected: Type, inference: Inference): FunctionType | undefined {
+  const partial = expectedFunction(expected);
+  return partial === undefined ||
+    partial.parameters.some((parameter) => isOpen(parameter.type, inference)) ||
+    (partial.pack !== undefined && isOpen(partial.pack, inference))
+    ? undefined
+    : partial;
+}
+
+/** Walks `node` and `expected` together, inferring any decided functions inside `node`. */
 function inferNestedFunctions(
   context: BodyContext,
   node: Expression,
@@ -84,6 +117,10 @@ function inferNestedFunctions(
   switch (bare.kind) {
     case 'Lambda':
       inferLambdaAt(context, bare, guide, inference);
+      return;
+    case 'Identifier':
+    case 'MemberAccess':
+      inferNamedAt(context, bare, guide, inference);
       return;
     case 'BlockExpression':
       inferBlockFunctions(context, bare.block, expected, inference);

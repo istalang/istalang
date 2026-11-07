@@ -16,6 +16,7 @@
  */
 
 import type { PrimitiveName } from '../../../../foundation/language/primitives.ts';
+import { staticName } from '../../../../foundation/language/static-names.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity, VariantNaming } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
@@ -164,7 +165,10 @@ export function chooseVariant(
   const chosen = context.checker.inputs.variantNamed(naming.name, enumsExpected(expected));
   if (chosen === undefined) {
     if (!expectsError(expected)) {
-      context.report(checkerDiagnostics.bareVariant(at.span, at.name.text));
+      const qualified = context.checker.bindings
+        .candidatesOf(naming)
+        .map((candidate) => staticName(candidate.enum.name.text, candidate.variant.name.text));
+      context.report(checkerDiagnostics.bareVariant(at.span, at.name.text, qualified));
     }
     return undefined;
   }

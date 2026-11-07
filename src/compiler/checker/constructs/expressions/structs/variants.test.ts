@@ -2,7 +2,9 @@
  * Variant calls (§3.11) against the brace literal they mean: a call binds its arguments to the
  * fields as a call binds parameters (§3.3), so over generated variants and calls, positional and
  * named in any order, defaults left out and a rest collecting the extra positional arguments, the
- * value a call builds is the one the literal naming every field it gives builds.
+ * value a call builds is the one the literal naming every field it gives builds. A variant named
+ * as a value (§3.14), as any function type its fields fit, builds what calling it does, and is a
+ * function value capturing nothing: sendable, and equal to another naming it.
  */
 
 import fc from 'fast-check';
@@ -79,6 +81,39 @@ function outcomeOf(source: string): unknown {
   return state.kind === 'finished' ? decodeJson(String(state.outcome)) : state;
 }
 
+/** A function type a variant's fields fit: its first `taken` fields, and the rest as one array. */
+interface GeneratedShape {
+  readonly taken: number;
+  readonly takesRest: boolean;
+  readonly extra: readonly number[];
+}
+
+function shapesOf({ fields, required, hasRest }: GeneratedVariant): fc.Arbitrary<GeneratedShape> {
+  return fc.integer({ min: required, max: fields }).chain((taken) =>
+    fc.record({
+      taken: fc.constant(taken),
+      takesRest: hasRest && taken === fields ? fc.boolean() : fc.constant(false),
+      extra: fc.array(fc.integer(), { maxLength: 3 }),
+    }),
+  );
+}
+
+function functionType({ taken, takesRest }: GeneratedShape): string {
+  const parameters = [
+    ...Array.from({ length: taken }, () => 'Int'),
+    ...(takesRest ? ['Array<Int>'] : []),
+  ];
+  return `fn(${parameters.join(', ')}) -> E`;
+}
+
+function argumentsOf({ taken, takesRest, extra }: GeneratedShape, spread: boolean): string {
+  const given = Array.from({ length: taken }, (_, index) => String(index + 1));
+  if (!takesRest) {
+    return given.join(', ');
+  }
+  return [...given, ...(spread ? extra.map(String) : [`[${extra.join(', ')}]`])].join(', ');
+}
+
 describe('a variant call', () => {
   it('builds what the brace literal naming the fields it gives builds', () => {
     fc.assert(
@@ -90,6 +125,28 @@ describe('a variant call', () => {
             'async fn main() -> Future<Bool>:',
             `  const called: E = ${call(made)}`,
             `  called == ${literal(variant, made)}`,
+          ].join('\n');
+          expect(outcomeOf(source)).toBe(true);
+        },
+      ),
+      { numRuns: 40 },
+    );
+  });
+});
+
+describe('a variant named as a value', () => {
+  it('builds what calling the variant builds, and is a sendable value equal to another naming it', () => {
+    fc.assert(
+      fc.property(
+        variants.chain((variant) => shapesOf(variant).map((shape) => ({ variant, shape }))),
+        ({ variant, shape }) => {
+          const type = functionType(shape);
+          const source = [
+            declaration(variant),
+            'async fn main() -> Future<Bool>:',
+            `  const made: ${type} = E.V`,
+            `  const again: sendable ${type} = E.V`,
+            `  made == again and made(${argumentsOf(shape, false)}) == E.V(${argumentsOf(shape, true)})`,
           ].join('\n');
           expect(outcomeOf(source)).toBe(true);
         },
