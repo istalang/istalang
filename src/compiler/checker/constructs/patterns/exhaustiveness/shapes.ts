@@ -12,8 +12,9 @@
  *   taking anything covers it.
  * - `==` against a literal counts as a pattern, but only a literal of `Bool`, `Int`, `Float` or
  *   `String` has a shape of its own; any other literal acts as a guard.
- * - A witness is written as a pattern would be, with `_` for anything and `{…}` for fields no case
- *   looked into.
+ * - A witness is written as a pattern would be, with `_` for anything; a struct in braces, `{…}`
+ *   for fields no case looked into, and a variant as its call pattern, as it is built, `(…)` for
+ *   fields no case looked into and `...` for the others beside those one did.
  */
 
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
@@ -201,14 +202,43 @@ export function witnessText(checker: ShapeChecker, shape: WitnessShape, type: Ty
     return `(${parts.join(', ')})`;
   }
   const fields = fieldsOfConstructor(checker, type, key);
-  const name = key === structKey ? typeText(type) : key;
+  if (fields.length === 0) {
+    return key === structKey ? typeText(type) : key;
+  }
+  return key === structKey
+    ? structWitness(typeText(type), fields, parts)
+    : variantWitness(key, fields, parts);
+}
+
+/** A struct's shape as its pattern: `Point{…}`, or the fields a case looked into, by name. */
+function structWitness(
+  name: string,
+  fields: readonly FieldMember[],
+  parts: readonly string[],
+): string {
   const looked = fields.flatMap((field, index) =>
     parts[index] === '_' ? [] : [`${field.name} is ${parts[index]}`],
   );
-  if (fields.length === 0) {
-    return name;
-  }
   return looked.length === 0 ? `${name}{…}` : `${name}{${looked.join(', ')}}`;
+}
+
+/**
+ * A variant's shape as its call pattern, as it is built (§3.11): `Rejected(…)`, or the fields a
+ * case looked into, by name, and `...` for the others.
+ */
+function variantWitness(
+  name: string,
+  fields: readonly FieldMember[],
+  parts: readonly string[],
+): string {
+  const looked = fields.flatMap((field, index) =>
+    parts[index] === '_' ? [] : [`${field.name}: ${parts[index]}`],
+  );
+  if (looked.length === 0) {
+    return `${name}(…)`;
+  }
+  const others = looked.length < fields.length ? ['...'] : [];
+  return `${name}(${[...looked, ...others].join(', ')})`;
 }
 
 /** An array's shape, of `items`, as its pattern: `[_, _]`, or `[_, ..._]` for that many or more. */

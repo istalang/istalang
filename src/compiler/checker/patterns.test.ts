@@ -18,6 +18,7 @@ const shapes = [
   '  Square(side: Int)',
   'struct Point { x: Int, y: Int }',
   'struct Box { opt: Int? }',
+  'enum Lamp { Lit(on: Bool, level: Int), Off }',
   '',
 ].join('\n');
 
@@ -85,6 +86,27 @@ describe('exhaustiveness', () => {
       reportedOnce(reports.nonExhaustiveMatch.code, 'value'),
     );
   });
+
+  it.each([
+    ['a variant no case took', 'Shape', 'case Circle(r): "c"', 'Square(…)'],
+    [
+      'the fields a case looked into, by name',
+      'Lamp',
+      'case Lit(true, _): "on"\ncase Off: "off"',
+      'Lit(on: false, ...)',
+    ],
+    ['a struct', 'Point', 'case Point{x == 0}: "axis"', 'Point{…}'],
+  ])(
+    'writes the value it misses as a pattern would, a variant as its call (§3.11): %s',
+    (_case, type, cases, missing) => {
+      const { diagnostics } = diagnosedAt(
+        stdProgramOf({ 'main.ista': matching(type, cases) }),
+        'main.ista',
+      );
+      const unhandled = diagnostics.find(({ code }) => code === reports.nonExhaustiveMatch.code);
+      expect(unhandled?.message).toContain(`doesn't handle ${missing};`);
+    },
+  );
 
   it.each([
     ['a case after every value', 'Color', 'case _: "any"\ncase Red: "r"', 'Red'],
