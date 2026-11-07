@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-06
+last_updated: 2026-11-07
 tags: [reuse, lowering, definition, ir, instructions]
 ---
 
@@ -36,7 +36,7 @@ tags: [reuse, lowering, definition, ir, instructions]
 - take a value apart into a declaration's or a parameter's targets, each name its part's copy → `bindTargets` (`src/compiler/lowering/constructs/statements/variables.ts`); a parameter's pattern is taken apart there, at its function's entry, its argument in a register of its own (`FunctionLowering`, `src/compiler/lowering/functions/index.ts`), never by a second destructuring path
 - read how a field access reaches its field → `CheckedBody.fieldReadOf` (`src/compiler/checker/surface/checked-body.ts`)
 - lower pattern tests and bindings jumping to a failure label → `lowerMatching` (`src/compiler/lowering/constructs/parts/patterns.ts`)
-- build an enum variant by its declared name → `buildVariant`, `isEnum` (`src/compiler/lowering/constructs/expressions/structs/variants.ts`); in synthesized code, `SynthesizedCode.variant`
+- build an enum variant by its declared name → `buildVariant` (`src/compiler/lowering/values/variant-values.ts`), whether a type is an enum's → `isEnum` (`src/compiler/lowering/constructs/expressions/structs/variants.ts`); in synthesized code, `SynthesizedCode.variant`
 - branch on an enum variant, or read variant field 0 → `branchOnVariant`, `payloadOf` (`src/compiler/lowering/constructs/expressions/structs/variants.ts`); carry on with a variant's one field where a value holds it, else run what leaves → `payloadOr`
 - build `none` or put a value into `T?`, or read a `T?` where it isn't `none` → `noneOf`, `someOf`, `presentOrJump`, `presentOr` (`src/compiler/lowering/values/optionals.ts`)
 - put a value into a union, take one out as a member or a narrower union (or, where an instantiation collapsed it, as literals merged into its base, or out of the `any` type that took its members whole), write a union of literals as its base, write something per member's value → `intoUnion`, `outOfUnion`, `asBase`, `oneValueIn`, `eachMember` (`src/compiler/lowering/values/unions.ts`)

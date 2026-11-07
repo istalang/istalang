@@ -1,6 +1,6 @@
 /**
- * Enum variants as values (§3.11): `variant` of the enum type the checker gave the expression,
- * by the variant's index, fields in declaration order.
+ * Enum variants as values (§3.11): of the enum type the checker gave the expression, built as
+ * every variant is (values/variant-values.ts), and tested for by their index.
  */
 
 import type { Register } from '../../../../../definition/operands.ts';
@@ -12,16 +12,8 @@ import { lastName } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { CodeContext, FunctionContext } from '../../../context.ts';
 import type { Label } from '../../../functions/code-writer.ts';
+import { buildVariant, variantIndexOf } from '../../../values/variant-values.ts';
 import { literalFields } from './structs.ts';
-
-/** The index of the variant `name` of the enum `type`. */
-function variantIndexOf(checker: Checker, type: NominalType, name: string): number {
-  const index = (checker.variantsOf(type) ?? []).findIndex((variant) => variant.name === name);
-  if (index < 0) {
-    unreachable(`No variant '${name}'; the checker should have said so.`);
-  }
-  return index;
-}
 
 /** A variant without fields, named bare, qualified, or as `none`. */
 export function lowerFieldlessVariant(
@@ -117,23 +109,4 @@ function emitVariant(
     unreachable(`Expected an enum at ${node.span.from}; the checker should have said so.`);
   }
   return buildVariant(context, { type, name }, fields, node.span);
-}
-
-/** A value of the variant `name` of the enum `type`, holding `fields`; its register. */
-export function buildVariant(
-  context: CodeContext,
-  { type, name }: { readonly type: NominalType; readonly name: string },
-  fields: readonly Register[],
-  span: AnchoredSpan,
-): Register {
-  const dst = context.code.allocate();
-  context.code.emit({
-    kind: 'variant',
-    span,
-    dst,
-    type: context.tables.types.index(type),
-    variant: variantIndexOf(context.checker, type, name),
-    fields: [...fields],
-  });
-  return dst;
 }
