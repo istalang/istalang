@@ -15,7 +15,7 @@
 
 import { bindsInPattern } from '../../../foundation/language/naming.ts';
 import { type Handlers, handlerOf } from '../../../foundation/structures/kind-table.ts';
-import type { Pattern, RestPattern } from '../../syntax/patterns.ts';
+import type { Pattern, PatternPart } from '../../syntax/patterns.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import type { VariableEntity, VariableOwner } from '../entities.ts';
 import { holdsNoNames, type LocalBinder, type PatternBindings } from '../module/local-binder.ts';
@@ -27,7 +27,7 @@ interface Binding {
 }
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-const patternHandlers: Handlers<LocalBinder, Pattern, [Binding], void> = {
+const patternHandlers: Handlers<LocalBinder, Pattern | PatternPart, [Binding], void> = {
   WildcardPattern: holdsNoNames,
   LiteralPattern: holdsNoNames,
   Missing: holdsNoNames,
@@ -59,11 +59,7 @@ const patternHandlers: Handlers<LocalBinder, Pattern, [Binding], void> = {
   OrPattern: (binder, node, binding) => bindAlternatives(binder, node.alternatives, binding),
   ArrayPattern: (binder, node, binding) => {
     for (const element of node.elements) {
-      if (element.kind === 'RestPattern') {
-        defineRest(binder, element, binding);
-      } else {
-        walk(binder, element, binding);
-      }
+      walk(binder, element, binding);
     }
   },
   RangePattern: holdsNoNames,
@@ -71,50 +67,31 @@ const patternHandlers: Handlers<LocalBinder, Pattern, [Binding], void> = {
     if (node.type !== undefined) {
       binder.constructedType(node.type, binding.scope);
     }
-    for (const field of node.fields) {
-      handlerOf(fieldPatternHandlers, field)(binder, field, binding);
-    }
-    if (node.rest !== undefined) {
-      defineRest(binder, node.rest, binding);
+    for (const item of [...node.fields, ...(node.rest === undefined ? [] : [node.rest])]) {
+      walk(binder, item, binding);
     }
   },
   // Which field each argument takes is the checker's to bind, as for a call's arguments.
   VariantCallPattern: (binder, node, binding) => {
     binder.constructedType(node.callee, binding.scope);
     for (const argument of node.arguments) {
-      switch (argument.kind) {
-        case 'RestPattern':
-          defineRest(binder, argument, binding);
-          break;
-        case 'NamedPatternArgument':
-          walk(binder, argument.pattern, binding);
-          break;
-        case 'OtherFieldsPattern':
-          break;
-        default:
-          walk(binder, argument, binding);
-      }
+      walk(binder, argument, binding);
     }
   },
-};
-
-/** `...name` binds `name`; `..._` nothing. */
-function defineRest(binder: LocalBinder, rest: RestPattern, binding: Binding): void {
-  if (rest.target.kind === 'Identifier') {
-    define(binder, binding.bindings, rest.target, rest);
-  }
-}
-
-type FieldPattern = Extract<Pattern, { kind: 'StructPattern' }>['fields'][number];
-
-/** One item in a struct pattern's braces; its field name is the checker's to resolve. */
-const fieldPatternHandlers: Handlers<LocalBinder, FieldPattern, [Binding], void> = {
+  // A struct pattern's items: each field name is the checker's to resolve.
   BindFieldPattern: (binder, field, binding) =>
     define(binder, binding.bindings, field.alias ?? field.field, field),
   CompareFieldPattern: (binder, field, binding) =>
     binder.walk.expression(binder, field.value, binding.scope),
   NestedFieldPattern: (binder, field, binding) => walk(binder, field.pattern, binding),
-  Invalid: holdsNoNames,
+  // `...name` binds `name`; `..._` nothing.
+  RestPattern: (binder, rest, binding) => {
+    if (rest.target.kind === 'Identifier') {
+      define(binder, binding.bindings, rest.target, rest);
+    }
+  },
+  NamedPatternArgument: (binder, argument, binding) => walk(binder, argument.pattern, binding),
+  OtherFieldsPattern: holdsNoNames,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
 
@@ -128,7 +105,7 @@ export function bindPattern(
   walk(binder, node, { scope, bindings });
 }
 
-function walk(binder: LocalBinder, node: Pattern, binding: Binding): void {
+function walk(binder: LocalBinder, node: Pattern | PatternPart, binding: Binding): void {
   binder.enter(node, binding.scope);
   handlerOf(patternHandlers, node)(binder, node, binding);
 }
