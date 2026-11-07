@@ -18,12 +18,13 @@
  *   (exhaustiveness/shapes.ts).
  */
 
-import type {
-  LiteralPattern,
-  NamePattern,
-  Pattern,
-  PatternPart,
-  StructPattern,
+import {
+  type LiteralPattern,
+  type NamePattern,
+  type Pattern,
+  type PatternPart,
+  patternHead,
+  type StructPattern,
 } from '../../../../syntax/patterns.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
 import { spanAcross } from '../../../../syntax/tree/positions.ts';
@@ -78,7 +79,7 @@ export function selectionOf(
  * reported where the pattern stands, not ruled out.
  */
 function namesOtherType(scope: PatternScope, node: Pattern | PatternPart, type: Type): boolean {
-  const named = namedIn(node);
+  const named = patternHead(node);
   const entity = named === undefined ? undefined : scope.entityOf(lastName(named.path));
   if (entity === undefined || !isKnown(type)) {
     return false;
@@ -112,18 +113,6 @@ function isDowncasting(
   }
   const entity = scope.entityOf(lastName(node.path));
   return entity === undefined || !namesOwnType(scope, entity, type);
-}
-
-/** The name a type or variant pattern names its type or variant by; undefined for another. */
-function namedIn(node: Pattern | PatternPart): NamePattern | StructPattern['type'] {
-  switch (node.kind) {
-    case 'StructPattern':
-      return node.type;
-    case 'NamePattern':
-      return node;
-    default:
-      return undefined;
-  }
 }
 
 /**
@@ -187,8 +176,8 @@ export function refuseTypeArguments(
   scope: Pick<PatternScope, 'report'>,
   node: Pattern | PatternPart,
 ): void {
-  const named = node.kind === 'StructPattern' ? node.type : node;
-  if (named?.kind !== 'NamePattern' && named?.kind !== 'NamedType') {
+  const named = patternHead(node);
+  if (named === undefined) {
     return;
   }
   const [first] = named.typeArguments;

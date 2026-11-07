@@ -27,14 +27,13 @@ import type { Entity, VariantNaming } from '../../../binder/entities.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import { binaryOperators, isImplicitOperator } from '../../../syntax/expressions/operators.ts';
 import type {
-  ArrayPattern,
   CompareFieldPattern,
   LiteralPattern,
   NamePattern,
   Pattern,
-  StructPattern,
 } from '../../../syntax/patterns.ts';
 import { lastName } from '../../../syntax/tree/node.ts';
+import type { NamedType } from '../../../syntax/types/index.ts';
 import type { BodyContext, PatternRecord } from '../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
@@ -67,6 +66,7 @@ import { downcastOf } from './walk/kinds/downcasts.ts';
 import { compareFunction, rangeLeaf } from './walk/kinds/ranges.ts';
 import { bodyScope, otherTypeNamed, type ValuePart } from './walk/parts.ts';
 import {
+  type ArrayItems,
   type ArrayPart,
   failed,
   type Leaf,
@@ -117,17 +117,16 @@ function testsIn(context: BodyContext): PatternTests {
     literal: (node, part) => literal(context, node, part),
     comparison: (item, part) => comparison(context, item, part),
     reference: (node, part) => reference(context, node, part),
-    variant: (node, naming, part) =>
-      node.type === undefined ? undefined : namedVariant(context, node.type, naming, part),
+    variant: (callee, naming, part) => namedVariant(context, callee, naming, part),
     downcast: (node, part) => downcastOf(context, node, part),
-    array: (node, part) => arrayTest(context, node, part),
+    array: (items, part) => arrayTest(context, items, part),
     range: (node, part) => rangeLeaf(context, node, part),
   };
 }
 
 function arrayTest(
   context: BodyContext,
-  node: ArrayPattern,
+  { site, elements }: ArrayItems,
   part: ValuePart,
 ): ArrayPart | undefined {
   if (part.type.kind === 'error') {
@@ -135,14 +134,14 @@ function arrayTest(
   }
   const items = arrayElement(context.checker, part.type);
   if (items === undefined) {
-    context.report(checkerDiagnostics.notArrayPattern(node.span, typeText(part.type)));
+    context.report(checkerDiagnostics.notArrayPattern(site.span, typeText(part.type)));
     return undefined;
   }
-  const hasRest = node.elements.some((element) => element.kind === 'RestPattern');
-  const count = node.elements.length - (hasRest ? 1 : 0);
+  const hasRest = elements.some((element) => element.kind === 'RestPattern');
+  const count = elements.length - (hasRest ? 1 : 0);
   const call = (role: ImplicitRole, name: string, types: readonly Type[], expected?: Type) =>
     preludeCall(context, {
-      node,
+      node: site,
       role,
       name,
       arguments: types,
@@ -156,10 +155,10 @@ function arrayTest(
     call('compare', compareFunction, [intType, intType]);
     call('rest', arrayPatternFunctions.rest, [part.type, intType, intType], part.type);
   }
-  const lengthPath = [...part.path, { kind: 'length', site: node } as const];
+  const lengthPath = [...part.path, { kind: 'length', site } as const];
   const value = { kind: 'int', value: BigInt(count) } as const;
   const test: PatternTest = hasRest
-    ? { kind: 'compare', path: lengthPath, site: node, value, relation: 'greaterOrEqual' }
+    ? { kind: 'compare', path: lengthPath, site, value, relation: 'greaterOrEqual' }
     : { kind: 'equal', path: lengthPath, value, negated: false };
   return { test, items };
 }
@@ -313,7 +312,7 @@ function typeLeaf(context: BodyContext, node: NamePattern, entity: Entity, part:
  */
 function namedVariant(
   context: BodyContext,
-  at: NamePattern | (StructPattern['type'] & {}),
+  at: NamePattern | NamedType,
   naming: VariantNaming,
   part: ValuePart,
 ): VariantPart | undefined {

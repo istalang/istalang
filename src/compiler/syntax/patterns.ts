@@ -157,6 +157,21 @@ function targetLeaves(node: Pattern | PatternPart | Invalid): readonly TargetLea
   return handlerOf(targetLeafHandlers, node)(undefined, node);
 }
 
+/**
+ * The name `node` names a type or variant by, with any type arguments: a name pattern itself, or
+ * a struct pattern's head; undefined for any other.
+ */
+export function patternHead(node: Pattern | PatternPart): NamePattern | NamedType | undefined {
+  switch (node.kind) {
+    case 'NamePattern':
+      return node;
+    case 'StructPattern':
+      return node.type;
+    default:
+      return undefined;
+  }
+}
+
 /** `node` without the parentheses around it. */
 export function unparenthesizedPattern(node: Pattern): Pattern {
   return node.kind === 'ParenthesizedPattern' ? unparenthesizedPattern(node.pattern) : node;

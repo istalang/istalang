@@ -141,7 +141,9 @@ const patternHandlers: Handlers<Walk, Pattern | PatternPart, [ValuePart], Shape 
   Invalid: () => anyShape,
   OrPattern: (walk, node, part) => takeAlternatives(walk, node, part).shape,
   ArrayPattern: (walk, node, part) =>
-    walk.tests === undefined ? refused(walk, node, part) : takeArray(walk, walk.tests, node, part),
+    walk.tests === undefined
+      ? refused(walk, node, part)
+      : takeArray(walk, walk.tests, { site: node, elements: node.elements }, part),
   RangePattern: (walk, node, part) =>
     refutable(walk, node, part, (tests) => tests.range(node, part)),
   RestPattern: (walk, node, part) => {
@@ -341,7 +343,7 @@ function takeStruct(walk: Walk, node: StructPattern, part: ValuePart): Shape | u
     takeRest(walk, node, part);
     return shape;
   }
-  const variant = walk.tests.variant(node, named, part);
+  const variant = node.type === undefined ? undefined : walk.tests.variant(node.type, named, part);
   takeRest(walk, node, part);
   if (variant === undefined) {
     takeFields(walk, items, { members: undefined, stepTo: variantFieldStep }, part);

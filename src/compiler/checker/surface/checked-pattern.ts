@@ -69,13 +69,16 @@ export interface FieldStep {
 /** A step a target's part is reached by: a tuple element's position, or a struct step. */
 export type TargetStep = number | StructStep;
 
+/** Where an array's items are matched, which its prelude calls are made at: an array pattern. */
+export type ArraySite = ArrayPattern;
+
 /** A step an array pattern takes through a prelude call (`PartStep`). */
 export type ArrayStep =
-  | { readonly kind: 'length'; readonly site: ArrayPattern }
-  | { readonly kind: 'item'; readonly site: ArrayPattern; readonly offset: number }
+  | { readonly kind: 'length'; readonly site: ArraySite }
+  | { readonly kind: 'item'; readonly site: ArraySite; readonly offset: number }
   | {
       readonly kind: 'rest';
-      readonly site: ArrayPattern;
+      readonly site: ArraySite;
       readonly before: number;
       readonly after: number;
     };
@@ -150,7 +153,7 @@ export type PatternTest =
   | {
       readonly kind: 'compare';
       readonly path: readonly PartStep[];
-      readonly site: CompareFieldPattern | LiteralPattern | ArrayPattern;
+      readonly site: CompareFieldPattern | LiteralPattern | ArraySite;
       readonly value: PatternValue;
       readonly relation: Relation;
     }

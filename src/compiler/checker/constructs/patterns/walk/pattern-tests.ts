@@ -7,14 +7,16 @@
 
 import type { VariantNaming } from '../../../../binder/entities.ts';
 import type {
-  ArrayPattern,
   CompareFieldPattern,
   LiteralPattern,
   NamePattern,
+  Pattern,
   RangePattern,
+  RestPattern,
   StructPattern,
 } from '../../../../syntax/patterns.ts';
-import { neverTest, type PatternTest } from '../../../surface/checked-pattern.ts';
+import type { NamedType } from '../../../../syntax/types/index.ts';
+import { type ArraySite, neverTest, type PatternTest } from '../../../surface/checked-pattern.ts';
 import type { AnyType, FieldMember, Type } from '../../../types/type/index.ts';
 import { neverType } from '../../../types/type/primitives.ts';
 import { nothingShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
@@ -32,6 +34,12 @@ export const failed: Leaf = { tests: [], shape: undefined };
 
 /** A construct its part's type rules out (§3.11): it never matches, so it covers nothing. */
 export const ruledOutLeaf: Leaf = { tests: [neverTest], shape: nothingShape };
+
+/** Items matched against an array's in order, one of them a rest at most, and where (`ArraySite`). */
+export interface ArrayItems {
+  readonly site: ArraySite;
+  readonly elements: readonly (Pattern | RestPattern)[];
+}
 
 /** What an array pattern tests of its part, an array: its length, and the type of its items. */
 export interface ArrayPart {
@@ -79,14 +87,14 @@ export interface PatternTests {
   readonly comparison: (item: CompareFieldPattern, part: ValuePart) => Leaf;
   /** A name that refers: a variant, a type, or a constant. */
   readonly reference: (node: NamePattern, part: ValuePart) => Leaf;
-  /** The variant `naming` names in a struct pattern; undefined after a report. */
+  /** The variant `naming` names at `callee`, a struct pattern's; undefined after a report. */
   readonly variant: (
-    node: StructPattern,
+    callee: NamedType,
     naming: VariantNaming,
     part: ValuePart,
   ) => VariantPart | undefined;
-  /** The length test and item type of an array pattern on the part; undefined after a report. */
-  readonly array: (node: ArrayPattern, part: ValuePart) => ArrayPart | undefined;
+  /** The length test and item type of array items on the part; undefined after a report. */
+  readonly array: (items: ArrayItems, part: ValuePart) => ArrayPart | undefined;
   /** `1..=5`, `..0` on an int part. */
   readonly range: (node: RangePattern, part: ValuePart) => Leaf;
   /**

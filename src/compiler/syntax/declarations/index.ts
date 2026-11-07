@@ -160,6 +160,11 @@ export function hasDefault(field: Field | Invalid): boolean {
   return field.kind === 'DeclaredField' && field.defaultValue !== undefined;
 }
 
+/** Whether `field` is a variant's rest, `...children: Array<Node>` (§3.11). */
+export function isRestField(field: Field | Invalid): boolean {
+  return field.kind === 'DeclaredField' && field.isRest;
+}
+
 /** `extern sendable struct Queue<T>`: a struct the host implements. */
 export interface ExternStructDeclaration
   extends NodeOf<'ExternStructDeclaration'>,

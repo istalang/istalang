@@ -1,37 +1,38 @@
 /**
  * Array patterns (§3.11): `[first, ...rest, last]` tests its part's length first, then takes each
  * item against the item it names, counted from the start before the rest and from the end after
- * it; the rest is the items between. A target never takes one, since the length can fail
+ * it; the rest is the items between. A target never takes them, since the length can fail
  * (../index.ts), so only a walk with tests comes here.
  */
 
-import type { ArrayPattern, Pattern, PatternPart } from '../../../../../syntax/patterns.ts';
+import type { Pattern, PatternPart } from '../../../../../syntax/patterns.ts';
 import type { PatternTest } from '../../../../surface/checked-pattern.ts';
 import { errorType } from '../../../../types/type/primitives.ts';
 import { anyShape, type Shape } from '../../exhaustiveness/exhaustiveness.ts';
 import type { ValuePart } from '../parts.ts';
-import type { PatternTests } from '../pattern-tests.ts';
+import type { ArrayItems, PatternTests } from '../pattern-tests.ts';
 import type { Taking } from '../taking.ts';
 
-/** A walk taking an array pattern's items: each takes its part, and its tests are found. */
+/** A walk taking an array's items: each takes its part, and its tests are found. */
 interface ItemTaking extends Taking<Pattern | PatternPart> {
   readonly found: PatternTest[];
 }
 
-/** `node` over `part`: its length test, then its items and rest; its shape. */
+/** `items` over `part`: its length test, then its items and rest; its shape. */
 export function takeArray(
   walk: ItemTaking,
   tests: PatternTests,
-  node: ArrayPattern,
+  items: ArrayItems,
   part: ValuePart,
 ): Shape | undefined {
-  const array = tests.array(node, part);
-  const restAt = node.elements.findIndex((element) => element.kind === 'RestPattern');
-  const prefix = restAt < 0 ? node.elements : node.elements.slice(0, restAt);
-  const suffix = restAt < 0 ? [] : node.elements.slice(restAt + 1);
+  const { site, elements } = items;
+  const array = tests.array(items, part);
+  const restAt = elements.findIndex((element) => element.kind === 'RestPattern');
+  const prefix = restAt < 0 ? elements : elements.slice(0, restAt);
+  const suffix = restAt < 0 ? [] : elements.slice(restAt + 1);
   const item = (offset: number): ValuePart => ({
     type: array?.items ?? errorType,
-    path: [...part.path, { kind: 'item', site: node, offset }],
+    path: [...part.path, { kind: 'item', site, offset }],
   });
   if (array !== undefined) {
     walk.found.push(array.test);
@@ -40,11 +41,11 @@ export function takeArray(
     prefix: prefix.map((element, index) => walk.take(element, item(index))),
     suffix: suffix.map((element, index) => walk.take(element, item(index - suffix.length))),
   };
-  const rest = node.elements[restAt];
+  const rest = elements[restAt];
   if (rest !== undefined) {
     const between = {
       kind: 'rest',
-      site: node,
+      site,
       before: prefix.length,
       after: suffix.length,
     } as const;

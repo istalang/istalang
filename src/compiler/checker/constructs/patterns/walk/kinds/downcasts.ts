@@ -11,7 +11,11 @@
  *   exhaustiveness: a `match` on one needs `case _` (../index.ts).
  */
 
-import type { NamePattern, StructPattern } from '../../../../../syntax/patterns.ts';
+import {
+  type NamePattern,
+  patternHead,
+  type StructPattern,
+} from '../../../../../syntax/patterns.ts';
 import { lastName } from '../../../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
@@ -54,7 +58,7 @@ function namedTypeOf(
   node: StructPattern | NamePattern,
   from: AnyType,
 ): Type | 'ruledOut' | undefined {
-  const path = node.kind === 'StructPattern' ? node.type?.path : node.path;
+  const path = patternHead(node)?.path;
   const name = path === undefined ? undefined : lastName(path);
   const entity = name === undefined ? undefined : context.entityOf(name);
   if (name !== undefined && entity === undefined) {

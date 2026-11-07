@@ -29,6 +29,7 @@ import {
   type EnumDeclaration,
   type FunctionDeclaration,
   hasDefault,
+  isRestField,
   type TypeAliasDeclaration,
   typeParametersOf,
 } from '../../../../syntax/declarations/index.ts';
@@ -417,7 +418,7 @@ function reportMissing(
  */
 function callMayLeave(field: FieldMember): boolean {
   const declared = field.declared?.node;
-  return declared?.kind === 'DeclaredField' && (hasDefault(declared) || declared.isRest);
+  return declared !== undefined && (hasDefault(declared) || isRestField(declared));
 }
 
 /** Whether `field` declares a default (§3.1), as only a declared struct's or variant's can. */
