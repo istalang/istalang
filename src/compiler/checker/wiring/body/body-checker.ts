@@ -99,7 +99,7 @@ import { checkDisposeUses } from '../../rules/disposal/disposal.ts';
 import { checkDropped } from '../../rules/disposal/dropped.ts';
 import { checkTestingCalls } from '../../rules/testing.ts';
 import { statementPlace } from '../../surface/checked-annotation.ts';
-import type { CheckedBody, ValueSite } from '../../surface/checked-body.ts';
+import type { CheckedBody, FieldGiver, ValueSite } from '../../surface/checked-body.ts';
 import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
 import { exactFit, type Fit, isExact, misfitOf } from '../../types/fitting/fit.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
@@ -394,8 +394,8 @@ export class BodyChecker implements BodyContext {
     this.#records.candidates.set(site, candidates);
   }
 
-  recordField(name: Identifier, field: FieldMember): void {
-    this.#records.namedFields.set(name, field);
+  recordField(giver: FieldGiver, field: FieldMember): void {
+    this.#records.givenFields.set(giver, field);
   }
 
   recordKey(value: Expression, owner: Type | undefined): void {

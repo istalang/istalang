@@ -175,7 +175,7 @@ function typedTablesAt(body: CheckedBody, node: SyntaxNode): readonly unknown[] 
     body.chainOf(expression),
     body.patternOf(node as Pattern),
     node.kind === 'MemberAccess' ? body.fieldReadOf(node) : undefined,
-    node.kind === 'Identifier' ? [body.declaredTypeOf(node), body.namedFieldOf(node)] : undefined,
+    node.kind === 'Identifier' ? [body.declaredTypeOf(node), body.fieldGivenBy(node)] : undefined,
     node.kind === 'Lambda' || node.kind === 'FunctionDeclaration'
       ? body.functionOf(node)
       : undefined,

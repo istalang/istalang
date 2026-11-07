@@ -18,7 +18,7 @@ import type { StringLiteral } from '../../../syntax/expressions/literals/literal
 import type { Assignment, Block } from '../../../syntax/statements/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { FieldPassType, Pass, Passes } from '../../contexts/passes.ts';
-import type { ValueSite } from '../../surface/checked-body.ts';
+import type { FieldGiver, ValueSite } from '../../surface/checked-body.ts';
 import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
 import type { Fit } from '../../types/fitting/fit.ts';
 import type { FieldMember, Type } from '../../types/type/index.ts';
@@ -36,7 +36,7 @@ export function bodyRecords(passes: Passes) {
     resolved: passes.table<ResolvedSite, ResolvedCall>(),
     valueCalls: passes.table<Call, true>(),
     candidates: passes.table<ResolvedSite, readonly FunctionDeclaration[]>(),
-    namedFields: passes.table<Identifier, FieldMember>(),
+    givenFields: passes.table<FieldGiver, FieldMember>(),
     keyOwners: passes.table<StringLiteral, Type>(),
     builtLiterals: passes.table<IndentedValue, BuiltLiteral>(),
     chosenVariants: passes.table<Identifier, VariantEntity>(),

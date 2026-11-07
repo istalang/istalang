@@ -134,7 +134,7 @@ function chosenFor(
   const site: ResolvedSite =
     callWith(name, parent) ?? callWith(member, grandparent) ?? member ?? name;
   const called = body.callsAt(site);
-  const field = body.namedFieldOf(name);
+  const field = body.fieldGivenBy(name);
   const read = member === undefined ? undefined : body.fieldReadOf(member);
   const entity = checker.bindings.entityOf(module, name);
   const isOverloadChosen = entity?.kind === 'functions' && called.length > 0;

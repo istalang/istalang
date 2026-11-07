@@ -85,7 +85,7 @@ export function answersAt(
     answers.push(
       lookup.denotationsOf(module, node),
       body?.declaredTypeOf(node),
-      body?.namedFieldOf(node),
+      body?.fieldGivenBy(node),
       body?.chosenVariantOf(node),
     );
   }

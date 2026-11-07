@@ -24,7 +24,7 @@ import type {
 } from '../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../syntax/expressions/literals/indented-values.ts';
 import type { StringLiteral } from '../../syntax/expressions/literals/literals.ts';
-import type { Pattern } from '../../syntax/patterns.ts';
+import type { Pattern, PatternArgument } from '../../syntax/patterns.ts';
 import type {
   Assignment,
   Block,
@@ -127,6 +127,9 @@ export interface AssignedPart {
  * alike.
  */
 export type ValueSite = Expression | Return | Block | Spread;
+
+/** What gives a field: its name, or a call pattern's argument by position (§3.11). */
+export type FieldGiver = Identifier | PatternArgument;
 
 /** A construct that runs over an iterable (§3.10): a `for`, a comprehension, or a spread. */
 export type Iteration = For | Comprehension | Spread;
@@ -231,8 +234,11 @@ export interface BodyFacts {
    * or a `select` case binds; undefined for any other name.
    */
   readonly declaredTypeOf: (name: Identifier) => Type | undefined;
-  /** The field a field's name in a struct literal, a pattern or an assignment's target names. */
-  readonly namedFieldOf: (name: Identifier) => FieldMember | undefined;
+  /**
+   * The field `giver` gives: a field's name in a struct literal, a pattern or an assignment's
+   * target, or a call pattern's argument by position, an item of the rest field among them (§3.11).
+   */
+  readonly fieldGivenBy: (giver: FieldGiver) => FieldMember | undefined;
   /** The struct whose key a String literal of this body was checked as (§3.1); else undefined. */
   readonly keyOwnerOf: (literal: StringLiteral) => Type | undefined;
   /** The literal an indented value was checked as (§2); undefined for one never checked as one. */

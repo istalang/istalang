@@ -18,6 +18,7 @@ import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { NamedType, TypeNode } from '../../../../syntax/types/index.ts';
 import type { Checker } from '../../../check.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import type { FieldGiver } from '../../../surface/checked-body.ts';
 import type { FieldStep, PartStep } from '../../../surface/checked-pattern.ts';
 import { itemField } from '../../../surface/struct-items.ts';
 import { unfolded } from '../../../types/type/computed-types.ts';
@@ -40,7 +41,7 @@ export interface PatternScope {
   readonly constantType: (name: Identifier) => Type | undefined;
   readonly report: (diagnostic: Diagnostic<AnchoredSpan>) => void;
   /** Records the field an item's name names. */
-  readonly recordField: (name: Identifier, field: FieldMember) => void;
+  readonly recordField: (giver: FieldGiver, field: FieldMember) => void;
 }
 
 /** The body as a pattern reads it. */
@@ -65,7 +66,7 @@ export function bodyScope(
     entityOf: (name) => context.entityOf(name),
     resolveType: (node) => context.resolveType(node),
     report: (diagnostic) => context.report(diagnostic),
-    recordField: (name, field) => context.recordField(name, field),
+    recordField: (giver, field) => context.recordField(giver, field),
   };
 }
 

@@ -164,7 +164,7 @@ function itemNamed(site: NameSite, item: FieldInitializer): readonly Denotation[
 }
 
 function fieldNamed(site: NameSite): readonly Denotation[] {
-  return fieldDenotation(site.body?.namedFieldOf(site.name));
+  return fieldDenotation(site.body?.fieldGivenBy(site.name));
 }
 
 function fieldDenotation(field: FieldMember | undefined): readonly Denotation[] {

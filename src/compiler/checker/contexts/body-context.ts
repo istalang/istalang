@@ -45,6 +45,7 @@ import type {
   ChainLink,
   CheckedFunction,
   CollectionForm,
+  FieldGiver,
   FieldSource,
   Iteration,
   IterationForm,
@@ -141,8 +142,11 @@ export interface BodyContext {
     site: ResolvedSite,
     candidates: readonly FunctionDeclaration[],
   ) => void;
-  /** Records the field `name` names in a struct literal, a pattern or an assignment's target. */
-  readonly recordField: (name: Identifier, field: FieldMember) => void;
+  /**
+   * Records the field `giver` gives: a name in a struct literal, a pattern or an assignment's
+   * target, or a call pattern's argument by position (`FieldGiver`).
+   */
+  readonly recordField: (giver: FieldGiver, field: FieldMember) => void;
   /**
    * Records that `value`, when it is a String literal, is a key of the struct `owner` (§3.1 Key
    * types): where checking decides it, so tools read it as a name of that struct's field.

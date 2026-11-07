@@ -208,12 +208,12 @@ const bodyFacts: { readonly [Name in FactName]: BodyFact<BodyFacts[Name], Across
     instantiated: (declaredTypeOf, by) => readThrough(declaredTypeOf, by.concrete),
     joined: typesJoined,
   },
-  namedFieldOf: {
+  fieldGivenBy: {
     at:
       ({ records }, pass) =>
-      (name) =>
-        records.namedFields.get(name, pass),
-    instantiated: (namedFieldOf, by) => readThrough(namedFieldOf, by.field),
+      (giver) =>
+        records.givenFields.get(giver, pass),
+    instantiated: (fieldGivenBy, by) => readThrough(fieldGivenBy, by.field),
     joined: firstFound,
   },
   keyOwnerOf: {
