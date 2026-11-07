@@ -53,11 +53,11 @@ import { anyShape, nothingShape, type Shape } from '../exhaustiveness/exhaustive
 import { partSelected, sameNames } from './kinds/alternatives.ts';
 import { takeArray } from './kinds/arrays.ts';
 import { isStructNotKnown, restBinding, takeFieldsByName } from './kinds/struct-fields.ts';
-import { calledVariant, takeVariantCall } from './kinds/variant-calls.ts';
-import { type PatternScope, type ValuePart, variantFieldStep } from './parts.ts';
+import { calledVariant, takeVariantBraces, takeVariantCall } from './kinds/variant-calls.ts';
+import type { PatternScope, ValuePart } from './parts.ts';
 import type { Leaf, PatternTests, Selection } from './pattern-tests.ts';
 import { literalPart, refuseTypeArguments, selectionOf } from './selections.ts';
-import { constructed, type Taking, takeApart, takeFields, takeTargets } from './taking.ts';
+import { type Taking, takeApart, takeTargets } from './taking.ts';
 
 /** A pattern as walked. */
 export interface WalkedPattern {
@@ -363,40 +363,29 @@ function declaringName(walk: Walk, name: Identifier): Identifier {
 }
 
 /**
- * A struct pattern: a variant's, tested first where a pattern may fail, or a struct value's, which
- * always matches. A target naming a variant is refused where its parts are found (parts.ts).
+ * A struct pattern: a struct value's, which always matches. One naming a variant is refused
+ * (§3.11): a variant is taken apart by its call pattern (walk/kinds/variant-calls.ts).
  */
 function takeStruct(walk: Walk, node: StructPattern, part: ValuePart): Shape | undefined {
+  const named = node.type === undefined ? undefined : walk.scope.entityOf(lastName(node.type.path));
+  if (node.type !== undefined && (named?.kind === 'variant' || named?.kind === 'variants')) {
+    const name = lastName(node.type.path).text;
+    walk.scope.report(checkerDiagnostics.variantInBracesPattern(node.span, name));
+    if (walk.tests === undefined) {
+      bindAt(walk, node, part, errorType);
+      return anyShape;
+    }
+    return takeVariantBraces(walk, walk.tests, { node, type: node.type, named }, part);
+  }
   const items = node.fields.flatMap((item) =>
     item.kind === 'Invalid' ? [] : [{ name: item.field, span: item.span, target: item }],
   );
-  const named = node.type === undefined ? undefined : walk.scope.entityOf(lastName(node.type.path));
-  const isVariant = named?.kind === 'variant' || named?.kind === 'variants';
-  if (isVariant && node.rest !== undefined && node.type !== undefined) {
-    walk.scope.report(
-      checkerDiagnostics.variantRest(node.rest.span, lastName(node.type.path).text),
-    );
-  }
-  if (walk.tests === undefined && isVariant) {
-    return refused(walk, node, part);
-  }
-  if (walk.tests === undefined || !isVariant) {
-    const shape =
-      node.type === undefined && isStructNotKnown(walk.scope, part.type)
-        ? takeFieldsByName(walk, items, part)
-        : takeApart(walk, { kind: 'struct', type: node.type, items, span: node.span }, part);
-    takeRest(walk, node, part);
-    return shape;
-  }
-  const variant = node.type === undefined ? undefined : walk.tests.variant(node.type, named, part);
+  const shape =
+    node.type === undefined && isStructNotKnown(walk.scope, part.type)
+      ? takeFieldsByName(walk, items, part)
+      : takeApart(walk, { kind: 'struct', type: node.type, items, span: node.span }, part);
   takeRest(walk, node, part);
-  if (variant === undefined) {
-    takeFields(walk, items, { members: undefined, stepTo: variantFieldStep }, part);
-    return anyShape;
-  }
-  walk.found.push(variant.test);
-  const taken = { members: variant.fields, stepTo: variantFieldStep };
-  return constructed(variant.key, takeFields(walk, items, taken, part));
+  return shape;
 }
 
 /** Binds a struct pattern's rest, if it has one, to the struct of the fields its items leave. */

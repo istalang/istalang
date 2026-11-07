@@ -69,7 +69,7 @@ describe("an Error's trace", () => {
   });
 
   it("built by a native in a default, starts at the default's line, as a panic there would", () => {
-    const read = 'match made().number:\n    case Ok{value}: ""\n    case Err{error}: error.trace';
+    const read = 'match made().number:\n    case Ok(value): ""\n    case Err(error): error.trace';
     expect(linesOf(mainGives('String', read, builtInDefaults))).toEqual([
       expect.stringMatching(numberLine),
       expect.stringMatching(madeLine),

@@ -92,7 +92,7 @@ function misfitsOf({ text, start, end }: Site): readonly string[] {
       return [];
     }
     const written =
-      subject.kind === 'variant' && subject.variant.fields.length > 0 ? `${name}{}` : name;
+      subject.kind === 'variant' && subject.variant.fields.length > 0 ? `${name}(...)` : name;
     const probed = text.slice(0, start) + written + text.slice(end);
     return errorsIn(probed, start, start + written.length).map(
       ({ message }) => `${written}: ${message}`,
@@ -195,8 +195,8 @@ function labelsAt(...lines: readonly string[]): readonly string[] {
 describe('a pattern place', () => {
   it('offers a guard or a binding of the whole after a whole pattern, a space between', () => {
     const cases = [...decision, 'fn f(d: Decision, n: Int) -> Int:'];
-    expect(labelsAt(...cases, '  match d:', '    case Approved{by} ‸')).toEqual(['if', 'as']);
-    expect(labelsAt(...cases, '  match d:', '    case Approved{by}‸')).toEqual([]);
+    expect(labelsAt(...cases, '  match d:', '    case Approved(by) ‸')).toEqual(['if', 'as']);
+    expect(labelsAt(...cases, '  match d:', '    case Approved(by)‸')).toEqual([]);
     expect(labelsAt(...cases, '  match n:', '    case 0..= ‸')).toEqual([]);
     expect(labelsAt(...cases, '  match n:', '    case .. ‸')).toEqual([]);
     expect(labelsAt(...cases, '  match n:', '    case + ‸')).toEqual([]);
@@ -279,7 +279,9 @@ describe('a pattern place', () => {
   it('reads the member a struct or tuple pattern selects of a union', () => {
     const optionals = [...decision, 'fn f(x: (Int, Decision)?, d: Decision?) -> Int:'];
     expect(labelsAt(...optionals, '  match x:', '    case (_, ‸')).toContain('Approved');
-    expect(labelsAt(...optionals, '  if d is Rejected{‸')).toEqual(['by', 'reason']);
+    expect(labelsAt(...optionals, '  if d is Rejected(‸')).toEqual(
+      expect.arrayContaining(['by:', 'reason:']),
+    );
   });
 
   it('marks the variants unguarded cases take whole as covered', () => {
@@ -287,8 +289,8 @@ describe('a pattern place', () => {
       ...decision,
       'fn f(d: Decision, a: Bool) -> Int:',
       '  match d:',
-      '    case Approved{by}: 1',
-      '    case Rejected{reason == "late"}: 2',
+      '    case Approved(by): 1',
+      '    case Rejected(_, "late"): 2',
       '    case Expired if a: 3',
       '    case ‸',
       '  0',
@@ -377,7 +379,7 @@ describe('a pattern place', () => {
     expect(labelsAt(...struct, '  match p:', '    case struct{‸')).toEqual(['first', 'second']);
   });
 
-  it("offers no fields in braces naming what the matched value can't be", () => {
+  it("offers no fields in braces naming what the matched value can't be, nor a variant's", () => {
     const struct = [
       'struct Pair:',
       '  first: Int',
@@ -389,12 +391,9 @@ describe('a pattern place', () => {
     expect(labelsAt(...cases, '  match p:', '    case Wrong{‸')).toEqual([]);
     expect(labelsAt(...cases, '  match p:', '    case Approved{‸')).toEqual([]);
     expect(labelsAt(...cases, '  match d:', '    case Color.Rejected{‸')).toEqual([]);
-    expect(labelsAt(...cases, '  match d:', '    case Decision.Rejected{‸')).toEqual([
-      'by',
-      'reason',
-    ]);
-    const unfinished = ['  match (1, d, 2):', '    case (1, Rejected{‸'];
-    expect(labelsAt(...cases, ...unfinished)).toEqual(['by', 'reason']);
+    expect(labelsAt(...cases, '  match d:', '    case Decision.Rejected{‸')).toEqual([]);
+    expect(labelsAt(...cases, '  match (1, d, 2):', '    case (1, Rejected{‸')).toEqual([]);
+    expect(labelsAt(...cases, '  match p:', '    case Pair{‸')).toEqual(['first', 'second']);
   });
 
   it("offers a downcast's fields against an `any` value, where it may downcast", () => {

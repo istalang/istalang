@@ -219,10 +219,11 @@ function roleIn(link: Link<SyntaxNode>): ParsedPlaceKind | undefined {
 }
 
 /**
- * The name a struct or variant literal builds, or a struct or call pattern tests, which the tree
- * holds as a written type: a value is written there (`Ok‸{value: v}`, `Ok‸:`), or a pattern
- * (`case Ok‸{value}`, `case Ok‸(v)`). A shared struct's literal (`new P‸{…}`) and a struct pattern
- * a declaration destructures with (`const Pair‸{first} = p`) name a type.
+ * The name a struct literal builds, or a struct or call pattern tests, which the tree holds as a
+ * written type: a value is written there (`Pair‸{first: 1}`, `Pair‸:`, a variant's name before
+ * braces, which checking refuses), or a pattern (`case Pair‸{first}`, `case Ok‸(v)`). A shared
+ * struct's literal (`new P‸{…}`) and a struct pattern a declaration destructures with
+ * (`const Pair‸{first} = p`) name a type.
  */
 function builtNameRole({ parsed, node, holder }: Link<SyntaxNode>): ParsedPlaceKind | undefined {
   const literal = literalNaming(holder, node);

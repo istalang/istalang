@@ -111,10 +111,11 @@ describe('navigation (go-to-definition and references) on indented values and pa
 
 describe('an indented value reads as the literal it builds, for hover and navigation (notes 3, 5)', () => {
   it("hovers the type a value names as its brace form's, instantiated", () => {
-    const braces = hover('fn f() -> Result<Int>:', '  return O‸k{value: 1}');
-    const indented = hover('fn f() -> Result<Int>:', '  return O‸k:', '    value: 1');
+    const box = 'struct Box<T, E = String> { value: T }';
+    const braces = hover(box, 'fn f() -> Box<Int>:', '  return B‸ox{value: 1}');
+    const indented = hover(box, 'fn f() -> Box<Int>:', '  return B‸ox:', '    value: 1');
     expect(indented?.code).toEqual(braces?.code);
-    expect(indented?.code.join('\n')).toContain('Result<Int, Error>');
+    expect(indented?.code.join('\n')).toContain('Box<Int, String>');
   });
 
   it("reaches a struct's field from the bare keys of an indented map keyed by its names", () => {

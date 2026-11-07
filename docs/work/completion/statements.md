@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-30
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 tags: [plan, completion, lsp]
 ---
 
@@ -514,24 +514,24 @@ Which names are visible at the cursor (§3.4, §3.6, §3.13).
 
 ```
   match d:
-    case Approved{by}: ‸
+    case Approved(by): ‸
 ---
   match d:
-    case Rejected{reason as why}: ‸
+    case Rejected(_, why): ‸
 ---
   match o:
     case Int as count: ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** The arm's bindings: `by`, `why` (not `reason`), `count`.
-- **Not:** Bindings of other arms; the renamed field's own name.
+- **Not:** Bindings of other arms; the field's own name where another binds it.
 - **Basis:** spec §3.11.
 
 ### SC-09b · Arm bindings stay in their arm · P1 · ✅ pass
 
 ```
   match d:
-    case Approved{by}: 1
+    case Approved(by): 1
     case Expired: ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
@@ -543,7 +543,7 @@ Which names are visible at the cursor (§3.4, §3.6, §3.13).
 
 ```
   match d:
-    case Rejected{reason as why} if ‸
+    case Rejected(_, why) if ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** `why`.
@@ -553,9 +553,9 @@ Which names are visible at the cursor (§3.4, §3.6, §3.13).
 ### SC-11 · `is` binds on the right of `and` and in the body · P1 · ✅ pass
 
 ```
-  if r is Ok{value as y} and ‸
+  if r is Ok(y) and ‸
 ---
-  if r is Ok{value as y}:
+  if r is Ok(y):
     ‸
     1
 ```
@@ -566,9 +566,9 @@ Which names are visible at the cursor (§3.4, §3.6, §3.13).
 ### SC-11b · `is` bindings are not there after `or`, or in `else` · P1 · ✅ pass
 
 ```
-  if r is Ok{value as y} or ‸
+  if r is Ok(y) or ‸
 ---
-  if r is Ok{value as y}:
+  if r is Ok(y):
     1
   else:
     ‸
@@ -971,20 +971,20 @@ fn g():
     case ‸
 ---
   match d:
-    case Approved{by}: 1
+    case Approved(by): 1
     case ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** The scrutinee type's variants, bare (`Approved Rejected Expired`), `true false none` only where the scrutinee's type can hold them (a `Decision` cannot), `_`, and the enum name `Decision`.
 - **Not:** Variables, parameters, functions, statement keywords, clause words — a camelCase bare name binds, so naming a variable would be a misreading (§3.11).
-- **Accept:** Variant with fields: its call pattern, `Approved($0)`, then its fields' labels (PA-03c); the user may type `{` for braces instead. `_`: `_`.
+- **Accept:** Variant with fields: its call pattern, `Approved($0)`, then its fields' labels (PA-03c). `_`: `_`.
 - **Basis:** spec §3.11 (patterns); TS/Kotlin/RA fill match arms from the type.
 
 ### PA-02 · Variants already covered come last · P3 · ✅ pass
 
 ```
   match d:
-    case Approved{by}: 1
+    case Approved(by): 1
     case ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
@@ -992,7 +992,7 @@ fn g():
 - **Order:** Uncovered variants before covered ones.
 - **Basis:** RA/TS exhaustiveness-aware ordering.
 
-### PA-03 · Pattern fields · P1 · ✅ pass
+### PA-03 · Braces after a variant's name in a pattern · P1 · ✅ pass
 
 ```
   match d:
@@ -1001,25 +1001,12 @@ fn g():
   match d:
     case Rejected{reason as why, ‸}
 ---
-  match d:
-    case Rejected{‸}: 1
+  if r is Ok{‸
 ```
 - **Where / trigger:** in `fn t`; typing `{`
-- **Offer:** The variant's fields not used yet: `by`, `reason` (after `reason as why,`: `by`).
-- **Not:** Scope; fields of other variants; used fields.
-- **Accept:** `by` (it binds), not `by: `.
-- **Basis:** spec §3.11 ("`field` binds the field").
-
-### PA-03b · Pattern fields after a comma, space typed · P1 · ✅ pass
-
-```
-  match d:
-    case Rejected{reason as why, ‸}
-```
-- **Where / trigger:** in `fn t`; typing ` `
-- **Offer:** `by`.
-- **Not:** `reason`.
-- **Basis:** as LI-03.
+- **Offer:** No field: a variant is taken apart by its call pattern (PA-03c), and checking refuses braces after its name, naming the call pattern.
+- **Not:** `by`, `reason`, `value`.
+- **Basis:** spec §3.11 ("Only by its call").
 
 ### PA-03c · Field labels in a call pattern · P2 · ✅ pass
 
@@ -1042,8 +1029,8 @@ fn g():
 ### PA-04 · After a pattern field · P2 · ✅ pass
 
 ```
-  match d:
-    case Rejected{reason ‸
+  match cfg:
+    case Cfg{note ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** `as`, `is`.
@@ -1053,8 +1040,8 @@ fn g():
 ### PA-05 · After `as` in a pattern · P1 · ✅ pass
 
 ```
-  match d:
-    case Rejected{reason as ‸
+  match cfg:
+    case Cfg{note as ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** Nothing: the name is declared.
@@ -1064,8 +1051,8 @@ fn g():
 ### PA-06 · After `is` in a pattern · P2 · ✅ pass
 
 ```
-  match d:
-    case Rejected{reason is ‸
+  match cfg:
+    case Cfg{note is ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** A pattern start (PA-01 rules): `_`, literals.
@@ -1075,8 +1062,8 @@ fn g():
 ### PA-06b · After `==` in a pattern · P2 · ✅ pass
 
 ```
-  match d:
-    case Rejected{reason == ‸
+  match cfg:
+    case Cfg{note == ‸
 ```
 - **Where / trigger:** in `fn t`; invoked, or typing on
 - **Offer:** EX-01.
@@ -1103,13 +1090,13 @@ fn g():
 - **Not:** Variables, statement keywords.
 - **Basis:** spec §3.11.
 
-### PA-08 · Fields of `Ok` in `is` · P1 · ✅ pass
+### PA-08 · Field labels of `Ok` in `is` · P1 · ✅ pass
 
 ```
-  if r is Ok{‸
+  if r is Ok(‸
 ```
-- **Where / trigger:** in `fn t`; typing `{`
-- **Offer:** `value`.
+- **Where / trigger:** in `fn t`; invoked, or typing on
+- **Offer:** `value:` and what a pattern there starts with (`_`), as PA-03c.
 - **Not:** Scope.
 - **Basis:** spec §3.11.
 
@@ -1130,7 +1117,7 @@ fn g():
 
 ```
   match d:
-    case Approved{by} | ‸
+    case Approved(by) | ‸
 ---
   const c: Cfg = Cfg{note: none}
   if c is Cfg{note is ‸
@@ -1175,7 +1162,7 @@ fn g():
 
 ```
   match d:
-    case Approved{by} if ‸
+    case Approved(by) if ‸
 ---
   match n:
     case x if ‸

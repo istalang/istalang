@@ -161,37 +161,17 @@ export function structFieldStep(part: ValuePart<PartStep>, name: string): FieldS
   return { kind: 'field', of: part.type, name };
 }
 
-/** How the fields a struct or variant pattern takes are stepped into: a struct's by name. */
-export type FieldStepper<Step extends PartStep> = (
-  part: ValuePart<Step>,
-  field: FieldMember,
-  index: number,
-) => Step;
-
-/** A variant's fields are reached by position, its payload's layout. */
-export const variantFieldStep: FieldStepper<PartStep> = (_part, _field, index) => index;
-
 /**
- * The fields a struct or variant pattern takes, none known after a report, and how each is
- * stepped into.
- */
-export interface TakenFields<Step extends PartStep> {
-  readonly members: readonly FieldMember[] | undefined;
-  readonly stepTo: FieldStepper<Step>;
-}
-
-/**
- * The part of a struct or variant value of `part` that the field `item` gives holds, among
- * `taken`'s fields (../../../surface/struct-items.ts); an item giving none is reported, and its
- * part has the error type.
+ * The part of a struct value of `part` that the field `item` gives holds, among `fields`
+ * (../../../surface/struct-items.ts), none known after a report; an item giving none is reported,
+ * and its part has the error type.
  */
 export function fieldPart<Step extends PartStep>(
   scope: Pick<PatternScope, 'report' | 'recordField'>,
-  taken: TakenFields<Step>,
+  fields: readonly FieldMember[] | undefined,
   item: { readonly name: Identifier | undefined; readonly span: AnchoredSpan },
-  part: ValuePart<Step>,
-): { readonly index: number; readonly part: ValuePart<Step> } {
-  const { members: fields, stepTo } = taken;
+  part: ValuePart<Step | FieldStep>,
+): { readonly index: number; readonly part: ValuePart<Step | FieldStep> } {
   const index = fields === undefined ? -1 : itemField(item.name, fields);
   const field = fields?.[index];
   if (field !== undefined && item.name !== undefined) {
@@ -205,6 +185,6 @@ export function fieldPart<Step extends PartStep>(
         : checkerDiagnostics.unknownField(item.name.span, type, item.name.text),
     );
   }
-  const path = field === undefined ? part.path : [...part.path, stepTo(part, field, index)];
+  const path = field === undefined ? part.path : [...part.path, structFieldStep(part, field.name)];
   return { index, part: { type: field?.type ?? errorType, path } };
 }

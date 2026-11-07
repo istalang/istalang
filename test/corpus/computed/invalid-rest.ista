@@ -1,11 +1,11 @@
 # error: 2034 at 15:16
 # error: 2034 at 19:30
-# error: 5420 at 24:17
+# error: 5433 at 24:10
 # error: 5013 at 28:23
 # error: 5167 at 33:45
-# A struct pattern's rest (§3.11): it is the last item and the only one; a variant's pattern takes
-# none; a pattern on a constrained type parameter names only the fields its constraint names; and
-# a struct comprehension over a rest of one needs a type expected of it.
+# A struct pattern's rest (§3.11): it is the last item and the only one; a variant is never taken
+# apart in braces; a pattern on a constrained type parameter names only the fields its constraint
+# names; and a struct comprehension over a rest of one needs a type expected of it.
 
 struct Page { title: String, body: String }
 

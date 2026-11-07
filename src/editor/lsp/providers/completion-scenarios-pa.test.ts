@@ -11,7 +11,7 @@ const scenarios: readonly Scenario[] = [
     id: 'PA-01',
     place: 'pattern',
     title: 'Start of a case pattern',
-    src: ['  match d:\n    case ‸', '  match d:\n    case Approved{by}: 1\n    case ‸'],
+    src: ['  match d:\n    case ‸', '  match d:\n    case Approved(by): 1\n    case ‸'],
     expect: {
       has: ['Approved', 'Rejected', 'Expired', '_'],
       lacks: ['xs', 'p', 'plus', 'let', 'if', 'Red', 'and'],
@@ -21,7 +21,7 @@ const scenarios: readonly Scenario[] = [
     id: 'PA-02',
     place: 'pattern',
     title: 'Variants already covered come last',
-    src: ['  match d:\n    case Approved{by}: 1\n    case ‸'],
+    src: ['  match d:\n    case Approved(by): 1\n    case ‸'],
     expect: {
       before: [
         ['Rejected', 'Approved'],
@@ -32,22 +32,14 @@ const scenarios: readonly Scenario[] = [
   {
     id: 'PA-03',
     place: 'patternField',
-    title: 'Pattern fields',
+    title: "Braces after a variant's name in a pattern",
     src: [
       '  match d:\n    case Rejected{‸',
       '  match d:\n    case Rejected{reason as why, ‸}',
-      '  match d:\n    case Rejected{‸}: 1',
+      '  if r is Ok{‸',
     ],
     trigger: '{',
-    expect: { has: ['by'], lacks: ['xs', 'plus', 'let', 'Approved'] },
-  },
-  {
-    id: 'PA-03b',
-    place: 'patternField',
-    title: 'Pattern fields after a comma, space typed',
-    src: ['  match d:\n    case Rejected{reason as why, ‸}'],
-    trigger: ' ',
-    expect: { exact: ['by'] },
+    expect: { lacks: ['by', 'reason', 'value'] },
   },
   {
     id: 'PA-03c',
@@ -71,28 +63,28 @@ const scenarios: readonly Scenario[] = [
     id: 'PA-04',
     place: 'pattern',
     title: 'After a pattern field',
-    src: ['  match d:\n    case Rejected{reason ‸'],
+    src: ['  match cfg:\n    case Cfg{note ‸'],
     expect: { has: ['as', 'is'], lacks: ['xs', 'plus'] },
   },
   {
     id: 'PA-05',
     place: 'declaredName',
     title: 'After as in a pattern',
-    src: ['  match d:\n    case Rejected{reason as ‸'],
+    src: ['  match cfg:\n    case Cfg{note as ‸'],
     expect: { none: true },
   },
   {
     id: 'PA-06',
     place: 'pattern',
     title: 'After is in a pattern',
-    src: ['  match d:\n    case Rejected{reason is ‸'],
+    src: ['  match cfg:\n    case Cfg{note is ‸'],
     expect: { has: ['_'], lacks: ['xs', 'plus', 'let'] },
   },
   {
     id: 'PA-06b',
     place: 'grammar',
     title: 'After == in a pattern',
-    src: ['  match d:\n    case Rejected{reason == ‸'],
+    src: ['  match cfg:\n    case Cfg{note == ‸'],
     expect: { has: ['xs', 'plus'], lacks: ['let'] },
   },
   {
@@ -111,11 +103,10 @@ const scenarios: readonly Scenario[] = [
   },
   {
     id: 'PA-08',
-    place: 'patternField',
-    title: 'Fields of Ok in is',
-    src: ['  if r is Ok{‸'],
-    trigger: '{',
-    expect: { has: ['value'], lacks: ['xs', 'plus'] },
+    place: 'pattern',
+    title: 'Field labels of Ok in is',
+    src: ['  if r is Ok(‸'],
+    expect: { has: ['value:', '_'], lacks: ['xs', 'plus', 'let'] },
   },
   {
     id: 'PA-08b',
@@ -129,7 +120,7 @@ const scenarios: readonly Scenario[] = [
     id: 'PA-09',
     place: 'pattern',
     title: 'Alternatives and nesting',
-    src: ['  match d:\n    case Approved{by} | ‸', '  match cfg:\n    case Cfg{note is ‸'],
+    src: ['  match d:\n    case Approved(by) | ‸', '  match cfg:\n    case Cfg{note is ‸'],
     expect: { lacks: ['xs', 'let', 'plus'] },
   },
   {
@@ -155,7 +146,7 @@ const scenarios: readonly Scenario[] = [
     id: 'PA-12',
     place: 'grammar',
     title: 'Guard',
-    src: ['  match d:\n    case Approved{by} if ‸', '  match n:\n    case x if ‸'],
+    src: ['  match d:\n    case Approved(by) if ‸', '  match n:\n    case x if ‸'],
     expect: { has: ['xs'], lacks: ['let'] },
   },
   {

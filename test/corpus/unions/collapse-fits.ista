@@ -14,5 +14,5 @@ fn passed(r: Result<Int, String>) -> String:
 
 async fn main() -> Future<String>:
   const p1 = `${wrap<String>("draft") + "!"}|${wrapOne<String>("sent") + "?"}`
-  const p2 = `${passed(step<String>(Err{error: "a"}))}|${passed(step<String>(Ok{value: 7}))}`
+  const p2 = `${passed(step<String>(Err("a")))}|${passed(step<String>(Ok(7)))}`
   `${p1}|${p2}`

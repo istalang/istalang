@@ -1,30 +1,29 @@
-# error: 2004 at 52:9
-# error: 5137 at 55:29
-# error: 5137 at 56:29
-# error: 5137 at 57:29
+# error: 2004 at 51:9
+# error: 5139 at 54:26
+# error: 5139 at 55:26
+# error: 5139 at 56:26
+# error: 5004 at 57:22
 # error: 5004 at 58:22
-# error: 5004 at 59:22
-# error: 5107 at 60:13
-# error: 5137 at 61:32
-# error: 5137 at 62:31
-# error: 5204 at 63:39
-# error: 5020 at 67:13
-# error: 5101 at 68:13
-# error: 5131 at 69:13
-# error: 5170 at 70:13
-# error: 5004 at 77:14
-# error: 5001 at 78:31
-# error: 5137 at 86:23
-# error: 5137 at 87:23
-# error: 5137 at 90:14
-# A variant's field is given by position only in a call (§3.11): in braces every field is named, so
-# `Ok{42}`, `Ok{(v)}`, `Ok{v}` and `Ok{"a"}` name the call they mean, and so does a lone shorthand
-# naming no field where one argument would do, a rest aside, leaving no field missing and no type
-# argument to infer; a variant without fields takes no value at all. A variant without fields takes
-# no arguments, a call needs the arguments its fields do, and a bare variant an expected enum. A
-# call's written type arguments are counted once, and met, constraints and type `match`es alike,
-# with or without fields. A failed call of a variant with fields can't be spawned for its own
-# failure only, and a field's `&`, refused, takes no reference.
+# error: 5107 at 59:13
+# error: 5139 at 60:29
+# error: 5139 at 61:22
+# error: 5139 at 62:22
+# error: 5020 at 66:13
+# error: 5101 at 67:13
+# error: 5131 at 68:13
+# error: 5170 at 69:13
+# error: 5004 at 76:14
+# error: 5001 at 77:31
+# error: 5139 at 85:13
+# error: 5139 at 86:13
+# error: 5139 at 89:3
+# A variant is built only by its call (§3.11): braces after its name, `Ok{42}`, `Ok{v}`,
+# `Rejected{v}` or `Approved{1}`, name the call they mean, and leave no field missing and no type
+# argument to infer. A variant without fields takes no arguments, a call needs the arguments its
+# fields do, and a bare variant an expected enum. A call's written type arguments are counted
+# once, and met, constraints and type `match`es alike, with or without fields. A failed call of a
+# variant with fields can't be spawned for its own failure only, and a field's `&`, refused, takes
+# no reference.
 
 enum Verdict:
   Approved

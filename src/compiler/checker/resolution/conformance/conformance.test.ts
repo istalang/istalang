@@ -306,8 +306,8 @@ describe('coinductive struct-constraint and union-member conformance', () => {
       '  const root = categoryModel()',
       '  root.load(struct{name: "Hardware", children: [struct{name: "Bolts", children: []}]})',
       '  match root.read():',
-      '    case Ok{value as d}: `${d.name}:${d.children.length()}`',
-      '    case Err{error}: error.message',
+      '    case Ok(d): `${d.name}:${d.children.length()}`',
+      '    case Err(error): error.message',
     ].join('\n');
     expect(reported(source).codes).toEqual([]);
     expect(runSource(source)).toBe('Hardware:1');

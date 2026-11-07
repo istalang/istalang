@@ -103,8 +103,8 @@ const functions: readonly Compared[] = [
     calls: (value) => [`either$(${value})`, 'either$(5)'],
   },
   {
-    lines: ['fn step$<T>(r: Result<Int, "a" | "b">) -> Result<Int, T | "a" | "b">: Ok{value: r?}'],
-    calls: () => ['step$(Err{error: "a"})', 'step$(Ok{value: 1})'],
+    lines: ['fn step$<T>(r: Result<Int, "a" | "b">) -> Result<Int, T | "a" | "b">: Ok(r?)'],
+    calls: () => ['step$(Err("a"))', 'step$(Ok(1))'],
   },
 ];
 
@@ -119,7 +119,10 @@ function declarations(type: string): readonly string[] {
   return ['struct Box<V> { v: V }', ...generic, ...written];
 }
 
-/** Each call on `value`, of the generic function instantiated with `type` and of the one written for it. */
+/**
+ * Each call on `value`, of the generic function instantiated with `type` and of the one written for
+ * it.
+ */
 function comparisons(type: string, value: string): readonly string[] {
   return functions
     .flatMap((each) => each.calls(value))

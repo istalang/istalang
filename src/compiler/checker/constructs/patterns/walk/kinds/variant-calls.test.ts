@@ -1,9 +1,9 @@
 /**
- * Call patterns (§3.11) against the brace patterns they mean: the arguments bind to the fields as a
- * call's bind to parameters, so over generated variants and call patterns (fields by position,
- * then by name in any order, fields a call may leave out left, a last `...` leaving any, a spread
- * taking the rest field, items past the fixed fields matching the rest's), a call pattern matches
- * what the brace pattern naming the same fields matches, over generated values, and binds the same.
+ * Call patterns (§3.11): the arguments bind to the fields as a call's bind to parameters, so over
+ * generated variants and call patterns (fields by position, then by name in any order, fields a
+ * call may leave out left, a last `...` leaving any, a spread taking the rest field, items past the
+ * fixed fields matching the rest's), a call pattern matches what the call pattern naming each field
+ * it gives matches, over generated values, and binds the same.
  * Each mistake in one is reported once, with nothing more of what it refused.
  */
 
@@ -106,26 +106,26 @@ function itemsOf(rest: Extract<RestMatch, { kind: 'items' }>): readonly string[]
 }
 
 /**
- * How a rest is matched, as a call pattern's arguments and as a brace pattern's items: a call
- * pattern's last `...` leaves the items past those it matches, as an array pattern's `..._` does.
+ * How a rest is matched, by position and by its field's name: a call pattern's last `...` leaves
+ * the items past those it matches, as an array pattern's `..._` does.
  */
 function restForms(
   rest: RestMatch,
   leavesOthers: boolean,
 ): {
   readonly call: readonly string[];
-  readonly brace: readonly string[];
+  readonly named: readonly string[];
 } {
   switch (rest.kind) {
     case 'spread':
-      return { call: ['...all'], brace: ['more as all'] };
+      return { call: ['...all'], named: ['more: all'] };
     case 'items': {
       const items = itemsOf(rest);
       const open = leavesOthers && !rest.tail ? ['..._'] : [];
-      return { call: items, brace: [`more is [${[...items, ...open].join(', ')}]`] };
+      return { call: items, named: [`more: [${[...items, ...open].join(', ')}]`] };
     }
     default:
-      return { call: [], brace: [] };
+      return { call: [], named: [] };
   }
 }
 
@@ -147,9 +147,11 @@ function callPattern(pattern: GeneratedPattern): string {
   return `E.V(${given.join(', ')})`;
 }
 
-function bracePattern(pattern: GeneratedPattern): string {
-  const fixed = givenFields(pattern).map((field) => `f${field} as p${field}`);
-  return `E.V{${[...fixed, ...restForms(pattern.rest, pattern.leavesOthers).brace].join(', ')}}`;
+/** The call pattern naming each field `pattern` gives, a last `...` where it has one. */
+function namedPattern(pattern: GeneratedPattern): string {
+  const fixed = givenFields(pattern).map((field) => `f${field}: p${field}`);
+  const others = pattern.leavesOthers ? ['...'] : [];
+  return `E.V(${[...fixed, ...restForms(pattern.rest, pattern.leavesOthers).named, ...others].join(', ')})`;
 }
 
 /** A value of the variant: each field's Int, and the rest's items when it has one. */
@@ -169,7 +171,7 @@ function valuesOf({ fields, hasRest }: GeneratedVariant): fc.Arbitrary<readonly 
 function literal(variant: GeneratedVariant, { values, items }: GeneratedValue): string {
   const given = values.map((value, index) => `f${index}: ${value}`);
   const rest = variant.hasRest ? [`more: [${items.join(', ')}]`] : [];
-  return `E.V{${[...given, ...rest].join(', ')}}`;
+  return `E.V(${[...given, ...rest].join(', ')})`;
 }
 
 function shown(name: string): string {
@@ -191,7 +193,7 @@ function outcomeOf(source: string): unknown {
 }
 
 describe('a call pattern', () => {
-  it('matches and binds what the brace pattern naming the same fields does', () => {
+  it('matches and binds what the call pattern naming each field it gives does', () => {
     fc.assert(
       fc.property(
         variants.chain((variant) =>
@@ -206,15 +208,15 @@ describe('a call pattern', () => {
           const source = [
             declaration(variant),
             matcher('byCall', callPattern(pattern), bound),
-            matcher('byBraces', bracePattern(pattern), bound),
+            matcher('byName', namedPattern(pattern), bound),
             'async fn main() -> Future<Array<String>>:',
             `  const values: Array<E> = [${values.map((value) => literal(variant, value)).join(', ')}, E.Other]`,
-            '  [values.map(byCall).join(";"), values.map(byBraces).join(";")]',
+            '  [values.map(byCall).join(";"), values.map(byName).join(";")]',
           ].join('\n');
           const outcome = outcomeOf(source);
           expect(Array.isArray(outcome)).toBe(true);
-          const [byCall = '', byBraces] = outcome as readonly string[];
-          expect(byCall).toBe(byBraces);
+          const [byCall = '', byName] = outcome as readonly string[];
+          expect(byCall).toBe(byName);
           // Only items past the fixed fields test a length; every other pattern matches each value.
           const matchedEach = !byCall.split(';').slice(0, -1).includes('no');
           expect(pattern.rest.kind === 'items' || matchedEach).toBe(true);

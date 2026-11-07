@@ -1,12 +1,12 @@
 /**
- * Variant calls (§3.11) against the brace literal they mean: a call binds its arguments to the
- * fields as a call binds parameters (§3.3), so over generated variants and calls, positional and
- * named in any order, defaults left out and a rest collecting the extra positional arguments, the
- * value a call builds is the one the literal naming every field it gives builds. A variant named
- * as a value (§3.14), as any function type its fields fit, builds what calling it does, and is a
- * function value capturing nothing: sendable, and equal to another naming it. A variant without
- * fields called with `()` is warned of, its name alone saying as much; one whose fields all default
- * or are a rest, or given type arguments only a call carries, needs its `()`.
+ * Variant calls (§3.11): a call binds its arguments to the fields as a call binds parameters
+ * (§3.3), so over generated variants and calls, positional and named in any order, defaults left
+ * out and a rest collecting the extra positional arguments, the value a call builds is the one the
+ * call naming every field builds, its defaults written out. A variant named as a value (§3.14), as
+ * any function type its fields fit, builds what calling it does, and is a function value capturing
+ * nothing: sendable, and equal to another naming it. A variant without fields called with `()` is
+ * warned of, its name alone saying as much; one whose fields all default or are a rest, or given
+ * type arguments only a call carries, needs its `()`.
  */
 
 import fc from 'fast-check';
@@ -72,12 +72,21 @@ function call({ positional, named, extra }: GeneratedCall): string {
   return `E.V(${given.join(', ')})`;
 }
 
-function literal(variant: GeneratedVariant, { positional, named, extra }: GeneratedCall): string {
-  const given = [...Array.from({ length: positional }, (_, index) => index), ...named]
-    .toSorted((first, second) => first - second)
-    .map((field) => `f${field}: ${field + 1}`);
+/**
+ * The call giving every field of `variant` by name, as `made` leaves them: the values it gives, the
+ * defaults it leaves out written out (`100 + i`), the rest one array.
+ */
+function everyFieldNamed(
+  variant: GeneratedVariant,
+  { positional, named, extra }: GeneratedCall,
+): string {
+  const given = new Set([...Array.from({ length: positional }, (_, index) => index), ...named]);
+  const fields = Array.from(
+    { length: variant.fields },
+    (_, field) => `f${field}: ${given.has(field) ? field + 1 : 100 + field}`,
+  );
   const rest = variant.hasRest ? [`more: [${extra.join(', ')}]`] : [];
-  return `E.V{${[...given, ...rest].join(', ')}}`;
+  return `E.V(${[...fields, ...rest].join(', ')})`;
 }
 
 function outcomeOf(source: string): unknown {
@@ -119,7 +128,7 @@ function argumentsOf({ taken, takesRest, extra }: GeneratedShape, spread: boolea
 }
 
 describe('a variant call', () => {
-  it('builds what the brace literal naming the fields it gives builds', () => {
+  it('builds what the call naming every field, defaults written out, builds', () => {
     fc.assert(
       fc.property(
         variants.chain((variant) => callsOf(variant).map((made) => ({ variant, made }))),
@@ -128,7 +137,7 @@ describe('a variant call', () => {
             declaration(variant),
             'async fn main() -> Future<Bool>:',
             `  const called: E = ${call(made)}`,
-            `  called == ${literal(variant, made)}`,
+            `  called == ${everyFieldNamed(variant, made)}`,
           ].join('\n');
           expect(outcomeOf(source)).toBe(true);
         },

@@ -132,8 +132,8 @@ describe('Json as a recursive union: literals, matching and codecs (§3)', () =>
       'struct Payload { wait: time.Duration, cost: Decimal, raw: Json }',
       'fn back(asJson: Json) -> Payload?:',
       '  match json.decode<Payload>(asJson):',
-      '    case Ok{value}: value',
-      '    case Err{}: none',
+      '    case Ok(value): value',
+      '    case Err(...): none',
     );
     const body = lines(
       'const p = Payload:',

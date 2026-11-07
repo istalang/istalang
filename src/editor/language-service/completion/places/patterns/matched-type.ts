@@ -2,11 +2,11 @@
  * The type a pattern being written matches (§3.11), read down from the type the `match` subject or
  * the `is` operand has as checked, or the parameter whose pattern it is (§3.3): an alternative, a
  * parenthesized or an `as` pattern matches its whole; a struct pattern's item, the field it names,
- * among those of the variant or struct the pattern names (against an `any` value, the type it
- * downcasts to); a nested field pattern, that field's type; a tuple's element, its element's; an
- * array's item, its item's, and its rest the whole array. Against a union, a struct, tuple or array
- * pattern first selects the one member it takes apart, by the checker's rule
- * (types/written/named-types.ts).
+ * among those of the struct the pattern names (against an `any` value, the type it downcasts to); a
+ * call pattern's argument, the field it gives of its variant; a nested field pattern, that field's
+ * type; a tuple's element, its element's; an array's item, its item's, and its rest the whole
+ * array. Against a union, a struct, tuple or array pattern first selects the one member it takes
+ * apart, by the checker's rule (types/written/named-types.ts).
  *
  * The patterns are read from the placeholder parse, which holds the one being written whole; the
  * subject and a struct pattern's name end before the cursor, so the checked tree types the one and
@@ -92,8 +92,8 @@ export function matchedTypeOf(
 }
 
 /**
- * The fields a struct pattern's items or a call pattern's arguments name: its variant's, or its
- * struct's.
+ * The fields a struct pattern's items or a call pattern's arguments name: its struct's, or its
+ * variant's.
  */
 export function fieldsMatchedBy(
   cursor: Cursor,
@@ -110,8 +110,8 @@ export function fieldsMatchedBy(
  * checking resolved it, or `type`'s own struct, a shape an alias names among them (§3.17); against
  * an `any` type, the type it downcasts to, a struct, a shape or a qualified variant's enum, none
  * generic (§3.10); against a union, the member it selects. `struct{…}` names that type's own
- * fields; a call pattern naming a struct, refused, names none. A trait's required fields are no
- * pattern's (constructs/patterns/walk/parts.ts).
+ * fields; a call pattern naming a struct, or braces after a variant's name, refused, name none. A
+ * trait's required fields are no pattern's (constructs/patterns/walk/parts.ts).
  */
 function fieldsOf(
   cursor: Cursor,
@@ -137,6 +137,9 @@ function fieldsOf(
     const takesStruct =
       pattern.kind === 'StructPattern' && namesOwnType(checker, declared.entity, own);
     return takesStruct ? (checker.fieldsOf(own) ?? []) : [];
+  }
+  if (pattern.kind === 'StructPattern') {
+    return [];
   }
   const choosesByName = head.path.length === 1 && type.kind !== 'any';
   return variantFieldsOf(checker, own, { name, declared, choosesByName });

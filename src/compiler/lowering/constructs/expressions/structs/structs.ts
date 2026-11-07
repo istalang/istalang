@@ -62,11 +62,11 @@ interface LiteralField {
 }
 
 /**
- * The registers of a struct or variant literal's fields, in declaration order: its values evaluated
- * in source order, a struct comprehension last (§3.1), then each field taken from its value, read
- * from the spread, computed by its default, or given by the comprehension.
+ * The registers of a struct literal's fields, in declaration order: its values evaluated in source
+ * order, a struct comprehension last (§3.1), then each field taken from its value, read from the
+ * spread, computed by its default, or given by the comprehension.
  */
-export function literalFields(context: FunctionContext, node: FieldsLiteral): LiteralField[] {
+function literalFields(context: FunctionContext, node: FieldsLiteral): LiteralField[] {
   const sources = context.body.sourcesOf(node);
   if (sources === undefined) {
     unreachable(

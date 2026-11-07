@@ -3,36 +3,29 @@
  *
  * - A bare variant (`Expired`, `Ok(1)`) needs an enum type to be expected that has it; a qualified
  *   one (`Decision.Expired`) names its enum, whose type arguments come from the expected type when
- *   it is the same enum, else from the fields and defaults (literal-fields.ts).
+ *   it is the same enum, else from the arguments and defaults.
  * - A variant with fields is a function of its enum, its constructor (§3.11,
- *   syntax/declarations/field-defaults.ts): a call binds its arguments to the fields as any call's
- *   to parameters (§3.3), and builds what the literal with those fields builds. Once its type
- *   arguments are known before its arguments, each argument is checked against its field's type,
- *   as the literal's fields are (`variantFieldTypes`). Named without a
- *   call, it is that function as a value (§3.14, closures/function-values.ts) wherever no enum is
- *   expected of it: qualified, or bare where an expected function type's result gives its enum.
- *   A variant without fields is a value, so `Expired()` is `Expired`.
- * - A variant's fields are given in braces by name only: `Ok{42}` is written `Ok(42)`
- *   (literal-fields.ts).
+ *   syntax/declarations/field-defaults.ts), and is built only by calling it: a call binds its
+ *   arguments to the fields as any call's to parameters (§3.3). Once its type arguments are known
+ *   before its arguments, each argument is checked against its field's type
+ *   (`variantFieldTypes`). Named without a call, it is that function as a value (§3.14,
+ *   closures/function-values.ts) wherever no enum is expected of it: qualified, or bare where an
+ *   expected function type's result gives its enum. A variant without fields is a value, so
+ *   `Expired()` is `Expired`.
  * - `none` needs an optional type to be expected (§3.11).
  * - Where a call's chosen function decides an argument's type, `none`, a bare variant and a call
  *   of one wait for it (§3.5), so `f(none)` reads like `const x: T? = none`.
  */
 
 import { staticName } from '../../../../../foundation/language/static-names.ts';
-import type {
-  Entity,
-  VariantEntity,
-  VariantNaming,
-  VariantsEntity,
-} from '../../../../binder/entities.ts';
+import type { VariantEntity, VariantNaming, VariantsEntity } from '../../../../binder/entities.ts';
 import {
   declaredFunctionName,
   fieldsFunctionOf,
 } from '../../../../syntax/declarations/field-defaults.ts';
 import { type EnumDeclaration, typeParametersOf } from '../../../../syntax/declarations/index.ts';
-import type { Call, FieldsLiteral, MemberAccess } from '../../../../syntax/expressions/index.ts';
-import { type Identifier, lastName } from '../../../../syntax/tree/node.ts';
+import type { Call, MemberAccess } from '../../../../syntax/expressions/index.ts';
+import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { resolveCall, type WrittenArgument } from '../../../resolution/calls/resolve.ts';
@@ -48,13 +41,11 @@ import {
   writtenNominal,
 } from '../../../types/fitting/expected.ts';
 import { substitutionFor } from '../../../types/parts/substitution.ts';
-import { type NominalType, nominalType, type Type } from '../../../types/type/index.ts';
+import type { Type } from '../../../types/type/index.ts';
 import { errorType, noneType } from '../../../types/type/primitives.ts';
 import { membersOf } from '../../../types/unions/unions.ts';
 import { chooseVariant, nominalEntityOf } from '../../../types/written/named-types.ts';
 import { checkFunctionValue } from '../../closures/function-values.ts';
-import { checkLiteralFields } from './literal-fields.ts';
-import { knownArguments } from './literal-types.ts';
 
 /**
  * The types `none` can take, as an argument a call's chosen function decides: any it fits, a
@@ -62,19 +53,6 @@ import { knownArguments } from './literal-types.ts';
  */
 export function noneAccepted(context: BodyContext): Accepts {
   return (expected) => context.checker.fitOf(noneType, expected) !== undefined;
-}
-
-/** For a bare variant's name, the enum types that have a variant of that name. */
-export function variantsAccepted(
-  context: BodyContext,
-  naming: Entity | undefined,
-): Accepts | undefined {
-  if (naming?.kind !== 'variants') {
-    return undefined;
-  }
-  const { checker } = context;
-  return (expected) =>
-    checker.inputs.variantNamed(naming.name, enumsExpected(expected)) !== undefined;
 }
 
 /**
@@ -98,9 +76,16 @@ export function variantNameAccepts(
 
 /** For a call of a bare variant, `Ok(v)`, the enum types that have a variant of that name. */
 export function variantCallAccepts(context: BodyContext, node: Call): Accepts | undefined {
-  return node.callee.kind === 'Identifier' && !node.isOptional
-    ? variantsAccepted(context, context.entityOf(node.callee))
-    : undefined;
+  const naming =
+    node.callee.kind === 'Identifier' && !node.isOptional
+      ? context.entityOf(node.callee)
+      : undefined;
+  if (naming?.kind !== 'variants') {
+    return undefined;
+  }
+  const { checker } = context;
+  return (expected) =>
+    checker.inputs.variantNamed(naming.name, enumsExpected(expected)) !== undefined;
 }
 
 /**
@@ -223,9 +208,9 @@ export function checkVariantCall(
  * By argument written, the type of the field each argument of a call of a variant with fields gives
  * (§3.11), once the enum's type arguments are known before the arguments: written, else the
  * expected type's when it is the same enum, or none for an enum without type parameters. Each
- * argument is checked against it, as a literal's field always was, so a value that takes its type
- * from where it stands (`Item{value: "s"}`, `Options.Empty`) takes it from its field. Undefined when
- * they aren't known or the arguments don't bind, which choosing then reports.
+ * argument is checked against it, so a value that takes its type from where it stands
+ * (`Item{value: "s"}`, `Options.Empty`) takes it from its field. Undefined when they aren't known
+ * or the arguments don't bind, which choosing then reports.
  */
 export function variantFieldTypes(
   context: BodyContext,
@@ -258,7 +243,9 @@ export function variantFieldTypes(
   return isBinding(binding) ? argumentTypes(parameters, binding, node.arguments.length) : undefined;
 }
 
-/** The variant `node` calls, as the expected type chooses a bare one; undefined for any other call. */
+/**
+ * The variant `node` calls, as the expected type chooses a bare one; undefined for any other call.
+ */
 function variantCalled(
   context: BodyContext,
   node: Call,
@@ -304,46 +291,4 @@ function expectedArguments(
 ): readonly Type[] | undefined {
   const target = sameNominal(expected, declaration);
   return target === undefined || target.arguments.length === 0 ? undefined : target.arguments;
-}
-
-/**
- * The type of a variant built with braces, `Rejected{by: "legal"}`, whose fields are named
- * (literal-fields.ts says what a field given by position reads as).
- */
-export function checkVariantLiteral(
-  context: BodyContext,
-  node: FieldsLiteral,
-  naming: VariantNaming,
-  expected: Type | undefined,
-): Type {
-  const typeNode = node.type;
-  if (typeNode === undefined) {
-    return errorType;
-  }
-  const name = lastName(typeNode.path);
-  const chosen = chooseVariant(context, { span: node.span, name }, naming, expected);
-  if (chosen === undefined) {
-    return errorType;
-  }
-  const { checker } = context;
-  const target = sameNominal(expected, chosen.enum);
-  const fields = checker
-    .declaredVariantsOf(chosen.enum)
-    .find((candidate) => candidate.name === chosen.variant.name.text)?.fields;
-  const shape = {
-    owner: chosen.enum,
-    defaults: fieldsFunctionOf(chosen.enum, chosen.variant),
-    known: knownArguments(context, typeNode, chosen.enum, target),
-    fields: fields ?? [],
-    typeOf: (typeArguments: readonly Type[]) => enumType(context, chosen.enum, typeArguments),
-  };
-  return checkLiteralFields(context, node, shape);
-}
-
-function enumType(
-  context: BodyContext,
-  declaration: EnumDeclaration,
-  typeArguments: readonly Type[],
-): NominalType {
-  return nominalType(nominalEntityOf(context.checker, declaration), typeArguments);
 }

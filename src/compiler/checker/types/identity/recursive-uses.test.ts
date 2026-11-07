@@ -141,8 +141,8 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
       `fn built() -> Json: ${literal}`,
       'fn parsed() -> Json:',
       `  match json.parse<Json>(${JSON.stringify(text)}):`,
-      '    case Ok{value}: value',
-      '    case Err{error}: panic(error.message)',
+      '    case Ok(value): value',
+      '    case Err(error): panic(error.message)',
     );
     expect(reported(declarations)).toEqual(reportedNothing);
     expect(mainGives('Bool', 'return built() == parsed()', declarations)).toBe(true);
@@ -174,8 +174,8 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
         `fn returned() -> Json: ${literal}`,
         'fn parsed() -> Json:',
         `  match json.parse<Json>(${JSON.stringify(text)}):`,
-        '    case Ok{value}: value',
-        '    case Err{error}: panic(error.message)',
+        '    case Ok(value): value',
+        '    case Err(error): panic(error.message)',
       );
       expect(reported(declarations)).toEqual(reportedNothing);
       expect(

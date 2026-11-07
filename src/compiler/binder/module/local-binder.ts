@@ -293,7 +293,8 @@ export class LocalBinder {
 
   /**
    * Binds the type a struct literal or pattern names. It may be a bare variant that only the
-   * expected type identifies (`Ok{value: 42}`), so its head is used as a value, not as a type.
+   * expected type identifies (`Ok{value: 42}`, which checking refuses, naming its call), so its
+   * head is used as a value, not as a type.
    */
   constructedType(type: NamedType, scope: Scope): void {
     this.path(type.path, scope, 'value');

@@ -9,7 +9,7 @@
  * - a variant with fields, bare or qualified (`Ok(v)`, `Verdict.Rejected(by: "legal")`), which
  *   calls its constructor (structs/variants.ts, §3.11). Its one candidate's parameters are its
  *   fields, so once its type arguments are known (written, or the expected enum's), each argument
- *   is checked against its field's type, as a literal's field is (`variantFieldTypes`).
+ *   is checked against its field's type (`variantFieldTypes`).
  *
  * - a method called on a receiver (`x.f()`): a function whose first parameter is `self`, found by
  *   its name where the call is written and through the receiver's type (argument-dependent

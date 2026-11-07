@@ -139,7 +139,7 @@ describe('a rest over a type parameter with a struct constraint', () => {
 });
 
 describe('where a rest stands', () => {
-  it('is the last item and the only one, and no variant takes one', () => {
+  it('is the last item and the only one, and no variant is taken apart in braces to take one', () => {
     const page = 'struct Page { title: String, body: String }';
     expect(
       codesOf(page, 'fn f(p: Page) -> String:', '  const Page{...rest, title} = p', '  title'),
@@ -155,7 +155,7 @@ describe('where a rest stands', () => {
         '    case Circle{...rest}: 1',
         '    case _: 0',
       ),
-    ).toEqual([5420]);
+    ).toEqual([5433]);
   });
 
   it('formats as written, last in its braces', () => {

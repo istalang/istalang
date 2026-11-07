@@ -228,9 +228,9 @@ function telling(node: Pattern | PatternPart, texts: readonly string[]): string 
 }
 
 /**
- * How a pattern taking apart a variant's fields, in braces or as a call, names one of the enum
- * `members` declaring it: qualified by its enum among several enums, else with the type arguments
- * of one instance; undefined for any other pattern.
+ * How a pattern taking apart a variant's fields, as a call or in refused braces, names one of the
+ * enum `members` declaring it: qualified by its enum among several enums, else with the type
+ * arguments of one instance; undefined for any other pattern.
  */
 function variantTelling(
   scope: PatternScope,

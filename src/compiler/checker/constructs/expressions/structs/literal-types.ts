@@ -43,7 +43,7 @@ export type Built =
  * type's name, its defaults completing them, else the expected type's when it is a type of
  * `owner`.
  */
-export function knownArguments(
+function knownArguments(
   context: BodyContext,
   typeNode: NamedType,
   owner: Exclude<LiteralShape['owner'], undefined>,

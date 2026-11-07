@@ -8,15 +8,14 @@
 import type { Destructuring, FieldTarget } from '../../../../syntax/statements/targets.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { FieldStep, PartStep } from '../../../surface/checked-pattern.ts';
+import type { FieldMember } from '../../../types/type/index.ts';
 import { anyShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
 import { structKey, tupleKey } from '../exhaustiveness/shapes.ts';
 import {
   elementParts,
   fieldPart,
   type PatternScope,
-  structFieldStep,
   structParts,
-  type TakenFields,
   type ValuePart,
 } from './parts.ts';
 
@@ -65,12 +64,7 @@ export function takeApart<Target, Step extends PartStep>(
     return constructed(tupleKey, shapes);
   }
   const fields = structParts(taking.scope, destructuring.type, part.type, destructuring.span);
-  const shapes = takeFields(
-    taking,
-    destructuring.items,
-    { members: fields, stepTo: (whole, field) => structFieldStep(whole, field.name) },
-    part,
-  );
+  const shapes = takeFields(taking, destructuring.items, fields, part);
   return fields === undefined ? undefined : constructed(structKey, shapes);
 }
 
@@ -78,13 +72,13 @@ export function takeApart<Target, Step extends PartStep>(
  * The shapes of `fields`' fields, by position, as `items` take them: what each item says of its
  * field, anything for a field no item names. A field two items take makes the whole a guard.
  */
-export function takeFields<Target, Step extends PartStep>(
-  taking: Taking<Target, Step>,
+function takeFields<Target, Step extends PartStep>(
+  taking: Taking<Target, Step | FieldStep>,
   items: readonly FieldTarget<Target>[],
-  fields: TakenFields<Step>,
-  part: ValuePart<Step>,
+  fields: readonly FieldMember[] | undefined,
+  part: ValuePart<Step | FieldStep>,
 ): readonly (Shape | undefined)[] {
-  const shapes: (Shape | undefined)[] = (fields.members ?? []).map(() => anyShape);
+  const shapes: (Shape | undefined)[] = (fields ?? []).map(() => anyShape);
   const taken = new Set<number>();
   for (const item of items) {
     const field = fieldPart(taking.scope, fields, item, part);

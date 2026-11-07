@@ -48,7 +48,7 @@ describe('proposal 7 behaviour table: row by row', () => {
 
   it('row 4: `Ok(v)` builds `Ok` with `value` = `v`', () => {
     const decls = 'fn f(v: Int) -> Result<Int>: Ok(v)';
-    expect(mainGives('Int', 'match f(4):\n  case Ok{value}: value\n  case _: 0', decls)).toBe(4);
+    expect(mainGives('Int', 'match f(4):\n  case Ok(value): value\n  case _: 0', decls)).toBe(4);
   });
 
   it("row 5: a call leaves a variant's defaulted field to its default", () => {
@@ -60,7 +60,7 @@ describe('proposal 7 behaviour table: row by row', () => {
   it("row 6: a call's arguments past the fixed fields go into the rest field", () => {
     const decls = lines('enum Node:', '  Leaf', '  Group(title: String, ...children: Array<Node>)');
     const body =
-      'match Node.Group("t", Node.Leaf, Node.Leaf):\n  case Group{children}: children.length()\n  case _: 0';
+      'match Node.Group("t", Node.Leaf, Node.Leaf):\n  case Group(_, ...children): children.length()\n  case _: 0';
     expect(mainGives('Int', body, decls)).toBe(2);
   });
 
@@ -158,23 +158,39 @@ describe('proposal 7 behaviour table: row by row', () => {
     ]);
   });
 
-  it("row 15: a variant's field given by position in braces is refused, naming the call", () => {
+  it('row 15: a variant built in braces or a block is refused, naming its call', () => {
     const text = lines(
-      'fn f(v: Int) -> Result<Int>: Ok{(v)}',
+      verdict,
+      'fn f(v: Int) -> Result<Int>: Ok{v}',
       'fn g() -> Result<Int>: Ok{42}',
+      'fn h() -> Verdict: Verdict.Rejected{by: "legal"}',
+      'fn k() -> Verdict:',
+      '  const v: Verdict = Rejected:',
+      '    by: "legal"',
+      '  v',
       'async fn main(): 0',
     );
-    expect(messagesOf(text, checkerDiagnostics.variantByPosition.code)).toEqual([
-      expect.stringContaining("'Ok(v)'"),
-      expect.stringContaining("'Ok(42)'"),
+    expect(messagesOf(text, checkerDiagnostics.variantInBraces.code)).toEqual([
+      expect.stringContaining("'Ok(…)'"),
+      expect.stringContaining("'Ok(…)'"),
+      expect.stringContaining("'Rejected(…)'"),
+      expect.stringContaining("'Rejected(…)'"),
     ]);
   });
 
-  it('row 16: `Ok{v}` is still refused, now naming `Ok(v)`', () => {
-    const text = lines('fn f(v: Int) -> Result<Int>: Ok{v}', 'async fn main(): 0');
-    expect(messagesOf(text, checkerDiagnostics.variantByPosition.code)).toEqual([
-      expect.stringContaining("'Ok(v)'"),
+  it('row 16: a variant taken apart in braces is refused, naming its call pattern', () => {
+    const text = lines(
+      verdict,
+      'fn f(v: Verdict) -> String:',
+      '  match v:',
+      '    case Rejected{by}: by',
+      '    case Approved: ""',
+      'async fn main(): 0',
+    );
+    expect(messagesOf(text, checkerDiagnostics.variantInBracesPattern.code)).toEqual([
+      expect.stringContaining("'Rejected(…)'"),
     ]);
+    expect(reported(text).codes).toEqual([checkerDiagnostics.variantInBracesPattern.code]);
   });
 
   it('row 17: `Expired()` is `Expired`, warned of with its name', () => {

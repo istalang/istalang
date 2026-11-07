@@ -4,9 +4,9 @@
  * - A struct literal names its type, or with `struct{…}` takes it: from the expected type when
  *   that is a struct, else from a leading spread's value, else it is the shape of its named items,
  *   each typed by its value. A literal through an alias of a shape builds the shape (§3.17).
- * - Its items are checked by the path variants share (literal-fields.ts), so a generic struct's
- *   type arguments are written, expected, spread or inferred alike. A literal naming a variant
- *   builds that variant (variants.ts).
+ * - Its items are checked by one path (literal-fields.ts), so a generic struct's type arguments
+ *   are written, expected, spread or inferred alike. A variant is built by its call (variants.ts),
+ *   so braces after a variant's name, or a block below it, are refused, naming the call.
  * - A struct without fields is written bare (../access/names.ts), so braces after one are an error,
  *   whatever they hold.
  * - A shared struct is built with `new` and only one is (§3.18): its literal checks as any other,
@@ -55,7 +55,6 @@ import {
   freshComprehended,
   opaqueComprehendedAccepts,
 } from './struct-comprehensions.ts';
-import { checkVariantLiteral, variantsAccepted } from './variants.ts';
 
 export function checkStructLiteral(
   context: BodyContext,
@@ -92,8 +91,9 @@ export function checkNamedLiteral(
   const name = lastName(typeNode.path);
   const entity = context.entityOf(name);
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
-    checkNew(context, node, false);
-    return checkVariantLiteral(context, node, entity, expected);
+    context.report(checkerDiagnostics.variantInBraces(node.span, name.text));
+    checkValuesAlone(context, node);
+    return errorType;
   }
   if (entity === undefined) {
     return errorType;
@@ -280,18 +280,18 @@ function checkValuesAlone(context: BodyContext, node: FieldsLiteral): void {
 }
 
 /**
- * Which types a literal the call it is passed to decides can take (§3.5): a bare variant's
- * (`Rejected{by: "legal"}`) its enums; a `struct{…}` comprehending fields not all known, the struct
- * types with its keys (struct-comprehensions.ts); any other `struct{…}`, once a value it gives, or
- * its comprehension's value, needs the type expected of it, a struct type with a field of each name
- * it gives, each value taking that field's type.
+ * Which types a literal the call it is passed to decides can take (§3.5): a `struct{…}`
+ * comprehending fields not all known, the struct types with its keys (struct-comprehensions.ts);
+ * any other `struct{…}`, once a value it gives, or its comprehension's value, needs the type
+ * expected of it, a struct type with a field of each name it gives, each value taking that field's
+ * type. A literal naming its type has that type.
  */
 export function structLiteralAccepts(
   context: BodyContext,
   node: StructLiteral,
 ): Accepts | undefined {
   if (node.type !== undefined) {
-    return variantsAccepted(context, context.entityOf(lastName(node.type.path)));
+    return undefined;
   }
   return (
     opaqueComprehendedAccepts(context, node) ??

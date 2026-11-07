@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: examples/FormBuilder
 last_verified: 2026-11-05
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 tags: [form-builder, specification, istalang]
 ---
 
@@ -337,8 +337,8 @@ Pass 2 walks the tree again and emits a view node per schema node.
 
 Its rules:
 
-- **Props.** A literal becomes `Prop.Fixed(…)` (or bare `Fixed(…)` inside check calls). An expression becomes `Prop.Computed{eval: fn({data, ctx}: Sc): <expr>}`. If the expression contains `await`, it becomes `forms.awaited(Pending.X, async fn({data, ctx}: Sc): <expr>)` instead, which owns a task.
-- **Widgets.** The widget and its ui props become one prop: `Prop.Fixed(FieldWidget.Select{placeholder: none})`. If any ui prop is computed, so is the whole widget value.
+- **Props.** A literal becomes `Prop.Fixed(…)` (or bare `Fixed(…)` inside check calls). An expression becomes `Prop.Computed(fn({data, ctx}: Sc): <expr>)`. If the expression contains `await`, it becomes `forms.awaited(Pending.X, async fn({data, ctx}: Sc): <expr>)` instead, which owns a task.
+- **Widgets.** The widget and its ui props become one prop: `Prop.Fixed(FieldWidget.Select(none))`. If any ui prop is computed, so is the whole widget value.
 - **Lambdas.** A lambda takes its typed scope `Sc` through a parameter pattern, `fn({data, ctx, item}: Sc)`, so pasted expressions read bare names.
 - **Scopes.** A repeat row, a variant case and a mount each get a wider scope: the outer variables plus the new one. Drawing moves into it through a `ScopedView`, whose `scope` builds it, for example `fn(sc): OrderScope1{data: sc.data, ctx: sc.ctx, item: r1.seen()}`. Inside the wider scope, view nodes are typed by it.
 - **Keys.** Nodes are numbered in tree order: `n1`, `n2`… A key inside a repeat row adds the row's key (`n6@r1`; nested rows `n9@r1@r2`), and inside a mounted def its mount's key (`n4/n2`). Keys are stable within a version.

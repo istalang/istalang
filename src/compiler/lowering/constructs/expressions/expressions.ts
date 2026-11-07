@@ -38,7 +38,6 @@ import {
   lowerStructLiteral,
   readsField,
 } from './structs/structs.ts';
-import { isEnum, lowerVariantLiteral } from './structs/variants.ts';
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const expressionHandlers: Handlers<FunctionContext, Expression, [], Register> = {
@@ -52,10 +51,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Binary: lowerBinary,
   Unary: lowerUnary,
   Call: lowerCall,
-  StructLiteral: (context, node) =>
-    isEnum(context.typeOf(node))
-      ? lowerVariantLiteral(context, node)
-      : lowerStructLiteral(context, node),
+  StructLiteral: lowerStructLiteral,
   NewStructLiteral: lowerNewStructLiteral,
   IndentedValue: (context, node) =>
     context.expression(

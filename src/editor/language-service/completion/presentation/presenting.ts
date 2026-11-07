@@ -35,7 +35,7 @@ import type { Completion, RankGroup } from './item.ts';
 export interface Presenting {
   readonly cursor: Cursor;
   readonly place: Place;
-  /** Whether the place writes a value or a pattern, which a call or a variant's braces may open. */
+  /** Whether the place writes a value or a pattern, which a call or a struct's braces may open. */
   readonly writesValue: boolean;
   /**
    * The kind of the token after the name being written on its line, which may open its call or
@@ -213,8 +213,8 @@ export function calledOrNamed(
 }
 
 /**
- * Accepting a variant: with fields, its call, unless braces after it already build it, `Ok{…}`; a
- * variant without fields is a value, its name alone (§3.11).
+ * Accepting a variant: with fields, its call, unless a `{` follows the name, whose text is then
+ * left as written; a variant without fields is a value, its name alone (§3.11).
  */
 export function constructed(
   presenting: Presenting,

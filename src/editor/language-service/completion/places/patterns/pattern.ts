@@ -273,7 +273,7 @@ function argumentBindsOnly(argument: PatternArgument): boolean {
   }
 }
 
-/** Whether the cursor follows an item's field name alone, as `reason` in `Rejected{reason ‸`. */
+/** Whether the cursor follows an item's field name alone, as `note` in `Cfg{note ‸`. */
 function followsFieldName(
   { before }: Cursor,
   { tree }: Parsed,

@@ -1,15 +1,13 @@
 /**
- * The fields of a struct or variant literal (§3.1, §3.11), the one path both are built through,
- * and where each field's value comes from, which the checker records for later phases.
+ * The fields of a struct literal (§3.1), and where each field's value comes from, which the
+ * checker records for later phases. A variant is built by its call, never in braces (§3.11).
  *
  * - Every field is given exactly once, each value fitting the field's type, by the one rule of
  *   which field an item gives (struct-items.ts): by name, by the shorthand `first` for
  *   `first: first`, or positionally when a struct has one field. With names alone, every field
  *   must be given, but for those with a default; a struct literal's leading spread gives the rest,
  *   and a positional value is the only item (the parser enforces that), so neither leaves fields to
- *   report as missing. A variant's fields are named: one given by position, or a lone shorthand
- *   naming none where one argument would do, is the call's (§3.11), and is reported as such. A
- *   variant can't be spread into: which variant a value holds isn't known when compiling.
+ *   report as missing.
  * - A generic type's arguments are written, taken from the expected type or the spread value when
  *   it is the same type, or inferred from the values (§3.5): a value whose field type is already
  *   known is checked against it, any other is checked on its own and matched. Defaults fill what
@@ -26,10 +24,8 @@
 
 import {
   type DeclaredStruct,
-  type EnumDeclaration,
   type FunctionDeclaration,
   hasDefault,
-  isRestField,
   type TypeAliasDeclaration,
   typeParametersOf,
 } from '../../../../syntax/declarations/index.ts';
@@ -45,7 +41,7 @@ import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { callWithTypes } from '../../../resolution/applying/silent-choice.ts';
 import type { FunctionCall } from '../../../surface/resolved-call.ts';
-import { itemField, variantItemField } from '../../../surface/struct-items.ts';
+import { itemField } from '../../../surface/struct-items.ts';
 import { completeInference } from '../../../types/inference/complete.ts';
 import { Inference } from '../../../types/inference/infer.ts';
 import { type Substitution, substitute } from '../../../types/parts/substitution.ts';
@@ -62,11 +58,11 @@ import { checkComprehended, comprehendedGiven, fitComprehended } from './struct-
 
 /**
  * What a literal builds: its fields as declared, how to name its type from type arguments, and
- * the generic declaration they belong to: a struct's or a variant's enum, an alias of a shape for
- * a shape it names (§3.17), absent for any other shape.
+ * the generic declaration they belong to: a struct, an alias of a shape for a shape it names
+ * (§3.17), absent for any other shape.
  */
 export interface LiteralShape {
-  readonly owner: DeclaredStruct | EnumDeclaration | TypeAliasDeclaration | undefined;
+  readonly owner: DeclaredStruct | TypeAliasDeclaration | undefined;
   /** The function the declaration's fields read as when one has a default (§3.1). */
   readonly defaults?: FunctionDeclaration | undefined;
   /** The type arguments already decided, written or expected. */
@@ -278,17 +274,14 @@ function checkItem(
     return;
   }
   if (item.kind === 'Spread') {
-    const report = buildsVariant(items.shape)
-      ? checkerDiagnostics.variantSpread
-      : checkerDiagnostics.misplacedSpread;
-    context.report(report(item.span));
+    context.report(checkerDiagnostics.misplacedSpread(item.span));
     context.expression(item.expression);
     items.fits = false;
     return;
   }
   const { shape, inference, given } = items;
   const name = itemName(item);
-  const index = (buildsVariant(shape) ? variantItemField : itemField)(name, shape.fields);
+  const index = itemField(name, shape.fields);
   const field = shape.fields[index];
   if (field !== undefined && name !== undefined) {
     context.recordField(name, field);
@@ -312,20 +305,14 @@ function checkItem(
   given.set(index, { node: value, type, declared: field.type });
 }
 
-/**
- * An item giving no field of its own: no field by that name or position, or one given twice. A
- * variant's field given by position is the call's (§3.11), so that is what is reported.
- */
+/** An item giving no field of its own: no field by that name or position, or one given twice. */
 function reportMisfit(
   context: BodyContext,
   { node, shape }: LiteralItems,
   item: FieldItem,
   field: FieldMember | undefined,
 ): void {
-  if (givesByPosition(node, shape, item)) {
-    const value = simpleText(unparenthesized(itemValue(item)));
-    context.report(checkerDiagnostics.variantByPosition(item.span, literalName(node), value));
-  } else if (item.kind === 'PositionalInitializer') {
+  if (item.kind === 'PositionalInitializer') {
     const count = shape.fields.length;
     context.report(checkerDiagnostics.positionalNeedsOneField(item.span, literalName(node), count));
   } else if (field === undefined) {
@@ -334,50 +321,6 @@ function reportMisfit(
     );
   } else {
     context.report(checkerDiagnostics.repeatedField(item.name.span, field.name));
-  }
-}
-
-/** Whether `shape` builds a variant, whose fields braces give by name alone (§3.11). */
-function buildsVariant(shape: LiteralShape): boolean {
-  return shape.owner?.kind === 'EnumDeclaration';
-}
-
-/**
- * Whether `item` reads as a variant's field given by position, as a call would take it (§3.11): a
- * value without a name, or the one item, a shorthand naming no field, where one argument would do.
- */
-function givesByPosition(node: FieldsLiteral, shape: LiteralShape, item: FieldItem): boolean {
-  const { fields } = shape;
-  if (!buildsVariant(shape) || fields.length === 0) {
-    return false;
-  }
-  if (item.kind === 'PositionalInitializer') {
-    return true;
-  }
-  const required = fields.filter((field) => !callMayLeave(field)).length;
-  return (
-    item.value === undefined &&
-    node.items.length === 1 &&
-    required <= 1 &&
-    variantItemField(item.name, fields) === -1
-  );
-}
-
-/** A value as a message writes it: a name or a literal as written, anything else elided. */
-function simpleText(value: Expression): string {
-  switch (value.kind) {
-    case 'Identifier':
-      return value.text;
-    case 'IntegerLiteral':
-    case 'FloatLiteral':
-    case 'BooleanLiteral':
-      return String(value.value);
-    case 'StringLiteral':
-      return JSON.stringify(value.value);
-    case 'NoneLiteral':
-      return 'none';
-    default:
-      return '…';
   }
 }
 
@@ -394,7 +337,7 @@ function reportMissing(
 ): void {
   const named = node.items.every(
     (item) =>
-      (item.kind === 'FieldInitializer' && !givesByPosition(node, shape, item)) ||
+      item.kind === 'FieldInitializer' ||
       item.kind === 'StructComprehension' ||
       item.kind === 'Invalid',
   );
@@ -410,15 +353,6 @@ function reportMissing(
       context.report(checkerDiagnostics.missingField(at, typeText(type), field.name));
     }
   }
-}
-
-/**
- * Whether a call may leave `field` out: it declares a default, or is a variant's rest, which then
- * holds `[]` (§3.11).
- */
-function callMayLeave(field: FieldMember): boolean {
-  const declared = field.declared?.node;
-  return declared !== undefined && (hasDefault(declared) || isRestField(declared));
 }
 
 /** Whether `field` declares a default (§3.1), as only a declared struct's or variant's can. */

@@ -231,7 +231,7 @@ async fn get<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> Future<T?>:
   match self:
     case Fixed(value): value
     case Computed(eval): eval(sc)
-    case Awaited{pending == Pending.Form, eval}: await eval(sc)
+    case Awaited(Pending.Form, eval, _): await eval(sc)
     case Awaited(_, eval, task): {
       if task->sc != sc: {
         task->sc = sc
@@ -251,7 +251,7 @@ fn evalNow<Sc, T>(self: Prop<Sc, T>, sc: Sc) -> T?:
 
 fn isHiddenPending<Sc, T>(self: Prop<Sc, T>) -> Bool:
   match self:
-    case Awaited{pending == Pending.Hidden}: true
+    case Awaited(Pending.Hidden, ...): true
     case _: false
 
 async fn _run<Sc, T>(task: Task<Sc, T>, call: Future<T>, events: Inbox<FormEvent>) -> Future<Unit>:

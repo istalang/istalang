@@ -1,5 +1,5 @@
 /**
- * A literal field's place: where a struct or variant literal's item names its field, the fields
+ * A literal field's place: where a struct literal's item names its field, the fields
  * the literal builds that its other items don't give (§3.1), by the checker's one rule of which
  * field an item gives (struct-items.ts), so a value given by position counts; none for a literal
  * checking found no declared fields for. An indented value's entry (§2) is the same place, read
@@ -9,13 +9,13 @@
  * Right after its `{`, a struct literal building one field also takes that field's value without
  * its name (§3.1), so a value may stand there too, and the visible names are offered beside the
  * field when completion is invoked, bare variants aside, as no enum is expected of a name there;
- * typing the `{` asks for fields alone. A variant's literal names its fields and spreads nothing:
- * only a call gives one by position (§3.11). A visible variable named like a field
+ * typing the `{` asks for fields alone. Braces after a variant's name build nothing, a variant
+ * being built by its call (§3.11), so they offer no field. A visible variable named like a field
  * not given yet is offered too, as the shorthand writing both (`Pair{first}`); the leading spread
  * only where it may stand, as the first item.
  */
 
-import { itemField, variantItemField } from '../../../../compiler/checker/surface/struct-items.ts';
+import { itemField } from '../../../../compiler/checker/surface/struct-items.ts';
 import type { FieldMember, Type } from '../../../../compiler/checker/types/type/index.ts';
 import { membersOf } from '../../../../compiler/checker/types/unions/unions.ts';
 import { spellsName } from '../../../../compiler/scanner/characters.ts';
@@ -33,7 +33,7 @@ import {
   type SyntaxNode,
   type SyntaxTree,
 } from '../../../../compiler/syntax/tree/index.ts';
-import { type Identifier, lastName } from '../../../../compiler/syntax/tree/node.ts';
+import type { Identifier } from '../../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import { indentationAt, lineStartAt } from '../../../../foundation/text/line-map.ts';
 import type { Candidate } from '../candidate.ts';
@@ -42,7 +42,7 @@ import { isBareVariant } from '../expected.ts';
 import { visibleCandidates } from '../visible.ts';
 
 /**
- * Where a field's name is written in a struct or variant literal: right after the literal's own
+ * Where a field's name is written in a struct literal: right after the literal's own
  * `{` (`opens`) or one of its `,`, or first on a line after one of its items, where the line break
  * separates two items as a `,` does (§2), whatever the parser made of a name half written there
  * (`item`, the item it starts) or of a literal not closed yet.
@@ -165,16 +165,7 @@ export function offerLiteralFields(
   const fields =
     built === undefined || !isFieldsLiteral(built) ? [] : (body?.literalFieldsOf(built) ?? []);
   const startsItems = first && (opens || literal.kind === 'IndentedValue');
-  const isVariant = built !== undefined && isFieldsLiteral(built) && namesVariant(cursor, built);
-  return literalItems(cursor, { fields, others, opens, startsItems, isVariant });
-}
-
-/** Whether `literal` names a variant, whatever checking inferred of its enum's type (§3.11). */
-function namesVariant({ checker, module }: Cursor, literal: FieldsLiteral): boolean {
-  const { type } = literal;
-  const entity =
-    type === undefined ? undefined : checker.bindings.entityOf(module, lastName(type.path));
-  return entity?.kind === 'variant' || entity?.kind === 'variants';
+  return literalItems(cursor, { fields, others, opens, startsItems });
 }
 
 function isFieldItem(item: FieldsLiteral['items'][number] | IndentedEntry): item is FieldItem {
@@ -213,11 +204,6 @@ interface LiteralItemSlot {
   readonly opens: boolean;
   /** Whether it is the first item, where the leading spread may stand. */
   readonly startsItems: boolean;
-  /**
-   * Whether the literal builds a variant, which takes no value by position in braces, nor a spread
-   * (§3.11).
-   */
-  readonly isVariant: boolean;
 }
 
 /**
@@ -228,20 +214,19 @@ interface LiteralItemSlot {
  */
 function literalItems(
   cursor: Cursor,
-  { fields, others, opens, startsItems, isVariant }: LiteralItemSlot,
+  { fields, others, opens, startsItems }: LiteralItemSlot,
 ): readonly Candidate[] {
   const visible = visibleCandidates(cursor);
-  const fieldGiven = isVariant ? variantItemField : itemField;
-  const given = new Set(others.map((named) => fields[fieldGiven(named, fields)]));
+  const given = new Set(others.map((named) => fields[itemField(named, fields)]));
   const offered = fields
     .filter((field) => !given.has(field))
     .flatMap((field): readonly Candidate[] => [
       ...shorthandFor(visible, field.name),
       { name: field.name, subject: { kind: 'field', field } },
     ]);
-  const takesValue = opens && !isVariant && fields.length === 1 && cursor.trigger === undefined;
+  const takesValue = opens && fields.length === 1 && cursor.trigger === undefined;
   const values = takesValue ? visible.filter((candidate) => !isBareVariant(candidate)) : [];
-  const spreads = startsItems && !isVariant && fields.length > 0;
+  const spreads = startsItems && fields.length > 0;
   return [...offered, ...(spreads ? [spread] : []), ...values];
 }
 

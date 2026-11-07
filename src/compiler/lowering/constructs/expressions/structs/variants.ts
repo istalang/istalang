@@ -8,13 +8,12 @@ import { unreachable } from '../../../../../foundation/structures/unreachable.ts
 import type { Checker } from '../../../../checker/check.ts';
 import { calledVariant } from '../../../../checker/surface/named-variants.ts';
 import type { NominalType, Type } from '../../../../checker/types/type/index.ts';
-import type { Call, Expression, StructLiteral } from '../../../../syntax/expressions/index.ts';
-import { type Identifier, lastName } from '../../../../syntax/tree/node.ts';
+import type { Call, Expression } from '../../../../syntax/expressions/index.ts';
+import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { CodeContext, FunctionContext } from '../../../context.ts';
 import type { Label } from '../../../functions/code-writer.ts';
 import { buildVariant, variantIndexOf } from '../../../values/variant-values.ts';
-import { literalFields } from './structs.ts';
 
 /** A variant without fields, named bare, qualified, or as `none`. */
 export function lowerFieldlessVariant(
@@ -36,13 +35,6 @@ export function fieldlessVariantCalled(context: FunctionContext, node: Call): st
   };
   const variant = calledVariant(names, node)?.variant;
   return variant?.fields.length === 0 ? variant.name.text : undefined;
-}
-
-/** `Rejected{by: "legal"}`: built from the same fields as a struct literal (structs.ts). */
-export function lowerVariantLiteral(context: FunctionContext, node: StructLiteral): Register {
-  const name = node.type === undefined ? '' : lastName(node.type.path).text;
-  const fields = literalFields(context, node).map(({ register }) => register);
-  return emitVariant(context, node, name, fields);
 }
 
 /** The enum value in `register` tested for one of its variants, the `variant`-th. */

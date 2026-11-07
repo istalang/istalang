@@ -76,11 +76,6 @@ export const valueTemplates = {
     code: 5214,
     message: (type: string, name: string) => `${type} has no field or method '${name}'.`,
   },
-  variantSpread: {
-    code: 5216,
-    message: () =>
-      "A variant isn't built by spreading a value: which variant the value holds isn't known when compiling.",
-  },
   assignedTwice: {
     code: 5217,
     message: (place: string, earlier: string) =>

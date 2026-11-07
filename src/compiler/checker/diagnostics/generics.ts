@@ -112,10 +112,10 @@ export const genericTemplates = {
     message: (name: string, written: string) =>
       `The variant '${name}' has fields; give them, as in '${written}'.`,
   },
-  variantByPosition: {
-    code: 5137,
-    message: (name: string, value: string) =>
-      `A variant's fields are given by position in a call, not in braces: write '${name}(${value})' (§3.11).`,
+  variantInBraces: {
+    code: 5139,
+    message: (name: string) =>
+      `A variant is built by calling it, as in '${name}(…)', not by naming its fields in braces or a block (§3.11).`,
   },
   fieldlessCalled: {
     code: 5138,

@@ -42,8 +42,9 @@ interface ParenthesizedPattern extends NodeOf<'ParenthesizedPattern'> {
 }
 
 /**
- * `Approved{by}`, `m.Verdict{ok == false}`, or `struct{…}` when `type` is undefined; `...rest`, its
- * last item, binds a struct of the fields no item names (§3.11), so it is held apart from them.
+ * `Point{x}`, `m.Verdict{ok == false}`, or `struct{…}` when `type` is undefined; `...rest`, its
+ * last item, binds a struct of the fields no item names (§3.11), so it is held apart from them. A
+ * variant is taken apart by a call pattern; braces after a variant's name are refused by checking.
  */
 export interface StructPattern extends NodeOf<'StructPattern'> {
   readonly type: NamedType | undefined;

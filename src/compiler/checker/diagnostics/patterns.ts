@@ -86,10 +86,10 @@ export const patternTemplates = {
     message: (name: string) =>
       `Only a pattern on a union gives type arguments, to tell apart its members instantiating '${name}'; here the value's type gives them (§3.11).`,
   },
-  variantRest: {
-    code: 5420,
-    message: (variant: string) =>
-      `A rest takes a struct's other fields, as a struct of their own; the variant '${variant}' is no struct, so name the fields it reads (§3.11).`,
+  variantInBracesPattern: {
+    code: 5433,
+    message: (name: string) =>
+      `A variant is taken apart by its call pattern, as in '${name}(…)', not by naming its fields in braces (§3.11).`,
   },
   decidedCondition: {
     code: 5421,

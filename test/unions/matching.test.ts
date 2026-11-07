@@ -114,11 +114,11 @@ describe('matching on unions and literal types (§3, §5)', () => {
 
   it('matches bare variants through enum members, and requires qualification when ambiguous', () => {
     expect(
-      runMain('String', 'show(Approved{by: "legal"}) + ":" + show(Expired) + ":" + show(9)', [
+      runMain('String', 'show(Approved("legal")) + ":" + show(Expired) + ":" + show(9)', [
         ...matchDecls,
         'fn show(x: Decision | Int) -> String:',
         '  match x:',
-        '    case Approved{by}: by',
+        '    case Approved(by): by',
         '    case Expired: "exp"',
         '    case Int as n: String(n)',
       ]),

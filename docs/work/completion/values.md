@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-30
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 tags: [plan, completion, lsp]
 ---
 
@@ -306,20 +306,6 @@ fn g(c: Color = ‸
 - **Accept:** Field: `id: `. Variable: `(u)` with the parentheses.
 - **Basis:** spec §3.1 ("as long as that value isn't a bare name … wrap it in parentheses").
 
-### LI-09b · Single-field variant: the field alone, invoked · P1 · ✅ pass
-
-```
-  const e: Result<Int> = Ok{‸}
----
-  const e: Result<Int> = Ok{va‸}
----
-  const e = Result.Ok{‸}
-```
-- **Where / trigger:** in `fn t`; invoked
-- **Offer:** The field (`value: `), whether or not the enum's type arguments are known yet.
-- **Not:** Values: a variant's field is given by position only in a call, `Ok(42)`; nor `...`, as nothing spreads into a variant.
-- **Basis:** spec §3.11 ("A field is never given in braces by position").
-
 ### LI-10 · Shorthand · P2 · ✅ pass
 
 ```
@@ -368,32 +354,21 @@ fn g(c: Color = ‸
 - **Accept:** `...`
 - **Basis:** spec §3.1.
 
-### LI-13 · Variant literals · P1 · ✅ pass
+### LI-13 · Braces after a variant's name · P1 · ✅ pass
 
 ```
   Decision.Rejected{‸}
 ---
-  const e: Decision = Rejected{‸}
----
   const e: Decision = Rejected{by: "x", ‸}
-```
-- **Where / trigger:** in `fn t`; typing `{`
-- **Offer:** The variant's fields: `by`, `reason` (`reason` only in the third).
-- **Not:** Fields of other variants (`Approved` has `by` too: not mixed in); scope.
-- **Accept:** `by: `.
-- **Basis:** spec §3.11.
-
-### LI-14 · An optional Result, and Result · P2 · ✅ pass
-
-```
-  const e: Result<Int>? = Ok{‸}
 ---
-  const e: Result<Int> = Err{‸}
+  const e: Result<Int> = Ok{‸}
+---
+  const e = Result.Ok{va‸}
 ```
-- **Where / trigger:** in `fn t`; typing `{`
-- **Offer:** `value: ` (`error: `).
-- **Not:** Scope names.
-- **Basis:** spec §2 (built from the one member it fits), §3.11, §3.12.
+- **Where / trigger:** in `fn t`; typing `{`, or invoked
+- **Offer:** No field: a variant is built by its call (signature help names its fields), and checking refuses braces after its name, naming the call.
+- **Not:** `by`, `reason`, `value`, `...`.
+- **Basis:** spec §3.11 ("Only by its call").
 
 ### LI-15 · Shared struct · P1 · ✅ pass
 

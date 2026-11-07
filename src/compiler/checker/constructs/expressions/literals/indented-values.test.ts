@@ -1,7 +1,7 @@
 /**
  * Checking and running indented values (proposal 5 §1, notes 3 and 11): every row of the
- * meaning-by-type table (structs, variants, shapes, aliases, shared structs with 'new T:', maps
- * with bare and quoted keys and custom IndexAssignable+Default types, arrays with '- item' and
+ * meaning-by-type table (structs, shapes, aliases, shared structs with 'new T:', variants refused,
+ * maps with bare and quoted keys and custom IndexAssignable+Default types, arrays with '- item' and
  * '- key: value' blocks, unions, and untyped blocks), compile-time constants, every listed error,
  * and the fast-check commutation property against brace and bracket literals.
  */
@@ -72,18 +72,12 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
     ).toEqual(['api', 1, [80, 443], 'debug', 'eu', 3, 500]);
   });
 
-  it('builds variants (bare and qualified), shapes, aliases of shapes, and shared structs via new T:', () => {
+  it('builds shapes, aliases of shapes, and shared structs via new T:', () => {
     const decls = lines(
-      'enum Decision { Approved(by: String, note: String = "ok"), Rejected(by: String, reason: String) }',
       'type Point = { x: Int, y: Int }',
       'shared struct Counter { count: Int, tag: String = "c" }',
     );
     const body = lines(
-      'const d1: Decision = Approved:',
-      '  by: "alice"',
-      'const d2 = Decision.Rejected:',
-      '  by: "bob"',
-      '  reason: "budget"',
       'const p1 = Point:',
       '  y: 20, x: 10',
       'const p2: { x: Int, y: Int } =',
@@ -91,11 +85,26 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
       'const c = new Counter:',
       '  count: 42',
       'c->count += p1.x + p2.y',
-      'match (d1, d2):',
-      '  case (Approved{by, note}, Rejected{reason}): `${by}:${note}:${reason}:${c->count}:${c->tag}`',
-      '  case _: "unreachable"',
+      '`${c->count}:${c->tag}`',
     );
-    expect(mainGives('String', body, decls)).toBe('alice:ok:budget:58:c');
+    expect(mainGives('String', body, decls)).toBe('58:c');
+  });
+
+  it('refuses a variant named before a block, bare or qualified, naming its call (§3.11)', () => {
+    const text = lines(
+      'enum Decision { Approved(by: String), Rejected(by: String, reason: String) }',
+      'fn f() -> (Decision, Decision):',
+      '  const d1: Decision = Approved:',
+      '    by: "alice"',
+      '  const d2 = Decision.Rejected:',
+      '    by: "bob"',
+      '    reason: "budget"',
+      '  (d1, d2)',
+    );
+    expect(reported(text).codes).toEqual([
+      checkerDiagnostics.variantInBraces.code,
+      checkerDiagnostics.variantInBraces.code,
+    ]);
   });
 
   it('supports shorthand names, a leading spread, and a trailing struct comprehension', () => {

@@ -97,18 +97,6 @@ const scenarios: readonly Scenario[] = [
     expect: { has: ['id'], lacks: ['xs', 'plus', 'u'] },
   },
   {
-    id: 'LI-09b',
-    place: 'literalField',
-    title: 'Single-field variant: the field alone, invoked',
-    src: [
-      '  const e: Result<Int> = Ok{‸}',
-      '  const e: Result<Int> = Ok{va‸}',
-      '  const e = Result.Ok{‸}',
-      '  const e = Result.Ok{va‸}',
-    ],
-    expect: { has: ['value'], lacks: ['xs', 'plus', 'u', '...'] },
-  },
-  {
     id: 'LI-10',
     place: 'literalField',
     title: 'Shorthand',
@@ -141,22 +129,15 @@ const scenarios: readonly Scenario[] = [
   {
     id: 'LI-13',
     place: 'literalField',
-    title: 'Variant literals',
+    title: "Braces after a variant's name",
     src: [
       '  Decision.Rejected{‸}',
-      '  const e: Decision = Rejected{‸}',
       '  const e: Decision = Rejected{by: "x", ‸}',
+      '  const e: Result<Int> = Ok{‸}',
+      '  const e = Result.Ok{va‸}',
     ],
     trigger: '{',
-    expect: { has: ['reason'], lacks: ['xs', 'plus', 'let'] },
-  },
-  {
-    id: 'LI-14',
-    place: 'literalField',
-    title: 'Result, alone and in an optional',
-    src: ['  const e: Result<Int>? = Ok{‸}', '  const e: Result<Int> = Err{‸}'],
-    trigger: '{',
-    expect: { anyOf: ['value', 'error'] },
+    expect: { lacks: ['by', 'reason', 'value', '...'] },
   },
   {
     id: 'LI-15',

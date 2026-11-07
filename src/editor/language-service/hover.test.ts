@@ -133,7 +133,7 @@ describe('hover', () => {
       signature,
       '(variant) Some: Opt<T>',
     ]);
-    for (const built of ['So‸me{value: 1}', 'Opt.So‸me{value: 1}', 'So‸me(1)', 'Opt.So‸me(1)']) {
+    for (const built of ['So‸me(1)', 'Opt.So‸me(1)', 'So‸me(value: 1)']) {
       expect(hover(...opt, `fn f() -> Opt<Int>: ${built}`)?.code).toEqual([
         signature,
         '(variant) Some: Opt<Int>',
@@ -148,7 +148,7 @@ describe('hover', () => {
         ...opt,
         'fn f(o: Opt<Int>) -> Int:',
         '  match o:',
-        '    case So‸me{value}: value',
+        '    case So‸me(value): value',
         '    case None: 0',
       )?.code,
     ).toEqual([signature, '(variant) Some: Opt<T>']);

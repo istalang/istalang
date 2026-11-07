@@ -1,8 +1,8 @@
 /**
  * Enum values built by their variant (§3.11): `variant` of an enum type by the index of the variant
- * named, its fields in declaration order, which a variant literal, a call of a variant's
- * constructor, the constructor's own entry and code the compiler writes (a propagated error, a
- * decoded value) all build through, so none of them imports another to build one.
+ * named, its fields in declaration order, which a call of a variant's constructor, the
+ * constructor's own entry and code the compiler writes (a propagated error, a decoded value) all
+ * build through, so none of them imports another to build one.
  *
  * A variant's constructor (syntax/declarations/field-defaults.ts) has no code of its own to run:
  * its parameters are the variant's fields, so a call of it builds the variant where it stands,

@@ -28,7 +28,7 @@ import { type MemberPlace, memberPlaceAt } from './places/member.ts';
  * - `type`: a type is written;
  * - `declaredName`: a name being declared (a function, a variable, a parameter, a field…);
  * - `member`: after a member's operator, or a qualifier's `.`;
- * - `literalField`: a struct or variant literal's item names its field;
+ * - `literalField`: a struct literal's item names its field;
  * - `callArgument`: a call's argument starts, which a name may label;
  * - `pattern`: a pattern tested by `case` or `is`;
  * - `patternField`: a struct pattern's item names its field;

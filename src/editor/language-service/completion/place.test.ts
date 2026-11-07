@@ -43,10 +43,10 @@ describe('the place a cursor is in', () => {
 
   it('declares a name after `as`, in a pattern or a field pattern', () => {
     const cases = ['fn f(d: Decision) -> Int:', '  match d:'];
-    expect(placeIn(...decision, ...cases, '    case Approved{by} as ‸', '  0')).toBe(
+    expect(placeIn(...decision, ...cases, '    case Approved(by) as ‸', '  0')).toBe(
       'declaredName',
     );
-    expect(placeIn(...decision, ...cases, '    case Approved{by as ‸', '  0')).toBe('declaredName');
+    expect(placeIn(...decision, ...cases, '    case Approved(v as ‸', '  0')).toBe('declaredName');
   });
 
   it("is nothing in a comment, even after a member's `.` or a literal's `{`", () => {

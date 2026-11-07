@@ -205,7 +205,7 @@ describe('proposal 5 behaviour table: row by row', () => {
     expect(mainGives('Float', 'norm(Point{x: 3.0, y: 4.0})', decls)).toBe(5);
   });
 
-  it('row 20: "fn f(Ok{value})" is still an error because the pattern can fail', () => {
+  it('row 20: "fn f(Ok(value))" is still an error because the pattern can fail', () => {
     expect(reported('fn f(Ok(value): Result<Int>) -> Int: value').codes).toContain(
       checkerDiagnostics.refutableTarget.code,
     );

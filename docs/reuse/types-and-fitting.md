@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-06
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 tags: [reuse, checker, types, fitting, patterns, flow]
 ---
 
@@ -92,7 +92,7 @@ tags: [reuse, checker, types, fitting, patterns, flow]
 - decide whether a trait can be met through values whose type is known only when they run (object safety, §3.10) → `objectUnsafety` (`src/compiler/checker/types/traits/object-safety.ts`)
 - walk patterns or destructuring targets → `walkPattern`, `walkTargets` (`src/compiler/checker/constructs/patterns/walk/index.ts`); declare a declaration's, `for`'s or comprehension's targets in a body → `declareTargets` (`src/compiler/checker/constructs/patterns/targets.ts`); declare a parameter in any body it is visible in (its function's, its defaults', a lambda's), its name and its pattern's names, refused or taken apart as a target's → `declareParameter` (same file), never `Variables.declareParameter` alone
 - a parameter's written type (§3.3): its annotation or the type its pattern names → `writtenTypeOf`; the type a nested function's parameter is written with whole (its annotation, or what its pattern names with its arguments), which it prefers to its expected slot and which decides whether a lambda waits on the function chosen → `wholeWrittenTypeOf`; a type written twice, or a pattern behind `&`, written or from the expected slot → `checkPatternParameter` (`src/compiler/checker/constructs/declarations/functions/signatures.ts`), which a declared and a nested function both run
-- find a struct item's field index → `itemField`; a variant literal's, which braces give by name alone → `variantItemField` (`src/compiler/checker/surface/struct-items.ts`)
+- find a struct item's field index → `itemField` (`src/compiler/checker/surface/struct-items.ts`)
 - take a tuple or struct target apart into its element or field parts → `takeTargets`, `takeApart`, `takeFields` (`src/compiler/checker/constructs/patterns/walk/taking.ts`)
 - analyze `match` exhaustiveness → `analyze` (`src/compiler/checker/constructs/patterns/exhaustiveness/exhaustiveness.ts`); a union's members as its constructors → `memberShape` (`constructs/patterns/exhaustiveness/shapes.ts`)
 - what a pattern selects of its part before taking it apart (a downcast of an `any` value, members of a union's) → `selectionOf` (`src/compiler/checker/constructs/patterns/walk/selections.ts`); a union's members, as a pattern names them → `memberTaken`, `unionPart` (`constructs/patterns/walk/members.ts`); what a case's binder has left of a union → `remainingType` (`constructs/patterns/exhaustiveness/remaining.ts`), `leftOf` (`constructs/patterns/walk/members.ts`)

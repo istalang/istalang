@@ -220,14 +220,14 @@ describe('completion', () => {
     );
   });
 
-  it("offers a variant literal's and a shared struct literal's fields", () => {
+  it("offers a shared struct literal's fields, and none in braces after a variant's name", () => {
     const decision = [
       'enum Decision:',
       '  Approved(by: String)',
       '  Rejected(by: String, reason: String)',
       '',
     ];
-    expect(fields(...decision, 'fn f() -> Decision: Rejected{by: "x", ‸}')).toEqual(['reason']);
+    expect(fields(...decision, 'fn f() -> Decision: Rejected{by: "x", ‸}')).toEqual([]);
     const counter = ['shared struct Counter:', '  count: Int', '  label: String = "counted"', ''];
     expect(fields(...counter, 'fn f() -> Counter: new Counter{‸}')).toEqual(['count', 'label']);
   });

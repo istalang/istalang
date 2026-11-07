@@ -28,9 +28,14 @@ import type { Diagnostic } from '../../../../../../foundation/diagnostics/diagno
 import { unreachable } from '../../../../../../foundation/structures/unreachable.ts';
 import type { VariantNaming } from '../../../../../binder/entities.ts';
 import { hasDefault, isRestField } from '../../../../../syntax/declarations/index.ts';
-import type { NamedPatternArgument, VariantCallPattern } from '../../../../../syntax/patterns.ts';
+import type {
+  NamedPatternArgument,
+  StructPattern,
+  VariantCallPattern,
+} from '../../../../../syntax/patterns.ts';
 import { lastName } from '../../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../../syntax/tree/positions.ts';
+import type { NamedType } from '../../../../../syntax/types/index.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
 import {
   type BindingFailure,
@@ -53,6 +58,37 @@ import { constructed } from '../taking.ts';
 import { type ItemTaking, takeArray } from './arrays.ts';
 
 /** A call pattern's argument that binds to a field: any but a last `...`. */
+
+/**
+ * A variant named before braces, `case Rejected{by}`, reported where it is walked (§3.11): its
+ * items are taken over the error type, so their names bind and what they compare with is checked,
+ * and it still tests its variant, covering it when its items match anything, as the call pattern
+ * it stands for would, so nothing more is reported of its `match`.
+ */
+export function takeVariantBraces(
+  walk: ItemTaking,
+  tests: PatternTests,
+  braced: { readonly node: StructPattern; readonly type: NamedType; readonly named: VariantNaming },
+  part: ValuePart,
+): Shape | undefined {
+  const { node } = braced;
+  const errorPart = { type: errorType, path: part.path };
+  const items = [...node.fields, ...(node.rest === undefined ? [] : [node.rest])];
+  const matchesAnything = items
+    .map((item) => walk.take(item, errorPart))
+    .every((shape) => shape === anyShape);
+  const variant = tests.variant(braced.type, braced.named, part);
+  if (variant === undefined) {
+    return anyShape;
+  }
+  walk.found.push(variant.test);
+  return matchesAnything
+    ? constructed(
+        variant.key,
+        variant.fields.map(() => anyShape),
+      )
+    : undefined;
+}
 
 /**
  * The variant `node` names; undefined after reporting that it names something else, or for a name

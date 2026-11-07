@@ -104,7 +104,7 @@ async fn main() -> Future<String>:
   const p1 = `${describe(none)}|${describe(42)}|${describe("ok")}|${label("draft")}|${label("failed")}|${contactTo(Email{to: "cfo"})}`
   const p2 = `${checkIntOpt(5)}:${checkIntOpt(none)}:${checkLitOpt(1)}:${checkLitOpt(2)}`
   const p3 = `${splitLiterals("sent")}:${splitLiterals(7)}`
-  const p4 = `${showDecision(Approved{by: "legal"})}:${showDecision(Expired)}:${showDecision(9)}`
+  const p4 = `${showDecision(Approved("legal"))}:${showDecision(Expired)}:${showDecision(9)}`
   const p5 = `${pickEnum(First.Shared)}:${pickEnum(Second.Shared)}`
   const p6 = `${oneGeneric(Box{value: 3})}:${twoGenerics(Box{value: 4})}:${twoGenerics(Box{value: "hi"})}`
   const p7 = `${byField(struct{a: 5})}:${byField(struct{b: "ok"})}:${byAlias(struct{x: 1, y: 2})}`

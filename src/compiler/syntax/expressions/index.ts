@@ -2,7 +2,7 @@
  * Expression nodes (spec §2–§4).
  *
  * The parser decides only what the syntax decides; meaning is left to the checker. So `[...m]`
- * is an ArrayLiteral even when `m` is a map, `Ok{x}` names a field `x` whatever `Ok` declares, and
+ * is an ArrayLiteral even when `m` is a map, `P{x}` names a field `x` whatever `P` declares, and
  * `T(x)` is an ordinary Call that the checker resolves as a conversion.
  *
  * Some nodes appear only inside other nodes (Spread, MapEntry, the struct literal's items,
@@ -126,7 +126,7 @@ export interface FieldInitializer extends NodeOf<'FieldInitializer'> {
 
 /**
  * The value of a single-field struct given without its name: `UserId{"u-1"}`, `UserId{(id)}`. A
- * variant's literal names its fields, its call giving them by position (§3.11).
+ * variant is built by its call (§3.11).
  */
 interface PositionalInitializer extends NodeOf<'PositionalInitializer'> {
   readonly value: Expression;

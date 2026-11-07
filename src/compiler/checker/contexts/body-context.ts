@@ -266,7 +266,7 @@ export interface Variables {
 }
 
 /**
- * Where each struct or variant literal's fields get values
+ * Where each struct literal's fields get values
  * (constructs/expressions/structs/literal-fields.ts).
  */
 export interface LiteralSources {

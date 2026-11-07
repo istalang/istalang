@@ -215,7 +215,7 @@ export interface BodyFacts {
    */
   readonly sourcesOf: (literal: FieldsLiteral) => readonly FieldSource[] | undefined;
   /**
-   * The fields a struct or variant literal builds, typed by the type arguments found for it,
+   * The fields a struct literal builds, typed by the type arguments found for it,
    * whatever its items give: what may be written in it (§3.1); undefined for a literal never
    * checked against declared fields.
    */
