@@ -12,7 +12,7 @@ struct Sms { number: String }
 type Contact = Email | Sms
 
 enum Decision:
-  Approved { by: String }
+  Approved(by: String)
   Expired
 
 enum First { Shared, OnlyFirst }

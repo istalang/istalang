@@ -9,7 +9,7 @@
 
 struct Page { title: String, body: String }
 
-enum Shape { Circle { radius: Int }, Square { side: Int } }
+enum Shape { Circle(radius: Int), Square(side: Int) }
 
 fn first(p: Page) -> String:
   const struct{...rest, title} = p

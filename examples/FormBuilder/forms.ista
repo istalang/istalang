@@ -207,9 +207,9 @@ fn hide<N is FormNode>(self: Hidden<N>): self->shown = false
 
 # A prop: a literal, a lambda over the scope, or an awaited lambda run as the node's pending says.
 enum Prop<Sc, T>:
-  Fixed { value: T }
-  Computed { eval: fn(Sc) -> T }
-  Awaited { pending: Pending, eval: async fn(Sc) -> T, task: Task<Sc, T> }
+  Fixed(value: T)
+  Computed(eval: fn(Sc) -> T)
+  Awaited(pending: Pending, eval: async fn(Sc) -> T, task: Task<Sc, T>)
 
 enum Pending:
   Form # awaited inline: the whole form waits
@@ -272,8 +272,8 @@ struct Scope<D, C>:
 # ═════════════════════════ Checks ═════════════════════════
 
 enum Check<Sc, T>:
-  Now { test: fn(Sc, T?) -> String? } # an error message, or none; on every draw
-  Later { test: async fn(Sc) -> String?, pending: fn(Sc) -> String, task: Task<Sc, String?> }
+  Now(test: fn(Sc, T?) -> String?) # an error message, or none; on every draw
+  Later(test: async fn(Sc) -> String?, pending: fn(Sc) -> String, task: Task<Sc, String?>)
   # a rule with `pending` (an approval): its own task once the user submits; submit waits
 
 fn later<Sc, T>(test: async fn(Sc) -> String?, pending: fn(Sc) -> String) -> Check<Sc, T>:
@@ -444,15 +444,15 @@ struct Choice<T>:
   label: String # an option from rows
 
 enum Options<Sc, T>:
-  Items { items: Array<Item<Sc, T>> }
-  Rows { from: Prop<Sc, Array<Choice<T>>>, resolve: Prop<Sc, Bool> }
+  Items(items: Array<Item<Sc, T>>)
+  Rows(from: Prop<Sc, Array<Choice<T>>>, resolve: Prop<Sc, Bool>)
   # The widget provides ctx.search: `from` takes the typed text. `same` tells whether two values
   # are the same choice (a snapshot is a whole row, compared by id).
-  Search {
+  Search(
     from: async fn(Sc, String) -> Array<Choice<T>>
     resolve: Prop<Sc, Bool>
     same: fn(T, T) -> Bool
-  }
+  )
 
 enum Recompute:
   RowsEdited
@@ -919,47 +919,47 @@ enum Gap:
   Lg
 
 enum FieldWidget:
-  Input { placeholder: String? }
-  Textarea { rows: Int? }
-  Select { placeholder: String? }
-  Autocomplete { placeholder: String? } # provides ctx.search
-  Radio { orientation: Orientation? }
+  Input(placeholder: String?)
+  Textarea(rows: Int?)
+  Select(placeholder: String?)
+  Autocomplete(placeholder: String?) # provides ctx.search
+  Radio(orientation: Orientation?)
   Segmented
   Checkbox # draws its own label
   Toggle # draws its own label
   Datepicker
-  Upload { dropzone: Bool? }
+  Upload(dropzone: Bool?)
   Choice # drawn by its repeat
   Raw # drawn by its repeat or control layout
 
 enum RepeatWidget:
-  Multiselect { placeholder: String? }
-  Checkboxes { orientation: Orientation? }
-  List { addLabel: String?, reorderable: Bool? }
-  Table { addLabel: String? }
-  Cards { addLabel: String?, title: String? }
+  Multiselect(placeholder: String?)
+  Checkboxes(orientation: Orientation?)
+  List(addLabel: String?, reorderable: Bool?)
+  Table(addLabel: String?)
+  Cards(addLabel: String?, title: String?)
 
 enum VariantWidget:
   Inline # a case picker that writes the tag, and the case
-  Panel { title: String? } # the active case only
+  Panel(title: String?) # the active case only
 
 enum LayoutWidget:
-  Section { title: String?, description: String?, collapsible: Bool?, labels: LabelStyle? }
-  Labeled { labels: LabelStyle? }
+  Section(title: String?, description: String?, collapsible: Bool?, labels: LabelStyle?)
+  Labeled(labels: LabelStyle?)
   Money # a control: amount and currency as one input
-  Hstack { gap: Gap?, labels: LabelStyle? }
+  Hstack(gap: Gap?, labels: LabelStyle?)
   Wizard
-  Step { title: String, labels: LabelStyle? }
+  Step(title: String, labels: LabelStyle?)
   Tablerow
-  Markdown { markdown: String }
+  Markdown(markdown: String)
   Errors
   Divider
 
 # What a parent widget reads about a child (its ui.parent), by parent widget.
 enum ParentUi:
-  Section { span: Int? }
-  Hstack { grow: Float? }
-  Tablerow { width: Int? }
+  Section(span: Int?)
+  Hstack(grow: Float?)
+  Tablerow(width: Int?)
 
 # ═════════════════════════ The tree the frontend draws ═════════════════════════
 
@@ -968,7 +968,7 @@ struct Option:
   label: String # value JSON-encoded
 
 enum Node:
-  Layout {
+  Layout(
     key: String
     widget: LayoutWidget
     parent: ParentUi?
@@ -976,8 +976,8 @@ enum Node:
     errors: Array<String>
     waiting: Array<String>
     children: Array<Node>
-  }
-  Field {
+  )
+  Field(
     key: String
     widget: FieldWidget
     parent: ParentUi?
@@ -987,8 +987,8 @@ enum Node:
     options: Array<Option>
     errors: Array<String>
     readOnly: Bool
-  }
-  Repeat {
+  )
+  Repeat(
     key: String
     widget: RepeatWidget
     parent: ParentUi?
@@ -996,8 +996,8 @@ enum Node:
     rows: Array<Row>
     canAdd: Bool
     errors: Array<String>
-  }
-  Variant {
+  )
+  Variant(
     key: String
     widget: VariantWidget
     parent: ParentUi?
@@ -1006,9 +1006,9 @@ enum Node:
     active: String?
     body: Node?
     errors: Array<String>
-  }
-  Mount { key: String, parent: ParentUi?, label: String?, form: FormSnapshot } # a dynamic ref
-  Loading { key: String, label: String? }
+  )
+  Mount(key: String, parent: ParentUi?, label: String?, form: FormSnapshot) # a dynamic ref
+  Loading(key: String, label: String?)
 
 struct Row:
   key: String
@@ -1017,10 +1017,10 @@ struct Row:
 # ═════════════════════════ Events and the loop ═════════════════════════
 
 enum FormEvent:
-  Set { key: String, value: String } # value JSON; a key names its row: n6@r1
-  Search { key: String, text: String } # typed into a search widget
-  AddRow { key: String }
-  RemoveRow { key: String, row: String }
+  Set(key: String, value: String) # value JSON; a key names its row: n6@r1
+  Search(key: String, text: String) # typed into a search widget
+  AddRow(key: String)
+  RemoveRow(key: String, row: String)
   Submit
   Resolved # a task finished: draw again
 

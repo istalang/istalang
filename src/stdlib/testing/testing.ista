@@ -29,8 +29,8 @@ struct Suite:
 # A test, or a group of tests, as the library builds them (§10), marked by `skip` and `only`,
 # which a group's marks reach every test of.
 enum Test:
-  Case { title: String, body: async fn() -> Unit, skipped: Bool = false, only: Bool = false }
-  Group { title: String, tests: Array<Test>, skipped: Bool = false, only: Bool = false }
+  Case(title: String, body: async fn() -> Unit, skipped: Bool = false, only: Bool = false)
+  Group(title: String, tests: Array<Test>, skipped: Bool = false, only: Bool = false)
 
 # A test as the runner lists it: its full title, and whether the run skips or focuses it.
 struct Listed:

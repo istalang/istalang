@@ -14,8 +14,8 @@ struct Box<T is Default>:
   size: Int
 
 enum Shape:
-  Circle { r: Float = 1.5 }
-  Square { side: Int }
+  Circle(r: Float = 1.5)
+  Square(side: Int)
 
 struct Limits:
   low: Int = 1

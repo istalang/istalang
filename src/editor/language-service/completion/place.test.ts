@@ -10,7 +10,7 @@ import { checkedModule } from '../reading/checked-module.ts';
 import { cursorAt } from './cursor.ts';
 import { type PlaceKind, placeAt } from './place.ts';
 
-const decision = ['enum Decision:', '  Approved { by: String }', '  Expired', ''];
+const decision = ['enum Decision:', '  Approved(by: String)', '  Expired', ''];
 
 function placeIn(...lines: readonly string[]): PlaceKind {
   const { program, module, offset } = programAt(...lines);

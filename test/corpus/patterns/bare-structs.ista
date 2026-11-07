@@ -9,7 +9,7 @@ struct Box<T>
 
 enum Holder:
   Empty
-  Full { marker: Marker }
+  Full(marker: Marker)
 
 fn plain(m: Marker) -> String:
   match m:

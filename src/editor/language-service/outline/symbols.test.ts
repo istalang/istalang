@@ -46,7 +46,7 @@ describe('the outline', () => {
   it("nests a variant's fields under it, and a trait's requirements under the trait", () => {
     const tree = treeOf(
       'enum Shape:',
-      '  Circle{radius: Int}',
+      '  Circle(radius: Int)',
       '  Empty',
       'trait Sized:',
       '  size: Int',

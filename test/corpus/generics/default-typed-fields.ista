@@ -4,7 +4,7 @@
 # default depends on nothing of its own (§3.1).
 
 enum Opt<T>:
-  Some { value: T }
+  Some(value: T)
   Empty
 
 struct A<T>:

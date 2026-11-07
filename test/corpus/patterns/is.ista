@@ -3,8 +3,8 @@
 # the body of an `if` or `while`, and the right side of an `and` (§3.11).
 
 enum Shape:
-  Circle { radius: Int }
-  Square { side: Int }
+  Circle(radius: Int)
+  Square(side: Int)
 
 fn radius(shape: Shape) -> String:
   if shape is Circle{radius}:

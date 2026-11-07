@@ -1,5 +1,5 @@
 # error: 5125 at 18:3
-# error: 5125 at 23:21
+# error: 5125 at 23:19
 # error: 5125 at 28:3
 # error: 5125 at 31:3
 # error: 5125 at 60:3
@@ -19,8 +19,8 @@ struct Wrapped<T>:
 
 enum Chain<T>:
   End
-  Link { head: T, tail: Chain<T> }
-  Deeper { head: T, tail: Chain<Array<T>> }
+  Link(head: T, tail: Chain<T>)
+  Deeper(head: T, tail: Chain<Array<T>>)
 
 struct Ping<T>:
   pong: Pong<T>?

@@ -12,7 +12,7 @@ import { type Completion, ranksBefore } from './item.ts';
 const declarations = [
   "import JsonSkip from 'json'",
   'enum Color { Red, Green, Blue }',
-  'enum Decision { Approved, Rejected { by: String } }',
+  'enum Decision { Approved, Rejected(by: String) }',
   'struct Note:',
   '  reason: String',
   'fn Color.mixed() -> Color: Color.Red',

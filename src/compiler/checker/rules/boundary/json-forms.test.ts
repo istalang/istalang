@@ -18,7 +18,7 @@ const declarations = [
   'struct Point { x: Int }',
   'struct Tree { children: Array<Tree> }',
   'enum Shape:',
-  '  Circle { radius: Float }',
+  '  Circle(radius: Float)',
   '  Dot',
   'struct Label { text: String }',
   'fn toJson(self: Label) -> Json: self.text',

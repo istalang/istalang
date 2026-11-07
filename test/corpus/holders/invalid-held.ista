@@ -8,7 +8,7 @@
 
 struct Pending { job: Future<Int> }
 
-enum Outcome { Done{result: Result<Int>}, Idle }
+enum Outcome { Done(result: Result<Int>), Idle }
 
 struct Chain { value: Int, rest: Chain? }
 

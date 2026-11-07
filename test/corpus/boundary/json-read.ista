@@ -14,7 +14,7 @@ struct Item:
   qty: Int
 
 enum Shape:
-  Circle { radius: Float }
+  Circle(radius: Float)
   Dot
 
 struct Order:

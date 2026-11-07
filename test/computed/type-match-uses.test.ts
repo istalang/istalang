@@ -211,7 +211,7 @@ describe('a type `match` a field default reaches', () => {
       codesOf(
         ...helper,
         'enum Choice<D>:',
-        '  Held { x: Int = helper<D>() }',
+        '  Held(x: Int = helper<D>())',
         'fn g(c: Choice<Int>): ()',
       ),
     ).toEqual([5170]);

@@ -20,7 +20,7 @@ const matchDecls = [
   'struct Sms { number: String }',
   'type Contact = Email | Sms',
   'enum Decision:',
-  '  Approved { by: String }',
+  '  Approved(by: String)',
   '  Expired',
   'struct Box<T> { value: T }',
 ];

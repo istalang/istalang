@@ -16,8 +16,8 @@ struct Pair<A, B>:
 struct Money { cents: Int }
 
 enum Shape:
-  Circle { radius: Int }
-  Square { side: Int }
+  Circle(radius: Int)
+  Square(side: Int)
 
 async fn main():
   const pair: Pair<Int, String> = Pair{first: 1, second: 2}

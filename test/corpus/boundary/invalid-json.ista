@@ -20,7 +20,7 @@ fn toJson(self: Label) -> json.Json:
   json.encode(self.text)
 
 enum Event:
-  Typed { kind: String @JsonName{"_type"} }
+  Typed(kind: String @JsonName{"_type"})
 
 fn uses():
   const add = fn(n: Int): n + 1

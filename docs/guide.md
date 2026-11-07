@@ -117,8 +117,8 @@ const o4 = Order:                               # an indented value: one entry p
           qty: 2
 
 enum Decision:
-    Approved { by: String }
-    Rejected { by: String, reason: String }
+    Approved(by: String)
+    Rejected(by: String, reason: String)
     Expired
 ```
 

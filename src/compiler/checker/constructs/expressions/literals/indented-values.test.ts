@@ -74,7 +74,7 @@ describe('meaning by type: structs, variants, shapes, aliases and shared structs
 
   it('builds variants (bare and qualified), shapes, aliases of shapes, and shared structs via new T:', () => {
     const decls = lines(
-      'enum Decision { Approved { by: String, note: String = "ok" }, Rejected { by: String, reason: String } }',
+      'enum Decision { Approved(by: String, note: String = "ok"), Rejected(by: String, reason: String) }',
       'type Point = { x: Int, y: Int }',
       'shared struct Counter { count: Int, tag: String = "c" }',
     );

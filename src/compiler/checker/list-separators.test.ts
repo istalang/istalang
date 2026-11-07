@@ -19,7 +19,7 @@ describe('comma-separated declarations, constraints and mapped types (§4)', () 
       'struct Retry { times: Int = 3, backoff = times * 2 }',
       'struct Cell<T> { value: T, type Data = Array<T> }',
       'enum Color { Red, Green, Blue }',
-      'enum Decision { Rejected { by: String, reason: String }, Approved }',
+      'enum Decision { Rejected(by: String, reason: String), Approved }',
       'trait Shape { fn area(self: Self) -> Int, type Measure }',
       'struct Box { w: Int, h: Int, type Measure = Int }',
       'fn area(self: Box) -> Int: self.w * self.h',

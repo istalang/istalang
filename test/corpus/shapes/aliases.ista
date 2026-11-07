@@ -27,7 +27,7 @@ type Hue = Color
 type Tint = Hue
 
 enum Figure:
-  Square{side: Int}
+  Square(side: Int)
   Dot
 
 type Form = Figure

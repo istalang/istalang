@@ -14,8 +14,8 @@ import { checkerDiagnostics as reports } from './diagnostics/index.ts';
 const shapes = [
   'enum Color { Red, Green, Blue }',
   'enum Shape:',
-  '  Circle { radius: Int }',
-  '  Square { side: Int }',
+  '  Circle(radius: Int)',
+  '  Square(side: Int)',
   'struct Point { x: Int, y: Int }',
   'struct Box { opt: Int? }',
   '',

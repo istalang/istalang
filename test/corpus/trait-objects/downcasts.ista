@@ -10,7 +10,7 @@ struct Email { to: String }
 struct Sms { number: String }
 struct Marker {}
 enum Decision:
-  Approved { by: String }
+  Approved(by: String)
   Expired
 
 fn name(self: Email) -> String: self.to

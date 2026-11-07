@@ -215,7 +215,7 @@ const scenarios: readonly Scenario[] = [
     id: 'SD-03b',
     place: 'type',
     title: 'Variant payload field',
-    src: ['enum E:\n  A { x: ‸', 'enum E { A { x: Int, y: ‸'],
+    src: ['enum E:\n  A(x: ‸', 'enum E { A(x: Int, y: ‸'],
     where: 'top',
     expect: { has: ['Int', 'Pair'], lacks: ['plus', 'Red', 'let'] },
   },

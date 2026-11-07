@@ -52,8 +52,8 @@ shared struct Lease:
 enum Color { Red, Green, Blue }
 
 enum Decision:
-  Approved { by: String }
-  Rejected { by: String, reason: String }
+  Approved(by: String)
+  Rejected(by: String, reason: String)
   Expired
 
 struct Cfg:

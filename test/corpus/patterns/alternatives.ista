@@ -3,9 +3,9 @@
 # alternative binds the same names, from whichever matched first (§3.11).
 
 enum Shape:
-  Circle { radius: Int }
-  Square { side: Int }
-  Triangle { base: Int }
+  Circle(radius: Int)
+  Square(side: Int)
+  Triangle(base: Int)
 
 fn size(n: Int) -> String:
   match n:

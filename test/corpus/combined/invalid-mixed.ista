@@ -4,8 +4,8 @@
 # Mixed errors from three slices in one module: a `match` missing a variant, a comprehension body
 # capturing a `&`, and an unused Result.
 enum Shape:
-  Circle { r: Int }
-  Rect { w: Int, h: Int }
+  Circle(r: Int)
+  Rect(w: Int, h: Int)
 
 fn area(s: Shape) -> Int:
   match s:

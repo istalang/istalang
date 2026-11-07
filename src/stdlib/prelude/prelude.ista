@@ -51,14 +51,14 @@ type Optional<T> = T?
 fn Optional.default<T>() -> T?: none
 
 enum Result<T, E = Error>:
-  Ok { value: T }
-  Err { error: E }
+  Ok(value: T)
+  Err(error: E)
 
 # What a cursor gives each time it is called (§3.10): the next item, or that there are no more. An
 # enum of its own, never `T?`, since an item may itself be `none` and `T??` is `T?`, so a stored
 # `none` would read as the end.
 enum Step<T>:
-  Next { value: T }
+  Next(value: T)
   Done
 
 struct Error:

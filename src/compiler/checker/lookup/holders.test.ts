@@ -10,7 +10,7 @@ const two = zero + 2
 struct Tag { text: String }
 struct Point { x: Int, y: Int = zero }
 enum Shape:
-  Dot { size: Int = zero }
+  Dot(size: Int = zero)
 const label = "x"
 @Tag{label}
 fn f(a: Int, b: Int = zero) -> Int: a + b

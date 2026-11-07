@@ -4,8 +4,8 @@
 # after the `if`, and never through `or`.
 
 enum Shape:
-  Circle { radius: Int }
-  Square { side: Int }
+  Circle(radius: Int)
+  Square(side: Int)
 
 fn afterIf(shape: Shape) -> Int:
   if shape is Circle{radius}:

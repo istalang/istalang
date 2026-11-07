@@ -4,8 +4,8 @@
 # cases agree on its type, and the first case that matches decides.
 
 enum Decision:
-  Approved { by: String }
-  Rejected { by: String, reason: String }
+  Approved(by: String)
+  Rejected(by: String, reason: String)
   Expired
 
 struct Verdict { role: String, ok: Bool }

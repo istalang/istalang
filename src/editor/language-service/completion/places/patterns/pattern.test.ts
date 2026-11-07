@@ -174,8 +174,8 @@ describe('pattern completion offers what fits the matched value', () => {
 
 const decision = [
   'enum Decision:',
-  '  Approved { by: String }',
-  '  Rejected { by: String, reason: String }',
+  '  Approved(by: String)',
+  '  Rejected(by: String, reason: String)',
   '  Expired',
   '',
 ];

@@ -17,7 +17,7 @@ struct Token<T>:
 
 enum Stage<T>:
   type Value = T
-  Ready { item: Value }
+  Ready(item: Value)
   Empty
 
 struct Tag { text: String }

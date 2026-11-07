@@ -55,8 +55,8 @@ type DataOf<D> = match D:                                # type match: its first
     case _: D
 
 enum Result<T, E = Error>:
-    Ok { value: T }
-    Err { error: E }
+    Ok(value: T)
+    Err(error: E)
 enum Color { Red, Green, Blue }
 
 Pair{first: 1, second: 2, meta: struct{tag: "x"}}
@@ -923,7 +923,7 @@ for notifier in notifiers:
 | `Container<T, C = Self>` | `includes(self: C, item: T) -> Bool` | `x in c`, `x not in c` (§3.9) |
 | `Addable`, `Subtractable`, `Multipliable`, `Divisible`, `FloorDivisible`, `Negatable`, `Powerable`, `Bitwise`, `Shiftable`, `Comparable` | the functions in §3.9 | operators in generic code |
 
-**Iterable.** `for x in c` calls `iterate(c)` once, for a cursor: a function that gives a `Step<T>` each time it is called, `Next{(item)}` holding the next item, or `Done` once there are no more; the prelude declares `enum Step<T> { Next { value: T }, Done }`. A cursor gives a `Step` rather than a `T?` because an item may itself be `none` and `T??` is `T?` (§2): a `for` over an `Array<Int?>` holding `[1, none, 3]` runs three times. The loop calls the cursor until it gives `Done`, so any type can support `for` by declaring `iterate`, and a cursor that never gives `Done` runs for as long as the loop does. A cursor holds what it runs over as `iterate` was given it, a copy (§3.1), so changing `c` inside the loop doesn't affect the iteration. It is a plain function value (§3.14), kept in snapshots like any other, so a loop that waits mid-way keeps only the cursor's own state: a range's few ints, never its items. `Array<T>` is iterable as it is, `Map<K, V>` is `Iterable<(K, V)>` (so `for key, value in m:` works directly), a `String` gives its characters, and a `Range` with both ends is `Iterable<Int>` (so `for i in 0..10:` works). A type's `iterate` can hand over another's cursor, such as `self.items.iterate()`. `Array` and `Map` also satisfy `Indexable` and `IndexAssignable`: `Array<T>` with `Int` keys (and `Range` keys for slicing), `Map<K, V>` with `K`.
+**Iterable.** `for x in c` calls `iterate(c)` once, for a cursor: a function that gives a `Step<T>` each time it is called, `Next{(item)}` holding the next item, or `Done` once there are no more; the prelude declares `enum Step<T> { Next(value: T), Done }`. A cursor gives a `Step` rather than a `T?` because an item may itself be `none` and `T??` is `T?` (§2): a `for` over an `Array<Int?>` holding `[1, none, 3]` runs three times. The loop calls the cursor until it gives `Done`, so any type can support `for` by declaring `iterate`, and a cursor that never gives `Done` runs for as long as the loop does. A cursor holds what it runs over as `iterate` was given it, a copy (§3.1), so changing `c` inside the loop doesn't affect the iteration. It is a plain function value (§3.14), kept in snapshots like any other, so a loop that waits mid-way keeps only the cursor's own state: a range's few ints, never its items. `Array<T>` is iterable as it is, `Map<K, V>` is `Iterable<(K, V)>` (so `for key, value in m:` works directly), a `String` gives its characters, and a `Range` with both ends is `Iterable<Int>` (so `for i in 0..10:` works). A type's `iterate` can hand over another's cursor, such as `self.items.iterate()`. `Array` and `Map` also satisfy `Indexable` and `IndexAssignable`: `Array<T>` with `Int` keys (and `Range` keys for slicing), `Map<K, V>` with `K`.
 
 **Conversions.** `T(x)`, a type applied to one argument in parentheses, converts `x` to `T`. It is sugar for the static function `T.from(x)` that `Convertible<From, T = Self>` requires. It never clashes with construction, which uses braces. Only conversions that can't fail are written this way: `Float(3)`, `Int(3.7)` (which truncates toward zero) and `String(42)`. `String(x)` converts any `Stringable` value through its `toString`, the one place a type says how it is written. A float that is no number, NaN or an infinity, has no int, so `Int(x)` of one is a bug and panics (§3.12). Fallible ones are ordinary functions returning `Result`, such as `Int.parse("42")`, the `Parsable` requirement.
 
@@ -933,8 +933,8 @@ An enum is a type whose value is exactly one of several named variants, each wit
 
 ```python fragment
 enum Decision:
-    Approved { by: String }
-    Rejected { by: String, reason: String }
+    Approved(by: String)
+    Rejected(by: String, reason: String)
     Expired
 
 const text: String = match decision:
@@ -1024,8 +1024,8 @@ There is no `try`/`catch`. A function that can fail returns a `Result`, from the
 
 ```python fragment
 enum Result<T, E = Error>:
-    Ok { value: T }
-    Err { error: E }
+    Ok(value: T)
+    Err(error: E)
 
 struct Error:
     message: String

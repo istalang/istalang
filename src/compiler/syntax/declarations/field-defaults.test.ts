@@ -15,9 +15,9 @@ describe('fieldsFunctionOf', () => {
   it('qualifies enum variant field-default functions with their enum name', () => {
     const main = [
       'enum Shape:',
-      '  Circle { r: Int = 1 }',
+      '  Circle(r: Int = 1)',
       'enum Icon:',
-      '  Circle { r: Int = 2 }',
+      '  Circle(r: Int = 2)',
       'async fn main() -> Future<(Shape, Icon)>:',
       '  (Shape.Circle{}, Icon.Circle{})',
     ].join('\n');
@@ -47,7 +47,7 @@ describe('fieldsFunctionOf', () => {
         'struct Retry:',
         '  times: Int = 3',
         'enum Shape:',
-        '  Circle { r: Int = 1 }',
+        '  Circle(r: Int = 1)',
         'fn f(): 1',
       ].join('\n'),
     );
@@ -64,7 +64,7 @@ describe('fieldsFunctionOf', () => {
   it('walks as a node whose children are its parameters, never its owner', () => {
     const parsed = parseAs(
       'module',
-      ['struct Retry:', '  times: Int = 3', 'enum Shape:', '  Circle { r: Int = 1 }'].join('\n'),
+      ['struct Retry:', '  times: Int = 3', 'enum Shape:', '  Circle(r: Int = 1)'].join('\n'),
     );
     const root = parsed.node;
     if (root.kind !== 'Module') {

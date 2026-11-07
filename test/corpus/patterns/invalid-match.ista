@@ -5,8 +5,8 @@
 # A pattern its subject's type can't hold is only warned of, as it never runs (§3.11).
 
 enum Decision:
-  Approved { by: String }
-  Rejected { by: String, reason: String }
+  Approved(by: String)
+  Rejected(by: String, reason: String)
   Expired
 
 fn missing(decision: Decision) -> String:

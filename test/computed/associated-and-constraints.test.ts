@@ -36,8 +36,8 @@ const assocDecls = [
   'enum Outcome<T>:',
   '  type Payload = T',
   '  type Tag = "ok" | "err"',
-  '  Done { value: Payload, tag: Tag }',
-  '  Failed { reason: String }',
+  '  Done(value: Payload, tag: Tag)',
+  '  Failed(reason: String)',
 ];
 
 describe('associated types on structs, enums, and traits (§1)', () => {

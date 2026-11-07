@@ -193,7 +193,7 @@ describe('completion in indented values and after separating line breaks (notes 
   });
 
   it("offers a value's names, its variants among them, where an indented value names its type", () => {
-    const paint = ['enum Paint:', '  Red { shade: Int }', '  Blue { shade: Int }', ''];
+    const paint = ['enum Paint:', '  Red(shade: Int)', '  Blue(shade: Int)', ''];
     expect(completedNames(...paint, 'fn f() -> Paint:', '  return Re‸:', '    shade: 1')).toEqual(
       expect.arrayContaining(['Red', 'Blue']),
     );

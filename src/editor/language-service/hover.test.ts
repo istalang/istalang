@@ -124,7 +124,7 @@ describe('hover', () => {
         '    case Green: 2',
       )?.code,
     ).toEqual([shown]);
-    const opt = ['enum Opt<T>:', '  Some { value: T }', '  None', ''];
+    const opt = ['enum Opt<T>:', '  Some(value: T)', '  None', ''];
     expect(hover(...opt, 'fn f() -> Opt<Int>: So‸me{value: 1}')?.code).toEqual([
       '(variant) Some: Opt<Int>',
     ]);

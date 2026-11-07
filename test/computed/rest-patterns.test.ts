@@ -149,7 +149,7 @@ describe('where a rest stands', () => {
     ).toEqual([2034]);
     expect(
       codesOf(
-        'enum Shape { Circle { radius: Int }, Square { side: Int } }',
+        'enum Shape { Circle(radius: Int), Square(side: Int) }',
         'fn f(s: Shape) -> Int:',
         '  match s:',
         '    case Circle{...rest}: 1',

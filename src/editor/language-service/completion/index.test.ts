@@ -223,8 +223,8 @@ describe('completion', () => {
   it("offers a variant literal's and a shared struct literal's fields", () => {
     const decision = [
       'enum Decision:',
-      '  Approved { by: String }',
-      '  Rejected { by: String, reason: String }',
+      '  Approved(by: String)',
+      '  Rejected(by: String, reason: String)',
       '',
     ];
     expect(fields(...decision, 'fn f() -> Decision: Rejected{by: "x", ‸}')).toEqual(['reason']);
@@ -269,7 +269,7 @@ describe('completion', () => {
   });
 
   it("writes a call's parentheses or a variant's braces only where none follow", () => {
-    const decision = ['enum Decision:', '  Approved { by: String }', '  Expired', ''];
+    const decision = ['enum Decision:', '  Approved(by: String)', '  Expired', ''];
     const inserted = (...lines: readonly string[]) => {
       const { program, module, offset } = programAt(...decision, ...lines);
       return new Map(
