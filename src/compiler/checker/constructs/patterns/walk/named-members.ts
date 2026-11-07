@@ -15,11 +15,13 @@ import type { Type, UnionType } from '../../../types/type/index.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { baseOf } from '../../../types/unions/union-members.ts';
 import {
+  type GenericDeclaration,
   instancesNamed,
   membersNamed,
   membersOfType,
   type PatternType,
   patternTypeOf,
+  variantEnums,
   variantOwners,
 } from '../../../types/written/pattern-types.ts';
 import { typeOfEntity } from '../../../types/written/resolve-type.ts';
@@ -90,22 +92,21 @@ function instanceNamed(
   const instances = instancesNamed(scope, entity, named, given);
   if (instances === undefined) {
     const { text } = lastName(written.path);
-    const declared = typeParameterCount(pattern, named);
+    const declared = typeParameterCount(pattern, variantEnums(entity, named));
     scope.report(checkerDiagnostics.typeArgumentCount(written.span, text, declared, given.length));
   }
   return instances;
 }
 
 /**
- * How many type arguments what a pattern names takes, as a message says: its declaration's, or the
- * enum's owning a variant among `owners`.
+ * How many type arguments what a pattern names takes, as a message says: its declaration's, or a
+ * variant's enum's, the first of `enums` (`variantEnums`).
  */
-function typeParameterCount(pattern: PatternType, owners: readonly Type[]): number {
+function typeParameterCount(pattern: PatternType, enums: readonly GenericDeclaration[]): number {
   if (pattern.kind === 'generic' || pattern.kind === 'genericAlias') {
     return pattern.declaration.typeParameters.length;
   }
-  const [owner] = owners;
-  return owner?.kind === 'nominal' ? owner.entity.declaration.typeParameters.length : 0;
+  return enums[0]?.typeParameters.length ?? 0;
 }
 
 /** A name a pattern writes, with the type arguments written after it. */

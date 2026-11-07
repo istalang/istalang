@@ -177,16 +177,12 @@ export function chooseVariant(
 /**
  * How the module `context` checks can qualify a bare variant: through each enum having one of its
  * name that the module's top level names, so a message suggests only what it can write, whatever
- * other modules declare.
+ * other modules declare (`variantsQualifiableIn`).
  */
 function qualifiedHere(context: BodyContext, naming: VariantsEntity): readonly string[] {
-  const { bindings } = context.checker;
-  return bindings.candidatesOf(naming).flatMap((candidate) => {
-    const named = bindings.topLevelNamed(context.module, candidate.enum.name.text);
-    return named?.kind === 'type' && named.declaration === candidate.enum
-      ? [staticName(candidate.enum.name.text, candidate.variant.name.text)]
-      : [];
-  });
+  return context.checker.inputs
+    .variantsQualifiableIn(context.module, naming.name)
+    .map((candidate) => staticName(candidate.enum.name.text, candidate.variant.name.text));
 }
 
 /** The struct without fields `entity` names, the one type a bare name makes a value of (§3.1). */

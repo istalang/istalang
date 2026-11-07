@@ -48,6 +48,7 @@ import {
 } from '../../../surface/checked-pattern.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType, isPrimitive, neverType } from '../../../types/type/primitives.ts';
+import { namesOwnType } from '../../../types/written/pattern-types.ts';
 import { anyShape, nothingShape, type Shape } from '../exhaustiveness/exhaustiveness.ts';
 import { partSelected, sameNames } from './kinds/alternatives.ts';
 import { takeArray } from './kinds/arrays.ts';
@@ -208,9 +209,11 @@ function takeMatched(walk: Walk, written: Pattern | PatternPart, part: ValuePart
 }
 
 /**
- * `node`, a call pattern naming no variant, reported (`calledVariant`): it takes anything, as any
- * pattern refused after a report does, and binds its names at the error type; undefined for any
- * other pattern.
+ * `node`, a call pattern naming no variant, reported (`calledVariant`); undefined for any other
+ * pattern. Its arguments are each taken over the error type, so their names bind and what they
+ * compare with is checked, in a target only bound, which must always match. Naming its value's own
+ * type, it meant the value whole, so it covers it and nothing more is reported of its `match`;
+ * naming any other, it covers nothing.
  */
 function refusedCall(
   walk: Walk,
@@ -220,8 +223,16 @@ function refusedCall(
   if (node.kind !== 'VariantCallPattern' || calledVariant(walk.scope, node) !== undefined) {
     return undefined;
   }
-  bindAt(walk, node, part, errorType);
-  return { shape: anyShape, part };
+  if (walk.tests === undefined) {
+    bindAt(walk, node, part, errorType);
+  } else {
+    for (const argument of node.arguments) {
+      walk.take(argument, { type: errorType, path: part.path });
+    }
+  }
+  const entity = walk.scope.entityOf(lastName(node.callee.path));
+  const covers = entity !== undefined && namesOwnType(walk.scope, entity, part.type);
+  return { shape: covers ? anyShape : undefined, part };
 }
 
 /**

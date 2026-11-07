@@ -74,7 +74,7 @@ export interface VariantCallPattern extends NodeOf<'VariantCallPattern'> {
 export type PatternArgument = Pattern | RestPattern | NamedPatternArgument | OtherFieldsPattern;
 
 /** `by: "legal"` in a call pattern: the field of its name, matched against `pattern`. */
-interface NamedPatternArgument extends NodeOf<'NamedPatternArgument'> {
+export interface NamedPatternArgument extends NodeOf<'NamedPatternArgument'> {
   readonly name: Identifier;
   readonly pattern: Pattern;
 }

@@ -144,6 +144,11 @@ describe('binding spreads', () => {
     ]);
   });
 
+  it('names the parameter a spread passes over, since no count of arguments says it', () => {
+    const slots = slotsOf(2, 0, true);
+    expect(bindArguments(slots, [{}, { isSpread: true }])).toEqual({ kind: 'missing', name: 'p1' });
+  });
+
   it('refuses a spread with no rest parameter to fill', () => {
     expect(bindArguments(slotsOf(2, 1, false), [{ isSpread: true }])).toEqual({ kind: 'spread' });
   });

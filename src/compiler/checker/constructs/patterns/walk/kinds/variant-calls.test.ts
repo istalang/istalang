@@ -4,6 +4,7 @@
  * then by name in any order, fields a call may leave out left, a last `...` leaving any, a spread
  * taking the rest field, items past the fixed fields matching the rest's), a call pattern matches
  * what the brace pattern naming the same fields matches, over generated values, and binds the same.
+ * Each mistake in one is reported once, with nothing more of what it refused.
  */
 
 import fc from 'fast-check';
@@ -11,6 +12,7 @@ import { describe, expect, it } from 'vitest';
 import { decodeJson } from '../../../../../../definition/formats/codec.ts';
 import { startToEnd, testRuntime } from '../../../../../../runtime/runtime.test-kit.ts';
 import { compiledText } from '../../../../../compile.test-kit.ts';
+import { reported } from '../../../../check.test-kit.ts';
 
 /** A variant of Int fields, the first `required` without a default, maybe ending in a rest. */
 interface GeneratedVariant {
@@ -103,16 +105,25 @@ function itemsOf(rest: Extract<RestMatch, { kind: 'items' }>): readonly string[]
   ];
 }
 
-/** How a rest is matched, as a call pattern's arguments and as a brace pattern's items. */
-function restForms(rest: RestMatch): {
+/**
+ * How a rest is matched, as a call pattern's arguments and as a brace pattern's items: a call
+ * pattern's last `...` leaves the items past those it matches, as an array pattern's `..._` does.
+ */
+function restForms(
+  rest: RestMatch,
+  leavesOthers: boolean,
+): {
   readonly call: readonly string[];
   readonly brace: readonly string[];
 } {
   switch (rest.kind) {
     case 'spread':
       return { call: ['...all'], brace: ['more as all'] };
-    case 'items':
-      return { call: itemsOf(rest), brace: [`more is [${itemsOf(rest).join(', ')}]`] };
+    case 'items': {
+      const items = itemsOf(rest);
+      const open = leavesOthers && !rest.tail ? ['..._'] : [];
+      return { call: items, brace: [`more is [${[...items, ...open].join(', ')}]`] };
+    }
     default:
       return { call: [], brace: [] };
   }
@@ -120,14 +131,16 @@ function restForms(rest: RestMatch): {
 
 /** The names a pattern binds, in field order, then the rest's: `r0`…, `tail` or `all`. */
 function boundNames(pattern: GeneratedPattern): readonly string[] {
-  const rest = restForms(pattern.rest).call.map((item) => item.replace('...', ''));
+  const rest = restForms(pattern.rest, pattern.leavesOthers).call.map((item) =>
+    item.replace('...', ''),
+  );
   return [...givenFields(pattern).map((field) => `p${field}`), ...rest];
 }
 
 function callPattern(pattern: GeneratedPattern): string {
   const given = [
     ...Array.from({ length: pattern.positional }, (_, index) => `p${index}`),
-    ...restForms(pattern.rest).call,
+    ...restForms(pattern.rest, pattern.leavesOthers).call,
     ...pattern.named.map((field) => `f${field}: p${field}`),
     ...(pattern.leavesOthers ? ['...'] : []),
   ];
@@ -136,7 +149,7 @@ function callPattern(pattern: GeneratedPattern): string {
 
 function bracePattern(pattern: GeneratedPattern): string {
   const fixed = givenFields(pattern).map((field) => `f${field} as p${field}`);
-  return `E.V{${[...fixed, ...restForms(pattern.rest).brace].join(', ')}}`;
+  return `E.V{${[...fixed, ...restForms(pattern.rest, pattern.leavesOthers).brace].join(', ')}}`;
 }
 
 /** A value of the variant: each field's Int, and the rest's items when it has one. */
@@ -209,5 +222,75 @@ describe('a call pattern', () => {
       ),
       { numRuns: 40 },
     );
+  });
+});
+
+const declarations = [
+  'enum Verdict { Approved, Rejected(by: String, reason: String) }',
+  'enum Node { Text(value: String), Group(title: String, open: Bool = false, ...children: Array<Node>) }',
+  'enum Wide { Many(a: Int, b: Int, ...more: Array<Int>), Few }',
+  'enum Opt<T> { Some(value: T), Nothing }',
+  'struct Point { x: Int, y: Int }',
+];
+
+/** A function matching `subject` by `cases`, giving a `result`, beside the enums above. */
+function matching(subject: string, result: string, cases: readonly string[]): string {
+  return [
+    ...declarations,
+    `fn f(v: ${subject}) -> ${result}:`,
+    '  match v:',
+    ...cases.map((each) => `    ${each}`),
+  ].join('\n');
+}
+
+describe('a call pattern reports each mistake once', () => {
+  it.each([
+    [
+      'a field a spread passes over',
+      matching('Wide', 'Int', ['case Many(1, ...more): 1', 'case _: 0']),
+      [5428],
+      ['Many(1, ...more)'],
+    ],
+    [
+      'an argument by position after one by name',
+      matching('Verdict', 'String', ['case Rejected(by: "a", r): r', 'case _: ""']),
+      [2050],
+      ['r'],
+    ],
+    [
+      'a second spread',
+      matching('Node', 'Array<Node>', ['case Node.Group(t, ...one, ...two): two', 'case _: []']),
+      [2071],
+      ['...two'],
+    ],
+    [
+      "an array pattern's second rest",
+      matching('Array<Int>', 'Array<Int>', ['case [t, ...one, ...two]: two', 'case _: []']),
+      [2071],
+      ['...two'],
+    ],
+    [
+      'a variant of an enum the matched union lacks, with its type arguments',
+      matching('Int | String', 'Int', ['case Opt.Some<Int>(n): n', 'case _: 0']),
+      [5422],
+      ['Opt.Some<Int>(n)'],
+    ],
+    [
+      'a struct named against an enum',
+      matching('Verdict', 'Int', [
+        'case Point(x, y): 1',
+        'case Approved: 2',
+        'case Rejected(by, r): 3',
+      ]),
+      [5426],
+      ['Point'],
+    ],
+  ])('%s', (_, text, codes, spanTexts) => {
+    expect(reported(text)).toEqual({ codes, spanTexts });
+  });
+
+  it('takes no argument the parser recovered for a field', () => {
+    const text = matching('Verdict', 'String', ['case Rejected(by, reason, +): by', 'case _: ""']);
+    expect(reported(text).codes.every((code) => code < 3000)).toBe(true);
   });
 });

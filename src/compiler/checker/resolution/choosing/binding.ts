@@ -9,8 +9,8 @@
  *   parameter to collect it, or a positional argument past the last parameter, doesn't fit.
  * - A named argument fills the parameter of its name, the rest parameter taking a whole array. A
  *   method's `self` has no name to give (§3.7), and a parameter can be given only once.
- * - Every parameter left out takes its default; one without a default makes the call not fit, and
- *   a rest parameter nothing fills is empty.
+ * - Every parameter left out takes its default; one without a default makes the call not fit, named
+ *   where a name or a spread is given, else counted, and a rest parameter nothing fills is empty.
  * - A function named as a value is bound as its type calls it (`bindValue`): by position, its rest
  *   parameter one array, its trailing parameters left to their defaults (§3.14).
  * - A pack's rest parameter (§3.5) collects as an array's does, by position only, since its
@@ -83,7 +83,9 @@ export const bindArguments: Binder = (slots, callArguments) => {
     return byPosition;
   }
   const byName = bindByName(slots, byPosition, named);
-  return isBinding(byName) ? filled(slots, byName, named.length > 0) : byName;
+  // Past a spread or a name, a count of positional arguments says nothing of what is missing.
+  const spreads = positional.some(({ argument }) => argument.isSpread === true);
+  return isBinding(byName) ? filled(slots, byName, named.length > 0 || spreads) : byName;
 };
 
 /**
@@ -168,18 +170,19 @@ function bindByName(
 
 /**
  * `sources`, every parameter still unfilled taking its default, a rest parameter an empty array,
- * or why one can't.
+ * or why one can't: the parameter missing, where the arguments aren't all by position (`byName`,
+ * a name or a spread among them), else their count.
  */
 function filled(
   slots: readonly BoundSlot[],
   sources: Sources,
-  isNamed: boolean,
+  byName: boolean,
 ): Binding | BindingFailure {
   const binding: Binding[number][] = [];
   for (const [index, slot] of slots.entries()) {
     const source = sources[index] ?? unfilled(slot);
     if (source === undefined) {
-      return isNamed && slot.name !== undefined
+      return byName && slot.name !== undefined
         ? { kind: 'missing', name: slot.name }
         : arityOf(slots);
     }

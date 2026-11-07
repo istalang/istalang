@@ -36,7 +36,7 @@ import { hasMember } from '../unions/unions.ts';
 import { type Aliases, entityType } from './named-types.ts';
 
 /** A generic type a pattern names: a nominal one. */
-type GenericDeclaration = NominalDeclaration;
+export type GenericDeclaration = NominalDeclaration;
 
 /** The type a pattern naming an entity tests a value for. */
 export type PatternType =
@@ -223,7 +223,7 @@ function instancesWith(
 /**
  * The members among `named`, those a pattern naming `entity` selects (`membersNamed`), that type
  * arguments `given` instantiate (§3.11): a generic type's instances with them, a variant's its
- * enum's; undefined when what `entity` names takes no such arguments.
+ * enum's (`variantEnums`); undefined when what `entity` names takes no such arguments.
  */
 export function instancesNamed(
   checker: Aliases,
@@ -232,7 +232,11 @@ export function instancesNamed(
   given: readonly Type[],
 ): readonly Type[] | undefined {
   if (entity.kind === 'variant' || entity.kind === 'variants') {
-    return variantInstancesWith(named, given);
+    const enums = variantEnums(entity, named);
+    const taking = enums.filter((owner) => owner.typeParameters.length === given.length);
+    return enums.length > 0 && taking.length === 0
+      ? undefined
+      : taking.flatMap((owner) => instancesWith(named, owner, given));
   }
   const pattern = patternTypeOf(checker, entity);
   return pattern.kind === 'generic' && pattern.declaration.typeParameters.length === given.length
@@ -241,22 +245,26 @@ export function instancesNamed(
 }
 
 /**
- * The members among `owners`, enums declaring a variant a pattern names, whose enum `typeArguments`
- * instantiate: those of each owning enum taking that many; undefined when none takes them.
+ * The enums a pattern naming `entity` means a variant of: a qualified variant's own enum, whatever
+ * is matched, or the enums among `owners`, the members having a variant of that name, for a bare
+ * one; none for an entity naming no variant.
  */
-function variantInstancesWith(
+export function variantEnums(
+  entity: Entity,
   owners: readonly Type[],
-  typeArguments: readonly Type[],
-): readonly Type[] | undefined {
-  const enums = new Set(
-    owners.flatMap((owner) => (owner.kind === 'nominal' ? [owner.entity.declaration] : [])),
-  );
-  const taking = [...enums].filter(
-    (declaration) => declaration.typeParameters.length === typeArguments.length,
-  );
-  return taking.length === 0
-    ? undefined
-    : taking.flatMap((declaration) => instancesWith(owners, declaration, typeArguments));
+): readonly GenericDeclaration[] {
+  switch (entity.kind) {
+    case 'variant':
+      return [entity.enum];
+    case 'variants':
+      return [
+        ...new Set(
+          owners.flatMap((owner) => (owner.kind === 'nominal' ? [owner.entity.declaration] : [])),
+        ),
+      ];
+    default:
+      return [];
+  }
 }
 
 /**

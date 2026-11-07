@@ -24,6 +24,7 @@ import { unreachable } from '../../../../../../foundation/structures/unreachable
 import type { VariantNaming } from '../../../../../binder/entities.ts';
 import { hasDefault, isRestField } from '../../../../../syntax/declarations/index.ts';
 import type {
+  NamedPatternArgument,
   OtherFieldsPattern,
   PatternArgument,
   VariantCallPattern,
@@ -48,8 +49,6 @@ import { type ItemTaking, takeArray } from './arrays.ts';
 
 /** A call pattern's argument that binds to a field: any but a last `...`. */
 type BoundPatternArgument = Exclude<PatternArgument, OtherFieldsPattern>;
-
-type NamedArgument = Extract<PatternArgument, { readonly kind: 'NamedPatternArgument' }>;
 
 /**
  * The variant `node` names; undefined after reporting that it names something else, or for a name
@@ -93,19 +92,18 @@ export function takeVariantCall(
   if (naming?.kind !== 'variant' && naming?.kind !== 'variants') {
     return unreachable('A call pattern naming no variant is refused before it is taken.');
   }
-  const given = node.arguments.filter(
-    (argument): argument is BoundPatternArgument => argument.kind !== 'OtherFieldsPattern',
-  );
+  const { given, refused } = argumentsOf(node);
   const variant = tests.variant(node.callee, naming, part);
+  for (const argument of variant === undefined ? [...given, ...refused] : refused) {
+    walk.take(argument, { type: errorType, path: part.path });
+  }
   if (variant === undefined) {
-    for (const argument of given) {
-      walk.take(argument, { type: errorType, path: part.path });
-    }
     return anyShape;
   }
   walk.found.push(variant.test);
-  const leavesOthers = given.length < node.arguments.length;
-  const slots = variant.fields.map((field) => slotOf(field, leavesOthers));
+  const leavesOthers = node.arguments.some(({ kind }) => kind === 'OtherFieldsPattern');
+  // Past an argument the parser refused, no field is missing: it may have meant to give it.
+  const slots = variant.fields.map((field) => slotOf(field, leavesOthers || refused.length > 0));
   const call: BoundCall = { node, given, slots, leavesOthers };
   const binding = bindArguments(slots, given.map(boundArgument));
   if (!isBinding(binding)) {
@@ -120,6 +118,31 @@ export function takeVariantCall(
     takeField(walk, tests, { call, field, source: binding[index] }, fieldPart(part, field, index)),
   );
   return constructed(variant.key, shapes);
+}
+
+/**
+ * A call pattern's arguments as binding takes them: those it binds, and those the parser refused
+ * (one it recovered, one by position after one by name, a second spread), which bind nothing, so
+ * nothing more is reported of them; a last `...` is neither.
+ */
+function argumentsOf(node: VariantCallPattern): {
+  readonly given: readonly BoundPatternArgument[];
+  readonly refused: readonly BoundPatternArgument[];
+} {
+  const bound = node.arguments.filter(
+    (argument): argument is BoundPatternArgument => argument.kind !== 'OtherFieldsPattern',
+  );
+  const named = bound.findIndex(({ kind }) => kind === 'NamedPatternArgument');
+  const spread = bound.findIndex(({ kind }) => kind === 'RestPattern');
+  const isRefused = (argument: BoundPatternArgument, index: number) =>
+    argument.kind === 'Invalid' ||
+    argument.kind === 'Missing' ||
+    (argument.kind !== 'NamedPatternArgument' && named !== -1 && index > named) ||
+    (argument.kind === 'RestPattern' && index !== spread);
+  return {
+    given: bound.filter((argument, index) => !isRefused(argument, index)),
+    refused: bound.filter(isRefused),
+  };
 }
 
 /** The parameter a field is to a call pattern's arguments: one it may leave out, if `leaves`. */
@@ -266,7 +289,7 @@ function failureReport(
   // The last argument naming the field: the one a field given before it is given twice by.
   const namedAt = (field: string) =>
     given.findLast(
-      (argument): argument is NamedArgument =>
+      (argument): argument is NamedPatternArgument =>
         argument.kind === 'NamedPatternArgument' && argument.name.text === field,
     )?.name.span ?? node.span;
   switch (failure.kind) {
@@ -280,8 +303,10 @@ function failureReport(
           positional.length,
         );
       }
+      const byPosition = given.findIndex(({ kind }) => kind === 'RestPattern');
+      const fixedGiven = byPosition === -1 ? positional.length : byPosition;
       const missing = slots.findIndex(
-        (slot, index) => index >= positional.length && !slot.hasDefault && slot.rest === undefined,
+        (slot, index) => index >= fixedGiven && !slot.hasDefault && slot.rest === undefined,
       );
       return checkerDiagnostics.callPatternMissing(
         node.span,

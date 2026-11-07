@@ -31,7 +31,12 @@ export function takeArray(
   const array = tests.array(items, part);
   const restAt = elements.findIndex((element) => element.kind === 'RestPattern');
   const prefix = restAt < 0 ? elements : elements.slice(0, restAt);
-  const suffix = restAt < 0 ? [] : elements.slice(restAt + 1);
+  const later = restAt < 0 ? [] : elements.slice(restAt + 1);
+  const suffix = later.filter((element) => element.kind !== 'RestPattern');
+  // A second rest, which the parser refused, takes no items: it binds its name at the error type.
+  for (const extra of later.filter((element) => element.kind === 'RestPattern')) {
+    walk.take(extra, { type: errorType, path: part.path });
+  }
   const item = (offset: number): ValuePart => ({
     type: array?.items ?? errorType,
     path: [...part.path, { kind: 'item', site, offset }],

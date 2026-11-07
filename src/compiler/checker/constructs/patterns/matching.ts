@@ -137,9 +137,9 @@ function arrayTest(
     context.report(checkerDiagnostics.notArrayPattern(site.span, typeText(part.type)));
     return undefined;
   }
-  const restElement = elements.some((element) => element.kind === 'RestPattern');
-  const hasRest = restElement || isOpen;
-  const count = elements.length - (restElement ? 1 : 0);
+  const matched = elements.filter((element) => element.kind !== 'RestPattern');
+  const hasRest = matched.length < elements.length || isOpen;
+  const count = matched.length;
   const call = (role: ImplicitRole, name: string, types: readonly Type[], expected?: Type) =>
     preludeCall(context, {
       node: site,

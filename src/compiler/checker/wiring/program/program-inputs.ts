@@ -9,8 +9,9 @@
  * - Every Bindings answer is an input too. Entities compare by identity, which holds across
  *   revisions for every node a revision's tree kept (binder/entities.ts); lists and maps compare
  *   item by item.
- * - A bare variant is read as the one its expected type chooses, not as every variant so named, so
- *   an enum added elsewhere changes only the entries whose choice it changes.
+ * - A bare variant is read as the one its expected type chooses, not as every variant so named, and
+ *   one no enum is expected of as those its module can qualify it through, so an enum added
+ *   elsewhere changes only the entries whose choice it changes.
  * - Which module declares each declaration is an input too (`DeclaringModules`): an item, a trait's
  *   member, a function the fields of an item read as (syntax/declarations/field-defaults.ts), which
  *   no tree holds, and the type parameters of each, whose constraints resolve there. What a tree
@@ -76,6 +77,15 @@ export function programInputs(
         bindings
           .candidatesOf({ kind: 'variants', name })
           .find((candidate) => enums.includes(candidate.enum)),
+    }),
+    variantsQualifiableIn: entries.input({
+      name: 'variants qualifiable in',
+      read: (module: ModuleId, name: string): readonly VariantEntity[] =>
+        bindings.candidatesOf({ kind: 'variants', name }).filter((candidate) => {
+          const named = bindings.topLevelNamed(module, candidate.enum.name.text);
+          return named?.kind === 'type' && named.declaration === candidate.enum;
+        }),
+      equal: sameItems(),
     }),
   };
 }

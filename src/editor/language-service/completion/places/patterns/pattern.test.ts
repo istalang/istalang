@@ -200,6 +200,9 @@ describe('a pattern place', () => {
     const called = labelsAt(...cases, '    case Appr‸(by): 1');
     expect(called).toContain('Approved');
     expect(called).toEqual(labelsAt(...cases, '    case Appr‸{by}: 1'));
+    const qualified = labelsAt(...cases, '    case Decision.‸(by): 1');
+    expect(qualified).toContain('Approved');
+    expect(qualified).toEqual(labelsAt(...cases, '    case Decision.‸{by}: 1'));
   });
 
   it("reads the type a tuple's element, an array's item or a nested field matches", () => {

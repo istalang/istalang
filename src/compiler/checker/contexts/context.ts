@@ -107,6 +107,11 @@ export interface ProgramInputs {
     name: string,
     enums: readonly EnumDeclaration[],
   ) => VariantEntity | undefined;
+  /**
+   * The variants named `name` whose enum `module`'s top level names, through which a bare one there
+   * can be qualified: a module's own answer, whatever enums other modules declare.
+   */
+  readonly variantsQualifiableIn: (module: ModuleId, name: string) => readonly VariantEntity[];
 }
 
 /**
