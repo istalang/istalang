@@ -7,7 +7,9 @@
  * - a type and a static function (`Duration.zero()`, `T.zero()`, `time.Duration.zero()`);
  * - a type alone, a conversion (`Float(3)`), which calls the type's static `from` (§3.10);
  * - a variant with fields, bare or qualified (`Ok(v)`, `Verdict.Rejected(by: "legal")`), which
- *   calls its constructor (structs/variants.ts, §3.11).
+ *   calls its constructor (structs/variants.ts, §3.11). Its one candidate's parameters are its
+ *   fields, so once its type arguments are known (written, or the expected enum's), each argument
+ *   is checked against its field's type, as a literal's field is (`variantFieldTypes`).
  *
  * - a method called on a receiver (`x.f()`): a function whose first parameter is `self`, found by
  *   its name where the call is written and through the receiver's type (argument-dependent
@@ -64,19 +66,21 @@ import { namedType } from '../../types/written/named-types.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import { readsNothing, recordFieldRead } from './access/member-access.ts';
 import { spreadArgumentType } from './collections/collections.ts';
-import { checkVariantCall } from './structs/variants.ts';
+import { checkVariantCall, variantFieldTypes } from './structs/variants.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const misplaced = misplacedArgument(node.arguments);
+  const typeArguments =
+    node.typeArguments.length === 0
+      ? undefined
+      : node.typeArguments.map((argument) => context.resolveType(argument));
+  const fieldTypes = variantFieldTypes(context, node, expected, typeArguments);
   const call: WrittenCall = {
     node,
     expected,
-    typeArguments:
-      node.typeArguments.length === 0
-        ? undefined
-        : node.typeArguments.map((argument) => context.resolveType(argument)),
-    written: node.arguments.map((argument) => {
-      const written = writtenArgument(context, argument);
+    typeArguments,
+    written: node.arguments.map((argument, index) => {
+      const written = writtenArgument(context, argument, fieldTypes?.[index]);
       return argument === misplaced ? { ...written, type: errorType } : written;
     }),
   };
@@ -114,7 +118,15 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
  * read once those whose types only checking tells are checked (`argumentPart`). A named argument
  * is its value, named.
  */
-function writtenArgument(context: BodyContext, argument: CallArgument): WrittenArgument {
+/**
+ * A call's argument as choosing takes it; one whose parameter's type is known before choosing,
+ * `known` (a variant's field, `variantFieldTypes`), is checked against it.
+ */
+function writtenArgument(
+  context: BodyContext,
+  argument: CallArgument,
+  known: Type | undefined,
+): WrittenArgument {
   switch (argument.kind) {
     case 'Spread':
       return {
@@ -124,19 +136,26 @@ function writtenArgument(context: BodyContext, argument: CallArgument): WrittenA
         isSpread: true,
       };
     case 'NamedArgument':
-      return { ...valueArgument(context, argument.value), name: argument.name };
+      return { ...valueArgument(context, argument.value, known), name: argument.name };
     default:
-      return valueArgument(context, argument);
+      return valueArgument(context, argument, known);
   }
 }
 
-function valueArgument(context: BodyContext, argument: Expression): WrittenArgument {
+function valueArgument(
+  context: BodyContext,
+  argument: Expression,
+  known: Type | undefined,
+): WrittenArgument {
   if (argument.kind === 'Reference') {
     const type = checkChangedPlace(context, argument.expression, 'referenced');
     return { node: argument, passing: 'reference', type };
   }
-  const part = context.argumentPart(argument);
   const literal = writtenLiteral(unparenthesized(argument));
+  if (known !== undefined) {
+    return { node: argument, passing: 'value', type: context.expression(argument, known), literal };
+  }
+  const part = context.argumentPart(argument);
   if (part.kind === 'decided') {
     return { node: argument, passing: 'value', type: undefined, literal, accepts: part.accepts };
   }

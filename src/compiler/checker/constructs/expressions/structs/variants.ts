@@ -6,7 +6,9 @@
  *   it is the same enum, else from the fields and defaults (literal-fields.ts).
  * - A variant with fields is a function of its enum, its constructor (§3.11,
  *   syntax/declarations/field-defaults.ts): a call binds its arguments to the fields as any call's
- *   to parameters (§3.3), and builds what the literal with those fields builds. Named without a
+ *   to parameters (§3.3), and builds what the literal with those fields builds. Once its type
+ *   arguments are known before its arguments, each argument is checked against its field's type,
+ *   as the literal's fields are (`variantFieldTypes`). Named without a
  *   call, it is that function as a value (§3.14, closures/function-values.ts) wherever no enum is
  *   expected of it: qualified, or bare where an expected function type's result gives its enum.
  *   A variant without fields is a value, so `Expired()` is `Expired`.
@@ -18,24 +20,34 @@
  */
 
 import { staticName } from '../../../../../foundation/language/static-names.ts';
-import type { Entity, VariantNaming, VariantsEntity } from '../../../../binder/entities.ts';
+import type {
+  Entity,
+  VariantEntity,
+  VariantNaming,
+  VariantsEntity,
+} from '../../../../binder/entities.ts';
 import {
   declaredFunctionName,
   fieldsFunctionOf,
 } from '../../../../syntax/declarations/field-defaults.ts';
-import type { EnumDeclaration } from '../../../../syntax/declarations/index.ts';
+import { type EnumDeclaration, typeParametersOf } from '../../../../syntax/declarations/index.ts';
 import type { Call, FieldsLiteral, MemberAccess } from '../../../../syntax/expressions/index.ts';
 import { type Identifier, lastName } from '../../../../syntax/tree/node.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { resolveCall, type WrittenArgument } from '../../../resolution/calls/resolve.ts';
+import { bindArguments, isBinding } from '../../../resolution/choosing/binding.ts';
+import type { SignatureSlot } from '../../../resolution/choosing/call-arguments.ts';
+import { signatureOf } from '../../../resolution/choosing/choice.ts';
 import { functionsAccepted, namedFunctions } from '../../../resolution/choosing/named-functions.ts';
+import type { Binding } from '../../../surface/resolved-call.ts';
 import {
   enumsExpected,
   expectedNominal,
   sameNominal,
   writtenNominal,
 } from '../../../types/fitting/expected.ts';
+import { substitutionFor } from '../../../types/parts/substitution.ts';
 import { type NominalType, nominalType, type Type } from '../../../types/type/index.ts';
 import { errorType, noneType } from '../../../types/type/primitives.ts';
 import { membersOf } from '../../../types/unions/unions.ts';
@@ -205,6 +217,84 @@ export function checkVariantCall(
     return expectedNominal(context, callee.span, entity, call.expected);
   }
   return writtenNominal(context, call.node.span, entity, call.typeArguments);
+}
+
+/**
+ * By argument written, the type of the field each argument of a call of a variant with fields gives
+ * (§3.11), once the enum's type arguments are known before the arguments: written, else the
+ * expected type's when it is the same enum, or none for an enum without type parameters. Each
+ * argument is checked against it, as a literal's field always was, so a value that takes its type
+ * from where it stands (`Item{value: "s"}`, `Options.Empty`) takes it from its field. Undefined when
+ * they aren't known or the arguments don't bind, which choosing then reports.
+ */
+export function variantFieldTypes(
+  context: BodyContext,
+  node: Call,
+  expected: Type | undefined,
+  typeArguments: readonly Type[] | undefined,
+): readonly (Type | undefined)[] | undefined {
+  const chosen = variantCalled(context, node, expected);
+  const constructs =
+    chosen === undefined ? undefined : fieldsFunctionOf(chosen.enum, chosen.variant);
+  if (chosen === undefined || constructs === undefined) {
+    return undefined;
+  }
+  const known = typeArguments ?? expectedArguments(expected, chosen.enum) ?? [];
+  if (known.length !== typeParametersOf(chosen.enum.typeParameters).length) {
+    return undefined;
+  }
+  const { parameters } = signatureOf(
+    context.checker,
+    constructs,
+    substitutionFor(chosen.enum.typeParameters, known),
+  );
+  const binding = bindArguments(
+    parameters,
+    node.arguments.map((argument) => ({
+      name: argument.kind === 'NamedArgument' ? argument.name.text : undefined,
+      isSpread: argument.kind === 'Spread',
+    })),
+  );
+  return isBinding(binding) ? argumentTypes(parameters, binding, node.arguments.length) : undefined;
+}
+
+/** The variant `node` calls, as the expected type chooses a bare one; undefined for any other call. */
+function variantCalled(
+  context: BodyContext,
+  node: Call,
+  expected: Type | undefined,
+): VariantEntity | undefined {
+  const { callee } = node;
+  if (node.isOptional || (callee.kind !== 'Identifier' && callee.kind !== 'MemberAccess')) {
+    return undefined;
+  }
+  const naming = context.entityOf(callee.kind === 'Identifier' ? callee : callee.member);
+  if (naming?.kind === 'variant') {
+    return naming;
+  }
+  return naming?.kind === 'variants'
+    ? context.checker.inputs.variantNamed(naming.name, enumsExpected(expected))
+    : undefined;
+}
+
+/** By argument, the type of the parameter `binding` passes it to; an item's for a rest's item. */
+function argumentTypes(
+  parameters: readonly SignatureSlot[],
+  binding: Binding,
+  count: number,
+): readonly (Type | undefined)[] {
+  const types: (Type | undefined)[] = Array.from({ length: count }, () => undefined);
+  for (const [index, source] of binding.entries()) {
+    const slot = parameters[index];
+    if (source.kind === 'argument') {
+      types[source.index] = slot?.type;
+    } else if (source.kind === 'rest' && slot?.rest?.kind === 'array') {
+      for (const item of source.items) {
+        types[item.index] = item.isSpread ? slot.type : slot.rest.item;
+      }
+    }
+  }
+  return types;
 }
 
 /** The type arguments of `expected` when it is a generic `declaration`'s type; else none. */

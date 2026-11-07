@@ -186,3 +186,25 @@ describe('a variant without fields called with `()`', () => {
     expect(warnedOf(body)).toEqual({ codes: [], spanTexts: [] });
   });
 });
+
+describe("a variant call's arguments", () => {
+  const declared = [
+    'struct Item<T> { value: T }',
+    'enum Options<T> { Items(items: Array<Item<T>>), One(item: Item<T>), Link(next: Options<T>?), Empty }',
+    'struct View<T> { options: Options<T>? = none }',
+    '',
+  ].join('\n');
+
+  it("take their fields' types once its type arguments are known, as its fields always did (§3.11)", () => {
+    const functions = [
+      'fn expected() -> Options<"s" | "m">: Options.Items([Item{value: "s"}])',
+      'fn inOptional() -> View<"s" | "m">: View<"s" | "m">{options: Options.One(Item{value: "m"})}',
+      'fn qualifiedInside() -> Options<Int>: Options.Link(Options.Empty)',
+      'fn written() -> Options<"s">: Options.Items<"s">([Item{value: "s"}])',
+    ].join('\n');
+    expect(reported(`${declared}${functions}\nasync fn main(): 0\n`)).toEqual({
+      codes: [],
+      spanTexts: [],
+    });
+  });
+});
