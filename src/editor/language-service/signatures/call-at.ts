@@ -30,7 +30,8 @@ export interface CallAt {
   readonly body: JoinedBody;
   /**
    * The number of the written argument at the cursor: the one it is in, or after but for
-   * whitespace, else the next. An argument not written yet, between two commas, is a `Missing` one.
+   * whitespace unless the next has begun there, else the next. An argument not written yet,
+   * between two commas, is a `Missing` one.
    */
   readonly argument: number;
 }
@@ -131,10 +132,18 @@ function callAround(tree: SyntaxTree, offset: number): Call | undefined {
     .find((node): node is Call => node.kind === 'Call' && holds(node));
 }
 
+/**
+ * The number of the written argument at `offset`: the one it is in, or after but for whitespace,
+ * unless the next one has begun there, as one a line break separates does (§2).
+ */
 function argumentAt(tree: SyntaxTree, call: Call, offset: number): number {
-  const index = call.arguments.findIndex(
-    (argument) => offset <= nextTokenStart(tree, spanIn(tree, argument.span).end),
-  );
+  const index = call.arguments.findIndex((argument, at) => {
+    const next = call.arguments[at + 1];
+    return (
+      offset <= nextTokenStart(tree, spanIn(tree, argument.span).end) &&
+      (next === undefined || offset < spanIn(tree, next.span).start)
+    );
+  });
   return index === -1 ? call.arguments.length : index;
 }
 
