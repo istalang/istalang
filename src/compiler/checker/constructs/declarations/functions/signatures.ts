@@ -19,8 +19,14 @@
 
 import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import type { ModuleId } from '../../../../program/program.ts';
-import { takesArgumentsInOrder } from '../../../../syntax/declarations/field-defaults.ts';
-import type { FunctionDeclaration } from '../../../../syntax/declarations/index.ts';
+import {
+  isFieldsFunction,
+  takesArgumentsInOrder,
+} from '../../../../syntax/declarations/field-defaults.ts';
+import {
+  type FunctionDeclaration,
+  typeParametersOf,
+} from '../../../../syntax/declarations/index.ts';
 import type { Expression, Parameter } from '../../../../syntax/expressions/index.ts';
 import { parameterSite, patternNamedType } from '../../../../syntax/expressions/parameters.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
@@ -34,11 +40,13 @@ import type { SignatureParameter } from '../../../check.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { isPack, packRestSlot, type RestSlot } from '../../../types/type/function-types.ts';
-import type { Type } from '../../../types/type/index.ts';
+import { nominalType, type Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { arrayElement, futureArgument, futureOf } from '../../../types/type/well-known.ts';
+import { nominalEntityOf } from '../../../types/written/named-types.ts';
 import { patternTypeOf } from '../../../types/written/pattern-types.ts';
+import { parameterType } from '../../../types/written/resolve-type.ts';
 
 /** Where a function's defaults are checked: one body, seeing each parameter once declared. */
 export interface DefaultValues {
@@ -260,6 +268,25 @@ function checkRest(
 /** Whether `node` is written as taking a reference, `&T` (§3.7), parentheses aside. */
 export function writtenByReference(node: Parameter): boolean {
   return node.type !== undefined && unparenthesizedType(node.type).kind === 'ReferenceType';
+}
+
+/**
+ * What `declaration` declares its body produces: what `declaredBodyResult` reads of it, or, for
+ * the function a declaration's fields read as, the value they make, which is never written: its
+ * struct, or its variant's enum, over the declaration's own type parameters (§3.1, §3.11).
+ */
+export function declaredResultOf(
+  checker: CheckerContext,
+  module: ModuleId,
+  declaration: FunctionDeclaration,
+): Type | undefined {
+  if (!isFieldsFunction(declaration)) {
+    return declaredBodyResult(checker, module, declaration);
+  }
+  const { fieldsOwner } = declaration;
+  const owner = 'struct' in fieldsOwner ? fieldsOwner.struct : fieldsOwner.enumeration;
+  const parameters = typeParametersOf(owner.typeParameters).map(parameterType);
+  return nominalType(nominalEntityOf(checker, owner), parameters);
 }
 
 /**

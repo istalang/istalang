@@ -16,6 +16,7 @@
  */
 
 import type { PrimitiveName } from '../../../../foundation/language/primitives.ts';
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity, VariantNaming } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type {
@@ -33,12 +34,29 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { enumsExpected } from '../fitting/expected.ts';
 import { type ShapeKey, typeKeys } from '../identity/type-keys.ts';
-import type { NominalDeclaration, Type } from '../type/index.ts';
+import {
+  isNominalEntity,
+  type NominalDeclaration,
+  type NominalEntity,
+  type Type,
+} from '../type/index.ts';
 import { expectsError } from '../type/primitives.ts';
 import { optionalInner } from '../unions/unions.ts';
 import { typeOfEntity } from './resolve-type.ts';
 
 export type Aliases = Pick<Checker, 'aliasedType' | 'typeRules'>;
+
+/** The entity a nominal type's declaration declares, which its types are made of. */
+export function nominalEntityOf(
+  checker: Pick<Checker, 'bindings' | 'moduleOf'>,
+  declaration: NominalDeclaration,
+): NominalEntity {
+  const entity = checker.bindings.entityOf(checker.moduleOf(declaration), declaration.name);
+  if (entity?.kind !== 'type' || !isNominalEntity(entity)) {
+    unreachable(`'${declaration.name.text}' declares no nominal type.`);
+  }
+  return entity;
+}
 
 /**
  * The type `entity` names, a trait's none: a declared type or an alias with no type arguments

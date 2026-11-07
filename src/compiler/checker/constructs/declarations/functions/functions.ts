@@ -3,10 +3,11 @@
  * checked body, each an entry of its own, so a body checked again to the same result cuts off at
  * the result (incremental-checking.md §1).
  *
- * A function with no declared result gets the one its body produces. Inferring it checks the body;
- * a call reached while that body is being checked is the function calling itself, directly or
- * through others, which needs a declared result: every result on the cycle stands for the error
- * type, whichever was asked first.
+ * A function with no declared result gets the one its body produces; a fields function, the value
+ * its fields make (signatures.ts `declaredResultOf`). Inferring it checks the body; a call reached
+ * while that body is being checked is the function calling itself, directly or through others,
+ * which needs a declared result: every result on the cycle stands for the error type, whichever
+ * was asked first.
  */
 
 import type { EntryTable } from '../../../../../foundation/structures/entries/index.ts';
@@ -18,7 +19,7 @@ import type { CheckedBody } from '../../../surface/checked-body.ts';
 import { sameTypeSpelled } from '../../../types/parts/type-parts.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType, unitType } from '../../../types/type/primitives.ts';
-import { callResult, declaredBodyResult } from './signatures.ts';
+import { callResult, declaredResultOf } from './signatures.ts';
 
 /** What ProgramChecker gives the unit: how to check a body against its declared result. */
 export interface FunctionSeams {
@@ -54,7 +55,7 @@ export class FunctionChecks {
     this.#declaredResults = entries.table({
       name: 'declared results',
       compute: (declaration) =>
-        declaredBodyResult(checker, checker.moduleOf(declaration), declaration),
+        declaredResultOf(checker, checker.moduleOf(declaration), declaration),
       equal: sameOptionalType,
     });
     this.#results = entries.table({

@@ -5,9 +5,10 @@
  *
  * - The call is checked as any call is, which resolves what it runs. A function with code may be
  *   spawned, a method or a generic instance included, and so may a value of a sendable function
- *   type, whose captures go along (§3.14). An extern has no code to start, a reference parameter
- *   has no place in another instance, a function a constraint requires is known only per
- *   instantiation, and a call through `?.` may not happen at all, so none of them can be.
+ *   type, whose captures go along (§3.14), and a variant's constructor (§3.11). An extern has no
+ *   code to start, a reference parameter has no place in another instance, a function a
+ *   constraint requires is known only per instantiation, a call through `?.` may not happen at
+ *   all, and `Expired()` names a variant without fields, a value, so none of them can be.
  * - Every argument, a method's receiver included, is copied into the new instance, so it must be
  *   sendable (§3.1).
  * - When a codec writes the new instance's outcome, the spawn records it as an implicit call, so
@@ -26,6 +27,7 @@ import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { futureArgument, wellKnownOf } from '../../../types/type/well-known.ts';
+import { calledVariant } from '../structs/variants.ts';
 
 export function checkSpawn(context: BodyContext, node: Spawn): Type {
   const call = unparenthesized(node.call);
@@ -77,6 +79,13 @@ function refusalOf(
     };
   }
   const resolved = context.callAt(call);
+  const variant = calledVariant(context, call);
+  if (resolved === undefined && variant !== undefined) {
+    return {
+      callee: `'${variant.text}'`,
+      why: 'a variant without fields is a value, not a function',
+    };
+  }
   if (resolved === undefined) {
     const type = context.typeOf(call.callee);
     return type.kind !== 'function' || type.isSendable

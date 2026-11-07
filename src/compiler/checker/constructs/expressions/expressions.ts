@@ -84,7 +84,7 @@ import {
   structLiteralBuilds,
   structLiteralKnownType,
 } from './structs/structs.ts';
-import { checkNone, noneAccepted } from './structs/variants.ts';
+import { checkNone, noneAccepted, variantCallAccepts } from './structs/variants.ts';
 
 /** Missing and invalid nodes were reported by the parser. */
 const alreadyReported = (): Type => errorType;
@@ -155,7 +155,7 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
   Parenthesized: (context, node) => context.accepts(node.expression),
   Binary: ownType,
   Unary: ownType,
-  Call: ownType,
+  Call: variantCallAccepts,
   StructLiteral: structLiteralAccepts,
   NewStructLiteral: ownType,
   IndentedValue: indentedAccepts,

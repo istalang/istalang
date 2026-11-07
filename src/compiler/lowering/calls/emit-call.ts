@@ -7,7 +7,9 @@
  * default's entry from the parameters before it (§3.1, §3.3). So a default sees those parameters
  * however the call gave them, and every call fills its defaults one way, a filling entry's included
  * (tables/instances.ts). A dispatch on an `any` value's own type binds the required function's
- * parameters the same way, then runs its dispatch entry (§3.10).
+ * parameters the same way, then runs its dispatch entry (§3.10). A variant's constructor runs no
+ * entry: its parameters, bound the same way, are the fields of the variant it builds in place
+ * (§3.11, values/variant-values.ts).
  *
  * This is the one place a rest parameter is made of what a call passes: an array of its items, a
  * spread's spliced in, or, for a pack, its items as single parameters and a spread's tuple as its
@@ -21,9 +23,11 @@ import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { SignatureParameter } from '../../checker/check.ts';
 import type { ImplicitRole, ResolvedSite } from '../../checker/surface/resolved-call.ts';
 import { substitute } from '../../checker/types/parts/substitution.ts';
+import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import type { NodeOf } from '../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { CodeContext, FunctionContext } from '../context.ts';
+import { buildConstructed } from '../values/variant-values.ts';
 import {
   type ClosedCall,
   calledParameters,
@@ -79,6 +83,10 @@ export function emitFunctionCall(
 ): Register {
   const { span, call } = toEmit;
   const parameters = boundParameters(context, toEmit);
+  if (call.kind === 'function' && constructedVariant(call.instance.declaration) !== undefined) {
+    const fields = parameters.map(registerOf);
+    return buildConstructed(context, { instance: call.instance, fields }, span, dst);
+  }
   const callee =
     call.kind === 'dispatch'
       ? context.tables.dispatchIndex(call.dispatch)
@@ -169,13 +177,16 @@ function restParameters(
   return [dst];
 }
 
-/** The register of a value passed, which a rest parameter collects: never a place. */
+/**
+ * The register of a value passed, which a rest parameter collects and a variant's field holds:
+ * never a place.
+ */
 function registerOf(argument: Register | Argument): Register {
   if (typeof argument === 'number') {
     return argument;
   }
   if (argument.kind !== 'value') {
-    unreachable('A rest parameter collects values, never a place.');
+    unreachable('A rest parameter or a variant field takes a value, never a place.');
   }
   return argument.register;
 }

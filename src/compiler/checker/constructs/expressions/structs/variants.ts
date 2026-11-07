@@ -1,34 +1,32 @@
 /**
  * Enum variants and `none` as values (§3.11), and names of types in value position.
  *
- * - A bare variant (`Expired`, `Ok{value: 1}`) needs an enum type to be expected that has it; a
- *   qualified one (`Decision.Expired`) names its enum, whose type arguments come from the expected
- *   type when it is the same enum, else from the fields and defaults (literal-fields.ts).
+ * - A bare variant (`Expired`, `Ok(1)`) needs an enum type to be expected that has it; a qualified
+ *   one (`Decision.Expired`) names its enum, whose type arguments come from the expected type when
+ *   it is the same enum, else from the fields and defaults (literal-fields.ts).
+ * - A variant with fields is a function of its enum, its constructor (§3.11,
+ *   syntax/declarations/field-defaults.ts): a call binds its arguments to the fields as any call's
+ *   to parameters (§3.3), and builds what the literal with those fields builds. Naming it bare is
+ *   an error. A variant without fields is a value, so `Expired()` is `Expired`.
  * - `none` needs an optional type to be expected (§3.11).
- * - A variant with fields is built with braces; naming it bare is an error.
- * - Where a call's chosen function decides an argument's type, `none` and a bare variant wait for
- *   it (§3.5), so `f(none)` reads like `const x: T? = none`.
+ * - Where a call's chosen function decides an argument's type, `none`, a bare variant and a call
+ *   of one wait for it (§3.5), so `f(none)` reads like `const x: T? = none`.
  */
 
-import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
+import { staticName } from '../../../../../foundation/language/static-names.ts';
 import type { Entity, VariantNaming } from '../../../../binder/entities.ts';
 import { fieldsFunctionOf } from '../../../../syntax/declarations/field-defaults.ts';
 import type { EnumDeclaration } from '../../../../syntax/declarations/index.ts';
-import type { FieldsLiteral, MemberAccess } from '../../../../syntax/expressions/index.ts';
+import type { Call, FieldsLiteral, MemberAccess } from '../../../../syntax/expressions/index.ts';
 import { type Identifier, lastName } from '../../../../syntax/tree/node.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import { resolveCall, type WrittenArgument } from '../../../resolution/calls/resolve.ts';
 import { enumsExpected, expectedNominal, sameNominal } from '../../../types/fitting/expected.ts';
-import {
-  isNominalEntity,
-  type NominalEntity,
-  type NominalType,
-  nominalType,
-  type Type,
-} from '../../../types/type/index.ts';
+import { type NominalType, nominalType, type Type } from '../../../types/type/index.ts';
 import { errorType, noneType } from '../../../types/type/primitives.ts';
-import { chooseVariant } from '../../../types/written/named-types.ts';
-import { checkLiteralFields, knownArguments } from './literal-fields.ts';
+import { chooseVariant, nominalEntityOf } from '../../../types/written/named-types.ts';
+import { argumentsKnown, checkLiteralFields, knownArguments } from './literal-fields.ts';
 
 /**
  * The types `none` can take, as an argument a call's chosen function decides: any it fits, a
@@ -49,6 +47,13 @@ export function variantsAccepted(
   const { checker } = context;
   return (expected) =>
     checker.inputs.variantNamed(naming.name, enumsExpected(expected)) !== undefined;
+}
+
+/** For a call of a bare variant, `Ok(v)`, the enum types that have a variant of that name. */
+export function variantCallAccepts(context: BodyContext, node: Call): Accepts | undefined {
+  return node.callee.kind === 'Identifier' && !node.isOptional
+    ? variantsAccepted(context, context.entityOf(node.callee))
+    : undefined;
 }
 
 /**
@@ -74,7 +79,78 @@ export function checkVariantName(
     context.report(checkerDiagnostics.variantFields(node.span, name.text));
     return errorType;
   }
-  return expectedNominal(context, node.span, enumEntity(context, chosen.enum), expected);
+  return expectedNominal(
+    context,
+    node.span,
+    nominalEntityOf(context.checker, chosen.enum),
+    expected,
+  );
+}
+
+/** The name of the variant a call names, bare or qualified; undefined for any other call. */
+export function calledVariant(context: BodyContext, node: Call): Identifier | undefined {
+  const { callee } = node;
+  const name = callee.kind === 'MemberAccess' ? callee.member : callee;
+  if (name.kind !== 'Identifier') {
+    return undefined;
+  }
+  const entity = context.entityOf(name);
+  return entity?.kind === 'variant' || entity?.kind === 'variants' ? name : undefined;
+}
+
+/** A call naming a variant, as written: its arguments, any type arguments, what is expected. */
+export interface VariantCall {
+  readonly node: Call;
+  readonly expected: Type | undefined;
+  readonly typeArguments: readonly Type[] | undefined;
+  readonly written: readonly WrittenArgument[];
+}
+
+/**
+ * `Ok(v)`, `Verdict.Rejected(by: "legal")`: a call of the variant's constructor, chosen as any
+ * call's function is, by its name `Enum.Variant`. Type arguments written at the call, or else the
+ * expected type's when it is the variant's enum, are given before the arguments, as a literal's are
+ * (literal-fields.ts `argumentsKnown`), so an argument fits its field as it would in the literal;
+ * inference and defaults find the rest. A variant without fields is called with no arguments, as
+ * the value it names.
+ */
+export function checkVariantCall(
+  context: BodyContext,
+  call: VariantCall,
+  callee: Identifier | MemberAccess,
+  naming: VariantNaming,
+): Type {
+  const name = callee.kind === 'Identifier' ? callee : callee.member;
+  const chosen = chooseVariant(context, { span: callee.span, name }, naming, call.expected);
+  if (chosen === undefined) {
+    return errorType;
+  }
+  const written = { at: call.node.span, written: call.typeArguments ?? [] };
+  const target = sameNominal(call.expected, chosen.enum);
+  const known = argumentsKnown(context, written, chosen.enum, target);
+  const qualified = staticName(chosen.enum.name.text, chosen.variant.name.text);
+  const constructs = fieldsFunctionOf(chosen.enum, chosen.variant);
+  if (constructs !== undefined) {
+    return resolveCall(context, {
+      site: call.node,
+      name: qualified,
+      candidates: [{ declaration: constructs }],
+      arguments: call.written,
+      typeArguments: known?.length === 0 ? undefined : known,
+      expected: call.expected,
+      form: 'call',
+    });
+  }
+  if (call.written.length > 0) {
+    const count = call.written.length;
+    context.report(checkerDiagnostics.argumentCount(call.node.span, qualified, 0, count, false));
+    return errorType;
+  }
+  const entity = nominalEntityOf(context.checker, chosen.enum);
+  if (call.typeArguments === undefined) {
+    return expectedNominal(context, callee.span, entity, call.expected);
+  }
+  return known === undefined ? errorType : nominalType(entity, known);
 }
 
 /** The type of a variant built with braces: `Rejected{by: "legal"}`. */
@@ -113,14 +189,5 @@ function enumType(
   declaration: EnumDeclaration,
   typeArguments: readonly Type[],
 ): NominalType {
-  return nominalType(enumEntity(context, declaration), typeArguments);
-}
-
-function enumEntity(context: BodyContext, declaration: EnumDeclaration): NominalEntity {
-  const { checker } = context;
-  const entity = checker.bindings.entityOf(checker.moduleOf(declaration), declaration.name);
-  if (entity?.kind !== 'type' || !isNominalEntity(entity)) {
-    unreachable(`Enum '${declaration.name.text}' has no type entity.`);
-  }
-  return entity;
+  return nominalType(nominalEntityOf(context.checker, declaration), typeArguments);
 }

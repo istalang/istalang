@@ -1,7 +1,8 @@
 /**
  * A body's calls as lowering reads them (CheckedBody), through the passes of the field loops
  * around them: every call a clean program writes resolves to a function or is recorded as a call
- * of a function value, so lowering never reads a missing record as either.
+ * of a function value, so lowering never reads a missing record as either; but for `Expired()`,
+ * which names a variant without fields, its value (§3.11), and is neither.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -10,8 +11,22 @@ import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import { idOf } from '../../program/program.test-kit.ts';
 import { programModule } from '../../program/program.ts';
 import { functionsOf } from '../../syntax/declarations/field-defaults.ts';
+import type { Call } from '../../syntax/expressions/index.ts';
 import { bodyOf, nodesUnder } from '../../syntax/tree/index.ts';
-import { checkProgram } from '../check.ts';
+import { type Checker, checkProgram } from '../check.ts';
+import type { JoinedBody } from './denotation.ts';
+
+/** Whether `call` names a variant without fields, bare or qualified, as checking chose it. */
+function namesFieldlessVariant(checker: Checker, body: JoinedBody, call: Call): boolean {
+  const { callee } = call;
+  const name = callee.kind === 'MemberAccess' ? callee.member : callee;
+  if (name.kind !== 'Identifier') {
+    return false;
+  }
+  const entity = checker.bindings.entityOf(idOf('main'), name);
+  const named = entity?.kind === 'variants' ? body.chosenVariantOf(name) : entity;
+  return named?.kind === 'variant' && named.variant.fields.length === 0;
+}
 
 describe('a checked body', () => {
   it.each(runPrograms)('records each call $name writes as resolved or a value call', ({ text }) => {
@@ -29,7 +44,8 @@ describe('a checked body', () => {
         return (
           node.kind === 'Call' &&
           body !== undefined &&
-          body.callsAt(node).length > 0 === body.valueCalls.has(node)
+          body.callsAt(node).length > 0 === body.valueCalls.has(node) &&
+          !namesFieldlessVariant(checker, body, node)
         );
       });
     });

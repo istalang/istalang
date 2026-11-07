@@ -5,7 +5,9 @@
  * - a function's name, plain or through a namespace (`m.f()`), which looks only in that module,
  *   with no argument-dependent lookup (§3.13);
  * - a type and a static function (`Duration.zero()`, `T.zero()`, `time.Duration.zero()`);
- * - a type alone, a conversion (`Float(3)`), which calls the type's static `from` (§3.10).
+ * - a type alone, a conversion (`Float(3)`), which calls the type's static `from` (§3.10);
+ * - a variant with fields, bare or qualified (`Ok(v)`, `Verdict.Rejected(by: "legal")`), which
+ *   calls its constructor (structs/variants.ts, §3.11).
  *
  * - a method called on a receiver (`x.f()`): a function whose first parameter is `self`, found by
  *   its name where the call is written and through the receiver's type (argument-dependent
@@ -39,6 +41,7 @@ import type {
   MemberAccess,
 } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { checkChangedPlace } from '../../resolution/calls/places.ts';
@@ -61,6 +64,7 @@ import { namedType } from '../../types/written/named-types.ts';
 import { checkValueCall } from '../closures/value-calls.ts';
 import { readsNothing, recordFieldRead } from './access/member-access.ts';
 import { spreadArgumentType } from './collections/collections.ts';
+import { checkVariantCall } from './structs/variants.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const misplaced = misplacedArgument(node.arguments);
@@ -82,7 +86,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
   }
   switch (callee.kind) {
     case 'Identifier':
-      return callEntity(context, call, callee.text, context.entityOf(callee));
+      return callEntity(context, call, callee, context.entityOf(callee));
     case 'MemberAccess': {
       const nothing = readsNothing(context, call.node, callee);
       if (nothing !== undefined) {
@@ -90,7 +94,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
       }
       const entity = context.entityOf(callee.member);
       if (entity !== undefined) {
-        return callEntity(context, call, callee.member.text, entity);
+        return callEntity(context, call, callee, entity);
       }
       const owner = namedType(context, callee.target);
       return owner === undefined
@@ -206,9 +210,10 @@ interface WrittenCall {
 function callEntity(
   context: BodyContext,
   call: WrittenCall,
-  name: string,
+  callee: Identifier | MemberAccess,
   entity: Entity | undefined,
 ): Type {
+  const name = callee.kind === 'Identifier' ? callee.text : callee.member.text;
   switch (entity?.kind) {
     case 'functions': {
       const { checker } = context;
@@ -224,6 +229,9 @@ function callEntity(
       return errorType;
     case 'variable':
       return checkValueCall(context, call, call.node.callee);
+    case 'variant':
+    case 'variants':
+      return checkVariantCall(context, call, callee, entity);
     case 'type':
     case 'primitive': {
       const owner = namedType(context, call.node.callee);

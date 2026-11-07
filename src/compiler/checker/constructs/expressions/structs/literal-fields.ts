@@ -39,6 +39,7 @@ import type {
 } from '../../../../syntax/expressions/index.ts';
 import { itemName, itemValue, unparenthesized } from '../../../../syntax/expressions/readings.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
@@ -196,7 +197,7 @@ function spreadGiven(
 
 /**
  * The type arguments a literal of `owner` is given before its items: those written after the
- * type's name, else the expected type's when it is a type of `owner`.
+ * type's name, else the expected type's when it is a type of `owner` (`argumentsKnown`).
  */
 export function knownArguments(
   context: BodyContext,
@@ -204,11 +205,25 @@ export function knownArguments(
   owner: Exclude<LiteralShape['owner'], undefined>,
   expected: Type | undefined,
 ): readonly Type[] | undefined {
-  if (typeNode.typeArguments.length === 0) {
+  const written = typeNode.typeArguments.map((argument) => context.resolveType(argument));
+  return argumentsKnown(context, { at: typeNode.span, written }, owner, expected);
+}
+
+/**
+ * The type arguments of `owner` known before the values that build it, a literal's items or a
+ * variant call's arguments: `written` at `at`, its defaults completing them, or, with none written,
+ * the expected type's when it is a type of `owner`.
+ */
+export function argumentsKnown(
+  context: BodyContext,
+  { at, written }: { readonly at: AnchoredSpan; readonly written: readonly Type[] },
+  owner: Exclude<LiteralShape['owner'], undefined>,
+  expected: Type | undefined,
+): readonly Type[] | undefined {
+  if (written.length === 0) {
     return argumentsFor(owner, expected);
   }
-  const written = typeNode.typeArguments.map((argument) => context.resolveType(argument));
-  const list = { at: typeNode.span, declaration: owner, types: written };
+  const list = { at, declaration: owner, types: written };
   return typeArgumentsFor(context.checker, context.module, list);
 }
 

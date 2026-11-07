@@ -33,8 +33,8 @@ export function lowerPropagate(context: FunctionContext, node: Propagate): Regis
         returned: errorOf(returned),
         site: node,
       });
-      const passed = { type: returned, name: resultVariants.err };
-      const value = buildVariant(context, passed, [error], node.span);
+      const passed = { type: returned, name: resultVariants.err, fields: [error] };
+      const value = buildVariant(context, passed, node.span);
       context.code.emit({ kind: 'return', span: node.span, value });
     },
     node.span,

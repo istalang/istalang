@@ -46,7 +46,7 @@ src/
                         text positions through the tree: positions.ts), where items may stand and the annotations they carry (items.ts),
                         how targets (statements/targets.ts), places (expressions/places.ts), optional chains (expressions/chains.ts), struct items and parameters
                         (expressions/parameters.ts: a name, a pattern, or both) read as written, the function a declaration's
-                        fields with defaults read as (declarations/field-defaults.ts), what a template stands for: its text, or the call a tag makes
+                        fields read as, a variant's constructor (declarations/field-defaults.ts), what a template stands for: its text, or the call a tag makes
                         (expressions/literals/templates.ts), the literal an indented value reads as once its form is known
                         (expressions/literals/indented-values.ts), operator precedence (expressions/operators.ts); a folder per construct
                         whose nodes have readings beside them (declarations/, statements/, types/, expressions/), types/type-matches.ts

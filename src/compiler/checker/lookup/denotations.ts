@@ -2,7 +2,8 @@
  * What an identifier denotes, read from what binding and checking already decided: the binder's
  * entity, refined wherever the checker chose. A call's function, a field read, a field named in a
  * literal or a pattern, a bare variant and a named argument's parameter are the checker's choices;
- * nothing is decided again here, so an answer always agrees with what lowering compiles.
+ * nothing is decided again here, so an answer always agrees with what lowering compiles. A call of
+ * a variant's constructor names the variant, as the name alone would.
  *
  * Where the identifier stands decides which choice to read, so the answer is routed by the node
  * holding it; a name standing anywhere else is the binder's.
@@ -18,8 +19,10 @@ import {
   typeEntity,
   type VariableEntity,
   type VariantEntity,
+  variantEntity,
 } from '../../binder/entities.ts';
 import type { ModuleId } from '../../program/program.ts';
+import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../syntax/declarations/index.ts';
 import type { Call, FieldInitializer, MemberAccess } from '../../syntax/expressions/index.ts';
 import { literalNaming } from '../../syntax/expressions/literals/built-types.ts';
@@ -180,7 +183,15 @@ function calledAt(
   const calls = body?.callsAt(call) ?? [];
   return calls.length === 0
     ? undefined
-    : calls.map((each) => functionDenotation(each.function, type));
+    : calls.map((each) => calledDenotation(each.function, type));
+}
+
+/** What a call of `called` names: the function, or the variant a constructor builds (§3.11). */
+function calledDenotation(called: FunctionDeclaration, type: Type | undefined): Denotation {
+  const built = constructedVariant(called);
+  return built === undefined
+    ? functionDenotation(called, type)
+    : variantDenotation(variantEntity(built.enumeration, built.variant), type);
 }
 
 /** A member: a field read, a method, a static function or a namespace's, or a qualified part. */

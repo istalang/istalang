@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-06
+last_updated: 2026-11-07
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 
@@ -171,7 +171,7 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Struct literal: named, shorthand, positional, `struct{…}` (§3.1) | the fields evaluated as written, then each left out, in declaration order, from a `call` to its default's entry, given the fields declared before it; `struct` takes them by name into its type's layout |
 | Updated copy `T{...r, f: v}` (§3.1) | the spread value once, `field` for each field not given, then `struct` |
 | Struct without fields, written bare (§3.1) | `struct` with no fields; a constant when it is one |
-| Enum variant (§3.11) | `variant`; a variant without fields may be a constant |
+| Enum variant (§3.11) | `variant`; a variant without fields may be a constant, and `Expired()` is its value; a call of a variant's constructor binds its arguments as any call does, defaults and a rest included, then builds `variant` of the parameters in place, with no `call`; the constructor's own entry, which a spawned call targets, does the same |
 | A value put into a union, `T` into `T?` among them (§2) | `variant` of the member it goes into; a union put into a wider one, a `switch` building the wider one's variant per member |
 | A one-element tuple and its element converted into each other (§3.15) | `tuple` of the one value; a `field` read of element 0 |
 | `fn`, `async fn`, methods, static functions (§3.3, §3.7) | function-table entries; a method's `self` is its first parameter |

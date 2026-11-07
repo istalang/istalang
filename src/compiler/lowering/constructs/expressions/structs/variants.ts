@@ -7,7 +7,7 @@ import type { Register } from '../../../../../definition/operands.ts';
 import { unreachable } from '../../../../../foundation/structures/unreachable.ts';
 import type { Checker } from '../../../../checker/check.ts';
 import type { NominalType, Type } from '../../../../checker/types/type/index.ts';
-import type { Expression, StructLiteral } from '../../../../syntax/expressions/index.ts';
+import type { Call, Expression, StructLiteral } from '../../../../syntax/expressions/index.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { CodeContext, FunctionContext } from '../../../context.ts';
@@ -22,6 +22,23 @@ export function lowerFieldlessVariant(
   name: string,
 ): Register {
   return emitVariant(context, node, name, []);
+}
+
+/**
+ * The variant without fields a call names, `Expired()`, which is its value (§3.11); undefined for
+ * any other call, a variant's with fields calling its constructor.
+ */
+export function fieldlessVariantCalled(context: FunctionContext, node: Call): string | undefined {
+  const { callee } = node;
+  const name = callee.kind === 'MemberAccess' ? callee.member : callee;
+  const entity = name.kind === 'Identifier' ? context.entityOf(name) : undefined;
+  if (name.kind !== 'Identifier' || (entity?.kind !== 'variant' && entity?.kind !== 'variants')) {
+    return undefined;
+  }
+  const type = context.typeOf(node);
+  const variants = isEnum(type) ? context.checker.variantsOf(type) : undefined;
+  const variant = variants?.find((each) => each.name === name.text);
+  return variant?.fields.length === 0 ? name.text : undefined;
 }
 
 /** `Rejected{by: "legal"}`: built from the same fields as a struct literal (structs.ts). */
@@ -108,5 +125,5 @@ function emitVariant(
   if (!isEnum(type)) {
     unreachable(`Expected an enum at ${node.span.from}; the checker should have said so.`);
   }
-  return buildVariant(context, { type, name }, fields, node.span);
+  return buildVariant(context, { type, name, fields }, node.span);
 }

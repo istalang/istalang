@@ -78,7 +78,7 @@ export class SynthesizedCode implements CodeContext {
   }
 
   variant(type: NominalType, name: string, fields: readonly Register[]): Register {
-    return buildVariant(this, { type, name }, fields, this.span);
+    return buildVariant(this, { type, name, fields }, this.span);
   }
 
   /** A struct of `type`, each field taken by its name from `named` (structs.ts). */

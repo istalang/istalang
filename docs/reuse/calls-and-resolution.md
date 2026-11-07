@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-06
+last_updated: 2026-11-07
 tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 ---
 
@@ -51,6 +51,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - what static functions on a type are declared on (a nominal declaration, a primitive, a shape's key), and what a static function's owner names → `staticOwnerOf`, `declaredOwnerOf`, `StaticOwner` (`src/compiler/checker/types/written/named-types.ts`); never resolve a static's owner another way
 - the type a pattern naming an entity tests for, what it downcasts an `any` value to, or whether it names a value's own type → `patternTypeOf`, `downcastTargetOf`, `namesOwnType` (`src/compiler/checker/types/written/pattern-types.ts`); the checker's patterns and completion both read them, never their own copy
 - choose a bare or qualified enum variant against an expected type → `chooseVariant` (`src/compiler/checker/types/written/named-types.ts`)
+- check a call naming a variant, `Ok(v)`, as a call of its constructor → `checkVariantCall`; whether a call names a variant → `calledVariant` (`src/compiler/checker/constructs/expressions/structs/variants.ts`)
 - check `for`/comprehension/spread iteration → `checkIterated`, `iteratedItem`, `checkLoopOver` (`src/compiler/checker/constructs/loops/iteration.ts`)
 
 ## One-way rules

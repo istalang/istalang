@@ -16,6 +16,7 @@ import { unreachable } from '../../foundation/structures/unreachable.ts';
 import type { Checker } from '../checker/check.ts';
 import { isHostExtern } from '../checker/surface/host-externs.ts';
 import { substitute } from '../checker/types/parts/substitution.ts';
+import { constructedVariant } from '../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { writtenBodyOf } from './functions/bodies.ts';
 import { asyncFitEntry } from './functions/fits.ts';
@@ -28,6 +29,7 @@ import {
   hostNativeEntry,
 } from './synthesized/boundary/host-externs.ts';
 import { listStart, startableOf, startables, startEntry } from './synthesized/boundary/starts.ts';
+import { constructorEntry } from './synthesized/constructors.ts';
 import { anyConversionEntry, anyFieldEntry, dispatchEntry } from './synthesized/trait-objects.ts';
 import { fillingEntry } from './tables/filling-entry.ts';
 import {
@@ -133,8 +135,8 @@ function pendingEntry(
 
 /**
  * The entry for `instance`: a filling entry, or one giving a parameter its default
- * (tables/instances.ts, §3.3); else its function's own: code for a function with a body, or an
- * extern bound to its native.
+ * (tables/instances.ts, §3.3); else its function's own: code for a function with a body or a
+ * variant's constructor, or an extern bound to its native.
  */
 function entryOf(
   checker: Checker,
@@ -147,6 +149,9 @@ function entryOf(
   }
   if (entry.kind === 'default') {
     return defaultEntry(checker, tables, instance);
+  }
+  if (constructedVariant(declaration) !== undefined) {
+    return constructorEntry({ checker, tables }, instance);
   }
   const codecDirection = derivedCodecDirection(checker, instance);
   if (codecDirection !== undefined) {

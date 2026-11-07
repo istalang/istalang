@@ -1,0 +1,62 @@
+# outcome: "1 2|legal: no reason given|ops: late|approved|3 t true|0|7|5"
+# A variant with fields is a function of its enum (§3.11): a call binds its arguments to the fields
+# as to parameters, by position, then by name, leaving defaults out and a rest collecting the
+# others; the expected enum gives its type arguments, and a variant without fields called is its
+# value. A spawned call starts the constructor as any function.
+
+enum Verdict:
+  Approved
+  Rejected(by: String, reason = "no reason given")
+
+enum Node:
+  Text(value: String)
+  Group(title: String, open: Bool = false, ...children: Array<Node>)
+  Empty
+
+enum Pair<A, B = Int>:
+  Both(first: A, second: B)
+  Neither
+
+fn describe(verdict: Verdict) -> String:
+  match verdict:
+    case Approved: "approved"
+    case Rejected{by, reason}: `${by}: ${reason}`
+
+fn count(node: Node) -> Int:
+  match node:
+    case Group{children}: children.length()
+    case _: 0
+
+fn sum(pair: Pair<Int>) -> Int:
+  match pair:
+    case Both{first, second}: first + second
+    case Neither: 0
+
+fn wrapped(value: Int?) -> Result<Int?, String>: Ok(value)
+
+async fn main() -> Future<String>:
+  const pair: Pair<Int> = Both(1, 2)
+  const both = match pair:
+    case Both{first, second}: `${first} ${second}`
+    case Neither: ""
+  const group = Node.Group("t", true, Node.Text("a"), Node.Empty, ...[Node.Text("b")])
+  const shown = match group:
+    case Node.Group{title, open}: `${count(group)} ${title} ${open}`
+    case _: ""
+  const instance = spawn Pair.Both(3, 4)
+  const spawned = match await instance.result():
+    case Ok{value}: sum(value)
+    case _: -1
+  const kept = match wrapped(5):
+    case Ok{value}: value ?? 0
+    case _: -1
+  [
+    both,
+    describe(Rejected(by: "legal")),
+    describe(Verdict.Rejected("ops", "late")),
+    describe(Approved()),
+    shown,
+    String(count(Node.Group(title: "u"))),
+    String(spawned),
+    String(kept),
+  ].join("|")

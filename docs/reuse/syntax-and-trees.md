@@ -63,7 +63,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - get the memoized `Call` node of a tagged template → `isTagged`, `taggedCall` (`src/compiler/syntax/expressions/literals/templates.ts`)
 - list valid `TypeParameter`s or declared `fn`s in a module → `typeParametersOf`, `declaredFunctions` (`src/compiler/syntax/declarations/index.ts`)
 - check for a `self` method, a field default, or a struct declared with fields, shared or not → `isMethod`, `hasDefault`, `isDeclaredStruct` (`src/compiler/syntax/declarations/index.ts`); a shared struct is its own kind, `SharedStructDeclaration`, never a flag
-- get the synthesized default function for a struct's or variant's fields → `fieldsFunctionOf`, `fieldsFunctionsOf` (`src/compiler/syntax/declarations/field-defaults.ts`)
+- get the function a struct's fields with defaults read as, or a variant's constructor (§3.11) → `fieldsFunctionOf`, `fieldsFunctionsOf`; the variant a constructor builds → `constructedVariant` (`src/compiler/syntax/declarations/field-defaults.ts`)
 - list all functions in a module or test for a fields function → `functionsOf`, `isFieldsFunction` (`src/compiler/syntax/declarations/field-defaults.ts`)
 - tell whether calls give a function's parameters in order, so its defaults trail (any function's but a struct's fields') → `takesArgumentsInOrder` (`src/compiler/syntax/declarations/field-defaults.ts`)
 - list identifiers bound by a target pattern or check whether it contains `_` → `targetNames`, `hasUnnamedPart` (`src/compiler/syntax/patterns.ts`)

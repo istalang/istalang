@@ -1,7 +1,7 @@
 /**
  * The lookup queries over every corpus program, valid and invalid: no query throws at any node,
  * every name binding or checking resolved in a body is answered with the declaration they chose,
- * and every name of a variant with its enum's type. Checking a program twice is the costly part,
+ * a called variant's name with the variant, and every name of a variant with its enum's type. Checking a program twice is the costly part,
  * so one pass per program asks all of it.
  */
 
@@ -11,6 +11,8 @@ import { stdProgramOf } from '../../binder/bind.test-kit.ts';
 import type { Entity, VariantEntity } from '../../binder/entities.ts';
 import { idOf } from '../../program/program.test-kit.ts';
 import type { ModuleId } from '../../program/program.ts';
+import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
+import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Call } from '../../syntax/expressions/index.ts';
 import { nodesUnder, parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
@@ -80,14 +82,23 @@ function chosenFor(
   const entity = checker.bindings.entityOf(module, name);
   const isOverloadChosen = entity?.kind === 'functions' && called.length > 0;
   return [
-    ...called.map((call) =>
-      denotes((declared) => 'declaration' in declared && declared.declaration === call.function),
-    ),
+    ...called.map((call) => denotes((declared) => namesCalled(declared, call.function))),
     ...(field === undefined && read === undefined
       ? []
       : [denotes((declared) => declared.kind === 'field' && declared.field.name === name.text)]),
     ...(entity === undefined || isOverloadChosen ? [] : boundAs(body, name, entity)),
   ];
+}
+
+/**
+ * Whether `declared` is what a call of `called` names: the function, or for a variant's
+ * constructor, the variant it builds (§3.11).
+ */
+function namesCalled(declared: Denotation['declared'], called: FunctionDeclaration): boolean {
+  if (declared.kind === 'variant') {
+    return constructedVariant(called)?.variant === declared.entity.variant;
+  }
+  return 'declaration' in declared && declared.declaration === called;
 }
 
 /** A check that some denotation declares what `declares` accepts. */

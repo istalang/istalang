@@ -65,7 +65,10 @@ export interface FreeName {
   readonly name: Identifier;
   readonly role: Role;
   readonly miss: Miss | undefined;
-  /** For a value, what it denotes if some enum of the program has a variant by its name. */
+  /**
+   * For a value or a callee, what it denotes if some enum of the program has a variant by its
+   * name: a variant is a value, and one with fields a function too (§3.11).
+   */
   readonly variants: VariantsEntity | undefined;
 }
 
@@ -211,7 +214,8 @@ export class LocalBinder {
     }
     const entity = scope.lookup(name.text);
     if (entity === undefined) {
-      const variants = role === 'value' ? this.#variantsNamed(name.text) : undefined;
+      const variants =
+        role === 'value' || role === 'callee' ? this.#variantsNamed(name.text) : undefined;
       this.#free.push({ name, role, miss: scope.explainMiss(name.text), variants });
     } else {
       this.record(name, entity);
@@ -289,7 +293,7 @@ export class LocalBinder {
 
   /**
    * Binds the type a struct literal or pattern names. It may be a bare variant that only the
-   * expected type identifies (`Ok{42}`), so its head is used as a value, not as a type.
+   * expected type identifies (`Ok{value: 42}`), so its head is used as a value, not as a type.
    */
   constructedType(type: NamedType, scope: Scope): void {
     this.path(type.path, scope, 'value');

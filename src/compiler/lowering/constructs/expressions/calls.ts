@@ -17,6 +17,9 @@
  * A call the checker recorded as a call of a function value (§3.14, `CheckedBody.valueCalls`)
  * calls its callee's value, the closure, and each argument is passed as written, which the
  * checker matched to the closure's parameters.
+ *
+ * A call of a variant's constructor builds the variant where it stands (emit-call.ts), and
+ * `Expired()`, naming a variant without fields, is that variant's value (§3.11).
  */
 
 import type { Callee } from '../../../../definition/instructions/calls.ts';
@@ -36,8 +39,13 @@ import type { FunctionContext } from '../../context.ts';
 import { enterReferenced } from '../parts/places.ts';
 import { spreadArray } from './collections/collections.ts';
 import { lowerFieldRead, readsField } from './structs/structs.ts';
+import { fieldlessVariantCalled, lowerFieldlessVariant } from './structs/variants.ts';
 
 export function lowerCall(context: FunctionContext, node: Call): Register {
+  const fieldless = fieldlessVariantCalled(context, node);
+  if (fieldless !== undefined) {
+    return lowerFieldlessVariant(context, node, fieldless);
+  }
   const { target, passed, arguments: given } = preparedCall(context, node, 'asWritten');
   const { span } = node;
   const dst =
