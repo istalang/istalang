@@ -34,7 +34,7 @@ interface Argument {
  * each checked lambda is recorded on `context.functions`, so `checkLambda` reuses its type when
  * `fitArguments` checks the enclosing argument.
  */
-export function checkDecidedLambdas(
+export function checkDecidedFunctions(
   context: BodyContext,
   written: readonly Argument[],
   application: Application,
@@ -45,7 +45,7 @@ export function checkDecidedLambdas(
     if (type !== undefined || slot === undefined) {
       return;
     }
-    inferNestedLambdas(context, node, slot.type, inference);
+    inferNestedFunctions(context, node, slot.type, inference);
   });
 }
 
@@ -73,7 +73,7 @@ function inferLambdaAt(
 }
 
 /** Walks `node` and `expected` together, inferring any decided lambdas inside `node`. */
-function inferNestedLambdas(
+function inferNestedFunctions(
   context: BodyContext,
   node: Expression,
   expected: Type,
@@ -86,20 +86,20 @@ function inferNestedLambdas(
       inferLambdaAt(context, bare, guide, inference);
       return;
     case 'BlockExpression':
-      inferBlockLambdas(context, bare.block, expected, inference);
+      inferBlockFunctions(context, bare.block, expected, inference);
       return;
     case 'If':
     case 'Match':
     case 'Select':
       for (const body of valueBranchesOf(bare)) {
-        inferBlockLambdas(context, body, expected, inference);
+        inferBlockFunctions(context, body, expected, inference);
       }
       return;
     case 'Tuple':
     case 'ArrayLiteral':
     case 'MapLiteral':
       for (const [part, type] of guidedParts(context, bare, guide)) {
-        inferNestedLambdas(context, part, type, inference);
+        inferNestedFunctions(context, part, type, inference);
       }
       return;
     default:
@@ -148,7 +148,7 @@ function guided(
   return type === undefined ? [] : [[part, type]];
 }
 
-function inferBlockLambdas(
+function inferBlockFunctions(
   context: BodyContext,
   block: Block,
   expected: Type,
@@ -156,7 +156,7 @@ function inferBlockLambdas(
 ): void {
   const tail = tailExpressionOf(block);
   if (tail !== undefined && block.statements.length === 1) {
-    inferNestedLambdas(context, tail, expected, inference);
+    inferNestedFunctions(context, tail, expected, inference);
   }
 }
 

@@ -22,6 +22,7 @@ import type { Pass, Passes, PassTable } from '../../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
 import { topLevelCandidates } from '../../../resolution/choosing/candidates.ts';
+import { functionsAccepted, namedFunctions } from '../../../resolution/choosing/named-functions.ts';
 import type { FieldRead, FieldReading, FoundField } from '../../../surface/checked-field.ts';
 import { fieldOf } from '../../../types/traits/known-fields.ts';
 import type { Type } from '../../../types/type/index.ts';
@@ -30,11 +31,7 @@ import { typeText } from '../../../types/type/type-text.ts';
 import { insideOptional } from '../../../types/unions/inside-optional.ts';
 import { optionalInner } from '../../../types/unions/unions.ts';
 import { namedType, nameNodeOf } from '../../../types/written/named-types.ts';
-import {
-  checkFunctionValue,
-  functionsAccepted,
-  namedFunctions,
-} from '../../closures/function-values.ts';
+import { checkFunctionValue } from '../../closures/function-values.ts';
 import { checkVariantName } from '../structs/variants.ts';
 import { entityValueType } from './names.ts';
 

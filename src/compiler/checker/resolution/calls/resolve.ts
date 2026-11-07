@@ -8,7 +8,7 @@
  * - An argument whose type the chosen function decides (`none`, a bare variant, a lambda with an
  *   untyped parameter, an empty `[]`, a literal holding one) is checked only after choosing,
  *   against its parameter's type; a lambda, before instantiating, so its result can bind type
- *   parameters (lambda-arguments.ts).
+ *   parameters (function-arguments.ts).
  * - A method call records its receiver with the call, as lowering passes it first (§3.7). A
  *   receiver the chosen function's `self` takes by reference must be a place that may change.
  * - An argument of the error type was already reported, so the call reports nothing more.
@@ -40,7 +40,7 @@ import { callMade } from '../choosing/calls-made.ts';
 import type { Candidate } from '../choosing/candidates.ts';
 import type { Application } from '../choosing/choice.ts';
 import type { Instantiation } from '../conformance/conformance.ts';
-import { checkDecidedLambdas } from './lambda-arguments.ts';
+import { checkDecidedFunctions } from './function-arguments.ts';
 import { changeReceiver, checkReferencedPlaces } from './places.ts';
 
 /**
@@ -101,7 +101,7 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
         context.report(hint);
       }
     },
-    chosen: (chosen) => checkDecidedLambdas(context, written, chosen),
+    chosen: (chosen) => checkDecidedFunctions(context, written, chosen),
   });
   if (applied === undefined) {
     return errorType;

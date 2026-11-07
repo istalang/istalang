@@ -158,7 +158,7 @@ fn titleOf(n: Node) -> String:
 2. **Checker.**
    - **The signature:** a variant's constructor is a function signature in the model function declarations use (`constructs/declarations/functions/signatures.ts`), derived from its declared fields, with its enum over the enum's type parameters as the result, memoized per variant declaration. Its fields' defaults trail, as parameters' do. No signature type or binding rule exists for variants alone.
    - **Arguments:** a call binds through that signature (`resolution/choosing/applicability.ts`, `takenBy`), so defaults and a rest come with it.
-   - **Function values:** `namedFunctions` (`constructs/closures/function-values.ts`) finds a variant's signature as it finds a static function's, so the expected type chooses and infers as for any function, and a bare name looks in the enum of the expected result.
+   - **Function values:** `namedFunctions` (`resolution/choosing/named-functions.ts`) finds a variant's signature as it finds a static function's, so the expected type chooses and infers as for any function, and a bare name looks in the enum of the expected result.
    - **The value:** the built value is the brace literal's (`expressions/structs/variants.ts`).
    - **Patterns:** call patterns test the variant, as brace patterns do, then read the fields through `constructs/patterns/walk/kinds/struct-fields.ts`, positions mapped to declared order.
 3. **Lowering.**

@@ -1,7 +1,7 @@
 /**
  * What a value built from the expected type takes from it (§2, §3.1, §3.5, §3.11): the one home for
  * taking an expected type apart, which every construct with no type of its own reads, as does the
- * inference of lambdas nested in an argument (resolution/calls/lambda-arguments.ts).
+ * inference of lambdas nested in an argument (resolution/calls/function-arguments.ts).
  *
  * - A value with no type of its own is built as the one member of the expected union that takes it
  *   (`memberBuilt`, which every expression's check goes through), then goes into the union: `[]`
