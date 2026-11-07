@@ -151,6 +151,27 @@ fn main() -> (Opt<Int>, Opt<Int>, Opt<Int>, Opt<Int>): (Some(value: 1), Opt.Some
   it('answers a named argument with the field it gives', () => {
     expect(at('value', 1)).toEqual(['field value: Int']);
   });
+
+  it('answers each pass of a field loop with the enum type that pass made', () => {
+    const looped = checkedMain(
+      `enum Opt<T> { Some(value: T), Empty }
+struct Pair { a: Int, b: String }
+fn f(p: Pair):
+  for k, v in ...p:
+    const x = Opt.Some(value: v)
+    const y: Opt<Int> = Opt.Empty()
+    drop k
+    drop x
+    drop y
+`,
+    );
+    const atLoop = (name: string, nth: number) =>
+      described(looped.checker.lookup.denotationsOf(looped.module, looped.named(name, nth)));
+    expect(looped.checker.diagnosticsOf(looped.module)).toEqual([]);
+    expect(atLoop('Some', 1)).toEqual(['variant Some: Opt<Int>', 'variant Some: Opt<String>']);
+    expect(atLoop('value', 1)).toEqual(['field value: Int', 'field value: String']);
+    expect(atLoop('Empty', 1)).toEqual(['variant Empty: Opt<Int>']);
+  });
 });
 
 describe('what a function imported or named through a module denotes', () => {

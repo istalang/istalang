@@ -23,7 +23,13 @@ import type {
 } from '../../../../syntax/expressions/index.ts';
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
-import type { Accepts, BodyContext, CheckedPasses } from '../../../contexts/body-context.ts';
+import type {
+  AcceptedPart,
+  Accepts,
+  BodyContext,
+  CheckedPasses,
+  PartReader,
+} from '../../../contexts/body-context.ts';
 import type { FieldPassType } from '../../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
@@ -38,6 +44,7 @@ import { literalType, unionOf } from '../../../types/unions/unions.ts';
 import {
   checkedFieldPasses,
   inFieldPasses,
+  knownFieldsVisited,
   visitsUnknownFields,
 } from '../../loops/field-passes.ts';
 import type { LiteralGiven } from './literal-sources.ts';
@@ -219,6 +226,45 @@ export function freshComprehended(
 export function checkComprehensionAlone(context: BodyContext, node: StructComprehension): void {
   const passes = checkedFieldPasses(context, node.header);
   inFieldPasses(context, node.header, passes, () => context.expression(node.value));
+}
+
+/** A field a comprehension gives, by name, and how its value takes part in choosing a call. */
+export interface ComprehendedPart {
+  readonly name: string;
+  readonly part: AcceptedPart;
+}
+
+/**
+ * The fields the comprehension ending a `struct{…}` gives where its subject's are all known, each
+ * with how its value takes part in choosing (§3.5): as the literal's own type has it once checked,
+ * else as `read` reads the comprehension's value, which each pass gives. None for a literal without
+ * one; undefined while the subject's type is known only by checking it, or for a subject whose
+ * fields aren't all known (`opaqueComprehendedAccepts`).
+ */
+export function comprehendedParts(
+  context: BodyContext,
+  node: StructLiteral,
+  read: PartReader,
+): readonly ComprehendedPart[] | undefined {
+  const comprehension = comprehensionOf(node);
+  if (comprehension === undefined) {
+    return [];
+  }
+  const subject = read(comprehension.header.subject);
+  const names =
+    subject.kind === 'typed' && subject.type !== undefined
+      ? knownFieldsVisited(context.checker, subject.type, comprehension.header)
+      : undefined;
+  if (names === undefined) {
+    return undefined;
+  }
+  const own = context.checkedTypeOf(node);
+  const fields = own === undefined ? undefined : context.checker.fieldsOf(own);
+  const value = read(comprehension.value);
+  return names.map((name) => {
+    const field = fields?.find((each) => each.name === name);
+    return { name, part: field === undefined ? value : { kind: 'typed', type: field.type } };
+  });
 }
 
 /**

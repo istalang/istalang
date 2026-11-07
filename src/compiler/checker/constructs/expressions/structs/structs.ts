@@ -50,6 +50,7 @@ import { builtThrough } from './literal-types.ts';
 import {
   checkComprehensionAlone,
   checkOpaqueComprehended,
+  comprehendedParts,
   comprehensionOf,
   freshComprehended,
   opaqueComprehendedAccepts,
@@ -281,9 +282,9 @@ function checkValuesAlone(context: BodyContext, node: FieldsLiteral): void {
 /**
  * Which types a literal the call it is passed to decides can take (§3.5): a bare variant's
  * (`Rejected{by: "legal"}`) its enums; a `struct{…}` comprehending fields not all known, the struct
- * types with its keys (struct-comprehensions.ts); any other `struct{…}`, once a value it gives
- * needs the type expected of it, a struct type with a field of each name it gives, each value
- * taking that field's type.
+ * types with its keys (struct-comprehensions.ts); any other `struct{…}`, once a value it gives, or
+ * its comprehension's value, needs the type expected of it, a struct type with a field of each name
+ * it gives, each value taking that field's type.
  */
 export function structLiteralAccepts(
   context: BodyContext,
@@ -303,8 +304,8 @@ export function structLiteralAccepts(
 
 /**
  * Which struct types a `struct{…}` literal of values each with a type of its own, as `read` reads
- * them, can be built as instead of its shape (§3.7): those it gives every field of, each value
- * fitting it, but the fields with a default.
+ * them, can be built as instead of its shape (§3.7): those it gives every field of, a comprehension
+ * its subject's, each value fitting it, but the fields with a default where nothing comprehends.
  */
 export function structLiteralBuilds(
   context: BodyContext,
@@ -354,8 +355,9 @@ interface ValuesTaking {
 }
 
 /**
- * The struct types `node` gives a value of each field of, but those with a default, each value as
- * `taking` says taking its field's type: a field named twice, or one the type lacks, takes none.
+ * The struct types `node` gives a value of each field of, its comprehension's fields among them,
+ * but those with a default where it has none, each value as `taking` says taking its field's type:
+ * a field named twice, or one the type lacks, takes none.
  */
 function fieldsTaking(
   context: BodyContext,
@@ -363,13 +365,20 @@ function fieldsTaking(
   { combine, read }: ValuesTaking,
 ): Accepts | undefined {
   const named = node.items.flatMap((item) => (item.kind === 'FieldInitializer' ? [item] : []));
-  const names = new Set(named.map((item) => item.name.text));
+  const comprehended = comprehendedParts(context, node, read);
+  if (comprehended === undefined) {
+    return undefined;
+  }
+  const leavesDefaults = comprehensionOf(node) === undefined;
+  const given = [...named.map((item) => item.name.text), ...comprehended.map(({ name }) => name)];
+  const names = new Set(given);
+  const itemCount = named.length + (leavesDefaults ? 0 : 1);
   const values =
-    named.length === node.items.length && names.size === named.length
-      ? combine(
-          context,
-          named.map((item) => read(itemValue(item))),
-        )
+    itemCount === node.items.length && names.size === given.length
+      ? combine(context, [
+          ...named.map((item) => read(itemValue(item))),
+          ...comprehended.map(({ part }) => part),
+        ])
       : undefined;
   if (values === undefined) {
     return undefined;
@@ -378,9 +387,11 @@ function fieldsTaking(
     const target = builtFrom(expected);
     const fields = target === undefined ? undefined : context.checker.fieldsOf(target);
     return (
-      fields?.every((field) => names.has(field.name) || declaresDefault(field)) === true &&
-      named.every((item, index) => {
-        const field = fields.find(({ name }) => name === item.name.text);
+      fields?.every(
+        (field) => names.has(field.name) || (leavesDefaults && declaresDefault(field)),
+      ) === true &&
+      given.every((name, index) => {
+        const field = fields.find((each) => each.name === name);
         return field !== undefined && (values[index]?.(field.type, isOpen) ?? true);
       })
     );

@@ -123,7 +123,7 @@ export function checkLiteralFields(
     inference,
     isGiven: (index) => items.given.has(index),
   });
-  const completed = complete(context, node, shape, inference);
+  const completed = complete(context, items);
   const found = completed?.substitution ?? inference.substitution();
   context.literals.recordFields(
     node,
@@ -214,12 +214,13 @@ function spreadOf(shape: LiteralShape, typeArguments: readonly Type[]): Type {
   return shape.spreadOf?.(typeArguments) ?? shape.typeOf(typeArguments);
 }
 
-/** The type arguments inference completed, constrained; undefined after a report. */
+/**
+ * The type arguments inference completed, constrained; undefined after a report, or, after an item
+ * giving no field was reported, where what it would have inferred is missing, which isn't again.
+ */
 function complete(
   context: BodyContext,
-  node: FieldsLiteral,
-  shape: LiteralShape,
-  inference: Inference,
+  { node, shape, inference, fits }: LiteralItems,
 ): { typeArguments: readonly Type[]; substitution: Substitution } | undefined {
   const { owner, expected } = shape;
   if (owner === undefined) {
@@ -227,6 +228,9 @@ function complete(
   }
   const parameters = typeParametersOf(owner.typeParameters);
   const completion = completeInference(context.checker, owner, parameters, inference);
+  if (completion.kind === 'open' && !fits) {
+    return undefined;
+  }
   if (completion.kind === 'open' && expected !== undefined) {
     const found = inference.substitution();
     const given = shape.typeOf(parameters.map((parameter) => found.get(parameter) ?? errorType));
@@ -349,7 +353,7 @@ function givesByPosition(node: FieldsLiteral, shape: LiteralShape, item: FieldIt
   if (item.kind === 'PositionalInitializer') {
     return true;
   }
-  const required = fields.filter((field) => !declaresDefault(field)).length;
+  const required = fields.filter((field) => !callMayLeave(field)).length;
   return (
     item.value === undefined &&
     node.items.length === 1 &&
@@ -405,6 +409,15 @@ function reportMissing(
       context.report(checkerDiagnostics.missingField(at, typeText(type), field.name));
     }
   }
+}
+
+/**
+ * Whether a call may leave `field` out: it declares a default, or is a variant's rest, which then
+ * holds `[]` (§3.11).
+ */
+function callMayLeave(field: FieldMember): boolean {
+  const declared = field.declared?.node;
+  return declared?.kind === 'DeclaredField' && (hasDefault(declared) || declared.isRest);
 }
 
 /** Whether `field` declares a default (§3.1), as only a declared struct's or variant's can. */

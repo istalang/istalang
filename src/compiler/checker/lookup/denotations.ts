@@ -35,8 +35,10 @@ import type { NamedType } from '../../syntax/types/index.ts';
 import { declaredOutsideBodies } from '../constructs/expressions/access/names.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import type { Denotation, JoinedBody } from '../surface/denotation.ts';
+import type { ResolvedCall } from '../surface/resolved-call.ts';
 import { associatedDeclarationsOn } from '../types/traits/known-constraints.ts';
 import { type FieldMember, nominalType, type Type } from '../types/type/index.ts';
+import { membersOf } from '../types/unions/unions.ts';
 import { declaredFieldOf } from '../types/written/declared-fields.ts';
 import { entityType, namedType } from '../types/written/named-types.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
@@ -173,33 +175,37 @@ function functionDenotation(declaration: FunctionDeclaration, type: Type | undef
 
 /**
  * The functions the checker resolved `site` to, `call` or a function value of type `type`: one,
- * or in a field loop each one a pass resolved it to; undefined for none. A call's value is `made`.
+ * or in a field loop each one a pass resolved it to; undefined for none.
  */
 function calledAt(
   { body }: NameSite,
   call: Call | MemberAccess | Identifier,
   type: Type | undefined,
-  made?: Type,
 ): readonly Denotation[] | undefined {
   const calls = body?.callsAt(call) ?? [];
-  return calls.length === 0
-    ? undefined
-    : calls.map((each) => calledDenotation(each.function, type, made));
+  return calls.length === 0 ? undefined : calls.map((each) => calledDenotation(each, type));
 }
 
 /**
  * What a call of `called` names: the function, of `type` as a value; or the variant a constructor
- * builds (§3.11), of the enum type `made` where a call made one.
+ * builds (§3.11), of the enum type its type arguments make.
  */
-function calledDenotation(
-  called: FunctionDeclaration,
-  type: Type | undefined,
-  made: Type | undefined,
-): Denotation {
-  const built = constructedVariant(called);
+function calledDenotation(called: ResolvedCall, type: Type | undefined): Denotation {
+  const built = constructedVariant(called.function);
   return built === undefined
-    ? functionDenotation(called, type)
-    : variantDenotation(variantEntity(built.enumeration, built.variant), made);
+    ? functionDenotation(called.function, type)
+    : variantDenotation(variantEntity(built.enumeration, built.variant), builtType(called));
+}
+
+/**
+ * The enum type a call of a variant's constructor makes, of its type arguments; undefined for a
+ * call of any other function.
+ */
+function builtType(called: ResolvedCall): Type | undefined {
+  const built = constructedVariant(called.function);
+  return built === undefined || called.kind !== 'function'
+    ? undefined
+    : nominalType(typeEntity(built.enumeration), called.typeArguments);
 }
 
 /** A member: a field read, a method, a static function or a namespace's, or a qualified part. */
@@ -245,15 +251,16 @@ function associatedNamed(checker: CheckerContext, type: Type | undefined): reado
 
 /**
  * What a call's callee denotes: the function the call resolved to. A callee naming a type makes a
- * conversion, `T(x)`, so it denotes the type too, beside the function converting. A variant called
- * is of the enum type the call made, with or without fields (§3.11).
+ * conversion, `T(x)`, so it denotes the type too, beside the function converting. A variant called,
+ * with or without fields, is of each enum type the call made (§3.11).
  */
 function calleeDenotations(site: NameSite, call: Call): readonly Denotation[] {
-  const made = site.body?.typeOf(call);
-  const called = calledAt(site, call, undefined, made) ?? [];
   const entity = site.checker.bindings.entityOf(site.module, site.name);
-  const bound =
-    entity?.kind === 'variant' || entity?.kind === 'variants' ? named(site, made) : named(site);
+  if (entity?.kind === 'variant' || entity?.kind === 'variants') {
+    return madeTypes(site, call).flatMap((made) => named(site, made));
+  }
+  const called = calledAt(site, call, undefined) ?? [];
+  const bound = named(site);
   if (called.length === 0) {
     return bound;
   }
@@ -274,17 +281,28 @@ function heldFunction(site: NameSite, hold: Hold): readonly Denotation[] {
 }
 
 /**
+ * The types `call` made, one per pass of the field loops around it that made a different one; a
+ * call never checked made none known.
+ */
+function madeTypes({ body }: NameSite, call: Call): readonly (Type | undefined)[] {
+  const made = body?.typeOf(call);
+  return made === undefined ? [undefined] : membersOf(made);
+}
+
+/**
  * The parameter a named argument names, of each function its call resolved to; of a variant's
- * constructor, the field it gives, of the enum type the call made (§3.11).
+ * constructor, the field it gives, of each enum type the call made (§3.11).
  */
 function parameterNamed(site: NameSite, call: SyntaxNode | undefined): readonly Denotation[] {
   const { checker, name } = site;
   const calls = call?.kind === 'Call' ? (site.body?.callsAt(call) ?? []) : [];
   return calls.flatMap(({ function: called }): readonly Denotation[] => {
     const built = constructedVariant(called);
-    if (built !== undefined) {
-      const made = call?.kind === 'Call' ? site.body?.typeOf(call) : undefined;
-      return fieldDenotation(builtField(checker, made, built.variant.name.text, name.text));
+    if (built !== undefined && call?.kind === 'Call') {
+      const variant = built.variant.name.text;
+      return madeTypes(site, call).flatMap((made) =>
+        fieldDenotation(builtField(checker, made, variant, name.text)),
+      );
     }
     const parameter = checker
       .parametersOf(called)

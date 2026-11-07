@@ -9,8 +9,8 @@
  * Right after its `{`, a struct literal building one field also takes that field's value without
  * its name (§3.1), so a value may stand there too, and the visible names are offered beside the
  * field when completion is invoked, bare variants aside, as no enum is expected of a name there;
- * typing the `{` asks for fields alone. A variant's literal names its fields: only a call gives one
- * by position (§3.11). A visible variable named like a field
+ * typing the `{` asks for fields alone. A variant's literal names its fields and spreads nothing:
+ * only a call gives one by position (§3.11). A visible variable named like a field
  * not given yet is offered too, as the shorthand writing both (`Pair{first}`); the leading spread
  * only where it may stand, as the first item.
  */
@@ -33,7 +33,7 @@ import {
   type SyntaxNode,
   type SyntaxTree,
 } from '../../../../compiler/syntax/tree/index.ts';
-import type { Identifier } from '../../../../compiler/syntax/tree/node.ts';
+import { type Identifier, lastName } from '../../../../compiler/syntax/tree/node.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import { indentationAt, lineStartAt } from '../../../../foundation/text/line-map.ts';
 import type { Candidate } from '../candidate.ts';
@@ -165,13 +165,16 @@ export function offerLiteralFields(
   const fields =
     built === undefined || !isFieldsLiteral(built) ? [] : (body?.literalFieldsOf(built) ?? []);
   const startsItems = first && (opens || literal.kind === 'IndentedValue');
-  const isVariant = built !== undefined && buildsEnum(body?.typeOf(built));
+  const isVariant = built !== undefined && isFieldsLiteral(built) && namesVariant(cursor, built);
   return literalItems(cursor, { fields, others, opens, startsItems, isVariant });
 }
 
-/** Whether a literal checked as `type` builds a variant of an enum, whose fields braces name. */
-function buildsEnum(type: Type | undefined): boolean {
-  return type?.kind === 'nominal' && type.entity.declaration.kind === 'EnumDeclaration';
+/** Whether `literal` names a variant, whatever checking inferred of its enum's type (§3.11). */
+function namesVariant({ checker, module }: Cursor, literal: FieldsLiteral): boolean {
+  const { type } = literal;
+  const entity =
+    type === undefined ? undefined : checker.bindings.entityOf(module, lastName(type.path));
+  return entity?.kind === 'variant' || entity?.kind === 'variants';
 }
 
 function isFieldItem(item: FieldsLiteral['items'][number] | IndentedEntry): item is FieldItem {
@@ -210,15 +213,18 @@ interface LiteralItemSlot {
   readonly opens: boolean;
   /** Whether it is the first item, where the leading spread may stand. */
   readonly startsItems: boolean;
-  /** Whether the literal builds a variant, which takes no value by position in braces (§3.11). */
+  /**
+   * Whether the literal builds a variant, which takes no value by position in braces, nor a spread
+   * (§3.11).
+   */
   readonly isVariant: boolean;
 }
 
 /**
  * The candidates for an item of a literal building `fields`: those its `others` don't give, each
- * after a variable that would write it as shorthand; the leading spread where the first item
- * stands; and, after the `{` of a struct literal building one field, invoked, the values it may
- * take unnamed.
+ * after a variable that would write it as shorthand; the leading spread where a struct literal's
+ * first item stands; and, after the `{` of a struct literal building one field, invoked, the values
+ * it may take unnamed.
  */
 function literalItems(
   cursor: Cursor,
@@ -235,7 +241,8 @@ function literalItems(
     ]);
   const takesValue = opens && !isVariant && fields.length === 1 && cursor.trigger === undefined;
   const values = takesValue ? visible.filter((candidate) => !isBareVariant(candidate)) : [];
-  return [...offered, ...(startsItems && fields.length > 0 ? [spread] : []), ...values];
+  const spreads = startsItems && !isVariant && fields.length > 0;
+  return [...offered, ...(spreads ? [spread] : []), ...values];
 }
 
 /** The leading spread, `...value`, which only the first item may be (§3.1). */

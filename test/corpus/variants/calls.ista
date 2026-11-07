@@ -1,10 +1,11 @@
-# outcome: "1 2|legal: no reason given|ops: late|approved|3 t true|0|7|5|boom 1|1 a|2 4|t 6"
+# outcome: "1 2|legal: no reason given|ops: late|approved|3 t true|0|7|5|boom 1|1 a|2 4|t 6|1 2 none 3 4 7"
 # A variant with fields is a function of its enum (§3.11): a call binds its arguments to the fields
 # as to parameters, by position, then by name, leaving defaults out and a rest collecting the
 # others; the expected enum gives its type arguments, those written give theirs and the arguments
 # infer the rest, and a variant without fields called is its value. A spawned call starts the
 # constructor as any function. A field named `self` is a field, never a receiver, and a
-# `struct{…}` comprehending fields not all known takes the field's type, as in braces.
+# `struct{…}` comprehension takes the field's type, as in braces: built as it where its fields are
+# known, waiting for it where they aren't or its values need it.
 
 enum Verdict:
   Approved
@@ -65,6 +66,37 @@ fn comprehended() -> String:
     case _: ""
   `${two}|${one}`
 
+struct Point:
+  x: Int
+  y: Int
+
+type Partial = { x: Int?, y: Int? }
+
+type Tagged = { tag: String?, x: Int, y: Int }
+
+fn kept<T>(t: T) -> T: t
+
+fn asPoint(p: Point) -> Result<Point>: Ok(struct{for k, v in ...p: [k]: v})
+
+fn asPartial(p: Point, keep: Bool) -> Result<Partial>:
+  Ok(struct{for k, v in ...p: [k]: if keep: v else: none})
+
+fn asTagged(p: Point) -> Result<Tagged>: Ok(struct{tag: none, for k, v in ...p: [k]: v + 2})
+
+fn known() -> String:
+  const p = Point{x: 1, y: 2}
+  const point = match asPoint(p):
+    case Ok{value}: `${value.x} ${value.y}`
+    case _: ""
+  const partial = match asPartial(p, false):
+    case Ok{value}: if value.x == none: "none" else: "some"
+    case _: ""
+  const tagged = match asTagged(p):
+    case Ok{value}: `${value.x} ${value.y}`
+    case _: ""
+  const sum = kept(struct{for k, v in ...p: [k]: v + 2})
+  `${point} ${partial} ${tagged} ${sum.x + sum.y}`
+
 fn inferred() -> String:
   const failed = Result.Err<Int>("boom")
   const passed: Result<Int, String> = Result.Ok<Int>(1)
@@ -100,4 +132,5 @@ async fn main() -> Future<String>:
     inferred(),
     named(),
     comprehended(),
+    known(),
   ].join("|")

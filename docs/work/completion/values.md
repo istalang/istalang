@@ -312,10 +312,12 @@ fn g(c: Color = ‸
   const e: Result<Int> = Ok{‸}
 ---
   const e: Result<Int> = Ok{va‸}
+---
+  const e = Result.Ok{‸}
 ```
 - **Where / trigger:** in `fn t`; invoked
-- **Offer:** The field (`value: `).
-- **Not:** Values: a variant's field is given by position only in a call, `Ok(42)`.
+- **Offer:** The field (`value: `), whether or not the enum's type arguments are known yet.
+- **Not:** Values: a variant's field is given by position only in a call, `Ok(42)`; nor `...`, as nothing spreads into a variant.
 - **Basis:** spec §3.11 ("A field is never given in braces by position").
 
 ### LI-10 · Shorthand · P2 · ✅ pass

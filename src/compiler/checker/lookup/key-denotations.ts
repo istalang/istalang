@@ -23,6 +23,7 @@ import type { Denotation } from '../surface/denotation.ts';
 import { calledVariant } from '../surface/named-variants.ts';
 import { substitutionFor } from '../types/parts/substitution.ts';
 import type { Type } from '../types/type/index.ts';
+import { membersOf } from '../types/unions/unions.ts';
 import { givenKeysOwner } from '../types/written/key-types.ts';
 import { parameterType } from '../types/written/resolve-type.ts';
 import { bodyHolding } from './holders.ts';
@@ -113,7 +114,7 @@ interface Instantiated {
 /**
  * What `node`, a type or call taking type arguments, instantiates, with the arguments it was given:
  * a nominal type or an alias written in a type, a struct literal's type, each function a generic
- * call calls, or the enum a variant without fields called makes, its value (§3.11).
+ * call calls, or the enum a variant without fields called makes, its value, in each pass (§3.11).
  */
 function instantiationsAt(
   checker: CheckerContext,
@@ -125,14 +126,12 @@ function instantiationsAt(
     const body = bodyHolding(checker, module, node);
     const calls = body?.callsAt(node) ?? [];
     const made = body?.typeOf(node);
-    if (calls.length === 0 && made?.kind === 'nominal' && body !== undefined) {
+    if (calls.length === 0 && made !== undefined && body !== undefined) {
       const names = {
         entityOf: (name: Identifier) => checker.bindings.entityOf(module, name),
         chosenVariantOf: body.chosenVariantOf,
       };
-      return calledVariant(names, node) === undefined
-        ? []
-        : [{ parameters: made.entity.declaration.typeParameters, typeArguments: made.arguments }];
+      return calledVariant(names, node) === undefined ? [] : membersOf(made).flatMap(enumMade);
     }
     return calls.flatMap((call) =>
       call.kind === 'function'
@@ -141,6 +140,13 @@ function instantiationsAt(
     );
   }
   return [instantiationOfType(checker, module, tree, node) ?? []].flat();
+}
+
+/** What a variant without fields called made, `type`, in one pass, instantiates: its enum. */
+function enumMade(type: Type): readonly Instantiated[] {
+  return type.kind === 'nominal'
+    ? [{ parameters: type.entity.declaration.typeParameters, typeArguments: type.arguments }]
+    : [];
 }
 
 /**

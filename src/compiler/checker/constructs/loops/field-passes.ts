@@ -45,6 +45,22 @@ export function inFieldPasses(
 }
 
 /**
+ * The fields a field loop `header` heads visits over a value of `subject`, by name, when they are
+ * all known (§4); undefined for a subject with no keys, or keys not all known yet.
+ */
+export function knownFieldsVisited(
+  checker: CheckerContext,
+  subject: Type,
+  header: FieldHeader,
+): readonly string[] | undefined {
+  const passes = fieldPassesOver(checker, subject, header);
+  if (passes === undefined || passes.some(({ visits }) => visits.kind === 'others')) {
+    return undefined;
+  }
+  return passes.flatMap(({ visits }) => (visits.kind === 'field' ? [visits.name] : []));
+}
+
+/**
  * Whether a field loop `header` heads over a value of `subject` has a pass of its own for the keys
  * not known yet (§4): its subject's fields aren't all known.
  */

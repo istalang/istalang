@@ -22,6 +22,7 @@ import type { Denotation, JoinedBody } from '../surface/denotation.ts';
 import type { ResolvedSite } from '../surface/resolved-call.ts';
 import { sameType } from '../types/identity/identity.ts';
 import type { Type } from '../types/type/index.ts';
+import { membersOf } from '../types/unions/unions.ts';
 import { answersAt } from './lookup.test-kit.ts';
 
 const corpus = [...runPrograms, ...invalidPrograms].map(({ name, text }) => ({ name, text }));
@@ -77,10 +78,15 @@ function madeBy({ tree }: CheckedModule, name: Identifier, body: JoinedBody): Ty
   return call === undefined ? undefined : body.typeOf(call);
 }
 
-/** Whether `type` is the type a call `made`, as a variant called names it; any, with no call. */
+/**
+ * Whether `type` is a type the call `made`, one per pass of a field loop, as a variant called
+ * names it; any, with no call.
+ */
 function isMade(made: Type | undefined, type: Type | undefined): boolean {
   return (
-    made === undefined || made.kind === 'error' || (type !== undefined && sameType(made, type))
+    made === undefined ||
+    made.kind === 'error' ||
+    (type !== undefined && membersOf(made).some((member) => sameType(member, type)))
   );
 }
 
