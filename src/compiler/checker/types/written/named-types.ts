@@ -18,7 +18,7 @@
 import type { PrimitiveName } from '../../../../foundation/language/primitives.ts';
 import { staticName } from '../../../../foundation/language/static-names.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
-import type { Entity, VariantNaming } from '../../../binder/entities.ts';
+import type { Entity, VariantNaming, VariantsEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type {
   EnumDeclaration,
@@ -165,15 +165,28 @@ export function chooseVariant(
   const chosen = context.checker.inputs.variantNamed(naming.name, enumsExpected(expected));
   if (chosen === undefined) {
     if (!expectsError(expected)) {
-      const qualified = context.checker.bindings
-        .candidatesOf(naming)
-        .map((candidate) => staticName(candidate.enum.name.text, candidate.variant.name.text));
+      const qualified = qualifiedHere(context, naming);
       context.report(checkerDiagnostics.bareVariant(at.span, at.name.text, qualified));
     }
     return undefined;
   }
   context.recordVariant(at.name, chosen);
   return { enum: chosen.enum, variant: chosen.variant };
+}
+
+/**
+ * How the module `context` checks can qualify a bare variant: through each enum having one of its
+ * name that the module's top level names, so a message suggests only what it can write, whatever
+ * other modules declare.
+ */
+function qualifiedHere(context: BodyContext, naming: VariantsEntity): readonly string[] {
+  const { bindings } = context.checker;
+  return bindings.candidatesOf(naming).flatMap((candidate) => {
+    const named = bindings.topLevelNamed(context.module, candidate.enum.name.text);
+    return named?.kind === 'type' && named.declaration === candidate.enum
+      ? [staticName(candidate.enum.name.text, candidate.variant.name.text)]
+      : [];
+  });
 }
 
 /** The struct without fields `entity` names, the one type a bare name makes a value of (§3.1). */

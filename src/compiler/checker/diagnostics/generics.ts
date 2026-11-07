@@ -99,7 +99,9 @@ export const genericTemplates = {
   bareVariant: {
     code: 5107,
     message: (name: string, qualified: readonly string[]) =>
-      `'${name}' is a variant, and no enum type is expected here; qualify it, as in ${qualified.map((each) => `'${each}'`).join(' or ')}.`,
+      qualified.length === 0
+        ? `'${name}' is a variant, and no enum type is expected here; qualify it with its enum.`
+        : `'${name}' is a variant, and no enum type is expected here; qualify it, as in ${qualified.map((each) => `'${each}'`).join(' or ')}.`,
   },
   noneNeedsType: {
     code: 5108,
