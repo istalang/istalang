@@ -10,7 +10,7 @@
 # case bodies agree on one type.
 
 async fn checked(s: Slot<Int>) -> Future<Result<Int>>:
-  Ok{(1)}
+  Ok(1)
 
 async fn cases(s: Slot<Int>):
   _ = await select:

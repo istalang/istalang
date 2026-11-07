@@ -13,6 +13,6 @@ fn runAndReRun<R is Encodable & Sendable>(
   test(title, async fn(): assertEq(await scenario(), expected))
   test(
     title + ", with every segment re-run"
-    async fn(): assertEq(await spawnCrashingEveryAwait(scenario).result(), Ok{(expected)})
+    async fn(): assertEq(await spawnCrashingEveryAwait(scenario).result(), Ok(expected))
   )
 ]

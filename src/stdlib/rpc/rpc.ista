@@ -36,12 +36,12 @@ async fn onMessage<P, R>(self: Method<P, R>, handler: async fn(P) -> R) -> Futur
     const call = await self->_calls.receive()
     const reply = await handler(call.message)
     if call.reply->slot is Slot as slot:
-      drop slot.put(Ok{(reply)})
+      drop slot.put(Ok(reply))
       call.reply->slot = none
 
 fn dispose<R>(self: _Reply<R>):
   if self->slot is Slot as slot:
-    drop slot.put(Err{Error{message: "The call was let go without a reply.", code: "unanswered"}})
+    drop slot.put(Err(Error{message: "The call was let go without a reply.", code: "unanswered"}))
 
 # The reply arriving in `slot`, waited for while holding `sent`, the call's revertible send.
 async fn _replyTo<P, R>(sent: Revertible<_Call<P, R>>, slot: Slot<Result<R>>) -> Future<Result<R>>:

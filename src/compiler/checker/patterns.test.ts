@@ -114,20 +114,20 @@ describe('exhaustiveness', () => {
 describe("'?' on a Result", () => {
   it('passes on an Err from a function whose result is inferred as a Result', () => {
     const text = [
-      'fn parse(text: String) -> Result<Int>: Result.Ok{1}',
+      'fn parse(text: String) -> Result<Int>: Result.Ok(1)',
       'fn twice(text: String):',
       '  const n = parse(text)?',
-      '  Result.Ok{n * 2}',
+      '  Result.Ok(n * 2)',
       'async fn main() -> Future<Result<Int>>:',
       '  const n = (await later())?',
-      '  Ok{(n)}',
+      '  Ok(n)',
       'async fn later() -> Future<Result<Int>>: parse("1")',
     ].join('\n');
     expect(reported(text)).toEqual(reportedNothing);
   });
 
   it('is refused outside any function', () => {
-    const text = 'fn parse() -> Result<Int>: Result.Ok{1}\nfn f(n: Int = parse()?) -> Int: n\n';
+    const text = 'fn parse() -> Result<Int>: Result.Ok(1)\nfn f(n: Int = parse()?) -> Int: n\n';
     expect(reported(text)).toEqual(reportedOnce(reports.propagateOutsideFunction.code, 'parse()?'));
   });
 });
@@ -135,14 +135,14 @@ describe("'?' on a Result", () => {
 describe('a Result that must be used', () => {
   const declarations = [
     'struct Form { name: String }',
-    'fn validate(self: Form) -> Result<Int>: Result.Ok{1}',
+    'fn validate(self: Form) -> Result<Int>: Result.Ok(1)',
     'fn twice(r: Result<Int>) -> (Result<Int>, Int): (r, 2)',
     'fn f(form: Form?):',
   ];
 
   it.each([
     ["through '?.', as a Result?", '  form?.validate()', 'form?.validate()'],
-    ['inside a tuple', '  twice(Ok{1})', 'twice(Ok{1})'],
+    ['inside a tuple', '  twice(Ok(1))', 'twice(Ok(1))'],
   ])('is reported when lost %s', (_case, line, spanText) => {
     expect(reported([...declarations, line, '  0'].join('\n'))).toEqual(
       reportedOnce(reports.unusedValue.code, spanText),
@@ -150,9 +150,9 @@ describe('a Result that must be used', () => {
   });
 
   it.each([
-    ['the Result itself', '  twice(Ok{1}).0', true],
+    ['the Result itself', '  twice(Ok(1)).0', true],
     ["a Result? from '?.'", '  form?.validate()', false],
-    ['a tuple holding a Result', '  twice(Ok{1})', false],
+    ['a tuple holding a Result', '  twice(Ok(1))', false],
   ])("advises '?' only for %s", (_case, line, advisesPropagate) => {
     const { diagnostics } = diagnosedAt(
       stdProgramOf({ 'main.ista': [...declarations, line, '  0'].join('\n') }),

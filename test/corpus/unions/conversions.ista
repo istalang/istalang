@@ -21,15 +21,15 @@ fn which(v: Pixel | Point) -> String:
     case Point{x}: "point:" + String(x)
 
 fn find(ok: Bool) -> Result<Int, NotFound>:
-  if ok: Ok{10} else: Err{NotFound{id: "p1"}}
+  if ok: Ok(10) else: Err(NotFound{id: "p1"})
 
 fn wait(ok: Bool) -> Result<Int, Timeout>:
-  if ok: Ok{20} else: Err{Timeout{ms: 500}}
+  if ok: Ok(20) else: Err(Timeout{ms: 500})
 
 fn both(a: Bool, b: Bool) -> Result<Int, NotFound | Timeout>:
   const x = find(a)?
   const y = wait(b)?
-  Ok{x + y}
+  Ok(x + y)
 
 fn showResult(r: Result<Int, NotFound | Timeout>) -> String:
   match r:

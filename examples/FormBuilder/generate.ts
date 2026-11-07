@@ -612,7 +612,7 @@ class ViewGen {
     }
     if (typeof v === 'string' && this.doc.localization?.[v])
       return `Prop.Computed{eval: ${this.lam(sc, `forms.t(translations, ctx.user.lang, ${istaString(v)}, ${istaString(v)}, [])`)}}`;
-    return `${fixedVariant}{${asLiteral(v as Json)}}`;
+    return `${fixedVariant}(${asLiteral(v as Json)})`;
   }
 
   /** The widget with its ui props, as one prop: fixed if every ui prop is, else computed. */
@@ -634,7 +634,7 @@ class ViewGen {
       ? `${info.enumName}.${info.variant}{${props.map((p) => `${p}: ${field(p, ui[p])}`).join(', ')}}`
       : `${info.enumName}.${info.variant}`;
     const computed = props.some((p) => isExpr(ui[p]) || translated(p));
-    if (!computed) return `Prop.Fixed{${body}}`;
+    if (!computed) return `Prop.Fixed(${body})`;
     return awaits(body)
       ? `forms.awaited(${pending}, ${this.lam(sc, body)})`
       : `Prop.Computed{eval: ${this.lam(sc, body)}}`;
@@ -650,7 +650,7 @@ class ViewGen {
     const asLit = (k: string, val: Json) =>
       info.childUi?.[k]?.startsWith('Float') ? litFloat(val) : lit(val);
     const body = `ParentUi.${info.variant}{${props.map((k) => `${k}: ${p[k] === undefined ? 'none' : isExpr(p[k]) ? `(${p[k].expr})` : asLit(k, p[k])}`).join(', ')}}`;
-    if (!anyExpr) return `Prop.Fixed{${body}}`;
+    if (!anyExpr) return `Prop.Fixed(${body})`;
     return awaits(body)
       ? `forms.awaited(${pending}, ${this.lam(sc, body)})`
       : `Prop.Computed{eval: ${this.lam(sc, body)}}`;

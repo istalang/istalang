@@ -217,7 +217,7 @@ fn iterate(self: String) -> fn() -> Step<String>:
   fn next() -> Step<String>:
     if self._characterAt(offset) is (character, after):
       offset = after
-      return Next{(character)}
+      return Next(character)
     Done
   next
 
@@ -227,7 +227,7 @@ fn _cursor<T>(count: Int, item: fn(Int) -> T) -> fn() -> Step<T>:
   fn next() -> Step<T>:
     if position == count: return Done
     position += 1
-    Next{(item(position - 1))}
+    Next(item(position - 1))
   next
 
 # The entry at `position` in a map's own order.
@@ -309,7 +309,7 @@ extern fn Int.parse(text: String) -> Result<Int>
 extern fn Float.parse(text: String) -> Result<Float>
 extern fn Bool.parse(text: String) -> Result<Bool>
 
-fn String.parse(text: String) -> Result<String>: Ok{(text)}
+fn String.parse(text: String) -> Result<String>: Ok(text)
 
 trait Sendable
 

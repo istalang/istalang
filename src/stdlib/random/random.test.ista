@@ -86,7 +86,7 @@ fn suite() -> Array<Test>: [
   })
   test("a segment that runs again draws the same values", async fn(): {
     const recorded = mock(seen, ignored)
-    assertEq(await spawnCrashingEveryAwait(drawsThenCommits).result(), Ok{()})
+    assertEq(await spawnCrashingEveryAwait(drawsThenCommits).result(), Ok(()))
     const values = calls(recorded)
     assertEq(values.length(), 2)
     assertEq(values[0], values[1])
@@ -95,7 +95,7 @@ fn suite() -> Array<Test>: [
     "a spawned instance draws from a seed of its own, the same one when its parent's segment runs again"
     async fn(): {
       const recorded = mock(seenText, ignoredText)
-      assertEq(await spawnCrashingEveryAwait(spawnsThenDraws).result(), Ok{()})
+      assertEq(await spawnCrashingEveryAwait(spawnsThenDraws).result(), Ok(()))
       const values = calls(recorded)
       assertEq(values.length(), 4)
       assertEq(values[0], values[1])

@@ -21,8 +21,8 @@ async fn all<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<Array<
   while _racing(race):
     match await _next(race):
       case (position, Ok{value}): values[position] = value
-      case (_, Err{error}): return Err{(error)}
-  Ok{(_inOrder(values, futures.length()))}
+      case (_, Err{error}): return Err(error)
+  Ok(_inOrder(values, futures.length()))
 
 # Every value in position order, once all resolved.
 async fn allSettled<T>(futures: Array<Future<T>>) -> Future<Array<T>>:
@@ -39,9 +39,9 @@ async fn any<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<T, Arr
   let errors: Map<Int, E> = [:]
   while _racing(race):
     match await _next(race):
-      case (_, Ok{value}): return Ok{(value)}
+      case (_, Ok{value}): return Ok(value)
       case (position, Err{error}): errors[position] = error
-  Err{(_inOrder(errors, futures.length()))}
+  Err(_inOrder(errors, futures.length()))
 
 # The first `n` `Ok` values in the order they arrived, or the errors in position order once `n`
 # can't be reached.
@@ -59,8 +59,8 @@ async fn quorum<T, E>(
       case (_, Ok{value}): values.push(value)
       case (position, Err{error}):
         errors[position] = error
-        if errors.size() > futures.length() - n: return Err{(_inOrder(errors, futures.length()))}
-  Ok{(values)}
+        if errors.size() > futures.length() - n: return Err(_inOrder(errors, futures.length()))
+  Ok(values)
 
 # The value of `future`, or `none` if `limit` passes first. When both are there, the value wins.
 async fn timeout<T>(future: Future<T>, limit: time.Duration) -> Future<T?>:

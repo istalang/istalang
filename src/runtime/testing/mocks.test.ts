@@ -28,7 +28,7 @@ async fn everywhere():
   hold _ = mock(greet, fn(): "hi")
   hold _ = mock(time.now, fn(): Time{value: 42})
   assertEq(await report(), "hi charged 5 42")
-  assertEq(await spawn parent().result(), Ok{"hi charged 5 42"})
+  assertEq(await spawn parent().result(), Ok("hi charged 5 42"))
   await time.delay(1s)
   assertEq(charged.calls(), [(5,), (5,), (7,)])
 
@@ -80,7 +80,7 @@ async fn describes() -> Future<String>:
 
 async fn native():
   hold _ = mock(describe, toString)
-  assertEq(await spawn describes().result(), Ok{"42"})
+  assertEq(await spawn describes().result(), Ok("42"))
 
 async fn breaking():
   hold _ = mock(describe, fn(n: Int) -> String: panic("the replacement broke"))
@@ -116,7 +116,7 @@ async fn posted():
   const started = spawn pollsThenWaits()
   await started.idle()
   fake.post("q", 5)
-  assertEq(await started.result(), Ok{5})
+  assertEq(await started.result(), Ok(5))
 
 @Suite{"withdrawn"}
 fn suite() -> Array<Test>: [test("posted after a lost select", posted)]

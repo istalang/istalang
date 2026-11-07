@@ -16,7 +16,7 @@ fn makeCounter(start: Int) -> fn() -> Int:
 
 fn check(r: Result<Int>) -> Result<Int>:
   const v = r?
-  Ok{(v * 2)}
+  Ok(v * 2)
 
 async fn main() -> Future<String>:
   const next = makeCounter(10)
@@ -28,7 +28,7 @@ async fn main() -> Future<String>:
   await runtime.commit()
   const tail = acc.items[1..]
   await time.delay(10ms)
-  const r = match check(Ok{(adder(3))}):
+  const r = match check(Ok(adder(3))):
     case Ok{value}: value
     case Err{error}: -1
   const keys = [for k, v in acc.seen.entries() if v > 10: k + "=" + String(v)]

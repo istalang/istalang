@@ -27,5 +27,5 @@ fn countdown(start: Int) -> Int:
   steps
 
 async fn main() -> Future<String>:
-  (radius(Circle{radius: 7}) + "|" + radius(Square{side: 2}) + "|" + classify(Ok{12})
-    + "|" + classify(Err{Error{message: "x", code: "y"}}) + "|" + String(countdown(3)))
+  (radius(Circle{radius: 7}) + "|" + radius(Square{side: 2}) + "|" + classify(Ok(12))
+    + "|" + classify(Err(Error{message: "x", code: "y"})) + "|" + String(countdown(3)))

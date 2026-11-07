@@ -56,7 +56,7 @@ describe('a struct that is also iterable', () => {
       '    if done:',
       '      return Done',
       '    done = true',
-      '    Next{99}',
+      '    Next(99)',
       '  next',
     ];
     const body = [

@@ -109,9 +109,7 @@ type OrderScope3 = {
 fn orderView(m: OrderModel) -> any View<OrderScope>: LayoutView<OrderScope>{
   key: "n1"
   parent: none
-  widget: Prop.Fixed{
-    LayoutWidget.Section{title: "Order", description: none, collapsible: none, labels: none}
-  }
+  widget: Prop.Fixed(LayoutWidget.Section{title: "Order", description: none, collapsible: none, labels: none})
   checks: [
     forms.later(
       async fn({data, ctx}: OrderScope) -> Future<String?>: {
@@ -127,8 +125,8 @@ fn orderView(m: OrderModel) -> any View<OrderScope>: LayoutView<OrderScope>{
       key: "n2"
       parent: none
       field: m.country
-      widget: Prop.Fixed{FieldWidget.Select{placeholder: none}}
-      label: Prop.Fixed{"Country"}
+      widget: Prop.Fixed(FieldWidget.Select{placeholder: none})
+      label: Prop.Fixed("Country")
       checks: [
         forms.answered()
         forms.rule(
@@ -163,8 +161,8 @@ fn orderView(m: OrderModel) -> any View<OrderScope>: LayoutView<OrderScope>{
       when: Prop.Computed{eval: fn({data, ctx}: OrderScope): data.country != none}
       field: m.city->node
       hide: m.city
-      widget: Prop.Fixed{FieldWidget.Select{placeholder: none}}
-      label: Prop.Fixed{"City"}
+      widget: Prop.Fixed(FieldWidget.Select{placeholder: none})
+      label: Prop.Fixed("City")
       checks: [forms.answered()]
       options: Options.Rows{
         from: forms.awaited(Pending.Node, async fn({data, ctx}: OrderScope): [
@@ -185,32 +183,32 @@ fn orderView(m: OrderModel) -> any View<OrderScope>: LayoutView<OrderScope>{
       key: "n4"
       parent: none
       list: m.items
-      widget: Prop.Fixed{RepeatWidget.Table{addLabel: none}}
-      label: Prop.Fixed{"Items"}
-      checks: [forms.minItems(Fixed{1})]
+      widget: Prop.Fixed(RepeatWidget.Table{addLabel: none})
+      label: Prop.Fixed("Items")
+      checks: [forms.minItems(Fixed(1))]
       canAdd: true
       item: fn(r1, row1): ScopedView<OrderScope, OrderScope1>{
         scope: fn(sc): OrderScope1{data: sc.data, ctx: sc.ctx, item: r1.seen()}
         view: LayoutView<OrderScope1>{
           key: `n5@${row1}`
           parent: none
-          widget: Prop.Fixed{LayoutWidget.Tablerow}
+          widget: Prop.Fixed(LayoutWidget.Tablerow)
           children: [
             new FieldView<OrderScope1, String>{
               key: `n6@${row1}`
               parent: none
               field: r1.fields.sku
-              widget: Prop.Fixed{FieldWidget.Input{placeholder: none}}
-              label: Prop.Fixed{"SKU"}
-              checks: [forms.answered(), forms.required(Fixed{true})]
+              widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+              label: Prop.Fixed("SKU")
+              checks: [forms.answered(), forms.required(Fixed(true))]
             }
             new FieldView<OrderScope1, Int>{
               key: `n7@${row1}`
-              parent: Prop.Fixed{ParentUi.Tablerow{width: 80}}
+              parent: Prop.Fixed(ParentUi.Tablerow{width: 80})
               field: r1.fields.qty
-              widget: Prop.Fixed{FieldWidget.Input{placeholder: none}}
-              label: Prop.Fixed{"Qty"}
-              checks: [forms.answered(), forms.min(Fixed{1})]
+              widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+              label: Prop.Fixed("Qty")
+              checks: [forms.answered(), forms.min(Fixed(1))]
             }
           ]
         }
@@ -220,8 +218,8 @@ fn orderView(m: OrderModel) -> any View<OrderScope>: LayoutView<OrderScope>{
       key: "n8"
       parent: none
       field: none
-      widget: Prop.Fixed{FieldWidget.Input{placeholder: none}}
-      label: Prop.Fixed{"Total quantity"}
+      widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+      label: Prop.Fixed("Total quantity")
       value: Prop.Computed{eval: fn({data, ctx}: OrderScope): logic.totalQty(data.items)}
       checks: []
     }
@@ -229,33 +227,33 @@ fn orderView(m: OrderModel) -> any View<OrderScope>: LayoutView<OrderScope>{
       key: "n9"
       parent: none
       variant: m.payment
-      widget: Prop.Fixed{VariantWidget.Inline}
-      label: Prop.Fixed{"Payment"}
+      widget: Prop.Fixed(VariantWidget.Inline)
+      label: Prop.Fixed("Payment")
       cases: struct{
         card: CaseView<OrderScope>{
-          label: Prop.Fixed{"Credit card"}
+          label: Prop.Fixed("Credit card")
           body: ScopedView<OrderScope, OrderScope2>{
             scope: fn(sc): OrderScope2{data: sc.data, ctx: sc.ctx, p: m.payment.cases.card.seen()}
             view: new FieldView<OrderScope2, String>{
               key: "n10"
               parent: none
               field: m.payment.cases.card.fields.last4
-              widget: Prop.Fixed{FieldWidget.Input{placeholder: none}}
-              label: Prop.Fixed{"Last 4 digits"}
-              checks: [forms.answered(), forms.pattern(Fixed{"^[0-9]{4}$"})]
+              widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+              label: Prop.Fixed("Last 4 digits")
+              checks: [forms.answered(), forms.pattern(Fixed("^[0-9]{4}$"))]
             }
           }
         }
         wire: CaseView<OrderScope>{
-          label: Prop.Fixed{"Bank transfer"}
+          label: Prop.Fixed("Bank transfer")
           body: ScopedView<OrderScope, OrderScope3>{
             scope: fn(sc): OrderScope3{data: sc.data, ctx: sc.ctx, p: m.payment.cases.wire.seen()}
             view: new FieldView<OrderScope3, String>{
               key: "n11"
               parent: none
               field: m.payment.cases.wire.fields.iban
-              widget: Prop.Fixed{FieldWidget.Input{placeholder: none}}
-              label: Prop.Fixed{"IBAN"}
+              widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+              label: Prop.Fixed("IBAN")
               checks: [forms.answered()]
             }
           }
@@ -273,7 +271,7 @@ fn orderView(m: OrderModel) -> any View<OrderScope>: LayoutView<OrderScope>{
           rows: (if logic.totalQty(data.items) > 1000: 6 else: 3)
         }
       }
-      label: Prop.Fixed{"Delivery note"}
+      label: Prop.Fixed("Delivery note")
       checks: [forms.answered()]
     }
   ]

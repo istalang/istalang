@@ -43,8 +43,8 @@ shared struct Field<T>:
 fn seen<T>(self: Field<T>) -> T?: self->value
 fn read<T>(self: Field<T>) -> Result<T>:
   match self->value:
-    case None: Err{Error{message: "unanswered", code: "unanswered"}}
-    case v: Ok{(v)}
+    case None: Err(Error{message: "unanswered", code: "unanswered"})
+    case v: Ok(v)
 fn load<T>(self: Field<T>, v: T?) -> Unit: self->value = v
 
 # Fields by name: an object in the data.
@@ -58,9 +58,7 @@ struct Group<S is struct { [_] is FormNode }>:
 fn seen<S is struct { [_] is FormNode }>(self: Group<S>) -> Group<S>.Seen: struct{
   for f, node in ...self.fields: [f]: node.seen()
 }
-fn read<S is struct { [_] is FormNode }>(self: Group<S>) -> Result<Group<S>.Data>: Ok{
-  struct{for f, node in ...self.fields: [f]: node.read()?}
-}
+fn read<S is struct { [_] is FormNode }>(self: Group<S>) -> Result<Group<S>.Data>: Ok{value: struct{for f, node in ...self.fields: [f]: node.read()?}}
 fn load<S is struct { [_] is FormNode }>(self: Group<S>, v: Group<S>.Seen) -> Unit:
   for f, node in ...self.fields: node.load(v[f])
 
@@ -81,7 +79,7 @@ fn seen<R is FormNode>(self: List<R>) -> Array<R.Seen>: [for row in self->rows: 
 fn read<R is FormNode>(self: List<R>) -> Result<Array<R.Data>>:
   let out: Array<R.Data> = []
   for row in self->rows: out.push(row.node.read()?)
-  Ok{(out)}
+  Ok(out)
 fn load<R is FormNode>(self: List<R>, v: Array<R.Seen>) -> Unit:
   self->rows = []
   for x in v: self.add(none).node.load(x)
@@ -99,7 +97,7 @@ fn sync<R is FormNode>(self: List<R>, v: Array<R.Seen>, key: fn(R.Seen) -> Strin
   const keys = [for x in v: key(x) ?? ""]
   for i in 0..keys.length():
     if keys.indexOf(keys[i]) != i:
-      return Err{Error{message: "Duplicate row keys", code: "duplicate_key"}}
+      return Err(Error{message: "Duplicate row keys", code: "duplicate_key"})
   let next: Array<ListRow<R>> = []
   for x in v: {
     const k = key(x) ?? ""
@@ -112,7 +110,7 @@ fn sync<R is FormNode>(self: List<R>, v: Array<R.Seen>, key: fn(R.Seen) -> Strin
       case row: next.push(row)
   }
   self->rows = next
-  Ok{()}
+  Ok(())
 
 # A variant: every case's group node, and a tag naming the active case. The tag is a Field, so the
 # variant's picker, any other field, or a computed value can write it.
@@ -134,12 +132,10 @@ fn seen<C is struct { [_] is FormNode }>(self: Variant<C>) -> Variant<C>.Seen:
 fn read<C is struct { [_] is FormNode }>(self: Variant<C>) -> Result<Variant<C>.Data>:
   const active = self.tag.read()?
   const activeStr: String = active
-  Ok{
-    struct{
+  Ok(struct{
       tag: active
       value: struct{for k, g in ...self.cases: [k]: if activeStr == k: g.read()? else: none}
-    }
-  }
+    })
 fn load<C is struct { [_] is FormNode }>(self: Variant<C>, v: Variant<C>.Seen) -> Unit:
   self.tag.load(v.tag)
   for k, g in ...self.cases:
@@ -158,8 +154,8 @@ fn seen<N is FormNode>(self: Hidden<N>) -> N.Seen?:
   if self->shown: self->node.seen()
   else: none
 fn read<N is FormNode>(self: Hidden<N>) -> Result<N.Data?>:
-  if self->shown: Ok{self->node.read()?}
-  else: Ok{none}
+  if self->shown: Ok(self->node.read()?)
+  else: Ok(none)
 fn load<N is FormNode>(self: Hidden<N>, v: N.Seen?) -> Unit:
   match v:
     case None: ()
@@ -174,7 +170,7 @@ shared struct Local<N is FormNode>:
 fn seen<N is FormNode>(self: Local<N>) -> N.Seen: self->node.seen()
 fn read<N is FormNode>(self: Local<N>) -> Result<None>:
   self->node.read()?
-  Ok{none}
+  Ok(none)
 fn load<N is FormNode>(self: Local<N>, v: N.Seen) -> Unit: self->node.load(v)
 
 # A mounted dynamic form: data no expression outside it reads. Validated by its own runtime.
@@ -187,8 +183,8 @@ shared struct Dynamic:
 fn seen(self: Dynamic) -> None: none
 fn read(self: Dynamic) -> Result<String>:
   match self->value:
-    case None: Err{Error{message: "unanswered", code: "unanswered"}}
-    case v: Ok{(v)}
+    case None: Err(Error{message: "unanswered", code: "unanswered"})
+    case v: Ok(v)
 fn load(self: Dynamic, v: None) -> Unit: ()
 
 struct FormSnapshot:

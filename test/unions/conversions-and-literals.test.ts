@@ -180,13 +180,13 @@ describe('conversions into a union (§2)', () => {
       'struct Timeout { ms: Int }',
       'struct Denied { role: String }',
       'fn find(ok: Bool) -> Result<Int, NotFound>:',
-      '  if ok: Ok{10} else: Err{NotFound{id: "p1"}}',
+      '  if ok: Ok(10) else: Err(NotFound{id: "p1"})',
       'fn wait(ok: Bool) -> Result<Int, Timeout>:',
-      '  if ok: Ok{20} else: Err{Timeout{ms: 500}}',
+      '  if ok: Ok(20) else: Err(Timeout{ms: 500})',
       'fn both(a: Bool, b: Bool) -> Result<Int, NotFound | Timeout>:',
       '  const x = find(a)?',
       '  const y = wait(b)?',
-      '  Ok{x + y}',
+      '  Ok(x + y)',
     ];
     expect(
       runMain(
@@ -212,8 +212,8 @@ describe('conversions into a union (§2)', () => {
       codesOf(
         ...errDecls,
         'fn wrong() -> Result<Int, NotFound | Timeout>:',
-        '  const r: Result<Int, Denied> = Err{Denied{role: "guest"}}',
-        '  Ok{r?}',
+        '  const r: Result<Int, Denied> = Err(Denied{role: "guest"})',
+        '  Ok(r?)',
       ),
     ).toEqual([checkerDiagnostics.propagateErrorType.code]);
   });

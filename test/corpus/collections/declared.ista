@@ -26,7 +26,7 @@ fn iterate(self: Bag) -> fn() -> Step<(String, Int)>:
     if position == self.keys.length():
       return Done
     position += 1
-    Next{(self.keys[position - 1], self.values[position - 1])}
+    Next((self.keys[position - 1], self.values[position - 1]))
   next
 
 async fn main() -> Future<String>:

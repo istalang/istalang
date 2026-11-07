@@ -23,7 +23,9 @@ async function built<Module>(path: string): Promise<Module> {
   return (await import(new URL(`../../../dist/${path}`, import.meta.url).href)) as Module;
 }
 
-const { Workspace } = await built<typeof import('./workspace.ts')>('editor/language-service/workspace.js');
+const { Workspace } = await built<typeof import('./workspace.ts')>(
+  'editor/language-service/workspace.js',
+);
 const { buildProgram, moduleIdOf } = await built<
   typeof import('../../compiler/program/program.ts')
 >('compiler/program/program.js');

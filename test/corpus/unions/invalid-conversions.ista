@@ -35,4 +35,4 @@ fn bad(xs: Array<Int>, name: String, c: Bool):
   _ = (u, s1, s2, uninferredIf, uninferredArr)
 
 fn badPropagate(r: Result<Int, Denied>) -> Result<Int, NotFound | Timeout>:
-  Ok{r?}
+  Ok(r?)

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: examples/FormBuilder
 last_verified: 2026-11-05
-last_updated: 2026-11-05
+last_updated: 2026-11-07
 tags: [form-builder, specification, istalang]
 ---
 
@@ -337,14 +337,14 @@ Pass 2 walks the tree again and emits a view node per schema node.
 
 Its rules:
 
-- **Props.** A literal becomes `Prop.Fixed{…}` (or bare `Fixed{…}` inside check calls). An expression becomes `Prop.Computed{eval: fn({data, ctx}: Sc): <expr>}`. If the expression contains `await`, it becomes `forms.awaited(Pending.X, async fn({data, ctx}: Sc): <expr>)` instead, which owns a task.
-- **Widgets.** The widget and its ui props become one prop: `Prop.Fixed{FieldWidget.Select{placeholder: none}}`. If any ui prop is computed, so is the whole widget value.
+- **Props.** A literal becomes `Prop.Fixed(…)` (or bare `Fixed(…)` inside check calls). An expression becomes `Prop.Computed{eval: fn({data, ctx}: Sc): <expr>}`. If the expression contains `await`, it becomes `forms.awaited(Pending.X, async fn({data, ctx}: Sc): <expr>)` instead, which owns a task.
+- **Widgets.** The widget and its ui props become one prop: `Prop.Fixed(FieldWidget.Select{placeholder: none})`. If any ui prop is computed, so is the whole widget value.
 - **Lambdas.** A lambda takes its typed scope `Sc` through a parameter pattern, `fn({data, ctx, item}: Sc)`, so pasted expressions read bare names.
 - **Scopes.** A repeat row, a variant case and a mount each get a wider scope: the outer variables plus the new one. Drawing moves into it through a `ScopedView`, whose `scope` builds it, for example `fn(sc): OrderScope1{data: sc.data, ctx: sc.ctx, item: r1.seen()}`. Inside the wider scope, view nodes are typed by it.
 - **Keys.** Nodes are numbered in tree order: `n1`, `n2`… A key inside a repeat row adds the row's key (`n6@r1`; nested rows `n9@r1@r2`), and inside a mounted def its mount's key (`n4/n2`). Keys are stable within a version.
 - **Checks.**
   - Every stored field without a default or computed value gets `forms.answered()`.
-  - Each constraint becomes a helper call with prop arguments (`forms.maxLength(Fixed{120})`), including those from the path's `types` entry.
+  - Each constraint becomes a helper call with prop arguments (`forms.maxLength(Fixed(120))`), including those from the path's `types` entry.
   - A rule becomes `forms.rule(check, message)`.
   - A rule with `pending` becomes `forms.later(test, pendingText)`.
 - **Options.**
@@ -793,7 +793,7 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
     LayoutView<OrderScope>{
         key: "n1",
         parent: none,
-        widget: Prop.Fixed{LayoutWidget.Section{title: "Order", description: none, collapsible: none, labels: none}},
+        widget: Prop.Fixed(LayoutWidget.Section{title: "Order", description: none, collapsible: none, labels: none}),
         checks: [
             forms.later(
                 async fn({data, ctx}: OrderScope) -> Future<String?>: {
@@ -808,8 +808,8 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 key: "n2",
                 parent: none,
                 field: m.country,
-                widget: Prop.Fixed{FieldWidget.Select{placeholder: none}},
-                label: Prop.Fixed{"Country"},
+                widget: Prop.Fixed(FieldWidget.Select{placeholder: none}),
+                label: Prop.Fixed("Country"),
                 checks: [
                     forms.answered(),
                     forms.rule(fn({data, ctx}: OrderScope): not logic.isBlocked(data.country), fn({data, ctx}: OrderScope): forms.t(translations, ctx.user.lang, "We don't ship to ${data.country}", `We don't ship to ${forms.text(data.country)}`, [forms.text(data.country)])),
@@ -825,8 +825,8 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 when: Prop.Computed{eval: fn({data, ctx}: OrderScope): data.country != none},
                 field: m.city->node,
                 hide: m.city,
-                widget: Prop.Fixed{FieldWidget.Select{placeholder: none}},
-                label: Prop.Fixed{"City"},
+                widget: Prop.Fixed(FieldWidget.Select{placeholder: none}),
+                label: Prop.Fixed("City"),
                 checks: [
                     forms.answered(),
                 ],
@@ -839,10 +839,10 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 key: "n4",
                 parent: none,
                 list: m.items,
-                widget: Prop.Fixed{RepeatWidget.Table{addLabel: none}},
-                label: Prop.Fixed{"Items"},
+                widget: Prop.Fixed(RepeatWidget.Table{addLabel: none}),
+                label: Prop.Fixed("Items"),
                 checks: [
-                    forms.minItems(Fixed{1}),
+                    forms.minItems(Fixed(1)),
                 ],
                 canAdd: true,
                 item: fn(r1, row1): ScopedView<OrderScope, OrderScope1>{
@@ -850,28 +850,28 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                     view: LayoutView<OrderScope1>{
                         key: `n5@${row1}`,
                         parent: none,
-                        widget: Prop.Fixed{LayoutWidget.Tablerow},
+                        widget: Prop.Fixed(LayoutWidget.Tablerow),
                         children: [
                             new FieldView<OrderScope1, String>{
                                 key: `n6@${row1}`,
                                 parent: none,
                                 field: r1.fields.sku,
-                                widget: Prop.Fixed{FieldWidget.Input{placeholder: none}},
-                                label: Prop.Fixed{"SKU"},
+                                widget: Prop.Fixed(FieldWidget.Input{placeholder: none}),
+                                label: Prop.Fixed("SKU"),
                                 checks: [
                                     forms.answered(),
-                                    forms.required(Fixed{true}),
+                                    forms.required(Fixed(true)),
                                 ],
                             },
                             new FieldView<OrderScope1, Int>{
                                 key: `n7@${row1}`,
-                                parent: Prop.Fixed{ParentUi.Tablerow{width: 80}},
+                                parent: Prop.Fixed(ParentUi.Tablerow{width: 80}),
                                 field: r1.fields.qty,
-                                widget: Prop.Fixed{FieldWidget.Input{placeholder: none}},
-                                label: Prop.Fixed{"Qty"},
+                                widget: Prop.Fixed(FieldWidget.Input{placeholder: none}),
+                                label: Prop.Fixed("Qty"),
                                 checks: [
                                     forms.answered(),
-                                    forms.min(Fixed{1}),
+                                    forms.min(Fixed(1)),
                                 ],
                             },
                         ],
@@ -882,8 +882,8 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 key: "n8",
                 parent: none,
                 field: none,
-                widget: Prop.Fixed{FieldWidget.Input{placeholder: none}},
-                label: Prop.Fixed{"Total quantity"},
+                widget: Prop.Fixed(FieldWidget.Input{placeholder: none}),
+                label: Prop.Fixed("Total quantity"),
                 value: Prop.Computed{eval: fn({data, ctx}: OrderScope): logic.totalQty(data.items)},
                 checks: [],
             },
@@ -891,31 +891,31 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 key: "n9",
                 parent: none,
                 variant: m.payment,
-                widget: Prop.Fixed{VariantWidget.Inline},
-                label: Prop.Fixed{"Payment"},
+                widget: Prop.Fixed(VariantWidget.Inline),
+                label: Prop.Fixed("Payment"),
                 cases: struct{
-                    card: CaseView<OrderScope>{label: Prop.Fixed{"Credit card"}, body: ScopedView<OrderScope, OrderScope2>{
+                    card: CaseView<OrderScope>{label: Prop.Fixed("Credit card"), body: ScopedView<OrderScope, OrderScope2>{
                             scope: fn(sc): OrderScope2{data: sc.data, ctx: sc.ctx, p: m.payment.cases.card.seen()},
                             view: new FieldView<OrderScope2, String>{
                                 key: "n10",
                                 parent: none,
                                 field: m.payment.cases.card.fields.last4,
-                                widget: Prop.Fixed{FieldWidget.Input{placeholder: none}},
-                                label: Prop.Fixed{"Last 4 digits"},
+                                widget: Prop.Fixed(FieldWidget.Input{placeholder: none}),
+                                label: Prop.Fixed("Last 4 digits"),
                                 checks: [
                                     forms.answered(),
-                                    forms.pattern(Fixed{"^[0-9]{4}$"}),
+                                    forms.pattern(Fixed("^[0-9]{4}$")),
                                 ],
                             },
                         }},
-                    wire: CaseView<OrderScope>{label: Prop.Fixed{"Bank transfer"}, body: ScopedView<OrderScope, OrderScope3>{
+                    wire: CaseView<OrderScope>{label: Prop.Fixed("Bank transfer"), body: ScopedView<OrderScope, OrderScope3>{
                             scope: fn(sc): OrderScope3{data: sc.data, ctx: sc.ctx, p: m.payment.cases.wire.seen()},
                             view: new FieldView<OrderScope3, String>{
                                 key: "n11",
                                 parent: none,
                                 field: m.payment.cases.wire.fields.iban,
-                                widget: Prop.Fixed{FieldWidget.Input{placeholder: none}},
-                                label: Prop.Fixed{"IBAN"},
+                                widget: Prop.Fixed(FieldWidget.Input{placeholder: none}),
+                                label: Prop.Fixed("IBAN"),
                                 checks: [
                                     forms.answered(),
                                 ],
@@ -930,7 +930,7 @@ fn orderView(m: OrderModel) -> any View<OrderScope>:
                 field: m.note->node,
                 hide: m.note,
                 widget: Prop.Computed{eval: fn({data, ctx}: OrderScope): FieldWidget.Textarea{rows: (if logic.totalQty(data.items) > 1000: 6 else: 3)}},
-                label: Prop.Fixed{"Delivery note"},
+                label: Prop.Fixed("Delivery note"),
                 checks: [
                     forms.answered(),
                 ],

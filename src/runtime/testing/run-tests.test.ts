@@ -114,7 +114,7 @@ async fn watched():
   assert(started.state() is Waiting)
   assertEq(started.waitingAt(), ["sleeping"])
   await started.reaches("sleeping")
-  assertEq(await started.result(), Ok{"woke"})
+  assertEq(await started.result(), Ok("woke"))
   assert(started.state() is Finished)
 
 @Suite{"watches"}
@@ -220,7 +220,7 @@ async fn handles():
   assert(queue != handle<Queue>())
   hold _ = mock(open, fn(): queue)
   hold _ = mock(name, fn(given: Queue): if given == queue: "same" else: "other")
-  assertEq(await spawn opens().result(), Ok{"same"})
+  assertEq(await spawn opens().result(), Ok("same"))
 
 @Suite{"handles"}
 fn suite() -> Array<Test>: [test("handles", handles)]

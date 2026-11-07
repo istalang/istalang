@@ -33,12 +33,12 @@ fn rpcSuite() -> Array<Test>: [
   test("replies with what the handler returns", async fn(): {
     const double = rpc.create<Int, Int>()
     hold _ = double.onMessage(fn(n: Int): n * 2)
-    assertEq(await double.call(21), Ok{(42)})
+    assertEq(await double.call(21), Ok(42))
   })
   ...runAndReRun(
     "serves calls one at a time, in the order they arrived"
     servingTwoCalls
-    ([Ok{(1)}, Ok{(2)}], ["start 1", "end 1", "start 2", "end 2"])
+    ([Ok(1), Ok(2)], ["start 1", "end 1", "start 2", "end 2"])
   )
   test("shares the calls among its servers, each call going to one", async fn(): {
     const method = rpc.create<Int, String>()
@@ -46,7 +46,7 @@ fn rpcSuite() -> Array<Test>: [
     hold _ = method.onMessage(fn(n: Int): "b" + n)
     await runtime.commit()
     const (first, second) = (method.call(1), method.call(2))
-    assertEq([await first, await second], [Ok{("a1")}, Ok{("b2")}])
+    assertEq([await first, await second], [Ok("a1"), Ok("b2")])
   })
   test("fails a call whose server is disposed while handling it", async fn(): {
     const method = rpc.create<Int, Int>()
@@ -66,7 +66,7 @@ fn rpcSuite() -> Array<Test>: [
     let served: Array<Int> = []
     drop method.call(1)
     hold _ = method.onMessage(fn(n: Int): { served.push(n); n })
-    assertEq(await method.call(2), Ok{(2)})
+    assertEq(await method.call(2), Ok(2))
     assertEq(served, [2])
   })
 ]

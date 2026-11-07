@@ -7,14 +7,14 @@ enum Shape:
   Empty
 
 fn parse(s: String) -> Result<Int>:
-  if s == "": return Err{Error{message: "empty", code: "e"}}
-  Ok{(s.length())}
+  if s == "": return Err(Error{message: "empty", code: "e"})
+  Ok(s.length())
 
 fn total(xs: Array<String>) -> Result<Int>:
   let t = 0
   for x in xs:
     t += parse(x)?
-  Ok{(t)}
+  Ok(t)
 
 fn area(s: Shape) -> Int:
   match s:

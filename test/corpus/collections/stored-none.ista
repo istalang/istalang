@@ -11,7 +11,7 @@ fn iterate(self: Holes) -> fn() -> Step<Int?>:
   fn next() -> Step<Int?>:
     if position == self.items.length(): return Done
     position += 1
-    Next{(self.items[position - 1])}
+    Next(self.items[position - 1])
   next
 
 fn shown(x: Int?) -> String:

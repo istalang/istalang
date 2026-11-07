@@ -54,7 +54,7 @@ fn approvalSuite() -> Array<Test>: [
     const t = spawn app.purchase(laptop)
     await t.idle()
     env.clock.advance(5d)
-    assertEq(await t.result(), Ok{"expired"})
+    assertEq(await t.result(), Ok("expired"))
   }),
   test("reminds the roles yet to review every day, until it ends", withPurchaseEnv, async fn(env): {
     const t = spawn app.purchase(laptop)
@@ -66,13 +66,13 @@ fn approvalSuite() -> Array<Test>: [
     assertEq(env.notices.pending("legal").length(), 0)
     assertEq(env.notices.pending("finance").length(), 1)
     env.clock.advance(4d)
-    assertEq(await t.result(), Ok{"expired"})
+    assertEq(await t.result(), Ok("expired"))
     assertEq(env.notices.pending("finance"), [])
   }),
   test("is rejected by the first role saying no", withPurchaseEnv, async fn(env): {
     const t = spawn app.purchase(laptop)
     env.verdicts.post("p1", Verdict{role: "finance", ok: false, comment: "over budget"})
-    assertEq(await t.result(), Ok{"rejected by finance"})
+    assertEq(await t.result(), Ok("rejected by finance"))
     assertEq(env.charges.calls(), [])
   }),
   group("with cancellation", [
@@ -81,7 +81,7 @@ fn approvalSuite() -> Array<Test>: [
       await t.idle()
       assertEq(env.reviews.pending("legal"), [ReviewRequest{purchaseId: "p1", item: "laptop", amount: 900}])
       env.cancels.post("p1", Cancel{reason: "changed my mind"})
-      assertEq(await t.result(), Ok{"cancelled: changed my mind"})
+      assertEq(await t.result(), Ok("cancelled: changed my mind"))
       assertEq(env.reviews.pending("legal"), [])
       assertEq(env.reviews.pending("finance"), [])
     }),
@@ -91,7 +91,7 @@ fn approvalSuite() -> Array<Test>: [
       env.verdicts.post("p1", Verdict{role: "legal", ok: true, comment: ""})
       await t.idle()
       env.cancels.post("p1", Cancel{reason: "too late"})
-      assertEq(await t.result(), Ok{"cancelled: too late"})
+      assertEq(await t.result(), Ok("cancelled: too late"))
     }),
   ]),
   test("takes the verdicts that come after a reminder", withPurchaseEnv, async fn(env): {
@@ -100,7 +100,7 @@ fn approvalSuite() -> Array<Test>: [
     env.clock.advance(1d)
     await t.idle()
     approveAll(env, ["legal", "finance"])
-    assertEq(await t.result(), Ok{"paid: r-p1-900"})
+    assertEq(await t.result(), Ok("paid: r-p1-900"))
   }),
   ...[for amount in [10, 50_000, 60_000]:
     test("amount " + amount, withPurchaseEnv, async fn(env): {
@@ -109,12 +109,12 @@ fn approvalSuite() -> Array<Test>: [
       await t.idle()
       assertEq(env.reviews.pending("cfo").length(), if amount > 50_000: 1 else: 0)
       approveAll(env, roles)
-      assertEq(await t.result(), Ok{"paid: r-p1-" + amount})
+      assertEq(await t.result(), Ok("paid: r-p1-" + amount))
       assertEq(env.charges.calls(), [("p1", amount)])
     })],
   test("charges twice when its segment runs twice, so charging must be idempotent", withPurchaseEnv, async fn(env): {
     const t = testing.spawnCrashingEveryAwait(fn(): app.charge(laptop))
-    assertEq(await t.result(), Ok{ChargeResult{ok: true, receipt: "r-p1-900"}})
+    assertEq(await t.result(), Ok(ChargeResult{ok: true, receipt: "r-p1-900"}))
     assertEq(env.charges.calls(), [("p1", 900), ("p1", 900)])
   }),
 ]

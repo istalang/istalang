@@ -9,10 +9,10 @@
 struct Failure { reason: String }
 
 fn parse(text: String) -> Result<Int>:
-  Ok{1}
+  Ok(1)
 
 fn fromOptional(n: Int?) -> Result<Int>:
-  Ok{n?}
+  Ok(n?)
 
 fn notResult() -> Int:
   parse("a")?
@@ -23,7 +23,7 @@ fn otherError() -> Result<Int, Failure>:
 
 fn inferred(text: String):
   const value = parse(text)?
-  Result.Ok{value * 2}
+  Result.Ok(value * 2)
 
 fn inferredNotResult(text: String):
   const value = parse(text)?

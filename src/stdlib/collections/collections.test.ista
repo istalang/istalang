@@ -87,6 +87,6 @@ fn weakMap() -> Array<Test>: [
     await watched.value.disposed()
   })
   test("lets go of an entry whose key is disposed after a snapshot", async fn(): {
-    assertEq(await spawnCrashingEveryAwait(evictedAcrossSnapshots).result(), Ok{"evicted"})
+    assertEq(await spawnCrashingEveryAwait(evictedAcrossSnapshots).result(), Ok("evicted"))
   })
 ]

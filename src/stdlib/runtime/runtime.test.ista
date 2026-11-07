@@ -16,14 +16,14 @@ fn broken() -> Int: panic("broken")
 fn suite() -> Array<Test>: [
   test("id is the instance's name, a spawned one's after its parent's", async fn(): {
     assertEq(runtime.id(), "test")
-    assertEq(await spawn ownId().result(), Ok{"test/1"})
+    assertEq(await spawn ownId().result(), Ok("test/1"))
   })
   test("version is the program's content hash, the same in every instance of it", async fn(): {
     assertEq(runtime.version().length(), 64)
-    assertEq(await spawn ownVersion().result(), Ok{runtime.version()})
+    assertEq(await spawn ownVersion().result(), Ok(runtime.version()))
   })
   test("isolate gives a function's result, or its panic as an Err", async fn(): {
-    assertEq(await runtime.isolate(fn(): three()), Ok{3})
+    assertEq(await runtime.isolate(fn(): three()), Ok(3))
     const failed = await runtime.isolate(fn(): broken())
     assert(failed is Err{error} and error.message == "broken" and error.code == "panic")
   })

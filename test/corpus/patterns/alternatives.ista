@@ -33,6 +33,6 @@ fn flagged(pair: (Int, Bool)) -> Int:
     case _: 0
 
 async fn main() -> Future<(String, String, String, String, Int, Int, Int, Int, Int, Bool)>:
-  const square: Shape = Square{4}
-  (size(2), size(3), kind(0), kind(1), measure(Circle{3}), measure(Triangle{3}),
+  const square: Shape = Square(4)
+  (size(2), size(3), kind(0), kind(1), measure(Circle(3)), measure(Triangle(3)),
     other((5, 0)), other((0, 7)), flagged((1, true)), square is Circle{radius as n} | Square{side as n} and n == 4)

@@ -175,7 +175,7 @@ fn clocks() -> Array<Test>: [
     await started.idle()
     assert(started.state() is Waiting)
     clock.advance(Duration{value: 1})
-    assertEq(await started.result(), Ok{86_400_000})
+    assertEq(await started.result(), Ok(86_400_000))
   })
   test("fills deadlines earliest first, ties in the order they were set", async fn(): {
     const clock = FakeClock{start: Time{value: 0}}
@@ -189,9 +189,9 @@ fn clocks() -> Array<Test>: [
     await second.idle()
     clock.advance(Duration{value: 2})
     assertEq([await late.result(), await first.result(), await second.result()], [
-      Ok{()}
-      Ok{()}
-      Ok{()}
+      Ok(())
+      Ok(())
+      Ok(())
     ])
     assertEq(records.calls(), [("first",), ("second",), ("late",)])
   })
@@ -221,7 +221,7 @@ fn queues() -> Array<Test>: [
     await started.idle()
     assertEq(fake.pending("in"), [])
     fake.post("in", 41)
-    assertEq(await started.result(), Ok{41})
+    assertEq(await started.result(), Ok(41))
     assertEq(fake.pending("out"), [42])
   })
   test("retracts a revertible send once its holder lets go", fn(): {

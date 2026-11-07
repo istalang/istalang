@@ -260,12 +260,12 @@ struct NotFound { id: String }
 struct Timeout { ms: Int }
 
 fn find(id: String) -> Result<Int, NotFound>:
-    if id == "": Err{NotFound{id}} else: Ok{id.length()}
+    if id == "": Err(NotFound{id}) else: Ok(id.length())
 
 fn load(id: String, waited: Int) -> Result<Int, NotFound | Timeout>:
     if waited > 1000:
-        return Err{Timeout{ms: waited}}
-    Ok{find(id)? + 1}                          # a NotFound converts into NotFound | Timeout
+        return Err(Timeout{ms: waited})
+    Ok(find(id)? + 1)                          # a NotFound converts into NotFound | Timeout
 
 fn mark(s: Status) -> String:
     s + "!"                                    # a Status fits String
@@ -923,7 +923,7 @@ for notifier in notifiers:
 | `Container<T, C = Self>` | `includes(self: C, item: T) -> Bool` | `x in c`, `x not in c` (§3.9) |
 | `Addable`, `Subtractable`, `Multipliable`, `Divisible`, `FloorDivisible`, `Negatable`, `Powerable`, `Bitwise`, `Shiftable`, `Comparable` | the functions in §3.9 | operators in generic code |
 
-**Iterable.** `for x in c` calls `iterate(c)` once, for a cursor: a function that gives a `Step<T>` each time it is called, `Next{(item)}` holding the next item, or `Done` once there are no more; the prelude declares `enum Step<T> { Next(value: T), Done }`. A cursor gives a `Step` rather than a `T?` because an item may itself be `none` and `T??` is `T?` (§2): a `for` over an `Array<Int?>` holding `[1, none, 3]` runs three times. The loop calls the cursor until it gives `Done`, so any type can support `for` by declaring `iterate`, and a cursor that never gives `Done` runs for as long as the loop does. A cursor holds what it runs over as `iterate` was given it, a copy (§3.1), so changing `c` inside the loop doesn't affect the iteration. It is a plain function value (§3.14), kept in snapshots like any other, so a loop that waits mid-way keeps only the cursor's own state: a range's few ints, never its items. `Array<T>` is iterable as it is, `Map<K, V>` is `Iterable<(K, V)>` (so `for key, value in m:` works directly), a `String` gives its characters, and a `Range` with both ends is `Iterable<Int>` (so `for i in 0..10:` works). A type's `iterate` can hand over another's cursor, such as `self.items.iterate()`. `Array` and `Map` also satisfy `Indexable` and `IndexAssignable`: `Array<T>` with `Int` keys (and `Range` keys for slicing), `Map<K, V>` with `K`.
+**Iterable.** `for x in c` calls `iterate(c)` once, for a cursor: a function that gives a `Step<T>` each time it is called, `Next(item)` holding the next item, or `Done` once there are no more; the prelude declares `enum Step<T> { Next(value: T), Done }`. A cursor gives a `Step` rather than a `T?` because an item may itself be `none` and `T??` is `T?` (§2): a `for` over an `Array<Int?>` holding `[1, none, 3]` runs three times. The loop calls the cursor until it gives `Done`, so any type can support `for` by declaring `iterate`, and a cursor that never gives `Done` runs for as long as the loop does. A cursor holds what it runs over as `iterate` was given it, a copy (§3.1), so changing `c` inside the loop doesn't affect the iteration. It is a plain function value (§3.14), kept in snapshots like any other, so a loop that waits mid-way keeps only the cursor's own state: a range's few ints, never its items. `Array<T>` is iterable as it is, `Map<K, V>` is `Iterable<(K, V)>` (so `for key, value in m:` works directly), a `String` gives its characters, and a `Range` with both ends is `Iterable<Int>` (so `for i in 0..10:` works). A type's `iterate` can hand over another's cursor, such as `self.items.iterate()`. `Array` and `Map` also satisfy `Indexable` and `IndexAssignable`: `Array<T>` with `Int` keys (and `Range` keys for slicing), `Map<K, V>` with `K`.
 
 **Conversions.** `T(x)`, a type applied to one argument in parentheses, converts `x` to `T`. It is sugar for the static function `T.from(x)` that `Convertible<From, T = Self>` requires. It never clashes with construction: a struct is built with braces, and a variant isn't a type, so its name before `(` is called, never converted (§3.11). Only conversions that can't fail are written this way: `Float(3)`, `Int(3.7)` (which truncates toward zero) and `String(42)`. `String(x)` converts any `Stringable` value through its `toString`, the one place a type says how it is written. A float that is no number, NaN or an infinity, has no int, so `Int(x)` of one is a bug and panics (§3.12). Fallible ones are ordinary functions returning `Result`, such as `Int.parse("42")`, the `Parsable` requirement.
 
@@ -1038,7 +1038,7 @@ struct Error:
 ```python statements
 async fn pay(req: PurchaseRequest) -> Future<Result<String>>:
     const receipt = chargeCard(req.id, req.amount)?    # returns early on Err
-    Ok{(receipt)}
+    Ok(receipt)
 
 match await pay(req):
     case Ok{value as receipt}:
@@ -1621,7 +1621,7 @@ Every program has exactly one `async fn main()`. The runtime starts it when a ve
 - **What can be spawned.** `f` is a top-level function, async or not, a method or static function, an instance of a generic one, or any value of a sendable function type (§3.14), whose captures are copied with the arguments. An extern can't be spawned, and neither can a function with a `&` parameter.
 - **Effects commit with the segment.** The new instance exists once the segment that spawned it commits; a segment that is discarded spawned nothing. Each spawned instance is named after its parent and a count of the parent's spawns, `<parent>/<n>`, and is written before the parent's commit, so a segment that re-runs finds it already there and doesn't spawn it twice.
 - **Options are inherited.** An instance spawned by one that runs with `crashEveryAwait` (§10) runs with it too.
-- **Waiting for an instance.** `inst.result()` resolves with the instance's first end: `Ok` of its outcome when it finishes, or `Err{Error{message, code: "panic", trace}}` with its panic when it panics, or was terminated after one. The outcome is copied out of the instance's last commit, so `T` must be sendable. A retry after the panic changes nothing for a wait already resolved. `Instance<T>` is sendable and compares by identity, so it may be passed to another instance; it isn't `Encodable`, so it never crosses to the host.
+- **Waiting for an instance.** `inst.result()` resolves with the instance's first end: `Ok` of its outcome when it finishes, or `Err(Error{message, code: "panic", trace})` with its panic when it panics, or was terminated after one. The outcome is copied out of the instance's last commit, so `T` must be sendable. A retry after the panic changes nothing for a wait already resolved. `Instance<T>` is sendable and compares by identity, so it may be passed to another instance; it isn't `Encodable`, so it never crosses to the host.
 - **Isolating a call.** `runtime.isolate(f)` spawns `f` and waits for its `result()`, so a panic in `f` becomes an `Err` instead of freezing the caller. Its panic also terminates that instance at once, disposing what it holds (§7), so it needs no operator.
 
 ```python
@@ -1686,7 +1686,7 @@ fn approvalSuite() -> Array<Test>: [
         const t = spawn purchase(PurchaseRequest{id: "p1", item: "laptop", amount: 900})
         await t.idle()
         env.clock.advance(5d)
-        assertEq(await t.result(), Ok{"expired"})
+        assertEq(await t.result(), Ok("expired"))
     }),
     group("with cancellation", [
         test("retracts review requests", withPurchaseEnv, async fn(env): { … }),

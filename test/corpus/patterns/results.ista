@@ -6,12 +6,12 @@
 
 fn parse(text: String) -> Result<Int>:
   if text == "three":
-    return Ok{3}
-  Err{Error{message: "not a number", code: "parse"}}
+    return Ok(3)
+  Err(Error{message: "not a number", code: "parse"})
 
 fn doubled(text: String) -> Result<Int>:
   const value = parse(text)?
-  Ok{value * 2}
+  Ok(value * 2)
 
 fn shown(result: Result<Int>) -> String:
   match result:

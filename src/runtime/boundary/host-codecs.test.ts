@@ -19,7 +19,7 @@ describe('a value crossing to its host', () => {
         'fn toJson(self: Name) -> Json:',
         '  self.text',
         'fn Name.fromJson(json: Json, path: String) -> Result<Name>:',
-        '  Ok{(Name{text: String.fromJson(json, path)?})}',
+        '  Ok(Name{text: String.fromJson(json, path)?})',
         'extern fn greet(name: Name) -> Name',
         'async fn main() -> Future<String>:',
         '  greet(Name{text: "ada"}).text',
