@@ -10,7 +10,7 @@ enum Decision:
 
 fn missing(decision: Decision) -> String:
   match decision:
-    case Approved{by}: by
+    case Approved(by): by
     case Expired: "expired"
 
 fn unwrapped(n: Int?) -> String:

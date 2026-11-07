@@ -29,7 +29,7 @@ async fn main() -> Future<String>:
   const tail = acc.items[1..]
   await time.delay(10ms)
   const r = match check(Ok(adder(3))):
-    case Ok{value}: value
-    case Err{error}: -1
+    case Ok(value): value
+    case Err(error): -1
   const keys = [for k, v in acc.seen.entries() if v > 10: k + "=" + String(v)]
   String(acc.items.length()) + "|" + String(tail.length()) + "|" + String(next()) + "|" + String(r) + "|" + String(keys.length())

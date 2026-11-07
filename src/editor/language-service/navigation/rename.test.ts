@@ -271,7 +271,7 @@ describe('renaming', () => {
   });
 
   it('refuses what std declares', () => {
-    const { program, named } = navigable({ main: 'fn f() -> Result<Int>: Ok{value: 1}\n' });
+    const { program, named } = navigable({ main: 'fn f() -> Result<Int>: Ok(1)\n' });
     expect(refusalOf(program, named('main', 'Ok'))).toContain('std:prelude');
   });
 

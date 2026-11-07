@@ -9,8 +9,8 @@ enum Shape:
 
 fn area(s: Shape) -> Int:
   match s:
-    case Circle{r}: r
-    case Rect{w, h} if w > 0: w * h
+    case Circle(r): r
+    case Rect(w, h) if w > 0: w * h
 
 fn captures(x: &Int) -> Array<Int>:
   [for i in 0..3: (fn(): x + i)()]

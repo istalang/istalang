@@ -47,9 +47,9 @@ fn updateTitle<S is struct { title: String, [_]: Int }>(s: &S, next: String) -> 
 async fn main() -> Future<String>:
   const tok = Token<Int>{type: "bearer", first: (20, 22)}
   const cellVal: Cell<Int>.Data = tok.first.0 + tok.first.1
-  const step: Stage<Int> = Ready{item: 3}
+  const step: Stage<Int> = Ready(3)
   const stepVal = match step:
-    case Ready{item}: item
+    case Ready(item): item
     case Empty: 0
   const keyedText = defaultAndFormat(UserKey{id: 7})
   let doc = struct{title: "v1", a: 1, b: 2}

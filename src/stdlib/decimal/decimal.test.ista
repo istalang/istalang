@@ -14,15 +14,15 @@ struct Invoice:
 # The number `text` writes; a test's own text is always one.
 fn d(text: String) -> Decimal:
   match Decimal.parse(text):
-    case Ok{value}: value
-    case Err{error}: panic(error.message)
+    case Ok(value): value
+    case Err(error): panic(error.message)
 
 fn parsed<T is Parsable>(text: String) -> Result<T>: T.parse(text)
 
 fn textOf(result: Result<Decimal>) -> String:
   match result:
-    case Ok{value}: String(value)
-    case Err{error}: error.code + ": " + error.message
+    case Ok(value): String(value)
+    case Err(error): error.code + ": " + error.message
 
 # Rounding 2.5, -2.5, 1.005, 1.015 and -0.001 to two places, then 2.5 and -2.5 to none, in each mode.
 fn roundings() -> Array<(Rounding, Array<String>)>: [
@@ -280,10 +280,10 @@ fn suite() -> Array<Test>: [
     test("crosses as JSON as its text", fn(): {
       assertEq(json.stringify(Invoice{total: d("19.90")}), "{\"total\":\"19.9\"}")
       match json.parse<Invoice>("{\"total\":\"0.10\"}"):
-        case Ok{value}: assert(value.total == d("0.1"))
-        case Err{error}: panic(error.message)
-      assert(json.parse<Invoice>("{\"total\":0.1}") is Err{})
-      assert(json.parse<Invoice>("{\"total\":\"1e3\"}") is Err{})
+        case Ok(value): assert(value.total == d("0.1"))
+        case Err(error): panic(error.message)
+      assert(json.parse<Invoice>("{\"total\":0.1}") is Err(...))
+      assert(json.parse<Invoice>("{\"total\":\"1e3\"}") is Err(...))
     })
     test("is Comparable, so math orders it", fn(): {
       assertEq(

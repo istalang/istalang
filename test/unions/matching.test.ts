@@ -75,7 +75,7 @@ describe('matching on unions and literal types (§3, §5)', () => {
       codesOf(
         'fn oldSome(x: Int?) -> Int:',
         '  match x:',
-        '    case Some{value}: value',
+        '    case Some(value): value',
         '    case None: 0',
       ).length,
     ).toBeGreaterThan(0);

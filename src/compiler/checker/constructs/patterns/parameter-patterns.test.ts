@@ -130,7 +130,7 @@ describe('parameter pattern refusals (§5)', () => {
   });
 
   it.each([
-    ['enum variant pattern (Ok{value})', lines('fn f(Ok{value}: Result<Int>) -> Int: value')],
+    ['enum variant pattern (Ok{value})', lines('fn f(Ok(value): Result<Int>) -> Int: value')],
     [
       'comparison field pattern (Verdict{ok == false})',
       lines('struct Verdict { ok: Bool }', 'fn f(Verdict{ok == false}) -> Int: 0'),

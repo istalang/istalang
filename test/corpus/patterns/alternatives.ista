@@ -19,8 +19,8 @@ fn kind(value: Int?) -> String:
 
 fn measure(shape: Shape) -> Int:
   match shape:
-    case Circle{radius as n} | Square{side as n}: n
-    case Triangle{base}: base + 1
+    case Circle(n) | Square(n): n
+    case Triangle(base): base + 1
 
 fn other(pair: (Int, Int)) -> Int:
   match pair:
@@ -35,4 +35,4 @@ fn flagged(pair: (Int, Bool)) -> Int:
 async fn main() -> Future<(String, String, String, String, Int, Int, Int, Int, Int, Bool)>:
   const square: Shape = Square(4)
   (size(2), size(3), kind(0), kind(1), measure(Circle(3)), measure(Triangle(3)),
-    other((5, 0)), other((0, 7)), flagged((1, true)), square is Circle{radius as n} | Square{side as n} and n == 4)
+    other((5, 0)), other((0, 7)), flagged((1, true)), square is Circle(n) | Square(n) and n == 4)

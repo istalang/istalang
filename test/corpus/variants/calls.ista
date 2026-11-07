@@ -4,8 +4,8 @@
 # others; the expected enum gives its type arguments, those written give theirs and the arguments
 # infer the rest; a variant without fields is its name alone. A spawned call starts the
 # constructor as any function. A field named `self` is a field, never a receiver, and a
-# `struct{…}` comprehension takes the field's type, as in braces: built as it where its fields are
-# known, waiting for it where they aren't or its values need it.
+# `struct{…}` comprehension takes the field's type: built as it where its fields are known,
+# waiting for it where they aren't or its values need it.
 
 enum Verdict:
   Approved
@@ -23,16 +23,16 @@ enum Pair<A, B = Int>:
 fn describe(verdict: Verdict) -> String:
   match verdict:
     case Approved: "approved"
-    case Rejected{by, reason}: `${by}: ${reason}`
+    case Rejected(by, reason): `${by}: ${reason}`
 
 fn count(node: Node) -> Int:
   match node:
-    case Group{children}: children.length()
+    case Group(children: children, ...): children.length()
     case _: 0
 
 fn sum(pair: Pair<Int>) -> Int:
   match pair:
-    case Both{first, second}: first + second
+    case Both(first, second): first + second
     case Neither: 0
 
 fn wrapped(value: Int?) -> Result<Int?, String>: Ok(value)
@@ -55,14 +55,14 @@ fn tagged<S is struct { [_]: Int }>(
 
 fn named() -> String:
   match Named.Of(self: 1, other: "a"):
-    case Of{self, other}: `${self} ${other}`
+    case Of(self, other): `${self} ${other}`
 
 fn comprehended() -> String:
   const two = match doubled(Bag{fields: struct{a: 1, b: 2}}):
-    case Ok{value}: `${value.a} ${value.b}`
+    case Ok(value): `${value.a} ${value.b}`
     case _: ""
   const one = match tagged(Bag{fields: struct{a: 2}}):
-    case Ok{value}: `${value.tag} ${value.value.a}`
+    case Ok(value): `${value.tag} ${value.value.a}`
     case _: ""
   `${two}|${one}`
 
@@ -86,13 +86,13 @@ fn asTagged(p: Point) -> Result<Tagged>: Ok(struct{tag: none, for k, v in ...p: 
 fn known() -> String:
   const p = Point{x: 1, y: 2}
   const point = match asPoint(p):
-    case Ok{value}: `${value.x} ${value.y}`
+    case Ok(value): `${value.x} ${value.y}`
     case _: ""
   const partial = match asPartial(p, false):
-    case Ok{value}: if value.x == none: "none" else: "some"
+    case Ok(value): if value.x == none: "none" else: "some"
     case _: ""
   const tagged = match asTagged(p):
-    case Ok{value}: `${value.x} ${value.y}`
+    case Ok(value): `${value.x} ${value.y}`
     case _: ""
   const sum = kept(struct{for k, v in ...p: [k]: v + 2})
   `${point} ${partial} ${tagged} ${sum.x + sum.y}`
@@ -101,24 +101,24 @@ fn inferred() -> String:
   const failed = Result.Err<Int>("boom")
   const passed: Result<Int, String> = Result.Ok<Int>(1)
   match (failed, passed):
-    case (Err{error}, Ok{value}): `${error} ${value}`
+    case (Err(error), Ok(value)): `${error} ${value}`
     case _: ""
 
 async fn main() -> Future<String>:
   const pair: Pair<Int> = Both(1, 2)
   const both = match pair:
-    case Both{first, second}: `${first} ${second}`
+    case Both(first, second): `${first} ${second}`
     case Neither: ""
   const group = Node.Group("t", true, Node.Text("a"), Node.Empty, ...[Node.Text("b")])
   const shown = match group:
-    case Node.Group{title, open}: `${count(group)} ${title} ${open}`
+    case Node.Group(title, open): `${count(group)} ${title} ${open}`
     case _: ""
   const instance = spawn Pair.Both(3, 4)
   const spawned = match await instance.result():
-    case Ok{value}: sum(value)
+    case Ok(value): sum(value)
     case _: -1
   const kept = match wrapped(5):
-    case Ok{value}: value ?? 0
+    case Ok(value): value ?? 0
     case _: -1
   [
     both,

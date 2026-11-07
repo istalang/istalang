@@ -15,13 +15,13 @@ fn doubled(text: String) -> Result<Int>:
 
 fn shown(result: Result<Int>) -> String:
   match result:
-    case Ok{value}: "ok " + String(value)
-    case Err{error}: "failed: " + error.message
+    case Ok(value): "ok " + String(value)
+    case Err(error): "failed: " + error.message
 
 fn traced(result: Result<Int>) -> Bool:
   match result:
-    case Ok{value}: false
-    case Err{error}: error.trace != ""
+    case Ok(value): false
+    case Err(error): error.trace != ""
 
 fn copied() -> Error:
   const original = Error{message: "a", code: "b", trace: "given"}
@@ -31,5 +31,5 @@ async fn main() -> Future<String>:
   drop parse("four")
   _ = parse("five")
   const error = copied()
-  (shown(doubled("three")) + "|" + shown(doubled("four")) + "|" + String(doubled("x") is Err{})
+  (shown(doubled("three")) + "|" + shown(doubled("four")) + "|" + String(doubled("x") is Err(...))
     + "|" + String(traced(parse("x"))) + "|" + error.trace + " " + error.message)

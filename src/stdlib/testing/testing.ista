@@ -65,14 +65,14 @@ fn _entries(title: String, tests: Array<Test>, skipping: Bool, focusing: Bool) -
   let entries: Array<_Entry> = []
   for each in tests:
     match each:
-      case Case{title as own, body, skipped, only as focused}:
+      case Case(own, body, skipped, focused):
         const listed = Listed{
           title: title + " › " + own
           skipped: skipped or skipping
           only: focused or focusing
         }
         entries.push(_Entry{listed, body})
-      case Group{title as own, tests as inner, skipped, only as focused}:
+      case Group(own, inner, skipped, focused):
         entries = [
           ...entries
           ..._entries(title + " › " + own, inner, skipped or skipping, focused or focusing)
@@ -123,13 +123,13 @@ extern fn state<R>(self: Instance<R>) -> InstanceState
 extern fn handle<T>() -> T
 
 # A test of `body`, run in an instance of its own (§10).
-fn test(title: String, body: async fn() -> Unit) -> Test: Case{title, body}
+fn test(title: String, body: async fn() -> Unit) -> Test: Case(title: title, body: body)
 
 # A test of `body`, run inside the environment `setup` prepares (§10).
 fn test<E>(title: String, setup: Setup<E>, body: async fn(E) -> Unit) -> Test:
   test(title, async fn(): await setup(body))
 
-fn group(title: String, tests: Array<Test>) -> Test: Group{title, tests}
+fn group(title: String, tests: Array<Test>) -> Test: Group(title: title, tests: tests)
 
 # `entry`, reported but not run, even if `only` marks it too (§10).
 fn skip(entry: Test) -> Test: _marked(entry, true, false)
@@ -140,18 +140,18 @@ fn only(entry: Test) -> Test: _marked(entry, false, true)
 # `entry` with its own marks, and `skipping` and `focusing` added.
 fn _marked(entry: Test, skipping: Bool, focusing: Bool) -> Test:
   match entry:
-    case Case{title, body, skipped, only as focused}: Case{
-      title
-      body
+    case Case(title, body, skipped, focused): Case(
+      title: title
+      body: body
       skipped: skipped or skipping
       only: focused or focusing
-    }
-    case Group{title, tests, skipped, only as focused}: Group{
-      title
-      tests
+    )
+    case Group(title, tests, skipped, focused): Group(
+      title: title
+      tests: tests
       skipped: skipped or skipping
       only: focused or focusing
-    }
+    )
 
 # An environment for tests (§10): prepares it, runs the test inside it, and tears it down after.
 type Setup<E> = async fn(async fn(E) -> Unit) -> Unit
@@ -203,7 +203,7 @@ async fn expectPanic<R is Sendable>(f: sendable async fn() -> R) -> Future<Strin
 
 async fn _panicOf<R is Sendable>(instance: Instance<R>) -> Future<String>:
   match await instance.result():
-    case Err{error}: error.message
+    case Err(error): error.message
     case _: panic("expectPanic expected a panic, but the function returned.")
 
 # A clock standing still at `start` until `advance` moves it (§10): `now` and `at` replace

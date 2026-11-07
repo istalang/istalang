@@ -24,7 +24,7 @@ fn describe(x: any Named) -> String:
       "email to " + to
     case Sms{number} as sms:
       if sms.name() == number: "sms" else: "?"
-    case Decision.Approved{by}:
+    case Decision.Approved(by):
       "decided by " + by
     case Marker:
       "marker"
@@ -32,7 +32,7 @@ fn describe(x: any Named) -> String:
       "other"
 
 async fn main():
-  const items: Array<any Named> = [Email{to: "a"}, Sms{number: "1"}, Decision.Approved{by: "legal"}, Decision.Expired, Marker]
+  const items: Array<any Named> = [Email{to: "a"}, Sms{number: "1"}, Decision.Approved("legal"), Decision.Expired, Marker]
   const email: any Named = Email{to: "a"}
   const found = if email is Email{to}: to else: "none"
   ([for item in items: describe(item)], email is Email{}, found)

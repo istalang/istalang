@@ -5,12 +5,12 @@
 
 fn wrap<T>(x: "draft" | "sent") -> T | "draft" | "sent": x
 fn wrapOne<T>(x: "sent") -> T | "sent": x
-fn step<E>(r: Result<Int, "a" | "b">) -> Result<Int, E | "a" | "b">: Ok{value: r?}
+fn step<E>(r: Result<Int, "a" | "b">) -> Result<Int, E | "a" | "b">: Ok(r?)
 
 fn passed(r: Result<Int, String>) -> String:
   match r:
-    case Err{error}: error + "!"
-    case Ok{value}: `${value}`
+    case Err(error): error + "!"
+    case Ok(value): `${value}`
 
 async fn main() -> Future<String>:
   const p1 = `${wrap<String>("draft") + "!"}|${wrapOne<String>("sent") + "?"}`

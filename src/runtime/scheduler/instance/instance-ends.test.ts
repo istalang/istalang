@@ -29,7 +29,7 @@ const waitingMain = compiledText(
     '  const doubled = await spawn child(21).result()',
     '  const isolated = await runtime.isolate(fn(): broken())',
     '  match (doubled, isolated):',
-    '    case (Ok{value}, Err{error}): "" + value + " " + error.code + " " + error.message',
+    '    case (Ok(value), Err(error)): "" + value + " " + error.code + " " + error.message',
     '    case _: "unexpected"',
   ].join('\n'),
 );
@@ -71,8 +71,8 @@ describe("waiting for an instance's end", () => {
         '  const child = spawn quick()',
         '  await time.delay(5ms)',
         '  match await child.result():',
-        '    case Ok{value}: "" + value',
-        '    case Err{error}: error.message',
+        '    case Ok(value): "" + value',
+        '    case Err(error): error.message',
       ].join('\n'),
     );
     const test = testRuntime();
@@ -89,8 +89,8 @@ describe("waiting for an instance's end", () => {
         '  const ending = spawn quick().result()',
         '  await time.delay(5ms)',
         '  match await ending:',
-        '    case Ok{value}: value',
-        '    case Err{error}: 0',
+        '    case Ok(value): value',
+        '    case Err(error): 0',
       ].join('\n'),
     );
     const test = testRuntime();

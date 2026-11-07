@@ -41,8 +41,8 @@ const program = [
   '  if order.amount > limit:',
   '    return "too much"',
   '  match charge(order.id, order.amount):',
-  '    case Ok{value}: "paid " + value',
-  '    case Err{error}: "failed " + error.message',
+  '    case Ok(value): "paid " + value',
+  '    case Err(error): "failed " + error.message',
   '',
 ].join('\n');
 

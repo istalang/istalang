@@ -8,8 +8,8 @@ type Mixed = "a" | 1 | true
 
 fn read(text: String) -> String:
   match json.parse<Mixed>(text):
-    case Ok{value}: `${value}`
-    case Err{error}: error.message
+    case Ok(value): `${value}`
+    case Err(error): error.message
 
 async fn main() -> Future<String>:
   const written: Array<Mixed> = ["a", 1, true]

@@ -19,7 +19,7 @@ fn notResult() -> Int:
 
 fn otherError() -> Result<Int, Failure>:
   const value = parse("a")?
-  Ok{value}
+  Ok(value)
 
 fn inferred(text: String):
   const value = parse(text)?

@@ -1,6 +1,6 @@
 # outcome: "true false true true true"
 # Enums are declared and built by their variants (§3.11): bare where the enum type is expected,
-# qualified elsewhere, with braces for a variant with fields. A generic enum's type arguments come
+# qualified elsewhere, called for a variant with fields. A generic enum's type arguments come
 # from the expected type, the fields, or the defaults (`Result<T, E = Error>`).
 
 enum Color { Red, Green, Blue }
@@ -14,8 +14,8 @@ fn favorite() -> Color:
 
 async fn main() -> Future<String>:
   const color: Color = Red
-  const shape = Shape.Circle{radius: 2}
-  const same: Shape = Circle{radius: 2}
-  const result = Result.Ok{value: 1}
-  const expected: Result<Int> = Ok{value: 1}
+  const shape = Shape.Circle(2)
+  const same: Shape = Circle(2)
+  const result = Result.Ok(1)
+  const expected: Result<Int> = Ok(1)
   String(color == Color.Red) + " " + String(favorite() == Color.Blue) + " " + String(shape == same) + " " + String(result == expected) + " " + String(favorite() == Green)

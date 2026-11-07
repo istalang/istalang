@@ -7,13 +7,13 @@ enum Shape:
   Square(side: Int)
 
 fn radius(shape: Shape) -> String:
-  if shape is Circle{radius}:
+  if shape is Circle(radius):
     String(radius)
   else:
     "none"
 
 fn classify(r: Result<Int>) -> String:
-  if r is Ok{value as y} and y > 10:
+  if r is Ok(y) and y > 10:
     "big " + String(y)
   else:
     "small"
@@ -27,5 +27,5 @@ fn countdown(start: Int) -> Int:
   steps
 
 async fn main() -> Future<String>:
-  (radius(Circle{radius: 7}) + "|" + radius(Square{side: 2}) + "|" + classify(Ok(12))
+  (radius(Circle(7)) + "|" + radius(Square(2)) + "|" + classify(Ok(12))
     + "|" + classify(Err(Error{message: "x", code: "y"})) + "|" + String(countdown(3)))

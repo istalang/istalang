@@ -25,8 +25,8 @@ async fn drawsThenCommits():
 # What an instance that finished gave; a panic when it didn't.
 fn finishedWith(outcome: Result<String>) -> String:
   match outcome:
-    case Ok{value}: value
-    case Err{error}: panic(error.message)
+    case Ok(value): value
+    case Err(error): panic(error.message)
 
 async fn spawnsThenDraws():
   const first = spawn drawsUuid()

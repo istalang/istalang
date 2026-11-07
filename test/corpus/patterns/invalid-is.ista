@@ -8,12 +8,12 @@ enum Shape:
   Square(side: Int)
 
 fn afterIf(shape: Shape) -> Int:
-  if shape is Circle{radius}:
+  if shape is Circle(radius):
     return radius
   radius
 
 fn throughOr(shape: Shape, wide: Bool) -> Int:
-  if shape is Circle{radius} or wide:
+  if shape is Circle(radius) or wide:
     radius
   else:
     0

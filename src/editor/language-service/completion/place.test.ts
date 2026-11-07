@@ -26,7 +26,7 @@ describe('the place a cursor is in', () => {
     const guarded = [
       'fn f(d: Decision, a: Bool) -> Int:',
       '  match d:',
-      '    case Approved{by} if a ‸',
+      '    case Approved(by: by, ...) if a ‸',
     ];
     expect(placeIn(...decision, ...guarded, '  0')).toBe('grammar');
   });

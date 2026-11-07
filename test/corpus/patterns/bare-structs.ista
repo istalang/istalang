@@ -17,7 +17,7 @@ fn plain(m: Marker) -> String:
 
 fn nested(slot: Holder) -> String:
   match slot:
-    case Full{marker is Marker}: "full"
+    case Full(Marker): "full"
     case Empty: "empty"
 
 fn generic(b: Box<Int>) -> String:
@@ -31,5 +31,5 @@ fn inTuple(pair: (Marker, Bool)) -> String:
 
 async fn main() -> Future<String>:
   const box: Box<Int> = Box
-  const parts = [plain(Marker), nested(Full{marker: Marker}), nested(Empty), generic(box), inTuple((Marker, true))]
+  const parts = [plain(Marker), nested(Full(Marker)), nested(Empty), generic(box), inTuple((Marker, true))]
   parts[0] + "|" + parts[1] + "|" + parts[2] + "|" + parts[3] + "|" + parts[4]

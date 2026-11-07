@@ -27,7 +27,7 @@ async fn withPurchaseEnv(test: async fn(PurchaseEnv)):
       verdicts: FakeQueue<Queue<Verdict>, Verdict>{make: handle},
       cancels: FakeQueue<Queue<Cancel>, Cancel>{make: handle},
       notices: FakeQueue<Queue<Notice>, Notice>{make: handle},
-      charges: mock(app.chargeCard, fn(id: String, amount: Int) -> Result<String>: Ok{value: "r-" + id + "-" + amount}),
+      charges: mock(app.chargeCard, fn(id: String, amount: Int) -> Result<String>: Ok("r-" + id + "-" + amount)),
     }
     hold _ = mock(app.reviewQueue, env.reviews.open)
     hold _ = mock(app.verdicts, env.verdicts.open)

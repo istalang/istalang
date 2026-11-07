@@ -18,9 +18,9 @@ fn total(xs: Array<String>) -> Result<Int>:
 
 fn area(s: Shape) -> Int:
   match s:
-    case Circle{r} if r > 5: 100
-    case Circle{r}: r * 3
-    case Rect{w, h}: w * h
+    case Circle(r) if r > 5: 100
+    case Circle(r): r * 3
+    case Rect(w, h): w * h
     case Empty: 0
 
 fn j(xs: Array<Int>) -> String: [for x in xs: String(x)].join(",")
@@ -32,17 +32,17 @@ async fn main() -> Future<String>:
   for p in people: m[p.name] = p.age
   const fs = [for p in people: fn(): p.age + m[p.name]]
   const sums = [for f in fs: f()]
-  const shapes = [Shape.Circle{r: 6}, Shape.Circle{r: 2}, Shape.Rect{w: 2, h: 3}, Shape.Empty]
+  const shapes = [Shape.Circle(6), Shape.Circle(2), Shape.Rect(w: 2, h: 3), Shape.Empty]
   const areas = [for s in shapes: area(s)]
   let n = 0
   const inc = fn(): { n += 1; n }
   const vals = [for i in 0..3: inc()]
   const t1 = match total(["a", "bb"]):
-    case Ok{value}: value
-    case Err{error}: -1
+    case Ok(value): value
+    case Err(error): -1
   const t2 = match total(["a", ""]):
-    case Ok{value}: value
-    case Err{error}: -2
+    case Ok(value): value
+    case Err(error): -2
   const o = people.at(-1)?.name ?? "x"
   const o2 = people.at(10)?.name ?? "x"
   const pairs = [for k, v in m.entries() if v > 10: k + String(v)]

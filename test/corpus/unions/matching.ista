@@ -54,7 +54,7 @@ fn splitLiterals(x: Status | Int) -> String:
 
 fn showDecision(x: Decision | Int) -> String:
   match x:
-    case Approved{by}: by
+    case Approved(by): by
     case Expired: "exp"
     case Int as n: String(n)
 

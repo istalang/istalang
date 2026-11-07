@@ -123,6 +123,12 @@ const indent = (s: string, n: number) =>
     .join('\n');
 const istaString = (s: string) => JSON.stringify(s);
 
+/** A variant built by its call: a single field by position, several by name. */
+const variantCall = (name: string, fields: [string, string][]): string =>
+  fields.length === 1
+    ? `${name}(${fields[0]![1]})`
+    : `${name}(${fields.map(([k, v]) => `${k}: ${v}`).join(', ')})`;
+
 /** A JSON literal as an Istalang literal. Objects become anonymous structs (`struct{…}`). */
 function lit(v: Json): string {
   if (v === null) return 'none';
@@ -608,10 +614,10 @@ class ViewGen {
     if (isExpr(v)) {
       return awaits(v.expr)
         ? `forms.awaited(${pending}, ${this.lam(sc, v.expr)})`
-        : `Prop.Computed{eval: ${this.lam(sc, v.expr)}}`;
+        : `Prop.Computed(${this.lam(sc, v.expr)})`;
     }
     if (typeof v === 'string' && this.doc.localization?.[v])
-      return `Prop.Computed{eval: ${this.lam(sc, `forms.t(translations, ctx.user.lang, ${istaString(v)}, ${istaString(v)}, [])`)}}`;
+      return `Prop.Computed(${this.lam(sc, `forms.t(translations, ctx.user.lang, ${istaString(v)}, ${istaString(v)}, [])`)})`;
     return `${fixedVariant}(${asLiteral(v as Json)})`;
   }
 
@@ -631,13 +637,13 @@ class ViewGen {
     const translated = (p: string) =>
       typeof ui[p] === 'string' && !ENUM_PROPS[p] && !!this.doc.localization?.[ui[p] as string];
     const body = props.length
-      ? `${info.enumName}.${info.variant}{${props.map((p) => `${p}: ${field(p, ui[p])}`).join(', ')}}`
+      ? variantCall(`${info.enumName}.${info.variant}`, props.map((p) => [p, field(p, ui[p])]))
       : `${info.enumName}.${info.variant}`;
     const computed = props.some((p) => isExpr(ui[p]) || translated(p));
     if (!computed) return `Prop.Fixed(${body})`;
     return awaits(body)
       ? `forms.awaited(${pending}, ${this.lam(sc, body)})`
-      : `Prop.Computed{eval: ${this.lam(sc, body)}}`;
+      : `Prop.Computed(${this.lam(sc, body)})`;
   }
 
   /** ui.parent: what the parent widget reads about this node. */
@@ -649,11 +655,14 @@ class ViewGen {
     const anyExpr = props.some((k) => isExpr(p[k]));
     const asLit = (k: string, val: Json) =>
       info.childUi?.[k]?.startsWith('Float') ? litFloat(val) : lit(val);
-    const body = `ParentUi.${info.variant}{${props.map((k) => `${k}: ${p[k] === undefined ? 'none' : isExpr(p[k]) ? `(${p[k].expr})` : asLit(k, p[k])}`).join(', ')}}`;
+    const body = variantCall(
+      `ParentUi.${info.variant}`,
+      props.map((k) => [k, p[k] === undefined ? 'none' : isExpr(p[k]) ? `(${p[k].expr})` : asLit(k, p[k])]),
+    );
     if (!anyExpr) return `Prop.Fixed(${body})`;
     return awaits(body)
       ? `forms.awaited(${pending}, ${this.lam(sc, body)})`
-      : `Prop.Computed{eval: ${this.lam(sc, body)}}`;
+      : `Prop.Computed(${this.lam(sc, body)})`;
   }
 
   pending(n: AnyNode): string {
@@ -737,6 +746,12 @@ class ViewGen {
   struct(name: string, fields: [string, string | undefined][]): string {
     const fs = fields.filter(([, v]) => v !== undefined) as [string, string][];
     return `${name}{\n    ${fs.map(([k, v]) => `${k}: ${indent(v, 4)}`).join(',\n    ')},\n}`;
+  }
+
+  /** A variant built by its call, one named argument per line. */
+  call(name: string, fields: [string, string | undefined][]): string {
+    const fs = fields.filter(([, v]) => v !== undefined) as [string, string][];
+    return `${name}(\n    ${fs.map(([k, v]) => `${k}: ${indent(v, 4)}`).join(',\n    ')},\n)`;
   }
 
   // ── nodes ──
@@ -993,7 +1008,7 @@ class ViewGen {
       const items = o.items.map(
         (it: any) => `Item{value: ${itemLit(it.value)}, label: ${this.prop(sc, it.label, pend)}}`,
       );
-      return `Options.Items{items: ${this.list(items)}}`;
+      return `Options.Items(${this.list(items)})`;
     }
     const snapshot = n.store === 'snapshot';
     const choice = `Choice{value: ${snapshot ? 'row' : `(${o.value})`}, label: (${o.label})}`;
@@ -1006,14 +1021,14 @@ class ViewGen {
         .map((v) => `const ${v} = sc.${v}`)
         .join('\n')}\n${rowsBody}`;
       const head = awaits(body) ? 'async fn(sc, search)' : 'fn(sc, search)';
-      return this.struct('Options.Search', [
+      return this.call('Options.Search', [
         ['from', `${head}: {\n    ${indent(body, 4)}\n}`],
         ['resolve', this.prop(sc, { expr: o.resolve }, pend)],
         ['same', `fn(a, b): ${snapshot ? 'a.id == b.id' : 'a == b'}`],
       ]);
     }
     void valueType;
-    return this.struct('Options.Rows', [
+    return this.call('Options.Rows', [
       ['from', this.prop(sc, { expr: rowsBody }, pend)],
       ['resolve', this.prop(sc, { expr: o.resolve }, pend)],
     ]);

@@ -8,13 +8,13 @@ async fn half(n: Int) -> Future<Int>:
 
 async fn relay(other: Instance<Int>) -> Future<Int>:
   match await other.result():
-    case Ok{value}: value
-    case Err{error}: 0
+    case Ok(value): value
+    case Err(error): 0
 
 async fn main() -> Future<String>:
   const first = spawn half(42)
   const second = spawn half(42)
   const relayed = spawn relay(first)
   match await relayed.result():
-    case Ok{value}: "" + value + " " + (first == first) + " " + (first == second)
-    case Err{error}: error.message
+    case Ok(value): "" + value + " " + (first == first) + " " + (first == second)
+    case Err(error): error.message

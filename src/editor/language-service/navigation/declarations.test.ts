@@ -78,7 +78,7 @@ describe('the declarations a name denotes', () => {
   });
 
   it('are in std for what std declares', () => {
-    const { program, named } = navigable({ main: 'fn f() -> Result<Int>: Ok{value: 1}\n' });
+    const { program, named } = navigable({ main: 'fn f() -> Result<Int>: Ok(1)\n' });
     const [declared] = declaredAround(
       program,
       idOf('main'),

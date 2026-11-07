@@ -212,11 +212,11 @@ enum Pending:
   Node # its own task: the node shows Loading
   Hidden # its own task: the node stays hidden
 
-fn awaited<Sc, T>(pending: Pending, eval: async fn(Sc) -> T) -> Prop<Sc, T>: Prop.Awaited{
-  pending
-  eval
+fn awaited<Sc, T>(pending: Pending, eval: async fn(Sc) -> T) -> Prop<Sc, T>: Prop.Awaited(
+  pending: pending
+  eval: eval
   task: new Task<Sc, T>{}
-}
+)
 
 # An awaited expression's run. It starts again only when the scope it ran with changes, so a
 # finished task doesn't restart on the redraw it causes. Sources cache, so a rerun is cheap.
@@ -229,10 +229,10 @@ shared struct Task<Sc, T>:
 # The value now, or none while pending (with pending Form, awaited inline instead).
 async fn get<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> Future<T?>:
   match self:
-    case Fixed{value}: value
-    case Computed{eval}: eval(sc)
+    case Fixed(value): value
+    case Computed(eval): eval(sc)
     case Awaited{pending == Pending.Form, eval}: await eval(sc)
-    case Awaited{eval, task}: {
+    case Awaited(_, eval, task): {
       if task->sc != sc: {
         task->sc = sc
         task->value = none
@@ -245,9 +245,9 @@ async fn get<Sc, T>(self: Prop<Sc, T>, sc: Sc, out: &Drawing) -> Future<T?>:
 
 fn evalNow<Sc, T>(self: Prop<Sc, T>, sc: Sc) -> T?:
   match self:
-    case Fixed{value}: value
-    case Computed{eval}: eval(sc)
-    case Awaited{task}: task->value
+    case Fixed(value): value
+    case Computed(eval): eval(sc)
+    case Awaited(_, _, task): task->value
 
 fn isHiddenPending<Sc, T>(self: Prop<Sc, T>) -> Bool:
   match self:
@@ -273,7 +273,7 @@ enum Check<Sc, T>:
   # a rule with `pending` (an approval): its own task once the user submits; submit waits
 
 fn later<Sc, T>(test: async fn(Sc) -> String?, pending: fn(Sc) -> String) -> Check<Sc, T>:
-  Check.Later{test, pending, task: new Task<Sc, String?>{}}
+  Check.Later(test: test, pending: pending, task: new Task<Sc, String?>{})
 
 enum Format:
   Email
@@ -282,14 +282,14 @@ enum Format:
 
 # One helper per constraint. The generator adds answered() to every stored field without a default
 # or computed value: everything must be answered. required() is the schema's `required`: non-empty.
-fn answered<Sc, T>() -> Check<Sc, T>: Check.Now{
-  test: fn(sc, v): if v == none: "Required" else: none
-}
-fn required<Sc>(on: Prop<Sc, Bool>) -> Check<Sc, String>: Check.Now{
-  test: fn(sc, v): if on.evalNow(sc) == true and (v == none or v == ""): "Required" else: none
-}
-fn someItems<Sc, T>(on: Prop<Sc, Bool>) -> Check<Sc, Array<T>>: Check.Now{
-  test: fn(sc, v): {
+fn answered<Sc, T>() -> Check<Sc, T>: Check.Now(
+  fn(sc, v): if v == none: "Required" else: none
+)
+fn required<Sc>(on: Prop<Sc, Bool>) -> Check<Sc, String>: Check.Now(
+  fn(sc, v): if on.evalNow(sc) == true and (v == none or v == ""): "Required" else: none
+)
+fn someItems<Sc, T>(on: Prop<Sc, Bool>) -> Check<Sc, Array<T>>: Check.Now(
+  fn(sc, v): {
     match v:
       case None:
         if on.evalNow(sc) == true: "Required"
@@ -298,36 +298,36 @@ fn someItems<Sc, T>(on: Prop<Sc, Bool>) -> Check<Sc, Array<T>>: Check.Now{
         if on.evalNow(sc) == true and items.length() == 0: "Required"
         else: none
   }
-}
-fn minLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: Check.Now{
-  test: fn(sc, v): {
+)
+fn minLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: Check.Now(
+  fn(sc, v): {
     match (v, n.evalNow(sc)):
       case (String as s, Int as bound) if s.length() < bound: `Minimum length is ${bound}`
       case _: none
   }
-}
-fn maxLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: Check.Now{
-  test: fn(sc, v): {
+)
+fn maxLength<Sc>(n: Prop<Sc, Int>) -> Check<Sc, String>: Check.Now(
+  fn(sc, v): {
     match (v, n.evalNow(sc)):
       case (String as s, Int as bound) if s.length() > bound: `Maximum length is ${bound}`
       case _: none
   }
-}
-fn pattern<Sc>(p: Prop<Sc, String>) -> Check<Sc, String>: Check.Now{
-  test: fn(sc, v): {
+)
+fn pattern<Sc>(p: Prop<Sc, String>) -> Check<Sc, String>: Check.Now(
+  fn(sc, v): {
     match (v, p.evalNow(sc)):
       case (String as s, String as pat): {
         match regex.Regex.parse(pat):
-          case Ok{value as re}:
+          case Ok(re):
             if re.test(s): none
             else: "Invalid format"
-          case Err{}: "Invalid format"
+          case Err(...): "Invalid format"
       }
       case _: none
   }
-}
-fn format<Sc>(f: Format) -> Check<Sc, String>: Check.Now{
-  test: fn(sc, v): {
+)
+fn format<Sc>(f: Format) -> Check<Sc, String>: Check.Now(
+  fn(sc, v): {
     match v:
       case None: none
       case s: {
@@ -339,9 +339,9 @@ fn format<Sc>(f: Format) -> Check<Sc, String>: Check.Now{
         else: "Invalid format"
       }
   }
-}
-fn min<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now{
-  test: fn(sc, v): {
+)
+fn min<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now(
+  fn(sc, v): {
     match v:
       case None: none
       case val: {
@@ -352,9 +352,9 @@ fn min<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now{
             else: none
       }
   }
-}
-fn max<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now{
-  test: fn(sc, v): {
+)
+fn max<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now(
+  fn(sc, v): {
     match v:
       case None: none
       case val: {
@@ -365,9 +365,9 @@ fn max<Sc, T is Comparable>(n: Prop<Sc, T>) -> Check<Sc, T>: Check.Now{
             else: none
       }
   }
-}
-fn multipleOf<Sc>(n: Prop<Sc, Float>) -> Check<Sc, Float>: Check.Now{
-  test: fn(sc, v): {
+)
+fn multipleOf<Sc>(n: Prop<Sc, Float>) -> Check<Sc, Float>: Check.Now(
+  fn(sc, v): {
     match (v, n.evalNow(sc)):
       case (Float as val, Float as step) if step != 0.0: {
         const q = val / step
@@ -376,11 +376,11 @@ fn multipleOf<Sc>(n: Prop<Sc, Float>) -> Check<Sc, Float>: Check.Now{
       }
       case _: none
   }
-}
-fn accept<Sc>(types: Array<String>) -> Check<Sc, FileId>: Check.Now{test: fn(sc, v): none}
-fn maxBytes<Sc>(n: Int) -> Check<Sc, FileId>: Check.Now{test: fn(sc, v): none}
-fn minItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now{
-  test: fn(sc, v): {
+)
+fn accept<Sc>(types: Array<String>) -> Check<Sc, FileId>: Check.Now(fn(sc, v): none)
+fn maxBytes<Sc>(n: Int) -> Check<Sc, FileId>: Check.Now(fn(sc, v): none)
+fn minItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now(
+  fn(sc, v): {
     match v:
       case None: none
       case items: {
@@ -391,9 +391,9 @@ fn minItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now{
             else: none
       }
   }
-}
-fn maxItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now{
-  test: fn(sc, v): {
+)
+fn maxItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now(
+  fn(sc, v): {
     match v:
       case None: none
       case items: {
@@ -404,10 +404,10 @@ fn maxItems<Sc, T>(n: Prop<Sc, Int>) -> Check<Sc, Array<T>>: Check.Now{
             else: none
       }
   }
-}
-fn rule<Sc, T>(check: fn(Sc) -> Bool, message: fn(Sc) -> String) -> Check<Sc, T>: Check.Now{
-  test: fn(sc, v): if check(sc): none else: message(sc)
-}
+)
+fn rule<Sc, T>(check: fn(Sc) -> Bool, message: fn(Sc) -> String) -> Check<Sc, T>: Check.Now(
+  fn(sc, v): if check(sc): none else: message(sc)
+)
 
 # A Template in a language: its translation with $0…$n filled in, else the rendered original.
 fn t(
@@ -481,7 +481,7 @@ async fn _check<Sc, T>(
   let waiting: Array<String> = []
   for c in checks: {
     match c:
-      case Now{test}: {
+      case Now(test): {
         match test(sc, v):
           case None: ()
           case msg: {
@@ -489,7 +489,7 @@ async fn _check<Sc, T>(
             if touched or out.submitted: errors.push(msg)
           }
       }
-      case Later{test, pending, task}: {
+      case Later(test, pending, task): {
         if out.submitted: {
           if task->sc != sc: {
             task->sc = sc
@@ -515,7 +515,7 @@ async fn draw<Sc, T is Encodable & Decodable>(
     case w: {
       match await w.get(sc, &out):
         case None:
-          return if w.isHiddenPending(): [] else: [Node.Loading{key: self->key, label: none}]
+          return if w.isHiddenPending(): [] else: [Node.Loading(key: self->key, label: none)]
         case false: return []
         case true: ()
     }
@@ -550,16 +550,16 @@ async fn draw<Sc, T is Encodable & Decodable>(
     case None: ()
     case opt: {
       match opt:
-        case Items{items}: {
+        case Items(items): {
           for it in items: {
             const lbl = await it.label.get(sc, &out) ?? ""
             opts.push(Option{value: json.stringify(it.value), label: lbl})
           }
         }
-        case Options.Rows{from, resolve}: {
+        case Options.Rows(from, resolve): {
           match await from.get(sc, &out):
             case None:
-              return if from.isHiddenPending(): [] else: [Node.Loading{key: self->key, label: none}]
+              return if from.isHiddenPending(): [] else: [Node.Loading(key: self->key, label: none)]
             case rows: {
               for ch in rows: opts.push(Option{value: json.stringify(ch.value), label: ch.label})
             }
@@ -569,7 +569,7 @@ async fn draw<Sc, T is Encodable & Decodable>(
               case _: ()
           }
         }
-        case Search{from, resolve}: {
+        case Search(from: from, resolve: resolve, ...): {
           out.searches[self->key] = self
           const rows = await from(sc, self->search)
           for ch in rows: opts.push(Option{value: json.stringify(ch.value), label: ch.label})
@@ -582,7 +582,7 @@ async fn draw<Sc, T is Encodable & Decodable>(
     }
   const widget = await self->widget.get(sc, &out)
   const label = await self->label.get(sc, &out)
-  if widget == none or label == none: return [Node.Loading{key: self->key, label: none}]
+  if widget == none or label == none: return [Node.Loading(key: self->key, label: none)]
   const parent: ParentUi? = match self->parent:
     case None: none
     case p: await p.get(sc, &out)
@@ -605,17 +605,17 @@ async fn draw<Sc, T is Encodable & Decodable>(
     case None: none
     case val: json.stringify(val)
   [
-    Node.Field{
+    Node.Field(
       key: self->key
       widget: widget ?? FieldWidget.Raw
-      parent
+      parent: parent
       label: label ?? ""
-      help
+      help: help
       value: encoded
       options: opts
-      errors
+      errors: errors
       readOnly: self->value != none
-    }
+    )
   ]
 
 shared struct RepeatView<Sc, R is FormNode>:
@@ -654,7 +654,7 @@ async fn draw<Sc, R is FormNode>(
     case w: {
       match await w.get(sc, &out):
         case None:
-          return if w.isHiddenPending(): [] else: [Node.Loading{key: self->key, label: none}]
+          return if w.isHiddenPending(): [] else: [Node.Loading(key: self->key, label: none)]
         case false: return []
         case true: ()
     }
@@ -663,22 +663,22 @@ async fn draw<Sc, R is FormNode>(
     case None: ()
     case rProp: {
       const isFixed = match rProp:
-        case Fixed{}: true
+        case Fixed(...): true
         case _: false
       const keepRunning = not isFixed and self->recomputeUntil == Recompute.RowsEdited
       const shouldLoad = self->computedRows or (not self->list->edited and (not self->seeded or keepRunning))
       if shouldLoad: {
         match await rProp.get(sc, &out):
           case None:
-            return if rProp.isHiddenPending(): [] else: [Node.Loading{key: self->key, label: none}]
+            return if rProp.isHiddenPending(): [] else: [Node.Loading(key: self->key, label: none)]
           case v: {
             self->seeded = true
             match self->rowKey:
               case None: self->list.load(v)
               case kf: {
                 match self->list.sync(v, kf):
-                  case Ok{}: ()
-                  case Err{}: out.valid = false
+                  case Ok(...): ()
+                  case Err(...): out.valid = false
               }
           }
       }
@@ -696,7 +696,7 @@ async fn draw<Sc, R is FormNode>(
     if nodes.at(0) is Node as first: drawnRows.push(Row{key: row.key, node: first})
   }
   const widget = await self->widget.get(sc, &out)
-  if widget == none: return [Node.Loading{key: self->key, label: none}]
+  if widget == none: return [Node.Loading(key: self->key, label: none)]
   const parent: ParentUi? = match self->parent:
     case None: none
     case p: await p.get(sc, &out)
@@ -704,20 +704,20 @@ async fn draw<Sc, R is FormNode>(
     case None: none
     case l: await l.get(sc, &out)
   const dataVal: Array<R.Data>? = match self->list.read():
-    case Ok{value as d}: d
-    case Err{}: none
+    case Ok(d): d
+    case Err(...): none
   const errors, _ = await _check(self->checks, sc, dataVal, self->list->edited, &out)
   if self->canAdd: out.lists[self->key] = self
   [
-    Node.Repeat{
+    Node.Repeat(
       key: self->key
-      widget: widget ?? RepeatWidget.Table{addLabel: none}
-      parent
-      label
+      widget: widget ?? RepeatWidget.Table(none)
+      parent: parent
+      label: label
       rows: drawnRows
       canAdd: self->canAdd
-      errors
-    }
+      errors: errors
+    )
   ]
 
 # A variant. Each case body is wrapped by the generated code in a ScopedView that adds the
@@ -749,7 +749,7 @@ async fn draw<Sc, C is struct { [_] is FormNode }>(
     case w: {
       match await w.get(sc, &out):
         case None:
-          return if w.isHiddenPending(): [] else: [Node.Loading{key: self.key, label: none}]
+          return if w.isHiddenPending(): [] else: [Node.Loading(key: self.key, label: none)]
         case false: return []
         case true: ()
     }
@@ -773,7 +773,7 @@ async fn draw<Sc, C is struct { [_] is FormNode }>(
     if activeStr == k: { const nodes = await c.body.draw(sc, &out); bodyNode = nodes.at(0) }
   }
   const widget = await self.widget.get(sc, &out)
-  if widget == none: return [Node.Loading{key: self.key, label: none}]
+  if widget == none: return [Node.Loading(key: self.key, label: none)]
   const parent: ParentUi? = match self.parent:
     case None: none
     case p: await p.get(sc, &out)
@@ -783,16 +783,16 @@ async fn draw<Sc, C is struct { [_] is FormNode }>(
   const errors, _ = await _check(self.checks, sc, (), self.variant.tag->touched, &out)
   out.inputs[self.key] = self.variant
   [
-    Node.Variant{
+    Node.Variant(
       key: self.key
       widget: widget ?? VariantWidget.Inline
-      parent
-      label
+      parent: parent
+      label: label
       cases: caseOpts
       active: activeStr
       body: bodyNode
-      errors
-    }
+      errors: errors
+    )
   ]
 
 struct LayoutView<Sc>:
@@ -810,12 +810,12 @@ async fn draw<Sc>(self: LayoutView<Sc>, sc: Sc, out: &Drawing) -> Future<Array<N
     case w: {
       match await w.get(sc, &out):
         case None:
-          return if w.isHiddenPending(): [] else: [Node.Loading{key: self.key, label: none}]
+          return if w.isHiddenPending(): [] else: [Node.Loading(key: self.key, label: none)]
         case false: return []
         case true: ()
     }
   const widget = await self.widget.get(sc, &out)
-  if widget == none: return [Node.Loading{key: self.key, label: none}]
+  if widget == none: return [Node.Loading(key: self.key, label: none)]
   const parent: ParentUi? = match self.parent:
     case None: none
     case p: await p.get(sc, &out)
@@ -829,15 +829,15 @@ async fn draw<Sc>(self: LayoutView<Sc>, sc: Sc, out: &Drawing) -> Future<Array<N
   }
   const errors, waiting = await _check(self.checks, sc, (), out.submitted, &out)
   [
-    Node.Layout{
+    Node.Layout(
       key: self.key
       widget: widget ?? LayoutWidget.Divider
-      parent
-      label
-      errors
-      waiting
-      children
-    }
+      parent: parent
+      label: label
+      errors: errors
+      waiting: waiting
+      children: children
+    )
   ]
 
 # Moves drawing into a wider or different scope: a repeat row ({ data, ctx, item }), a variant
@@ -857,7 +857,7 @@ async fn draw<Sc, Sc2>(self: ScopedView<Sc, Sc2>, sc: Sc, out: &Drawing) -> Futu
     case w: {
       match await w.get(sc, &out):
         case None:
-          return if w.isHiddenPending(): [] else: [Node.Loading{key: self.key ?? "", label: none}]
+          return if w.isHiddenPending(): [] else: [Node.Loading(key: self.key ?? "", label: none)]
         case false: return []
         case true: ()
     }
@@ -881,7 +881,7 @@ async fn draw<Sc>(self: DynamicView<Sc>, sc: Sc, out: &Drawing) -> Future<Array<
     case w: {
       match await w.get(sc, &out):
         case None:
-          return if w.isHiddenPending(): [] else: [Node.Loading{key: self->key, label: none}]
+          return if w.isHiddenPending(): [] else: [Node.Loading(key: self->key, label: none)]
         case false: return []
         case true: ()
     }
@@ -895,7 +895,7 @@ async fn draw<Sc>(self: DynamicView<Sc>, sc: Sc, out: &Drawing) -> Future<Array<
   const form = await self->schema.get(sc, &out)
   match form:
     case None: []
-    case snap: { self->value->form = snap; [Node.Mount{key: self->key, parent, label, form: snap}] }
+    case snap: { self->value->form = snap; [Node.Mount(key: self->key, parent: parent, label: label, form: snap)] }
 
 # ═════════════════════════ Widgets (generated from the widget registry) ═════════════════════════
 # One enum per node kind, one variant per widget, its ui props as fields.
@@ -1028,8 +1028,8 @@ fn setJson<T is Decodable>(self: Field<T>, value: String):
   self->touched = true
   self->edited = true
   match json.parse<T>(value):
-    case Ok{value as v}: { self->value = v; self->parseError = none }
-    case Err{error}: self->parseError = error.message
+    case Ok(v): { self->value = v; self->parseError = none }
+    case Err(error): self->parseError = error.message
 
 fn setJson<C is struct { [_] is FormNode }>(self: Variant<C>, value: String):
   self.tag->touched = true
@@ -1096,15 +1096,15 @@ async fn run<M is struct { [_] is FormNode }, C>(
     }
     if submitted and out.valid:
       match model.read():
-        case Ok{value as d}: return d
-        case Err{}: ()
+        case Ok(d): return d
+        case Err(...): ()
     views.send(tree[0])
     match await events.receive():
       case Submit: submitted = true
       case Resolved: ()
-      case Set{key, value}: _ = out.inputs.get(key)?.setJson(value)
-      case Search{key, text}: _ = out.searches.get(key)?.setSearch(text)
-      case AddRow{key}: _ = out.lists.get(key)?.addRow()
-      case RemoveRow{key, row}: _ = out.lists.get(key)?.removeRow(row)
+      case Set(key, value): _ = out.inputs.get(key)?.setJson(value)
+      case Search(key: key, text: text, ...): _ = out.searches.get(key)?.setSearch(text)
+      case AddRow(key): _ = out.lists.get(key)?.addRow()
+      case RemoveRow(key, row): _ = out.lists.get(key)?.removeRow(row)
   }
   panic("unreachable")

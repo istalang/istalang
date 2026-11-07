@@ -47,7 +47,7 @@ async fn main() -> Future<Order>:
     items: [Item{sku: "a", qty: 2}],
     note: none,
     tags: [9: 2, 10: 1],
-    shape: Circle{radius: 1.5},
+    shape: Circle(1.5),
     pair: (3, true),
     due: 90m,
     at: time.Time{value: 1792929600000},

@@ -46,7 +46,7 @@ fn callsImplicitExtern() -> Array<Test>:
   []
 
 @Suite{"a test may do anything"}
-fn fine() -> Array<Test>: [Case{title: "t", body: async fn(): { drop fetch(); () }}]
+fn fine() -> Array<Test>: [Case(title: "t", body: async fn(): { drop fetch(); () })]
 
 fn _with(box: Box) -> Array<Test>: []
 fn _of(slot: Slot<Int>) -> Array<Test>: []

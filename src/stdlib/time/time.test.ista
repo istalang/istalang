@@ -13,8 +13,8 @@ const noon = Time{value: 1_792_929_600_000}
 
 fn parsed<T is Parsable>(text: String) -> T:
   match T.parse(text):
-    case Ok{value}: value
-    case Err{error}: panic(error.message)
+    case Ok(value): value
+    case Err(error): panic(error.message)
 
 fn instant(text: String) -> Time: parsed<Time>(text)
 
@@ -35,19 +35,19 @@ fn suite() -> Array<Test>: [
   })
   group("Zone", [
     test("parses IANA names in any case, as one zone with its canonical id", fn(): {
-      assertEq(Zone.parse("europe/berlin"), Ok{value: berlin()})
+      assertEq(Zone.parse("europe/berlin"), Ok(berlin()))
       assertEq(String(parsed<Zone>("europe/berlin")), "Europe/Berlin")
-      assertEq(Zone.parse("utc"), Ok{value: time.utc()})
+      assertEq(Zone.parse("utc"), Ok(time.utc()))
       assertEq(String(time.utc()), "UTC")
     })
     test("crosses as JSON as its canonical id", fn(): {
       assertEq(json.stringify(berlin()), "\"Europe/Berlin\"")
-      assertEq(json.parse<Zone>("\"europe/berlin\""), Ok{value: berlin()})
-      assert(json.parse<Zone>("\"Mars/Olympus\"") is Err{})
+      assertEq(json.parse<Zone>("\"europe/berlin\""), Ok(berlin()))
+      assert(json.parse<Zone>("\"Mars/Olympus\"") is Err(...))
     })
     test("refuses a name no zone has, and a fixed offset, which no IANA zone is", fn(): {
-      assert(Zone.parse("Mars/Olympus") is Err{})
-      assert(Zone.parse("+01:00") is Err{})
+      assert(Zone.parse("Mars/Olympus") is Err(...))
+      assert(Zone.parse("+01:00") is Err(...))
     })
   ])
   group("DateTime", [
@@ -56,11 +56,11 @@ fn suite() -> Array<Test>: [
       assertEq(String(dateTime), "2026-10-25T13:00:00")
       assertEq(
         DateTime.parse("2026-10-25T13:00:00.5")
-        Ok{value: DateTime{...dateTime, millisecond: 500}}
+        Ok(DateTime{...dateTime, millisecond: 500})
       )
-      assert(DateTime.parse("2026-10-25T13:00:00Z") is Err{})
-      assert(DateTime.parse("2026-02-30T00:00:00") is Err{})
-      assert(DateTime.parse("2026-10-25T13:00:00.0001") is Err{})
+      assert(DateTime.parse("2026-10-25T13:00:00Z") is Err(...))
+      assert(DateTime.parse("2026-02-30T00:00:00") is Err(...))
+      assert(DateTime.parse("2026-10-25T13:00:00.0001") is Err(...))
     })
     test("gives its weekday, 1 for Monday", fn(): {
       assertEq(DateTime{year: 2026, month: 10, day: 25}.weekday(), 7)

@@ -176,7 +176,7 @@ async fn breaks() -> Future<Int>:
 
 async fn awaited():
   const outcome = await spawn breaks().result()
-  assert(outcome is Err{error} and error.message == "broken" and error.code == "panic")
+  assert(outcome is Err(error) and error.message == "broken" and error.code == "panic")
 
 @Suite{"awaited"}
 fn awaitedPanics() -> Array<Test>: [test("awaited", awaited)]

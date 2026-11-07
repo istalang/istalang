@@ -41,29 +41,29 @@ struct Tally:
 
 fn failure(text: String) -> String:
   match json.parse<Order>(text):
-    case Ok{value}: "parsed " + value.id
-    case Err{error}: error.message
+    case Ok(value): "parsed " + value.id
+    case Err(error): error.message
 
 fn order(tags: String, shape: String, pair: String, due: String, extra: String) -> String:
   "{\"id\":\"o1\",\"items\":[],\"tags\":" + tags + ",\"shape\":{\"_type\":\"" + shape + "\"},\"pair\":" + pair + ",\"due\":\"" + due + "\"" + extra + "}"
 
 async fn main() -> Future<Array<String>>:
-  const original = Order{id: "o1", items: [Item{sku: "a", qty: 2}], note: "n", tags: [10: 1], shape: Circle{radius: 1.5}, pair: (3, true), due: 90m}
+  const original = Order{id: "o1", items: [Item{sku: "a", qty: 2}], note: "n", tags: [10: 1], shape: Circle(1.5), pair: (3, true), due: 90m}
   const roundTrip = match json.parse<Order>(json.stringify(original)):
-    case Ok{value}: if value == original: "round trip" else: "changed"
-    case Err{error}: error.message
+    case Ok(value): if value == original: "round trip" else: "changed"
+    case Err(error): error.message
   const lenient = match json.parse<Order>(order("{}", "Dot", "[1,true]", "PT1S", ",\"extra\":[1,2]")):
-    case Ok{value}: if value.note == none: "none, unknown fields ignored" else: "a note"
-    case Err{error}: error.message
+    case Ok(value): if value.note == none: "none, unknown fields ignored" else: "a note"
+    case Err(error): error.message
   const notJson = match json.parse<Order>("{\"id\":"):
-    case Ok{value}: value.id
-    case Err{error}: error.code
+    case Ok(value): value.id
+    case Err(error): error.code
   const big = match json.parse<Big>("{\"value\":\"123456789012345678901234567890\"}"):
-    case Ok{value}: String(value.value)
-    case Err{error}: error.message
+    case Ok(value): String(value.value)
+    case Err(error): error.message
   const skipped = match json.parse<Tally>("{\"name\":\"t\",\"counter\":{\"count\":1}}"):
-    case Ok{value}: "skipped " + value.counter.count
-    case Err{error}: error.message
+    case Ok(value): "skipped " + value.counter.count
+    case Err(error): error.message
   [
     roundTrip,
     lenient,

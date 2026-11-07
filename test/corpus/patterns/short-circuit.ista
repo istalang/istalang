@@ -41,7 +41,7 @@ async fn main() -> Future<String>:
   const full = Outer{inner: Inner{v: 4, name: "z"}, n: 1}
   const part = Outer{inner: Inner{v: 4, name: none}, n: 1}
   const empty = Outer{inner: none, n: 1}
-  (String(failsEarly(5) is Err{}) + "|" + String(chain(full) ?? -1) + "|"
+  (String(failsEarly(5) is Err(...)) + "|" + String(chain(full) ?? -1) + "|"
     + String(chain(empty) ?? -1) + "|" + String(chain(none) ?? -1) + "|" + (chainName(full) ?? "-")
     + "|" + (chainName(part) ?? "-") + "|" + String(nested(empty)) + "|"
     + String(three() ?? boom()) + "|" + String(countdown()))

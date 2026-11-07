@@ -14,12 +14,12 @@ struct Config:
 
 fn described(text: String) -> String:
   match json.parse<Config>(text):
-    case Ok{value}:
+    case Ok(value):
       const tag: String = match value.tag:
         case None: "none"
         case found: found
       `${value.mode}|${tag}|${value.level}`
-    case Err{error}: error.message
+    case Err(error): error.message
 
 async fn main() -> Future<String>:
   const read = described("{\"mode\":\"sent\",\"flag\":true,\"level\":2}")

@@ -7,22 +7,22 @@ import * as time from 'time'
 
 fn read(parsed: Result<Int>) -> String:
   match parsed:
-    case Ok{value}: String(value)
-    case Err{error}: error.message
+    case Ok(value): String(value)
+    case Err(error): error.message
 
 async fn main() -> Future<Array<String>>:
   const due = match time.Duration.parse("PT1M30S"):
-    case Ok{value}: String(value.value)
-    case Err{error}: error.message
+    case Ok(value): String(value.value)
+    case Err(error): error.message
   const at = match time.Time.parse("2026-10-25T14:00:00+02:00"):
-    case Ok{value}: String(value.value)
-    case Err{error}: error.message
+    case Ok(value): String(value.value)
+    case Err(error): error.message
   const flag = match Bool.parse("false"):
-    case Ok{value}: String(value)
-    case Err{error}: error.message
+    case Ok(value): String(value)
+    case Err(error): error.message
   const code = match Int.parse("4x"):
-    case Ok{value}: String(value)
-    case Err{error}: error.code
+    case Ok(value): String(value)
+    case Err(error): error.code
   [
     String(42)
     String(1.0)

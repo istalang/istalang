@@ -86,41 +86,39 @@ fn addressModel() -> Group<AddressModel>: Group{
 fn addressView(m: AddressModel, k: String) -> any View<AddressScope>: LayoutView<AddressScope>{
   key: `${k}/n1`
   parent: none
-  widget: Prop.Fixed(LayoutWidget.Labeled{labels: LabelStyle.Top})
+  widget: Prop.Fixed(LayoutWidget.Labeled(LabelStyle.Top))
   children: [
     new FieldView<AddressScope, String>{
       key: `${k}/n2`
       parent: none
       field: m.street
-      widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+      widget: Prop.Fixed(FieldWidget.Input(none))
       label: Prop.Fixed("Street")
       checks: [forms.answered(), forms.required(Fixed(true)), forms.maxLength(Fixed(120))]
     }
     LayoutView<AddressScope>{
       key: `${k}/n3`
       parent: none
-      widget: Prop.Fixed(LayoutWidget.Hstack{gap: Gap.Sm, labels: none})
+      widget: Prop.Fixed(LayoutWidget.Hstack(gap: Gap.Sm, labels: none))
       children: [
         new FieldView<AddressScope, String>{
           key: `${k}/n4`
-          parent: Prop.Fixed(ParentUi.Hstack{grow: 1.0})
+          parent: Prop.Fixed(ParentUi.Hstack(1.0))
           field: m.zip
-          widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+          widget: Prop.Fixed(FieldWidget.Input(none))
           label: Prop.Fixed("ZIP")
           checks: [
             forms.answered()
             forms.pattern(
-              Prop.Computed{
-                eval: fn({data, ctx}: AddressScope): logic.zipPattern(ctx.params.country)
-              }
+              Prop.Computed(fn({data, ctx}: AddressScope): logic.zipPattern(ctx.params.country))
             )
           ]
         }
         new FieldView<AddressScope, String>{
           key: `${k}/n5`
-          parent: Prop.Fixed(ParentUi.Hstack{grow: 3.0})
+          parent: Prop.Fixed(ParentUi.Hstack(3.0))
           field: m.city
-          widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+          widget: Prop.Fixed(FieldWidget.Input(none))
           label: Prop.Fixed("City")
           checks: [forms.answered()]
         }
@@ -163,13 +161,15 @@ type CategoryScope1 = {
 fn categoryView(m: CategoryModel, k: String) -> any View<CategoryScope>: LayoutView<CategoryScope>{
   key: `${k}/n1`
   parent: none
-  widget: Prop.Fixed(LayoutWidget.Section{title: none, description: none, collapsible: none, labels: none})
+  widget: Prop.Fixed(
+    LayoutWidget.Section(title: none, description: none, collapsible: none, labels: none)
+  )
   children: [
     new FieldView<CategoryScope, String>{
       key: `${k}/n2`
       parent: none
       field: m.name
-      widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+      widget: Prop.Fixed(FieldWidget.Input(none))
       label: Prop.Fixed("Category")
       checks: [forms.answered()]
     }
@@ -177,7 +177,7 @@ fn categoryView(m: CategoryModel, k: String) -> any View<CategoryScope>: LayoutV
       key: `${k}/n3`
       parent: none
       list: m.children
-      widget: Prop.Fixed(RepeatWidget.List{addLabel: "Add subcategory", reorderable: none})
+      widget: Prop.Fixed(RepeatWidget.List(addLabel: "Add subcategory", reorderable: none))
       label: Prop.Fixed("Subcategories")
       checks: []
       canAdd: true
@@ -416,45 +416,45 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
     LayoutView<SupplierScope>{
       key: "n2"
       parent: none
-      widget: Prop.Computed{
-        eval: fn({data, ctx}: SupplierScope): LayoutWidget.Step{
+      widget: Prop.Computed(
+        fn({data, ctx}: SupplierScope): LayoutWidget.Step(
           title: forms.t(translations, ctx.user.lang, "Company", "Company", [])
           labels: LabelStyle.Start
-        }
-      }
+        )
+      )
       children: [
         LayoutView<SupplierScope>{
           key: "n3"
           parent: none
-          widget: Prop.Computed{
-            eval: fn({data, ctx}: SupplierScope): LayoutWidget.Markdown{
-              markdown: (`Welcome, **${ctx.user.name}**. Tier: ${ctx.params.tier}.`)
-            }
-          }
+          widget: Prop.Computed(
+            fn({data, ctx}: SupplierScope): LayoutWidget.Markdown(
+              (`Welcome, **${ctx.user.name}**. Tier: ${ctx.params.tier}.`)
+            )
+          )
           children: []
         }
         LayoutView<SupplierScope>{
           key: "n4"
           parent: none
-          widget: Prop.Computed{
-            eval: fn({data, ctx}: SupplierScope): LayoutWidget.Section{
+          widget: Prop.Computed(
+            fn({data, ctx}: SupplierScope): LayoutWidget.Section(
               title: forms.t(translations, ctx.user.lang, "Company", "Company", [])
               description: "Legal details"
               collapsible: false
               labels: none
-            }
-          }
+            )
+          )
           children: [
             LayoutView<SupplierScope>{
               key: "n5"
               parent: none
-              widget: Prop.Fixed(LayoutWidget.Hstack{gap: Gap.Md, labels: none})
+              widget: Prop.Fixed(LayoutWidget.Hstack(gap: Gap.Md, labels: none))
               children: [
                 new FieldView<SupplierScope, String>{
                   key: "n6"
-                  parent: Prop.Fixed(ParentUi.Hstack{grow: 2.0})
+                  parent: Prop.Fixed(ParentUi.Hstack(2.0))
                   field: m.company.fields.name
-                  widget: Prop.Fixed(FieldWidget.Input{placeholder: "ACME Ltd."})
+                  widget: Prop.Fixed(FieldWidget.Input("ACME Ltd."))
                   label: Prop.Fixed("Name")
                   help: Prop.Fixed("As registered")
                   checks: [
@@ -466,9 +466,9 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                 }
                 new FieldView<SupplierScope, String>{
                   key: "n7"
-                  parent: Prop.Fixed(ParentUi.Hstack{grow: 1.0})
+                  parent: Prop.Fixed(ParentUi.Hstack(1.0))
                   field: m.company.fields.vatId
-                  widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+                  widget: Prop.Fixed(FieldWidget.Input(none))
                   label: Prop.Fixed("VAT ID")
                   checks: [forms.answered(), forms.pattern(Fixed("^[A-Z]{2}[0-9]{6,12}$"))]
                 }
@@ -478,7 +478,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
               key: "n8"
               parent: none
               field: m.company.fields.email
-              widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+              widget: Prop.Fixed(FieldWidget.Input(none))
               label: Prop.Fixed("Email")
               checks: [forms.answered(), forms.format(Format.Email)]
             }
@@ -486,7 +486,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
               key: "n9"
               parent: none
               field: m.confirmEmail->node
-              widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+              widget: Prop.Fixed(FieldWidget.Input(none))
               label: Prop.Fixed("Confirm email")
               checks: [
                 forms.answered()
@@ -500,11 +500,11 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
               key: "n10"
               parent: none
               field: m.company.fields.description
-              widget: Prop.Computed{
-                eval: fn({data, ctx}: SupplierScope): FieldWidget.Textarea{
-                  rows: (if ctx.params.tier == "gold": 8 else: 4)
-                }
-              }
+              widget: Prop.Computed(
+                fn({data, ctx}: SupplierScope): FieldWidget.Textarea(
+                  (if ctx.params.tier == "gold": 8 else: 4)
+                )
+              )
               label: Prop.Fixed("Description")
               default: Prop.Fixed("")
               checks: [forms.maxLength(Fixed(2000))]
@@ -513,49 +513,42 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
               key: "n11"
               parent: none
               field: m.company.fields.size
-              widget: Prop.Fixed(FieldWidget.Select{placeholder: none})
+              widget: Prop.Fixed(FieldWidget.Select(none))
               label: Prop.Fixed("Size")
               default: Prop.Fixed("small")
               checks: []
-              options: Options.Items{
-                items: [
-                  Item{value: "small", label: Prop.Fixed("Small")}
-                  Item{value: "medium", label: Prop.Fixed("Medium")}
-                  Item{
-                    value: "large"
-                    label: Prop.Computed{
-                      eval: fn({data, ctx}: SupplierScope): if ctx.params.tier == "gold":
-                        "Large (priority)"
-                      else: "Large"
-                    }
-                  }
-                ]
-              }
+              options: Options.Items([
+                Item{value: "small", label: Prop.Fixed("Small")}
+                Item{value: "medium", label: Prop.Fixed("Medium")}
+                Item{
+                  value: "large"
+                  label: Prop.Computed(
+                    fn({data, ctx}: SupplierScope): if ctx.params.tier == "gold": "Large (priority)"
+                    else: "Large"
+                  )
+                }
+              ])
             }
             new FieldView<SupplierScope, "llc" | "plc" | "sole">{
               key: "n12"
               parent: none
               field: m.company.fields.legalForm
-              widget: Prop.Fixed(FieldWidget.Radio{orientation: Orientation.Horizontal})
+              widget: Prop.Fixed(FieldWidget.Radio(Orientation.Horizontal))
               label: Prop.Fixed("Legal form")
               checks: [forms.answered()]
-              options: Options.Items{
-                items: [
-                  Item{value: "llc", label: Prop.Fixed("LLC")}
-                  Item{value: "plc", label: Prop.Fixed("PLC")}
-                  Item{value: "sole", label: Prop.Fixed("Sole trader")}
-                ]
-              }
+              options: Options.Items([
+                Item{value: "llc", label: Prop.Fixed("LLC")}
+                Item{value: "plc", label: Prop.Fixed("PLC")}
+                Item{value: "sole", label: Prop.Fixed("Sole trader")}
+              ])
             }
             new FieldView<SupplierScope, Float>{
               key: "n13"
               parent: none
-              when: Prop.Computed{
-                eval: fn({data, ctx}: SupplierScope): data.company.legalForm != "sole"
-              }
+              when: Prop.Computed(fn({data, ctx}: SupplierScope): data.company.legalForm != "sole")
               field: m.company.fields.capital->node
               hide: m.company.fields.capital
-              widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+              widget: Prop.Fixed(FieldWidget.Input(none))
               label: Prop.Fixed("Share capital")
               checks: [forms.answered(), forms.min(Fixed(0.0)), forms.multipleOf(Fixed(1000.0))]
             }
@@ -563,17 +556,17 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
               key: "n14"
               parent: none
               field: m.company.fields.employees
-              widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+              widget: Prop.Fixed(FieldWidget.Input(none))
               label: Prop.Fixed("Employees")
               checks: [
                 forms.answered()
                 forms.min(Fixed(1))
                 forms.max(
-                  Prop.Computed{
-                    eval: fn({data, ctx}: SupplierScope): if data.company.size == "small": 50
+                  Prop.Computed(
+                    fn({data, ctx}: SupplierScope): if data.company.size == "small": 50
                     elif data.company.size == "medium": 250
                     else: 100000
-                  }
+                  )
                 )
                 forms.rule(
                   fn({data, ctx}: SupplierScope): data.company.size !=
@@ -598,14 +591,14 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
               checks: [
                 forms.answered()
                 forms.min(Fixed("1800-01-01"))
-                forms.max(Prop.Computed{eval: fn({data, ctx}: SupplierScope): ctx.user.today})
+                forms.max(Prop.Computed(fn({data, ctx}: SupplierScope): ctx.user.today))
               ]
             }
             new FieldView<SupplierScope, forms.FileId>{
               key: "n16"
               parent: none
               field: m.company.fields.logo
-              widget: Prop.Fixed(FieldWidget.Upload{dropzone: true})
+              widget: Prop.Fixed(FieldWidget.Upload(true))
               label: Prop.Fixed("Logo")
               checks: [
                 forms.answered()
@@ -617,10 +610,10 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
               key: "n17"
               parent: none
               field: m.company.fields.country
-              widget: Prop.Fixed(FieldWidget.Select{placeholder: none})
+              widget: Prop.Fixed(FieldWidget.Select(none))
               label: Prop.Fixed("Country")
               checks: [forms.answered()]
-              options: Options.Rows{
+              options: Options.Rows(
                 from: forms.awaited(Pending.Form, async fn({data, ctx}: SupplierScope): [
                   for row in await geo.countries(ctx.params.region): Choice{
                     value: (row.id)
@@ -633,14 +626,12 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                     await geo.countries(ctx.params.region)
                   ).some(fn(c): c.id == data.company.country)
                 )
-              }
+              )
             }
             ScopedView<SupplierScope, AddressScope>{
               key: "n18"
               parent: none
-              when: Prop.Computed{
-                eval: fn({data, ctx}: SupplierScope): data.company.country != none
-              }
+              when: Prop.Computed(fn({data, ctx}: SupplierScope): data.company.country != none)
               hide: m.company.fields.address
               label: Prop.Fixed("Address")
               scope: fn({data, ctx}: SupplierScope): Scope{
@@ -655,15 +646,13 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
             new FieldView<SupplierScope, String>{
               key: "n19"
               parent: none
-              when: Prop.Computed{
-                eval: fn({data, ctx}: SupplierScope): data.company.country != none
-              }
+              when: Prop.Computed(fn({data, ctx}: SupplierScope): data.company.country != none)
               field: m.company.fields.city->node
               hide: m.company.fields.city
-              widget: Prop.Fixed(FieldWidget.Select{placeholder: none})
+              widget: Prop.Fixed(FieldWidget.Select(none))
               label: Prop.Fixed("Main city")
               checks: [forms.answered()]
-              options: Options.Rows{
+              options: Options.Rows(
                 from: forms.awaited(Pending.Node, async fn({data, ctx}: SupplierScope): [
                   for row in await geo.cities(data.company.country ?? ""): Choice{
                     value: (row.id)
@@ -676,7 +665,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                     await geo.cities(data.company.country ?? "")
                   ).some(fn(c): c.id == data.company.city)
                 )
-              }
+              )
             }
           ]
         }
@@ -684,10 +673,10 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
           key: "n20"
           parent: none
           field: m.manager
-          widget: Prop.Fixed(FieldWidget.Autocomplete{placeholder: "Type a name"})
+          widget: Prop.Fixed(FieldWidget.Autocomplete("Type a name"))
           label: Prop.Fixed("Account manager")
           checks: [forms.answered()]
-          options: Options.Search{
+          options: Options.Search(
             from: async fn(sc, search): {
               const ctx = struct{search, for k, v in ...sc.ctx: [k]: v}
               const data = sc.data
@@ -698,14 +687,14 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
               async fn({data, ctx}: SupplierScope): (await crm.user(data.manager?.id ?? "")) != none
             )
             same: fn(a, b): a.id == b.id
-          }
+          )
         }
         new FieldView<SupplierScope, Int>{
           key: "n21"
           parent: none
           field: m.creditLimit->node
           hide: m.creditLimit
-          widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+          widget: Prop.Fixed(FieldWidget.Input(none))
           label: Prop.Fixed("Credit limit")
           default: forms.awaited(
             Pending.Hidden
@@ -721,26 +710,24 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
     LayoutView<SupplierScope>{
       key: "n22"
       parent: none
-      widget: Prop.Fixed(LayoutWidget.Step{title: "Catalog", labels: none})
+      widget: Prop.Fixed(LayoutWidget.Step(title: "Catalog", labels: none))
       children: [
         new RepeatView<SupplierScope, SupplierPricesRow>{
           key: "n23"
           parent: none
           list: m.prices
-          widget: Prop.Fixed(RepeatWidget.Table{addLabel: none})
+          widget: Prop.Fixed(RepeatWidget.Table(none))
           label: Prop.Fixed("Prices")
           checks: []
           canAdd: false
-          rows: Prop.Computed{
-            eval: fn({data, ctx}: SupplierScope): [
-              for p in ctx.params.products: struct{
-                sku: p.sku
-                name: p.name
-                amount: none
-                regions: []
-              }
-            ]
-          }
+          rows: Prop.Computed(fn({data, ctx}: SupplierScope): [
+            for p in ctx.params.products: struct{
+              sku: p.sku
+              name: p.name
+              amount: none
+              regions: []
+            }
+          ])
           rowKey: fn(seen): { const price = seen; price.sku }
           recomputeUntil: Recompute.RowsEdited
           item: fn(r1, row1): ScopedView<SupplierScope, SupplierScope1>{
@@ -754,27 +741,25 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                   key: `n25@${row1}`
                   parent: none
                   field: r1.fields.sku
-                  widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+                  widget: Prop.Fixed(FieldWidget.Input(none))
                   label: Prop.Fixed("SKU")
-                  value: Prop.Computed{
-                    eval: fn({data, ctx, price}: SupplierScope1): price.sku ?? ""
-                  }
+                  value: Prop.Computed(fn({data, ctx, price}: SupplierScope1): price.sku ?? "")
                   checks: []
                 }
                 new FieldView<SupplierScope1, String>{
                   key: `n26@${row1}`
-                  parent: Prop.Fixed(ParentUi.Tablerow{width: 240})
+                  parent: Prop.Fixed(ParentUi.Tablerow(240))
                   field: r1.fields.name
-                  widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+                  widget: Prop.Fixed(FieldWidget.Input(none))
                   label: Prop.Fixed("Product")
                   default: Prop.Fixed("")
                   checks: []
                 }
                 new FieldView<SupplierScope1, Float>{
                   key: `n27@${row1}`
-                  parent: Prop.Fixed(ParentUi.Tablerow{width: 100})
+                  parent: Prop.Fixed(ParentUi.Tablerow(100))
                   field: r1.fields.amount
-                  widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+                  widget: Prop.Fixed(FieldWidget.Input(none))
                   label: Prop.Fixed("Price")
                   checks: [forms.answered(), forms.min(Fixed(0.0))]
                 }
@@ -782,7 +767,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                   key: `n28@${row1}`
                   parent: none
                   list: r1.fields.regions
-                  widget: Prop.Fixed(RepeatWidget.Multiselect{placeholder: none})
+                  widget: Prop.Fixed(RepeatWidget.Multiselect(none))
                   label: Prop.Fixed("Regions")
                   checks: [forms.someItems(Fixed(true))]
                   canAdd: true
@@ -800,7 +785,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                       widget: Prop.Fixed(FieldWidget.Choice)
                       label: Prop.Fixed("Region")
                       checks: [forms.answered()]
-                      options: Options.Rows{
+                      options: Options.Rows(
                         from: forms.awaited(Pending.Form, async fn(
                           {data, ctx, price, region}: SupplierScope2
                         ): [
@@ -815,7 +800,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                             await geo.regions()
                           ).some(fn(r): r.code == region)
                         )
-                      }
+                      )
                     }
                   }
                 }
@@ -827,14 +812,14 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
           key: "n30"
           parent: none
           list: m.contacts
-          widget: Prop.Fixed(RepeatWidget.List{addLabel: "Add contact", reorderable: true})
+          widget: Prop.Fixed(RepeatWidget.List(addLabel: "Add contact", reorderable: true))
           label: Prop.Fixed("Contacts")
           checks: [
             forms.minItems(Fixed(1))
             forms.maxItems(
-              Prop.Computed{
-                eval: fn({data, ctx}: SupplierScope): if ctx.params.tier == "gold": 10 else: 3
-              }
+              Prop.Computed(
+                fn({data, ctx}: SupplierScope): if ctx.params.tier == "gold": 10 else: 3
+              )
             )
           ]
           canAdd: true
@@ -843,26 +828,28 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
             view: LayoutView<SupplierScope3>{
               key: `n31@${row1}`
               parent: none
-              widget: Prop.Fixed(LayoutWidget.Section{
+              widget: Prop.Fixed(
+                LayoutWidget.Section(
                   title: none
                   description: none
                   collapsible: none
                   labels: none
-                })
+                )
+              )
               children: [
                 new FieldView<SupplierScope3, String>{
                   key: `n32@${row1}`
-                  parent: Prop.Fixed(ParentUi.Section{span: 1})
+                  parent: Prop.Fixed(ParentUi.Section(1))
                   field: r1.fields.name
-                  widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+                  widget: Prop.Fixed(FieldWidget.Input(none))
                   label: Prop.Fixed("Name")
                   checks: [forms.answered()]
                 }
                 new FieldView<SupplierScope3, String>{
                   key: `n33@${row1}`
-                  parent: Prop.Fixed(ParentUi.Section{span: 1})
+                  parent: Prop.Fixed(ParentUi.Section(1))
                   field: r1.fields.email
-                  widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+                  widget: Prop.Fixed(FieldWidget.Input(none))
                   label: Prop.Fixed("Email")
                   checks: [forms.answered(), forms.format(Format.Email)]
                 }
@@ -895,7 +882,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
           key: "n36"
           parent: none
           list: m.certifications
-          widget: Prop.Fixed(RepeatWidget.Checkboxes{orientation: Orientation.Vertical})
+          widget: Prop.Fixed(RepeatWidget.Checkboxes(Orientation.Vertical))
           label: Prop.Fixed("Certifications")
           checks: []
           canAdd: true
@@ -908,12 +895,10 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
               widget: Prop.Fixed(FieldWidget.Choice)
               label: Prop.Fixed("Certification")
               checks: [forms.answered()]
-              options: Options.Items{
-                items: [
-                  Item{value: "iso9001", label: Prop.Fixed("ISO 9001")}
-                  Item{value: "iso14001", label: Prop.Fixed("ISO 14001")}
-                ]
-              }
+              options: Options.Items([
+                Item{value: "iso9001", label: Prop.Fixed("ISO 9001")}
+                Item{value: "iso14001", label: Prop.Fixed("ISO 14001")}
+              ])
             }
           }
         }
@@ -921,7 +906,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
           key: "n38"
           parent: none
           list: m.categories
-          widget: Prop.Fixed(RepeatWidget.Cards{addLabel: "Add category", title: "Category"})
+          widget: Prop.Fixed(RepeatWidget.Cards(addLabel: "Add category", title: "Category"))
           label: Prop.Fixed("Categories")
           checks: []
           canAdd: true
@@ -943,7 +928,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
           parent: none
           list: m.history->node
           hide: m.history
-          widget: Prop.Fixed(RepeatWidget.List{addLabel: none, reorderable: none})
+          widget: Prop.Fixed(RepeatWidget.List(addLabel: none, reorderable: none))
           label: Prop.Fixed("Previous orders")
           checks: []
           canAdd: false
@@ -958,9 +943,9 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
               key: `n41@${row1}`
               parent: none
               field: r1.fields.note
-              widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+              widget: Prop.Fixed(FieldWidget.Input(none))
               label: Prop.Fixed("Order")
-              value: Prop.Computed{eval: fn({data, ctx, h}: SupplierScope6): h.note ?? ""}
+              value: Prop.Computed(fn({data, ctx, h}: SupplierScope6): h.note ?? "")
               checks: []
             }
           }
@@ -970,7 +955,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
     LayoutView<SupplierScope>{
       key: "n42"
       parent: none
-      widget: Prop.Fixed(LayoutWidget.Step{title: "Payment", labels: none})
+      widget: Prop.Fixed(LayoutWidget.Step(title: "Payment", labels: none))
       children: [
         new FieldView<SupplierScope, "card" | "wire" | "invoice">{
           key: "n43"
@@ -979,19 +964,17 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
           widget: Prop.Fixed(FieldWidget.Segmented)
           label: Prop.Fixed("Method")
           checks: [forms.answered()]
-          options: Options.Items{
-            items: [
-              Item{value: "card", label: Prop.Fixed("Card")}
-              Item{value: "wire", label: Prop.Fixed("Wire")}
-              Item{value: "invoice", label: Prop.Fixed("Invoice")}
-            ]
-          }
+          options: Options.Items([
+            Item{value: "card", label: Prop.Fixed("Card")}
+            Item{value: "wire", label: Prop.Fixed("Wire")}
+            Item{value: "invoice", label: Prop.Fixed("Invoice")}
+          ])
         }
         VariantView<SupplierScope, SupplierPaymentCases>{
           key: "n44"
           parent: none
           variant: m.payment
-          widget: Prop.Fixed(VariantWidget.Panel{title: "Details"})
+          widget: Prop.Fixed(VariantWidget.Panel("Details"))
           label: Prop.Fixed("Payment details")
           cases: struct{
             card: CaseView<SupplierScope>{
@@ -1005,18 +988,20 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                 view: LayoutView<SupplierScope7>{
                   key: "n45"
                   parent: none
-                  widget: Prop.Fixed(LayoutWidget.Section{
+                  widget: Prop.Fixed(
+                    LayoutWidget.Section(
                       title: none
                       description: none
                       collapsible: none
                       labels: none
-                    })
+                    )
+                  )
                   children: [
                     new FieldView<SupplierScope7, String>{
                       key: "n46"
                       parent: none
                       field: m.payment.cases.card.fields.holder
-                      widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+                      widget: Prop.Fixed(FieldWidget.Input(none))
                       label: Prop.Fixed("Card holder")
                       checks: [forms.answered()]
                     }
@@ -1024,7 +1009,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                       key: "n47"
                       parent: none
                       field: m.payment.cases.card.fields.last4
-                      widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+                      widget: Prop.Fixed(FieldWidget.Input(none))
                       label: Prop.Fixed("Last 4 digits")
                       checks: [forms.answered(), forms.pattern(Fixed("^[0-9]{4}$"))]
                     }
@@ -1061,12 +1046,10 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                       widget: Prop.Fixed(FieldWidget.Choice)
                       label: Prop.Fixed("Currency")
                       checks: [forms.answered()]
-                      options: Options.Items{
-                        items: [
-                          Item{value: "EUR", label: Prop.Fixed("€")}
-                          Item{value: "USD", label: Prop.Fixed("$")}
-                        ]
-                      }
+                      options: Options.Items([
+                        Item{value: "EUR", label: Prop.Fixed("€")}
+                        Item{value: "USD", label: Prop.Fixed("$")}
+                      ])
                     }
                   ]
                 }
@@ -1084,7 +1067,7 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                   key: "n51"
                   parent: none
                   field: m.payment.cases.invoice.fields.terms
-                  widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+                  widget: Prop.Fixed(FieldWidget.Input(none))
                   label: Prop.Fixed("Payment terms (days)")
                   default: Prop.Fixed(30)
                   checks: [forms.min(Fixed(7)), forms.max(Fixed(90))]
@@ -1113,15 +1096,13 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
                   key: "n53"
                   parent: none
                   field: m.delivery.cases.standard.fields.window
-                  widget: Prop.Fixed(FieldWidget.Select{placeholder: none})
+                  widget: Prop.Fixed(FieldWidget.Select(none))
                   label: Prop.Fixed("Time window")
                   checks: [forms.answered()]
-                  options: Options.Items{
-                    items: [
-                      Item{value: "am", label: Prop.Fixed("Morning")}
-                      Item{value: "pm", label: Prop.Fixed("Afternoon")}
-                    ]
-                  }
+                  options: Options.Items([
+                    Item{value: "am", label: Prop.Fixed("Morning")}
+                    Item{value: "pm", label: Prop.Fixed("Afternoon")}
+                  ])
                 }
               }
             }
@@ -1149,10 +1130,10 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
           key: "n55"
           parent: none
           field: m.extraForm
-          widget: Prop.Fixed(FieldWidget.Select{placeholder: none})
+          widget: Prop.Fixed(FieldWidget.Select(none))
           label: Prop.Fixed("Additional questionnaire")
           checks: [forms.answered()]
-          options: Options.Rows{
+          options: Options.Rows(
             from: forms.awaited(Pending.Form, async fn({data, ctx}: SupplierScope): [
               for row in await formsCatalog.list(ctx.params.region): Choice{
                 value: row
@@ -1166,76 +1147,70 @@ fn supplierView(m: SupplierModel) -> any View<SupplierScope>: LayoutView<Supplie
               ) !=
                 none
             )
-          }
+          )
         }
         new DynamicView<SupplierScope>{
           key: "n56"
           parent: none
-          when: Prop.Computed{eval: fn({data, ctx}: SupplierScope): data.extraForm != none}
+          when: Prop.Computed(fn({data, ctx}: SupplierScope): data.extraForm != none)
           value: m.extra->node
           hide: m.extra
           label: Prop.Fixed("Questionnaire")
-          schema: Prop.Computed{eval: fn({data, ctx}: SupplierScope): data.extraForm?.schema}
+          schema: Prop.Computed(fn({data, ctx}: SupplierScope): data.extraForm?.schema)
         }
       ]
     }
     LayoutView<SupplierScope>{
       key: "n57"
       parent: none
-      widget: Prop.Fixed(LayoutWidget.Step{title: "Review", labels: none})
+      widget: Prop.Fixed(LayoutWidget.Step(title: "Review", labels: none))
       children: [
         LayoutView<SupplierScope>{
           key: "n58"
           parent: none
-          widget: Prop.Computed{
-            eval: fn({data, ctx}: SupplierScope): LayoutWidget.Markdown{
-              markdown: (
-                `Supplier **${data.company.name ?? "?"}**, ${data.prices.length()} prices.`
-              )
-            }
-          }
+          widget: Prop.Computed(
+            fn({data, ctx}: SupplierScope): LayoutWidget.Markdown(
+              (`Supplier **${data.company.name ?? "?"}**, ${data.prices.length()} prices.`)
+            )
+          )
           children: []
         }
         new FieldView<SupplierScope, Float>{
           key: "n59"
           parent: none
           field: none
-          widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+          widget: Prop.Fixed(FieldWidget.Input(none))
           label: Prop.Fixed("Catalog value")
-          value: Prop.Computed{
-            eval: fn({data, ctx}: SupplierScope): logic.catalogValue(data.prices)
-          }
+          value: Prop.Computed(fn({data, ctx}: SupplierScope): logic.catalogValue(data.prices))
           checks: []
         }
         new FieldView<SupplierScope, Int>{
           key: "n60"
           parent: none
           field: m.score
-          widget: Prop.Fixed(FieldWidget.Input{placeholder: none})
+          widget: Prop.Fixed(FieldWidget.Input(none))
           label: Prop.Fixed("Risk score")
-          value: Prop.Computed{
-            eval: fn({data, ctx}: SupplierScope): logic.score(
+          value: Prop.Computed(
+            fn({data, ctx}: SupplierScope): logic.score(
               data.company.employees ?? 0
               data.certifications.length()
             )
-          }
+          )
           checks: []
         }
         new FieldView<SupplierScope, String>{
           key: "n61"
           parent: none
           field: m.notes
-          widget: Prop.Fixed(FieldWidget.Textarea{rows: none})
-          label: Prop.Computed{
-            eval: fn({data, ctx}: SupplierScope): if ctx.params.tier == "gold":
+          widget: Prop.Fixed(FieldWidget.Textarea(none))
+          label: Prop.Computed(
+            fn({data, ctx}: SupplierScope): if ctx.params.tier == "gold":
               "Notes for your account manager"
             else: "Notes"
-          }
+          )
           default: Prop.Fixed("")
           checks: [
-            forms.required(
-              Prop.Computed{eval: fn({data, ctx}: SupplierScope): (data.score ?? 0) > 70}
-            )
+            forms.required(Prop.Computed(fn({data, ctx}: SupplierScope): (data.score ?? 0) > 70))
           ]
         }
         new FieldView<SupplierScope, Bool>{

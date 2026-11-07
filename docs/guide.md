@@ -234,7 +234,7 @@ const t = { const base = price * qty; base + tax(base) }  # block expression
 
 const text = match decision:          # must cover every variant, or end with case _
     case Approved(by): "approved by " + by    # a call pattern: fields as a call gives them
-    case Rejected{reason as why} if why != "": "rejected: " + why
+    case Rejected(reason: why, ...) if why != "": "rejected: " + why
     case Rejected(by, ...): "rejected by " + by   # ... leaves the other fields
     case Expired: "expired"
 

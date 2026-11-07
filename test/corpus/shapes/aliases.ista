@@ -34,7 +34,7 @@ type Form = Figure
 
 fn area(f: Form) -> Int:
   match f:
-    case Form.Square{side}: side * side
+    case Form.Square(side): side * side
     case Form.Dot: 0
 
 fn name(c: Hue) -> String:
@@ -47,4 +47,4 @@ async fn main():
   const b = Point.of(3, 4)
   const p = Pair.of(10, 20)
   const q = Pair<Int, Int>{first: 1, second: 1}
-  "" + sum(a) + " " + sum(b) + " | " + p.first + " " + p.second + " | " + (q.first + q.second) + " | " + name(Hue.Red) + " " + Spot.origin().x + " | " + name(Tint.Green) + " " + area(Form.Square{side: 2})
+  "" + sum(a) + " " + sum(b) + " | " + p.first + " " + p.second + " | " + (q.first + q.second) + " | " + name(Hue.Red) + " " + Spot.origin().x + " | " + name(Tint.Green) + " " + area(Form.Square(2))

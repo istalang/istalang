@@ -16,19 +16,19 @@ async fn main() -> Future<String>:
   const s1: Status = "sent"
   const j1 = json.stringify(s1)
   const p1 = match json.parse<Status>("\"draft\""):
-    case Ok{value}: value
-    case Err{error}: "err"
+    case Ok(value): value
+    case Err(error): "err"
   const pBad = match json.parse<Status>("\"archived\""):
-    case Ok{value}: value
-    case Err{error}: "err"
+    case Ok(value): value
+    case Err(error): "err"
   const n1: Sign = -1
   const j2 = json.stringify(n1)
   const p2 = match json.parse<Sign>("42"):
-    case Ok{value}: value
-    case Err{error}: 0
+    case Ok(value): value
+    case Err(error): 0
   const p2Bad = match json.parse<Sign>("99"):
-    case Ok{value}: value
-    case Err{error}: 0
+    case Ok(value): value
+    case Err(error): 0
   const optLit: Status? = none
   const nestedOpt: Int?? = 7
   const cfg = Config{mode: "draft", tag: none, flag: true}

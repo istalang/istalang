@@ -54,9 +54,9 @@ fn window(start: Int, end: Int = start + 10) -> Int:
 @Note{"matches every verdict"}
 fn describe(v: Verdict) -> String:
   match v:
-    case Approved{by}:
+    case Approved(by):
       "approved by " + by
-    case Rejected{by, reason as why} if why != "":
+    case Rejected(by, why) if why != "":
       by + ": " + why
     case Verdict.Expired:
       "expired"
@@ -64,7 +64,7 @@ fn describe(v: Verdict) -> String:
       "unknown"
 
 fn positives(results: Array<Result<Int>>) -> Array<Int>:
-  [for r in results if r is Ok{value} and value > 0: value]
+  [for r in results if r is Ok(value) and value > 0: value]
 
 fn counter(start: Int) -> fn() -> Int:
   let count = start

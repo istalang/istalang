@@ -32,8 +32,8 @@ async fn withFortyOne(body: async fn(Int) -> Unit): await body(41)
 # The title and marks of `entry`, as the runner reads them.
 fn described(entry: Test) -> String:
   match entry:
-    case Case{title, skipped, only}: marked(title, skipped, only)
-    case Group{title, skipped, only}: marked(title, skipped, only)
+    case Case(title, _, skipped, only): marked(title, skipped, only)
+    case Group(title, _, skipped, only): marked(title, skipped, only)
 
 fn marked(title: String, skipped: Bool, only: Bool) -> String:
   title + (if skipped: " skipped" else: "") + (if only: " only" else: "")

@@ -28,17 +28,17 @@ enum Node:
 fn describe(verdict: Verdict) -> String:
   match verdict:
     case Approved: "approved"
-    case Rejected{by, reason}: `${by}: ${reason}`
+    case Rejected(by, reason): `${by}: ${reason}`
 
 fn shown(node: Node) -> String:
   match node:
-    case Group{title, children}: `${children.length()} ${title}`
+    case Group(title: title, children: children, ...): `${children.length()} ${title}`
     case _: ""
 
 fn valueOf(result: Result<Int>) -> Int:
   match result:
-    case Ok{value}: value
-    case Err{}: -1
+    case Ok(value): value
+    case Err(...): -1
 
 fn apply(f: fn(Int) -> Result<Int>, value: Int) -> Result<Int>: f(value)
 
@@ -89,6 +89,6 @@ async fn main() -> Future<String>:
   const left = `${sent(Verdict.Rejected)} ${describe(shorter[0])}`
   const result = `${chosen(Action.Later)} ${told(Result.Ok)}`
   const failure = match failed("oops", Result.Err):
-    case Err{error}: `${error} ${grouped(Node.Group)}`
+    case Err(error): `${error} ${grouped(Node.Group)}`
     case _: ""
   `${values}|${valueOf(wrap(4))}|${made}|${describe(short("ops"))}|${shown(group("t", true, [Node.Empty, Node.Text("a")]))}|${same}|${passed}|${sent(Rejected)}|${picked} ${each(Pair{a: 1, b: "x"})}|${left}|${result}|${failure}`

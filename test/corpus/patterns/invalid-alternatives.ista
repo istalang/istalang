@@ -1,5 +1,5 @@
 # error: 5203 at 20:7
-# error: 5412 at 25:32
+# error: 5412 at 25:22
 # error: 5412 at 26:16
 # error: 5413 at 31:10
 # error: 5414 at 32:10
@@ -22,8 +22,8 @@ fn target(pair: (Int, Int)) -> Int:
 
 fn differ(shape: Shape) -> Int:
   match shape:
-    case Circle{radius as n} | Square{side as n}: 1
-    case Dot | Circle{radius}: 2
+    case Circle(n) | Square(n): 1
+    case Dot | Circle(radius): 2
     case _: 0
 
 fn notArray(name: String) -> Int:

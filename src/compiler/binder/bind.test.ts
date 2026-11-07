@@ -65,7 +65,7 @@ describe('binding reports, once and at the name', () => {
     ],
     [
       'a binding under or',
-      'fn f(r: Result<Int>) -> Int:\n  if r is Ok{value} or false:\n    value\n  else:\n    0',
+      'fn f(r: Result<Int>) -> Int:\n  if r is Ok(value) or false:\n    value\n  else:\n    0',
       d.boundUnderOr,
       'value',
     ],
@@ -129,7 +129,7 @@ describe('binding reports, once and at the name', () => {
     ],
     [
       'a name after an alias of an enum given type arguments, in a pattern (§3.17)',
-      'type IntResult = Result<Int, String>\nfn f(r: Result<Int, String>) -> Int:\n  match r:\n    case IntResult.Ok{value}: value\n    case _: 2',
+      'type IntResult = Result<Int, String>\nfn f(r: Result<Int, String>) -> Int:\n  match r:\n    case IntResult.Ok(value): value\n    case _: 2',
       d.qualifiesNothing,
       'Ok',
     ],
@@ -141,13 +141,13 @@ describe('binding reports, once and at the name', () => {
     ],
     [
       'an is binding after the expression that bound it',
-      'fn f(r: Result<Int>) -> Int:\n  const ok = r is Ok{value} and value > 0\n  value',
+      'fn f(r: Result<Int>) -> Int:\n  const ok = r is Ok(value) and value > 0\n  value',
       d.blockEnded,
       'value',
     ],
     [
       'an is binding after its if',
-      'fn f(r: Result<Int>) -> Int:\n  if r is Ok{value}:\n    drop value\n  value',
+      'fn f(r: Result<Int>) -> Int:\n  if r is Ok(value):\n    drop value\n  value',
       d.blockEnded,
       'value',
     ],

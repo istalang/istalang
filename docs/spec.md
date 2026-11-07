@@ -1308,7 +1308,7 @@ A `;` directly after a one-line body is a compile error, because readers coming 
 ```python fragment
 const doubled = [for i in 1..10: 5 * i]
 const small = [for x in doubled if x < 20: x]
-const values = [for r in results if r is Ok{value}: value]   # filter and destructure
+const values = [for r in results if r is Ok(value): value]   # filter and destructure
 ```
 
 - **The body is one expression;** a block expression gives it several statements.
@@ -1871,9 +1871,9 @@ async fn purchase(req: PurchaseRequest) -> Future<String>:
 
 fn charge(req: PurchaseRequest) -> ChargeResult:
     match chargeCard(req.id, req.amount):
-        case Ok{value as receipt}:
+        case Ok(receipt):
             ChargeResult{ok: true, receipt}
-        case Err{error}:
+        case Err(error):
             ChargeResult{ok: false, receipt: error.message}
 ```
 

@@ -58,19 +58,19 @@ const cases: Readonly<Record<string, Case>> = {
     declaredAt: 0,
   },
   'an is binding flows into the if body': {
-    source: 'fn f(r: Result<Int>) -> Int:\n  if r is Ok{value as v}:\n    v\n  else:\n    0',
+    source: 'fn f(r: Result<Int>) -> Int:\n  if r is Ok(v):\n    v\n  else:\n    0',
     name: 'v',
     use: 1,
     declaredAt: 0,
   },
   'an is binding flows across and': {
-    source: 'fn f(r: Result<Int>) -> Bool: r is Ok{value} and value > 0',
+    source: 'fn f(r: Result<Int>) -> Bool: r is Ok(value) and value > 0',
     name: 'value',
     use: 1,
     declaredAt: 0,
   },
   'a comprehension condition flows into its body': {
-    source: 'fn f(rs: Array<Result<Int>>) -> Array<Int>: [for r in rs if r is Ok{value}: value]',
+    source: 'fn f(rs: Array<Result<Int>>) -> Array<Int>: [for r in rs if r is Ok(value): value]',
     name: 'value',
     use: 1,
     declaredAt: 0,

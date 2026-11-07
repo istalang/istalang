@@ -68,7 +68,7 @@ enum Opt<T>:
 fn picked(u: Opt<Int> | Opt<String>) -> Int:
   match u:
     case Some<Int>(n): n
-    case Opt.Some<String>{value}: value.length()
+    case Opt.Some<String>(value): value.length()
     case _: 0
 
 enum Pair:

@@ -18,18 +18,18 @@ struct Order { id: Int, status: Status }
 
 fn describe(decision: Decision) -> String:
   match decision:
-    case Approved{by}:
+    case Approved(by):
       "approved by " + by
-    case Rejected{by, reason as why}:
+    case Rejected(by, why):
       by + " rejected: " + why
     case Expired:
       "expired"
 
 fn approver(verdict: Decision?) -> String:
   match verdict:
-    case Approved{by as who} if who == "cfo":
+    case Approved(who) if who == "cfo":
       who
-    case Approved{by}:
+    case Approved(by):
       "someone"
     case _:
       "nobody"
@@ -79,8 +79,8 @@ fn tracking(order: Order) -> String:
     case _: "other"
 
 async fn main() -> Future<String>:
-  (describe(Approved{by: "legal"}) + "|" + describe(Rejected{by: "legal", reason: "no contract"})
-    + "|" + describe(Expired) + "|" + approver(Decision.Approved{by: "cfo"}) + "|" + size(3)
+  (describe(Approved("legal")) + "|" + describe(Rejected(by: "legal", reason: "no contract"))
+    + "|" + describe(Expired) + "|" + approver(Decision.Approved("cfo")) + "|" + size(3)
     + "|" + size(40) + "|" + size(0) + "|" + where(Point{x: 0, y: 0})
     + "|" + where(Point{x: 0, y: 3}) + "|" + pair((1, 2)) + "|" + answer(true)
     + "|" + answer(false) + "|" + first(("a", "b"))

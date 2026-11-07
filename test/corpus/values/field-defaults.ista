@@ -31,14 +31,14 @@ const holder = Holder<Int>{}
 
 fn radius(shape: Shape) -> Float:
   match shape:
-    case Circle{r}: r
-    case Square{side}: Float(side) / 2.0
+    case Circle(r): r
+    case Square(side): Float(side) / 2.0
 
 async fn main() -> Future<String>:
   const plain = Retry{}
   const spread = Retry{...plain, times: 10}
   const box = Box<Array<Int>>{size: 4}
-  const circle: Shape = Circle{}
+  const circle: Shape = Circle()
   [
     String(plain.times)
     String(plain.backoff)

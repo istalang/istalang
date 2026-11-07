@@ -7,7 +7,7 @@ import * as rpc from 'rpc'
 import * as runtime from 'runtime'
 
 # Whether `reply` is the `Err` of a call let go without a reply.
-fn unanswered<R>(reply: Result<R>) -> Bool: reply is Err{error} and error.code == "unanswered"
+fn unanswered<R>(reply: Result<R>) -> Bool: reply is Err(error) and error.code == "unanswered"
 
 # Two calls to a handler that waits at a gate opened once per call: the replies, and what the
 # handler logged.

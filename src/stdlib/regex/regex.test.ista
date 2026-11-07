@@ -10,8 +10,8 @@ import repeat from 'strings'
 # Whether `pattern` parses: its Err's message, or "ok".
 fn parsed(pattern: String) -> String:
   match Regex.parse(pattern):
-    case Ok{}: "ok"
-    case Err{error}: error.message
+    case Ok(...): "ok"
+    case Err(error): error.message
 
 fn date() -> Regex: Regex{"(?P<year>\\d{4})-(?P<month>\\d{2})(-(?P<day>\\d{2}))?"}
 
@@ -47,8 +47,8 @@ fn suite() -> Array<Test>: [
     test("a regex is its pattern's text, in JSON too", fn(): {
       assertEq(String(Regex{"a+"}), "a+")
       assertEq(json.stringify(Regex{"a+"}), "\"a+\"")
-      assert(json.parse<Regex>("\"a+\"") is Ok{value is Regex{pattern is "a+"}})
-      assert(json.parse<Regex>("\"(\"") is Err{})
+      assert(json.parse<Regex>("\"a+\"") is Ok(Regex{pattern is "a+"}))
+      assert(json.parse<Regex>("\"(\"") is Err(...))
     })
     test("escape gives the pattern matching a text literally", fn(): {
       const dotted = Regex{regex.escape("a.b*")}

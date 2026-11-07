@@ -46,6 +46,6 @@ async fn main() -> Future<String>:
   const m: Map<Int | String, String> = [a: "num", b: "str"]
   const inst = spawn worker(9)
   const sp = match await inst.result():
-    case Ok{value}: value
-    case Err{error}: error.message
+    case Ok(value): value
+    case Err(error): error.message
   `${c1.send("hi")}|${c2.send("yo")}|${x.toString()}|${y}|${showGen(x)}|${String(anyStr)}|${d ?? -1}|${a == c}:${a == b}:${m[1]}:${m["1"]}|${sp}`

@@ -206,7 +206,7 @@ describe('proposal 5 behaviour table: row by row', () => {
   });
 
   it('row 20: "fn f(Ok{value})" is still an error because the pattern can fail', () => {
-    expect(reported('fn f(Ok{value}: Result<Int>) -> Int: value').codes).toContain(
+    expect(reported('fn f(Ok(value): Result<Int>) -> Int: value').codes).toContain(
       checkerDiagnostics.refutableTarget.code,
     );
   });

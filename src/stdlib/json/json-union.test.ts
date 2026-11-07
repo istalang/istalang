@@ -20,12 +20,12 @@ const jsonImports = lines(
   "import Json from 'json'",
   'fn parsed(text: String) -> Json:',
   '  match json.parse<Json>(text):',
-  '    case Ok{value}: value',
-  '    case Err{error}: panic(error.message)',
+  '    case Ok(value): value',
+  '    case Err(error): panic(error.message)',
   'fn identity(value: Json) -> Json:',
   '  match json.decode<Json>(value):',
-  '    case Ok{value}: value',
-  '    case Err{error}: panic(error.message)',
+  '    case Ok(value): value',
+  '    case Err(error): panic(error.message)',
 );
 
 describe('Json as a recursive union: literals, matching and codecs (§3)', () => {

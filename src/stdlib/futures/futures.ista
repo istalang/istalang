@@ -20,8 +20,8 @@ async fn all<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<Array<
   let values: Map<Int, T> = [:]
   while _racing(race):
     match await _next(race):
-      case (position, Ok{value}): values[position] = value
-      case (_, Err{error}): return Err(error)
+      case (position, Ok(value)): values[position] = value
+      case (_, Err(error)): return Err(error)
   Ok(_inOrder(values, futures.length()))
 
 # Every value in position order, once all resolved.
@@ -39,8 +39,8 @@ async fn any<T, E>(futures: Array<Future<Result<T, E>>>) -> Future<Result<T, Arr
   let errors: Map<Int, E> = [:]
   while _racing(race):
     match await _next(race):
-      case (_, Ok{value}): return Ok(value)
-      case (position, Err{error}): errors[position] = error
+      case (_, Ok(value)): return Ok(value)
+      case (position, Err(error)): errors[position] = error
   Err(_inOrder(errors, futures.length()))
 
 # The first `n` `Ok` values in the order they arrived, or the errors in position order once `n`
@@ -56,8 +56,8 @@ async fn quorum<T, E>(
   let errors: Map<Int, E> = [:]
   while values.length() < n:
     match await _next(race):
-      case (_, Ok{value}): values.push(value)
-      case (position, Err{error}):
+      case (_, Ok(value)): values.push(value)
+      case (position, Err(error)):
         errors[position] = error
         if errors.size() > futures.length() - n: return Err(_inOrder(errors, futures.length()))
   Ok(values)
@@ -79,7 +79,7 @@ async fn retry<T, E>(
   let wait = backoff
   for _ in 1..times:
     const result = await attempt()
-    if result is Ok{}: return result
+    if result is Ok(...): return result
     await time.delay(wait)
     wait = wait * 2
   await attempt()

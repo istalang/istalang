@@ -237,7 +237,7 @@ fn instances() -> Array<Test>: [
   })
   test("result gives a spawned instance's panic as an Err", async fn(): {
     const outcome = await spawn breaks().result()
-    assert(outcome is Err{error} and error.message == "broken" and error.code == "panic")
+    assert(outcome is Err(error) and error.message == "broken" and error.code == "panic")
   })
   test("an instance's handle compares by identity", fn(): {
     const first = spawn answers()

@@ -1,13 +1,12 @@
-# error: 5001 at 23:58
-# error: 5016 at 24:17
-# error: 5001 at 25:22
-# error: 5109 at 26:24
-# error: 5014 at 27:25
-# error: 5013 at 27:32
+# error: 5001 at 22:58
+# error: 5016 at 23:17
+# error: 5001 at 24:22
+# error: 5109 at 25:24
+# error: 5118 at 26:32
 # A generic struct's arguments come from its fields, which must then fit the expected type
 # (§3.5); an operator needs a function for its operands (§3.9); a conversion needs a `from`
 # taking its argument (§3.10), so `Int` explains that it takes a float; a variant with fields is
-# built with braces, with exactly its own fields (§3.11).
+# called with exactly its own fields (§3.11).
 
 struct Pair<A, B>:
   first: A
@@ -24,4 +23,4 @@ async fn main():
   const twice = Money{cents: 1} * 2
   const parsed = Int("12")
   const shape: Shape = Circle
-  const square: Shape = Square{radius: 1}
+  const square: Shape = Square(radius: 1)

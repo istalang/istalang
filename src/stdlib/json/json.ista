@@ -38,8 +38,8 @@ fn stringify<T is Encodable>(value: T) -> String: _write(value.toJson())
 
 fn parse<T is Decodable>(text: String) -> Result<T>:
   match _read(text):
-    case Ok{value}: T.fromJson(value, "$")
-    case Err{error}: Err{error: _error(error)}
+    case Ok(value): T.fromJson(value, "$")
+    case Err(error): Err(_error(error))
 
 # The codecs of a type that crosses as the text its toString writes, read back through its parse,
 # such as `Time` and `Duration`: a type declares its own as one call to each.
@@ -62,13 +62,13 @@ extern fn _fromJson<T>(json: Json, path: String) -> Result<T>
 # future with, fails the host's call instead, and nothing that call ran commits.
 fn _hostResult<T>(read: Result<T>) -> T:
   match read:
-    case Ok{value}: value
-    case Err{error}: panic("The host gave what doesn't fit: " + error.message)
+    case Ok(value): value
+    case Err(error): panic("The host gave what doesn't fit: " + error.message)
 
 fn _hostInput<T>(read: Result<T>) -> T:
   match read:
-    case Ok{value}: value
-    case Err{error}: _refuse(error.message)
+    case Ok(value): value
+    case Err(error): _refuse(error.message)
 
 extern fn _refuse(message: String) -> Never
 
@@ -214,15 +214,15 @@ fn _elementPath(path: String, index: Int) -> String: path + "[" + index + "]"
 
 fn _parsed<T>(read: Result<T>, path: String) -> Result<T>:
   match read:
-    case Ok{value}: Ok(value)
-    case Err{error}: _failure(path, error.message)
+    case Ok(value): Ok(value)
+    case Err(error): _failure(path, error.message)
 
 fn _mismatch<T>(json: Json, path: String, expected: String) -> Result<T>:
   _failure(path, "expected " + expected + ", found " + _kind(json))
 
-fn _failure<T>(path: String, message: String) -> Result<T>: Err{
-  error: _error(path + ": " + message)
-}
+fn _failure<T>(path: String, message: String) -> Result<T>: Err(
+  _error(path + ": " + message)
+)
 
 # The Error every read of JSON fails with.
 fn _error(message: String) -> Error: Error{message: message, code: "json"}

@@ -204,8 +204,8 @@ describe('lowering', () => {
         "import * as lib from 'lib'",
         'async fn main() -> Future<Int>:',
         '  match await spawn lib.twice(1).result():',
-        '    case Ok{value}: lib.twice(20) + value',
-        '    case Err{error}: 0',
+        '    case Ok(value): lib.twice(20) + value',
+        '    case Err(error): 0',
       ].join('\n'),
       lib: 'const twice = fn(x: Int) -> Int: x * 2',
     });

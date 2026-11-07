@@ -94,8 +94,8 @@ describe('struct layout', () => {
         'struct Late { b: Int, a: Int }',
         'async fn main() -> Future<String>:',
         '  match json.parse<Late>("{}"):',
-        '    case Ok{value}: "parsed"',
-        '    case Err{error}: error.message',
+        '    case Ok(value): "parsed"',
+        '    case Err(error): error.message',
       ].join('\n'),
     );
     const state = startToEnd(testRuntime(), text);

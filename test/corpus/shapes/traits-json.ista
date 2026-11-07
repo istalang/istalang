@@ -27,6 +27,6 @@ async fn main():
   const back = json.parse<Point>("{\"y\": 4, \"x\": 5}")
   const text = json.stringify(struct{b: 1, a: [struct{x: 2, y: 1}]})
   const x = match back:
-    case Ok{value}: value.x
-    case Err{error}: 0
+    case Ok(value): value.x
+    case Err(error): 0
   text + " " + show(shape) + " " + show(struct{x: 3, y: 3}) + " | " + json.stringify(shape) + " " + x + " | " + Duo<String>{second: "q", first: 1}.first + " " + second(Duo<String>{second: "q", first: 1})

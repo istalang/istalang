@@ -19,7 +19,7 @@ describe('fieldsFunctionOf', () => {
       'enum Icon:',
       '  Circle(r: Int = 2)',
       'async fn main() -> Future<(Shape, Icon)>:',
-      '  (Shape.Circle{}, Icon.Circle{})',
+      '  (Shape.Circle(), Icon.Circle())',
     ].join('\n');
     const definition = compiledDefinition(stdProgramOf({ main }), 'main');
     const names = definition.functions.map((entry) => entry.name);
