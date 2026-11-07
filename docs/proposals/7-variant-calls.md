@@ -35,6 +35,10 @@ fn titleOf(n: Node) -> String:
         case Group(title, ...): title
 ```
 
+## Status
+
+Implemented on `refactor/folders` (`fb190abc` onward), with one point open: the formatter dropping the `()` after a variant without fields (Rule 2, Implementation note 5). The formatter reads only the tree, and its output parses to the same tree (`docs/arch/architecture.md`, format). Whether `V()` names a variant without fields, so `V` means the same, or builds one whose fields all have defaults or are a rest, as `List()` builds `List` with `items: []` and needs its `()`, only checking knows. Either the formatter takes the checker's answer at its composition roots (`ista fmt` then checks the project; the language server's formatting reads the workspace's checker), its contract widened for this rewrite, or `Expired()` stays as written and Rule 2 drops its formatter clause. That is the human's to decide.
+
 ## Rules
 
 ### 1. A variant is declared like a function's parameters
@@ -74,7 +78,8 @@ fn titleOf(n: Node) -> String:
 
 - **Call patterns.** `case Ok(v)` matches the variant and its fields in declared order, each against a pattern. `case Rejected(by: "legal")` matches a field by name. `case Group(title, ...)` leaves the rest, and the brace patterns stay (`case Rejected{by}`). A pattern binds by position exactly as a call binds, so a value is taken apart as it was built.
 - **Told apart by their tag.** Every enum value carries its variant at run time. `case Ok(v)` tests it, then takes the fields apart, `v` typed by `Ok`'s declared field over the subject's type arguments. Exhaustiveness counts an enum's variants (§3.11), as today.
-- **No narrowing.** `as` binds the enum, so in `case Rejected as r`, `r` is a `Verdict` and `r.by` doesn't read. The pattern takes the fields: `case Rejected(by, reason)`.
+- **Fields left out.** A field a call may leave out, one with a default or the rest field, may be left out of a call pattern, and then matches any value. Any other field is given, as `_` where nothing is tested, or left with a last `...`, which leaves every field no argument gives. Positions past the fixed fields match the rest field's items as an array pattern's do, its length included: `case Group(_, _, first, ...others)`; a lone spread takes the rest field whole, and a last `...` after items leaves the items past them.
+- **No narrowing.** `as` binds the enum, so in `case Rejected(...) as r`, `r` is a `Verdict` and `r.by` doesn't read. The pattern takes the fields: `case Rejected(by, reason)`.
 
 ### 5. A variant's last field may be a rest
 
@@ -107,7 +112,7 @@ fn titleOf(n: Node) -> String:
 | `const f: fn(Int) -> Result<Int> = Ok` | an error: `Ok` is written with braces | a function value building `Ok` |
 | `xs.map(Ok)` | an error | an error naming `Result.Ok` |
 | `case Ok(v): v` | errors 5109 and 2001 | binds `v` to the value |
-| `case Rejected as r: r.by` | an error: `r` is a `Verdict` | unchanged |
+| `case Rejected(...) as r: r.by` | an error: `r` is a `Verdict` | unchanged |
 | `Ok{(v)}`, `Ok{42}` | the single-field positional form | an error naming `Ok(v)`, `Ok(42)` |
 | `Ok{v}` | errors 5013 and 5014 | still an error, now naming `Ok(v)` |
 | `Expired()` | error 5103: no function 'Expired' | `Expired`; the formatter drops the `()` |
@@ -120,7 +125,7 @@ fn titleOf(n: Node) -> String:
 - Variants holding any number of children, built by listing them (`Group("t", a, b, c)`).
 
 **Not gained.**
-- Narrowing to a variant: a variant isn't a type, so `case Rejected as r` binds the enum.
+- Narrowing to a variant: a variant isn't a type, so `case Rejected(...) as r` binds the enum.
 
 **Lost.**
 - Declaring a variant in braces, `Rejected { by: String }`, replaced by `Rejected(by: String)`.
@@ -185,3 +190,4 @@ fn titleOf(n: Node) -> String:
 3. **A variant is a function of its enum,** in every enum, called and named as a value as any function is. Its type is the enum, and patterns tell variants apart by their tag.
 4. **Variants aren't types, and the enum stays the one sum.** A union lowers into one, and neither is sugar for the other in the checker (**Why a variant is a function, not a type**).
 5. **The JSON tag is `_type`,** landed on its own, so a variant's field may be named `type`.
+6. **Call patterns may leave fields out as a call does** (Rule 4, **Fields left out**): a field with a default or the rest field left out matches anything, and a last `...` leaves the others, so `case Rejected("legal", ...)` stands as written.
