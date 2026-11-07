@@ -10,10 +10,12 @@
  * - A field compared with `==` or `!=` follows `==`'s rule (types/unions/equality.ts); any other
  *   comparison calls `compare`. Compared with `==` with a value fitting the field's type, it
  *   counts as a pattern for exhaustiveness (`opt == none` takes an optional's `None`).
- * - A name that refers is a variant without fields, tested like one; a type, a struct without
- *   fields among them, which matches every value of the part's own type with no test, as `_` does
- *   (types/written/pattern-types.ts); or a top-level constant (named qualified, since a bare
- *   camelCase name binds), compared with `==` and acting as a guard for exhaustiveness.
+ * - A name that refers is a variant, tested whatever its fields hold, and warned of where it has
+ *   any but `Unit` ones at the part's type arguments, which `V(...)` says it leaves; a type, a
+ *   struct without fields among them, which matches every value of the part's own type with no
+ *   test, as `_` does (types/written/pattern-types.ts); or a top-level constant (named qualified,
+ *   since a bare camelCase name binds), compared with `==` and acting as a guard for
+ *   exhaustiveness.
  * - A struct pattern naming a variant tests that variant, then takes its fields apart. The part's
  *   enum is the expected type, so a bare variant name is enough (§3.11).
  * - An array pattern tests its part's length, then reads its items and rest, all through prelude
@@ -44,9 +46,16 @@ import {
   type PatternTest,
 } from '../../surface/checked-pattern.ts';
 import type { ImplicitRole } from '../../surface/resolved-call.ts';
+import { sameType } from '../../types/identity/identity.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
 import type { NominalDeclaration, Type } from '../../types/type/index.ts';
-import { errorType, intType, isPrimitive, noneType } from '../../types/type/primitives.ts';
+import {
+  errorType,
+  intType,
+  isPrimitive,
+  noneType,
+  unitType,
+} from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { arrayElement } from '../../types/type/well-known.ts';
 import {
@@ -74,6 +83,7 @@ import {
   ruledOutLeaf,
   type VariantPart,
 } from './walk/pattern-tests.ts';
+import { constructed } from './walk/taking.ts';
 
 /** The patterns of one body as checked, for lowering. */
 export class CheckedPatterns implements PatternRecord {
@@ -261,8 +271,8 @@ function reference(context: BodyContext, node: NamePattern, part: ValuePart): Le
   const entity = context.entityOf(name);
   if (entity?.kind === 'variant' || entity?.kind === 'variants') {
     const chosen = namedVariant(context, node, entity, part);
-    if (chosen !== undefined && chosen.fields.length > 0) {
-      context.report(checkerDiagnostics.variantFields(node.span, name.text, `${name.text}(…)`));
+    if (chosen !== undefined && !holdsNothing(chosen)) {
+      context.report(checkerDiagnostics.bareVariantPattern(node.span, name.text));
     }
     return chosen === undefined ? failed : variantLeaf(chosen);
   }
@@ -333,6 +343,14 @@ function namedVariant(
   return found;
 }
 
+/**
+ * Whether `variant` holds nothing to take apart at the part's type arguments: no field, or only
+ * `Unit` ones, as `Ok` of a `Result<Unit>`, so its name alone matches it fully.
+ */
+function holdsNothing(variant: VariantPart): boolean {
+  return variant.fields.every((field) => sameType(field.type, unitType));
+}
+
 /** The test that a part of an enum type holds its variant `name`, with that variant's fields. */
 function variantOf(context: BodyContext, part: ValuePart, name: string): VariantPart | undefined {
   const variants = part.type.kind === 'nominal' ? context.checker.variantsOf(part.type) : undefined;
@@ -353,8 +371,15 @@ function enumOf(type: Type, declaration: NominalDeclaration): Type {
   return type.kind === 'nominal' && type.entity.declaration === declaration ? type : errorType;
 }
 
-function variantLeaf({ test, key }: VariantPart): Leaf {
-  return { tests: [test], shape: nullaryShape(key) };
+/** A variant named alone: its test, and whatever its fields hold. */
+function variantLeaf({ test, key, fields }: VariantPart): Leaf {
+  return {
+    tests: [test],
+    shape: constructed(
+      key,
+      fields.map(() => anyShape),
+    ),
+  };
 }
 
 function equalTest(part: ValuePart, value: Expression, negated: boolean): PatternTest {

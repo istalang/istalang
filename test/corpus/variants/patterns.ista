@@ -4,8 +4,7 @@
 # `...` leaving the others. A spread takes the rest field whole; arguments past the fixed fields
 # match its items as an array pattern's do, and a last `...` leaves the items past them. Call
 # patterns nest, select a union's member, its enum's type arguments telling apart its instances,
-# bind the enum with `as`, cover their variants for exhaustiveness and stand in `is`, and a variant
-# without fields matches called with no arguments, as it is built.
+# bind the enum with `as`, cover their variants for exhaustiveness and stand in `is`.
 
 enum Verdict:
   Approved
@@ -18,7 +17,7 @@ enum Node:
 
 fn describe(verdict: Verdict) -> String:
   match verdict:
-    case Approved(): "approved"
+    case Approved: "approved"
     case Rejected("legal", ...): "legal"
     case Verdict.Rejected(by: who, reason: r): `${who}: ${r}`
 

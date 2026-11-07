@@ -7,6 +7,9 @@
  *
  * - Only a variant is taken apart as a call: one naming anything else is reported before anything
  *   else is asked of it, in a target too, and then takes anything (`calledVariant`, walk/index.ts).
+ * - One with nothing in its parentheses is warned of where it says no more than its name, a variant
+ *   without fields, or less than it seems to, one whose fields all have defaults or are a rest,
+ *   which `V(...)` matches whatever they hold.
  * - A field a call may leave out, one with a default or the rest, may be left out, and a last
  *   `...` leaves every field no argument gives: such a field matches any value. Any other must be
  *   given, as a call must give it.
@@ -106,6 +109,9 @@ export function takeVariantCall(
   const leavesOthers = node.arguments.some(({ kind }) => kind === 'OtherFieldsPattern');
   // Past an argument the parser refused, no field is missing: it may have meant to give it.
   const slots = variant.fields.map((field) => slotOf(field, leavesOthers || refused.length > 0));
+  if (node.arguments.length === 0) {
+    warnEmpty(walk, node, slots);
+  }
   const call: BoundCall = { node, given, slots, leavesOthers };
   const binding = bindArguments(slots, given.map(boundArgument));
   if (!isBinding(binding)) {
@@ -120,6 +126,23 @@ export function takeVariantCall(
     takeField(walk, tests, { call, field, source: binding[index] }, fieldPart(part, field, index)),
   );
   return constructed(variant.key, shapes);
+}
+
+/**
+ * Warns of a call pattern with nothing in its parentheses that says no more than its name, or less
+ * than it seems to (§3.11): `case Expired()`, a variant without fields and no type arguments, is
+ * `case Expired`, as its call is; `case List()`, whose fields a call may all leave out, matches
+ * every `List`, not only the one its defaults build, which `List(...)` says.
+ */
+function warnEmpty(walk: ItemTaking, node: VariantCallPattern, slots: readonly BoundSlot[]): void {
+  const { text } = lastName(node.callee.path);
+  if (slots.length === 0) {
+    if (node.callee.typeArguments.length === 0) {
+      walk.scope.report(checkerDiagnostics.fieldlessCalled(node.span, text));
+    }
+  } else if (slots.every((slot) => slot.hasDefault || slot.rest !== undefined)) {
+    walk.scope.report(checkerDiagnostics.defaultsCallPattern(node.span, text));
+  }
 }
 
 /**

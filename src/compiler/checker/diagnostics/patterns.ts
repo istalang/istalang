@@ -144,6 +144,18 @@ export const patternTemplates = {
     message: (variant: string) =>
       `'${variant}' has no rest field for a spread to take; a lone '...' leaves the fields the pattern doesn't give (§3.11).`,
   },
+  bareVariantPattern: {
+    code: 5431,
+    severity: 'warning',
+    message: (name: string) =>
+      `The variant '${name}' has fields: write '${name}(...)' to match it whatever they hold (§3.11).`,
+  },
+  defaultsCallPattern: {
+    code: 5432,
+    severity: 'warning',
+    message: (name: string) =>
+      `'${name}()' matches every '${name}', not only one built with its defaults: write '${name}(...)' (§3.11).`,
+  },
   insideOptional: {
     code: 5409,
     message: (found: string, operator: string) =>

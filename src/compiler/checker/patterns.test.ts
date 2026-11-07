@@ -185,6 +185,61 @@ describe('a Result that must be used', () => {
   });
 });
 
+describe('a variant written as it is built (§3.11)', () => {
+  const declared = [
+    'enum Verdict:',
+    '  Approved',
+    '  Rejected(by: String, reason = "no reason given")',
+    'enum Bag { List(...items: Array<Int>), Empty }',
+    'enum Option<T> { Some(value: T), Nothing }',
+    '',
+  ].join('\n');
+  /** The warnings, with their messages, a `match` on `subject: type` with `cases` reports. */
+  const warned = (type: string, cases: string, generics = '') => {
+    const text = `${declared}fn f${generics}(subject: ${type}) -> Int:\n  match subject:\n${indent(indent(cases))}\n`;
+    const { diagnostics } = diagnosedAt(stdProgramOf({ 'main.ista': text }), 'main.ista');
+    return diagnostics.map(({ code, message }) => ({ code, message }));
+  };
+  const naming = (code: number, written: string) => ({
+    code,
+    message: expect.stringContaining(`'${written}'`),
+  });
+
+  it('warns of a bare variant with fields, naming what matches it whatever they hold', () => {
+    expect(warned('Verdict', 'case Rejected: 1\ncase Approved: 2')).toEqual([
+      naming(reports.bareVariantPattern.code, 'Rejected(...)'),
+    ]);
+    expect(warned('Verdict', 'case Rejected as r: 1\ncase _: 2')).toEqual([
+      naming(reports.bareVariantPattern.code, 'Rejected(...)'),
+    ]);
+    expect(warned('Verdict', 'case Rejected(...): 1\ncase Approved: 2')).toEqual([]);
+  });
+
+  it("keeps quiet where every field is Unit at the subject's type arguments, nothing to take apart", () => {
+    expect(warned('Result<Unit>', 'case Ok: 1\ncase Err(_): 2')).toEqual([]);
+    expect(warned('Option<Unit>', 'case Some: 1\ncase Nothing: 2')).toEqual([]);
+    expect(warned('Result<Unit>', 'case Ok: 1\ncase Err: 2')).toEqual([
+      naming(reports.bareVariantPattern.code, 'Err(...)'),
+    ]);
+    expect(warned('Result<T>', 'case Ok: 1\ncase Err(_): 2', '<T>')).toEqual([
+      naming(reports.bareVariantPattern.code, 'Ok(...)'),
+    ]);
+  });
+
+  it('warns of an empty call pattern saying no more than its name, or less than it seems to', () => {
+    expect(warned('Verdict', 'case Approved(): 1\ncase _: 2')).toEqual([
+      naming(reports.fieldlessCalled.code, 'Approved'),
+    ]);
+    expect(warned('Bag', 'case List(): 1\ncase Empty: 2')).toEqual([
+      naming(reports.defaultsCallPattern.code, 'List(...)'),
+    ]);
+    expect(warned('Bag', 'case List(...): 1\ncase List(): 2\ncase Empty: 3')).toEqual([
+      expect.objectContaining({ code: reports.unreachableCase.code }),
+      naming(reports.defaultsCallPattern.code, 'List(...)'),
+    ]);
+  });
+});
+
 describe('optional operators', () => {
   const chained = [
     'struct Inner { zip: Int?, code: Int }',

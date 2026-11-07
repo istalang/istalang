@@ -1,6 +1,6 @@
 /**
  * End-to-end verification of every row in the 'What changes in behaviour' table of
- * docs/proposals/7-variant-calls.md: one test per row (rows 1–14), covering variants declared in
+ * docs/proposals/7-variant-calls.md: one test per row (rows 1–17), covering variants declared in
  * parentheses, called and named as values as functions are, taken apart by call patterns, and the
  * forms refused in their place, each refusal naming the form meant.
  */
@@ -103,7 +103,62 @@ describe('proposal 7 behaviour table: row by row', () => {
     expect(reported(text).spanTexts).toEqual(['by']);
   });
 
-  it("row 12: a variant's field given by position in braces is refused, naming the call", () => {
+  it('row 12: a bare variant with fields matches any of its values, warned of with its call', () => {
+    const body =
+      'match Verdict.Rejected("x"):\n  case Rejected as r: r == Rejected("x")\n  case _: false';
+    expect(mainGives('Bool', body, verdict)).toBe(true);
+    const text = lines(
+      verdict,
+      'fn f(v: Verdict) -> Int:',
+      '  match v:',
+      '    case Rejected as r: 1',
+      '    case _: 0',
+      'fn g(r: Result<Unit>) -> Int:',
+      '  match r:',
+      '    case Ok: 1',
+      '    case Err(_): 0',
+      'async fn main(): 0',
+    );
+    expect(messagesOf(text, checkerDiagnostics.bareVariantPattern.code)).toEqual([
+      expect.stringContaining("'Rejected(...)'"),
+    ]);
+  });
+
+  it('row 13: `case Expired()` matches `Expired`, warned of with its name', () => {
+    const decls = 'enum Decision { Approved, Expired }';
+    const body = 'match Decision.Expired:\n  case Expired(): 1\n  case _: 0';
+    expect(mainGives('Int', body, decls)).toBe(1);
+    const text = lines(
+      decls,
+      'fn f(d: Decision) -> Int:',
+      '  match d:',
+      '    case Expired(): 1',
+      '    case _: 0',
+      'async fn main(): 0',
+    );
+    expect(messagesOf(text, checkerDiagnostics.fieldlessCalled.code)).toEqual([
+      expect.stringContaining("'Expired'"),
+    ]);
+  });
+
+  it('row 14: `case List()` matches any `List`, warned of naming `List(...)`', () => {
+    const decls = 'enum Bag { List(...items: Array<Int>), Empty }';
+    const body = 'match Bag.List(1, 2):\n  case List(): 1\n  case _: 0';
+    expect(mainGives('Int', body, decls)).toBe(1);
+    const text = lines(
+      decls,
+      'fn f(b: Bag) -> Int:',
+      '  match b:',
+      '    case List(): 1',
+      '    case _: 0',
+      'async fn main(): 0',
+    );
+    expect(messagesOf(text, checkerDiagnostics.defaultsCallPattern.code)).toEqual([
+      expect.stringContaining("'List(...)'"),
+    ]);
+  });
+
+  it("row 15: a variant's field given by position in braces is refused, naming the call", () => {
     const text = lines(
       'fn f(v: Int) -> Result<Int>: Ok{(v)}',
       'fn g() -> Result<Int>: Ok{42}',
@@ -115,15 +170,19 @@ describe('proposal 7 behaviour table: row by row', () => {
     ]);
   });
 
-  it('row 13: `Ok{v}` is still refused, now naming `Ok(v)`', () => {
+  it('row 16: `Ok{v}` is still refused, now naming `Ok(v)`', () => {
     const text = lines('fn f(v: Int) -> Result<Int>: Ok{v}', 'async fn main(): 0');
     expect(messagesOf(text, checkerDiagnostics.variantByPosition.code)).toEqual([
       expect.stringContaining("'Ok(v)'"),
     ]);
   });
 
-  it('row 14: `Expired()` is `Expired`', () => {
+  it('row 17: `Expired()` is `Expired`, warned of with its name', () => {
     const decls = 'enum Decision { Approved, Expired }';
     expect(mainGives('Bool', 'Decision.Expired() == Decision.Expired', decls)).toBe(true);
+    const text = lines(decls, 'fn f() -> Decision: Decision.Expired()', 'async fn main(): 0');
+    expect(messagesOf(text, checkerDiagnostics.fieldlessCalled.code)).toEqual([
+      expect.stringContaining("'Expired'"),
+    ]);
   });
 });

@@ -79,6 +79,10 @@ Implemented on `refactor/folders` (`fb190abc` onward).
 - **Call patterns.** `case Ok(v)` matches the variant and its fields in declared order, each against a pattern. `case Rejected(by: "legal")` matches a field by name. `case Group(title, ...)` leaves the rest, and the brace patterns stay (`case Rejected{by}`). A pattern binds by position exactly as a call binds, so a value is taken apart as it was built.
 - **Told apart by their tag.** Every enum value carries its variant at run time. `case Ok(v)` tests it, then takes the fields apart, `v` typed by `Ok`'s declared field over the subject's type arguments. Exhaustiveness counts an enum's variants (§3.11), as today.
 - **Fields left out.** A field a call may leave out, one with a default or the rest field, may be left out of a call pattern, and then matches any value. Any other field is given, as `_` where nothing is tested, or left with a last `...`, which leaves every field no argument gives. Positions past the fixed fields match the rest field's items as an array pattern's do, its length included: `case Group(_, _, first, ...others)`; a lone spread takes the rest field whole, and a last `...` after items leaves the items past them.
+- **Written as built.** A pattern writes a variant as a call builds it: one without fields bare, one with fields with its fields. Each form below still matches as written, but is warned of:
+  - `case Expired()`, a variant without fields called, naming `Expired`, as its call is (Rule 2);
+  - `case Rejected` or `case Rejected as r`, a variant with fields named alone, naming `Rejected(...)`, which matches it whatever its fields hold; not where every field is `Unit` at the subject's type arguments, as `case Ok` on a `Result<Unit>` or `case Some` on an `Option<Unit>`, which hold nothing to take apart (`case Err` on a `Result<Unit, E>` is warned of, and so is a field whose type is a type parameter);
+  - `case List()`, whose fields all have defaults or are a rest, naming `List(...)`, since it matches every `List`, not only one built with its defaults.
 - **No narrowing.** `as` binds the enum, so in `case Rejected(...) as r`, `r` is a `Verdict` and `r.by` doesn't read. The pattern takes the fields: `case Rejected(by, reason)`.
 
 ### 5. A variant's last field may be a rest
@@ -113,6 +117,9 @@ Implemented on `refactor/folders` (`fb190abc` onward).
 | `xs.map(Ok)` | an error | an error naming `Result.Ok` |
 | `case Ok(v): v` | errors 5109 and 2001 | binds `v` to the value |
 | `case Rejected(...) as r: r.by` | an error: `r` is a `Verdict` | unchanged |
+| `case Rejected as r: 1` | error 5109: the variant has fields | matches any `Rejected`, with a warning naming `Rejected(...)`; none where every field is `Unit` (`case Ok` on a `Result<Unit>`) |
+| `case Expired(): 1` | errors 5109 and 2001 | matches `Expired`, with a warning naming `Expired` |
+| `case List(): 1`, `List`'s fields all defaulted or a rest | errors 5109 and 2001 | matches any `List`, with a warning naming `List(...)` |
 | `Ok{(v)}`, `Ok{42}` | the single-field positional form | an error naming `Ok(v)`, `Ok(42)` |
 | `Ok{v}` | errors 5013 and 5014 | still an error, now naming `Ok(v)` |
 | `Expired()` | error 5103: no function 'Expired' | `Expired`, with a warning naming `Expired` |
@@ -192,3 +199,4 @@ Implemented on `refactor/folders` (`fb190abc` onward).
 5. **The JSON tag is `_type`,** landed on its own, so a variant's field may be named `type`.
 6. **`Expired()` stays as written, warned of.** The formatter never drops it, since only checking tells it from `List()`, whose `()` builds a value with its defaults.
 7. **Call patterns may leave fields out as a call does** (Rule 4, **Fields left out**): a field with a default or the rest field left out matches anything, and a last `...` leaves the others, so `case Rejected("legal", ...)` stands as written.
+8. **A pattern writes a variant as it is built,** bare without fields, with its fields otherwise, in calls and patterns alike: `case Expired()`, a bare `case Rejected` and an empty `case List()` are warned of (Rule 4, **Written as built**), a bare variant whose fields are all `Unit` at the subject's type arguments excepted.

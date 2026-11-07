@@ -1,8 +1,7 @@
-# error: 5400 at 13:9
-# error: 5109 at 19:10
+# error: 5400 at 12:9
 # A `match` must cover every value of its subject's type (§3.11, §4): a missing variant is
-# reported at the subject. A pattern mirrors construction, so a variant with fields takes braces.
-# A pattern its subject's type can't hold is only warned of, as it never runs (§3.11).
+# reported at the subject. A pattern its subject's type can't hold is only warned of, as it never
+# runs (§3.11).
 
 enum Decision:
   Approved(by: String)
@@ -13,11 +12,6 @@ fn missing(decision: Decision) -> String:
   match decision:
     case Approved{by}: by
     case Expired: "expired"
-
-fn bare(decision: Decision) -> String:
-  match decision:
-    case Approved: "approved"
-    case _: "other"
 
 fn unwrapped(n: Int?) -> String:
   match n:
