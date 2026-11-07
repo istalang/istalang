@@ -82,7 +82,7 @@ export function variableType(context: BodyContext, variable: VariableEntity): Ty
  * The type `variable`'s declaration gives it outside every body (§3, §3.6): an extern constant's
  * written type, or a top-level constant's computed one; undefined for a variable a body or a
  * signature declares, whose type is that body's to say. The one rule for both, whether a body
- * reads the variable or a tool asks for it (lookup/denotations.ts).
+ * reads the variable or a tool asks for it (lookup/denotations/index.ts).
  */
 export function declaredOutsideBodies(
   checker: CheckerContext,

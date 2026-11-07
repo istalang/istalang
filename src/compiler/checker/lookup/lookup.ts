@@ -15,7 +15,7 @@ import type { CheckerContext } from '../contexts/context.ts';
 import type { Denotation, JoinedBody, LookupQueries, TypeMembers } from '../surface/denotation.ts';
 import { knownConstraints } from '../types/traits/known-constraints.ts';
 import type { Constraint, Type } from '../types/type/index.ts';
-import { denotationsOf } from './denotations.ts';
+import { denotationsOf } from './denotations/index.ts';
 import { bodyHolding, itemHolding } from './holders.ts';
 import { keyDenotationsOf } from './key-denotations.ts';
 import { membersOf } from './members.ts';
