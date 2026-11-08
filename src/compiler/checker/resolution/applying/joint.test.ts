@@ -16,6 +16,9 @@ const declarations = [
   'enum Size { Small, Large }',
   'enum Decision { Expired, Kept }',
   'struct Box<T> { value: T }',
+  'struct Pair<T> { a: T, b: T }',
+  'struct Mix<T> { item: Item<T>, other: T }',
+  'struct Holder<T, U> { f: fn(T) -> U, arg: T }',
   'fn items<T>(xs: Array<Item<T>>) -> Options<T>: Options.Items(xs)',
   'fn boxed<T>(x: T) -> Box<T>: Box{value: x}',
   'fn twice<T>(f: fn(T) -> T) -> fn(T) -> T: fn x: f(f(x))',
@@ -23,6 +26,10 @@ const declarations = [
   'fn pair<T>(a: T, b: T) -> Array<T>: [a, b]',
   'enum Outcome<T, E> { Good(value: T), Bad(error: E) }',
   'fn good<U>(g: fn(Int) -> Outcome<U, String>) -> Outcome<U, String>: g(1)',
+  'fn optsOr<U>(g: fn(Int) -> Options<U>, fallback: U) -> Options<U>: g(1)',
+  'fn goodPair<U>(p: (Int, fn(Int) -> Outcome<U, String>)) -> Outcome<U, String>: (p.1)(p.0)',
+  'fn takeOutcome<U>(o: Outcome<U, String>) -> Outcome<U, String>: o',
+  'struct WrapOutcome<U> { outcome: Outcome<U, String> }',
 ];
 
 /** What checking `functions` after the declarations above reports. */
@@ -103,6 +110,92 @@ describe('a variant call', () => {
       reportedAfter(
         'fn optional() -> Result<Int?, String>: Ok(5)',
         'fn bare<E>() -> Result<Decision, E>: Ok(Expired)',
+      ),
+    ).toEqual(checksCleanly);
+  });
+
+  it('infers an open type parameter of its expected enum from its arguments', () => {
+    expect(
+      reportedAfter(
+        'fn direct() -> Outcome<Int, String>: takeOutcome(Good(5))',
+        'fn unannotated():\n  _ = takeOutcome(Good(5))',
+        'fn inStruct():\n  _ = WrapOutcome{outcome: Good(5)}',
+      ),
+    ).toEqual(checksCleanly);
+  });
+});
+
+describe('a generic struct literal in joint inference', () => {
+  it('infers its type parameter across all of its fields and the enclosing call, regardless of field order', () => {
+    expect(
+      reportedAfter(
+        'fn pairLiterals() -> Pair<"s" | "m">: id(Pair{a: "s", b: "m"})',
+        'fn mixItemFirst() -> Mix<"s" | "m">: id(Mix{item: Item{value: "s"}, other: "m"})',
+        'fn mixOtherFirst() -> Mix<"s" | "m">: id(Mix{other: "m", item: Item{value: "s"}})',
+        'fn optionalFirst():\n  _ = Pair{a: 1, b: none}',
+        'fn optionalSecond():\n  _ = Pair{a: none, b: 1}',
+        'fn fromVariable(x: Int?):\n  _ = Pair{a: 1, b: x}',
+      ),
+    ).toEqual(checksCleanly);
+  });
+
+  it('postpones an anonymous struct literal or lambda field until its parameter inputs settle', () => {
+    expect(
+      reportedAfter(
+        'fn anonInJoined() -> Mix<"s" | "m">: id(Mix{item: struct{value: "s"}, other: "m"})',
+        'fn anonBeforeSibling():\n  _ = Mix{item: struct{value: "s"}, other: "m"}',
+        'fn lambdaInStruct():\n  _ = Holder{arg: 3, f: fn x: x + 1}',
+      ),
+    ).toEqual(checksCleanly);
+  });
+});
+
+describe('parenthesized and shared-struct literals in joint inference', () => {
+  it('joins through parentheses and `new` struct literals', () => {
+    expect(
+      reportedAfter(
+        'fn parenList() -> Options<"s" | "m">: items(([Item{value: "s"}]))',
+        'fn parenItem() -> Options<"s" | "m">: items([(Item{value: "s"})])',
+        'fn parenCall() -> Box<Result<Int?, String>>: boxed((Result.Ok(5)))',
+        'fn sharedLit() -> Shared<"s" | "m">: id(new Shared{value: "s"})',
+        'fn sharedBare() -> Shared<Size>: id(new Shared{value: Small})',
+      ),
+    ).toEqual(checksCleanly);
+  });
+});
+
+describe("a postponed lambda's guide and joining", () => {
+  it('guides and settles a lambda whose result is partly open across blocks, branches, returns and composites', () => {
+    expect(
+      reportedAfter(
+        'fn parenBody():\n  _ = good(fn x: (Good(x + 1)))',
+        'fn blockBody():\n  _ = good(fn x: { const y = x + 1; Good(y) })',
+        'fn branchBody():\n  _ = good(fn x: if x > 0: Good(x) else: Bad("no"))',
+        'fn returnBody():\n  _ = good(fn x: { const y = x + 1; return Good(y) })',
+        'fn fieldlessWithFallback():\n  _ = optsOr(fn x: Empty, 42)',
+        'fn qualifiedFieldlessWithFallback():\n  _ = optsOr(fn x: Options.Empty, 42)',
+        'fn inTuple():\n  _ = goodPair((1, fn x: Good(x + 1)))',
+        'fn guidedReturn(vs: Array<Int>) -> Array<Result<Int, String>>: vs.map(fn x: { const y = x; return Ok(y) })',
+        'fn guidedQualifiedReturn(vs: Array<Int>) -> Array<Result<Int, String>>: vs.map(fn x: { const y = x; return Result.Ok(y) })',
+      ),
+    ).toEqual(checksCleanly);
+  });
+});
+
+describe('literals whose items need checking before choosing', () => {
+  it('checks computed items ahead so overloads and generic parameters see their types', () => {
+    expect(
+      reportedAfter(
+        'fn pickShape(x: { c: Int? }) -> String: "int"',
+        'fn pickShape(x: { c: String }) -> String: "str"',
+        'fn pickArr(x: Array<Int?>) -> String: "int"',
+        'fn pickArr(x: Array<String?>) -> String: "str"',
+        'fn useComputed():\n' +
+          '  _ = pickShape(struct{c: 1 + 2})\n' +
+          '  _ = pickArr([1 + 2, none])\n' +
+          '  _ = id([1 + 2, none])\n' +
+          '  _ = id([Size.Large, Small])\n' +
+          '  _ = id((struct{a: 1 + 2}, 1))',
       ),
     ).toEqual(checksCleanly);
   });
