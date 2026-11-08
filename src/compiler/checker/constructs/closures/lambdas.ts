@@ -35,7 +35,7 @@ import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { SignatureParameter } from '../../check.ts';
-import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
+import type { Accepts, BodyContext, LambdaGuide } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Produced } from '../../rules/agreement.ts';
 import { blockTail, producedBy } from '../../rules/agreement.ts';
@@ -163,34 +163,26 @@ function errorSlots(node: Lambda): ParameterSlots {
 
 /**
  * A lambda passed where its parameters' types are known and its result is its body's to decide,
- * since it bounds type parameters of the call (§3.5); `hint`, what the call expects of the result,
- * guides the body without declaring the result.
+ * since it bounds type parameters of the call (§3.5); `guide`, what the call expects of the
+ * result, guides the body without declaring the result, or lets its value join the call.
  */
 export function inferLambda(
   context: BodyContext,
   node: Lambda,
   slots: ParameterSlots,
-  hint?: Type,
+  guide?: LambdaGuide,
 ): Type {
-  return checkLambdaAs(
-    context,
-    node,
-    slots,
-    hint === undefined ? undefined : { kind: 'guided', type: hint },
-  );
+  return checkLambdaAs(context, node, slots, guide);
 }
 
 /** What an expected function type gives a lambda's parameters: their slots, and any pack. */
 type ParameterSlots = Pick<FunctionType, 'parameters' | 'pack'>;
 
 /**
- * What a lambda's position says of its result: the type it is declared to give, or one guiding
+ * What a lambda's position says of its result: the type it is declared to give, or how it guides
  * its body only, the result being what the body gives.
  */
-interface ResultGiven {
-  readonly kind: 'declared' | 'guided';
-  readonly type: Type;
-}
+type ResultGiven = { readonly kind: 'declared'; readonly type: Type } | LambdaGuide;
 
 /** A lambda where its position gives `slots` for its parameters and says `result`, when it does. */
 function checkLambdaAs(
@@ -212,7 +204,8 @@ function checkLambdaAs(
     declaredResult,
     reach: node.span,
     tail: (declared) => {
-      const type = context.expression(node.body, declared ?? hint);
+      const joined = result?.kind === 'joined' ? result.check(node.body) : undefined;
+      const type = joined ?? context.expression(node.body, declared ?? hint);
       // A body of several statements is a block expression, whose tail produces as a `fn`'s does.
       const body = unparenthesized(node.body);
       return body.kind === 'BlockExpression'

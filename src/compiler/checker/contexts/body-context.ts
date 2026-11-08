@@ -86,13 +86,12 @@ export interface BodyContext {
   readonly argumentPart: (node: Expression) => AcceptedPart;
   /**
    * Checks `node`, a lambda, maybe parenthesized, recording its type, where its parameters' types
-   * are known and its result is left for its body to decide (§3.5), `hint` guiding the body as its
-   * expected type when given.
+   * are known and its result is left for its body to decide (§3.5), as `guide` says, if given.
    */
   readonly inferLambda: (
     node: Expression,
     parameters: Pick<FunctionType, 'parameters' | 'pack'>,
-    hint?: Type,
+    guide?: LambdaGuide,
   ) => Type;
   /** The type `node` was checked to have; the error type for a node not checked yet. */
   readonly typeOf: (node: Expression) => Type;
@@ -225,6 +224,16 @@ export interface CheckedPasses {
  * with the type it has alone (`none`'s `None`, a `struct{…}`'s shape) and the type it is known to
  * have so far, which bounds what a call gives it; or its own type when known.
  */
+/**
+ * What a lambda whose result its body decides is told of the result (§3.5): a type guiding its
+ * body as its expected type, or, where what the call expects of it is still open, how its body's
+ * value is checked to join the call's system (resolution/applying/joint.ts), undefined for a body
+ * that can't.
+ */
+export type LambdaGuide =
+  | { readonly kind: 'guided'; readonly type: Type }
+  | { readonly kind: 'joined'; readonly check: (body: Expression) => Type | undefined };
+
 export type AcceptedPart =
   | {
       readonly kind: 'decided';

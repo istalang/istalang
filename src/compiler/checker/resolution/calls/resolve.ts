@@ -37,7 +37,7 @@ import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { type CallApplication, chooseCall, completeCall } from '../applying/applied-call.ts';
 import { argumentListText } from '../applying/argument-fit.ts';
-import { type JoinPlace, settledOrJoined } from '../applying/joint.ts';
+import { type CheckJoining, type JoinPlace, settledOrJoined } from '../applying/joint.ts';
 import type { BindingFailure } from '../choosing/binding.ts';
 import type { CallArgument, Inapplicability, Misfit, Passing } from '../choosing/call-arguments.ts';
 import { callMade } from '../choosing/calls-made.ts';
@@ -89,6 +89,8 @@ export interface CallRequest {
   readonly hint?: () => Diagnostic<AnchoredSpan> | undefined;
   /** Where the call may join the call it is passed to (applying/joint.ts), if it may. */
   readonly place?: JoinPlace | undefined;
+  /** How what it is given, a lambda's value among them, may join it (applying/joint.ts). */
+  readonly joining?: CheckJoining | undefined;
 }
 
 /**
@@ -102,6 +104,8 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
     request.candidates.map(({ declaration }) => declaration),
   );
   const written = request.arguments;
+  const joined = written.flatMap(({ place }) => place ?? []);
+  const { joining } = request;
   const applying: CallApplication = {
     span: site.span,
     site,
@@ -119,7 +123,10 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
       }
     },
     chosen: (application, settlingIt) =>
-      checkDecidedFunctions(context, written, application, settlingIt),
+      checkDecidedFunctions(context, written, application, {
+        settling: settlingIt,
+        joins: joining === undefined ? undefined : { joining, places: joined },
+      }),
   };
   const chosen = chooseCall(context, applying);
   if (chosen === undefined) {
@@ -138,7 +145,7 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
       inference: chosen.inference,
       type: chosen.inference.open(chosen.signature.result()),
       settling,
-      joined: written.flatMap(({ place }) => place ?? []),
+      joined,
       judge: (joint) => applying.chosen?.(within(joint), settling),
       complete: (joint) => completeResolved(context, request, applying, within(joint)),
     },

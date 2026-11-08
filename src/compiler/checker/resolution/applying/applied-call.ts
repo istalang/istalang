@@ -19,11 +19,13 @@
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Inference } from '../../types/inference/infer.ts';
 import type { Settling } from '../../types/inference/settle.ts';
 import { substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
@@ -134,6 +136,7 @@ export function completeCall(
   if (closed === undefined) {
     return undefined;
   }
+  settleJoinedLambdas(context, request.arguments, application.inference);
   const settled = request.arguments.map((argument) =>
     argument.joining === undefined || argument.type === undefined
       ? argument
@@ -154,6 +157,36 @@ export function completeCall(
       checker.typeRules,
     ),
   };
+}
+
+/**
+ * Records again, as the call's system settled them, what a lambda whose value joined the call was
+ * recorded as while that was open (joint.ts): its type, and its function's.
+ */
+function settleJoinedLambdas(
+  context: BodyContext,
+  argumentList: CallApplication['arguments'],
+  inference: Inference,
+): void {
+  for (const { node, type } of argumentList) {
+    const recorded =
+      node === undefined || type !== undefined ? undefined : context.checkedTypeOf(node);
+    if (node !== undefined && recorded !== undefined && inference.mentionsVariables(recorded)) {
+      settleLambda(context, node, inference.solved(recorded));
+    }
+  }
+}
+
+/** Records `node`, a lambda maybe parenthesized, as `settled`, and its function with it. */
+function settleLambda(context: BodyContext, node: Expression, settled: Type): void {
+  const lambda = unparenthesized(node);
+  const checked = lambda.kind === 'Lambda' ? context.functions.checkedOf(lambda) : undefined;
+  for (const each of new Set([node, lambda])) {
+    context.checkWith(each, () => settled);
+  }
+  if (lambda.kind === 'Lambda' && checked !== undefined && settled.kind === 'function') {
+    context.functions.record(lambda, { ...checked, type: settled });
+  }
 }
 
 /** What a call several candidates take alike reports: several traits of a union, or ambiguity. */

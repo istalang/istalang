@@ -30,7 +30,7 @@ import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import type { JoinPlace } from '../../../resolution/applying/joint.ts';
+import type { CheckJoining, JoinPlace } from '../../../resolution/applying/joint.ts';
 import { resolveCall, type WrittenArgument } from '../../../resolution/calls/resolve.ts';
 import { functionsAccepted, namedFunctions } from '../../../resolution/choosing/named-functions.ts';
 import { enumsExpected, expectedNominal, writtenNominal } from '../../../types/fitting/expected.ts';
@@ -178,6 +178,8 @@ export interface VariantCall {
   readonly expected: Type | undefined;
   /** Where the call may join the call it is passed to (resolution/applying/joint.ts), if it may. */
   readonly place?: JoinPlace | undefined;
+  /** How what the call is given, a lambda's value among them, may join it. */
+  readonly joining?: CheckJoining | undefined;
   readonly typeArguments: readonly Type[] | undefined;
   readonly written: readonly WrittenArgument[];
 }
@@ -212,6 +214,7 @@ export function checkVariantCall(
       expected: call.expected,
       form: 'call',
       place: call.place,
+      joining: call.joining,
     });
   }
   const entity = nominalEntityOf(context.checker, chosen.enum);

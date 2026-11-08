@@ -21,6 +21,8 @@ const declarations = [
   'fn twice<T>(f: fn(T) -> T) -> fn(T) -> T: fn x: f(f(x))',
   'fn id<T>(x: T) -> T: x',
   'fn pair<T>(a: T, b: T) -> Array<T>: [a, b]',
+  'enum Outcome<T, E> { Good(value: T), Bad(error: E) }',
+  'fn good<U>(g: fn(Int) -> Outcome<U, String>) -> Outcome<U, String>: g(1)',
 ];
 
 /** What checking `functions` after the declarations above reports. */
@@ -64,6 +66,17 @@ describe('a generic call or literal passed to a call', () => {
     expect(
       outcome('const b: Box<fn(Int) -> Int> = boxed(twice(fn x: x + 1))\n  `${(b.value)(1)}`'),
     ).toBe('3');
+  });
+
+  it("lets a lambda's value join it where what it expects of the lambda's result is still open", () => {
+    expect(reportedAfter('fn tail() -> Outcome<Int, String>: good(fn x: Good(x + 1))')).toEqual(
+      checksCleanly,
+    );
+    expect(
+      outcome(
+        'match good(fn x: Good(x + 1)):\n    case Good(value): `good ${value}`\n    case Bad(error): error',
+      ),
+    ).toBe('good 2');
   });
 
   it("joins what the outermost call's other arguments give", () => {

@@ -77,6 +77,7 @@ import type {
   BodyContext,
   CheckedPasses,
   Enclosing,
+  LambdaGuide,
   Returns,
 } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
@@ -241,15 +242,15 @@ export class BodyChecker implements BodyContext {
   inferLambda(
     node: Expression,
     parameters: Pick<FunctionType, 'parameters' | 'pack'>,
-    hint?: Type,
+    guide?: LambdaGuide,
   ): Type {
     if (node.kind === 'Parenthesized') {
-      return this.#record(node, this.inferLambda(node.expression, parameters, hint));
+      return this.#record(node, this.inferLambda(node.expression, parameters, guide));
     }
     if (node.kind !== 'Lambda') {
       unreachable(`A ${node.kind} has no result to infer.`);
     }
-    return this.#record(node, inferLambda(this, node, parameters, hint));
+    return this.#record(node, inferLambda(this, node, parameters, guide));
   }
 
   #record(node: Expression, value: Type): Type {

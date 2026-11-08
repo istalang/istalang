@@ -40,9 +40,14 @@ export interface OpenInference {
 /**
  * Checks an item of a call or literal where it may join it (`place`), if it is one that may: a
  * call, a literal naming its type, or a collection literal (constructs/expressions/calls.ts);
- * undefined for anything else, which is checked as ever.
+ * undefined for anything else, which is checked as ever. A call joining is told what is `expected`
+ * of it so far, which only advises, as a bare variant's enum.
  */
-export type CheckJoining = (item: Expression, place: JoinPlace) => Type | undefined;
+export type CheckJoining = (
+  item: Expression,
+  place: JoinPlace,
+  expected?: Type,
+) => Type | undefined;
 
 /** An argument where it may join the call it is passed to, and the construct that joined there. */
 export class JoinPlace {
@@ -90,12 +95,9 @@ export function settledOrJoined(
  * type settled; `open`'s type, settled.
  */
 function settleOutermost(context: BodyContext, open: OpenInference): Type {
-  const joined = everyJoined(open);
   const joint = open.inference;
-  for (const { construct } of joined) {
-    construct.judge(joint);
-  }
-  open.judge(joint);
+  judgeAll(open, joint);
+  const joined = everyJoined(open);
   if (joined.length > 0) {
     joint.solveJointly([...joined.map(({ construct }) => construct), open]);
   }
@@ -104,6 +106,25 @@ function settleOutermost(context: BodyContext, open: OpenInference): Type {
     context.checkWith(node, () => type);
   }
   return open.complete(joint);
+}
+
+/**
+ * Judges `open`'s postponed arguments, what joined it first, and then what joined it while it was
+ * judged, as a lambda's value does (resolution/calls/function-arguments.ts).
+ */
+function judgeAll(open: OpenInference, joint: Inference): void {
+  const before = open.joined.length;
+  for (const { joined } of open.joined) {
+    if (joined !== undefined) {
+      judgeAll(joined, joint);
+    }
+  }
+  open.judge(joint);
+  for (const { joined } of open.joined.slice(before)) {
+    if (joined !== undefined) {
+      judgeAll(joined, joint);
+    }
+  }
 }
 
 /** Every construct joined into `open`, at any depth, with its node, each after what joined it. */

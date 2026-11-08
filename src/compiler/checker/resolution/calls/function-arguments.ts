@@ -26,13 +26,14 @@ import type { Expression, Lambda, StructLiteral } from '../../../syntax/expressi
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
-import type { BodyContext } from '../../contexts/body-context.ts';
+import type { BodyContext, LambdaGuide } from '../../contexts/body-context.ts';
 import { collectionTarget, expectedFunction, expectedTuple } from '../../types/fitting/expected.ts';
 import type { Inference } from '../../types/inference/infer.ts';
 import type { Settling } from '../../types/inference/settle.ts';
 import { typeChildren } from '../../types/parts/type-children.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
 import type { FunctionType, ParameterKey, Type } from '../../types/type/index.ts';
+import { type CheckJoining, JoinPlace } from '../applying/joint.ts';
 import type { Application } from '../choosing/choice.ts';
 import { type FunctionNaming, functionValueType } from '../choosing/named-functions.ts';
 
@@ -48,10 +49,23 @@ interface Postponed {
   readonly declared: Type;
 }
 
-/** What judging a postponed argument reads: the call's inference, and how its parameters settle. */
+/**
+ * How the value of a lambda whose result is still open joins the system of the call it is passed
+ * to (design.md §4, applying/joint.ts), and the places it joined at, which the call completes.
+ */
+export interface LambdaJoins {
+  readonly joining: CheckJoining;
+  readonly places: JoinPlace[];
+}
+
+/**
+ * What judging a postponed argument reads: the call's inference, how its parameters settle, and
+ * how a lambda's value joins the call, where it can.
+ */
 interface Judging {
   readonly inference: Inference;
   readonly settling: Settling;
+  readonly joins?: LambdaJoins | undefined;
 }
 
 /**
@@ -64,7 +78,7 @@ export function checkDecidedFunctions(
   context: BodyContext,
   written: readonly Argument[],
   application: Application,
-  settling: Settling,
+  { settling, joins }: { readonly settling: Settling; readonly joins?: LambdaJoins | undefined },
 ): void {
   const { inference, slots } = application;
   const pending: Postponed[] = written.flatMap(({ node, type }, index) => {
@@ -80,7 +94,7 @@ export function checkDecidedFunctions(
     );
     const [next] = pending.splice(Math.max(0, ready), 1);
     if (next !== undefined) {
-      inferNestedFunctions(context, next.node, next.declared, { inference, settling });
+      inferNestedFunctions(context, next.node, next.declared, { inference, settling, joins });
     }
   }
 }
@@ -116,7 +130,8 @@ function outputsOf(type: Type): readonly ParameterKey[] {
 /**
  * Checks `node`, a lambda, where `expected` is taken, once its inputs are settled: against its
  * whole type where its result is known; else its body guided by what the call's expected type
- * says of the result (`Inference.guided`), its result its body's own; bounds what it gives.
+ * says of the result (`Inference.guided`), its result its body's own, and where that says nothing
+ * whole, its body's value joining the call (`joinedGuide`); bounds what it gives.
  */
 function inferLambdaAt(context: BodyContext, node: Lambda, expected: Type, judging: Judging): void {
   const shape = settledShape(expected, judging);
@@ -129,8 +144,36 @@ function inferLambdaAt(context: BodyContext, node: Lambda, expected: Type, judgi
     return;
   }
   const guide = inference.guided(shape.result, settling);
-  const checked = context.inferLambda(node, shape, isOpen(guide, inference) ? undefined : guide);
+  const checked = context.inferLambda(
+    node,
+    shape,
+    isOpen(guide, inference) ? joinedGuide(judging, guide) : { kind: 'guided', type: guide },
+  );
   inference.match(expected, checked);
+}
+
+/**
+ * A lambda's body's value joining the call it is passed to, as a call or literal passed straight to
+ * it does, so `f(fn x: Good(x + 1))` for `g: fn(Int) -> Outcome<U, String>` gives `Good` its enum
+ * and `E` from the call, `guide` advising it as far as it is known; none where the call can't.
+ */
+function joinedGuide({ inference, joins }: Judging, guide: Type): LambdaGuide | undefined {
+  if (joins === undefined) {
+    return undefined;
+  }
+  return {
+    kind: 'joined',
+    check: (body) => {
+      const place = new JoinPlace(body);
+      const type = joins.joining(body, place, guide);
+      const { joined } = place;
+      if (joined !== undefined) {
+        inference.join(joined.inference);
+        joins.places.push(place);
+      }
+      return type;
+    },
+  };
 }
 
 /**
