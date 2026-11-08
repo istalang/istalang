@@ -25,11 +25,12 @@ tags: [tracker]
 | Completion (`docs/work/completion/plan.md`) | done (264 of 266 scenarios; CO-02, EX-04 in F14) |
 | Proposals 1–4 (`docs/work/proposals/plan.md`) | done |
 | Proposal 5 (`docs/proposals/5-indented-values.md`; equi-recursive identity `docs/work/proposals/p5-equi-recursive-identity.md`) | done |
+| Identity, variance and inference (`docs/work/variance-inference/plan.md`; closes F25) | planned |
 | M8 Packages | planned |
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F26, P38, Q46, B37. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F29, P38, Q46, B37. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -59,7 +60,10 @@ Language or toolchain features deferred by decision, not defects.
 | F20 | A union converts into a wider union's `any` member only as a whole: `Email \| Int` doesn't go into `any Named \| Int` member by member. | small | none; can be done now | p3-unions 2026-11-05 |
 | F22 | A key not yet known over a struct whose fields are known (a field loop's or mapped type's key over a known struct, §3.1) reads a field type with only the associated types and traits every candidate field shares; reading it per candidate (the field type a narrowed key names) would accept more. | small | none; can be done now | p4-computed 2026-11-05 |
 | F24 | Field completion inside a destructuring `const` pattern offers nothing: completion has no step for a struct pattern's field names (`const struct { na } = s` with the cursor after `na`). | small | none; can be done now | p5 QA 2026-11-06 |
-| F25 | A generic call reads its expected type only after its function-value and lambda arguments, so they can't take a type argument from it: `const xs: Array<Result<Int, String>> = [1].map(Result.Ok)` fixes `E` as `Error` and fails with 5001, as does `fn x: Result.Ok(x)`, and `fn x: Ok(x)` reports 5107. Matching the expected type first, for every call and lambdas included, would let them; it changes inference everywhere. Deferred by the human. Writing the type arguments works around it: `[1].map(Result.Ok<Int, String>)` (spec §3.14). | big | none; can be done now | P7 batch 3 2026-11-07 |
+| F25 | A generic call reads its expected type only after its function-value and lambda arguments, so they can't take a type argument from it: `const xs: Array<Result<Int, String>> = [1].map(Result.Ok)` fixes `E` as `Error` and fails with 5001, as do `fn x: Result.Ok(x)` and `fn x: Ok(x)` (5107). Decided 2026-11-08: replaced by constraint-based inference with variance (`docs/work/variance-inference/`). | big | the variance-inference plan | P7 batch 3 2026-11-07 |
+| F26 | `<each A>` replaces `<...A>` for a pack in declarations, sharing the prefix slot with `gives`/`takes` (`<gives each A>`); `...` stays for expansion (`fn(...A)`, `...args`). | medium | variance-inference V1 | variance-inference design 2026-11-08 |
+| F27 | View handles, so `gives`/`takes` apply to handles: a converted handle is a view converting each value as it leaves or enters, `==` comparing the underlying object. Candidates: `Future<gives T, K>`, `Instance<gives T>`, `WeakRef<gives T>`, proposal 8's `Resolver<takes T, K>`. Until then a marker on a handle is an error. | big | variance-inference V1 | variance-inference design 2026-11-08 |
+| F28 | Proposal 8's function-type qualifiers as subtyping in the constraint system (`sendable fn` ≤ `fn` ≤ `ephemeral fn`, `readonly fn` ≤ `fn`, the async fit as `fn(A) -> R` ≤ `fn(A) -> Future<R, K>`), then qualifier variables for qualifier-preserving higher-order functions (`logged` keeping `sendable`). | big | proposal 8; variance-inference I1, V1 | variance-inference design 2026-11-08 |
 
 ### Performance (P)
 

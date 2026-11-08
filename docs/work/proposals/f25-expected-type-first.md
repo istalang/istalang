@@ -1,7 +1,7 @@
 ---
 description: analysis of tracker item F25 option 2 (a generic call's expected type speaking before its arguments, for every call) — why known-parameters.ts can't become every call's rule as framed, the rule that works (choose, then take the chosen function again with the type arguments its expected type gives inside its result), spec edits, how TypeScript, Swift, Kotlin and Rust do it, consequences, prototype evidence, risks, batches and the recommendation against option 1; read before specifying or implementing F25
 owner: tech-lead
-status: active
+status: archived
 applies_to: istalang
 last_verified: 2026-11-08
 last_updated: 2026-11-08
@@ -9,6 +9,8 @@ tags: [proposal, checker, inference, generics, calls, f25]
 ---
 
 # F25: the expected type first
+
+> Superseded on 2026-11-08 by `docs/work/variance-inference/` (constraint-based inference with variance); kept for its prototype evidence.
 
 Today the arguments of a generic call bind its type parameters first. The expected type fills only
 what they leave open, at instantiation (`conformance/conformance.ts` `instantiateAt`), after
