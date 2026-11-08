@@ -56,7 +56,8 @@ import {
   mapKnownType,
 } from './collections/collection-accepts.ts';
 import { checkComprehension, checkFieldComprehension } from './collections/comprehensions.ts';
-import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections/literals.ts';
+import { checkArray, checkMap } from './collections/joining-literals.ts';
+import { checkRange } from './collections/literals.ts';
 import { checkAwait } from './control/await.ts';
 import { blockAccepts } from './control/branches.ts';
 import { checkIf, ifAccepts } from './control/control.ts';
@@ -110,8 +111,8 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   If: checkIf,
   DurationLiteral: checkDurationLiteral,
   NoneLiteral: checkNone,
-  ArrayLiteral: checkArrayLiteral,
-  MapLiteral: checkMapLiteral,
+  ArrayLiteral: checkArray,
+  MapLiteral: checkMap,
   Comprehension: checkComprehension,
   FieldComprehension: checkFieldComprehension,
   Tuple: checkTuple,

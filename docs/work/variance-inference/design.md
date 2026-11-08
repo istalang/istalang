@@ -288,10 +288,22 @@ is expected") expressed as a bound.
 element.
 
 **As built (I2).**
+- One constraint scope per outermost call or literal naming its type (`i2-scope.md`,
+  `contexts/constraint-scope.ts`): the body context holds it, and it settles when what opened it
+  is checked, on every path. A call's arguments, a literal's fields and items, and what a judged
+  lambda's body gives join it; a call continuing an optional chain settles in a scope of its own.
+  A lambda judged in it records its function once it settles.
 - A variable is its parameter's twin at the call's site (`types/inference/variables.ts`), so each
-  joined call has its own. A candidate's system starts as a copy of what joined it, so probing
-  candidates leaves the others untouched; after choosing, joined calls are viewed in the chosen
-  system (`Inference.within`).
+  call in a scope has its own. A candidate's system starts as a copy of the scope's, so probing
+  candidates leaves it untouched; the chosen one's is committed to it (`Inference.commitTo`), and
+  a literal infers in it from the start. A guide handed to what a postponed argument checks is
+  open in the scope's variables, never read back as the callee's parameters.
+- Records and the reports of a call no candidate takes wait for the scope: a node recorded with
+  an open type is recorded again solved, and such a call is chosen again with its arguments
+  settled, so its report reads them as they settled. What only it would have bounded settles to
+  the error type, reporting nothing more.
+- A variable bounded only through another (`U <: T`) settles after it, and one that can't be
+  inferred reads as the error type in what the others settle to (settle.ts).
 - Two bounds of which either mentions a variable agree by relating them (Kotlin's incorporation),
   and two equalities by equating them. A variable related to another only (`T' <: T`) settles from
   what the other settled to. Rule 2 reads an equality the expected type gave (an invariant

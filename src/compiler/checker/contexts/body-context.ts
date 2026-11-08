@@ -58,19 +58,24 @@ import type { CheckedPattern, TargetBinding, TargetOwner } from '../surface/chec
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
 import type { Fit } from '../types/fitting/fit/index.ts';
 import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';
+import type { Scopes } from './constraint-scope.ts';
 import type { CheckerContext } from './context.ts';
 import type { FieldPassType } from './passes.ts';
 
 export interface BodyContext {
   readonly checker: CheckerContext;
   readonly module: ModuleId;
-  /** Checks `node`, recording its type; `expected` guides inference but isn't enforced. */
-  readonly expression: (node: Expression, expected?: Type) => Type;
   /**
-   * Checks `node` by `check` in place of its kind's handler, recording what it gives as
-   * `expression` does, as a call or literal joining another's system is (resolution/applying).
+   * Checks `node`, recording its type; `expected` guides inference but isn't enforced. A node of a
+   * kind that joins a constraint scope (contexts/constraint-scope.ts) is checked in the current
+   * one, opening one that settles once it is checked when none is; any other kind with none, so its
+   * parts each settle on their own.
    */
-  readonly checkWith: (node: Expression, check: () => Type) => Type;
+  readonly expression: (node: Expression, expected?: Type) => Type;
+  /** Checks `node` as `expression` does where no scope is current: its type, settled. */
+  readonly settled: (node: Expression, expected?: Type) => Type;
+  /** The body's constraint scopes, and the one current (contexts/constraint-scope.ts). */
+  readonly scopes: Scopes;
   /**
    * Which parameter types `node` can take when the call it is passed to decides its type (§3.5);
    * undefined when it has a type of its own, which takes part in choosing the function.
@@ -226,13 +231,13 @@ export interface CheckedPasses {
  */
 /**
  * What a lambda whose result its body decides is told of the result (§3.5): a type guiding its
- * body as its expected type, or, where what the call expects of it is still open, how its body's
- * value is checked to join the call's system (resolution/applying/joint.ts), undefined for a body
- * that can't.
+ * body as its expected type, open in the call's constraint scope where the call doesn't know it
+ * yet, so a body that joins the scope is advised by it (contexts/constraint-scope.ts).
  */
-export type LambdaGuide =
-  | { readonly kind: 'guided'; readonly type: Type }
-  | { readonly kind: 'joined'; readonly check: (body: Expression) => Type | undefined };
+export interface LambdaGuide {
+  readonly kind: 'guided';
+  readonly type: Type;
+}
 
 export type AcceptedPart =
   | {

@@ -17,7 +17,7 @@
 import type { Expression, StructLiteral } from '../../../../syntax/expressions/index.ts';
 import { isItemsLiteral, itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { AcceptedPart, BodyContext } from '../../../contexts/body-context.ts';
-import { mayJoin } from '../../../resolution/applying/joint.ts';
+import { joinsScope } from '../../../contexts/constraint-scope.ts';
 import { untypedLiteral } from '../expressions.ts';
 
 /**
@@ -46,9 +46,9 @@ function checkItemsAhead(
   check: (item: Expression) => void,
 ): boolean {
   let checked = false;
-  // A collection literal's items that may join its call are checked as it joins (joint.ts).
+  // A collection literal's items that join a scope are checked as it joins (constraint-scope.ts).
   const joins = node.kind === 'ArrayLiteral' || node.kind === 'MapLiteral';
-  const ahead = literalItems(node).filter((item) => !(joins && mayJoin(item)));
+  const ahead = literalItems(node).filter((item) => !(joins && joinsScope(item)));
   for (const item of ahead) {
     if (isItemsLiteral(item)) {
       checked = checkItemsAhead(context, item, check) || checked;

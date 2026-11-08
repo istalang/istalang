@@ -164,7 +164,8 @@ function errorSlots(node: Lambda): ParameterSlots {
 /**
  * A lambda passed where its parameters' types are known and its result is its body's to decide,
  * since it bounds type parameters of the call (§3.5); `guide`, what the call expects of the
- * result, guides the body without declaring the result, or lets its value join the call.
+ * result, guides the body without declaring the result, open in the call's constraint scope where
+ * the call doesn't know it yet, so a body that joins the scope is advised by it.
  */
 export function inferLambda(
   context: BodyContext,
@@ -204,8 +205,7 @@ function checkLambdaAs(
     declaredResult,
     reach: node.span,
     tail: (declared) => {
-      const joined = result?.kind === 'joined' ? result.check(node.body) : undefined;
-      const type = joined ?? context.expression(node.body, declared ?? hint);
+      const type = context.expression(node.body, declared ?? hint);
       // A body of several statements is a block expression, whose tail produces as a `fn`'s does.
       const body = unparenthesized(node.body);
       return body.kind === 'BlockExpression'
@@ -285,10 +285,19 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
         isSendable(context.checker, capture.type),
     ),
   );
-  if (name !== undefined) {
-    context.variables.declare(name, type);
-  }
-  context.functions.record(node, { type, parameters, captures });
+  const record = (recorded: FunctionType) => {
+    if (name !== undefined) {
+      context.variables.declare(name, recorded);
+    }
+    context.functions.record(node, { type: recorded, parameters, captures });
+  };
+  record(type);
+  // A body that joined the constraint scope it stands in gives a result open until it settles.
+  context.scopes.recorded(type, (solved) => {
+    if (solved.kind === 'function') {
+      record(solved);
+    }
+  });
   return type;
 }
 

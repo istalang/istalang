@@ -24,7 +24,6 @@ import {
 import { lastName } from '../../../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
-import { type CheckJoining, JoinPlace } from '../../../../resolution/applying/joint.ts';
 import { callWithTypes } from '../../../../resolution/applying/silent-choice.ts';
 import type { FunctionCall } from '../../../../surface/resolved-call.ts';
 import { itemField } from '../../../../surface/struct-items.ts';
@@ -81,10 +80,6 @@ export interface LiteralItems {
   readonly given: Map<number, GivenField>;
   /** The fields whose values wait for their types to be inferred, by position in the shape. */
   readonly postponed: Map<number, PostponedField>;
-  /** How a value whose field's type is still to be inferred may join the literal (index.ts). */
-  readonly joining: CheckJoining | undefined;
-  /** Where values may have joined the literal, with what did. */
-  readonly places: JoinPlace[];
   /** Whether every item so far gave a field of its own. */
   fits: boolean;
 }
@@ -115,7 +110,7 @@ export function checkItem(
   }
   if (item.kind === 'Spread') {
     context.report(checkerDiagnostics.misplacedSpread(item.span));
-    context.expression(item.expression);
+    checkRefused(context, item.expression);
     items.fits = false;
     return;
   }
@@ -129,11 +124,35 @@ export function checkItem(
   const value = itemValue(item);
   if (field === undefined || given.has(index)) {
     reportMisfit(context, items, item, field);
-    context.expression(value);
+    checkRefused(context, value);
     items.fits = false;
     return;
   }
   checkFieldValue(context, items, { index, value, field });
+}
+
+/**
+ * Matches `type`, a value's, where `declared` is taken; one still open in the scope that doesn't
+ * match gets the error type where it goes (`Scopes.abandon`), so the misfit, reported once the
+ * literal is fitted (`fitItems`), is all that is reported of it.
+ */
+export function matchValue(
+  context: BodyContext,
+  inference: Inference,
+  declared: Type,
+  type: Type,
+): void {
+  if (!inference.match(declared, type) && context.scopes.holds(type)) {
+    context.scopes.abandon([type]);
+  }
+}
+
+/**
+ * Checks a value no field of the literal takes, giving the error type where it would go
+ * (`Scopes.abandon`), so what only the literal would have bounded reports nothing more.
+ */
+export function checkRefused(context: BodyContext, value: Expression): void {
+  context.scopes.abandon([context.expression(value)]);
 }
 
 /** The value an item gives the field at `index` of the literal's shape. */
@@ -145,8 +164,8 @@ interface FieldValue {
 
 /**
  * Checks a field's value: against the field's type when that is known; postponed when it has no
- * type of its own while that type is still to be inferred; else on its own, or joining the literal,
- * and matched, a literal with its literal type where the field expects one (§2, §3.5).
+ * type of its own while that type is still to be inferred; else in the literal's scope, and
+ * matched, a literal with its literal type where the field expects one (§2, §3.5).
  */
 function checkFieldValue(
   context: BodyContext,
@@ -157,6 +176,9 @@ function checkFieldValue(
   const declared = inference.settledIn(field.type);
   if (parametersIn(declared).every((parameter) => !inference.isUnknown(parameter))) {
     const type = context.expression(value, declared);
+    if (context.scopes.holds(type)) {
+      matchValue(context, inference, field.type, type);
+    }
     given.set(index, { node: value, type, declared: field.type, isLiteral: false });
     return;
   }
@@ -168,31 +190,13 @@ function checkFieldValue(
   const literal = writtenLiteral(unparenthesized(value));
   const literalType =
     literal === undefined ? undefined : inference.literalType(literal.value, field.type);
-  const type = joinedValue(items, value) ?? context.expression(value, literalType);
+  const type = context.expression(value, literalType);
   if (literal === undefined) {
-    inference.match(field.type, type);
+    matchValue(context, inference, field.type, type);
   } else {
     inference.matchLiteral(field.type, literal);
   }
   given.set(index, { node: value, type, declared: field.type, isLiteral: literal !== undefined });
-}
-
-/**
- * `value`'s type where it joins the literal, its system taken on by the literal's; undefined where
- * it doesn't, or the literal has no way to let it.
- */
-function joinedValue(items: LiteralItems, value: Expression): Type | undefined {
-  if (items.joining === undefined) {
-    return undefined;
-  }
-  const place = new JoinPlace(value);
-  const type = items.joining(value, place);
-  const { joined } = place;
-  if (type !== undefined && joined !== undefined) {
-    items.inference.join(joined.inference);
-    items.places.push(place);
-  }
-  return type;
 }
 
 /** An item giving no field of its own: no field by that name or position, or one given twice. */

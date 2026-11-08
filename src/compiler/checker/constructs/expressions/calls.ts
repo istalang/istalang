@@ -7,11 +7,9 @@
  * - a type and a static function (`Duration.zero()`, `T.zero()`, `time.Duration.zero()`);
  * - a type alone, a conversion (`Float(3)`), which calls the type's static `from` (§3.10);
  * - a variant with fields, bare or qualified (`Ok(v)`, `Verdict.Rejected(by: "legal")`), which
- *   calls its constructor (structs/variants.ts, §3.11), its one candidate, whose parameters, its
- *   fields, are known before the arguments where its type arguments are: each argument filling
- *   one is checked against it, a misfit reported there (resolution/calls/known-parameters.ts).
- *   A function value's parameters are known before its arguments alike, so each argument by
- *   position is checked against its parameter's type (closures/value-calls.ts).
+ *   calls its constructor (structs/variants.ts, §3.11), its one candidate, as any generic call.
+ *   A function value's parameters are known before its arguments, so each argument by position
+ *   is checked against its parameter's type (closures/value-calls.ts).
  *
  * - a method called on a receiver (`x.f()`): a function whose first parameter is `self`, found by
  *   its name where the call is written and through the receiver's type (argument-dependent
@@ -38,12 +36,11 @@ import { conversionFunction } from '../../../../foundation/language/well-known/i
 import type { Entity } from '../../../binder/entities.ts';
 import { isMethod } from '../../../syntax/declarations/methods.ts';
 import { misplacedArgument } from '../../../syntax/expressions/arguments.ts';
-import type { Call, Expression, MemberAccess } from '../../../syntax/expressions/index.ts';
+import type { Call, MemberAccess } from '../../../syntax/expressions/index.ts';
 import { calledName, callTypeArguments } from '../../../syntax/expressions/readings.ts';
 import { type Identifier, isMissingName } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import type { CheckJoining, JoinPlace } from '../../resolution/applying/joint.ts';
 import { resolveCall, type WrittenArgument } from '../../resolution/calls/resolve.ts';
 import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
 import {
@@ -62,39 +59,54 @@ import { namedType } from '../../types/written/named-types.ts';
 import { checkValueCall, valueParameterTypes } from '../closures/value-calls.ts';
 import { readsNothing, readsThroughNamespace, recordFieldRead } from './access/member-access.ts';
 import { writtenArgument } from './call-arguments.ts';
-import { checkJoiningArray, checkJoiningMap } from './collections/joining-literals.ts';
-import { checkNamedLiteral, checkStructLiteral } from './structs/structs.ts';
 import { checkVariantCall } from './structs/variants.ts';
 
 /**
- * Checks a call; at `place`, where it may join the call it is passed to (resolution/applying/
- * joint.ts), it does unless it continues an optional chain, whose value its own ends.
+ * Checks a call in the current constraint scope (contexts/constraint-scope.ts); one continuing an
+ * optional chain, whose value the chain carries and wraps (access/optionals.ts), in a scope of its
+ * own, once what it is called on is read.
  */
-export function checkCall(
+export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
+  const value = calledValue(context, node);
+  return context.chains.continues(node)
+    ? context.scopes.isolated(() => checkCallMade(context, node, expected, value))
+    : checkCallMade(context, node, expected, value);
+}
+
+/**
+ * Checks a call whose callee's value, if it has one, is read: its arguments, then what it calls.
+ * One that can't be made gives the error type where its arguments go (`BodyContext.abandon`).
+ */
+function checkCallMade(
   context: BodyContext,
   node: Call,
   expected: Type | undefined,
-  place?: JoinPlace,
+  value: CalledValue | undefined,
 ): Type {
   const misplaced = misplacedArgument(node.arguments);
   const typeArguments = callTypeArguments(node)?.map((argument) => context.resolveType(argument));
-  const value = calledValue(context, node);
   const known = valueParameterTypes(value?.type, node.arguments, typeArguments);
-  const joining: CheckJoining = (item, at, expectedOfItem) =>
-    checkJoining(context, item, at, expectedOfItem);
   const call: WrittenCall = {
     node,
     expected,
-    place,
-    joining,
     typeArguments,
     written: node.arguments.map((argument, index) => {
       if (argument === misplaced) {
-        return { ...writtenArgument(context, argument, undefined, joining), type: errorType };
+        return { ...writtenArgument(context, argument, undefined), type: errorType };
       }
-      return writtenArgument(context, argument, known[index], joining);
+      return writtenArgument(context, argument, known[index]);
     }),
   };
+  const type = calledBy(context, call, value);
+  if (type.kind === 'error') {
+    context.scopes.abandon(call.written.map((argument) => argument.type));
+  }
+  return type;
+}
+
+/** What `call` calls, by what its callee is, given what was read of its value. */
+function calledBy(context: BodyContext, call: WrittenCall, value: CalledValue | undefined): Type {
+  const { node } = call;
   const callee = calledName(node);
   if (node.isOptional) {
     return checkValueCall(context, call, callee, value?.type ?? errorType);
@@ -125,53 +137,6 @@ export function checkCall(
 }
 
 /**
- * Checks `node` at `place`, where it may join the call it is passed to (design.md §4,
- * resolution/applying/joint.ts): a call, a literal naming its type, or a non-empty array or map
- * literal, whose items may join it in turn; its type, open where it joined. Undefined for anything else,
- * which is checked as ever.
- */
-function checkJoining(
-  context: BodyContext,
-  node: Expression,
-  place: JoinPlace,
-  expected?: Type,
-): Type | undefined {
-  const joins = {
-    place,
-    joining: (item: Expression, at: JoinPlace, expectedOfItem?: Type) =>
-      checkJoining(context, item, at, expectedOfItem),
-  };
-  switch (node.kind) {
-    case 'Parenthesized': {
-      const inner = checkJoining(context, node.expression, place, expected);
-      return inner === undefined ? undefined : context.checkWith(node, () => inner);
-    }
-    case 'Call':
-      return context.checkWith(node, () => checkCall(context, node, expected, place));
-    case 'StructLiteral':
-      return node.type === undefined
-        ? undefined
-        : context.checkWith(node, () => checkStructLiteral(context, node, undefined, joins));
-    case 'NewStructLiteral':
-      return context.checkWith(node, () => checkNamedLiteral(context, node, undefined, joins));
-    case 'ArrayLiteral':
-      return node.elements.length === 0
-        ? undefined
-        : context.checkWith(node, () =>
-            checkJoiningArray(context, node, place, (item, at) => checkJoining(context, item, at)),
-          );
-    case 'MapLiteral':
-      return node.entries.length === 0
-        ? undefined
-        : context.checkWith(node, () =>
-            checkJoiningMap(context, node, place, (item, at) => checkJoining(context, item, at)),
-          );
-    default:
-      return undefined;
-  }
-}
-
-/**
  * What a call calls, when its type is known before its arguments: a variable, an expression other
  * than a name, or an optional call's target (§3.14), and a receiver's field (`receiverField`),
  * which a method of the same name makes an error the call reports.
@@ -189,7 +154,7 @@ function calledValue(context: BodyContext, node: Call): CalledValue | undefined 
     case 'MemberAccess':
       return receiverField(context, node, callee);
     default:
-      return { type: context.expression(callee) };
+      return { type: context.settled(callee) };
   }
 }
 
@@ -272,6 +237,7 @@ function callMethod(
   }
   return resolveCall(context, {
     site: call.node,
+    recorded: call.node,
     name,
     candidates,
     arguments: written,
@@ -280,8 +246,6 @@ function callMethod(
     form: 'call',
     receiver,
     hint: () => insideOptional(receiver.span, receiverType, '.'),
-    place: chains.continues(call.node) ? undefined : call.place,
-    joining: call.joining,
   });
 }
 
@@ -289,10 +253,6 @@ function callMethod(
 interface WrittenCall {
   readonly node: Call;
   readonly expected: Type | undefined;
-  /** Where the call may join the call it is passed to, if it may. */
-  readonly place?: JoinPlace | undefined;
-  /** How what the call is given, a lambda's value among them, may join it. */
-  readonly joining: CheckJoining;
   readonly typeArguments: readonly Type[] | undefined;
   readonly written: readonly WrittenArgument[];
 }
@@ -355,13 +315,12 @@ function resolve(
 ): Type {
   return resolveCall(context, {
     site: call.node,
+    recorded: call.node,
     name,
     candidates,
     arguments: call.written,
     typeArguments: call.typeArguments,
     expected: call.expected,
     form: 'call',
-    place: call.place,
-    joining: call.joining,
   });
 }

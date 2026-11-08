@@ -210,8 +210,12 @@ const checkerWiring = '^src/compiler/checker/wiring/';
 /** The checker's contracts: its entry, the contexts every check runs in, the models it surfaces. */
 const checkerContracts = '^src/compiler/checker/([^/]+\\.ts$|contexts/|surface/)';
 
-/** The layers its contracts may name: diagnostics and the type model beneath everything. */
-const checkerModel = ['diagnostics', 'types'];
+/**
+ * The layers its contracts may name: diagnostics, the type model beneath everything, and inference
+ * over it, whose system of variables is the constraint scope a body holds
+ * (contexts/constraint-scope.ts).
+ */
+const checkerModel = ['diagnostics', 'types', 'types/inference'];
 
 /**
  * Layers that may use Node's built-ins: the apps, which wire Node's I/O into the seams, and

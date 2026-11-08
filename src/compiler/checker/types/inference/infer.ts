@@ -43,62 +43,53 @@ import type { Settling } from './settle.ts';
 import { CallSystem, type MatchKind } from './system.ts';
 import { CallVariables } from './variables.ts';
 
-/** Where an inference stands: its call's site, and the inferences of what joins its call. */
+/** Where an inference stands: its call's site, and the system it infers in. */
 export interface InferenceSite {
   /** The call's own site, which its variables are twins at (variables.ts). */
   readonly site?: object | undefined;
-  /** The inferences of the calls and literals joining this one, whose systems its starts from. */
-  readonly joining?: readonly Inference[] | undefined;
+  /**
+   * A scope's inference (contexts/constraint-scope.ts): this one's system starts as a copy of its
+   * system, as a candidate's does, so probing it leaves the scope untouched (`commitTo`).
+   */
+  readonly copying?: Inference | undefined;
 }
 
 export class Inference {
   readonly #parameters: readonly ParameterKey[];
-  readonly #site: object | undefined;
   readonly #variables: CallVariables;
   readonly #fitting: Fitting;
-  readonly #system: CallSystem;
+  #system: CallSystem;
   /** What the match being made is, a receiver's matching as an argument's does otherwise. */
   #kind: MatchKind = 'argument';
 
   /**
    * `written` gives the type arguments written for some of `parameters`, taken as given (§3.5).
-   * Each parameter is inferred as a variable of its own (variables.ts), in a system that starts as
-   * a copy of those of what joins the call (`at.joining`), or is the very system `into` names.
+   * Each parameter is inferred as a variable of its own (variables.ts), in a system of its own, a
+   * copy of `at.copying`'s where given.
    */
   constructor(
     parameters: Iterable<ParameterKey>,
     fitting: Fitting,
     written?: Substitution,
-    at: InferenceSite & { readonly into?: Inference } = {},
+    at: InferenceSite = {},
   ) {
     this.#parameters = [...parameters];
-    this.#site = at.site;
     this.#variables = new CallVariables(this.#parameters, fitting, at.site);
     this.#fitting = fitting;
-    this.#system =
-      at.into === undefined
-        ? new CallSystem(
-            fitting,
-            (at.joining ?? []).map((joined) => joined.#system),
-          )
-        : at.into.#system;
+    this.#system = new CallSystem(fitting, at.copying === undefined ? [] : [at.copying.#system]);
     this.#system.add(this.#variables, written ?? noSubstitution);
   }
 
   /**
-   * Takes on `joined`'s system, as a literal does that of a field's value joining it once the
-   * literal is under way (design.md §4).
+   * Moves this inference into `scope`'s system, which takes on everything matching found in its
+   * own: a chosen candidate's, whose system started as a copy of the scope's
+   * (contexts/constraint-scope.ts).
    */
-  join(joined: Inference): void {
-    this.#system.adopt(joined.#system);
-  }
-
-  /** This call's inference as it stands in `joint`'s system, which its call joined. */
-  within(joint: Inference): Inference {
-    return new Inference(this.#parameters, this.#fitting, undefined, {
-      site: this.#site,
-      into: joint,
-    });
+  commitTo(scope: Inference): void {
+    if (scope.#system !== this.#system) {
+      scope.#system.adopt(this.#system);
+      this.#system = scope.#system;
+    }
   }
 
   /** Matches a value of `given` where `declared` is taken, bounding what it can; whether it fits. */
@@ -167,6 +158,14 @@ export class Inference {
     }
   }
 
+  /**
+   * Gives the error type where `type`, open in this system, goes, and so to every variable it reaches
+   * (`CallSystem.abandon`).
+   */
+  abandon(type: Type): void {
+    this.#system.abandon(this.#prepared(type));
+  }
+
   /** `declared` as it stands open: the types given in place, and each parameter left its variable. */
   open(declared: Type): Type {
     return this.#prepared(declared);
@@ -195,19 +194,22 @@ export class Inference {
 
   /**
    * `type` with what is settled, and for the rest the expected type's choice where settling rule 2
-   * would take it (settle.ts): what a postponed argument's result is expected to be.
+   * would take it (settle.ts), else the variable: what a postponed argument's result is expected to
+   * be, open in the system's variables, so what checks against it joins this system.
    */
   guided(type: Type, settling: Settling): Type {
     const settled = this.settledIn(type);
     const guide = new Map<ParameterKey, Type>();
     for (const parameter of parametersIn(settled)) {
       const variable = this.#variables.variableOf(parameter);
+      const open = this.#variables.typeOf(parameter);
       const choice =
         variable === undefined
           ? undefined
           : this.#system.expectedChoiceFor(variable, this.#variables.settlingFor(settling));
-      if (choice !== undefined) {
-        guide.set(parameter, this.#variables.restored(choice));
+      const guiding = choice ?? open;
+      if (guiding !== undefined) {
+        guide.set(parameter, guiding);
       }
     }
     return substitute(settled, guide, this.#fitting);
@@ -292,6 +294,17 @@ export class Inference {
       return union === undefined ? [member] : membersOf(this.substituted(union));
     });
     return literalOrBase(value, unionOf(taking, this.#fitting));
+  }
+
+  /**
+   * What the system solved each parameter to, by parameter, the error type for one it couldn't
+   * (`solveJointly`): a literal's type arguments where completing it failed.
+   */
+  solution(): Substitution {
+    return this.#found((parameter) => {
+      const open = this.#variables.typeOf(parameter);
+      return open === undefined ? undefined : this.#variables.restored(this.#system.solved(open));
+    });
   }
 
   /** What has been found so far for the parameters, as a substitution. */

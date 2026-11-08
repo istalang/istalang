@@ -74,7 +74,10 @@ src/
                         placeholder per name until linked, bound as its alias where renamed (`aliasOf`)
     checker/            check.ts is the entry and the surface later phases read
       contexts/                                                  the contexts a program and a body are checked in (context.ts, body-context.ts), a field loop's
-                                                                 passes (passes.ts), and where a check reports (use-site.ts)
+                                                                 passes (passes.ts), where a check reports (use-site.ts), and the constraint
+                                                                 scope a body's calls and literals infer in, settled on every path
+                                                                 (constraint-scope.ts; which scope an expression is checked in:
+                                                                 wiring/body/body-scopes.ts)
       surface/                                                   the models the surface names, contracts like the root's: a body as checked
                                                                  (checked-body.ts), what calls resolved to (resolved-call.ts), patterns and targets as checked (checked-pattern.ts),
                                                                  computed constants (constant-form.ts), derived JSON forms (json-form.ts),
@@ -123,8 +126,8 @@ src/
         type-matches/                                            a type `match`'s use reduced and its cases matched, and the type `match`es and associated
                                                                  types an instantiation reaches, checked to name a type whose values end where it is written
         applying/                                                a chosen call applied: every call chosen, instantiated and fitted in one place
-                                                                 (applied-call.ts), completed once the outermost system it joins settles
-                                                                 (joint.ts), its arguments fitted (argument-fit.ts), the calls the language makes
+                                                                 (applied-call.ts), completed once the constraint scope it joins settles
+                                                                 (contexts/constraint-scope.ts), its arguments fitted (argument-fit.ts), the calls the language makes
                                                                  (implicit.ts) and the toolchain makes on its own (silent-choice.ts)
         calls/                                                   above the rest: a call in a body, its arguments checked against the chosen function,
                                                                  operators, the places a call or an assignment changes

@@ -23,7 +23,6 @@ import { lastName } from '../../../../syntax/tree/node.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
 import type { Accepts, BodyContext, PartReader } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import type { CheckJoining, JoinPlace } from '../../../resolution/applying/joint.ts';
 import { eachPartAccepts } from '../../../rules/agreement.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
 import { builtFrom } from '../../../types/fitting/expected.ts';
@@ -38,7 +37,12 @@ import {
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { checkLiteralFields } from './literal-fields/index.ts';
-import { declaresDefault, type LiteralShape, type LiteralSpread } from './literal-fields/items.ts';
+import {
+  checkRefused,
+  declaresDefault,
+  type LiteralShape,
+  type LiteralSpread,
+} from './literal-fields/items.ts';
 import { builtThrough } from './literal-types.ts';
 import {
   checkComprehensionAlone,
@@ -50,18 +54,14 @@ import {
 } from './struct-comprehensions.ts';
 import { refuseVariantLiteral } from './variants.ts';
 
-/**
- * Checks a struct literal; at `place`, where it may join the call it is passed to, its values
- * joining it as `joining` checks them.
- */
+/** Checks a struct literal: one naming its type in the current constraint scope, as its values. */
 export function checkStructLiteral(
   context: BodyContext,
   node: StructLiteral,
   expected: Type | undefined,
-  joins?: { readonly place: JoinPlace; readonly joining: CheckJoining },
 ): Type {
   return namesItsType(node)
-    ? checkNamedLiteral(context, node, expected, joins)
+    ? checkNamedLiteral(context, node, expected)
     : checkAnonymousLiteral(context, node, expected, leadingSpread(node));
 }
 
@@ -85,7 +85,6 @@ export function checkNamedLiteral(
   context: BodyContext,
   node: NamedLiteral,
   expected: Type | undefined,
-  joins?: { readonly place: JoinPlace; readonly joining: CheckJoining },
 ): Type {
   const typeNode = node.type;
   const name = lastName(typeNode.path);
@@ -119,7 +118,7 @@ export function checkNamedLiteral(
     checkValuesAlone(context, node);
     return shape.typeOf([]);
   }
-  return checkLiteralFields(context, node, shape, { spread: leadingSpread(node), ...joins });
+  return checkLiteralFields(context, node, shape, { spread: leadingSpread(node) });
 }
 
 /**
@@ -269,11 +268,11 @@ function freshAnonymous(context: BodyContext, node: StructLiteral): Type {
 function checkValuesAlone(context: BodyContext, node: FieldsLiteral): void {
   for (const item of node.items) {
     if (item.kind === 'Spread') {
-      context.expression(item.expression);
+      checkRefused(context, item.expression);
     } else if (item.kind === 'StructComprehension') {
-      checkComprehensionAlone(context, item);
+      context.scopes.suspended(() => checkComprehensionAlone(context, item));
     } else if (item.kind !== 'Invalid') {
-      context.expression(itemValue(item));
+      checkRefused(context, itemValue(item));
     }
   }
 }

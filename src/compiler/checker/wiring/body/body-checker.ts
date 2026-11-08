@@ -11,8 +11,9 @@
  *   (constructs/statements/assignments.ts). Nothing is recomputed later, so lowering sees what was
  *   checked.
  * - A node is checked once, but an item an argument literal checked ahead of it, which keeps what it
- *   was checked to have (constructs/expressions/literals/literal-items.ts), and a call or literal
- *   joining another's system, recorded again once it settles (resolution/applying/joint.ts). A value
+ *   was checked to have (constructs/expressions/literals/literal-items.ts). An expression checked
+ *   in a constraint scope (contexts/constraint-scope.ts, body-scopes.ts) is recorded again once the
+ *   scope settles: with its type solved, and a call or literal as completing it found. A value
  *   where a union is expected is checked as the member it is built as when that is decided before
  *   it is checked (§2, constructs/expressions/literals/built-members.ts); otherwise it goes in as
  *   fitting puts it, converted where its parts need (§3.5).
@@ -83,9 +84,7 @@ import type {
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { FieldPassType } from '../../contexts/passes.ts';
 import { Passes } from '../../contexts/passes.ts';
-import { useSite } from '../../contexts/use-site.ts';
 import { ImplicitCalls } from '../../resolution/applying/implicit.ts';
-import { reportUnmet } from '../../resolution/conformance/trait-objects.ts';
 import { blockTail } from '../../rules/agreement.ts';
 import { checkDisposeUses } from '../../rules/disposal/disposal.ts';
 import { checkDropped } from '../../rules/disposal/dropped.ts';
@@ -93,13 +92,15 @@ import { checkTestingCalls } from '../../rules/testing.ts';
 import { statementPlace } from '../../surface/checked-annotation.ts';
 import type { CheckedBody, FieldGiver, ValueSite } from '../../surface/checked-body.ts';
 import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
-import { exactFit, type Fit, isExact, misfitOf } from '../../types/fitting/fit/index.ts';
+import { type Fit, isExact } from '../../types/fitting/fit/index.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
 import type { FieldMember, FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, unitType } from '../../types/type/primitives.ts';
 import { keysOwner } from '../../types/written/key-types.ts';
 import { bodyRecords } from './body-records.ts';
+import { BodyScopes, closed } from './body-scopes.ts';
 import { checkedAt } from './facts/index.ts';
+import { reportedFit } from './reported-fits.ts';
 
 /**
  * What a body is checked as, and what it must produce, if declared: a function's, async or not,
@@ -134,10 +135,14 @@ export class BodyChecker implements BodyContext {
   readonly #result: ReturnScope;
   /** Items checked ahead of the argument literal holding them (`argumentPart`), kept as checked. */
   readonly #checkedAhead = new Set<Expression>();
+  readonly scopes: BodyScopes;
 
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
     this.module = module;
+    this.scopes = new BodyScopes((node, type) => {
+      this.#record(node, type);
+    });
     const isFunction = kind.kind === 'function';
     this.#result = new ReturnScope(kind.declaredResult, isFunction);
     const declaration = isFunction ? kind.declaration : undefined;
@@ -202,9 +207,19 @@ export class BodyChecker implements BodyContext {
   }
 
   expression(node: Expression, given?: Type): Type {
+    const type = this.scopes.checking(node, given, (expected) => this.#checked(node, expected));
+    return this.#records.types.get(node) ?? type;
+  }
+
+  settled(node: Expression, expected?: Type): Type {
+    return this.scopes.suspended(() => this.expression(node, expected));
+  }
+
+  /** Checks `node` by its kind's handler, in whatever scope is current. */
+  #checked(node: Expression, given: Type | undefined): Type {
     const expected = given === undefined ? undefined : unfolded(given);
     if (expected !== undefined) {
-      this.#records.expected.set(node, expected);
+      this.#expected(node, expected);
       if (node.kind === 'StringLiteral') {
         this.recordKey(node, keysOwner(this.checker.fitting, expected));
       }
@@ -218,10 +233,6 @@ export class BodyChecker implements BodyContext {
         ? undefined
         : builtMember(this, node, expected, () => this.acceptedPart(node));
     return this.#record(node, handlerOf(expressionHandlers, node)(this, node, guide));
-  }
-
-  checkWith(node: Expression, check: () => Type): Type {
-    return this.#record(node, check());
   }
 
   accepts(node: Expression): Accepts | undefined {
@@ -256,7 +267,14 @@ export class BodyChecker implements BodyContext {
   #record(node: Expression, value: Type): Type {
     const type = this.chains.linked(this, node, unfolded(value));
     this.#records.types.set(node, type);
+    this.scopes.recorded(type, (solved) => this.#records.types.set(node, solved));
     return type;
+  }
+
+  /** Records that `expected` is what `site` is expected to be, solved once its scope is. */
+  #expected(site: ValueSite, expected: Type): void {
+    this.#records.expected.set(site, expected);
+    this.scopes.recorded(expected, (solved) => this.#records.expected.set(site, solved));
   }
 
   typeOf(node: Expression): Type {
@@ -272,7 +290,7 @@ export class BodyChecker implements BodyContext {
   }
 
   expectAt(site: Expression, expected: Type): void {
-    this.#records.expected.set(site, expected);
+    this.#expected(site, expected);
   }
 
   expect(node: Expression, expected: Type | undefined): Type {
@@ -284,46 +302,34 @@ export class BodyChecker implements BodyContext {
   }
 
   fit(found: Type, expected: Type, site: ValueSite, at = site.span): void {
-    this.#records.expected.set(site, expected);
-    const fit = this.#fitOf(found, expected, at);
+    this.#expected(site, expected);
+    const fit = reportedFit(this, found, expected, at);
     if (!isExact(fit)) {
       this.#records.fits.set(site, fit);
     }
   }
 
   fitWritten(found: Type, expected: Type, at: AnchoredSpan): Fit {
-    return this.#fitOf(found, expected, at);
-  }
-
-  /**
-   * How `found` fits `expected`; as it is after reporting at `at` why not: a trait it doesn't meet,
-   * when an `any` type is expected, or that it converts into several members of the union (§2).
-   */
-  #fitOf(found: Type, expected: Type, at: AnchoredSpan): Fit {
-    const fit = this.checker.fitOf(found, expected);
-    if (fit !== undefined) {
-      return fit;
-    }
-    const site = useSite(this.checker, this.module, at);
-    if (expected.kind !== 'any' || !reportUnmet(site, found, expected)) {
-      this.report(misfitOf(this.checker.fitting, at, found, expected));
-    }
-    return exactFit;
+    return reportedFit(this, found, expected, at);
   }
 
   block(node: Block, expected?: Type): Type {
-    return checkBlock(this, node, { kind: 'value', expected });
+    return this.scopes.suspended(() =>
+      checkBlock(this, node, { kind: 'value', expected: closed(expected) }),
+    );
   }
 
   effectBlock(node: Block): void {
-    checkBlock(this, node, { kind: 'effect' });
+    this.scopes.suspended(() => checkBlock(this, node, { kind: 'effect' }));
   }
 
   statement(node: Statement | Invalid, expected?: Type): Type {
     if (node.kind !== 'Invalid') {
       this.checker.annotations.of(this.module, node, statementPlace(node));
     }
-    return handlerOf(statementHandlers, node)(this, node, expected);
+    return this.scopes.suspended(() =>
+      handlerOf(statementHandlers, node)(this, node, closed(expected)),
+    );
   }
 
   report(diagnostic: Diagnostic<AnchoredSpan>): void {

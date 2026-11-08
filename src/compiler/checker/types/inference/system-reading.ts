@@ -10,7 +10,7 @@ import { substitute } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
-import type { Bound, LowerBound, VariableBounds } from './bounds.ts';
+import type { Bound, LowerBound, Related, VariableBounds } from './bounds.ts';
 
 /** What reading a system's variables needs of it. */
 export interface SystemReading {
@@ -18,12 +18,33 @@ export interface SystemReading {
   readonly isVariable: (key: ParameterKey) => boolean;
   readonly givenOf: (variable: ParameterKey) => Type | undefined;
   readonly boundsOf: (variable: ParameterKey) => VariableBounds;
+  /** The variables `variable` is related to (bounds.ts). */
+  readonly relatedOf: (variable: ParameterKey) => Related;
   /** The type `lower` bounds of `variable` join to (fillings.ts). */
   readonly join: (
     variable: ParameterKey,
     lower: readonly LowerBound[],
     upper: readonly Bound[],
   ) => Type | undefined;
+}
+
+/**
+ * The variables `type` mentions, and every one they reach through their bounds and relations:
+ * those a value of `type` given the error type leaves nothing else to bound (`CallSystem.abandon`).
+ */
+export function reachedFrom(type: Type, reading: SystemReading): ReadonlySet<ParameterKey> {
+  const reached = new Set<ParameterKey>();
+  const pending = [...parametersIn(type)];
+  for (let variable = pending.pop(); variable !== undefined; variable = pending.pop()) {
+    if (reading.isVariable(variable) && !reached.has(variable)) {
+      reached.add(variable);
+      const { equal, lower, upper } = reading.boundsOf(variable);
+      const { below, above } = reading.relatedOf(variable);
+      const bounds = [...(equal === undefined ? [] : [equal]), ...lower, ...upper];
+      pending.push(...bounds.flatMap((bound) => parametersIn(bound.type)), ...below, ...above);
+    }
+  }
+  return reached;
 }
 
 /** What `variable`'s bounds tell so far: its equality, its lower bounds' join, else its upper bound. */

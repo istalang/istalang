@@ -19,6 +19,7 @@
 import { memo } from '../../../../foundation/structures/memo.ts';
 import type { Fitting } from '../fitting/fit/index.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
+import { parametersIn } from '../parts/type-parts.ts';
 import type { ParameterKey, Type, TypeParameterType } from '../type/index.ts';
 import type { Settling } from './settle.ts';
 
@@ -39,6 +40,11 @@ function twinOf(parameter: ParameterKey, site: object): ParameterKey {
 /** The parameter `key` stands for: `key` itself, unless it is a call's variable (the banner). */
 export function standingFor<Key extends ParameterKey>(key: Key): Key {
   return (standing.get(key) as Key | undefined) ?? key;
+}
+
+/** Whether `type` mentions a call's variable, of any system. */
+export function mentionsAnyVariable(type: Type): boolean {
+  return parametersIn(type).some((key) => standing.has(key));
 }
 
 export class CallVariables {

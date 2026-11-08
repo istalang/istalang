@@ -70,7 +70,7 @@ export class OptionalChains implements Chains {
     if (step === undefined) {
       unreachable(`A ${link.kind} is no link; the checker asked the wrong node.`);
     }
-    const targetType = context.expression(step.target);
+    const targetType = context.settled(step.target);
     if (!this.continues(link)) {
       return targetType;
     }

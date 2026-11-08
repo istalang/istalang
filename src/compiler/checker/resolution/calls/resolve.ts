@@ -3,8 +3,9 @@
  * (resolution/applying/applied-call.ts), chosen, instantiated with its constraints met and its
  * arguments fitted, so their implicit conversions are too, then recorded for lowering with what
  * only a written call has: its receiver, the places it changes, and a report about a call nothing
- * takes. Choosing comes first; the rest waits for the system the call stands in to settle
- * (resolution/applying/joint.ts).
+ * takes. Choosing comes first; the rest waits for the constraint scope the call stands in to settle
+ * (contexts/constraint-scope.ts), and so does reporting a call no candidate takes while what it is
+ * given is still open there, which then reads its arguments as they settled.
  *
  * - An argument whose type the chosen function decides (a bare variant, a lambda with an untyped
  *   parameter, an empty `[]`, a literal holding one) is checked only after choosing, against its
@@ -36,8 +37,7 @@ import type { LiteralType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { type CallApplication, chooseCall, completeCall } from '../applying/applied-call.ts';
-import { argumentListText } from '../applying/argument-fit.ts';
-import { type CheckJoining, type JoinPlace, settledOrJoined } from '../applying/joint.ts';
+import { argumentListText, withSolvedTypes } from '../applying/argument-fit.ts';
 import type { BindingFailure } from '../choosing/binding.ts';
 import type { CallArgument, Inapplicability, Misfit, Passing } from '../choosing/call-arguments.ts';
 import { callMade } from '../choosing/calls-made.ts';
@@ -62,8 +62,6 @@ export interface WrittenArgument {
   readonly accepts?: Accepts | undefined;
   readonly name?: Identifier | undefined;
   readonly isSpread?: boolean | undefined;
-  /** Where it may have joined the call, with what did (applying/joint.ts). */
-  readonly place?: JoinPlace | undefined;
   /**
    * For an argument the call decides, the type it is known to have so far, which bounds what the
    * call gives it: a lambda's written parameters (constructs/closures/lambdas.ts `writtenInputs`),
@@ -87,15 +85,17 @@ export interface CallRequest {
   readonly receiver?: Expression;
   /** What to report instead when no candidate takes the arguments, if anything. */
   readonly hint?: () => Diagnostic<AnchoredSpan> | undefined;
-  /** Where the call may join the call it is passed to (applying/joint.ts), if it may. */
-  readonly place?: JoinPlace | undefined;
-  /** How what it is given, a lambda's value among them, may join it (applying/joint.ts). */
-  readonly joining?: CheckJoining | undefined;
+  /**
+   * The expression the call is, which its constraint scope records once it settles: a written
+   * call's; none for an operator's or an index's, whose own handler records it.
+   */
+  readonly recorded?: Expression | undefined;
 }
 
 /**
- * Resolves `request`, recording the call once its system settles (applying/joint.ts); what it
- * yields, or the error type after a report.
+ * Resolves `request`, joining the current constraint scope (contexts/constraint-scope.ts), which
+ * records the call once it settles: what it yields, open until then, or the error type after a
+ * report.
  */
 export function resolveCall(context: BodyContext, request: CallRequest): Type {
   const { site } = request;
@@ -103,10 +103,42 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
     site,
     request.candidates.map(({ declaration }) => declaration),
   );
+  const scope = context.scopes.root;
+  const openArguments = request.arguments.some(({ type }) => context.scopes.holds(type));
+  // A candidate meets the scope's variables only through what it is given or expected to give;
+  // where neither holds one, its system starts empty, and committing it adds its own.
+  const meetsScope = openArguments || context.scopes.holds(request.expected);
+  const applying = applicationOf(context, request, meetsScope ? scope : undefined);
+  const chosen = chooseCall(context, applying, { reports: !openArguments });
+  if (chosen === undefined) {
+    if (openArguments) {
+      reportUnmade(context, request);
+    } else {
+      expectWrittenArguments(context, applying);
+    }
+    return errorType;
+  }
+  const { checker } = context;
+  const settling = settlingAt(useSite(checker, context.module, site.span), chosen.signature);
+  return context.scopes.join({
+    node: request.recorded,
+    inference: chosen.inference,
+    type: chosen.inference.open(chosen.signature.result()),
+    settling,
+    judge: () => applying.chosen?.(chosen, settling),
+    complete: () => completeResolved(context, request, applying, chosen),
+  });
+}
+
+/** How `request` is applied, its candidates' systems copies of `scope`'s, if one is open. */
+function applicationOf(
+  context: BodyContext,
+  request: CallRequest,
+  scope: Inference | undefined,
+): CallApplication {
+  const { site } = request;
   const written = request.arguments;
-  const joined = written.flatMap(({ place }) => place ?? []);
-  const { joining } = request;
-  const applying: CallApplication = {
+  return {
     span: site.span,
     site,
     name: request.name,
@@ -114,6 +146,7 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
     arguments: written.map((argument) => ({ ...callArgumentOf(argument), node: argument.node })),
     typeArguments: request.typeArguments,
     expected: request.expected,
+    scope,
     none: (reasons) => {
       const hint = request.hint?.();
       if (hint === undefined) {
@@ -123,34 +156,25 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
       }
     },
     chosen: (application, settlingIt) =>
-      checkDecidedFunctions(context, written, application, {
-        settling: settlingIt,
-        joins: joining === undefined ? undefined : { joining, places: joined },
-      }),
+      checkDecidedFunctions(context, written, application, settlingIt),
   };
-  const chosen = chooseCall(context, applying);
-  if (chosen === undefined) {
-    expectWrittenArguments(context, applying);
-    return errorType;
-  }
-  const { checker } = context;
-  const settling = settlingAt(useSite(checker, context.module, site.span), chosen.signature);
-  const within = (joint: Inference): Application => ({
-    ...chosen,
-    inference: chosen.inference.within(joint),
+}
+
+/**
+ * A call no candidate takes, whose arguments' types are still open in its constraint scope: what
+ * they would have bounded gets the error type, and once the scope is solved the call is chosen
+ * again among its candidates with their types solved, which reports why none takes them as their
+ * own types read.
+ */
+function reportUnmade(context: BodyContext, request: CallRequest): void {
+  context.scopes.abandon(request.arguments.map(({ type }) => type));
+  context.scopes.whenSolved((solved) => {
+    const settled = { ...request, arguments: withSolvedTypes(request.arguments, solved) };
+    const applying = applicationOf(context, settled, undefined);
+    if (chooseCall(context, applying) === undefined) {
+      expectWrittenArguments(context, applying);
+    }
   });
-  return settledOrJoined(
-    context,
-    {
-      inference: chosen.inference,
-      type: chosen.inference.open(chosen.signature.result()),
-      settling,
-      joined,
-      judge: (joint) => applying.chosen?.(within(joint), settling),
-      complete: (joint) => completeResolved(context, request, applying, within(joint)),
-    },
-    request.place,
-  );
 }
 
 /** Completes the call `request` makes, once its system is settled, recording it; its type. */
@@ -186,8 +210,7 @@ function completeResolved(
 
 /** A written argument as choosing sees it. */
 export function callArgumentOf(argument: WrittenArgument): CallArgument {
-  const { type, literal, passing, accepts, name, isSpread, place, known } = argument;
-  const joined = place?.joined;
+  const { type, literal, passing, accepts, name, isSpread, known } = argument;
   return {
     type,
     literal,
@@ -196,7 +219,6 @@ export function callArgumentOf(argument: WrittenArgument): CallArgument {
     name: name?.text,
     isSpread,
     exact: isSpread === true,
-    joining: joined === undefined ? undefined : [joined.inference],
     known,
   };
 }

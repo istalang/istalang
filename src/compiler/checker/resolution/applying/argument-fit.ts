@@ -100,3 +100,13 @@ export function argumentListText(
     })
     .join(', ');
 }
+
+/** `given`, each argument's type as `solved` reads it, as once its constraint scope is solved. */
+export function withSolvedTypes<Argument extends { readonly type: Type | undefined }>(
+  given: readonly Argument[],
+  solved: (type: Type) => Type,
+): readonly Argument[] {
+  return given.map((argument) =>
+    argument.type === undefined ? argument : { ...argument, type: solved(argument.type) },
+  );
+}

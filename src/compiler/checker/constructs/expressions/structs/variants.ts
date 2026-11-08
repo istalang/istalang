@@ -6,9 +6,8 @@
  *   it is the same enum, else from the arguments and defaults.
  * - A variant with fields is a function of its enum, its constructor (§3.11,
  *   syntax/declarations/field-defaults.ts), and is built only by calling it: a call binds its
- *   arguments to the fields as any call's to parameters (§3.3). Its arguments filling fields whose
- *   types are known before them are checked against them (`calledConstructor`,
- *   resolution/calls/known-parameters.ts). Named without a call, it is that function as a value (§3.14,
+ *   arguments to the fields as any call's to parameters (§3.3), as any generic call is, its type
+ *   arguments inferred. Named without a call, it is that function as a value (§3.14,
  *   closures/function-values.ts) wherever no enum is expected of it: qualified, or bare where an
  *   expected function type's result gives its enum. A variant without fields is a value, so
  *   `Expired()` is `Expired`.
@@ -30,7 +29,6 @@ import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import type { CheckJoining, JoinPlace } from '../../../resolution/applying/joint.ts';
 import { resolveCall, type WrittenArgument } from '../../../resolution/calls/resolve.ts';
 import { functionsAccepted, namedFunctions } from '../../../resolution/choosing/named-functions.ts';
 import { enumsExpected, expectedNominal, writtenNominal } from '../../../types/fitting/expected.ts';
@@ -176,10 +174,6 @@ function checkVariantName(
 export interface VariantCall {
   readonly node: Call;
   readonly expected: Type | undefined;
-  /** Where the call may join the call it is passed to (resolution/applying/joint.ts), if it may. */
-  readonly place?: JoinPlace | undefined;
-  /** How what the call is given, a lambda's value among them, may join it. */
-  readonly joining?: CheckJoining | undefined;
   readonly typeArguments: readonly Type[] | undefined;
   readonly written: readonly WrittenArgument[];
 }
@@ -207,14 +201,13 @@ export function checkVariantCall(
   if (constructs !== undefined) {
     return resolveCall(context, {
       site: call.node,
+      recorded: call.node,
       name: declaredFunctionName(constructs),
       candidates: [{ declaration: constructs }],
       arguments: call.written,
       typeArguments: call.typeArguments,
       expected: call.expected,
       form: 'call',
-      place: call.place,
-      joining: call.joining,
     });
   }
   const entity = nominalEntityOf(context.checker, chosen.enum);

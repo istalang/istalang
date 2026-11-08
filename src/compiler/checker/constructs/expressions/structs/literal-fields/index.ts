@@ -13,8 +13,9 @@
  *   known is checked against it, any other is checked on its own and matched. Defaults fill what
  *   is left; anything still open can't be inferred. A shape has no type parameters, but an alias
  *   naming one may (§3.17), and a literal through it infers them as a struct's.
- * - A literal is a construct of the system it stands in (resolution/applying/joint.ts): its items
- *   matched, it waits for that system to settle before it is completed and anything is recorded.
+ * - A literal is a member of the constraint scope it stands in (contexts/constraint-scope.ts): its
+ *   items matched, it waits for the scope to settle before it is completed and anything is
+ *   recorded.
  * - What each field's value comes from is recorded per literal, in declaration order
  *   (../literal-sources.ts), so lowering and compile time read it rather than reading the items
  *   again. A literal with a mistake in its items has no record: nothing compiles it.
@@ -28,14 +29,9 @@ import { typeParametersOf } from '../../../../../syntax/declarations/index.ts';
 import type { FieldsLiteral } from '../../../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
-import {
-  type CheckJoining,
-  type JoinPlace,
-  settledOrJoined,
-} from '../../../../resolution/applying/joint.ts';
 import { completeInference, settlingOf } from '../../../../types/inference/complete.ts';
 import { Inference } from '../../../../types/inference/infer.ts';
-import type { Settling } from '../../../../types/inference/settle.ts';
+import { type Settling, settlesFreely } from '../../../../types/inference/settle.ts';
 import { type Substitution, substitute } from '../../../../types/parts/substitution.ts';
 import { parametersIn } from '../../../../types/parts/type-parts.ts';
 import type { ParameterKey, Type } from '../../../../types/type/index.ts';
@@ -58,27 +54,24 @@ import {
   type LiteralShape,
   type LiteralSpread,
   literalName,
+  matchValue,
   reportMissing,
 } from './items.ts';
 
 /** Where a literal stands beside its shape: its leading spread, and where it may join a call. */
 export interface LiteralSetting {
   readonly spread?: LiteralSpread | undefined;
-  /** Where it may join the call it is passed to (resolution/applying/joint.ts), if it may. */
-  readonly place?: JoinPlace | undefined;
-  /** How a value whose field's type is still to be inferred may join it in turn. */
-  readonly joining?: CheckJoining | undefined;
 }
 
 /**
- * Checks `node`'s items against `shape`; the literal's type, once its system settles: joining the
- * call it is passed to where it may (resolution/applying/joint.ts), else at once.
+ * Checks `node`'s items against `shape`, in the current constraint scope: the literal's type, open
+ * until the scope settles (contexts/constraint-scope.ts).
  */
 export function checkLiteralFields(
   context: BodyContext,
   node: FieldsLiteral,
   shape: LiteralShape,
-  { spread, place, joining }: LiteralSetting = {},
+  { spread }: LiteralSetting = {},
 ): Type {
   const { checker } = context;
   const spreadType =
@@ -86,8 +79,12 @@ export function checkLiteralFields(
   const parameters = shape.owner === undefined ? [] : typeParametersOf(shape.owner.typeParameters);
   const decided = decidedArguments(shape, parameters);
   const inference = new Inference(parameters, checker.fitting, decided, { site: node });
-  if (spreadType !== undefined) {
-    inference.match(spreadOf(shape, parameters.map(parameterType)), spreadType);
+  context.scopes.commit(inference);
+  if (
+    spreadType !== undefined &&
+    !inference.match(spreadOf(shape, parameters.map(parameterType)), spreadType)
+  ) {
+    context.scopes.abandon([spreadType]);
   }
   const items: LiteralItems = {
     node,
@@ -95,38 +92,31 @@ export function checkLiteralFields(
     inference,
     given: new Map(),
     postponed: new Map(),
-    joining,
-    places: [],
     fits: true,
   };
   for (const item of node.items) {
     checkItem(context, items, item, spread?.node);
   }
-  const comprehended = checkComprehended(context, node, {
-    fields: shape.fields,
-    name: literalName(node),
-    inference,
-    isGiven: (index) => items.given.has(index),
-  });
-  const settling =
-    shape.owner === undefined ? settlesNothing : settlingOf(checker, shape.owner, parameters);
-  const checked = { items, comprehended, spread, spreadType, settling };
-  return settledOrJoined(
-    context,
-    {
+  // Each pass checks the comprehension's value again, so it settles on its own in each.
+  const comprehended = context.scopes.suspended(() =>
+    checkComprehended(context, node, {
+      fields: shape.fields,
+      name: literalName(node),
       inference,
-      type: inference.open(shape.typeOf(parameters.map(parameterType))),
-      settling,
-      joined: items.places,
-      judge: (joint) => judgePostponed(context, items, inference.within(joint), settling),
-      complete: (joint) =>
-        completeLiteral(context, {
-          ...checked,
-          items: { ...items, inference: inference.within(joint) },
-        }),
-    },
-    place,
+      isGiven: (index) => items.given.has(index),
+    }),
   );
+  const settling =
+    shape.owner === undefined ? settlesFreely : settlingOf(checker, shape.owner, parameters);
+  const checked = { items, comprehended, spread, spreadType, settling };
+  return context.scopes.join({
+    node,
+    inference,
+    type: inference.open(shape.typeOf(parameters.map(parameterType))),
+    settling,
+    judge: () => judgePostponed(context, items, inference, settling),
+    complete: () => completeLiteral(context, checked),
+  });
 }
 
 /**
@@ -147,7 +137,7 @@ function judgePostponed(
     const known = inference.settledIn(declared);
     const isOpen = parametersIn(known).some((parameter) => inference.isUnknown(parameter));
     const type = context.expression(node, isOpen ? undefined : known);
-    inference.match(declared, type);
+    matchValue(context, inference, declared, type);
     items.given.set(index, { node, type, declared, isLiteral: false });
   }
 }
@@ -161,15 +151,12 @@ interface CheckedLiteral {
   readonly settling: Settling;
 }
 
-/** A shape's settling: it has no type parameters to settle. */
-const settlesNothing: Settling = { admits: () => true, defaultOf: () => undefined };
-
 /** Completes a literal once its system settles, recording what it builds; its type. */
 function completeLiteral(context: BodyContext, checked: CheckedLiteral): Type {
   const { items, comprehended, spread, spreadType, settling } = checked;
   const { node, shape, inference } = items;
   const completed = complete(context, items, settling);
-  const found = completed?.substitution ?? inference.substitution();
+  const found = completed?.substitution ?? inference.solution();
   context.literals.recordFields(
     node,
     shape.fields.map((field) => ({
@@ -183,7 +170,11 @@ function completeLiteral(context: BodyContext, checked: CheckedLiteral): Type {
   const type = shape.typeOf(completed.typeArguments);
   fitItems(context, items, completed.substitution);
   if (spread !== undefined && spreadType !== undefined) {
-    context.fit(spreadType, spreadOf(shape, completed.typeArguments), spread.node.expression);
+    context.fit(
+      inference.solved(spreadType),
+      spreadOf(shape, completed.typeArguments),
+      spread.node.expression,
+    );
   }
   fitComprehended(context, comprehended, completed.substitution);
   const comprehendedFields = comprehendedGiven(comprehended);
@@ -210,18 +201,19 @@ function completeLiteral(context: BodyContext, checked: CheckedLiteral): Type {
 
 /**
  * Fits each named item's value to its field, `substitution` giving the literal's type arguments; a
- * written literal checked again as its field's type then reads it (§2), and a value that joined
- * the literal has its type as the system settled it.
+ * written literal checked again as its field's type then reads it (§2), and any other value has
+ * its type as the scope settled it.
  */
 function fitItems(
   context: BodyContext,
-  { given, places, inference }: LiteralItems,
+  { given, inference }: LiteralItems,
   substitution: Substitution,
 ): void {
-  const settled = (type: Type) => (places.length === 0 ? type : inference.solved(type));
   for (const value of given.values()) {
     const declared = substitute(value.declared, substitution, context.checker.typeRules);
-    const type = value.isLiteral ? context.expression(value.node, declared) : settled(value.type);
+    const type = value.isLiteral
+      ? context.expression(value.node, declared)
+      : inference.solved(value.type);
     context.fit(type, declared, value.node);
     context.recordKey(
       value.node,
@@ -282,7 +274,7 @@ function complete(
     return undefined;
   }
   if (completion.kind === 'open' && expected !== undefined) {
-    const found = inference.substitution();
+    const found = inference.solution();
     const given = shape.typeOf(parameters.map((parameter) => found.get(parameter) ?? errorType));
     context.report(checkerDiagnostics.typeMismatch(node.span, typeText(expected), typeText(given)));
     return undefined;

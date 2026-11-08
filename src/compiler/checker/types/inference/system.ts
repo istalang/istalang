@@ -1,12 +1,14 @@
 /**
- * A call's inference, and that of the calls and literals joining it (design.md §4), as one system
- * of their variables (variables.ts): the bounds matching gives them (bounds.ts, relate.ts,
+ * The inference of the calls and literals of one constraint scope (design.md §4,
+ * contexts/constraint-scope.ts), as one system of their variables (variables.ts): the bounds
+ * matching gives them (bounds.ts, relate.ts,
  * equal.ts), the types given some outright, the notes a failed or partial match leaves, and
  * settling them (settle.ts). Inference (infer.ts) speaks for one call in its parameters' names;
  * this class never meets a parameter, only the variables standing for them.
  *
- * - A system joining others starts as a copy of theirs (`joining`), so each candidate a call
- *   chooses among matches in a system of its own and leaves the others' untouched.
+ * - A candidate's system starts as a copy of its scope's (`joining`), so each candidate a call
+ *   chooses among matches in a system of its own and leaves the scope untouched; the chosen one's
+ *   is taken on by the scope's (`adopt`).
  * - What a match bounds depends on what it is: an argument's bounds are its own, the expected
  *   type's advise (`expectResult`), and a receiver's are equalities its caller then gives.
  * - Matching probes: a failed match leaves no bound behind (`BoundStore.rollback`). Bounds that
@@ -36,9 +38,11 @@ import {
   type SettlingView,
   settleAll,
   settleOne,
+  settlesFreely,
 } from './settle.ts';
 import {
   fixedOf,
+  reachedFrom,
   type SystemReading,
   solvedIn,
   takesShape,
@@ -55,9 +59,6 @@ export type Written =
   | { readonly kind: 'literal'; readonly literal: LiteralType }
   /** A struct literal of items, given as its shape, which builds a struct its fields give. */
   | { readonly kind: 'shape' };
-
-/** How a variable no call claims settles: by its bounds alone. */
-const settlesFreely: Settling = { admits: () => true, defaultOf: () => undefined };
 
 export class CallSystem {
   /** Each variable's call: the variables it is one of. */
@@ -301,6 +302,7 @@ export class CallSystem {
       isVariable: (key) => this.#calls.has(key),
       givenOf: (variable) => this.#given.get(variable),
       boundsOf: (variable) => this.#store.of(variable),
+      relatedOf: (variable) => this.#store.relatedOf(variable),
       join: (variable, lower, upper) => this.#binding.join(variable, lower, upper),
     };
   }
@@ -416,6 +418,17 @@ export class CallSystem {
           this.#notes.metError(key);
         }
       }
+    }
+  }
+
+  /**
+   * Gives the error type where `type`, holding variables, goes, as a call that can't be made gives
+   * its arguments: each variable it reaches, through bounds and relations, notes it met the error
+   * type, so one nothing else bounds settles to it, reporting nothing more.
+   */
+  abandon(type: Type): void {
+    for (const variable of reachedFrom(type, this.#reading)) {
+      this.#notes.metError(variable);
     }
   }
 

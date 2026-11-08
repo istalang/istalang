@@ -11,19 +11,24 @@
  *   its parameter's type, as a variant's (`valueParameterTypes`).
  * - Its type names no parameters, so its call gives every argument by position, with no name;
  *   a spread only fills a pack its type ends in (§3.3, §3.5).
+ * - An argument still open in the call's constraint scope (contexts/constraint-scope.ts) is matched
+ *   in it, so `f(id(1))` bounds `id`'s variable by `f`'s parameter; the call then joins the scope,
+ *   and is fitted, or reported, once it settles, with every type as it settled.
  */
 
 import type { Call, CallArgument, Expression } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { fitArguments } from '../../resolution/applying/argument-fit.ts';
+import { fitArguments, withSolvedTypes } from '../../resolution/applying/argument-fit.ts';
 import { checkReferencedPlaces } from '../../resolution/calls/places.ts';
 import { callArgumentOf, explain, type WrittenArgument } from '../../resolution/calls/resolve.ts';
 import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
-import { takenBy } from '../../resolution/choosing/applicability.ts';
+import { type Taken, takenBy } from '../../resolution/choosing/applicability.ts';
 import { bindArguments } from '../../resolution/choosing/binding.ts';
+import type { Inapplicability, Takes } from '../../resolution/choosing/call-arguments.ts';
+import type { Inference } from '../../types/inference/infer.ts';
 import { packRestSlot } from '../../types/type/function-types.ts';
-import type { Type } from '../../types/type/index.ts';
+import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { futureOf } from '../../types/type/well-known.ts';
@@ -102,25 +107,100 @@ export function checkValueCall(
   const fixed = parameters.map((slot) => ({ ...slot, ...unnamed, rest: undefined }));
   const packed =
     pack === undefined ? [] : [{ type: pack, reference: false, ...unnamed, rest: packRestSlot }];
-  const takes = { typeParameters: [], parameters: [...fixed, ...packed] };
-  const callArguments = written.map(callArgumentOf);
-  const binder = bindArguments;
-  const taken = takenBy(context.checker, takes, { callArguments, written: typeArguments, binder });
+  const { result } = calleeType;
+  return applyValueCall(context, {
+    node,
+    name: callee.kind === 'Identifier' ? callee.text : typeText(calleeType),
+    written,
+    typeArguments,
+    takes: { typeParameters: [], parameters: [...fixed, ...packed] },
+    callee: calleeType,
+    type: calleeType.isAsync ? futureOf(context.checker, result) : result,
+  });
+}
+
+/** A function value's call whose arguments can be judged: what judging and completing it read. */
+interface MadeValueCall {
+  readonly node: Call;
+  /** The callee's name, or its type, as reports name the call. */
+  readonly name: string;
+  readonly written: readonly WrittenArgument[];
+  readonly typeArguments: readonly Type[] | undefined;
+  /** Its type as a signature with no type parameters, its pack a rest parameter. */
+  readonly takes: Takes;
+  readonly callee: FunctionType;
+  /** What the call gives. */
+  readonly type: Type;
+}
+
+/**
+ * Judges `call`'s arguments and fits them: at once when none is open in the current scope; else
+ * matched in it, the call joining it, fitted or reported once it settles, with every type as it
+ * settled.
+ */
+function applyValueCall(context: BodyContext, call: MadeValueCall): Type {
+  const { written } = call;
+  const scope = context.scopes.root;
+  if (scope === undefined || !written.some(({ type }) => context.scopes.holds(type))) {
+    return completeValueCall(context, call, written, takenFor(context, call, written)) ?? errorType;
+  }
+  const taken = takenFor(context, call, written, scope);
+  if ('inference' in taken) {
+    context.scopes.commit(taken.inference);
+  } else {
+    context.scopes.abandon(written.map(({ type }) => type));
+  }
+  context.scopes.whenSolved((solved) => {
+    const settled = withSolvedTypes(written, solved);
+    completeValueCall(
+      context,
+      call,
+      settled,
+      'inference' in taken ? taken : takenFor(context, call, settled),
+    );
+  });
+  return 'inference' in taken ? call.type : errorType;
+}
+
+/** How `call` takes `given`, its candidates' systems copies of `scope`'s, if given. */
+function takenFor(
+  context: BodyContext,
+  call: MadeValueCall,
+  given: readonly WrittenArgument[],
+  scope?: Inference,
+): Taken | Inapplicability {
+  return takenBy(context.checker, call.takes, {
+    callArguments: given.map(callArgumentOf),
+    written: call.typeArguments,
+    binder: bindArguments,
+    scope,
+  });
+}
+
+/**
+ * Fits `given` to `call`'s parameters as `taken` found them, and checks the places they pass:
+ * `call`'s type; undefined after reporting why `taken` refused them.
+ */
+function completeValueCall(
+  context: BodyContext,
+  call: MadeValueCall,
+  given: readonly WrittenArgument[],
+  taken: Taken | Inapplicability,
+): Type | undefined {
+  const { node, name, typeArguments, callee } = call;
   if (!('inference' in taken)) {
-    const name = callee.kind === 'Identifier' ? callee.text : typeText(calleeType);
-    explain(context, { site: node, name, arguments: written, typeArguments }, taken);
-    return errorType;
+    explain(context, { site: node, name, arguments: given, typeArguments }, taken);
+    return undefined;
   }
   fitArguments(
     context,
-    written,
-    parameters.map(({ type }) => type),
+    given,
+    callee.parameters.map(({ type }) => type),
   );
-  checkReferencedPlaces(context, written, {
-    name: callee.kind === 'Identifier' ? callee.text : typeText(calleeType),
-    isAsync: calleeType.isAsync,
-    slots: parameters,
+  checkReferencedPlaces(context, given, {
+    name,
+    isAsync: callee.isAsync,
+    slots: callee.parameters,
   });
-  const { result } = calleeType;
-  return calleeType.isAsync ? futureOf(context.checker, result) : result;
+  return call.type;
 }

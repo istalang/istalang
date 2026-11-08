@@ -40,6 +40,8 @@ export interface Given {
   readonly binder: Binder;
   /** The call's own site, which its variables stand at (types/inference/variables.ts). */
   readonly site?: object | undefined;
+  /** The constraint scope's inference each candidate's system starts as a copy of. */
+  readonly scope?: Inference | undefined;
 }
 
 /**
@@ -61,7 +63,7 @@ export interface Taken {
 export function takenBy(
   checker: CheckerContext,
   takes: Takes,
-  { callArguments, written, binder, site }: Given,
+  { callArguments, written, binder, site, scope }: Given,
 ): Taken | Inapplicability {
   const counted = typeArgumentsInapplicability(takes, written);
   if (counted !== undefined) {
@@ -75,10 +77,7 @@ export function takenBy(
     takes.typeParameters,
     checker.fitting,
     writtenFor(takes, written),
-    {
-      site,
-      joining: callArguments.flatMap((argument) => argument.joining ?? []),
-    },
+    { site, copying: scope },
   );
   const slots = argumentSlotsOf(takes.parameters, binding);
   const packed = packItems(takes, binding);

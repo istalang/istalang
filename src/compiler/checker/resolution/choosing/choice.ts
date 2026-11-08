@@ -27,6 +27,7 @@ import {
 import { isMethod } from '../../../syntax/declarations/methods.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
+import type { Inference } from '../../types/inference/infer.ts';
 import { noSubstitution, type Substitution, substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
@@ -133,9 +134,21 @@ export function choose(
   {
     written,
     site,
-  }: { readonly written?: readonly Type[] | undefined; readonly site?: object | undefined } = {},
+    scope,
+  }: {
+    readonly written?: readonly Type[] | undefined;
+    readonly site?: object | undefined;
+    /** The constraint scope's inference each candidate's system starts as a copy of. */
+    readonly scope?: Inference | undefined;
+  } = {},
 ): Choice {
-  return chosenAmong(checker, candidates, { callArguments, written, binder: bindArguments, site });
+  return chosenAmong(checker, candidates, {
+    callArguments,
+    written,
+    binder: bindArguments,
+    site,
+    scope,
+  });
 }
 
 /**

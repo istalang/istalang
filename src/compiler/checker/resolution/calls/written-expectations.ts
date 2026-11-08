@@ -15,8 +15,7 @@
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { Inference } from '../../types/inference/infer.ts';
-import { parametersIn } from '../../types/parts/type-parts.ts';
-import type { Type } from '../../types/type/index.ts';
+import { mentionsAnyVariable } from '../../types/inference/variables.ts';
 import type { CallApplication } from '../applying/applied-call.ts';
 import { writtenFor } from '../choosing/applicability.ts';
 import { argumentSlotsOf, bindArguments, isBinding } from '../choosing/binding.ts';
@@ -56,11 +55,10 @@ export function expectWrittenArguments(context: BodyContext, request: CallApplic
   }
   inference.expect(signature.result(), request.expected);
   const settling = settlingAt(useSite(checker, context.module, request.span), signature);
-  const isOpen = (type: Type) => parametersIn(type).some((each) => inference.isUnknown(each));
   for (const [index, { node }] of request.arguments.entries()) {
     const slot = slots.get(index);
     const expected = slot === undefined ? undefined : inference.guided(slot.type, settling);
-    if (node !== undefined && expected !== undefined && !isOpen(expected)) {
+    if (node !== undefined && expected !== undefined && !mentionsAnyVariable(expected)) {
       context.expectAt(node, expected);
     }
   }

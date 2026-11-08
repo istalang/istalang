@@ -25,6 +25,7 @@
 import { noSubstitution, type Substitution, substitute } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
+import { errorType } from '../type/primitives.ts';
 import type { TypeRules } from '../type/type-rules.ts';
 import {
   type Bound,
@@ -42,6 +43,9 @@ export interface Settling {
   /** `parameter`'s default, with what is settled so far, if it has one. */
   readonly defaultOf: (parameter: ParameterKey, settled: Substitution) => Type | undefined;
 }
+
+/** How the variables of no call, or a construct with no type parameters, settle: by their bounds. */
+export const settlesFreely: Settling = { admits: () => true, defaultOf: () => undefined };
 
 /** What settling reads of an inference. */
 export interface SettlingView {
@@ -79,25 +83,45 @@ export function settleAll(
       settled.set(parameter, type);
     }
   }
+  // What later variables' bounds read: the settled ones, and the error type for one that couldn't
+  // be, so no variable is left in what another settles to; it alone stays out of `settled`.
+  const closing = new Map(settled);
   const pending = parameters.filter((parameter) => !settled.has(parameter));
   while (pending.length > 0) {
-    const index = Math.max(
-      0,
-      pending.findIndex((candidate) =>
-        [...mentioned(view.boundsOf(candidate)), ...relatives(view.relatedOf(candidate))].every(
-          (other) => other === candidate || !pending.includes(other),
-        ),
-      ),
-    );
-    const [parameter] = pending.splice(index, 1);
+    const [parameter] = pending.splice(nextToSettle(pending, view), 1);
     if (parameter !== undefined) {
-      const type = settleOne(parameter, settled, view, settling);
+      const type = settleOne(parameter, closing, view, settling);
+      closing.set(parameter, type ?? errorType);
       if (type !== undefined) {
         settled.set(parameter, type);
       }
     }
   }
   return settled;
+}
+
+/**
+ * Which of `pending` settles next: the first whose bounds mention nothing pending and which either
+ * is related to nothing pending or has bounds of its own; else the first whose bounds mention
+ * nothing pending; else the first. A variable related to another (`U <: T`) and bounded only
+ * through it thus settles after it, so `outer(empty(), 1)` settles `T` by `1` and then `U` by `T`.
+ */
+function nextToSettle(pending: readonly ParameterKey[], view: SettlingView): number {
+  const isPending = (other: ParameterKey, candidate: ParameterKey) =>
+    other !== candidate && pending.includes(other);
+  const closed = (candidate: ParameterKey) =>
+    !mentioned(view.boundsOf(candidate)).some((other) => isPending(other, candidate));
+  const ready = (candidate: ParameterKey) =>
+    closed(candidate) &&
+    (hasBounds(view.boundsOf(candidate)) ||
+      !relatives(view.relatedOf(candidate)).some((other) => isPending(other, candidate)));
+  const index = pending.findIndex(ready);
+  return index >= 0 ? index : Math.max(0, pending.findIndex(closed));
+}
+
+/** Whether `bounds` hold any bound at all. */
+function hasBounds({ equal, lower, upper }: VariableBounds): boolean {
+  return equal !== undefined || lower.length > 0 || upper.length > 0;
 }
 
 /** The type `parameter` settles to, its bounds read with `settled`; undefined when none. */

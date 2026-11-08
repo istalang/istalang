@@ -5,8 +5,9 @@
  * takes is reported and recording what it made; so choosing, ranking the implicit conversions
  * (choosing/choice.ts) and fitting an argument, its conversion and wraps included
  * (argument-fit.ts), each happen in one place for every call. Choosing (`chooseCall`) and
- * completing (`completeCall`) are apart, so a written call completes once the system it stands in
- * settles (joint.ts); a call the language makes applies at once (`applyCall`).
+ * completing (`completeCall`) are apart, so a written call completes once the constraint scope it
+ * stands in settles (contexts/constraint-scope.ts); a call the language makes applies at once
+ * (`applyCall`).
  *
  * - An argument of the error type was reported already, so a call nothing chosen for reports
  *   nothing more, while one chosen all the same judges its other arguments.
@@ -19,7 +20,6 @@
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
@@ -36,7 +36,13 @@ import { type Application, choose } from '../choosing/choice.ts';
 import { type Instantiation, instantiate, settlingAt } from '../conformance/conformance.ts';
 import { closedThroughMembers, metThroughTraits } from '../conformance/trait-calls.ts';
 import { membersRequirementOf, traitMetBy } from '../conformance/union-traits.ts';
-import { argumentListText, filledTypes, fitArguments, recordArgumentKeys } from './argument-fit.ts';
+import {
+  argumentListText,
+  filledTypes,
+  fitArguments,
+  recordArgumentKeys,
+  withSolvedTypes,
+} from './argument-fit.ts';
 
 /** A call to apply: where it stands, how reports name it, what it may call and is given. */
 export interface CallApplication {
@@ -50,6 +56,11 @@ export interface CallApplication {
   readonly typeArguments?: readonly Type[] | undefined;
   /** The type the call is to give, which advises its type arguments once it is chosen. */
   readonly expected?: Type | undefined;
+  /**
+   * The inference of the constraint scope the call joins (contexts/constraint-scope.ts), which
+   * each candidate's system starts as a copy of; none for a call settled on its own.
+   */
+  readonly scope?: Inference | undefined;
   /** Reports why no candidate takes the arguments, given each one's reason. */
   readonly none: (reasons: readonly Inapplicability[]) => void;
   /**
@@ -79,17 +90,19 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
 
 /**
  * Chooses the function `request` calls, its arguments matched and then advised by the type it is
- * expected to give; undefined after reporting why none can be chosen.
+ * expected to give; undefined after reporting why none can be chosen, unless it `reports` nothing.
  */
 export function chooseCall(
   context: BodyContext,
   request: CallApplication,
+  { reports = true }: { readonly reports?: boolean } = {},
 ): Application | undefined {
   const { checker } = context;
   const candidates = metThroughTraits(checker, request.candidates);
   const choice = choose(checker, candidates, request.arguments, {
     written: request.typeArguments,
     site: request.site,
+    scope: request.scope,
   });
   // An argument of the error type was reported already; it fits anything, so a call it leaves no
   // single function for reports nothing more, and one it leaves one still judges the others.
@@ -97,11 +110,15 @@ export function chooseCall(
     return undefined;
   }
   if (choice.kind === 'several') {
-    context.report(ambiguity(checker, request, choice.tied));
+    if (reports) {
+      context.report(ambiguity(checker, request, choice.tied));
+    }
     return undefined;
   }
   if (choice.kind === 'none') {
-    request.none(choice.reasons);
+    if (reports) {
+      request.none(choice.reasons);
+    }
     return undefined;
   }
   const { application } = choice;
@@ -136,12 +153,7 @@ export function completeCall(
   if (closed === undefined) {
     return undefined;
   }
-  settleJoinedLambdas(context, request.arguments, application.inference);
-  const settled = request.arguments.map((argument) =>
-    argument.joining === undefined || argument.type === undefined
-      ? argument
-      : { ...argument, type: application.inference.solved(argument.type) },
-  );
+  const settled = withSolvedTypes(request.arguments, (type) => application.inference.solved(type));
   fitArguments(
     context,
     settled,
@@ -157,36 +169,6 @@ export function completeCall(
       checker.typeRules,
     ),
   };
-}
-
-/**
- * Records again, as the call's system settled them, what a lambda whose value joined the call was
- * recorded as while that was open (joint.ts): its type, and its function's.
- */
-function settleJoinedLambdas(
-  context: BodyContext,
-  argumentList: CallApplication['arguments'],
-  inference: Inference,
-): void {
-  for (const { node, type } of argumentList) {
-    const recorded =
-      node === undefined || type !== undefined ? undefined : context.checkedTypeOf(node);
-    if (node !== undefined && recorded !== undefined && inference.mentionsVariables(recorded)) {
-      settleLambda(context, node, inference.solved(recorded));
-    }
-  }
-}
-
-/** Records `node`, a lambda maybe parenthesized, as `settled`, and its function with it. */
-function settleLambda(context: BodyContext, node: Expression, settled: Type): void {
-  const lambda = unparenthesized(node);
-  const checked = lambda.kind === 'Lambda' ? context.functions.checkedOf(lambda) : undefined;
-  for (const each of new Set([node, lambda])) {
-    context.checkWith(each, () => settled);
-  }
-  if (lambda.kind === 'Lambda' && checked !== undefined && settled.kind === 'function') {
-    context.functions.record(lambda, { ...checked, type: settled });
-  }
 }
 
 /** What a call several candidates take alike reports: several traits of a union, or ambiguity. */
