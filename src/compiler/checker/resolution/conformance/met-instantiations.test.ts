@@ -74,6 +74,23 @@ describe('the instantiation a type meets in an `any` type’s place (§3.10)', (
     ).toEqual([checkerDiagnostics.severalInstantiations.code]);
   });
 
+  it('finds a generic witness whose type parameter a function type it is given takes', () => {
+    expect(
+      reported(
+        [
+          'trait Transformer<T>:',
+          '  fn transform(self: Self, pair: (Int, fn(T) -> Int)) -> T',
+          'struct Gen { k: Int }',
+          'fn transform<V>(self: Gen, pair: (V, fn(V) -> Int)) -> V: pair.0',
+          'fn f(x: Int?) -> Int: 7',
+          'fn direct(gen: Gen) -> Int: transform(gen, (3, f))',
+          'fn wider(gen: Gen) -> any Transformer<Int?>: gen',
+          'fn widened(a: any Transformer<Int>) -> any Transformer<Int?>: a',
+        ].join('\n'),
+      ).codes,
+    ).toEqual([]);
+  });
+
   it('takes the closest of several that fit', () => {
     expect(
       reported(
