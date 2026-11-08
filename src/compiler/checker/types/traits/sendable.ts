@@ -1,11 +1,13 @@
 /**
- * Which types are Sendable (§3.1): derived, never declared, except for extern types, which say so.
+ * Which types are Sendable (§3.1): derived, never declared, save that an extern type says which
+ * handle it is (§3.6).
  *
- * Primitives are; a struct, an enum or a tuple is when everything in it is; an extern type is when
- * it is declared `sendable` and its type arguments are; a shared struct never is, since its values
- * have an identity (§3.18); a function type is when it is declared `sendable` (§3.14); a type
- * parameter is when constrained `is Sendable`, or by a trait that implies it (`Encodable`,
- * `Decodable`). A recursive type is sendable unless something in its cycle isn't, so a type being
+ * Primitives are; a struct, an enum, a tuple or an extern value is when everything in it is (an
+ * extern value's type arguments, since it crosses as JSON); a `sendable` handle is when its type
+ * arguments are, its identity being every instance's; any other handle never is, since its identity
+ * stays in its instance or process (§3.18, properties/handles.ts); a function type is when it is
+ * declared `sendable` (§3.14); a type parameter is when constrained `is Sendable`, or by a trait
+ * that implies it (`Encodable`, `Decodable`). A recursive type is sendable unless something in its cycle isn't, so a type being
  * decided counts as sendable while its own fields are. Conformance meets Sendable by this rule
  * (resolution/conformance/derived-traits.ts).
  *
@@ -20,6 +22,7 @@ import {
 } from '../../../../foundation/language/well-known/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { sameConstraint } from '../identity/identity.ts';
+import { isConfined } from '../properties/handles.ts';
 import { heldParts } from '../properties/held.ts';
 import { TypeCycle } from '../properties/type-cycle.ts';
 import type { Constraint, NominalType, Type } from '../type/index.ts';
@@ -101,11 +104,5 @@ function sendable(checker: CheckerContext, type: Type, deciding: TypeCycle): boo
 function nominalSendable(checker: CheckerContext, type: NominalType, deciding: TypeCycle): boolean {
   const { declaration } = type.entity;
   const parts = () => heldParts(checker, type).every((part) => sendable(checker, part, deciding));
-  if (declaration.kind === 'ExternStructDeclaration') {
-    return declaration.isSendable && parts();
-  }
-  if (declaration.kind === 'SharedStructDeclaration') {
-    return false;
-  }
-  return deciding.enter(type, true, parts);
+  return !isConfined(declaration) && deciding.enter(type, true, parts);
 }

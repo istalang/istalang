@@ -238,6 +238,8 @@ describe('completion offers the words that go on after what is written', () => {
     ['`sendable` with `async` begun', ['type F = sendable async‸'], ['fn', 'async']],
     ["a comprehension's target", ['fn f(xs: Array<Int>):', '  const e = [for x ‸]'], ['in']],
     ['`extern sendable`', ['extern sendable ‸'], ['struct']],
+    ['`extern shared`', ['extern shared ‸'], ['struct']],
+    ['`extern ephemeral`', ['extern ephemeral ‸'], ['struct']],
     ['a range', ['fn f():', '  let r = 0..10 ‸', '  1'], ['or', 'and', 'in', 'not', 'is', 'by']],
     [
       'a range with its step',

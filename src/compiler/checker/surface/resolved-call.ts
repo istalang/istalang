@@ -179,6 +179,19 @@ export type ResolvedSite = NodeOf<
   | 'TypeApplication'
 >;
 
+/** The sites a function named as a value is written as: `f`, `ns.f`, `T.f` or `f<Int>` (§3.14). */
+type FunctionValueSite = NodeOf<'Identifier' | 'MemberAccess' | 'TypeApplication'>;
+
+/**
+ * Whether `site` is written as a function named as a value is, which calls nothing where it
+ * stands: a resolved one names a function.
+ */
+export function namesFunctionValue(site: NodeOf<string>): site is FunctionValueSite {
+  return (
+    site.kind === 'Identifier' || site.kind === 'MemberAccess' || site.kind === 'TypeApplication'
+  );
+}
+
 /**
  * What a call the language makes for a construct, with no call written, does there
  * (resolution/applying/implicit.ts).

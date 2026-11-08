@@ -142,7 +142,6 @@ const externRole = z.enum(['shared', 'cell', 'future', 'instance']);
 const external = z.strictObject({
   kind: z.literal('extern'),
   ...identity,
-  sendable: z.boolean(),
   disposal,
   role: externRole.optional(),
 });

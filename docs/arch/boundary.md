@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-26
-last_updated: 2026-11-04
+last_updated: 2026-11-08
 tags: [boundary, json, externs, host, runtime, lowering]
 ---
 
@@ -82,10 +82,11 @@ its instance is numbered by, so its native sees only JSON:
 - A host type a `dispose` makes disposable (an extern its host implements, or code passing the
   value to the host's externs) has values with an identity of their own: `_decodeHandle` keeps
   the host's JSON in a `resource` object (`definition/tables/types.ts`, `isResourceType`), `_encodeHandle`
-  gives that JSON back, and the type entry's disposal calls the `dispose` at release. It can't be
-  declared sendable (5910) and, where values don't cross to the host, isn't `Encodable` or
-  `Decodable`, which imply Sendable, so it crosses only to its own host; an extern constant, one
-  value for every read, can't hold one (5911).
+  gives that JSON back, and the type entry's disposal calls the `dispose` at release. It must be
+  an `extern shared struct` or `extern ephemeral struct`, neither a value nor `sendable` (5910),
+  and, where values don't cross to the host, isn't `Encodable` or `Decodable`, which imply
+  Sendable, so it crosses only to its own host; an extern constant, one value for every read,
+  can't hold one (5911).
 - Host natives (`runtime/boundary/host-natives.ts`) take and give JavaScript JSON, what
   `JSON.parse` of the text gives but with every integer a `bigint`, so none loses digits; what a
   host gives back is read as `JSON.stringify` would write it, `undefined` as `null` or a field

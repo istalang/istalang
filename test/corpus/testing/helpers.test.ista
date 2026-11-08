@@ -11,7 +11,7 @@
 
 import mock, handle from 'testing'
 
-extern struct Queue
+extern shared struct Queue
 extern fn dispose(self: Queue)
 
 fn greet(name: String) -> String: name

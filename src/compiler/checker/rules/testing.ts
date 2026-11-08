@@ -1,13 +1,13 @@
 /**
  * What the testing module asks of the code using it (§10), checked where that code is written.
  *
- * - Suite functions: what `@Suite` asks of the function it marks. The runner calls a suite
- *   function again in every test's instance and finds the test by its position, so the function
- *   must build the same list each time: a plain `fn` taking nothing and returning `Array<Test>`,
- *   whose own body calls no extern and touches no shared struct or slot. A value of those can only
- *   come from a call or a `new`, since a constant can't hold one, so those are what is checked. The
- *   functions it calls and the tests it builds run elsewhere or later, so only its own body is; the
- *   runner checks each test's title at its position as it runs it.
+ * - Suite functions: what `@Suite` asks of the function it marks. The runner calls a suite function
+ *   again in every test's instance and finds the test by its position, so the function must build
+ *   the same list each time: a plain `fn` taking nothing and returning `Array<Test>`, whose own
+ *   body calls no extern and touches no handle (types/properties/handles.ts). A value of those can
+ *   only come from a call or a `new`, since a constant can't hold one, so those are what is
+ *   checked. The functions it calls and the tests it builds run elsewhere or later, so only its own
+ *   body is; the runner checks each test's title at its position as it runs it.
  * - The testing module's calls whose arguments its signatures can't constrain: a mock's target must
  *   name a function, since a lambda or a variable has no identity to replace, nor a variant, built
  *   where it is called (§3.11), and is never made async to fit (§3.14), since the function made
@@ -31,11 +31,17 @@ import type { BodyContext } from '../contexts/body-context.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import { checkerDiagnostics } from '../diagnostics/index.ts';
 import { isHostType } from '../surface/host-externs.ts';
-import type { FunctionCall, ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
+import {
+  type FunctionCall,
+  namesFunctionValue,
+  type ResolvedCall,
+  type ResolvedSite,
+} from '../surface/resolved-call.ts';
 import { substitute, substitutionFor } from '../types/parts/substitution.ts';
+import { isHandleType } from '../types/properties/handles.ts';
 import type { Type } from '../types/type/index.ts';
 import { typeText } from '../types/type/type-text.ts';
-import { arrayElement, wellKnownArguments } from '../types/type/well-known.ts';
+import { arrayElement } from '../types/type/well-known.ts';
 
 /** Checks each of `calls`, a body's, that calls `mock` or `handle`; the mocks' targets. */
 export function checkTestingCalls(
@@ -70,11 +76,7 @@ function checkTarget(context: BodyContext, site: Call, mock: FunctionCall): Expr
   const argument = source?.kind === 'argument' ? site.arguments[source.index] : undefined;
   const target = argument === undefined ? undefined : unparenthesized(argumentValue(argument));
   const named =
-    target?.kind === 'Identifier' ||
-    target?.kind === 'MemberAccess' ||
-    target?.kind === 'TypeApplication'
-      ? context.callAt(target)
-      : undefined;
+    target !== undefined && namesFunctionValue(target) ? context.callAt(target) : undefined;
   const names = named?.kind === 'function' && constructedVariant(named.function) === undefined;
   if (target === undefined || !names) {
     context.report(checkerDiagnostics.mockTarget((argument ?? site).span));
@@ -134,7 +136,9 @@ export function checkSuite(
     body
       .madeCalls()
       .filter(
-        ({ call }) => call.function.isExtern || isHandle(checker, checker.resultOf(call.function)),
+        ({ site, call }) =>
+          !namesFunctionValue(site) &&
+          (call.function.isExtern || isHandleType(checker.resultOf(call.function))),
       )
       .map(({ site }) => site),
   );
@@ -146,7 +150,7 @@ export function checkSuite(
 
 /**
  * The first node of `node`'s own code that makes a shared struct or is one of `effectSites`, the
- * calls of the body that call an extern or give a shared struct or a slot.
+ * calls of the body that call an extern or give a handle.
  */
 function firstEffect(
   effectSites: ReadonlySet<NodeOf<string>>,
@@ -162,13 +166,4 @@ function firstEffect(
     }
   }
   return undefined;
-}
-
-/** Whether a value of `type` is a shared struct or a slot, which every copy shares (§3.18, §6). */
-function isHandle(checker: CheckerContext, type: Type): boolean {
-  return (
-    type.kind === 'nominal' &&
-    (type.entity.declaration.kind === 'SharedStructDeclaration' ||
-      wellKnownArguments(checker, wellKnown.slot, type) !== undefined)
-  );
 }

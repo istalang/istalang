@@ -25,7 +25,6 @@ function externEntry(name: string, typeArguments: TypeReference[]): TypeDefiniti
     kind: 'extern',
     name,
     arguments: typeArguments,
-    sendable: true,
     disposal: { kind: 'none' },
   };
 }

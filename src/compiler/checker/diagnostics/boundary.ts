@@ -47,10 +47,10 @@ export const boundaryTemplates = {
     message: () =>
       'An annotation needs a value compile time computes: literals, other constants, and structs, arrays and maps built from them.',
   },
-  disposableSendable: {
+  unconfinedDisposable: {
     code: 5910,
     message: (type: string) =>
-      `${type} is declared sendable, so a 'dispose' can't make it disposable: a disposable value has an identity of its own, which never leaves its instance.`,
+      `A 'dispose' can't make ${type} disposable: a disposable value has an identity of its own, which never leaves its instance, so declare it 'extern shared struct' or 'extern ephemeral struct' (§3.6, §7).`,
   },
   resourceConstant: {
     code: 5911,
@@ -72,7 +72,7 @@ export const boundaryTemplates = {
   suiteEffect: {
     code: 5951,
     message: () =>
-      "A suite function only builds its list of tests: it can't call an extern or touch a shared struct or a slot, so every call builds the same list.",
+      "A suite function only builds its list of tests: it can't call an extern or touch a handle, such as a shared struct or a slot, so every call builds the same list.",
   },
   mockTarget: {
     code: 5952,

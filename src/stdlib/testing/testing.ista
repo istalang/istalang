@@ -81,7 +81,7 @@ fn _entries(title: String, tests: Array<Test>, skipping: Bool, focusing: Bool) -
 
 # A mock's handle (§10): while it is held, calls to its target run its replacement, and the
 # arguments of each are recorded. The runtime disposes it.
-extern struct Mock<F>
+extern shared struct Mock<F>
 extern fn dispose<F>(self: Mock<F>)
 
 extern fn _mock<F>(target: F, replacement: F) -> Mock<F>

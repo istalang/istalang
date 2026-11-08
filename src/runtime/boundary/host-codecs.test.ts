@@ -67,7 +67,7 @@ describe('a value crossing to its host', () => {
   it('keeps a disposable host type its own JSON inside an array and an optional', () => {
     const program = compiledText(
       [
-        'extern struct Lease',
+        'extern shared struct Lease',
         'extern fn openAll() -> Array<Lease>',
         'extern fn find() -> Lease?',
         'extern fn describeAll(leases: Array<Lease>, found: Lease?) -> String',

@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 tags: [definition, ir, snapshot, runtime, lowering]
 ---
 
@@ -155,8 +155,8 @@ Instruction names are in `code`. A call is always to a function-table entry; for
 | Recursive types (§3.1) | type references by index, so a type can name itself through the table |
 | `enum` declaration, `Result`, `Error` (§3.11, §3.12) | an `enum` type entry per instantiation, with, for `json.Json`, its `role`; `Error` is a `struct` entry |
 | Union `A \| B`, `T?`, literal types (§2) | an `enum` type entry per union, one variant per member, ordered by its spelled name: a member with values holds the field `value`, a literal or `None` member nothing (lowering/values/unions.ts); `T \| None` is named `prelude.Optional` with the argument `T`; a recursive alias's union is named for the alias (§3.17); a lone literal type is its base's value |
-| `extern struct`, `extern sendable struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with `sendable`, `disposal` (§7) and, for `Future`, its `role` |
-| `shared struct X` (§3.18) | an `extern` type entry per instantiation, never sendable, with its `disposal` and the `shared` role; the value behind it is an anonymous struct entry of its fields |
+| `extern struct`, `extern shared/sendable/ephemeral struct` (§3.6, §3.8) | an `extern` type entry per instantiation, with its `disposal` (§7) and, for `Future`, `Instance` and `_Cell`, its `role`; which handle it is stays the checker's, since the runtime reads only its disposal and role |
+| `shared struct X` (§3.18) | an `extern` type entry per instantiation, with its `disposal` and the `shared` role; the value behind it is an anonymous struct entry of its fields |
 | Traits, `T is A & B`, `Sendable`, `Disposable` as constraints (§3.5, §3.10) | nothing at runtime: the checker resolves every constrained call per instantiation |
 | `any A & B` (§3.10) | an `enum` entry named after the type, one variant per type converted into it, each with the one field `value`; a conversion is `variant`, or, from another `any` type, a call to an entry converting variant by variant; a call through a trait, or a required field's read, is a call to an entry that `switch`es over every variant and calls that type's function or reads its field, passing a `&self` receiver on by `&` into the variant; a downcast pattern is a `switch` on the type's variant, with `otherwise` for the rest |
 | Value semantics and handle identity (§3.1) | `move` copies values; handles compare by object id in `equal` |

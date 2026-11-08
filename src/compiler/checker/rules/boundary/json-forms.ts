@@ -53,6 +53,7 @@ import {
 import type { FunctionCall, ResolvedCall } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
 import { unaliased } from '../../types/parts/type-parts.ts';
+import { isConfined } from '../../types/properties/handles.ts';
 import { TypeCycle } from '../../types/properties/type-cycle.ts';
 import { wellKnownConstraint } from '../../types/traits/constraints.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
@@ -211,40 +212,43 @@ export class JsonForms implements JsonCodecs {
   }
 
   #nominal(type: NominalType): FormOrNone {
-    const { checker } = this.#seams;
-    const { declaration } = type.entity;
     if (this.#declaresCodecs(type)) {
       return { kind: 'none', reason: undefined };
     }
-    if (declaration.kind === 'ExternStructDeclaration') {
-      return this.#extern(type, declaration.isSendable);
+    const { declaration } = type.entity;
+    switch (declaration.kind) {
+      case 'StructDeclaration':
+        return this.#record(type, this.#seams.checker.fieldsOf(type) ?? []);
+      case 'EnumDeclaration':
+        return this.#enum(type);
+      case 'SharedStructDeclaration':
+      case 'ExternStructDeclaration':
+        return this.#opaque(type);
+      default: {
+        const unhandled: never = declaration;
+        return unhandled;
+      }
     }
-    if (declaration.kind === 'SharedStructDeclaration') {
-      return { kind: 'none', reason: handleHasNoForm };
-    }
-    if (declaration.kind === 'StructDeclaration') {
-      return this.#record(type, checker.fieldsOf(type) ?? []);
-    }
-    if (declaration.kind === 'EnumDeclaration') {
-      return this.#enum(type);
-    }
-    return { kind: 'none', reason: undefined };
   }
 
   /**
-   * An extern type: a host type is its host's JSON when it is declared sendable, or kept in a
-   * resource when a `dispose` makes it disposable (§7); anything else has nothing to derive from.
+   * A type whose values aren't fields a form could follow (§3.6, §3.18): a host type is its host's
+   * JSON when it is a value or a `sendable` handle, or kept in a resource when a `dispose` makes
+   * its handle disposable (§7); any other handle has none, nor has a std module's extern type that
+   * declares no codecs.
    */
-  #extern(type: NominalType, isSendable: boolean): FormOrNone {
+  #opaque(type: NominalType): FormOrNone {
     const { checker } = this.#seams;
     const isHost = isHostType(checker, type);
-    if (isHost && (isSendable || checker.disposalOf(type).kind === 'function')) {
+    const crosses =
+      !isConfined(type.entity.declaration) || checker.disposalOf(type).kind === 'function';
+    if (isHost && crosses) {
       return { kind: 'host', type };
     }
     return {
       kind: 'none',
       reason: isHost
-        ? 'a JSON form, which a host type has when declared sendable or disposable'
+        ? 'a JSON form, which a host handle has only when a `dispose` makes it a resource'
         : handleHasNoForm,
     };
   }

@@ -53,7 +53,7 @@ fn Duration.fromJson(value: json.Json, path: String) -> Result<Duration>:
 # zone rules are the host's time-zone data, so two hosts with different data can disagree. A Zone
 # is a type the runtime implements, holding its zone's canonical id, so no code can build one in a
 # form of its own, and `==` and map keys compare zones.
-extern sendable struct Zone
+extern struct Zone
 
 # Coordinated Universal Time.
 extern fn utc() -> Zone

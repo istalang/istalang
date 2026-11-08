@@ -84,7 +84,10 @@ const scenarios: readonly Scenario[] = [
     title: 'After extern',
     src: ['extern ‸'],
     where: 'top',
-    expect: { has: ['fn', 'struct'], lacks: ['plus', 'Pair', 'let', 'if'] },
+    expect: {
+      has: ['fn', 'struct', 'shared', 'sendable', 'ephemeral'],
+      lacks: ['plus', 'Pair', 'let', 'if'],
+    },
   },
   {
     id: 'TL-06',

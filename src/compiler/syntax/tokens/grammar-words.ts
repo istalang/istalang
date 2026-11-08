@@ -149,3 +149,19 @@ export const followers = {
 } as const satisfies Partial<Record<Word, readonly Keyword[]>>;
 
 export type Modifier = keyof typeof followers;
+
+/**
+ * What may stand between `extern` and `struct`, each making the host's type a handle (§3.6):
+ * `shared` has its instance's identity, `sendable` one every instance shares, `ephemeral` its
+ * process's. An extern struct with none of them is a value.
+ */
+export const externHandles = ['shared', 'sendable', 'ephemeral'] as const satisfies readonly Word[];
+
+export type ExternHandle = (typeof externHandles)[number];
+
+const externHandleSet: ReadonlySet<string> = new Set(externHandles);
+
+/** Whether `word` makes an extern struct a handle. */
+export function isExternHandle(word: string): word is ExternHandle {
+  return externHandleSet.has(word);
+}

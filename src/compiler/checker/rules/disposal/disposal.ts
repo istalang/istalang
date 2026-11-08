@@ -32,6 +32,7 @@ import { callCandidates, namedInModule } from '../../resolution/choosing/candida
 import { isHostExtern, isHostType } from '../../surface/host-externs.ts';
 import type { FunctionCall, ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
 import { sameType } from '../../types/identity/identity.ts';
+import { isConfined } from '../../types/properties/handles.ts';
 import { requiredFunctions } from '../../types/traits/constraints.ts';
 import { knownConstraints } from '../../types/traits/known-constraints.ts';
 import type { NominalType, Type } from '../../types/type/index.ts';
@@ -105,12 +106,15 @@ function isRuntimeDispose(checker: CheckerContext, declaration: FunctionDeclarat
 }
 
 /**
- * Whether a program's `dispose` may make `type` disposable: a shared struct (§3.18), or an extern
- * type a host provides. A std module's extern types are either values, such as an `Array`, or
- * disposed by the runtime already.
+ * Whether a program's `dispose` may make `type` disposable: a handle whose identity stays in its
+ * instance or process (§3.6, §3.18), a shared struct or a host's. A std module's extern types are
+ * either values, such as an `Array`, or disposed by the runtime already.
  */
 function isOwnedHandle(checker: CheckerContext, type: NominalType): boolean {
-  return type.entity.declaration.kind === 'SharedStructDeclaration' || isHostType(checker, type);
+  const { declaration } = type.entity;
+  const runtimeImplements =
+    declaration.kind === 'ExternStructDeclaration' && !isHostType(checker, type);
+  return isConfined(declaration) && !runtimeImplements;
 }
 
 function isStdType(checker: CheckerContext, type: NominalType): boolean {
@@ -142,9 +146,9 @@ function declaredDispose(checker: CheckerContext, type: NominalType): FunctionCa
 
 /**
  * Checks a `dispose` a program declares (§7): its one parameter takes a handle a program may make
- * disposable, and a host type that isn't declared sendable, since a disposable value has an
- * identity of its own (§3.1); it is plain code returning unit, lookup finds it for that type, and
- * its `self` never escapes it.
+ * disposable, one whose identity stays in its instance or process, since a disposable value has an
+ * identity of its own (§3.1, §3.6); it is plain code returning unit, lookup finds it for that
+ * type, and its `self` never escapes it.
  */
 export function checkDisposeDeclaration(
   checker: CheckerContext,
@@ -162,12 +166,12 @@ export function checkDisposeDeclaration(
     return;
   }
   if (self.type.kind !== 'nominal' || !isOwnedHandle(checker, self.type)) {
-    checker.report(module, checkerDiagnostics.disposeType(at, typeText(self.type)));
+    // A host type a program may not make disposable is one whose identity would leave its instance.
+    const misfit = isHostType(checker, self.type)
+      ? checkerDiagnostics.unconfinedDisposable
+      : checkerDiagnostics.disposeType;
+    checker.report(module, misfit(at, typeText(self.type)));
     return;
-  }
-  const { declaration: disposed } = self.type.entity;
-  if (disposed.kind === 'ExternStructDeclaration' && disposed.isSendable) {
-    checker.report(module, checkerDiagnostics.disposableSendable(at, typeText(self.type)));
   }
   const found = checker.disposalOf(self.type);
   if (found.kind !== 'function' || found.call.function !== declaration) {

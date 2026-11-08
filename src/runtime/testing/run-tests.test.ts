@@ -232,7 +232,7 @@ fn suite() -> Array<Test>: [test("handles", handles)]
 describe("a host type's dispose", () => {
   it('does nothing unless a mock replaces it, and reaches the mock when one does', () => {
     const source = testModule(`
-extern struct Queue
+extern shared struct Queue
 extern fn dispose(self: Queue)
 extern fn open() -> Queue
 async fn openAsync() -> Future<Queue>:
@@ -270,7 +270,7 @@ fn suite() -> Array<Test>: [test("unmocked", unmockedDispose), test("mocked", mo
 
   it('runs once, in the instance owning the value, never in the test that answered with it', () => {
     const source = testModule(`
-extern struct Sent
+extern shared struct Sent
 extern fn dispose(self: Sent)
 extern fn post(n: Int) -> Sent
 

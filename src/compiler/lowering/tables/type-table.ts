@@ -299,7 +299,6 @@ export class TypeTable {
           kind: 'extern',
           name,
           arguments: typeArguments,
-          sendable: false,
           disposal: this.#disposal(this.#checker.disposalOf(type)),
           role: 'shared',
         };
@@ -329,7 +328,6 @@ export class TypeTable {
           kind: 'extern',
           name,
           arguments: typeArguments,
-          sendable: declaration.isSendable,
           disposal: this.#disposal(this.#checker.disposalOf(type)),
           ...(role === undefined ? {} : { role }),
         };

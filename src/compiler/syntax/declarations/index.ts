@@ -3,8 +3,8 @@
  *
  * The tree keeps each declaration form apart where the forms hold different things, so a consumer
  * never meets a combination the syntax can't produce:
- * - An extern struct has no fields, and may say `sendable`, so it has its own kind instead of a
- *   flag on StructDeclaration. A shared struct has its own kind too: its type is a handle, not
+ * - An extern struct has no fields, and may say which handle it is, so it has its own kind instead
+ *   of a flag on StructDeclaration. A shared struct has its own kind too: its type is a handle, not
  *   its fields.
  * - An extern constant has a type and no value, unlike a `const`.
  * - The two import forms bind different things.
@@ -22,6 +22,7 @@ import type { Expression, Parameter } from '../expressions/index.ts';
 import type { StringLiteral } from '../expressions/literals/literals.ts';
 import type { Annotatable } from '../items.ts';
 import type { Block, VariableDeclaration } from '../statements/index.ts';
+import type { ExternHandle } from '../tokens/grammar-words.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from '../tree/node.ts';
 import { type AnchoredSpan, spanAcross } from '../tree/positions.ts';
 import type { ConstraintNode, FieldDeclaration, TypeMatch, TypeNode } from '../types/index.ts';
@@ -165,12 +166,15 @@ export function isRestField(field: Field | Invalid): boolean {
   return field.kind === 'DeclaredField' && field.isRest;
 }
 
-/** `extern sendable struct Queue<T>`: a struct the host implements. */
+/**
+ * `extern sendable struct Queue<T>`: a struct the host implements, a handle of the kind `handle`
+ * says, or a value when it says none (§3.6).
+ */
 export interface ExternStructDeclaration
   extends NodeOf<'ExternStructDeclaration'>,
     Annotatable,
     Documented {
-  readonly isSendable: boolean;
+  readonly handle: ExternHandle | undefined;
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
 }

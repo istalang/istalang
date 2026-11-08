@@ -10,7 +10,7 @@
 import * as json from 'json'
 import Rounding from 'math'
 
-extern sendable struct Decimal
+extern struct Decimal
 
 extern fn Decimal.from(value: Int) -> Decimal
 

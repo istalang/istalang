@@ -82,7 +82,6 @@ function typeDefinition(sizes: Sizes): fc.Arbitrary<TypeDefinition> {
       .record({
         name: fc.string(),
         arguments: typeArguments,
-        sendable: fc.boolean(),
         disposal: fc.oneof(
           fc.constant({ kind: 'none' as const }),
           fc.constant({ kind: 'runtime' as const }),

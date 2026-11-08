@@ -24,6 +24,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - bind call or function-value arguments to parameter slots → `bindArguments`, `bindValue`, `positionalCounts` (`src/compiler/checker/resolution/choosing/binding.ts`)
 - test for a valid binding → `isBinding` (`src/compiler/checker/resolution/choosing/binding.ts`); the slot each argument of a chosen call fills → `Application.slots`, computed once by `takenBy` (never rebuilt from the binding by a caller)
 - map argument indices to parameter indices or test if all parameters are passed → `parameterOfArgument`, `passesAll` (`src/compiler/checker/surface/resolved-call.ts`)
+- tell a resolved site naming a function as a value, which calls nothing where it stands, from a call (`CheckedBody.madeCalls` lists both) → `namesFunctionValue` (`src/compiler/checker/surface/resolved-call.ts`)
 - test whether one candidate takes given arguments → `takenBy`; whether it takes one only reshaped, which choosing asks only to break a tie → `reshapesArguments` (`src/compiler/checker/resolution/choosing/applicability.ts`)
 - infer type arguments by matching declared and given types, `match` where the value may convert, `matchExactly` where it must have its type (a reference, a spread's items, a witness) → `Inference` (`src/compiler/checker/types/inference/infer.ts`)
 - fill uninferred type parameters from declared defaults → `completeInference` (`src/compiler/checker/types/inference/complete.ts`)

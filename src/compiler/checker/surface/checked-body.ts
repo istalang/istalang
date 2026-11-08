@@ -181,7 +181,8 @@ export interface BodyFacts {
   readonly valueCalls: PassRecords<Call, true>;
   /**
    * Every call the body makes, where it makes it: its call sites', the language's for constructs
-   * with no call written (`implicitCallOf`), and the defaults its struct literals leave fields to.
+   * with no call written (`implicitCallOf`), and the defaults its struct literals leave fields to;
+   * and every function it names as a value, which a closure calls later (`namesFunctionValue`).
    */
   readonly madeCalls: () => readonly MadeCall[];
   /**

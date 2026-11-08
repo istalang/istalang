@@ -191,9 +191,14 @@ describe('externs and functions', () => {
     ],
     [
       'extern sendable struct Queue<T is Sendable>',
-      `(ExternStructDeclaration isSendable Queue [(TypeParameter T _ [${named('Sendable')}] _)])`,
+      `(ExternStructDeclaration sendable Queue [(TypeParameter T _ [${named('Sendable')}] _)])`,
     ],
-    ['extern struct Slot<T>', `(ExternStructDeclaration Slot [${typeParameter('T')}])`],
+    [
+      'extern shared struct Slot<T>',
+      `(ExternStructDeclaration shared Slot [${typeParameter('T')}])`,
+    ],
+    ['extern ephemeral struct Socket', '(ExternStructDeclaration ephemeral Socket [])'],
+    ['extern struct Zone', '(ExternStructDeclaration _ Zone [])'],
     [
       'fn Duration.zero() -> Duration: Duration{value: 0}',
       `(FunctionDeclaration Duration zero [] [] ${named('Duration')} ${bodyOf(`(StructLiteral ${named('Duration')} [(FieldInitializer value 0)])`)})`,

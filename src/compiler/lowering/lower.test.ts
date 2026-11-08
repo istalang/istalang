@@ -166,7 +166,7 @@ describe('lowering', () => {
     const program = stdProgramOf({
       main: [
         "import Encodable from 'json'",
-        'extern struct Lease<T is Sendable>',
+        'extern shared struct Lease<T is Sendable>',
         'extern fn dispose<T is Encodable>(self: Lease<T>)',
         'extern fn lease() -> Lease<Int>',
         'async fn main(): { const held = lease(); 1 }',

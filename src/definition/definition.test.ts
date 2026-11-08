@@ -312,7 +312,6 @@ describe('definition format', () => {
           kind: 'extern',
           name: 'prelude.Shared',
           arguments: [{ kind: 'primitive', name: 'Int' }],
-          sendable: false,
           disposal: { kind: 'function', function: 99 },
           role: 'cell',
         });

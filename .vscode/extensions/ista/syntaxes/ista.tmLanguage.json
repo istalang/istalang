@@ -132,7 +132,7 @@
           "captures": { "1": { "name": "keyword.control.import.ista" } }
         },
         {
-          "match": "\\b(extern)\\s+(sendable)\\b",
+          "match": "\\b(extern)\\s+(shared|sendable|ephemeral)\\b",
           "captures": {
             "1": { "name": "storage.modifier.ista" },
             "2": { "name": "storage.modifier.ista" }

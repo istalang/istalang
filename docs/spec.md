@@ -209,7 +209,7 @@ Blocks are defined by indentation, as in Python. Comments start with `#` and run
   ```
 - **Trailing commas** are allowed in every comma-separated list; a list broken over lines needs none.
 - **Identifiers** are ASCII letters, digits and `_`, not starting with a digit. Strings and comments may hold any Unicode.
-- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Ten more words are keywords only where the grammar expects them and ordinary names elsewhere: `type` before an alias's name, or an associated type's in a struct, enum or trait body (§3.1, §3.10), `shared` before `struct` and `new` before a name (§3.18), `from` before an import's path, `sendable` right after `extern` or before a function type's `fn` or `async`, `any` before a trait's name in a type (§3.10), `keyof` before a type in a type (§3.1), `infer` before a type variable's name in a type `match` case's pattern (§3.17), `hold` before the variable declaration it holds (§3.4), and `by` after a range, before its step (§3.8). So `T.from` (§3.10), a field named `type` and a function named `hold` are valid. The built-in types' names, `Int`, `Float`, `Bool`, `String`, `None`, `Unit`, `Never` and `Self` (§3.10), are no keywords, but no type, variant or type parameter is declared with them, since every module sees them.
+- **Reserved words:** `fn`, `async`, `await`, `let`, `const`, `if`, `elif`, `else`, `for`, `in`, `while`, `match`, `case`, `select`, `return`, `break`, `continue`, `struct`, `enum`, `trait`, `import`, `extern`, `spawn`, `defer`, `drop`, `is`, `and`, `or`, `not`, `true`, `false`, `none` and `as`. Eleven more words are keywords only where the grammar expects them and ordinary names elsewhere: `type` before an alias's name, or an associated type's in a struct, enum or trait body (§3.1, §3.10), `shared`, `sendable` and `ephemeral` right after `extern` (§3.6), `shared` also before `struct` and `new` before a name (§3.18), `from` before an import's path, `sendable` also before a function type's `fn` or `async`, `any` before a trait's name in a type (§3.10), `keyof` before a type in a type (§3.1), `infer` before a type variable's name in a type `match` case's pattern (§3.17), `hold` before the variable declaration it holds (§3.4), and `by` after a range, before its step (§3.8). So `T.from` (§3.10), a field named `type` and a function named `hold` are valid. The built-in types' names, `Int`, `Float`, `Bool`, `String`, `None`, `Unit`, `Never` and `Self` (§3.10), are no keywords, but no type, variant or type parameter is declared with them, since every module sees them.
 
 Every expression has a static type; a value whose type is known only when the program runs has a trait's, `any T` (§3.10). There are no implicit conversions, with six exceptions: a value is converted into an `any` type wherever one is expected (§3.10), a nominal struct's value is converted into its equal shape wherever that shape is expected (§3.1), a plain function fits where an async one of its parameters and result is expected (§3.14), a one-element tuple and its element each fit where the other is expected (§3.15), a value of a literal type, or of a union of literals, fits where their base type is expected, and a value is converted into a union wherever one is expected (both below).
 
@@ -458,17 +458,17 @@ fn moved() -> Settings:
 
 **No getters or setters.** Reading or assigning a field never runs code; a value computed from fields is a method, such as `order.total()`. This keeps structs plain data under value semantics.
 
-**Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A by-value parameter is immutable (§3.3). The only ways a function can change data its caller holds are an explicit reference (§3.7) and a handle, such as a `Shared` value (§3.8). `Slot<T>`, `Future<T>` and `WeakRef<T>` are **handles**, and so is every shared struct (§3.18), such as `Shared<T>`, `Inbox<T>` and `Revertible<T>`: copying one copies the handle, not the state behind it, and `==` compares handles by identity.
+**Value semantics.** Structs, arrays and maps are values. They are copied structurally, field by field, when assigned, passed to a function, returned or sent. A by-value parameter is immutable (§3.3). The only ways a function can change data its caller holds are an explicit reference (§3.7) and a handle, such as a `Shared` value (§3.8). A **handle** is a value of a type its declaration makes one, never its name: every shared struct (§3.18), such as `Shared<T>`, `Inbox<T>` and `Revertible<T>`, and every extern struct declared `shared`, `sendable` or `ephemeral` (§3.6), such as `Slot<T>`, `Future<T>`, `WeakRef<T>` and `Instance<T>`. Copying one copies the handle, not the state behind it, and `==` compares handles by identity.
 
 **Sendable types.** Only sendable values can leave an instance: as `spawn` arguments, or through extern declarations. Sendable types are the ones that satisfy the built-in `Sendable` trait (§3.10). A type is sendable when it is:
 
 - a primitive or a literal type (§2);
-- an extern struct declared `sendable` (§3.8) whose type arguments are all sendable;
+- an extern struct that is a value, or a `sendable` handle (§3.6), whose type arguments are all sendable;
 - a user struct or enum whose fields are all sendable, a tuple whose elements are, or a union whose members are. This is derived automatically, and a recursive type is sendable unless something in its cycle isn't;
 - a type parameter constrained `is Sendable`;
 - a sendable function type, `sendable fn(A) -> R` (§3.14). It refers to code, so it goes only to an instance of the same program, through `spawn`: an extern declaration, or `json`, whose types contain one is a compile error.
 
-Handles, such as futures, slots, `Shared` values, inboxes and weak references, and values of plain function types are never sendable, and neither is any value that contains one. They therefore never leave the instance that created them: `spawn` arguments and extern declarations can't contain them, which is a compile error.
+Handles other than `sendable` ones, such as futures, slots, `Shared` values, inboxes and weak references, and values of plain function types are never sendable, and neither is any value that contains one. They therefore never leave the instance that created them: `spawn` arguments and extern declarations can't contain them, which is a compile error.
 
 ### 3.2 Slots and inboxes
 
@@ -627,7 +627,8 @@ extern purchaseRequests: Queue<PurchaseRequest>     # a queue the host provides
 - **Constant binding.** An extern can't be reassigned. Its internal state can still change through its methods, for example when a message is sent into a queue the host provides.
 - **Checked at deploy.** The runtime refuses a program whose extern declaration has a different type from the one it already holds under that name, so one name always means one type.
 - **Deterministic reads.** An instance reads an extern constant once, at its first read, and keeps that value in its snapshot for its whole life, so every segment, resumed or not, sees the same value.
-- **Disposable host types.** A host type is disposable when a `dispose` is declared beside it (§7): an extern one its host implements, or code that passes the value to the host's externs. Each value of it then has an identity of its own: it arrives as the JSON the host gave, which the instance keeps while it holds the value, and leaves to the host as that same JSON. So such a type can't be declared `sendable`, it isn't `Encodable` or `Decodable`, and no extern constant, which every read shares, can hold one.
+- **Values and handles.** An extern struct is a value unless a word between `extern` and `struct` makes it a handle (§3.1): `extern shared struct` has an identity in its instance, as a shared struct does (§3.18); `extern sendable struct` one every instance shares, such as a queue the host provides; `extern ephemeral struct` one in the process that made it. An extern value crosses as JSON, so it is sendable when its type arguments are, and so is a `sendable` handle; any other handle never is.
+- **Disposable host types.** A host type is disposable when a `dispose` is declared beside it (§7): an extern one its host implements, or code that passes the value to the host's externs. Each value of it then has an identity of its own: it arrives as the JSON the host gave, which the instance keeps while it holds the value, and leaves to the host as that same JSON. So such a type is declared `extern shared struct` (or `extern ephemeral struct`), neither a value nor `sendable`, it isn't `Encodable` or `Decodable`, and no extern constant, which every read shares, can hold one.
 
 ### 3.7 Methods and references
 
@@ -711,11 +712,11 @@ The type before the dot selects the function, so static functions never need ove
 The **prelude** declares the built-in types the runtime implements, using the same `extern` mechanism programs use (§3.6):
 
 ```python
-extern sendable struct Array<T>
-extern sendable struct Map<K, V>
-extern struct Slot<T>                       # not sendable
-extern struct WeakRef<T is Disposable>      # not sendable
-extern struct Future<T>                     # not sendable
+extern struct Array<T>
+extern struct Map<K, V>
+extern shared struct Slot<T>                # a handle, not sendable
+extern shared struct WeakRef<T is Disposable>
+extern shared struct Future<T>
 extern sendable struct Instance<T>          # compared by identity, never Encodable (§9)
 shared struct Shared<T> { value: T }        # not sendable (§3.18)
 
@@ -769,7 +770,7 @@ fn add(left: Time, right: Duration) -> Time:     # Time + Duration
 - **`Map<K, V>`** maps keys to values and compares keys with the built-in `==`, so a key holding a NaN can be stored but is never found again. `m[k]` panics on a missing key; `m.get(k)` returns `V?`. Its methods are `size()`, `get(k)`, `has(k)` and `includes(k)`, the same test, which `in` calls (§3.9), `delete(k)` (whether it held `k`), `keys()`, `values()` and `entries()`, and `Map.groupBy(items, key: fn(T) -> K) -> Map<K, Array<T>>` groups an array's items by key, keeping their order. The order in which a map stores and iterates its entries is unspecified, so implementations are free to use hashing or sorting, and two maps are `==` when they hold equal values for equal keys, whatever their order.
 - **`Range`** is a plain, sendable struct with an optional `start` and `end` and a `step` (1 unless `by` gives one), built by `..` (and by `..=`, which stores the end one past the written one in the step's direction, so a range is always half-open). It reaches its start and every step from it before its end, the step's sign giving the direction, as Python's `range` does: a range whose end lies the other way reaches nothing, so iterating `5..2` gives nothing and `10..=0 by -2` gives 10, 8, 6, 4, 2 and 0. A step of 0 would reach its start forever, so using such a range panics. It is `Iterable<Int>` when both ends are given, and iterating a range without an end panics, since whether it has one is known only when it runs. `x in r` is whether `r` reaches `x`, an open end reaching without bound; with an open start, only a step of 1 or -1 has a meaning, and any other panics.
 - **`Array<T>`**, **`Map<K, V>`** and **`T?`** satisfy `Default`: `Array.default()` and `Map.default()` are empty, and `Optional.default()` is `none`.
-- An `extern struct` is not sendable unless it says `sendable`.
+- An `extern struct` is a value, sendable when its type arguments are; one declared `shared` or `ephemeral` is a handle that never is (§3.6).
 - A sendable generic struct is sendable only when its type arguments are sendable: `Array<Int>` is sendable, `Array<Future<Int>>` is not.
 - Primitives are always sendable. `Time` and `Duration` are plain structs of `Int`, so they are sendable by derivation.
 - Methods on primitives are ordinary functions whose `self` is a primitive, such as `"abc".indexOf("b")` or `2.toString()`.
@@ -1705,7 +1706,7 @@ fn approvalSuite() -> Array<Test>: [
 ```
 
 - **Each test runs in a fresh instance.** Function values aren't sendable, so the runner calls the suite function again inside each new instance and runs the entry at that test's position.
-- **Suite functions only build their list,** which the compiler enforces: a suite function is a plain `fn` (not `async`) that doesn't call externs or touch shared structs, slots or inboxes, so it builds the same list every time it is called. The rule is checked on the suite function's own body, not on the functions it calls or the tests it builds; in each test's instance the runner also checks that the list still holds that test's title at its position, and fails the test when it doesn't.
+- **Suite functions only build their list,** which the compiler enforces: a suite function is a plain `fn` (not `async`) that doesn't call externs or touch handles, such as shared structs, slots or inboxes, so it builds the same list every time it is called. The rule is checked on the suite function's own body, not on the functions it calls or the tests it builds; in each test's instance the runner also checks that the list still holds that test's title at its position, and fails the test when it doesn't.
 - **The library** provides `test(title, body)`, `test(title, setup, body)`, `group(title, tests)`, `skip(test)` and `only(test)`. A test's body is a plain or an `async` function, taking the setup's environment when it has one. Table-driven tests are comprehensions, as above.
 - **Skipping and focusing.** `skip` and `only` take a test or a group, and mark it, and through a group every test in it. A skipped test is reported but not run, even when `only` marks it too, whichever was applied last and at whatever level. When any test of a run is marked `only`, directly or through its group, only those tests run, and the rest are reported as skipped.
 
@@ -1819,7 +1820,7 @@ struct ChargeResult:
 # a queue type the host provides, and a message sent into one revertibly, which the host
 # retracts when it is disposed, unless it was received
 extern sendable struct Queue<T is Sendable>
-extern struct Sent
+extern shared struct Sent
 extern fn dispose(self: Sent)
 extern fn send<T is Encodable>(self: Queue<T>, msg: T)
 extern fn _sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Sent

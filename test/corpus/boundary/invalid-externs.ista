@@ -7,12 +7,12 @@
 # What an extern the host implements takes and gives crosses as JSON (§3.6, §9): its parameters
 # must be Encodable, and its result, what a future it returns gives, and an extern constant
 # Decodable. A function, a handle and a type parameter not constrained so aren't, and JSON can't be
-# written back, so nothing is taken by '&'. A host type crosses only when it is declared sendable
-# or a 'dispose' makes it disposable (invalid-resources.ista).
+# written back, so nothing is taken by '&'. A host handle crosses only when it is 'sendable' or a
+# 'dispose' makes it a resource (invalid-resources.ista).
 
 import Encodable, Decodable from 'json'
 
-extern struct Connection
+extern shared struct Connection
 
 extern fn run(task: fn() -> Int)
 

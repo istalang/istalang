@@ -93,7 +93,7 @@ export const declarationPrinters: Printers<DeclarationKind> = {
   ExternStructDeclaration: (printer, node) =>
     annotated(printer, node, [
       'extern ',
-      node.isSendable ? 'sendable ' : '',
+      node.handle === undefined ? '' : `${node.handle} `,
       'struct ',
       named(printer, node.name, node.typeParameters),
       docBelow(printer, node.doc),

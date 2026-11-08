@@ -56,7 +56,7 @@ describe('where a docstring stands', () => {
 
   it.each([
     ['an extern function', lines('extern fn now() -> Int', `    ${q3}The time.${q3}`)],
-    ['an extern struct', lines('extern sendable struct D', `    ${q3}A decimal.${q3}`)],
+    ['an extern struct', lines('extern struct D', `    ${q3}A decimal.${q3}`)],
     ['a struct in braces', lines('struct P { x: Int }', `    ${q3}A point.${q3}`)],
   ])('documents %s from the line below it', (_, text) => {
     expect(docsOf(text)?.[1]?.[1]).toMatch(sentence);

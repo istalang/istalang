@@ -102,7 +102,7 @@ src/
                                                                  (named-types.ts) or a pattern (pattern-types.ts), key types, type
                                                                  arguments, and type `match`es resolved, given, placed and unfolded
                                                                  (type-match.ts, written-matches.ts)
-        properties/                                              what a type holds or reaches: finite values, held values, the cycle guard
+        properties/                                              what a type holds or reaches: finite values, held values, the cycle guard, handles read off declarations
         inference/                                               above the model: inference of type arguments
         traits/                                                  above inference: constraints, the derived `Sendable`, `any` types, and the object safety they
                                                                  need (object-safety.ts); struct constraints (struct-constraints.ts), and what a type meets by

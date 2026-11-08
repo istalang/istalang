@@ -12,7 +12,7 @@ describe("a dispose's own value", () => {
   it('may be the receiver of an extern method called with type arguments', () => {
     const text = lines(
       "import Encodable from 'json'",
-      'extern struct Handle',
+      'extern shared struct Handle',
       'extern fn release<T is Encodable>(self: Handle, tag: T)',
       'fn dispose(self: Handle):',
       '  self.release<Int>(1)',

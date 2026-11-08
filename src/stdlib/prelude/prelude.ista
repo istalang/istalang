@@ -4,11 +4,11 @@
 # (§3.6). Primitive types (Int, Float, Bool, String, Unit, Never) are part of the language, not
 # declared here. Functions and methods each type offers arrive with the features that use them.
 
-extern sendable struct Array<T>
-extern sendable struct Map<K, V>
-extern struct Slot<T>
-extern struct WeakRef<T is Disposable>
-extern struct Future<T>
+extern struct Array<T>
+extern struct Map<K, V>
+extern shared struct Slot<T>
+extern shared struct WeakRef<T is Disposable>
+extern shared struct Future<T>
 
 # What `spawn` gives (§9): a handle to the new instance, compared by identity, which holds nothing.
 # `result()` resolves with its first end: `Ok` of its outcome, or `Err` of its panic.
@@ -27,7 +27,7 @@ extern fn disposed<T is Disposable>(self: WeakRef<T>) -> Future<Unit>
 
 # An async call's handle, a weak reference to the call, which the function's own name is before a
 # `.` (§7): `worker.disposing()` is the future that resolves when the call is disposed.
-extern struct _Call
+extern shared struct _Call
 extern fn disposing(self: _Call) -> Future<Unit>
 
 # A Shared value (§3.8) is a shared struct of any one value (§3.18): `new Shared{value: v}` makes
@@ -37,7 +37,7 @@ shared struct Shared<T>:
 
 # The cell a variable lives in when it is passed by `&` or a closure captures it (§3.7, §3.14),
 # which the runtime makes, reads and writes as it does a shared struct's.
-extern struct _Cell<T>
+extern shared struct _Cell<T>
 
 # Disposal (§7): the runtime disposes a future and a slot once nothing holds them. Declaring their
 # `dispose` is what makes them Disposable (§3.10), and what tells the compiler the runtime does it.

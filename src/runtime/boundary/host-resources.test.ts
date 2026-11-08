@@ -13,7 +13,7 @@ import type { HostCall, HostExterns } from './host-natives.ts';
 
 const leasing = compiledText(
   [
-    'extern struct Lease',
+    'extern shared struct Lease',
     '',
     'extern fn open(name: String) -> Lease',
     'extern fn describe(lease: Lease) -> String',
@@ -49,7 +49,7 @@ function leasingHost(): { readonly host: HostExterns; readonly released: unknown
 
 const terminated = compiledText(
   [
-    'extern struct Lease',
+    'extern shared struct Lease',
     '',
     'extern fn open(name: String) -> Lease',
     'extern fn describe(lease: Lease) -> String',
@@ -112,7 +112,7 @@ describe('a disposable host type', () => {
     };
     const program = compiledText(
       [
-        'extern struct Lease',
+        'extern shared struct Lease',
         'extern fn open(name: String) -> Lease',
         'extern fn dispose(self: Lease)',
         'async fn main(): { const lease = open("b"); 1 }',
@@ -144,7 +144,7 @@ describe('a disposable host type', () => {
         "import Encodable from 'json'",
         '',
         'extern sendable struct Queue<T is Sendable>',
-        'extern struct Sent',
+        'extern shared struct Sent',
         'extern fn dispose(self: Sent)',
         'extern fn _sendRevertible<T is Encodable>(self: Queue<T>, msg: T) -> Sent',
         'extern fn announcements(user: String) -> Queue<String>',
