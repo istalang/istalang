@@ -63,8 +63,9 @@ Rules:
 A type parameter of a declaration is **covariant**, **contravariant** or **invariant**. It is
 derived for source declarations and written for externs, and memoized per declaration. A recursive
 declaration's is iterated to a fixpoint over `unused ⊏ covariant, contravariant ⊏ invariant`
-(`unused` flips to itself), starting at `unused`; what stays `unused` becomes covariant only after
-convergence, so `struct Loop<T> { f: fn(Loop<T>) -> Unit }` doesn't oscillate.
+(`unused` flips to itself), starting at `unused`; a parameter still `unused` is then settled
+covariant and the fixpoint goes on, so `struct Loop<T> { f: fn(Loop<T>) -> Unit }` settles
+invariant rather than oscillating.
 
 - **Derived** from where the parameter occurs in a value type's fields, variants and type
   arguments:
@@ -127,7 +128,7 @@ convergence, so `struct Loop<T> { f: fn(Loop<T>) -> Unit }` doesn't oscillate.
 
 ## 3. Conversions inside types
 
-The fit relation (`types/fitting/fit.ts`) keeps every conversion it has today:
+The fit relation (`types/fitting/fit/`) keeps every conversion it has today:
 - into an `any` type;
 - a struct's value into its shape;
 - a plain function made async;
@@ -150,7 +151,7 @@ guard (`UnfoldingPairs`).
   - `Slot<Int>` never fits `Slot<Int?>`.
 - **The checker records what converts, never how.** A nested fit is recorded as a conversion from
   one type to another, with no steps (AGENTS.md: contracts carry semantics). Every consumer of
-  `Fit['conversion']` follows: lowering's `fits.ts` and `rules/computation/forms.ts`' constant
+  `Fit['conversion']` follows: lowering's `functions/fits/` and `rules/computation/forms.ts`' constant
   forms.
 - **Lowering derives the rebuild from the concrete pair** after instantiation, so a generic body's
   `Box<T>` into `Box<T?>` is nothing where `T = Int?`. It converts only where the representation
@@ -299,7 +300,7 @@ base (today's widening), and a type with `None` into its optional.
 | The expected step in `resolution/conformance/conformance.ts` `instantiateAt` | The settling policy |
 | The ordering logic of `resolution/calls/function-arguments.ts` | Postponed arguments |
 | §3.7's literal building: `buildsOf` and its handlers (`constructs/expressions/expressions.ts`, `structs.ts`), `builds` in choosing's applicability, the rebuild of literal producers in `agreement.ts` | Literals joining the system (§4) and conversions inside types (§3); deleted only once nothing reads them |
-| "Only the top converts" special cases in `types/inference/infer.ts` and `types/fitting/fit.ts` | Bounds and variance |
+| "Only the top converts" special cases in `types/inference/infer.ts` and `types/fitting/fit/` | Bounds and variance |
 | The name-based handle checks (§1) | Identity from declarations |
 
 ## 7. Hooks for what comes later
