@@ -14,13 +14,12 @@ import {
 import type { ModuleId } from '../../../program/program.ts';
 import { constructedVariant } from '../../../syntax/declarations/field-defaults.ts';
 import { type FunctionDeclaration, typeParametersOf } from '../../../syntax/declarations/index.ts';
-import type { Call, MemberAccess } from '../../../syntax/expressions/index.ts';
 import { parentOf, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import { declaredOutsideBodies } from '../../constructs/expressions/access/names.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Denotation, JoinedBody } from '../../surface/denotation.ts';
-import type { ResolvedCall } from '../../surface/resolved-call.ts';
+import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
 import { nominalType, type Type } from '../../types/type/index.ts';
 import { entityType } from '../../types/written/named-types.ts';
 import { parameterType } from '../../types/written/resolve-type.ts';
@@ -122,7 +121,7 @@ function declaredVariableType(site: NameSite, entity: VariableEntity): Type | un
  */
 export function calledAt(
   { body }: NameSite,
-  call: Call | MemberAccess | Identifier,
+  call: ResolvedSite,
   type: Type | undefined,
 ): readonly Denotation[] | undefined {
   const calls = body?.callsAt(call) ?? [];

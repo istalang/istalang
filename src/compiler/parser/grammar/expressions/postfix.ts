@@ -36,7 +36,7 @@ import type {
 import { isPlace } from '../../../syntax/expressions/places.ts';
 import { qualifiedPath } from '../../../syntax/expressions/readings.ts';
 import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree/index.ts';
-import { lastName } from '../../../syntax/tree/node.ts';
+import type { Identifier } from '../../../syntax/tree/node.ts';
 import { parseDelimited, parseEnclosed } from '../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { atPostfix, breakSeparatesItems } from '../../layout/item-breaks.ts';
@@ -77,13 +77,30 @@ export function parseTypeApplication(parser: Parser, left: Expression): Expressi
   return { kind: 'TypeApplication', span, target: left, typeArguments };
 }
 
-/** Whether every name in `types` is cased as a type's, as a comparison's variables never are. */
+/** Whether every name `types` write a type by is cased as a type's, as no variable's is. */
 function namesTypesOnly(types: readonly SyntaxNode[]): boolean {
   return types.every(
     (type) =>
-      (type.kind !== 'NamedType' || casedAsType(lastName(type.path).text)) &&
+      typeNamesOf(type).every(({ text }) => casedAsType(text)) &&
       namesTypesOnly(fieldChildrenOf(type)),
   );
+}
+
+/**
+ * The names `node` itself writes a type by: a named type's, past a namespace qualifying it
+ * (`time.Duration`), and an associated type's (`T.Data`).
+ */
+function typeNamesOf(node: SyntaxNode): readonly Identifier[] {
+  switch (node.kind) {
+    case 'NamedType': {
+      const [first, ...qualified] = node.path;
+      return qualified.length > 0 ? qualified : [first];
+    }
+    case 'MemberType':
+      return [node.name];
+    default:
+      return [];
+  }
 }
 
 /**

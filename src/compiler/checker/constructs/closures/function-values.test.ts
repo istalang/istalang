@@ -8,6 +8,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
+import { lines } from '../../../parser/parse.test-kit.ts';
 import type { TypeApplication } from '../../../syntax/expressions/index.ts';
 import { reported } from '../../check.test-kit.ts';
 import { checkedMain } from '../../lookup/lookup.test-kit.ts';
@@ -71,6 +72,54 @@ describe('a function named as a value with type arguments', () => {
     const text =
       'fn d(vs: Array<Int>) -> Array<Result<Int, String>>: vs.map(Result.Ok<Int, String>)';
     expect(reported(text)).toEqual(reportedNothing);
+  });
+
+  it('leaves a defaulted type parameter to the call it is passed to', () => {
+    const text = lines(
+      'fn takeOk(f: fn(Int) -> Result<Int, String>) -> Int: { drop f; 0 }',
+      'fn takeErr(f: fn(String) -> Result<Int, String>) -> Int: { drop f; 0 }',
+      'fn main() -> Int:',
+      '  const errors: Array<Result<Int, String>> = ["x"].map(Result.Err<Int>)',
+      '  drop errors',
+      '  takeOk(Result.Ok<Int>) + takeErr(Result.Err<Int>)',
+    );
+    expect(reported(text)).toEqual(reportedNothing);
+  });
+
+  it("is the function member of an expected union, as the function's bare name is", () => {
+    const text = lines(
+      'fn pick<T>(x: T) -> T: x',
+      'fn pick<T>(x: T, y: T) -> T: y',
+      'fn main():',
+      '  const a: (fn(Int) -> Result<Int, String>) | Int = Ok<Int, String>',
+      '  const b: (fn(Int) -> Result<Int, String>) | Int = Result.Ok<Int>',
+      '  const c: (fn(Int) -> Int) | Int = pick<Int>',
+      '  drop a',
+      '  drop b',
+      '  drop c',
+    );
+    expect(reported(text)).toEqual(reportedNothing);
+  });
+
+  it('instantiates a pack written as a tuple type', () => {
+    const text = lines(
+      'fn id<...A>(...args: A) -> A: args',
+      'fn main() -> (Int, String):',
+      '  const f: fn(Int, String) -> (Int, String) = id<(Int, String)>',
+      '  const g = id<(Int, String)>',
+      '  drop g',
+      '  f(1, "a")',
+    );
+    expect(reported(text)).toEqual(reportedNothing);
+  });
+
+  it('is the value an optional call calls, its type arguments the value’s, not the call’s', () => {
+    const declared =
+      'fn listed<T>(value: T) -> Array<T>: [value]\nfn plain(value: Int) -> Int: value';
+    const applied = reported(`${declared}\nfn main():\n  drop listed<Int>?.(1)\n`).codes;
+    const bare = reported(`${declared}\nfn main():\n  drop plain?.(1)\n`).codes;
+    expect(applied).toEqual(bare);
+    expect(applied).toHaveLength(1);
   });
 
   it('is shown on hover as the function it instantiates', () => {

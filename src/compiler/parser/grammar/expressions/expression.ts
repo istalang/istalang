@@ -229,9 +229,18 @@ function calleeStep(parser: Parser, callee: Expression): Expression | undefined 
     : spawnCalleeSteps[kind]?.parse(parser, callee);
 }
 
-/** Whether the next token can start an expression. */
+/**
+ * Whether the next token can start an expression: one the prefix table has, unless it is a word
+ * spelling a binary operator with the token after it (`not in`).
+ */
 export function startsExpression(parser: Parser): boolean {
-  return prefixParselets[parser.cursor.kind] !== undefined;
+  const { cursor } = parser;
+  return prefixParselets[cursor.kind] !== undefined && !spellsBinary(cursor.kind, cursor.kindAt(1));
+}
+
+/** Whether a word of `kind` spells a binary operator with the `next` token (`not in`). */
+function spellsBinary(kind: CursorKind, next: CursorKind): boolean {
+  return isKeyword(kind) && `${kind} ${next}` in binaryOperators;
 }
 
 /**
@@ -260,5 +269,5 @@ export function startsItemOnNewLine(kind: CursorKind, next: CursorKind, spaced: 
   if (infix === undefined || infix.level === 'postfix') {
     return true;
   }
-  return isKeyword(kind) ? !(`${kind} ${next}` in binaryOperators) : !spaced;
+  return isKeyword(kind) ? !spellsBinary(kind, next) : !spaced;
 }

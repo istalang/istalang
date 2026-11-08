@@ -42,7 +42,11 @@ import type {
   Expression,
   MemberAccess,
 } from '../../../syntax/expressions/index.ts';
-import { unparenthesized, withoutTypeArguments } from '../../../syntax/expressions/readings.ts';
+import {
+  calledName,
+  callTypeArguments,
+  unparenthesized,
+} from '../../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
@@ -72,10 +76,7 @@ import { calledConstructor, checkVariantCall } from './structs/variants.ts';
 
 export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
   const misplaced = misplacedArgument(node.arguments);
-  const typeArguments =
-    node.callee.kind === 'TypeApplication'
-      ? node.callee.typeArguments.map((argument) => context.resolveType(argument))
-      : undefined;
+  const typeArguments = callTypeArguments(node)?.map((argument) => context.resolveType(argument));
   const constructs = calledConstructor(context, node, expected);
   const known =
     constructs === undefined
@@ -96,7 +97,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
       return writtenArgument(context, argument, known[index]);
     }),
   };
-  const callee = withoutTypeArguments(node.callee);
+  const callee = calledName(node);
   if (node.isOptional) {
     return checkValueCall(context, call, callee, context.chains.target(context, node));
   }

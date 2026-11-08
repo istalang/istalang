@@ -120,6 +120,7 @@ export function memberBuilt(expected: Type, node: Expression, choice: MemberChoi
 const builtKinds: ReadonlySet<Expression['kind']> = new Set([
   'Identifier',
   'MemberAccess',
+  'TypeApplication',
   'StructLiteral',
   'IndentedValue',
   'ArrayLiteral',

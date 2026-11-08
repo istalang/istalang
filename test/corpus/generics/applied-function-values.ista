@@ -1,10 +1,12 @@
-# outcome: "3|4 5|ok 6|ok 7|err x|ok 8|one|true|sent 9|10 11"
+# outcome: "3|4 5|ok 6|ok 7|err x|ok 8|one|true|sent 9|10 11|err y|1 a|13"
 # Type arguments written after a function named as a value are a call's (§3.5, §3.14): a top-level
 # function's, a static function's and a variant's, qualified or bare where the expected type
 # gives its enum. They fix what they give, the expected type inferring a defaulted one they leave
-# out, and choose among overloads as a call's do. So `map` learns from `Result.Ok<Int, String>`
-# the error type it can't infer from `Result.Ok`. The value captures nothing, so it is sendable,
-# and it equals another naming the same function with the same type arguments.
+# out, as a parameter it is passed for does, and choose among overloads as a call's do. So `map`
+# learns from `Result.Ok<Int, String>` the error type it can't infer from `Result.Ok`. A pack is
+# written as a tuple type, and the value is the function a union expects among its members. It
+# captures nothing, so it is sendable, and it equals another naming the same function with the
+# same type arguments.
 
 struct Box<T>:
   item: T
@@ -24,6 +26,15 @@ fn shown(result: Result<Int, String>) -> String:
 
 fn sent(make: sendable fn(Int) -> Box<Int>) -> String: `sent ${make(9).item}`
 
+fn failed(make: fn(String) -> Result<Int, String>) -> String: shown(make("y"))
+
+fn kept<...A>(...items: A) -> A: items
+
+fn made(make: (fn(Int) -> Box<Int>) | Int) -> Int:
+  match make:
+    case Int as n: n
+    case _ as f: f(13).item
+
 async fn main() -> Future<String>:
   const list = listed<Int>
   const boxes = [4, 5].map(Box.of<Int>)
@@ -34,4 +45,7 @@ async fn main() -> Future<String>:
   const chosen = pick<Int>
   const same = listed<Int> == list
   const pair = [10, 11].map(listed<Int>)
-  `${list(3)[0]}|${boxes[0].item} ${boxes[1].item}|${shown(results[0])}|${shown(ok(7))}|${shown(failing("x"))}|${shown(defaulted(8))}|${chosen(1)}|${same}|${sent(Box.of<Int>)}|${pair[0][0]} ${pair[1][0]}`
+  const passed = failed(Result.Err<Int>)
+  const keep = kept<(Int, String)>
+  const kept1 = keep(1, "a")
+  `${list(3)[0]}|${boxes[0].item} ${boxes[1].item}|${shown(results[0])}|${shown(ok(7))}|${shown(failing("x"))}|${shown(defaulted(8))}|${chosen(1)}|${same}|${sent(Box.of<Int>)}|${pair[0][0]} ${pair[1][0]}|${passed}|${kept1.0} ${kept1.1}|${made(Box.of<Int>)}`

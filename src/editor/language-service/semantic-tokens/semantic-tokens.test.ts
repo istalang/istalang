@@ -48,6 +48,16 @@ describe('highlighting', () => {
     ]);
   });
 
+  it('shows a name given type arguments as the function it names, called or not', () => {
+    const shown = highlighted('const f = g(listed<Int>, Box.of<Int>, h<Int>(1))');
+    expect(shown.filter(([, type]) => type === 'function' || type === 'method')).toEqual([
+      ['g', 'function'],
+      ['listed', 'function'],
+      ['of', 'method'],
+      ['h', 'function'],
+    ]);
+  });
+
   it("shows a template's tag as what it calls", () => {
     expect(highlighted('const s = m.sql`a` + sql`b`')).toEqual([
       ['const', 'keyword'],

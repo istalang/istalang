@@ -28,9 +28,10 @@ import type { Type } from '../../../../compiler/checker/types/type/index.ts';
 import type { FunctionDeclaration } from '../../../../compiler/syntax/declarations/index.ts';
 import { chainStepOf } from '../../../../compiler/syntax/expressions/chains.ts';
 import type { Expression, MemberAccess } from '../../../../compiler/syntax/expressions/index.ts';
-import { qualifiedPath } from '../../../../compiler/syntax/expressions/readings.ts';
+import { callOfCallee, qualifiedPath } from '../../../../compiler/syntax/expressions/readings.ts';
 import type { NamePattern } from '../../../../compiler/syntax/patterns.ts';
 import {
+  ancestorsOf,
   nodesAt,
   parentOf,
   type SyntaxNode,
@@ -217,9 +218,8 @@ function valueMembers(
  * other access is its own.
  */
 function linkOf(tree: SyntaxTree, access: MemberAccess): Expression {
-  const parent = parentOf(tree, access);
-  const holder = parent?.kind === 'TypeApplication' ? parentOf(tree, parent) : parent;
-  return holder?.kind === 'Call' && chainStepOf(holder)?.target === access.target ? holder : access;
+  const call = callOfCallee(access, ancestorsOf(tree, access).slice(1));
+  return call !== undefined && chainStepOf(call)?.target === access.target ? call : access;
 }
 
 /** One candidate per name, overloads alike, naming one of them. */

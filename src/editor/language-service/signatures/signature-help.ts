@@ -20,7 +20,7 @@ import type { FunctionType } from '../../../compiler/checker/types/type/index.ts
 import { presentType } from '../../../compiler/checker/types/unions/unions.ts';
 import type { ModuleId, Program } from '../../../compiler/program/program.ts';
 import type { Call } from '../../../compiler/syntax/expressions/index.ts';
-import { withoutTypeArguments } from '../../../compiler/syntax/expressions/readings.ts';
+import { calledName } from '../../../compiler/syntax/expressions/readings.ts';
 import { checkedModule } from '../reading/checked-module.ts';
 import { callAt, calleesOf, writtenParameter } from './call-at.ts';
 import { functionTypeSignature, type Signature, signatureOf } from './signatures.ts';
@@ -62,7 +62,7 @@ function valueCallHelp(
   call: Call,
   argument: number,
 ): SignatureHelp | undefined {
-  const callee = body.typeOf(withoutTypeArguments(call.callee));
+  const callee = body.typeOf(calledName(call));
   const type = call.isOptional && callee ? presentType(callee, checker.typeRules) : callee;
   if (type?.kind !== 'function') {
     return undefined;

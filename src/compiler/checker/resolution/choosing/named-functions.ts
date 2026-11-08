@@ -42,13 +42,13 @@ import { type Substitution, substitute } from '../../types/parts/substitution.ts
 import { parametersIn } from '../../types/parts/type-parts.ts';
 import { withPack } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
-import { errorType } from '../../types/type/primitives.ts';
+import { errorType, tupleElements } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { futureArgument, futureOf } from '../../types/type/well-known.ts';
 import { namedType } from '../../types/written/named-types.ts';
 import { parameterType } from '../../types/written/resolve-type.ts';
 import { type Instantiation, instantiate } from '../conformance/conformance.ts';
-import type { Passing } from './call-arguments.ts';
+import type { CallArgument, Passing, SignatureSlot } from './call-arguments.ts';
 import { type Candidate, callCandidates, staticCandidates, staticTargetOf } from './candidates.ts';
 import { type Application, type Choice, chooseAsValue, signatureOf } from './choice.ts';
 
@@ -57,7 +57,7 @@ import { type Application, type Choice, chooseAsValue, signatureOf } from './cho
  * arguments written after the name.
  */
 export interface NamedFunctions {
-  readonly site: Identifier | MemberAccess;
+  readonly site: FunctionNaming;
   readonly name: string;
   /** The functions it may mean where a value of `expected` is wanted. */
   readonly candidates: (expected: Type | undefined) => readonly Candidate[];
@@ -79,7 +79,7 @@ export function namedFunctions(
   if (node.kind === 'TypeApplication') {
     const named = namedFunctions(context, node.target);
     const written = node.typeArguments.map((argument) => context.resolveType(argument));
-    return named === undefined ? undefined : { ...named, written };
+    return named === undefined ? undefined : { ...named, site: node, written };
   }
   if (node.kind === 'Identifier') {
     return namedBy(context, node, context.entityOf(node));
@@ -299,16 +299,17 @@ export function instantiatedValue(
  * For functions named as an argument, the function types they can be passed as, so the call
  * decides which (§3.5): those whose parameters choose one that, instantiated, fits the type, or,
  * while the call is still finding a parameter's type, those whose count one takes. Undefined for a
- * lone non-generic function with neither defaults nor a rest, which has one type of its own; a
- * lone one with either fits the types leaving them out too (§3.14), so the call decides it, and
- * one nothing gives the parameters of is its whole function (../calls/function-arguments.ts).
+ * lone function of one type of its own (`hasOwnType`); a lone one with defaults or a rest fits the
+ * types leaving them out too (§3.14), and one whose written type arguments leave a defaulted type
+ * parameter open takes it from the type it is passed as (§3.5), so the call decides it, and one
+ * nothing gives the parameters of is its whole function (../calls/function-arguments.ts).
  */
 export function functionsAccepted(
   context: BodyContext,
   named: NamedFunctions,
 ): Accepts | undefined {
   const lone = loneFunction(context, named, undefined);
-  if (lone?.signature.parameters.every((slot) => !slot.hasDefault && slot.rest === undefined)) {
+  if (lone !== undefined && hasOwnType(lone)) {
     return undefined;
   }
   return (expected, isOpen) => {
@@ -323,6 +324,17 @@ export function functionsAccepted(
       ? takesCount(context, named, shape)
       : fittedValue(context, named, shape, isOpen) !== undefined;
   };
+}
+
+/**
+ * Whether `application`, of a lone function, is one function type of its own: none of its
+ * parameters may be left out, nor any of its type parameters still be open.
+ */
+function hasOwnType({ signature, inference }: Application): boolean {
+  return (
+    signature.parameters.every((slot) => !slot.hasDefault && slot.rest === undefined) &&
+    signature.typeParameters.every((parameter) => !inference.isUnknown(parameter))
+  );
 }
 
 /** Whether one of the functions `named` means takes as many parameters as `shape`, or a pack. */
@@ -360,25 +372,45 @@ function loneFunction(
 }
 
 /**
- * How `candidate` takes its own parameters with the type arguments written after `named`, which
- * leave its parameters' types to the instantiation; with none written, only a non-generic one
- * takes them, as they are, since only an expected type instantiates a generic one.
+ * How `candidate` takes its own parameters, as the type arguments written after `named`
+ * instantiate them: a type parameter they leave out is read as the error type, which fits anything
+ * and binds nothing (types/inference/infer.ts), so inference finds it later, and a pack they give
+ * flattens into its items (`ownArguments`). With none written, only a non-generic one takes them,
+ * since only an expected type instantiates a generic one.
  */
 export function ownChoice(
   context: BodyContext,
   candidate: Candidate,
   { written }: NamedFunctions,
 ): Choice {
+  const { checker } = context;
   const { declaration, requirement } = candidate;
-  const signature = signatureOf(context.checker, declaration, requirement?.substitution);
+  const signature = signatureOf(checker, declaration, requirement?.substitution);
   if (written === undefined && signature.typeParameters.length > 0) {
     return { kind: 'none', reasons: [] };
   }
-  const arguments_ = signature.parameters.map((slot) => ({
-    type: written === undefined ? slot.type : undefined,
-    passing: passingOf(slot.reference),
-  }));
-  return chooseAsValue(context.checker, [candidate], arguments_, written);
+  const substitution: Substitution = new Map(
+    signature.typeParameters.map((parameter, index) => [parameter, written?.[index] ?? errorType]),
+  );
+  const arguments_ = signature.parameters.flatMap((slot) =>
+    ownArguments(slot, substitute(slot.type, substitution, checker.typeRules)),
+  );
+  return chooseAsValue(checker, [candidate], arguments_, written);
+}
+
+/**
+ * The arguments that pass `slot` its own type, `type` as instantiated: one value, or for a pack's
+ * rest a tuple's items, one by one, or another pack's value, spread (§3.5).
+ */
+function ownArguments(slot: SignatureSlot, type: Type): readonly CallArgument[] {
+  const passing = passingOf(slot.reference);
+  if (slot.rest?.kind !== 'pack') {
+    return [{ type, passing }];
+  }
+  const items = tupleElements(type);
+  return items === undefined
+    ? [{ type, passing, isSpread: true }]
+    : items.map((item) => ({ type: item, passing }));
 }
 
 /**
@@ -404,7 +436,9 @@ function chosenFor(
   return choice.kind === 'chosen' ? choice.application : undefined;
 }
 
-/** `candidates` a value of `shape` may be: an async function only where `shape` is async (§3.14). */
+/**
+ * `candidates` a value of `shape` may be: an async function only where `shape` is async (§3.14).
+ */
 function takingAsync(candidates: readonly Candidate[], shape: FunctionType): readonly Candidate[] {
   return shape.isAsync ? candidates : candidates.filter(({ declaration }) => !declaration.isAsync);
 }

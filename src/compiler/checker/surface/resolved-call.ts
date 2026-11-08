@@ -164,11 +164,19 @@ export function witnessCallsOf(witnesses: Witnesses): readonly FunctionCall[] {
  * Nodes the checker resolves to a function: the nodes a call can be written as, a call, an
  * operator that calls a function (§3.9), indexing, which calls `index`, an assignment, whose
  * compound operator calls a function; and a function named as a value (§3.14), `f`, `ns.f` or
- * `T.f`, for the function its closure runs. A call of a function value resolves to none
- * (`CheckedBody.valueCalls`), and a call the language makes is implicit (`ImplicitRole`).
+ * `T.f`, or given type arguments, `f<Int>`, for the function its closure runs. A call of a function
+ * value resolves to none (`CheckedBody.valueCalls`), and a call the language makes is implicit
+ * (`ImplicitRole`).
  */
 export type ResolvedSite = NodeOf<
-  'Call' | 'Binary' | 'Unary' | 'Assignment' | 'Index' | 'Identifier' | 'MemberAccess'
+  | 'Call'
+  | 'Binary'
+  | 'Unary'
+  | 'Assignment'
+  | 'Index'
+  | 'Identifier'
+  | 'MemberAccess'
+  | 'TypeApplication'
 >;
 
 /**

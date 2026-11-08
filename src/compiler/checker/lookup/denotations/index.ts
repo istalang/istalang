@@ -21,6 +21,7 @@ import type { Call, FieldInitializer, MemberAccess } from '../../../syntax/expre
 import { literalNaming } from '../../../syntax/expressions/literals/built-types.ts';
 import { bareKeyOf } from '../../../syntax/expressions/literals/indented-values.ts';
 import { isTagged, taggedCall } from '../../../syntax/expressions/literals/templates.ts';
+import { callOfCallee } from '../../../syntax/expressions/readings.ts';
 import type { Hold } from '../../../syntax/statements/index.ts';
 import { ancestorsOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import { type Identifier, lastName } from '../../../syntax/tree/node.ts';
@@ -96,9 +97,9 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
     if (site.name !== node.target) {
       return;
     }
-    const call = callCalling(node, site.holders.slice(1));
+    const call = callOfCallee(site.name, site.holders);
     return call === undefined
-      ? calledAt(site, node.target, site.body?.typeOf(node))
+      ? calledAt(site, node, site.body?.typeOf(node))
       : calleeDenotations(site, call);
   },
   TemplateLiteral: (site, node) =>
@@ -169,29 +170,18 @@ function memberDenotations(site: NameSite, access: MemberAccess): readonly Denot
     return read;
   }
   const [, holder] = site.holders;
-  const call = callCalling(access, site.holders.slice(1));
+  const call = callOfCallee(access, site.holders.slice(1));
   if (call !== undefined) {
     return calleeDenotations(site, call);
   }
   if (holder?.kind === 'TemplateLiteral' && isTagged(holder) && holder.tag === access) {
     return calledAt(site, taggedCall(holder), undefined) ?? named(site);
   }
-  // Given type arguments, the value is the application's, of the type they instantiate.
-  const type = site.body?.typeOf(holder?.kind === 'TypeApplication' ? holder : access);
+  // Type arguments written after the access make the value, a function the checker resolved.
+  const value = holder?.kind === 'TypeApplication' ? holder : access;
+  const type = site.body?.typeOf(value);
   const associated = associatedNamed(site.checker, namedType(namingAt(site), access));
-  return calledAt(site, access, type) ?? (associated.length > 0 ? associated : named(site, type));
-}
-
-/**
- * The call whose callee is `callee`, through the type arguments written after it, among `holders`,
- * the nodes holding `callee`, innermost first; undefined when it is no callee.
- */
-function callCalling(callee: SyntaxNode, holders: readonly SyntaxNode[]): Call | undefined {
-  const [holder] = holders;
-  if (holder?.kind === 'TypeApplication' && holder.target === callee) {
-    return callCalling(holder, holders.slice(1));
-  }
-  return holder?.kind === 'Call' && holder.callee === callee ? holder : undefined;
+  return calledAt(site, value, type) ?? (associated.length > 0 ? associated : named(site, type));
 }
 
 /** What naming a type in value position reads where `site` stands. */

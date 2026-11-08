@@ -132,7 +132,7 @@ function instantiationsAt(
   if (call?.kind === 'Call' && call.callee === node) {
     return callInstantiations(checker, module, call);
   }
-  return functionsInstantiated(bodyHolding(checker, module, node)?.callsAt(node.target) ?? []);
+  return functionsInstantiated(bodyHolding(checker, module, node)?.callsAt(node) ?? []);
 }
 
 /**

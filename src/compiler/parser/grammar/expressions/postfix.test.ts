@@ -114,6 +114,14 @@ describe('type arguments (§3.5)', () => {
     ['a < B > -c', '(ChainedComparison [a B (Unary - c)] [< >])'],
     ['a < B >> c', '(Binary a < (Binary B >> c))'],
     ['a < B >= c', '(ChainedComparison [a B c] [< >=])'],
+    [
+      'a < b.c.D > (e)',
+      '(ChainedComparison [a (MemberAccess (MemberAccess b c) D) (Parenthesized e)] [< >])',
+    ],
+    [
+      'a < (B).c > (d)',
+      '(ChainedComparison [a (MemberAccess (Parenthesized B) c) (Parenthesized d)] [< >])',
+    ],
     ['[\n  a < b\n  c > d\n]', '(ArrayLiteral [(Binary a < b) (Binary c > d)])'],
   ])('reads %s as comparisons, reporting nothing', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
@@ -138,6 +146,8 @@ describe('type arguments (§3.5)', () => {
       `(Binary (TypeApplication f [${named('Int')}]) == (TypeApplication g [${named('Int')}]))`,
     ],
     ['(f<Int>)', `(Parenthesized (TypeApplication f [${named('Int')}]))`],
+    ['f<Int> not in xs', `(Binary (TypeApplication f [${named('Int')}]) not in xs)`],
+    ['m.f<m.T>', '(TypeApplication (MemberAccess m f) [(NamedType [m T] [])])'],
     [
       '[\n  parse<Int>\n  parse<Float>\n]',
       `(ArrayLiteral [(TypeApplication parse [${named('Int')}]) (TypeApplication parse [${named('Float')}])])`,

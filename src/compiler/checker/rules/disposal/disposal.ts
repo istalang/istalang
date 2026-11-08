@@ -20,6 +20,7 @@
 import { disposeFunction } from '../../../../foundation/language/well-known/implicit-calls.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Parameter } from '../../../syntax/expressions/index.ts';
+import { callOfCallee } from '../../../syntax/expressions/readings.ts';
 import { fieldChildrenOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import type { NodeOf } from '../../../syntax/tree/node.ts';
 import type { Disposal } from '../../check.ts';
@@ -195,11 +196,12 @@ function checkSelfStays(
     const entity = node.kind === 'Identifier' ? checker.bindings.entityOf(module, node) : undefined;
     // A parameter owns its pattern's names too (§3.3); only its own name is the disposed value.
     if (entity?.kind === 'variable' && entity.name === self.name) {
-      const [parent, grandparent] = outer.filter((each) => each.kind !== 'Parenthesized');
+      const holders = outer.filter((each) => each.kind !== 'Parenthesized');
+      const [parent] = holders;
       const stays =
         parent?.kind === 'Dereference' ||
         (parent?.kind === 'Call' && parent.callee !== node && isExternCall(parent)) ||
-        (parent?.kind === 'MemberAccess' && isExternCall(grandparent));
+        (parent?.kind === 'MemberAccess' && isExternCall(callOfCallee(parent, holders.slice(1))));
       if (nested || !stays) {
         checker.report(module, checkerDiagnostics.disposeSelfEscapes(node.span, entity.name.text));
       }

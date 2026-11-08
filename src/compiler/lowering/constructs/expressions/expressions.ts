@@ -51,7 +51,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Binary: lowerBinary,
   Unary: lowerUnary,
   Call: lowerCall,
-  TypeApplication: (context, node) => lowerFunctionValue(context, node.target),
+  TypeApplication: lowerFunctionValue,
   StructLiteral: lowerStructLiteral,
   NewStructLiteral: lowerNewStructLiteral,
   IndentedValue: (context, node) =>

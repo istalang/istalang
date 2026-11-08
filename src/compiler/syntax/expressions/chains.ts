@@ -5,7 +5,7 @@
  */
 
 import type { Call, Expression } from './index.ts';
-import { withoutTypeArguments } from './readings.ts';
+import { calledName } from './readings.ts';
 
 /**
  * The forms of a link of an optional chain (§4), each with its operator taking the step on the
@@ -71,10 +71,10 @@ export function chainStepOf(node: Expression): ChainStep | undefined {
 
 /** A call's step: through the optional function it calls, or a method's to its receiver. */
 function callStepOf(node: Call): ChainStep | undefined {
-  const callee = withoutTypeArguments(node.callee);
   if (node.isOptional) {
-    return { target: callee, operator: optionalOperatorOf('(') };
+    return { target: node.callee, operator: optionalOperatorOf('(') };
   }
+  const callee = calledName(node);
   return callee.kind === 'MemberAccess'
     ? { target: callee.target, operator: linkOperator('.', callee.isOptional) }
     : undefined;

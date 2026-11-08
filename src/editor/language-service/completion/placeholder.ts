@@ -3,7 +3,9 @@
  * placeholder name written at the cursor, as rust-analyzer and IntelliJ do: what the grammar makes
  * of a name there is what may be written there, so the parser stays the one home of the grammar,
  * and code being typed, broken or unfinished, is read the way the parser recovers it. The
- * placeholder joins any name half written at the cursor, a keyword's spelling included.
+ * placeholder joins any name half written at the cursor, a keyword's spelling included. Among the
+ * type arguments after a name, which only names cased as types' make (§3.5), it leads that name,
+ * cased as a type's, so the parser reads them there whatever has been typed.
  *
  * The placeholder's nearest enclosing node that decides a role names the place: a type (but for a
  * literal's or a struct pattern's name, which the tree holds as one and which writes a value or a
@@ -86,6 +88,9 @@ export const nothingPlace: NothingPlace = { kind: 'nothing' };
 /** A name no program writes by chance; its value is never read. */
 const placeholder = 'completionPlaceholder';
 
+/** The placeholder cased as a type's name (§2). */
+const typePlaceholder = 'CompletionPlaceholder';
+
 /** The place at `cursor`, as the parser reads a name written there. */
 export function parsedPlaceAt(cursor: Cursor): ParsedPlace | NothingPlace {
   const parsed = placeholderParse(cursor);
@@ -115,14 +120,31 @@ function kindAt(cursor: Cursor, parsed: PlaceholderParse): ParsedPlaceKind | 'no
 }
 
 /**
- * The module's text with the placeholder at the cursor, parsed reusing what the edit left alike.
+ * The module's text with the placeholder at the cursor, parsed reusing what the edit left alike:
+ * cased as a type's name before the name written there where that makes it a type argument after
+ * a name, else after that name, as a value's.
  */
-function placeholderParse({ tree, offset }: Cursor): PlaceholderParse {
+function placeholderParse(cursor: Cursor): PlaceholderParse {
+  const typed = parsedWith(cursor, typePlaceholder, cursor.name?.span.start ?? cursor.offset);
+  return isTypeArgument(typed.chain) ? typed : parsedWith(cursor, placeholder, cursor.offset);
+}
+
+/** The module's text with `name` written at `at`, joining the name written at the cursor. */
+function parsedWith({ tree, offset }: Cursor, name: string, at: number): PlaceholderParse {
   const { path, text } = tree.source;
-  const source = createSourceText(path, text.slice(0, offset) + placeholder + text.slice(offset));
+  const source = createSourceText(path, text.slice(0, at) + name + text.slice(at));
   const scanned = scan(source);
   const parsed = parse(source, scanned, tree);
   return { tree: parsed, chain: nodesAt(parsed, offset), offset };
+}
+
+/** Whether the placeholder `chain` leads to stands among a name's type arguments. */
+function isTypeArgument(chain: readonly SyntaxNode[]): boolean {
+  return chain.some((node, index) => {
+    const child = chain[index + 1];
+    const isApplied = node.kind === 'TypeApplication' || node.kind === 'NamedType';
+    return isApplied && child !== undefined && node.typeArguments.some((each) => each === child);
+  });
 }
 
 /** Whether the cursor is in a comment, which holds no code whatever surrounds it. */

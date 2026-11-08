@@ -19,7 +19,7 @@
 import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
 import { argumentValue } from '../../../../syntax/expressions/arguments.ts';
 import type { Call, Expression, Spawn } from '../../../../syntax/expressions/index.ts';
-import { unparenthesized, withoutTypeArguments } from '../../../../syntax/expressions/readings.ts';
+import { calledName, unparenthesized } from '../../../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { calledVariant } from '../../../surface/named-variants.ts';
@@ -39,7 +39,7 @@ export function checkSpawn(context: BodyContext, node: Spawn): Type {
   context.expression(call);
   const refusal = refusalOf(context, call);
   if (refusal !== undefined) {
-    const { span } = withoutTypeArguments(call.callee);
+    const { span } = calledName(call);
     context.report(checkerDiagnostics.notSpawnable(span, refusal.callee, refusal.why));
   }
   for (const argument of copiedArguments(context, call)) {
@@ -60,7 +60,7 @@ export function checkSpawn(context: BodyContext, node: Spawn): Type {
 function outcomeOf(context: BodyContext, call: Call): Type {
   const returned = context.typeOf(call);
   const resolved = context.callAt(call);
-  const callee = context.typeOf(withoutTypeArguments(call.callee));
+  const callee = context.typeOf(calledName(call));
   const isAsync =
     resolved === undefined
       ? callee.kind === 'function' && callee.isAsync
@@ -88,7 +88,7 @@ function refusalOf(
     };
   }
   if (resolved === undefined) {
-    const type = context.typeOf(withoutTypeArguments(call.callee));
+    const type = context.typeOf(calledName(call));
     return type.kind !== 'function' || type.isSendable
       ? undefined
       : {

@@ -11,7 +11,7 @@
 
 import { isMethod } from '../../../compiler/syntax/declarations/methods.ts';
 import type { Expression } from '../../../compiler/syntax/expressions/index.ts';
-import { withoutTypeArguments } from '../../../compiler/syntax/expressions/readings.ts';
+import { calledName } from '../../../compiler/syntax/expressions/readings.ts';
 import {
   nodesUnder,
   type SyntaxNode,
@@ -48,7 +48,7 @@ function qualified(path: QualifiedName, last: SemanticType): readonly Role[] {
 }
 
 /** The name a call, or a template's tag, calls: a function's, or a method's after its receiver. */
-function calledName(callee: Expression): readonly Role[] {
+function calleeRoles(callee: Expression): readonly Role[] {
   if (callee.kind === 'Identifier') {
     return [[callee, 'function']];
   }
@@ -90,8 +90,10 @@ const rolesOf: RolesOf = {
   NestedFieldPattern: (node) => [[node.field, 'property']],
   NamedPatternArgument: (node) => [[node.name, 'property']],
   MemberAccess: (node) => [[node.member, 'property']],
-  Call: (node) => calledName(withoutTypeArguments(node.callee)),
-  TemplateLiteral: (node) => (node.tag === undefined ? [] : calledName(node.tag)),
+  Call: (node) => calleeRoles(calledName(node)),
+  // Only a function's name takes type arguments as a value (§3.14).
+  TypeApplication: (node) => calleeRoles(node.target),
+  TemplateLiteral: (node) => (node.tag === undefined ? [] : calleeRoles(node.tag)),
   // An annotation is a struct value (§3.16); written bare, its name is still the struct's.
   Annotation: (node) => (node.value.kind === 'Identifier' ? [[node.value, 'type']] : []),
   For: labelled,

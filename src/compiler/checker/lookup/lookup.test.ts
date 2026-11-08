@@ -14,12 +14,17 @@ import { idOf } from '../../program/program.test-kit.ts';
 import type { ModuleId } from '../../program/program.ts';
 import { constructedVariant } from '../../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
-import type { Call } from '../../syntax/expressions/index.ts';
-import { nodesUnder, parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';
+import { callOfCallee } from '../../syntax/expressions/readings.ts';
+import {
+  ancestorsOf,
+  nodesUnder,
+  parentOf,
+  type SyntaxNode,
+  type SyntaxTree,
+} from '../../syntax/tree/index.ts';
 import type { Identifier } from '../../syntax/tree/node.ts';
 import { type Checker, checkProgram } from '../check.ts';
 import type { Denotation, JoinedBody } from '../surface/denotation.ts';
-import type { ResolvedSite } from '../surface/resolved-call.ts';
 import { sameType } from '../types/identity/identity.ts';
 import type { Type } from '../types/type/index.ts';
 import { membersOf } from '../types/unions/unions.ts';
@@ -85,20 +90,29 @@ function madeBy(
   name: Identifier,
   body: JoinedBody,
 ): readonly Type[] | undefined {
-  const parent = parentOf(tree, name);
-  const member = parent?.kind === 'MemberAccess' && parent.member === name ? parent : undefined;
-  const call =
-    callWith(name, parent) ??
-    callWith(member, member === undefined ? undefined : parentOf(tree, member));
+  const { value, call } = namingAt(tree, name);
   if (call !== undefined) {
     const made = body.typeOf(call);
     return made === undefined ? undefined : membersOf(made);
   }
-  const site = member ?? name;
-  const value = body.callsAt(site).length > 0 ? body.typeOf(site) : undefined;
-  return value === undefined
+  const valued = body.callsAt(value).length > 0 ? body.typeOf(value) : undefined;
+  return valued === undefined
     ? undefined
-    : membersOf(value).flatMap((each) => (each.kind === 'function' ? [each.result] : []));
+    : membersOf(valued).flatMap((each) => (each.kind === 'function' ? [each.result] : []));
+}
+
+/**
+ * Where `name` names what it names: the name or the member access it ends (`named`); the `value`
+ * it is, with any type arguments written after it, where a function value is resolved; and the
+ * `call` of it, if any.
+ */
+function namingAt(tree: SyntaxTree, name: Identifier) {
+  const parent = parentOf(tree, name);
+  const named = parent?.kind === 'MemberAccess' && parent.member === name ? parent : name;
+  const holders = ancestorsOf(tree, named).slice(1);
+  const [holder] = holders;
+  const value = holder?.kind === 'TypeApplication' && holder.target === named ? holder : named;
+  return { named, value, call: callOfCallee(named, holders) };
 }
 
 /**
@@ -117,23 +131,15 @@ function sameTypes(first: Type | undefined, second: Type): boolean {
   return first !== undefined && sameType(first, second);
 }
 
-/** `call` when it is a call of `callee`. */
-function callWith(callee: SyntaxNode | undefined, call: SyntaxNode | undefined): Call | undefined {
-  return call?.kind === 'Call' && callee !== undefined && call.callee === callee ? call : undefined;
-}
-
 /** The declarations binding and checking chose for `name`, as checks on what a denotation names. */
 function chosenFor(
   { checker, module, tree }: CheckedModule,
   name: Identifier,
   body: JoinedBody,
 ): readonly ((denotation: Denotation) => boolean)[] {
-  const parent = parentOf(tree, name);
-  const grandparent = parent === undefined ? undefined : parentOf(tree, parent);
-  const member = parent?.kind === 'MemberAccess' && parent.member === name ? parent : undefined;
-  const site: ResolvedSite =
-    callWith(name, parent) ?? callWith(member, grandparent) ?? member ?? name;
-  const called = body.callsAt(site);
+  const naming = namingAt(tree, name);
+  const member = naming.named.kind === 'MemberAccess' ? naming.named : undefined;
+  const called = body.callsAt(naming.call ?? naming.value);
   const field = body.fieldGivenBy(name);
   const read = member === undefined ? undefined : body.fieldReadOf(member);
   const entity = checker.bindings.entityOf(module, name);

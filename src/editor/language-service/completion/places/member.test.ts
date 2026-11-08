@@ -11,7 +11,13 @@ import { checkProgram } from '../../../../compiler/checker/check.ts';
 import type { Program } from '../../../../compiler/program/program.ts';
 import { isMethod } from '../../../../compiler/syntax/declarations/methods.ts';
 import type { MemberAccess } from '../../../../compiler/syntax/expressions/index.ts';
-import { nodesAt, nodesUnder, parentOf } from '../../../../compiler/syntax/tree/index.ts';
+import { callOfCallee } from '../../../../compiler/syntax/expressions/readings.ts';
+import {
+  ancestorsOf,
+  nodesAt,
+  nodesUnder,
+  parentOf,
+} from '../../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../../compiler/syntax/tree/positions.ts';
 import { type MainProgram, mainProgram, programAt } from '../../language-service.test-kit.ts';
 import { completionsAt } from '../index.ts';
@@ -89,8 +95,7 @@ function unresolvedOffers({ main, access }: MemberSite): readonly string[] {
 
 /** The call `access` is the callee of, if it is one. */
 function callOf({ tree }: MainProgram, access: MemberAccess) {
-  const parent = parentOf(tree, access);
-  return parent?.kind === 'Call' && parent.callee === access ? parent.span : undefined;
+  return callOfCallee(access, ancestorsOf(tree, access).slice(1))?.span;
 }
 
 /**
@@ -122,7 +127,7 @@ function memberSites(main: MainProgram): readonly MemberSite[] {
     const operator = tree.source.text
       .slice(spanIn(tree, node.target.span).end, spanIn(tree, node.member.span).start)
       .trim();
-    const replaced = parentOf(tree, node)?.kind === 'Call' ? parentOf(tree, node) : node;
+    const replaced = callOfCallee(node, ancestorsOf(tree, node).slice(1)) ?? node;
     const holder = replaced && parentOf(tree, replaced);
     const isTarget = holder?.kind === 'Assignment' && holder.targets.includes(replaced as never);
     return (operator === '.' || operator === '?.') && !isTarget ? [{ main, access: node }] : [];

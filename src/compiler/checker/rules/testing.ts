@@ -70,7 +70,9 @@ function checkTarget(context: BodyContext, site: Call, mock: FunctionCall): Expr
   const argument = source?.kind === 'argument' ? site.arguments[source.index] : undefined;
   const target = argument === undefined ? undefined : unparenthesized(argumentValue(argument));
   const named =
-    target?.kind === 'Identifier' || target?.kind === 'MemberAccess'
+    target?.kind === 'Identifier' ||
+    target?.kind === 'MemberAccess' ||
+    target?.kind === 'TypeApplication'
       ? context.callAt(target)
       : undefined;
   const names = named?.kind === 'function' && constructedVariant(named.function) === undefined;

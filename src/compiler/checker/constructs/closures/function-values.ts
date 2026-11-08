@@ -1,8 +1,9 @@
 /**
  * A function named as a value, checked (§3.14): the one the name means where its value is wanted,
  * chosen as resolution/choosing/named-functions.ts chooses it, then instantiated against what is
- * expected of it, made a closure with no captures and recorded as a site at the name, a variant's
- * constructor (§3.11) as any function, which tools read the variant it builds from.
+ * expected of it, made a closure with no captures and recorded as a site at the expression naming
+ * it, type arguments and all, a variant's constructor (§3.11) as any function, which tools read the
+ * variant it builds from.
  *
  * - Type arguments written after the name are a call's (§3.5): with one function, type arguments
  *   it can't take are reported as its call would report them.
@@ -10,8 +11,9 @@
  *   is expected, else as fitting none of the one expected; a lone function that doesn't fit is its
  *   own value, which the expected type reports as any value's.
  * - Type arguments after a name of anything but functions are reported, once the name is checked
- *   as it would be alone; a variant without fields, which only its call gives type arguments
- *   (§3.11), isn't checked alone, as its enum's type arguments would be asked for there.
+ *   as it would be alone; a type's or a variant's without fields, which only a literal or a call
+ *   gives type arguments (§3.1, §3.11), isn't checked alone, where type arguments would be asked
+ *   of the type or enum.
  */
 
 import type { TypeApplication } from '../../../syntax/expressions/index.ts';
@@ -77,7 +79,8 @@ export function checkAppliedFunction(
   }
   const { target } = node;
   const entity = context.entityOf(target.kind === 'Identifier' ? target : target.member);
-  if (entity?.kind === 'variant' || context.expression(target, expected).kind !== 'error') {
+  const isNamedAlone = entity?.kind !== 'variant' && entity?.kind !== 'type';
+  if (!isNamedAlone || context.expression(target, expected).kind !== 'error') {
     const name = (qualifiedPath(target) ?? []).map(({ text }) => text).join('.');
     context.report(checkerDiagnostics.typeArgumentsOnValue(target.span, name));
   }

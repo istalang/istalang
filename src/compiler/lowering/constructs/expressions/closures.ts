@@ -14,7 +14,7 @@
 import type { Register } from '../../../../definition/operands.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
-import type { Lambda, MemberAccess } from '../../../syntax/expressions/index.ts';
+import type { Lambda, MemberAccess, TypeApplication } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { FunctionContext } from '../../context.ts';
 import { nestedSpanOf } from '../../functions/bodies.ts';
@@ -33,12 +33,13 @@ export function lowerLocalFunction(context: FunctionContext, node: FunctionDecla
 }
 
 /**
- * A function the checker resolved for the name at `site` as a closure without captures, of the
- * entry taking the value's parameters: a filling one when its type leaves defaults out (§3.14).
+ * A function the checker resolved for the name at `site`, maybe given type arguments, as a closure
+ * without captures, of the entry taking the value's parameters: a filling one when its type leaves
+ * defaults out (§3.14).
  */
 export function lowerFunctionValue(
   context: FunctionContext,
-  site: Identifier | MemberAccess,
+  site: Identifier | MemberAccess | TypeApplication,
 ): Register {
   const dst = context.code.allocate();
   context.code.emit({

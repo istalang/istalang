@@ -31,7 +31,7 @@ import { parameterOfArgument } from '../../../checker/surface/resolved-call.ts';
 import type { RestSlot } from '../../../checker/types/type/function-types.ts';
 import { argumentValue } from '../../../syntax/expressions/arguments.ts';
 import type { Call, Expression, Spawn } from '../../../syntax/expressions/index.ts';
-import { unparenthesized, withoutTypeArguments } from '../../../syntax/expressions/readings.ts';
+import { calledName, unparenthesized } from '../../../syntax/expressions/readings.ts';
 import { type ClosedCall, calledParameters } from '../../calls/closed-calls.ts';
 import { emitCall, emitFunctionCall } from '../../calls/emit-call.ts';
 import { packElementsOf } from '../../calls/packs.ts';
@@ -178,7 +178,7 @@ function valueCallee(context: FunctionContext, node: Call): Register {
   if (node.isOptional) {
     return context.chains.target(context, node);
   }
-  const callee = withoutTypeArguments(node.callee);
+  const callee = calledName(node);
   return callee.kind === 'MemberAccess' && readsField(context, callee)
     ? lowerFieldRead(context, callee, node)
     : context.expression(callee);

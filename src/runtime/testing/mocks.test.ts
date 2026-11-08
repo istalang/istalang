@@ -38,6 +38,21 @@ fn mocks() -> Array<Test>: [test("everywhere", everywhere)]
     expect(outcomesOf(reportsOf(source))).toEqual(['mocks › everywhere: passed']);
   });
 
+  it('replace a generic function named with its type arguments, at that instantiation', () => {
+    const source = testModule(`
+fn listed<T>(value: T) -> Array<T>: [value]
+
+async fn typed():
+  hold _ = mock(listed<Int>, fn(value: Int): [value + 1])
+  assertEq(listed(1), [2])
+  assertEq(listed("a"), ["a"])
+
+@Suite{"mocks"}
+fn mocks() -> Array<Test>: [test("typed", typed)]
+`);
+    expect(outcomesOf(reportsOf(source))).toEqual(['mocks › typed: passed']);
+  });
+
   it('are released with their holder, the newest reaching calls, and record each call as a tuple', () => {
     const source = testModule(`
 fn greet() -> String: "hello"

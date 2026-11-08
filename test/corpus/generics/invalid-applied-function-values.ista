@@ -1,21 +1,25 @@
-# error: 5020 at 36:13
-# error: 5020 at 37:13
-# error: 5101 at 38:13
-# error: 5503 at 39:13
-# error: 5001 at 40:42
-# error: 5508 at 41:13
-# error: 5508 at 42:13
-# error: 5011 at 43:13
-# error: 5107 at 44:21
-# error: 5504 at 45:19
+# error: 5020 at 40:13
+# error: 5020 at 41:13
+# error: 5101 at 42:13
+# error: 5503 at 43:13
+# error: 5001 at 44:42
+# error: 5508 at 45:13
+# error: 5508 at 46:13
+# error: 5508 at 47:13
+# error: 5508 at 48:13
+# error: 5107 at 49:21
+# error: 5504 at 50:19
 # Type arguments written after a function named as a value are judged as a call's (§3.5): their
 # count, for its one function, and its constraints. Several functions they suit, or none, need a
 # function type to choose by, and the value they make fits only what it is. After a variable, a
-# type, a method or a variant without fields, they are refused: only a function's name takes them
-# as a value. A bare variant needs the expected type to give its enum, given type arguments or not.
+# type, a struct without fields among them, a method or a variant without fields, they are refused:
+# only a function's name takes them as a value. A bare variant needs the expected type to give its
+# enum, given type arguments or not.
 
 struct Opaque:
   id: Int
+
+struct Marker<T> {}
 
 enum Opt<T> { Some(value: T), Empty }
 
@@ -41,6 +45,7 @@ fn main() -> Int:
   const f = count<Int>
   const g = Opt.Empty<Int>
   const h = Opaque<Int>
+  const k = Marker<Int>
   const i = [1].map(Ok<Int, String>)
   const j = count.twice<Int>
   0
