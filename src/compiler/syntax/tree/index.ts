@@ -120,6 +120,15 @@ export function parentOf(tree: SyntaxTree, node: SyntaxNode): SyntaxNode | undef
   return memo(parents, tree, () => parentsIn(tree)).get(node);
 }
 
+/** `node` and the nodes holding it, innermost first, up to its module's root. */
+export function ancestorsOf(tree: SyntaxTree, node: SyntaxNode): readonly SyntaxNode[] {
+  const path = [node];
+  for (let parent = parentOf(tree, node); parent !== undefined; parent = parentOf(tree, parent)) {
+    path.push(parent);
+  }
+  return path;
+}
+
 function parentsIn(tree: SyntaxTree): ReadonlyMap<SyntaxNode, SyntaxNode> {
   return new Map(
     nodesUnder(tree, tree.root).flatMap((parent) =>

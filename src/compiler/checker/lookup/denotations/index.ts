@@ -22,7 +22,7 @@ import { literalNaming } from '../../../syntax/expressions/literals/built-types.
 import { bareKeyOf } from '../../../syntax/expressions/literals/indented-values.ts';
 import { isTagged, taggedCall } from '../../../syntax/expressions/literals/templates.ts';
 import type { Hold } from '../../../syntax/statements/index.ts';
-import { nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
+import { ancestorsOf, nestsFunction, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import { type Identifier, lastName } from '../../../syntax/tree/node.ts';
 import type { NamedType } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
@@ -32,7 +32,7 @@ import type { FieldMember, Type } from '../../types/type/index.ts';
 import { membersOf } from '../../types/unions/unions.ts';
 import { declaredFieldOf } from '../../types/written/declared-fields.ts';
 import { namedType } from '../../types/written/named-types.ts';
-import { ancestorsOf, bodyHolding } from '../holders.ts';
+import { bodyHolding } from '../holders.ts';
 import { keyedFieldDenotations } from '../key-denotations.ts';
 import { builtType, calledAt, functionDenotation, type NameSite, named } from './named.ts';
 

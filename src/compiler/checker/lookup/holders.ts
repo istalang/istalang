@@ -10,7 +10,7 @@ import type { ModuleId } from '../../program/program.ts';
 import { type FieldsFunction, fieldsFunctionOf } from '../../syntax/declarations/field-defaults.ts';
 import type { Declaration, FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type { Annotation } from '../../syntax/items.ts';
-import { parentOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';
+import { ancestorsOf, type SyntaxNode, type SyntaxTree } from '../../syntax/tree/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import type { CheckedBody } from '../surface/checked-body.ts';
 import type { JoinedBody } from '../surface/denotation.ts';
@@ -21,15 +21,6 @@ export type Holders = Pick<
   CheckerContext,
   'inputs' | 'bodyOf' | 'defaultsOf' | 'constantBodyOf' | 'annotations' | 'typeRules'
 >;
-
-/** `node` and the nodes holding it, innermost first, up to its module's root. */
-export function ancestorsOf(tree: SyntaxTree, node: SyntaxNode): readonly SyntaxNode[] {
-  const path = [node];
-  for (let parent = parentOf(tree, node); parent !== undefined; parent = parentOf(tree, parent)) {
-    path.push(parent);
-  }
-  return path;
-}
 
 /** The top-level item of `tree` holding `node`, or `node` itself; undefined for the root. */
 export function itemHolding(tree: SyntaxTree, node: SyntaxNode): Declaration | undefined {
