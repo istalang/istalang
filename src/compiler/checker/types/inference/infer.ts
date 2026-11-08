@@ -43,26 +43,54 @@ import type { Settling } from './settle.ts';
 import { CallSystem, type MatchKind } from './system.ts';
 import { CallVariables } from './variables.ts';
 
+/** Where an inference stands: its call's site, and the inferences of what joins its call. */
+export interface InferenceSite {
+  /** The call's own site, which its variables are twins at (variables.ts). */
+  readonly site?: object | undefined;
+  /** The inferences of the calls and literals joining this one, whose systems its starts from. */
+  readonly joining?: readonly Inference[] | undefined;
+}
+
 export class Inference {
+  readonly #parameters: readonly ParameterKey[];
+  readonly #site: object | undefined;
   readonly #variables: CallVariables;
   readonly #fitting: Fitting;
   readonly #system: CallSystem;
-  /** The type arguments written, and those a method's receiver gave, taken as given. */
-  readonly #given: Map<ParameterKey, Type>;
   /** What the match being made is, a receiver's matching as an argument's does otherwise. */
   #kind: MatchKind = 'argument';
 
   /**
    * `written` gives the type arguments written for some of `parameters`, taken as given (§3.5).
-   * Each parameter is inferred as a variable of its own (variables.ts).
+   * Each parameter is inferred as a variable of its own (variables.ts), in a system that starts as
+   * a copy of those of what joins the call (`at.joining`), or is the very system `into` names.
    */
-  constructor(parameters: Iterable<ParameterKey>, fitting: Fitting, written?: Substitution) {
-    this.#variables = new CallVariables(parameters, fitting);
+  constructor(
+    parameters: Iterable<ParameterKey>,
+    fitting: Fitting,
+    written?: Substitution,
+    at: InferenceSite & { readonly into?: Inference } = {},
+  ) {
+    this.#parameters = [...parameters];
+    this.#site = at.site;
+    this.#variables = new CallVariables(this.#parameters, fitting, at.site);
     this.#fitting = fitting;
-    this.#given = new Map(written ?? noSubstitution);
-    this.#system = new CallSystem(this.#variables, fitting, () =>
-      this.#variables.byVariable(this.#given),
-    );
+    this.#system =
+      at.into === undefined
+        ? new CallSystem(
+            fitting,
+            (at.joining ?? []).map((joined) => joined.#system),
+          )
+        : at.into.#system;
+    this.#system.add(this.#variables, written ?? noSubstitution);
+  }
+
+  /** This call's inference as it stands in `joint`'s system, which its call joined. */
+  within(joint: Inference): Inference {
+    return new Inference(this.#parameters, this.#fitting, undefined, {
+      site: this.#site,
+      into: joint,
+    });
   }
 
   /** Matches a value of `given` where `declared` is taken, bounding what it can; whether it fits. */
@@ -102,8 +130,8 @@ export class Inference {
         for (const parameter of parametersIn(declared)) {
           const variable = this.#variables.variableOf(parameter);
           const equal = variable === undefined ? undefined : this.#system.boundsOf(variable).equal;
-          if (equal !== undefined) {
-            this.#given.set(parameter, equal.type);
+          if (variable !== undefined && equal !== undefined) {
+            this.#system.give(variable, equal.type);
           }
         }
       }
@@ -123,6 +151,16 @@ export class Inference {
     }
   }
 
+  /** `declared` as it stands open: the types given in place, and each parameter left its variable. */
+  open(declared: Type): Type {
+    return this.#prepared(declared);
+  }
+
+  /** Whether `type`, as it stands open, mentions a variable this inference's system holds. */
+  mentionsVariables(type: Type): boolean {
+    return this.#system.mentionsVariable(type);
+  }
+
   /** Whether `parameter` is one this inference is finding. */
   isUnknown(parameter: ParameterKey): boolean {
     return this.#variables.variableOf(parameter) !== undefined;
@@ -130,7 +168,7 @@ export class Inference {
 
   /** The type found for `parameter` so far: given, equal, or what its bounds tell (`tentative`). */
   boundOf(parameter: ParameterKey): Type | undefined {
-    const given = this.#given.get(parameter);
+    const given = this.#givenOf(parameter);
     const variable = this.#variables.variableOf(parameter);
     if (given !== undefined || variable === undefined) {
       return given;
@@ -163,7 +201,7 @@ export class Inference {
   fix(parameters: readonly ParameterKey[], settling: Settling): void {
     for (const parameter of parameters) {
       const variable = this.#variables.variableOf(parameter);
-      if (variable !== undefined && !this.#given.has(parameter)) {
+      if (variable !== undefined && this.#givenOf(parameter) === undefined) {
         this.#system.fix(variable, this.#variables.settlingFor(settling));
       }
     }
@@ -196,7 +234,14 @@ export class Inference {
 
   /** The member parameters given a value of several members of their union, by what was given. */
   get severalMembers(): ReadonlyMap<ParameterKey, Type> {
-    return this.#system.severalMembers;
+    const several = new Map<ParameterKey, Type>();
+    for (const [variable, given] of this.#system.severalMembers) {
+      const parameter = this.#variables.parameterOf(variable);
+      if (parameter !== undefined) {
+        several.set(parameter, given);
+      }
+    }
+    return several;
   }
 
   /**
@@ -239,7 +284,7 @@ export class Inference {
   #found(
     read: (parameter: ParameterKey, variable: ParameterKey) => Type | undefined,
   ): Map<ParameterKey, Type> {
-    const found = new Map(this.#given);
+    const found = this.#givenTypes();
     for (const variable of this.#variables.variables) {
       const parameter = this.#variables.parameterOf(variable);
       const type =
@@ -253,6 +298,24 @@ export class Inference {
 
   /** `declared` with the types given in place, and each parameter left made its variable. */
   #prepared(declared: Type): Type {
-    return this.#variables.freshened(declared, this.#given);
+    return this.#variables.freshened(declared, this.#givenTypes());
+  }
+
+  /** The type given for `parameter`, written or by a receiver, if any. */
+  #givenOf(parameter: ParameterKey): Type | undefined {
+    const variable = this.#variables.variableOf(parameter);
+    return variable === undefined ? undefined : this.#system.givenOf(variable);
+  }
+
+  /** The types given, by parameter. */
+  #givenTypes(): Map<ParameterKey, Type> {
+    const given = new Map<ParameterKey, Type>();
+    for (const parameter of this.#parameters) {
+      const type = this.#givenOf(parameter);
+      if (type !== undefined) {
+        given.set(parameter, type);
+      }
+    }
+    return given;
   }
 }

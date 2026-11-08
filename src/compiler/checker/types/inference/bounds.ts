@@ -78,6 +78,16 @@ export class BoundStore {
     this.#rules = rules;
   }
 
+  /**
+   * Takes on `other`'s bounds and relations, as a system does those of the calls joining it
+   * (system.ts); their variables are apart from this store's own.
+   */
+  adopt(other: BoundStore): void {
+    copyInto(other.#bounds, this.#bounds);
+    copyInto(other.#below, this.#below);
+    copyInto(other.#above, this.#above);
+  }
+
   /** What `parameter` is bound by so far. */
   of(parameter: ParameterKey): VariableBounds {
     return this.#bounds.get(parameter) ?? noBounds;
@@ -215,6 +225,16 @@ export class BoundStore {
         this.#bounds.set(parameter, before);
       }
     });
+  }
+}
+
+/** Copies each of `from`'s entries into `to`. */
+function copyInto<Value>(
+  from: ReadonlyMap<ParameterKey, Value>,
+  to: Map<ParameterKey, Value>,
+): void {
+  for (const [variable, value] of from) {
+    to.set(variable, value);
   }
 }
 

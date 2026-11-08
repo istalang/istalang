@@ -5,9 +5,9 @@
  * field itself, so it has no spread and leaves no field to a default.
  *
  * - Its type is the expected one, a struct type with exactly the named fields and `x`'s, a
- *   declaration's (literal-fields.ts) or a type whose fields aren't all known yet, such as a mapped
- *   struct type over `x`'s keys, which a generic body builds. Without one, it is the shape of the
- *   named fields and each of `x`'s, typed as `e` is there: `x`'s fields must be known.
+ *   declaration's (literal-fields/index.ts) or a type whose fields aren't all known yet, such as a
+ *   mapped struct type over `x`'s keys, which a generic body builds. Without one, it is the shape
+ *   of the named fields and each of `x`'s, typed as `e` is there: `x`'s fields must be known.
  * - A field the comprehension gives is a field the literal gives: a name the literal also gives,
  *   or one its type lacks, is a mistake as a repeated or unknown name is.
  * - Its source (surface/checked-body.ts `FieldSource`) is the comprehension itself, whose fields
@@ -89,8 +89,8 @@ export interface Comprehended {
 
 /**
  * Checks the value of the comprehension `literal` ends with, if any, once per pass against the
- * field of `target` the pass's field is, as a named item's value is (literal-fields.ts), matching
- * it for inference where its type isn't known yet.
+ * field of `target` the pass's field is, as a named item's value is (literal-fields/index.ts),
+ * matching it for inference where its type isn't known yet.
  */
 export function checkComprehended(
   context: BodyContext,

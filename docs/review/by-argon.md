@@ -59,7 +59,7 @@ Spec: `docs/spec.md` · Architecture: `docs/arch/architecture.md` · Tracker: `d
 
 ## 2. Solutions Hard-Coded for Specific Types Instead of Generic Mechanisms
 
-### 2.1 `Error{...}` Default `trace` Field (`src/compiler/checker/constructs/expressions/structs/literal-fields.ts`)
+### 2.1 `Error{...}` Default `trace` Field (`src/compiler/checker/constructs/expressions/structs/literal-fields/index.ts`)
 
 - **Hard-coded behavior:** `checkLiteralFields` checks whether the target declaration is `prelude.Error` (`wellKnown.error`) and the field name is `'trace'`. When omitted, it records a special `FieldSource = { kind: 'trace' }` variant (`src/compiler/checker/check.ts`) that `src/compiler/checker/constructs/declarations/computation.ts` refuses at compile time and `src/compiler/lowering/constructs/expressions/structs/structs.ts` lowers to a call to `prelude._trace()`.
 - **Generic mechanism:** Support default field expressions on `struct` declarations (`trace: string = _trace()`), matching function parameter defaults (spec §3.3). That removes `TraceSource` and `errorTrace` from the compiler.

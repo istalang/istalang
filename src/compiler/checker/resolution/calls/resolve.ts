@@ -3,7 +3,8 @@
  * (resolution/applying/applied-call.ts), chosen, instantiated with its constraints met and its
  * arguments fitted, so their implicit conversions are too, then recorded for lowering with what
  * only a written call has: its receiver, the places it changes, and a report about a call nothing
- * takes.
+ * takes. Choosing comes first; the rest waits for the system the call stands in to settle
+ * (resolution/applying/joint.ts).
  *
  * - An argument whose type the chosen function decides (a bare variant, a lambda with an untyped
  *   parameter, an empty `[]`, a literal holding one) is checked only after choosing, against its
@@ -26,20 +27,23 @@ import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
+import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { ResolvedSite } from '../../surface/resolved-call.ts';
 import { misfitOf } from '../../types/fitting/fit/index.ts';
+import type { Inference } from '../../types/inference/infer.ts';
 import type { LiteralType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
-import { applyCall } from '../applying/applied-call.ts';
+import { type CallApplication, chooseCall, completeCall } from '../applying/applied-call.ts';
 import { argumentListText } from '../applying/argument-fit.ts';
+import { settleOutermost } from '../applying/joint.ts';
 import type { BindingFailure } from '../choosing/binding.ts';
 import type { CallArgument, Inapplicability, Misfit, Passing } from '../choosing/call-arguments.ts';
 import { callMade } from '../choosing/calls-made.ts';
 import type { Candidate } from '../choosing/candidates.ts';
 import type { Application } from '../choosing/choice.ts';
-import type { Instantiation } from '../conformance/conformance.ts';
+import { type Instantiation, settlingAt } from '../conformance/conformance.ts';
 import { checkDecidedFunctions } from './function-arguments.ts';
 import { changeReceiver, checkReferencedPlaces } from './places.ts';
 
@@ -78,15 +82,18 @@ export interface CallRequest {
   readonly hint?: () => Diagnostic<AnchoredSpan> | undefined;
 }
 
-/** Resolves `request`, recording the call; what it yields, or the error type after a report. */
+/**
+ * Resolves `request`, recording the call once its system settles (applying/joint.ts); what it
+ * yields, or the error type after a report.
+ */
 export function resolveCall(context: BodyContext, request: CallRequest): Type {
-  const { site, receiver } = request;
+  const { site } = request;
   context.recordCandidates(
     site,
     request.candidates.map(({ declaration }) => declaration),
   );
   const written = request.arguments;
-  const applied = applyCall(context, {
+  const applying: CallApplication = {
     span: site.span,
     name: request.name,
     candidates: request.candidates,
@@ -101,18 +108,52 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
         context.report(hint);
       }
     },
-    chosen: (chosen, settling) => checkDecidedFunctions(context, written, chosen, settling),
+    chosen: (application, settlingIt) =>
+      checkDecidedFunctions(context, written, application, settlingIt),
+  };
+  const chosen = chooseCall(context, applying);
+  if (chosen === undefined) {
+    return errorType;
+  }
+  const { checker } = context;
+  const settling = settlingAt(useSite(checker, context.module, site.span), chosen.signature);
+  const within = (joint: Inference): Application => ({
+    ...chosen,
+    inference: chosen.inference.within(joint),
   });
+  return settleOutermost({
+    inference: chosen.inference,
+    type: chosen.inference.open(chosen.signature.result()),
+    settling,
+    joined: [],
+    judge: (joint) => applying.chosen?.(within(joint), settling),
+    complete: (joint) => completeResolved(context, request, applying, within(joint)),
+  });
+}
+
+/** Completes the call `request` makes, once its system is settled, recording it; its type. */
+function completeResolved(
+  context: BodyContext,
+  request: CallRequest,
+  applying: CallApplication,
+  chosen: Application,
+): Type {
+  const applied = completeCall(context, applying, chosen);
   if (applied === undefined) {
     return errorType;
   }
-  const { application, instantiation } = applied;
-  const { signature } = application;
-  recordChosen(context, { site, application, instantiation, receiver });
+  const { site, receiver } = request;
+  const { signature, slots } = applied.application;
+  recordChosen(context, {
+    site,
+    application: applied.application,
+    instantiation: applied.instantiation,
+    receiver,
+  });
   if (receiver !== undefined && signature.parameters[0]?.reference === true) {
     changeReceiver(context, receiver);
   }
-  const { slots } = application;
+  const written = request.arguments;
   checkReferencedPlaces(context, written, {
     name: request.name,
     isAsync: signature.declaration.isAsync,

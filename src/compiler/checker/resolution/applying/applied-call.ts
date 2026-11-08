@@ -4,7 +4,9 @@
  * the calls the language makes (implicit.ts) apply through here, each saying how a call nothing
  * takes is reported and recording what it made; so choosing, ranking the implicit conversions
  * (choosing/choice.ts) and fitting an argument, its conversion and wraps included
- * (argument-fit.ts), each happen in one place for every call.
+ * (argument-fit.ts), each happen in one place for every call. Choosing (`chooseCall`) and
+ * completing (`completeCall`) are apart, so a written call completes once the system it stands in
+ * settles (joint.ts); a call the language makes applies at once (`applyCall`).
  *
  * - An argument of the error type was reported already, so the call reports nothing more.
  * - A call through a union's trait is a candidate only where the union meets the trait (§6,
@@ -59,8 +61,25 @@ export interface AppliedCall {
   readonly result: Type;
 }
 
-/** Applies `request`; undefined after reporting why it can't be made. */
+/** Applies `request` at once, as the outermost call; undefined after reporting why it can't be made. */
 export function applyCall(context: BodyContext, request: CallApplication): AppliedCall | undefined {
+  const application = chooseCall(context, request);
+  if (application === undefined) {
+    return undefined;
+  }
+  const site = useSite(context.checker, context.module, request.span);
+  request.chosen?.(application, settlingAt(site, application.signature));
+  return completeCall(context, request, application);
+}
+
+/**
+ * Chooses the function `request` calls, its arguments matched and then advised by the type it is
+ * expected to give; undefined after reporting why none can be chosen.
+ */
+export function chooseCall(
+  context: BodyContext,
+  request: CallApplication,
+): Application | undefined {
   if (request.arguments.some(({ type }) => type?.kind === 'error')) {
     return undefined;
   }
@@ -76,9 +95,21 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
     return undefined;
   }
   const { application } = choice;
-  const site = useSite(checker, context.module, request.span);
   application.inference.expect(application.signature.result(), request.expected);
-  request.chosen?.(application, settlingAt(site, application.signature));
+  return application;
+}
+
+/**
+ * Completes the call `application` makes once its inference is settled: instantiated with its
+ * constraints met, and its arguments fitted; undefined after reporting why it can't be made.
+ */
+export function completeCall(
+  context: BodyContext,
+  request: CallApplication,
+  application: Application,
+): AppliedCall | undefined {
+  const { checker } = context;
+  const site = useSite(checker, context.module, request.span);
   const instantiation = instantiate(site, application);
   if (instantiation === undefined) {
     return undefined;

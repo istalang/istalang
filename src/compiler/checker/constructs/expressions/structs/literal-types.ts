@@ -26,7 +26,7 @@ import {
 } from '../../../types/type/index.ts';
 import { literalOrBase, writtenLiteral } from '../../../types/unions/unions.ts';
 import { typeArgumentsFor } from '../../../types/written/type-arguments.ts';
-import type { LiteralShape } from './literal-fields.ts';
+import type { LiteralShape } from './literal-fields/items.ts';
 
 /** What a literal naming a type builds: a declared struct, or a shape an alias names. */
 export type Built =

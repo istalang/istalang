@@ -269,7 +269,7 @@ export interface Variables {
 
 /**
  * Where each struct literal's fields get values
- * (constructs/expressions/structs/literal-fields.ts).
+ * (constructs/expressions/structs/literal-fields/index.ts).
  */
 export interface LiteralSources {
   readonly record: (literal: FieldsLiteral, sources: readonly FieldSource[]) => void;

@@ -1,9 +1,12 @@
 /**
- * A call's inference as a system of its variables (variables.ts): the bounds matching gives them
- * (bounds.ts, relate.ts, equal.ts), the notes a failed or partial match leaves, and settling them
- * (settle.ts). Inference (infer.ts) speaks for it in its parameters' names; this class never meets
- * a parameter, only the variables standing for them.
+ * A call's inference, and that of the calls and literals joining it (design.md §4), as one system
+ * of their variables (variables.ts): the bounds matching gives them (bounds.ts, relate.ts,
+ * equal.ts), the types given some outright, the notes a failed or partial match leaves, and
+ * settling them (settle.ts). Inference (infer.ts) speaks for one call in its parameters' names;
+ * this class never meets a parameter, only the variables standing for them.
  *
+ * - A system joining others starts as a copy of theirs (`joining`), so each candidate a call
+ *   chooses among matches in a system of its own and leaves the others' untouched.
  * - What a match bounds depends on what it is: an argument's bounds are its own, the expected
  *   type's advise (`expectResult`), and a receiver's are equalities its caller then gives.
  * - Matching probes: a failed match leaves no bound behind (`BoundStore.rollback`). Bounds that
@@ -20,7 +23,7 @@ import { type Substitution, substitute } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import { fillsPack, isPack } from '../type/function-types.ts';
 import type { AnyType, LiteralType, ParameterKey, Type } from '../type/index.ts';
-import { errorType, isPrimitive, neverType } from '../type/primitives.ts';
+import { errorType, isPrimitive } from '../type/primitives.ts';
 import type { Joining } from '../unions/common-type.ts';
 import { baseOf } from '../unions/union-members.ts';
 import { membersOf } from '../unions/unions.ts';
@@ -28,6 +31,7 @@ import { parameterType } from '../written/resolve-type.ts';
 import { type Bound, BoundStore, type LowerBound, type VariableBounds } from './bounds.ts';
 import { equalTypes } from './equal.ts';
 import { fillingOf, joinedLower } from './fillings.ts';
+import { MatchNotes } from './notes.ts';
 import { type Relating, relatedAsIs } from './relate.ts';
 import {
   expectedChoiceOf,
@@ -41,24 +45,19 @@ import type { CallVariables } from './variables.ts';
 /** What a match is: an argument's, the expected type's, or a method's receiver's. */
 export type MatchKind = 'argument' | 'expected' | 'receiver';
 
-const noVariables: ReadonlySet<ParameterKey> = new Set();
-const noMembers: ReadonlyMap<ParameterKey, Type> = new Map();
-
 export class CallSystem {
-  readonly #variables: CallVariables;
+  /** Each variable's call: the variables it is one of. */
+  readonly #calls = new Map<ParameterKey, CallVariables>();
   readonly #fitting: Fitting;
   readonly #joining: Joining;
   readonly #store: BoundStore;
   /** The types given, by variable: written type arguments, and what a receiver gave. */
-  readonly #given: () => Substitution;
+  readonly #given = new Map<ParameterKey, Type>();
   /** The variables standing at the top of the expected result (`expectResult`). */
-  #atTop: ReadonlySet<ParameterKey> = noVariables;
-  #conflicts: Set<ParameterKey> | undefined;
+  #atTop: ReadonlySet<ParameterKey> = new Set();
+  readonly #notes = new MatchNotes();
   /** The variable whose bounds disagreed last inside the match being made. */
   #lastConflict: ParameterKey | undefined;
-  #metNever: Set<ParameterKey> | undefined;
-  #metError: Set<ParameterKey> | undefined;
-  #severalMembers: Map<ParameterKey, Type> | undefined;
   /** The pairs of recursive types being related as they unfold (§3.17). */
   readonly #unfolding = new UnfoldingPairs();
   #kind: MatchKind = 'argument';
@@ -66,10 +65,9 @@ export class CallSystem {
   #fresh: LiteralType | undefined;
   readonly #rules: ConversionRules;
 
-  constructor(variables: CallVariables, fitting: Fitting, givenTypes: () => Substitution) {
-    this.#variables = variables;
+  /** A system holding no variables yet, but those of each of `joining`, as they are bound. */
+  constructor(fitting: Fitting, joining: readonly CallSystem[] = []) {
     this.#fitting = fitting;
-    this.#given = givenTypes;
     this.#joining = {
       fitOf: (found, expected) => fitOf(found, expected, fitting),
       typeRules: fitting,
@@ -78,13 +76,13 @@ export class CallSystem {
     this.#store = new BoundStore({
       fits: (found, expected) => fitOf(found, expected, fitting) !== undefined,
       same: sameType,
-      isOpen: (type) => this.#mentionsVariable(type),
+      isOpen: (type) => this.mentionsVariable(type),
       join: (variable, lower, upper) => this.#join(variable, lower, upper),
     });
     const relating: Relating = {
       fitting,
       unfolding: this.#unfolding,
-      isUnknown: (key) => this.#variables.isVariable(key),
+      isUnknown: (key) => this.#calls.has(key),
       bindLower: (variable, type) => this.#bindLower(variable, type),
       bindUpper: (variable, type) => this.#bindUpper(variable, type),
       bindBetween: (lower, upper) => this.#added(upper, this.#store.relate(lower, upper)),
@@ -92,7 +90,7 @@ export class CallSystem {
       constrain: (found, expected) => this.#constrain(found, expected),
       trial: (probe) => this.#trial(probe),
       meetError: (declared) => this.#meetError(declared, errorType),
-      noteNever: (variable) => this.#noteNever(variable),
+      noteNever: (variable) => this.#notes.metNever(variable),
     };
     this.#rules = {
       ...fitting,
@@ -101,6 +99,29 @@ export class CallSystem {
       attempt: (probe) => this.#atomic(probe),
       meetsAny: (found, target) => this.#convertsInto(target, found),
     };
+    for (const other of joining) {
+      this.#adopt(other);
+    }
+  }
+
+  /** Adds a call's `variables`, those standing for its parameters `given` taken as given. */
+  add(variables: CallVariables, given: Substitution): void {
+    for (const variable of variables.variables) {
+      this.#calls.set(variable, variables);
+    }
+    for (const [variable, type] of variables.byVariable(given)) {
+      this.#given.set(variable, type);
+    }
+  }
+
+  /** Takes `type` as given for `variable` from here on, as a method's receiver gives it. */
+  give(variable: ParameterKey, type: Type): void {
+    this.#given.set(variable, type);
+  }
+
+  /** The type given for `variable`, if any. */
+  givenOf(variable: ParameterKey): Type | undefined {
+    return this.#given.get(variable);
   }
 
   /**
@@ -132,7 +153,7 @@ export class CallSystem {
   expectResult(result: Type, expected: Type): void {
     this.#atTop = new Set(
       membersOf(result).flatMap((member) =>
-        member.kind === 'parameter' && this.#variables.isVariable(member.declaration)
+        member.kind === 'parameter' && this.#calls.has(member.declaration)
           ? [member.declaration]
           : [],
       ),
@@ -174,17 +195,17 @@ export class CallSystem {
 
   /** `variables` settled; one left out can't be inferred. */
   settle(variables: readonly ParameterKey[], settling: Settling): ReadonlyMap<ParameterKey, Type> {
-    return settleAll(variables, this.#given(), this.#view(), settling);
+    return settleAll(variables, this.#given, this.#view(), settling);
   }
 
   /** The variables whose bounds disagreed. */
   get conflicts(): ReadonlySet<ParameterKey> {
-    return this.#conflicts ?? noVariables;
+    return this.#notes.conflicts;
   }
 
-  /** The member parameters given a value of several members of their union, by what was given. */
+  /** The member variables given a value of several members of their union, by what was given. */
   get severalMembers(): ReadonlyMap<ParameterKey, Type> {
-    return this.#severalMembers ?? noMembers;
+    return this.#notes.severalMembers;
   }
 
   /** Runs `match` as a match of `kind`, a written literal's base given as `fresh`'s. */
@@ -200,10 +221,22 @@ export class CallSystem {
     }
   }
 
+  /** Takes on `other`'s variables, the types given them, their bounds, and the notes made. */
+  #adopt(other: CallSystem): void {
+    for (const [variable, call] of other.#calls) {
+      this.#calls.set(variable, call);
+    }
+    for (const [variable, type] of other.#given) {
+      this.#given.set(variable, type);
+    }
+    this.#store.adopt(other.#store);
+    this.#notes.adopt(other.#notes);
+  }
+
   /** What has been found so far for the variables, as a substitution of them. */
   #tentativeSubstitution(): Substitution {
-    const found = new Map(this.#given());
-    for (const variable of this.#variables.variables) {
+    const found = new Map(this.#given);
+    for (const variable of this.#calls.keys()) {
       const type = found.has(variable) ? undefined : this.tentative(variable);
       if (type !== undefined) {
         found.set(variable, type);
@@ -220,12 +253,7 @@ export class CallSystem {
       isAtTop: (parameter) => this.#atTop.has(parameter),
       fits: (found, expected) => fitOf(found, expected, this.#fitting) !== undefined,
       join: (parameter, lower, upper) => this.#join(parameter, lower, upper),
-      fallbackOf: (parameter) => {
-        if (this.#metError?.has(parameter) === true) {
-          return errorType;
-        }
-        return this.#metNever?.has(parameter) === true ? neverType : undefined;
-      },
+      fallbackOf: (parameter) => this.#notes.fallbackOf(parameter),
     };
   }
 
@@ -245,8 +273,7 @@ export class CallSystem {
     this.#lastConflict = undefined;
     const matched = match();
     if (!matched && this.#lastConflict !== undefined) {
-      this.#conflicts ??= new Set();
-      this.#conflicts.add(this.#lastConflict);
+      this.#notes.conflict(this.#lastConflict);
     }
     return matched;
   }
@@ -270,7 +297,7 @@ export class CallSystem {
   #equal(declared: Type, given: Type): boolean {
     return equalTypes(declared, given, {
       unfolding: this.#unfolding,
-      isUnknown: (key) => this.#variables.isVariable(key),
+      isUnknown: (key) => this.#calls.has(key),
       bind: (parameter, type) => this.#bindEqual(parameter, type),
       meetError: (inDeclared) => this.#meetError(inDeclared, errorType),
     });
@@ -282,7 +309,7 @@ export class CallSystem {
    */
   #convertsInto(declared: AnyType, given: Type): boolean {
     const known = substitute(declared, this.#tentativeSubstitution(), this.#fitting);
-    if (known.kind !== 'any' || this.#mentionsVariable(known)) {
+    if (known.kind !== 'any' || this.mentionsVariable(known)) {
       return false;
     }
     return this.#fitting.meetsAny(given, known);
@@ -318,7 +345,7 @@ export class CallSystem {
   /** Bounds `parameter` exactly by `given`; `Never` bounds nothing but is noted. */
   #bindEqual(parameter: ParameterKey, given: Type): boolean {
     if (isPrimitive(given, 'Never') && !isPack(parameterType(parameter))) {
-      this.#noteNever(parameter);
+      this.#notes.metNever(parameter);
       return true;
     }
     const filling = this.#filling(parameter, given);
@@ -352,18 +379,17 @@ export class CallSystem {
         : substitute(union, this.#tentativeSubstitution(), this.#fitting),
       this.#fitting,
     );
-    const parameter = this.#variables.parameterOf(variable);
-    if (filling.kind === 'severalMembers' && parameter !== undefined) {
-      this.#severalMembers ??= new Map();
-      this.#severalMembers.set(parameter, given);
+    if (filling.kind === 'severalMembers') {
+      this.#notes.severalMembersGiven(variable, given);
     }
     return filling.kind === 'fills' ? filling.type : undefined;
   }
 
   /** The union a member parameter's variable stands for one member of, as the variable carries it. */
   #memberUnionOf(variable: ParameterKey): Type | undefined {
-    const parameter = this.#variables.parameterOf(variable);
-    const type = parameter === undefined ? undefined : this.#variables.typeOf(parameter);
+    const call = this.#calls.get(variable);
+    const parameter = call?.parameterOf(variable);
+    const type = parameter === undefined ? undefined : call?.typeOf(parameter);
     return type === undefined ? undefined : this.#fitting.memberUnionOf(type);
   }
 
@@ -376,15 +402,10 @@ export class CallSystem {
     return joinedLower(this.#memberUnionOf(variable) !== undefined, lower, upper, this.#joining);
   }
 
-  #noteNever(variable: ParameterKey): void {
-    this.#metNever ??= new Set();
-    this.#metNever.add(variable);
-  }
-
   /** Notes `Never` given as `type`, when it is a variable. */
   #noteNeverAt(type: Type): void {
-    if (type.kind === 'parameter' && this.#variables.isVariable(type.declaration)) {
-      this.#noteNever(type.declaration);
+    if (type.kind === 'parameter' && this.#calls.has(type.declaration)) {
+      this.#notes.metNever(type.declaration);
     }
   }
 
@@ -392,16 +413,15 @@ export class CallSystem {
   #meetError(declared: Type, given: Type): void {
     if (given.kind === 'error') {
       for (const key of parametersIn(declared)) {
-        if (this.#variables.isVariable(key)) {
-          this.#metError ??= new Set();
-          this.#metError.add(key);
+        if (this.#calls.has(key)) {
+          this.#notes.metError(key);
         }
       }
     }
   }
 
-  /** Whether `type` mentions one of the call's variables. */
-  #mentionsVariable(type: Type): boolean {
-    return parametersIn(type).some((key) => this.#variables.isVariable(key));
+  /** Whether `type` mentions one of the variables this system holds. */
+  mentionsVariable(type: Type): boolean {
+    return parametersIn(type).some((key) => this.#calls.has(key));
   }
 }

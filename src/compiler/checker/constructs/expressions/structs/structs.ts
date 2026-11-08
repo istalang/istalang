@@ -4,9 +4,10 @@
  * - A struct literal names its type, or with `struct{…}` takes it: from the expected type when
  *   that is a struct, else from a leading spread's value, else it is the shape of its named items,
  *   each typed by its value. A literal through an alias of a shape builds the shape (§3.17).
- * - Its items are checked by one path (literal-fields.ts), so a generic struct's type arguments
- *   are written, expected, spread or inferred alike. A variant is built by its call (variants.ts),
- *   so braces after a variant's name, or a block below it, are refused, naming the call.
+ * - Its items are checked by one path (literal-fields/index.ts), so a generic struct's type
+ *   arguments are written, expected, spread or inferred alike. A variant is built by its call
+ *   (variants.ts), so braces after a variant's name, or a block below it, are refused, naming the
+ *   call.
  * - A struct without fields is written bare (../access/names.ts), so braces after one are an error,
  *   whatever they hold.
  * - A shared struct is built with `new` and only one is (§3.18): its literal checks as any other,
@@ -40,12 +41,8 @@ import {
 } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
-import {
-  checkLiteralFields,
-  declaresDefault,
-  type LiteralShape,
-  type LiteralSpread,
-} from './literal-fields.ts';
+import { checkLiteralFields } from './literal-fields/index.ts';
+import { declaresDefault, type LiteralShape, type LiteralSpread } from './literal-fields/items.ts';
 import { builtThrough } from './literal-types.ts';
 import {
   checkComprehensionAlone,

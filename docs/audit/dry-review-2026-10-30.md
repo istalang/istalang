@@ -337,7 +337,7 @@ Report-only audit of `src/` (in layer order, lowest layer first) and `docs/spec.
 - **Duplicate variable-type resolution in `variableType` (`src/compiler/checker/constructs/expressions/access/names.ts`) and `declaredVariableType` (`src/compiler/checker/lookup/denotations.ts`):**
   - Both switch on `variable.owner.kind` (`ExternConstantDeclaration` vs. wiring/body/constant variables) to resolve a `VariableEntity`'s declared type.
   - **Done** (`p2-structural`): see Ranked Summary item 8.
-- **Inconsistent method recognition between `noField` / `callMethod` and `lookup/members.ts` (`src/compiler/checker/constructs/expressions/structs/structs.ts`, `calls.ts`, `lookup/members.ts`; tracked as `B22`) and duplicate struct-literal constraint checks (`literal-fields.ts`; tracked as `Q6`).**
+- **Inconsistent method recognition between `noField` / `callMethod` and `lookup/members.ts` (`src/compiler/checker/constructs/expressions/structs/structs.ts`, `calls.ts`, `lookup/members.ts`; tracked as `B22`) and duplicate struct-literal constraint checks (`literal-fields/index.ts`; tracked as `Q6`).**
 
 ### 21. `src/compiler/lowering/` — core, tables & function lowering
 

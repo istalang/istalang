@@ -5,34 +5,35 @@
  * gives its variable for `A` the rigid `B`, never itself). Matching, bounds and settling read the
  * variables; what an inference tells its callers reads the parameters again (`restored`).
  *
- * A variable is its parameter's twin: one per parameter, made once, so what an inference makes of
- * it is bounded however many calls are inferred. It keeps what its parameter is: a pack, and a
- * member parameter's union, which it carries (`within`), its own parameters made variables too.
- * What the program declares of a parameter (its constraints, its union, the module declaring it)
- * is read for its twin too, through `standingFor` (wiring/program/program-checker.ts), the one
- * place a twin meets the program.
- *
- * A system joining several calls of one function would need a twin per call (tracker I2).
+ * A variable is its parameter's twin at the call's site: one per parameter and site, made once, so
+ * the calls one system joins (system.ts) each have their own, as `pair(id(1), id("a"))` has two
+ * `T`s, while what inferences make of them is bounded by the program's call sites however often
+ * one is inferred. An inference with no site of its own (a trait requirement's instantiation) has
+ * one twin per parameter. A variable keeps what its parameter is: a pack, and a member parameter's
+ * union, which it carries (`within`), its own parameters made variables too. What the program
+ * declares of a parameter (its constraints, its union, the module declaring it) is read for its
+ * twin too, through `standingFor` (wiring/program/program-checker.ts), the one place a twin meets
+ * the program.
  */
 
+import { memo } from '../../../../foundation/structures/memo.ts';
 import type { Fitting } from '../fitting/fit/index.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
 import type { ParameterKey, Type, TypeParameterType } from '../type/index.ts';
 import type { Settling } from './settle.ts';
 
-/** Each parameter's twin, and each twin's parameter. */
-const twins = new WeakMap<ParameterKey, ParameterKey>();
+/** Each parameter's twins, by the site they stand at; and each twin's parameter. */
+const twins = new WeakMap<object, Map<ParameterKey, ParameterKey>>();
 const standing = new WeakMap<ParameterKey, ParameterKey>();
 
-/** The twin standing for `parameter` while a call infers it. */
-function twinOf(parameter: ParameterKey): ParameterKey {
-  let twin = twins.get(parameter);
-  if (twin === undefined) {
-    twin = { ...parameter };
-    twins.set(parameter, twin);
+/** The twin standing for `parameter` while a call at `site` infers it. */
+function twinOf(parameter: ParameterKey, site: object): ParameterKey {
+  const atSite = memo(twins, site, () => new Map<ParameterKey, ParameterKey>());
+  return memo(atSite, parameter, () => {
+    const twin = { ...parameter };
     standing.set(twin, parameter);
-  }
-  return twin;
+    return twin;
+  });
 }
 
 /** The parameter `key` stands for: `key` itself, unless it is a call's variable (the banner). */
@@ -46,11 +47,12 @@ export class CallVariables {
   readonly #renaming = new Map<ParameterKey, TypeParameterType>();
   readonly #parameters = new Map<ParameterKey, ParameterKey>();
 
-  constructor(parameters: Iterable<ParameterKey>, fitting: Fitting) {
+  /** `site` is the call's own, if it has one; without, each parameter has one twin (the banner). */
+  constructor(parameters: Iterable<ParameterKey>, fitting: Fitting, site?: object) {
     this.#fitting = fitting;
     const unions = new Map<ParameterKey, Type>();
     for (const parameter of parameters) {
-      const variable = twinOf(parameter);
+      const variable = twinOf(parameter, site ?? parameter);
       this.#parameters.set(variable, parameter);
       this.#renaming.set(parameter, { kind: 'parameter', declaration: variable });
       const union = fitting.memberUnionOf({ kind: 'parameter', declaration: parameter });
