@@ -29,7 +29,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F26, P38, Q46, B36. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F26, P38, Q46, B37. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -153,3 +153,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B33 | An async lambda passed where `fn(A) -> Future<R>` is expected reports a misleading second error inside its body after the first. | small | none; can be done now | p5 QA 2026-11-06 |
 | B34 | The rename property in `lsp/providers/navigation/rename.test.ts` ("keeps every diagnostic…") fails at seed -420107366, path "24": renaming `Some` declared in `test/corpus/generics/default-typed-fields.ista` spills into `unions/invalid-matching.ista` (5400 and 5422 lost; 4000 "'Some' is not declared" and 5401 gained), as if rename took another module's `Some` for the declaration renamed. | small | none; can be done now | p5 equi verify 2026-11-06 |
 | B35 | Checking a broken program can crash computing a constant: `Unreachable: Only a one-element tuple is untupled` (`rules/computation/forms.ts`, `convertedForm`) for `const one: (Int,) =` with its value left out, then `const back: Int = one`. Lowering's "compiles every program the checker accepts" property found it at seed -1682074512 (path `154:2:7:3:5:3:14:3:8:33:3:3:4:5:35:35:35`) on the corpus program of tuple conversions; it reproduces on 591bbc16. | medium | none; can be done now | applied type arguments work 2026-11-08 |
+| B36 | A literal of a recursive alias passed where the alias is expected is refused, though it builds as the alias's value elsewhere: for `type R = Int | String | Array<R>`, `passed([2, [[2], [...ints()]]])` with `fn passed(r: R)` reports 5301 (expected Int, found Array<Array<Int>>), while `const r: R = [2, [[2], [...ints()]]]` checks. The property "build a literal mixing items only checking types with items of other types, wherever it goes" (`types/identity/recursive-unfolding.test.ts`) found it at seed 1498164649 (path `7:1:4`); it reproduces on main 1b9195c6. | medium | none; can be done now | applied type arguments work 2026-11-08 |
