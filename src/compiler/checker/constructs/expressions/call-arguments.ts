@@ -88,11 +88,7 @@ function valueArgument(
     }
     return { node: argument, passing: 'value', type, literal };
   }
-  // A collection literal's items are checked once, where it joins the call, so none ahead.
-  const part =
-    argument.kind === 'ArrayLiteral' || argument.kind === 'MapLiteral'
-      ? context.acceptedPart(argument)
-      : context.argumentPart(argument);
+  const part = context.argumentPart(argument);
   // `none` passed alone is `None`, a type like any other the call's inference joins (§3.5); inside
   // a composite it still waits for the call, as its siblings decide where it goes. A `struct{…}`'s
   // shape only bounds what the call gives it.

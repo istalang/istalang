@@ -137,7 +137,7 @@ function comprehendedField(
     context.expression(node.value);
     return undefined;
   }
-  const declared = inference.substituted(field.type);
+  const declared = inference.settledIn(field.type);
   const isKnown = parametersIn(declared).every((parameter) => !inference.isUnknown(parameter));
   const type = context.expression(node.value, isKnown ? declared : undefined);
   if (!isKnown) {

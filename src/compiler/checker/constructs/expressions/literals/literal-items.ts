@@ -17,6 +17,7 @@
 import type { Expression, StructLiteral } from '../../../../syntax/expressions/index.ts';
 import { isItemsLiteral, itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { AcceptedPart, BodyContext } from '../../../contexts/body-context.ts';
+import { mayJoin } from '../../../resolution/applying/joint.ts';
 import { untypedLiteral } from '../expressions.ts';
 
 /**
@@ -30,7 +31,7 @@ export function argumentPartOf(
   check: (item: Expression) => void,
 ): AcceptedPart {
   const part = context.acceptedPart(node);
-  return hasTypeOnlyChecked(part) && isItemsLiteral(node) && checkItemsAhead(context, node, check)
+  return needsItems(part) && isItemsLiteral(node) && checkItemsAhead(context, node, check)
     ? context.acceptedPart(node)
     : part;
 }
@@ -45,7 +46,10 @@ function checkItemsAhead(
   check: (item: Expression) => void,
 ): boolean {
   let checked = false;
-  for (const item of literalItems(node)) {
+  // A collection literal's items that may join its call are checked as it joins (joint.ts).
+  const joins = node.kind === 'ArrayLiteral' || node.kind === 'MapLiteral';
+  const ahead = literalItems(node).filter((item) => !(joins && mayJoin(item)));
+  for (const item of ahead) {
     if (isItemsLiteral(item)) {
       checked = checkItemsAhead(context, item, check) || checked;
     } else if (hasTypeOnlyChecked(context.acceptedPart(item))) {
@@ -54,6 +58,14 @@ function checkItemsAhead(
     }
   }
   return checked;
+}
+
+/**
+ * Whether `part` has a type only checking tells: its own, or, decided by where it goes, the type it
+ * is known to have so far (a `struct{…}`'s shape).
+ */
+function needsItems(part: AcceptedPart): boolean {
+  return part.kind === 'typed' ? part.type === undefined : part.known === undefined;
 }
 
 /** Whether `part` has a type of its own that only checking tells. */

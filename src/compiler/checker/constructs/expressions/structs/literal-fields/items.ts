@@ -154,7 +154,7 @@ function checkFieldValue(
   { index, value, field }: FieldValue,
 ): void {
   const { inference, given } = items;
-  const declared = inference.substituted(field.type);
+  const declared = inference.settledIn(field.type);
   if (parametersIn(declared).every((parameter) => !inference.isUnknown(parameter))) {
     const type = context.expression(value, declared);
     given.set(index, { node: value, type, declared: field.type, isLiteral: false });

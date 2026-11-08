@@ -63,7 +63,7 @@ import { checkValueCall, valueParameterTypes } from '../closures/value-calls.ts'
 import { readsNothing, readsThroughNamespace, recordFieldRead } from './access/member-access.ts';
 import { writtenArgument } from './call-arguments.ts';
 import { checkJoiningArray, checkJoiningMap } from './collections/joining-literals.ts';
-import { checkStructLiteral } from './structs/structs.ts';
+import { checkNamedLiteral, checkStructLiteral } from './structs/structs.ts';
 import { checkVariantCall } from './structs/variants.ts';
 
 /**
@@ -136,19 +136,24 @@ function checkJoining(
   place: JoinPlace,
   expected?: Type,
 ): Type | undefined {
+  const joins = {
+    place,
+    joining: (item: Expression, at: JoinPlace, expectedOfItem?: Type) =>
+      checkJoining(context, item, at, expectedOfItem),
+  };
   switch (node.kind) {
+    case 'Parenthesized': {
+      const inner = checkJoining(context, node.expression, place, expected);
+      return inner === undefined ? undefined : context.checkWith(node, () => inner);
+    }
     case 'Call':
       return context.checkWith(node, () => checkCall(context, node, expected, place));
     case 'StructLiteral':
       return node.type === undefined
         ? undefined
-        : context.checkWith(node, () =>
-            checkStructLiteral(context, node, undefined, {
-              place,
-              joining: (item, at, expectedOfItem) =>
-                checkJoining(context, item, at, expectedOfItem),
-            }),
-          );
+        : context.checkWith(node, () => checkStructLiteral(context, node, undefined, joins));
+    case 'NewStructLiteral':
+      return context.checkWith(node, () => checkNamedLiteral(context, node, undefined, joins));
     case 'ArrayLiteral':
       return node.elements.length === 0
         ? undefined

@@ -16,6 +16,7 @@
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
+import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import type { Inference } from '../../types/inference/infer.ts';
 import type { Settling } from '../../types/inference/settle.ts';
@@ -48,6 +49,29 @@ export type CheckJoining = (
   place: JoinPlace,
   expected?: Type,
 ) => Type | undefined;
+
+/**
+ * Whether `node`, passed to a call or as an item of a literal that joins one, is checked where it
+ * may join it: a call, a literal naming its type, a non-empty array or map literal, maybe
+ * parenthesized (constructs/expressions/calls.ts `checkJoining`).
+ */
+export function mayJoin(node: Expression): boolean {
+  switch (node.kind) {
+    case 'Parenthesized':
+      return mayJoin(node.expression);
+    case 'Call':
+    case 'NewStructLiteral':
+      return true;
+    case 'StructLiteral':
+      return node.type !== undefined;
+    case 'ArrayLiteral':
+      return node.elements.length > 0;
+    case 'MapLiteral':
+      return node.entries.length > 0;
+    default:
+      return false;
+  }
+}
 
 /** An argument where it may join the call it is passed to, and the construct that joined there. */
 export class JoinPlace {
@@ -103,7 +127,9 @@ function settleOutermost(context: BodyContext, open: OpenInference): Type {
   }
   for (const { node, construct } of joined) {
     const type = construct.complete(joint);
-    context.checkWith(node, () => type);
+    for (const each of new Set([node, unparenthesized(node)])) {
+      context.checkWith(each, () => type);
+    }
   }
   return open.complete(joint);
 }
