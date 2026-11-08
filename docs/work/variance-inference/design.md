@@ -216,16 +216,21 @@ contravariant positions.
   bounds to `U`, so an expected type reaches a nested literal.
 
 **Joint solving.** A nested generic call, or generic literal, in argument position doesn't settle
-alone. Its variables join the enclosing call's system, and the outermost expression settles them
+alone (as built: a call, a literal naming its type, a non-empty array or map literal, passed straight
+to a call or as an item or field of one that joins; a call that continues an optional chain never
+joins). Its variables join the enclosing call's system, and the outermost expression settles them
 all, as Kotlin's inference does. Everything recorded for those nodes waits until then: node types,
 instantiation's witnesses, argument fits and their implicit wraps, default calls, literal fields,
 argument key owners and expected types. One settle-then-record pass writes them.
 
 **Literals with no type of their own** take the expected type top-down, inside the system:
-- a collection literal whose items don't join (`[1, "a"]` as `Json`) settles its item variable by
-  rule 2;
-- a shape literal where a struct is expected builds that struct (§3.1: a shape never fits a struct
-  declaration).
+- a collection literal whose items don't join (`[1, "a"]` as `Json`): joined, its item variable's
+  lower bounds need not join, rule 4 settling it on the parameter's upper bound; passed where it
+  can't join, it is decided by where it goes, its items each taking the item type;
+- a `struct{…}` is always decided by where it goes, a struct it gives the fields of (§3.1: a shape
+  never fits a struct declaration) or a shape its fields fit; its shape, a lower bound marked as
+  one, settles a variable on a struct it builds, and it is checked once, against what its
+  parameter settles to, as a postponed argument is.
 
 **Choosing doesn't change.**
 - Candidates come from the arguments, as today, with argument-dependent lookup and requirement
@@ -282,6 +287,26 @@ is expected") expressed as a bound.
 **Packs** are tuple-typed variables, and tuples are covariant, so their bounds compose element by
 element.
 
+**As built (I2).**
+- A variable is its parameter's twin at the call's site (`types/inference/variables.ts`), so each
+  joined call has its own. A candidate's system starts as a copy of what joined it, so probing
+  candidates leaves the others untouched; after choosing, joined calls are viewed in the chosen
+  system (`Inference.within`).
+- Two bounds of which either mentions a variable agree by relating them (Kotlin's incorporation),
+  and two equalities by equating them. A variable related to another only (`T' <: T`) settles from
+  what the other settled to. Rule 2 reads an equality the expected type gave (an invariant
+  position) as it reads an upper bound.
+- Lower bounds needn't join as they are added: rules 3 and 4 decide at settling.
+- A lambda whose result isn't written is postponed even with its parameters written; those bound
+  what the call gives them while it is chosen. Where its result is still open, its value joins the
+  call (B43), advised by what is known of the result.
+- An argument of the error type no longer stops a call that is still chosen: its other arguments
+  are judged (the variant rule, generalised).
+- While a call is written and can't be chosen, each written argument still records the type its
+  parameter will be, for completion (`resolution/calls/written-expectations.ts`).
+- 5370 and the first-declared pick (B42) stay: the clash rule flags only overloads where one
+  parameter type holds the other, so `put(Int?)` beside `put(Int | String)` declares cleanly.
+
 ## 5. The optional join
 
 Producers that must agree (`rules/agreement.ts`: an `if`'s branches, a body's tail and its
@@ -302,7 +327,7 @@ base (today's widening), and a type with `None` into its optional.
 | `expectedArguments`, `instanceTaking` in `constructs/expressions/structs/variants.ts` | The expected type's decomposition against unions (§4) |
 | The expected step in `resolution/conformance/conformance.ts` `instantiateAt` | The settling policy |
 | The ordering logic of `resolution/calls/function-arguments.ts` | Postponed arguments |
-| §3.7's literal building: `buildsOf` and its handlers (`constructs/expressions/expressions.ts`, `structs.ts`), `builds` in choosing's applicability, the rebuild of literal producers in `agreement.ts` | Literals joining the system (§4) and conversions inside types (§3); deleted only once nothing reads them |
+| §3.7's literal building: `buildsOf` and its handlers (`constructs/expressions/expressions.ts`, `structs.ts`), `builds` in choosing's applicability, the rebuild of literal producers in `agreement.ts`, and of union members once checked (`built-members.ts`) | Literals joining the system (§4), conversions inside types (§3), and a `struct{…}` decided by where it goes (§4); deleted in I2 |
 | "Only the top converts" special cases in `types/inference/infer.ts` and `types/fitting/fit/` | Bounds and variance |
 | The name-based handle checks (§1) | Identity from declarations |
 

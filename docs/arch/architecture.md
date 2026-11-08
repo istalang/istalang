@@ -3,7 +3,7 @@ description: istalang toolchain architecture — folder hierarchy, layers, phase
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-07
+last_verified: 2026-11-08
 last_updated: 2026-11-08
 tags: [architecture, compiler, runtime, tooling]
 ---
@@ -108,7 +108,8 @@ src/
                                                                  (type-match.ts, written-matches.ts)
         properties/                                              what a type holds or reaches: finite values, held values, the cycle guard, handles read off declarations
         inference/                                               above the model: inference of type arguments, as bounds on variables
-                                                                 (bounds.ts) settled by one policy (settle.ts)
+                                                                 (bounds.ts) settled by one policy (settle.ts), in one system for
+                                                                 the calls and literals one expression joins (system.ts)
         traits/                                                  above inference: constraints, the derived `Sendable`, `any` types, and the object safety they
                                                                  need (object-safety.ts); struct constraints (struct-constraints.ts), and what a type meets by
                                                                  what it is, computed types `T.Data` and `S["meta"]` among them, with their reductions
@@ -122,7 +123,8 @@ src/
         type-matches/                                            a type `match`'s use reduced and its cases matched, and the type `match`es and associated
                                                                  types an instantiation reaches, checked to name a type whose values end where it is written
         applying/                                                a chosen call applied: every call chosen, instantiated and fitted in one place
-                                                                 (applied-call.ts), its arguments fitted (argument-fit.ts), the calls the language makes
+                                                                 (applied-call.ts), completed once the outermost system it joins settles
+                                                                 (joint.ts), its arguments fitted (argument-fit.ts), the calls the language makes
                                                                  (implicit.ts) and the toolchain makes on its own (silent-choice.ts)
         calls/                                                   above the rest: a call in a body, its arguments checked against the chosen function,
                                                                  operators, the places a call or an assignment changes
@@ -329,8 +331,7 @@ The handler types of the phases from checking on, which feature slices extend:
 | Table | Type | A handler… |
 | --- | --- | --- |
 | checker expressions | `Handlers<BodyContext, Expression, [expected: Type \| undefined], Type>` | gives the node's type; `expected` guides inference, and `BodyContext.expect` enforces it where the spec says a value must fit |
-| checker accepts | `Handlers<BodyContext, Expression, [], Accepts \| undefined>` | for an argument with no type of its own, which the chosen function decides (§3.5), the parameter types it can take, so choosing rules out the rest; undefined for a kind with a type of its own. Composite kinds (tuples, collection literals, branches) recurse through `BodyContext.accepts`. A lambda's result binds the call's type parameters only where the lambda is an argument itself, not inside a composite (D160) |
-| checker builds | `Handlers<BodyContext, Expression, [], Accepts \| undefined>` | for a literal of items each with a type of its own (a struct, tuple, array or map literal), the parameter types its items can build it as where its own type doesn't fit (§3.7); a chosen call then checks it again with the parameter's type expected. Inference never goes through it. Undefined for every other kind |
+| checker accepts | `Handlers<BodyContext, Expression, [], Accepts \| undefined>` | for an argument with no type of its own, which the chosen function decides (§3.5), the parameter types it can take, so choosing rules out the rest; undefined for a kind with a type of its own. A `struct{…}` always has none: where it goes decides it, a struct it gives the fields of (§3.1), its shape only bounding the call (`AcceptedPart.known`); so has a collection literal whose items agree on no one type. Composite kinds (tuples, collection literals, branches) recurse through `BodyContext.accepts`. A lambda's result binds the call's type parameters only where the lambda is an argument itself, not inside a composite (D160) |
 | checker statements | `Handlers<BodyContext, Statement \| Invalid, [expected: Type \| undefined], Type>` | gives the statement's type: an expression statement's value, `Never` for one that leaves, else `Unit`; dispatched through `BodyContext.statement` |
 | checker declarations | `Handlers<CheckerContext, Declaration, [ModuleId], void>` | resolves what a top-level item declares and checks bodies |
 | checker type nodes | `Handlers<Resolution, TypeNode, [], Type>` | gives the type a type node denotes |
@@ -351,7 +352,7 @@ Every analysis result is a memoized function of immutable inputs: text → token
 - **Hand-written scanner and parser** (Pyright/TypeScript style). Rejected:
   - Langium: its indentation lexer can't turn layout back on for a `{}` block inside `(…)`, and Typir has no generics.
   - Chevrotain, Lezer, tree-sitter: they give untyped CSTs, and context-dependent `{` and generic-call speculation would fight the grammar.
-- **Inference is constraint-based, and conversions compose through variance** (docs/work/variance-inference/design.md; identity, variance and per-call inference done, joint solving planned). Identity is read off declarations (`shared struct`; `extern shared`, `sendable` or `ephemeral struct`), never off names; a handle is invariant. A value type's variance is derived from its fields, an extern's written (`gives`/`takes`). Each outermost expression is one constraint system: arguments and the expected type give bounds, nested generic calls join it, and one settling policy decides; choosing a function never reads the expected type. Rejected: the expected type as written type arguments for every call (unsound: candidates depend on the arguments) and Swift-style joint search (backtracking).
+- **Inference is constraint-based, and conversions compose through variance** (docs/work/variance-inference/design.md). Identity is read off declarations (`shared struct`; `extern shared`, `sendable` or `ephemeral struct`), never off names; a handle is invariant. A value type's variance is derived from its fields, an extern's written (`gives`/`takes`). Each outermost expression is one constraint system (resolution/applying/joint.ts): arguments and the expected type give bounds; a generic call, a literal naming its type, or a collection literal passed straight to a call joins it, as does a postponed lambda's value where its result is still open; and one settling policy decides, after which one pass completes and records every construct. Choosing a function never reads the expected type. A literal is never checked twice to be built as another type: it joins, converts (§3.5), or, a `struct{…}`, is decided by where it goes (§3.1). Rejected: the expected type as written type arguments for every call (unsound: candidates depend on the arguments) and Swift-style joint search (backtracking).
 - **No DI container.** Explicit composition roots plus registries keep wiring visible and type-checked.
 - **Positions are UTF-16 offsets**, the LSP default. They are converted only at the edges.
 - **Formatter layout algorithm comes from a library:** Prettier's doc printer (`prettier/doc`, pinned exactly), which formatter/ alone imports. The formatter supplies only the printers from tree to doc and the comment placement (formatter.md, Decisions).
