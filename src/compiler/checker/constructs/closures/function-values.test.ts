@@ -98,14 +98,12 @@ describe('a function named as a value with type arguments', () => {
     expect(reported(text)).toEqual(reportedNothing);
   });
 
-  it('asks for a type parameter its written type arguments leave open with no default', () => {
-    const text = lines(
-      'fn f<A = Int, B>(b: B) -> B: b',
-      'fn main():',
-      '  const g = f<Int>',
-      '  drop g',
-    );
-    expect(reported(text).codes).toEqual([checkerDiagnostics.cannotInfer.code]);
+  it.each([
+    ['a type parameter', 'fn f<A = Int, B>(b: B) -> B: b'],
+    ['a pack', 'fn f<A = Int, ...B>(...items: B) -> B: items'],
+  ])('needs a function type where its written type arguments leave %s open', (_open, f) => {
+    const text = lines(f, 'fn main():', '  const g = f<Int>', '  drop g');
+    expect(reported(text).codes).toEqual([checkerDiagnostics.functionValueUnchosen.code]);
   });
 
   it("is the function member of an expected union, as the function's bare name is", () => {

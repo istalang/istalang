@@ -33,6 +33,7 @@ import {
   declaredFunctionName,
   fieldsFunctionOf,
 } from '../../../syntax/declarations/field-defaults.ts';
+import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { MemberAccess, TypeApplication } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
@@ -375,8 +376,9 @@ function loneFunction(
 
 /**
  * How `candidate` takes its own parameters given the type arguments written after `named`
- * (`ownArguments`); with none written, only a non-generic one takes them, since only an expected
- * type instantiates a generic one.
+ * (`ownArguments`): only when they and the defaults give every type parameter, a pack's included,
+ * since only an expected type instantiates a generic function further; with none written, only a
+ * non-generic one takes them.
  */
 export function ownChoice(
   context: BodyContext,
@@ -386,10 +388,12 @@ export function ownChoice(
   const { checker } = context;
   const { declaration, requirement } = candidate;
   const signature = signatureOf(checker, declaration, requirement?.substitution);
-  if (written === undefined && signature.typeParameters.length > 0) {
+  const given = writtenFor(signature, written);
+  const isOpen = (parameter: TypeParameter) =>
+    given === undefined || (!given.has(parameter) && parameter.defaultType === undefined);
+  if (signature.typeParameters.some(isOpen)) {
     return { kind: 'none', reasons: [] };
   }
-  const given = writtenFor(signature, written);
   const arguments_ = signature.parameters.flatMap((slot) =>
     ownArguments(slot, given, checker.typeRules),
   );

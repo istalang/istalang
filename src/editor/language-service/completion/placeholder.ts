@@ -33,7 +33,7 @@ import {
   ownsTargets,
   type TargetOwner,
 } from '../../../compiler/syntax/statements/targets.ts';
-import type { TokenKind } from '../../../compiler/syntax/tokens/index.ts';
+import type { Token, TokenKind } from '../../../compiler/syntax/tokens/index.ts';
 import {
   extentIn,
   nodesAt,
@@ -121,29 +121,43 @@ function kindAt(cursor: Cursor, parsed: PlaceholderParse): ParsedPlaceKind | 'no
 
 /**
  * The module's text with the placeholder at the cursor, parsed reusing what the edit left alike:
- * after the name written there, as a value's; or, where that reads a comparison or nothing at all
- * (`mayHideTypeArguments`), cased as a type's name before it, when that makes it a type argument
- * after a name.
+ * after a type arguments' opener on the cursor's line (`followsTypeArgumentsOpener`), cased as a
+ * type's name before the name written there, when that makes it a type argument after a name;
+ * else after that name, as a value's.
  */
 function placeholderParse(cursor: Cursor): PlaceholderParse {
-  const plain = parsedWith(cursor, placeholder, cursor.offset);
-  if (!plain.chain.some(mayHideTypeArguments)) {
-    return plain;
+  if (followsTypeArgumentsOpener(cursor)) {
+    const typed = parsedWith(cursor, typePlaceholder, cursor.name?.span.start ?? cursor.offset);
+    if (isTypeArgument(typed.chain)) {
+      return typed;
+    }
   }
-  const typed = parsedWith(cursor, typePlaceholder, cursor.name?.span.start ?? cursor.offset);
-  return isTypeArgument(typed.chain) ? typed : plain;
+  return parsedWith(cursor, placeholder, cursor.offset);
 }
 
 /**
- * Whether `node`, holding the placeholder cased as a value's, may be type arguments it keeps from
- * being read as ones: a comparison by `<`, or what the parser couldn't read.
+ * Whether a `<` touching the name before it, as type arguments are written (`f<Int>`), stands
+ * before the cursor on its line: only after one may the placeholder be a type argument.
  */
-function mayHideTypeArguments(node: SyntaxNode): boolean {
-  return (
-    node.kind === 'ChainedComparison' ||
-    node.kind === 'Invalid' ||
-    (node.kind === 'Binary' && node.operator === '<')
-  );
+function followsTypeArgumentsOpener({ tree, name, offset }: Cursor): boolean {
+  const tokens = codeTokensOf(tree);
+  const written = name?.span.start ?? offset;
+  for (let index = tokens.findLastIndex(({ span }) => span.end <= written); index > 0; index -= 1) {
+    const token = tokens[index];
+    const before = tokens[index - 1];
+    if (token?.kind === '<' && before?.kind === 'identifier' && touches(before, token)) {
+      return true;
+    }
+    if (token?.firstOnLine === true) {
+      return false;
+    }
+  }
+  return false;
+}
+
+/** Whether no space parts `before` from `after`, the token right after it. */
+function touches(before: Token, after: Token): boolean {
+  return before.span.end === after.span.start;
 }
 
 /** The module's text with `name` written at `at`, joining the name written at the cursor. */

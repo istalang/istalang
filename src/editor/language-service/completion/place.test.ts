@@ -25,6 +25,7 @@ const generics = [
   'fn f<A, B = Int>(x: Int) -> Int: x',
   'fn listed<T>(value: T) -> Array<T>: [value]',
   'struct Box<T> { item: T }',
+  'fn g(x: Int) -> Int: x',
   '',
 ];
 
@@ -36,6 +37,10 @@ describe('the place a cursor is in', () => {
     'fn main() -> Int: f<in‸>(1)',
     'fn main() -> Array<Int>: [1].map(listed<‸>)[0]',
     'fn main() -> Box<Int>: Box<‸>{item: 1}',
+    'fn main() -> Int: g(Result.Ok<Int, ‸>)',
+    'fn main() -> Array<Int>: [f<Int, ‸>]',
+    'fn main() -> Int: g(f<Int, ‸>(1))',
+    'fn main() -> Int: g(f<Int, ‸, String>(1))',
   ])('is a type among the type arguments after a name, the closing `>` written: %s', (line) => {
     expect(placeIn(...generics, line)).toBe('type');
   });
