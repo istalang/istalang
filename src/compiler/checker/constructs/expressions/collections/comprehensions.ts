@@ -58,7 +58,7 @@ export function checkFieldComprehension(
   const passes = checkedFieldPasses(context, node.header);
   const checked = inFieldPasses(context, node.header, passes, ({ visits }) => {
     const type = context.expression(node.body, expectedElement ?? decidedSoFar(context, produced));
-    const element = producedBy(context, node.body, type);
+    const element = producedBy(node.body, type);
     // A pass visiting no field gives no element: its body never runs.
     byPass.push(visits.kind === 'none' ? undefined : element);
     if (visits.kind !== 'none') {

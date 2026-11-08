@@ -10,19 +10,18 @@
  * diagnostic, which names what disagrees; with one, or when it fits only by the implicit wrap into
  * `T?` (§2), it is fitted, which reports the mismatch or records the wrap.
  *
- * A literal type inside another one is a value a container holds, which no conversion reaches
- * (types/unions/widening.ts), so producers holding different ones can't agree on any of their types
- * as they are: `(k, 1)` and `(k2, 2)` for keys `"a"` and `"b"`. A producer that is a literal built
- * from parts each with a type of its own can be built as another type its parts convert into,
- * though (§3.7), so such producers agree on the first one's type with every literal type in it
- * widened, and each is built again as that type. A later producer is likewise expected to have what
- * those before it agree on with the literal types inside it widened, since they constrain nothing a
- * part could convert into.
+ * A literal type inside another one is a value a container holds, so producers holding different
+ * ones can't agree on any of their types as they are: `(k, 1)` and `(k2, 2)` for keys `"a"` and
+ * `"b"`. A producer that is a literal of items converts as its items do, though (§3.5), so such
+ * producers agree on the first one's type with every literal type in it widened, each converted
+ * into it. A later producer is likewise expected to have what those before it agree on with the
+ * literal types inside it widened, since they constrain nothing a part could convert into.
  */
 
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
+import { isItemsLiteral } from '../../syntax/expressions/readings.ts';
 import type { Block } from '../../syntax/statements/index.ts';
 import { tailExpressionOf, tailNodeOf } from '../../syntax/statements/readings.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
@@ -53,41 +52,23 @@ export interface Produced {
   readonly type: Type;
   readonly span: AnchoredSpan;
   readonly site: ValueSite | undefined;
-  /** The producer as a literal of parts each typed, which may be built as another type (§3.7). */
-  readonly literal?: BuiltLiteral | undefined;
+  /** Whether the producer is a literal of items, which converts as its items do (§3.5). */
+  readonly isLiteral?: boolean | undefined;
 }
 
-/** A literal of parts each with a type of its own, and whether it can be built as a type (§3.7). */
-interface BuiltLiteral {
-  readonly node: Expression;
-  readonly builds: (type: Type) => boolean;
-}
-
-/**
- * What the expression `node`, checked, produced, `type`, and what its checked items can build it
- * as instead (§3.7).
- */
-export function producedBy(context: BodyContext, node: Expression, type: Type): Produced {
-  const { builds } = context.checkedPart(node);
-  return {
-    type,
-    span: node.span,
-    site: node,
-    literal:
-      builds === undefined ? undefined : { node, builds: (built) => builds(built, () => false) },
-  };
+/** What the expression `node`, checked, produced: `type`. */
+export function producedBy(node: Expression, type: Type): Produced {
+  return { type, span: node.span, site: node, isLiteral: isItemsLiteral(node) };
 }
 
 /**
  * A block body's tail: its last expression's value, a producer as any other's (`producedBy`), or
  * the unit the block gives, reported at its last statement.
  */
-export function blockTail(context: BodyContext, body: Block, type: Type): Produced {
+export function blockTail(body: Block, type: Type): Produced {
   const tail = tailExpressionOf(body);
   const { span } = tailNodeOf(body);
-  return tail === undefined
-    ? { type, span, site: body }
-    : { ...producedBy(context, tail, type), span };
+  return tail === undefined ? { type, span, site: body } : { ...producedBy(tail, type), span };
 }
 
 export interface Agreement {
@@ -156,11 +137,7 @@ function rebuiltAgreement(decided: Type, produced: readonly Produced[], checker:
     return decided;
   }
   const inside = insideWidened(decided, checker);
-  return produced.every(
-    ({ type, literal }) => agrees(checker, type, inside) || literal?.builds(inside) === true,
-  )
-    ? inside
-    : decided;
+  return produced.every((each) => agreesOrConverts(checker, each, inside)) ? inside : decided;
 }
 
 /**
@@ -171,9 +148,7 @@ function rebuiltAgreement(decided: Type, produced: readonly Produced[], checker:
  */
 export function wholeWidened(decided: Type, produced: readonly Produced[], checker: Joining): Type {
   const deep = deeplyWidened(decided, checker);
-  return produced.every(
-    ({ type, literal }) => agrees(checker, type, deep) || literal?.builds(deep) === true,
-  )
+  return produced.every((each) => agreesOrConverts(checker, each, deep))
     ? deep
     : joinWidened(decided, checker);
 }
@@ -199,6 +174,14 @@ function deeplyWidened(type: Type, checker: Joining): Type {
 }
 
 /** Whether a producer of `type` agrees with `decided` as it is, or once widened. */
+/** Whether `produced` agrees with `decided`, or converts into it, being a literal of items. */
+function agreesOrConverts(checker: Joining, produced: Produced, decided: Type): boolean {
+  return (
+    agrees(checker, produced.type, decided) ||
+    (produced.isLiteral === true && checker.fitOf(produced.type, decided) !== undefined)
+  );
+}
+
 function agrees(checker: Joining, type: Type, decided: Type): boolean {
   const { fitOf: fits, typeRules: rules } = checker;
   return fitsExactly(fits(type, decided)) || fitsExactly(fits(widened(type, rules), decided));
@@ -242,11 +225,6 @@ export interface Agreed {
 export function settleProduced(context: BodyContext, produced: Produced, agreed: Agreed): void {
   const { decided, expected, mismatch } = agreed;
   if (produced.site === undefined || agrees(context.checker, produced.type, decided)) {
-    return;
-  }
-  const { literal } = produced;
-  if (literal?.builds(decided) === true) {
-    context.rebuild(literal.node, decided);
     return;
   }
   if (expected === undefined && context.checker.fitOf(produced.type, decided) === undefined) {

@@ -24,7 +24,7 @@ import { localFunctionOf } from '../../../binder/entities.ts';
 import type { Expression, IndentedValue, Reference } from '../../../syntax/expressions/index.ts';
 import { literalOf, untypedForm } from '../../../syntax/expressions/literals/indented-values.ts';
 import { signedNumberOf } from '../../../syntax/expressions/literals/numbers.ts';
-import { unparenthesized } from '../../../syntax/expressions/readings.ts';
+import { isItemsLiteral, unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
@@ -288,27 +288,6 @@ export function checkedPartOf(context: BodyContext, node: Expression | undefined
   return { kind: 'typed', type: context.typeOf(node), builds: buildsOf(context, node, read) };
 }
 
-/**
- * Whether `node` is a literal of items that can be built as another type than its own (§3.7): a
- * tuple, an array or map literal, a `struct{…}` or an indented value naming no type, maybe
- * parenthesized. A literal naming its type builds that type alone.
- */
-export function isBuiltLiteral(node: Expression): boolean {
-  switch (node.kind) {
-    case 'Tuple':
-    case 'ArrayLiteral':
-    case 'MapLiteral':
-      return true;
-    case 'StructLiteral':
-    case 'IndentedValue':
-      return node.type === undefined;
-    case 'Parenthesized':
-      return isBuiltLiteral(node.expression);
-    default:
-      return false;
-  }
-}
-
 /** A kind that is no literal of items, or one whose items can't be built as another type. */
 const builtAsItIs = (): undefined => undefined;
 
@@ -391,7 +370,7 @@ export function openBuildsOf(context: BodyContext, node: Expression): Accepts | 
 
 /** The type `node` has on its own: as checked, for an item checked already, else as written. */
 function knownTypeOf(context: BodyContext, node: Expression): Type | undefined {
-  const checked = isBuiltLiteral(node) ? undefined : context.checkedTypeOf(node);
+  const checked = isItemsLiteral(node) ? undefined : context.checkedTypeOf(node);
   return checked ?? handlerOf(knownTypeHandlers, node)(context, node);
 }
 

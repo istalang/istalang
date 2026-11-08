@@ -78,3 +78,24 @@ export function casesOf(node: Match): readonly MatchCase[] {
 export function selectCasesOf(node: Select): readonly SelectCase[] {
   return node.cases.filter((each) => each.kind === 'SelectCase');
 }
+
+/**
+ * Whether `node` is a literal of items naming no type: a tuple, an array or map literal, a
+ * `struct{…}` or an indented value naming no type, maybe parenthesized. Its type is its items',
+ * so it converts as they do (§3.5); a literal naming its type is that type.
+ */
+export function isItemsLiteral(node: Expression): boolean {
+  switch (node.kind) {
+    case 'Tuple':
+    case 'ArrayLiteral':
+    case 'MapLiteral':
+      return true;
+    case 'StructLiteral':
+    case 'IndentedValue':
+      return node.type === undefined;
+    case 'Parenthesized':
+      return isItemsLiteral(node.expression);
+    default:
+      return false;
+  }
+}

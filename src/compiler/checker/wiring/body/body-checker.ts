@@ -42,7 +42,7 @@ import type {
   IndentedValue,
 } from '../../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
-import { unparenthesized } from '../../../syntax/expressions/readings.ts';
+import { isItemsLiteral, unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type {
   Assignment,
   Block,
@@ -67,7 +67,6 @@ import {
   acceptsOf,
   checkedPartOf,
   expressionHandlers,
-  isBuiltLiteral,
 } from '../../constructs/expressions/expressions.ts';
 import {
   builtAsChecked,
@@ -175,7 +174,7 @@ export class BodyChecker implements BodyContext {
     }
     declareOwnCall(this);
     const tail = this.block(body, this.#result.declared);
-    return this.#finished([body], this.#result.result(this, blockTail(this, body, tail)));
+    return this.#finished([body], this.#result.result(this, blockTail(body, tail)));
   }
 
   /**
@@ -221,7 +220,7 @@ export class BodyChecker implements BodyContext {
       }
     }
     const kept = this.#rebuilt.length > 0 || this.#checkedAhead.has(node);
-    const checked = kept && !isBuiltLiteral(node) ? this.#records.types.get(node) : undefined;
+    const checked = kept && !isItemsLiteral(node) ? this.#records.types.get(node) : undefined;
     if (checked !== undefined) {
       return checked;
     }

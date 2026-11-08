@@ -45,7 +45,7 @@ export class Branches {
   add(body: Block): void {
     const context = this.#context;
     const expected = this.#expected ?? decidedSoFar(context, this.#produced);
-    this.#produced.push(blockTail(context, body, context.block(body, expected)));
+    this.#produced.push(blockTail(body, context.block(body, expected)));
   }
 
   /** The type every branch agrees on, after reporting the branches that don't fit it. */

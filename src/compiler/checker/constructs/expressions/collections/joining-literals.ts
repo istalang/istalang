@@ -132,7 +132,7 @@ function joinedItem(
   places.push(place);
   const type = joining(node, place) ?? context.expression(node);
   return {
-    produced: producedBy(context, node, type),
+    produced: producedBy(node, type),
     literal: writtenLiteral(unparenthesized(node)),
   };
 }

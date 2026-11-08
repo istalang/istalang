@@ -66,7 +66,7 @@ export class ReturnScope implements Returns {
       this.#returned.push({ type: unitType, span: node.span, site: node });
       return;
     }
-    this.#returned.push(producedBy(context, value, context.expect(value, expected)));
+    this.#returned.push(producedBy(value, context.expect(value, expected)));
   }
 
   propagate(context: BodyContext, error: Type, span: AnchoredSpan): void {

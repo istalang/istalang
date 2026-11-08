@@ -13,12 +13,13 @@
  */
 
 import type { Expression } from '../../../../syntax/expressions/index.ts';
+import { isItemsLiteral } from '../../../../syntax/expressions/readings.ts';
 import type { AcceptedPart, BodyContext } from '../../../contexts/body-context.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import { memberBuilt } from '../../../types/fitting/expected.ts';
 import { unfolded } from '../../../types/type/computed-types.ts';
 import type { Type } from '../../../types/type/index.ts';
-import { isBuiltLiteral, openBuildsOf } from '../expressions.ts';
+import { openBuildsOf } from '../expressions.ts';
 
 /** The type a value read as `part` is built as where `expected` is expected, at any depth. */
 export function builtMember(
@@ -52,7 +53,7 @@ export function builtAsChecked(
   type: Type,
   expected: Type,
 ): Type {
-  if (!isBuiltLiteral(node) || goesInAsBuilt(context.checker, type, expected)) {
+  if (!isItemsLiteral(node) || goesInAsBuilt(context.checker, type, expected)) {
     return type;
   }
   const member = builtMember(context, node, expected, () => context.checkedPart(node));

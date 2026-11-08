@@ -171,7 +171,7 @@ export function producedValue(
   node: Expression,
   expected: Type | undefined,
 ): Produced {
-  return producedBy(context, node, context.expression(node, expected));
+  return producedBy(node, context.expression(node, expected));
 }
 
 /** What a literal's `part`s agree on, reporting those that don't fit it. */

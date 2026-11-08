@@ -295,6 +295,9 @@ function addedBy<Item>(
  */
 function acceptsDecided(argument: CallArgument, declared: Type, inference: Inference): boolean {
   const isOpen = (part: Type) => part.kind === 'parameter' && inference.isUnknown(part.declaration);
-  const accepted = argument.accepts?.(inference.settledIn(declared), isOpen) ?? true;
-  return accepted && (argument.inputs === undefined || inference.match(declared, argument.inputs));
+  const { accepts, inputs } = argument;
+  if (accepts !== undefined && !accepts(inference.settledIn(declared), isOpen)) {
+    return false;
+  }
+  return inputs === undefined || inference.match(declared, inputs);
 }

@@ -15,9 +15,9 @@
  */
 
 import type { Expression, StructLiteral } from '../../../../syntax/expressions/index.ts';
-import { itemValue } from '../../../../syntax/expressions/readings.ts';
+import { isItemsLiteral, itemValue } from '../../../../syntax/expressions/readings.ts';
 import type { AcceptedPart, BodyContext } from '../../../contexts/body-context.ts';
-import { isBuiltLiteral, untypedLiteral } from '../expressions.ts';
+import { untypedLiteral } from '../expressions.ts';
 
 /**
  * How `node`, passed to a call, takes part in choosing it: as read before checking, or, for a
@@ -30,7 +30,7 @@ export function argumentPartOf(
   check: (item: Expression) => void,
 ): AcceptedPart {
   const part = context.acceptedPart(node);
-  return hasTypeOnlyChecked(part) && isBuiltLiteral(node) && checkItemsAhead(context, node, check)
+  return hasTypeOnlyChecked(part) && isItemsLiteral(node) && checkItemsAhead(context, node, check)
     ? context.acceptedPart(node)
     : part;
 }
@@ -46,7 +46,7 @@ function checkItemsAhead(
 ): boolean {
   let checked = false;
   for (const item of literalItems(node)) {
-    if (isBuiltLiteral(item)) {
+    if (isItemsLiteral(item)) {
       checked = checkItemsAhead(context, item, check) || checked;
     } else if (hasTypeOnlyChecked(context.acceptedPart(item))) {
       check(item);

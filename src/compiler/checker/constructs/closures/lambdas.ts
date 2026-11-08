@@ -216,8 +216,8 @@ function checkLambdaAs(
       // A body of several statements is a block expression, whose tail produces as a `fn`'s does.
       const body = unparenthesized(node.body);
       return body.kind === 'BlockExpression'
-        ? blockTail(context, body.block, type)
-        : producedBy(context, node.body, type);
+        ? blockTail(body.block, type)
+        : producedBy(node.body, type);
     },
   });
 }
@@ -235,7 +235,7 @@ export function checkLocalFunction(context: BodyContext, node: FunctionDeclarati
       isAsync: node.isAsync,
       declaredResult: declaredBodyResult(context.checker, context.module, node),
       reach: nestedFunctionSpan(node, body),
-      tail: (declared) => blockTail(context, body, context.block(body, declared)),
+      tail: (declared) => blockTail(body, context.block(body, declared)),
     });
   }
   return unitType;
