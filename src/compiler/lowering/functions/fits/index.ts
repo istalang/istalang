@@ -30,7 +30,6 @@ import { emitCall } from '../../calls/emit-call.ts';
 import { tupleOf } from '../../constructs/expressions/literals/tuples.ts';
 import type { CodeContext, FunctionContext } from '../../context.ts';
 import { SynthesizedCode } from '../../synthesized/index.ts';
-import { convertedIntoAny } from '../../synthesized/trait-objects.ts';
 import {
   type AsyncFit,
   type BodyOwner,
@@ -40,12 +39,13 @@ import {
   ownerDeclaration,
 } from '../../tables/instances.ts';
 import { spelledType } from '../../tables/names.ts';
+import { convertedIntoAny } from '../../values/into-any.ts';
 import { rebuiltAs } from '../../values/struct-values.ts';
 import { asBase, intoUnion } from '../../values/unions.ts';
 import { changesLayout, type Rebuilding, rebuilt } from './parts.ts';
 
 /** A register and the type of the value it holds. */
-interface TypedRegister {
+export interface TypedRegister {
   readonly value: Register;
   readonly type: Type;
 }
@@ -197,6 +197,19 @@ function applyingIn(code: SynthesizedCode, at: ConversionSite): Applying {
   };
 }
 
+/**
+ * `typed` made to fit `to` inside a synthesized entry, as the checker fits the two types; an entry
+ * a conversion needs is named for `at`, the first site its pair was met at.
+ */
+export function fittedIn(
+  code: SynthesizedCode,
+  typed: TypedRegister,
+  to: Type,
+  at: ConversionSite,
+): Register {
+  return appliedFit(code, typed, fitBetween(code, typed.type, to), applyingIn(code, at));
+}
+
 /** How a value is rebuilt inside a conversion's entry, each part fitted as the checker fits it. */
 function rebuildingIn(code: SynthesizedCode, how: Applying): Rebuilding {
   const { tables } = code;
@@ -268,15 +281,13 @@ export function wrappingEntry(
   if (original === undefined) {
     unreachable('A wrapped function captures the function it calls.');
   }
-  const how = applyingIn(code, at);
   const passed = code.parameters.map((parameter, index) => {
     const taken = to.parameters[index];
     const own = from.parameters[index];
     if (taken === undefined || own === undefined || taken.reference) {
       return code.passedOn(index, references);
     }
-    const fit = fitBetween(code, taken.type, own.type);
-    const register = appliedFit(code, { value: parameter, type: taken.type }, fit, how);
+    const register = fittedIn(code, { value: parameter, type: taken.type }, own.type, at);
     return { kind: 'value' as const, register };
   });
   const called = emitCall(code, {
@@ -285,8 +296,7 @@ export function wrappingEntry(
     arguments: passed,
   });
   const result = from.isAsync ? code.await(called) : called;
-  const fit = fitBetween(code, from.result, to.result);
-  code.return(appliedFit(code, { value: result, type: from.result }, fit, how));
+  code.return(fittedIn(code, { value: result, type: from.result }, to.result, at));
   const header = tables.headerAt(conversionName(checker, entry), at.module, at.span);
   return code.entry(header, to.isAsync, references);
 }

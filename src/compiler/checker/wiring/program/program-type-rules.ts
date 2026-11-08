@@ -19,20 +19,27 @@ import type { EntryTable } from '../../../../foundation/structures/entries/index
 import { sameItems } from '../../../../foundation/structures/equality.ts';
 import { withEmptied } from '../../../../foundation/structures/stack.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
-import { meetsAny } from '../../resolution/conformance/trait-objects.ts';
+import { absorbs, meetsAny } from '../../resolution/conformance/trait-objects.ts';
 import { TypeMatchReductions } from '../../resolution/type-matches/type-matches.ts';
 import type { Fitting } from '../../types/fitting/fit/index.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
 import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
+import {
+  declaredFieldType,
+  requiredFields,
+  requiredFunctions,
+  requirementType,
+} from '../../types/traits/constraints.ts';
 import { associatedTypeOf, type Expansion } from '../../types/traits/known-constraints.ts';
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../../types/traits/struct-keys.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
 import type { AnonymousStructType, AnyType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
+import type { Variance } from '../../types/variance/lattice.ts';
 import {
   type DerivedDeclaration,
-  type Variance,
+  type HeldPart,
   type VariedDeclaration,
   varianceOf,
 } from '../../types/variance/variance.ts';
@@ -68,7 +75,7 @@ export function programTypeRules(
 ): ProgramTypeRules {
   const absorbed: EntryTable<CheckerNote, string, boolean, Absorbing> = checker.entries.table({
     name: 'absorbed members',
-    compute: (_key, { target, member }: Absorbing) => meetsAny(checker, member, target),
+    compute: (_key, { target, member }: Absorbing) => absorbs(checker, member, target),
     cyclic: { standIn: () => false },
   });
   const reductions = new TypeMatchReductions(checker);
@@ -119,19 +126,45 @@ export function programTypeRules(
 }
 
 /**
- * The types `declaration`'s values hold: a struct's fields, every variant's fields, the type an
- * alias names (§3.5).
+ * What `declaration`'s values hold (§3.5): a struct's fields, every variant's fields, the type an
+ * alias names; a trait's requirements, each as the function type a call through `any` makes, its
+ * receiver apart and exact, and its required fields, which an `any` value gives (§3.10).
  */
 function partsOf(
-  checker: Pick<CheckerContext, 'declaredFieldsOf' | 'declaredVariantsOf' | 'aliasedType'>,
+  checker: Pick<
+    CheckerContext,
+    | 'declaredFieldsOf'
+    | 'declaredVariantsOf'
+    | 'aliasedType'
+    | 'parametersOf'
+    | 'resultOf'
+    | 'resolveType'
+    | 'moduleOf'
+    | 'wellKnownType'
+  >,
   declaration: DerivedDeclaration,
-): readonly Type[] {
+): readonly HeldPart[] {
+  const given = (type: Type): HeldPart => ({ type, at: 'covariant' });
   if (declaration.kind === 'TypeAliasDeclaration') {
-    return [checker.aliasedType(declaration)];
+    return [given(checker.aliasedType(declaration))];
+  }
+  if (declaration.kind === 'TraitDeclaration') {
+    const requirements = requiredFunctions(declaration).flatMap((required): HeldPart[] => {
+      const type = requirementType(checker, required);
+      // A static requirement has no receiver; object safety keeps it from any `any` type.
+      const [receiver, ...taken] = required.owner === undefined ? type.parameters : [];
+      return receiver === undefined
+        ? [given(type)]
+        : [given({ ...type, parameters: taken }), { type: receiver.type, at: 'invariant' }];
+    });
+    const fields = requiredFields(declaration).map((field) =>
+      given(declaredFieldType(checker, declaration, field)),
+    );
+    return [...requirements, ...fields];
   }
   const fields =
     declaration.kind === 'StructDeclaration'
       ? checker.declaredFieldsOf(declaration)
       : checker.declaredVariantsOf(declaration).flatMap((variant) => variant.fields);
-  return fields.map((field) => field.type);
+  return fields.map((field) => given(field.type));
 }

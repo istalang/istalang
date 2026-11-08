@@ -1,6 +1,7 @@
 /**
  * The checker's diagnostics of variance, codes 5260–5289 (§3.5): where `gives` and `takes` may be
- * written, and what a written one must agree with. A part of the checker's one catalog (index.ts).
+ * written, and what a written one must agree with; and 5370–5379, variance through an `any` type
+ * (§3.10). A part of the checker's one catalog (index.ts).
  */
 
 export const varianceTemplates = {
@@ -18,5 +19,10 @@ export const varianceTemplates = {
     code: 5262,
     message: (word: string, name: string, derived: string) =>
       `'${word} ${name}' contradicts what the type holds: '${name}' is ${derived} there (§3.5).`,
+  },
+  severalInstantiations: {
+    code: 5370,
+    message: (found: string, met: readonly string[], wanted: string) =>
+      `${found} meets ${met.join(' and ')}, each standing for ${wanted} and neither closer, so which of their functions a call through \`any\` would run is unclear (§3.10).`,
   },
 } as const;

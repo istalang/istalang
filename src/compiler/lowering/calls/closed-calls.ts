@@ -130,7 +130,7 @@ export interface Dispatch {
  * What closing a call asks of the program: the rules its types are built by, and the witnesses a
  * type an instantiation made known meets a trait with, for a requirement on a computed type.
  */
-export type Closer = Pick<Checker, 'typeRules' | 'memberWitnesses'>;
+export type Closer = Pick<Checker, 'typeRules' | 'traitObjects'>;
 
 /** An instance a call is closed inside: its declaration, type arguments and witnesses. */
 type ClosingInstance = Pick<FunctionInstance, 'declaration' | 'typeArguments' | 'witnesses'>;
@@ -254,7 +254,7 @@ function closedInside(resolved: ResolvedCall, within: Closing, program: Closer):
       return { ...resolved, requirement: { ...origin, on, through }, typeArguments, witnesses };
     }
     const witness =
-      program.memberWitnesses(through, 0, on)[origin.member] ??
+      program.traitObjects.memberWitnesses(through, 0, on)[origin.member] ??
       unreachable(`${typeText(on)} meets its bound without '${resolved.function.name.text}'.`);
     const inRequired = closingIn({ declaration: resolved.function, typeArguments, witnesses });
     const met = closedInside(witness, inRequired, program);

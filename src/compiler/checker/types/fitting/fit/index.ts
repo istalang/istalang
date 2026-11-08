@@ -36,13 +36,14 @@
 import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { isAssignable } from '../../identity/identity.ts';
+import { isAssignable, sameConstraint } from '../../identity/identity.ts';
 import { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
 import { parametersIn } from '../../parts/type-parts.ts';
 import { unfolded } from '../../type/computed-types.ts';
 import type {
   AnonymousStructType,
   AnyType,
+  Constraint,
   Type,
   TypeParameterType,
   UnionType,
@@ -52,8 +53,9 @@ import type { TypeRules } from '../../type/type-rules.ts';
 import { typeText } from '../../type/type-text.ts';
 import { absorbingMember, baseOf } from '../../unions/union-members.ts';
 import { hasMember, literalsBase, membersOf } from '../../unions/unions.ts';
-import type { Variance, VariedDeclaration } from '../../variance/variance.ts';
-import { fitsByParts, type PartsRelation } from './parts.ts';
+import type { Variance } from '../../variance/lattice.ts';
+import type { VariedDeclaration } from '../../variance/variance.ts';
+import { argumentsFitAs, fitsByParts, type PartsRelation } from './parts.ts';
 
 /**
  * What converts a value itself, before it goes into a union: nothing, the conversion into an `any`
@@ -410,6 +412,22 @@ function fitsAsync(
     !source.isAsync &&
     target.isAsync &&
     exact(target, { ...source, isAsync: true })
+  );
+}
+
+/**
+ * Whether `found`, a constraint a type meets, stands for `expected` as its trait's variance says
+ * (§3.10): `Source<Int>` for `Source<Int?>` where `Source` only gives what it is given for.
+ */
+export function constraintFits(found: Constraint, expected: Constraint, fitting: Fitting): boolean {
+  const rules = matchingWith({
+    ...fitting,
+    exact: (target, source) => isAssignable(source, target),
+  });
+  return (
+    sameConstraint(found, expected) ||
+    (found.trait === expected.trait &&
+      argumentsFitAs(fitting.varianceOf(found.trait), found.arguments, expected.arguments, rules))
   );
 }
 

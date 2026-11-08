@@ -99,12 +99,12 @@ describe('contextual variance words `gives` and `takes` (§2, §3.5)', () => {
 });
 
 describe('variance derivation across positions and recursive declarations (§3.5, §3.18)', () => {
-  it('keeps handles, `&`, map keys, `any` constraints, member parameters and computed positions invariant', () => {
+  it('keeps handles, `&`, map keys, an invariant trait’s `any` constraints, member parameters and computed positions invariant', () => {
     expect(
       codesOf(
         'import * as inbox from "inbox"',
         'trait HasData { type Data }',
-        'trait Tag<T> { fn tag(self: Self) -> Int }',
+        'trait Tag<T> { fn tag(self: Self, x: T) -> T }',
         'type Status = "a" | "b"',
         'type Match<T> = match T:',
         '  case Int: Int',

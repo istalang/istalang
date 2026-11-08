@@ -116,7 +116,8 @@ src/
         choosing/                                                candidates and ADL, how arguments bind, choice among overloads, the calls a construct makes
                                                                  (calls-made.ts)
         conformance/                                             witnesses and why there is none, the traits the compiler derives (derived-traits.ts: one
-                                                                 table), unions meeting traits through their members
+                                                                 table), unions meeting traits through their members, the instantiation a type meets in an
+                                                                 `any` constraint's place through its trait's variance (met-instantiations.ts)
         type-matches/                                            a type `match`'s use reduced and its cases matched, and the type `match`es and associated
                                                                  types an instantiation reaches, checked to name a type whose values end where it is written
         applying/                                                a chosen call applied: every call chosen, instantiated and fitted in one place
@@ -171,13 +172,14 @@ src/
                                                                  out of one, a member tested; `T?` read where it isn't `none`, `none` itself,
                                                                  and optional chains jumping to their end on `None` (optionals.ts); where a
                                                                  value of one type sits in another as an instantiation made both, inside an
-                                                                 `any` type that took it whole included (holdings.ts); structs built by their
-                                                                 fields' names, beneath every builder of one; a field reached by a key's value
+                                                                 `any` type that took it whole included (holdings.ts); a value converted into
+                                                                 an `any` type (into-any.ts); structs built by their fields' names, beneath
+                                                                 every builder of one; a field reached by a key's value
       synthesized/                                               code with no syntax behind it (index.ts): boundary/ (docs/arch/boundary.md: derived json
                                                                  codecs, host extern wrappers, start entries, reading inbound JSON), and `any` values
-                                                                 (trait-objects.ts: conversions, and the entries switching over every type one holds,
-                                                                 dispatch, conversion, field read, written once the program is reached; a call on a union
-                                                                 through a trait dispatches over its members alike)
+                                                                 (trait-objects.ts: the entries switching over every type one holds, dispatch, conversion,
+                                                                 field read, written once the program is reached, each converting through the instantiation
+                                                                 a member meets; a call on a union through a trait dispatches over its members alike)
       constructs/                                                per-construct handlers, as the checker's constructs/: expressions/ (by the checker's
                                                                  families: structs/, collections/, control/, access/ (names, `??`, `!`), literals/),
                                                                  statements/, loops/ (the one loop of every iterating construct, and the passes over a

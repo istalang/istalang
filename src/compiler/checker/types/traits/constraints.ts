@@ -38,8 +38,10 @@ import {
   substituteConstraint,
   substitutionFor,
 } from '../parts/substitution.ts';
-import type { AnyType, Constraint, ParameterKey, Type } from '../type/index.ts';
+import type { AnyType, Constraint, FunctionType, ParameterKey, Type } from '../type/index.ts';
+import { errorType } from '../type/primitives.ts';
 import type { TypeRules } from '../type/type-rules.ts';
+import { futureArgument } from '../type/well-known.ts';
 import { parameterType } from '../written/resolve-type.ts';
 import { typeArgumentsFor } from '../written/type-arguments.ts';
 
@@ -178,6 +180,34 @@ export function constraintOn(constraint: Constraint, type: Type, rules: TypeRule
   return substituteConstraint(constraint, new Map([[constraint.trait, type]]), rules);
 }
 
+/** The type `trait` declares its required `field` to have, in its own parameters and `Self`. */
+export function declaredFieldType(
+  checker: Pick<CheckerContext, 'resolveType' | 'moduleOf'>,
+  trait: TraitDeclaration,
+  field: FieldDeclaration,
+): Type {
+  return checker.resolveType(checker.moduleOf(trait), field.type);
+}
+
+/**
+ * `required`, a function a trait requires, as the function type a call through the trait makes, in
+ * its own parameters and `Self` (§3.10): what it takes, its receiver first unless it is static, and
+ * what it gives, awaited where it is async, as a function named as a value has it (§3.14).
+ */
+export function requirementType(
+  checker: Pick<CheckerContext, 'parametersOf' | 'resultOf' | 'wellKnownType'>,
+  required: FunctionDeclaration,
+): FunctionType {
+  const result = checker.resultOf(required);
+  return {
+    kind: 'function',
+    isSendable: false,
+    isAsync: required.isAsync,
+    parameters: checker.parametersOf(required).map(({ type, reference }) => ({ type, reference })),
+    result: required.isAsync ? (futureArgument(checker, result) ?? errorType) : result,
+  };
+}
+
 /** The type `constraint` requires its trait's `field` to have, for the type `constrained`. */
 export function requiredFieldType(
   checker: CheckerContext,
@@ -186,7 +216,7 @@ export function requiredFieldType(
   constrained: Type,
 ): Type {
   return substitute(
-    checker.resolveType(checker.moduleOf(constraint.trait), field.type),
+    declaredFieldType(checker, constraint.trait, field),
     constraintSubstitution(constraint, constrained),
     checker.typeRules,
   );

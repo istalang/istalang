@@ -7,7 +7,8 @@ import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts'
 import { checkedApart } from '../../check.test-kit.ts';
 import type { Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
-import type { Variance, VariedDeclaration } from './variance.ts';
+import type { Variance } from './lattice.ts';
+import type { VariedDeclaration } from './variance.ts';
 
 const variedKinds: ReadonlySet<string> = new Set([
   'StructDeclaration',
@@ -73,7 +74,24 @@ describe('a declaration’s variance (§3.5)', () => {
     ],
     ['struct Asserted<gives T> { n: Int }', 'Asserted', ['covariant']],
     ['type Pairs<A, B> = Array<(A, fn(B) -> Unit)>', 'Pairs', ['covariant', 'contravariant']],
-    ['trait Source<T> { fn next(self: Self) -> T }', 'Source', ['invariant']],
+    ['trait Source<T> { fn next(self: Self) -> T }', 'Source', ['covariant']],
+    ['trait Sink<T> { fn put(self: Self, x: T) -> Unit }', 'Sink', ['contravariant']],
+    ['trait Cell<T> { fn get(self: Self) -> T; fn set(self: Self, x: T) }', 'Cell', ['invariant']],
+    ['trait Sized<T> { size: T }', 'Sized', ['covariant']],
+    ['trait Later<T> { async fn later(self: Self) -> Future<T> }', 'Later', ['covariant']],
+    ['trait Swaps<T> { fn swap(self: &Self, x: &T) }', 'Swaps', ['invariant']],
+    ['trait Each<T> { fn each(self: Self, f: fn(T) -> Unit) }', 'Each', ['covariant']],
+    ['trait Tag<T> { fn tag(self: Self) -> Int }', 'Tag', ['covariant']],
+    [
+      'trait Source<T> { fn next(self: Self) -> T }\nstruct Wrapped<T> { s: any Source<T> }',
+      'Wrapped',
+      ['covariant'],
+    ],
+    [
+      'trait Feed<T> { fn next(self: Self) -> Bag<T> }\nstruct Bag<T> { take: fn(T) -> Unit, feed: (any Feed<T>)? }',
+      'Feed',
+      ['contravariant'],
+    ],
   ] as const)('of %j is %j: %j', (text, name, expected) => {
     expect(variancesIn(text).get(name)).toEqual(expected);
   });

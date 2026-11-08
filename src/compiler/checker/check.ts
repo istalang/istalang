@@ -26,6 +26,7 @@ import type {
 import type { Parameter } from '../syntax/expressions/index.ts';
 import type { VariableDeclaration } from '../syntax/statements/index.ts';
 import type { Identifier } from '../syntax/tree/node.ts';
+import type { FieldDeclaration } from '../syntax/types/index.ts';
 import type { AnnotationQueries } from './surface/checked-annotation.ts';
 import type { CheckedBody } from './surface/checked-body.ts';
 import type { ConstantForm } from './surface/constant-form.ts';
@@ -39,6 +40,7 @@ import type {
   AnonymousStructType,
   AnyType,
   FieldMember,
+  FunctionType,
   NominalType,
   Type,
 } from './types/type/index.ts';
@@ -115,15 +117,8 @@ export interface Checker {
   readonly sharedValueOf: (type: Type) => AnonymousStructType | undefined;
   /** Who disposes a value of `type` (rules/disposal/disposal.ts). */
   readonly disposalOf: (type: NominalType) => Disposal;
-  /**
-   * The calls a value of `member` inside the `any` type `type` is called through (§3.10): what
-   * meets each function its `constraint`-th constraint's trait requires, in the trait's order.
-   */
-  readonly memberWitnesses: (
-    type: AnyType,
-    constraint: number,
-    member: Type,
-  ) => readonly ResolvedCall[];
+  /** How values of `any` types are called, read and taken apart (§3.10). */
+  readonly traitObjects: TraitObjects;
   /** `_Cell<T>` for `type`, what a variable passed by `&` or captured lives in (§3.7, §3.14). */
   readonly cellOf: (type: Type) => NominalType;
   /**
@@ -199,6 +194,56 @@ export function checkProgram(
 }
 
 /** A parameter of a declared function, with its resolved type. */
+/**
+ * How values of `any` types are called, read and taken apart (§3.10): through the functions each
+ * value's own type meets a trait with, at the instantiation it meets in the `any` type's
+ * constraint's place, which the trait's variance may let differ, what is taken and given then
+ * converting between the two (resolution/conformance/met-instantiations.ts).
+ */
+export interface TraitObjects {
+  /**
+   * The calls a value of `member` inside `type` is called through for its `constraint`-th
+   * constraint: what meets each function its trait requires, in the trait's order.
+   */
+  readonly memberWitnesses: (
+    type: AnyType,
+    constraint: number,
+    member: Type,
+  ) => readonly ResolvedCall[];
+  /**
+   * A call of `required`, with its own `typeArguments`, through `type`'s `constraint`-th constraint
+   * on a value of `member`: the function type it is made at (`called`), and the one `member`'s
+   * function has (`met`); undefined where `member` meets the constraint itself.
+   */
+  readonly memberSignatures: (
+    type: AnyType,
+    constraint: number,
+    member: Type,
+    call: { readonly required: FunctionDeclaration; readonly typeArguments: readonly Type[] },
+  ) => MemberConversion<FunctionType> | undefined;
+  /**
+   * A read of `field`, which `type`'s `constraint`-th constraint requires, on a value of `member`:
+   * the type it is read at, and the one `member` holds; undefined where they are the same.
+   */
+  readonly memberFieldTypes: (
+    type: AnyType,
+    constraint: number,
+    member: Type,
+    field: FieldDeclaration,
+  ) => MemberConversion<Type> | undefined;
+  /**
+   * Whether a value of `type` may be inside `target`: it converts into it, or meets its traits at
+   * instantiations none closer, as a value another `any` type took may.
+   */
+  readonly mayHold: (type: Type, target: AnyType) => boolean;
+}
+
+/** What a call or read through an `any` type is made at (`called`), and what it reaches (`met`). */
+export interface MemberConversion<Shape> {
+  readonly called: Shape;
+  readonly met: Shape;
+}
+
 export interface SignatureParameter {
   readonly node: Parameter;
   readonly type: Type;

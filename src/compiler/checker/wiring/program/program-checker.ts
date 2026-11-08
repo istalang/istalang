@@ -47,7 +47,13 @@ import type { VariableDeclaration } from '../../../syntax/statements/index.ts';
 import type { Identifier, NodeOf } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
-import type { CheckedConstant, Disposal, SignatureParameter, VariantMember } from '../../check.ts';
+import type {
+  CheckedConstant,
+  Disposal,
+  SignatureParameter,
+  TraitObjects,
+  VariantMember,
+} from '../../check.ts';
 import { Aliases } from '../../constructs/declarations/aliases/index.ts';
 import { ConstantChecks } from '../../constructs/declarations/constants.ts';
 import { FunctionChecks } from '../../constructs/declarations/functions/functions.ts';
@@ -71,13 +77,12 @@ import type {
 import { Lookup } from '../../lookup/lookup.ts';
 import { rootSearches } from '../../resolution/conformance/conformance.ts';
 import { programRootGoals } from '../../resolution/conformance/root-goals.ts';
-import { memberWitnesses } from '../../resolution/conformance/trait-objects.ts';
+import { traitObjectsOf } from '../../resolution/conformance/trait-objects.ts';
 import { Annotations } from '../../rules/annotations.ts';
 import { JsonForms } from '../../rules/boundary/json-forms.ts';
 import { disposalOf } from '../../rules/disposal/disposal.ts';
 import { Expansion } from '../../rules/expansion/functions.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
-import type { ResolvedCall } from '../../surface/resolved-call.ts';
 import { type Fit, type Fitting, fitOf } from '../../types/fitting/fit/index.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
 import { sameTypeSpelled, unaliased } from '../../types/parts/type-parts.ts';
@@ -85,7 +90,6 @@ import { resolveAnyType } from '../../types/traits/any-types.ts';
 import { memberUnionOf } from '../../types/traits/struct-keys.ts';
 import {
   type AnonymousStructType,
-  type AnyType,
   type Constraint,
   type FieldMember,
   isNominalEntity,
@@ -144,6 +148,7 @@ export class ProgramChecker implements CheckerContext {
   readonly #moduleChecks: ModuleChecks;
   readonly annotations: Annotations;
   readonly json: JsonForms;
+  readonly traitObjects: TraitObjects;
   readonly rootGoals: RootGoals;
   readonly lookup: Lookup;
 
@@ -203,6 +208,7 @@ export class ProgramChecker implements CheckerContext {
       checkValue: (module, value) => this.#valueBody(module, undefined).checkValue(value),
     });
     this.json = new JsonForms({ checker: this, annotations: this.annotations });
+    this.traitObjects = traitObjectsOf(this);
     this.rootGoals = programRootGoals(this, rootSearches);
     this.lookup = new Lookup(this);
   }
@@ -253,10 +259,6 @@ export class ProgramChecker implements CheckerContext {
 
   resolvedTypeOf(node: TypeNode): Type | undefined {
     return this.#resolvedTypes.computed(node);
-  }
-
-  memberWitnesses(type: AnyType, constraint: number, member: Type): readonly ResolvedCall[] {
-    return memberWitnesses(this, type, constraint, member);
   }
 
   anyTypeOf(

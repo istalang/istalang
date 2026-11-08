@@ -3,7 +3,9 @@
  * per type converted into it, however late lowering reaches the conversion, and its values are
  * data, so they cross a snapshot like any other value. A call on a union through a trait its
  * members meet (§6) dispatches over the union's own variants, and a union converted into an `any`
- * type adds its members, not itself.
+ * type adds its members, not itself. A member meeting another instantiation of the trait, which
+ * the trait's variance lets stand for the `any` type's, is called through that one's functions,
+ * what each takes and gives converted.
  */
 
 import { readFileSync } from 'node:fs';
@@ -68,6 +70,60 @@ describe('lowering trait objects', () => {
   it('runs a mixed Array<any T> the same with every segment re-run from its snapshot', () => {
     const text = compiledText(
       readFileSync(`${corpusDirectory}trait-objects/dispatch.ista`, 'utf8'),
+    );
+    const uninterrupted = startToEnd(testRuntime(), text);
+    expect(uninterrupted.kind).toBe('finished');
+    expect(startToEnd(testRuntime(), text, { crashEveryAwait: true })).toEqual(uninterrupted);
+  });
+});
+
+/** The outcome `main`, after `lines`, finishes with, as JSON text. */
+function outcomeOf(lines: readonly string[]): unknown {
+  const ended = startToEnd(testRuntime(), compiledText(lines.join('\n')));
+  return ended.kind === 'finished' ? ended.outcome : ended;
+}
+
+describe('lowering a call through an instantiation standing for another (§3.10)', () => {
+  it('converts what it gives into what the call through `any` gives, a tagged optional', () => {
+    expect(
+      outcomeOf([
+        'trait Source<T>:',
+        '  fn next(self: Self) -> T',
+        'struct Counter { n: Int }',
+        'fn next(self: Counter) -> Int: self.n',
+        'async fn main():',
+        '  const narrow: any Source<Int> = Counter{n: 3}',
+        '  const wide: any Source<Int?> = narrow',
+        '  match wide.next():',
+        '    case none: -1',
+        '    case Int as n: n * 2',
+      ]),
+    ).toBe('6');
+  });
+
+  it('calls the closest of the instantiations that fit, converting what it takes', () => {
+    expect(
+      outcomeOf([
+        'trait Each<T>:',
+        '  fn each(self: Self, f: fn(T) -> Int) -> Int',
+        'struct Both { k: Int }',
+        'fn each(self: Both, f: fn(Int) -> Int) -> Int: f(1)',
+        'fn each(self: Both, f: fn(Int?) -> Int) -> Int: f(none)',
+        'fn picked(x: Int? | String) -> Int:',
+        '  match x:',
+        '    case none: 10',
+        '    case Int as n: n',
+        '    case String: 20',
+        'async fn main():',
+        '  const each: any Each<Int? | String> = Both{k: 0}',
+        '  each.each(picked)',
+      ]),
+    ).toBe('10');
+  });
+
+  it('runs the corpus of conversions through `any` the same with every segment re-run', () => {
+    const text = compiledText(
+      readFileSync(`${corpusDirectory}trait-objects/variance.ista`, 'utf8'),
     );
     const uninterrupted = startToEnd(testRuntime(), text);
     expect(uninterrupted.kind).toBe('finished');

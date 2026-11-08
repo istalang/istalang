@@ -4,16 +4,21 @@
  * `A`, or invariant and the two are the same type (types/fitting/fit/index.ts).
  *
  * - A struct's or an enum's is derived from where each parameter occurs in what its values hold:
- *   a field is covariant, a function type's parameter flips the direction, and a handle's type
- *   arguments, a `&`, an `any` type's constraints (until traits have variance) and a computed type
- *   (`T.Data`, `S[K]`, `keyof S`, a mapped type, a type `match`, which may map `Int` and `Int?` to
- *   unrelated types) make it invariant. A member parameter (`K in U`) is invariant, since each
- *   member is its own instantiation and `U` is none.
+ *   a field is covariant, a function type's parameter flips the direction, an `any` type's
+ *   constraints compose by their traits' variance, and a handle's type arguments, a `&` and a
+ *   computed type (`T.Data`, `S[K]`, `keyof S`, a mapped type, a type `match`, which may map `Int`
+ *   and `Int?` to unrelated types) make it invariant. A member parameter (`K in U`) is invariant,
+ *   since each member is its own instantiation and `U` is none.
+ * - A trait's is derived alike, by C#'s rule for interfaces, from its requirements, each the
+ *   function type a call through `any` makes (its receiver, `Self`, no parameter of its own), and
+ *   its required fields, which a value of an `any` type gives and never takes. A value inside an
+ *   `any` type keeps its own type, so it can't be rebuilt at a wider argument as an `Array` can:
+ *   what a trait gives may only be given, and what it takes only taken.
  * - A recursive declaration, or several referring to each other, is solved as one fixpoint over
  *   `unused ⊏ covariant, contravariant ⊏ invariant`, starting at `unused`, which flips to itself;
  *   a parameter still `unused` is then settled covariant and the fixpoint goes on (`solvedVariances`).
  * - An alias has its body's variance, derived alike, though fitting never asks: it is the type it
- *   names. A trait's is invariant until it is derived for `any` (phase V2).
+ *   names.
  * - An extern value's is written (`gives` covariant, `takes` contravariant, none invariant): the
  *   runtime's promise that it rebuilds a value at a wider argument. A handle's is invariant, since
  *   a value put in through one copy is read through every other (until view handles, tracker F27).
@@ -35,38 +40,39 @@ import type { VarianceMarker } from '../../../syntax/tokens/grammar-words.ts';
 import { typeChildren } from '../parts/type-children.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import { isHandleDeclaration } from '../properties/handles.ts';
-import {
-  type RecursiveGraph,
-  type RecursiveType,
-  unfoldRecursive,
-} from '../type/computed-types.ts';
-import type {
-  FunctionType,
-  NominalDeclaration,
-  NominalType,
-  Type,
-  TypeParameterType,
-} from '../type/index.ts';
-
-export type Variance = 'covariant' | 'contravariant' | 'invariant';
-
-/** Where a parameter was met so far: nowhere, or as a variance. */
-type Usage = 'unused' | Variance;
+import type { RecursiveGraph } from '../type/computed-types.ts';
+import type { NominalDeclaration, Type } from '../type/index.ts';
+import { joined, type Usage, type Variance } from './lattice.ts';
+import { UsageWalk } from './usage-walk.ts';
 
 /** What deriving a declaration's variance reads of the program. */
 export interface VarianceReading {
   /**
-   * The types a struct's, an enum's or an alias's values hold, in terms of its own type
-   * parameters: a struct's fields, every variant's fields, the type an alias names.
+   * What a struct's, an enum's or an alias's values hold, in terms of its own type parameters: a
+   * struct's fields, every variant's fields, the type an alias names; a trait's requirements, each
+   * as the function type a call through `any` makes, its receiver apart, and its required fields.
    */
-  readonly partsOf: (declaration: DerivedDeclaration) => readonly Type[];
+  readonly partsOf: (declaration: DerivedDeclaration) => readonly HeldPart[];
+}
+
+/**
+ * A type a declaration's values hold, at the variance it stands at there: a field's covariant; a
+ * receiver's, the value itself, invariant, since a call through `any` never converts it.
+ */
+export interface HeldPart {
+  readonly type: Type;
+  readonly at: Variance;
 }
 
 /** A declaration whose type parameters have a variance. */
 export type VariedDeclaration = NominalDeclaration | TypeAliasDeclaration | TraitDeclaration;
 
-/** A declaration whose variance is derived from what its values hold. */
-export type DerivedDeclaration = StructDeclaration | EnumDeclaration | TypeAliasDeclaration;
+/** A declaration whose variance is derived from what its values hold, or a trait's requirements. */
+export type DerivedDeclaration =
+  | StructDeclaration
+  | EnumDeclaration
+  | TypeAliasDeclaration
+  | TraitDeclaration;
 
 /** The variance each word writes. */
 export const markerVariances = {
@@ -83,10 +89,6 @@ export function varianceOf(
   if (parameters.length === 0) {
     return [];
   }
-  if (declaration.kind === 'TraitDeclaration') {
-    // Derived where a trait is used through `any`, which converts nothing yet (tracker: V2).
-    return parameters.map(() => 'invariant');
-  }
   return isDerived(declaration)
     ? solvedVariances(declaration, reading)
     : parameters.map((parameter) => writtenVariance(declaration, parameter));
@@ -97,7 +99,8 @@ export function isDerived(declaration: VariedDeclaration): declaration is Derive
   return (
     declaration.kind === 'StructDeclaration' ||
     declaration.kind === 'EnumDeclaration' ||
-    declaration.kind === 'TypeAliasDeclaration'
+    declaration.kind === 'TypeAliasDeclaration' ||
+    declaration.kind === 'TraitDeclaration'
   );
 }
 
@@ -109,47 +112,13 @@ function writtenVariance(declaration: NominalDeclaration, parameter: TypeParamet
   return markerVariances[parameter.variance];
 }
 
-/** The join of two usages: the least one both are below. */
-function joined(first: Usage, second: Usage): Usage {
-  if (first === second || second === 'unused') {
-    return first;
-  }
-  return first === 'unused' ? second : 'invariant';
-}
-
-const flips = {
-  unused: 'unused',
-  covariant: 'contravariant',
-  contravariant: 'covariant',
-  invariant: 'invariant',
-} as const satisfies Record<Usage, Usage>;
-
-/** A usage seen from the other side of a function's parameter. */
-function flipped<Seen extends Usage>(usage: Seen): (typeof flips)[Seen] {
-  return flips[usage];
-}
-
-/** Where a position stands inside one at `outer`, when the declaration there makes it `inner`. */
-function composed(outer: Variance, inner: Usage): Usage {
-  switch (inner) {
-    case 'unused':
-      return 'unused';
-    case 'covariant':
-      return outer;
-    case 'contravariant':
-      return flipped(outer);
-    default:
-      return 'invariant';
-  }
-}
-
 /**
  * A derived declaration a fixpoint solves: its parameters, its parts, the generic derived
  * declarations those hold, and its usages so far.
  */
 interface Solved {
   readonly parameters: readonly TypeParameter[];
-  readonly parts: readonly Type[];
+  readonly parts: readonly HeldPart[];
   readonly holds: readonly DerivedDeclaration[];
   usages: Usage[];
 }
@@ -242,8 +211,8 @@ function unusedIn(
 /** Whether parameter `index` occurs anywhere in its declaration's parts. */
 function occurs(solved: Solved, index: number): boolean {
   const parameter = solved.parameters[index];
-  return solved.parts.some((part) =>
-    parametersIn(part).some((mentioned) => mentioned === parameter),
+  return solved.parts.some(({ type }) =>
+    parametersIn(type).some((mentioned) => mentioned === parameter),
   );
 }
 
@@ -262,14 +231,9 @@ function reach(solving: Solving, declaration: DerivedDeclaration, reading: Varia
   solving.set(declaration, { parameters, parts, holds, usages });
   const reached = new Set<RecursiveGraph>();
   const visit = (type: Type): void => {
-    // A declaration of no type parameters mentions none of another's.
-    if (
-      type.kind === 'nominal' &&
-      type.arguments.length > 0 &&
-      isDerived(type.entity.declaration)
-    ) {
-      holds.push(type.entity.declaration);
-      reach(solving, type.entity.declaration, reading);
+    for (const held of derivedHeld(type)) {
+      holds.push(held);
+      reach(solving, held, reading);
     }
     const inside =
       type.kind === 'recursive' ? graphNodesOnce(reached, type.graph) : typeChildren(type);
@@ -277,22 +241,38 @@ function reach(solving: Solving, declaration: DerivedDeclaration, reading: Varia
       visit(child);
     }
   };
-  for (const part of parts) {
-    visit(part);
+  for (const { type } of parts) {
+    visit(type);
   }
+}
+
+/**
+ * The generic derived declarations `type` is an instance of at its top: a struct's, an enum's or an
+ * alias's, or the traits an `any` type's constraints name. One of no type parameters mentions none
+ * of another's.
+ */
+function derivedHeld(type: Type): readonly DerivedDeclaration[] {
+  if (type.kind === 'any') {
+    return type.constraints.flatMap(({ trait, arguments: given }) =>
+      given.length > 0 ? [trait] : [],
+    );
+  }
+  return type.kind === 'nominal' && type.arguments.length > 0 && isDerived(type.entity.declaration)
+    ? [type.entity.declaration]
+    : [];
 }
 
 /** Where a declaration's parameters are met in its parts, by the usages known so far. */
 function usagesIn(solving: Solving, { parameters, parts }: Solved): Usage[] {
   const walk = new UsageWalk(parameters, (reached) => usagesSoFar(solving, reached));
-  for (const part of parts) {
-    walk.walk(part, 'covariant');
+  for (const { type, at } of parts) {
+    walk.walk(type, at);
   }
   return walk.usages;
 }
 
 /** The usages of `declaration`'s parameters as known so far: derived ones solving, others fixed. */
-function usagesSoFar(solving: Solving, declaration: NominalDeclaration): readonly Usage[] {
+function usagesSoFar(solving: Solving, declaration: VariedDeclaration): readonly Usage[] {
   if (isDerived(declaration)) {
     // Each generic derived declaration reached is solving; a value holds no other's arguments.
     return solving.get(declaration)?.usages ?? [];
@@ -309,90 +289,4 @@ function graphNodesOnce(reached: Set<RecursiveGraph>, graph: RecursiveGraph): re
   }
   reached.add(graph);
   return graph.nodes;
-}
-
-/** One walk over a declaration's parts, noting where each of its parameters is met. */
-class UsageWalk {
-  readonly usages: Usage[];
-  readonly #parameters: readonly TypeParameter[];
-  readonly #variancesOf: (declaration: NominalDeclaration) => readonly Usage[];
-  /** Each node of a recursive type is walked once per position it is met at. */
-  readonly #walked = new Map<RecursiveGraph, Set<string>>();
-
-  constructor(
-    parameters: readonly TypeParameter[],
-    variancesOf: (declaration: NominalDeclaration) => readonly Usage[],
-  ) {
-    this.#parameters = parameters;
-    this.#variancesOf = variancesOf;
-    this.usages = parameters.map(() => 'unused');
-  }
-
-  walk(type: Type, at: Variance): void {
-    switch (type.kind) {
-      case 'parameter':
-        this.#meet(type.declaration, at);
-        return;
-      case 'nominal':
-        this.#nominal(type, at);
-        return;
-      case 'function':
-        this.#function(type, at);
-        return;
-      case 'recursive':
-        this.#recursive(type, at);
-        return;
-      case 'anonymous':
-      case 'tuple':
-      case 'union':
-        this.#each(typeChildren(type), at);
-        return;
-      default:
-        // `any`'s constraints and computed types: no variance (yet, for `any`).
-        this.#each(typeChildren(type), 'invariant');
-    }
-  }
-
-  #meet(parameter: TypeParameterType['declaration'], at: Variance): void {
-    const index = parameter.kind === 'TypeParameter' ? this.#parameters.indexOf(parameter) : -1;
-    if (index >= 0) {
-      this.usages[index] = joined(this.usages[index] ?? 'unused', at);
-    }
-  }
-
-  #nominal(type: NominalType, at: Variance): void {
-    const inner = this.#variancesOf(type.entity.declaration);
-    type.arguments.forEach((argument, index) => {
-      const position = composed(at, inner[index] ?? 'invariant');
-      if (position !== 'unused') {
-        this.walk(argument, position);
-      }
-    });
-  }
-
-  #function(type: FunctionType, at: Variance): void {
-    for (const parameter of type.parameters) {
-      this.walk(parameter.type, parameter.reference ? 'invariant' : flipped(at));
-    }
-    if (type.pack !== undefined) {
-      this.walk(type.pack, flipped(at));
-    }
-    this.walk(type.result, at);
-  }
-
-  #recursive(type: RecursiveType, at: Variance): void {
-    const positions = this.#walked.get(type.graph) ?? new Set<string>();
-    this.#walked.set(type.graph, positions);
-    const position = `${type.node}:${at}`;
-    if (!positions.has(position)) {
-      positions.add(position);
-      this.walk(unfoldRecursive(type), at);
-    }
-  }
-
-  #each(types: readonly Type[], at: Variance): void {
-    for (const type of types) {
-      this.walk(type, at);
-    }
-  }
 }

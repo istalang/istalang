@@ -15,7 +15,7 @@ import type {
   ParameterSlot,
   Type,
 } from '../../type/index.ts';
-import type { Variance } from '../../variance/variance.ts';
+import type { Variance } from '../../variance/lattice.ts';
 import type { Fitting } from './index.ts';
 
 /** What relating two types part by part reads: the match it belongs to. */
@@ -57,16 +57,31 @@ export function fitsByParts(found: Type, expected: Type, relation: PartsRelation
 /** Whether a value of `found` fits `expected`, both of one declaration, argument by argument. */
 function argumentsFit(found: NominalType, expected: NominalType, relation: PartsRelation): boolean {
   const { declaration } = found.entity;
-  if (declaration !== expected.entity.declaration) {
-    return false;
-  }
-  const variances = relation.varianceOf(declaration);
-  return found.arguments.every((argument, index) => {
-    const other = expected.arguments[index];
-    return (
-      other !== undefined && fitsAs(variances[index] ?? 'invariant', argument, other, relation)
-    );
-  });
+  return (
+    declaration === expected.entity.declaration &&
+    argumentsFitAs(relation.varianceOf(declaration), found.arguments, expected.arguments, relation)
+  );
+}
+
+/**
+ * Whether the type arguments `found` fit `expected`, given to one declaration whose parameters have
+ * `variances`, each as its variance says.
+ */
+export function argumentsFitAs(
+  variances: readonly Variance[],
+  found: readonly Type[],
+  expected: readonly Type[],
+  relation: PartsRelation,
+): boolean {
+  return (
+    found.length === expected.length &&
+    found.every((argument, index) => {
+      const other = expected[index];
+      return (
+        other !== undefined && fitsAs(variances[index] ?? 'invariant', argument, other, relation)
+      );
+    })
+  );
 }
 
 /** Whether `found` fits `expected` where a parameter of `variance` stands (§3.5). */

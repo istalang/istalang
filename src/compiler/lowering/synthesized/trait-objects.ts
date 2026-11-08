@@ -13,6 +13,12 @@
  *   when the function is, awaiting the call it makes. On a union, a member with one value (a
  *   literal, `none`) holds nothing, so its function gets that value; on the one type a union
  *   collapsed into, it calls that type's function.
+ * - A member meeting another instantiation of the trait, which the trait's variance lets stand for
+ *   the `any` type's (checker/resolution/conformance/met-instantiations.ts), is called through that
+ *   instantiation's witnesses: what the call through `any` gives each converted into what the
+ *   function takes, and what it gives into what the call through `any` gives, as the checker fits
+ *   them; a field it holds is read converted alike. A `&` never converts, and the variance it
+ *   makes is none, so it is passed on as it is.
  * - Every entry switching over an `any` type's variants is a closing entry (../tables/tables.ts):
  *   written once lowering reached every type converted so far, and again when it reaches another.
  */
@@ -22,44 +28,18 @@ import type { Register } from '../../../definition/operands.ts';
 import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/surface/checked-field.ts';
-import { sameType } from '../../checker/types/identity/identity.ts';
 import type { AnyType, Type } from '../../checker/types/type/index.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
-import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import { closeWitness, type Dispatch } from '../calls/closed-calls.ts';
-import { emitCall } from '../calls/emit-call.ts';
 import type { CodeContext } from '../context.ts';
+import { fittedIn } from '../functions/fits/index.ts';
 import { spelledType } from '../tables/names.ts';
-import { heldInAny, type IntoAny } from '../values/holdings.ts';
-import { eachMember, outOfUnion } from '../values/unions.ts';
+import { convertedIntoAny } from '../values/into-any.ts';
+import { outOfUnion } from '../values/unions.ts';
 import { SynthesizedCode } from './index.ts';
 
 /** What writing an entry takes: the checker and the tables. */
 type Lowering = Pick<CodeContext, 'checker' | 'tables'>;
-
-/** The value `conversion` converts, in the `any` type it converts into. */
-export function convertedIntoAny(
-  context: CodeContext,
-  { value, from, to }: IntoAny,
-  span: AnchoredSpan,
-): Register {
-  const { tables } = context;
-  if (from.kind === 'any') {
-    return sameType(from, to)
-      ? value
-      : emitCall(context, {
-          span,
-          callee: tables.anyConversionIndex(from, to),
-          arguments: [value],
-        });
-  }
-  if (from.kind === 'union') {
-    return eachMember(context, { register: value, type: from }, span, (member) =>
-      convertedIntoAny(context, { value: member.register, from: member.type, to }, span),
-    );
-  }
-  return heldInAny(context, { value, from, to }, span);
-}
 
 /**
  * The entry calling `dispatch`'s function for each type the value it is called on may have; a
@@ -68,23 +48,44 @@ export function convertedIntoAny(
 export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionDefinition {
   const { checker, tables } = lowering;
   const { on, through, constraint, member, required } = dispatch;
-  const references = checker.parametersOf(required).map((parameter) => parameter.reference);
+  const parameters = checker.parametersOf(required);
+  const references = parameters.map((parameter) => parameter.reference);
   const code = new SynthesizedCode(lowering, required.name.span, references.length);
-  const [receiver, ...others] = code.parameters;
+  const [receiver] = code.parameters;
   if (receiver === undefined) {
     unreachable(`'${required.name.text}' is called through any without its receiver.`);
   }
-  const rest = others.map((_, index) => code.passedOn(index + 1, references));
+  const at = { module: checker.moduleOf(required), span: required.name.span };
   switchOverMembers(code, on, receiver, (type) => {
-    const witness = checker.memberWitnesses(through, constraint, type)[member];
+    const witness = checker.traitObjects.memberWitnesses(through, constraint, type)[member];
     if (witness === undefined) {
       unreachable(
         `${spelledType(checker, type)} meets ${spelledType(checker, through)} without '${required.name.text}'.`,
       );
     }
+    const signatures = checker.traitObjects.memberSignatures(through, constraint, type, dispatch);
+    const passed = code.parameters.slice(1).map((value, index) => {
+      const called = signatures?.called.parameters[index + 1];
+      const met = signatures?.met.parameters[index + 1];
+      if (called === undefined || met === undefined || called.reference) {
+        return code.passedOn(index + 1, references);
+      }
+      const register = fittedIn(code, { value, type: called.type }, met.type, at);
+      return { kind: 'value' as const, register };
+    });
     const self = memberReceiver(code, receiver, { on, type, references });
-    const result = code.call(closeWitness(witness, dispatch, checker), [self, ...rest]);
-    code.return(required.isAsync ? code.await(result) : result);
+    const call = code.call(closeWitness(witness, dispatch, checker), [self, ...passed]);
+    const result = required.isAsync ? code.await(call) : call;
+    code.return(
+      signatures === undefined
+        ? result
+        : fittedIn(
+            code,
+            { value: result, type: signatures.met.result },
+            signatures.called.result,
+            at,
+          ),
+    );
   });
   const generic = dispatch.typeArguments.map((type) => spelledType(checker, type));
   const name = `${spelledType(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;
@@ -129,12 +130,20 @@ export function anyFieldEntry(
   if (value === undefined) {
     unreachable('A field read takes the value it reads.');
   }
+  const constraint = on.constraints.findIndex((each) => each.trait === trait);
+  const at = { module: checker.moduleOf(trait), span: field.name.span };
   switchOverMembers(code, on, value, (type) => {
     const read = requiredFieldRead(checker, type, required);
     if (read.kind !== 'position') {
       unreachable(`A member of ${spelledType(checker, on)} is no struct.`);
     }
-    code.return(code.field(code.field(value, 0), read.index));
+    const held = code.field(code.field(value, 0), read.index);
+    const types = checker.traitObjects.memberFieldTypes(on, constraint, type, field);
+    code.return(
+      types === undefined
+        ? held
+        : fittedIn(code, { value: held, type: types.met }, types.called, at),
+    );
   });
   const name = `${spelledType(checker, on)}.${field.name.text}`;
   return code.entry(tables.headerAt(name, checker.moduleOf(trait), field.name.span), false);

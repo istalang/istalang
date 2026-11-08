@@ -77,11 +77,12 @@ export function patternTypeOf(checker: Aliases, entity: Entity): PatternType {
 export type DowncastTarget = PatternType | { readonly kind: 'unheld'; readonly type: Type };
 
 /**
- * What a pattern naming `entity` tests a value of the `any` type `from` for (§3.10). The value
- * inside has its own type, never an `any` one, so an alias of an `any` type names none.
+ * What a pattern naming `entity` tests a value of the `any` type `from` for (§3.10): a type that may
+ * be inside it. The value inside has its own type, never an `any` one, so an alias of an `any` type
+ * names none.
  */
 export function downcastTargetOf(
-  checker: Pick<Checker, 'aliasedType' | 'typeRules' | 'fitOf'>,
+  checker: Pick<Checker, 'aliasedType' | 'typeRules' | 'traitObjects'>,
   entity: Entity,
   from: AnyType,
 ): DowncastTarget {
@@ -95,7 +96,7 @@ export function downcastTargetOf(
   if (named.type.kind === 'any') {
     return namesNone;
   }
-  return checker.fitOf(named.type, from)?.conversion.kind === 'any'
+  return checker.traitObjects.mayHold(named.type, from)
     ? named
     : { kind: 'unheld', type: named.type };
 }
