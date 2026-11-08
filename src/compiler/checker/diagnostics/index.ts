@@ -17,6 +17,7 @@ import { genericTemplates } from './generics.ts';
 import { lifetimeTemplates, weakSideTemplates } from './lifetimes.ts';
 import { patternTemplates } from './patterns.ts';
 import { valueTemplates } from './values.ts';
+import { varianceTemplates } from './variance.ts';
 
 export const checkerDiagnostics = defineDiagnostics('checker', {
   typeMismatch: {
@@ -149,6 +150,7 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
       "This value's field defaults build a value needing those defaults again, so it would never be finished.",
   },
   ...genericTemplates,
+  ...varianceTemplates,
   ...valueTemplates,
   ...collectionTemplates,
   ...patternTemplates,

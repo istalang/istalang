@@ -40,6 +40,8 @@ import {
   asyncFitKey,
   asyncFitName,
   type BodyOwner,
+  type ConversionEntry,
+  conversionKey,
   type FunctionInstance,
   instanceKey,
   instanceName,
@@ -55,8 +57,8 @@ import { TypeTable } from './type-table.ts';
  * A function-table entry waiting to be lowered: a top-level function's instance, a nested one, an
  * extern a host implements as its native sees it (synthesized/boundary/host-externs.ts), the read
  * of an extern constant, the wrapper a host starts a function through
- * (synthesized/boundary/starts.ts), or the async entry of a plain function made async
- * (functions/fits.ts).
+ * (synthesized/boundary/starts.ts), the async entry of a plain function made async, or a
+ * conversion of parts (functions/fits/).
  */
 export type PendingEntry =
   | { readonly kind: 'instance'; readonly instance: FunctionInstance }
@@ -74,7 +76,8 @@ export type PendingEntry =
       readonly type: Type;
     }
   | { readonly kind: 'start'; readonly target: StartTarget }
-  | { readonly kind: 'asyncFit'; readonly fit: AsyncFit };
+  | { readonly kind: 'asyncFit'; readonly fit: AsyncFit }
+  | ConversionEntry;
 
 /**
  * An entry switching over every variant of an `any` type's enum (§3.10): a dispatch on a value's
@@ -260,6 +263,11 @@ export class DefinitionTables {
   /** The index of the async entry of a plain function made async (§3.14), lowered later too. */
   asyncFitIndex(fit: AsyncFit): FunctionId {
     return this.#entryIndex(asyncFitKey(this.#checker.typeKeys, fit), { kind: 'asyncFit', fit });
+  }
+
+  /** The index of a conversion's entry (§3.5), one per pair of types, lowered later too. */
+  conversionIndex(entry: ConversionEntry): FunctionId {
+    return this.#entryIndex(conversionKey(this.#checker.typeKeys, entry), entry);
   }
 
   /** The index of a lambda's or local function's entry (§3.14), lowered later too. */

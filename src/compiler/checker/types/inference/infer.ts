@@ -2,10 +2,11 @@
  * Inferring type arguments (§3.5): matching the types a call or literal gives against the types its
  * declaration takes, which mention the type parameters still to be found.
  *
- * - Matching is exact, except at the top of a match, where a `T` may fill a `T?` (§2), a plain
+ * - Matching is exact first, at the top of a match, where a `T` may fill a `T?` (§2), a plain
  *   function an async one (§3.14), a one-element tuple and its element each other (§3.15), and a
  *   nominal struct's fields a shape, `T` of `{ x: T, y: T }` bound to `Int` by a `Pixel` (§3.1,
- *   §3.5): a conversion applies to a whole value, never inside a collection or a function type.
+ *   §3.5). Where it isn't, a type built of others matches part by part as its variance allows
+ *   (types/fitting/fit/parts.ts), so a declared `Array<Int?>` takes an `Array<Int>`.
  * - A type argument written is taken as given: what is matched has it in place before matching, so
  *   `f<Int?>(o)` for `fn f<T>(x: T?)` matches `Int?` against `Int?`, never `T` against what `None`
  *   leaves. Whether it stands for a member parameter is instantiation's to check
@@ -20,10 +21,10 @@
  *   fits the bound type (a conversion included), or the bound type fits it, which then binds, so
  *   `same(o, 2)` and `same(2, o)` both bind `T` to `Int?` for `o: Int?`. Two types neither fits
  *   conflict, and inference fails for that parameter.
- * - Only the top of a match converts. Anywhere else, inside a type or where a value must have its
- *   type exactly (a reference, a spread's items, a witness), the type found is the parameter's
- *   own: a bound type there must be the same, and once found there it never widens, so
- *   `set(o, &n)` and `set(&n, o)` conflict for `n: Int`, as a wrapped `n` couldn't be its place.
+ * - A parameter found inside a type, or where a value must have its type exactly (a reference, a
+ *   spread's items, a witness), is the parameter's own: a bound type there must be the same, and
+ *   once found there it never widens, so `set(o, &n)` and `set(&n, o)` conflict for `n: Int`, as a
+ *   wrapped `n` couldn't be its place.
  * - A member parameter (`T in U`, §3.5) is filled only by a type that is one member of `U`, after
  *   the parameters `U` mentions are found: a literal argument gives its literal type where `U`
  *   holds literals of its base (`literalType`), a literal type of a member's base gives that base,
@@ -37,7 +38,7 @@
  *   had their say (`bindNeverWhereOpen`), as `expectPanic(fn(): panic("x"))` needs.
  */
 
-import { type Fitting, fitOf, matchConversion } from '../fitting/fit.ts';
+import { type Fitting, fitOf, matchConversion } from '../fitting/fit/index.ts';
 import { isOneMember } from '../fitting/member-arguments.ts';
 import { sameType } from '../identity/identity.ts';
 import { UnfoldingPairs } from '../identity/unfolding-pairs.ts';

@@ -78,7 +78,7 @@ import { disposalOf } from '../../rules/disposal/disposal.ts';
 import { Expansion } from '../../rules/expansion/functions.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import type { ResolvedCall } from '../../surface/resolved-call.ts';
-import { type Fit, type Fitting, fitOf } from '../../types/fitting/fit.ts';
+import { type Fit, type Fitting, fitOf } from '../../types/fitting/fit/index.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
 import { sameTypeSpelled, unaliased } from '../../types/parts/type-parts.ts';
 import { resolveAnyType } from '../../types/traits/any-types.ts';

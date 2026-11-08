@@ -24,7 +24,7 @@ import {
 
 const { expected, topLevelStatement, externWithBody } = parserDiagnostics;
 
-const typeParameter = (name: string): string => `(TypeParameter ${name} _ [] _)`;
+const typeParameter = (name: string): string => `(TypeParameter _ ${name} _ [] _)`;
 const string = named('String');
 
 describe('imports', () => {
@@ -83,7 +83,7 @@ describe('type declarations', () => {
     ],
     [
       'struct Node<T is Sendable & Comparable = Int> { value: T }',
-      `(StructDeclaration Node [(TypeParameter T _ [${named('Sendable')} ${named('Comparable')}] ${int})] [${declaredField('value', named('T'))}] [])`,
+      `(StructDeclaration Node [(TypeParameter _ T _ [${named('Sendable')} ${named('Comparable')}] ${int})] [${declaredField('value', named('T'))}] [])`,
     ],
     [
       lines('enum Decision:', '    Approved(by: String)', '    Expired'),
@@ -191,7 +191,7 @@ describe('externs and functions', () => {
     ],
     [
       'extern sendable struct Queue<T is Sendable>',
-      `(ExternStructDeclaration sendable Queue [(TypeParameter T _ [${named('Sendable')}] _)])`,
+      `(ExternStructDeclaration sendable Queue [(TypeParameter _ T _ [${named('Sendable')}] _)])`,
     ],
     [
       'extern shared struct Slot<T>',
@@ -223,10 +223,10 @@ describe('externs and functions', () => {
 
 describe('member type parameters (§3.5)', () => {
   it.each([
-    ['fn describe<S in Status>(s: S): s', `[(TypeParameter S ${named('Status')} [] _)]`],
+    ['fn describe<S in Status>(s: S): s', `[(TypeParameter _ S ${named('Status')} [] _)]`],
     [
       'struct Entry<S, K in "a" | "b">:\n  key: K',
-      `[${typeParameter('S')} (TypeParameter K (UnionType [(LiteralType "a") (LiteralType "b")]) [] _)]`,
+      `[${typeParameter('S')} (TypeParameter _ K (UnionType [(LiteralType "a") (LiteralType "b")]) [] _)]`,
     ],
   ])('reads `name in Type` in %j', (text, parameters) => {
     expect(dumpClean('module', text)).toContain(parameters);
@@ -243,10 +243,28 @@ describe('member type parameters (§3.5)', () => {
   });
 });
 
+describe('variance words', () => {
+  it('reads `gives` and `takes` before a name or a pack', () => {
+    expect(dumpClean('module', 'extern struct F<gives T, takes U, gives ...A>')).toContain(
+      '[(TypeParameter gives T _ [] _) (TypeParameter takes U _ [] _) (TypeParameter gives isPack A _ [] _)]',
+    );
+  });
+
+  it('reads a parameter named `gives` as a name', () => {
+    expect(dumpClean('module', 'struct S<gives>')).toContain(`[${typeParameter('gives')}]`);
+  });
+
+  it('reports two variance words once, over both', () => {
+    expect(reported('module', 'struct S<gives takes T>')).toEqual(
+      reportedOnce(parserDiagnostics.twoVariances.code, 'gives takes'),
+    );
+  });
+});
+
 describe('type parameter packs', () => {
   it('reads `...A` as a pack, beside plain type parameters', () => {
     expect(dumpClean('module', 'fn logged<...A, R>(f: fn(...A) -> R): f')).toContain(
-      `[(TypeParameter isPack A _ [] _) ${typeParameter('R')}]`,
+      `[(TypeParameter _ isPack A _ [] _) ${typeParameter('R')}]`,
     );
   });
 });

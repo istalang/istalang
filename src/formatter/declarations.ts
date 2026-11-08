@@ -161,6 +161,7 @@ export const declarationPrinters: Printers<DeclarationKind> = {
       printer.print(node.path),
     ]),
   TypeParameter: (printer, node) => [
+    node.variance === undefined ? '' : [node.variance, ' '],
     node.isPack ? '...' : '',
     printer.print(node.name),
     node.memberOf === undefined ? '' : [' in ', printer.print(node.memberOf)],

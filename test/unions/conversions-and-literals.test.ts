@@ -108,22 +108,23 @@ describe('conversions into a union (§2)', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('never converts into a union inside a container or through a `&` reference', () => {
+  it('converts into a union inside a value type, never inside a handle or through a `&`', () => {
     expect(
       codesOf(
         'fn takeArray(xs: Array<Int | String>) -> Int: xs.length()',
         'fn takeField(s: { v: Int | String }) -> Int: 0',
+        'fn takeSlot(s: Slot<Int | String>) -> Int: 0',
         'fn takeRef(r: &(Int | String)): ()',
         'fn takeOptRef(r: &Int?): ()',
-        'fn bad(xs: Array<Int>, s: { v: Int }):',
+        'fn bad(xs: Array<Int>, s: { v: Int }, slot: Slot<Int>):',
         '  let n = 1',
         '  _ = takeArray(xs)',
         '  _ = takeField(s)',
+        '  _ = takeSlot(slot)',
         '  takeRef(&n)',
         '  takeOptRef(&n)',
       ),
     ).toEqual([
-      checkerDiagnostics.typeMismatch.code,
       checkerDiagnostics.typeMismatch.code,
       checkerDiagnostics.typeMismatch.code,
       checkerDiagnostics.typeMismatch.code,

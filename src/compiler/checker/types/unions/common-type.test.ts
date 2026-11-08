@@ -5,7 +5,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { fitOf } from '../fitting/fit.ts';
+import { fitOf } from '../fitting/fit/index.ts';
 import { sameType } from '../identity/identity.ts';
 import type { Type } from '../type/index.ts';
 import { intType, neverType, noneType, stringType } from '../type/primitives.ts';
@@ -18,6 +18,7 @@ const fitting = {
   meetsAny: () => false,
   shapeOf: () => undefined,
   memberUnionOf: () => undefined,
+  varianceOf: () => [],
 };
 
 /** Joining in a program declaring nothing. */

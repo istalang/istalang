@@ -132,6 +132,11 @@
           "captures": { "1": { "name": "keyword.control.import.ista" } }
         },
         {
+          "comment": "`gives` and `takes` before a type parameter's name or `...` (§3.5).",
+          "match": "\\b(gives|takes)\\s+(?=(?:\\.\\.\\.)?[A-Z])",
+          "captures": { "1": { "name": "storage.modifier.ista" } }
+        },
+        {
           "match": "\\b(extern)\\s+(shared|sendable|ephemeral)\\b",
           "captures": {
             "1": { "name": "storage.modifier.ista" },

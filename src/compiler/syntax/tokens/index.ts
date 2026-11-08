@@ -125,6 +125,8 @@ const contextualWords = [
   'sendable',
   'shared',
   'ephemeral',
+  'gives',
+  'takes',
   'new',
   'hold',
   'by',

@@ -205,6 +205,11 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: () =>
       "'any' takes traits; a struct constraint states a struct's fields, so it stands only after 'is' (§3.5).",
   },
+  twoVariances: {
+    code: 2310,
+    message: () =>
+      "A type parameter is either covariant ('gives') or contravariant ('takes'); write one at most (§3.5).",
+  },
   memberParameterAlone: {
     code: 2027,
     message: () =>

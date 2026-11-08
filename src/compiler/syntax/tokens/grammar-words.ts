@@ -161,6 +161,15 @@ export type ExternHandle = (typeof externHandles)[number];
 
 const externHandleSet: ReadonlySet<string> = new Set(externHandles);
 
+/**
+ * What may prefix a type parameter of a struct, an enum or an extern struct (§3.5), saying how its
+ * instantiations relate: `gives` covariant, `takes` contravariant. A pack's stands before its
+ * `...`, the slot `each` will share (tracker F26).
+ */
+export const varianceMarkers = ['gives', 'takes'] as const satisfies readonly Word[];
+
+export type VarianceMarker = (typeof varianceMarkers)[number];
+
 /** Whether `word` makes an extern struct a handle. */
 export function isExternHandle(word: string): word is ExternHandle {
   return externHandleSet.has(word);

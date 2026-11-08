@@ -1,10 +1,8 @@
-# error: 5001 at 22:7
-# error: 5001 at 22:21
-# error: 5001 at 22:36
-# error: 5001 at 22:52
-# A struct's value converts into its shape only as a whole value, once (§3.1): never inside a
-# collection or another struct, never from a shape into a struct, and never for a struct with an
-# annotated field, whose shape would drop what the annotation says.
+# error: 5001 at 20:21
+# error: 5001 at 20:36
+# A struct's value converts into its shape (§3.1), inside a collection or another shape too (§3.5),
+# but never from a shape into a struct, and never for a struct with an annotated field, whose shape
+# would drop what the annotation says.
 
 import JsonName from 'json'
 

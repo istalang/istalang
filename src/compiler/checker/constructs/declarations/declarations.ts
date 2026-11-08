@@ -4,7 +4,8 @@
  * its declarations has been through here.
  *
  * - A declaration's type parameters have their constraints resolved, and so does every member of
- *   a trait: its functions' signatures and its fields' types.
+ *   a trait: its functions' signatures and its fields' types. A variance written on one is held
+ *   to where it may stand (constructs/declarations/variance-markers.ts).
  * - An alias is resolved, which reports one that refers to itself (§3.17), and so is a struct's or
  *   an enum's associated type, an alias too (§3.1).
  * - The defaults of a struct's or a variant's fields are checked as the parameters they read as
@@ -44,6 +45,7 @@ import { namesMemberParameter } from '../../types/traits/struct-keys.ts';
 import { futureArgument } from '../../types/type/well-known.ts';
 import type { GenericDeclaration } from '../../types/written/type-arguments.ts';
 import { checkFiniteAlias, checkFiniteFields } from './layout/struct-rules.ts';
+import { checkVarianceMarkers } from './variance-markers.ts';
 
 /**
  * Resolves the constraints, unions and defaults of `declaration`'s type parameters where they are
@@ -51,6 +53,7 @@ import { checkFiniteAlias, checkFiniteFields } from './layout/struct-rules.ts';
  * there.
  */
 function checkTypeParameters(checker: CheckerContext, declaration: GenericDeclaration): void {
+  checkVarianceMarkers(checker, declaration);
   for (const parameter of typeParametersOf(declaration.typeParameters)) {
     if (parameter.isPack) {
       checkPack(checker, declaration, parameter);

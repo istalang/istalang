@@ -21,7 +21,7 @@
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import type { Binding } from '../../surface/resolved-call.ts';
-import { reshapes } from '../../types/fitting/fit.ts';
+import { reshapes } from '../../types/fitting/fit/index.ts';
 import { Inference } from '../../types/inference/infer.ts';
 import type { Substitution } from '../../types/parts/substitution.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
@@ -84,8 +84,9 @@ export function takenBy(
 
 /**
  * Whether `taken` takes an argument only reshaped: a plain function made async (§3.14), converted
- * between a one-element tuple and its element (§3.15), or a literal built as a type other than its
- * own (§3.7). Choosing asks it only to break a tie, so it isn't part of `Taken`.
+ * between a one-element tuple and its element (§3.15) or part by part (§3.5), or a literal built as
+ * a type other than its own (§3.7). Choosing asks it only to break a tie, so it isn't part of
+ * `Taken`.
  */
 export function reshapesArguments(
   checker: Pick<CheckerContext, 'fitOf'>,

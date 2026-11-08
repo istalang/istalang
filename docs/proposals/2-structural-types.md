@@ -110,7 +110,7 @@ Nominal structs, enums, shared structs as handles, argument-dependent lookup and
 3. **`origin` becomes spelling.** `AnonymousStructType.origin` stays on the type, as `aliasedAs` does, for go-to-definition and field locations, but no key or relation reads it. Two equal shapes from two places are one type held as two objects.
 4. **Recursive computed types.** A shape reached again during a type `match` reduction keys as its alias and arguments, so keys stay finite; `TypeCycle` (`types/properties/type-cycle.ts`) already guards the coinductive checks.
 5. **The conversion.**
-   - A new fit in `types/fitting/fit.ts`, nominal struct to shape, recorded once through `BodyContext.fit`.
+   - A new fit in `types/fitting/fit/index.ts`, nominal struct to shape, recorded once through `BodyContext.fit`.
    - `resolution/choosing/choice.ts` ranks it with the async and one-element tuple conversions, below taking an argument as it is.
    - Inference (`checker/types/inference/`) matches the nominal's substituted fields against a shape parameter.
    - Lowering rebuilds the value under the shape's type id, matching fields by name. Struct values carry their type (`src/definition/values/values.ts`).

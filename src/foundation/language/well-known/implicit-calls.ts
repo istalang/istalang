@@ -33,6 +33,12 @@ export const arrayPatternFunctions = {
   rest: '_patternRest',
 } as const;
 
+/**
+ * What a collection converted part by part calls in the prelude (§3.5): an array's `map` of its
+ * items, and a map's `_mapValues`, its keys kept.
+ */
+export const partConversionFunctions = { items: 'map', values: '_mapValues' } as const;
+
 /** The static function a conversion `T(x)` calls (§3.10). */
 export const conversionFunction = 'from';
 

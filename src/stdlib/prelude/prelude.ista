@@ -4,8 +4,10 @@
 # (§3.6). Primitive types (Int, Float, Bool, String, Unit, Never) are part of the language, not
 # declared here. Functions and methods each type offers arrive with the features that use them.
 
-extern struct Array<T>
-extern struct Map<K, V>
+# An array's items and a map's values are covariant (§3.5): an `Array<Int>` is an `Array<Int?>`,
+# rebuilt where its layout changes. A map's keys are invariant: widening them would rehash each.
+extern struct Array<gives T>
+extern struct Map<K, gives V>
 extern shared struct Slot<T>
 extern shared struct WeakRef<T is Disposable>
 extern shared struct Future<T>
@@ -168,6 +170,12 @@ fn Map.groupBy<K, T>(items: Array<T>, key: fn(T) -> K) -> Map<K, Array<T>>:
     const group = key(item)
     groups[group] = [...(groups.get(group) ?? []), item]
   groups
+
+# A map converted part by part (§3.5): each value made what `f` makes of it, its key kept.
+fn _mapValues<K, V, W>(self: Map<K, V>, f: fn(V) -> W) -> Map<K, W>:
+  let mapped: Map<K, W> = [:]
+  for (key, value) in self: mapped[key] = f(value)
+  mapped
 
 # The item at `position`, which a search found, or none for the -1 of a search that found none.
 fn _itemAt<T>(self: Array<T>, position: Int) -> T?:

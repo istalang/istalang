@@ -19,7 +19,7 @@ import { substitute } from '../checker/types/parts/substitution.ts';
 import { constructedVariant } from '../syntax/declarations/field-defaults.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';
 import { writtenBodyOf } from './functions/bodies.ts';
-import { asyncFitEntry } from './functions/fits.ts';
+import { asyncFitEntry, convertingEntry, wrappingEntry } from './functions/fits/index.ts';
 import { instanceLowering, nestedLowering } from './functions/index.ts';
 import { derivedCodecDirection, derivedCodecEntry } from './synthesized/boundary/codecs.ts';
 import {
@@ -126,6 +126,10 @@ function pendingEntry(
       return anyFieldEntry(lowering, pending.on, pending.required);
     case 'asyncFit':
       return asyncFitEntry(lowering, pending.fit);
+    case 'converting':
+      return convertingEntry(lowering, pending);
+    case 'wrapping':
+      return wrappingEntry(lowering, pending);
     default: {
       const unhandled: never = pending;
       return unhandled;

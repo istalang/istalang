@@ -1,0 +1,25 @@
+# outcome: "true 1 [[1],[2,3]] 1 2 1"
+# Top-level constants convert part by part as values do (§3.5): computed at compile time, and a
+# box widened from a literal type equals one built wide, so a map keyed by both holds one entry.
+import * as json from 'json'
+
+struct Box<T>:
+  value: T
+struct Pixel:
+  x: Int
+  y: Int
+
+const a: Box<"s"> = Box{value: "s"}
+const b: Box<String> = a
+const ps: Array<Pixel> = [Pixel{x: 1, y: 2}]
+const qs: Array<{ x: Int, y: Int }> = ps
+const nested = [[1], [2, 3]]
+const j: json.Json = nested
+const m: Map<Box<String>, Int> = [a: 1, b: 2]
+const ints: Array<Int> = [1, 2]
+const opts: Array<Int?> = ints
+const t: (Int, String) = (1, "x")
+const u: (Int?, String) = t
+
+async fn main():
+  "" + (b == Box{value: "s"}) + " " + qs[0].x + " " + json.stringify(j) + " " + m.size() + " " + (opts[1] ?? 0) + " " + (u.0 ?? 0)

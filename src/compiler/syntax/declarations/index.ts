@@ -22,7 +22,7 @@ import type { Expression, Parameter } from '../expressions/index.ts';
 import type { StringLiteral } from '../expressions/literals/literals.ts';
 import type { Annotatable } from '../items.ts';
 import type { Block, VariableDeclaration } from '../statements/index.ts';
-import type { ExternHandle } from '../tokens/grammar-words.ts';
+import type { ExternHandle, VarianceMarker } from '../tokens/grammar-words.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from '../tree/node.ts';
 import { type AnchoredSpan, spanAcross } from '../tree/positions.ts';
 import type { ConstraintNode, FieldDeclaration, TypeMatch, TypeNode } from '../types/index.ts';
@@ -43,6 +43,8 @@ export interface Documented {
  * constraint or default beside it (the parser reports one).
  */
 export interface TypeParameter extends NodeOf<'TypeParameter'> {
+  /** `gives` or `takes`, written before it (§3.5); judged by the checker where it stands. */
+  readonly variance: VarianceMarker | undefined;
   readonly isPack: boolean;
   readonly name: Identifier;
   readonly memberOf: TypeNode | undefined;

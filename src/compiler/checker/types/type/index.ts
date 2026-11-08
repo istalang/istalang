@@ -37,7 +37,7 @@
  * - The primitives by name, and tuples built so `()` is `Unit`, are in primitives.ts.
  * - Identity and the exact relations live in identity/identity.ts, through type keys
  *   (identity/type-keys.ts); fitting with the implicit conversions needs to know which type is
- *   `Optional`, so it lives in fitting/fit.ts.
+ *   `Optional`, so it lives in fitting/fit/index.ts.
  */
 
 import type { PrimitiveName } from '../../../../foundation/language/primitives.ts';

@@ -20,7 +20,7 @@ import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { FieldPassType, Pass, Passes } from '../../contexts/passes.ts';
 import type { FieldGiver, ValueSite } from '../../surface/checked-body.ts';
 import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
-import type { Fit } from '../../types/fitting/fit.ts';
+import type { Fit } from '../../types/fitting/fit/index.ts';
 import type { FieldMember, Type } from '../../types/type/index.ts';
 
 /** A field loop's pass as checked: its key and value, and the pass its records are kept in. */

@@ -295,8 +295,7 @@ describe('refusal of non-optional union inference and mismatched producers (§2,
         '  const u6 = [none, 1, "a"]',
         '  const u7 = [1, none, "a"]',
         '  const u8 = [1, "a", none]',
-        '  const u9 = [...m, "b": none]',
-        '  _ = (u1, u2, u3, u4, u5, u6, u7, u8, u9)',
+        '  _ = (u1, u2, u3, u4, u5, u6, u7, u8, m)',
       ),
     ).toEqual([
       checkerDiagnostics.branchTypes.code,
@@ -307,8 +306,25 @@ describe('refusal of non-optional union inference and mismatched producers (§2,
       checkerDiagnostics.itemTypes.code,
       checkerDiagnostics.itemTypes.code,
       checkerDiagnostics.itemTypes.code,
-      checkerDiagnostics.typeMismatch.code,
     ]);
+  });
+
+  it("widens a map spread's pairs through the literal, on either side of a `none` (§3.5)", () => {
+    expect(
+      runMain(
+        'String',
+        [
+          'const m: Map<String, Int> = ["a": 1]',
+          'const pairs: Array<(String, Int)> = [("p", 2)]',
+          'const after = [...m, "b": none]',
+          'const before = ["b": none, ...m]',
+          'const listed = [...pairs, "z": none]',
+          'const j: json.Json = ["k": 3, ...m]',
+          '`${after["a"] ?? -1}:${after["b"] ?? -1}:${before["a"] ?? -1}:${before.size()}:${listed["p"] ?? -1}:${json.stringify(j)}`',
+        ].join('\n  '),
+        ["import * as json from 'json'"],
+      ),
+    ).toBe('1:-1:1:2:2:{"a":1,"k":3}');
   });
 
   it('keeps `spelledTypeOf` untouched', () => {

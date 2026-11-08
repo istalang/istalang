@@ -92,7 +92,8 @@ function formStep(
  * `==` and map keys over forms (§3.8, §3.9), by the rules the runtime's values follow too
  * (foundation/language/values.ts): a map constant's later entry for an equal key replaces the
  * earlier's. A head's text tells only kinds apart, since a struct's type has none of its own; equal
- * texts are confirmed by `==`.
+ * texts are confirmed by `==`. A nominal struct compares its declaration, never its instantiation,
+ * as the runtime's values do (definition/values/equality.ts).
  */
 export const formSemantics = new ValueSemantics<ConstantForm>({
   shapeOf: (form) => {
@@ -107,7 +108,7 @@ export const formSemantics = new ValueSemantics<ConstantForm>({
   },
   sameHead: (first, second) => {
     if (first.kind === 'struct' && second.kind === 'struct') {
-      return sameType(first.type, second.type);
+      return sameStruct(first.type, second.type);
     }
     if (first.kind === 'function' && second.kind === 'function') {
       return first.lambda === second.lambda;
@@ -119,6 +120,13 @@ export const formSemantics = new ValueSemantics<ConstantForm>({
   },
   headKey: (form) => form.kind,
 });
+
+/** Whether two struct types are one declaration's, or the same shape. */
+function sameStruct(first: StructValueType, second: StructValueType): boolean {
+  return first.kind === 'nominal' && second.kind === 'nominal'
+    ? first.entity.declaration === second.entity.declaration
+    : sameType(first, second);
+}
 
 /**
  * Whether two forms are alike part by part, in order, their struct types spelled alike: what

@@ -1,5 +1,6 @@
 /**
- * Collection literals and ranges (§2, §3.8, §3.10).
+ * Collection literals (§2, §3.8, §3.10): what array and map literals (literals.ts) share, and
+ * literals of other declared types.
  *
  * - An array literal's elements, and a map literal's keys and values, each agree on one type as
  *   an `if`'s branches do (rules/agreement.ts): the expected type's argument decides when there is
@@ -8,13 +9,9 @@
  * - A spread takes any iterable (constructs/loops/iteration.ts): its items join an array literal's
  *   elements, and in a map literal they must be `(key, value)` tuples. A spread of the very
  *   collection its literal builds, an array into an array literal or a map into a map literal of
- *   `Map`, is copied whole, with no `iterate`; any other goes through its cursor, so a string
- *   spreads its characters, and a map into an array literal its entries.
- * - An array literal's spread gives its items where the literal's items are expected, so each is
- *   wrapped into `T?` as an element would be (§2), the fit recorded on the spread; a spread whose
- *   items need it is never copied whole, but goes through its cursor, each item fitted as it is
- *   added. Whether they need it is known only once the literal's items agree, which a later
- *   `none` can make optional. A map literal's spread gives its keys and values together, so they fit as they are.
+ *   `Map`, is copied whole where its items need no converting, with no `iterate`; any other goes
+ *   through its cursor, so a string spreads its characters, and a map into an array literal its
+ *   entries.
  * - A literal is a map literal only with an entry or as `[:]` (the parser decides), so `[...m]`
  *   is an array of `m`'s entries. Where a `Map` is expected, `[]` is an empty map.
  * - Where another declared type `C` is expected, a map literal, and an empty `[]`, starts from
@@ -29,14 +26,11 @@
  */
 
 import type { Diagnostic } from '../../../../../foundation/diagnostics/diagnostic.ts';
-import { inclusiveEndFunction } from '../../../../../foundation/language/well-known/implicit-calls.ts';
-import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
 import type {
   ArrayLiteral,
   Expression,
   MapEntry,
   MapLiteral,
-  Range,
   Spread,
 } from '../../../../syntax/expressions/index.ts';
 import type { Invalid } from '../../../../syntax/tree/node.ts';
@@ -45,28 +39,17 @@ import type { BodyContext, CollectionRecord } from '../../../contexts/body-conte
 import type { Pass, Passes, PassTable } from '../../../contexts/passes.ts';
 import { useSite } from '../../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { preludeCall } from '../../../resolution/applying/implicit.ts';
 import { writeElement } from '../../../resolution/calls/collection-functions.ts';
 import { resolveDefault } from '../../../resolution/conformance/default-witness.ts';
-import {
-  decidedSoFar,
-  type Produced,
-  producedBy,
-  settleAgreement,
-} from '../../../rules/agreement.ts';
+import { type Produced, producedBy, settleAgreement } from '../../../rules/agreement.ts';
 import type { CollectionForm } from '../../../surface/checked-body.ts';
 import { collectionTarget } from '../../../types/fitting/expected.ts';
-import { isExact } from '../../../types/fitting/fit.ts';
+import { isExact } from '../../../types/fitting/fit/index.ts';
 import { isPack } from '../../../types/type/function-types.ts';
 import type { NominalType, Type } from '../../../types/type/index.ts';
-import { errorType, expectsError, intType, neverType } from '../../../types/type/primitives.ts';
+import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
-import {
-  arrayElement,
-  arrayOf,
-  wellKnownArguments,
-  wellKnownOf,
-} from '../../../types/type/well-known.ts';
+import { arrayElement, arrayOf } from '../../../types/type/well-known.ts';
 import { checkIterated, iteratedItem } from '../../loops/iteration.ts';
 
 /** The form of each collection literal of one body, for lowering. */
@@ -86,137 +69,6 @@ export class CollectionForms implements CollectionRecord {
   }
 }
 
-export function checkArrayLiteral(
-  context: BodyContext,
-  node: ArrayLiteral,
-  expected: Type | undefined,
-): Type {
-  const target = collectionTarget(context.checker, expected);
-  if (node.elements.length === 0 && target?.kind === 'map') {
-    context.collections.record(node, 'map');
-    return target.type;
-  }
-  if (node.elements.length === 0 && target?.kind === 'declared') {
-    return checkDeclaredLiteral(context, node, target.type);
-  }
-  const expectedItem = target?.kind === 'array' ? target.item : undefined;
-  const produced = elementsProduced(context, node.elements, expectedItem);
-  if (produced.length === 0 && expectedItem === undefined) {
-    if (!expectsError(expected)) {
-      context.report(checkerDiagnostics.emptyCollection(node.span, '[]'));
-    }
-    return errorType;
-  }
-  return arrayOf(context.checker, agreedElement(context, node.elements, produced, expectedItem));
-}
-
-/**
- * What each of an array literal's `elements` produces, in order, each expected to be an
- * `expectedItem`, or else to have what those before it agree on.
- */
-function elementsProduced(
-  context: BodyContext,
-  elements: ArrayLiteral['elements'],
-  expectedItem: Type | undefined,
-): readonly Produced[] {
-  const produced: Produced[] = [];
-  for (const element of elements) {
-    const itemExpected = expectedItem ?? decidedSoFar(context, produced);
-    produced.push(
-      element.kind === 'Spread'
-        ? spreadItems(context, element, itemExpected)
-        : producedValue(context, element, itemExpected),
-    );
-  }
-  return produced;
-}
-
-/**
- * The item type what an array literal's `elements` produced agree on, each spread of an array
- * among them then settled on it (`settleSpread`).
- */
-function agreedElement(
-  context: BodyContext,
-  elements: ArrayLiteral['elements'],
-  produced: readonly Produced[],
-  expectedItem: Type | undefined,
-): Type {
-  const item = agreeOn(context, produced, expectedItem, 'element') ?? expectedItem ?? neverType;
-  for (const element of elements) {
-    if (element.kind === 'Spread') {
-      settleSpread(context, element, item);
-    }
-  }
-  return item;
-}
-
-export function checkMapLiteral(
-  context: BodyContext,
-  node: MapLiteral,
-  expected: Type | undefined,
-): Type {
-  const target = collectionTarget(context.checker, expected);
-  if (target?.kind === 'declared') {
-    return checkDeclaredLiteral(context, node, target.type);
-  }
-  const map = target?.kind === 'map' ? target : undefined;
-  const [expectedKey, expectedValue] = map?.arguments ?? [];
-  const { keys, values } = entriesOf(context, node, map);
-  if (node.entries.length === 0 && target === undefined) {
-    if (!expectsError(expected)) {
-      context.report(checkerDiagnostics.emptyCollection(node.span, '[:]'));
-    }
-    return errorType;
-  }
-  const key = agreeOn(context, keys, expectedKey, 'key') ?? expectedKey ?? neverType;
-  const value = agreeOn(context, values, expectedValue, 'value') ?? expectedValue ?? neverType;
-  return wellKnownOf(context.checker, wellKnown.map, [key, value]);
-}
-
-/** What a `Map` literal's entries give: its keys and its values, `map` the `Map` expected. */
-function entriesOf(
-  context: BodyContext,
-  node: MapLiteral,
-  map: { readonly type: Type; readonly arguments: readonly Type[] } | undefined,
-): { readonly keys: readonly Produced[]; readonly values: readonly Produced[] } {
-  const [expectedKey, expectedValue] = map?.arguments ?? [];
-  const keys: Produced[] = [];
-  const values: Produced[] = [];
-  for (const entry of node.entries) {
-    if (entry.kind === 'MapEntry') {
-      keys.push(producedValue(context, entry.key, expectedKey ?? decidedSoFar(context, keys)));
-      const expectedEntryValue = expectedValue ?? decidedSoFar(context, values);
-      values.push(producedValue(context, entry.value, expectedEntryValue));
-    } else if (entry.kind === 'Spread') {
-      const [key, value] = spreadEntries(context, entry, map?.type);
-      keys.push(key);
-      values.push(value);
-    }
-  }
-  return { keys, values };
-}
-
-/**
- * `a..b`, `a..=b`, the open forms and `by` a step: a prelude `Range` of ints. `..=` stores its end
- * through `_inclusiveEnd`, one past the written end in the step's direction (§3.8).
- */
-export function checkRange(context: BodyContext, node: Range): Type {
-  for (const operand of [node.start, node.end, node.step]) {
-    if (operand !== undefined) {
-      context.expect(operand, intType);
-    }
-  }
-  if (node.isInclusive && node.end !== undefined) {
-    preludeCall(context, {
-      node,
-      role: 'inclusiveEnd',
-      name: inclusiveEndFunction,
-      arguments: [intType, intType],
-    });
-  }
-  return wellKnownOf(context.checker, wellKnown.range);
-}
-
 /**
  * The item type of the array `expected` is, seen through optionals around it, as it guides an
  * array literal or a comprehension; undefined when it isn't an array.
@@ -233,7 +85,7 @@ export function expectedArrayItem(
  * A map literal, or an empty `[]`, of the declared type `type`: its `default()`, then a
  * `setIndex` for each entry and for each item of each spread (§2).
  */
-function checkDeclaredLiteral(
+export function checkDeclaredLiteral(
   context: BodyContext,
   node: ArrayLiteral | MapLiteral,
   type: NominalType,
@@ -300,38 +152,10 @@ export function spreadArgumentType(
 }
 
 /**
- * The items `spread` gives, as an array literal's element, its items expected to be `item`s: an
- * array's elements, whose form waits until the literal's items agree (`settleSpread`), or what
- * iterating gives.
- */
-function spreadItems(context: BodyContext, spread: Spread, item: Type | undefined): Produced {
-  const expected = item === undefined ? undefined : arrayOf(context.checker, item);
-  const type = context.expression(spread.expression, expected);
-  const element = arrayElement(context.checker, type);
-  return {
-    type: element ?? iteratedItem(context, spread, spread.expression, type) ?? errorType,
-    span: spread.span,
-    site: spread,
-  };
-}
-
-/**
- * How an array literal's `spread` of an array gives its elements, once the literal's items agree
- * on `item`: copied whole, or through its cursor when they need converting into `item`s, as
- * `[...xs, none]` wraps each of `xs`'s.
- */
-function settleSpread(context: BodyContext, spread: Spread, item: Type): void {
-  const type = context.typeOf(spread.expression);
-  if (arrayElement(context.checker, type) !== undefined) {
-    itemsOf(context, spread, type, item);
-  }
-}
-
-/**
  * The type of the items a spread of a value of `type` gives: an array's elements, copied whole
  * unless they need converting to the `item`s expected, or what iterating gives.
  */
-function itemsOf(context: BodyContext, spread: Spread, type: Type, item?: Type): Type {
+export function itemsOf(context: BodyContext, spread: Spread, type: Type, item?: Type): Type {
   const element = arrayElement(context.checker, type);
   const fit =
     element === undefined || item === undefined ? undefined : context.checker.fitOf(element, item);
@@ -342,30 +166,28 @@ function itemsOf(context: BodyContext, spread: Spread, type: Type, item?: Type):
   return element;
 }
 
-/**
- * The keys and the values of the `(key, value)` items `spread` gives in a map literal of a `Map`.
- */
-function spreadEntries(
+export function producedValue(
   context: BodyContext,
-  spread: Spread,
-  map: Type | undefined,
-): readonly [Produced, Produced] {
-  const type = context.expression(spread.expression, map);
-  let own = wellKnownArguments(context.checker, wellKnown.map, type);
-  if (own === undefined) {
-    own = pairOf(context, spread, iteratedItem(context, spread, spread.expression, type));
-  } else {
-    context.iterations.record(spread, { kind: 'copied' });
-  }
-  const [key = errorType, value = errorType] = own;
-  return [
-    { type: key, span: spread.span, site: undefined },
-    { type: value, span: spread.span, site: undefined },
-  ];
+  node: Expression,
+  expected: Type | undefined,
+): Produced {
+  return producedBy(context, node, context.expression(node, expected));
+}
+
+/** What a literal's `part`s agree on, reporting those that don't fit it. */
+export function agreeOn(
+  context: BodyContext,
+  produced: readonly Produced[],
+  expected: Type | undefined,
+  part: 'element' | 'key' | 'value',
+): Type | undefined {
+  return settleAgreement(context, produced, expected, (span: AnchoredSpan, decided, found) =>
+    checkerDiagnostics.itemTypes(span, part, typeText(decided), typeText(found)),
+  );
 }
 
 /** The key and value types of a map spread's `item`, which must be a `(key, value)` tuple. */
-function pairOf(
+export function pairOf(
   context: BodyContext,
   spread: Spread,
   item: Type | undefined,
@@ -375,24 +197,4 @@ function pairOf(
     context.report(checkerDiagnostics.mapSpreadItems(spread.expression.span, typeText(item)));
   }
   return [key ?? errorType, value ?? errorType];
-}
-
-function producedValue(
-  context: BodyContext,
-  node: Expression,
-  expected: Type | undefined,
-): Produced {
-  return producedBy(context, node, context.expression(node, expected));
-}
-
-/** What a literal's `part`s agree on, reporting those that don't fit it. */
-function agreeOn(
-  context: BodyContext,
-  produced: readonly Produced[],
-  expected: Type | undefined,
-  part: 'element' | 'key' | 'value',
-): Type | undefined {
-  return settleAgreement(context, produced, expected, (span: AnchoredSpan, decided, found) =>
-    checkerDiagnostics.itemTypes(span, part, typeText(decided), typeText(found)),
-  );
 }

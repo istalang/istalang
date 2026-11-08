@@ -1,7 +1,7 @@
 /**
  * Code lowering writes with no syntax behind it: a type's codecs, a host extern's wrapper and a
  * start wrapper (docs/arch/boundary.md), a dispatch on an `any` value's own type (§3.10), a filling
- * entry (tables/filling-entry.ts) and a plain function made async (functions/fits.ts). It
+ * entry (tables/filling-entry.ts) and a plain function made async (functions/fits/index.ts). It
  * works through the same CodeContext as code with a body, so the helpers both share build its
  * variants and calls, and every instruction carries the span of the declaration it stands for,
  * which is where a trace through it points.

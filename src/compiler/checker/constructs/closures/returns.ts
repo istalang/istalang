@@ -24,7 +24,7 @@ import {
   producedBy,
   settleProduced,
 } from '../../rules/agreement.ts';
-import { misfitOf } from '../../types/fitting/fit.ts';
+import { misfitOf } from '../../types/fitting/fit/index.ts';
 import type { Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';

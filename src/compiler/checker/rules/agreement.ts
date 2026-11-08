@@ -21,13 +21,14 @@
  */
 
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
+import { unreachable } from '../../../foundation/structures/unreachable.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
 import type { Block } from '../../syntax/statements/index.ts';
 import { tailExpressionOf, tailNodeOf } from '../../syntax/statements/readings.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../contexts/body-context.ts';
 import type { ValueSite } from '../surface/checked-body.ts';
-import { type Fit, isExact } from '../types/fitting/fit.ts';
+import { type Fit, isExact } from '../types/fitting/fit/index.ts';
 import { sameType } from '../types/identity/identity.ts';
 import { mapChildren } from '../types/parts/type-parts.ts';
 import type { Type } from '../types/type/index.ts';
@@ -46,7 +47,7 @@ import { sendableWidened, widened } from '../types/unions/widening.ts';
 /**
  * A type some part of a construct produced, where, and the node giving it: an expression, a bare
  * `return`, a block with no tail expression or an array literal's spread; none for a map literal
- * spread's keys and values, given together.
+ * spread's keys and values, given together, which the literal settles itself once both agree.
  */
 export interface Produced {
   readonly type: Type;
@@ -240,7 +241,7 @@ export interface Agreed {
  */
 export function settleProduced(context: BodyContext, produced: Produced, agreed: Agreed): void {
   const { decided, expected, mismatch } = agreed;
-  if (agrees(context.checker, produced.type, decided)) {
+  if (produced.site === undefined || agrees(context.checker, produced.type, decided)) {
     return;
   }
   const { literal } = produced;
@@ -259,10 +260,9 @@ export function settleProduced(context: BodyContext, produced: Produced, agreed:
 export function fitProduced(context: BodyContext, produced: Produced, expected: Type): void {
   const { type, span, site } = produced;
   if (site === undefined) {
-    context.fitUnwrapped(type, expected, span);
-  } else {
-    context.fit(type, expected, site, span);
+    unreachable('A producer with no node of its own is settled by the construct giving it.');
   }
+  context.fit(type, expected, site, span);
 }
 
 /**

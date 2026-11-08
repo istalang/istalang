@@ -56,7 +56,7 @@ import type {
 import type { FieldRead, FieldReading } from '../surface/checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from '../surface/checked-pattern.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
-import type { Fit } from '../types/fitting/fit.ts';
+import type { Fit } from '../types/fitting/fit/index.ts';
 import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';
 import type { CheckerContext } from './context.ts';
 import type { FieldPassType } from './passes.ts';
@@ -115,11 +115,6 @@ export interface BodyContext {
    * it; how the value is converted to fit (§2, §3.14), which the assignment records on its part.
    */
   readonly fitWritten: (found: Type, expected: Type, at: AnchoredSpan) => Fit;
-  /**
-   * Reports at `at` when the items of a spread, of `found`, don't fit `expected` as they are: the
-   * spread gives its items as a whole, so none of them is wrapped (§2).
-   */
-  readonly fitUnwrapped: (found: Type, expected: Type, at: AnchoredSpan) => void;
   /** Checks a block in its own scope; its type is that of its last expression (§4). */
   readonly block: (node: Block, expected?: Type) => Type;
   /** Checks a block run only for its effects, such as a loop's body, discarding every value. */

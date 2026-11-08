@@ -34,7 +34,7 @@ import type { Checker, VariantMember } from '../check.ts';
 import type { AnnotationQueries } from '../surface/checked-annotation.ts';
 import type { JsonCodecs } from '../surface/json-form.ts';
 import type { ResolvedCall } from '../surface/resolved-call.ts';
-import type { Fit, Fitting } from '../types/fitting/fit.ts';
+import type { Fit, Fitting } from '../types/fitting/fit/index.ts';
 import type { Substitution } from '../types/parts/substitution.ts';
 import type { Constraint, FieldMember, NominalDeclaration, Type } from '../types/type/index.ts';
 import type { ConstraintSet, StructConstraintModel } from '../types/type/struct-constraint.ts';

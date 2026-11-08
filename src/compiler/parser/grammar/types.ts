@@ -186,6 +186,7 @@ function parseInferType(parser: Parser): TypeNode {
   const constraints = parser.cursor.eat('is') === undefined ? [] : parseConstraints(parser);
   const parameter: TypeParameter = {
     kind: 'TypeParameter',
+    variance: undefined,
     span: parser.spanFrom(parser.startOf(name)),
     isPack: false,
     name,

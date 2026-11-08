@@ -52,7 +52,7 @@ describe('every list in §4 separates its items with ","', () => {
       'module' as const,
       'struct Cell<T> { value: T, type Data = Array<T> }',
       moduleOf(
-        `(StructDeclaration Cell [(TypeParameter T _ [] _)] [${declaredField('value', named('T'))}] [(AssociatedType Data (NamedType [Array] [${named('T')}]))])`,
+        `(StructDeclaration Cell [(TypeParameter _ T _ [] _)] [${declaredField('value', named('T'))}] [(AssociatedType Data (NamedType [Array] [${named('T')}]))])`,
       ),
     ],
     [
@@ -84,14 +84,14 @@ describe('every list in §4 separates its items with ","', () => {
       'module' as const,
       'fn f<S is struct { title: String, [_] is Stringable }>(s: S): ()',
       moduleOf(
-        `(FunctionDeclaration _ f [(TypeParameter S _ [(StructConstraint [(FieldTypeEntry title ${string}) (FieldConstraintEntry (OtherFields) [${named('Stringable')}])])] _)] [(Parameter s _ ${named('S')} _)] _ (Block [(ExpressionStatement (Tuple []))]))`,
+        `(FunctionDeclaration _ f [(TypeParameter _ S _ [(StructConstraint [(FieldTypeEntry title ${string}) (FieldConstraintEntry (OtherFields) [${named('Stringable')}])])] _)] [(Parameter s _ ${named('S')} _)] _ (Block [(ExpressionStatement (Tuple []))]))`,
       ),
     ],
     [
       'mapped struct type entries: { id: String, [F in keyof S]: S[F].Data }',
       'type' as const,
       '{ id: String, [F in keyof S]: S[F].Data }',
-      `(StructType [${field('id', string)} (MappedField (TypeParameter F (KeyofType ${named('S')}) [] _) (MemberType (IndexedType ${named('S')} ${named('F')}) Data))])`,
+      `(StructType [${field('id', string)} (MappedField (TypeParameter _ F (KeyofType ${named('S')}) [] _) (MemberType (IndexedType ${named('S')} ${named('F')}) Data))])`,
     ],
     [
       'fields, variants and trait members on one line of an indented body',

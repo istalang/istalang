@@ -31,7 +31,7 @@ import type {
   TargetBinding,
   TargetStep,
 } from '../../../surface/checked-pattern.ts';
-import type { Fit } from '../../../types/fitting/fit.ts';
+import type { Fit } from '../../../types/fitting/fit/index.ts';
 import { sameType } from '../../../types/identity/identity.ts';
 import {
   type Substitution,
@@ -296,6 +296,8 @@ function substitutedConversion(
       return { kind: 'any', to: substituteAny(conversion.to, substitution, rules) } as const;
     case 'shape':
       return { kind: 'shape', to: substituteKept(conversion.to, substitution, rules) } as const;
+    case 'parts':
+      return { kind: 'parts', to: substitute(conversion.to, substitution, rules) } as const;
     default:
       return conversion;
   }

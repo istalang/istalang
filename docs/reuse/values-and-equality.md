@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-05
+last_updated: 2026-11-08
 tags: [reuse, values, equality, maps, json, natives, runtime]
 ---
 
@@ -42,4 +42,4 @@ tags: [reuse, values, equality, maps, json, natives, runtime]
 - Build and read structs, variants, `Optional`, `Result` and `Error` by declared name (`declared-values.ts`, `values/arguments.ts`, `values/results.ts`), never by positional index.
 - Narrow closures with `closureOf` and handles with `handleTarget`, and make handles with `handleTo` (`src/definition/values/values.ts`), never with ad-hoc `isComposite(v) && v.kind === ...` checks or `{ kind: 'handle', … }` literals.
 - Values are immutable: never mutate `fields`, `elements`, `entries` or `captures`; rebuild with `withPart`, `withChildValues`, or `withEntry`/`withoutEntry`.
-- Built-in `==` and map hashing live in `ValueSemantics` (`src/foundation/language/values.ts`), shared by `definition/values/equality.ts` and `checker/surface/constant-form.ts`.
+- Built-in `==` and map hashing live in `ValueSemantics` (`src/foundation/language/values.ts`), shared by `definition/values/equality.ts` and `checker/surface/constant-form.ts`. A head compares no instantiated type id: a value converted part by part keeps its own where its layout stays (§3.5).

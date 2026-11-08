@@ -66,7 +66,7 @@ Validation of `examples/FormBuilder` (`forms.ista`, `order.ista`, `supplier.ista
 - **Assumption:** `Variant<C>` declares `type Data = { [K in keyof C]: { case: K, value: Group<C[K]>.Data } }[keyof C]`.
 - **Spec (`docs/spec.md` §2, §3.1, §9):**
   1. `case` is a reserved word (§2) and cannot name a struct field.
-  2. While `{ [K in keyof C]: … }[keyof C]` is a valid indexed mapped type (§3.1), inside generic `Variant.read<C>` it remains an unreduced `FieldType` (`of[keyof C]`), and Istalang's fitting rules (`fit.ts`) do not convert a struct `{ tag: k, value: … }` built with a field-loop key `k: K in keyof C` into that unreduced `FieldType`.
+  2. While `{ [K in keyof C]: … }[keyof C]` is a valid indexed mapped type (§3.1), inside generic `Variant.read<C>` it remains an unreduced `FieldType` (`of[keyof C]`), and Istalang's fitting rules (`fit/index.ts`) do not convert a struct `{ tag: k, value: … }` built with a field-loop key `k: K in keyof C` into that unreduced `FieldType`.
   3. In Istalang v0.1, general unions of structs do not derive `Encodable` or `Decodable` (§9, §14), which would prevent any form result containing a `Variant` from crossing the host/JSON boundary.
 - **Alternative used:** Renamed `case` to `tag` (matching `Variant.tag` and the schema's `tag` property), simplified `Variant<C is struct { [_] is FormNode }>` so `cases: C` holds each case's `Group<…>` directly, and used `form-builder-spec.md` §8 #2's fallback struct:
   ```python

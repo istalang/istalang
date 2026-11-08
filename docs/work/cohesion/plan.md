@@ -70,7 +70,7 @@ Each row is one commit. "→" moves a file, "⊕" merges files into one, "↑" m
 | C9 | Overload clashes | `rules/clashes.ts` | → `declarations/functions/clashes.ts` | only user: module-checks |
 | C10 | Type parameters' constraints | `traits/constraints.ts#resolveConstraints`, `traits/struct-constraints.ts#resolveStructConstraints` | ↑ into `resolution/type-parameters.ts` (its banner: "its constraints resolved there once") | each defined once and not used inside its own file; only user is type-parameters |
 | C11 | Finding a witness | `resolution/declared-witness.ts`, `default-witness.ts` | ⊕ `resolution/conformance/witnesses.ts` | 66 + 31 lines; both find "the function meeting a trait for a type" |
-| C12 | Fitting | `types/misfit.ts` | ⊕ into `types/fitting/fit.ts` (324 + 24 lines) | no cycle: misfit imports fit and type-text, and fit imports neither |
+| C12 | Fitting | `types/misfit.ts` | ⊕ into `types/fitting/fit/index.ts` (324 + 24 lines) | no cycle: misfit imports fit and type-text, and fit imports neither |
 | C13 | Program inputs | `checker/declaring-modules.ts` | ⊕ into `checker/program/program-inputs.ts` | only user |
 | C14 | What tools ask by position | `checker/joined-body.ts` | ⊕ into `checker/surface/denotation.ts` | both are the tools' surface; update `checkerSurface` |
 | C15 | Optional values in lowered code | `lowering/optionals.ts`, `optional-chains.ts` | ⊕ `lowering/values/optionals.ts` | 70 + 53 lines |

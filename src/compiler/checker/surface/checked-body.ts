@@ -38,7 +38,7 @@ import type {
 import type { Identifier, NodeOf } from '../../syntax/tree/node.ts';
 import type { Checker, SignatureParameter } from '../check.ts';
 import type { FieldPassType, PassRecords } from '../contexts/passes.ts';
-import type { Fit } from '../types/fitting/fit.ts';
+import type { Fit } from '../types/fitting/fit/index.ts';
 import type { Substitution } from '../types/parts/substitution.ts';
 import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';
 import type { TypeRules } from '../types/type/type-rules.ts';

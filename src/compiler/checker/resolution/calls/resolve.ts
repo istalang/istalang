@@ -28,7 +28,7 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { ResolvedSite } from '../../surface/resolved-call.ts';
-import { misfitOf } from '../../types/fitting/fit.ts';
+import { misfitOf } from '../../types/fitting/fit/index.ts';
 import type { LiteralType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';

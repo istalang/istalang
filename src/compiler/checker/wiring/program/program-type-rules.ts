@@ -2,8 +2,8 @@
  * The rules over types that need the program, as one checker gives them: normalizing types
  * (types/type/type-rules.ts: whether an `any` member of a union takes another member whole, what an
  * associated type, a field's type, a struct's keys or a mapped struct type of a known type reduce
- * to), and fitting a value to a type (types/fitting/fit.ts), which adds conformance, the shapes of
- * nominal structs and member parameters.
+ * to), and fitting a value to a type (types/fitting/fit/index.ts), which adds conformance, the
+ * shapes of nominal structs and member parameters.
  *
  * An absorbing question is an entry of the checker's tables, keyed by both types' keys:
  * conformance may build the very union asking, so a question reached again while it is answered
@@ -16,11 +16,12 @@
  */
 
 import type { EntryTable } from '../../../../foundation/structures/entries/index.ts';
+import { sameItems } from '../../../../foundation/structures/equality.ts';
 import { withEmptied } from '../../../../foundation/structures/stack.ts';
 import type { CheckerContext, CheckerNote } from '../../contexts/context.ts';
 import { meetsAny } from '../../resolution/conformance/trait-objects.ts';
 import { TypeMatchReductions } from '../../resolution/type-matches/type-matches.ts';
-import type { Fitting } from '../../types/fitting/fit.ts';
+import type { Fitting } from '../../types/fitting/fit/index.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
 import { sameTypeSpelled } from '../../types/parts/type-parts.ts';
 import { associatedTypeOf, type Expansion } from '../../types/traits/known-constraints.ts';
@@ -29,6 +30,12 @@ import { unfolded } from '../../types/type/computed-types.ts';
 import type { AnonymousStructType, AnyType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
+import {
+  type DerivedDeclaration,
+  type Variance,
+  type VariedDeclaration,
+  varianceOf,
+} from '../../types/variance/variance.ts';
 
 /** An associated type asked for: its owner and its name. */
 interface Associated {
@@ -92,8 +99,16 @@ export function programTypeRules(
       withEmptied(associating, () => reductions.reduce(declaration, typeArguments)),
     isKeyOf: (key, of) => isKeyWithin(checker, key, checker.typeRules.keysOf(of, [])),
   };
+  const variances: EntryTable<CheckerNote, VariedDeclaration, readonly Variance[]> =
+    checker.entries.table({
+      name: 'variances',
+      compute: (declaration) =>
+        varianceOf(declaration, { partsOf: (held) => partsOf(checker, held) }),
+      equal: sameItems(),
+    });
   const fitting: Fitting = {
     ...typeRules,
+    varianceOf: (declaration) => variances.get(declaration),
     meetsAny: (type, target) => meetsAny(checker, type, target),
     shapeOf: (type) => layouts.nominalShapeOf(type),
     memberUnionOf: ({ declaration, within }) =>
@@ -101,4 +116,22 @@ export function programTypeRules(
       (declaration.kind === 'TypeParameter' ? checker.memberUnionOf(declaration) : undefined),
   };
   return { typeRules, fitting };
+}
+
+/**
+ * The types `declaration`'s values hold: a struct's fields, every variant's fields, the type an
+ * alias names (§3.5).
+ */
+function partsOf(
+  checker: Pick<CheckerContext, 'declaredFieldsOf' | 'declaredVariantsOf' | 'aliasedType'>,
+  declaration: DerivedDeclaration,
+): readonly Type[] {
+  if (declaration.kind === 'TypeAliasDeclaration') {
+    return [checker.aliasedType(declaration)];
+  }
+  const fields =
+    declaration.kind === 'StructDeclaration'
+      ? checker.declaredFieldsOf(declaration)
+      : checker.declaredVariantsOf(declaration).flatMap((variant) => variant.fields);
+  return fields.map((field) => field.type);
 }

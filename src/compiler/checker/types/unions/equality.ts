@@ -145,7 +145,7 @@ export function isKnown(type: Type): boolean {
   return !isOpaque(type) && type.kind !== 'error' && !isPrimitive(type, 'Never');
 }
 
-/** The union a member parameter ranges over (types/fitting/fit.ts `memberUnionOf`). */
+/** The union a member parameter ranges over (types/fitting/fit/index.ts `memberUnionOf`). */
 export type MemberUnionOf = (parameter: TypeParameterType) => Type | undefined;
 
 /** A side of `==`, or a pattern's part and its literal: its type, and the expression giving it. */

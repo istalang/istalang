@@ -8,8 +8,8 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
-import { reported } from '../../check.test-kit.ts';
-import type { Type } from '../type/index.ts';
+import { reported } from '../../../check.test-kit.ts';
+import type { Type } from '../../type/index.ts';
 import {
   boolType,
   errorType,
@@ -17,10 +17,10 @@ import {
   neverType,
   stringType,
   unitType,
-} from '../type/primitives.ts';
-import { noProgramRules } from '../type/type-rules.test-kit.ts';
-import { optionalInner, optionalOf, unionOf } from '../unions/unions.ts';
-import { type Fit, fitOf } from './fit.ts';
+} from '../../type/primitives.ts';
+import { noProgramRules } from '../../type/type-rules.test-kit.ts';
+import { optionalInner, optionalOf, unionOf } from '../../unions/unions.ts';
+import { type Fit, fitOf } from './index.ts';
 
 /** Fitting in a program no `any` type is met in. */
 const fitting = {
@@ -28,6 +28,7 @@ const fitting = {
   meetsAny: () => false,
   shapeOf: () => undefined,
   memberUnionOf: () => undefined,
+  varianceOf: () => [],
 };
 
 /**
@@ -172,11 +173,14 @@ describe('fitting a plain function where an async one is expected', () => {
     );
   });
 
-  it('converts only the value itself, never a function inside another type', () => {
+  it('makes a function inside another type async as a part of it (§3.5)', () => {
     const plain = functionOf(intType, intType, { isAsync: false, isSendable: false });
     const async = functionOf(intType, intType, { isAsync: true, isSendable: false });
     const tuple = (element: Type): Type => ({ kind: 'tuple', elements: [element, intType] });
-    expect(fitOf(tuple(plain), tuple(async), fitting)).toBeUndefined();
+    expect(fitShape(fitOf(tuple(plain), tuple(async), fitting))).toEqual({
+      conversion: { kind: 'parts', to: tuple(async) },
+      into: false,
+    });
   });
 
   it('fits a function returning never where any result type is expected', () => {
@@ -264,7 +268,7 @@ describe("a struct's value where its shape is expected (§3.1)", () => {
     );
   });
 
-  it('refuses it inside a collection, from a shape, and for an annotated field', () => {
+  it('converts it inside a collection, and refuses it from a shape and for an annotated field', () => {
     fc.assert(
       fc.property(fields, ({ written }) => {
         const declared = `struct S { ${listed(written)} }`;
@@ -280,7 +284,7 @@ describe("a struct's value where its shape is expected (§3.1)", () => {
           `fn shape(p: ${shape}) -> Int: 0`,
           `fn g(s: Array<S>, p: ${shape}, a: A) -> Int: all(s) + one(p) + shape(a)`,
         ].join('\n');
-        expect(reported(text).codes).toEqual([5001, 5001, 5001]);
+        expect(reported(text).codes).toEqual([5001, 5001]);
       }),
     );
   });

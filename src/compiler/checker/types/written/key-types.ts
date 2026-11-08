@@ -23,7 +23,7 @@ import type {
 } from '../../../syntax/types/index.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import type { Fitting } from '../fitting/fit.ts';
+import type { Fitting } from '../fitting/fit/index.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
 import { type ParameterKey, shapeType, type Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';

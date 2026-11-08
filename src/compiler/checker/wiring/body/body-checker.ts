@@ -6,8 +6,8 @@
  *   inference), and reports against it only where the spec says a value must fit (`expect`, or
  *   `fit` for a type already checked). Every type mismatch is reported through `fit`.
  * - What lowering needs is recorded as checking goes: every expression's type, every call's target,
- *   and every value's implicit conversions (§2, types/fitting/fit.ts), which `fit` finds: on the
- *   node giving the value, or, for a value an assignment writes, on its part
+ *   and every value's implicit conversions (§2, types/fitting/fit/index.ts), which `fit` finds: on
+ *   the node giving the value, or, for a value an assignment writes, on its part
  *   (constructs/statements/assignments.ts). Nothing is recomputed later, so lowering sees what was
  *   checked.
  * - A node is checked once. A literal of items each with a type of its own, checked before the type
@@ -102,7 +102,7 @@ import { checkTestingCalls } from '../../rules/testing.ts';
 import { statementPlace } from '../../surface/checked-annotation.ts';
 import type { CheckedBody, FieldGiver, ValueSite } from '../../surface/checked-body.ts';
 import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
-import { exactFit, type Fit, isExact, misfitOf } from '../../types/fitting/fit.ts';
+import { exactFit, type Fit, isExact, misfitOf } from '../../types/fitting/fit/index.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
 import type { FieldMember, FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, unitType } from '../../types/type/primitives.ts';
@@ -311,13 +311,6 @@ export class BodyChecker implements BodyContext {
       this.#mismatch(found, expected, at);
     }
     return fit ?? exactFit;
-  }
-
-  fitUnwrapped(found: Type, expected: Type, at: AnchoredSpan): void {
-    const fit = this.checker.fitOf(found, expected);
-    if (fit === undefined || !isExact(fit)) {
-      this.#mismatch(found, expected, at);
-    }
   }
 
   /**

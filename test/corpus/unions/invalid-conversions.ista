@@ -8,23 +8,23 @@
 # error: 5100 at 33:7
 # error: 5222 at 34:21
 # error: 5405 at 38:6
-# Conversions into a union (§2, §4): whole values only (never inside containers or through &),
-# never from a base type into a literal type, never when a value converts into several members,
+# Conversions into a union (§2, §4): inside a value type as its variance allows (§3.5), never inside
+# a handle or through &, never from a base type into a literal type, never into several members,
 # never inferred unprompted for branches or arrays, and ? refuses an error not in the union.
 type Status = "draft" | "sent"
 struct NotFound { id: String }
 struct Timeout { ms: Int }
 struct Denied { role: String }
 
-fn takeArray(xs: Array<Int | String>) -> Int: xs.length()
+fn takeSlots(xs: Slot<Int | String>) -> Int: 0
 fn takeRef(r: &(Int | String)): ()
 fn takeAmbiguous(x: (Int,) | (any Stringable)) -> Int: 0
 fn onlyOpt<T>(x: T?) -> T: x!
 
-fn bad(xs: Array<Int>, name: String, c: Bool):
+fn bad(xs: Slot<Int>, name: String, c: Bool):
   let n = 1
   const u: Int | String = true
-  _ = takeArray(xs)
+  _ = takeSlots(xs)
   takeRef(&n)
   const s1: Status = name
   const s2: Status = "other"

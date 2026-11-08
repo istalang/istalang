@@ -1,0 +1,60 @@
+# outcome: "1 3 1 true 4 5 5 2 7 [[1],[2,3]] 3 1 0 3"
+# Conversions inside value types (§3.5): an array's items, a map's values, a struct's, a variant's
+# and a tuple's fields, a shape's, and a function's parameters and result, each as the variance of
+# what holds them allows, rebuilt where the layout changes. Converted values live across a commit
+# and round-trip through JSON; a generic body converts as each instantiation makes it.
+import * as json from 'json'
+import * as time from 'time'
+
+struct Box<T>:
+  value: T
+
+type Point = { x: Int, y: Int }
+type Tree<T> = T | Array<Tree<T>>
+struct Pixel:
+  x: Int
+  y: Int
+
+fn first(xs: Array<Int?>) -> Int: xs[0] ?? -1
+fn sumX(points: Array<Point>) -> Int: points[0].x + points[1].x
+fn applied(f: fn(Int) -> Int?) -> Int: f(1) ?? 0
+fn widen<T>(b: Box<T>) -> Box<T?>: b
+
+fn leaves(t: Tree<Int?>) -> Int:
+  match t:
+    case Array<Tree<Int?>> as items:
+      let total = 0
+      for item in items: total += leaves(item)
+      total
+    case _: 1
+
+async fn main():
+  const ints: Array<Int> = [1, 2, 3]
+  const optionals: Array<Int?> = ints
+  const counts: Map<String, Int> = ["a": 1]
+  const maybe: Map<String, Int?> = counts
+  const named: Box<"s"> = Box{value: "s"}
+  const plain: Box<String> = named
+  const result: Result<Int, String> = Ok(4)
+  const wider: Result<Int?, String> = result
+  const pair: (Int, String) = (5, "p")
+  const loose: (Int?, String) = pair
+  const pixels: Array<Pixel> = [Pixel{x: 2, y: 0}, Pixel{x: 3, y: 0}]
+  const doubled: fn(Int?) -> Int = fn(n): (n ?? 0) * 2
+  const plains: Array<fn() -> Int> = [fn(): 7]
+  const asyncs: Array<async fn() -> Int> = plains
+  const nested: Array<Array<Int>> = [[1], [2, 3]]
+  const tree: json.Json = nested
+  const grown: Tree<Int> = [1, [2, [3]]]
+  const loosened: Tree<Int?> = grown
+  await time.delay(1ms)
+  const (left, _) = loose
+  const opened = match wider:
+    case Ok(value): value ?? 0
+    case Err(_): -1
+  const back = match json.parse<Array<Int?>>(json.stringify(optionals)):
+    case Ok(items): items.length()
+    case Err(_): -1
+  const kept = widen(Box{value: 1}).value ?? 0
+  const same = widen<Int?>(Box{value: none}).value ?? 0
+  "" + first(ints) + " " + (optionals[2] ?? 0) + " " + (maybe.get("a") ?? 0) + " " + (plain == Box{value: "s"}) + " " + opened + " " + (left ?? 0) + " " + sumX(pixels) + " " + applied(doubled) + " " + await asyncs[0]() + " " + json.stringify(tree) + " " + back + " " + kept + " " + same + " " + leaves(loosened)

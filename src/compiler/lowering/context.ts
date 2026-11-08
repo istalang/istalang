@@ -17,7 +17,7 @@ import type { CheckedBody, ValueSite } from '../checker/surface/checked-body.ts'
 import type { FieldRead, FieldReading } from '../checker/surface/checked-field.ts';
 import type { CheckedPattern } from '../checker/surface/checked-pattern.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../checker/surface/resolved-call.ts';
-import type { Fit } from '../checker/types/fitting/fit.ts';
+import type { Fit } from '../checker/types/fitting/fit/index.ts';
 import type { Type } from '../checker/types/type/index.ts';
 import type { ModuleId } from '../program/program.ts';
 import type { FunctionDeclaration } from '../syntax/declarations/index.ts';

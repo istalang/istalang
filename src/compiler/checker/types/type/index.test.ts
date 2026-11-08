@@ -21,6 +21,7 @@ const span = handMadeSpan(0);
 const packDeclaration: TypeParameter = {
   kind: 'TypeParameter',
   span,
+  variance: undefined,
   isPack: true,
   name: { kind: 'Identifier', span, text: 'A' },
   memberOf: undefined,

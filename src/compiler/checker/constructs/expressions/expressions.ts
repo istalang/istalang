@@ -64,8 +64,8 @@ import {
   mapBuilds,
   mapKnownType,
 } from './collections/collection-accepts.ts';
-import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections/collections.ts';
 import { checkComprehension, checkFieldComprehension } from './collections/comprehensions.ts';
+import { checkArrayLiteral, checkMapLiteral, checkRange } from './collections/literals.ts';
 import { checkAwait } from './control/await.ts';
 import { blockAccepts } from './control/branches.ts';
 import { checkIf, ifAccepts } from './control/control.ts';

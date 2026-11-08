@@ -32,7 +32,7 @@ import type { ConstantForm } from './surface/constant-form.ts';
 import type { LookupQueries } from './surface/denotation.ts';
 import type { JsonFormQueries } from './surface/json-form.ts';
 import type { FunctionCall, ResolvedCall } from './surface/resolved-call.ts';
-import type { Fit } from './types/fitting/fit.ts';
+import type { Fit } from './types/fitting/fit/index.ts';
 import type { TypeKeys } from './types/identity/type-keys.ts';
 import type { RestSlot } from './types/type/function-types.ts';
 import type {

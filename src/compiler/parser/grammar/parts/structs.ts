@@ -108,6 +108,7 @@ function parseMappedParameter(parser: Parser): TypeParameter {
   const memberOf = parser.type();
   return {
     kind: 'TypeParameter',
+    variance: undefined,
     span: parser.spanFrom(parser.startOf(name)),
     isPack: false,
     name,

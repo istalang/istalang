@@ -42,9 +42,10 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { CheckedBody, FieldSource } from '../../surface/checked-body.ts';
 import { type ConstantForm, durationForm, formSemantics } from '../../surface/constant-form.ts';
 import type { FunctionCall } from '../../surface/resolved-call.ts';
-import { isExact } from '../../types/fitting/fit.ts';
+import { isExact } from '../../types/fitting/fit/index.ts';
 import { type Substitution, substitute, substitutionFor } from '../../types/parts/substitution.ts';
 import { laidOut } from '../../types/type/field-order.ts';
+import { errorType } from '../../types/type/primitives.ts';
 import { computed, fittedForm, itemsOf, type Outcome, pairOf, refused, unknown } from './forms.ts';
 
 /** What the walk reads: layouts, field defaults, the constant or annotation checked, and others. */
@@ -58,6 +59,8 @@ export interface ComputationScope {
     | 'bindings'
     | 'constantNamed'
     | 'typeRules'
+    | 'fitOf'
+    | 'wellKnownType'
   >;
   readonly constant: VariableDeclaration | undefined;
   readonly checked: CheckedBody;
@@ -156,7 +159,13 @@ class Computation {
 
   /** Applies the implicit conversion recorded at `node`, or refuses one only the runtime makes. */
   #fitted(node: Expression, form: ConstantForm): Outcome {
-    const converted = fittedForm(form, this.#scope.checked.fitAt(node), this.#scope.checker);
+    const { checked, checker } = this.#scope;
+    const converted = fittedForm(
+      form,
+      checked.typeOf(node) ?? errorType,
+      checked.fitAt(node),
+      checker,
+    );
     return converted === undefined ? refused(node) : computed(converted);
   }
 

@@ -48,7 +48,12 @@ export function isConfined(declaration: NominalDeclaration): boolean {
   return identity === 'instance' || identity === 'process';
 }
 
+/** Whether `declaration`'s values are handles, which every copy shares. */
+export function isHandleDeclaration(declaration: NominalDeclaration): boolean {
+  return identityOf(declaration) !== 'value';
+}
+
 /** Whether `type`'s values are handles, which every copy shares. */
 export function isHandleType(type: Type): type is NominalType {
-  return type.kind === 'nominal' && identityOf(type.entity.declaration) !== 'value';
+  return type.kind === 'nominal' && isHandleDeclaration(type.entity.declaration);
 }

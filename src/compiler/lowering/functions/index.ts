@@ -4,8 +4,8 @@
  *
  * - The body is read through what owns it (instances.ts), a function instance or a top-level
  *   constant: its types are concrete, and its calls target the instances they close to.
- * - A value the checker fitted (§2) is converted and wrapped once it is computed (fits.ts), so no
- *   handler needs to know about fitting. An optional chain is lowered from its last link
+ * - A value the checker fitted (§2) is converted and wrapped once it is computed (fits/index.ts),
+ *   so no handler needs to know about fitting. An optional chain is lowered from its last link
  *   (../values/optionals.ts); a link's handler only reads its target through `chains.target`.
  * - The body's value is returned at its end; a body ending in `return` leaves that last `return`
  *   unreachable but harmless, and the code always ends in one, as loading requires.
@@ -44,7 +44,7 @@ import type {
   ResolvedCall,
   ResolvedSite,
 } from '../../checker/surface/resolved-call.ts';
-import type { Fit } from '../../checker/types/fitting/fit.ts';
+import type { Fit } from '../../checker/types/fitting/fit/index.ts';
 import type { Type } from '../../checker/types/type/index.ts';
 import { type ModuleId, programModule } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
@@ -71,7 +71,7 @@ import type { DefinitionTables, EntryHeader } from '../tables/tables.ts';
 import { OptionalChains } from '../values/optionals.ts';
 import { writtenBodyOf } from './bodies.ts';
 import { CodeWriter } from './code-writer.ts';
-import { fittedValue } from './fits.ts';
+import { fittedValue } from './fits/index.ts';
 import {
   declareArgument,
   declareFilled,

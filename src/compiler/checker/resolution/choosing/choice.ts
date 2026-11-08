@@ -7,8 +7,9 @@
  *   concrete candidates apply, only they are chosen among: a concrete function beats a
  *   generic one (§3.7); then a function without a rest parameter beats one with (§3.3); then one
  *   taking every argument as it is beats one making a plain function async (§3.14), converting
- *   between a one-element tuple and its element (§3.15) or a struct's value into its shape, or
- *   building a literal argument as a type other than its own (§3.7), so a pair taking `fn(A)` and
+ *   between a one-element tuple and its element (§3.15), a struct's value into its shape or an
+ *   argument's parts (§3.5), or building a literal argument as a type other than its own (§3.7),
+ *   so `Array<Int>` beats `Array<Int?>` for an `Array<Int>`, and a pair taking `fn(A)` and
  *   `async fn(A)` keeps each function its own type. Written type arguments
  *   consider only generic candidates. Any other tie is ambiguous.
  *
