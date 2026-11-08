@@ -30,7 +30,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F29, P38, Q46, B40. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F29, P38, Q46, B41. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -160,3 +160,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B37 | A host extern type's type arguments are never checked at the host boundary or by derived codecs: for `extern struct Box<T>`, a `Box<fn() -> Int>` crosses (`rules/boundary/json-forms.ts` skips a host form's parts; derived traits skip unsendable parts at `toHost`). `docs/work/variance-inference/design.md` §1 wants an extern value to cross only when its type arguments do. | small | none; can be done now | variance-inference V0 review 2026-11-08 |
 | B38 | A producer that agrees on parts of its own is held to the type the producers before it agree on, given as its expected type, so `if c: k1 else: (if d: k2 else: k2)` (`k1: "a"`, `k2: "b"`), `[k1, ...[k2]]`, a field comprehension's later pass over `if c: k else: k`, and with the optional join `if c: 1 else: (if d: 2 else: none)` and `[1, ...[2, none]]`, fail with 5001 where each agrees alone (`decidedSoFar` in `rules/agreement.ts`). | medium | variance-inference I1 or I2: a sibling's type as a bound, not an expected type | variance-inference I0 qa 2026-11-08 |
 | B39 | An array literal with a spread passed to a generic parameter fails: `id([...xs, 3])` for `fn id<T>(x: T) -> T` and `xs: Array<Int>` reports 5001 `Expected T, found Array<Int>`, as a spread's items have no type known before checking (`collection-accepts.ts`). | small | none; can be done now | variance-inference I0 qa 2026-11-08 |
+| B40 | The property "substitutes then closes as it closes then substitutes, never past a trait object binding Self" (`types/identity/recursive-types.test.ts`) fails at seed 2040523392, path `181:2:0:0:2:1:1:1:4:4:4:4:4:4:4:5`: a union inside a trait object's constraint binding `Self` is substituted through `withTypeChildren` without `unionOf`'s normalization. Reported by variance-inference V1's qa as pre-existing; unverified. | small | none; can be done now | variance-inference V1 qa 2026-11-08 |
