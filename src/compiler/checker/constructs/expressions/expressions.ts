@@ -47,10 +47,11 @@ import {
 } from '../../types/type/primitives.ts';
 import { wellKnownOf } from '../../types/type/well-known.ts';
 import { literalOrBase } from '../../types/unions/unions.ts';
+import { checkAppliedFunction, namedFunctionsAccepted } from '../closures/function-values.ts';
 import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
 import { checkDereference } from './access/dereference.ts';
 import { checkIndex } from './access/indexing.ts';
-import { checkMemberAccess, memberAccepts } from './access/member-access.ts';
+import { checkMemberAccess } from './access/member-access.ts';
 import { checkName, nameAccepts, variableType } from './access/names.ts';
 import { checkUnwrap } from './access/optionals.ts';
 import { checkCall } from './calls.ts';
@@ -113,6 +114,7 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   NewStructLiteral: checkNamedLiteral,
   IndentedValue: checkIndentedValue,
   MemberAccess: checkMemberAccess,
+  TypeApplication: checkAppliedFunction,
   TupleElement: checkTupleElement,
   BlockExpression: (context, node, expected) => context.block(node.block, expected),
   If: checkIf,
@@ -159,7 +161,8 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
   StructLiteral: structLiteralAccepts,
   NewStructLiteral: ownType,
   IndentedValue: indentedAccepts,
-  MemberAccess: memberAccepts,
+  MemberAccess: namedFunctionsAccepted,
+  TypeApplication: namedFunctionsAccepted,
   TupleElement: ownType,
   BlockExpression: (context, node) => blockAccepts(context, node.block),
   If: ifAccepts,
@@ -225,6 +228,7 @@ const knownTypeHandlers: Handlers<BodyContext, Expression, [], Type | undefined>
     return literal === undefined ? undefined : knownTypeOf(context, literal);
   },
   MemberAccess: unknownType,
+  TypeApplication: unknownType,
   TupleElement: unknownType,
   BlockExpression: (context, node) => blockKnownType(context, node.block),
   If: unknownType,
@@ -326,6 +330,7 @@ const buildsHandlers: Handlers<BodyContext, Expression, [PartReader], Accepts | 
     return literal === undefined ? undefined : buildsOf(context, literal, read);
   },
   MemberAccess: builtAsItIs,
+  TypeApplication: builtAsItIs,
   TupleElement: builtAsItIs,
   BlockExpression: builtAsItIs,
   If: builtAsItIs,

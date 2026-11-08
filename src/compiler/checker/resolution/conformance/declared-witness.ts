@@ -62,5 +62,5 @@ export function chooseWitnessAmong(
       exact: true,
     }),
   );
-  return chooseAsValue(checker, candidates, callArguments);
+  return chooseAsValue(checker, candidates, callArguments, undefined);
 }

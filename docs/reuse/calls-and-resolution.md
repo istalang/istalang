@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-07
+last_updated: 2026-11-08
 tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 ---
 
@@ -41,7 +41,7 @@ tags: [reuse, checker, calls, resolution, overloads, traits, witnesses]
 - resolve a written call in a body → `resolveCall`, `recordChosen`, `explain` (`src/compiler/checker/resolution/calls/resolve.ts`)
 - fit a chosen call's arguments (written or implicit) to the types they fill, or spell its argument list in a report → `filledTypes`, `fitArguments`, `argumentListText` (`src/compiler/checker/resolution/applying/argument-fit.ts`)
 - infer what a lambda or a generic or overloaded function named as an argument gives, after overload choice → `checkDecidedFunctions` (`src/compiler/checker/resolution/calls/function-arguments.ts`)
-- find the functions a name means as a value (a top-level or static function, a variant's constructor), choose one by the expected function type, or say which function types it can be passed as → `namedFunctions`, `chosenValue`, `functionsAccepted`, `functionValueType` (`src/compiler/checker/resolution/choosing/named-functions.ts`); check one, reporting and recording → `checkFunctionValue` (`src/compiler/checker/constructs/closures/function-values.ts`)
+- find the functions a name means as a value (a top-level or static function, a variant's constructor), with any type arguments written after it (`FunctionNaming`, a `TypeApplication` among them, taken as a call takes them), choose one by the expected function type, or say which function types it can be passed as → `namedFunctions`, `chosenValue`, `functionsAccepted`, `functionValueType` (`src/compiler/checker/resolution/choosing/named-functions.ts`); check one, reporting and recording, a name given type arguments too, or ask which types one passed to a call can take → `checkFunctionValue`, `checkAppliedFunction`, `namedFunctionsAccepted` (`src/compiler/checker/constructs/closures/function-values.ts`)
 - resolve a prefix or binary operator call in a body → `resolveOperator`, `binaryApplied`, `unaryApplied`, `applied` (`src/compiler/checker/resolution/calls/operators.ts`)
 - check `setIndex` element writes or synchronous collection calls → `writeElement`, `runsAtOnce` (`src/compiler/checker/resolution/calls/collection-functions.ts`)
 - check an assigned or `&`-referenced place → `checkChangedPlace` (`src/compiler/checker/resolution/calls/places.ts`)

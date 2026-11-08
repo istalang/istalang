@@ -1,0 +1,46 @@
+# error: 5020 at 36:13
+# error: 5020 at 37:13
+# error: 5101 at 38:13
+# error: 5503 at 39:13
+# error: 5001 at 40:42
+# error: 5508 at 41:13
+# error: 5508 at 42:13
+# error: 5011 at 43:13
+# error: 5107 at 44:21
+# error: 5504 at 45:19
+# Type arguments written after a function named as a value are judged as a call's (§3.5): their
+# count, for its one function, and its constraints. Several functions they suit, or none, need a
+# function type to choose by, and the value they make fits only what it is. After a variable, a
+# type, a method or a variant without fields, they are refused: only a function's name takes them
+# as a value. A bare variant needs the expected type to give its enum, given type arguments or not.
+
+struct Opaque:
+  id: Int
+
+enum Opt<T> { Some(value: T), Empty }
+
+fn listed<T>(value: T) -> Array<T>: [value]
+
+fn plain(value: Int) -> Int: value
+
+fn ordered<T is Comparable>(value: T) -> T: value
+
+fn pick<T>(value: T) -> String: "one"
+
+fn pick<A, B>(first: A, second: B) -> String: "two"
+
+fn twice(self: Int) -> Int: self * 2
+
+fn main() -> Int:
+  const count = 1
+  const a = listed<Int, String>
+  const b = plain<Int>
+  const c = ordered<Opaque>
+  const d = pick<Int, String, Bool>
+  const e: fn(String) -> Array<String> = listed<Int>
+  const f = count<Int>
+  const g = Opt.Empty<Int>
+  const h = Opaque<Int>
+  const i = [1].map(Ok<Int, String>)
+  const j = count.twice<Int>
+  0

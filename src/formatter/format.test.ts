@@ -66,7 +66,7 @@ describe('unions, literal types, member parameters and generic patterns (§2, §
       '  match s:',
       '    case Entry<Settings, "region">{value}: value',
       '    case Box<Int | None> as b: b',
-      '    case _: f(a<1>(b), a<b | c>(d))',
+      '    case _: f(a<1>(b), a<B | C>(d))',
     );
     expect(formatText(text)).toBe(text);
     const { actual, expected } = roundTripOf(text);

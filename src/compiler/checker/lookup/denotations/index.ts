@@ -93,8 +93,13 @@ const chosenIn: Handlers<NameSite, NameHolder, [], readonly Denotation[] | undef
     site.name === node.name ? parameterNamed(site, site.holders[1]) : undefined,
   Call: (site, node) => (site.name === node.callee ? calleeDenotations(site, node) : undefined),
   TypeApplication: (site, node) => {
-    const call = site.name === node.target ? callCalling(node, site.holders.slice(1)) : undefined;
-    return call === undefined ? undefined : calleeDenotations(site, call);
+    if (site.name !== node.target) {
+      return;
+    }
+    const call = callCalling(node, site.holders.slice(1));
+    return call === undefined
+      ? calledAt(site, node.target, site.body?.typeOf(node))
+      : calleeDenotations(site, call);
   },
   TemplateLiteral: (site, node) =>
     isTagged(node) && site.name === node.tag
@@ -171,7 +176,8 @@ function memberDenotations(site: NameSite, access: MemberAccess): readonly Denot
   if (holder?.kind === 'TemplateLiteral' && isTagged(holder) && holder.tag === access) {
     return calledAt(site, taggedCall(holder), undefined) ?? named(site);
   }
-  const type = site.body?.typeOf(access);
+  // Given type arguments, the value is the application's, of the type they instantiate.
+  const type = site.body?.typeOf(holder?.kind === 'TypeApplication' ? holder : access);
   const associated = associatedNamed(site.checker, namedType(namingAt(site), access));
   return calledAt(site, access, type) ?? (associated.length > 0 ? associated : named(site, type));
 }

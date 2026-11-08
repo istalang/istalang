@@ -17,12 +17,12 @@ import { linkOperator } from '../../../../syntax/expressions/chains.ts';
 import type { Expression, MemberAccess } from '../../../../syntax/expressions/index.ts';
 import { isMissingName } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
-import type { Accepts, BodyContext, FieldReadRecord } from '../../../contexts/body-context.ts';
+import type { BodyContext, FieldReadRecord } from '../../../contexts/body-context.ts';
 import type { Pass, Passes, PassTable } from '../../../contexts/passes.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
 import { topLevelCandidates } from '../../../resolution/choosing/candidates.ts';
-import { functionsAccepted, namedFunctions } from '../../../resolution/choosing/named-functions.ts';
+import { namedFunctions } from '../../../resolution/choosing/named-functions.ts';
 import type { FieldRead, FieldReading, FoundField } from '../../../surface/checked-field.ts';
 import { fieldOf } from '../../../types/traits/known-fields.ts';
 import type { Type } from '../../../types/type/index.ts';
@@ -160,12 +160,4 @@ function noField(context: BodyContext, node: MemberAccess, type: Type): Diagnost
   return isMethod
     ? checkerDiagnostics.methodValue(span, name)
     : checkerDiagnostics.unknownField(span, typeText(type), name);
-}
-
-/**
- * Which types a member passed to a call can take when the call decides it: a function's (names.ts).
- */
-export function memberAccepts(context: BodyContext, node: MemberAccess): Accepts | undefined {
-  const functions = namedFunctions(context, node);
-  return functions === undefined ? undefined : functionsAccepted(context, functions);
 }

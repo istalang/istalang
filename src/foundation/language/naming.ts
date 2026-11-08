@@ -5,8 +5,9 @@
  * declaration shadowing one would change what `Int` means in a module unnoticed.
  *
  * Case also decides what a bare name in a pattern does (§3.11): a camelCase name binds a new
- * variable, a PascalCase one refers to a variant or a type. Both questions read
- * the same first letter, so they share this module.
+ * variable, a PascalCase one refers to a variant or a type; and whether an expression's `<…>` may
+ * hold type arguments (§3.5), whose names are types'. All these questions read the same first
+ * letter, so they share this module.
  */
 
 import { primitiveNames } from './primitives.ts';
@@ -38,12 +39,17 @@ export function isUnnamed(name: string): boolean {
   return name === '_';
 }
 
+/** Whether `name` is cased as a type's: its first letter, past any privacy, is a capital. */
+export function casedAsType(name: string): boolean {
+  return shapes.type.test(withoutPrivacy(name).charAt(0));
+}
+
 /**
  * Whether a bare name in a pattern binds a new variable rather than naming a variant: every name
- * binds but one whose first letter is a type's.
+ * binds but one cased as a type's.
  */
 export function bindsInPattern(name: string): boolean {
-  return !shapes.type.test(withoutPrivacy(name).charAt(0));
+  return !casedAsType(name);
 }
 
 /** Whether a top-level name is private to its module, which never exports it (§3.13). */

@@ -11,12 +11,12 @@ import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { functionsAccepted, namedFunctions } from '../../../resolution/choosing/named-functions.ts';
+import { namedFunctions } from '../../../resolution/choosing/named-functions.ts';
 import { expectedNominal } from '../../../types/fitting/expected.ts';
 import { isNominalEntity, type Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { fieldlessStructOf } from '../../../types/written/named-types.ts';
-import { checkFunctionValue } from '../../closures/function-values.ts';
+import { checkFunctionValue, namedFunctionsAccepted } from '../../closures/function-values.ts';
 import { checkVariantValue, variantNameAccepts } from '../structs/variants.ts';
 
 export function checkName(
@@ -37,8 +37,7 @@ export function nameAccepts(context: BodyContext, node: Identifier): Accepts | u
   if (entity?.kind === 'variants') {
     return variantNameAccepts(context, node, entity);
   }
-  const functions = namedFunctions(context, node);
-  return functions === undefined ? undefined : functionsAccepted(context, functions);
+  return namedFunctionsAccepted(context, node);
 }
 
 /** The type of the value `entity` denotes where `node` names it. */

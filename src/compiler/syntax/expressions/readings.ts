@@ -7,15 +7,7 @@
  */
 
 import type { Identifier, QualifiedName } from '../tree/node.ts';
-import type {
-  Expression,
-  FieldItem,
-  Match,
-  MatchCase,
-  Select,
-  SelectCase,
-  TypeApplication,
-} from './index.ts';
+import type { Expression, FieldItem, Match, MatchCase, Select, SelectCase } from './index.ts';
 
 /** The expression an item gives its field: its value, or for the shorthand, its own name. */
 export function itemValue(item: FieldItem): Expression {
@@ -43,7 +35,7 @@ export function qualifiedPath(expression: Expression): QualifiedName | undefined
 }
 
 /** `node` without the type arguments written after its name (§3.5): `f` of `f<Int>`. */
-export function withoutTypeArguments(node: Expression | TypeApplication): Expression {
+export function withoutTypeArguments(node: Expression): Expression {
   return node.kind === 'TypeApplication' ? node.target : node;
 }
 

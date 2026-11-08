@@ -142,6 +142,11 @@ export class Cursor {
     return this.kind === kind;
   }
 
+  /** Whether the next token is what is left of a `>=`, `>>` or `>>=` whose `>` closed a `<…>`. */
+  get atRestAfterAngle(): boolean {
+    return this.#remainder !== undefined;
+  }
+
   /** Where the last consumed token ends: the position of anything found missing after it. */
   get previousEnd(): number {
     if (this.#remainder !== undefined) {

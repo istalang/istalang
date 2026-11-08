@@ -22,6 +22,7 @@ import type { LiteralType } from '../../syntax/types/index.ts';
 import type { CheckerContext } from '../contexts/context.ts';
 import type { Denotation } from '../surface/denotation.ts';
 import { calledVariant } from '../surface/named-variants.ts';
+import type { ResolvedCall } from '../surface/resolved-call.ts';
 import { substitutionFor } from '../types/parts/substitution.ts';
 import type { Type } from '../types/type/index.ts';
 import { membersOf } from '../types/unions/unions.ts';
@@ -114,8 +115,9 @@ interface Instantiated {
 
 /**
  * What `node`, a type or a name taking type arguments, instantiates, with the arguments it was
- * given: a nominal type or an alias written in a type, a struct literal's type, or what the call
- * of a name given type arguments makes (`callInstantiations`).
+ * given: a nominal type or an alias written in a type, a struct literal's type, what the call of a
+ * name given type arguments makes (`callInstantiations`), or the function such a name names as a
+ * value (§3.14).
  */
 function instantiationsAt(
   checker: CheckerContext,
@@ -127,7 +129,10 @@ function instantiationsAt(
     return [instantiationOfType(checker, module, tree, node) ?? []].flat();
   }
   const call = parentOf(tree, node);
-  return call?.kind === 'Call' ? callInstantiations(checker, module, call) : [];
+  if (call?.kind === 'Call' && call.callee === node) {
+    return callInstantiations(checker, module, call);
+  }
+  return functionsInstantiated(bodyHolding(checker, module, node)?.callsAt(node.target) ?? []);
 }
 
 /**
@@ -149,6 +154,11 @@ function callInstantiations(
     };
     return calledVariant(names, call) === undefined ? [] : membersOf(made).flatMap(enumMade);
   }
+  return functionsInstantiated(calls);
+}
+
+/** What each of `calls` that calls a declared function instantiates: that function. */
+function functionsInstantiated(calls: readonly ResolvedCall[]): readonly Instantiated[] {
   return calls.flatMap((each) =>
     each.kind === 'function'
       ? [{ parameters: each.function.typeParameters, typeArguments: each.typeArguments }]

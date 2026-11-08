@@ -1,0 +1,83 @@
+/**
+ * Functions named as values with type arguments written after the name (§3.5, §3.14): every way
+ * of naming a function takes them, and the value is the function they instantiate, whatever types
+ * they are. What each refusal reports is a corpus program
+ * (`test/corpus/generics/invalid-applied-function-values.ista`), which states its positions.
+ */
+
+import fc from 'fast-check';
+import { describe, expect, it } from 'vitest';
+import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
+import type { TypeApplication } from '../../../syntax/expressions/index.ts';
+import { reported } from '../../check.test-kit.ts';
+import { checkedMain } from '../../lookup/lookup.test-kit.ts';
+import { typeText } from '../../types/type/type-text.ts';
+
+const declarations = [
+  'struct Box<T> { item: T }',
+  'fn Box.of<T>(item: T) -> Box<T>: Box{item}',
+  'fn listed<T>(value: T) -> Array<T>: [value]',
+].join('\n');
+
+const lib = 'fn listed<T>(value: T) -> Array<T>: [value]\n';
+
+/** Types to write as type arguments, each as it is written and as messages print it. */
+const writtenTypes = fc.constantFrom('Int', 'String', 'Array<Bool>', '(Int, String)', 'Float?');
+
+/** Each way of naming a function given `type`, with the function type it is the value of. */
+const namings = (type: string): readonly (readonly [string, string])[] => [
+  [`listed<${type}>`, `sendable fn(${type}) -> Array<${type}>`],
+  [`lib.listed<${type}>`, `sendable fn(${type}) -> Array<${type}>`],
+  [`Box.of<${type}>`, `sendable fn(${type}) -> Box<${type}>`],
+  [`Result.Ok<${type}, String>`, `sendable fn(${type}) -> Result<${type}, String>`],
+];
+
+/** The type checking `main` gave the value `naming` makes, alone in its body. */
+function valueTypeOf(naming: string): string | undefined {
+  const text = `import * as lib from 'lib'\n${declarations}\nfn main():\n  const value = ${naming}\n  drop value\n`;
+  const { checker, module, first } = checkedMain(text, { lib });
+  const node = first('TypeApplication') as TypeApplication;
+  const type = checker.lookup.bodyHolding(module, node)?.typeOf(node);
+  return type && typeText(type);
+}
+
+describe('a function named as a value with type arguments', () => {
+  it('is the function they instantiate, named plainly, through a namespace, a type or an enum', () => {
+    fc.assert(
+      fc.property(writtenTypes, (type) => {
+        for (const [naming, expected] of namings(type)) {
+          expect(valueTypeOf(naming)).toBe(expected);
+        }
+      }),
+      { numRuns: 10 },
+    );
+  });
+
+  it('is a bare variant where the expected function type gives its enum', () => {
+    const text =
+      'fn main():\n  const ok: fn(Int) -> Result<Int, String> = Ok<Int, String>\n  drop ok\n';
+    expect(reported(text)).toEqual(reportedNothing);
+  });
+
+  it('leaves a defaulted type parameter to the expected type, then to its default', () => {
+    const inferred = 'const f: fn(Int) -> Result<Int, String> = Result.Ok<Int>';
+    const defaulted = 'const g: fn(Int) -> Result<Int, Error> = Result.Ok<Int>';
+    expect(reported(`fn main():\n  ${inferred}\n  ${defaulted}\n  drop f\n  drop g\n`)).toEqual(
+      reportedNothing,
+    );
+  });
+
+  it("gives a generic call the type its parameter can't infer from the bare function", () => {
+    const text =
+      'fn d(vs: Array<Int>) -> Array<Result<Int, String>>: vs.map(Result.Ok<Int, String>)';
+    expect(reported(text)).toEqual(reportedNothing);
+  });
+
+  it('is shown on hover as the function it instantiates', () => {
+    const text = `${declarations}\nfn main():\n  const value = listed<Int>\n  drop value\n`;
+    const { checker, module, named } = checkedMain(text);
+    const [denotation] = checker.lookup.denotationsOf(module, named('listed', 1));
+    expect(denotation?.declared.kind).toBe('function');
+    expect(denotation?.type && typeText(denotation.type)).toBe('sendable fn(Int) -> Array<Int>');
+  });
+});

@@ -15,7 +15,7 @@ import { lowerDereference } from '../parts/places.ts';
 import { lowerName, lowerNamed } from './access/names.ts';
 import { lowerUnwrap } from './access/optionals.ts';
 import { lowerCall, lowerSpawn } from './calls.ts';
-import { lowerLambda } from './closures.ts';
+import { lowerFunctionValue, lowerLambda } from './closures.ts';
 import {
   lowerArrayLiteral,
   lowerIndex,
@@ -51,6 +51,7 @@ export const expressionHandlers: Handlers<FunctionContext, Expression, [], Regis
   Binary: lowerBinary,
   Unary: lowerUnary,
   Call: lowerCall,
+  TypeApplication: (context, node) => lowerFunctionValue(context, node.target),
   StructLiteral: lowerStructLiteral,
   NewStructLiteral: lowerNewStructLiteral,
   IndentedValue: (context, node) =>

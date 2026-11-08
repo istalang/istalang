@@ -5,11 +5,13 @@
  * A call's argument is a value, a spread, or `name: value` naming its parameter (§3.3); only a
  * name directly followed by `:` names one, since nothing else in an argument list starts so.
  *
- * `name<…>` is ambiguous with a comparison. Following C#, it is read as type arguments only when
- * the bracket contents parse as types and a `(` or `{` follows (§3.5). Literal types and unions
- * are types, so `a < 1 > (b)` and `a < b | c > (d)` are calls. Otherwise it is a comparison, and
- * `(a < b) > c` needs its parentheses. Only the type arguments are parsed
- * speculatively. The call or literal after them is parsed for real, so errors inside the
+ * `name<…>` is ambiguous with a comparison. It is read as type arguments, a `TypeApplication`, only
+ * when the bracket contents parse as types whose names are all cased as types' (§2), as no
+ * variable's is, and what follows can't go on with a comparison (`endsTypeArguments`, §3.5): so
+ * `f(a < b, c > d)` and `f(a < B, C > d)` compare, `xs.map(Result.Ok<Int, String>)` passes a
+ * value, and `f<T>(x)` calls it. Literal types are types, so `a < 1 > (b)` is a call; a comparison
+ * that looks like type arguments needs parentheses, `(a < B) > c`. Only the type arguments are
+ * parsed speculatively. The call or literal after them is parsed for real, so errors inside the
  * arguments are reported rather than turning the whole thing back into a comparison.
  *
  * A struct literal's `{` and type arguments both attach only to a name or a qualified name
@@ -22,6 +24,7 @@
  * `t.0.1` as one float, so that token is split back into its two elements here.
  */
 
+import { casedAsType } from '../../../../foundation/language/naming.ts';
 import { misplacedArgument } from '../../../syntax/expressions/arguments.ts';
 import type {
   Call,
@@ -29,13 +32,14 @@ import type {
   Dereference,
   Expression,
   Index,
-  TypeApplication,
 } from '../../../syntax/expressions/index.ts';
 import { isPlace } from '../../../syntax/expressions/places.ts';
 import { qualifiedPath } from '../../../syntax/expressions/readings.ts';
+import { fieldChildrenOf, type SyntaxNode } from '../../../syntax/tree/index.ts';
+import { lastName } from '../../../syntax/tree/node.ts';
 import { parseDelimited, parseEnclosed } from '../../cursor/recovery.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
-import { atPostfix } from '../../layout/item-breaks.ts';
+import { atPostfix, breakSeparatesItems } from '../../layout/item-breaks.ts';
 import type { Parser } from '../../parser.ts';
 import { namedTypeFrom } from '../parts/names.ts';
 import { parseSpread, spreadOpener } from '../parts/spreads.ts';
@@ -43,7 +47,10 @@ import { parseStructLiteralBody } from './literals/struct-literals.ts';
 import { parseReference } from './operators.ts';
 import type { InfixParselet } from './parselet.ts';
 
-/** `name<…>(…)` or `name<…>{…}`, or undefined when the `<` is a comparison. */
+/**
+ * `name<…>`, before its call's `(` or as a value, or `name<…>{…}`; undefined when the `<` is a
+ * comparison.
+ */
 export function parseTypeApplication(parser: Parser, left: Expression): Expression | undefined {
   if (left.kind !== 'Identifier' && left.kind !== 'MemberAccess') {
     return undefined;
@@ -54,7 +61,7 @@ export function parseTypeApplication(parser: Parser, left: Expression): Expressi
   }
   const typeArguments = parser.speculate(() => {
     const parsed = parser.typeArguments();
-    return atPostfix(parser, '(') || atPostfix(parser, '{') ? parsed : undefined;
+    return namesTypesOnly(parsed) && endsTypeArguments(parser) ? parsed : undefined;
   });
   if (typeArguments === undefined) {
     return undefined;
@@ -67,14 +74,34 @@ export function parseTypeApplication(parser: Parser, left: Expression): Expressi
     );
   }
   const span = parser.spanFrom(parser.startOf(left));
-  return parseCall(parser, { kind: 'TypeApplication', span, target: left, typeArguments }, false);
+  return { kind: 'TypeApplication', span, target: left, typeArguments };
 }
 
-function parseCall(
-  parser: Parser,
-  callee: Expression | TypeApplication,
-  isOptional: boolean,
-): Call {
+/** Whether every name in `types` is cased as a type's, as a comparison's variables never are. */
+function namesTypesOnly(types: readonly SyntaxNode[]): boolean {
+  return types.every(
+    (type) =>
+      (type.kind !== 'NamedType' || casedAsType(lastName(type.path).text)) &&
+      namesTypesOnly(fieldChildrenOf(type)),
+  );
+}
+
+/**
+ * Whether what follows type arguments just parsed ends them, rather than going on with a
+ * comparison: a `(` or `{` on their line, their call or struct literal; the next item of a list
+ * broken over lines (§2); or a token no expression starts with, `)`, `,` or the line's end among
+ * them, but not what is left of a `>>` or `>=` whose `>` closed them.
+ */
+function endsTypeArguments(parser: Parser): boolean {
+  return (
+    atPostfix(parser, '(') ||
+    atPostfix(parser, '{') ||
+    breakSeparatesItems(parser) ||
+    !(parser.startsExpression() || parser.cursor.atRestAfterAngle)
+  );
+}
+
+function parseCall(parser: Parser, callee: Expression, isOptional: boolean): Call {
   const { items } = parseDelimited(parser, '(', () => parseArgument(parser));
   const span = parser.spanFrom(parser.startOf(callee));
   const misplaced = misplacedArgument(items);

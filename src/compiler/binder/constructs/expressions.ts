@@ -16,7 +16,6 @@ import type {
   IndentedValue,
   MatchCase,
   SelectCase,
-  TypeApplication,
 } from '../../syntax/expressions/index.ts';
 import { casesOf, qualifiedPath, selectCasesOf } from '../../syntax/expressions/readings.ts';
 import type { Identifier, Invalid } from '../../syntax/tree/node.ts';
@@ -34,12 +33,7 @@ import type { Scope } from '../module/scope.ts';
  * An expression that may name what it means, used as `role` says: a name, or one given type
  * arguments (§3.5), whose types are bound too; any other expression is bound as itself.
  */
-function bindNamed(
-  binder: LocalBinder,
-  node: Expression | TypeApplication,
-  scope: Scope,
-  role: Role,
-): void {
+function bindNamed(binder: LocalBinder, node: Expression, scope: Scope, role: Role): void {
   switch (node.kind) {
     case 'Identifier':
       binder.use(node, scope, role);
@@ -113,6 +107,7 @@ const expressionHandlers: Handlers<LocalBinder, Expression, [Scope], void> = {
     bindNamed(binder, node.callee, scope, 'callee');
     bindAll(binder, node.arguments, scope);
   },
+  TypeApplication: (binder, node, scope) => bindNamed(binder, node, scope, 'value'),
   TupleElement: (binder, node, scope) => bindExpression(binder, node.target, scope),
   MemberAccess: (binder, node, scope) => {
     const path = qualifiedPath(node);

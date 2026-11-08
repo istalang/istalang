@@ -14,10 +14,14 @@
  *   trailing parameters to their defaults, which the value computes at each call (§3.3), and a
  *   rest parameter is one array (binding.ts). A top-level name also finds what argument-dependent
  *   lookup does from those types (§3.13).
- * - With no expected function type, only a lone non-generic function can be named; any other
- *   name needs one (§3.14), which a call it is passed to gives (`functionsAccepted`). A lone one
- *   whose parameters don't take the expected type's is its own function all the same, so the
- *   type it is expected as reports the mismatch, as for any value.
+ * - Type arguments written after the name (`parse<Int>`, `Result.Ok<Int, String>`) are taken as a
+ *   call takes them (§3.5): they choose among the functions as the call's would, by their count,
+ *   and fix the type parameters they give, the expected type inferring the rest.
+ * - With no expected function type, only a lone function can be named, non-generic or given type
+ *   arguments that suit it alone; any other name needs one (§3.14), which a call it is passed to
+ *   gives (`functionsAccepted`). A lone one whose parameters don't take the expected type's is its
+ *   own function all the same, so the type it is expected as reports the mismatch, as for any
+ *   value.
  * - A function value's parameters take exactly the expected type's, with none of a call's
  *   conversions (§3.14): a value of `fn(Int?)` is no `fn(Int)`.
  * - A function's type as a value has the `T` an `await` yields as an async function's result.
@@ -29,7 +33,7 @@ import {
   declaredFunctionName,
   fieldsFunctionOf,
 } from '../../../syntax/declarations/field-defaults.ts';
-import type { MemberAccess } from '../../../syntax/expressions/index.ts';
+import type { MemberAccess, TypeApplication } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
@@ -46,24 +50,37 @@ import { parameterType } from '../../types/written/resolve-type.ts';
 import { type Instantiation, instantiate } from '../conformance/conformance.ts';
 import type { Passing } from './call-arguments.ts';
 import { type Candidate, callCandidates, staticCandidates, staticTargetOf } from './candidates.ts';
-import { type Application, chooseAsValue, signatureOf } from './choice.ts';
+import { type Application, type Choice, chooseAsValue, signatureOf } from './choice.ts';
 
-/** Functions an expression names as a value: where, by what name in messages, and which. */
+/**
+ * Functions an expression names as a value: where, by what name in messages, which, and any type
+ * arguments written after the name.
+ */
 export interface NamedFunctions {
   readonly site: Identifier | MemberAccess;
   readonly name: string;
   /** The functions it may mean where a value of `expected` is wanted. */
   readonly candidates: (expected: Type | undefined) => readonly Candidate[];
+  readonly written?: readonly Type[] | undefined;
 }
+
+/** What may name functions as a value: a name, plain or qualified, maybe given type arguments. */
+export type FunctionNaming = Identifier | MemberAccess | TypeApplication;
 
 /**
  * The functions `node` names, when it names functions: a top-level name, plain or through a
- * namespace, a type's static functions, or a variant's constructor; undefined for anything else.
+ * namespace, a type's static functions, or a variant's constructor, with any type arguments written
+ * after it; undefined for anything else.
  */
 export function namedFunctions(
   context: BodyContext,
-  node: Identifier | MemberAccess,
+  node: FunctionNaming,
 ): NamedFunctions | undefined {
+  if (node.kind === 'TypeApplication') {
+    const named = namedFunctions(context, node.target);
+    const written = node.typeArguments.map((argument) => context.resolveType(argument));
+    return named === undefined ? undefined : { ...named, written };
+  }
   if (node.kind === 'Identifier') {
     return namedBy(context, node, context.entityOf(node));
   }
@@ -175,7 +192,7 @@ export type OpenParts = (part: Type) => boolean;
  */
 export function functionValueType(
   context: BodyContext,
-  node: Identifier | MemberAccess,
+  node: FunctionNaming,
   shape: FunctionType | undefined,
   isOpen: OpenParts,
 ): FunctionType | undefined {
@@ -196,7 +213,7 @@ function fittedValue(
   const { checker } = context;
   const site = searchSite(checker);
   if (shape === undefined) {
-    const lone = loneFunction(context, named.candidates(undefined));
+    const lone = loneFunction(context, named, undefined);
     return lone === undefined ? undefined : instantiatedValue(context, lone, site, undefined)?.type;
   }
   const holes = holesIn(shape, isOpen);
@@ -227,7 +244,7 @@ function holesIn(type: Type, isOpen: OpenParts): Substitution {
 }
 
 /**
- * The function `named` means taking `shape`'s parameters, else its lone non-generic function,
+ * The function `named` means taking `shape`'s parameters, else its lone function (`loneFunction`),
  * whatever its parameters are.
  */
 export function chosenValue(
@@ -236,7 +253,7 @@ export function chosenValue(
   shape: FunctionType | undefined,
 ): Application | undefined {
   const chosen = shape === undefined ? undefined : chosenFor(context, named, shape);
-  return chosen ?? loneFunction(context, named.candidates(shape));
+  return chosen ?? loneFunction(context, named, shape);
 }
 
 /**
@@ -290,7 +307,7 @@ export function functionsAccepted(
   context: BodyContext,
   named: NamedFunctions,
 ): Accepts | undefined {
-  const lone = loneFunction(context, named.candidates(undefined));
+  const lone = loneFunction(context, named, undefined);
   if (lone?.signature.parameters.every((slot) => !slot.hasDefault && slot.rest === undefined)) {
     return undefined;
   }
@@ -318,28 +335,50 @@ function takesCount(context: BodyContext, named: NamedFunctions, shape: Function
     type: undefined,
     passing: passingOf(slot.reference),
   }));
-  return chooseAsValue(context.checker, candidates, arguments_).kind !== 'none';
+  return chooseAsValue(context.checker, candidates, arguments_, named.written).kind !== 'none';
 }
 
-/** The application of the one candidate, when there is one and it isn't generic. */
+/**
+ * The application of the one function `named` means where `shape` is expected, whatever its
+ * parameters are: its one candidate, when that isn't generic; or, given type arguments, the one
+ * candidate they suit, as they would a call's (§3.5).
+ */
 function loneFunction(
   context: BodyContext,
-  candidates: readonly Candidate[],
+  named: NamedFunctions,
+  shape: FunctionType | undefined,
 ): Application | undefined {
-  const [only, ...others] = candidates;
-  if (only === undefined || others.length > 0) {
+  const candidates = named.candidates(shape);
+  if (named.written === undefined && candidates.length > 1) {
     return undefined;
   }
-  const signature = signatureOf(context.checker, only.declaration, only.requirement?.substitution);
-  if (signature.typeParameters.length > 0) {
-    return undefined;
+  const [only, ...others] = candidates.flatMap((candidate) => {
+    const choice = ownChoice(context, candidate, named);
+    return choice.kind === 'chosen' ? [choice.application] : [];
+  });
+  return others.length === 0 ? only : undefined;
+}
+
+/**
+ * How `candidate` takes its own parameters with the type arguments written after `named`, which
+ * leave its parameters' types to the instantiation; with none written, only a non-generic one
+ * takes them, as they are, since only an expected type instantiates a generic one.
+ */
+export function ownChoice(
+  context: BodyContext,
+  candidate: Candidate,
+  { written }: NamedFunctions,
+): Choice {
+  const { declaration, requirement } = candidate;
+  const signature = signatureOf(context.checker, declaration, requirement?.substitution);
+  if (written === undefined && signature.typeParameters.length > 0) {
+    return { kind: 'none', reasons: [] };
   }
   const arguments_ = signature.parameters.map((slot) => ({
-    type: slot.type,
+    type: written === undefined ? slot.type : undefined,
     passing: passingOf(slot.reference),
   }));
-  const choice = chooseAsValue(context.checker, [only], arguments_);
-  return choice.kind === 'chosen' ? choice.application : undefined;
+  return chooseAsValue(context.checker, [candidate], arguments_, written);
 }
 
 /**
@@ -361,7 +400,7 @@ function chosenFor(
     exact: true,
   }));
   const candidates = takingAsync(named.candidates(shape), shape);
-  const choice = chooseAsValue(context.checker, candidates, arguments_);
+  const choice = chooseAsValue(context.checker, candidates, arguments_, named.written);
   return choice.kind === 'chosen' ? choice.application : undefined;
 }
 

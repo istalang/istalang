@@ -45,4 +45,9 @@ export const closureTemplates = {
     message: (name: string, expected: string) =>
       `'${name}' fits no ${expected}: none of the functions it names takes those parameters as they are.`,
   },
+  typeArgumentsOnValue: {
+    code: 5508,
+    message: (name: string) =>
+      `Only a function named as a value takes type arguments, and '${name}' names none (§3.5).`,
+  },
 } as const;

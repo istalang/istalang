@@ -1,13 +1,16 @@
 /**
- * Postfix forms (§3.9): calls with type arguments (§3.5), `&` and spread arguments (§3.7, §2),
- * indexing and slicing, member access, `?.`, `->` and `?`.
+ * Postfix forms (§3.9): calls with type arguments (§3.5), a name given type arguments as a value
+ * (§3.14), `&` and spread arguments (§3.7, §2), indexing and slicing, member access, `?.`, `->`
+ * and `?`.
  */
 
+import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import {
   reportedNothing,
   reportedOnce,
 } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
+import { isKeyword } from '../../../syntax/tokens/index.ts';
 import { spanIn } from '../../../syntax/tree/positions.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { dumpClean, named, parseAs, reported } from '../../parse.test-kit.ts';
@@ -57,6 +60,13 @@ describe('calls', () => {
   );
 });
 
+const valueSpelling = /^[a-z][a-zA-Z0-9]{0,4}$/u;
+const typeSpelling = /^[A-Z][a-zA-Z0-9]{0,4}$/u;
+
+/** Names spelled as a variable's, none a keyword, and as a type's (§2). */
+const valueName = fc.stringMatching(valueSpelling).filter((name) => !isKeyword(name));
+const typeName = fc.stringMatching(typeSpelling);
+
 describe('type arguments (§3.5)', () => {
   it.each([
     [
@@ -71,14 +81,14 @@ describe('type arguments (§3.5)', () => {
       'Shared<Future<Unit>?>(x)',
       `(Call (TypeApplication Shared [(OptionalType (NamedType [Future] [${named('Unit')}]))]) [x])`,
     ],
-    ['a < b > (c)', `(Call (TypeApplication a [${named('b')}]) [c])`],
+    ['a < B > (c)', `(Call (TypeApplication a [${named('B')}]) [c])`],
     ['a + f<T>(x)', `(Binary a + (Call (TypeApplication f [${named('T')}]) [x]))`],
     ['xs.map<Int>(f)', `(Call (TypeApplication (MemberAccess xs map) [${named('Int')}]) [f])`],
     ['a < 1 > (b)', '(Call (TypeApplication a [(LiteralType 1)]) [b])'],
     ['a < -1 > (b)', '(Call (TypeApplication a [(LiteralType (Unary - 1))]) [b])'],
     [
-      'a < b | c > (d)',
-      `(Call (TypeApplication a [(UnionType [${named('b')} ${named('c')}])]) [d])`,
+      'a < B | C > (d)',
+      `(Call (TypeApplication a [(UnionType [${named('B')} ${named('C')}])]) [d])`,
     ],
     [
       'get<S, "region">{}',
@@ -96,8 +106,90 @@ describe('type arguments (§3.5)', () => {
     ['a < 1.5 > (c)', '(ChainedComparison [a 1.5 (Parenthesized c)] [< >])'],
     ['a < b + c > (d)', '(ChainedComparison [a (Binary b + c) (Parenthesized d)] [< >])'],
     ['f() < b > (c)', '(ChainedComparison [(Call f []) b (Parenthesized c)] [< >])'],
+    ['a < b > (c)', '(ChainedComparison [a b (Parenthesized c)] [< >])'],
+    ['a < b | c > (d)', '(ChainedComparison [a (Binary b | c) (Parenthesized d)] [< >])'],
+    ['f(a < b, c > d)', '(Call f [(Binary a < b) (Binary c > d)])'],
+    ['f(a < b, c > (d))', '(Call f [(Binary a < b) (Binary c > (Parenthesized d))])'],
+    ['f(a < B, C > d)', '(Call f [(Binary a < B) (Binary C > d)])'],
+    ['a < B > -c', '(ChainedComparison [a B (Unary - c)] [< >])'],
+    ['a < B >> c', '(Binary a < (Binary B >> c))'],
+    ['a < B >= c', '(ChainedComparison [a B c] [< >=])'],
+    ['[\n  a < b\n  c > d\n]', '(ArrayLiteral [(Binary a < b) (Binary c > d)])'],
   ])('reads %s as comparisons, reporting nothing', (text, tree) => {
     expect(dumpClean('expression', text)).toBe(tree);
+  });
+
+  it.each([
+    ['parse<Int>', `(TypeApplication parse [${named('Int')}])`],
+    [
+      'Result.Ok<Int, String>',
+      `(TypeApplication (MemberAccess Result Ok) [${named('Int')} ${named('String')}])`,
+    ],
+    [
+      'xs.map(math.parse<Int>)',
+      `(Call (MemberAccess xs map) [(TypeApplication (MemberAccess math parse) [${named('Int')}])])`,
+    ],
+    [
+      'f(g<Int>, h<Array<Int>>)',
+      `(Call f [(TypeApplication g [${named('Int')}]) (TypeApplication h [(NamedType [Array] [${named('Int')}])])])`,
+    ],
+    [
+      'f<Int> == g<Int>',
+      `(Binary (TypeApplication f [${named('Int')}]) == (TypeApplication g [${named('Int')}]))`,
+    ],
+    ['(f<Int>)', `(Parenthesized (TypeApplication f [${named('Int')}]))`],
+    [
+      '[\n  parse<Int>\n  parse<Float>\n]',
+      `(ArrayLiteral [(TypeApplication parse [${named('Int')}]) (TypeApplication parse [${named('Float')}])])`,
+    ],
+    [
+      '[\n  parse<Int>\n  (x)\n]',
+      `(ArrayLiteral [(TypeApplication parse [${named('Int')}]) (Parenthesized x)])`,
+    ],
+  ])('reads %s as a value given type arguments', (text, tree) => {
+    expect(dumpClean('expression', text)).toBe(tree);
+  });
+
+  it("reads a list's comparisons of variables as comparisons, however they are laid out", () => {
+    const layouts = fc.constantFrom(
+      (a: string, b: string, c: string, d: string) => `f(${a} < ${b}, ${c} > ${d})`,
+      (a: string, b: string, c: string, d: string) => `f(${a} < ${b}, ${c} > (${d}))`,
+      (a: string, b: string, c: string, d: string) => `[\n  ${a} < ${b}\n  ${c} > ${d}\n]`,
+      (a: string, b: string, c: string, d: string) => `(${a} < ${b}, ${c} > ${d})`,
+    );
+    fc.assert(
+      fc.property(
+        layouts,
+        fc.tuple(valueName, valueName, valueName, valueName),
+        (layout, names) => {
+          const tree = dumpClean('expression', layout(...names));
+          expect(tree).not.toContain('NOT CLEAN');
+          expect(tree).not.toContain('TypeApplication');
+        },
+      ),
+    );
+  });
+
+  it('reads a name before types ending where no comparison goes on as given them', () => {
+    const closings = fc.constantFrom(
+      (applied: string) => `f(${applied})`,
+      (applied: string) => `f(${applied}, x)`,
+      (applied: string) => `[${applied}]`,
+      (applied: string) => `${applied} == g`,
+      (applied: string) => applied,
+    );
+    fc.assert(
+      fc.property(
+        closings,
+        valueName,
+        fc.array(typeName, { minLength: 1, maxLength: 3 }),
+        (closing, name, types) => {
+          const applied = `${name}<${types.join(', ')}>`;
+          const tree = dumpClean('expression', closing(applied));
+          expect(tree).toContain(`(TypeApplication ${name} [${types.map(named).join(' ')}])`);
+        },
+      ),
+    );
   });
 
   it('parses the call after type arguments for real, so its errors are reported', () => {

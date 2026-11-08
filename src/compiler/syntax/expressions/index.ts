@@ -208,14 +208,14 @@ export interface Lambda extends NodeOf<'Lambda'> {
  * arguments written after the callee's name make it a `TypeApplication`: `f<Int>(x)`.
  */
 export interface Call extends NodeOf<'Call'> {
-  readonly callee: Expression | TypeApplication;
+  readonly callee: Expression;
   readonly isOptional: boolean;
   readonly arguments: readonly CallArgument[];
 }
 
 /**
  * `f<Int>`, `Result.Ok<Int, String>`: type arguments written after a name or a qualified name
- * (§3.5), as a call's callee.
+ * (§3.5), the one place an expression takes them, called or named as a value (§3.14).
  */
 export interface TypeApplication extends NodeOf<'TypeApplication'> {
   readonly target: Identifier | MemberAccess;
@@ -409,6 +409,7 @@ export type Expression =
   | IndentedValue
   | Lambda
   | Call
+  | TypeApplication
   | Spawn
   | Reference
   | MemberAccess
@@ -433,7 +434,6 @@ export type Expression =
 
 /** Nodes that occur only as parts of an expression. */
 export type ExpressionPart =
-  | TypeApplication
   | Spread
   | NamedArgument
   | TemplateText

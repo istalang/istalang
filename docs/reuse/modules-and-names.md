@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-10-28
-last_updated: 2026-11-06
+last_updated: 2026-11-08
 tags: [reuse, language, modules, program, binder, names]
 ---
 
@@ -14,7 +14,7 @@ tags: [reuse, language, modules, program, binder, names]
 
 - list the language's built-in primitive type names, or the one a lowercase leftover (`int`) became → `primitiveNames`, `PrimitiveName`, `primitiveOnceSpelled` (`src/foundation/language/primitives.ts`)
 - spell a static function name `Owner.name` (`Time.parse`) → `staticName` (`src/foundation/language/static-names.ts`)
-- test a name against the naming conventions, its privacy, whether it is the unnamed `_`, whether a bare name binds in a pattern, or whether a built-in type takes it → `followsConvention`, `Convention`, `isPrivate`, `isUnnamed`, `bindsInPattern`, `isBuiltInTypeName` (`src/foundation/language/naming.ts`)
+- test a name against the naming conventions, its privacy, whether it is the unnamed `_`, whether a bare name binds in a pattern, whether it is cased as a type's (as an expression's `<…>` asks of its names), or whether a built-in type takes it → `followsConvention`, `Convention`, `isPrivate`, `isUnnamed`, `bindsInPattern`, `casedAsType`, `isBuiltInTypeName` (`src/foundation/language/naming.ts`)
 - spell a module-qualified declaration name `module.name` (`prelude.Future`) → `qualifiedName` (`src/foundation/language/well-known/index.ts`)
 - spell a checked declaration's module-qualified name or extern/startable key → `qualifiedNameOf`, `keyOf`, `spelledType` (`src/compiler/lowering/tables/names.ts`)
 - build an extern key (`prelude.add(Int, Float)`) from a signature or native table → `externKey`, `nativeKey`, `keyTypeText` (`src/definition/extern-key.ts`)
@@ -80,6 +80,6 @@ tags: [reuse, language, modules, program, binder, names]
 ## One-way rules
 
 - Never spell a language-known module, declaration, variant, annotation or protocol function as a string literal; import it from `src/foundation/language/well-known/index.ts`.
-- Ask whether a name is the unnamed `_` with `isUnnamed`, and whether a bare pattern name binds with `bindsInPattern` (`src/foundation/language/naming.ts`); never compare against `'_'` or test a letter's case by hand.
+- Ask whether a name is the unnamed `_` with `isUnnamed`, whether a bare pattern name binds with `bindsInPattern`, and whether a name is cased as a type's with `casedAsType` (`src/foundation/language/naming.ts`); never compare against `'_'` or test a letter's case by hand.
 - Spell `Owner.name` with `staticName`, `module.name` with `qualifiedName`, and extern keys with `externKey` (`src/definition/extern-key.ts`).
 - `Program` loading does no I/O and imposes no path syntax; only `src/compiler/compile.ts` coordinates phases after `buildProgram`.

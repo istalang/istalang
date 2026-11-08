@@ -132,14 +132,15 @@ export function choose(
 
 /**
  * Chooses among `candidates` for a function value taking `callArguments`
- * (resolution/choosing/binding.ts).
+ * (resolution/choosing/binding.ts), and any type arguments written after its name.
  */
 export function chooseAsValue(
   checker: CheckerContext,
   candidates: readonly Candidate[],
   callArguments: readonly CallArgument[],
+  written: readonly Type[] | undefined,
 ): Choice {
-  return chosenAmong(checker, candidates, { callArguments, written: undefined, binder: bindValue });
+  return chosenAmong(checker, candidates, { callArguments, written, binder: bindValue });
 }
 
 function chosenAmong(

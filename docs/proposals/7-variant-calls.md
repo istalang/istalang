@@ -70,6 +70,7 @@ Implemented on `refactor/folders` (`fb190abc` onward).
 ### 3. A variant is a function value
 
 - **Named as a value** as a static function is (§3.14): `vs.map(Result.Ok)`, `const reject = Verdict.Rejected`.
+- **Given type arguments** as any function named as a value is (§3.5, §3.14): `vs.map(Result.Ok<Int, String>)`, or bare, `const ok: fn(Int) -> Result<Int, String> = Ok<Int, String>`. They give `map` the error type it can't infer from `Result.Ok`.
 - **Bare** where an expected function type's result is an enum having it: `const f: fn(Int) -> Result<Int> = Ok`. With no enum to find it in, as in `xs.map(Ok)`, where `map`'s result is still open, it is an error naming `Result.Ok`.
 - **It behaves as the function it is.** It is a closure capturing nothing, so its type is sendable. It equals another naming the same variant with the same type arguments. Calling it builds the variant.
 - **Defaults and rest,** as for any function value (§3.14):

@@ -324,6 +324,7 @@ const constructs: Handlers<FlowWalk, Construct, [Opaque], Flow> = {
     return state;
   },
   Call: link,
+  TypeApplication: children,
   Reference: children,
   MemberAccess: link,
   TupleElement: link,
