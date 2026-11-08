@@ -122,7 +122,7 @@ export function writtenFor(
  * Why the written type arguments don't suit `typeParameters`, if they don't: too few or too many,
  * or one for a pack that isn't a tuple type (§3.5).
  */
-function typeArgumentsInapplicability(
+export function typeArgumentsInapplicability(
   { typeParameters }: Takes,
   written: readonly Type[] | undefined,
 ): Inapplicability | undefined {

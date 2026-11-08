@@ -50,7 +50,7 @@ import { futureArgument, futureOf } from '../../types/type/well-known.ts';
 import { namedType } from '../../types/written/named-types.ts';
 import { parameterType } from '../../types/written/resolve-type.ts';
 import { type Instantiation, instantiate } from '../conformance/conformance.ts';
-import { writtenFor } from './applicability.ts';
+import { typeArgumentsInapplicability, writtenFor } from './applicability.ts';
 import type { CallArgument, Passing, SignatureSlot } from './call-arguments.ts';
 import { type Candidate, callCandidates, staticCandidates, staticTargetOf } from './candidates.ts';
 import { type Application, type Choice, chooseAsValue, signatureOf } from './choice.ts';
@@ -376,9 +376,10 @@ function loneFunction(
 
 /**
  * How `candidate` takes its own parameters given the type arguments written after `named`
- * (`ownArguments`): only when they and the defaults give every type parameter, a pack's included,
- * since only an expected type instantiates a generic function further; with none written, only a
- * non-generic one takes them.
+ * (`ownArguments`): type arguments it can't take are refused as a call's are (§3.5); else it takes
+ * them only when they and the defaults give every type parameter, a pack's included, since only
+ * an expected type instantiates a generic function further; with none written, only a non-generic
+ * one takes them.
  */
 export function ownChoice(
   context: BodyContext,
@@ -388,6 +389,10 @@ export function ownChoice(
   const { checker } = context;
   const { declaration, requirement } = candidate;
   const signature = signatureOf(checker, declaration, requirement?.substitution);
+  const counted = typeArgumentsInapplicability(signature, written);
+  if (counted !== undefined) {
+    return { kind: 'none', reasons: [counted] };
+  }
   const given = writtenFor(signature, written);
   const isOpen = (parameter: TypeParameter) =>
     given === undefined || (!given.has(parameter) && parameter.defaultType === undefined);

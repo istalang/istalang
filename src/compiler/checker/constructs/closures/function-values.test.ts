@@ -98,6 +98,19 @@ describe('a function named as a value with type arguments', () => {
     expect(reported(text)).toEqual(reportedNothing);
   });
 
+  it('counts its written type arguments as a call does, a function type expected or not', () => {
+    const text = lines(
+      'fn pair<A, B>(a: A, b: B) -> (A, B): (a, b)',
+      'fn main():',
+      '  const p = pair<Int>',
+      '  const q: fn(Int, String) -> (Int, String) = pair<Int>',
+      '  drop p',
+      '  drop q',
+    );
+    const count = checkerDiagnostics.typeArgumentCount.code;
+    expect(reported(text).codes).toEqual([count, count]);
+  });
+
   it.each([
     ['a type parameter', 'fn f<A = Int, B>(b: B) -> B: b'],
     ['a pack', 'fn f<A = Int, ...B>(...items: B) -> B: items'],
