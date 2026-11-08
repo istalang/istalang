@@ -199,11 +199,14 @@ contravariant positions.
   type arguments, packs' exact items).
 - **The receiver binds exactly,** as Swift and Rust bind a method's `Self`: decomposing it
   against `self`'s type gives equalities at every position. So `xs.includes(none)` for
-  `xs: Array<Int>` is 5001, not a hidden rebuild of `xs` at `Array<Int?>`.
+  `xs: Array<Int>` fails (5002 among the prelude's several `includes`, 5001 for a lone generic
+  method), not a hidden rebuild of `xs` at `Array<Int?>`.
 - **The expected type:** the result must fit the expected type, decomposed the same way.
   - A bare variable on the left takes the whole right side as an upper bound (`T <: Status`).
-  - A union on the left constrains each member (`V | None <: Json` gives `V <: Json`); nothing is
-    subtracted from the right.
+  - A union on the left constrains each member the right doesn't already hold
+    (`V | None <: Json` gives `V <: Json`; `T | None <: Int | None` gives `T <: Int`), and a
+    union on the right loses the left's fixed members (`Contact | None <: T | None` gives
+    `Contact <: T`).
   - A head against a union is decomposed against the one member it can be; if several could be,
     against the one whose bounds the arguments satisfy (the variant rule, generalised); otherwise
     it gives nothing.
@@ -364,7 +367,7 @@ base (today's widening), and a type with `None` into its optional.
 | `any Source<Int>` into `any Source<Int?>`, where `Source<T>` only gives `T`; its `next()` | 5001 | checks; an `Int?` |
 | `const s: any Source<Int?> = IntSource{}`; `match s: case IntSource` | 5001 | checks; reachable |
 | `any Sink<Int>` into `any Sink<Int?>`, where `Sink<T>` takes `T` | 5001 | 5001 |
-| `xs.includes(none)` for `xs: Array<Int>` | 5001 | 5001 (the receiver binds exactly) |
+| `xs.includes(none)` for `xs: Array<Int>` | 5001 | 5002 (the receiver binds exactly) |
 | `Map<String, Int>` into `Map<String, Int?>`; into `Map<String?, Int>` | 5001, 5001 | checks, 5001 |
 | `Array<(Int,)>` into `Array<Int>` | 5001 | 5001 |
 | `[...xs, none]` for `xs: Array<Int>` | 5001 | `Array<Int?>`, `xs`'s items wrapped |
