@@ -10,16 +10,12 @@
  *   the node giving the value, or, for a value an assignment writes, on its part
  *   (constructs/statements/assignments.ts). Nothing is recomputed later, so lowering sees what was
  *   checked.
- * - A node is checked once. A literal of items each with a type of its own, checked before the type
- *   it is built as is decided (§3.7: a call's argument, a producer agreeing with others), is built
- *   again as that type (`rebuild`): its own literals are checked again as their parts, and every
- *   other item keeps what it was checked to have, fitted to its part, as an item an argument
- *   literal checked ahead of it does (constructs/expressions/literals/literal-items.ts). So is a
- *   tuple or struct literal whose items' types only checking tells, and a collection literal an
- *   `any` member might take whole, where its own type doesn't go into the union expected: as the
- *   one member its checked items build it as (§2,
- *   constructs/expressions/literals/built-members.ts). Any other collection literal is built as its
- *   member before its items are checked, so they agree on that member's item.
+ * - A node is checked once, but an item an argument literal checked ahead of it, which keeps what it
+ *   was checked to have (constructs/expressions/literals/literal-items.ts), and a call or literal
+ *   joining another's system, recorded again once it settles (resolution/applying/joint.ts). A value
+ *   where a union is expected is checked as the member it is built as when that is decided before
+ *   it is checked (§2, constructs/expressions/literals/built-members.ts); otherwise it goes in as
+ *   fitting puts it, converted where its parts need (§3.5).
  * - The facts the body's rules gather (variables, the functions it nests, struct literals) are
  *   units of their own, beside those rules; this class only composes them. What they record of a
  *   node is kept per pass of a field loop (passes.ts), so the body reads as each pass checked it. A
@@ -30,7 +26,6 @@
 
 import type { Diagnostic } from '../../../../foundation/diagnostics/diagnostic.ts';
 import { handlerOf } from '../../../../foundation/structures/kind-table.ts';
-import { withPushed } from '../../../../foundation/structures/stack.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Entity, VariantEntity } from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
@@ -42,7 +37,7 @@ import type {
   IndentedValue,
 } from '../../../syntax/expressions/index.ts';
 import type { BuiltLiteral } from '../../../syntax/expressions/literals/indented-values.ts';
-import { isItemsLiteral, unparenthesized } from '../../../syntax/expressions/readings.ts';
+import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type {
   Assignment,
   Block,
@@ -65,13 +60,9 @@ import { CollectionForms } from '../../constructs/expressions/collections/collec
 import {
   acceptedPartOf,
   acceptsOf,
-  checkedPartOf,
   expressionHandlers,
 } from '../../constructs/expressions/expressions.ts';
-import {
-  builtAsChecked,
-  builtMember,
-} from '../../constructs/expressions/literals/built-members.ts';
+import { builtMember } from '../../constructs/expressions/literals/built-members.ts';
 import { argumentPartOf } from '../../constructs/expressions/literals/literal-items.ts';
 import { StructLiterals } from '../../constructs/expressions/structs/literal-sources.ts';
 import { Iterations } from '../../constructs/loops/iteration.ts';
@@ -140,8 +131,6 @@ export class BodyChecker implements BodyContext {
   readonly #records = bodyRecords(this.#passes);
   /** The body's own result, which only the body's own function returns into. */
   readonly #result: ReturnScope;
-  /** The literals being built again as another type (`rebuild`), their items kept. */
-  readonly #rebuilt: Expression[] = [];
   /** Items checked ahead of the argument literal holding them (`argumentPart`), kept as checked. */
   readonly #checkedAhead = new Set<Expression>();
 
@@ -219,8 +208,7 @@ export class BodyChecker implements BodyContext {
         this.recordKey(node, keysOwner(this.checker.fitting, expected));
       }
     }
-    const kept = this.#rebuilt.length > 0 || this.#checkedAhead.has(node);
-    const checked = kept && !isItemsLiteral(node) ? this.#records.types.get(node) : undefined;
+    const checked = this.#checkedAhead.has(node) ? this.#records.types.get(node) : undefined;
     if (checked !== undefined) {
       return checked;
     }
@@ -228,8 +216,7 @@ export class BodyChecker implements BodyContext {
       expected === undefined
         ? undefined
         : builtMember(this, node, expected, () => this.acceptedPart(node));
-    const type = this.#record(node, handlerOf(expressionHandlers, node)(this, node, guide));
-    return guide?.kind === 'union' ? builtAsChecked(this, node, type, guide) : type;
+    return this.#record(node, handlerOf(expressionHandlers, node)(this, node, guide));
   }
 
   checkWith(node: Expression, check: () => Type): Type {
@@ -242,10 +229,6 @@ export class BodyChecker implements BodyContext {
 
   acceptedPart(node: Expression | undefined) {
     return acceptedPartOf(this, node);
-  }
-
-  checkedPart(node: Expression | undefined) {
-    return checkedPartOf(this, node);
   }
 
   argumentPart(node: Expression): AcceptedPart {
@@ -297,10 +280,6 @@ export class BodyChecker implements BodyContext {
       this.fit(type, expected, node);
     }
     return type;
-  }
-
-  rebuild(node: Expression, type: Type): Type {
-    return withPushed(this.#rebuilt, node, () => this.expect(node, type));
   }
 
   fit(found: Type, expected: Type, site: ValueSite, at = site.span): void {

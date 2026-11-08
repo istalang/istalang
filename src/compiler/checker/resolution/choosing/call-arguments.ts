@@ -49,11 +49,6 @@ export interface CallArgument {
   readonly passing: Passing;
   readonly accepts?: Accepts | undefined;
   /**
-   * For a literal of items each with a type of its own, which parameter types its items can build
-   * it as where its own type doesn't fit one (§3.7).
-   */
-  readonly builds?: Accepts | undefined;
-  /**
    * Whether it fits only a parameter of its type exactly, with no conversion: a witness's (§3.10),
    * or a spread's items, which are copied or iterated as they are (§3.3).
    */
@@ -65,10 +60,12 @@ export interface CallArgument {
    */
   readonly joining?: readonly Inference[] | undefined;
   /**
-   * For a lambda the call decides whose parameters are written, the function type they make it,
-   * its result `Never` (constructs/closures/lambdas.ts `writtenInputs`).
+   * For an argument the call decides, the type it is known to have so far, which bounds what the
+   * call gives it while it is chosen: a lambda's written parameters, its result `Never`
+   * (constructs/closures/lambdas.ts `writtenInputs`), or a `struct{…}`'s shape, which builds the
+   * struct its parameter settles to (§3.1).
    */
-  readonly inputs?: Type | undefined;
+  readonly known?: Type | undefined;
   readonly isSpread?: boolean | undefined;
 }
 

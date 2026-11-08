@@ -249,9 +249,6 @@ export function indentedAccepts(context: BodyContext, node: IndentedValue): Acce
     if (part.kind === 'decided') {
       return part.accepts(expected, isOpen);
     }
-    if (part.builds !== undefined) {
-      return part.builds(expected, isOpen);
-    }
     return part.type === undefined || context.checker.fitOf(part.type, expected) !== undefined;
   };
 }

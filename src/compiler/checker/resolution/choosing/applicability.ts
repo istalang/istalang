@@ -24,7 +24,6 @@ import type { Binding } from '../../surface/resolved-call.ts';
 import { reshapes } from '../../types/fitting/fit/index.ts';
 import { Inference } from '../../types/inference/infer.ts';
 import type { Substitution } from '../../types/parts/substitution.ts';
-import { parametersIn } from '../../types/parts/type-parts.ts';
 import { fillsPack } from '../../types/type/function-types.ts';
 import type { ParameterSlot, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
@@ -90,10 +89,10 @@ export function takenBy(
 
 /**
  * Whether `taken` takes an argument only reshaped: a plain function made async (§3.14), a lambda
- * the call decides by the type its written parameters make it among them, converted
- * between a one-element tuple and its element (§3.15) or part by part (§3.5), or a literal built as
- * a type other than its own (§3.7). Choosing asks it only to break a tie, so it isn't part of
- * `Taken`.
+ * the call decides by the type its written parameters make it among them, converted between a
+ * one-element tuple and its element (§3.15) or part by part (§3.5), or a `struct{…}` built as a
+ * struct rather than its own shape (§3.1). Choosing asks it only to break a tie, so it isn't part
+ * of `Taken`.
  */
 export function reshapesArguments(
   checker: Pick<CheckerContext, 'fitOf'>,
@@ -102,12 +101,12 @@ export function reshapesArguments(
 ): boolean {
   return callArguments.some((argument, index) => {
     const slot = slots.get(index);
-    const type = argument.type ?? argument.inputs;
+    const type = argument.type ?? argument.known;
     if (type === undefined || slot === undefined) {
       return false;
     }
     const fit = checker.fitOf(type, inference.substituted(slot.type));
-    return fit === undefined ? argument.builds !== undefined : reshapes(fit);
+    return fit === undefined ? argument.type === undefined : reshapes(fit);
   });
 }
 
@@ -233,30 +232,13 @@ function judgedArgument(
   return fits ? 'fits' : { index, expected: inference.substituted(slot.type) };
 }
 
-/** Matches a value argument of `type` as it is written: a literal, a struct literal, or else. */
-function matchWritten(
-  slot: ParameterSlot,
-  { literal, builds }: CallArgument,
-  type: Type,
-  inference: Inference,
-): boolean {
-  if (literal !== undefined) {
-    return inference.matchLiteral(slot.type, literal);
-  }
-  return builds !== undefined && type.kind === 'anonymous'
-    ? inference.matchShape(slot.type, type)
-    : inference.match(slot.type, type);
-}
-
 /**
  * Whether an argument with a type fits `slot`, matching it for inference. A reference's type is
  * its parameter's exactly, as an exact argument's is: no wrap into `T?` reaches the caller's place.
  * A method's receiver gives the type parameters it meets as they are, by reference exactly where
  * `&self` takes it (types/inference/infer.ts `matchReceiver`). A written literal is matched as
- * one, its literal type fresh (§2). A literal of items with types of their own fits a parameter
- * whose type is known, which its own type doesn't fit, when its items can build it as that type
- * (§3.7); inference never goes through building, so a parameter type still to be found is matched
- * with the literal's own, a struct literal's shape building the struct it settles to (§3.1).
+ * one, its literal type fresh (§2); a literal of items fits a parameter its type converts into
+ * (§3.5).
  */
 function typedFits(
   slot: ParameterSlot,
@@ -264,17 +246,15 @@ function typedFits(
   type: Type,
   inference: Inference,
 ): boolean {
-  const { builds } = argument;
   if (argument.passing === 'receiver') {
     return inference.matchReceiver(slot.type, type, slot.reference);
   }
   if (argument.exact === true || argument.passing === 'reference') {
     return inference.matchExactly(slot.type, type);
   }
-  const matched = matchWritten(slot, argument, type, inference);
-  const expected = inference.substituted(slot.type);
-  const known = !parametersIn(expected).some((each) => inference.isUnknown(each));
-  return matched || (known && builds?.(expected, () => false) === true);
+  return argument.literal === undefined
+    ? inference.match(slot.type, type)
+    : inference.matchLiteral(slot.type, argument.literal);
 }
 
 /**
@@ -290,14 +270,20 @@ function addedBy<Item>(
 
 /**
  * Whether an argument the chosen function decides can take a parameter of type `declared`, a type
- * parameter not settled yet open, since what bounds it loosely may still grow; a lambda's written
- * parameters bound what the call gives them (`inputs`).
+ * parameter not settled yet open, since what bounds it loosely may still grow.
+ * What it is known to be only bounds what the call gives it (`known`), as far as it can: a
+ * `struct{…}`'s shape as one, building the struct the parameter settles to (§3.1).
  */
 function acceptsDecided(argument: CallArgument, declared: Type, inference: Inference): boolean {
   const isOpen = (part: Type) => part.kind === 'parameter' && inference.isUnknown(part.declaration);
-  const { accepts, inputs } = argument;
+  const { accepts, known } = argument;
   if (accepts !== undefined && !accepts(inference.settledIn(declared), isOpen)) {
     return false;
   }
-  return inputs === undefined || inference.match(declared, inputs);
+  if (known?.kind === 'anonymous') {
+    inference.matchShape(declared, known);
+  } else if (known !== undefined) {
+    inference.match(declared, known);
+  }
+  return true;
 }

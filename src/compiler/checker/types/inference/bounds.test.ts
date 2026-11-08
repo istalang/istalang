@@ -20,7 +20,7 @@ function store(): BoundStore {
     fits: (found, expected) => sameType(found, expected),
     same: sameType,
     isOpen: () => false,
-    builds: () => false,
+    takesShape: () => false,
     constrain: (found, expected) => sameType(found, expected),
     equate: sameType,
   });
@@ -32,7 +32,7 @@ describe('two related variables', () => {
   it('hand each other the bounds they had', () => {
     const [lower, upper, bounds] = [variable('T'), variable('U'), store()];
     expect(
-      bounds.addLower(lower, { type: intType, fresh: false, builds: false, origin: 'argument' }),
+      bounds.addLower(lower, { type: intType, fresh: false, isShape: false, origin: 'argument' }),
     ).toBe(true);
     expect(bounds.addUpper(upper, { type: intType, origin: 'expected' })).toBe(true);
     expect(bounds.relate(lower, upper)).toBe(true);
@@ -47,7 +47,12 @@ describe('two related variables', () => {
     expect(types(bounds.of(lower).upper)).toEqual([intType]);
     const mark = bounds.mark();
     expect(
-      bounds.addLower(lower, { type: stringType, fresh: false, builds: false, origin: 'argument' }),
+      bounds.addLower(lower, {
+        type: stringType,
+        fresh: false,
+        isShape: false,
+        origin: 'argument',
+      }),
     ).toBe(false);
     bounds.rollback(mark);
     expect(bounds.of(lower).lower).toEqual([]);

@@ -5,17 +5,16 @@
  *   and gives the node's type; the context records it.
  * - Accepting: passed to a call, an expression with no type of its own has the type the chosen
  *   function decides (§3.5), so choosing asks it which parameter types it can take. Each kind says
- *   beside its own rules: `none`, a bare variant, a lambda with a parameter to infer, functions
- *   named by a name of several or a generic one, and an empty `[]` or `[:]`; a tuple, collection
- *   literal or branching expression holding one, unless what it agrees on is decided by a part with
- *   a type of its own. A part still to be inferred can be anything.
+ *   beside its own rules: `none`, a bare variant, a lambda whose result isn't written, functions
+ *   named by a name of several or a generic one, an empty `[]` or `[:]`, and a `struct{…}`, which
+ *   builds a struct it gives the fields of where one is expected (§3.1); a tuple, collection literal
+ *   or branching expression holding one, unless what it agrees on is decided by a part with a type
+ *   of its own, and a collection literal whose items agree on no one type. A part still to be
+ *   inferred can be anything.
  * - Own type (`knownTypeHandlers`): for a sibling inside a composite argument, the type it has on
  *   its own without running expression checking or reporting (`acceptedPartOf`); an item already
  *   checked, as an argument literal's may be (literals/literal-items.ts), has the type it was
  *   checked to have.
- * - Building (`buildsHandlers`): a literal of items each with a type of its own has that type when
- *   choosing, and, where its own type doesn't fit, is built as a parameter's type its items fit
- *   (§3.7): a struct, tuple, array or map literal.
  */
 
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
@@ -28,13 +27,7 @@ import { isItemsLiteral, unparenthesized } from '../../../syntax/expressions/rea
 import type { Block } from '../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
-import type {
-  AcceptedPart,
-  Accepts,
-  BodyContext,
-  PartReader,
-  TypedPart,
-} from '../../contexts/body-context.ts';
+import type { AcceptedPart, Accepts, BodyContext } from '../../contexts/body-context.ts';
 import { takingUnfolded } from '../../types/fitting/expected.ts';
 import type { Type } from '../../types/type/index.ts';
 import {
@@ -57,11 +50,9 @@ import { checkUnwrap } from './access/optionals.ts';
 import { checkCall } from './calls.ts';
 import {
   arrayAccepts,
-  arrayBuilds,
   arrayKnownType,
-  collectionOpenBuilds,
+  collectionOpenAccepts,
   mapAccepts,
-  mapBuilds,
   mapKnownType,
 } from './collections/collection-accepts.ts';
 import { checkComprehension, checkFieldComprehension } from './collections/comprehensions.ts';
@@ -76,13 +67,12 @@ import { checkSpawn } from './control/spawn.ts';
 import { checkIndentedValue, indentedAccepts } from './literals/indented-values.ts';
 import { checkDurationLiteral } from './literals/literals.ts';
 import { checkTemplate } from './literals/templates.ts';
-import { checkTuple, checkTupleElement, tupleAccepts, tupleBuilds } from './literals/tuples.ts';
+import { checkTuple, checkTupleElement, tupleAccepts } from './literals/tuples.ts';
 import { checkBinary, checkChainedComparison, checkUnary } from './operators/operators.ts';
 import {
   checkNamedLiteral,
   checkStructLiteral,
   structLiteralAccepts,
-  structLiteralBuilds,
   structLiteralKnownType,
 } from './structs/structs.ts';
 import { aloneType, checkNone, noneAccepted, variantCallAccepts } from './structs/variants.ts';
@@ -264,108 +254,27 @@ export function acceptedPartOf(context: BodyContext, node: Expression | undefine
     return { kind: 'typed', type: undefined };
   }
   const accepts = context.accepts(node);
-  if (accepts !== undefined) {
-    return { kind: 'decided', accepts, alone: aloneType(node) };
-  }
-  const read: PartReader = (part) => acceptedPartOf(context, part);
   const type = knownTypeOf(context, node);
-  const builds = buildsOf(context, node, read);
-  // A literal whose items agree on no one type has none of its own: where it goes decides it.
-  return type === undefined && builds !== undefined
-    ? { kind: 'decided', accepts: builds }
-    : { kind: 'typed', type, builds };
-}
-
-/**
- * How `node`, already checked, takes part in building a literal as another type (§3.7): its type
- * as checked, and, for a literal of items, the types its checked items can build it as.
- */
-export function checkedPartOf(context: BodyContext, node: Expression | undefined): TypedPart {
-  if (node === undefined) {
-    return { kind: 'typed', type: undefined };
+  if (accepts !== undefined) {
+    // A `struct{…}` goes where it is decided, a struct it builds (§3.1); alone, it is its shape.
+    return { kind: 'decided', accepts, alone: aloneType(node) ?? type, known: type };
   }
-  const read: PartReader = (part) => checkedPartOf(context, part);
-  return { kind: 'typed', type: context.typeOf(node), builds: buildsOf(context, node, read) };
-}
-
-/** A kind that is no literal of items, or one whose items can't be built as another type. */
-const builtAsItIs = (): undefined => undefined;
-
-// biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-const buildsHandlers: Handlers<BodyContext, Expression, [PartReader], Accepts | undefined> = {
-  Identifier: builtAsItIs,
-  IntegerLiteral: builtAsItIs,
-  FloatLiteral: builtAsItIs,
-  StringLiteral: builtAsItIs,
-  BooleanLiteral: builtAsItIs,
-  Parenthesized: (context, node, read) => buildsOf(context, node.expression, read),
-  Binary: builtAsItIs,
-  Unary: builtAsItIs,
-  Call: builtAsItIs,
-  StructLiteral: structLiteralBuilds,
-  NewStructLiteral: builtAsItIs,
-  IndentedValue: (context, node, read) => {
-    const literal = untypedLiteral(node);
-    return literal === undefined ? undefined : buildsOf(context, literal, read);
-  },
-  MemberAccess: builtAsItIs,
-  TypeApplication: builtAsItIs,
-  TupleElement: builtAsItIs,
-  BlockExpression: builtAsItIs,
-  If: builtAsItIs,
-  DurationLiteral: builtAsItIs,
-  NoneLiteral: builtAsItIs,
-  ArrayLiteral: arrayBuilds,
-  MapLiteral: mapBuilds,
-  Comprehension: builtAsItIs,
-  FieldComprehension: builtAsItIs,
-  Tuple: tupleBuilds,
-  Lambda: builtAsItIs,
-  Reference: builtAsItIs,
-  Index: builtAsItIs,
-  Propagate: builtAsItIs,
-  Spawn: builtAsItIs,
-  Unwrap: builtAsItIs,
-  ChainedComparison: builtAsItIs,
-  TemplateLiteral: builtAsItIs,
-  Dereference: builtAsItIs,
-  Await: builtAsItIs,
-  Is: builtAsItIs,
-  Range: builtAsItIs,
-  Match: builtAsItIs,
-  Select: builtAsItIs,
-  Missing: builtAsItIs,
-  Invalid: builtAsItIs,
-};
-// biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
-
-/**
- * Which parameter types a literal of items each with a type of its own can be built as instead of
- * its own (§3.7), its items read by `read`; undefined for any other expression.
- */
-/**
- * The types `node`'s items, as `read` reads them, can build it as instead of its own (§3.7), and,
- * as every `Accepts` taken apart does, a recursive type or a union it is built as one member of
- * (types/fitting/expected.ts `takingUnfolded`).
- */
-function buildsOf(context: BodyContext, node: Expression, read: PartReader): Accepts | undefined {
-  const builds = handlerOf(buildsHandlers, node)(context, node, read);
-  return builds === undefined ? undefined : takingUnfolded(builds);
+  return { kind: 'typed', type };
 }
 
 /**
- * The types `node` can be built as while its own type is known only through checking (§2,
+ * The types `node` can take while its own type is known only through checking (§2,
  * types/fitting/expected.ts `memberBuilt`): a collection literal's by its shape, maybe
  * parenthesized or written as an indented value naming no type; undefined for any other expression.
  */
-export function openBuildsOf(context: BodyContext, node: Expression): Accepts | undefined {
+export function openAcceptsOf(context: BodyContext, node: Expression): Accepts | undefined {
   const inner = unparenthesized(node);
   const literal = inner.kind === 'IndentedValue' ? untypedLiteral(inner) : inner;
-  const builds =
+  const accepts =
     literal?.kind === 'ArrayLiteral' || literal?.kind === 'MapLiteral'
-      ? collectionOpenBuilds(context, literal)
+      ? collectionOpenAccepts(context, literal)
       : undefined;
-  return builds === undefined ? undefined : takingUnfolded(builds);
+  return accepts === undefined ? undefined : takingUnfolded(accepts);
 }
 
 /** The type `node` has on its own: as checked, for an item checked already, else as written. */
@@ -376,8 +285,8 @@ function knownTypeOf(context: BodyContext, node: Expression): Type | undefined {
 
 /**
  * The literal an indented value naming no type reads as before its type is decided, the one its
- * entries make (`untypedForm`), as a bracket or `struct{…}` literal has its own type and builds;
- * undefined for one naming its type, which builds that type alone, as a literal naming it does.
+ * entries make (`untypedForm`); undefined for one naming its type, which is that type, as a literal
+ * naming it is.
  */
 export function untypedLiteral(node: IndentedValue): Expression | undefined {
   return node.type === undefined ? literalOf(node, untypedForm(node)) : undefined;

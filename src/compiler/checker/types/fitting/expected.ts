@@ -5,13 +5,13 @@
  *
  * - A value with no type of its own is built as the one member of the expected union that takes it
  *   (`memberBuilt`, which every expression's check goes through), then goes into the union: `[]`
- *   where an `Array<Int>?` is expected builds an empty `Array<Int>`. So is a literal whose own type
- *   doesn't go into the union, as one member its items can build it as: `[1, [2]]` where a `Json`
- *   is expected builds an `Array<Json>`, each item against `Json`. So is a collection literal whose
- *   own type only checking tells, before its items are checked, so each is checked against the
+ *   where an `Array<Int>?` is expected builds an empty `Array<Int>`, and `[1, "a"]`, whose items
+ *   agree on no one type, an `Array<Json>` where a `Json` is. So is a collection literal whose own
+ *   type only checking tells, before its items are checked, so each is checked against the
  *   member's item: `[1 + 1, "a"]` builds an `Array<Json>` too, an item with no type known yet
- *   taking any member's item. Where an `any` member might take the literal's own type whole, it is
- *   checked first and built as a member only if its type doesn't go in (body-checker.ts). Where an
+ *   taking any member's item, unless an `any` member might take the literal's own type whole. A
+ *   value of a type of its own goes in as fitting puts it, converted where its parts need (§3.5):
+ *   `[1, 2]`, an `Array<Int>`, converts where a `Json` is expected. Where an
  *   array and a map member both take an empty literal, `[]` is the array and `[:]` the map. A
  *   construct reading the expected type itself sees past `None` (`builtFrom`).
  * - A struct, tuple, array or map literal and a lambda each read one part of it: the struct the
@@ -57,18 +57,17 @@ export interface MemberChoice {
   /** The value as a part of a literal is read before checking (body-context.ts). */
   readonly part: () => AcceptedPart;
   /**
-   * Which types the value can be built as while its own type is known only through checking: a
+   * Which types the value can take while its own type is known only through checking: a
    * collection literal's, its items with types of their own fitting, the others taking any.
    */
-  readonly openBuilds: () => Accepts | undefined;
-  /** Whether a value of its own type goes into the expected union as it is. */
-  readonly fits: (type: Type) => boolean;
+  readonly openAccepts: () => Accepts | undefined;
 }
 
 /**
- * Which types a value read as `part` can be built as, where its own type doesn't go into the
- * expected union as it is; undefined where it does, or where nothing builds it. A value whose own
- * type only checking tells is built by its shape, unless a member might take that type whole.
+ * Which types a value read as `part` takes, which choose the member it is built as before it is
+ * checked: those where it goes decides it by, and for one whose own type only checking tells, those
+ * its shape takes, unless a member might take that type whole. A value of a type of its own goes
+ * into the union as fitting puts it, converted if need be (§3.5).
  */
 function acceptedBy(
   part: AcceptedPart,
@@ -78,10 +77,7 @@ function acceptedBy(
   if (part.kind === 'decided') {
     return part.accepts;
   }
-  if (part.type === undefined) {
-    return mightTakeWhole(expected) ? undefined : choice.openBuilds();
-  }
-  return choice.fits(part.type) ? undefined : part.builds;
+  return part.type === undefined && !mightTakeWhole(expected) ? choice.openAccepts() : undefined;
 }
 
 /** Whether a member of `union` takes values whose types it can't know before they are checked. */
@@ -91,10 +87,10 @@ function mightTakeWhole(union: UnionType): boolean {
 
 /**
  * The member of the union `expected` a value is built as (§2): the one member it takes, so
- * `Entry{key: "region", …}` against `Entry<S, "retries"> | Entry<S, "region">` builds the second;
- * for a value with a type of its own that doesn't go into the union, the one member its items can
- * build it as. The union itself when the value goes in as it is, or no member or several take it,
- * which fitting then reports; of several, an empty `[]` takes the arrays (the banner).
+ * `Entry{key: "region", …}` against `Entry<S, "retries"> | Entry<S, "region">` builds the second,
+ * and a `struct{…}` the one struct member it gives the fields of (§3.1). The union itself when the
+ * value has a type of its own, or no member or several take it, which fitting then settles; of
+ * several, an empty `[]` takes the arrays (the banner).
  */
 export function memberBuilt(expected: Type, node: Expression, choice: MemberChoice): Type {
   if (expected.kind !== 'union' || !builtKinds.has(node.kind)) {

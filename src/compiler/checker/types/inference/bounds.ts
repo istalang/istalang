@@ -33,8 +33,8 @@ type Origin = 'argument' | 'expected';
 export interface LowerBound {
   readonly type: Type;
   readonly fresh: boolean;
-  /** Whether it is a struct literal's shape, which builds a struct its fields give (§3.1). */
-  readonly builds: boolean;
+  /** Whether it is a struct literal's shape, which a struct its fields give takes (§3.1). */
+  readonly isShape: boolean;
   readonly origin: Origin;
 }
 
@@ -61,8 +61,8 @@ export interface Related {
 export interface BoundRules {
   /** Whether a value of `found` fits where `expected` is. */
   readonly fits: (found: Type, expected: Type) => boolean;
-  /** Whether a struct literal of shape `shape` builds `target`, a struct its fields give (§3.1). */
-  readonly builds: (shape: Type, target: Type) => boolean;
+  /** Whether `target`, a struct its fields give, takes a struct literal of shape `shape` (§3.1). */
+  readonly takesShape: (target: Type, shape: Type) => boolean;
   /** Whether `first` and `second` are the same type. */
   readonly same: (first: Type, second: Type) => boolean;
   /** Whether `type` mentions a parameter still to be found. */
@@ -233,9 +233,9 @@ export class BoundStore {
    * settling has substituted it, as is one met past `maximumDepth` bounds deep.
    */
   #agree(parameter: ParameterKey, below: Bound | LowerBound, above: Bound): boolean {
-    const { isOpen, fits, builds, constrain } = this.#rules;
+    const { isOpen, fits, takesShape, constrain } = this.#rules;
     if (!(isOpen(below.type) || isOpen(above.type))) {
-      return fits(below.type, above.type) || (isBuilt(below) && builds(below.type, above.type));
+      return fits(below.type, above.type) || (isShape(below) && takesShape(above.type, below.type));
     }
     return this.#deeper(parameter, [below.type, above.type], () =>
       constrain(below.type, above.type, originOf(below, above)),
@@ -287,9 +287,9 @@ export class BoundStore {
   }
 }
 
-/** Whether `bound` is a struct literal's shape, which may build the struct it settles to. */
-export function isBuilt(bound: Bound | LowerBound): boolean {
-  return 'builds' in bound && bound.builds;
+/** Whether `bound` is a struct literal's shape, which a struct it settles to may take (§3.1). */
+export function isShape(bound: Bound | LowerBound): boolean {
+  return 'isShape' in bound && bound.isShape;
 }
 
 /** The origin of what relating two bounds finds: the expected type's, where either is its. */

@@ -212,17 +212,19 @@ function valueArgument(
       ? context.acceptedPart(argument)
       : context.argumentPart(argument);
   // `none` passed alone is `None`, a type like any other the call's inference joins (§3.5); inside
-  // a composite it still waits for the call, as its siblings decide where it goes.
-  if (part.kind === 'decided' && part.alone === undefined) {
+  // a composite it still waits for the call, as its siblings decide where it goes. A `struct{…}`'s
+  // shape only bounds what the call gives it.
+  if (part.kind === 'decided' && (part.alone === undefined || part.known !== undefined)) {
     const lambda = unparenthesized(argument);
-    const inputs = lambda.kind === 'Lambda' ? writtenInputs(context, lambda) : undefined;
+    const bound =
+      part.known ?? (lambda.kind === 'Lambda' ? writtenInputs(context, lambda) : undefined);
     return {
       node: argument,
       passing: 'value',
       type: undefined,
       literal,
       accepts: part.accepts,
-      inputs,
+      known: bound,
     };
   }
   const place = new JoinPlace(argument);
@@ -231,8 +233,7 @@ function valueArgument(
     return { node: argument, passing: 'value', type: joined, literal, place };
   }
   const type = context.expression(argument);
-  const { builds } = context.checkedPart(argument);
-  return { node: argument, passing: 'value', type, literal, builds };
+  return { node: argument, passing: 'value', type, literal };
 }
 
 /**

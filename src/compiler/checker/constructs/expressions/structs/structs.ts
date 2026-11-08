@@ -21,15 +21,10 @@ import type { FieldsLiteral, StructLiteral } from '../../../../syntax/expression
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
-import type {
-  AcceptedPart,
-  Accepts,
-  BodyContext,
-  PartReader,
-} from '../../../contexts/body-context.ts';
+import type { Accepts, BodyContext, PartReader } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { CheckJoining, JoinPlace } from '../../../resolution/applying/joint.ts';
-import { partsAccept, partsBuild } from '../../../rules/agreement.ts';
+import { eachPartAccepts } from '../../../rules/agreement.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
 import { builtFrom } from '../../../types/fitting/expected.ts';
 import { inFieldOrder } from '../../../types/type/field-order.ts';
@@ -284,11 +279,10 @@ function checkValuesAlone(context: BodyContext, node: FieldsLiteral): void {
 }
 
 /**
- * Which types a literal the call it is passed to decides can take (§3.5): a `struct{…}`
- * comprehending fields not all known, the struct types with its keys (struct-comprehensions.ts);
- * any other `struct{…}`, once a value it gives, or its comprehension's value, needs the type
- * expected of it, a struct type with a field of each name it gives, each value taking that field's
- * type. A literal naming its type has that type.
+ * Which types a `struct{…}` can take, decided by where it goes (§3.1, §3.5): comprehending fields
+ * not all known, the struct types with its keys (struct-comprehensions.ts); otherwise a struct or
+ * shape type with a field of each name it gives, each value taking that field's type, every other
+ * field with a default, and any type its own shape fits. A literal naming its type has that type.
  */
 export function structLiteralAccepts(
   context: BodyContext,
@@ -297,28 +291,15 @@ export function structLiteralAccepts(
   if (node.type !== undefined) {
     return undefined;
   }
-  return (
-    opaqueComprehendedAccepts(context, node) ??
-    fieldsTaking(context, node, {
-      combine: partsAccept,
-      read: (value) => context.acceptedPart(value),
-    })
-  );
-}
-
-/**
- * Which struct types a `struct{…}` literal of values each with a type of its own, as `read` reads
- * them, can be built as instead of its shape (§3.7): those it gives every field of, a comprehension
- * its subject's, each value fitting it, but the fields with a default where nothing comprehends.
- */
-export function structLiteralBuilds(
-  context: BodyContext,
-  node: StructLiteral,
-  read: PartReader,
-): Accepts | undefined {
-  return node.type === undefined
-    ? fieldsTaking(context, node, { combine: partsBuild, read })
-    : undefined;
+  const comprehended = opaqueComprehendedAccepts(context, node);
+  if (comprehended !== undefined) {
+    return comprehended;
+  }
+  const taking = fieldsTaking(context, node, (value) => context.acceptedPart(value));
+  const own = structLiteralKnownType(context, node);
+  return (expected, isOpen) =>
+    taking?.(expected, isOpen) === true ||
+    (own !== undefined && context.checker.fitOf(own, expected) !== undefined);
 }
 
 /**
@@ -347,18 +328,6 @@ export function structLiteralKnownType(
 }
 
 /**
- * How a `struct{…}` literal's values take a struct type's fields: each read by `read`, and what
- * the values together can take, from `combine` (rules/agreement.ts).
- */
-interface ValuesTaking {
-  readonly combine: (
-    context: BodyContext,
-    parts: readonly AcceptedPart[],
-  ) => readonly Accepts[] | undefined;
-  readonly read: PartReader;
-}
-
-/**
  * The struct types `node` gives a value of each field of, its comprehension's fields among them,
  * but those with a default where it has none, each value as `taking` says taking its field's type:
  * a field named twice, or one the type lacks, takes none.
@@ -366,7 +335,7 @@ interface ValuesTaking {
 function fieldsTaking(
   context: BodyContext,
   node: StructLiteral,
-  { combine, read }: ValuesTaking,
+  read: PartReader,
 ): Accepts | undefined {
   const named = node.items.flatMap((item) => (item.kind === 'FieldInitializer' ? [item] : []));
   const comprehended = comprehendedParts(context, node, read);
@@ -379,7 +348,7 @@ function fieldsTaking(
   const itemCount = named.length + (leavesDefaults ? 0 : 1);
   const values =
     itemCount === node.items.length && names.size === given.length
-      ? combine(context, [
+      ? eachPartAccepts(context, [
           ...named.map((item) => read(itemValue(item))),
           ...comprehended.map(({ part }) => part),
         ])

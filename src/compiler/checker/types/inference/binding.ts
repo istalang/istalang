@@ -60,11 +60,11 @@ export class VariableBinding {
     }
     const literal = written?.kind === 'literal' ? written.literal : undefined;
     const fresh = literal !== undefined && sameType(filling, baseOf(literal));
-    const builds = written?.kind === 'shape' && filling.kind === 'anonymous';
+    const isShape = written?.kind === 'shape' && filling.kind === 'anonymous';
     const bound: LowerBound = {
       ...this.#bound(literal !== undefined && fresh ? literal : filling),
       fresh,
-      builds,
+      isShape,
     };
     return this.#added(variable, store.addLower(variable, bound));
   }

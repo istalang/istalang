@@ -10,8 +10,7 @@
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
-import type { CheckerContext } from '../../contexts/context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import { substitute } from '../../types/parts/substitution.ts';
 import type { LiteralType, Type } from '../../types/type/index.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
@@ -21,16 +20,11 @@ import type { CallArgument } from '../choosing/call-arguments.ts';
 import type { Application } from '../choosing/choice.ts';
 import type { Instantiation } from '../conformance/conformance.ts';
 
-/**
- * An argument as fitting sees it; its type is undefined when the chosen function decides it, and,
- * for a literal of items each with a type of its own, `builds` says what it can be built as instead
- * (§3.7).
- */
+/** An argument as fitting sees it; its type is undefined when the chosen function decides it. */
 export interface FittedArgument {
   readonly node?: Expression | undefined;
   readonly type: Type | undefined;
   readonly literal?: LiteralType | undefined;
-  readonly builds?: Accepts | undefined;
   readonly isSpread?: boolean | undefined;
 }
 
@@ -73,9 +67,8 @@ export function recordArgumentKeys(
 
 /**
  * Fits each argument to the type it fills, `expected` by argument number, checking first one the
- * chosen function decides, and checking a literal again: a scalar one, which has its literal type
- * where the type it fills expects one (§2), and building one of items whose own type doesn't fit as
- * the type it fills (§3.7), its items checked once.
+ * chosen function decides that wasn't judged already, and checking a scalar literal again, which
+ * has its literal type where the type it fills expects one (§2).
  */
 export function fitArguments(
   context: BodyContext,
@@ -86,30 +79,12 @@ export function fitArguments(
     const { node, type, isSpread } = argument;
     const parameter = expected[index];
     if (node !== undefined && parameter !== undefined && isSpread !== true) {
-      if (type !== undefined && isBuiltAs(context.checker, { ...argument, type }, parameter)) {
-        context.rebuild(node, parameter);
-        return;
-      }
-      const checked = type === undefined || argument.literal !== undefined;
-      context.fit(checked ? context.expression(node, parameter) : type, parameter, node);
+      // A decided argument judged already, a lambda or a `struct{…}`, keeps what it was checked to be.
+      const own = type ?? context.checkedTypeOf(node);
+      const checked = own === undefined || argument.literal !== undefined;
+      context.fit(checked ? context.expression(node, parameter) : own, parameter, node);
     }
   });
-}
-
-/**
- * Whether an argument of a type of its own is built as `parameter` from its items instead (§3.7):
- * its own type doesn't fit, while its items do.
- */
-function isBuiltAs(
-  checker: Pick<CheckerContext, 'fitOf'>,
-  { type, builds }: { readonly type: Type; readonly builds?: Accepts | undefined },
-  parameter: Type,
-): boolean {
-  return (
-    builds !== undefined &&
-    checker.fitOf(type, parameter) === undefined &&
-    builds(parameter, () => false)
-  );
 }
 
 /**

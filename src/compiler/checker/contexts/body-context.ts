@@ -84,8 +84,6 @@ export interface BodyContext {
    * (constructs/expressions/literals/literal-items.ts).
    */
   readonly argumentPart: (node: Expression) => AcceptedPart;
-  /** How `node`, already checked, takes part in building a literal as another type (§3.7). */
-  readonly checkedPart: (node: Expression | undefined) => TypedPart;
   /**
    * Checks `node`, a lambda, maybe parenthesized, recording its type, where its parameters' types
    * are known and its result is left for its body to decide (§3.5), `hint` guiding the body as its
@@ -106,13 +104,6 @@ export interface BodyContext {
   readonly expectAt: (site: Expression, expected: Type) => void;
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
   readonly expect: (node: Expression, expected: Type | undefined) => Type;
-  /**
-   * Checks `node` again, a literal of items already checked (expressions.ts `isBuiltLiteral`), as
-   * the `type` it is built as instead of its own (§3.7): the literals it is made of are checked
-   * again as their parts of `type`, every other item keeps the type it was checked to have and is
-   * fitted to its part, never checked twice.
-   */
-  readonly rebuild: (node: Expression, type: Type) => Type;
   /**
    * Reports at `at` (the site's own span when absent) when `found`, the type of what `site` gives,
    * doesn't fit `expected`. When it fits by converting the value, made async or wrapped into `T?`
@@ -230,9 +221,9 @@ export interface CheckedPasses {
 
 /**
  * What one part of a composite literal has, read before checking (`acceptedPart`, as a call is
- * chosen) or as checked (`checkedPartOf`, as producers agree): the parameter types it can take when
- * the call decides its type, `none`'s with `None` beside, or its own type when known, with, for a
- * literal of items each with a type of its own, the types its items can build it as instead (§3.7).
+ * chosen or a union's member decided): the types it can take when where it goes decides its type,
+ * with the type it has alone (`none`'s `None`, a `struct{…}`'s shape) and the type it is known to
+ * have so far, which bounds what a call gives it; or its own type when known.
  */
 export type AcceptedPart =
   | {
@@ -240,15 +231,17 @@ export type AcceptedPart =
       readonly accepts: Accepts;
       /** The type it has where nothing decides it, which producers it agrees with join (§2). */
       readonly alone?: Type | undefined;
+      /**
+       * The type it is known to have so far, which bounds what a call it is passed to gives it
+       * while the call is chosen (§3.5): a `struct{…}`'s shape, which builds the struct the call's
+       * parameter settles to (§3.1).
+       */
+      readonly known?: Type | undefined;
     }
   | {
       readonly kind: 'typed';
       readonly type: Type | undefined;
-      readonly builds?: Accepts | undefined;
     };
-
-/** A part with a type of its own, as every part already checked has. */
-export type TypedPart = Extract<AcceptedPart, { readonly kind: 'typed' }>;
 
 /** How a composite literal's parts are read: before checking, or as checked (`AcceptedPart`). */
 export type PartReader = (node: Expression | undefined) => AcceptedPart;

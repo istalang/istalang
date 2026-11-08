@@ -31,8 +31,8 @@ import type {
 } from '../../../contexts/body-context.ts';
 import {
   agreedAccepts,
-  agreedBuilds,
   allProducersAccept,
+  disagreedAccepts,
   ownAgreedType,
 } from '../../../rules/agreement.ts';
 import { collectionTarget } from '../../../types/fitting/expected.ts';
@@ -52,29 +52,16 @@ function spreadPart(context: BodyContext, spread: Spread, read: PartReader): Acc
   };
 }
 
-/** Which types an array literal the call decides can take: what `[]` builds, or an array. */
+/**
+ * Which types an array literal the call decides can take: what `[]` builds, or an array whose item
+ * its elements take, where an element needs deciding or they agree on no one type.
+ */
 export function arrayAccepts(context: BodyContext, node: ArrayLiteral): Accepts | undefined {
   if (node.elements.length === 0) {
     return (expected) => collectionTarget(context.checker, expected) !== undefined;
   }
-  return arrayTaking(
-    context,
-    agreedAccepts(context, elementParts(context, node, beforeChecking(context))),
-  );
-}
-
-/**
- * Which array types an array literal of elements with types of their own, as `read` reads them,
- * can be built as (§3.7).
- */
-export function arrayBuilds(
-  context: BodyContext,
-  node: ArrayLiteral,
-  read: PartReader,
-): Accepts | undefined {
-  return node.elements.length === 0
-    ? undefined
-    : arrayTaking(context, agreedBuilds(context, elementParts(context, node, read)));
+  const parts = elementParts(context, node, beforeChecking(context));
+  return arrayTaking(context, agreedAccepts(context, parts) ?? disagreedAccepts(context, parts));
 }
 
 /** The array of the one type an array literal's elements each have on their own, if they do. */
@@ -110,10 +97,10 @@ function arrayTaking(context: BodyContext, items: Accepts | undefined): Accepts 
 }
 
 /**
- * Which types a collection literal can be built as while an item's type is known only through
- * checking (the banner): undefined for an empty one, which builds what its brackets say.
+ * Which types a collection literal can take while an item's type is known only through checking
+ * (the banner): undefined for an empty one, which builds what its brackets say.
  */
-export function collectionOpenBuilds(
+export function collectionOpenAccepts(
   context: BodyContext,
   node: ArrayLiteral | MapLiteral,
 ): Accepts | undefined {
@@ -143,8 +130,8 @@ export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | un
     };
   }
   const { keyParts, valueParts } = entryParts(node, beforeChecking(context));
-  const keysNeed = agreedAccepts(context, keyParts);
-  const valuesNeed = agreedAccepts(context, valueParts);
+  const keysNeed = agreedAccepts(context, keyParts) ?? disagreedAccepts(context, keyParts);
+  const valuesNeed = agreedAccepts(context, valueParts) ?? disagreedAccepts(context, valueParts);
   if (keysNeed === undefined && valuesNeed === undefined) {
     return undefined;
   }
@@ -153,24 +140,6 @@ export function mapAccepts(context: BodyContext, node: MapLiteral): Accepts | un
     keysNeed ?? allProducersAccept(context, keyParts),
     valuesNeed ?? allProducersAccept(context, valueParts),
   );
-}
-
-/**
- * Which `Map` types a map literal of keys and values with types of their own, as `read` reads
- * them, can be built as (§3.7).
- */
-export function mapBuilds(
-  context: BodyContext,
-  node: MapLiteral,
-  read: PartReader,
-): Accepts | undefined {
-  if (node.entries.length === 0) {
-    return undefined;
-  }
-  const { keyParts, valueParts } = entryParts(node, read);
-  const keys = agreedBuilds(context, keyParts);
-  const values = agreedBuilds(context, valueParts);
-  return keys === undefined || values === undefined ? undefined : mapTaking(context, keys, values);
 }
 
 /**

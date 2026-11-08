@@ -50,9 +50,8 @@ import { expectWrittenArguments } from './written-expectations.ts';
 
 /**
  * An argument as written: its node, how it is passed, and its type, undefined when the chosen
- * function decides it, with which parameter types it can take (resolution/choosing/choice.ts), or,
- * for a literal of items with types of their own, which it can be built as instead (§3.7); its name
- * when named. A spread's node is what it spreads, its type that of its items, which fit the rest
+ * function decides it, with which parameter types it can take (resolution/choosing/choice.ts); its
+ * name when named. A spread's node is what it spreads, its type that of its items, which fit the rest
  * parameter's element exactly: the items are copied or iterated as they are (§3.3).
  */
 export interface WrittenArgument {
@@ -61,16 +60,16 @@ export interface WrittenArgument {
   readonly type: Type | undefined;
   readonly literal?: LiteralType | undefined;
   readonly accepts?: Accepts | undefined;
-  readonly builds?: Accepts | undefined;
   readonly name?: Identifier | undefined;
   readonly isSpread?: boolean | undefined;
   /** Where it may have joined the call, with what did (applying/joint.ts). */
   readonly place?: JoinPlace | undefined;
   /**
-   * For a lambda the call decides whose parameters are written, the function type they make it,
-   * which bounds what the call gives them (constructs/closures/lambdas.ts `writtenInputs`).
+   * For an argument the call decides, the type it is known to have so far, which bounds what the
+   * call gives it: a lambda's written parameters (constructs/closures/lambdas.ts `writtenInputs`),
+   * a `struct{…}`'s shape.
    */
-  readonly inputs?: Type | undefined;
+  readonly known?: Type | undefined;
 }
 
 /** A call to resolve, as written. */
@@ -180,19 +179,18 @@ function completeResolved(
 
 /** A written argument as choosing sees it. */
 export function callArgumentOf(argument: WrittenArgument): CallArgument {
-  const { type, literal, passing, accepts, builds, name, isSpread, place, inputs } = argument;
+  const { type, literal, passing, accepts, name, isSpread, place, known } = argument;
   const joined = place?.joined;
   return {
     type,
     literal,
     passing,
     accepts,
-    builds,
     name: name?.text,
     isSpread,
     exact: isSpread === true,
     joining: joined === undefined ? undefined : [joined.inference],
-    inputs,
+    known,
   };
 }
 

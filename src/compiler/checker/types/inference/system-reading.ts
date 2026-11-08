@@ -1,7 +1,7 @@
 /**
  * What a system's variables are as read (system.ts), by what it holds alone: so far (`tentativeOf`),
- * fixed (`fixedOf`), solved (`solvedIn`), and whether a struct literal's shape builds a struct
- * (`shapeBuilds`, §3.1). Each reads the system through `SystemReading`, so none mutates it.
+ * fixed (`fixedOf`), solved (`solvedIn`), and whether a struct takes a struct literal's shape
+ * (`takesShape`, §3.1). Each reads the system through `SystemReading`, so none mutates it.
  */
 
 import type { Fitting } from '../fitting/fit/index.ts';
@@ -81,10 +81,10 @@ export function solvedIn(
 }
 
 /**
- * Whether a struct literal of shape `shape` builds `target` (§3.1): a struct, not a shape, whose
+ * Whether `target` takes a struct literal of shape `shape` (§3.1): a struct, not a shape, whose
  * fields as a shape the literal's fit.
  */
-export function shapeBuilds(shape: Type, target: Type, fitting: Fitting): boolean {
+export function takesShape(target: Type, shape: Type, fitting: Fitting): boolean {
   const fields = target.kind === 'nominal' ? fitting.shapeOf(target) : undefined;
   return (
     shape.kind === 'anonymous' &&

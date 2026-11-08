@@ -11,10 +11,10 @@
  */
 
 import type { Tuple, TupleElement } from '../../../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext, PartReader } from '../../../contexts/body-context.ts';
+import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
-import { partsAccept, partsBuild } from '../../../rules/agreement.ts';
+import { partsAccept } from '../../../rules/agreement.ts';
 import { expectedTuple } from '../../../types/fitting/expected.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType, unitType } from '../../../types/type/primitives.ts';
@@ -67,23 +67,6 @@ export function tupleAccepts(context: BodyContext, node: Tuple): Accepts | undef
     partsAccept(
       context,
       node.elements.map((element) => context.acceptedPart(element)),
-    ),
-  );
-}
-
-/**
- * Which tuple types `node`, of elements each with a type of its own as `read` reads them, can be
- * built as instead of its own (§3.7): its size, each element fitting its own.
- */
-export function tupleBuilds(
-  context: BodyContext,
-  node: Tuple,
-  read: PartReader,
-): Accepts | undefined {
-  return tupleTaking(
-    partsBuild(
-      context,
-      node.elements.map((element) => read(element)),
     ),
   );
 }

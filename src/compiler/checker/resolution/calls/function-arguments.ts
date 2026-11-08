@@ -1,8 +1,9 @@
 /**
- * Functions passed as arguments whose types the call decides (§3.5, §3.14): a lambda with an
- * untyped parameter takes its types from the parameter it is passed to, and a generic function or
- * a set of overloads named as a value is chosen by them, so the call decides it: choosing a
- * function looks only at whether such an argument can fit (resolution/choosing/choice.ts).
+ * Functions passed as arguments whose types the call decides (§3.5, §3.14): a lambda whose result
+ * isn't written takes its types from the parameter it is passed to, and a generic function or a
+ * set of overloads named as a value is chosen by them, so the call decides it: choosing a function
+ * looks only at whether such an argument can fit (resolution/choosing/choice.ts). A `struct{…}` is
+ * judged so too, built as the struct its parameter's type is (§3.1).
  *
  * Once a function is chosen and the expected type has given its bounds, each such argument is
  * postponed until the type parameters its parameter's inputs mention are settled (Kotlin's
@@ -21,7 +22,7 @@
  */
 
 import { valueBranchesOf } from '../../../syntax/expressions/branches.ts';
-import type { Expression, Lambda } from '../../../syntax/expressions/index.ts';
+import type { Expression, Lambda, StructLiteral } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Block } from '../../../syntax/statements/index.ts';
 import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
@@ -133,6 +134,21 @@ function inferLambdaAt(context: BodyContext, node: Lambda, expected: Type, judgi
 }
 
 /**
+ * Checks `node`, a `struct{…}`, against what is known of `expected`, where a type parameter there
+ * is still open the expected type's choice for it (`Inference.guided`), so it builds the struct
+ * that is (§3.1), or else on its own; bounds what it gives.
+ */
+function inferLiteralAt(
+  context: BodyContext,
+  node: StructLiteral,
+  expected: Type,
+  { inference, settling }: Judging,
+): void {
+  const guide = inference.guided(expected, settling);
+  inference.match(expected, context.expression(node, isOpen(guide, inference) ? undefined : guide));
+}
+
+/**
  * Bounds what the function `node` names gives: chosen by the parameters `expected` gives, once
  * they are settled and while its result isn't known, its result guided by the expected type; else,
  * nothing giving them, a lone function's whole type, so a function with defaults passed to `T` is
@@ -197,6 +213,11 @@ function inferNestedFunctions(
     case 'MemberAccess':
     case 'TypeApplication':
       inferNamedAt(context, bare, expected, judging);
+      return;
+    case 'StructLiteral':
+      if (bare.type === undefined) {
+        inferLiteralAt(context, bare, expected, judging);
+      }
       return;
     case 'BlockExpression':
       inferBlockFunctions(context, bare.block, expected, judging);

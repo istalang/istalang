@@ -40,8 +40,8 @@ import {
 import {
   fixedOf,
   type SystemReading,
-  shapeBuilds,
   solvedIn,
+  takesShape,
   tentativeOf,
 } from './system-reading.ts';
 import type { CallVariables } from './variables.ts';
@@ -92,7 +92,7 @@ export class CallSystem {
     };
     this.#store = new BoundStore({
       fits: (found, expected) => fitOf(found, expected, fitting) !== undefined,
-      builds: (shape, target) => shapeBuilds(shape, target, fitting),
+      takesShape: (target, shape) => takesShape(target, shape, fitting),
       same: sameType,
       isOpen: (type) => this.mentionsVariable(type),
       constrain: (found, expected, origin) =>
@@ -336,7 +336,7 @@ export class CallSystem {
       boundsOf: (parameter) => this.#store.of(parameter),
       isAtTop: (parameter) => this.#atTop.has(parameter),
       fits: (found, expected) => fitOf(found, expected, this.#fitting) !== undefined,
-      builds: (shape, target) => shapeBuilds(shape, target, this.#fitting),
+      takesShape: (target, shape) => takesShape(target, shape, this.#fitting),
       join: (parameter, lower, upper) => this.#binding.join(parameter, lower, upper),
       fallbackOf: (parameter) => this.#notes.fallbackOf(parameter),
       relatedOf: (parameter) => this.#store.relatedOf(parameter),

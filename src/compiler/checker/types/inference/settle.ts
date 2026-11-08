@@ -29,7 +29,7 @@ import type { TypeRules } from '../type/type-rules.ts';
 import {
   type Bound,
   fromArguments,
-  isBuilt,
+  isShape,
   type LowerBound,
   type Related,
   type VariableBounds,
@@ -50,8 +50,8 @@ export interface SettlingView {
   /** Whether `parameter` stands at the top of the result: the result itself, or a member of it. */
   readonly isAtTop: (parameter: ParameterKey) => boolean;
   readonly fits: (found: Type, expected: Type) => boolean;
-  /** Whether a struct literal of shape `shape` builds `target`, a struct its fields give (§3.1). */
-  readonly builds: (shape: Type, target: Type) => boolean;
+  /** Whether `target`, a struct its fields give, takes a struct literal of shape `shape` (§3.1). */
+  readonly takesShape: (target: Type, shape: Type) => boolean;
   readonly join: (
     parameter: ParameterKey,
     lower: readonly LowerBound[],
@@ -187,7 +187,8 @@ function agreesWith(
   return (
     lower.every(
       (bound) =>
-        view.fits(bound.type, candidate) || (isBuilt(bound) && view.builds(bound.type, candidate)),
+        view.fits(bound.type, candidate) ||
+        (isShape(bound) && view.takesShape(candidate, bound.type)),
     ) && upper.every((bound) => view.fits(candidate, bound.type))
   );
 }
@@ -227,7 +228,7 @@ function withRelatives(bounds: VariableBounds, { below, above }: Related, settle
     ...bounds,
     lower: [
       ...bounds.lower,
-      ...settledOf(below).map((bound) => ({ ...bound, fresh: false, builds: false })),
+      ...settledOf(below).map((bound) => ({ ...bound, fresh: false, isShape: false })),
     ],
     upper: [...bounds.upper, ...settledOf(above)],
   };
