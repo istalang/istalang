@@ -29,7 +29,7 @@ import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 
 export class FunctionScopes implements Functions {
-  readonly #stack: FunctionFrame[];
+  #stack: FunctionFrame[];
   /** Nested functions being checked with no declared result, whose type isn't known yet. */
   readonly #untyped = new Set<NestedFunction>();
   readonly #checked: PassTable<NestedFunction, CheckedFunction>;
@@ -41,6 +41,20 @@ export class FunctionScopes implements Functions {
 
   get current(): FunctionFrame {
     return this.#stack.at(-1) as FunctionFrame;
+  }
+
+  get frames(): readonly FunctionFrame[] {
+    return [...this.#stack];
+  }
+
+  within<Result>(frames: readonly FunctionFrame[], check: () => Result): Result {
+    const outer = this.#stack;
+    this.#stack = [...frames];
+    try {
+      return check();
+    } finally {
+      this.#stack = outer;
+    }
   }
 
   inside<Result>(scope: FunctionFrame, check: () => Result): Result {

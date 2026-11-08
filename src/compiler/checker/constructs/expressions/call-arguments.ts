@@ -1,7 +1,7 @@
 /**
  * A call's arguments as written, as choosing takes them (§3.3, §3.5): each checked now, in the
- * call's constraint scope (contexts/constraint-scope.ts), or left for the chosen function to
- * decide.
+ * call's constraint scope (contexts/constraint-scope.ts), which postpones one that needs what the
+ * call expects of it to its placeholder.
  */
 
 import type { CallArgument, Expression, Spread } from '../../../syntax/expressions/index.ts';
@@ -14,16 +14,13 @@ import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { arrayElement } from '../../types/type/well-known.ts';
 import { writtenLiteral } from '../../types/unions/unions.ts';
-import { writtenInputs } from '../closures/lambdas.ts';
 import { spreadArgumentType } from './collections/collections.ts';
 
 /**
  * An argument as written: `&x` passes the place `x`, checked as a place that may change; a spread,
  * its items, as an array literal's spread gives them (§2), or a pack's value, as it is (§3.5); any
- * other is a value, checked now unless the chosen function decides its type, a literal with its
- * literal type beside, which it has where its parameter expects one (§2), and a literal of items
- * read once those whose types only checking tells are checked (`argumentPart`). A named argument
- * is its value, named. One whose parameter's type is known before choosing, `known` (a function
+ * other is a value, a literal with its literal type beside, which it has where its parameter
+ * expects one (§2). A named argument is its value, named. One whose parameter's type is known before choosing, `known` (a function
  * value's, value-calls.ts; a spread's items' type), is checked against it.
  */
 export function writtenArgument(
@@ -89,23 +86,10 @@ function valueArgument(
     }
     return { node: argument, passing: 'value', type, literal };
   }
-  const part = context.argumentPart(argument);
-  // `none` passed alone is `None`, a type like any other the call's inference joins (§3.5); inside
-  // a composite it still waits for the call, as its siblings decide where it goes. A `struct{…}`'s
-  // shape only bounds what the call gives it.
-  if (part.kind === 'decided' && (part.alone === undefined || part.known !== undefined)) {
-    const lambda = unparenthesized(argument);
-    const bound =
-      part.known ?? (lambda.kind === 'Lambda' ? writtenInputs(context, lambda) : undefined);
-    return {
-      node: argument,
-      passing: 'value',
-      type: undefined,
-      literal,
-      accepts: part.accepts,
-      known: bound,
-    };
-  }
-  const type = context.expression(argument);
+  // A literal is matched as one by the call (§2), so it needs no variable of the scope's.
+  const type =
+    literal === undefined
+      ? context.expression(argument)
+      : context.scopes.suspended(() => context.expression(argument));
   return { node: argument, passing: 'value', type, literal };
 }

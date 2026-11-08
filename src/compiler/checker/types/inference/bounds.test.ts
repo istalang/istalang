@@ -23,8 +23,11 @@ function store(): BoundStore {
     takesShape: () => false,
     constrain: (found, expected) => sameType(found, expected),
     equate: sameType,
+    constrainShape: () => false,
   });
 }
+
+const argument = (type: Type) => ({ type, origin: 'argument' }) as const;
 
 const types = (bounds: readonly { readonly type: Type }[]) => bounds.map(({ type }) => type);
 
@@ -65,5 +68,37 @@ describe('two related variables', () => {
     bounds.rollback(mark);
     expect(bounds.addUpper(upper, { type: intType, origin: 'argument' })).toBe(true);
     expect(bounds.of(lower).upper).toEqual([]);
+  });
+});
+
+describe('an equality', () => {
+  it('reaches the variables related to it, below as an upper bound and above as a lower one', () => {
+    const [below, middle, above, bounds] = [variable('T'), variable('U'), variable('V'), store()];
+    expect(bounds.relate(below, middle)).toBe(true);
+    expect(bounds.relate(middle, above)).toBe(true);
+    expect(bounds.addEqual(middle, argument(intType))).toBe(true);
+    expect(types(bounds.of(below).upper)).toEqual([intType]);
+    expect(types(bounds.of(above).lower)).toEqual([intType]);
+  });
+
+  it('a variable already holds reaches one related to it later', () => {
+    const [below, middle, bounds] = [variable('T'), variable('U'), store()];
+    expect(bounds.addEqual(middle, argument(intType))).toBe(true);
+    expect(bounds.relate(below, middle)).toBe(true);
+    expect(types(bounds.of(below).upper)).toEqual([intType]);
+  });
+});
+
+describe('a variable refusing a bound', () => {
+  it('takes it neither as an upper bound nor as an equality, directly or through a relation', () => {
+    const [below, above, bounds] = [variable('T'), variable('U'), store()];
+    bounds.admit(below, (bound) => !sameType(bound, stringType));
+    expect(bounds.addUpper(below, argument(stringType))).toBe(false);
+    expect(bounds.addEqual(below, argument(stringType))).toBe(false);
+    expect(bounds.relate(below, above)).toBe(true);
+    const mark = bounds.mark();
+    expect(bounds.addUpper(above, argument(stringType))).toBe(false);
+    bounds.rollback(mark);
+    expect(bounds.addUpper(above, argument(intType))).toBe(true);
   });
 });

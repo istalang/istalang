@@ -21,11 +21,12 @@ import type { FieldsLiteral, StructLiteral } from '../../../../syntax/expression
 import { itemValue } from '../../../../syntax/expressions/readings.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
 import type { NamedType } from '../../../../syntax/types/index.ts';
-import type { Accepts, BodyContext, PartReader } from '../../../contexts/body-context.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
-import { eachPartAccepts } from '../../../rules/agreement.ts';
+import { placeholderOf } from '../../../rules/placeholders.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
 import { builtFrom } from '../../../types/fitting/expected.ts';
+import { takesShape } from '../../../types/inference/system-reading.ts';
 import { inFieldOrder } from '../../../types/type/field-order.ts';
 import {
   type FieldMember,
@@ -33,24 +34,18 @@ import {
   type NominalType,
   shapeType,
   type Type,
+  type UnionType,
 } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { checkLiteralFields } from './literal-fields/index.ts';
-import {
-  checkRefused,
-  declaresDefault,
-  type LiteralShape,
-  type LiteralSpread,
-} from './literal-fields/items.ts';
+import { checkRefused, type LiteralShape, type LiteralSpread } from './literal-fields/items.ts';
 import { builtThrough } from './literal-types.ts';
 import {
   checkComprehensionAlone,
   checkOpaqueComprehended,
-  comprehendedParts,
   comprehensionOf,
   freshComprehended,
-  opaqueComprehendedAccepts,
 } from './struct-comprehensions.ts';
 import { refuseVariantLiteral } from './variants.ts';
 
@@ -107,7 +102,10 @@ export function checkNamedLiteral(
     return errorType;
   }
   if (built.kind === 'shape') {
-    return checkLiteralFields(context, node, built.shape, { spread: leadingSpread(node) });
+    return checkLiteralFields(context, node, built.shape, {
+      spread: leadingSpread(node),
+      expected: built.expected,
+    });
   }
   const shape = {
     ...declaredShape(context, built.entity, built.known),
@@ -118,7 +116,10 @@ export function checkNamedLiteral(
     checkValuesAlone(context, node);
     return shape.typeOf([]);
   }
-  return checkLiteralFields(context, node, shape, { spread: leadingSpread(node) });
+  return checkLiteralFields(context, node, shape, {
+    spread: leadingSpread(node),
+    expected: built.expected,
+  });
 }
 
 /**
@@ -151,7 +152,10 @@ function checkAnonymousLiteral(
     return checkOpaqueComprehended(context, node, comprehension, target);
   }
   if (spread === undefined) {
-    return freshAnonymous(context, node);
+    const shape = freshAnonymous(context, node);
+    return context.scopes.isOpen
+      ? builtOnceExpected(context, node, shape)
+      : builtAs(context, node, shape, expected);
   }
   const type = context.expression(spread.node.expression);
   const fromSpread = shapeOf(context, type);
@@ -226,6 +230,49 @@ function declaredShape(
 }
 
 /**
+ * A `struct{…}` of `shape` in a constraint scope that doesn't know yet what it builds
+ * (docs/work/variance-inference/i2-scope.md §3): a placeholder of the scope, bounded below by its
+ * shape, marked as one, so a call choosing sees its fields' types and it settles on a struct its
+ * fields give where one is expected (§3.1). The scope builds it once it knows what is expected of
+ * it, of its fields as they were checked, so a field the scope postponed is told what it is
+ * expected to be then; with nothing expected, it is its shape.
+ */
+function builtOnceExpected(context: BodyContext, node: StructLiteral, shape: Type): Type {
+  const { inference, type } = placeholderOf(context, node);
+  const judge = (expected: Type | undefined) => builtAs(context, node, shape, expected);
+  context.scopes.postpone({ node, inference, type, admits: () => true, judge, standsAlone: true });
+  inference.matchShape(type, shape);
+  return type;
+}
+
+/**
+ * What a `struct{…}` of `shape`, its fields checked already, builds where `expected` is expected
+ * (§3.1): the struct or shape `expected` is, or of a union the one member it gives the fields of,
+ * built of its fields as they were checked; else its own shape.
+ */
+function builtAs(
+  context: BodyContext,
+  node: StructLiteral,
+  shape: Type,
+  expected: Type | undefined,
+): Type {
+  const target = builtFrom(expected);
+  const member = target?.kind === 'union' ? memberTaking(context, target, shape) : target;
+  const built = member === undefined ? undefined : shapeOf(context, member);
+  return built === undefined ? shape : checkLiteralFields(context, node, built, { checked: true });
+}
+
+/** The one member of `union` a `struct{…}` of `shape` builds or fits, if one is. */
+function memberTaking(context: BodyContext, union: UnionType, shape: Type): Type | undefined {
+  const { fitting } = context.checker;
+  const taking = union.members.filter(
+    (member) =>
+      takesShape(member, shape, fitting) || context.checker.fitOf(shape, member) !== undefined,
+  );
+  return taking.length === 1 ? taking[0] : undefined;
+}
+
+/**
  * A `struct{…}` with nothing to take a type from: the shape of its named items, typed by their
  * values (§3.1). Its fields keep the shape's name order, and so do the sources recorded for them.
  */
@@ -239,7 +286,7 @@ function freshAnonymous(context: BodyContext, node: StructLiteral): Type {
   for (const item of node.items) {
     if (item.kind === 'FieldInitializer') {
       const value = itemValue(item);
-      const type = context.expression(value);
+      const type = context.part(value);
       if (given.some((each) => each.name === item.name.text)) {
         context.report(checkerDiagnostics.repeatedField(item.name.span, item.name.text));
         fits = false;
@@ -275,97 +322,4 @@ function checkValuesAlone(context: BodyContext, node: FieldsLiteral): void {
       checkRefused(context, itemValue(item));
     }
   }
-}
-
-/**
- * Which types a `struct{…}` can take, decided by where it goes (§3.1, §3.5): comprehending fields
- * not all known, the struct types with its keys (struct-comprehensions.ts); otherwise a struct or
- * shape type with a field of each name it gives, each value taking that field's type, every other
- * field with a default, and any type its own shape fits. A literal naming its type has that type.
- */
-export function structLiteralAccepts(
-  context: BodyContext,
-  node: StructLiteral,
-): Accepts | undefined {
-  if (node.type !== undefined) {
-    return undefined;
-  }
-  const comprehended = opaqueComprehendedAccepts(context, node);
-  if (comprehended !== undefined) {
-    return comprehended;
-  }
-  const taking = fieldsTaking(context, node, (value) => context.acceptedPart(value));
-  const own = structLiteralKnownType(context, node);
-  return (expected, isOpen) =>
-    taking?.(expected, isOpen) === true ||
-    (own !== undefined && context.checker.fitOf(own, expected) !== undefined);
-}
-
-/**
- * The shape a `struct{…}` literal has on its own, when each value it gives has a type of its own
- * known before checking: the type checking it with nothing expected gives.
- */
-export function structLiteralKnownType(
-  context: BodyContext,
-  node: StructLiteral,
-): Type | undefined {
-  if (node.type !== undefined) {
-    return undefined;
-  }
-  const fields: FieldMember[] = [];
-  for (const item of node.items) {
-    if (item.kind !== 'FieldInitializer' || fields.some(({ name }) => name === item.name.text)) {
-      return undefined;
-    }
-    const part = context.acceptedPart(itemValue(item));
-    if (part.kind !== 'typed' || part.type === undefined) {
-      return undefined;
-    }
-    fields.push({ name: item.name.text, type: part.type });
-  }
-  return shapeType(node, fields);
-}
-
-/**
- * The struct types `node` gives a value of each field of, its comprehension's fields among them,
- * but those with a default where it has none, each value as `taking` says taking its field's type:
- * a field named twice, or one the type lacks, takes none.
- */
-function fieldsTaking(
-  context: BodyContext,
-  node: StructLiteral,
-  read: PartReader,
-): Accepts | undefined {
-  const named = node.items.flatMap((item) => (item.kind === 'FieldInitializer' ? [item] : []));
-  const comprehended = comprehendedParts(context, node, read);
-  if (comprehended === undefined) {
-    return undefined;
-  }
-  const leavesDefaults = comprehensionOf(node) === undefined;
-  const given = [...named.map((item) => item.name.text), ...comprehended.map(({ name }) => name)];
-  const names = new Set(given);
-  const itemCount = named.length + (leavesDefaults ? 0 : 1);
-  const values =
-    itemCount === node.items.length && names.size === given.length
-      ? eachPartAccepts(context, [
-          ...named.map((item) => read(itemValue(item))),
-          ...comprehended.map(({ part }) => part),
-        ])
-      : undefined;
-  if (values === undefined) {
-    return undefined;
-  }
-  return (expected, isOpen) => {
-    const target = builtFrom(expected);
-    const fields = target === undefined ? undefined : context.checker.fieldsOf(target);
-    return (
-      fields?.every(
-        (field) => names.has(field.name) || (leavesDefaults && declaresDefault(field)),
-      ) === true &&
-      given.every((name, index) => {
-        const field = fields.find((each) => each.name === name);
-        return field !== undefined && (values[index]?.(field.type, isOpen) ?? true);
-      })
-    );
-  };
 }

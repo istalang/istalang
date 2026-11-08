@@ -54,7 +54,7 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
-import type { FieldHeader, StructLiteral } from '../../../syntax/expressions/index.ts';
+import type { Expression, FieldHeader, StructLiteral } from '../../../syntax/expressions/index.ts';
 import type { RestPattern } from '../../../syntax/patterns.ts';
 import type { StructConstraint, StructType } from '../../../syntax/types/index.ts';
 import type { AliasUse, AssociatedUse } from './alias-uses.ts';
@@ -195,16 +195,27 @@ export type PackType = TypeParameterType | ErrorType;
  * What a type parameter is keyed by: its declaration, a trait standing for its `Self`, a field
  * loop's header, whose pass over the fields a struct constraint leaves unnamed stands for one of
  * them by a key of its own (§4), a struct pattern's rest, whose struct maps each key it takes to
- * its field by one (§3.11), or a recursive alias, whose own uses inside its group's bodies stand
+ * its field by one (§3.11), a recursive alias, whose own uses inside its group's bodies stand
  * for the type being closed while the group closes
- * (constructs/declarations/aliases/recursive-bodies.ts), and nowhere else.
+ * (constructs/declarations/aliases/recursive-bodies.ts), or a placeholder, and nowhere else.
  */
 export type ParameterKey =
   | TypeParameter
   | TraitDeclaration
   | FieldHeader
   | RestPattern
-  | TypeAliasDeclaration;
+  | TypeAliasDeclaration
+  | Placeholder;
+
+/**
+ * The type of an expression a constraint scope checks only once it knows what is expected of it,
+ * or of what several producers agree on (docs/work/variance-inference/i2-scope.md §3): a variable
+ * no declaration introduces, keyed by the expression it stands for.
+ */
+export interface Placeholder {
+  readonly kind: 'Placeholder';
+  readonly node: Expression;
+}
 
 /**
  * A type parameter, opaque inside the declaration that introduces it (§3.5). A mapped entry's binds

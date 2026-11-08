@@ -36,8 +36,9 @@ import {
   untypedForm,
 } from '../../../../syntax/expressions/literals/indented-values.ts';
 import { lastName } from '../../../../syntax/tree/node.ts';
-import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import type { Admits } from '../../../types/fitting/expected.ts';
 import { builtFrom, collectionTarget } from '../../../types/fitting/expected.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
@@ -232,23 +233,16 @@ function checkValuesAlone(context: BodyContext, entries: readonly IndentedEntry[
 }
 
 /**
- * Which types `node` can be built as where a call or a union decides (types/fitting/expected.ts):
- * for each, whether the literal of the form that type asks for takes it, its entries all held
- * there. A value naming its type has that type.
+ * Which types `node` can be built as where a call or a union decides (../postponed.ts): those that
+ * ask for a literal of a form, an array, a map or a struct, holding all its entries. A value naming
+ * its type has that type.
  */
-export function indentedAccepts(context: BodyContext, node: IndentedValue): Accepts | undefined {
+export function indentedAccepts(context: BodyContext, node: IndentedValue): Admits | undefined {
   if (node.type !== undefined) {
     return undefined;
   }
-  return (expected, isOpen) => {
-    const form = anonymousForm(context, node, expected);
-    if (entriesLeftOut(node, form).length > 0) {
-      return false;
-    }
-    const part = context.acceptedPart(literalOf(node, form));
-    if (part.kind === 'decided') {
-      return part.accepts(expected, isOpen);
-    }
-    return part.type === undefined || context.checker.fitOf(part.type, expected) !== undefined;
+  return (expected) => {
+    const form = formOf(context, builtFrom(expected));
+    return form !== undefined && entriesLeftOut(node, form).length === 0;
   };
 }

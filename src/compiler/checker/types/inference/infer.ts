@@ -34,13 +34,15 @@
  *   argument the chosen function decides) reads it as open.
  */
 
+import type { Admits } from '../fitting/expected.ts';
 import type { Fitting } from '../fitting/fit/index.ts';
 import { noSubstitution, type Substitution, substitute } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import type { LiteralType, LiteralValue, ParameterKey, Type } from '../type/index.ts';
 import { literalOrBase, membersOf, unionOf } from '../unions/unions.ts';
-import type { Settling } from './settle.ts';
+import { type Settling, type SettlingOf, settlesFreely } from './settle.ts';
 import { CallSystem, type MatchKind } from './system.ts';
+import { expectationOf, fixedIn, fixingToward, openIn, settlingViewOf } from './system-reading.ts';
 import { CallVariables } from './variables.ts';
 
 /** Where an inference stands: its call's site, and the system it infers in. */
@@ -52,6 +54,12 @@ export interface InferenceSite {
    * system, as a candidate's does, so probing it leaves the scope untouched (`commitTo`).
    */
   readonly copying?: Inference | undefined;
+}
+
+/** A call or literal inferring, with how its type parameters settle where it stands. */
+export interface InferringCall {
+  readonly inference: Inference;
+  readonly settling: Settling;
 }
 
 export class Inference {
@@ -116,6 +124,14 @@ export class Inference {
    */
   matchShape(declared: Type, shape: Type): boolean {
     return this.#system.match(this.#prepared(declared), shape, this.#kind, { kind: 'shape' });
+  }
+
+  /**
+   * Matches an item of a collection literal whose items agree on no one type, bounding only the
+   * variable `declared` is, never one related to it (design.md §4).
+   */
+  matchApart(declared: Type, given: Type): boolean {
+    return this.#system.match(this.#prepared(declared), given, this.#kind, { kind: 'apart' });
   }
 
   /** Matches `declared` against a type `given` must be exactly, as a reference or a spread's. */
@@ -215,21 +231,11 @@ export class Inference {
     return substitute(settled, guide, this.#fitting);
   }
 
-  /** Settles `parameters` now, each taken as found from here on (settle.ts). */
-  fix(parameters: readonly ParameterKey[], settling: Settling): void {
-    for (const parameter of parameters) {
-      const variable = this.#variables.variableOf(parameter);
-      if (variable !== undefined && this.#givenOf(parameter) === undefined) {
-        this.#system.fix(variable, this.#variables.settlingFor(settling));
-      }
-    }
-  }
-
   /**
-   * Settles every variable of this inference's system at once, each as the call of `calls` it
-   * stands for settles it (design.md §4); each call then settles to what this chose (`settle`).
+   * How each variable of `calls`' inferences settles, as the call it stands for settles its
+   * parameter; any other freely.
    */
-  solveJointly(calls: readonly { inference: Inference; settling: Settling }[]): void {
+  static settlingsOf(calls: readonly InferringCall[]): SettlingOf {
     const settlings = new Map<ParameterKey, Settling>();
     for (const { inference, settling } of calls) {
       const forVariables = inference.#variables.settlingFor(settling);
@@ -237,7 +243,120 @@ export class Inference {
         settlings.set(variable, forVariables);
       }
     }
-    this.#system.solve(settlings);
+    return (variable) => settlings.get(variable) ?? settlesFreely;
+  }
+
+  /**
+   * Settles every variable of this inference's system at once, each as the call of `calls` it
+   * stands for settles it (design.md §4); each call then settles to what this chose (`settle`).
+   */
+  solveJointly(calls: readonly InferringCall[]): void {
+    this.#system.solve(Inference.settlingsOf(calls));
+  }
+
+  /**
+   * Lets the variable `open` is, a placeholder (i2-scope.md §3), stand only under what `admits`
+   * takes.
+   */
+  admitOpen(open: Type, admits: Admits): void {
+    if (open.kind === 'parameter' && this.#system.mentionsVariable(open)) {
+      this.#system.admit(open.declaration, admits);
+    }
+  }
+
+  /**
+   * Takes the variable `open` is as `type` from here on, as a placeholder is once its expression
+   * is checked; what is related to it is bounded by `type` as a value of it bounds it.
+   */
+  settleAs(open: Type, type: Type): void {
+    if (open.kind === 'parameter' && this.#system.mentionsVariable(open)) {
+      this.#system.match(open, type, this.#kind);
+      this.#system.give(open.declaration, type);
+    }
+  }
+
+  /**
+   * `type`, open, with each of the system's variables what its bounds tell so far, and so on for
+   * those that mentions, as `struct{x: 1}`'s shape mentions its fresh literal's; undefined where
+   * one's tell nothing, or tell only of themselves.
+   */
+  tentativeIn(type: Type): Type | undefined {
+    return this.#tentativeIn(type, new Set());
+  }
+
+  #tentativeIn(type: Type, seen: ReadonlySet<ParameterKey>): Type | undefined {
+    const found = new Map<ParameterKey, Type>();
+    for (const variable of parametersIn(type).filter((key) =>
+      this.#system.mentionsVariable({ kind: 'parameter', declaration: key }),
+    )) {
+      const tentative = seen.has(variable) ? undefined : this.#system.tentative(variable);
+      const told =
+        tentative === undefined
+          ? undefined
+          : this.#tentativeIn(tentative, new Set(seen).add(variable));
+      if (told === undefined) {
+        return undefined;
+      }
+      found.set(variable, told);
+    }
+    return found.size === 0 ? type : substitute(type, found, this.#fitting);
+  }
+
+  /** What is expected so far of `type`, open, when it is one of the system's variables. */
+  expectationOf(type: Type, siblings = true): Type | undefined {
+    return type.kind === 'parameter' && this.#system.mentionsVariable(type)
+      ? expectationOf(type.declaration, this.#system.reading, siblings)
+      : undefined;
+  }
+
+  /** The variables of the system `type`, open, mentions that aren't taken as found yet. */
+  openIn(type: Type): readonly ParameterKey[] {
+    return openIn(type, this.#system.reading);
+  }
+
+  /**
+   * Fixes what the placeholders `waiting`, open, wait on, by what bounds it that mentions no
+   * variable (system-reading.ts `fixingToward`); whether anything was.
+   */
+  fixToward(waiting: readonly Type[], settlingOf: SettlingOf): boolean {
+    const variables = waiting.flatMap((type) =>
+      type.kind === 'parameter' ? [type.declaration] : [],
+    );
+    const { reading } = this.#system;
+    const view = settlingViewOf(reading, new Set());
+    const fixing = fixingToward(variables, reading, view, settlingOf);
+    for (const [variable, type] of fixing) {
+      this.#system.fixAs(variable, type);
+    }
+    return fixing.size > 0;
+  }
+
+  /** Settles and fixes each variable `type`, open, mentions, as `settlingOf` says (settle.ts). */
+  fixIn(type: Type, settlingOf: SettlingOf): void {
+    for (const variable of openIn(type, this.#system.reading)) {
+      this.#system.fix(variable, settlingOf);
+    }
+  }
+
+  /** `type`, open, with what is taken as found in place, the variables left open as they are. */
+  fixedIn(type: Type): Type {
+    return fixedIn(type, this.#system.reading);
+  }
+
+  /**
+   * `type`, open, with what is taken as found in place, and for the rest the expected type's
+   * choice where settling's rule 2 would take it (settle.ts), else the variable itself.
+   */
+  guidedIn(type: Type, settlingOf: SettlingOf): Type {
+    const fixed = fixedIn(type, this.#system.reading);
+    const guide = new Map<ParameterKey, Type>();
+    for (const variable of openIn(fixed, this.#system.reading)) {
+      const choice = this.#system.expectedChoiceFor(variable, settlingOf(variable));
+      if (choice !== undefined) {
+        guide.set(variable, choice);
+      }
+    }
+    return guide.size === 0 ? fixed : substitute(fixed, guide, this.#fitting);
   }
 
   /** `type`, as it stands open, with what the system solved (`solveJointly`). */

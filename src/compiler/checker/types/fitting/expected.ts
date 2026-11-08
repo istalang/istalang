@@ -25,9 +25,8 @@
 
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { typeParametersOf } from '../../../syntax/declarations/index.ts';
-import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../../contexts/body-context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { unfolded } from '../type/computed-types.ts';
@@ -38,7 +37,6 @@ import {
   type NominalType,
   nominalType,
   type Type,
-  type UnionType,
 } from '../type/index.ts';
 import { errorType, expectsError } from '../type/primitives.ts';
 import { arrayElement, wellKnownArguments } from '../type/well-known.ts';
@@ -51,89 +49,14 @@ import { constrainArguments, typeArgumentsFor } from '../written/type-arguments.
  */
 type Expecting = Pick<CheckerContext, 'wellKnownType' | 'typeRules'>;
 
-/** What choosing the member of an expected union a value is built as reads of the value. */
-export interface MemberChoice {
-  readonly checker: Expecting;
-  /** The value as a part of a literal is read before checking (body-context.ts). */
-  readonly part: () => AcceptedPart;
-  /**
-   * Which types the value can take while its own type is known only through checking: a
-   * collection literal's, its items with types of their own fitting, the others taking any.
-   */
-  readonly openAccepts: () => Accepts | undefined;
-}
-
 /**
- * Which types a value read as `part` takes, which choose the member it is built as before it is
- * checked: those where it goes decides it by, and for one whose own type only checking tells, those
- * its shape takes, unless a member might take that type whole. A value of a type of its own goes
- * into the union as fitting puts it, converted if need be (§3.5).
- */
-function acceptedBy(
-  part: AcceptedPart,
-  choice: MemberChoice,
-  expected: UnionType,
-): Accepts | undefined {
-  if (part.kind === 'decided') {
-    return part.accepts;
-  }
-  return part.type === undefined && !mightTakeWhole(expected) ? choice.openAccepts() : undefined;
-}
-
-/** Whether a member of `union` takes values whose types it can't know before they are checked. */
-function mightTakeWhole(union: UnionType): boolean {
-  return union.members.some((member) => member.kind === 'any');
-}
-
-/**
- * The member of the union `expected` a value is built as (§2): the one member it takes, so
- * `Entry{key: "region", …}` against `Entry<S, "retries"> | Entry<S, "region">` builds the second,
- * and a `struct{…}` the one struct member it gives the fields of (§3.1). The union itself when the
- * value has a type of its own, or no member or several take it, which fitting then settles; of
- * several, an empty `[]` takes the arrays (the banner).
- */
-export function memberBuilt(expected: Type, node: Expression, choice: MemberChoice): Type {
-  if (expected.kind !== 'union' || !builtKinds.has(node.kind)) {
-    return expected;
-  }
-  const accepted = acceptedBy(choice.part(), choice, expected);
-  if (accepted === undefined) {
-    return expected;
-  }
-  const taking = expected.members.filter((member) => accepted(member, () => false));
-  const preferred =
-    taking.length > 1 && node.kind === 'ArrayLiteral' && node.elements.length === 0
-      ? taking.filter((member) => collectionTarget(choice.checker, member)?.kind === 'array')
-      : taking;
-  const [only] = preferred;
-  return preferred.length === 1 && only !== undefined ? only : expected;
-}
-
-/**
- * The expressions built from the expected type itself; a branching one passes it on to each
- * branch, whose own value is then built from its member.
- */
-const builtKinds: ReadonlySet<Expression['kind']> = new Set([
-  'Identifier',
-  'MemberAccess',
-  'TypeApplication',
-  'StructLiteral',
-  'IndentedValue',
-  'ArrayLiteral',
-  'MapLiteral',
-  'Tuple',
-  'Lambda',
-  'NoneLiteral',
-]);
-
-/**
- * `accepts`, taking as well a type whose value it is built as (`memberBuilt`): what a recursive
+ * `admits`, taking as well a type whose value it is built as (constructs/expressions/postponed.ts): what a recursive
  * type unfolds to, and a union of whose members it takes one, at any depth, as the value is then
  * built as that member: `[1, [2]]` takes `Json`, and `((1, none), 2)` takes `((Int, Int?) | String,
  * Int)`. Unfolding ends, since a guarded alias reaches itself only inside another type (§3.17).
  */
-export function takingUnfolded(accepts: Accepts): Accepts {
-  const taking: Accepts = (expected, isOpen) => {
+export function takingUnfolded(accepts: Admits): Admits {
+  const taking: Admits = (expected, isOpen) => {
     if (accepts(expected, isOpen)) {
       return true;
     }
@@ -275,3 +198,9 @@ export function writtenNominal(
   constrainArguments(checker, module, { ...list, types: typeArguments });
   return nominalType(entity, typeArguments);
 }
+
+/**
+ * Whether a placeholder's expression can be a value of `bound` (i2-scope.md §3), where a part
+ * `isOpen` says mentions a variable can be anything.
+ */
+export type Admits = (bound: Type, isOpen: (part: Type) => boolean) => boolean;

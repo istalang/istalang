@@ -35,11 +35,12 @@ import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
 import type { SignatureParameter } from '../../check.ts';
-import type { Accepts, BodyContext, LambdaGuide } from '../../contexts/body-context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Produced } from '../../rules/agreement.ts';
 import { blockTail, producedBy } from '../../rules/agreement.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';
+import type { Admits } from '../../types/fitting/expected.ts';
 import { expectedFunction } from '../../types/fitting/expected.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
 import { isPack, packRestSlot, type RestSlot, withPack } from '../../types/type/function-types.ts';
@@ -55,7 +56,7 @@ import {
 import { declareParameter } from '../patterns/targets.ts';
 import { FunctionScope } from './function-scope.ts';
 import { declareOwnCall } from './own-calls.ts';
-import { ReturnScope } from './returns.ts';
+import { type GuidedResult, ReturnScope } from './returns.ts';
 
 /**
  * For a lambda whose result isn't written, or with a parameter to infer, which parameter types it
@@ -64,7 +65,7 @@ import { ReturnScope } from './returns.ts';
  * parameters and result, which has a type of its own. A written parameter takes what fits it, and
  * a plain lambda an async function type too, which it fits made async (§3.14).
  */
-export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | undefined {
+export function lambdaAccepts(context: BodyContext, node: Lambda): Admits | undefined {
   const { checker } = context;
   const parameters = node.parameters.filter((parameter) => parameter.kind === 'Parameter');
   const written = writtenParameterTypes(context, node);
@@ -171,9 +172,14 @@ export function inferLambda(
   context: BodyContext,
   node: Lambda,
   slots: ParameterSlots,
-  guide?: LambdaGuide,
+  guide?: Type,
 ): Type {
-  return checkLambdaAs(context, node, slots, guide);
+  return checkLambdaAs(
+    context,
+    node,
+    slots,
+    guide === undefined ? undefined : { kind: 'guided', guide },
+  );
 }
 
 /** What an expected function type gives a lambda's parameters: their slots, and any pack. */
@@ -183,7 +189,9 @@ type ParameterSlots = Pick<FunctionType, 'parameters' | 'pack'>;
  * What a lambda's position says of its result: the type it is declared to give, or how it guides
  * its body only, the result being what the body gives.
  */
-type ResultGiven = { readonly kind: 'declared'; readonly type: Type } | LambdaGuide;
+type ResultGiven =
+  | { readonly kind: 'declared'; readonly type: Type }
+  | { readonly kind: 'guided'; readonly guide: Type };
 
 /** A lambda where its position gives `slots` for its parameters and says `result`, when it does. */
 function checkLambdaAs(
@@ -192,7 +200,7 @@ function checkLambdaAs(
   slots: ParameterSlots | undefined,
   result: ResultGiven | undefined,
 ): Type {
-  const hint = result?.kind === 'guided' ? result.type : undefined;
+  const hint = result?.kind === 'guided' ? result.guide : undefined;
   const given = result?.kind === 'declared' ? result.type : undefined;
   const declaredResult =
     node.returnType === undefined
@@ -203,6 +211,7 @@ function checkLambdaAs(
     parameters: nestedParameters(context, node.parameters, slots),
     isAsync: node.isAsync,
     declaredResult,
+    guided: hint === undefined ? undefined : { node, guide: hint, scope: context.scopes.current },
     reach: node.span,
     tail: (declared) => {
       const type = context.expression(node.body, declared ?? hint);
@@ -240,6 +249,8 @@ interface NestedHeader {
   readonly parameters: readonly SignatureParameter[];
   readonly isAsync: boolean;
   readonly declaredResult: Type | undefined;
+  /** For a lambda whose result a call is still inferring, what guides its `return`s (returns.ts). */
+  readonly guided?: GuidedResult | undefined;
   /** What the function's text covers, header and body. */
   readonly reach: AnchoredSpan;
   /** Checks the body, expecting `declared` of it; its tail. */
@@ -263,7 +274,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
   const scope = new FunctionScope(
     node,
     isAsync,
-    new ReturnScope(declaredResult, true),
+    new ReturnScope(declaredResult, true, header.guided),
     header.reach,
   );
   const result = context.functions.inside(scope, () => {
@@ -273,31 +284,29 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     declareOwnCall(context);
     return scope.returns.result(context, header.tail(declaredResult));
   });
-  const captures = [...scope.captures.values()].map((entity) => ({
-    entity,
-    type: context.variables.typeOf(entity),
-  }));
-  const type = typeWith(
-    result,
-    captures.every(
+  // What the scope it stands in judges later inside it may capture more, and what its body gave
+  // settles with the scope (contexts/constraint-scope.ts): it is recorded again then.
+  const finished = (produces: Type): FunctionType => {
+    const captures = [...scope.captures.values()].map((entity) => ({
+      entity,
+      type: context.variables.typeOf(entity),
+    }));
+    const sendable = captures.every(
       (capture) =>
         !context.variables.isChangeable(capture.entity) &&
         isSendable(context.checker, capture.type),
-    ),
-  );
-  const record = (recorded: FunctionType) => {
+    );
+    const recorded = typeWith(produces, sendable);
     if (name !== undefined) {
       context.variables.declare(name, recorded);
     }
     context.functions.record(node, { type: recorded, parameters, captures });
+    return recorded;
   };
-  record(type);
-  // A body that joined the constraint scope it stands in gives a result open until it settles.
-  context.scopes.recorded(type, (solved) => {
-    if (solved.kind === 'function') {
-      record(solved);
-    }
-  });
+  const type = finished(result);
+  if (context.scopes.isOpen) {
+    context.scopes.whenSolved((solved) => finished(solved(result)));
+  }
   return type;
 }
 

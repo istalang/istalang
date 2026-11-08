@@ -4,11 +4,10 @@
  * missing, or one its default gives. The literal is completed with them in index.ts.
  */
 
-import {
-  type DeclaredStruct,
-  type FunctionDeclaration,
-  hasDefault,
-  type TypeAliasDeclaration,
+import type {
+  DeclaredStruct,
+  FunctionDeclaration,
+  TypeAliasDeclaration,
 } from '../../../../../syntax/declarations/index.ts';
 import type {
   Expression,
@@ -29,6 +28,7 @@ import type { FunctionCall } from '../../../../surface/resolved-call.ts';
 import { itemField } from '../../../../surface/struct-items.ts';
 import type { Inference } from '../../../../types/inference/infer.ts';
 import { parametersIn } from '../../../../types/parts/type-parts.ts';
+import { declaresDefault } from '../../../../types/type/field-defaults.ts';
 import type { FieldMember, Type } from '../../../../types/type/index.ts';
 import { typeText } from '../../../../types/type/type-text.ts';
 import { writtenLiteral } from '../../../../types/unions/unions.ts';
@@ -42,7 +42,7 @@ export interface LiteralShape {
   readonly owner: DeclaredStruct | TypeAliasDeclaration | undefined;
   /** The function the declaration's fields read as when one has a default (§3.1). */
   readonly defaults?: FunctionDeclaration | undefined;
-  /** The type arguments already decided, written or expected. */
+  /** The type arguments already decided: written, or a struct's own where one is expected. */
   readonly known: readonly Type[] | undefined;
   /**
    * The type expected of the literal, when it is a union with members of the literal's own type
@@ -78,25 +78,19 @@ export interface LiteralItems {
   readonly inference: Inference;
   /** The fields given so far, by position in the shape. */
   readonly given: Map<number, GivenField>;
-  /** The fields whose values wait for their types to be inferred, by position in the shape. */
-  readonly postponed: Map<number, PostponedField>;
+  /**
+   * Whether its values were checked already, as a `struct{…}`'s are before what it builds is
+   * decided (../structs.ts): each is then read as checked, never checked again.
+   */
+  readonly checked: boolean;
   /** Whether every item so far gave a field of its own. */
   fits: boolean;
 }
 
 /**
- * A field whose value has no type of its own, as a bare variant (§3.5), while its type is still to
- * be inferred: it is checked once what that type mentions is settled (index.ts).
- */
-interface PostponedField {
-  readonly node: Expression;
-  readonly declared: Type;
-}
-
-/**
  * Checks one item of a literal: its value against its field's type when that is already known,
- * postponed when it has no type of its own (`PostponedField`), else on its own, matched for
- * inference, a literal with its literal type where the field expects
+ * else in the literal's constraint scope, which postpones one that needs what is expected of it to
+ * its placeholder, matched for inference, a literal with its literal type where the field expects
  * one, as a member parameter's does (§2, §3.5).
  */
 export function checkItem(
@@ -136,12 +130,7 @@ export function checkItem(
  * match gets the error type where it goes (`Scopes.abandon`), so the misfit, reported once the
  * literal is fitted (`fitItems`), is all that is reported of it.
  */
-export function matchValue(
-  context: BodyContext,
-  inference: Inference,
-  declared: Type,
-  type: Type,
-): void {
+function matchValue(context: BodyContext, inference: Inference, declared: Type, type: Type): void {
   if (!inference.match(declared, type) && context.scopes.holds(type)) {
     context.scopes.abandon([type]);
   }
@@ -163,8 +152,8 @@ interface FieldValue {
 }
 
 /**
- * Checks a field's value: against the field's type when that is known; postponed when it has no
- * type of its own while that type is still to be inferred; else in the literal's scope, and
+ * Checks a field's value: against the field's type when that is known, naming no variable of the
+ * constraint scope; else in the literal's scope, expected to be what that type is so far, and
  * matched, a literal with its literal type where the field expects one (§2, §3.5).
  */
 function checkFieldValue(
@@ -174,29 +163,40 @@ function checkFieldValue(
 ): void {
   const { inference, given } = items;
   const declared = inference.settledIn(field.type);
-  if (parametersIn(declared).every((parameter) => !inference.isUnknown(parameter))) {
-    const type = context.expression(value, declared);
+  const isKnown =
+    !context.scopes.holds(declared) &&
+    parametersIn(declared).every((parameter) => !inference.isUnknown(parameter));
+  if (isKnown) {
+    const type = checkedValue(context, items, value, declared);
     if (context.scopes.holds(type)) {
       matchValue(context, inference, field.type, type);
     }
     given.set(index, { node: value, type, declared: field.type, isLiteral: false });
     return;
   }
-  const part = context.acceptedPart(value);
-  if (part.kind === 'decided' && part.alone === undefined) {
-    items.postponed.set(index, { node: value, declared: field.type });
-    return;
-  }
   const literal = writtenLiteral(unparenthesized(value));
-  const literalType =
-    literal === undefined ? undefined : inference.literalType(literal.value, field.type);
-  const type = context.expression(value, literalType);
+  const expected =
+    literal === undefined
+      ? inference.open(field.type)
+      : inference.literalType(literal.value, field.type);
+  const type = checkedValue(context, items, value, expected);
   if (literal === undefined) {
     matchValue(context, inference, field.type, type);
   } else {
     inference.matchLiteral(field.type, literal);
   }
   given.set(index, { node: value, type, declared: field.type, isLiteral: literal !== undefined });
+}
+
+/** `value`'s type: as checked already where `items`' values were, else checked expecting `expected`. */
+function checkedValue(
+  context: BodyContext,
+  items: LiteralItems,
+  value: Expression,
+  expected: Type | undefined,
+): Type {
+  const checked = items.checked ? context.checkedTypeOf(value) : undefined;
+  return checked ?? context.expression(value, expected);
 }
 
 /** An item giving no field of its own: no field by that name or position, or one given twice. */
@@ -247,12 +247,6 @@ export function reportMissing(
       context.report(checkerDiagnostics.missingField(at, typeText(type), field.name));
     }
   }
-}
-
-/** Whether `field` declares a default (§3.1), as only a declared struct's or variant's can. */
-export function declaresDefault(field: FieldMember | undefined): boolean {
-  const declared = field?.declared?.node;
-  return declared !== undefined && hasDefault(declared);
 }
 
 /**

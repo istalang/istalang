@@ -310,7 +310,7 @@ const uncheckedExamples = new Map<string, readonly number[]>([
   ['docs/guide.md › 2.7 Errors (§3.12) #1', [4000]],
   ['docs/guide.md › 2.9 Concurrency (§6, §8, §9) #1', [5022, 5026, 5103]],
   ['docs/guide.md › 2.11 Modules, host, JSON, tools (§3.6, §3.13, §9, §11) #1', [3000]],
-  ['docs/guide.md › 2.12 Testing (§10) #1', [4000]],
+  ['docs/guide.md › 2.12 Testing (§10) #1', [4000, 5214]],
 ]);
 
 /**

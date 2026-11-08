@@ -32,6 +32,7 @@ import {
   fromArguments,
   isShape,
   type LowerBound,
+  mentionedBy,
   type Related,
   type VariableBounds,
 } from './bounds.ts';
@@ -69,6 +70,8 @@ export interface SettlingView {
 
 /**
  * `parameters` settled, `given` taken as it is; a parameter left out can't be inferred (rule 6).
+ * A type given that mentions others of `parameters`, as a placeholder's (i2-scope.md §3), is taken
+ * once they are settled, with what they settled to.
  */
 export function settleAll(
   parameters: readonly ParameterKey[],
@@ -77,9 +80,11 @@ export function settleAll(
   settling: Settling,
 ): Map<ParameterKey, Type> {
   const settled = new Map<ParameterKey, Type>();
+  const mentionsOthers = (type: Type) =>
+    parametersIn(type).some((other) => parameters.includes(other));
   for (const parameter of parameters) {
     const type = given.get(parameter);
-    if (type !== undefined) {
+    if (type !== undefined && !mentionsOthers(type)) {
       settled.set(parameter, type);
     }
   }
@@ -88,9 +93,13 @@ export function settleAll(
   const closing = new Map(settled);
   const pending = parameters.filter((parameter) => !settled.has(parameter));
   while (pending.length > 0) {
-    const [parameter] = pending.splice(nextToSettle(pending, view), 1);
+    const [parameter] = pending.splice(nextToSettle(pending, view, given), 1);
     if (parameter !== undefined) {
-      const type = settleOne(parameter, closing, view, settling);
+      const taken = given.get(parameter);
+      const type =
+        taken === undefined
+          ? settleOne(parameter, closing, view, settling)
+          : substitute(taken, closing, view.rules);
       closing.set(parameter, type ?? errorType);
       if (type !== undefined) {
         settled.set(parameter, type);
@@ -106,15 +115,34 @@ export function settleAll(
  * nothing pending; else the first. A variable related to another (`U <: T`) and bounded only
  * through it thus settles after it, so `outer(empty(), 1)` settles `T` by `1` and then `U` by `T`.
  */
-function nextToSettle(pending: readonly ParameterKey[], view: SettlingView): number {
+function nextToSettle(
+  pending: readonly ParameterKey[],
+  view: SettlingView,
+  given: Substitution,
+): number {
   const isPending = (other: ParameterKey, candidate: ParameterKey) =>
     other !== candidate && pending.includes(other);
+  const waitsOn = (candidate: ParameterKey) => {
+    const taken = given.get(candidate);
+    return taken === undefined ? mentionedBy(view.boundsOf(candidate)) : parametersIn(taken);
+  };
   const closed = (candidate: ParameterKey) =>
-    !mentioned(view.boundsOf(candidate)).some((other) => isPending(other, candidate));
+    !waitsOn(candidate).some((other) => isPending(other, candidate));
+  // A variable settles after those below it with bounds of their own, which hand it what they
+  // settle to; one with none settles from what those it is related to settled to.
+  // Items apart (bounds.ts) bound nothing settling reads first: their variable settles from above.
+  const hasOwnBounds = (variable: ParameterKey) => {
+    const bounds = view.boundsOf(variable);
+    return hasBounds({ ...bounds, lower: bounds.lower.filter(({ isApart }) => isApart !== true) });
+  };
+  const settlesBelow = (other: ParameterKey, candidate: ParameterKey) =>
+    isPending(other, candidate) && hasOwnBounds(other);
   const ready = (candidate: ParameterKey) =>
     closed(candidate) &&
-    (hasBounds(view.boundsOf(candidate)) ||
-      !relatives(view.relatedOf(candidate)).some((other) => isPending(other, candidate)));
+    (given.has(candidate) ||
+      ((hasOwnBounds(candidate) ||
+        !relatives(view.relatedOf(candidate)).some((other) => isPending(other, candidate))) &&
+        !view.relatedOf(candidate).below.some((other) => settlesBelow(other, candidate))));
   const index = pending.findIndex(ready);
   return index >= 0 ? index : Math.max(0, pending.findIndex(closed));
 }
@@ -131,11 +159,16 @@ export function settleOne(
   view: SettlingView,
   settling: Settling,
 ): Type | undefined {
-  const bounds = withRelatives(
+  const related = withRelatives(
     closedBounds(view.boundsOf(parameter), settled, view.rules),
     view.relatedOf(parameter),
     settled,
   );
+  // Items apart (bounds.ts) settle on what takes them where something does, judged there after.
+  const isTaken = related.equal !== undefined || related.upper.length > 0;
+  const bounds = isTaken
+    ? { ...related, lower: related.lower.filter(({ isApart }) => isApart !== true) }
+    : related;
   const decide = (of: VariableBounds) =>
     of.equal?.type ??
     (view.isAtTop(parameter) ? undefined : expectedChoice(parameter, of, view, settling)) ??
@@ -144,9 +177,36 @@ export function settleOne(
   return (
     decide(bounds) ??
     decide(fromArguments(bounds)) ??
+    settledBelow(parameter, bounds, view, settled) ??
     settling.defaultOf(parameter, settled) ??
     view.fallbackOf(parameter)
   );
+}
+
+/**
+ * What the variables `parameter` is related to from below settled to, joined, where that takes
+ * every bound of its own: as what they settled to stands for the bounds they handed it, a branch's
+ * result variable its producers', `[(k1, 1), (k2, 2)]`'s items' agreeing on `(String, Int)`.
+ */
+function settledBelow(
+  parameter: ParameterKey,
+  bounds: VariableBounds,
+  view: SettlingView,
+  settled: Substitution,
+): Type | undefined {
+  const below = view.relatedOf(parameter).below.flatMap((key) => settled.get(key) ?? []);
+  const lower = below.map((type) => ({
+    type,
+    fresh: false,
+    isShape: false,
+    origin: 'argument' as const,
+  }));
+  const joined = lower.length === 0 ? undefined : view.join(parameter, lower, bounds.upper);
+  return joined !== undefined &&
+    bounds.lower.every(({ type }) => view.fits(type, joined)) &&
+    bounds.upper.every(({ type }) => view.fits(joined, type))
+    ? joined
+    : undefined;
 }
 
 /**
@@ -242,11 +302,18 @@ function closedBounds(
  * call's parameter type passed where a joined call's is (design.md §4), settles from it: a related
  * parameter below gives a lower bound, one above an upper bound.
  */
-function withRelatives(bounds: VariableBounds, { below, above }: Related, settled: Substitution) {
+function withRelatives(
+  bounds: VariableBounds,
+  { below, above }: Related,
+  settled: Substitution,
+): VariableBounds {
+  // One that couldn't be settled hands nothing on: the error type would silence what disagrees.
   const settledOf = (keys: readonly ParameterKey[]) =>
     keys.flatMap((key) => {
       const type = settled.get(key);
-      return type === undefined ? [] : [{ type, origin: 'argument' as const }];
+      return type === undefined || type.kind === 'error'
+        ? []
+        : [{ type, origin: 'argument' as const }];
     });
   return {
     ...bounds,
@@ -263,9 +330,5 @@ function relatives({ below, above }: Related): readonly ParameterKey[] {
   return [...below, ...above];
 }
 
-/** The parameters `bounds` mention. */
-function mentioned({ equal, lower, upper }: VariableBounds): readonly ParameterKey[] {
-  return [...(equal === undefined ? [] : [equal]), ...lower, ...upper].flatMap(({ type }) =>
-    parametersIn(type),
-  );
-}
+/** How each variable settles: as its call's parameter does, or freely (`settlesFreely`). */
+export type SettlingOf = (variable: ParameterKey) => Settling;

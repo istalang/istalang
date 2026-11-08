@@ -9,10 +9,11 @@
 import { type Entity, localFunctionOf, type VariableEntity } from '../../../../binder/entities.ts';
 import type { MemberAccess } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
-import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { namedFunctions } from '../../../resolution/choosing/named-functions.ts';
+import type { Admits } from '../../../types/fitting/expected.ts';
 import { expectedNominal } from '../../../types/fitting/expected.ts';
 import { isNominalEntity, type Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
@@ -37,7 +38,7 @@ export function checkName(
  * among several or a generic one the function types it can be, a bare variant the enums having it
  * and the function types its constructor can be.
  */
-export function nameAccepts(context: BodyContext, node: Identifier): Accepts | undefined {
+export function nameAccepts(context: BodyContext, node: Identifier): Admits | undefined {
   const entity = context.entityOf(node);
   if (entity?.kind === 'variants') {
     return variantNameAccepts(context, node, entity);
@@ -50,7 +51,7 @@ export function nameAccepts(context: BodyContext, node: Identifier): Accepts | u
  * qualified variant without fields of a generic enum the instances of its enum, functions named
  * through a namespace or a type the function types they can be.
  */
-export function memberAccepts(context: BodyContext, node: MemberAccess): Accepts | undefined {
+export function memberAccepts(context: BodyContext, node: MemberAccess): Admits | undefined {
   return qualifiedVariantAccepts(context, node) ?? namedFunctionsAccepted(context, node);
 }
 
@@ -87,7 +88,7 @@ export function entityValueType(
 }
 
 /** The type of `variable`, which isn't a local function, where a body reads it. */
-export function variableType(context: BodyContext, variable: VariableEntity): Type {
+function variableType(context: BodyContext, variable: VariableEntity): Type {
   return declaredOutsideBodies(context.checker, variable) ?? context.variables.typeOf(variable);
 }
 

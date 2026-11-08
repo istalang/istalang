@@ -11,10 +11,9 @@
  */
 
 import type { Tuple, TupleElement } from '../../../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
-import { partsAccept } from '../../../rules/agreement.ts';
 import { expectedTuple } from '../../../types/fitting/expected.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType, unitType } from '../../../types/type/primitives.ts';
@@ -30,8 +29,14 @@ export function checkTuple(context: BodyContext, node: Tuple, expected: Type | u
     kind: 'tuple',
     elements: node.elements.map((element, index) => {
       const guide = guides?.[index];
-      const type = context.expression(element, guide);
-      if (guide === undefined || context.checker.fitOf(type, guide) === undefined) {
+      const type = context.part(element, guide);
+      // An element open in the constraint scope is fitted where the tuple is, once it settles.
+      if (
+        guide === undefined ||
+        context.scopes.holds(type) ||
+        context.scopes.holds(guide) ||
+        context.checker.fitOf(type, guide) === undefined
+      ) {
         return type;
       }
       context.fit(type, guide, element);
@@ -59,25 +64,4 @@ export function checkTupleElement(context: BodyContext, node: TupleElement): Typ
     return errorType;
   }
   return element;
-}
-
-/** Which tuple types `node` can take: its size, each element taking its own, if one has none. */
-export function tupleAccepts(context: BodyContext, node: Tuple): Accepts | undefined {
-  return tupleTaking(
-    partsAccept(
-      context,
-      node.elements.map((element) => context.acceptedPart(element)),
-    ),
-  );
-}
-
-/** The tuple types of `elements`' size whose each element the element at its position takes. */
-function tupleTaking(elements: readonly Accepts[] | undefined): Accepts | undefined {
-  if (elements === undefined) {
-    return undefined;
-  }
-  return (expected, isOpen) =>
-    expectedTuple(expected, elements.length)?.every(
-      (type, index) => elements[index]?.(type, isOpen) ?? true,
-    ) === true;
 }

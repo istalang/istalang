@@ -61,6 +61,28 @@ describe('a call that can’t be made', () => {
     expect(messagesOf('foo(empty())')).toEqual(['Expected String, found Array<?>.']);
     expect(messagesOf('foo(id(empty()))')).toEqual(['Expected String, found Array<?>.']);
   });
+
+  it('still reports a joined argument whose own bounds disagree', () => {
+    expect(
+      reportedAfter(
+        'fn takeInts(xs: Array<Int>) -> Int: 0',
+        'fn f() -> Int: takeInts([1, "wrong"])',
+      ).codes.length,
+    ).toBeGreaterThan(0);
+    expect(
+      reportedAfter(
+        'fn takePair(p: Pair<Int>) -> Int: 0',
+        'fn f() -> Int: takePair(Pair{a: 1, b: "wrong"})',
+      ).codes.length,
+    ).toBeGreaterThan(0);
+    expect(
+      reportedAfter(
+        'fn pair<T>(a: T, b: T) -> Array<T>: [a, b]',
+        'fn takeInts(xs: Array<Int>) -> Int: 0',
+        'fn f() -> Int: takeInts(pair(1, "wrong"))',
+      ).codes.length,
+    ).toBeGreaterThan(0);
+  });
 });
 
 describe('a function value called with arguments still open', () => {
@@ -146,6 +168,45 @@ describe('a lambda judged in a scope', () => {
         'fn f() -> Int:\n  _ = goodPair((1, fn x: Good(x + 1)))\n  applyFirst([fn x: id(x + 1)])',
       ),
     ).toEqual(reportedNothing);
+  });
+});
+
+describe('a placeholder', () => {
+  it('is judged once no other one still gives its inputs, each in turn', () => {
+    expect(
+      reportedAfter(
+        'fn chain<A, B, C>(f: fn(A) -> B, g: fn(B) -> C, x: A) -> C: g(f(x))',
+        'fn f() -> Int: chain(fn x: x + 1, fn y: y * 2, 3)',
+        'fn g() -> Int: chain(fn x: x + 1, id(fn y: y * 2), 3)',
+      ),
+    ).toEqual(reportedNothing);
+  });
+
+  it('refuses a candidate it can be no value of, so overloads choose by it', () => {
+    expect(
+      reportedAfter(
+        'fn pick(f: fn(Int) -> Int) -> Int: f(1)',
+        'fn pick(f: fn(Int, Int) -> Int) -> Int: f(1, 2)',
+        'fn f() -> Int: pick(fn x: x) + pick(fn(x, y): x + y)',
+      ),
+    ).toEqual(reportedNothing);
+  });
+
+  it('is told its type by siblings whose own items are still open', () => {
+    expect(
+      reportedAfter(
+        'fn f() -> Int:',
+        '  const xs = [[1], [], [2, 3]]',
+        '  xs.flat().length() + [[1], [], [2, 3]].flat().length()',
+      ),
+    ).toEqual(reportedNothing);
+  });
+
+  it('of a call that can\u2019t be made is checked against what it didn\u2019t take, once', () => {
+    expect(messagesOf('foo(fn x: x)')).toEqual([
+      'Expected String, found sendable fn(?) -> ?.',
+      "The type of 'x' can't be inferred: write it, or pass the lambda where a function type is expected.",
+    ]);
   });
 });
 

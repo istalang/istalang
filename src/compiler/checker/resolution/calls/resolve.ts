@@ -27,12 +27,13 @@ import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
-import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { ResolvedSite } from '../../surface/resolved-call.ts';
 import { misfitOf } from '../../types/fitting/fit/index.ts';
 import type { Inference } from '../../types/inference/infer.ts';
+import { isPlaceholder, mentionsOnlyPlaceholders } from '../../types/inference/variables.ts';
 import type { LiteralType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
@@ -44,14 +45,13 @@ import { callMade } from '../choosing/calls-made.ts';
 import type { Candidate } from '../choosing/candidates.ts';
 import type { Application } from '../choosing/choice.ts';
 import { type Instantiation, settlingAt } from '../conformance/conformance.ts';
-import { checkDecidedFunctions } from './function-arguments.ts';
 import { changeReceiver, checkReferencedPlaces } from './places.ts';
 import { expectWrittenArguments } from './written-expectations.ts';
 
 /**
- * An argument as written: its node, how it is passed, and its type, undefined when the chosen
- * function decides it, with which parameter types it can take (resolution/choosing/choice.ts); its
- * name when named. A spread's node is what it spreads, its type that of its items, which fit the rest
+ * An argument as written: its node, how it is passed, and its type, a placeholder of the call's
+ * constraint scope where the scope checks it once it knows what the call expects of it
+ * (contexts/constraint-scope.ts); its name when named. A spread's node is what it spreads, its type that of its items, which fit the rest
  * parameter's element exactly: the items are copied or iterated as they are (§3.3).
  */
 export interface WrittenArgument {
@@ -59,15 +59,8 @@ export interface WrittenArgument {
   readonly passing: Passing;
   readonly type: Type | undefined;
   readonly literal?: LiteralType | undefined;
-  readonly accepts?: Accepts | undefined;
   readonly name?: Identifier | undefined;
   readonly isSpread?: boolean | undefined;
-  /**
-   * For an argument the call decides, the type it is known to have so far, which bounds what the
-   * call gives it: a lambda's written parameters (constructs/closures/lambdas.ts `writtenInputs`),
-   * a `struct{…}`'s shape.
-   */
-  readonly known?: Type | undefined;
 }
 
 /** A call to resolve, as written. */
@@ -104,16 +97,24 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
     request.candidates.map(({ declaration }) => declaration),
   );
   const scope = context.scopes.root;
-  const openArguments = request.arguments.some(({ type }) => context.scopes.holds(type));
+  // An argument the scope still infers into is reported once it settles; a placeholder alone, which
+  // reads as `_`, at once, as an argument the call decides always was.
+  const openArguments = request.arguments.some(
+    ({ type }) =>
+      type !== undefined && context.scopes.holds(type) && !mentionsOnlyPlaceholders(type),
+  );
+  const meetsScope =
+    request.arguments.some(({ type }) => context.scopes.holds(type)) ||
+    context.scopes.holds(request.expected);
   // A candidate meets the scope's variables only through what it is given or expected to give;
   // where neither holds one, its system starts empty, and committing it adds its own.
-  const meetsScope = openArguments || context.scopes.holds(request.expected);
   const applying = applicationOf(context, request, meetsScope ? scope : undefined);
   const chosen = chooseCall(context, applying, { reports: !openArguments });
   if (chosen === undefined) {
     if (openArguments) {
       reportUnmade(context, request);
     } else {
+      context.scopes.abandon(request.arguments.map(({ type }) => type));
       expectWrittenArguments(context, applying);
     }
     return errorType;
@@ -125,7 +126,6 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
     inference: chosen.inference,
     type: chosen.inference.open(chosen.signature.result()),
     settling,
-    judge: () => applying.chosen?.(chosen, settling),
     complete: () => completeResolved(context, request, applying, chosen),
   });
 }
@@ -155,8 +155,6 @@ function applicationOf(
         context.report(hint);
       }
     },
-    chosen: (application, settlingIt) =>
-      checkDecidedFunctions(context, written, application, settlingIt),
   };
 }
 
@@ -210,17 +208,8 @@ function completeResolved(
 
 /** A written argument as choosing sees it. */
 export function callArgumentOf(argument: WrittenArgument): CallArgument {
-  const { type, literal, passing, accepts, name, isSpread, known } = argument;
-  return {
-    type,
-    literal,
-    passing,
-    accepts,
-    name: name?.text,
-    isSpread,
-    exact: isSpread === true,
-    known,
-  };
+  const { type, literal, passing, name, isSpread } = argument;
+  return { type, literal, passing, name: name?.text, isSpread, exact: isSpread === true };
 }
 
 /** A chosen function, instantiated, at the site calling it or naming it as a value. */
@@ -326,8 +315,9 @@ function explainNone(
 }
 
 /**
- * Each argument that doesn't fit its parameter, reported as a mismatch; an argument the chosen
- * function would have decided is checked against the type it didn't take, which says why. With
+ * Each argument that doesn't fit its parameter, reported as a mismatch; one its scope would have
+ * checked once it knew what the call expects of it, a placeholder (contexts/constraint-scope.ts),
+ * is checked against the type it didn't take, which says why. With
  * nothing reported that way, no function of the name takes the arguments.
  */
 function explainMisfits(
@@ -338,11 +328,12 @@ function explainMisfits(
   const before = context.checker.reportCount();
   for (const { index, expected } of misfits) {
     const argument = request.arguments[index];
-    if (argument?.type !== undefined) {
+    if (argument?.type !== undefined && !isPlaceholder(argument.type)) {
       const { node, type } = argument;
       context.report(misfitOf(context.checker.fitting, node.span, type, expected));
     } else if (argument !== undefined) {
-      context.expect(argument.node, expected);
+      // Checked on its own, as nothing the scope holds tells it what to be.
+      context.scopes.suspended(() => context.expect(argument.node, expected));
     }
   }
   if (context.checker.reportCount() === before) {

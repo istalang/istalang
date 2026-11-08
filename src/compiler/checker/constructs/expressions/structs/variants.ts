@@ -23,37 +23,21 @@ import {
   fieldsFunctionOf,
 } from '../../../../syntax/declarations/field-defaults.ts';
 import { typeParametersOf } from '../../../../syntax/declarations/index.ts';
-import type { Call, Expression, MemberAccess } from '../../../../syntax/expressions/index.ts';
-import { calledName, unparenthesized } from '../../../../syntax/expressions/readings.ts';
+import type { Call, MemberAccess } from '../../../../syntax/expressions/index.ts';
+import { calledName } from '../../../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
-import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { resolveCall, type WrittenArgument } from '../../../resolution/calls/resolve.ts';
 import { functionsAccepted, namedFunctions } from '../../../resolution/choosing/named-functions.ts';
+import type { Admits } from '../../../types/fitting/expected.ts';
 import { enumsExpected, expectedNominal, writtenNominal } from '../../../types/fitting/expected.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType, noneType } from '../../../types/type/primitives.ts';
 import { membersOf } from '../../../types/unions/unions.ts';
 import { chooseVariant, nominalEntityOf } from '../../../types/written/named-types.ts';
 import { checkFunctionValue } from '../../closures/function-values.ts';
-
-/**
- * The types `none` can take, as an argument a call's chosen function decides: any it fits, a
- * union holding `None`, so a literal holding it, such as `(none, 1)`, is built from the parameter.
- */
-export function noneAccepted(context: BodyContext): Accepts {
-  return (expected) => context.checker.fitOf(noneType, expected) !== undefined;
-}
-
-/**
- * The type `node` has where nothing decides it: `none` waits for the call to decide which optional
- * it is, but alone it is a `None`, which the producers it agrees with join (§2), so `[1, none]` is
- * an `Array<Int?>` wherever it goes; undefined for anything else.
- */
-export function aloneType(node: Expression): Type | undefined {
-  return unparenthesized(node).kind === 'NoneLiteral' ? noneType : undefined;
-}
 
 /**
  * For a bare variant's name passed to a call that decides it (§3.5), the types it can take: an
@@ -64,7 +48,7 @@ export function variantNameAccepts(
   context: BodyContext,
   node: Identifier,
   naming: VariantsEntity,
-): Accepts {
+): Admits {
   const { checker } = context;
   const constructors = namedFunctions(context, node);
   const asFunction =
@@ -82,7 +66,7 @@ export function variantNameAccepts(
 export function qualifiedVariantAccepts(
   context: BodyContext,
   node: MemberAccess,
-): Accepts | undefined {
+): Admits | undefined {
   const naming = context.entityOf(node.member);
   if (
     naming?.kind !== 'variant' ||
@@ -95,7 +79,7 @@ export function qualifiedVariantAccepts(
 }
 
 /** For a call of a bare variant, `Ok(v)`, the enum types that have a variant of that name. */
-export function variantCallAccepts(context: BodyContext, node: Call): Accepts | undefined {
+export function variantCallAccepts(context: BodyContext, node: Call): Admits | undefined {
   const callee = calledName(node);
   const naming =
     callee.kind === 'Identifier' && !node.isOptional ? context.entityOf(callee) : undefined;

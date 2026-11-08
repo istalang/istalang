@@ -23,6 +23,7 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import type { Binding } from '../../surface/resolved-call.ts';
 import { reshapes } from '../../types/fitting/fit/index.ts';
 import { Inference } from '../../types/inference/infer.ts';
+import { isPlaceholder } from '../../types/inference/variables.ts';
 import type { Substitution } from '../../types/parts/substitution.ts';
 import { fillsPack } from '../../types/type/function-types.ts';
 import type { ParameterSlot, Type } from '../../types/type/index.ts';
@@ -100,12 +101,14 @@ export function reshapesArguments(
 ): boolean {
   return callArguments.some((argument, index) => {
     const slot = slots.get(index);
-    const type = argument.type ?? argument.known;
+    // What the scope still infers is what its bounds tell so far, as a lambda's written parameters.
+    const type = argument.type === undefined ? undefined : inference.tentativeIn(argument.type);
     if (type === undefined || slot === undefined) {
       return false;
     }
     const fit = checker.fitOf(type, inference.substituted(slot.type));
-    return fit === undefined ? argument.type === undefined : reshapes(fit);
+    // A `struct{…}`'s shape fitting no parameter builds the struct it is passed as (§3.1).
+    return fit === undefined ? type.kind === 'anonymous' : reshapes(fit);
   });
 }
 
@@ -162,9 +165,10 @@ interface BoundArguments {
 
 /**
  * Why the arguments don't fit `signature`'s parameters, matching them for inference meanwhile.
- * Arguments with types are matched first, in any order, so what inference finds doesn't depend on
- * where an argument the chosen function decides stands; then a pack's, which take what those
- * found; and last those the chosen function decides, judged against what was found.
+ * Arguments with types of their own are matched first, in any order, so what inference finds
+ * doesn't depend on where a placeholder stands; then a pack's, which take what those found; and
+ * last the placeholders of what the call's scope checks once it knows what is expected of it
+ * (contexts/constraint-scope.ts), each refusing a parameter it can't be a value of.
  */
 function argumentsInapplicability(
   callArguments: readonly CallArgument[],
@@ -191,9 +195,9 @@ function argumentsInapplicability(
     return undefined;
   };
   const refused =
-    judged((argument) => argument.type !== undefined) ??
+    judged((argument) => !isPlaceholder(argument.type)) ??
     bound.matchPacks() ??
-    judged((argument) => argument.type === undefined);
+    judged((argument) => isPlaceholder(argument.type));
   if (refused !== undefined) {
     return refused;
   }
@@ -216,10 +220,7 @@ function judgedArgument(
   }
   const conflicts = inference.conflicts.size;
   const severalMembers = inference.severalMembers.size;
-  const fits =
-    argument.type === undefined
-      ? acceptsDecided(argument, slot.type, inference)
-      : typedFits(slot, argument, argument.type, inference);
+  const fits = argument.type === undefined || typedFits(slot, argument, argument.type, inference);
   const conflict = addedBy(inference.conflicts, conflicts);
   if (conflict?.kind === 'TypeParameter') {
     return { kind: 'conflict', parameter: conflict };
@@ -265,24 +266,4 @@ function addedBy<Item>(
   size: number,
 ): Item | undefined {
   return collection.size > size ? [...collection][size] : undefined;
-}
-
-/**
- * Whether an argument the chosen function decides can take a parameter of type `declared`, a type
- * parameter not settled yet open, since what bounds it loosely may still grow.
- * What it is known to be only bounds what the call gives it (`known`), as far as it can: a
- * `struct{…}`'s shape as one, building the struct the parameter settles to (§3.1).
- */
-function acceptsDecided(argument: CallArgument, declared: Type, inference: Inference): boolean {
-  const isOpen = (part: Type) => part.kind === 'parameter' && inference.isUnknown(part.declaration);
-  const { accepts, known } = argument;
-  if (accepts !== undefined && !accepts(inference.settledIn(declared), isOpen)) {
-    return false;
-  }
-  if (known?.kind === 'anonymous') {
-    inference.matchShape(declared, known);
-  } else if (known !== undefined) {
-    inference.match(declared, known);
-  }
-  return true;
 }

@@ -6,11 +6,20 @@
 
 import type { Fitting } from '../fitting/fit/index.ts';
 import { fitOf } from '../fitting/fit/index.ts';
-import { substitute } from '../parts/substitution.ts';
+import { type Substitution, substitute } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
+import { declaresDefault } from '../type/field-defaults.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
-import type { Bound, LowerBound, Related, VariableBounds } from './bounds.ts';
+import { membersOf } from '../unions/unions.ts';
+import {
+  type Bound,
+  type LowerBound,
+  mentionedBy,
+  type Related,
+  type VariableBounds,
+} from './bounds.ts';
+import { type Settling, type SettlingView, settleOne } from './settle.ts';
 
 /** What reading a system's variables needs of it. */
 export interface SystemReading {
@@ -26,6 +35,10 @@ export interface SystemReading {
     lower: readonly LowerBound[],
     upper: readonly Bound[],
   ) => Type | undefined;
+  /** What `variable` falls back to where no bound settles it: the error type or `Never` it met. */
+  readonly fallbackOf: (variable: ParameterKey) => Type | undefined;
+  /** The system's variables. */
+  readonly variables: () => Iterable<ParameterKey>;
 }
 
 /**
@@ -38,10 +51,8 @@ export function reachedFrom(type: Type, reading: SystemReading): ReadonlySet<Par
   for (let variable = pending.pop(); variable !== undefined; variable = pending.pop()) {
     if (reading.isVariable(variable) && !reached.has(variable)) {
       reached.add(variable);
-      const { equal, lower, upper } = reading.boundsOf(variable);
       const { below, above } = reading.relatedOf(variable);
-      const bounds = [...(equal === undefined ? [] : [equal]), ...lower, ...upper];
-      pending.push(...bounds.flatMap((bound) => parametersIn(bound.type)), ...below, ...above);
+      pending.push(...mentionedBy(reading.boundsOf(variable)), ...below, ...above);
     }
   }
   return reached;
@@ -54,7 +65,9 @@ export function tentativeOf(variable: ParameterKey, reading: SystemReading): Typ
     return equal.type;
   }
   if (lower.length > 0) {
-    return reading.join(variable, lower, upper);
+    // A variable a bound mentions may be fixed already (`fixingToward`), which tells the bound more.
+    const fixedLower = lower.map((bound) => ({ ...bound, type: fixedIn(bound.type, reading) }));
+    return reading.join(variable, fixedLower, upper);
   }
   const fits = (found: Type, expected: Type) =>
     fitOf(found, expected, reading.fitting) !== undefined;
@@ -103,13 +116,189 @@ export function solvedIn(
 
 /**
  * Whether `target` takes a struct literal of shape `shape` (§3.1): a struct, not a shape, whose
- * fields as a shape the literal's fit.
+ * fields as a shape the literal's fit, those it leaves out having defaults.
  */
 export function takesShape(target: Type, shape: Type, fitting: Fitting): boolean {
+  const fields = shapeTaking(target, shape, fitting);
+  return fields !== undefined && fitOf(shape, fields, fitting) !== undefined;
+}
+
+/**
+ * The fields of `target`, a struct, a literal of `shape` must give, as a shape: those it gives, and
+ * those without a default (§3.1); undefined for a target that is no struct.
+ */
+export function shapeTaking(target: Type, shape: Type, fitting: Fitting): Type | undefined {
   const fields = target.kind === 'nominal' ? fitting.shapeOf(target) : undefined;
-  return (
-    shape.kind === 'anonymous' &&
-    fields !== undefined &&
-    fitOf(shape, fields, fitting) !== undefined
+  if (shape.kind !== 'anonymous' || fields?.kind !== 'anonymous') {
+    return undefined;
+  }
+  const given = new Set(shape.fields.map(({ name }) => name));
+  const taken = fields.fields.filter((field) => given.has(field.name) || !declaresDefault(field));
+  return { ...fields, fields: taken };
+}
+
+/** The variables of the system `type` mentions that aren't taken as found yet. */
+export function openIn(type: Type, reading: SystemReading): readonly ParameterKey[] {
+  return parametersIn(type).filter(
+    (key) => reading.isVariable(key) && fixedOf(key, reading) === undefined,
+  );
+}
+
+/** `type` with each variable taken as found (`fixedOf`) in place, the rest left. */
+export function fixedIn(type: Type, reading: SystemReading): Type {
+  const fixed = new Map<ParameterKey, Type>();
+  for (const variable of parametersIn(type)) {
+    const found = reading.isVariable(variable) ? fixedOf(variable, reading) : undefined;
+    if (found !== undefined) {
+      fixed.set(variable, found);
+    }
+  }
+  return fixed.size === 0 ? type : substitute(type, fixed, reading.fitting);
+}
+
+/**
+ * What is expected of `variable` so far (i2-scope.md §3): the error type where it met it, as a
+ * placeholder an unmade call abandoned did; what it is taken as, else its equality, else an upper
+ * bound, the arguments' first; else what a variable it is related to from below is expected to
+ * be, or, with `siblings`, holds: what the siblings bounding that one give.
+ */
+export function expectationOf(
+  variable: ParameterKey,
+  reading: SystemReading,
+  siblings = true,
+  seen = new Set<ParameterKey>(),
+): Type | undefined {
+  if (seen.has(variable)) {
+    return undefined;
+  }
+  if (reading.fallbackOf(variable)?.kind === 'error') {
+    return errorType;
+  }
+  seen.add(variable);
+  const { equal, upper } = reading.boundsOf(variable);
+  const bound =
+    equal ??
+    upper.find(({ origin }) => origin === 'argument') ??
+    upper.find(({ origin }) => origin === 'expected');
+  const found = fixedOf(variable, reading) ?? bound?.type;
+  if (found !== undefined) {
+    return found;
+  }
+  for (const above of reading.relatedOf(variable).above) {
+    const told =
+      expectationOf(above, reading, siblings, seen) ??
+      (siblings ? tentativeOf(above, reading) : undefined);
+    if (told !== undefined) {
+      return told;
+    }
+  }
+  return undefined;
+}
+
+/** What has been found so far for `variables`, as a substitution: the types given, else tentative. */
+export function tentativeSubstitution(
+  reading: SystemReading,
+  variables: Iterable<ParameterKey>,
+): Substitution {
+  const found = new Map<ParameterKey, Type>();
+  for (const variable of variables) {
+    const type = reading.givenOf(variable) ?? tentativeOf(variable, reading);
+    if (type !== undefined) {
+      found.set(variable, type);
+    }
+  }
+  return found;
+}
+
+/** What settling reads of a system (settle.ts), `atTop` its variables at the top of the result. */
+export function settlingViewOf(
+  reading: SystemReading,
+  atTop: ReadonlySet<ParameterKey>,
+): SettlingView {
+  const { fitting } = reading;
+  return {
+    rules: fitting,
+    boundsOf: reading.boundsOf,
+    isAtTop: (parameter) => atTop.has(parameter),
+    fits: (found, expected) => fitOf(found, expected, fitting) !== undefined,
+    takesShape: (target, shape) => takesShape(target, shape, fitting),
+    join: reading.join,
+    fallbackOf: reading.fallbackOf,
+    relatedOf: reading.relatedOf,
+  };
+}
+
+/**
+ * What to fix the variables placeholders `waiting` wait on to, when none of them knows yet what is
+ * expected of it (i2-scope.md §3), as Kotlin's inference fixes a variable a postponed argument is
+ * stuck on: each one not fixed yet whose bounds mention a variable a placeholder is related to,
+ * or that such a variable's bounds mention, settled by its other bounds, what the variables they
+ * mention tell so far in their place, so a sibling of a type of its own tells the placeholders
+ * theirs: `[Ok(1)]` beside an `Array<Result<Int, String>>` for one `T`, and `[]` beside `[1]` and
+ * `[2, 3]` their `Array<Int>`.
+ */
+export function fixingToward(
+  waiting: readonly ParameterKey[],
+  reading: SystemReading,
+  view: SettlingView,
+  settlingOf: (variable: ParameterKey) => Settling,
+): ReadonlyMap<ParameterKey, Type> {
+  const near = new Set(waiting);
+  for (const placeholder of waiting) {
+    const { below, above } = reading.relatedOf(placeholder);
+    for (const related of [...below, ...above]) {
+      near.add(related);
+    }
+  }
+  const isFree = ({ type }: Bound) => !parametersIn(type).some((key) => near.has(key));
+  const mentionedNear = new Set([...near].flatMap((each) => mentionedBy(reading.boundsOf(each))));
+  const told = tentativeSubstitution(reading, reading.variables());
+  const fixing = new Map<ParameterKey, Type>();
+  for (const variable of reading.variables()) {
+    const { equal, lower, upper } = reading.boundsOf(variable);
+    const free = {
+      equal: equal !== undefined && isFree(equal) ? equal : undefined,
+      lower: lower.filter(isFree),
+      upper: upper.filter(isFree),
+    };
+    const waitedOn =
+      mentionedNear.has(variable) ||
+      mentionedBy({ equal, lower, upper }).some((key) => near.has(key));
+    const hasFree = free.equal !== undefined || free.lower.length > 0 || free.upper.length > 0;
+    const stuck =
+      waitedOn && hasFree && !near.has(variable) && fixedOf(variable, reading) === undefined;
+    const freeView = {
+      ...view,
+      boundsOf: (each: ParameterKey) => (each === variable ? free : view.boundsOf(each)),
+    };
+    const type = stuck ? settleOne(variable, told, freeView, settlingOf(variable)) : undefined;
+    if (type !== undefined && !parametersIn(type).some(reading.isVariable)) {
+      fixing.set(variable, type);
+    }
+  }
+  return fixing;
+}
+
+/** The variables of the system standing at the top of `result`: it itself, or a member of it. */
+export function atTopOf(result: Type, reading: SystemReading): ReadonlySet<ParameterKey> {
+  return new Set(
+    membersOf(result).flatMap((member) =>
+      member.kind === 'parameter' && reading.isVariable(member.declaration)
+        ? [member.declaration]
+        : [],
+    ),
+  );
+}
+
+/** What `solved` settled each of `variables` to, those it couldn't left out. */
+export function settledAmong(
+  solved: ReadonlyMap<ParameterKey, Type>,
+  variables: readonly ParameterKey[],
+): ReadonlyMap<ParameterKey, Type> {
+  return new Map(
+    variables.flatMap((variable) => {
+      const type = solved.get(variable);
+      return type === undefined ? [] : [[variable, type] as const];
+    }),
   );
 }

@@ -42,6 +42,24 @@ export function standingFor<Key extends ParameterKey>(key: Key): Key {
   return (standing.get(key) as Key | undefined) ?? key;
 }
 
+/**
+ * Whether `type` is a placeholder (i2-scope.md §3): the type of an expression a constraint scope
+ * checks once it knows what is expected of it.
+ */
+export function isPlaceholder(type: Type | undefined): type is TypeParameterType {
+  return type?.kind === 'parameter' && standingFor(type.declaration).kind === 'Placeholder';
+}
+
+/**
+ * Whether every variable `type` mentions is a placeholder, which reads as `_` where a type is
+ * shown, as an argument no type of its own is known for does.
+ */
+export function mentionsOnlyPlaceholders(type: Type): boolean {
+  return parametersIn(type).every(
+    (key) => !standing.has(key) || standingFor(key).kind === 'Placeholder',
+  );
+}
+
 /** Whether `type` mentions a call's variable, of any system. */
 export function mentionsAnyVariable(type: Type): boolean {
   return parametersIn(type).some((key) => standing.has(key));

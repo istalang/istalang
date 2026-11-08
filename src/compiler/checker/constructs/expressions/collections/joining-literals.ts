@@ -18,12 +18,16 @@ import { typeParametersOf } from '../../../../syntax/declarations/index.ts';
 import type { ArrayLiteral, Expression, MapLiteral } from '../../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
+import type { CheckerContext } from '../../../contexts/context.ts';
 import { type Produced, producedBy } from '../../../rules/agreement.ts';
+import { type Agreeing, agreedDefault } from '../../../rules/open-agreement.ts';
 import { completeInference, settlingOf } from '../../../types/inference/complete.ts';
 import { Inference } from '../../../types/inference/infer.ts';
-import type { LiteralType, Type } from '../../../types/type/index.ts';
+import type { Settling } from '../../../types/inference/settle.ts';
+import type { LiteralType, ParameterKey, Type } from '../../../types/type/index.ts';
 import { neverType } from '../../../types/type/primitives.ts';
 import { arrayOf, wellKnownOf } from '../../../types/type/well-known.ts';
+import { commonType } from '../../../types/unions/common-type.ts';
 import { writtenLiteral } from '../../../types/unions/unions.ts';
 import { parameterType } from '../../../types/written/resolve-type.ts';
 import type { GenericDeclaration } from '../../../types/written/type-arguments.ts';
@@ -38,10 +42,14 @@ import {
   spreadPairs,
 } from './literals.ts';
 
-/** An item a literal's parameter is matched against: what it produced, as a literal if written. */
+/**
+ * An item a literal's parameter is matched against: what it produced, as a literal if written, and
+ * its node when it is one.
+ */
 interface Item {
   readonly produced: Produced;
   readonly literal: LiteralType | undefined;
+  readonly node?: Expression | undefined;
 }
 
 /**
@@ -136,17 +144,23 @@ function checkJoiningMap(context: BodyContext, node: MapLiteral): Type {
 
 /** `node`, an item, checked in the literal's scope. */
 function joinedItem(context: BodyContext, node: Expression): Item {
-  return {
-    produced: producedBy(node, context.expression(node)),
-    literal: writtenLiteral(unparenthesized(node)),
-  };
+  const literal = writtenLiteral(unparenthesized(node));
+  // A literal is matched as one by the literal's parameter (§2), so it needs no variable of its own.
+  const type =
+    literal === undefined
+      ? context.expression(node)
+      : context.scopes.suspended(() => context.expression(node));
+  return { produced: producedBy(node, type), literal, node };
 }
 
 /**
  * What a literal's items, as produced by type parameter, agree on: the types `settled` gives each
  * parameter, or their own where nothing settled them.
  */
-type Agreement = (produced: readonly (readonly Produced[])[], settled?: readonly Type[]) => Type;
+type Agreement = (
+  produced: readonly (readonly Produced[])[],
+  settled?: readonly (Type | undefined)[],
+) => Type;
 
 /**
  * The literal `collection` is, its declaration's type parameters matched against its `items`, by
@@ -171,27 +185,97 @@ function joinedCollection(
   context.scopes.commit(inference);
   for (const [index, parameter] of parameters.entries()) {
     const declared = parameterType(parameter);
-    for (const { produced, literal } of items[index] ?? []) {
-      if (literal === undefined) {
+    const parameterItems = items[index] ?? [];
+    const isApart = agreeOnNone(context, parameterItems);
+    for (const { produced, literal } of parameterItems) {
+      if (isApart) {
+        inference.matchApart(declared, produced.type);
+      } else if (literal === undefined) {
         inference.match(declared, produced.type);
       } else {
         inference.matchLiteral(declared, literal);
       }
     }
   }
-  const settling = settlingOf(checker, owner, parameters);
+  const settling = itemsSettling(checker, owner, parameters, items);
   return context.scopes.join({
     node,
     inference,
     type: inference.open(wellKnownOf(checker, declaration, parameters.map(parameterType))),
     settling,
-    judge: () => undefined,
     complete: () => {
       const completion = completeInference(checker, parameters, inference, settling);
-      const produced = items.map((each) =>
-        each.map((item) => ({ ...item.produced, type: inference.solved(item.produced.type) })),
+      const settled = completion.kind === 'complete' ? completion.typeArguments : undefined;
+      const produced = items.map((each, index) =>
+        each.map((item) => ({
+          ...item.produced,
+          type: settledItem(context, item, settled?.[index], inference),
+        })),
       );
-      return agree(produced, completion.kind === 'complete' ? completion.typeArguments : undefined);
+      // What they go into decides where it bounded them; else they agree on their own, which
+      // reports an item that disagrees as such.
+      const taken = parameters.map((parameter, index) =>
+        inference.expectationOf(inference.open(parameterType(parameter))) === undefined
+          ? undefined
+          : settled?.[index],
+      );
+      return agree(produced, settled === undefined ? undefined : taken);
     },
   });
+}
+
+/**
+ * What `item` produced once its literal's system settled: a literal written in place checked again
+ * against what its parameter settled to, recording its literal type where that holds one (§2);
+ * anything else as solved.
+ */
+function settledItem(
+  context: BodyContext,
+  { produced, literal, node }: Item,
+  settled: Type | undefined,
+  inference: Inference,
+): Type {
+  return literal !== undefined && settled !== undefined && node !== undefined
+    ? context.expression(node, settled)
+    : inference.solved(produced.type);
+}
+
+/**
+ * Whether `items`, each of a type of its own, agree on no one type (types/unions/common-type.ts),
+ * so a literal of them bounds only its own type parameter, which settles on what it goes into
+ * (design.md §4): `[1, "a"]` where a `Json` is expected.
+ */
+function agreeOnNone(context: BodyContext, items: readonly Item[]): boolean {
+  const types = items.map(({ produced }) => produced.type);
+  return (
+    types.length > 1 &&
+    !types.some((type) => context.scopes.holds(type)) &&
+    commonType(types, context.checker) === undefined
+  );
+}
+
+/**
+ * How a collection literal's type parameters settle: as its declaration says, and where settling's
+ * own rules can't decide one, as its items agree on it (agreement.ts).
+ */
+function itemsSettling(
+  checker: CheckerContext,
+  owner: GenericDeclaration,
+  parameters: readonly TypeParameter[],
+  items: readonly (readonly Item[])[],
+): Settling {
+  const declared = settlingOf(checker, owner, parameters);
+  const agreeing = new Map<ParameterKey, Agreeing>(
+    parameters.map((parameter, index) => [
+      parameter,
+      agreedDefault(
+        checker,
+        (items[index] ?? []).map(({ produced }) => produced),
+      ),
+    ]),
+  );
+  return {
+    ...declared,
+    defaultOf: (key, settled) => declared.defaultOf(key, settled) ?? agreeing.get(key)?.(settled),
+  };
 }

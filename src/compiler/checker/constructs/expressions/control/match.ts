@@ -15,11 +15,10 @@
  *   are declared here with their parts' types.
  */
 
-import { valueBranchesOf } from '../../../../syntax/expressions/branches.ts';
 import type { Is, Match } from '../../../../syntax/expressions/index.ts';
 import { casesOf } from '../../../../syntax/expressions/readings.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
-import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { stoppedOperation } from '../../../resolution/calls/stopped-operations.ts';
 import { cantMatch } from '../../../surface/checked-pattern.ts';
@@ -31,19 +30,20 @@ import { remainingType } from '../../patterns/exhaustiveness/remaining.ts';
 import { signatureOf, witnessText } from '../../patterns/exhaustiveness/shapes.ts';
 import { checkPattern } from '../../patterns/matching.ts';
 import { decideComparison } from '../operators/decided-conditions.ts';
-import { Branches, branchesAccepts } from './branches.ts';
+import { Branches } from './branches.ts';
 
 export function checkMatch(context: BodyContext, node: Match, expected: Type | undefined): Type {
-  const subject = context.expression(node.subject);
-  const branches = new Branches(context, expected);
+  const subject = context.settled(node.subject);
+  const branches = new Branches(context, node, expected);
   const cases: CoveringCase[] = [];
   for (const matchCase of casesOf(node)) {
     const remaining = remainingType(context.checker, subject, cases);
     const { shape, tests } = checkPattern(context, matchCase.pattern, subject, remaining);
     recordPatternKeys(context, matchCase.pattern, keyOwnerOfValue(context, node.subject));
     const ruledOut = cantMatch(tests);
-    if (matchCase.guard !== undefined && !ruledOut) {
-      context.expect(matchCase.guard, boolType);
+    const { guard } = matchCase;
+    if (guard !== undefined && !ruledOut) {
+      context.scopes.suspended(() => context.expect(guard, boolType));
     }
     if (ruledOut) {
       // A case its subject's type rules out matches no value, so it covers none.
@@ -71,7 +71,7 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
 
 /** `x is P`: a pattern the subject's type rules out decides it false, warned of there (§4). */
 export function checkIs(context: BodyContext, node: Is): Type {
-  const subject = context.expression(node.subject);
+  const subject = context.settled(node.subject);
   const { tests } = checkPattern(context, node.pattern, subject);
   recordPatternKeys(context, node.pattern, keyOwnerOfValue(context, node.subject));
   const stopped = stoppedOperation(context, node, [{ node: node.subject, type: subject }]);
@@ -107,9 +107,4 @@ function reportCoverage(
       context.report(checkerDiagnostics.unreachableCase(at));
     }
   }
-}
-
-/** A `match` takes what its cases agree on. */
-export function matchAccepts(context: BodyContext, node: Match): Accepts | undefined {
-  return branchesAccepts(context, valueBranchesOf(node));
 }

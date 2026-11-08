@@ -65,6 +65,7 @@ export class VariableBinding {
       ...this.#bound(literal !== undefined && fresh ? literal : filling),
       fresh,
       isShape,
+      isApart: written?.kind === 'apart',
     };
     return this.#added(variable, store.addLower(variable, bound));
   }

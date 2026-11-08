@@ -35,43 +35,33 @@ export type Built =
       readonly entity: NominalEntity;
       readonly struct: DeclaredStruct;
       readonly known: readonly Type[] | undefined;
+      /** What it is expected to be, the member of an expected union it builds, if any. */
+      readonly expected: Type | undefined;
     }
-  | { readonly kind: 'shape'; readonly shape: LiteralShape };
+  | { readonly kind: 'shape'; readonly shape: LiteralShape; readonly expected: Type | undefined };
 
 /**
  * The type arguments a literal of `owner` is given before its items: those written after the
- * type's name, its defaults completing them, else the expected type's when it is a type of
- * `owner`.
+ * type's name, its defaults completing them. What it is expected to be only advises, as a call's
+ * expected type does (design.md §4).
  */
 function knownArguments(
   context: BodyContext,
   typeNode: NamedType,
   owner: Exclude<LiteralShape['owner'], undefined>,
-  expected: Type | undefined,
 ): readonly Type[] | undefined {
   if (typeNode.typeArguments.length === 0) {
-    return argumentsFor(owner, expected);
+    return undefined;
   }
   const written = typeNode.typeArguments.map((argument) => context.resolveType(argument));
   const list = { at: typeNode.span, declaration: owner, types: written };
   return typeArgumentsFor(context.checker, context.module, list);
 }
 
-/** The type arguments of `type` when it is a type of `owner`; else undefined. */
-function argumentsFor(
-  owner: LiteralShape['owner'],
-  type: Type | undefined,
-): readonly Type[] | undefined {
-  const alias = type?.alias;
-  if (alias?.kind === 'alias' && alias.declaration === owner) {
-    return alias.arguments;
-  }
-  return type?.kind === 'nominal' && type.entity.declaration === owner ? type.arguments : undefined;
-}
-
 /**
- * What a literal naming `entity` builds: a declared struct, with the type arguments written or
- * expected, or the shape an alias names; undefined for anything else.
+ * What a literal naming `entity` builds: a declared struct, with the type arguments written, or
+ * the shape an alias names, with the member of an expected union it builds; undefined for anything
+ * else.
  */
 export function builtThrough(
   context: BodyContext,
@@ -85,14 +75,14 @@ export function builtThrough(
   const { declaration } = entity;
   const target = builtMember(context, node, declaration, builtFrom(expected));
   if (isNominalEntity(entity) && isDeclaredStruct(declaration)) {
-    const known = knownArguments(context, node.type, declaration, target);
-    return { kind: 'declared', entity, struct: declaration, known };
+    const known = knownArguments(context, node.type, declaration);
+    return { kind: 'declared', entity, struct: declaration, known, expected: target };
   }
   const aliased = aliasedShape(context, declaration);
   if (declaration.kind !== 'TypeAliasDeclaration' || aliased === undefined) {
     return undefined;
   }
-  const known = knownArguments(context, node.type, declaration, target);
+  const known = knownArguments(context, node.type, declaration);
   const typeOf = (typeArguments: readonly Type[]): Type =>
     aliasedAs(
       substitute(
@@ -102,7 +92,8 @@ export function builtThrough(
       ),
       { kind: 'alias', declaration, arguments: typeArguments },
     );
-  return { kind: 'shape', shape: { owner: declaration, known, fields: aliased.fields, typeOf } };
+  const shape = { owner: declaration, known, fields: aliased.fields, typeOf };
+  return { kind: 'shape', shape, expected: target };
 }
 
 /**
@@ -145,8 +136,8 @@ function builtMember(
 
 /**
  * Whether each item of `node` gives a field of `type` a value fitting it, as far as is known before
- * checking it: a literal with its literal type where the field expects one (§2), a value the
- * field decides as it accepts, and one of a type of its own as it fits.
+ * checking it: a literal with its literal type where the field expects one (§2), and a value that
+ * needs what is expected of it as it can be one (../postponed.ts).
  */
 function itemsFit(context: BodyContext, node: FieldsLiteral, type: Type): boolean {
   const fields = context.checker.fieldsOf(type) ?? [];
@@ -165,10 +156,7 @@ function itemsFit(context: BodyContext, node: FieldsLiteral, type: Type): boolea
         context.checker.fitOf(literalOrBase(literal.value, field.type), field.type) !== undefined
       );
     }
-    const part = context.acceptedPart(value);
-    if (part.kind === 'decided') {
-      return part.accepts(field.type, () => false);
-    }
-    return part.type === undefined || context.checker.fitOf(part.type, field.type) !== undefined;
+    const admits = context.admitsOf(value);
+    return admits === undefined || admits(field.type, () => false);
   });
 }

@@ -288,30 +288,51 @@ is expected") expressed as a bound.
 element.
 
 **As built (I2).**
-- One constraint scope per outermost call or literal naming its type (`i2-scope.md`,
+- One constraint scope per outermost expression of a joining kind (`i2-scope.md`,
   `contexts/constraint-scope.ts`): the body context holds it, and it settles when what opened it
-  is checked, on every path. A call's arguments, a literal's fields and items, and what a judged
-  lambda's body gives join it; a call continuing an optional chain settles in a scope of its own.
-  A lambda judged in it records its function once it settles.
+  is checked, on every path. Calls, struct, array, map and tuple literals, indented values,
+  branching expressions' and blocks' values, a block's tail and a lambda's `return`s join it, and
+  open it where none is open (an indented value naming no type excepted); any other kind is a
+  boundary, its parts each settling on their own, as is a condition, a `match`'s subject, a field
+  loop's subject. A call continuing an optional chain settles in a scope of its own.
+- An expression that needs what is expected of it (a lambda whose result or a parameter isn't
+  written, a function or variant named, a bare variant call, `[]`, `[:]`, an indented value or a
+  `struct{…}` with a comprehension naming no type) is a placeholder of the scope
+  (`constructs/expressions/postponed.ts`): it refuses a bound it can be no value of, so overloads
+  choose by it, and the scope judges it once what is expected of it is known (its upper bound,
+  else what a variable above it is expected to be, or for one with no type of its own what its
+  siblings hold), each ready one first, a function's inputs settled then, inside the functions it
+  is written in. Where none is ready, what they wait on is fixed by its other bounds first, as
+  Kotlin fixes a variable a postponed argument is stuck on. A `struct{…}` with its fields checked
+  is a placeholder bounded below by its shape, built once a struct is expected of it. A
+  placeholder of a call that can't be made, or judged in error, gives the error type to what only
+  it would have bounded.
+- A literal a tuple, a `struct{…}` or a block's value takes as a part stays fresh in the scope
+  (`BodyContext.part`), its literal type where what it goes into holds one.
+- Producers that must agree (branches, a lambda's tail and `return`s, a collection's items) agree
+  through a variable of the scope that settles, where its own rules can't, as agreement decides
+  (`rules/open-agreement.ts`); a collection literal whose items agree on no one type bounds only its
+  own parameter (`LowerBound.isApart`), which settles on what it goes into. A fit whose types are
+  open in the scope waits for it to settle.
+- A generic struct literal's expected type advises (`expect`), as a call's does; written type
+  arguments are given.
 - A variable is its parameter's twin at the call's site (`types/inference/variables.ts`), so each
   call in a scope has its own. A candidate's system starts as a copy of the scope's, so probing
   candidates leaves it untouched; the chosen one's is committed to it (`Inference.commitTo`), and
-  a literal infers in it from the start. A guide handed to what a postponed argument checks is
-  open in the scope's variables, never read back as the callee's parameters.
+  a literal infers in it from the start.
 - Records and the reports of a call no candidate takes wait for the scope: a node recorded with
-  an open type is recorded again solved, and such a call is chosen again with its arguments
-  settled, so its report reads them as they settled. What only it would have bounded settles to
-  the error type, reporting nothing more.
-- A variable bounded only through another (`U <: T`) settles after it, and one that can't be
-  inferred reads as the error type in what the others settle to (settle.ts).
+  an open type is recorded again solved, and such a call, its arguments open in the scope beyond
+  placeholders, is chosen again with its arguments settled, so its report reads them as they
+  settled. What only it would have bounded settles to the error type, reporting nothing more.
+- A variable settles after the ones below it with bounds of their own, and to what they settled to
+  where its own bounds don't join; one bounded only through another (`U <: T`) settles after it,
+  one given an open type (a placeholder judged) after what that type mentions, and one that can't
+  be inferred hands nothing on (settle.ts).
 - Two bounds of which either mentions a variable agree by relating them (Kotlin's incorporation),
-  and two equalities by equating them. A variable related to another only (`T' <: T`) settles from
-  what the other settled to. Rule 2 reads an equality the expected type gave (an invariant
-  position) as it reads an upper bound.
+  and two equalities by equating them; equalities reach related variables too. A struct literal's
+  shape bound against a struct relates them field by field. Rule 2 reads an equality the expected
+  type gave (an invariant position) as it reads an upper bound.
 - Lower bounds needn't join as they are added: rules 3 and 4 decide at settling.
-- A lambda whose result isn't written is postponed even with its parameters written; those bound
-  what the call gives them while it is chosen. Where its result is still open, its value joins the
-  call (B43), advised by what is known of the result.
 - An argument of the error type no longer stops a call that is still chosen: its other arguments
   are judged (the variant rule, generalised).
 - While a call is written and can't be chosen, each written argument still records the type its

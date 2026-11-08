@@ -17,6 +17,7 @@
  *   variable is given it.
  */
 
+import type { Admits } from '../fitting/expected.ts';
 import type { ConversionRules, Fitting } from '../fitting/fit/index.ts';
 import { fitOf, matchConversion } from '../fitting/fit/index.ts';
 import { sameType } from '../identity/identity.ts';
@@ -26,27 +27,31 @@ import { parametersIn } from '../parts/type-parts.ts';
 import type { AnyType, LiteralType, ParameterKey, Type } from '../type/index.ts';
 import { errorType, isPrimitive } from '../type/primitives.ts';
 import type { Joining } from '../unions/common-type.ts';
-import { membersOf } from '../unions/unions.ts';
 import { VariableBinding } from './binding.ts';
-import { BoundStore, type VariableBounds } from './bounds.ts';
+import { type BoundRules, BoundStore, type VariableBounds } from './bounds.ts';
 import { equalTypes } from './equal.ts';
 import { MatchNotes } from './notes.ts';
 import { type Relating, relatedAsIs } from './relate.ts';
 import {
   expectedChoiceOf,
   type Settling,
+  type SettlingOf,
   type SettlingView,
   settleAll,
   settleOne,
-  settlesFreely,
 } from './settle.ts';
 import {
+  atTopOf,
   fixedOf,
   reachedFrom,
   type SystemReading,
+  settledAmong,
+  settlingViewOf,
+  shapeTaking,
   solvedIn,
   takesShape,
   tentativeOf,
+  tentativeSubstitution,
 } from './system-reading.ts';
 import type { CallVariables } from './variables.ts';
 
@@ -58,7 +63,9 @@ export type Written =
   /** A literal, given as its base: its literal type, fresh, for settling to widen. */
   | { readonly kind: 'literal'; readonly literal: LiteralType }
   /** A struct literal of items, given as its shape, which builds a struct its fields give. */
-  | { readonly kind: 'shape' };
+  | { readonly kind: 'shape' }
+  /** An item of a collection literal whose items agree on no one type (`LowerBound.isApart`). */
+  | { readonly kind: 'apart' };
 
 export class CallSystem {
   /** Each variable's call: the variables it is one of. */
@@ -91,23 +98,14 @@ export class CallSystem {
       typeRules: fitting,
       fitting,
     };
-    this.#store = new BoundStore({
-      fits: (found, expected) => fitOf(found, expected, fitting) !== undefined,
-      takesShape: (target, shape) => takesShape(target, shape, fitting),
-      same: sameType,
-      isOpen: (type) => this.mentionsVariable(type),
-      constrain: (found, expected, origin) =>
-        this.#as(origin, undefined, () => this.#constrain(found, expected)),
-      equate: (first, second, origin) =>
-        this.#as(origin, undefined, () => this.#atomic(() => this.#equal(first, second))),
-    });
+    this.#store = new BoundStore(this.#boundRules());
     this.#binding = new VariableBinding({
       store: this.#store,
       notes: this.#notes,
       fitting,
       joining: this.#joining,
       callOf: (variable) => this.#calls.get(variable),
-      tentative: () => this.#tentativeSubstitution(),
+      tentative: () => this.#tentative,
       match: () => ({ kind: this.#kind, written: this.#written }),
       disagreed: (variable) => {
         this.#lastConflict = variable;
@@ -159,6 +157,11 @@ export class CallSystem {
     this.#given.set(variable, type);
   }
 
+  /** Lets `variable` stand only under what `admits` takes, as a placeholder does. */
+  admit(variable: ParameterKey, admits: Admits): void {
+    this.#store.admit(variable, admits);
+  }
+
   /** The type given for `variable`, if any. */
   givenOf(variable: ParameterKey): Type | undefined {
     return this.#given.get(variable);
@@ -191,13 +194,7 @@ export class CallSystem {
    * where the two disagree, nothing is bounded.
    */
   expectResult(result: Type, expected: Type): void {
-    this.#atTop = new Set(
-      membersOf(result).flatMap((member) =>
-        member.kind === 'parameter' && this.#calls.has(member.declaration)
-          ? [member.declaration]
-          : [],
-      ),
-    );
+    this.#atTop = atTopOf(result, this.reading);
     this.#as('expected', undefined, () => this.#atomic(() => this.#constrain(result, expected)));
   }
 
@@ -208,60 +205,53 @@ export class CallSystem {
 
   /** What a variable's bounds tell so far: its equality, its lower bounds' join, else its upper bound. */
   tentative(variable: ParameterKey): Type | undefined {
-    return tentativeOf(variable, this.#reading);
+    return tentativeOf(variable, this.reading);
   }
 
   /** Rule 2 alone for `variable` (settle.ts): what the expected type chooses for it, if anything. */
   expectedChoiceFor(variable: ParameterKey, settling: Settling): Type | undefined {
-    return expectedChoiceOf(variable, this.#tentativeSubstitution(), this.#view(), settling);
+    return expectedChoiceOf(variable, this.#tentative, this.#view, settling);
   }
 
   /**
    * Settles `variable` now and takes it as found from here on, the variables its bounds mention
-   * first, as those of a joined call (design.md §4).
+   * first (design.md §4), each as `settlingOf` says.
    */
-  fix(variable: ParameterKey, settling: Settling, fixing = new Set<ParameterKey>()): void {
+  fix(variable: ParameterKey, settlingOf: SettlingOf, fixing = new Set<ParameterKey>()): void {
     fixing.add(variable);
     for (const other of parametersIn(this.#store.of(variable).equal?.type ?? errorType)) {
       if (this.#calls.has(other) && !fixing.has(other) && this.fixedOf(other) === undefined) {
-        this.fix(other, settling, fixing);
+        this.fix(other, settlingOf, fixing);
       }
     }
-    const type = settleOne(variable, this.#tentativeSubstitution(), this.#view(), settling);
-    if (type !== undefined) {
-      this.#store.addEqual(variable, { type, origin: 'argument' });
+    const settled = settleOne(variable, this.#tentative, this.#view, settlingOf(variable));
+    if (settled !== undefined) {
+      this.#store.addEqual(variable, { type: settled, origin: 'argument' });
     }
+  }
+
+  /** Takes `variable` as `type` from here on, as an equality from the arguments. */
+  fixAs(variable: ParameterKey, type: Type): void {
+    this.#store.addEqual(variable, { type, origin: 'argument' });
   }
 
   /** What `variable` is taken as found as, given or fixed (system-reading.ts). */
   fixedOf(variable: ParameterKey): Type | undefined {
-    return fixedOf(variable, this.#reading);
+    return fixedOf(variable, this.reading);
   }
 
-  /**
-   * `variables` settled; one left out can't be inferred. Once the system is solved, as it is
-   * (`solve`).
-   */
+  /** `variables` settled, one left out can't be inferred; once the system is solved, as it is. */
   settle(variables: readonly ParameterKey[], settling: Settling): ReadonlyMap<ParameterKey, Type> {
     const solved = this.#solved;
     if (solved === undefined) {
-      return settleAll(variables, this.#given, this.#view(), settling);
+      return settleAll(variables, this.#given, this.#view, settling);
     }
-    return new Map(
-      variables.flatMap((variable) => {
-        const type = solved.get(variable);
-        return type === undefined ? [] : [[variable, type] as const];
-      }),
-    );
+    return settledAmong(solved, variables);
   }
 
-  /**
-   * Settles every variable together, each as its own call's `settlings` says, as the outermost
-   * system of several calls is (design.md §4); each call then settles to what this chose.
-   */
-  solve(settlings: ReadonlyMap<ParameterKey, Settling>): void {
-    const settlingOf = (variable: ParameterKey) => settlings.get(variable) ?? settlesFreely;
-    this.#solved = settleAll([...this.#calls.keys()], this.#given, this.#view(), {
+  /** Settles every variable together, each as `settlingOf` says its call's (design.md §4). */
+  solve(settlingOf: SettlingOf): void {
+    this.#solved = settleAll([...this.#calls.keys()], this.#given, this.#view, {
       admits: (variable, type) => settlingOf(variable).admits(variable, type),
       defaultOf: (variable, settled) => settlingOf(variable).defaultOf(variable, settled),
     });
@@ -269,7 +259,7 @@ export class CallSystem {
 
   /** `type` with every variable as solved, the error type for one that couldn't be (`solve`). */
   solved(type: Type): Type {
-    return solvedIn(type, this.#solved, this.#reading);
+    return solvedIn(type, this.#solved, this.reading);
   }
 
   /** The variables whose bounds disagreed. */
@@ -295,8 +285,38 @@ export class CallSystem {
     }
   }
 
+  /** The rules the bound store checks bounds by, matching through this system. */
+  #boundRules(): BoundRules {
+    const fitting = this.#fitting;
+    return {
+      fits: (found, expected) => fitOf(found, expected, fitting) !== undefined,
+      takesShape: (target, shape) => takesShape(target, shape, fitting),
+      same: sameType,
+      isOpen: (type) => this.mentionsVariable(type),
+      constrain: (found, expected, origin) =>
+        this.#as(origin, undefined, () => this.#constrain(found, expected)),
+      equate: (first, second, origin) =>
+        this.#as(origin, undefined, () => this.#atomic(() => this.#equal(first, second))),
+      constrainShape: (target, shape, origin) =>
+        this.#as(origin, undefined, () => {
+          const fields = shapeTaking(target, shape, fitting);
+          return fields !== undefined && this.#atomic(() => this.#constrain(shape, fields));
+        }),
+    };
+  }
+
+  /** What has been found so far for the variables, as a substitution of them. */
+  get #tentative(): Substitution {
+    return tentativeSubstitution(this.reading, this.#calls.keys());
+  }
+
+  /** What settling reads of this system. */
+  get #view(): SettlingView {
+    return settlingViewOf(this.reading, this.#atTop);
+  }
+
   /** What reading the variables needs of this system (system-reading.ts). */
-  get #reading(): SystemReading {
+  get reading(): SystemReading {
     return {
       fitting: this.#fitting,
       isVariable: (key) => this.#calls.has(key),
@@ -304,6 +324,8 @@ export class CallSystem {
       boundsOf: (variable) => this.#store.of(variable),
       relatedOf: (variable) => this.#store.relatedOf(variable),
       join: (variable, lower, upper) => this.#binding.join(variable, lower, upper),
+      fallbackOf: (variable) => this.#notes.fallbackOf(variable),
+      variables: () => this.#calls.keys(),
     };
   }
 
@@ -317,32 +339,6 @@ export class CallSystem {
     }
     this.#store.adopt(other.#store);
     this.#notes.adopt(other.#notes);
-  }
-
-  /** What has been found so far for the variables, as a substitution of them. */
-  #tentativeSubstitution(): Substitution {
-    const found = new Map(this.#given);
-    for (const variable of this.#calls.keys()) {
-      const type = found.has(variable) ? undefined : this.tentative(variable);
-      if (type !== undefined) {
-        found.set(variable, type);
-      }
-    }
-    return found;
-  }
-
-  /** What settling reads of this inference. */
-  #view(): SettlingView {
-    return {
-      rules: this.#fitting,
-      boundsOf: (parameter) => this.#store.of(parameter),
-      isAtTop: (parameter) => this.#atTop.has(parameter),
-      fits: (found, expected) => fitOf(found, expected, this.#fitting) !== undefined,
-      takesShape: (target, shape) => takesShape(target, shape, this.#fitting),
-      join: (parameter, lower, upper) => this.#binding.join(parameter, lower, upper),
-      fallbackOf: (parameter) => this.#notes.fallbackOf(parameter),
-      relatedOf: (parameter) => this.#store.relatedOf(parameter),
-    };
   }
 
   /** Runs `probe` and undoes every bound it added, whether or not it held. */
@@ -391,12 +387,9 @@ export class CallSystem {
     });
   }
 
-  /**
-   * Whether `given` converts into `declared`, an `any` type: one whose parameters are all known,
-   * since conversion binds none (§3.10).
-   */
+  /** Whether `given` converts into `declared`, an `any` type whose parameters are all known (§3.10). */
   #convertsInto(declared: AnyType, given: Type): boolean {
-    const known = substitute(declared, this.#tentativeSubstitution(), this.#fitting);
+    const known = substitute(declared, this.#tentative, this.#fitting);
     if (known.kind !== 'any' || this.mentionsVariable(known)) {
       return false;
     }
@@ -412,23 +405,23 @@ export class CallSystem {
 
   /** Notes the variables `declared` mentions when `given` is the error type. */
   #meetError(declared: Type, given: Type): void {
-    if (given.kind === 'error') {
-      for (const key of parametersIn(declared)) {
-        if (this.#calls.has(key)) {
-          this.#notes.metError(key);
-        }
-      }
+    const met = given.kind === 'error' ? parametersIn(declared) : [];
+    for (const key of met.filter((each) => this.#calls.has(each))) {
+      this.#notes.metError(key);
     }
   }
 
   /**
    * Gives the error type where `type`, holding variables, goes, as a call that can't be made gives
-   * its arguments: each variable it reaches, through bounds and relations, notes it met the error
-   * type, so one nothing else bounds settles to it, reporting nothing more.
+   * its arguments: each variable it reaches notes it met it, so one nothing else bounds settles to it.
    */
   abandon(type: Type): void {
-    for (const variable of reachedFrom(type, this.#reading)) {
-      this.#notes.metError(variable);
+    for (const variable of reachedFrom(type, this.reading)) {
+      const { equal, lower, upper } = this.#store.of(variable);
+      // One bounded on its own still settles by its bounds, reporting what disagrees there.
+      if (equal === undefined && lower.length === 0 && upper.length === 0) {
+        this.#notes.metError(variable);
+      }
     }
   }
 

@@ -18,7 +18,7 @@
 
 import type { TypeApplication } from '../../../syntax/expressions/index.ts';
 import { qualifiedPath } from '../../../syntax/expressions/readings.ts';
-import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { explain, recordChosen } from '../../resolution/calls/resolve.ts';
@@ -31,6 +31,7 @@ import {
   namedFunctions,
   ownChoice,
 } from '../../resolution/choosing/named-functions.ts';
+import type { Admits } from '../../types/fitting/expected.ts';
 import { expectedFunction } from '../../types/fitting/expected.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, expectsError } from '../../types/type/primitives.ts';
@@ -94,7 +95,7 @@ export function checkAppliedFunction(
 export function namedFunctionsAccepted(
   context: BodyContext,
   node: FunctionNaming,
-): Accepts | undefined {
+): Admits | undefined {
   const functions = namedFunctions(context, node);
   return functions === undefined ? undefined : functionsAccepted(context, functions);
 }

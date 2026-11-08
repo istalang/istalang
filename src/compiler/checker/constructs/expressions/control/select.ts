@@ -16,10 +16,9 @@
  */
 
 import { wellKnown } from '../../../../../foundation/language/well-known/index.ts';
-import { valueBranchesOf } from '../../../../syntax/expressions/branches.ts';
 import type { Expression, Select, SelectCase } from '../../../../syntax/expressions/index.ts';
 import { selectCasesOf, unparenthesized } from '../../../../syntax/expressions/readings.ts';
-import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { checkDiscarded } from '../../../rules/disposal/must-use.ts';
 import type { Type } from '../../../types/type/index.ts';
@@ -28,11 +27,11 @@ import { typeText } from '../../../types/type/type-text.ts';
 import { futureArgument } from '../../../types/type/well-known.ts';
 import { ownCallerOf } from '../../closures/own-calls.ts';
 import { reportWait } from './await.ts';
-import { Branches, branchesAccepts } from './branches.ts';
+import { Branches } from './branches.ts';
 
 export function checkSelect(context: BodyContext, node: Select, expected: Type | undefined): Type {
   reportForm(context, node);
-  const branches = new Branches(context, expected);
+  const branches = new Branches(context, node, expected);
   for (const selectCase of selectCasesOf(node)) {
     checkCaseFuture(context, selectCase);
     if (watchesOwnDisposal(context, selectCase.future)) {
@@ -77,7 +76,7 @@ function reportForm(context: BodyContext, node: Select): void {
 
 /** Checks a case's future, and binds or discards the value it gives. */
 function checkCaseFuture(context: BodyContext, selectCase: SelectCase): void {
-  const future = context.expression(selectCase.future);
+  const future = context.settled(selectCase.future);
   const value = futureArgument(context.checker, future);
   if (value === undefined && future.kind !== 'error') {
     context.report(checkerDiagnostics.caseNeedsFuture(selectCase.future.span, typeText(future)));
@@ -89,9 +88,4 @@ function checkCaseFuture(context: BodyContext, selectCase: SelectCase): void {
   } else if (value !== undefined) {
     checkDiscarded(context, selectCase.future, value);
   }
-}
-
-/** A `select` takes what its cases and its `else` agree on. */
-export function selectAccepts(context: BodyContext, node: Select): Accepts | undefined {
-  return branchesAccepts(context, valueBranchesOf(node));
 }

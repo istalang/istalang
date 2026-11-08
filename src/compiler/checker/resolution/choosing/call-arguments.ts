@@ -7,7 +7,6 @@
  */
 
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
-import type { Accepts } from '../../contexts/body-context.ts';
 import type { RestSlot } from '../../types/type/function-types.ts';
 import type { LiteralType, ParameterSlot, Type } from '../../types/type/index.ts';
 import type { BindingFailure } from './binding.ts';
@@ -37,29 +36,22 @@ export interface Takes {
 export type Passing = 'value' | 'reference' | 'receiver';
 
 /**
- * An argument as choosing sees it: its type, or, when the chosen function decides it, which
- * parameter types it can take; how it is passed; its name when named; for a spread, the type of
- * its items; and for a literal written in place, its literal type, which it has where a parameter
- * expects one (§2, types/inference/infer.ts `literalType`), its type being its base's.
+ * An argument as choosing sees it: its type, a placeholder of the call's constraint scope for one
+ * the scope checks once it knows what the call expects of it (contexts/constraint-scope.ts); how it
+ * is passed; its name when named; for a spread, the type of its items; and for a literal written in
+ * place, its literal type, which it has where a parameter expects one (§2,
+ * types/inference/infer.ts `literalType`), its type being its base's.
  */
 export interface CallArgument {
   readonly type: Type | undefined;
   readonly literal?: LiteralType | undefined;
   readonly passing: Passing;
-  readonly accepts?: Accepts | undefined;
   /**
    * Whether it fits only a parameter of its type exactly, with no conversion: a witness's (§3.10),
    * or a spread's items, which are copied or iterated as they are (§3.3).
    */
   readonly exact?: boolean;
   readonly name?: string | undefined;
-  /**
-   * For an argument the call decides, the type it is known to have so far, which bounds what the
-   * call gives it while it is chosen: a lambda's written parameters, its result `Never`
-   * (constructs/closures/lambdas.ts `writtenInputs`), or a `struct{…}`'s shape, which builds the
-   * struct its parameter settles to (§3.1).
-   */
-  readonly known?: Type | undefined;
   readonly isSpread?: boolean | undefined;
 }
 

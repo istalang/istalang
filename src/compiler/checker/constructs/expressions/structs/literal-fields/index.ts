@@ -8,9 +8,10 @@
  *   must be given, but for those with a default; a struct literal's leading spread gives the rest,
  *   and a positional value is the only item (the parser enforces that), so neither leaves fields to
  *   report as missing.
- * - A generic type's arguments are written, taken from the expected type or the spread value when
- *   it is the same type, or inferred from the values (§3.5): a value whose field type is already
- *   known is checked against it, any other is checked on its own and matched. Defaults fill what
+ * - A generic type's arguments are written, or inferred from the values and the spread value, the
+ *   expected type advising, as a call's does (§3.5): a value whose field type is already known is
+ *   checked against it, any other is checked expecting what its field's type is so far, and
+ *   matched. Defaults fill what
  *   is left; anything still open can't be inferred. A shape has no type parameters, but an alias
  *   naming one may (§3.17), and a literal through it infers them as a struct's.
  * - A literal is a member of the constraint scope it stands in (contexts/constraint-scope.ts): its
@@ -33,7 +34,6 @@ import { completeInference, settlingOf } from '../../../../types/inference/compl
 import { Inference } from '../../../../types/inference/infer.ts';
 import { type Settling, settlesFreely } from '../../../../types/inference/settle.ts';
 import { type Substitution, substitute } from '../../../../types/parts/substitution.ts';
-import { parametersIn } from '../../../../types/parts/type-parts.ts';
 import type { ParameterKey, Type } from '../../../../types/type/index.ts';
 import { errorType } from '../../../../types/type/primitives.ts';
 import { typeText } from '../../../../types/type/type-text.ts';
@@ -54,13 +54,16 @@ import {
   type LiteralShape,
   type LiteralSpread,
   literalName,
-  matchValue,
   reportMissing,
 } from './items.ts';
 
-/** Where a literal stands beside its shape: its leading spread, and where it may join a call. */
+/** Where a literal stands beside its shape: its leading spread, and what it is expected to be. */
 export interface LiteralSetting {
   readonly spread?: LiteralSpread | undefined;
+  /** What it is expected to be, which advises its type arguments as a call's does (§3.5). */
+  readonly expected?: Type | undefined;
+  /** Whether its values were checked already (items.ts `LiteralItems.checked`). */
+  readonly checked?: boolean | undefined;
 }
 
 /**
@@ -71,7 +74,7 @@ export function checkLiteralFields(
   context: BodyContext,
   node: FieldsLiteral,
   shape: LiteralShape,
-  { spread }: LiteralSetting = {},
+  { spread, expected, checked = false }: LiteralSetting = {},
 ): Type {
   const { checker } = context;
   const spreadType =
@@ -91,12 +94,14 @@ export function checkLiteralFields(
     shape,
     inference,
     given: new Map(),
-    postponed: new Map(),
+    checked,
     fits: true,
   };
   for (const item of node.items) {
     checkItem(context, items, item, spread?.node);
   }
+  // As a call's, once what its items give is bound, so it is checked against them (§3.5).
+  inference.expect(shape.typeOf(parameters.map(parameterType)), expected);
   // Each pass checks the comprehension's value again, so it settles on its own in each.
   const comprehended = context.scopes.suspended(() =>
     checkComprehended(context, node, {
@@ -108,38 +113,14 @@ export function checkLiteralFields(
   );
   const settling =
     shape.owner === undefined ? settlesFreely : settlingOf(checker, shape.owner, parameters);
-  const checked = { items, comprehended, spread, spreadType, settling };
+  const literal = { items, comprehended, spread, spreadType, settling };
   return context.scopes.join({
     node,
     inference,
     type: inference.open(shape.typeOf(parameters.map(parameterType))),
     settling,
-    judge: () => judgePostponed(context, items, inference, settling),
-    complete: () => completeLiteral(context, checked),
+    complete: () => completeLiteral(context, literal),
   });
-}
-
-/**
- * Checks each field `items` postponed once the type parameters its type mentions are settled and
- * fixed, against its type then, or on its own where they couldn't be; matches what it is.
- */
-function judgePostponed(
-  context: BodyContext,
-  items: LiteralItems,
-  inference: Inference,
-  settling: Settling,
-): void {
-  for (const [index, { node, declared }] of items.postponed) {
-    inference.fix(
-      parametersIn(declared).filter((parameter) => inference.isUnknown(parameter)),
-      settling,
-    );
-    const known = inference.settledIn(declared);
-    const isOpen = parametersIn(known).some((parameter) => inference.isUnknown(parameter));
-    const type = context.expression(node, isOpen ? undefined : known);
-    matchValue(context, inference, declared, type);
-    items.given.set(index, { node, type, declared, isLiteral: false });
-  }
 }
 
 /** What checking a literal's items found, to complete it with once its system settles. */
@@ -167,7 +148,8 @@ function completeLiteral(context: BodyContext, checked: CheckedLiteral): Type {
   if (completed === undefined) {
     return errorType;
   }
-  const type = shape.typeOf(completed.typeArguments);
+  // A shape taken from what is expected may name what its scope solved (contexts/constraint-scope.ts).
+  const type = inference.solved(shape.typeOf(completed.typeArguments));
   fitItems(context, items, completed.substitution);
   if (spread !== undefined && spreadType !== undefined) {
     context.fit(
@@ -210,7 +192,9 @@ function fitItems(
   substitution: Substitution,
 ): void {
   for (const value of given.values()) {
-    const declared = substitute(value.declared, substitution, context.checker.typeRules);
+    const declared = inference.solved(
+      substitute(value.declared, substitution, context.checker.typeRules),
+    );
     const type = value.isLiteral
       ? context.expression(value.node, declared)
       : inference.solved(value.type);
@@ -235,7 +219,7 @@ function spreadGiven(
   return { from: spread.node.expression, names };
 }
 
-/** The type arguments known before the items, written or expected; a spread's are inferred. */
+/** The type arguments known before the items, written; a spread's are inferred. */
 function decidedArguments(
   { known }: LiteralShape,
   parameters: readonly ParameterKey[],

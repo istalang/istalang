@@ -154,6 +154,24 @@ const cases: readonly ChoiceCase[] = [
     chosen: 'Bool',
   },
   {
+    rule: 'an anonymous struct literal fits its own shape exactly, over a struct it converts to',
+    overloads: [
+      'struct Pixel { x: Int, y: Int }\nfn f(p: Pixel) -> String: "nominal"',
+      'fn f(p: { x: Int, y: Int }) -> Bool: true',
+    ],
+    call: 'f(struct{x: 1, y: 2})',
+    chosen: 'Bool',
+  },
+  {
+    rule: 'an anonymous struct literal fits its own shape exactly, over a struct a default fills',
+    overloads: [
+      'struct WithDefault { x: Int, y: Int = 0 }\nfn f(p: WithDefault) -> String: "nominal"',
+      'fn f(p: { x: Int }) -> Bool: true',
+    ],
+    call: 'f(struct{x: 1})',
+    chosen: 'Bool',
+  },
+  {
     rule: 'a bare variant fits an optional enum parameter',
     overloads: [
       'enum Color { Red, Blue }\nfn f(a: Color?) -> Bool: true',

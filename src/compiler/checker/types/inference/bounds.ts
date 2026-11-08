@@ -18,11 +18,16 @@
  *   unless an upper bound holds a literal type of that base (§2).
  * - Two variables related, one bounding the other (`relate`), hand each other their bounds: the
  *   lower one's lower bounds are the upper one's, and the upper one's upper bounds the lower one's,
- *   now and as they are added (design.md §4).
+ *   an equality each way as both, now and as they are added (design.md §4), so a placeholder under
+ *   an invariant parameter (`Item{value: Small}`) is told what the parameter is.
+ * - A variable may refuse a bound it can't stand under (`admit`): a placeholder's expression can't
+ *   be a value of every type (i2-scope.md §3), as a lambda of one parameter can't be a function of
+ *   two.
  * - Matching probes: every change is undone past a mark when a probe fails (`rollback`), so a probe
  *   that fails leaves no bound behind.
  */
 
+import type { Admits } from '../fitting/expected.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 
@@ -36,6 +41,11 @@ export interface LowerBound {
   /** Whether it is a struct literal's shape, which a struct its fields give takes (§3.1). */
   readonly isShape: boolean;
   readonly origin: Origin;
+  /**
+   * Whether it bounds its own variable alone, never one related to it: an item of a collection
+   * literal whose items agree on no one type, which settles on what it goes into (design.md §4).
+   */
+  readonly isApart?: boolean | undefined;
 }
 
 /** A type a parameter's argument must be at most, or exactly. */
@@ -74,6 +84,11 @@ export interface BoundRules {
   readonly constrain: (found: Type, expected: Type, origin: Origin) => boolean;
   /** Whether `first` and `second` are the same type, equating what either mentions likewise. */
   readonly equate: (first: Type, second: Type, origin: Origin) => boolean;
+  /**
+   * Whether a struct literal of `shape` builds `target`, a struct (§3.1), its fields bounding what
+   * either mentions as `constrain` does.
+   */
+  readonly constrainShape: (target: Type, shape: Type, origin: Origin) => boolean;
 }
 
 const noBounds: VariableBounds = { equal: undefined, lower: [], upper: [] };
@@ -88,6 +103,8 @@ export class BoundStore {
   readonly #below = new Map<ParameterKey, readonly ParameterKey[]>();
   readonly #above = new Map<ParameterKey, readonly ParameterKey[]>();
   /** How to undo each change, newest last. */
+  /** What each variable that refuses some bounds may stand under (`admit`). */
+  readonly #admitting = new Map<ParameterKey, Admits>();
   readonly #undo: (() => void)[] = [];
   /** How many bounds deep the check being made relates bounds mentioning parameters (`#agree`). */
   #depth = 0;
@@ -104,6 +121,17 @@ export class BoundStore {
     copyInto(other.#bounds, this.#bounds);
     copyInto(other.#below, this.#below);
     copyInto(other.#above, this.#above);
+    copyInto(other.#admitting, this.#admitting);
+  }
+
+  /** Lets `parameter` stand only under what `admits` takes, as a placeholder does. */
+  admit(parameter: ParameterKey, admits: Admits): void {
+    this.#admitting.set(parameter, admits);
+  }
+
+  /** Whether `parameter` may stand under `bound`, as an upper bound or an equality. */
+  #admits(parameter: ParameterKey, bound: Type): boolean {
+    return this.#admitting.get(parameter)?.(bound, this.#rules.isOpen) ?? true;
   }
 
   /** What `parameter` is bound by so far. */
@@ -139,9 +167,12 @@ export class BoundStore {
     }
     this.#link(this.#above, lower, upper);
     this.#link(this.#below, upper, lower);
+    const below = this.of(lower);
+    const above = this.of(upper);
     return (
-      this.of(lower).lower.every((bound) => this.addLower(upper, bound)) &&
-      this.of(upper).upper.every((bound) => this.addUpper(lower, bound))
+      [...joining(below.lower), ...asLower(below.equal)].every((bound) =>
+        this.addLower(upper, bound),
+      ) && [...above.upper, ...asUpper(above.equal)].every((bound) => this.addUpper(lower, bound))
     );
   }
 
@@ -153,14 +184,18 @@ export class BoundStore {
     }
     const checked = checkedAgainst(bounds, bound.origin);
     const lower = [...bounds.lower, bound];
+    // An item apart is judged by what its literal's items agree on, never against these.
     const agrees =
-      this.#takes(parameter, checked.equal, bound) &&
-      checked.upper.every((upper) => this.#agree(parameter, bound, upper));
+      bound.isApart === true ||
+      (this.#takes(parameter, checked.equal, bound) &&
+        checked.upper.every((upper) => this.#agree(parameter, bound, upper)));
     if (agrees) {
       this.#set(parameter, { ...bounds, lower });
     }
     return (
-      agrees && (this.#above.get(parameter) ?? []).every((upper) => this.addLower(upper, bound))
+      agrees &&
+      (bound.isApart === true ||
+        (this.#above.get(parameter) ?? []).every((upper) => this.addLower(upper, bound)))
     );
   }
 
@@ -170,10 +205,13 @@ export class BoundStore {
     if (bounds.upper.some((each) => this.#isSame(each, bound))) {
       return true;
     }
+    if (!this.#admits(parameter, bound.type)) {
+      return false;
+    }
     const checked = checkedAgainst(bounds, bound.origin);
     const agrees =
       (checked.equal === undefined || this.#agree(parameter, checked.equal, bound)) &&
-      checked.lower.every((lower) => this.#agree(parameter, lower, bound));
+      joining(checked.lower).every((lower) => this.#agree(parameter, lower, bound));
     if (agrees) {
       this.#set(parameter, { ...bounds, upper: [...bounds.upper, bound] });
     }
@@ -213,12 +251,19 @@ export class BoundStore {
       return this.#equate(parameter, equal, bound);
     }
     const agrees =
-      checked.lower.every((lower) => this.#agree(parameter, lower, bound)) &&
+      this.#admits(parameter, bound.type) &&
+      joining(checked.lower).every((lower) => this.#agree(parameter, lower, bound)) &&
       checked.upper.every((upper) => this.#agree(parameter, bound, upper));
     if (agrees) {
       this.#set(parameter, { ...bounds, equal: bound });
     }
-    return agrees;
+    return (
+      agrees &&
+      (this.#below.get(parameter) ?? []).every((lower) => this.addUpper(lower, bound)) &&
+      (this.#above.get(parameter) ?? []).every((upper) =>
+        asLower(bound).every((lower) => this.addLower(upper, lower)),
+      )
+    );
   }
 
   /** Whether an equality of `parameter`, if any, takes a value of `bound`. */
@@ -237,8 +282,13 @@ export class BoundStore {
     if (!(isOpen(below.type) || isOpen(above.type))) {
       return fits(below.type, above.type) || (isShape(below) && takesShape(above.type, below.type));
     }
-    return this.#deeper(parameter, [below.type, above.type], () =>
-      constrain(below.type, above.type, originOf(below, above)),
+    const origin = originOf(below, above);
+    return this.#deeper(
+      parameter,
+      [below.type, above.type],
+      () =>
+        constrain(below.type, above.type, origin) ||
+        (isShape(below) && this.#rules.constrainShape(above.type, below.type, origin)),
     );
   }
 
@@ -287,6 +337,21 @@ export class BoundStore {
   }
 }
 
+/** The lower bounds of `lower` its variable's other bounds are checked against: all but items apart. */
+function joining(lower: readonly LowerBound[]): readonly LowerBound[] {
+  return lower.filter(({ isApart }) => isApart !== true);
+}
+
+/** An equality as the lower bound it is to a variable above the one it holds for. */
+function asLower(equal: Bound | undefined): readonly LowerBound[] {
+  return equal === undefined ? [] : [{ ...equal, fresh: false, isShape: false }];
+}
+
+/** An equality as the upper bound it is to a variable below the one it holds for. */
+function asUpper(equal: Bound | undefined): readonly Bound[] {
+  return equal === undefined ? [] : [equal];
+}
+
 /** Whether `bound` is a struct literal's shape, which a struct it settles to may take (§3.1). */
 export function isShape(bound: Bound | LowerBound): boolean {
   return 'isShape' in bound && bound.isShape;
@@ -323,4 +388,11 @@ export function fromArguments(bounds: VariableBounds): VariableBounds {
     lower: bounds.lower.filter(fromThem),
     upper: bounds.upper.filter(fromThem),
   };
+}
+
+/** The parameters `bounds` mention. */
+export function mentionedBy({ equal, lower, upper }: VariableBounds): readonly ParameterKey[] {
+  return [...(equal === undefined ? [] : [equal]), ...lower, ...upper].flatMap(({ type }) =>
+    parametersIn(type),
+  );
 }

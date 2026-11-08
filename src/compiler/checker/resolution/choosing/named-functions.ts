@@ -36,8 +36,9 @@ import {
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { MemberAccess, TypeApplication } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
-import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
+import type { Admits } from '../../types/fitting/expected.ts';
 import { enumsExpected, expectedFunction } from '../../types/fitting/expected.ts';
 import { type Substitution, substitute } from '../../types/parts/substitution.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
@@ -306,12 +307,9 @@ export function instantiatedValue(
  * lone function of one type of its own (`hasOwnType`); a lone one with defaults or a rest fits the
  * types leaving them out too (§3.14), and one whose written type arguments leave a defaulted type
  * parameter open takes it from the type it is passed as (§3.5), so the call decides it, and one
- * nothing gives the parameters of is its whole function (../calls/function-arguments.ts).
+ * nothing gives the parameters of is its whole function (constructs/expressions/postponed.ts).
  */
-export function functionsAccepted(
-  context: BodyContext,
-  named: NamedFunctions,
-): Accepts | undefined {
+export function functionsAccepted(context: BodyContext, named: NamedFunctions): Admits | undefined {
   const lone = loneFunction(context, named, undefined);
   if (lone !== undefined && hasOwnType(lone)) {
     return undefined;

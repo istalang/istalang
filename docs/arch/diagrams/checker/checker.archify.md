@@ -140,9 +140,6 @@ The result type never picks an overload. The expected type only fills type param
 | Table | Signature | Gives |
 | --- | --- | --- |
 | `expressionHandlers` | `Handlers<BodyContext, Expression, [expected], Type>` | The node's type |
-| `acceptsHandlers` | `Handlers<BodyContext, Expression, [], Accepts>` | The parameter types an argument without its own type can take |
-| `knownTypeHandlers` | `Handlers<BodyContext, Expression, [], Type>` | A part's own type, without checking or reporting |
-| `buildsHandlers` | `Handlers<BodyContext, Expression, [], Accepts>` | The types a struct, tuple, array or map literal can be built as |
 | `statementHandlers` | `Handlers<BodyContext, Statement, [expected], Type>` | The statement's type: value, `Never` or `Unit` |
 | `declarationHandlers` | `Handlers<CheckerContext, Declaration, [ModuleId], void>` | Nothing; it resolves and checks a top-level item |
 | `typeHandlers` | `Handlers<Resolution, TypeNode, [], Type>` | The type a written type denotes |

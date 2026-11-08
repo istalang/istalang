@@ -56,6 +56,7 @@ import type {
 import type { FieldRead, FieldReading } from '../surface/checked-field.ts';
 import type { CheckedPattern, TargetBinding, TargetOwner } from '../surface/checked-pattern.ts';
 import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../surface/resolved-call.ts';
+import type { Admits } from '../types/fitting/expected.ts';
 import type { Fit } from '../types/fitting/fit/index.ts';
 import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';
 import type { Scopes } from './constraint-scope.ts';
@@ -77,26 +78,19 @@ export interface BodyContext {
   /** The body's constraint scopes, and the one current (contexts/constraint-scope.ts). */
   readonly scopes: Scopes;
   /**
-   * Which parameter types `node` can take when the call it is passed to decides its type (§3.5);
-   * undefined when it has a type of its own, which takes part in choosing the function.
+   * What `node` can be a value of, when a constraint scope checks it only once it knows what is
+   * expected of it (constructs/expressions/postponed.ts); undefined for one with a type of its own.
    */
-  readonly accepts: (node: Expression) => Accepts | undefined;
-  /** How `node` takes part in a composite argument's `Accepts` check (expressions.ts). */
-  readonly acceptedPart: (node: Expression | undefined) => AcceptedPart;
-  /**
-   * How `node`, passed to a call, takes part in choosing it (§3.7): as `acceptedPart` reads it, a
-   * literal's items whose types only checking tells checked first
-   * (constructs/expressions/literals/literal-items.ts).
-   */
-  readonly argumentPart: (node: Expression) => AcceptedPart;
+  readonly admitsOf: (node: Expression) => Admits | undefined;
   /**
    * Checks `node`, a lambda, maybe parenthesized, recording its type, where its parameters' types
-   * are known and its result is left for its body to decide (§3.5), as `guide` says, if given.
+   * are known and its result is left for its body to decide (§3.5), `guide`, what is known of the
+   * result, guiding the body as its expected type, if given.
    */
   readonly inferLambda: (
     node: Expression,
     parameters: Pick<FunctionType, 'parameters' | 'pack'>,
-    guide?: LambdaGuide,
+    guide?: Type,
   ) => Type;
   /** The type `node` was checked to have; the error type for a node not checked yet. */
   readonly typeOf: (node: Expression) => Type;
@@ -125,6 +119,12 @@ export interface BodyContext {
   readonly effectBlock: (node: Block) => void;
   /** Checks a statement; its type, which only a block's last statement passes on (§4). */
   readonly statement: (node: Statement | Invalid, expected?: Type) => Type;
+  /**
+   * Checks `node` as a part of a value a joining composite builds, a tuple's element or a
+   * `struct{…}`'s field (contexts/constraint-scope.ts): a literal stays fresh in the current scope,
+   * its literal type where what it goes into holds one once the scope settles, else its base (§2).
+   */
+  readonly part: (node: Expression, expected?: Type) => Type;
   readonly report: (diagnostic: Diagnostic<AnchoredSpan>) => void;
   /** The type `node` denotes in this body's module. */
   readonly resolveType: (node: TypeNode) => Type;
@@ -209,12 +209,6 @@ export interface BodyContext {
 }
 
 /**
- * Whether an argument the chosen function decides can take a parameter of type `expected`, where
- * a part `isOpen` says inference hasn't found yet can be anything.
- */
-export type Accepts = (expected: Type, isOpen: (part: Type) => boolean) => boolean;
-
-/**
  * A field loop's passes once checked (§4): `inEach` runs back in each pass, in order, what is
  * decided of all of them together, such as the type their values agree on or the type arguments
  * they infer, recording and reporting it as that pass's.
@@ -222,43 +216,6 @@ export type Accepts = (expected: Type, isOpen: (part: Type) => boolean) => boole
 export interface CheckedPasses {
   readonly inEach: (run: (pass: FieldPassType, index: number) => void) => void;
 }
-
-/**
- * What one part of a composite literal has, read before checking (`acceptedPart`, as a call is
- * chosen or a union's member decided): the types it can take when where it goes decides its type,
- * with the type it has alone (`none`'s `None`, a `struct{…}`'s shape) and the type it is known to
- * have so far, which bounds what a call gives it; or its own type when known.
- */
-/**
- * What a lambda whose result its body decides is told of the result (§3.5): a type guiding its
- * body as its expected type, open in the call's constraint scope where the call doesn't know it
- * yet, so a body that joins the scope is advised by it (contexts/constraint-scope.ts).
- */
-export interface LambdaGuide {
-  readonly kind: 'guided';
-  readonly type: Type;
-}
-
-export type AcceptedPart =
-  | {
-      readonly kind: 'decided';
-      readonly accepts: Accepts;
-      /** The type it has where nothing decides it, which producers it agrees with join (§2). */
-      readonly alone?: Type | undefined;
-      /**
-       * The type it is known to have so far, which bounds what a call it is passed to gives it
-       * while the call is chosen (§3.5): a `struct{…}`'s shape, which builds the struct the call's
-       * parameter settles to (§3.1).
-       */
-      readonly known?: Type | undefined;
-    }
-  | {
-      readonly kind: 'typed';
-      readonly type: Type | undefined;
-    };
-
-/** How a composite literal's parts are read: before checking, or as checked (`AcceptedPart`). */
-export type PartReader = (node: Expression | undefined) => AcceptedPart;
 
 /** A body's variables: types, uses, and what targets take (constructs/statements/variables.ts). */
 export interface Variables {
@@ -294,6 +251,13 @@ export interface LiteralSources {
 /** The functions a body is checked in, innermost current (constructs/closures/functions.ts). */
 export interface Functions {
   readonly current: FunctionFrame;
+  /** The functions being checked, outermost first, as `within` takes them back. */
+  readonly frames: readonly FunctionFrame[];
+  /**
+   * Runs `check` inside `frames` again, as a constraint scope checks what it postponed inside the
+   * functions it was written in (contexts/constraint-scope.ts).
+   */
+  readonly within: <Result>(frames: readonly FunctionFrame[], check: () => Result) => Result;
   /** Runs `check` inside `scope`; while its type isn't known, using its own name is reported. */
   readonly inside: <Result>(scope: FunctionFrame, check: () => Result) => Result;
   /** Notes that `entity` is used where `name` is written, capturing it where it must be. */

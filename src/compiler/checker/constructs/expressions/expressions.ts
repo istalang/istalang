@@ -1,82 +1,40 @@
 /**
- * The checker's tables over expression kinds, one entry per kind (architecture: Registries).
- *
- * - Checking: each handler takes the body's context, the node, and the type its position expects,
- *   and gives the node's type; the context records it.
- * - Accepting: passed to a call, an expression with no type of its own has the type the chosen
- *   function decides (§3.5), so choosing asks it which parameter types it can take. Each kind says
- *   beside its own rules: `none`, a bare variant, a lambda whose result isn't written, functions
- *   named by a name of several or a generic one, an empty `[]` or `[:]`, and a `struct{…}`, which
- *   builds a struct it gives the fields of where one is expected (§3.1); a tuple, collection literal
- *   or branching expression holding one, unless what it agrees on is decided by a part with a type
- *   of its own, and a collection literal whose items agree on no one type. A part still to be
- *   inferred can be anything.
- * - Own type (`knownTypeHandlers`): for a sibling inside a composite argument, the type it has on
- *   its own without running expression checking or reporting (`acceptedPartOf`); an item already
- *   checked, as an argument literal's may be (literals/literal-items.ts), has the type it was
- *   checked to have.
+ * The checker's table over expression kinds, one entry per kind (architecture: Registries): each
+ * handler takes the body's context, the node, and the type its position expects, and gives the
+ * node's type; the context records it. What an expression a constraint scope checks only once it
+ * knows what is expected of it can be a value of is read in postponed.ts.
  */
 
-import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
-import { type Handlers, handlerOf } from '../../../../foundation/structures/kind-table.ts';
-import { localFunctionOf } from '../../../binder/entities.ts';
-import type { Expression, IndentedValue, Reference } from '../../../syntax/expressions/index.ts';
-import { literalOf, untypedForm } from '../../../syntax/expressions/literals/indented-values.ts';
-import { signedNumberOf } from '../../../syntax/expressions/literals/numbers.ts';
-import { isItemsLiteral, unparenthesized } from '../../../syntax/expressions/readings.ts';
-import type { Block } from '../../../syntax/statements/index.ts';
-import { tailExpressionOf } from '../../../syntax/statements/readings.ts';
-import type { Identifier } from '../../../syntax/tree/node.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../../contexts/body-context.ts';
-import { takingUnfolded } from '../../types/fitting/expected.ts';
+import type { Handlers } from '../../../../foundation/structures/kind-table.ts';
+import type { Expression, Reference } from '../../../syntax/expressions/index.ts';
+import type { BodyContext } from '../../contexts/body-context.ts';
 import type { Type } from '../../types/type/index.ts';
-import {
-  boolType,
-  errorType,
-  floatType,
-  intType,
-  stringType,
-  unitType,
-} from '../../types/type/primitives.ts';
-import { wellKnownOf } from '../../types/type/well-known.ts';
+import { errorType, floatType } from '../../types/type/primitives.ts';
 import { literalOrBase } from '../../types/unions/unions.ts';
-import { checkAppliedFunction, namedFunctionsAccepted } from '../closures/function-values.ts';
-import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
+import { checkAppliedFunction } from '../closures/function-values.ts';
+import { checkLambda } from '../closures/lambdas.ts';
 import { checkDereference } from './access/dereference.ts';
 import { checkIndex } from './access/indexing.ts';
 import { checkMemberAccess } from './access/member-access.ts';
-import { checkName, memberAccepts, nameAccepts, variableType } from './access/names.ts';
+import { checkName } from './access/names.ts';
 import { checkUnwrap } from './access/optionals.ts';
 import { checkCall } from './calls.ts';
-import {
-  arrayAccepts,
-  arrayKnownType,
-  collectionOpenAccepts,
-  mapAccepts,
-  mapKnownType,
-} from './collections/collection-accepts.ts';
 import { checkComprehension, checkFieldComprehension } from './collections/comprehensions.ts';
 import { checkArray, checkMap } from './collections/joining-literals.ts';
 import { checkRange } from './collections/literals.ts';
 import { checkAwait } from './control/await.ts';
-import { blockAccepts } from './control/branches.ts';
-import { checkIf, ifAccepts } from './control/control.ts';
-import { checkIs, checkMatch, matchAccepts } from './control/match.ts';
+import { checkIf } from './control/control.ts';
+import { checkIs, checkMatch } from './control/match.ts';
 import { checkPropagate } from './control/propagate.ts';
-import { checkSelect, selectAccepts } from './control/select.ts';
+import { checkSelect } from './control/select.ts';
 import { checkSpawn } from './control/spawn.ts';
-import { checkIndentedValue, indentedAccepts } from './literals/indented-values.ts';
+import { checkIndentedValue } from './literals/indented-values.ts';
 import { checkDurationLiteral } from './literals/literals.ts';
 import { checkTemplate } from './literals/templates.ts';
-import { checkTuple, checkTupleElement, tupleAccepts } from './literals/tuples.ts';
+import { checkTuple, checkTupleElement } from './literals/tuples.ts';
 import { checkBinary, checkChainedComparison, checkUnary } from './operators/operators.ts';
-import {
-  checkNamedLiteral,
-  checkStructLiteral,
-  structLiteralAccepts,
-  structLiteralKnownType,
-} from './structs/structs.ts';
-import { aloneType, checkNone, noneAccepted, variantCallAccepts } from './structs/variants.ts';
+import { checkNamedLiteral, checkStructLiteral } from './structs/structs.ts';
+import { checkNone } from './structs/variants.ts';
 
 /** Missing and invalid nodes were reported by the parser. */
 const alreadyReported = (): Type => errorType;
@@ -134,207 +92,3 @@ export const expressionHandlers: Handlers<BodyContext, Expression, [Type | undef
   Invalid: alreadyReported,
 };
 // biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
-
-/** A kind whose value has a type of its own, which takes part in choosing like any argument's. */
-const ownType = (): undefined => undefined;
-
-// biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined> = {
-  Identifier: nameAccepts,
-  IntegerLiteral: ownType,
-  FloatLiteral: ownType,
-  StringLiteral: ownType,
-  BooleanLiteral: ownType,
-  Parenthesized: (context, node) => context.accepts(node.expression),
-  Binary: ownType,
-  Unary: ownType,
-  Call: variantCallAccepts,
-  StructLiteral: structLiteralAccepts,
-  NewStructLiteral: ownType,
-  IndentedValue: indentedAccepts,
-  MemberAccess: memberAccepts,
-  TypeApplication: namedFunctionsAccepted,
-  TupleElement: ownType,
-  BlockExpression: (context, node) => blockAccepts(context, node.block),
-  If: ifAccepts,
-  DurationLiteral: ownType,
-  NoneLiteral: noneAccepted,
-  ArrayLiteral: arrayAccepts,
-  MapLiteral: mapAccepts,
-  Comprehension: ownType,
-  FieldComprehension: ownType,
-  Tuple: tupleAccepts,
-  Lambda: lambdaAccepts,
-  Reference: ownType,
-  Index: ownType,
-  Propagate: ownType,
-  Spawn: ownType,
-  Unwrap: ownType,
-  ChainedComparison: ownType,
-  TemplateLiteral: ownType,
-  Dereference: ownType,
-  Await: ownType,
-  Is: ownType,
-  Range: ownType,
-  Match: matchAccepts,
-  Select: selectAccepts,
-  Missing: ownType,
-  Invalid: ownType,
-};
-// biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
-
-/**
- * Which parameter types `node` can take when the call it is passed to decides its type; undefined
- * when it has a type of its own. A recursive type takes it as what it unfolds to, and a union of
- * which the value can be built as one member takes it too, as it is then built (§2,
- * types/fitting/expected.ts `memberBuilt`).
- */
-export function acceptsOf(context: BodyContext, node: Expression): Accepts | undefined {
-  const accepts = handlerOf(acceptsHandlers, node)(context, node);
-  if (accepts === undefined) {
-    return undefined;
-  }
-  const taking = takingUnfolded(accepts);
-  return (expected, isOpen) => isOpen(expected) || taking(expected, isOpen);
-}
-
-/** A kind whose value depends on checking or on the expected type. */
-const unknownType = (): undefined => undefined;
-
-// biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
-const knownTypeHandlers: Handlers<BodyContext, Expression, [], Type | undefined> = {
-  Identifier: identifierKnownType,
-  IntegerLiteral: () => intType,
-  FloatLiteral: () => floatType,
-  StringLiteral: () => stringType,
-  BooleanLiteral: () => boolType,
-  Parenthesized: (context, node) => knownTypeOf(context, node.expression),
-  Binary: unknownType,
-  Unary: (_context, node) => signedNumberType(node),
-  Call: unknownType,
-  StructLiteral: structLiteralKnownType,
-  NewStructLiteral: unknownType,
-  IndentedValue: (context, node) => {
-    const literal = untypedLiteral(node);
-    return literal === undefined ? undefined : knownTypeOf(context, literal);
-  },
-  MemberAccess: unknownType,
-  TypeApplication: unknownType,
-  TupleElement: unknownType,
-  BlockExpression: (context, node) => blockKnownType(context, node.block),
-  If: unknownType,
-  DurationLiteral: (context) => wellKnownOf(context.checker, wellKnown.duration),
-  NoneLiteral: unknownType,
-  ArrayLiteral: arrayKnownType,
-  MapLiteral: mapKnownType,
-  Comprehension: unknownType,
-  FieldComprehension: unknownType,
-  Tuple: (context, node) => tupleKnownType(context, node.elements),
-  Lambda: unknownType,
-  Reference: unknownType,
-  Index: unknownType,
-  Propagate: unknownType,
-  Spawn: unknownType,
-  Unwrap: unknownType,
-  ChainedComparison: unknownType,
-  TemplateLiteral: (_context, node) => (node.tag === undefined ? stringType : undefined),
-  Dereference: unknownType,
-  Await: unknownType,
-  Is: () => boolType,
-  Range: (context) => wellKnownOf(context.checker, wellKnown.range),
-  Match: unknownType,
-  Select: unknownType,
-  Missing: unknownType,
-  Invalid: unknownType,
-};
-// biome-ignore-end lint/style/useNamingConvention: the keys are the tree's node kinds.
-
-/** How `node` takes part in a composite argument's `Accepts` check, read before checking it. */
-export function acceptedPartOf(context: BodyContext, node: Expression | undefined): AcceptedPart {
-  if (node === undefined) {
-    return { kind: 'typed', type: undefined };
-  }
-  const accepts = context.accepts(node);
-  const type = knownTypeOf(context, node);
-  if (accepts !== undefined) {
-    // A `struct{…}` goes where it is decided, a struct it builds (§3.1); alone, it is its shape.
-    return { kind: 'decided', accepts, alone: aloneType(node) ?? type, known: type };
-  }
-  return { kind: 'typed', type };
-}
-
-/**
- * The types `node` can take while its own type is known only through checking (§2,
- * types/fitting/expected.ts `memberBuilt`): a collection literal's by its shape, maybe
- * parenthesized or written as an indented value naming no type; undefined for any other expression.
- */
-export function openAcceptsOf(context: BodyContext, node: Expression): Accepts | undefined {
-  const inner = unparenthesized(node);
-  const literal = inner.kind === 'IndentedValue' ? untypedLiteral(inner) : inner;
-  const accepts =
-    literal?.kind === 'ArrayLiteral' || literal?.kind === 'MapLiteral'
-      ? collectionOpenAccepts(context, literal)
-      : undefined;
-  return accepts === undefined ? undefined : takingUnfolded(accepts);
-}
-
-/** The type `node` has on its own: as checked, for an item checked already, else as written. */
-function knownTypeOf(context: BodyContext, node: Expression): Type | undefined {
-  const checked = isItemsLiteral(node) ? undefined : context.checkedTypeOf(node);
-  return checked ?? handlerOf(knownTypeHandlers, node)(context, node);
-}
-
-/**
- * The literal an indented value naming no type reads as before its type is decided, the one its
- * entries make (`untypedForm`); undefined for one naming its type, which is that type, as a literal
- * naming it is.
- */
-export function untypedLiteral(node: IndentedValue): Expression | undefined {
-  return node.type === undefined ? literalOf(node, untypedForm(node)) : undefined;
-}
-
-/**
- * A negated number written in place has its literal's type
- * (syntax/expressions/literals/numbers.ts).
- */
-function signedNumberType(node: Expression): Type | undefined {
-  switch (signedNumberOf(node)?.kind) {
-    case 'IntegerLiteral':
-      return intType;
-    case 'FloatLiteral':
-      return floatType;
-    default:
-      return undefined;
-  }
-}
-
-function blockKnownType(context: BodyContext, block: Block): Type | undefined {
-  const tail = tailExpressionOf(block);
-  return tail !== undefined && block.statements.length === 1
-    ? knownTypeOf(context, tail)
-    : undefined;
-}
-
-function identifierKnownType(context: BodyContext, node: Identifier): Type | undefined {
-  const entity = context.entityOf(node);
-  if (entity?.kind !== 'variable' || localFunctionOf(entity) !== undefined) {
-    return undefined;
-  }
-  const type = variableType(context, entity);
-  return type.kind === 'error' ? undefined : type;
-}
-
-function tupleKnownType(context: BodyContext, elements: readonly Expression[]): Type | undefined {
-  if (elements.length === 0) {
-    return unitType;
-  }
-  const types: Type[] = [];
-  for (const element of elements) {
-    const type = knownTypeOf(context, element);
-    if (type === undefined) {
-      return undefined;
-    }
-    types.push(type);
-  }
-  return { kind: 'tuple', elements: types };
-}

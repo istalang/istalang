@@ -13,11 +13,13 @@
  *   inference's system is, so what it judges still joins it.
  */
 
+import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import {
   ConstraintScope,
   joinsScope,
   opensScope,
+  type PostponedMember,
   type ScopeMember,
   type ScopeSettling,
   type Scopes,
@@ -39,6 +41,20 @@ export class BodyScopes implements Scopes {
     return this.#current !== undefined;
   }
 
+  get current(): ConstraintScope | undefined {
+    return this.#current;
+  }
+
+  within<Result>(scope: ConstraintScope | undefined, check: () => Result): Result {
+    const outer = this.#current;
+    this.#current = scope;
+    try {
+      return check();
+    } finally {
+      this.#current = outer;
+    }
+  }
+
   holds(type: Type | undefined): boolean {
     return type !== undefined && this.#current?.holds(type) === true;
   }
@@ -48,13 +64,17 @@ export class BodyScopes implements Scopes {
     return this.#current?.root;
   }
 
-  /** Checks `node` by `check` in the scope its kind takes, with what it may read of `given`. */
+  /**
+   * Checks `node` by `check` in the scope its kind takes, with what it may read of `given`; one the
+   * scope may postpone (`postponable`) joins it too.
+   */
   checking(
     node: Expression,
     given: Type | undefined,
     check: (expected: Type | undefined) => Type,
+    postponable = false,
   ): Type {
-    if (!joinsScope(node)) {
+    if (!(postponable || joinsScope(node))) {
       return this.suspended(() => check(closed(given)));
     }
     if (this.#current !== undefined) {
@@ -68,13 +88,7 @@ export class BodyScopes implements Scopes {
 
   /** Runs `check` with no scope current, `expected` read as outside one: what it gives. */
   suspended<Result>(check: () => Result): Result {
-    const outer = this.#current;
-    this.#current = undefined;
-    try {
-      return check();
-    } finally {
-      this.#current = outer;
-    }
+    return this.within(undefined, check);
   }
 
   /** Runs `check` in a scope of its own, which settles once it is done: its type, settled. */
@@ -101,6 +115,16 @@ export class BodyScopes implements Scopes {
     };
     this.#opening(new ConstraintScope(), () => this.#current?.join({ ...member, complete }));
     return completed;
+  }
+
+  postpone(member: PostponedMember): Type {
+    const scope = this.#current ?? unreachable('A placeholder joins only an open scope.');
+    scope.postpone(member);
+    return member.type;
+  }
+
+  guided(type: Type): Type {
+    return this.#current?.guided(type) ?? type;
   }
 
   /** Gives the error type where each of `types` still open in the current scope goes. */

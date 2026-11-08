@@ -25,11 +25,9 @@ import { isItemsLiteral } from '../../syntax/expressions/readings.ts';
 import type { Block } from '../../syntax/statements/index.ts';
 import { tailExpressionOf, tailNodeOf } from '../../syntax/statements/readings.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../contexts/body-context.ts';
+import type { BodyContext } from '../contexts/body-context.ts';
 import type { ValueSite } from '../surface/checked-body.ts';
 import { type Fit, isExact } from '../types/fitting/fit/index.ts';
-import { sameType } from '../types/identity/identity.ts';
-import { typeChildren } from '../types/parts/type-children.ts';
 import { mapChildren } from '../types/parts/type-parts.ts';
 import type { Type } from '../types/type/index.ts';
 import { isPrimitive } from '../types/type/primitives.ts';
@@ -255,137 +253,6 @@ export function decidedSoFar(
   const deciding = produced.filter(({ type }) => !isPrimitive(type, 'None'));
   const { decided } = agreedType(deciding, context.checker);
   return decided === undefined ? undefined : insideWidened(decided, context.checker);
-}
-
-/**
- * Whether `part` can take a parameter of `expected`: one with a type of its own, where it fits, or
- * where what `expected` holds anywhere is still open, for inference to bound.
- */
-function partAccepts(
-  context: BodyContext,
-  part: AcceptedPart,
-  expected: Type,
-  isOpen: (part: Type) => boolean,
-): boolean {
-  if (part.kind === 'decided') {
-    return part.accepts(expected, isOpen);
-  }
-  const holdsOpen = (type: Type): boolean => isOpen(type) || typeChildren(type).some(holdsOpen);
-  return (
-    part.type === undefined ||
-    holdsOpen(expected) ||
-    context.checker.fitOf(part.type, expected) !== undefined
-  );
-}
-
-/**
- * Which parameter types `parts`, each at its own position, can take when at least one needs the
- * call to decide its type; undefined when every part has a type of its own.
- */
-export function partsAccept(
-  context: BodyContext,
-  parts: readonly AcceptedPart[],
-): readonly Accepts[] | undefined {
-  return parts.some((part) => part.kind === 'decided')
-    ? eachPartAccepts(context, parts)
-    : undefined;
-}
-
-/**
- * Which types `parts`, each at its own position, can take, whatever each has: a part decided by
- * where it goes, any type a part with a type of its own fits.
- */
-export function eachPartAccepts(
-  context: BodyContext,
-  parts: readonly AcceptedPart[],
-): readonly Accepts[] {
-  return parts.map(
-    (part) => (expected: Type, isOpen: (part: Type) => boolean) =>
-      partAccepts(context, part, expected, isOpen),
-  );
-}
-
-/** Whether `part` has a type of its own known before checking, `none`'s `None` among them. */
-function hasKnownType(part: AcceptedPart): boolean {
-  return (part.kind === 'typed' ? part.type : part.alone) !== undefined;
-}
-
-/**
- * The type `parts`, read before checking, agree on of their own: their common type when each has a
- * type of its own, or is a `none`, and those that may not be `none` have one same type, as parts
- * of different types agree only through checking; else undefined.
- */
-export function ownAgreedType(
-  context: BodyContext,
-  parts: readonly AcceptedPart[],
-): Type | undefined {
-  const types = parts.map((part) => (part.kind === 'typed' ? part.type : part.alone));
-  const known = types.filter((type) => type !== undefined);
-  const present = known.flatMap((type) => presentPart(type) ?? []);
-  const [first] = present;
-  // A part that may not be `none` fixes what the others join; `none` alone waits for the call.
-  const same = first !== undefined && present.every((type) => sameType(type, first));
-  return known.length === types.length && same ? commonType(known, context.checker) : undefined;
-}
-
-/**
- * Whether `producers` need the call they are passed to to decide their agreed type (§3.5): they
- * agree on no type of their own, and the first one's own type doesn't take them all.
- */
-function needsAgreedType(context: BodyContext, producers: readonly AcceptedPart[]): boolean {
-  if (ownAgreedType(context, producers) !== undefined) {
-    return false;
-  }
-  const [first] = producers;
-  if (first?.kind !== 'typed' || first.type === undefined) {
-    return true;
-  }
-  const firstType = first.type;
-  return !producers.every((part) =>
-    part.kind === 'decided'
-      ? part.accepts(firstType, () => false)
-      : part.type !== undefined && context.checker.fitOf(part.type, firstType) !== undefined,
-  );
-}
-
-/**
- * Which types `producers` of one value can agree on when the call they are passed to decides it
- * (§3.5); undefined when their own types already decide it.
- */
-export function agreedAccepts(
-  context: BodyContext,
-  producers: readonly AcceptedPart[],
-): Accepts | undefined {
-  if (!producers.some((producer) => producer.kind === 'decided')) {
-    return undefined;
-  }
-  if (!needsAgreedType(context, producers)) {
-    return undefined;
-  }
-  return allProducersAccept(context, producers);
-}
-
-/**
- * Which types `producers` of one value, each with a type of its own known before checking but
- * agreeing on none, can all take: as one, they have no type of their own, so where their literal
- * goes decides it (`[1, "a"]` passed for a `Json`); undefined otherwise.
- */
-export function disagreedAccepts(
-  context: BodyContext,
-  producers: readonly AcceptedPart[],
-): Accepts | undefined {
-  return producers.every(hasKnownType) && ownAgreedType(context, producers) === undefined
-    ? allProducersAccept(context, producers)
-    : undefined;
-}
-
-/** Which types `producers` of one value can all take, once their literal needs an expected type. */
-export function allProducersAccept(
-  context: BodyContext,
-  producers: readonly AcceptedPart[],
-): Accepts {
-  return (expected, isOpen) =>
-    producers.every((producer) => partAccepts(context, producer, expected, isOpen));
 }
 
 /** Whether a fit was found, and converts nothing. */

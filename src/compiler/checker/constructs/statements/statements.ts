@@ -4,7 +4,9 @@
  *
  * A block's value is its last statement's: an expression statement has its expression's type,
  * `return`, `break` and `continue` have `Never`, and any other statement `Unit` (§4). Only the last
- * statement's expression sees the type the block is expected to have.
+ * statement's expression sees the type the block is expected to have, and only it joins the
+ * constraint scope the block stands in (contexts/constraint-scope.ts); every other statement is
+ * checked on its own.
  */
 
 import type { Handlers } from '../../../../foundation/structures/kind-table.ts';
@@ -12,6 +14,7 @@ import type { Block, Statement } from '../../../syntax/statements/index.ts';
 import type { Invalid } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkDiscarded, checkDrop } from '../../rules/disposal/must-use.ts';
+import { statementPlace } from '../../surface/checked-annotation.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { neverType, unitType } from '../../types/type/primitives.ts';
 import { checkLocalFunction } from '../closures/lambdas.ts';
@@ -83,10 +86,27 @@ export function checkBlock(context: BodyContext, block: Block, use: BlockUse): T
   let type: Type = unitType;
   block.statements.forEach((statement, index) => {
     const isValue = use.kind === 'value' && index === block.statements.length - 1;
-    type = context.statement(statement, isValue ? use.expected : undefined);
+    type = isValue ? checkTail(context, statement, use.expected) : context.statement(statement);
     if (!isValue) {
       checkDiscarded(context, statement, type);
     }
   });
   return type;
+}
+
+/**
+ * A value block's last statement: an expression statement's expression as a part of the value the
+ * block gives, joining the constraint scope it stands in (`BodyContext.part`); any other as a
+ * statement.
+ */
+function checkTail(
+  context: BodyContext,
+  node: Statement | Invalid,
+  expected: Type | undefined,
+): Type {
+  if (node.kind !== 'ExpressionStatement') {
+    return context.statement(node, expected);
+  }
+  context.checker.annotations.of(context.module, node, statementPlace(node));
+  return context.part(node.expression, expected);
 }

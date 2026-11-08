@@ -218,7 +218,8 @@ function parameterizedText(name: string, typeArguments: readonly Type[]): string
 
 /**
  * A type parameter's name: its own, `Self` for a trait's; a field loop's key for the fields a
- * struct constraint leaves unnamed reads as the keys it ranges over (§4).
+ * struct constraint leaves unnamed reads as the keys it ranges over (§4); a placeholder, which
+ * settling replaces before any type is shown, as `_`.
  */
 export function parameterText(type: TypeParameterType): string {
   const { declaration } = type;
@@ -227,6 +228,8 @@ export function parameterText(type: TypeParameterType): string {
       return selfType;
     case 'FieldHeader':
       return type.within === undefined ? 'keyof …' : typeText(type.within);
+    case 'Placeholder':
+      return '_';
     default:
       return boundName(declaration);
   }

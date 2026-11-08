@@ -26,14 +26,13 @@ import type { CheckerContext } from '../../contexts/context.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Inference } from '../../types/inference/infer.ts';
-import type { Settling } from '../../types/inference/settle.ts';
 import { substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import type { CallArgument, Inapplicability } from '../choosing/call-arguments.ts';
 import type { Candidate } from '../choosing/candidates.ts';
 import { type Application, choose } from '../choosing/choice.ts';
-import { type Instantiation, instantiate, settlingAt } from '../conformance/conformance.ts';
+import { type Instantiation, instantiate } from '../conformance/conformance.ts';
 import { closedThroughMembers, metThroughTraits } from '../conformance/trait-calls.ts';
 import { membersRequirementOf, traitMetBy } from '../conformance/union-traits.ts';
 import {
@@ -63,11 +62,6 @@ export interface CallApplication {
   readonly scope?: Inference | undefined;
   /** Reports why no candidate takes the arguments, given each one's reason. */
   readonly none: (reasons: readonly Inapplicability[]) => void;
-  /**
-   * Checks what the chosen function decides before it is instantiated, as lambdas' bodies, once
-   * the expected type has given its bounds.
-   */
-  readonly chosen?: (application: Application, settling: Settling) => void;
 }
 
 /** A call made: what was chosen and instantiated, and what it gives. */
@@ -83,8 +77,6 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
   if (application === undefined) {
     return undefined;
   }
-  const site = useSite(context.checker, context.module, request.span);
-  request.chosen?.(application, settlingAt(site, application.signature));
   return completeCall(context, request, application);
 }
 

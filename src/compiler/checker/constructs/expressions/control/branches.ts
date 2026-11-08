@@ -11,28 +11,32 @@
  * Passed to a call that decides their type (§3.5), they take what their tails agree on.
  */
 
+import type { Expression } from '../../../../syntax/expressions/index.ts';
 import type { Block } from '../../../../syntax/statements/index.ts';
-import { tailExpressionOf } from '../../../../syntax/statements/readings.ts';
-import type { AcceptedPart, Accepts, BodyContext } from '../../../contexts/body-context.ts';
+import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import {
-  agreedAccepts,
   blockTail,
   decidedSoFar,
   type Produced,
   settleAgreement,
 } from '../../../rules/agreement.ts';
+import { openAgreement } from '../../../rules/open-agreement.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { neverType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 
 export class Branches {
   readonly #context: BodyContext;
+  readonly #node: Expression;
   readonly #expected: Type | undefined;
   readonly #produced: Produced[] = [];
 
-  constructor(context: BodyContext, expected: Type | undefined) {
+  /** The branches of `node`, expected to have `expected`. */
+  constructor(context: BodyContext, node: Expression, expected: Type | undefined) {
     this.#context = context;
+    this.#node = node;
     this.#expected = expected;
   }
 
@@ -41,55 +45,35 @@ export class Branches {
     return this.#produced;
   }
 
-  /** Checks a branch's body, expecting what the branches so far agree on. */
+  /**
+   * Checks a branch's body, expecting what the branches so far agree on, outside a constraint
+   * scope, which settles what they agree on (../../../rules/open-agreement.ts).
+   */
   add(body: Block): void {
     const context = this.#context;
-    const expected = this.#expected ?? decidedSoFar(context, this.#produced);
+    const expected =
+      this.#expected ?? (context.scopes.isOpen ? undefined : decidedSoFar(context, this.#produced));
     this.#produced.push(blockTail(body, context.block(body, expected)));
   }
 
-  /** The type every branch agrees on, after reporting the branches that don't fit it. */
+  /**
+   * The type every branch agrees on, after reporting the branches that don't fit it; where one is
+   * open in the constraint scope, what they agree on once it settles
+   * (../../../rules/open-agreement.ts).
+   */
   agreedType(): Type {
-    const decided = settleAgreement(
-      this.#context,
-      this.#produced,
-      this.#expected,
-      (span, agreed, found) =>
-        checkerDiagnostics.branchTypes(span, typeText(agreed), typeText(found)),
+    const mismatch = (span: AnchoredSpan, agreed: Type, found: Type) =>
+      checkerDiagnostics.branchTypes(span, typeText(agreed), typeText(found));
+    const context = this.#context;
+    return (
+      openAgreement(context, {
+        node: this.#node,
+        produced: this.#produced,
+        expected: this.#expected,
+        mismatch,
+      }) ??
+      settleAgreement(context, this.#produced, this.#expected, mismatch) ??
+      neverType
     );
-    return decided ?? neverType;
   }
-}
-
-/** Which types branches with `bodies` can take when the call they are passed to decides it. */
-export function branchesAccepts(
-  context: BodyContext,
-  bodies: readonly Block[],
-): Accepts | undefined {
-  return agreedAccepts(
-    context,
-    bodies.map((body) => blockPart(context, body)),
-  );
-}
-
-/** Which types `block` can take when the call it is passed to decides it: its tail's (§4). */
-export function blockAccepts(context: BodyContext, block: Block): Accepts | undefined {
-  const tail = tailExpressionOf(block);
-  return tail === undefined ? undefined : context.accepts(tail);
-}
-
-/**
- * How `block` takes part in a branching expression's `Accepts` check: as its tail does, which,
- * after other statements, has no type known before checking.
- */
-function blockPart(context: BodyContext, block: Block): AcceptedPart {
-  const tail = tailExpressionOf(block);
-  if (tail === undefined) {
-    return { kind: 'typed', type: undefined };
-  }
-  if (block.statements.length === 1) {
-    return context.acceptedPart(tail);
-  }
-  const accepts = context.accepts(tail);
-  return accepts === undefined ? { kind: 'typed', type: undefined } : { kind: 'decided', accepts };
 }

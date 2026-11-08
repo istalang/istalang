@@ -34,7 +34,12 @@ const declarations = [
 
 /** What checking `functions` after the declarations above reports. */
 function reportedAfter(...functions: readonly string[]) {
-  return reported([...declarations, ...functions, 'async fn main(): 0'].join('\n'));
+  return reportedImporting([], ...functions);
+}
+
+/** What checking `functions` after `imports` and the declarations above reports. */
+function reportedImporting(imports: readonly string[], ...functions: readonly string[]) {
+  return reported([...imports, ...declarations, ...functions, 'async fn main(): 0'].join('\n'));
 }
 
 /** What `async fn main() -> Future<String>: body` gives after the declarations above. */
@@ -182,6 +187,44 @@ describe("a postponed lambda's guide and joining", () => {
   });
 });
 
+describe('what the expected type bounds', () => {
+  it('advises what an argument bounds after it, wherever the argument stands', () => {
+    expect(
+      reportedImporting(
+        ["import Json from 'json'"],
+        'fn mapped(vs: Array<Int>) -> Array<Json>: vs.map(fn x: [x, "a"])',
+        'fn built(x: Int) -> Item<Json>: Item{value: [x, "a"]}',
+      ),
+    ).toEqual(checksCleanly);
+  });
+
+  it('is set aside where a lambda its call infers disagrees with it, reported at the call', () => {
+    expect(
+      reportedAfter(
+        'fn f(xs: Array<Int>) -> Int:',
+        '  const ys: Array<String> = xs.map(fn x: {',
+        '    if x < 0: return 0',
+        '    x + 1',
+        '  })',
+        '  ys.length()',
+        'fn g(xs: Array<Int>) -> Int:',
+        '  const ys: Array<String> = xs.map(fn x: {',
+        '    if x < 0: return id(0)',
+        '    x + 1',
+        '  })',
+        '  ys.length()',
+      ).codes,
+    ).toEqual([5001, 5001]);
+  });
+});
+
+describe('a lambda its scope judges once it settles', () => {
+  it('is checked inside the functions it is written in, each capturing what it names', () => {
+    const lambda = 'fn(x: Int) -> Outcome<Int, String>: good(fn y: Good(y + x + base))';
+    expect(outcome(`{ const base = 100; String([1, 2].map(${lambda}).length()) }`)).toBe('2');
+  });
+});
+
 describe('literals whose items need checking before choosing', () => {
   it('checks computed items ahead so overloads and generic parameters see their types', () => {
     expect(
@@ -196,6 +239,42 @@ describe('literals whose items need checking before choosing', () => {
           '  _ = id([1 + 2, none])\n' +
           '  _ = id([Size.Large, Small])\n' +
           '  _ = id((struct{a: 1 + 2}, 1))',
+      ),
+    ).toEqual(checksCleanly);
+  });
+
+  it('keeps scalar literals fresh across branches, blocks, tuples and struct{…} in a scope', () => {
+    expect(
+      reportedAfter(
+        'fn apply<U>(f: fn() -> U) -> U: f()',
+        'fn branchLit(c: Bool) -> Box<"s" | "m">: boxed(if c: "s" else: "m")',
+        'fn idBranchLit(c: Bool) -> "s" | "m": id(if c: "s" else: "m")',
+        'fn blockLit() -> Box<"s" | "m">: boxed({ const x = 1; "s" })',
+        'fn tupleLit() -> Box<("s" | "m", Int)>: boxed(("s", 1))',
+        'fn parenTupleLit() -> Box<("s" | "m", Int)>: boxed((("s"), 1))',
+        'fn lambdaReturnLit(c: Bool) -> Box<"s" | "m">:\n' +
+          '  boxed(apply(fn(): {\n' +
+          '    if c: return "s"\n' +
+          '    "m"\n' +
+          '  }))',
+        'fn lambdaTailLit() -> Box<"s" | "m">: boxed(apply(fn(): "m"))',
+        'fn lambdaParenTailLit() -> Box<"s" | "m">: boxed(apply(fn(): ("m")))',
+        'fn lambdaBlockTailLit() -> Box<"s" | "m">: boxed(apply(fn(): { const x = 1; "m" }))',
+        'fn shapeLit() -> Box<{ a: "s" | "m" }>: boxed(struct{a: "s"})',
+        'fn builtStructLit() -> Box<Item<"s" | "m">>: boxed(struct{value: "s"})',
+      ),
+    ).toEqual(checksCleanly);
+  });
+
+  it('opens a scope for top-level branches and collection literals so agreeing parts and placeholders settle together (B38)', () => {
+    expect(
+      reportedAfter(
+        'fn topBareArray():\n  _ = [Small, Size.Large]',
+        'fn topBareIf(c: Bool):\n  _ = if c: Small else: Size.Large',
+        'fn b38NestedIfLiterals(c: Bool, d: Bool, k1: "a", k2: "b") -> String:\n  const x = if c: k1 else: (if d: k2 else: k2)\n  x',
+        'fn b38SpreadArrayLiterals(k1: "a", k2: "b") -> Array<String>:\n  const xs = [k1, ...[k2]]\n  xs',
+        'fn b38NestedIfOptional(c: Bool, d: Bool) -> Int?:\n  const x = if c: 1 else: (if d: 2 else: none)\n  x',
+        'fn b38SpreadArrayOptional() -> Array<Int?>:\n  const xs = [1, ...[2, none]]\n  xs',
       ),
     ).toEqual(checksCleanly);
   });

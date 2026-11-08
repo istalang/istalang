@@ -75,9 +75,11 @@ src/
     checker/            check.ts is the entry and the surface later phases read
       contexts/                                                  the contexts a program and a body are checked in (context.ts, body-context.ts), a field loop's
                                                                  passes (passes.ts), where a check reports (use-site.ts), and the constraint
-                                                                 scope a body's calls and literals infer in, settled on every path
+                                                                 scope a body's calls and literals infer in, settled on every path, with
+                                                                 the placeholders it checks once it knows what is expected of them
                                                                  (constraint-scope.ts; which scope an expression is checked in:
-                                                                 wiring/body/body-scopes.ts)
+                                                                 wiring/body/body-scopes.ts; which expressions it postpones and what
+                                                                 each can be a value of: constructs/expressions/postponed.ts)
       surface/                                                   the models the surface names, contracts like the root's: a body as checked
                                                                  (checked-body.ts), what calls resolved to (resolved-call.ts), patterns and targets as checked (checked-pattern.ts),
                                                                  computed constants (constant-form.ts), derived JSON forms (json-form.ts),
@@ -334,7 +336,6 @@ The handler types of the phases from checking on, which feature slices extend:
 | Table | Type | A handler… |
 | --- | --- | --- |
 | checker expressions | `Handlers<BodyContext, Expression, [expected: Type \| undefined], Type>` | gives the node's type; `expected` guides inference, and `BodyContext.expect` enforces it where the spec says a value must fit |
-| checker accepts | `Handlers<BodyContext, Expression, [], Accepts \| undefined>` | for an argument with no type of its own, which the chosen function decides (§3.5), the parameter types it can take, so choosing rules out the rest; undefined for a kind with a type of its own. A `struct{…}` always has none: where it goes decides it, a struct it gives the fields of (§3.1), its shape only bounding the call (`AcceptedPart.known`); so has a collection literal whose items agree on no one type. Composite kinds (tuples, collection literals, branches) recurse through `BodyContext.accepts`. A lambda's result binds the call's type parameters only where the lambda is an argument itself, not inside a composite (D160) |
 | checker statements | `Handlers<BodyContext, Statement \| Invalid, [expected: Type \| undefined], Type>` | gives the statement's type: an expression statement's value, `Never` for one that leaves, else `Unit`; dispatched through `BodyContext.statement` |
 | checker declarations | `Handlers<CheckerContext, Declaration, [ModuleId], void>` | resolves what a top-level item declares and checks bodies |
 | checker type nodes | `Handlers<Resolution, TypeNode, [], Type>` | gives the type a type node denotes |

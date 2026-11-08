@@ -9,19 +9,24 @@
  * type.
  */
 
-import { valueBranchesOf } from '../../../../syntax/expressions/branches.ts';
 import type { Expression, If } from '../../../../syntax/expressions/index.ts';
-import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
+import type { Block } from '../../../../syntax/statements/index.ts';
+import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { isAssignable } from '../../../types/identity/identity.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { boolType, unitType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
 import { decidedValue } from '../operators/decided-conditions.ts';
-import { Branches, branchesAccepts } from './branches.ts';
+import { Branches } from './branches.ts';
 
 export function checkIf(context: BodyContext, node: If, expected: Type | undefined): Type {
-  const branches = new Branches(context, expected);
+  const branches = new Branches(context, node, expected);
+  // Without `else` its branches' values are dropped, so they settle on their own.
+  const add = (body: Block) =>
+    node.elseClause === undefined
+      ? context.scopes.suspended(() => branches.add(body))
+      : branches.add(body);
   let decidedTrue = false;
   for (const branch of node.branches) {
     const decided: boolean | undefined = decidedTrue
@@ -30,7 +35,7 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
     if (decided === false) {
       context.ruleOut(branch.body);
     } else {
-      branches.add(branch.body);
+      add(branch.body);
     }
     decidedTrue ||= decided === true;
   }
@@ -57,17 +62,10 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
  * (constructs/expressions/operators/decided-conditions.ts).
  */
 function checkCondition(context: BodyContext, condition: Expression): boolean | undefined {
-  context.expect(condition, boolType);
+  context.scopes.suspended(() => context.expect(condition, boolType));
   const decided = decidedValue(context, condition);
   if (decided !== undefined) {
     context.decide(condition, decided);
   }
   return decided;
-}
-
-/** An `if` with `else` takes what its branches agree on; one without has a type of its own. */
-export function ifAccepts(context: BodyContext, node: If): Accepts | undefined {
-  return node.elseClause === undefined
-    ? undefined
-    : branchesAccepts(context, valueBranchesOf(node));
 }
