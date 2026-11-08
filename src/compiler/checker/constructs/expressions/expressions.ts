@@ -85,7 +85,7 @@ import {
   structLiteralBuilds,
   structLiteralKnownType,
 } from './structs/structs.ts';
-import { checkNone, noneAccepted, variantCallAccepts } from './structs/variants.ts';
+import { aloneType, checkNone, noneAccepted, variantCallAccepts } from './structs/variants.ts';
 
 /** Missing and invalid nodes were reported by the parser. */
 const alreadyReported = (): Type => errorType;
@@ -265,7 +265,7 @@ export function acceptedPartOf(context: BodyContext, node: Expression | undefine
   }
   const accepts = context.accepts(node);
   if (accepts !== undefined) {
-    return { kind: 'decided', accepts };
+    return { kind: 'decided', accepts, alone: aloneType(node) };
   }
   const read: PartReader = (part) => acceptedPartOf(context, part);
   const type = knownTypeOf(context, node);

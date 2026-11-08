@@ -180,7 +180,7 @@ Design principles:
 - **Explicit over implicit.** Every send states whether it is durable or revertible, by calling `send` or `sendRevertible`. There is no default.
 - **Strong static typing.** Every variable, parameter, field and return value has a static type, with generics. Variables are block scoped.
 - **Value semantics.** Structs and collections are copied when assigned, passed, returned or sent. Data that other code holds changes only through an explicit `&` reference or a handle, such as a `Shared` value (§3.18).
-- **Everything that branches is an expression.** `if`, `match` and `select` produce values, and the compiler checks that all branches have the same type.
+- **Everything that branches is an expression.** `if`, `match` and `select` produce values, and the compiler checks that all branches agree on one type.
 
 ## 2. Lexical structure and types
 
@@ -248,7 +248,7 @@ Every type name is PascalCase; the primitives are language built-ins, declared i
 - **`T?`** is `T | None`, so `T??` is `T?`, and `Map<K, V?>.get(k)` gives a `V?` in which a missing key and a stored `none` look alike; `has(k)` tells them apart. `none` needs no expected type: alone, its type is `None`.
 - **Conversion into a union.** Where a union is expected, a value goes into the member of its own type, else into a member written with a type parameter that its type fills (§3.5), else into the one member it converts into by another conversion above, so an `Email` goes into `(any Notifier)?` as an `any Notifier`. Converting into several members is a compile error. A union goes into a union holding each of its members, a literal member's base, or an `any` member that takes it whole: `Int | Plain` goes into `Plain | any Stringable`. The conversion takes a whole value, once, never inside another type and never through a reference (§3.7): an `Array<Int>` is no `Array<Int | String>`.
 - **Built from the expected type.** Where a union is expected, whatever takes its type from the expected one, a struct, array or map literal, a lambda, a bare variant name or a literal, takes it from the one member it fits; fitting none, or several, is a compile error. `Entry{key: "sent", value: "ok"}` against `Entry<"draft", Int> | Entry<"sent", String>` builds the second, and `[]` against `Array<Int>?` an empty array.
-- **Never inferred.** A union is a type only where one is written: without one expected, an `if`'s branches (§4), a collection literal's items (below) and a type parameter's arguments (§3.5) still need one type. `const x: Int | String = if c: 1 else: "a"` checks, and `const x = if c: 1 else: "a"` is an error.
+- **Never inferred.** A union is a type only where one is written: without one expected, an `if`'s branches (§4), a collection literal's items (below) and a type parameter's arguments (§3.5) still need one type. `const x: Int | String = if c: 1 else: "a"` checks, and `const x = if c: 1 else: "a"` is an error. The one exception is `None`, as in Kotlin, Swift and C#: where several values take one type and none is expected (§4), values that may be `none` agree on the optional of what the others agree on, each wrapped into it, in any order. `if c: 1 else: none` is an `Int?`, `[none, ...xs]` an `Array<Int?>` for `xs: Array<Int>`, and a function returning `none` on one path and an `Int` on another returns an `Int?`.
 - **Using one.** No field, method or operator of a member applies to a union; a union of literals has its base type's, through the conversion below. A union is taken apart with `match` or `is` (§3.11), or used through a trait (§3.10).
 
 **Literal types.** A `String`, `Int` or `Bool` literal is also a type, whose one value it is: `"draft"`, `42`, `-1`, `true`. `Bool` is `true | false`, and keeps its operators and methods.
@@ -1283,7 +1283,7 @@ fn renew(self: Lease):
 
 ## 4. Expressions and control flow
 
-Every block is an expression whose value is its last expression. A block that ends in a statement has type `Unit`. All branching constructs (`if`, `match`, `select`) are expressions. **All their branches must have the same type, and the compiler checks this.** A branch that ends in `return`, `break` or `continue` has type `Never`, which fits any expected type. `return` gives the value on its line, or the indented value on the lines below it, deeper than its own (§2), built as the function's return type; with neither, it returns `Unit`.
+Every block is an expression whose value is its last expression. A block that ends in a statement has type `Unit`. All branching constructs (`if`, `match`, `select`) are expressions. **All their branches must agree on one type (§2), and the compiler checks this.** A branch that ends in `return`, `break` or `continue` has type `Never`, which fits any expected type. `return` gives the value on its line, or the indented value on the lines below it, deeper than its own (§2), built as the function's return type; with neither, it returns `Unit`.
 
 **Block expressions.** A bare `{ … }` in an expression position is always a block expression: its statements run in order, its variables are scoped to it, and its value is its last expression. Indentation still applies inside the braces. Written on one line, a block must contain at least one `;`, since braces around a single expression add nothing: write `if urgent: alert(msg)` rather than `if urgent: { alert(msg) }`.
 

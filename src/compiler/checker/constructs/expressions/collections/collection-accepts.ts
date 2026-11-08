@@ -8,7 +8,8 @@
  *   type they all have, and can be built instead as a parameter's type its items fit, as a
  *   declaration's expected type would build it: `[3]` passed where an `Array<Int?>` is expected.
  *   Items of different types agree only through checking, so such a literal has no type known
- *   before it, and a spread's items are known only from an array's type.
+ *   before it, though a `none` joins any (§2), and a spread's items are known only from an
+ *   array's type.
  * - Where a union is expected, a literal with an item whose type only checking tells is built by
  *   its shape before its items are checked (types/fitting/expected.ts `memberBuilt`): as the arrays
  *   or maps whose items, keys and values take each item with a type of its own, the others taking
@@ -28,9 +29,13 @@ import type {
   BodyContext,
   PartReader,
 } from '../../../contexts/body-context.ts';
-import { agreedAccepts, agreedBuilds, allProducersAccept } from '../../../rules/agreement.ts';
+import {
+  agreedAccepts,
+  agreedBuilds,
+  allProducersAccept,
+  ownAgreedType,
+} from '../../../rules/agreement.ts';
 import { collectionTarget } from '../../../types/fitting/expected.ts';
-import { sameType } from '../../../types/identity/identity.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { arrayElement, arrayOf, wellKnownOf } from '../../../types/type/well-known.ts';
 
@@ -211,16 +216,19 @@ function mapTaking(context: BodyContext, keys: Accepts, values: Accepts): Accept
   };
 }
 
-/** The one type `items`, none a spread, each have on their own, known before checking. */
+/**
+ * The one type `items` have on their own, known before checking, as producers that agree
+ * (`ownAgreedType`): `[1, none]` is an `Array<Int?>` wherever it goes; a spread's items are known
+ * only once it is checked.
+ */
 function oneKnownType(
   context: BodyContext,
   items: readonly (Expression | Spread)[],
 ): Type | undefined {
-  const [first, ...rest] = items.map((item) => {
-    const part = item.kind === 'Spread' ? undefined : context.acceptedPart(item);
-    return part?.kind === 'typed' ? part.type : undefined;
-  });
-  return first !== undefined && rest.every((type) => type !== undefined && sameType(type, first))
-    ? first
-    : undefined;
+  return ownAgreedType(
+    context,
+    items.map((item) =>
+      item.kind === 'Spread' ? { kind: 'typed', type: undefined } : context.acceptedPart(item),
+    ),
+  );
 }

@@ -58,7 +58,7 @@ import { FunctionScope } from '../../constructs/closures/function-scope.ts';
 import { FunctionScopes } from '../../constructs/closures/functions.ts';
 import { inferLambda } from '../../constructs/closures/lambdas.ts';
 import { declareOwnCall } from '../../constructs/closures/own-calls.ts';
-import { blockTail, ReturnScope } from '../../constructs/closures/returns.ts';
+import { ReturnScope } from '../../constructs/closures/returns.ts';
 import { FieldReads } from '../../constructs/expressions/access/member-access.ts';
 import { OptionalChains } from '../../constructs/expressions/access/optionals.ts';
 import { CollectionForms } from '../../constructs/expressions/collections/collections.ts';
@@ -95,6 +95,7 @@ import { Passes } from '../../contexts/passes.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { ImplicitCalls } from '../../resolution/applying/implicit.ts';
 import { reportUnmet } from '../../resolution/conformance/trait-objects.ts';
+import { blockTail } from '../../rules/agreement.ts';
 import { checkDisposeUses } from '../../rules/disposal/disposal.ts';
 import { checkDropped } from '../../rules/disposal/dropped.ts';
 import { checkTestingCalls } from '../../rules/testing.ts';
@@ -174,7 +175,7 @@ export class BodyChecker implements BodyContext {
     }
     declareOwnCall(this);
     const tail = this.block(body, this.#result.declared);
-    return this.#finished([body], this.#result.result(this, blockTail(body, tail)));
+    return this.#finished([body], this.#result.result(this, blockTail(this, body, tail)));
   }
 
   /**

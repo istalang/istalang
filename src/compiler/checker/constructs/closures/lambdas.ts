@@ -30,6 +30,7 @@ import {
 } from '../../../syntax/declarations/index.ts';
 import type { Lambda, Parameter } from '../../../syntax/expressions/index.ts';
 import { parameterSite } from '../../../syntax/expressions/parameters.ts';
+import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { TypeNode } from '../../../syntax/types/index.ts';
@@ -37,6 +38,7 @@ import type { SignatureParameter } from '../../check.ts';
 import type { Accepts, BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { Produced } from '../../rules/agreement.ts';
+import { blockTail, producedBy } from '../../rules/agreement.ts';
 import type { NestedFunction } from '../../surface/checked-body.ts';
 import { expectedFunction } from '../../types/fitting/expected.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
@@ -53,7 +55,7 @@ import {
 import { declareParameter } from '../patterns/targets.ts';
 import { FunctionScope } from './function-scope.ts';
 import { declareOwnCall } from './own-calls.ts';
-import { blockTail, ReturnScope } from './returns.ts';
+import { ReturnScope } from './returns.ts';
 
 /**
  * For a lambda with a parameter to infer, which parameter types it can take, as an argument the
@@ -133,7 +135,11 @@ function checkLambdaAs(
     reach: node.span,
     tail: (declared) => {
       const type = context.expression(node.body, declared);
-      return { type, span: node.body.span, site: node.body };
+      // A body of several statements is a block expression, whose tail produces as a `fn`'s does.
+      const body = unparenthesized(node.body);
+      return body.kind === 'BlockExpression'
+        ? blockTail(context, body.block, type)
+        : producedBy(context, node.body, type);
     },
   });
 }
@@ -151,7 +157,7 @@ export function checkLocalFunction(context: BodyContext, node: FunctionDeclarati
       isAsync: node.isAsync,
       declaredResult: declaredBodyResult(context.checker, context.module, node),
       reach: nestedFunctionSpan(node, body),
-      tail: (declared) => blockTail(body, context.block(body, declared)),
+      tail: (declared) => blockTail(context, body, context.block(body, declared)),
     });
   }
   return unitType;

@@ -13,12 +13,18 @@
  */
 
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
-import type { Block, Return } from '../../../syntax/statements/index.ts';
-import { tailExpressionOf, tailNodeOf } from '../../../syntax/statements/readings.ts';
+import type { Return } from '../../../syntax/statements/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, Returns } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { agreedType, fitProduced, type Produced } from '../../rules/agreement.ts';
+import {
+  agreedType,
+  fitProduced,
+  type Produced,
+  producedBy,
+  settleProduced,
+} from '../../rules/agreement.ts';
+import { misfitOf } from '../../types/fitting/fit.ts';
 import type { Type } from '../../types/type/index.ts';
 import { unitType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
@@ -60,8 +66,7 @@ export class ReturnScope implements Returns {
       this.#returned.push({ type: unitType, span: node.span, site: node });
       return;
     }
-    const type = context.expect(value, expected);
-    this.#returned.push({ type, span: value.span, site: value });
+    this.#returned.push(producedBy(context, value, context.expect(value, expected)));
   }
 
   propagate(context: BodyContext, error: Type, span: AnchoredSpan): void {
@@ -85,22 +90,16 @@ export class ReturnScope implements Returns {
     if (decided === undefined) {
       return tail.type;
     }
+    const mismatch = (span: AnchoredSpan, agreed: Type, found: Type) =>
+      misfitOf(context.checker.fitting, span, found, agreed);
     for (const each of disagreeing) {
-      fitProduced(context, each, decided);
+      settleProduced(context, each, { decided, expected: undefined, mismatch });
     }
     for (const propagation of this.#propagated) {
       checkPropagation(context, decided, propagation);
     }
     return decided;
   }
-}
-
-/**
- * A block body's tail: its last expression's value, or the unit the block gives, reported at its
- * last statement.
- */
-export function blockTail(body: Block, type: Type): Produced {
-  return { type, span: tailNodeOf(body).span, site: tailExpressionOf(body) ?? body };
 }
 
 /**

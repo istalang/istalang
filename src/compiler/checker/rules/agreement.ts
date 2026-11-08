@@ -1,9 +1,10 @@
 /**
  * The rule that several producers of one value agree on its type (§4): the branches of an `if`, a
  * body's tail and its `return`s, or the items of a collection literal. The expected type decides
- * when there is one; otherwise the first producer with a value does, widened
- * (types/unions/widening.ts) when only its widening fits them all, and `Never` (a branch that
- * leaves) fits anything.
+ * when there is one, widened (types/unions/widening.ts) when only its widening fits them all;
+ * otherwise their common type does (types/unions/common-type.ts), and when they have none, the
+ * first producer that may not be `none`, made optional when some may be, against which the others
+ * are reported.
  *
  * Without an expected type, a producer that doesn't fit is reported by the caller's own
  * diagnostic, which names what disagrees; with one, or when it fits only by the implicit wrap into
@@ -21,15 +22,25 @@
 
 import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import type { Expression } from '../../syntax/expressions/index.ts';
+import type { Block } from '../../syntax/statements/index.ts';
+import { tailExpressionOf, tailNodeOf } from '../../syntax/statements/readings.ts';
 import type { AnchoredSpan } from '../../syntax/tree/positions.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../contexts/body-context.ts';
-import type { CheckerContext } from '../contexts/context.ts';
 import type { ValueSite } from '../surface/checked-body.ts';
 import { type Fit, isExact } from '../types/fitting/fit.ts';
+import { sameType } from '../types/identity/identity.ts';
 import { mapChildren } from '../types/parts/type-parts.ts';
 import type { Type } from '../types/type/index.ts';
 import { isPrimitive } from '../types/type/primitives.ts';
-import { literalsBase } from '../types/unions/unions.ts';
+import {
+  commonType,
+  type Joining,
+  joinWidened,
+  optionalOver,
+  orWidened,
+  presentPart,
+  withinOptional,
+} from '../types/unions/common-type.ts';
 import { sendableWidened, widened } from '../types/unions/widening.ts';
 
 /**
@@ -66,15 +77,24 @@ export function producedBy(context: BodyContext, node: Expression, type: Type): 
   };
 }
 
+/**
+ * A block body's tail: its last expression's value, a producer as any other's (`producedBy`), or
+ * the unit the block gives, reported at its last statement.
+ */
+export function blockTail(context: BodyContext, body: Block, type: Type): Produced {
+  const tail = tailExpressionOf(body);
+  const { span } = tailNodeOf(body);
+  return tail === undefined
+    ? { type, span, site: body }
+    : { ...producedBy(context, tail, type), span };
+}
+
 export interface Agreement {
   /** The agreed type; undefined when no producer has a value, as when every one leaves. */
   readonly decided: Type | undefined;
   /** The producers whose type doesn't fit the agreed one. */
   readonly disagreeing: readonly Produced[];
 }
-
-/** What agreeing asks of the program: how a type fits the agreed one, and how types are built. */
-type Agreeing = Pick<CheckerContext, 'fitOf' | 'typeRules' | 'fitting'>;
 
 /**
  * The type `produced` agree on. `checker.fitOf` says how a type fits the agreed one; a producer
@@ -83,22 +103,16 @@ type Agreeing = Pick<CheckerContext, 'fitOf' | 'typeRules' | 'fitting'>;
  */
 export function agreedType(
   produced: readonly Produced[],
-  checker: Agreeing,
+  checker: Joining,
   expected?: Type,
 ): Agreement {
-  const { typeRules: rules } = checker;
-  const first = produced.find(({ type }) => !isPrimitive(type, 'Never'))?.type;
-  const target = expected ?? first;
-  const widen =
-    expected === undefined
-      ? (type: Type) => agreeingWidened(type, checker)
-      : (type: Type) => sendableWidened(type, rules);
-  const agreed =
-    target === undefined ? undefined : firstOrWidened(target, produced, checker, widen);
+  const types = produced.map(({ type }) => type);
   const decided =
-    agreed === undefined || expected !== undefined
-      ? agreed
-      : rebuiltAgreement(agreed, produced, checker);
+    expected === undefined
+      ? joinedAgreement(produced, checker)
+      : (orWidened(expected, types, checker, (type, { typeRules }) =>
+          sendableWidened(type, typeRules),
+        ) ?? expected);
   return {
     decided,
     disagreeing:
@@ -107,10 +121,36 @@ export function agreedType(
 }
 
 /**
+ * What `produced` agree on with no type expected: their common type; else what those that may not
+ * be `none` agree on, rebuilt (`rebuiltAgreement`), made optional when some may be, the others then
+ * reported against it. Undefined when none has a value.
+ */
+function joinedAgreement(produced: readonly Produced[], checker: Joining): Type | undefined {
+  const valued = produced.filter(({ type }) => !isPrimitive(type, 'Never'));
+  const joined = commonType(
+    valued.map(({ type }) => type),
+    checker,
+  );
+  if (joined !== undefined) {
+    return joined;
+  }
+  const present = valued.flatMap((each) => {
+    const part = presentPart(each.type);
+    return part === undefined ? [] : [{ ...each, type: part }];
+  });
+  const [first] = present;
+  if (first === undefined) {
+    return undefined;
+  }
+  const base = rebuiltAgreement(first.type, present, checker);
+  return valued.some(({ type }) => presentPart(type) !== type) ? optionalOver(base, checker) : base;
+}
+
+/**
  * `decided`, or, when some producer disagrees with it and every producer agrees with or builds its
  * type with the literal types inside widened, that type (the banner).
  */
-function rebuiltAgreement(decided: Type, produced: readonly Produced[], checker: Agreeing): Type {
+function rebuiltAgreement(decided: Type, produced: readonly Produced[], checker: Joining): Type {
   if (produced.every(({ type }) => agrees(checker, type, decided))) {
     return decided;
   }
@@ -123,81 +163,44 @@ function rebuiltAgreement(decided: Type, produced: readonly Produced[], checker:
 }
 
 /**
- * `decided`, with every literal type in it widened as agreeing widens one, when every producer
- * agrees with or builds that type, else widened as a whole (`agreeingWidened`): what producers
+ * `decided`, with every literal type in it widened as joining widens one, when every producer
+ * agrees with or builds that type, else widened as a whole (`joinWidened`): what producers
  * whose literal types never decide their own agree on, such as a field comprehension's elements,
  * whatever fields they visit (§4).
  */
-export function wholeWidened(
-  decided: Type,
-  produced: readonly Produced[],
-  checker: Agreeing,
-): Type {
+export function wholeWidened(decided: Type, produced: readonly Produced[], checker: Joining): Type {
   const deep = deeplyWidened(decided, checker);
   return produced.every(
     ({ type, literal }) => agrees(checker, type, deep) || literal?.builds(deep) === true,
   )
     ? deep
-    : agreeingWidened(decided, checker);
+    : joinWidened(decided, checker);
 }
 
 /**
- * `type` with every literal type inside it widened as agreeing widens one (`agreeingWidened`); a
- * union's members are its own values, not values it holds, so a union is left whole.
+ * `type` with every literal type inside it widened as joining widens one (`joinWidened`); a
+ * union's members are its own values, not values it holds, so a union is left whole, but for an
+ * optional's inner type, widened inside likewise.
  */
-function insideWidened(type: Type, checker: Agreeing): Type {
-  return type.kind === 'union'
-    ? type
-    : mapChildren(type, (child) => deeplyWidened(child, checker), checker.typeRules);
+function insideWidened(type: Type, checker: Joining): Type {
+  return withinOptional(
+    type,
+    (present) =>
+      present.kind === 'union'
+        ? present
+        : mapChildren(present, (child) => deeplyWidened(child, checker), checker.typeRules),
+    checker,
+  );
 }
 
-function deeplyWidened(type: Type, checker: Agreeing): Type {
-  return agreeingWidened(insideWidened(type, checker), checker);
+function deeplyWidened(type: Type, checker: Joining): Type {
+  return joinWidened(insideWidened(type, checker), checker);
 }
 
 /** Whether a producer of `type` agrees with `decided` as it is, or once widened. */
-function agrees(checker: Agreeing, type: Type, decided: Type): boolean {
+function agrees(checker: Joining, type: Type, decided: Type): boolean {
   const { fitOf: fits, typeRules: rules } = checker;
   return fitsExactly(fits(type, decided)) || fitsExactly(fits(widened(type, rules), decided));
-}
-
-/**
- * What producers agreeing with no expected type widen the first one's type to (§2): a literal
- * type, a union of literals of one base, or a member parameter standing for one of them, such as
- * a field loop's key (§4), to that base, which each such producer is then converted to, and a
- * sendable function type to a plain one.
- */
-function agreeingWidened(type: Type, checker: Agreeing): Type {
-  return literalsBase(type) ?? memberBase(type, checker) ?? widened(type, checker.typeRules);
-}
-
-/** The base a member parameter's union of literals has; undefined for any other type. */
-function memberBase(type: Type, checker: Agreeing): Type | undefined {
-  const union = type.kind === 'parameter' ? checker.fitting.memberUnionOf(type) : undefined;
-  return union === undefined ? undefined : literalsBase(union);
-}
-
-/**
- * `first`, the first producer's type or the type expected, or its widening by `widen` when only
- * that fits every producer. An expected union of literals stays itself: it is what the producers'
- * literals must be.
- */
-function firstOrWidened(
-  first: Type,
-  produced: readonly Produced[],
-  checker: Agreeing,
-  widen: (type: Type) => Type,
-): Type {
-  const fits = checker.fitOf;
-  const fitsAll = (decided: Type, widenProducer = false) =>
-    produced.every(({ type }) =>
-      fitsExactly(fits(widenProducer ? agreeingWidened(type, checker) : type, decided)),
-    );
-  if (fitsAll(first)) {
-    return first;
-  }
-  const wide = widen(first);
-  return fitsAll(wide, true) ? wide : first;
 }
 
 /**
@@ -264,13 +267,14 @@ export function fitProduced(context: BodyContext, produced: Produced, expected: 
 
 /**
  * What `produced` agree on so far, which a later producer is expected to have (§3.1), with the
- * literal types inside it widened (the banner).
+ * literal types inside it widened (the banner). A `none` decides nothing of what the others are.
  */
 export function decidedSoFar(
   context: BodyContext,
   produced: readonly Produced[],
 ): Type | undefined {
-  const { decided } = agreedType(produced, context.checker);
+  const deciding = produced.filter(({ type }) => !isPrimitive(type, 'None'));
+  const { decided } = agreedType(deciding, context.checker);
   return decided === undefined ? undefined : insideWidened(decided, context.checker);
 }
 
@@ -324,16 +328,37 @@ function eachPartAccepts(context: BodyContext, parts: readonly AcceptedPart[]): 
   );
 }
 
-/** Whether `part` has a type of its own, known before checking. */
+/** Whether `part` has a type of its own known before checking, `none`'s `None` among them. */
 function hasKnownType(part: AcceptedPart): boolean {
-  return part.kind === 'typed' && part.type !== undefined;
+  return (part.kind === 'typed' ? part.type : part.alone) !== undefined;
 }
 
 /**
- * Whether `producers` need the call they are passed to to decide their agreed type (§3.5): the
- * first producer's own type doesn't already take them all.
+ * The type `parts`, read before checking, agree on of their own: their common type when each has a
+ * type of its own, or is a `none`, and those that may not be `none` have one same type, as parts
+ * of different types agree only through checking; else undefined.
+ */
+export function ownAgreedType(
+  context: BodyContext,
+  parts: readonly AcceptedPart[],
+): Type | undefined {
+  const types = parts.map((part) => (part.kind === 'typed' ? part.type : part.alone));
+  const known = types.filter((type) => type !== undefined);
+  const present = known.flatMap((type) => presentPart(type) ?? []);
+  const [first] = present;
+  // A part that may not be `none` fixes what the others join; `none` alone waits for the call.
+  const same = first !== undefined && present.every((type) => sameType(type, first));
+  return known.length === types.length && same ? commonType(known, context.checker) : undefined;
+}
+
+/**
+ * Whether `producers` need the call they are passed to to decide their agreed type (§3.5): they
+ * agree on no type of their own, and the first one's own type doesn't take them all.
  */
 function needsAgreedType(context: BodyContext, producers: readonly AcceptedPart[]): boolean {
+  if (ownAgreedType(context, producers) !== undefined) {
+    return false;
+  }
   const [first] = producers;
   if (first?.kind !== 'typed' || first.type === undefined) {
     return true;

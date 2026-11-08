@@ -43,7 +43,7 @@ export const checkerDiagnostics = defineDiagnostics('checker', {
   branchTypes: {
     code: 5005,
     message: (first: string, other: string) =>
-      `Every branch must have the same type: this one is ${other}, an earlier one ${first}.`,
+      `Every branch must agree on one type: this one is ${other}, the others ${first}.`,
   },
   ifWithoutElse: {
     code: 5006,

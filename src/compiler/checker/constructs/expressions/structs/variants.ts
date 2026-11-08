@@ -27,8 +27,8 @@ import type {
   EnumDeclaration,
   FunctionDeclaration,
 } from '../../../../syntax/declarations/index.ts';
-import type { Call, MemberAccess } from '../../../../syntax/expressions/index.ts';
-import { calledName } from '../../../../syntax/expressions/readings.ts';
+import type { Call, Expression, MemberAccess } from '../../../../syntax/expressions/index.ts';
+import { calledName, unparenthesized } from '../../../../syntax/expressions/readings.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../../syntax/tree/positions.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
@@ -58,6 +58,15 @@ import { checkFunctionValue } from '../../closures/function-values.ts';
  */
 export function noneAccepted(context: BodyContext): Accepts {
   return (expected) => context.checker.fitOf(noneType, expected) !== undefined;
+}
+
+/**
+ * The type `node` has where nothing decides it: `none` waits for the call to decide which optional
+ * it is, but alone it is a `None`, which the producers it agrees with join (§2), so `[1, none]` is
+ * an `Array<Int?>` wherever it goes; undefined for anything else.
+ */
+export function aloneType(node: Expression): Type | undefined {
+  return unparenthesized(node).kind === 'NoneLiteral' ? noneType : undefined;
 }
 
 /**

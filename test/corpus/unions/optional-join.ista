@@ -1,0 +1,63 @@
+# outcome: "2 -1 4 -1 1 3 1 -1 7 -1 3 -1 1 b 2 sent b 1 -1"
+# The optional join (§2, §4): with no type expected, producers that may be `none` agree on the
+# optional of what the others agree on, in any order: an `if`'s branches, a collection literal's
+# items, an array spread's items, each wrapped as it is added, and a body's tail and its returns.
+# A `none` decides nothing of the others, so what follows it is checked as if it weren't there,
+# tuples of different literal types are still built as one, a lambda's returns included, a union of
+# literals holding the others is kept as written, and a `none` alone still takes its type from
+# where it goes.
+
+type Status = "draft" | "sent"
+
+fn found(miss: Bool):
+  if miss:
+    return none
+  7
+
+fn same<T>(x: T) -> T: x
+
+fn sent(yes: Bool, s: Status) -> Status:
+  const d: "draft" = "draft"
+  if yes: s else: d
+
+async fn main() -> Future<String>:
+  const yes = true
+  const x = if yes: 2 else: none
+  const y = if yes: none else: 2
+  const xs = [1, 2]
+  const ys = [none, ...xs, 3]
+  const zs = [...xs, none]
+  const ws = [none, ...[1, 2]]
+  const a: "a" = "a"
+  const b: "b" = "b"
+  const pairs = [none, (a, 1), (b, 2)]
+  const pick = fn(miss: Bool, first: Bool): {
+    if miss:
+      return none
+    if first:
+      return (a, 1)
+    (b, 2)
+  }
+  const nones: Array<Int?> = same([none])
+  const parts = [
+    String(x ?? -1)
+    String(y ?? -1)
+    String(ys.length())
+    String(ys[0] ?? -1)
+    String(ys[1] ?? -1)
+    String(ys[3] ?? -1)
+    String(zs[0] ?? -1)
+    String(zs[2] ?? -1)
+    String(found(false) ?? -1)
+    String(found(true) ?? -1)
+    String(ws.length())
+    String(ws[0] ?? -1)
+    String(ws[1] ?? -1)
+    (pairs[2] ?? ("-", 0)).0
+    String((pairs[2] ?? ("-", 0)).1)
+    sent(true, "sent")
+    (pick(false, false) ?? ("-", 0)).0
+    String(nones.length())
+    String(nones[0] ?? -1)
+  ]
+  parts.join(" ")

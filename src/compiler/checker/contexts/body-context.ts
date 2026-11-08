@@ -227,11 +227,16 @@ export interface CheckedPasses {
 /**
  * What one part of a composite literal has, read before checking (`acceptedPart`, as a call is
  * chosen) or as checked (`checkedPartOf`, as producers agree): the parameter types it can take when
- * the call decides its type, or its own type when known, with, for a literal of items each with a
- * type of its own, the types its items can build it as instead (§3.7).
+ * the call decides its type, `none`'s with `None` beside, or its own type when known, with, for a
+ * literal of items each with a type of its own, the types its items can build it as instead (§3.7).
  */
 export type AcceptedPart =
-  | { readonly kind: 'decided'; readonly accepts: Accepts }
+  | {
+      readonly kind: 'decided';
+      readonly accepts: Accepts;
+      /** The type it has where nothing decides it, which producers it agrees with join (§2). */
+      readonly alone?: Type | undefined;
+    }
   | {
       readonly kind: 'typed';
       readonly type: Type | undefined;

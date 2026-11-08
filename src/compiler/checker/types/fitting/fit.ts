@@ -46,7 +46,7 @@ import { isPrimitive } from '../type/primitives.ts';
 import type { TypeRules } from '../type/type-rules.ts';
 import { typeText } from '../type/type-text.ts';
 import { absorbingMember, baseOf } from '../unions/union-members.ts';
-import { hasMember, membersOf } from '../unions/unions.ts';
+import { hasMember, literalsBase, membersOf } from '../unions/unions.ts';
 
 /**
  * What converts a value itself, before it goes into a union: nothing, the conversion into an `any`
@@ -220,18 +220,23 @@ function intoAnyMember(
 }
 
 /**
- * A member of `expected` that `member`, a member of a union found, goes into: its own, its
- * literal's base, or the `any` member that takes it whole (§2), which holds it as its own type; or
- * undefined.
+ * A member of `expected` that `member`, a member of a union found, goes into: its own, its base
+ * when it is a literal or a member parameter standing for one (`literalsBase`), or the `any`
+ * member that takes it whole (§2), which holds it as its own type; or undefined.
  */
 function intoMember(member: Type, expected: UnionType, rules: ConversionRules): Type | undefined {
   return (
     ownMember(member, expected, rules) ??
-    (member.kind === 'literal' && hasMember(expected, baseOf(member))
-      ? baseOf(member)
-      : undefined) ??
+    baseMember(member, expected, rules) ??
     absorbingMember(expected.members, member, rules)
   );
+}
+
+/** The member of `expected` that `member`'s values are values of as their base, if any. */
+function baseMember(member: Type, expected: UnionType, rules: ConversionRules): Type | undefined {
+  const literals = member.kind === 'parameter' ? rules.memberUnionOf(member) : member;
+  const base = literals === undefined ? undefined : literalsBase(literals);
+  return base !== undefined && hasMember(expected, base) ? base : undefined;
 }
 
 /**

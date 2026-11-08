@@ -13,7 +13,8 @@
  * - An array literal's spread gives its items where the literal's items are expected, so each is
  *   wrapped into `T?` as an element would be (§2), the fit recorded on the spread; a spread whose
  *   items need it is never copied whole, but goes through its cursor, each item fitted as it is
- *   added. A map literal's spread gives its keys and values together, so they fit as they are.
+ *   added. Whether they need it is known only once the literal's items agree, which a later
+ *   `none` can make optional. A map literal's spread gives its keys and values together, so they fit as they are.
  * - A literal is a map literal only with an entry or as `[:]` (the parser decides), so `[...m]`
  *   is an array of `m`'s entries. Where a `Map` is expected, `[]` is an empty map.
  * - Where another declared type `C` is expected, a map literal, and an empty `[]`, starts from
@@ -99,8 +100,27 @@ export function checkArrayLiteral(
     return checkDeclaredLiteral(context, node, target.type);
   }
   const expectedItem = target?.kind === 'array' ? target.item : undefined;
+  const produced = elementsProduced(context, node.elements, expectedItem);
+  if (produced.length === 0 && expectedItem === undefined) {
+    if (!expectsError(expected)) {
+      context.report(checkerDiagnostics.emptyCollection(node.span, '[]'));
+    }
+    return errorType;
+  }
+  return arrayOf(context.checker, agreedElement(context, node.elements, produced, expectedItem));
+}
+
+/**
+ * What each of an array literal's `elements` produces, in order, each expected to be an
+ * `expectedItem`, or else to have what those before it agree on.
+ */
+function elementsProduced(
+  context: BodyContext,
+  elements: ArrayLiteral['elements'],
+  expectedItem: Type | undefined,
+): readonly Produced[] {
   const produced: Produced[] = [];
-  for (const element of node.elements) {
+  for (const element of elements) {
     const itemExpected = expectedItem ?? decidedSoFar(context, produced);
     produced.push(
       element.kind === 'Spread'
@@ -108,14 +128,26 @@ export function checkArrayLiteral(
         : producedValue(context, element, itemExpected),
     );
   }
-  if (produced.length === 0 && expectedItem === undefined) {
-    if (!expectsError(expected)) {
-      context.report(checkerDiagnostics.emptyCollection(node.span, '[]'));
-    }
-    return errorType;
-  }
+  return produced;
+}
+
+/**
+ * The item type what an array literal's `elements` produced agree on, each spread of an array
+ * among them then settled on it (`settleSpread`).
+ */
+function agreedElement(
+  context: BodyContext,
+  elements: ArrayLiteral['elements'],
+  produced: readonly Produced[],
+  expectedItem: Type | undefined,
+): Type {
   const item = agreeOn(context, produced, expectedItem, 'element') ?? expectedItem ?? neverType;
-  return arrayOf(context.checker, item);
+  for (const element of elements) {
+    if (element.kind === 'Spread') {
+      settleSpread(context, element, item);
+    }
+  }
+  return item;
 }
 
 export function checkMapLiteral(
@@ -267,11 +299,32 @@ export function spreadArgumentType(
   return isPack(type) ? type : itemsOf(context, spread, type, item);
 }
 
-/** The items `spread` gives, as an array literal's element, its items expected to be `item`s. */
+/**
+ * The items `spread` gives, as an array literal's element, its items expected to be `item`s: an
+ * array's elements, whose form waits until the literal's items agree (`settleSpread`), or what
+ * iterating gives.
+ */
 function spreadItems(context: BodyContext, spread: Spread, item: Type | undefined): Produced {
   const expected = item === undefined ? undefined : arrayOf(context.checker, item);
   const type = context.expression(spread.expression, expected);
-  return { type: itemsOf(context, spread, type, item), span: spread.span, site: spread };
+  const element = arrayElement(context.checker, type);
+  return {
+    type: element ?? iteratedItem(context, spread, spread.expression, type) ?? errorType,
+    span: spread.span,
+    site: spread,
+  };
+}
+
+/**
+ * How an array literal's `spread` of an array gives its elements, once the literal's items agree
+ * on `item`: copied whole, or through its cursor when they need converting into `item`s, as
+ * `[...xs, none]` wraps each of `xs`'s.
+ */
+function settleSpread(context: BodyContext, spread: Spread, item: Type): void {
+  const type = context.typeOf(spread.expression);
+  if (arrayElement(context.checker, type) !== undefined) {
+    itemsOf(context, spread, type, item);
+  }
 }
 
 /**

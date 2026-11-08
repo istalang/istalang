@@ -95,7 +95,8 @@ src/
                                                                  constructor (recursive-types.ts)
         parts/                                                   a type's parts one level down, walking them, and substitution
         unions/                                                  unions and literal types built normalized (unions.ts, by union-members.ts),
-                                                                 `T?` being `T | None`, widening, and what types decide of `==`
+                                                                 `T?` being `T | None`, widening, what types decide of `==`, and
+                                                                 the common type values agree on with none expected (common-type.ts)
         fitting/                                                 a value fitted where a type is expected, and what a value built from an
                                                                  expected type takes of it (expected.ts)
         written/                                                 written types resolved: the type a name names in a value's place

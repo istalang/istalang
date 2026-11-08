@@ -12,14 +12,14 @@
  */
 
 import type { Block } from '../../../../syntax/statements/index.ts';
-import { tailExpressionOf, tailNodeOf } from '../../../../syntax/statements/readings.ts';
+import { tailExpressionOf } from '../../../../syntax/statements/readings.ts';
 import type { AcceptedPart, Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import {
   agreedAccepts,
+  blockTail,
   decidedSoFar,
   type Produced,
-  producedBy,
   settleAgreement,
 } from '../../../rules/agreement.ts';
 import type { Type } from '../../../types/type/index.ts';
@@ -45,13 +45,7 @@ export class Branches {
   add(body: Block): void {
     const context = this.#context;
     const expected = this.#expected ?? decidedSoFar(context, this.#produced);
-    const type = context.block(body, expected);
-    const tail = tailExpressionOf(body);
-    this.#produced.push(
-      tail === undefined
-        ? { type, span: tailNodeOf(body).span, site: body }
-        : { ...producedBy(context, tail, type), span: tailNodeOf(body).span },
-    );
+    this.#produced.push(blockTail(context, body, context.block(body, expected)));
   }
 
   /** The type every branch agrees on, after reporting the branches that don't fit it. */
@@ -84,17 +78,18 @@ export function blockAccepts(context: BodyContext, block: Block): Accepts | unde
   return tail === undefined ? undefined : context.accepts(tail);
 }
 
-/** How `block` takes part in a branching expression's `Accepts` check. */
+/**
+ * How `block` takes part in a branching expression's `Accepts` check: as its tail does, which,
+ * after other statements, has no type known before checking.
+ */
 function blockPart(context: BodyContext, block: Block): AcceptedPart {
   const tail = tailExpressionOf(block);
   if (tail === undefined) {
     return { kind: 'typed', type: undefined };
   }
-  const accepts = context.accepts(tail);
-  if (accepts !== undefined) {
-    return { kind: 'decided', accepts };
+  if (block.statements.length === 1) {
+    return context.acceptedPart(tail);
   }
-  return block.statements.length === 1
-    ? context.acceptedPart(tail)
-    : { kind: 'typed', type: undefined };
+  const accepts = context.accepts(tail);
+  return accepts === undefined ? { kind: 'typed', type: undefined } : { kind: 'decided', accepts };
 }
