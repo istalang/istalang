@@ -42,7 +42,7 @@ import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { callWithTypes } from '../../../resolution/applying/silent-choice.ts';
 import type { FunctionCall } from '../../../surface/resolved-call.ts';
 import { itemField } from '../../../surface/struct-items.ts';
-import { completeInference } from '../../../types/inference/complete.ts';
+import { completeInference, settlingOf } from '../../../types/inference/complete.ts';
 import { Inference } from '../../../types/inference/infer.ts';
 import { type Substitution, substitute } from '../../../types/parts/substitution.ts';
 import { parametersIn } from '../../../types/parts/type-parts.ts';
@@ -224,7 +224,12 @@ function complete(
     return { typeArguments: [], substitution: new Map() };
   }
   const parameters = typeParametersOf(owner.typeParameters);
-  const completion = completeInference(context.checker, owner, parameters, inference);
+  const completion = completeInference(
+    context.checker,
+    parameters,
+    inference,
+    settlingOf(context.checker, owner, parameters),
+  );
   if (completion.kind === 'open' && !fits) {
     return undefined;
   }

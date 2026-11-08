@@ -1,21 +1,18 @@
-# error: 5106 at 22:6
-# error: 5105 at 29:4
-# error: 5105 at 32:4
-# error: 5105 at 35:4
-# error: 5013 at 47:9
-# error: 5016 at 48:7
-# error: 5002 at 49:7
-# error: 5101 at 50:7
-# error: 5101 at 51:7
-# error: 5101 at 52:3
-# error: 5025 at 53:3
-# error: 5101 at 54:7
-# error: 5101 at 55:7
-# error: 5101 at 56:7
-# error: 5130 at 57:22
+# error: 5106 at 19:6
+# error: 5013 at 35:9
+# error: 5016 at 36:7
+# error: 5002 at 37:7
+# error: 5101 at 38:7
+# error: 5101 at 39:7
+# error: 5101 at 40:3
+# error: 5025 at 41:3
+# error: 5101 at 42:7
+# error: 5101 at 43:7
+# error: 5101 at 44:7
+# error: 5130 at 45:22
 # Using unions, JSON codecs, and member type parameters (§1, §6, §7): no direct member access,
-# overload clashes between a type and a union holding it (or a literal and its base), non-object-
-# safe traits and non-literal JSON codecs refused, Sendable/must-use enforced, and T in U checks.
+# non-object-safe traits and non-literal JSON codecs refused, Sendable/must-use enforced, and T in U
+# checks.
 import * as json from 'json'
 
 type Status = "draft" | "sent" | "failed"
@@ -24,15 +21,6 @@ type Endless = Int | Endless
 struct Email { to: String }
 struct Sms { number: String }
 type Contact = Email | Sms
-
-fn clashUnion(x: Int) -> Int: x
-fn clashUnion(x: Int | String) -> Int: 0
-
-fn clashLitBase(x: "a") -> Int: 1
-fn clashLitBase(x: String) -> Int: 2
-
-fn clashLitUnion(x: "a") -> Int: 1
-fn clashLitUnion(x: "a" | "b") -> Int: 2
 
 fn over(x: Int) -> Int: x
 fn over(x: String) -> Int: x.length()

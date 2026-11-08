@@ -94,7 +94,12 @@ export function checkLambda(context: BodyContext, node: Lambda, expected: Type |
   }
   const shape = expectedFunction(expected);
   const slots = shape ?? (expectsError(expected) ? errorSlots(node) : undefined);
-  return checkLambdaAs(context, node, slots, shape?.result);
+  return checkLambdaAs(
+    context,
+    node,
+    slots,
+    shape === undefined ? undefined : { kind: 'declared', type: shape.result },
+  );
 }
 
 /**
@@ -107,25 +112,47 @@ function errorSlots(node: Lambda): ParameterSlots {
 
 /**
  * A lambda passed where its parameters' types are known and its result is its body's to decide,
- * since it binds type parameters of the call (§3.5).
+ * since it bounds type parameters of the call (§3.5); `hint`, what the call expects of the result,
+ * guides the body without declaring the result.
  */
-export function inferLambda(context: BodyContext, node: Lambda, slots: ParameterSlots): Type {
-  return checkLambdaAs(context, node, slots, undefined);
+export function inferLambda(
+  context: BodyContext,
+  node: Lambda,
+  slots: ParameterSlots,
+  hint?: Type,
+): Type {
+  return checkLambdaAs(
+    context,
+    node,
+    slots,
+    hint === undefined ? undefined : { kind: 'guided', type: hint },
+  );
 }
 
 /** What an expected function type gives a lambda's parameters: their slots, and any pack. */
 type ParameterSlots = Pick<FunctionType, 'parameters' | 'pack'>;
 
-/** A lambda where its position gives `slots` for its parameters and `result`, when it does. */
+/**
+ * What a lambda's position says of its result: the type it is declared to give, or one guiding
+ * its body only, the result being what the body gives.
+ */
+interface ResultGiven {
+  readonly kind: 'declared' | 'guided';
+  readonly type: Type;
+}
+
+/** A lambda where its position gives `slots` for its parameters and says `result`, when it does. */
 function checkLambdaAs(
   context: BodyContext,
   node: Lambda,
   slots: ParameterSlots | undefined,
-  result: Type | undefined,
+  result: ResultGiven | undefined,
 ): Type {
+  const hint = result?.kind === 'guided' ? result.type : undefined;
+  const given = result?.kind === 'declared' ? result.type : undefined;
   const declaredResult =
     node.returnType === undefined
-      ? result
+      ? given
       : declaredBodyResult(context.checker, context.module, node);
   return checkNested(context, node, {
     name: node.name,
@@ -134,7 +161,7 @@ function checkLambdaAs(
     declaredResult,
     reach: node.span,
     tail: (declared) => {
-      const type = context.expression(node.body, declared);
+      const type = context.expression(node.body, declared ?? hint);
       // A body of several statements is a block expression, whose tail produces as a `fn`'s does.
       const body = unparenthesized(node.body);
       return body.kind === 'BlockExpression'

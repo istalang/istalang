@@ -107,7 +107,8 @@ src/
                                                                  arguments, and type `match`es resolved, given, placed and unfolded
                                                                  (type-match.ts, written-matches.ts)
         properties/                                              what a type holds or reaches: finite values, held values, the cycle guard, handles read off declarations
-        inference/                                               above the model: inference of type arguments
+        inference/                                               above the model: inference of type arguments, as bounds on variables
+                                                                 (bounds.ts) settled by one policy (settle.ts)
         traits/                                                  above inference: constraints, the derived `Sendable`, `any` types, and the object safety they
                                                                  need (object-safety.ts); struct constraints (struct-constraints.ts), and what a type meets by
                                                                  what it is, computed types `T.Data` and `S["meta"]` among them, with their reductions
@@ -350,7 +351,7 @@ Every analysis result is a memoized function of immutable inputs: text → token
 - **Hand-written scanner and parser** (Pyright/TypeScript style). Rejected:
   - Langium: its indentation lexer can't turn layout back on for a `{}` block inside `(…)`, and Typir has no generics.
   - Chevrotain, Lezer, tree-sitter: they give untyped CSTs, and context-dependent `{` and generic-call speculation would fight the grammar.
-- **Inference is constraint-based, and conversions compose through variance** (docs/work/variance-inference/design.md; identity and variance done, inference planned). Identity is read off declarations (`shared struct`; `extern shared`, `sendable` or `ephemeral struct`), never off names; a handle is invariant. A value type's variance is derived from its fields, an extern's written (`gives`/`takes`). Each outermost expression is one constraint system: arguments and the expected type give bounds, nested generic calls join it, and one settling policy decides; choosing a function never reads the expected type. Rejected: the expected type as written type arguments for every call (unsound: candidates depend on the arguments) and Swift-style joint search (backtracking).
+- **Inference is constraint-based, and conversions compose through variance** (docs/work/variance-inference/design.md; identity, variance and per-call inference done, joint solving planned). Identity is read off declarations (`shared struct`; `extern shared`, `sendable` or `ephemeral struct`), never off names; a handle is invariant. A value type's variance is derived from its fields, an extern's written (`gives`/`takes`). Each outermost expression is one constraint system: arguments and the expected type give bounds, nested generic calls join it, and one settling policy decides; choosing a function never reads the expected type. Rejected: the expected type as written type arguments for every call (unsound: candidates depend on the arguments) and Swift-style joint search (backtracking).
 - **No DI container.** Explicit composition roots plus registries keep wiring visible and type-checked.
 - **Positions are UTF-16 offsets**, the LSP default. They are converted only at the edges.
 - **Formatter layout algorithm comes from a library:** Prettier's doc printer (`prettier/doc`, pinned exactly), which formatter/ alone imports. The formatter supplies only the printers from tree to doc and the comment placement (formatter.md, Decisions).

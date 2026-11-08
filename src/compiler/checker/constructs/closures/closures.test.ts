@@ -114,6 +114,10 @@ describe('closures accept', () => {
       'fn f(op: Op) -> Int: op.run(1) + (op.run)(2)',
     ],
     [
+      "a value's arguments typed by its parameters, through a variable, a field, parentheses and '?.'",
+      'struct Tag<T> { n: Int }\nstruct HoldTag { run: fn(Tag<Int>) -> Int }\nfn f(h: HoldTag, tagged: fn(Tag<Int>) -> Int, opt: (fn(Tag<Int>) -> Int)?) -> Int: tagged(Tag{n: 1}) + (tagged)(Tag{n: 2}) + h.run(Tag{n: 3}) + (h.run)(Tag{n: 4}) + (opt?.(Tag{n: 5}) ?? 0)',
+    ],
+    [
       'an async lambda awaited through its value',
       'async fn f() -> Future<Int>:\n  const later = async fn(n: Int): n + 1\n  await later(1)',
     ],

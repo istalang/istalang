@@ -1,169 +1,202 @@
 /**
- * Inferring type arguments (§3.5): matching the types a call or literal gives against the types its
- * declaration takes, which mention the type parameters still to be found.
+ * Inferring type arguments (§3.5): each type parameter a call or literal leaves to inference is a
+ * variable of its own (variables.ts), so a generic function's own call inside its body tells its
+ * variables from its rigid parameters, and matching the types it is given against the types its
+ * declaration takes bounds them (bounds.ts), which settling then decides (settle.ts). This class
+ * speaks in the parameters' names; the system of variables it speaks for is system.ts.
  *
- * - Matching is exact first, at the top of a match, where a `T` may fill a `T?` (§2), a plain
- *   function an async one (§3.14), a one-element tuple and its element each other (§3.15), and a
- *   nominal struct's fields a shape, `T` of `{ x: T, y: T }` bound to `Int` by a `Pixel` (§3.1,
- *   §3.5). Where it isn't, a type built of others matches part by part as its variance allows
- *   (types/fitting/fit/parts.ts), so a declared `Array<Int?>` takes an `Array<Int>`.
+ * - A given type fits a declared one as any value fits (types/fitting/fit/): exactly, converted, or
+ *   into a union, a type built of others part by part as its variance says. Where a variable
+ *   stands, what fits there bounds it: a type it is given is a lower bound, a type where it gives
+ *   (a function type's parameter) an upper bound, and a type where it must be the very type
+ *   (invariant, `&`, a spread's items, a pack, a witness) an equality. A union given where its
+ *   members may go apart puts each into its place, and one with variables puts each member, so
+ *   `V?` expected to be a `Json` bounds `V` by `Json`.
+ * - The type the call is expected to give bounds its result likewise, but only advises
+ *   (bounds.ts); settling rule 2 knows which variables stand at the result's top (`expect`).
  * - A type argument written is taken as given: what is matched has it in place before matching, so
- *   `f<Int?>(o)` for `fn f<T>(x: T?)` matches `Int?` against `Int?`, never `T` against what `None`
- *   leaves. Whether it stands for a member parameter is instantiation's to check
- *   (types/fitting/member-arguments.ts).
- * - A pack binds only what can stand for one, a tuple, `Unit` or a pack (§3.5); a function type's
- *   pack binds to the parameters past the fixed ones (types/type/index.ts, `sameShape`).
- * - A shape matches a shape of the same field names, field by field, in the name order both keep. A
- *   recursive type is matched as what it unfolds to, on either side, a pair met again holding
- *   (types/identity/unfolding-pairs.ts), so `List<T>` inside what is declared binds `T` from a
- *   `List<Int>` inside what is given.
- * - The types found for a parameter must agree, whatever order the arguments come in: a later one
- *   fits the bound type (a conversion included), or the bound type fits it, which then binds, so
- *   `same(o, 2)` and `same(2, o)` both bind `T` to `Int?` for `o: Int?`. Two types neither fits
- *   conflict, and inference fails for that parameter.
- * - A parameter found inside a type, or where a value must have its type exactly (a reference, a
- *   spread's items, a witness), is the parameter's own: a bound type there must be the same, and
- *   once found there it never widens, so `set(o, &n)` and `set(&n, o)` conflict for `n: Int`, as a
- *   wrapped `n` couldn't be its place.
- * - A member parameter (`T in U`, §3.5) is filled only by a type that is one member of `U`, after
- *   the parameters `U` mentions are found: a literal argument gives its literal type where `U`
- *   holds literals of its base (`literalType`), a literal type of a member's base gives that base,
- *   and a value of several members fills nothing, which is noted (`severalMembers`): the caller
- *   narrows it first. A union is never found otherwise than from what is given.
- * - The error type fits anything and binds nothing while matching, so one mistake is reported once:
- *   a parameter it met and nothing else bound is the error type once the expected result and
- *   defaults have had their say (complete.ts, `bindErrorWhereOpen`), never one inference failed
- *   for. `Never` fits anything too and binds nothing while matching; a parameter it alone met where
- *   a value must have its type exactly is `Never` only once the expected result and defaults have
- *   had their say (`bindNeverWhereOpen`), as `expectPanic(fn(): panic("x"))` needs.
+ *   `f<Int?>(o)` for `fn f<T>(x: T?)` matches `Int?` against `Int?`. A method's receiver gives its
+ *   variables the same way, as Swift and Rust bind a method's `Self` (`matchReceiver`): matched
+ *   exactly at every position, then given, so `xs.includes(none)` for an `Array<Int>` is a
+ *   mismatch, never a reason to widen what `xs` is.
+ * - A literal written as an argument gives its literal type, fresh, unless its parameter expects a
+ *   literal of its base, which it then is (`literalType`).
+ * - A pack binds only what can stand for one, a tuple, `Unit` or a pack; a member parameter (`T in
+ *   U`) only a type of one member of `U`, a literal of a member's base as that base, a value of
+ *   several members noted as such (`severalMembers`), for the caller to narrow.
+ * - The error type fits anything and bounds nothing while matching, so one mistake is reported
+ *   once: a variable it met and nothing else bounds settles to it. `Never` bounds nothing either; a
+ *   variable only it met where a type is given settles to `Never`.
+ * - Matching probes: a failed match leaves no bound behind (`BoundStore.rollback`). Bounds that
+ *   disagree make a conflict, noted for the variable, which then can't be inferred.
+ * - What is settled (`settledIn`) is apart from what is found so far (`substitution`): a type
+ *   parameter bounded only loosely may still grow, so what waits on it (a postponed argument, an
+ *   argument the chosen function decides) reads it as open.
  */
 
-import { type Fitting, fitOf, matchConversion } from '../fitting/fit/index.ts';
-import { isOneMember } from '../fitting/member-arguments.ts';
-import { sameType } from '../identity/identity.ts';
-import { UnfoldingPairs } from '../identity/unfolding-pairs.ts';
+import type { Fitting } from '../fitting/fit/index.ts';
 import { noSubstitution, type Substitution, substitute } from '../parts/substitution.ts';
-import { typeChildren } from '../parts/type-children.ts';
 import { parametersIn } from '../parts/type-parts.ts';
-import { fillsPack, functionFits, isPack } from '../type/function-types.ts';
-import type {
-  AnonymousStructType,
-  AnyType,
-  FunctionType,
-  LiteralValue,
-  ParameterKey,
-  Type,
-  UnionType,
-} from '../type/index.ts';
-import { errorType, isPrimitive, neverType } from '../type/primitives.ts';
-import { baseOf } from '../unions/union-members.ts';
-import { literalOrBase, membersOf, unionOf, unionOfNormalized } from '../unions/unions.ts';
-import { parameterType } from '../written/resolve-type.ts';
+import type { LiteralType, LiteralValue, ParameterKey, Type } from '../type/index.ts';
+import { literalOrBase, membersOf, unionOf } from '../unions/unions.ts';
+import type { Settling } from './settle.ts';
+import { CallSystem, type MatchKind } from './system.ts';
+import { CallVariables } from './variables.ts';
 
-/** What a collection of an inference reads as before its first item. */
-const noParameters: ReadonlySet<ParameterKey> = new Set();
-const noMembers: ReadonlyMap<ParameterKey, Type> = new Map();
-
-/**
- * Choosing builds an inference for every candidate (resolution/choosing/applicability.ts), and most
- * never note a pinned, conflicting or several-membered parameter, nor unfold a recursive type, so
- * those collections are made at their first item.
- */
 export class Inference {
-  readonly #unknowns: ReadonlySet<ParameterKey>;
+  readonly #variables: CallVariables;
   readonly #fitting: Fitting;
-  readonly #bound = new Map<ParameterKey, Type>();
-  /** The parameters a type was found for where it must be theirs exactly, which never widen. */
-  #pinned: Set<ParameterKey> | undefined;
-  #conflicts: Set<ParameterKey> | undefined;
-  /** The parameters `Never` met where a value must have its type exactly. */
-  #metNever: Set<ParameterKey> | undefined;
-  /** The parameters the error type met. */
-  #metError: Set<ParameterKey> | undefined;
-  /** The pairs of recursive types being matched as they unfold (§3.17). */
-  #unfolding: UnfoldingPairs | undefined;
-  #severalMembers: Map<ParameterKey, Type> | undefined;
-  /** The type arguments written for some of the parameters, in place in whatever is matched. */
-  readonly #written: Substitution;
+  readonly #system: CallSystem;
+  /** The type arguments written, and those a method's receiver gave, taken as given. */
+  readonly #given: Map<ParameterKey, Type>;
+  /** What the match being made is, a receiver's matching as an argument's does otherwise. */
+  #kind: MatchKind = 'argument';
 
-  /** `written` gives the type arguments written for some of `unknowns`, taken as given (§3.5). */
-  constructor(unknowns: Iterable<ParameterKey>, fitting: Fitting, written?: Substitution) {
-    this.#unknowns = new Set(unknowns);
+  /**
+   * `written` gives the type arguments written for some of `parameters`, taken as given (§3.5).
+   * Each parameter is inferred as a variable of its own (variables.ts).
+   */
+  constructor(parameters: Iterable<ParameterKey>, fitting: Fitting, written?: Substitution) {
+    this.#variables = new CallVariables(parameters, fitting);
     this.#fitting = fitting;
-    this.#written = written ?? noSubstitution;
-    for (const [parameter, type] of this.#written) {
-      this.#bound.set(parameter, type);
-    }
-  }
-
-  /** Matches a declared type against a given one, binding what it can; whether they fit. */
-  match(declared: Type, given: Type): boolean {
-    this.#meetError(declared, given);
-    return (
-      matchConversion(given, substitute(declared, this.#written, this.#fitting), {
-        ...this.#fitting,
-        exact: (target, source) => this.#matchAtTop(target, source),
-        meetsAny: (source, target) => this.#convertsInto(target, source),
-      }) !== undefined
+    this.#given = new Map(written ?? noSubstitution);
+    this.#system = new CallSystem(this.#variables, fitting, () =>
+      this.#variables.byVariable(this.#given),
     );
   }
 
-  /**
-   * Whether `given` converts into `declared`, an `any` type: one whose parameters are all known,
-   * since conversion binds none (§3.10).
-   */
-  #convertsInto(declared: AnyType, given: Type): boolean {
-    const known = this.substituted(declared);
-    if (known.kind !== 'any' || parametersIn(known).some((each) => this.#unknowns.has(each))) {
-      return false;
-    }
-    return this.#fitting.meetsAny(given, known);
+  /** Matches a value of `given` where `declared` is taken, bounding what it can; whether it fits. */
+  match(declared: Type, given: Type): boolean {
+    return this.#system.match(this.#prepared(declared), given, this.#kind);
   }
 
-  /** Matches `declared` against a type `given` must equal, as an expected result. */
+  /**
+   * Matches a written literal where `declared` is taken: its literal type where a literal of its
+   * base is expected; else as its base, so it goes where its base goes, a variable given it bound
+   * by its literal type, fresh, for settling to widen (§2).
+   */
+  matchLiteral(declared: Type, literal: LiteralType): boolean {
+    const typed = this.literalType(literal.value, declared);
+    const prepared = this.#prepared(declared);
+    return typed.kind === 'literal'
+      ? this.#system.match(prepared, typed, this.#kind)
+      : this.#system.match(prepared, typed, this.#kind, literal);
+  }
+
+  /** Matches `declared` against a type `given` must be exactly, as a reference or a spread's. */
   matchExactly(declared: Type, given: Type): boolean {
-    return this.#matchExact(substitute(declared, this.#written, this.#fitting), given);
+    return this.#system.matchExactly(this.#prepared(declared), given, this.#kind);
+  }
+
+  /**
+   * Matches a method's receiver against its `self`: by reference exactly, else as any value fits,
+   * every variable it meets bound exactly and then given.
+   */
+  matchReceiver(declared: Type, given: Type, byReference: boolean): boolean {
+    this.#kind = 'receiver';
+    try {
+      const matched = byReference
+        ? this.matchExactly(declared, given)
+        : this.match(declared, given);
+      if (matched) {
+        for (const parameter of parametersIn(declared)) {
+          const variable = this.#variables.variableOf(parameter);
+          const equal = variable === undefined ? undefined : this.#system.boundsOf(variable).equal;
+          if (equal !== undefined) {
+            this.#given.set(parameter, equal.type);
+          }
+        }
+      }
+      return matched;
+    } finally {
+      this.#kind = 'argument';
+    }
+  }
+
+  /**
+   * Bounds the call's `result` by the type it is `expected` to give, which only advises: where
+   * the two disagree, nothing is bounded (bounds.ts).
+   */
+  expect(result: Type, expected: Type | undefined): void {
+    if (expected !== undefined) {
+      this.#system.expectResult(this.#prepared(result), expected);
+    }
   }
 
   /** Whether `parameter` is one this inference is finding. */
   isUnknown(parameter: ParameterKey): boolean {
-    return this.#unknowns.has(parameter);
+    return this.#variables.variableOf(parameter) !== undefined;
   }
 
-  /** The type bound to `parameter` so far. */
+  /** The type found for `parameter` so far: given, equal, or what its bounds tell (`tentative`). */
   boundOf(parameter: ParameterKey): Type | undefined {
-    return this.#bound.get(parameter);
+    const given = this.#given.get(parameter);
+    const variable = this.#variables.variableOf(parameter);
+    if (given !== undefined || variable === undefined) {
+      return given;
+    }
+    const found = this.#system.tentative(variable);
+    return found === undefined ? undefined : this.#variables.restored(found);
   }
 
-  /** Binds `parameter` to `type` if nothing has, as a default does. */
-  bindIfOpen(parameter: ParameterKey, type: Type): void {
-    if (!this.#bound.has(parameter)) {
-      this.#bound.set(parameter, type);
+  /**
+   * `type` with what is settled, and for the rest the expected type's choice where settling rule 2
+   * would take it (settle.ts): what a postponed argument's result is expected to be.
+   */
+  guided(type: Type, settling: Settling): Type {
+    const settled = this.settledIn(type);
+    const guide = new Map<ParameterKey, Type>();
+    for (const parameter of parametersIn(settled)) {
+      const variable = this.#variables.variableOf(parameter);
+      const choice =
+        variable === undefined
+          ? undefined
+          : this.#system.expectedChoiceFor(variable, this.#variables.settlingFor(settling));
+      if (choice !== undefined) {
+        guide.set(parameter, this.#variables.restored(choice));
+      }
+    }
+    return substitute(settled, guide, this.#fitting);
+  }
+
+  /** Settles `parameters` now, each taken as found from here on (settle.ts). */
+  fix(parameters: readonly ParameterKey[], settling: Settling): void {
+    for (const parameter of parameters) {
+      const variable = this.#variables.variableOf(parameter);
+      if (variable !== undefined && !this.#given.has(parameter)) {
+        this.#system.fix(variable, this.#variables.settlingFor(settling));
+      }
     }
   }
 
-  /** Binds the error type to each parameter it met, once nothing else is left to bind it. */
-  bindErrorWhereOpen(): void {
-    for (const parameter of this.#metError ?? noParameters) {
-      this.bindIfOpen(parameter, errorType);
+  /** `parameters` settled; one left out can't be inferred (settle.ts). */
+  settle(parameters: readonly ParameterKey[], settling: Settling): ReadonlyMap<ParameterKey, Type> {
+    const variables = parameters.flatMap(
+      (parameter) => this.#variables.variableOf(parameter) ?? [],
+    );
+    const settled = this.#system.settle(variables, this.#variables.settlingFor(settling));
+    const restored = new Map<ParameterKey, Type>();
+    for (const [variable, type] of settled) {
+      const parameter = this.#variables.parameterOf(variable);
+      if (parameter !== undefined) {
+        restored.set(parameter, this.#variables.restored(type));
+      }
     }
+    return restored;
   }
 
-  /** Binds `Never` to each parameter only `Never` met, once nothing else is left to bind it. */
-  bindNeverWhereOpen(): void {
-    for (const parameter of this.#metNever ?? noParameters) {
-      this.bindIfOpen(parameter, neverType);
-    }
-  }
-
-  /** The parameters two different types were found for. */
+  /** The parameters whose bounds disagreed. */
   get conflicts(): ReadonlySet<ParameterKey> {
-    return this.#conflicts ?? noParameters;
+    return new Set(
+      [...this.#system.conflicts].flatMap(
+        (variable) => this.#variables.parameterOf(variable) ?? [],
+      ),
+    );
   }
 
   /** The member parameters given a value of several members of their union, by what was given. */
   get severalMembers(): ReadonlyMap<ParameterKey, Type> {
-    return this.#severalMembers ?? noMembers;
+    return this.#system.severalMembers;
   }
 
   /**
@@ -174,286 +207,52 @@ export class Inference {
   literalType(value: LiteralValue, declared: Type): Type {
     const expected = this.substituted(declared);
     const taking = membersOf(expected).flatMap((member) => {
-      const union = this.#memberUnionOf(member);
+      const union = member.kind === 'parameter' ? this.#fitting.memberUnionOf(member) : undefined;
       return union === undefined ? [member] : membersOf(this.substituted(union));
     });
     return literalOrBase(value, unionOf(taking, this.#fitting));
   }
 
-  /** What has been found so far, as a substitution. */
+  /** What has been found so far for the parameters, as a substitution. */
   substitution(): Substitution {
-    return this.#bound;
+    return this.#found((parameter) => this.boundOf(parameter));
   }
 
   /** `declared` with what has been found so far substituted. */
   substituted(declared: Type): Type {
-    return substitute(declared, this.#bound, this.#fitting);
+    return substitute(declared, this.substitution(), this.#fitting);
   }
 
-  /** Matches at the top of a match, where a parameter's type converts and may widen. */
-  #matchAtTop(declared: Type, given: Type): boolean {
-    if (givesNothing(declared)) {
-      return true;
-    }
-    return declared.kind === 'parameter' &&
-      this.#unknowns.has(declared.declaration) &&
-      given.kind !== 'error'
-      ? this.#bindLoosely(declared.declaration, given)
-      : this.#matchExact(declared, given);
+  /**
+   * `declared` with only what is settled substituted: the types given and those fixed (`fix`), a
+   * parameter still bounded loosely left as it is.
+   */
+  settledIn(declared: Type): Type {
+    const settled = this.#found((_parameter, variable) => {
+      const { equal } = this.#system.boundsOf(variable);
+      return equal?.origin === 'argument' ? this.#variables.restored(equal.type) : undefined;
+    });
+    return substitute(declared, settled, this.#fitting);
   }
 
-  /** Matches `declared` and `given`, one of them recursive, exactly as what they unfold to. */
-  #matchUnfolded(declared: Type, given: Type): boolean {
-    this.#unfolding ??= new UnfoldingPairs();
-    return this.#unfolding.relate(declared, given, true, (unfoldedDeclared, unfoldedGiven) =>
-      this.#matchExact(unfoldedDeclared, unfoldedGiven),
-    );
-  }
-
-  #matchExact(declared: Type, given: Type): boolean {
-    this.#meetError(declared, given);
-    if (given.kind === 'error' || givesNothing(declared)) {
-      return true;
-    }
-    if (declared.kind === 'recursive' || given.kind === 'recursive') {
-      return this.#matchUnfolded(declared, given);
-    }
-    switch (declared.kind) {
-      case 'parameter':
-        return this.#unknowns.has(declared.declaration)
-          ? this.#bindExactly(declared.declaration, given)
-          : sameType(declared, given);
-      case 'nominal':
-        return (
-          given.kind === 'nominal' &&
-          given.entity === declared.entity &&
-          this.#matchAll(declared.arguments, given.arguments)
-        );
-      case 'anonymous':
-        return (
-          given.kind === 'anonymous' &&
-          sameFieldNames(declared, given) &&
-          this.#matchAll(typeChildren(declared), typeChildren(given))
-        );
-      case 'tuple':
-        return given.kind === 'tuple' && this.#matchAll(declared.elements, given.elements);
-      case 'function':
-        return given.kind === 'function' && this.#matchFunction(declared, given);
-      case 'any':
-        return given.kind === 'any' && this.#matchConstraints(declared, given);
-      case 'union':
-        return this.#matchUnion(declared, given);
-      case 'associated':
-      case 'field':
-      case 'keys':
-      case 'mapped':
-      case 'match':
-        // Opaque: what it stands for is known only once its parameters are (§3.5), and inference
-        // never goes through it (§3.5, §3.17).
-        return (
-          parametersIn(declared).some((each) => this.#unknowns.has(each)) ||
-          sameType(declared, given)
-        );
-      case 'primitive':
-      case 'literal':
-      case 'error':
-        return sameType(declared, given) || declared.kind === 'error';
-      default: {
-        const unhandled: never = declared;
-        return unhandled;
+  /** The types given, then for each parameter left what `read` finds for it. */
+  #found(
+    read: (parameter: ParameterKey, variable: ParameterKey) => Type | undefined,
+  ): Map<ParameterKey, Type> {
+    const found = new Map(this.#given);
+    for (const variable of this.#variables.variables) {
+      const parameter = this.#variables.parameterOf(variable);
+      const type =
+        parameter === undefined || found.has(parameter) ? undefined : read(parameter, variable);
+      if (parameter !== undefined && type !== undefined) {
+        found.set(parameter, type);
       }
     }
+    return found;
   }
 
-  /**
-   * Matches a union against a type it must equal (§3.5): the members it writes without a type
-   * parameter take theirs among `given`'s, and its one member with type parameters takes what is
-   * left. Where nothing is, it binds nothing, so `none` given for a `T?` leaves `T` to be found
-   * elsewhere. A union whose members with type parameters are several takes what is left only
-   * member by member, in the order written.
-   */
-  #matchUnion(declared: UnionType, given: Type): boolean {
-    const open = declared.members.filter((member) => this.#mentionsUnknown(member));
-    const fixed = declared.members.filter((member) => !this.#mentionsUnknown(member));
-    const givenMembers = membersOf(given);
-    if (!fixed.every((member) => givenMembers.some((each) => sameType(each, member)))) {
-      return false;
-    }
-    const left = givenMembers.filter((each) => !fixed.some((member) => sameType(each, member)));
-    if (left.length === 0) {
-      return true;
-    }
-    const [only] = open;
-    if (open.length <= 1) {
-      return only !== undefined && this.#matchExact(only, unionOfNormalized(left));
-    }
-    return (
-      open.length === left.length &&
-      open.every((member, index) => {
-        const other = left[index];
-        return other !== undefined && this.#matchExact(member, other);
-      })
-    );
+  /** `declared` with the types given in place, and each parameter left made its variable. */
+  #prepared(declared: Type): Type {
+    return this.#variables.freshened(declared, this.#given);
   }
-
-  /** Whether `type` mentions a type parameter this inference is finding. */
-  #mentionsUnknown(type: Type): boolean {
-    return parametersIn(type).some((parameter) => this.#unknowns.has(parameter));
-  }
-
-  #matchFunction(declared: FunctionType, given: FunctionType): boolean {
-    return functionFits(
-      declared,
-      given,
-      (part, other) => this.#matchExact(part, other),
-      (part, other) => this.#matchExact(part, other) || isPrimitive(other, 'Never'),
-    );
-  }
-
-  /** Each of `declared`'s constraints matched by one of `given`'s, a set like it (§3.10). */
-  #matchConstraints(declared: AnyType, given: AnyType): boolean {
-    return (
-      given.constraints.length === declared.constraints.length &&
-      declared.constraints.every((constraint) =>
-        given.constraints.some(
-          (other) =>
-            other.trait === constraint.trait &&
-            this.#matchAll(constraint.arguments, other.arguments),
-        ),
-      )
-    );
-  }
-
-  #matchAll(declared: readonly Type[], given: readonly Type[]): boolean {
-    return (
-      declared.length === given.length &&
-      declared.every((type, index) => {
-        const other = given[index];
-        return other !== undefined && this.#matchExact(type, other);
-      })
-    );
-  }
-
-  /** Notes the parameters to find that `declared` mentions when `given` is the error type. */
-  #meetError(declared: Type, given: Type): void {
-    if (given.kind === 'error') {
-      for (const parameter of parametersIn(declared)) {
-        if (this.#unknowns.has(parameter)) {
-          this.#metError ??= new Set();
-          this.#metError.add(parameter);
-        }
-      }
-    }
-  }
-
-  /**
-   * Binds `parameter` where `given` converts into it: it fits the type bound, a conversion
-   * included.
-   */
-  #bindLoosely(parameter: ParameterKey, given: Type): boolean {
-    const filling = this.#filling(parameter, given);
-    return (
-      filling !== undefined &&
-      this.#bind(parameter, filling, (bound) => fitOf(filling, bound, this.#fitting) !== undefined)
-    );
-  }
-
-  /**
-   * What `given` fills `parameter` with: itself, unless `parameter` is a member parameter (§3.5),
-   * which only one member of its union fills (types/fitting/member-arguments.ts `isOneMember`):
-   * `given`, or a literal of a member's base as that base. Undefined when nothing fills it, `given`
-   * holding several members noted as such.
-   */
-  #filling(parameter: ParameterKey, given: Type): Type | undefined {
-    const declared = this.#fitting.memberUnionOf({ kind: 'parameter', declaration: parameter });
-    if (declared === undefined || given.kind === 'error' || isPrimitive(given, 'Never')) {
-      return given;
-    }
-    const union = this.substituted(declared);
-    const memberOf = (type: Type) =>
-      [type, baseOf(type)].find((each) => isOneMember(union, each, this.#fitting.memberUnionOf));
-    const members = membersOf(given).map(memberOf);
-    const [only] = members;
-    if (members.length === 1 || only === undefined) {
-      return only;
-    }
-    if (members.every((member) => member !== undefined)) {
-      this.#severalMembers ??= new Map();
-      this.#severalMembers.set(parameter, given);
-    }
-    return undefined;
-  }
-
-  /** The union `type` stands for one member of, when it is a member parameter. */
-  #memberUnionOf(type: Type): Type | undefined {
-    return type.kind === 'parameter' ? this.#fitting.memberUnionOf(type) : undefined;
-  }
-
-  /**
-   * Binds `parameter` where `given` is its type exactly, pinning it: the type bound is the same.
-   * `Never` fits whatever is bound, so it binds nothing, but is noted for completion.
-   */
-  #bindExactly(parameter: ParameterKey, given: Type): boolean {
-    if (isPrimitive(given, 'Never') && !isPack(parameterType(parameter))) {
-      this.#metNever ??= new Set();
-      this.#metNever.add(parameter);
-      return true;
-    }
-    const filling = this.#filling(parameter, given);
-    if (filling === undefined) {
-      return false;
-    }
-    const isBound = this.#bind(parameter, filling, (bound) => sameType(filling, bound));
-    if (isBound) {
-      this.#pinned ??= new Set();
-      this.#pinned.add(parameter);
-    }
-    return isBound;
-  }
-
-  /**
-   * Binds `parameter` to `given` unless a type is bound already that `given` agrees with
-   * (`agrees`); a bound type `given` widens takes its place unless pinned. Two types neither takes
-   * conflict.
-   */
-  #bind(parameter: ParameterKey, given: Type, agrees: (bound: Type) => boolean): boolean {
-    if (isPack(parameterType(parameter)) && !fillsPack(given)) {
-      return false;
-    }
-    const bound = this.#bound.get(parameter);
-    if (bound === undefined) {
-      this.#bound.set(parameter, given);
-      return true;
-    }
-    const current = this.substituted(bound);
-    if (agrees(current)) {
-      return true;
-    }
-    if (
-      this.#pinned?.has(parameter) !== true &&
-      fitOf(current, given, this.#fitting) !== undefined
-    ) {
-      this.#bound.set(parameter, given);
-      return true;
-    }
-    this.#conflicts ??= new Set();
-    this.#conflicts.add(parameter);
-    return false;
-  }
-}
-
-/** Whether two shapes name the same fields; both keep them in name order (types/type/index.ts). */
-function sameFieldNames(first: AnonymousStructType, second: AnonymousStructType): boolean {
-  return (
-    first.fields.length === second.fields.length &&
-    first.fields.every((field, index) => field.name === second.fields[index]?.name)
-  );
-}
-
-/**
- * Whether inference learns nothing from `declared`: a type written as an associated type
- * (`Field<T>.Data`), which inference never looks through (§3.5); a value is still fitted to it.
- */
-function givesNothing(declared: Type): boolean {
-  return declared.alias?.kind === 'associated';
 }

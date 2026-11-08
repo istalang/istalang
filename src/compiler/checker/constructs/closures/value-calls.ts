@@ -6,12 +6,14 @@
  *
  * - Calling an async function value starts it and yields its future, `Future<R>` for an
  *   `async fn(…) -> R`, as calling a declared async function does (§3.3).
- * - Type arguments can't be given: a function value is one instance, never generic.
+ * - Type arguments can't be given: a function value is one instance, never generic. Its parameters
+ *   are known before its arguments are checked, so each argument by position is checked against
+ *   its parameter's type, as a variant's (`valueParameterTypes`).
  * - Its type names no parameters, so its call gives every argument by position, with no name;
  *   a spread only fills a pack its type ends in (§3.3, §3.5).
  */
 
-import type { Call, Expression } from '../../../syntax/expressions/index.ts';
+import type { Call, CallArgument, Expression } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { fitArguments } from '../../resolution/applying/argument-fit.ts';
@@ -26,6 +28,35 @@ import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { futureOf } from '../../types/type/well-known.ts';
 import { insideOptional } from '../../types/unions/inside-optional.ts';
+
+/**
+ * The type each argument of a call of a value of `callee`'s type is known to take before it is
+ * checked: its parameter's, by position. None where only judging the call can say what goes where:
+ * `callee` isn't a function type, type arguments are written, the arguments don't match its
+ * parameters one to one (a named argument, a spread, too few or too many), or an argument passes
+ * by `&` where its parameter doesn't, or the reverse.
+ */
+export function valueParameterTypes(
+  callee: Type | undefined,
+  written: readonly CallArgument[],
+  typeArguments: readonly Type[] | undefined,
+): readonly (Type | undefined)[] {
+  if (callee?.kind !== 'function' || typeArguments !== undefined) {
+    return [];
+  }
+  const { parameters } = callee;
+  const matches =
+    (callee.pack === undefined
+      ? written.length === parameters.length
+      : written.length >= parameters.length) &&
+    written.every(
+      (argument, index) =>
+        argument.kind !== 'NamedArgument' &&
+        argument.kind !== 'Spread' &&
+        (argument.kind === 'Reference') === (parameters[index]?.reference ?? false),
+    );
+  return matches ? parameters.map((parameter) => parameter.type) : [];
+}
 
 /** A call as written: where it stands, with its arguments and any type arguments. */
 export interface ValueCall {

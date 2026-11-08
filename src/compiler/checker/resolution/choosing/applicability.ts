@@ -228,9 +228,12 @@ function judgedArgument(
 /**
  * Whether an argument with a type fits `slot`, matching it for inference. A reference's type is
  * its parameter's exactly, as an exact argument's is: no wrap into `T?` reaches the caller's place.
- * A literal of items with types of their own fits a parameter whose type is known, which its own
- * type doesn't fit, when its items can build it as that type (§3.7); inference never goes through
- * building, so a parameter type still to be found is matched with the literal's own.
+ * A method's receiver gives the type parameters it meets as they are, by reference exactly where
+ * `&self` takes it (types/inference/infer.ts `matchReceiver`). A written literal is matched as
+ * one, its literal type fresh (§2). A literal of items with types of their own fits a parameter
+ * whose type is known, which its own type doesn't fit, when its items can build it as that type
+ * (§3.7); inference never goes through building, so a parameter type still to be found is matched
+ * with the literal's own.
  */
 function typedFits(
   slot: ParameterSlot,
@@ -239,13 +242,19 @@ function typedFits(
   inference: Inference,
 ): boolean {
   const { literal, builds } = argument;
-  const given = literal === undefined ? type : inference.literalType(literal.value, slot.type);
-  if (argument.exact === true || isByReference(slot, argument)) {
-    return inference.matchExactly(slot.type, given);
+  if (argument.passing === 'receiver') {
+    return inference.matchReceiver(slot.type, type, slot.reference);
   }
+  if (argument.exact === true || argument.passing === 'reference') {
+    return inference.matchExactly(slot.type, type);
+  }
+  const matched =
+    literal === undefined
+      ? inference.match(slot.type, type)
+      : inference.matchLiteral(slot.type, literal);
   const expected = inference.substituted(slot.type);
   const known = !parametersIn(expected).some((each) => inference.isUnknown(each));
-  return inference.match(slot.type, given) || (known && builds?.(expected, () => false) === true);
+  return matched || (known && builds?.(expected, () => false) === true);
 }
 
 /**
@@ -260,14 +269,10 @@ function addedBy<Item>(
 }
 
 /**
- * Whether `argument` reaches `slot` by reference: written `&`, or a receiver `&self` takes (§3.7).
+ * Whether an argument the chosen function decides can take a parameter of type `declared`, a type
+ * parameter not settled yet open, since what bounds it loosely may still grow.
  */
-function isByReference(slot: ParameterSlot, argument: CallArgument): boolean {
-  return argument.passing === 'reference' || (argument.passing === 'receiver' && slot.reference);
-}
-
-/** Whether an argument the chosen function decides can take a parameter of type `declared`. */
 function acceptsDecided(argument: CallArgument, declared: Type, inference: Inference): boolean {
   const isOpen = (part: Type) => part.kind === 'parameter' && inference.isUnknown(part.declaration);
-  return argument.accepts?.(inference.substituted(declared), isOpen) ?? true;
+  return argument.accepts?.(inference.settledIn(declared), isOpen) ?? true;
 }

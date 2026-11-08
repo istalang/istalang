@@ -85,6 +85,7 @@ import { Expansion } from '../../rules/expansion/functions.ts';
 import type { CheckedBody } from '../../surface/checked-body.ts';
 import { type Fit, type Fitting, fitOf } from '../../types/fitting/fit/index.ts';
 import { typeKeys } from '../../types/identity/type-keys.ts';
+import { standingFor } from '../../types/inference/variables.ts';
 import { sameTypeSpelled, unaliased } from '../../types/parts/type-parts.ts';
 import { resolveAnyType } from '../../types/traits/any-types.ts';
 import { memberUnionOf } from '../../types/traits/struct-keys.ts';
@@ -292,11 +293,11 @@ export class ProgramChecker implements CheckerContext {
     fitOf(found, expected, this.fitting);
 
   constraintsOf(parameter: TypeParameter): readonly Constraint[] {
-    return this.#typeParameters.constraintsOf(parameter);
+    return this.#typeParameters.constraintsOf(standingFor(parameter));
   }
 
   structConstraintsOf(parameter: TypeParameter): readonly StructConstraintModel[] {
-    return this.#typeParameters.structConstraintsOf(parameter);
+    return this.#typeParameters.structConstraintsOf(standingFor(parameter));
   }
 
   associatedBoundsOf(requirement: RequiredAssociatedType): ConstraintSet {
@@ -304,7 +305,7 @@ export class ProgramChecker implements CheckerContext {
   }
 
   memberUnionOf(parameter: TypeParameter): Type | undefined {
-    return memberUnionOf(this, parameter);
+    return memberUnionOf(this, standingFor(parameter));
   }
 
   constrainLater(module: ModuleId, check: ConstraintCheck): void {

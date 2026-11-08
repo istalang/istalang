@@ -1,13 +1,17 @@
 /**
  * Overload clashes (§3.3, §3.7): two functions of one name, or two static functions of one name
- * on one type, whose parameters have the same types are an error, since no call could choose
- * between them. What "the same" means:
+ * on one type, that some call fits alike with neither more specific are an error, since no call
+ * could choose between them. What that means:
  *
  * - each parameter is by value or by `&` alike, except a method's `self`, since method notation
  *   passes it either way (§3.7);
- * - a parameter's type counts as the same as a union holding it, since the conversion into a union
- *   (§2) would make every call taking the narrower ambiguous: `T` and `T?`, `A` and `A | B`, and
- *   a literal type and its base, which a union holding both is (`"a" | String` is `String`);
+ * - a call fits both where at every position one parameter's type holds the other's: a union holds
+ *   each member, and a literal type's base the literal type, which a union holding both is (`"a" |
+ *   String` is `String`). One function is more specific where its parameters' types are each held
+ *   by the other's, and not all the same, which a call taking both then chooses (§3.7): `Int`
+ *   beside `Int?`, `A` beside `A | B`. A type parameter may stand for the wider type, so where the
+ *   two differ by one standing as a member (`T` beside `T?`), neither is narrower there. So two
+ *   clash where neither is narrower anywhere, or each is somewhere;
  * - generic functions compare up to the names of their type parameters, so two with different
  *   numbers of them never clash: written type arguments tell them apart (§3.7);
  * - a function with defaults is compared for every number of arguments a call by position may give
@@ -18,8 +22,8 @@
  * - a parameter's `fn(A) -> R` and `async fn(A) -> R` differ: a call fitting both takes the one
  *   that needs no plain function made async (§3.7, §3.14).
  *
- * Two functions agreeing at some number of arguments agree at every smaller one both take, so the
- * smallest number both take decides.
+ * Every number of arguments both take is compared: one function narrower at a parameter only a
+ * longer call reaches, a default's or a rest's, may clash there though a shorter call prefers it.
  *
  * A module's functions are compared with each other and with the prelude's of the same name, which
  * they join (§3.13); a static function with the others declared on what its owner names, as
@@ -92,10 +96,14 @@ type SlotKey =
       readonly reference: boolean;
     };
 
-/** A member of a parameter's type by its key, and a literal member's base's key. */
+/**
+ * A member of a parameter's type by its key, a literal member's base's key, and whether it is a
+ * type parameter.
+ */
 interface MemberKey {
   readonly key: string;
   readonly base: string | undefined;
+  readonly isParameter: boolean;
 }
 
 /**
@@ -120,27 +128,61 @@ function clash(first: Shape | undefined, second: Shape | undefined): boolean {
   ) {
     return false;
   }
-  const count = Math.max(first.minimum, second.minimum);
+  // Past both functions' fixed parameters, every position takes a rest's items alike.
+  const most = Math.min(
+    first.rest === undefined ? first.fixed.length : Number.POSITIVE_INFINITY,
+    second.rest === undefined ? second.fixed.length : Number.POSITIVE_INFINITY,
+    Math.max(first.fixed.length, second.fixed.length) + 1,
+  );
+  for (let count = Math.max(first.minimum, second.minimum); count <= most; count += 1) {
+    if (clashAt(count, first, second)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/** Whether a call of `count` arguments by position fits both functions with neither preferred. */
+function clashAt(count: number, first: Shape, second: Shape): boolean {
   const keysAt = (shape: Shape) =>
     Array.from({ length: count }, (_, index) => shape.fixed[index] ?? shape.rest);
   const [firstKeys, secondKeys] = [keysAt(first), keysAt(second)];
-  return firstKeys.every((key, index) => {
-    const other = secondKeys[index];
-    return key !== undefined && other !== undefined && sameKey(key, other);
-  });
+  const everywhere = (holding: (key: SlotKey, other: SlotKey) => boolean) =>
+    firstKeys.every((key, index) => {
+      const other = secondKeys[index];
+      return key !== undefined && other !== undefined && holding(key, other);
+    });
+  const overlap = everywhere((key, other) => keyHolds(key, other) || keyHolds(other, key));
+  const narrower = (keys: readonly (SlotKey | undefined)[], others: typeof keys) =>
+    keys.some((key, index) => {
+      const other = others[index];
+      return key !== undefined && other !== undefined && isNarrower(key, other);
+    });
+  return overlap && narrower(firstKeys, secondKeys) === narrower(secondKeys, firstKeys);
+}
+
+/**
+ * Whether a parameter of `narrow` takes fewer arguments than one of `wide`, all of which `wide`
+ * takes: never where a type parameter stands as a member of either, which may stand for the rest.
+ */
+function isNarrower(narrow: SlotKey, wide: SlotKey): boolean {
+  if (!keyHolds(wide, narrow) || keyHolds(narrow, wide)) {
+    return false;
+  }
+  const standsOpen = (key: SlotKey) =>
+    key.kind === 'type' && key.members.some((member) => member.isParameter);
+  return !(standsOpen(narrow) || standsOpen(wide));
 }
 
 /** The key a pack's items have at every position: they take any type by value (§3.5). */
 const packItemKey: SlotKey = { kind: 'any' };
 
-/** Whether a call's argument fits parameters of both keys alike. */
-function sameKey(first: SlotKey, second: SlotKey): boolean {
-  if (first.kind === 'type' && second.kind === 'type') {
-    return first.reference === second.reference && (holds(first, second) || holds(second, first));
+/** Whether every argument a parameter of `narrow` takes, one of `wide` takes alike. */
+function keyHolds(wide: SlotKey, narrow: SlotKey): boolean {
+  if (wide.kind === 'type' && narrow.kind === 'type') {
+    return wide.reference === narrow.reference && holds(wide, narrow);
   }
-  const takesAny = (key: SlotKey, other: SlotKey) =>
-    key.kind === 'any' && (other.kind === 'any' || !other.reference);
-  return takesAny(first, second) || takesAny(second, first);
+  return wide.kind === 'any' && (narrow.kind === 'any' || !narrow.reference);
 }
 
 /**
@@ -174,6 +216,7 @@ function shapeOf(checker: CheckerContext, declaration: FunctionDeclaration): Sha
     members: membersOf(type).map((member) => ({
       key: key(member),
       base: member.kind === 'literal' ? key(baseOf(member)) : undefined,
+      isParameter: member.kind === 'parameter',
     })),
     reference,
   });

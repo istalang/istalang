@@ -10,8 +10,10 @@
  *   between a one-element tuple and its element (§3.15), a struct's value into its shape or an
  *   argument's parts (§3.5), or building a literal argument as a type other than its own (§3.7),
  *   so `Array<Int>` beats `Array<Int?>` for an `Array<Int>`, and a pair taking `fn(A)` and
- *   `async fn(A)` keeps each function its own type. Written type arguments
- *   consider only generic candidates. Any other tie is ambiguous.
+ *   `async fn(A)` keeps each function its own type; then the most specific, as in C#, Kotlin and
+ *   Java: one whose parameter types, as the call instantiates them, all fit another's, and not the
+ *   reverse, so `f(x: Int)` beats `f(x: Int?)` for `f(1)`. Written type arguments consider only
+ *   generic candidates. Any other tie is ambiguous.
  *
  * `inapplicability` is the one rule: choosing keeps the candidates it finds nothing against, and a
  * report about a failed call explains the reason it found.
@@ -173,11 +175,47 @@ function chosenAmong(
     const kept = chosen.filter(isPreferred);
     return kept.length > 0 ? kept : chosen;
   }, applications);
-  const [only] = preferred;
-  if (preferred.length === 1 && only !== undefined) {
+  const specific = preferred.filter(
+    (application) =>
+      !preferred.some(
+        (other) => other !== application && isMoreSpecific(checker, other, application),
+      ),
+  );
+  const kept = specific.length > 0 ? specific : preferred;
+  const [only] = kept;
+  if (kept.length === 1 && only !== undefined) {
     return { kind: 'chosen', application: only };
   }
-  return preferred.length === 0 ? { kind: 'none', reasons } : { kind: 'several', tied: preferred };
+  return kept.length === 0 ? { kind: 'none', reasons } : { kind: 'several', tied: kept };
+}
+
+/**
+ * Whether `first` is more specific than `second` for the call both take: each argument's
+ * parameter type, as each instantiates it, fits `second`'s, and not the reverse.
+ */
+function isMoreSpecific(
+  checker: Pick<CheckerContext, 'fitOf'>,
+  first: Application,
+  second: Application,
+): boolean {
+  const pairs = [...first.slots].flatMap(([index, slot]) => {
+    const other = second.slots.get(index);
+    return other === undefined
+      ? []
+      : [
+          [
+            first.inference.substituted(slot.type),
+            second.inference.substituted(other.type),
+          ] as const,
+        ];
+  });
+  const fitsAll = (fits: (narrow: Type, wide: Type) => boolean) =>
+    pairs.every(([narrow, wide]) => fits(narrow, wide));
+  return (
+    pairs.length > 0 &&
+    fitsAll((narrow, wide) => checker.fitOf(narrow, wide) !== undefined) &&
+    !fitsAll((narrow, wide) => checker.fitOf(wide, narrow) !== undefined)
+  );
 }
 
 /** Why `candidate` can't take the arguments `given`, or how it takes them. */

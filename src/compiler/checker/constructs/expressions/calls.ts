@@ -10,6 +10,8 @@
  *   calls its constructor (structs/variants.ts, §3.11), its one candidate, whose parameters, its
  *   fields, are known before the arguments where its type arguments are: each argument filling
  *   one is checked against it, a misfit reported there (resolution/calls/known-parameters.ts).
+ *   A function value's parameters are known before its arguments alike, so each argument by
+ *   position is checked against its parameter's type (closures/value-calls.ts).
  *
  * - a method called on a receiver (`x.f()`): a function whose first parameter is `self`, found by
  *   its name where the call is written and through the receiver's type (argument-dependent
@@ -47,7 +49,7 @@ import {
   callTypeArguments,
   unparenthesized,
 } from '../../../syntax/expressions/readings.ts';
-import type { Identifier } from '../../../syntax/tree/node.ts';
+import { type Identifier, isMissingName } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { knownParameterTypes } from '../../resolution/calls/known-parameters.ts';
@@ -69,8 +71,8 @@ import { typeText } from '../../types/type/type-text.ts';
 import { insideOptional } from '../../types/unions/inside-optional.ts';
 import { writtenLiteral } from '../../types/unions/unions.ts';
 import { namedType } from '../../types/written/named-types.ts';
-import { checkValueCall } from '../closures/value-calls.ts';
-import { readsNothing, recordFieldRead } from './access/member-access.ts';
+import { checkValueCall, valueParameterTypes } from '../closures/value-calls.ts';
+import { readsNothing, readsThroughNamespace, recordFieldRead } from './access/member-access.ts';
 import { spreadArgumentType } from './collections/collections.ts';
 import { calledConstructor, checkVariantCall } from './structs/variants.ts';
 
@@ -78,9 +80,10 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
   const misplaced = misplacedArgument(node.arguments);
   const typeArguments = callTypeArguments(node)?.map((argument) => context.resolveType(argument));
   const constructs = calledConstructor(context, node, expected);
+  const value = constructs === undefined ? calledValue(context, node) : undefined;
   const known =
     constructs === undefined
-      ? []
+      ? valueParameterTypes(value?.type, node.arguments, typeArguments)
       : knownParameterTypes(context.checker, constructs, {
           typeArguments,
           expected,
@@ -99,7 +102,10 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
   };
   const callee = calledName(node);
   if (node.isOptional) {
-    return checkValueCall(context, call, callee, context.chains.target(context, node));
+    return checkValueCall(context, call, callee, value?.type ?? errorType);
+  }
+  if (value !== undefined && value.receiver === undefined) {
+    return checkValueCall(context, call, callee, value.type ?? errorType);
   }
   switch (callee.kind) {
     case 'Identifier':
@@ -115,7 +121,7 @@ export function checkCall(context: BodyContext, node: Call, expected: Type | und
       }
       const owner = namedType(context, callee.target);
       return owner === undefined
-        ? callMethod(context, call, callee)
+        ? callMethod(context, call, callee, value?.receiver)
         : callStatic(context, call, owner, callee.member.text);
     }
     default:
@@ -176,7 +182,9 @@ function valueArgument(
     return { node: argument, passing: 'value', type, literal };
   }
   const part = context.argumentPart(argument);
-  if (part.kind === 'decided') {
+  // `none` passed alone is `None`, a type like any other the call's inference joins (§3.5); inside
+  // a composite it still waits for the call, as its siblings decide where it goes.
+  if (part.kind === 'decided' && part.alone === undefined) {
     return { node: argument, passing: 'value', type: undefined, literal, accepts: part.accepts };
   }
   const type = context.expression(argument);
@@ -185,13 +193,71 @@ function valueArgument(
 }
 
 /**
+ * What a call calls, when its type is known before its arguments: a variable, an expression other
+ * than a name, or an optional call's target (§3.14), and a receiver's field (`receiverField`),
+ * which a method of the same name makes an error the call reports.
+ */
+function calledValue(context: BodyContext, node: Call): CalledValue | undefined {
+  if (node.isOptional) {
+    return { type: context.chains.target(context, node) };
+  }
+  const callee = calledName(node);
+  switch (callee.kind) {
+    case 'Identifier':
+      return context.entityOf(callee)?.kind === 'variable'
+        ? { type: context.expression(callee) }
+        : undefined;
+    case 'MemberAccess':
+      return receiverField(context, node, callee);
+    default:
+      return { type: context.expression(callee) };
+  }
+}
+
+/**
+ * What `x.f(…)` reads of its receiver before its arguments: the receiver's type, read once here
+ * for the call, and the type of the field `f` names, if any. Undefined where the callee names no
+ * receiver's member: a missing name, a namespace's member, a type's static function.
+ */
+function receiverField(
+  context: BodyContext,
+  node: Call,
+  callee: MemberAccess,
+): CalledValue | undefined {
+  if (
+    isMissingName(callee.member) ||
+    readsThroughNamespace(context, callee) ||
+    context.entityOf(callee.member) !== undefined ||
+    namedType(context, callee.target) !== undefined
+  ) {
+    return undefined;
+  }
+  const receiver = context.chains.target(context, node);
+  return { type: fieldOf(context.checker, receiver, callee.member.text)?.member.type, receiver };
+}
+
+/**
+ * The type of what a call calls, when it is known before its arguments, and for `x.f(…)` the
+ * receiver's type, read then.
+ */
+interface CalledValue {
+  readonly type: Type | undefined;
+  readonly receiver?: Type;
+}
+
+/**
  * `x.f(…)`: `f` called with `x` as its `self` (§3.7); also as a link of an optional chain, which
  * calls it on the value inside and never through `&self` (access/optionals.ts).
  */
-function callMethod(context: BodyContext, call: WrittenCall, callee: MemberAccess): Type {
+function callMethod(
+  context: BodyContext,
+  call: WrittenCall,
+  callee: MemberAccess,
+  read: Type | undefined,
+): Type {
   const { checker, chains } = context;
   const receiver = callee.target;
-  const receiverType = chains.target(context, call.node);
+  const receiverType = read ?? chains.target(context, call.node);
   const stopped = stoppedOperation(context, call.node, [{ node: receiver, type: receiverType }]);
   if (stopped !== undefined) {
     return stopped;

@@ -197,15 +197,14 @@ describe('a literal built as a recursive use, at any depth, with any items', () 
     expect(mainGives('Int', 'return g([t(), "a"]) + k([t(), [1 + 1]])', declarations)).toBe(11);
   });
 
-  it('calls a choice of two overloads both building a literal of mixed items ambiguous', () => {
-    const source = lines(
+  it('chooses the more specific of two overloads both building a literal of mixed items', () => {
+    const declarations = lines(
       "import Json from 'json'",
       'fn t() -> Int: 3',
       'fn a(j: Json) -> Int: 1',
       'fn a(xs: Array<String | Int>) -> Int: 2',
-      'fn f() -> Int: a([t(), "a"])',
     );
-    expect(reported(source).codes).toEqual([5003]);
+    expect(mainGives('Int', 'return a([t(), "a"])', declarations)).toBe(2);
   });
 
   it('keeps the type of its own a literal of items agreeing once checked, choosing and inferring by it', () => {

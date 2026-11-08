@@ -76,7 +76,7 @@ function functionCallOf(
   checker: CheckerContext,
   application: Application,
 ): FunctionCall | undefined {
-  const instantiation = instantiate(searchSite(checker), application, undefined);
+  const instantiation = instantiate(searchSite(checker), application);
   if (instantiation === undefined) {
     return undefined;
   }

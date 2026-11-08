@@ -252,14 +252,18 @@ export class BodyChecker implements BodyContext {
     });
   }
 
-  inferLambda(node: Expression, parameters: Pick<FunctionType, 'parameters' | 'pack'>): Type {
+  inferLambda(
+    node: Expression,
+    parameters: Pick<FunctionType, 'parameters' | 'pack'>,
+    hint?: Type,
+  ): Type {
     if (node.kind === 'Parenthesized') {
-      return this.#record(node, this.inferLambda(node.expression, parameters));
+      return this.#record(node, this.inferLambda(node.expression, parameters, hint));
     }
     if (node.kind !== 'Lambda') {
       unreachable(`A ${node.kind} has no result to infer.`);
     }
-    return this.#record(node, inferLambda(this, node, parameters));
+    return this.#record(node, inferLambda(this, node, parameters, hint));
   }
 
   #record(node: Expression, value: Type): Type {

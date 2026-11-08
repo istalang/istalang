@@ -23,6 +23,34 @@ interface ChoiceCase {
 
 const cases: readonly ChoiceCase[] = [
   {
+    rule: 'the most specific beats a function taking a union holding its parameter',
+    overloads: ['fn f(a: Int) -> String: "narrow"', 'fn f(a: Int?) -> Bool: true'],
+    call: 'f(1)',
+    chosen: 'String',
+  },
+  {
+    rule: 'a function taking a union is chosen for a value only it takes',
+    overloads: ['fn f(a: Int) -> String: "narrow"', 'fn f(a: Int?) -> Bool: true'],
+    call: 'f(none)',
+    chosen: 'Bool',
+  },
+  {
+    rule: "the most specific beats a function taking a literal type's base",
+    overloads: ['fn f(a: "a") -> String: "literal"', 'fn f(a: String) -> Bool: true'],
+    call: 'f("a")',
+    chosen: 'String',
+  },
+  {
+    rule: 'a generic function taking a plain function as it is beats one making it async when T is inferred contravariantly',
+    overloads: [
+      'fn f<T>(g: fn(T) -> Unit) -> String: "sync"',
+      'fn f<T>(g: async fn(T) -> Unit) -> Bool: true',
+    ],
+    setup: 'const h: fn(Int) -> Unit = fn(_: Int): ()',
+    call: 'f(h)',
+    chosen: 'String',
+  },
+  {
     rule: 'a concrete function beats a generic one inferred',
     overloads: ['fn f<T>(a: T) -> Bool: true', 'fn f(a: Int) -> String: "c"'],
     call: 'f(5)',

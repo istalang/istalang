@@ -5,10 +5,10 @@
  * only a written call has: its receiver, the places it changes, and a report about a call nothing
  * takes.
  *
- * - An argument whose type the chosen function decides (`none`, a bare variant, a lambda with an
- *   untyped parameter, an empty `[]`, a literal holding one) is checked only after choosing,
- *   against its parameter's type; a lambda, before instantiating, so its result can bind type
- *   parameters (function-arguments.ts).
+ * - An argument whose type the chosen function decides (a bare variant, a lambda with an untyped
+ *   parameter, an empty `[]`, a literal holding one) is checked only after choosing, against its
+ *   parameter's type; a lambda, once the expected type has given its bounds and before
+ *   instantiating, so its result can bound type parameters (function-arguments.ts).
  * - A method call records its receiver with the call, as lowering passes it first (§3.7). A
  *   receiver the chosen function's `self` takes by reference must be a place that may change.
  * - An argument of the error type was already reported, so the call reports nothing more.
@@ -101,7 +101,7 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
         context.report(hint);
       }
     },
-    chosen: (chosen) => checkDecidedFunctions(context, written, chosen),
+    chosen: (chosen, settling) => checkDecidedFunctions(context, written, chosen, settling),
   });
   if (applied === undefined) {
     return errorType;

@@ -1,7 +1,8 @@
 /**
  * Overload clashes (§3.3, §3.7): whether two functions of one name clash doesn't depend on which
- * is declared first, and the rules for what counts as the same parameters hold pair by pair: a
- * type and a union holding it, a literal type and its base, among them.
+ * is declared first, and the rules hold pair by pair: a type beside a union holding it, or a
+ * literal type beside its base, is more specific, so neither clashes, unless a type parameter
+ * stands where they differ, or each function is narrower somewhere.
  */
 
 import { describe, expect, it } from 'vitest';
@@ -27,6 +28,12 @@ const signatures = [
   '(a: String | Bool)',
   '(a: "a")',
   '(a: "a" | "b")',
+  '(a: Int, b: Int?)',
+  '(a: Int?, b: Int)',
+  '(a: Int, b: Int? = none)',
+  '(a: Int?, b: Int = 1)',
+  '(a: Int, ...b: Array<Int?>)',
+  '(a: Int?, ...b: Array<Int>)',
 ] as const;
 
 type Signature = (typeof signatures)[number];
@@ -49,7 +56,7 @@ describe('overload clashes', () => {
   it.each<[Signature, Signature, boolean]>([
     ['(a: Int)', '(a: Int)', true],
     ['(a: Int)', '(a: String)', false],
-    ['(a: Int)', '(a: Int?)', true],
+    ['(a: Int)', '(a: Int?)', false],
     ['(a: Int)', '(a: &Int)', false],
     ['<T>(a: T)', '<U>(a: U)', true],
     ['<T>(a: T)', '<T>(a: T?)', true],
@@ -58,12 +65,15 @@ describe('overload clashes', () => {
     ['(a: Int, b: Int = 1)', '(a: Int)', true],
     ['(a: Int, b: Int = 1)', '(a: Int, b: String)', false],
     ['(self: Point)', '(self: &Point)', true],
-    ['(a: Int)', '(a: Int | String)', true],
+    ['(a: Int)', '(a: Int | String)', false],
     ['(a: Int?)', '(a: Int | String)', false],
     ['(a: Int | String)', '(a: String | Bool)', false],
-    ['(a: "a")', '(a: String)', true],
-    ['(a: "a")', '(a: "a" | "b")', true],
-    ['(a: "a" | "b")', '(a: String | Bool)', true],
+    ['(a: "a")', '(a: String)', false],
+    ['(a: "a")', '(a: "a" | "b")', false],
+    ['(a: "a" | "b")', '(a: String | Bool)', false],
+    ['(a: Int, b: Int?)', '(a: Int?, b: Int)', true],
+    ['(a: Int, b: Int? = none)', '(a: Int?, b: Int = 1)', true],
+    ['(a: Int, ...b: Array<Int?>)', '(a: Int?, ...b: Array<Int>)', true],
     ['(a: "a" | "b")', '(a: Int)', false],
   ])('%s and %s clash: %s', (first, second, clash) => {
     expect(clashes(first, second)).toBe(clash);

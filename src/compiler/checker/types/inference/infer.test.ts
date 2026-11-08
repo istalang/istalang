@@ -80,8 +80,12 @@ describe('never where a value must have its type exactly', () => {
     ["a function's result before a value", 'runFirst(failing, 1)'],
     ["a function's result after a value", 'runLast(1, failing)'],
     ["a function's result alone", 'runAlone(failing)'],
+    ['a direct Never argument', 'keep(panic("x"))'],
+    ['a struct field given Never', 'Box{value: panic("x")}'],
   ])('binds only what nothing else does, for %s', (_case, call) => {
     const main = [
+      'struct Box<T> { value: T }',
+      'fn keep<T>(x: T) -> T: x',
       'fn gather<T>(...items: Array<T>) -> Int: items.length()',
       'fn runFirst<T>(f: fn() -> T, fallback: T) -> T: fallback',
       'fn runLast<T>(fallback: T, f: fn() -> T) -> T: fallback',
@@ -91,6 +95,20 @@ describe('never where a value must have its type exactly', () => {
       '  const empty: Array<Never> = []',
       '  const failing = fail',
       `  drop ${call}`,
+    ].join('\n');
+    expect(reportedErrors(main)).toEqual([]);
+  });
+});
+
+describe('a generic struct literal joining fields across none', () => {
+  it.each([
+    ['value then none', 'Pair{a: 1, b: none}'],
+    ['none then value', 'Pair{a: none, b: 1}'],
+  ])('joins T with None into T?, for %s', (_case, literal) => {
+    const main = [
+      'struct Pair<T> { a: T, b: T }',
+      'fn main():',
+      `  const p: Pair<Int?> = ${literal}`,
     ].join('\n');
     expect(reportedErrors(main)).toEqual([]);
   });
@@ -182,5 +200,30 @@ describe('a recursive type inside what is given', () => {
       '  const n: Int? = found',
     ].join('\n');
     expect(reportedErrors(main)).toEqual([]);
+  });
+});
+
+describe("a generic function's own call inside its body", () => {
+  it.each([
+    ['given its parameter', 'fn again<T>(xs: Array<T>) -> Array<T>: again(xs)'],
+    [
+      'given a function of its parameter',
+      'fn sortedBy<T>(xs: Array<T>, order: fn(T, T) -> Int) -> Array<T>: sortedBy(xs, order)',
+    ],
+    ['as an argument of another call', 'fn twice<T>(xs: Array<T>) -> Array<T>: twice(twice(xs))'],
+    [
+      'with swapped type arguments',
+      'fn swap<A, B>(a: A, b: B, flip: Bool) -> Int:\n  if flip: swap(b, a, false) else: 0',
+    ],
+    [
+      'with a concrete and a parameter argument',
+      'fn shift<T, U>(x: T, y: U, stop: Bool) -> Int:\n  if stop: 0 else: shift(1, x, true)',
+    ],
+    [
+      'choosing among overloads by its own parameter',
+      'fn process<T>(x: T, y: T, stop: Bool) -> Int: 1\nfn process<T>(x: Int, y: T, stop: Bool) -> Int:\n  if stop: 0 else: process(y, y, true)',
+    ],
+  ])('gives its type parameters what the call passes, %s', (_case, declaration) => {
+    expect(reportedErrors(`${declaration}\nasync fn main():\n  drop 1`)).toEqual([]);
   });
 });

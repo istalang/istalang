@@ -21,13 +21,14 @@ import type { BodyContext } from '../../contexts/body-context.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
+import type { Settling } from '../../types/inference/settle.ts';
 import { substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import type { CallArgument, Inapplicability } from '../choosing/call-arguments.ts';
 import type { Candidate } from '../choosing/candidates.ts';
 import { type Application, choose } from '../choosing/choice.ts';
-import { type Instantiation, instantiate } from '../conformance/conformance.ts';
+import { type Instantiation, instantiate, settlingAt } from '../conformance/conformance.ts';
 import { closedThroughMembers, metThroughTraits } from '../conformance/trait-calls.ts';
 import { membersRequirementOf, traitMetBy } from '../conformance/union-traits.ts';
 import { argumentListText, filledTypes, fitArguments, recordArgumentKeys } from './argument-fit.ts';
@@ -40,12 +41,15 @@ export interface CallApplication {
   readonly candidates: readonly Candidate[];
   readonly arguments: readonly (CallArgument & { readonly node?: Expression | undefined })[];
   readonly typeArguments?: readonly Type[] | undefined;
-  /** The type the call is to give, which may decide its type arguments. */
+  /** The type the call is to give, which advises its type arguments once it is chosen. */
   readonly expected?: Type | undefined;
   /** Reports why no candidate takes the arguments, given each one's reason. */
   readonly none: (reasons: readonly Inapplicability[]) => void;
-  /** Checks what the chosen function decides before it is instantiated, as lambdas' bodies. */
-  readonly chosen?: (application: Application) => void;
+  /**
+   * Checks what the chosen function decides before it is instantiated, as lambdas' bodies, once
+   * the expected type has given its bounds.
+   */
+  readonly chosen?: (application: Application, settling: Settling) => void;
 }
 
 /** A call made: what was chosen and instantiated, and what it gives. */
@@ -72,9 +76,10 @@ export function applyCall(context: BodyContext, request: CallApplication): Appli
     return undefined;
   }
   const { application } = choice;
-  request.chosen?.(application);
   const site = useSite(checker, context.module, request.span);
-  const instantiation = instantiate(site, application, request.expected);
+  application.inference.expect(application.signature.result(), request.expected);
+  request.chosen?.(application, settlingAt(site, application.signature));
+  const instantiation = instantiate(site, application);
   if (instantiation === undefined) {
     return undefined;
   }

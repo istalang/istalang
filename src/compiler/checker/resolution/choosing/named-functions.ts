@@ -273,7 +273,8 @@ export function instantiatedValue(
   const { signature, binding } = application;
   const { isAsync } = signature.declaration;
   const expectedResult = result === undefined || !isAsync ? result : futureOf(checker, result);
-  const instantiation = instantiate(site, application, expectedResult);
+  application.inference.expect(signature.result(), expectedResult);
+  const instantiation = instantiate(site, application);
   if (instantiation === undefined) {
     return undefined;
   }

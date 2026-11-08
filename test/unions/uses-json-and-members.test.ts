@@ -125,7 +125,7 @@ describe('using a union: traits, overloads, clashes, equality, sendability, must
     ).toBeGreaterThan(0);
   });
 
-  it('enforces union overload resolution and overload clash rules', () => {
+  it('enforces union overload resolution, choosing the most specific of overloads', () => {
     expect(
       codesOf(
         'fn f(x: Int) -> Int: x',
@@ -134,17 +134,18 @@ describe('using a union: traits, overloads, clashes, equality, sendability, must
       ),
     ).toEqual([checkerDiagnostics.noMatchingOverload.code]);
 
-    expect(codesOf('fn g(x: Int) -> Int: x', 'fn g(x: Int | String) -> Int: 0')).toEqual([
-      checkerDiagnostics.overloadClash.code,
-    ]);
-
-    expect(codesOf('fn h(x: "a") -> Int: 1', 'fn h(x: String) -> Int: 2')).toEqual([
-      checkerDiagnostics.overloadClash.code,
-    ]);
-
-    expect(codesOf('fn k(x: "a") -> Int: 1', 'fn k(x: "a" | "b") -> Int: 2')).toEqual([
-      checkerDiagnostics.overloadClash.code,
-    ]);
+    const overloads = [
+      'fn g(x: Int) -> Int: x',
+      'fn g(x: Int | String) -> Int: 0',
+      'fn h(x: "a") -> Int: 1',
+      'fn h(x: String) -> Int: 2',
+      'fn k(x: "a") -> Int: 1',
+      'fn k(x: "a" | "b") -> Int: 2',
+    ];
+    expect(codesOf(...overloads)).toEqual([]);
+    expect(
+      runMain('String', '`${g(1)}:${g("x")}:${h("a")}:${h("b")}:${k("a")}:${k("b")}`', overloads),
+    ).toBe('1:0:1:2:1:2');
   });
 
   it('compares union values by member type then value, allows unions as Map keys, and checks Sendable and must-use', () => {

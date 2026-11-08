@@ -242,6 +242,24 @@ describe('conversions into a union (§2)', () => {
     ).toBe(30);
 
     expect(
+      runMain(
+        'String',
+        [
+          'const s: Status = "sent"',
+          'const so: Status? = "draft"',
+          'const u: Int | String = "ok"',
+          'const uo: (Int | String)? = 7',
+          'const r1: Status? = keepOpt(s)',
+          'const r2: Status? = keepOpt(so)',
+          'const r3: (Int | String)? = keepOpt(u)',
+          'const r4: (Int | String)? = keepOpt(uo)',
+          '`${r1 ?? "failed"}:${r2 ?? "failed"}:${r3 ?? "n"}:${r4 ?? "n"}`',
+        ].join('\n  '),
+        [...baseDecls, 'fn keepOpt<T>(x: T?) -> T?: x'],
+      ),
+    ).toBe('sent:draft:ok:7');
+
+    expect(
       codesOf('fn onlyOpt<T>(x: T?) -> T: x ?? panic("none")', 'fn bad():', '  _ = onlyOpt(none)'),
     ).toEqual([checkerDiagnostics.cannotInfer.code]);
 

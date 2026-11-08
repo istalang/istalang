@@ -22,7 +22,8 @@ import type { Fitting } from './index.ts';
 export interface PartsRelation extends Pick<Fitting, 'varianceOf' | 'shapeOf'> {
   /** The pairs being related, so a recursive type's parts are related once. */
   readonly relating: UnfoldingPairs;
-  readonly exact: (expected: Type, found: Type) => boolean;
+  /** Whether `found` is `expected`, where a part must be the same type: invariant, or behind `&`. */
+  readonly same: (expected: Type, found: Type) => boolean;
   /** Whether a value of `found` fits where `expected` is, as the match fits any value. */
   readonly fits: (found: Type, expected: Type) => boolean;
 }
@@ -92,7 +93,7 @@ function fitsAs(variance: Variance, found: Type, expected: Type, relation: Parts
     case 'contravariant':
       return relation.fits(expected, found);
     default:
-      return relation.exact(expected, found);
+      return relation.same(expected, found);
   }
 }
 
@@ -117,7 +118,7 @@ function functionFitsByParts(
   expected: FunctionType,
   relation: PartsRelation,
 ): boolean {
-  const { fits, exact } = relation;
+  const { fits, same } = relation;
   return (
     (found.isAsync === expected.isAsync || !found.isAsync) &&
     (found.isSendable || !expected.isSendable) &&
@@ -126,7 +127,7 @@ function functionFitsByParts(
     sameItems<ParameterSlot>(
       (taken, given) =>
         taken.reference === given.reference &&
-        (taken.reference ? exact(taken.type, given.type) : fits(given.type, taken.type)),
+        (taken.reference ? same(taken.type, given.type) : fits(given.type, taken.type)),
     )(found.parameters, expected.parameters) &&
     fits(found.result, expected.result)
   );

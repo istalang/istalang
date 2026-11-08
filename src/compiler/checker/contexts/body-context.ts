@@ -83,11 +83,13 @@ export interface BodyContext {
   readonly checkedPart: (node: Expression | undefined) => TypedPart;
   /**
    * Checks `node`, a lambda, maybe parenthesized, recording its type, where its parameters' types
-   * are known and its result is left for its body to decide (§3.5).
+   * are known and its result is left for its body to decide (§3.5), `hint` guiding the body as its
+   * expected type when given.
    */
   readonly inferLambda: (
     node: Expression,
     parameters: Pick<FunctionType, 'parameters' | 'pack'>,
+    hint?: Type,
   ) => Type;
   /** The type `node` was checked to have; the error type for a node not checked yet. */
   readonly typeOf: (node: Expression) => Type;

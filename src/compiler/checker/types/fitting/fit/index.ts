@@ -115,16 +115,25 @@ export interface Fitting extends TypeRules {
   readonly varianceOf: (declaration: VariedDeclaration) => readonly Variance[];
 }
 
-/** How `matchConversion` compares leaf types and checks `any` conformance. */
+/**
+ * How `matchConversion` compares leaf types: `exact` where a value fits as it is, `same` where a
+ * part must be the very type (invariant, or behind `&`), `exact` unless given. A probe that may
+ * fail inside a match runs through `attempt`, so rules that keep state (inference's bounds) can
+ * leave none behind when it does.
+ */
 export interface ConversionRules extends Fitting {
   readonly exact: (expected: Type, found: Type) => boolean;
+  readonly same?: ((expected: Type, found: Type) => boolean) | undefined;
+  readonly attempt?: ((probe: () => boolean) => boolean) | undefined;
 }
 
 /**
  * `ConversionRules` inside one match: the pairs of types whose parts are being related, and the
  * match itself, which parts are fitted by.
  */
-interface Matching extends ConversionRules, PartsRelation {}
+interface Matching extends Omit<ConversionRules, 'same' | 'attempt'>, PartsRelation {
+  readonly attempt: (probe: () => boolean) => boolean;
+}
 
 /** How `found` fits `expected`; undefined when nothing makes it fit. */
 export function fitOf(found: Type, expected: Type, fitting: Fitting): Fit | undefined {
@@ -154,6 +163,8 @@ export function matchConversion(
 function matchingWith(rules: ConversionRules): Matching {
   const matching: Matching = {
     ...rules,
+    same: rules.same ?? rules.exact,
+    attempt: rules.attempt ?? ((probe) => probe()),
     relating: new UnfoldingPairs(),
     fits: (found, expected) => {
       const fit = matched(found, expected, matching);
@@ -190,7 +201,9 @@ function ownConversion(found: Type, expected: Type, rules: Matching): Fit | unde
       : undefined;
   }
   if (found.kind === 'union') {
-    return found.members.every((member) => intoMember(member, expected, rules) !== undefined)
+    return rules.attempt(() =>
+      found.members.every((member) => intoMember(member, expected, rules) !== undefined),
+    )
       ? { conversion: { kind: 'none' }, into: { union: expected } }
       : (intoAnyMember(found, expected, rules) ?? membersConverted(found, expected, rules));
   }
@@ -240,7 +253,9 @@ function convertedInto(found: Type, expected: Type, rules: Matching): Conversion
   if (isLiteralOf(found, expected)) {
     return { kind: 'base' };
   }
-  return fitsByParts(found, expected, rules) ? { kind: 'parts', to: expected } : undefined;
+  return rules.attempt(() => fitsByParts(found, expected, rules))
+    ? { kind: 'parts', to: expected }
+    : undefined;
 }
 
 /** Whether `type` is built of parts a conversion may convert one by one (§3.5). */
@@ -260,7 +275,7 @@ function hasParts(type: Type): boolean {
  * a type built of parts; never into a type parameter, which a union fills only as a whole.
  */
 function membersConverted(found: UnionType, expected: Type, rules: Matching): Fit | undefined {
-  return found.members.every((member) => rules.fits(member, expected))
+  return rules.attempt(() => found.members.every((member) => rules.fits(member, expected)))
     ? { conversion: { kind: 'parts', to: expected } }
     : undefined;
 }

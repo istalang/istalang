@@ -88,12 +88,7 @@ export function readsNothing(
   link: Expression,
   access: MemberAccess,
 ): Type | undefined {
-  const qualifier = nameNodeOf(access.target);
-  const throughNamespace =
-    !access.isOptional &&
-    qualifier !== undefined &&
-    context.entityOf(qualifier)?.kind === 'namespace';
-  if (throughNamespace) {
+  if (readsThroughNamespace(context, access)) {
     return context.entityOf(access.member) === undefined ? errorType : undefined;
   }
   if (!isMissingName(access.member)) {
@@ -103,6 +98,16 @@ export function readsNothing(
     context.chains.target(context, link);
   }
   return errorType;
+}
+
+/** Whether `access` reads a namespace's member, `math.parse`, rather than a value's. */
+export function readsThroughNamespace(context: BodyContext, access: MemberAccess): boolean {
+  const qualifier = nameNodeOf(access.target);
+  return (
+    !access.isOptional &&
+    qualifier !== undefined &&
+    context.entityOf(qualifier)?.kind === 'namespace'
+  );
 }
 
 /** Records how `access` reads the field `found`, and the field its member's name names. */

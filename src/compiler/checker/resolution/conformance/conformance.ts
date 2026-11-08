@@ -1,8 +1,10 @@
 /**
  * Instantiating a chosen function and meeting its constraints (§3.5, §3.10).
  *
- * - A chosen generic function's type parameters that the arguments left open come from the type
- *   the call is expected to have, then from their defaults; one still open can't be inferred.
+ * - A chosen generic function's type parameters are settled from what inference found
+ *   (types/inference/settle.ts), the call's expected type among it once the caller has given it
+ *   (`Inference.expect`); one still open can't be inferred. Settling asks which types a parameter
+ *   admits (`admitsAt`).
  * - Every type argument must meet its parameter's constraints. A type meets a trait with the same
  *   functions wherever it is met: those the trait requires must be declared beside the types they
  *   take or beside the trait, or be a requirement of a type parameter's own constraints
@@ -22,7 +24,7 @@
  *   (`rootSearches`, kept by root-goals.ts), each site asking making its reports again.
  * - A requirement with type parameters of its own is met by a function generic in the same way:
  *   resolving the call with those parameters as opaque types infers the candidate's own.
- * - The required result is what the call is expected to give, so a type parameter no argument
+ * - The required result is what the witness must give exactly, so a type parameter no argument
  *   decides comes from it: `Array.default<T>()` meets `Self.default()` for `Array<Int>` with `T`
  *   as `Int`.
  * - A witness search that fails is reported once, as the constraint not met, so searching itself
@@ -39,7 +41,8 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { ResolvedCall, Witnesses } from '../../surface/resolved-call.ts';
 import { standsForMember } from '../../types/fitting/member-arguments.ts';
 import { sameType } from '../../types/identity/identity.ts';
-import { type Completion, completeInference } from '../../types/inference/complete.ts';
+import { type Completion, completeInference, settlingOf } from '../../types/inference/complete.ts';
+import type { Settling } from '../../types/inference/settle.ts';
 import {
   type Substitution,
   substitute,
@@ -56,6 +59,7 @@ import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { callMade } from '../choosing/calls-made.ts';
 import { type Application, type Choice, type Signature, signatureOf } from '../choosing/choice.ts';
+import { admitting } from './admits.ts';
 import { chooseWitness, chooseWitnessAmong } from './declared-witness.ts';
 import { type Derivation, derivationOf } from './derived-traits.ts';
 import {
@@ -89,16 +93,11 @@ export interface Instantiation {
 }
 
 /**
- * Completes `application`: open type parameters from `expected`, then their defaults, then every
- * constraint met, its type `match`es and its witnesses' noted to reduce. Undefined after reporting
- * why it can't be.
+ * Completes `application`: its type parameters settled, then every constraint met, its type
+ * `match`es and its witnesses' noted to reduce. Undefined after reporting why it can't be.
  */
-export function instantiate(
-  site: UseSite,
-  application: Application,
-  expected: Type | undefined,
-): Instantiation | undefined {
-  const instantiation = instantiateAt(site, application, expected, startSearch());
+export function instantiate(site: UseSite, application: Application): Instantiation | undefined {
+  const instantiation = instantiateAt(site, application, startSearch());
   if (isFailure(instantiation)) {
     return undefined;
   }
@@ -111,16 +110,13 @@ export function instantiate(
 function instantiateAt(
   site: UseSite,
   application: Application,
-  expected: Type | undefined,
   search: Search,
 ): Instantiation | Failure {
   const { checker } = site;
   const { signature, inference } = application;
   const { declaration, typeParameters } = signature;
-  if (expected !== undefined && typeParameters.some((each) => !inference.boundOf(each))) {
-    inference.matchExactly(signature.result(), expected);
-  }
-  const completion = completeInference(checker, declaration, typeParameters, inference);
+  const settling = settlingAt(site, signature, search);
+  const completion = completeInference(checker, typeParameters, inference, settling);
   if (completion.kind === 'open') {
     const parameter = completion.parameter.name.text;
     const name = declaredFunctionName(declaration);
@@ -165,6 +161,22 @@ function witnessesOf(
     witnesses.set(parameter, met);
   }
   return witnesses;
+}
+
+/**
+ * How `signature`'s type parameters settle at `site`, within `search` (types/inference/settle.ts):
+ * a type is admitted where it meets their constraints, asked as a probe reporting nothing. A
+ * call's arguments the chosen function decides ask it before it is instantiated
+ * (resolution/calls/function-arguments.ts).
+ */
+export function settlingAt(
+  site: UseSite,
+  signature: Signature,
+  search: Search = startSearch(),
+): Settling {
+  const { declaration, typeParameters } = signature;
+  const admits = admitting(site.checker, silentMeets(site, search));
+  return settlingOf(site.checker, declaration, typeParameters, admits);
 }
 
 /** Whether `type` meets `constraint` at the use site, reporting there when it doesn't. */
@@ -417,7 +429,11 @@ function witnessChosen(
     return { kind: 'ambiguous' };
   }
   const { application } = choice;
-  const instantiation = instantiateAt(site, application, signature.result(), deeper(search));
+  const { inference, signature: chosen } = application;
+  if (chosen.typeParameters.some((parameter) => inference.boundOf(parameter) === undefined)) {
+    inference.matchExactly(chosen.result(), signature.result());
+  }
+  const instantiation = instantiateAt(site, application, deeper(search));
   if (isFailure(instantiation)) {
     return { kind: instantiation };
   }

@@ -160,7 +160,7 @@ describe('variance derivation across positions and recursive declarations (§3.5
           'const h2: Holder<Int> = h1',
           'const lh1: ListHolder<Int?> = ListHolder{f: fn(_): 10}',
           'const lh2: ListHolder<Int> = lh1',
-          '(h2.f)(Phantom<Int>{n: 31}) + (lh2.f)(PhantomList<Int>{next: none})',
+          '(h2.f)(Phantom{n: 31}) + (lh2.f)(PhantomList{next: none})',
         ].join('\n  '),
         decls,
       ),
