@@ -11,6 +11,7 @@ import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.t
 import { lines } from '../../../parser/parse.test-kit.ts';
 import type { TypeApplication } from '../../../syntax/expressions/index.ts';
 import { reported } from '../../check.test-kit.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { checkedMain } from '../../lookup/lookup.test-kit.ts';
 import { typeText } from '../../types/type/type-text.ts';
 
@@ -84,6 +85,27 @@ describe('a function named as a value with type arguments', () => {
       '  takeOk(Result.Ok<Int>) + takeErr(Result.Err<Int>)',
     );
     expect(reported(text)).toEqual(reportedNothing);
+  });
+
+  it('has the one type its written type arguments fix, which chooses among overloads', () => {
+    const text = lines(
+      'struct Box<T> { item: T }',
+      'fn listed<T>(x: T) -> Array<T>: [x]',
+      'fn take<T>(f: fn(T) -> Array<T>) -> Int: { drop f; 1 }',
+      'fn take<T>(f: fn(T) -> Box<T>) -> Int: { drop f; 2 }',
+      'fn main() -> Int: take(listed<Int>)',
+    );
+    expect(reported(text)).toEqual(reportedNothing);
+  });
+
+  it('asks for a type parameter its written type arguments leave open with no default', () => {
+    const text = lines(
+      'fn f<A = Int, B>(b: B) -> B: b',
+      'fn main():',
+      '  const g = f<Int>',
+      '  drop g',
+    );
+    expect(reported(text).codes).toEqual([checkerDiagnostics.cannotInfer.code]);
   });
 
   it("is the function member of an expected union, as the function's bare name is", () => {

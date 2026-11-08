@@ -103,7 +103,7 @@ export function reshapesArguments(
 }
 
 /** The type arguments `written` gives `takes`' type parameters, in order (§3.5). */
-function writtenFor(
+export function writtenFor(
   { typeParameters }: Takes,
   written: readonly Type[] | undefined,
 ): Substitution | undefined {

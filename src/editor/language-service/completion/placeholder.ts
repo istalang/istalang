@@ -121,12 +121,29 @@ function kindAt(cursor: Cursor, parsed: PlaceholderParse): ParsedPlaceKind | 'no
 
 /**
  * The module's text with the placeholder at the cursor, parsed reusing what the edit left alike:
- * cased as a type's name before the name written there where that makes it a type argument after
- * a name, else after that name, as a value's.
+ * after the name written there, as a value's; or, where that reads a comparison or nothing at all
+ * (`mayHideTypeArguments`), cased as a type's name before it, when that makes it a type argument
+ * after a name.
  */
 function placeholderParse(cursor: Cursor): PlaceholderParse {
+  const plain = parsedWith(cursor, placeholder, cursor.offset);
+  if (!plain.chain.some(mayHideTypeArguments)) {
+    return plain;
+  }
   const typed = parsedWith(cursor, typePlaceholder, cursor.name?.span.start ?? cursor.offset);
-  return isTypeArgument(typed.chain) ? typed : parsedWith(cursor, placeholder, cursor.offset);
+  return isTypeArgument(typed.chain) ? typed : plain;
+}
+
+/**
+ * Whether `node`, holding the placeholder cased as a value's, may be type arguments it keeps from
+ * being read as ones: a comparison by `<`, or what the parser couldn't read.
+ */
+function mayHideTypeArguments(node: SyntaxNode): boolean {
+  return (
+    node.kind === 'ChainedComparison' ||
+    node.kind === 'Invalid' ||
+    (node.kind === 'Binary' && node.operator === '<')
+  );
 }
 
 /** The module's text with `name` written at `at`, joining the name written at the cursor. */

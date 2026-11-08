@@ -43,11 +43,13 @@ import { parametersIn } from '../../types/parts/type-parts.ts';
 import { withPack } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, tupleElements } from '../../types/type/primitives.ts';
+import type { TypeRules } from '../../types/type/type-rules.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { futureArgument, futureOf } from '../../types/type/well-known.ts';
 import { namedType } from '../../types/written/named-types.ts';
 import { parameterType } from '../../types/written/resolve-type.ts';
 import { type Instantiation, instantiate } from '../conformance/conformance.ts';
+import { writtenFor } from './applicability.ts';
 import type { CallArgument, Passing, SignatureSlot } from './call-arguments.ts';
 import { type Candidate, callCandidates, staticCandidates, staticTargetOf } from './candidates.ts';
 import { type Application, type Choice, chooseAsValue, signatureOf } from './choice.ts';
@@ -333,7 +335,7 @@ export function functionsAccepted(
 function hasOwnType({ signature, inference }: Application): boolean {
   return (
     signature.parameters.every((slot) => !slot.hasDefault && slot.rest === undefined) &&
-    signature.typeParameters.every((parameter) => !inference.isUnknown(parameter))
+    signature.typeParameters.every((parameter) => inference.boundOf(parameter) !== undefined)
   );
 }
 
@@ -372,11 +374,9 @@ function loneFunction(
 }
 
 /**
- * How `candidate` takes its own parameters, as the type arguments written after `named`
- * instantiate them: a type parameter they leave out is read as the error type, which fits anything
- * and binds nothing (types/inference/infer.ts), so inference finds it later, and a pack they give
- * flattens into its items (`ownArguments`). With none written, only a non-generic one takes them,
- * since only an expected type instantiates a generic one.
+ * How `candidate` takes its own parameters given the type arguments written after `named`
+ * (`ownArguments`); with none written, only a non-generic one takes them, since only an expected
+ * type instantiates a generic one.
  */
 export function ownChoice(
   context: BodyContext,
@@ -389,27 +389,35 @@ export function ownChoice(
   if (written === undefined && signature.typeParameters.length > 0) {
     return { kind: 'none', reasons: [] };
   }
-  const substitution: Substitution = new Map(
-    signature.typeParameters.map((parameter, index) => [parameter, written?.[index] ?? errorType]),
-  );
+  const given = writtenFor(signature, written);
   const arguments_ = signature.parameters.flatMap((slot) =>
-    ownArguments(slot, substitute(slot.type, substitution, checker.typeRules)),
+    ownArguments(slot, given, checker.typeRules),
   );
   return chooseAsValue(checker, [candidate], arguments_, written);
 }
 
 /**
- * The arguments that pass `slot` its own type, `type` as instantiated: one value, or for a pack's
- * rest a tuple's items, one by one, or another pack's value, spread (§3.5).
+ * The arguments that pass `slot` its own type: as declared, with no type arguments `written`; with
+ * them, an argument whose type the instantiation decides, which fits any type, as counting
+ * parameters takes them (`takesCount`), but for a pack's rest, which they write: a tuple's items,
+ * one by one, or another pack's value, spread (§3.5).
  */
-function ownArguments(slot: SignatureSlot, type: Type): readonly CallArgument[] {
+function ownArguments(
+  slot: SignatureSlot,
+  written: Substitution | undefined,
+  rules: TypeRules,
+): readonly CallArgument[] {
   const passing = passingOf(slot.reference);
-  if (slot.rest?.kind !== 'pack') {
-    return [{ type, passing }];
+  if (written === undefined) {
+    return [{ type: slot.type, passing }];
   }
-  const items = tupleElements(type);
+  if (slot.rest?.kind !== 'pack') {
+    return [{ type: undefined, passing }];
+  }
+  const pack = substitute(slot.type, written, rules);
+  const items = tupleElements(pack);
   return items === undefined
-    ? [{ type, passing, isSpread: true }]
+    ? [{ type: pack, passing, isSpread: true }]
     : items.map((item) => ({ type: item, passing }));
 }
 
