@@ -29,7 +29,7 @@ tags: [tracker]
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F26, P38, Q46, B35. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F26, P38, Q46, B36. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -152,3 +152,4 @@ Crashes, spec gaps, wrong or missing diagnostics, host-visible behaviour.
 | B30 | Only `checker/revisions.test.ts` guards incremental checking: random edit sequences, each revision's answers compared with a fresh checker's. A wrong `equal` on an entry table, or a table context not decided by its key (Q31), gives stale diagnostics that still look plausible, wherever the test's edits don't reach. Add a verification mode that recomputes each entry a checker takes over and compares the two answers, as rustc's incremental verification does, and run it over the corpus and the std suites in CI. | medium | none; can be done now | architecture review 2026-11-05 |
 | B33 | An async lambda passed where `fn(A) -> Future<R>` is expected reports a misleading second error inside its body after the first. | small | none; can be done now | p5 QA 2026-11-06 |
 | B34 | The rename property in `lsp/providers/navigation/rename.test.ts` ("keeps every diagnostic…") fails at seed -420107366, path "24": renaming `Some` declared in `test/corpus/generics/default-typed-fields.ista` spills into `unions/invalid-matching.ista` (5400 and 5422 lost; 4000 "'Some' is not declared" and 5401 gained), as if rename took another module's `Some` for the declaration renamed. | small | none; can be done now | p5 equi verify 2026-11-06 |
+| B35 | Checking a broken program can crash computing a constant: `Unreachable: Only a one-element tuple is untupled` (`rules/computation/forms.ts`, `convertedForm`) for `const one: (Int,) =` with its value left out, then `const back: Int = one`. Lowering's "compiles every program the checker accepts" property found it at seed -1682074512 (path `154:2:7:3:5:3:14:3:8:33:3:3:4:5:35:35:35`) on the corpus program of tuple conversions; it reproduces on 591bbc16. | medium | none; can be done now | applied type arguments work 2026-11-08 |
