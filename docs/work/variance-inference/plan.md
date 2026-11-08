@@ -14,11 +14,13 @@ Design and decisions: `design.md`. Spec: `docs/spec.md`.
 
 ## Process
 
-**Six phases, at most three at a time, each with an implementer fork and a cold reviewer; qa on
-every behavioural phase; a merge review at the end.** *Why:* the work is core and has high fan-in
+**Six phases, each an implementer fork in its own worktree, with a pi reviewer; qa on every
+behavioural phase; a merge review at the end.** *Why:* the work is core and has high fan-in
 (fitting, inference, lowering), so review depth is high. It splits at two seams, identity and
 variance, so the longest phase (I1) starts at once, beside the contract it later consumes.
 
+- **Examiners:** V0's fork spawns the root pi reviewer, and the first behavioural phase the root
+  qa; every later phase forks them. A fork reports to the tech-lead only once the human approves.
 - **Merging:** forks rebase and fast-forward `main` once their reviewer approves. After V1 and I1
   have both landed, the tech-lead runs an e2e `qa`, since covariance-dependent behaviour exists
   only once both are in.
@@ -39,11 +41,11 @@ variance, so the longest phase (I1) starts at once, beside the contract it later
 | **V2** Variance through `any` (behavioural) | Traits' variance (`design.md` §2), meeting `any Trait<B>` through a fitting `Trait<A>`, dispatch and field reads converting, downcasts admitting. Spec §3.10 | `design.md` §9's `any Source` and `any Sink` rows. `Array<Int>` meets no trait through a function for `Array<Int?>` |
 | **I2** Joint solving (structural, then behavioural) | 1. Every per-call and per-literal record pending until the outermost system settles, written by one pass; behaviour-neutral. 2. Nested generic calls and literals join the outermost system; literals with no type of their own take the expected type (`design.md` §4); variants become ordinary generic calls, spreads and `Options.Empty` included; delete `known-parameters.ts` and the variant helpers. 3. Delete §3.7 literal building once nothing reads it | `items([Item{value: "s"}])` as `Options<"s" \| "m">`; `items([Item{value: Small}])`; a lambda inside a nested generic call; `design.md` §9's variant rows. `variants.test.ts`, `recursive-uses.test.ts`, `literal-arguments.test.ts` unchanged. No `builds` remains. Profile within noise |
 
-**Order:** {V0 ∥ I0 ∥ I1} → V1 when V0 lands → {I2 ∥ V2} when V1 (and I1, for I2) land → merge
-review. *Why:* V1 needs V0's identity. I1 is the longest and needs only V0's variance contract,
-which it codes against before V0 lands. I2 needs V1's conversions and I1's system; V2 needs V1's
-variance. I1 and V1 meet only at `varianceOf`, so they run in parallel and skip e2e until both
-have merged.
+**Order:** {V0 ∥ I0} → I1 and V1 once both land → I2 once V1 and I1 land, V2 once V1 lands →
+merge review. A phase starts only on landed code, never on a contract, and beside a running one
+only when their branches won't conflict. *Why:* least total work over the fastest finish. V0 and
+I0 lay the bases (identity, the variance stub, `commonType`) and touch disjoint files. I2 needs
+V1's conversions and I1's system; V2 needs V1's variance.
 
 **Proposal 8** follows V1: its conversions become subtyping (F28 folds into its plan), its `K`
 default becomes a settling rule, and its `Persistable` reads V0's reach. Its runtime is
