@@ -52,7 +52,7 @@ import { checkLambda, lambdaAccepts } from '../closures/lambdas.ts';
 import { checkDereference } from './access/dereference.ts';
 import { checkIndex } from './access/indexing.ts';
 import { checkMemberAccess } from './access/member-access.ts';
-import { checkName, nameAccepts, variableType } from './access/names.ts';
+import { checkName, memberAccepts, nameAccepts, variableType } from './access/names.ts';
 import { checkUnwrap } from './access/optionals.ts';
 import { checkCall } from './calls.ts';
 import {
@@ -161,7 +161,7 @@ const acceptsHandlers: Handlers<BodyContext, Expression, [], Accepts | undefined
   StructLiteral: structLiteralAccepts,
   NewStructLiteral: ownType,
   IndentedValue: indentedAccepts,
-  MemberAccess: namedFunctionsAccepted,
+  MemberAccess: memberAccepts,
   TypeApplication: namedFunctionsAccepted,
   TupleElement: ownType,
   BlockExpression: (context, node) => blockAccepts(context, node.block),

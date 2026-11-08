@@ -8,7 +8,8 @@
  * completing (`completeCall`) are apart, so a written call completes once the system it stands in
  * settles (joint.ts); a call the language makes applies at once (`applyCall`).
  *
- * - An argument of the error type was reported already, so the call reports nothing more.
+ * - An argument of the error type was reported already, so a call nothing chosen for reports
+ *   nothing more, while one chosen all the same judges its other arguments.
  * - A call through a union's trait is a candidate only where the union meets the trait (§6,
  *   conformance/trait-calls.ts); one that inferred the trait's arguments is judged once they are,
  *   and closed with them, or made through the function declared for the union whole instead.
@@ -38,6 +39,8 @@ import { argumentListText, filledTypes, fitArguments, recordArgumentKeys } from 
 /** A call to apply: where it stands, how reports name it, what it may call and is given. */
 export interface CallApplication {
   readonly span: AnchoredSpan;
+  /** The call's node, which its variables stand at (types/inference/variables.ts), if written. */
+  readonly site?: object | undefined;
   /** The function's name, or the operator, as an ambiguity names the call. */
   readonly name: string;
   readonly candidates: readonly Candidate[];
@@ -80,12 +83,17 @@ export function chooseCall(
   context: BodyContext,
   request: CallApplication,
 ): Application | undefined {
-  if (request.arguments.some(({ type }) => type?.kind === 'error')) {
-    return undefined;
-  }
   const { checker } = context;
   const candidates = metThroughTraits(checker, request.candidates);
-  const choice = choose(checker, candidates, request.arguments, request.typeArguments);
+  const choice = choose(checker, candidates, request.arguments, {
+    written: request.typeArguments,
+    site: request.site,
+  });
+  // An argument of the error type was reported already; it fits anything, so a call it leaves no
+  // single function for reports nothing more, and one it leaves one still judges the others.
+  if (choice.kind !== 'chosen' && request.arguments.some(({ type }) => type?.kind === 'error')) {
+    return undefined;
+  }
   if (choice.kind === 'several') {
     context.report(ambiguity(checker, request, choice.tied));
     return undefined;
@@ -126,13 +134,17 @@ export function completeCall(
   if (closed === undefined) {
     return undefined;
   }
-  const count = request.arguments.length;
+  const settled = request.arguments.map((argument) =>
+    argument.joining === undefined || argument.type === undefined
+      ? argument
+      : { ...argument, type: application.inference.solved(argument.type) },
+  );
   fitArguments(
     context,
-    request.arguments,
-    filledTypes(checker.typeRules, application, instantiation, count),
+    settled,
+    filledTypes(checker.typeRules, application, instantiation, settled.length),
   );
-  recordArgumentKeys(context, request.arguments, { application, instantiation });
+  recordArgumentKeys(context, settled, { application, instantiation });
   return {
     application: { ...application, candidate: closed.candidate },
     instantiation: closed.instantiation,

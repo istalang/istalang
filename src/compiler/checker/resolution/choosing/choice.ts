@@ -123,14 +123,20 @@ function slotsOf(
   });
 }
 
-/** Chooses among `candidates` for `callArguments` and any written type arguments. */
+/**
+ * Chooses among `candidates` for `callArguments` and any `written` type arguments, at the call's
+ * own `site` when it has one.
+ */
 export function choose(
   checker: CheckerContext,
   candidates: readonly Candidate[],
   callArguments: readonly CallArgument[],
-  written: readonly Type[] | undefined,
+  {
+    written,
+    site,
+  }: { readonly written?: readonly Type[] | undefined; readonly site?: object | undefined } = {},
 ): Choice {
-  return chosenAmong(checker, candidates, { callArguments, written, binder: bindArguments });
+  return chosenAmong(checker, candidates, { callArguments, written, binder: bindArguments, site });
 }
 
 /**

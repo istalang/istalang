@@ -73,7 +73,7 @@ export function checkMapLiteral(
 }
 
 /** A map literal's spread: the pair each of its entries is, and whether it is a `Map`'s. */
-interface SpreadPairs {
+export interface SpreadPairs {
   readonly spread: Spread;
   readonly key: Type;
   readonly value: Type;
@@ -110,7 +110,11 @@ function entriesOf(
 }
 
 /** The `(key, value)` pairs `spread` gives in a map literal of a `Map`. */
-function spreadPairs(context: BodyContext, spread: Spread, map: Type | undefined): SpreadPairs {
+export function spreadPairs(
+  context: BodyContext,
+  spread: Spread,
+  map: Type | undefined,
+): SpreadPairs {
   const type = context.expression(spread.expression, map);
   const own = wellKnownArguments(context.checker, wellKnown.map, type);
   const [key = errorType, value = errorType] =
@@ -130,7 +134,7 @@ interface AgreedEntries {
  * to theirs, part by part, else reported by the part that doesn't fit; a `Map`'s copied whole
  * where its pairs fit as they are, else through its cursor.
  */
-function settleMapSpread(
+export function settleMapSpread(
   context: BodyContext,
   { spread, key, value, isMap }: SpreadPairs,
   agreed: AgreedEntries,
@@ -214,7 +218,7 @@ function elementsProduced(
  * The item type what an array literal's `elements` produced agree on, each spread of an array
  * among them then settled on it (`settleSpread`).
  */
-function agreedElement(
+export function agreedElement(
   context: BodyContext,
   elements: ArrayLiteral['elements'],
   produced: readonly Produced[],
@@ -234,7 +238,11 @@ function agreedElement(
  * array's elements, whose form waits until the literal's items agree (`settleSpread`), or what
  * iterating gives.
  */
-function spreadItems(context: BodyContext, spread: Spread, item: Type | undefined): Produced {
+export function spreadItems(
+  context: BodyContext,
+  spread: Spread,
+  item: Type | undefined,
+): Produced {
   const expected = item === undefined ? undefined : arrayOf(context.checker, item);
   const type = context.expression(spread.expression, expected);
   const element = arrayElement(context.checker, type);

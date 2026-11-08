@@ -37,7 +37,7 @@ import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
 import { type CallApplication, chooseCall, completeCall } from '../applying/applied-call.ts';
 import { argumentListText } from '../applying/argument-fit.ts';
-import { settleOutermost } from '../applying/joint.ts';
+import { type JoinPlace, settledOrJoined } from '../applying/joint.ts';
 import type { BindingFailure } from '../choosing/binding.ts';
 import type { CallArgument, Inapplicability, Misfit, Passing } from '../choosing/call-arguments.ts';
 import { callMade } from '../choosing/calls-made.ts';
@@ -46,6 +46,7 @@ import type { Application } from '../choosing/choice.ts';
 import { type Instantiation, settlingAt } from '../conformance/conformance.ts';
 import { checkDecidedFunctions } from './function-arguments.ts';
 import { changeReceiver, checkReferencedPlaces } from './places.ts';
+import { expectWrittenArguments } from './written-expectations.ts';
 
 /**
  * An argument as written: its node, how it is passed, and its type, undefined when the chosen
@@ -63,6 +64,13 @@ export interface WrittenArgument {
   readonly builds?: Accepts | undefined;
   readonly name?: Identifier | undefined;
   readonly isSpread?: boolean | undefined;
+  /** Where it may have joined the call, with what did (applying/joint.ts). */
+  readonly place?: JoinPlace | undefined;
+  /**
+   * For a lambda the call decides whose parameters are written, the function type they make it,
+   * which bounds what the call gives them (constructs/closures/lambdas.ts `writtenInputs`).
+   */
+  readonly inputs?: Type | undefined;
 }
 
 /** A call to resolve, as written. */
@@ -80,6 +88,8 @@ export interface CallRequest {
   readonly receiver?: Expression;
   /** What to report instead when no candidate takes the arguments, if anything. */
   readonly hint?: () => Diagnostic<AnchoredSpan> | undefined;
+  /** Where the call may join the call it is passed to (applying/joint.ts), if it may. */
+  readonly place?: JoinPlace | undefined;
 }
 
 /**
@@ -95,6 +105,7 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
   const written = request.arguments;
   const applying: CallApplication = {
     span: site.span,
+    site,
     name: request.name,
     candidates: request.candidates,
     arguments: written.map((argument) => ({ ...callArgumentOf(argument), node: argument.node })),
@@ -113,6 +124,7 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
   };
   const chosen = chooseCall(context, applying);
   if (chosen === undefined) {
+    expectWrittenArguments(context, applying);
     return errorType;
   }
   const { checker } = context;
@@ -121,14 +133,18 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
     ...chosen,
     inference: chosen.inference.within(joint),
   });
-  return settleOutermost({
-    inference: chosen.inference,
-    type: chosen.inference.open(chosen.signature.result()),
-    settling,
-    joined: [],
-    judge: (joint) => applying.chosen?.(within(joint), settling),
-    complete: (joint) => completeResolved(context, request, applying, within(joint)),
-  });
+  return settledOrJoined(
+    context,
+    {
+      inference: chosen.inference,
+      type: chosen.inference.open(chosen.signature.result()),
+      settling,
+      joined: written.flatMap(({ place }) => place ?? []),
+      judge: (joint) => applying.chosen?.(within(joint), settling),
+      complete: (joint) => completeResolved(context, request, applying, within(joint)),
+    },
+    request.place,
+  );
 }
 
 /** Completes the call `request` makes, once its system is settled, recording it; its type. */
@@ -164,7 +180,8 @@ function completeResolved(
 
 /** A written argument as choosing sees it. */
 export function callArgumentOf(argument: WrittenArgument): CallArgument {
-  const { type, literal, passing, accepts, builds, name, isSpread } = argument;
+  const { type, literal, passing, accepts, builds, name, isSpread, place, inputs } = argument;
+  const joined = place?.joined;
   return {
     type,
     literal,
@@ -174,6 +191,8 @@ export function callArgumentOf(argument: WrittenArgument): CallArgument {
     name: name?.text,
     isSpread,
     exact: isSpread === true,
+    joining: joined === undefined ? undefined : [joined.inference],
+    inputs,
   };
 }
 

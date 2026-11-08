@@ -44,7 +44,7 @@ import { expectedFunction } from '../../types/fitting/expected.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
 import { isPack, packRestSlot, type RestSlot, withPack } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
-import { errorType, expectsError, unitType } from '../../types/type/primitives.ts';
+import { errorType, expectsError, neverType, unitType } from '../../types/type/primitives.ts';
 import {
   checkPatternParameter,
   declaredBodyResult,
@@ -58,33 +58,84 @@ import { declareOwnCall } from './own-calls.ts';
 import { ReturnScope } from './returns.ts';
 
 /**
- * For a lambda with a parameter to infer, which parameter types it can take, as an argument the
- * chosen function decides (§3.5); undefined for one whose parameters are all typed. A plain lambda
- * takes an async function type too, which it fits made async (§3.14).
+ * For a lambda whose result isn't written, or with a parameter to infer, which parameter types it
+ * can take, as an argument the chosen function decides (§3.5): its body then has what the call
+ * expects of its result as a guide, as Kotlin's lambdas do. Undefined for one written whole,
+ * parameters and result, which has a type of its own. A written parameter takes what fits it, and
+ * a plain lambda an async function type too, which it fits made async (§3.14).
  */
 export function lambdaAccepts(context: BodyContext, node: Lambda): Accepts | undefined {
-  const { checker, module } = context;
+  const { checker } = context;
   const parameters = node.parameters.filter((parameter) => parameter.kind === 'Parameter');
-  if (
-    parameters.every((parameter) => wholeWrittenTypeOf(checker, module, parameter) !== undefined)
-  ) {
+  const written = writtenParameterTypes(context, node);
+  if (node.returnType !== undefined && written.every((type) => type !== undefined)) {
     return undefined;
   }
   const fixed = parameters.filter((parameter) => !parameter.isRest).length;
   const hasRest = fixed < parameters.length;
-  return (expected) => {
+  // A pack still open takes what written parameters are left past the fixed ones (§3.5).
+  const isWritten = written.every((type) => type !== undefined) && !hasRest;
+  return (expected, isOpen) => {
     const shape = expectedFunction(expected);
+    const fillsPack =
+      isWritten &&
+      shape?.pack !== undefined &&
+      isOpen(shape.pack) &&
+      shape.parameters.length <= fixed;
     return (
       shape !== undefined &&
       (shape.isAsync || !node.isAsync) &&
-      shape.parameters.length === fixed &&
-      (shape.pack !== undefined) === hasRest &&
-      parameters.every(
-        (parameter, index) =>
-          parameter.pattern === undefined || shape.parameters[index]?.reference !== true,
-      )
+      (fillsPack ||
+        (shape.parameters.length === fixed && (shape.pack !== undefined) === hasRest)) &&
+      parameters.every((parameter, index) => {
+        const slot = shape.parameters[index];
+        const type = written[index];
+        return (
+          (parameter.pattern === undefined || slot?.reference !== true) &&
+          (type === undefined ||
+            slot === undefined ||
+            isOpen(slot.type) ||
+            checker.fitOf(slot.type, type) !== undefined)
+        );
+      })
     );
   };
+}
+
+/**
+ * The function type a lambda's written parameters make it, its result `Never`, which bounds what
+ * the call it is passed to gives its parameters and nothing of its result (§3.5); sendable, since
+ * what it captures is known only once its body is checked against the parameter (§9). Undefined
+ * unless every parameter, and no result, is written.
+ */
+export function writtenInputs(context: BodyContext, node: Lambda): Type | undefined {
+  const written = writtenParameterTypes(context, node);
+  const types = written.flatMap((type) => type ?? []);
+  const plain = node.parameters.every(
+    (parameter) => parameter.kind === 'Parameter' && !parameter.isRest,
+  );
+  if (node.returnType !== undefined || types.length < written.length || !plain) {
+    return undefined;
+  }
+  return {
+    kind: 'function',
+    parameters: types.map((type) => ({ type, reference: false })),
+    pack: undefined,
+    result: neverType,
+    isAsync: node.isAsync,
+    isSendable: true,
+  };
+}
+
+/** The types `node`'s parameters are written with, by parameter; undefined where one isn't. */
+function writtenParameterTypes(context: BodyContext, node: Lambda): readonly (Type | undefined)[] {
+  const { checker, module } = context;
+  return node.parameters
+    .filter((parameter) => parameter.kind === 'Parameter')
+    .map((parameter) => {
+      const written = wholeWrittenTypeOf(checker, module, parameter);
+      return written === undefined ? undefined : context.resolveType(written);
+    });
 }
 
 export function checkLambda(context: BodyContext, node: Lambda, expected: Type | undefined): Type {

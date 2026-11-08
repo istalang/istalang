@@ -26,7 +26,14 @@ import { noSubstitution, type Substitution, substitute } from '../parts/substitu
 import { parametersIn } from '../parts/type-parts.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 import type { TypeRules } from '../type/type-rules.ts';
-import { type Bound, fromArguments, type LowerBound, type VariableBounds } from './bounds.ts';
+import {
+  type Bound,
+  fromArguments,
+  isBuilt,
+  type LowerBound,
+  type Related,
+  type VariableBounds,
+} from './bounds.ts';
 
 /** What settling asks of the program for a parameter. */
 export interface Settling {
@@ -43,6 +50,8 @@ export interface SettlingView {
   /** Whether `parameter` stands at the top of the result: the result itself, or a member of it. */
   readonly isAtTop: (parameter: ParameterKey) => boolean;
   readonly fits: (found: Type, expected: Type) => boolean;
+  /** Whether a struct literal of shape `shape` builds `target`, a struct its fields give (§3.1). */
+  readonly builds: (shape: Type, target: Type) => boolean;
   readonly join: (
     parameter: ParameterKey,
     lower: readonly LowerBound[],
@@ -50,6 +59,8 @@ export interface SettlingView {
   ) => Type | undefined;
   /** What a parameter no bound settles falls back to: the error type or `Never` it met. */
   readonly fallbackOf: (parameter: ParameterKey) => Type | undefined;
+  /** The parameters `parameter` is bounded below by, and those it bounds above (bounds.ts). */
+  readonly relatedOf: (parameter: ParameterKey) => Related;
 }
 
 /**
@@ -73,7 +84,7 @@ export function settleAll(
     const index = Math.max(
       0,
       pending.findIndex((candidate) =>
-        mentioned(view.boundsOf(candidate)).every(
+        [...mentioned(view.boundsOf(candidate)), ...relatives(view.relatedOf(candidate))].every(
           (other) => other === candidate || !pending.includes(other),
         ),
       ),
@@ -96,7 +107,11 @@ export function settleOne(
   view: SettlingView,
   settling: Settling,
 ): Type | undefined {
-  const bounds = closedBounds(view.boundsOf(parameter), settled, view.rules);
+  const bounds = withRelatives(
+    closedBounds(view.boundsOf(parameter), settled, view.rules),
+    view.relatedOf(parameter),
+    settled,
+  );
   const decide = (of: VariableBounds) =>
     of.equal?.type ??
     (view.isAtTop(parameter) ? undefined : expectedChoice(parameter, of, view, settling)) ??
@@ -134,7 +149,9 @@ function expectedChoice(
   view: SettlingView,
   settling: Settling,
 ): Type | undefined {
-  const expected = bounds.upper.filter((bound) => bound.origin === 'expected');
+  // An invariant position gives the expected type as an equality, which chooses as an upper bound.
+  const given = bounds.equal === undefined ? bounds.upper : [bounds.equal, ...bounds.upper];
+  const expected = given.filter((bound) => bound.origin === 'expected');
   return expected.find(
     (candidate) =>
       agreesWith(candidate.type, bounds, view) && settling.admits(parameter, candidate.type),
@@ -168,8 +185,10 @@ function agreesWith(
   view: SettlingView,
 ): boolean {
   return (
-    lower.every((bound) => view.fits(bound.type, candidate)) &&
-    upper.every((bound) => view.fits(candidate, bound.type))
+    lower.every(
+      (bound) =>
+        view.fits(bound.type, candidate) || (isBuilt(bound) && view.builds(bound.type, candidate)),
+    ) && upper.every((bound) => view.fits(candidate, bound.type))
   );
 }
 
@@ -191,6 +210,32 @@ function closedBounds(
     lower: bounds.lower.map(closed),
     upper: bounds.upper.map(closed),
   };
+}
+
+/**
+ * `bounds` with what the parameters related to it settled to, so one bounded only by another, as a
+ * call's parameter type passed where a joined call's is (design.md §4), settles from it: a related
+ * parameter below gives a lower bound, one above an upper bound.
+ */
+function withRelatives(bounds: VariableBounds, { below, above }: Related, settled: Substitution) {
+  const settledOf = (keys: readonly ParameterKey[]) =>
+    keys.flatMap((key) => {
+      const type = settled.get(key);
+      return type === undefined ? [] : [{ type, origin: 'argument' as const }];
+    });
+  return {
+    ...bounds,
+    lower: [
+      ...bounds.lower,
+      ...settledOf(below).map((bound) => ({ ...bound, fresh: false, builds: false })),
+    ],
+    upper: [...bounds.upper, ...settledOf(above)],
+  };
+}
+
+/** The parameters `related` names. */
+function relatives({ below, above }: Related): readonly ParameterKey[] {
+  return [...below, ...above];
 }
 
 /** The parameters `bounds` mention. */

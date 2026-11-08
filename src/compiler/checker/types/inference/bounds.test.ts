@@ -20,12 +20,9 @@ function store(): BoundStore {
     fits: (found, expected) => sameType(found, expected),
     same: sameType,
     isOpen: () => false,
-    join: (_variable, lower) => {
-      const [first] = lower;
-      return first !== undefined && lower.every((bound) => sameType(bound.type, first.type))
-        ? first.type
-        : undefined;
-    },
+    builds: () => false,
+    constrain: (found, expected) => sameType(found, expected),
+    equate: sameType,
   });
 }
 
@@ -34,7 +31,9 @@ const types = (bounds: readonly { readonly type: Type }[]) => bounds.map(({ type
 describe('two related variables', () => {
   it('hand each other the bounds they had', () => {
     const [lower, upper, bounds] = [variable('T'), variable('U'), store()];
-    expect(bounds.addLower(lower, { type: intType, fresh: false, origin: 'argument' })).toBe(true);
+    expect(
+      bounds.addLower(lower, { type: intType, fresh: false, builds: false, origin: 'argument' }),
+    ).toBe(true);
     expect(bounds.addUpper(upper, { type: intType, origin: 'expected' })).toBe(true);
     expect(bounds.relate(lower, upper)).toBe(true);
     expect(types(bounds.of(upper).lower)).toEqual([intType]);
@@ -47,9 +46,9 @@ describe('two related variables', () => {
     expect(bounds.addUpper(upper, { type: intType, origin: 'argument' })).toBe(true);
     expect(types(bounds.of(lower).upper)).toEqual([intType]);
     const mark = bounds.mark();
-    expect(bounds.addLower(lower, { type: stringType, fresh: false, origin: 'argument' })).toBe(
-      false,
-    );
+    expect(
+      bounds.addLower(lower, { type: stringType, fresh: false, builds: false, origin: 'argument' }),
+    ).toBe(false);
     bounds.rollback(mark);
     expect(bounds.of(lower).lower).toEqual([]);
   });

@@ -13,7 +13,8 @@
  *   type, a type `match`) tells nothing while one is to be found, and is matched as it is after.
  * - The error type matches anything and binds nothing, noted for the variables it met.
  * - Either side may hold the variables: a call's result holds them where it is matched against the
- *   type expected of it.
+ *   type expected of it, and a joined call's where it is passed (design.md §4); a variable either
+ *   side is takes the other side.
  */
 
 import { sameType } from '../identity/identity.ts';
@@ -57,6 +58,9 @@ export function equalTypes(declared: Type, given: Type, equating: Equating): boo
   }
   if (declared.kind === 'parameter' && equating.isUnknown(declared.declaration)) {
     return equating.bind(declared.declaration, given);
+  }
+  if (given.kind === 'parameter' && equating.isUnknown(given.declaration)) {
+    return equating.bind(given.declaration, declared);
   }
   if (isOpaque(declared)) {
     return mentionsUnknown(declared) || sameType(declared, given);

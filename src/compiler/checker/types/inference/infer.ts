@@ -85,6 +85,14 @@ export class Inference {
     this.#system.add(this.#variables, written ?? noSubstitution);
   }
 
+  /**
+   * Takes on `joined`'s system, as a literal does that of a field's value joining it once the
+   * literal is under way (design.md §4).
+   */
+  join(joined: Inference): void {
+    this.#system.adopt(joined.#system);
+  }
+
   /** This call's inference as it stands in `joint`'s system, which its call joined. */
   within(joint: Inference): Inference {
     return new Inference(this.#parameters, this.#fitting, undefined, {
@@ -108,7 +116,15 @@ export class Inference {
     const prepared = this.#prepared(declared);
     return typed.kind === 'literal'
       ? this.#system.match(prepared, typed, this.#kind)
-      : this.#system.match(prepared, typed, this.#kind, literal);
+      : this.#system.match(prepared, typed, this.#kind, { kind: 'literal', literal });
+  }
+
+  /**
+   * Matches a struct literal of items where `declared` is taken, as its `shape`, which may build a
+   * struct a variable settles to, as a literal where a struct is expected builds it (§3.1).
+   */
+  matchShape(declared: Type, shape: Type): boolean {
+    return this.#system.match(this.#prepared(declared), shape, this.#kind, { kind: 'shape' });
   }
 
   /** Matches `declared` against a type `given` must be exactly, as a reference or a spread's. */
@@ -207,6 +223,26 @@ export class Inference {
     }
   }
 
+  /**
+   * Settles every variable of this inference's system at once, each as the call of `calls` it
+   * stands for settles it (design.md §4); each call then settles to what this chose (`settle`).
+   */
+  solveJointly(calls: readonly { inference: Inference; settling: Settling }[]): void {
+    const settlings = new Map<ParameterKey, Settling>();
+    for (const { inference, settling } of calls) {
+      const forVariables = inference.#variables.settlingFor(settling);
+      for (const variable of inference.#variables.variables) {
+        settlings.set(variable, forVariables);
+      }
+    }
+    this.#system.solve(settlings);
+  }
+
+  /** `type`, as it stands open, with what the system solved (`solveJointly`). */
+  solved(type: Type): Type {
+    return this.#system.solved(type);
+  }
+
   /** `parameters` settled; one left out can't be inferred (settle.ts). */
   settle(parameters: readonly ParameterKey[], settling: Settling): ReadonlyMap<ParameterKey, Type> {
     const variables = parameters.flatMap(
@@ -274,8 +310,8 @@ export class Inference {
    */
   settledIn(declared: Type): Type {
     const settled = this.#found((_parameter, variable) => {
-      const { equal } = this.#system.boundsOf(variable);
-      return equal?.origin === 'argument' ? this.#variables.restored(equal.type) : undefined;
+      const fixed = this.#system.fixedOf(variable);
+      return fixed === undefined ? undefined : this.#variables.restored(fixed);
     });
     return substitute(declared, settled, this.#fitting);
   }

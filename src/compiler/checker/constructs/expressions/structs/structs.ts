@@ -28,6 +28,7 @@ import type {
   PartReader,
 } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
+import type { CheckJoining, JoinPlace } from '../../../resolution/applying/joint.ts';
 import { partsAccept, partsBuild } from '../../../rules/agreement.ts';
 import type { FieldSource } from '../../../surface/checked-body.ts';
 import { builtFrom } from '../../../types/fitting/expected.ts';
@@ -54,13 +55,18 @@ import {
 } from './struct-comprehensions.ts';
 import { refuseVariantLiteral } from './variants.ts';
 
+/**
+ * Checks a struct literal; at `place`, where it may join the call it is passed to, its values
+ * joining it as `joining` checks them.
+ */
 export function checkStructLiteral(
   context: BodyContext,
   node: StructLiteral,
   expected: Type | undefined,
+  joins?: { readonly place: JoinPlace; readonly joining: CheckJoining },
 ): Type {
   return namesItsType(node)
-    ? checkNamedLiteral(context, node, expected)
+    ? checkNamedLiteral(context, node, expected, joins)
     : checkAnonymousLiteral(context, node, expected, leadingSpread(node));
 }
 
@@ -84,6 +90,7 @@ export function checkNamedLiteral(
   context: BodyContext,
   node: NamedLiteral,
   expected: Type | undefined,
+  joins?: { readonly place: JoinPlace; readonly joining: CheckJoining },
 ): Type {
   const typeNode = node.type;
   const name = lastName(typeNode.path);
@@ -106,7 +113,7 @@ export function checkNamedLiteral(
     return errorType;
   }
   if (built.kind === 'shape') {
-    return checkLiteralFields(context, node, built.shape, leadingSpread(node));
+    return checkLiteralFields(context, node, built.shape, { spread: leadingSpread(node) });
   }
   const shape = {
     ...declaredShape(context, built.entity, built.known),
@@ -117,7 +124,7 @@ export function checkNamedLiteral(
     checkValuesAlone(context, node);
     return shape.typeOf([]);
   }
-  return checkLiteralFields(context, node, shape, leadingSpread(node));
+  return checkLiteralFields(context, node, shape, { spread: leadingSpread(node), ...joins });
 }
 
 /**
@@ -143,7 +150,7 @@ function checkAnonymousLiteral(
   const target = builtFrom(expected);
   const fromExpected = target === undefined ? undefined : shapeOf(context, target);
   if (fromExpected !== undefined) {
-    return checkLiteralFields(context, node, fromExpected, spread);
+    return checkLiteralFields(context, node, fromExpected, { spread });
   }
   const comprehension = comprehensionOf(node);
   if (comprehension !== undefined && target !== undefined && hasKeys(context, target)) {
@@ -161,7 +168,7 @@ function checkAnonymousLiteral(
     checkValuesAlone(context, node);
     return errorType;
   }
-  return checkLiteralFields(context, node, fromSpread, { ...spread, type });
+  return checkLiteralFields(context, node, fromSpread, { spread: { ...spread, type } });
 }
 
 /**

@@ -67,6 +67,11 @@ export interface BodyContext {
   /** Checks `node`, recording its type; `expected` guides inference but isn't enforced. */
   readonly expression: (node: Expression, expected?: Type) => Type;
   /**
+   * Checks `node` by `check` in place of its kind's handler, recording what it gives as
+   * `expression` does, as a call or literal joining another's system is (resolution/applying).
+   */
+  readonly checkWith: (node: Expression, check: () => Type) => Type;
+  /**
    * Which parameter types `node` can take when the call it is passed to decides its type (§3.5);
    * undefined when it has a type of its own, which takes part in choosing the function.
    */
@@ -97,6 +102,8 @@ export interface BodyContext {
   readonly checkedTypeOf: (node: Expression) => Type | undefined;
   /** The call recorded at `site`; undefined for one not checked yet or that couldn't be made. */
   readonly callAt: (site: ResolvedSite) => ResolvedCall | undefined;
+  /** Records that `expected` is what `site` will be expected to be, as a call being written says. */
+  readonly expectAt: (site: Expression, expected: Type) => void;
   /** Checks `node` and, when a type is expected, reports when its type doesn't fit it. */
   readonly expect: (node: Expression, expected: Type | undefined) => Type;
   /**
@@ -383,6 +390,8 @@ export interface Chains {
    */
   readonly target: (context: BodyContext, link: Expression) => Type;
   readonly chainOf: (link: Expression) => ChainLink | undefined;
+  /** Whether `node`, its target checked, continues an optional chain, which its value then ends. */
+  readonly continues: (node: Expression) => boolean;
 }
 
 /** What each exit and hold names, recorded as constructs/statements/loops.ts resolves it. */

@@ -53,8 +53,14 @@ export function relatedAsIs(expected: Type, found: Type, relating: Relating): bo
     relating.meetError(expected);
     return true;
   }
-  if (expected.kind === 'error' || givesNothing(expected)) {
+  if (expected.kind === 'error') {
     return true;
+  }
+  if (givesNothing(expected)) {
+    // Inference never looks through an associated type, but a variable found where one is
+    // expected, as a result's where its expected type names one, is bounded by it whole.
+    const foundVariable = variableOf(found, relating);
+    return foundVariable === undefined || relating.bindUpper(foundVariable, expected);
   }
   const bound = boundVariables(expected, found, relating);
   if (bound !== undefined) {

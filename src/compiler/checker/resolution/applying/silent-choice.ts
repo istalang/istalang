@@ -33,7 +33,7 @@ export function silentCall(
   candidates: readonly Candidate[],
   callArguments: readonly CallArgument[],
 ): FunctionCall | undefined {
-  const choice = choose(checker, candidates, callArguments, undefined);
+  const choice = choose(checker, candidates, callArguments);
   return choice.kind === 'chosen' ? functionCallOf(checker, choice.application) : undefined;
 }
 
@@ -57,7 +57,7 @@ export function callWithTypes(
       type: undefined,
       passing: 'value' as const,
     }));
-    const choice = choose(checker, group, decided, written);
+    const choice = choose(checker, group, decided, { written });
     if (choice.kind === 'several') {
       return undefined;
     }

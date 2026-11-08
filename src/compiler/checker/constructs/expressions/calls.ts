@@ -43,6 +43,7 @@ import type {
   CallArgument,
   Expression,
   MemberAccess,
+  Spread,
 } from '../../../syntax/expressions/index.ts';
 import {
   calledName,
@@ -52,11 +53,10 @@ import {
 import { type Identifier, isMissingName } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
-import { knownParameterTypes } from '../../resolution/calls/known-parameters.ts';
+import { JoinPlace } from '../../resolution/applying/joint.ts';
 import { checkChangedPlace } from '../../resolution/calls/places.ts';
 import { resolveCall, type WrittenArgument } from '../../resolution/calls/resolve.ts';
 import { stoppedOperation } from '../../resolution/calls/stopped-operations.ts';
-import { boundArgumentOf } from '../../resolution/choosing/binding.ts';
 import {
   callableThrough,
   callCandidates,
@@ -68,30 +68,36 @@ import { fieldOf } from '../../types/traits/known-fields.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
+import { arrayElement } from '../../types/type/well-known.ts';
 import { insideOptional } from '../../types/unions/inside-optional.ts';
 import { writtenLiteral } from '../../types/unions/unions.ts';
 import { namedType } from '../../types/written/named-types.ts';
+import { writtenInputs } from '../closures/lambdas.ts';
 import { checkValueCall, valueParameterTypes } from '../closures/value-calls.ts';
 import { readsNothing, readsThroughNamespace, recordFieldRead } from './access/member-access.ts';
 import { spreadArgumentType } from './collections/collections.ts';
-import { calledConstructor, checkVariantCall } from './structs/variants.ts';
+import { checkJoiningArray, checkJoiningMap } from './collections/joining-literals.ts';
+import { checkStructLiteral } from './structs/structs.ts';
+import { checkVariantCall } from './structs/variants.ts';
 
-export function checkCall(context: BodyContext, node: Call, expected: Type | undefined): Type {
+/**
+ * Checks a call; at `place`, where it may join the call it is passed to (resolution/applying/
+ * joint.ts), it does unless it continues an optional chain, whose value its own ends.
+ */
+export function checkCall(
+  context: BodyContext,
+  node: Call,
+  expected: Type | undefined,
+  place?: JoinPlace,
+): Type {
   const misplaced = misplacedArgument(node.arguments);
   const typeArguments = callTypeArguments(node)?.map((argument) => context.resolveType(argument));
-  const constructs = calledConstructor(context, node, expected);
-  const value = constructs === undefined ? calledValue(context, node) : undefined;
-  const known =
-    constructs === undefined
-      ? valueParameterTypes(value?.type, node.arguments, typeArguments)
-      : knownParameterTypes(context.checker, constructs, {
-          typeArguments,
-          expected,
-          arguments: node.arguments.map(boundArgumentOf),
-        });
+  const value = calledValue(context, node);
+  const known = valueParameterTypes(value?.type, node.arguments, typeArguments);
   const call: WrittenCall = {
     node,
     expected,
+    place,
     typeArguments,
     written: node.arguments.map((argument, index) => {
       if (argument === misplaced) {
@@ -148,17 +154,36 @@ function writtenArgument(
 ): WrittenArgument {
   switch (argument.kind) {
     case 'Spread':
-      return {
-        node: argument.expression,
-        passing: 'value',
-        type: spreadArgumentType(context, argument, known),
-        isSpread: true,
-      };
+      return spreadArgument(context, argument, known);
     case 'NamedArgument':
       return { ...valueArgument(context, argument.value, known), name: argument.name };
     default:
       return valueArgument(context, argument, known);
   }
+}
+
+/**
+ * A spread argument: its items, which fit the rest parameter's element exactly. An array literal
+ * spread joins the call (design.md §4), its items its element, copied whole as built.
+ */
+function spreadArgument(
+  context: BodyContext,
+  argument: Spread,
+  known: Type | undefined,
+): WrittenArgument {
+  const { expression } = argument;
+  const place = new JoinPlace(expression);
+  const joined =
+    known === undefined && expression.kind === 'ArrayLiteral'
+      ? checkJoining(context, expression, place)
+      : undefined;
+  const items = joined === undefined ? undefined : arrayElement(context.checker, joined);
+  if (items === undefined) {
+    const type = spreadArgumentType(context, argument, known);
+    return { node: expression, passing: 'value', type, isSpread: true };
+  }
+  context.iterations.record(argument, { kind: 'copied' });
+  return { node: expression, passing: 'value', type: items, isSpread: true, place };
 }
 
 function valueArgument(
@@ -181,15 +206,69 @@ function valueArgument(
     }
     return { node: argument, passing: 'value', type, literal };
   }
-  const part = context.argumentPart(argument);
+  // A collection literal's items are checked once, where it joins the call, so none ahead.
+  const part =
+    argument.kind === 'ArrayLiteral' || argument.kind === 'MapLiteral'
+      ? context.acceptedPart(argument)
+      : context.argumentPart(argument);
   // `none` passed alone is `None`, a type like any other the call's inference joins (§3.5); inside
   // a composite it still waits for the call, as its siblings decide where it goes.
   if (part.kind === 'decided' && part.alone === undefined) {
-    return { node: argument, passing: 'value', type: undefined, literal, accepts: part.accepts };
+    const lambda = unparenthesized(argument);
+    const inputs = lambda.kind === 'Lambda' ? writtenInputs(context, lambda) : undefined;
+    return {
+      node: argument,
+      passing: 'value',
+      type: undefined,
+      literal,
+      accepts: part.accepts,
+      inputs,
+    };
+  }
+  const place = new JoinPlace(argument);
+  const joined = checkJoining(context, argument, place);
+  if (joined !== undefined) {
+    return { node: argument, passing: 'value', type: joined, literal, place };
   }
   const type = context.expression(argument);
   const { builds } = context.checkedPart(argument);
   return { node: argument, passing: 'value', type, literal, builds };
+}
+
+/**
+ * Checks `node` at `place`, where it may join the call it is passed to (design.md §4,
+ * resolution/applying/joint.ts): a call, a literal naming its type, or a non-empty array or map
+ * literal, whose items may join it in turn; its type, open where it joined. Undefined for anything else,
+ * which is checked as ever.
+ */
+function checkJoining(context: BodyContext, node: Expression, place: JoinPlace): Type | undefined {
+  switch (node.kind) {
+    case 'Call':
+      return context.checkWith(node, () => checkCall(context, node, undefined, place));
+    case 'StructLiteral':
+      return node.type === undefined
+        ? undefined
+        : context.checkWith(node, () =>
+            checkStructLiteral(context, node, undefined, {
+              place,
+              joining: (item, at) => checkJoining(context, item, at),
+            }),
+          );
+    case 'ArrayLiteral':
+      return node.elements.length === 0
+        ? undefined
+        : context.checkWith(node, () =>
+            checkJoiningArray(context, node, place, (item, at) => checkJoining(context, item, at)),
+          );
+    case 'MapLiteral':
+      return node.entries.length === 0
+        ? undefined
+        : context.checkWith(node, () =>
+            checkJoiningMap(context, node, place, (item, at) => checkJoining(context, item, at)),
+          );
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -301,6 +380,7 @@ function callMethod(
     form: 'call',
     receiver,
     hint: () => insideOptional(receiver.span, receiverType, '.'),
+    place: chains.continues(call.node) ? undefined : call.place,
   });
 }
 
@@ -308,6 +388,8 @@ function callMethod(
 interface WrittenCall {
   readonly node: Call;
   readonly expected: Type | undefined;
+  /** Where the call may join the call it is passed to, if it may. */
+  readonly place?: JoinPlace | undefined;
   readonly typeArguments: readonly Type[] | undefined;
   readonly written: readonly WrittenArgument[];
 }
@@ -376,5 +458,6 @@ function resolve(
     typeArguments: call.typeArguments,
     expected: call.expected,
     form: 'call',
+    place: call.place,
   });
 }

@@ -18,7 +18,6 @@
  *   collects into it too. Which arguments a pack takes is choosing's to judge (choice.ts).
  */
 
-import type { CallArgument } from '../../../syntax/expressions/index.ts';
 import { type Binding, parameterOfArgument } from '../../surface/resolved-call.ts';
 import type { RestSlot } from '../../types/type/function-types.ts';
 import type { ParameterSlot } from '../../types/type/index.ts';
@@ -34,14 +33,6 @@ export interface BoundSlot {
 export interface BoundArgument {
   readonly name?: string | undefined;
   readonly isSpread?: boolean | undefined;
-}
-
-/** A written argument as binding reads it. */
-export function boundArgumentOf(argument: CallArgument): BoundArgument {
-  return {
-    name: argument.kind === 'NamedArgument' ? argument.name.text : undefined,
-    isSpread: argument.kind === 'Spread',
-  };
 }
 
 /** Why arguments can't fill a function's parameters. */

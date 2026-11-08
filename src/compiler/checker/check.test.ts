@@ -299,7 +299,7 @@ const uncheckedExamples = new Map<string, readonly number[]>([
   ['docs/spec.md › 7. Lifetimes and disposal #1', [4008]],
   ['docs/spec.md › 7. Lifetimes and disposal #2', [4000, 5103]],
   ['docs/spec.md › 7. Lifetimes and disposal #3', [4000]],
-  ['docs/spec.md › 7. Lifetimes and disposal #4', [4000, 5009]],
+  ['docs/spec.md › 7. Lifetimes and disposal #4', [4000]],
   ['docs/spec.md › 9. Program structure #1', [4000]],
   ['docs/spec.md › 10. Testing #1', [4000]],
   ['docs/spec.md › 12.2 Approver side #1', [4000]],

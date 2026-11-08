@@ -8,6 +8,7 @@
 
 import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { Accepts } from '../../contexts/body-context.ts';
+import type { Inference } from '../../types/inference/infer.ts';
 import type { RestSlot } from '../../types/type/function-types.ts';
 import type { LiteralType, ParameterSlot, Type } from '../../types/type/index.ts';
 import type { BindingFailure } from './binding.ts';
@@ -58,6 +59,16 @@ export interface CallArgument {
    */
   readonly exact?: boolean;
   readonly name?: string | undefined;
+  /**
+   * The inferences of the calls and literals in it that join the call (applying/joint.ts), whose
+   * systems each candidate's starts from.
+   */
+  readonly joining?: readonly Inference[] | undefined;
+  /**
+   * For a lambda the call decides whose parameters are written, the function type they make it,
+   * its result `Never` (constructs/closures/lambdas.ts `writtenInputs`).
+   */
+  readonly inputs?: Type | undefined;
   readonly isSpread?: boolean | undefined;
 }
 

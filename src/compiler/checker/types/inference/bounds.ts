@@ -7,9 +7,13 @@
  *   only advises: a bound from the arguments is checked against the arguments' bounds alone, so an
  *   expected type never makes a call inapplicable, while one from the expected type is checked
  *   against every bound, so matching it fails where it disagrees and leaves nothing behind.
- * - Bounds disagreeing is a conflict: a lower bound no equality or upper bound takes, an equality
- *   another differs from, or lower bounds with no common type. A bound mentioning a type parameter
- *   still to be found is checked once settling has substituted it.
+ * - Bounds disagreeing is a conflict: a lower bound no equality or upper bound takes, or an
+ *   equality another differs from. Lower bounds with no common type are no conflict yet: an upper
+ *   bound may take them all, as a `Json` one does `1` and `"a"` (settle.ts). Two bounds of which either mentions
+ *   a parameter still to be found, as those a joined call's type gives (design.md §4), agree by
+ *   bounding what they mention, so `Ok(5)` passed for a `T` expected to be a
+ *   `Result<Int?, String>` bounds `Ok`'s own `T` by `Int?`; one mentioning the parameter it bounds
+ *   is checked once settling has substituted it.
  * - A literal written as an argument gives its literal type, fresh: settling widens it to its base
  *   unless an upper bound holds a literal type of that base (§2).
  * - Two variables related, one bounding the other (`relate`), hand each other their bounds: the
@@ -19,6 +23,7 @@
  *   that fails leaves no bound behind.
  */
 
+import { parametersIn } from '../parts/type-parts.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 
 /** Where a bound came from: the call's arguments, or its expected type, which only advises. */
@@ -28,6 +33,8 @@ type Origin = 'argument' | 'expected';
 export interface LowerBound {
   readonly type: Type;
   readonly fresh: boolean;
+  /** Whether it is a struct literal's shape, which builds a struct its fields give (§3.1). */
+  readonly builds: boolean;
   readonly origin: Origin;
 }
 
@@ -44,26 +51,35 @@ export interface VariableBounds {
   readonly upper: readonly Bound[];
 }
 
+/** The variables one is related to (`BoundStore.relate`): those below it, and those above it. */
+export interface Related {
+  readonly below: readonly ParameterKey[];
+  readonly above: readonly ParameterKey[];
+}
+
 /** What checking bounds against each other needs. */
 export interface BoundRules {
   /** Whether a value of `found` fits where `expected` is. */
   readonly fits: (found: Type, expected: Type) => boolean;
+  /** Whether a struct literal of shape `shape` builds `target`, a struct its fields give (§3.1). */
+  readonly builds: (shape: Type, target: Type) => boolean;
   /** Whether `first` and `second` are the same type. */
   readonly same: (first: Type, second: Type) => boolean;
   /** Whether `type` mentions a parameter still to be found. */
   readonly isOpen: (type: Type) => boolean;
   /**
-   * The type `lower` bounds of `parameter` join to, its fresh literals widened unless an `upper`
-   * bound holds a literal of their base; undefined when they have none.
+   * Whether a value of `found` fits `expected`, either mentioning a parameter still to be found,
+   * bounding what they mention as a match of `origin` would; undoing what it bound when not.
    */
-  readonly join: (
-    parameter: ParameterKey,
-    lower: readonly LowerBound[],
-    upper: readonly Bound[],
-  ) => Type | undefined;
+  readonly constrain: (found: Type, expected: Type, origin: Origin) => boolean;
+  /** Whether `first` and `second` are the same type, equating what either mentions likewise. */
+  readonly equate: (first: Type, second: Type, origin: Origin) => boolean;
 }
 
 const noBounds: VariableBounds = { equal: undefined, lower: [], upper: [] };
+
+/** How deep relating bounds that mention parameters goes before it leaves them to settling. */
+const maximumDepth = 16;
 
 export class BoundStore {
   readonly #rules: BoundRules;
@@ -73,6 +89,8 @@ export class BoundStore {
   readonly #above = new Map<ParameterKey, readonly ParameterKey[]>();
   /** How to undo each change, newest last. */
   readonly #undo: (() => void)[] = [];
+  /** How many bounds deep the check being made relates bounds mentioning parameters (`#agree`). */
+  #depth = 0;
 
   constructor(rules: BoundRules) {
     this.#rules = rules;
@@ -91,6 +109,11 @@ export class BoundStore {
   /** What `parameter` is bound by so far. */
   of(parameter: ParameterKey): VariableBounds {
     return this.#bounds.get(parameter) ?? noBounds;
+  }
+
+  /** The variables `parameter` is related to (`relate`): those below it, and those above it. */
+  relatedOf(parameter: ParameterKey): Related {
+    return { below: this.#below.get(parameter) ?? [], above: this.#above.get(parameter) ?? [] };
   }
 
   /** A point to roll back to. */
@@ -131,9 +154,8 @@ export class BoundStore {
     const checked = checkedAgainst(bounds, bound.origin);
     const lower = [...bounds.lower, bound];
     const agrees =
-      this.#takes(checked.equal, bound.type) &&
-      checked.upper.every((upper) => this.#fitsUnlessOpen(bound.type, upper.type)) &&
-      this.#joins(parameter, checkedAgainst({ ...bounds, lower }, bound.origin));
+      this.#takes(parameter, checked.equal, bound) &&
+      checked.upper.every((upper) => this.#agree(parameter, bound, upper));
     if (agrees) {
       this.#set(parameter, { ...bounds, lower });
     }
@@ -150,8 +172,8 @@ export class BoundStore {
     }
     const checked = checkedAgainst(bounds, bound.origin);
     const agrees =
-      (checked.equal === undefined || this.#fitsUnlessOpen(checked.equal.type, bound.type)) &&
-      checked.lower.every((lower) => this.#fitsUnlessOpen(lower.type, bound.type));
+      (checked.equal === undefined || this.#agree(parameter, checked.equal, bound)) &&
+      checked.lower.every((lower) => this.#agree(parameter, lower, bound));
     if (agrees) {
       this.#set(parameter, { ...bounds, upper: [...bounds.upper, bound] });
     }
@@ -188,31 +210,68 @@ export class BoundStore {
     const checked = checkedAgainst(bounds, bound.origin);
     const { equal } = checked;
     if (equal !== undefined) {
-      return this.#rules.isOpen(equal.type) || this.#rules.same(equal.type, bound.type);
+      return this.#equate(parameter, equal, bound);
     }
     const agrees =
-      checked.lower.every((lower) => this.#fitsUnlessOpen(lower.type, bound.type)) &&
-      checked.upper.every((upper) => this.#fitsUnlessOpen(bound.type, upper.type));
+      checked.lower.every((lower) => this.#agree(parameter, lower, bound)) &&
+      checked.upper.every((upper) => this.#agree(parameter, bound, upper));
     if (agrees) {
       this.#set(parameter, { ...bounds, equal: bound });
     }
     return agrees;
   }
 
-  /** Whether an equality, if any, takes a value of `type`. */
-  #takes(equal: Bound | undefined, type: Type): boolean {
-    return equal === undefined || this.#fitsUnlessOpen(type, equal.type);
+  /** Whether an equality of `parameter`, if any, takes a value of `bound`. */
+  #takes(parameter: ParameterKey, equal: Bound | undefined, bound: Bound): boolean {
+    return equal === undefined || this.#agree(parameter, bound, equal);
   }
 
-  #fitsUnlessOpen(found: Type, expected: Type): boolean {
-    const { isOpen, fits } = this.#rules;
-    return isOpen(found) || isOpen(expected) || fits(found, expected);
+  /**
+   * Whether `parameter`'s bound `below` fits its bound `above`: as they are, or, where either
+   * mentions a parameter still to be found, by bounding what it mentions (design.md §4), as Kotlin
+   * incorporates a variable's bounds; a bound mentioning `parameter` itself is checked once
+   * settling has substituted it, as is one met past `maximumDepth` bounds deep.
+   */
+  #agree(parameter: ParameterKey, below: Bound | LowerBound, above: Bound): boolean {
+    const { isOpen, fits, builds, constrain } = this.#rules;
+    if (!(isOpen(below.type) || isOpen(above.type))) {
+      return fits(below.type, above.type) || (isBuilt(below) && builds(below.type, above.type));
+    }
+    return this.#deeper(parameter, [below.type, above.type], () =>
+      constrain(below.type, above.type, originOf(below, above)),
+    );
   }
 
-  /** Whether the lower bounds of `bounds`, those mentioning no parameter still to be found, join. */
-  #joins(parameter: ParameterKey, { lower, upper }: VariableBounds): boolean {
-    const closed = lower.filter((bound) => !this.#rules.isOpen(bound.type));
-    return closed.length === 0 || this.#rules.join(parameter, closed, upper) !== undefined;
+  /**
+   * Whether `parameter`'s equalities `first` and `second` agree: the same type, or, where either
+   * mentions a parameter still to be found, by equating what it mentions, as `#agree` relates.
+   */
+  #equate(parameter: ParameterKey, first: Bound, second: Bound): boolean {
+    const { isOpen, same, equate } = this.#rules;
+    if (!(isOpen(first.type) || isOpen(second.type))) {
+      return same(first.type, second.type);
+    }
+    return this.#deeper(parameter, [first.type, second.type], () =>
+      equate(first.type, second.type, originOf(first, second)),
+    );
+  }
+
+  /**
+   * Whether `relate` holds, a step deeper into relating bounds that mention parameters; true
+   * unchecked where `types` mention `parameter` itself, or past `maximumDepth`, for settling to
+   * check once it has substituted them.
+   */
+  #deeper(parameter: ParameterKey, types: readonly Type[], relate: () => boolean): boolean {
+    const mentionsItself = types.some((type) => parametersIn(type).includes(parameter));
+    if (mentionsItself || this.#depth >= maximumDepth) {
+      return true;
+    }
+    this.#depth += 1;
+    try {
+      return relate();
+    } finally {
+      this.#depth -= 1;
+    }
   }
 
   #set(parameter: ParameterKey, bounds: VariableBounds): void {
@@ -226,6 +285,16 @@ export class BoundStore {
       }
     });
   }
+}
+
+/** Whether `bound` is a struct literal's shape, which may build the struct it settles to. */
+export function isBuilt(bound: Bound | LowerBound): boolean {
+  return 'builds' in bound && bound.builds;
+}
+
+/** The origin of what relating two bounds finds: the expected type's, where either is its. */
+function originOf(first: Bound, second: Bound): Origin {
+  return first.origin === 'expected' || second.origin === 'expected' ? 'expected' : 'argument';
 }
 
 /** Copies each of `from`'s entries into `to`. */

@@ -233,6 +233,10 @@ export class BodyChecker implements BodyContext {
     return guide?.kind === 'union' ? builtAsChecked(this, node, type, guide) : type;
   }
 
+  checkWith(node: Expression, check: () => Type): Type {
+    return this.#record(node, check());
+  }
+
   accepts(node: Expression): Accepts | undefined {
     return acceptsOf(this, node);
   }
@@ -284,6 +288,10 @@ export class BodyChecker implements BodyContext {
     return this.#records.resolved.get(site);
   }
 
+  expectAt(site: Expression, expected: Type): void {
+    this.#records.expected.set(site, expected);
+  }
+
   expect(node: Expression, expected: Type | undefined): Type {
     const type = this.expression(node, expected);
     if (expected !== undefined) {
@@ -308,27 +316,20 @@ export class BodyChecker implements BodyContext {
     return this.#fitOf(found, expected, at);
   }
 
-  /** How `found` fits `expected`; as it is after reporting a mismatch at `at`. */
+  /**
+   * How `found` fits `expected`; as it is after reporting at `at` why not: a trait it doesn't meet,
+   * when an `any` type is expected, or that it converts into several members of the union (§2).
+   */
   #fitOf(found: Type, expected: Type, at: AnchoredSpan): Fit {
     const fit = this.checker.fitOf(found, expected);
-    if (fit === undefined) {
-      this.#mismatch(found, expected, at);
+    if (fit !== undefined) {
+      return fit;
     }
-    return fit ?? exactFit;
-  }
-
-  /**
-   * Reports why `found` doesn't fit: a trait it doesn't meet, when an `any` type is expected, or
-   * that it converts into several members of the union expected (§2).
-   */
-  #mismatch(found: Type, expected: Type, at: AnchoredSpan): void {
-    if (
-      expected.kind === 'any' &&
-      reportUnmet(useSite(this.checker, this.module, at), found, expected)
-    ) {
-      return;
+    const site = useSite(this.checker, this.module, at);
+    if (expected.kind !== 'any' || !reportUnmet(site, found, expected)) {
+      this.report(misfitOf(this.checker.fitting, at, found, expected));
     }
-    this.report(misfitOf(this.checker.fitting, at, found, expected));
+    return exactFit;
   }
 
   block(node: Block, expected?: Type): Type {

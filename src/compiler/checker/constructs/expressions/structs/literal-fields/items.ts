@@ -24,6 +24,7 @@ import {
 import { lastName } from '../../../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../../diagnostics/index.ts';
+import { type CheckJoining, JoinPlace } from '../../../../resolution/applying/joint.ts';
 import { callWithTypes } from '../../../../resolution/applying/silent-choice.ts';
 import type { FunctionCall } from '../../../../surface/resolved-call.ts';
 import { itemField } from '../../../../surface/struct-items.ts';
@@ -67,6 +68,8 @@ export interface GivenField {
   readonly node: Expression;
   readonly type: Type;
   readonly declared: Type;
+  /** Whether it is a written literal, which has its literal type where its field expects one. */
+  readonly isLiteral: boolean;
 }
 
 /** What checking a literal's items keeps track of. */
@@ -76,13 +79,29 @@ export interface LiteralItems {
   readonly inference: Inference;
   /** The fields given so far, by position in the shape. */
   readonly given: Map<number, GivenField>;
+  /** The fields whose values wait for their types to be inferred, by position in the shape. */
+  readonly postponed: Map<number, PostponedField>;
+  /** How a value whose field's type is still to be inferred may join the literal (index.ts). */
+  readonly joining: CheckJoining | undefined;
+  /** Where values may have joined the literal, with what did. */
+  readonly places: JoinPlace[];
   /** Whether every item so far gave a field of its own. */
   fits: boolean;
 }
 
 /**
+ * A field whose value has no type of its own, as a bare variant (§3.5), while its type is still to
+ * be inferred: it is checked once what that type mentions is settled (index.ts).
+ */
+interface PostponedField {
+  readonly node: Expression;
+  readonly declared: Type;
+}
+
+/**
  * Checks one item of a literal: its value against its field's type when that is already known,
- * else on its own, matched for inference, a literal with its literal type where the field expects
+ * postponed when it has no type of its own (`PostponedField`), else on its own, matched for
+ * inference, a literal with its literal type where the field expects
  * one, as a member parameter's does (§2, §3.5).
  */
 export function checkItem(
@@ -100,7 +119,7 @@ export function checkItem(
     items.fits = false;
     return;
   }
-  const { shape, inference, given } = items;
+  const { shape, given } = items;
   const name = itemName(item);
   const index = itemField(name, shape.fields);
   const field = shape.fields[index];
@@ -114,16 +133,66 @@ export function checkItem(
     items.fits = false;
     return;
   }
+  checkFieldValue(context, items, { index, value, field });
+}
+
+/** The value an item gives the field at `index` of the literal's shape. */
+interface FieldValue {
+  readonly index: number;
+  readonly value: Expression;
+  readonly field: FieldMember;
+}
+
+/**
+ * Checks a field's value: against the field's type when that is known; postponed when it has no
+ * type of its own while that type is still to be inferred; else on its own, or joining the literal,
+ * and matched, a literal with its literal type where the field expects one (§2, §3.5).
+ */
+function checkFieldValue(
+  context: BodyContext,
+  items: LiteralItems,
+  { index, value, field }: FieldValue,
+): void {
+  const { inference, given } = items;
   const declared = inference.substituted(field.type);
-  const isKnown = parametersIn(declared).every((parameter) => !inference.isUnknown(parameter));
+  if (parametersIn(declared).every((parameter) => !inference.isUnknown(parameter))) {
+    const type = context.expression(value, declared);
+    given.set(index, { node: value, type, declared: field.type, isLiteral: false });
+    return;
+  }
+  const part = context.acceptedPart(value);
+  if (part.kind === 'decided' && part.alone === undefined) {
+    items.postponed.set(index, { node: value, declared: field.type });
+    return;
+  }
   const literal = writtenLiteral(unparenthesized(value));
   const literalType =
     literal === undefined ? undefined : inference.literalType(literal.value, field.type);
-  const type = context.expression(value, isKnown ? declared : literalType);
-  if (!isKnown) {
+  const type = joinedValue(items, value) ?? context.expression(value, literalType);
+  if (literal === undefined) {
     inference.match(field.type, type);
+  } else {
+    inference.matchLiteral(field.type, literal);
   }
-  given.set(index, { node: value, type, declared: field.type });
+  given.set(index, { node: value, type, declared: field.type, isLiteral: literal !== undefined });
+}
+
+/**
+ * `value`'s type where it joins the literal, its system taken on by the literal's; undefined where
+ * it doesn't, or the literal has no way to let it.
+ */
+function joinedValue(items: LiteralItems, value: Expression): Type | undefined {
+  if (items.joining === undefined) {
+    return undefined;
+  }
+  const place = new JoinPlace(value);
+  const type = items.joining(value, place);
+  const { joined } = place;
+  if (type !== undefined && joined !== undefined) {
+    items.inference.join(joined.inference);
+    items.places.push(place);
+  }
+  return type;
 }
 
 /** An item giving no field of its own: no field by that name or position, or one given twice. */

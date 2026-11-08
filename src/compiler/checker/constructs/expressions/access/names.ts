@@ -7,6 +7,7 @@
  */
 
 import { type Entity, localFunctionOf, type VariableEntity } from '../../../../binder/entities.ts';
+import type { MemberAccess } from '../../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../../syntax/tree/node.ts';
 import type { Accepts, BodyContext } from '../../../contexts/body-context.ts';
 import type { CheckerContext } from '../../../contexts/context.ts';
@@ -17,7 +18,11 @@ import { isNominalEntity, type Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { fieldlessStructOf } from '../../../types/written/named-types.ts';
 import { checkFunctionValue, namedFunctionsAccepted } from '../../closures/function-values.ts';
-import { checkVariantValue, variantNameAccepts } from '../structs/variants.ts';
+import {
+  checkVariantValue,
+  qualifiedVariantAccepts,
+  variantNameAccepts,
+} from '../structs/variants.ts';
 
 export function checkName(
   context: BodyContext,
@@ -38,6 +43,15 @@ export function nameAccepts(context: BodyContext, node: Identifier): Accepts | u
     return variantNameAccepts(context, node, entity);
   }
   return namedFunctionsAccepted(context, node);
+}
+
+/**
+ * Which types a member access passed to a call can take when the call decides its type (§3.5): a
+ * qualified variant without fields of a generic enum the instances of its enum, functions named
+ * through a namespace or a type the function types they can be.
+ */
+export function memberAccepts(context: BodyContext, node: MemberAccess): Accepts | undefined {
+  return qualifiedVariantAccepts(context, node) ?? namedFunctionsAccepted(context, node);
 }
 
 /** The type of the value `entity` denotes where `node` names it. */
