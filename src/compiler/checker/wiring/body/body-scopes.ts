@@ -123,6 +123,11 @@ export class BodyScopes implements Scopes {
     return this.#current?.guided(type) ?? type;
   }
 
+  fixDefaults(types: readonly (Type | undefined)[]): boolean {
+    const open = types.filter((type): type is Type => this.holds(type));
+    return this.#current?.fixDefaults(open) === true;
+  }
+
   /** Gives the error type where each of `types` still open in the current scope goes. */
   abandon(types: readonly (Type | undefined)[]): void {
     const scope = this.#current;

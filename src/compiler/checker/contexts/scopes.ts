@@ -97,6 +97,13 @@ export interface Scopes {
    */
   readonly guided: (type: Type) => Type;
   /**
+   * Fixes what only a default decides of `types`, open in the current scope, to that default: what
+   * settling would make of it, nothing bounding it otherwise (settle.ts rule 5), so a call can
+   * choose by it now, `pickArr(empty())` of `fn empty<T = Int>()` taking `pickArr(xs: Array<Int>)`;
+   * whether it fixed any.
+   */
+  readonly fixDefaults: (types: readonly (Type | undefined)[]) => boolean;
+  /**
    * Gives the error type where each of `types` still open in the current scope goes, those of
    * arguments a call that can't be made took, so variables only that call would have bounded
    * settle to it, reporting nothing more.

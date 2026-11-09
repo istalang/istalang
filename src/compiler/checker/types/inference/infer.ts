@@ -12,10 +12,9 @@
  *   (invariant, `&`, a spread's items, a pack, a witness) an equality. A union given where its
  *   members may go apart puts each into its place, and one with variables puts each member, so
  *   `V?` expected to be a `Json` bounds `V` by `Json`.
- * - The type the call is expected to give bounds its result likewise, but only advises
- *   (bounds.ts); settling rule 2 knows which variables stand at the result's top (`expect`), and
- *   chooses among what consumes the call's value: the expected type, or an enclosing call's
- *   parameter, whose match bounds this call's variables as their consumer (system.ts `Matching`).
+ * - The expected type bounds the call's result likewise, but only advises (bounds.ts); rule 2
+ *   knows which variables stand at the result's top (`expect`), and chooses among what consumes
+ *   the call's value: an expected type, or an enclosing call's parameter (`Matching`).
  * - A type argument written is taken as given: what is matched has it in place before matching, so
  *   `f<Int?>(o)` for `fn f<T>(x: T?)` matches `Int?` against `Int?`. A method's receiver gives its
  *   variables the same way, as Swift and Rust bind a method's `Self` (`matchReceiver`): matched
@@ -173,11 +172,7 @@ export class Inference {
    * disagree, nothing is bounded (bounds.ts).
    */
   expect(result: Type, expected: Type | undefined): void {
-    const open = this.#prepared(result);
-    this.#system.yields(open);
-    if (expected !== undefined) {
-      this.#system.expectResult(open, expected);
-    }
+    this.#system.yields(this.#prepared(result), expected);
   }
 
   /**
@@ -335,6 +330,11 @@ export class Inference {
       this.#system.fixAs(variable, type);
     }
     return fixing.size > 0;
+  }
+
+  /** Fixes what only a default decides of `types`, open, to it (`CallSystem.fixDefaults`). */
+  fixDefaults(types: readonly Type[], settlingOf: SettlingOf): boolean {
+    return this.#system.fixDefaults(types, settlingOf);
   }
 
   /** Settles and fixes each variable `type`, open, mentions, as `settlingOf` says (settle.ts). */

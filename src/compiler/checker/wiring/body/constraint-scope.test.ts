@@ -88,15 +88,18 @@ describe('a call that can’t be made', () => {
     ).toBeGreaterThan(0);
   });
 
-  it('reports a call chosen only once what it is given settles to its default (5380)', () => {
-    expect(
-      reportedAfter(
-        'fn defaultEmpty<T = Int>() -> Array<T>: []',
-        'fn pickArr(xs: Array<Int>) -> Int: 1',
-        'fn pickArr(xs: Array<String>) -> Int: 2',
-        'fn f() -> Int: pickArr(defaultEmpty())',
-      ),
-    ).toEqual(reportedOnce(checkerDiagnostics.undecidedCall.code, 'pickArr(defaultEmpty())'));
+  it('chooses by what only a default decides of what it is given, as that settles', () => {
+    const overloads = [
+      'fn defaultEmpty<T = Int>() -> Array<T>: []',
+      'fn pickArr(xs: Array<Int>) -> Int: 1',
+      'fn pickArr(xs: Array<String>) -> Int: 2',
+    ];
+    expect(reportedAfter(...overloads, 'fn f() -> Int: pickArr(defaultEmpty())')).toEqual(
+      reportedNothing,
+    );
+    expect(reportedAfter(...overloads, 'fn g() -> Int: pickArr(empty())')).toEqual(
+      reportedOnce(checkerDiagnostics.ambiguousCall.code, 'pickArr(empty())'),
+    );
   });
 });
 

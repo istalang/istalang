@@ -81,6 +81,11 @@ export class ConstraintScope {
     return this.#root === undefined ? type : this.#root.guidedIn(type, this.#settlingOf());
   }
 
+  /** Fixes what only a default decides of `types` to it (`Scopes.fixDefaults`); whether any. */
+  fixDefaults(types: readonly Type[]): boolean {
+    return this.#root?.fixDefaults(types, this.#settlingOf()) === true;
+  }
+
   /** Runs `work` once the scope is solved, with its types as solved, before its members complete. */
   whenSolved(work: (solved: (type: Type) => Type) => void): void {
     this.#waiting.push(work);

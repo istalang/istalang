@@ -108,8 +108,10 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
     context.scopes.holds(request.expected);
   // A candidate meets the scope's variables only through what it is given or expected to give;
   // where neither holds one, its system starts empty, and committing it adds its own.
-  const applying = applicationOf(context, request, meetsScope ? scope : undefined);
-  const chosen = chooseCall(context, applying, { reports: !openArguments });
+  const { applying, chosen } = chosenCall(context, request, {
+    scope: meetsScope ? scope : undefined,
+    openArguments,
+  });
   if (chosen === undefined) {
     if (openArguments) {
       reportUnmade(context, request);
@@ -128,6 +130,30 @@ export function resolveCall(context: BodyContext, request: CallRequest): Type {
     settling,
     complete: () => completeResolved(context, request, applying, chosen),
   });
+}
+
+/**
+ * How `request` is applied, its candidates' systems copies of `scope`'s, and the one it chooses:
+ * among them as what it is given stands; where that is open in the scope and none takes it so,
+ * again once what only a default decides of it is fixed to that default (`Scopes.fixDefaults`),
+ * as it will settle, so it doesn't fail here where it would choose once the scope settles.
+ */
+function chosenCall(
+  context: BodyContext,
+  request: CallRequest,
+  {
+    scope,
+    openArguments,
+  }: { readonly scope: Inference | undefined; readonly openArguments: boolean },
+): { readonly applying: CallApplication; readonly chosen: Application | undefined } {
+  const applying = applicationOf(context, request, scope);
+  const chosen = chooseCall(context, applying, { reports: !openArguments });
+  const types = request.arguments.map(({ type }) => type);
+  if (chosen !== undefined || !openArguments || !context.scopes.fixDefaults(types)) {
+    return { applying, chosen };
+  }
+  const retried = applicationOf(context, request, context.scopes.root);
+  return { applying: retried, chosen: chooseCall(context, retried, { reports: false }) };
 }
 
 /** How `request` is applied, its candidates' systems copies of `scope`'s, if one is open. */

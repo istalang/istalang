@@ -10,7 +10,7 @@
  *   is taken on by the scope's (`adopt`).
  * - What a match bounds depends on what it is: an argument's bounds are its own construct's, or,
  *   on the variables of a construct it consumes, the consumer's (`Matching`); the expected type's
- *   advise (`expectResult`); and a receiver's are equalities its caller then gives. Which
+ *   advise (`yields`); and a receiver's are equalities its caller then gives. Which
  *   variables stand at the top of their construct's result is each construct's own (`yields`),
  *   kept as systems join.
  * - Matching probes: a failed match leaves no bound behind (`BoundStore.rollback`). Bounds that
@@ -46,6 +46,7 @@ import {
 import {
   abandonedFrom,
   atTopOf,
+  defaultsIn,
   fixedOf,
   fixedSubstitution,
   type SystemReading,
@@ -185,17 +186,16 @@ export class CallSystem {
   }
 
   /**
-   * Bounds `result`, holding variables, by the type it is `expected` to give, which only advises:
-   * where the two disagree, nothing is bounded.
+   * Notes `result`, a construct's, holding its variables: those at its top (`#atTop`); and bounds
+   * it by the type it is `expected` to give, if any, which only advises: where the two disagree,
+   * nothing is bounded.
    */
-  expectResult(result: Type, expected: Type): void {
-    this.#as(expectedMatch, () => this.#atomic(() => this.#constrain(result, expected)));
-  }
-
-  /** Notes `result`, a construct's, holding its variables: those at its top (`#atTop`). */
-  yields(result: Type): void {
+  yields(result: Type, expected: Type | undefined): void {
     for (const variable of atTopOf(result, this.reading)) {
       this.#atTop.add(variable);
+    }
+    if (expected !== undefined) {
+      this.#as(expectedMatch, () => this.#atomic(() => this.#constrain(result, expected)));
     }
   }
 
@@ -236,6 +236,18 @@ export class CallSystem {
   /** Takes `variable` as `type` from here on, as an equality its own call requires. */
   fixAs(variable: ParameterKey, type: Type): void {
     this.#store.addEqual(variable, { type, advice: false, by: this.#calls.get(variable) });
+  }
+
+  /**
+   * Fixes what only a default decides of `types` to it (`defaultsIn`): what settling would make of
+   * it, nothing else bounding it; whether it fixed any.
+   */
+  fixDefaults(types: readonly Type[], settlingOf: SettlingOf): boolean {
+    const fixing = types.flatMap((type) => [...defaultsIn(type, this.reading, settlingOf)]);
+    for (const [variable, type] of fixing) {
+      this.fixAs(variable, type);
+    }
+    return fixing.length > 0;
   }
 
   /** What `variable` is taken as found as, given or fixed (system-reading.ts). */

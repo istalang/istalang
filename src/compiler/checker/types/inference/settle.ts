@@ -146,7 +146,7 @@ function nextToSettle(
 }
 
 /** Whether `bounds` hold any bound at all. */
-function hasBounds({ equal, lower, upper }: VariableBounds): boolean {
+export function hasBounds({ equal, lower, upper }: VariableBounds): boolean {
   return equal !== undefined || lower.length > 0 || upper.length > 0;
 }
 
