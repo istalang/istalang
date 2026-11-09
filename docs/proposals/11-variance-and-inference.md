@@ -53,6 +53,9 @@ causes and the structural changes are in `docs/work/variance-inference/merge-ana
    - C2, trait meeting: one search for the instantiation a type meets, used by inference too
      (B46, so a nested `LayoutView{…}` infers its `Sc`), with B37, B40 and B41;
    - C3, after C1: one "holds" relation for joining, settling, choosing and clashes (B44).
+   - C4, after C3: a held-back struct literal gives its fields to the lambdas inside it, so a
+     `CaseView`'s `Sc` is inferred under a mapped `cases`; form-builder's generator stops writing
+     what is now inferred.
 2. **Re-check** by the merge reviewer.
 3. **Later, filed:**
    - F26: `each` for packs;
@@ -170,4 +173,5 @@ Design §9 lists every anchor with its result before and after. In short:
    first, opt-in joining, which left nested calls orphaned when the outer call failed.
 7. **I2 deletes §3.7 literal building and fixes B43** (a postponed lambda whose result is only
    partly known).
-8. **The merge review's corrections run as C1–C3,** B46 and the other bugs folded into C2 and C3.
+8. **The merge review's corrections run as C1–C3,** B46 and the other bugs folded into C2 and C3;
+   C4 follows from form-builder's trial.

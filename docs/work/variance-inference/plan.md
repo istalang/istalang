@@ -1,5 +1,5 @@
 ---
-description: plan for implementing identity, variance and constraint-based inference (design.md) — process, six phases and three corrections after the merge review, with falsifiable acceptance, order under the 3-parallel cap, shared surfaces and owners, diagnostic ranges, verification per phase, relation to proposal 8; read before forking or examining a variance-inference phase
+description: plan for implementing identity, variance and constraint-based inference (design.md) — process, six phases and four corrections after the merge review and form-builder's trial, with falsifiable acceptance, order under the 3-parallel cap, shared surfaces and owners, diagnostic ranges, verification per phase, relation to proposal 8; read before forking or examining a variance-inference phase
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -25,7 +25,8 @@ variance, so the longest phase (I1) starts at once, beside the contract it later
 - **Each behavioural phase** profiles `fb-warm` and `std-tests` (`npm run profile:check`) against
   its base.
 - **Corrections:** the merge review asked for changes. `merge-analysis.md` holds its findings
-  (M1–M6, B37–B46), their root causes and the structural changes S1–S6 that C1–C3 make.
+  (M1–M6, B37–B46), their root causes and the structural changes S1–S6 that C1–C3 make. C4 follows form-builder's trial of
+  what can go unwritten.
 - **Each phase** edits the spec sections it changes (`design.md` §8), the docs it touches
   (`architecture.md`'s checker tree included), and its tracker rows. Its acceptance names every
   fixture and corpus diagnostic it is expected to move; nothing else moves.
@@ -43,14 +44,15 @@ variance, so the longest phase (I1) starts at once, beside the contract it later
 | **C1** Scope protocol (structural, then behavioural) | 1. S1: one typed table in the body's scopes says what joins, what is a boundary, and that a field-loop pass opens its own scope, settled before the pass exits; handlers stop calling `suspended()`; `ConstraintScope` moves to `wiring/body/`. 2. S2: a bound says whether it is advice and whether it comes from the construct's consumer; whether a variable is at the top of its own result is kept per variable, through `adopt`. 3. S3: a named function value joins the scope as a call does. Doc fixes (`merge-analysis.md` §1) | M2's comprehensions check, and the overloaded `show` runs `"int str"`. M3's `Result.Ok` calls check. `if c: id(1) else: id(2)` as `Int?` and the tuple take `id<Int>` both times; `takeArr(pair(1, 2))` takes `pair<Int?>` with no array conversion; `takeBox(makeBox(1))` checks. `checkerModel` is `['diagnostics', 'types']`. `joint.test.ts`, `variants.test.ts`, `recursive-uses.test.ts` unchanged. Profile within noise |
 | **C2** Trait meeting and small repairs (behavioural) | S5: one memoized search for the instantiation a type meets (requirement candidates, known constraints, witnesses), read by fitting, dispatch, `reportUnmet` and inference (`relate.ts` relates a concrete type to `any Trait<B>` through it). S6: a union rebuilt through `unionOf`; a host form's parts are its type arguments; fields paired by canonical index | M6's repros check; `any OptSink & WideSink` into `any Sink<Int>` is 5370. B41's `s[k]` fits. A nested `LayoutView{…}` under `Array<any View<Sc>>` infers `Sc`, and `takes(direct(), Sc{a: 1})` checks (B46). B40's property passes at seed 2040523392. A host `Box<fn() -> Int>` is refused at the boundary (B37) |
 | **C3** One holds relation (behavioural) | S4: `holds(holder, type)`, meaning fits, in `types/fitting/`, read by `commonType`, settling's rule 3, most-specific choosing and the clash rule. Still no new union inferred | M5's branches and collections check in both orders; `same(xs, ys)` is `Array<Int?>`. B44's pairs clash at declaration. `if c: 1 else: "a"` stays an error |
+| **C4** Placeholders that give (behavioural) | A held-back struct literal gives its fields to the lambdas inside it: a postponed lambda waits while an input reaches those fields, as it does for a waiting function's result. An expected computed type (a mapped type over an open `C`) waits on what decides its form, then reduces. One home for "computed": `equal.ts`'s own `isOpaque` goes, read through `computed-types.ts`. `generate.ts` stops writing what is now inferred (the views' type arguments, the scope aliases); `order.gen.ista` and `supplier.gen.ista` regenerated. Spec §3.14 and `design.md` §4 | `Pick{sel: h, cases: struct{x: Case{body: fn(sc): sc.a}}}` under a mapped `cases` checks, as it does under a plain one; with `sel: C`, `struct{x: 1}` and `cases: struct{x: fn(sc): sc.a}` checks (5501 today). `VariantView`, `CaseView` and `ScopedView` carry no type arguments in either generated file, and no `OrderScope*` alias remains; both check and `form-spec.test.ts` passes. No second `isOpaque` meaning "computed". Profile within noise |
 
 **Order:** {V0 ∥ I0} → V1 once V0 lands → I1 once V1 and I0 land → I2 once I1 lands, V2 once
-V1 lands → merge review → {C1 ∥ C2} → C3 once C1 lands → the merge reviewer re-checks. A phase starts only on landed code, never on a contract, and beside a running one
+V1 lands → merge review → {C1 ∥ C2} → C3 once C1 lands → C4 once C3 lands → the merge reviewer re-checks. A phase starts only on landed code, never on a contract, and beside a running one
 only when their branches won't conflict. *Why:* least total work over the fastest finish. V0 and
 I0 lay the bases (identity, `commonType`) and touch disjoint files. I1 consumes V1's
 `varianceOf` (V0 shipped no stub). I2 needs V1's conversions and I1's system; V2 needs V1's
 variance. C1 and C2 share only `program-checker.ts`'s memo table. C3 changes what agreement and
-rule 3 decide, and C1 how agreement stands in a scope.
+rule 3 decide, and C1 how agreement stands in a scope. C4 edits the constraint scope C3 reads.
 
 **Proposal 8** follows V1: its conversions become subtyping (F28 folds into its plan), its `K`
 default becomes a settling rule, and its `Persistable` reads V0's reach. Its runtime is
@@ -85,6 +87,7 @@ A contract amendment goes to the tech-lead, who decides and tells the affected p
 | C1 | — | 5380–5389 |
 | C2 | — | 5390–5399 |
 | C3 | — | 5310–5319 |
+| C4 | — | — |
 
 ## Verification
 
@@ -100,6 +103,7 @@ A contract amendment goes to the tech-lead, who decides and tells the affected p
 | C1 | yes | yes | Profile |
 | C2 | yes | yes | — |
 | C3 | yes | yes | — |
+| C4 | yes | yes | Profile |
 | Re-check | — | yes | The merge reviewer, on the corrections against its findings |
 
 Out of scope, filed: F26 (`each`), F27 (view handles), F28 (proposal 8's qualifiers as subtyping),
