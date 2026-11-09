@@ -22,11 +22,13 @@ import type { BodyContext } from '../../contexts/body-context.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { explain, recordChosen } from '../../resolution/calls/resolve.ts';
+import type { Application } from '../../resolution/choosing/choice.ts';
 import {
   chosenValue,
   type FunctionNaming,
   functionsAccepted,
   instantiatedValue,
+  type MadeValue,
   type NamedFunctions,
   namedFunctions,
   ownChoice,
@@ -52,17 +54,30 @@ export function checkFunctionValue(
     }
     return errorType;
   }
-  const value = instantiatedValue(
+  const at = useSite(context.checker, context.module, site.span);
+  return recordedValue(
     context,
+    site,
     application,
-    useSite(context.checker, context.module, site.span),
-    shape?.result,
+    instantiatedValue(context, application, at, shape?.result),
   );
-  if (value === undefined) {
+}
+
+/**
+ * The type of the function value `site` names, `application` made as `made`, recorded as the
+ * site's call; the error type when it couldn't be made, which its site reported.
+ */
+export function recordedValue(
+  context: BodyContext,
+  site: FunctionNaming,
+  application: Application,
+  made: MadeValue | undefined,
+): Type {
+  if (made === undefined) {
     return errorType;
   }
-  recordChosen(context, { site, application, instantiation: value.instantiation });
-  return value.type;
+  recordChosen(context, { site, application, instantiation: made.instantiation });
+  return made.type;
 }
 
 /**

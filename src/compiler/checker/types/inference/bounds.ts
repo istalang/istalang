@@ -30,32 +30,31 @@
 import type { Admits } from '../fitting/expected.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
+import type { CallVariables } from './variables.ts';
 
 /**
- * Where a bound came from (design.md §4): what its variable's own construct is given (an argument,
- * a receiver); what a construct consuming its construct's value takes it as (an enclosing call's
- * parameter, what producers agree on), which settling's rule 2 may choose; or the expected type,
- * which rule 2 may choose too and which only advises, retracted where it disagrees.
+ * What a bound says beside its type (design.md §4): whether it only advises, the expected type's,
+ * set aside where it disagrees; and which construct's match made it, if one did. Whether it comes
+ * from what consumes its variable's construct, which settling's rule 2 may choose, is read against
+ * the variable holding it (`fromConsumer`), so a bound handed from one variable to another
+ * (`BoundStore.relate`) reads as the other's.
  */
-export type Origin = 'argument' | 'consumer' | 'expected';
-
-/** Whether `bound` only advises: the expected type's, retracted where it disagrees. */
-export function isAdvice(bound: Bound): boolean {
-  return bound.origin === 'expected';
-}
-
-/** Whether `bound` is what its variable's value is taken as by what consumes it (rule 2). */
-export function isConsumers(bound: Bound): boolean {
-  return bound.origin !== 'argument';
-}
-
-/**
- * Two of a variable's bounds being related, which bounds what they mention as a match its
- * construct makes would: advice where either is.
- */
-export interface RelatingBounds {
-  readonly of: ParameterKey;
+export interface BoundRole {
   readonly advice: boolean;
+  readonly by: CallVariables | undefined;
+}
+
+/** Whether `bound` only advises: the expected type's, set aside where it disagrees. */
+export function isAdvice(bound: BoundRole): boolean {
+  return bound.advice;
+}
+
+/**
+ * Whether `bound`, of a variable of `call`, is what takes that construct's value: the expected
+ * type's, or one another construct's match made, as an enclosing call's parameter.
+ */
+export function fromConsumer(bound: BoundRole, call: CallVariables | undefined): boolean {
+  return bound.advice || (bound.by !== undefined && bound.by !== call);
 }
 
 /** A type a parameter's argument must be at least; `fresh` when a written literal gave it. */
@@ -64,7 +63,8 @@ export interface LowerBound {
   readonly fresh: boolean;
   /** Whether it is a struct literal's shape, which a struct its fields give takes (§3.1). */
   readonly isShape: boolean;
-  readonly origin: Origin;
+  readonly advice: boolean;
+  readonly by: CallVariables | undefined;
   /**
    * Whether it bounds its own variable alone, never one related to it: an item of a collection
    * literal whose items agree on no one type, which settles on what it goes into (design.md §4).
@@ -73,9 +73,8 @@ export interface LowerBound {
 }
 
 /** A type a parameter's argument must be at most, or exactly. */
-export interface Bound {
+export interface Bound extends BoundRole {
   readonly type: Type;
-  readonly origin: Origin;
 }
 
 /** What one parameter is bound by. */
@@ -103,16 +102,17 @@ export interface BoundRules {
   readonly isOpen: (type: Type) => boolean;
   /**
    * Whether a value of `found` fits `expected`, either mentioning a parameter still to be found,
-   * bounding what they mention as `relating` says; undoing what it bound when not.
+   * bounding what they mention as a match of `relating`'s role would; undoing what it bound when
+   * not.
    */
-  readonly constrain: (found: Type, expected: Type, relating: RelatingBounds) => boolean;
+  readonly constrain: (found: Type, expected: Type, relating: BoundRole) => boolean;
   /** Whether `first` and `second` are the same type, equating what either mentions likewise. */
-  readonly equate: (first: Type, second: Type, relating: RelatingBounds) => boolean;
+  readonly equate: (first: Type, second: Type, relating: BoundRole) => boolean;
   /**
    * Whether a struct literal of `shape` builds `target`, a struct (§3.1), its fields bounding what
    * either mentions as `constrain` does.
    */
-  readonly constrainShape: (target: Type, shape: Type, relating: RelatingBounds) => boolean;
+  readonly constrainShape: (target: Type, shape: Type, relating: BoundRole) => boolean;
 }
 
 const noBounds: VariableBounds = { equal: undefined, lower: [], upper: [] };
@@ -183,7 +183,8 @@ export class BoundStore {
   /**
    * Bounds `upper` below by `lower`, both variables: each lower bound of `lower`, now and later,
    * is one of `upper` too, and each upper bound of `upper` one of `lower`, so an expected type
-   * reaches a variable through another; false when those disagree.
+   * reaches a variable through another; false when their requirements disagree, which advice
+   * never makes them.
    */
   relate(lower: ParameterKey, upper: ParameterKey): boolean {
     if (lower === upper || (this.#above.get(lower) ?? []).includes(upper)) {
@@ -194,9 +195,12 @@ export class BoundStore {
     const below = this.of(lower);
     const above = this.of(upper);
     return (
-      [...joining(below.lower), ...asLower(below.equal)].every((bound) =>
-        this.addLower(upper, bound),
-      ) && [...above.upper, ...asUpper(above.equal)].every((bound) => this.addUpper(lower, bound))
+      [...joining(below.lower), ...asLower(below.equal)].every(
+        (bound) => this.addLower(upper, bound) || isAdvice(bound),
+      ) &&
+      [...above.upper, ...asUpper(above.equal)].every(
+        (bound) => this.addUpper(lower, bound) || isAdvice(bound),
+      )
     );
   }
 
@@ -215,6 +219,7 @@ export class BoundStore {
         checked.upper.every((upper) => this.#agree(parameter, bound, upper)));
     if (agrees) {
       this.#set(parameter, { ...bounds, lower });
+      this.#advised(parameter, bounds, bound, 'lower');
     }
     return (
       agrees &&
@@ -238,15 +243,52 @@ export class BoundStore {
       joining(checked.lower).every((lower) => this.#agree(parameter, lower, bound));
     if (agrees) {
       this.#set(parameter, { ...bounds, upper: [...bounds.upper, bound] });
+      this.#advised(parameter, bounds, bound, 'upper');
     }
     return (
       agrees && (this.#below.get(parameter) ?? []).every((lower) => this.addUpper(lower, bound))
     );
   }
 
-  /** Whether two bounds are the same: of one type and one origin. */
+  /** Whether two bounds are the same: of one type and one role. */
   #isSame(first: Bound, second: Bound): boolean {
-    return first.origin === second.origin && this.#rules.same(first.type, second.type);
+    return (
+      first.advice === second.advice &&
+      first.by === second.by &&
+      this.#rules.same(first.type, second.type)
+    );
+  }
+
+  /**
+   * Relates `added`, a requirement `parameter` was just given as one of its bounds of kind `as`, to
+   * the advice it held before (`before`), so what the expected type says reaches what the
+   * requirement mentions, whichever came first. Advice the requirement disagrees with stays apart,
+   * for settling to set aside (settle.ts); it never refuses the requirement.
+   */
+  #advised(
+    parameter: ParameterKey,
+    before: VariableBounds,
+    added: Bound,
+    as: 'lower' | 'upper' | 'equal',
+  ): void {
+    if (isAdvice(added)) {
+      return;
+    }
+    const equal = before.equal !== undefined && isAdvice(before.equal) ? before.equal : undefined;
+    if (as === 'equal' && equal !== undefined) {
+      this.#equate(parameter, equal, added);
+    }
+    const otherEqual = as === 'equal' || equal === undefined ? [] : [equal];
+    if (as !== 'upper') {
+      for (const above of [...before.upper.filter(isAdvice), ...otherEqual]) {
+        this.#agree(parameter, added, above);
+      }
+    }
+    if (as !== 'lower') {
+      for (const below of [...joining(before.lower).filter(isAdvice), ...otherEqual]) {
+        this.#agree(parameter, below, added);
+      }
+    }
   }
 
   /** Links `to` after `from` in `links`, undone on rollback. */
@@ -280,6 +322,7 @@ export class BoundStore {
       checked.upper.every((upper) => this.#agree(parameter, bound, upper));
     if (agrees) {
       this.#set(parameter, { ...bounds, equal: bound });
+      this.#advised(parameter, bounds, bound, 'equal');
     }
     return (
       agrees &&
@@ -306,7 +349,7 @@ export class BoundStore {
     if (!(isOpen(below.type) || isOpen(above.type))) {
       return fits(below.type, above.type) || (isShape(below) && takesShape(above.type, below.type));
     }
-    const relating = relatingOf(parameter, below, above);
+    const relating = relatingOf(below, above);
     return this.#deeper(
       parameter,
       [below.type, above.type],
@@ -326,7 +369,10 @@ export class BoundStore {
       return same(first.type, second.type);
     }
     return this.#deeper(parameter, [first.type, second.type], () =>
-      equate(first.type, second.type, relatingOf(parameter, first, second)),
+      equate(first.type, second.type, {
+        advice: isAdvice(first) || isAdvice(second),
+        by: undefined,
+      }),
     );
   }
 
@@ -381,9 +427,14 @@ export function isShape(bound: Bound | LowerBound): boolean {
   return 'isShape' in bound && bound.isShape;
 }
 
-/** Relating `parameter`'s bounds `first` and `second`: advice where either is. */
-function relatingOf(parameter: ParameterKey, first: Bound, second: Bound): RelatingBounds {
-  return { of: parameter, advice: isAdvice(first) || isAdvice(second) };
+/**
+ * The role relating a variable's bounds `below` and `above` bounds what they mention with: advice
+ * where either is; made by the construct whose match made `above`, so what `below` mentions is
+ * bounded as that construct's consumer would bound it, and what `above` mentions, its own, as what
+ * it is given.
+ */
+function relatingOf(below: Bound, above: Bound): BoundRole {
+  return { advice: isAdvice(below) || isAdvice(above), by: above.by };
 }
 
 /** Copies each of `from`'s entries into `to`. */

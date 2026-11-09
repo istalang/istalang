@@ -17,8 +17,8 @@
  * - A function named where what it gives is still open is chosen by the parameters it is expected
  *   to take, settled, and joins the scope as a call does, its type parameters variables of the
  *   scope (resolution/choosing/named-functions.ts `openedValue`), so what it gives bounds them as a
- *   call's result would; it is checked, and recorded, once, against its type as the scope solved
- *   it. Expected to be no function, it is its lone function's whole type, so a function passed for
+ *   call's result would; once the scope is solved it is instantiated as the scope solved it and
+ *   recorded, the one it chose. Expected to be no function, it is its lone function's whole type, so a function passed for
  *   a `T` is its whole self.
  */
 
@@ -27,6 +27,7 @@ import type { BodyContext } from '../../contexts/body-context.ts';
 import { useSite } from '../../contexts/use-site.ts';
 import {
   type FunctionNaming,
+  madeValue,
   namedFunctions,
   openedValue,
 } from '../../resolution/choosing/named-functions.ts';
@@ -42,7 +43,7 @@ import {
 import { unfolded } from '../../types/type/computed-types.ts';
 import type { Type } from '../../types/type/index.ts';
 import { errorType, isPrimitive } from '../../types/type/primitives.ts';
-import { namedFunctionsAccepted } from '../closures/function-values.ts';
+import { namedFunctionsAccepted, recordedValue } from '../closures/function-values.ts';
 import { checkLambda, lambdaAccepts, writtenInputs } from '../closures/lambdas.ts';
 import { memberAccepts, nameAccepts } from './access/names.ts';
 import { emptyArrayAdmits, emptyMapAdmits } from './collections/empty-collections.ts';
@@ -229,7 +230,7 @@ function judgeLambda(context: BodyContext, node: Lambda, expected: Type | undefi
 /**
  * Checks `node`, a name a scope postponed, with what is known of what is expected of it: while what
  * the function gives is still open, as a member of the scope, the function its settled parameters
- * choose, checked and recorded as ever (`check`) once the scope is solved; else as ever at once,
+ * choose, instantiated and recorded once the scope is solved; else as ever (`check`) at once,
  * against a function known whole, a value it is, or nothing. One naming no function that takes
  * the parameters is the error type, checked once the scope is solved, which says why.
  */
@@ -241,28 +242,22 @@ function judgeNamed(
 ): Type {
   const { scopes } = context;
   const shape = expectedFunction(expected);
-  if (shape === undefined || !scopes.holds(shape.result)) {
+  if (expected === undefined || shape === undefined || !scopes.holds(shape.result)) {
     return check(expected);
   }
   const named = namedFunctions(context, node);
   const opened = named === undefined ? undefined : openedValue(context, named, shape);
   if (opened === undefined) {
-    scopes.whenSolved((solved) => check(solved(expected ?? errorType)));
+    scopes.whenSolved((solved) => check(solved(expected)));
     return errorType;
   }
   const { application, type } = opened;
   const { inference, signature } = application;
-  // What the scope would choose of what it gives advises it, as an expected type advises a call.
-  const result = scopes.guided(shape.result);
-  if (!scopes.holds(result)) {
-    inference.expect(type, { ...shape, result });
-  }
-  const { checker, module } = context;
-  return scopes.join({
-    node: undefined,
-    inference,
-    settling: settlingAt(useSite(checker, module, node.span), signature),
-    type,
-    complete: () => check(inference.solved(type)),
-  });
+  const site = useSite(context.checker, context.module, node.span);
+  const complete = () => {
+    context.expectAt(node, inference.solved(expected));
+    return recordedValue(context, node, application, madeValue(context, application, site));
+  };
+  const settling = settlingAt(site, signature);
+  return scopes.join({ node, inference, settling, type, complete });
 }

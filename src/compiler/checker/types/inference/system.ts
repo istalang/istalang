@@ -30,9 +30,9 @@ import type { ParameterKey, Type } from '../type/index.ts';
 import { errorType, isPrimitive } from '../type/primitives.ts';
 import type { Joining } from '../unions/common-type.ts';
 import { VariableBinding } from './binding.ts';
-import { type BoundRules, BoundStore, type RelatingBounds, type VariableBounds } from './bounds.ts';
+import { type BoundRules, BoundStore, type VariableBounds } from './bounds.ts';
 import { equalTypes } from './equal.ts';
-import { expectedMatch, type Matching } from './matching.ts';
+import { expectedMatch, type Matching, relatingMatch } from './matching.ts';
 import { MatchNotes } from './notes.ts';
 import { convertsIntoAny, type Relating, relatedAsIs } from './relate.ts';
 import {
@@ -225,13 +225,13 @@ export class CallSystem {
     }
     const settled = settleOne(variable, this.#tentative, this.#view, settlingOf(variable));
     if (settled !== undefined) {
-      this.#store.addEqual(variable, { type: settled, origin: 'argument' });
+      this.#store.addEqual(variable, { type: settled, advice: false, by: undefined });
     }
   }
 
   /** Takes `variable` as `type` from here on, as an equality from the arguments. */
   fixAs(variable: ParameterKey, type: Type): void {
-    this.#store.addEqual(variable, { type, origin: 'argument' });
+    this.#store.addEqual(variable, { type, advice: false, by: undefined });
   }
 
   /** What `variable` is taken as found as, given or fixed (system-reading.ts). */
@@ -282,13 +282,6 @@ export class CallSystem {
     }
   }
 
-  /** The match relating two of a variable's bounds is, made as its own construct's (bounds.ts). */
-  #relating({ of, advice }: RelatingBounds): Matching {
-    return advice
-      ? expectedMatch
-      : { kind: 'argument', by: this.#calls.get(of), written: undefined };
-  }
-
   /** The rules the bound store checks bounds by, matching through this system. */
   #boundRules(): BoundRules {
     const fitting = this.#fitting;
@@ -298,11 +291,11 @@ export class CallSystem {
       same: sameType,
       isOpen: (type) => this.mentionsVariable(type),
       constrain: (found, expected, relating) =>
-        this.#as(this.#relating(relating), () => this.#constrain(found, expected)),
+        this.#as(relatingMatch(relating), () => this.#constrain(found, expected)),
       equate: (first, second, relating) =>
-        this.#as(this.#relating(relating), () => this.#atomic(() => this.#equal(first, second))),
+        this.#as(relatingMatch(relating), () => this.#atomic(() => this.#equal(first, second))),
       constrainShape: (target, shape, relating) =>
-        this.#as(this.#relating(relating), () => {
+        this.#as(relatingMatch(relating), () => {
           const fields = shapeTaking(target, shape, fitting);
           return fields !== undefined && this.#atomic(() => this.#constrain(shape, fields));
         }),
@@ -324,6 +317,7 @@ export class CallSystem {
     return {
       fitting: this.#fitting,
       isVariable: (key) => this.#calls.has(key),
+      callOf: (variable) => this.#calls.get(variable),
       givenOf: (variable) => this.#given.get(variable),
       boundsOf: (variable) => this.#store.of(variable),
       relatedOf: (variable) => this.#store.relatedOf(variable),

@@ -180,6 +180,7 @@ describe('a function named as a value where what it gives is still open', () => 
       `fn b() -> Int: take(apply(1, ${value}), "hello")`,
       `fn c() -> Int: pairWith(1, ${value}, takeResultString)`,
       `fn d(vs: Array<Int>) -> Array<Result<Int, String>>: vs.map(${value})`,
+      `fn e() -> Result<Int, String>: apply(1, ${value})`,
     ];
     for (const value of ['Result.Ok', 'fn x: Result.Ok(x)']) {
       expect(reported([...functions, ...uses(value)].join('\n'))).toEqual(reportedNothing);

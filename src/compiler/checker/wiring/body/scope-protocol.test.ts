@@ -16,6 +16,21 @@ const declarations = [
   'fn show(x: String) -> String: "str"',
 ].join('\n');
 
+describe('parentheses', () => {
+  it('leave what they hold postponed in the scope, as it stands alone', () => {
+    const uses = [
+      'fn apply<A, B>(x: A, f: fn(A) -> B) -> B: f(x)',
+      'fn take<T>(xs: Array<T>) -> Int: 0',
+      'fn lambda() -> Int: apply(1, (fn x: x))',
+      'fn value() -> Result<Int, String>: apply(1, (Result.Ok))',
+      'fn empty() -> Int: take(id(([])))',
+    ];
+    expect(reported([declarations, ...uses, 'async fn main(): 0'].join('\n'))).toEqual(
+      reportedNothing,
+    );
+  });
+});
+
 describe("a field loop's passes", () => {
   it('each settle a generic call they make on their own field', () => {
     const uses = [

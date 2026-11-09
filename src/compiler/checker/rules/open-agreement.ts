@@ -50,19 +50,16 @@ export function agreedDefault(checker: Joining, produced: readonly Produced[]): 
 
 /**
  * The type `produced` agree on in the current scope, unless what they are expected to be is known
- * whole and none of them is open in it: the result variable `node` stands for, a member of the
- * scope settled as they agree, which fits them to what it settled to once it is solved; undefined
- * otherwise, for them to agree at once.
+ * whole: the result variable `node` stands for, a member of the scope settled as they agree, which
+ * fits them to what it settled to once it is solved; undefined otherwise, for them to agree at
+ * once on what is expected, each still open in the scope fitted to it once the scope settles.
  */
 export function openAgreement(
   context: BodyContext,
   { node, produced, expected, mismatch }: Producers,
 ): Type | undefined {
   const { scopes } = context;
-  const isKnown =
-    expected !== undefined &&
-    !scopes.holds(expected) &&
-    !produced.some((each) => scopes.holds(each.type));
+  const isKnown = expected !== undefined && !scopes.holds(expected);
   if (!scopes.isOpen || isKnown) {
     return undefined;
   }
@@ -77,7 +74,7 @@ export function openAgreement(
   // What they go into decides, as an expected type does, where it bounded them; else they agree on
   // their own, which reports a branch that disagrees as such.
   const complete = () => {
-    const isTaken = expected !== undefined || inference.expectationOf(type) !== undefined;
+    const isTaken = inference.expectationOf(type) !== undefined;
     const settled = produced.map((each) => ({ ...each, type: inference.solved(each.type) }));
     const agreed = inference.solved(type);
     const decided = isTaken && agreed.kind !== 'error' ? agreed : undefined;

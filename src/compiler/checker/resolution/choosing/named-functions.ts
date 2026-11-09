@@ -196,8 +196,9 @@ function mentionsOpen(type: Type, isOpen: OpenParts): boolean {
 /**
  * The function `named` means where a value of `shape` is expected while what it gives is still
  * open (constructs/expressions/postponed.ts): chosen by `shape`'s parameters, which are settled,
- * with its type parameters left the variables of its inference, and its type as a value in them.
- * Undefined when none takes the parameters. It records and reports nothing.
+ * with its type parameters left the variables of its inference, those at the top of its result
+ * standing there as a call's do, and its type as a value in them. Undefined when none takes the
+ * parameters. It records and reports nothing.
  */
 export function openedValue(
   context: BodyContext,
@@ -208,7 +209,8 @@ export function openedValue(
   if (application === undefined) {
     return undefined;
   }
-  const { inference } = application;
+  const { inference, signature } = application;
+  inference.expect(signature.result(), undefined);
   return {
     application,
     type: valueTypeOf(context.checker, application, (declared) => inference.open(declared)),
@@ -228,6 +230,12 @@ export function chosenValue(
   return chosen ?? loneFunction(context, named, shape);
 }
 
+/** A function named as a value, instantiated, and its type as one. */
+export interface MadeValue {
+  readonly instantiation: Instantiation;
+  readonly type: FunctionType;
+}
+
 /**
  * `application` instantiated at `site`, its result expected to be `result`, with its type as a
  * value; undefined when it can't be, which `site` reports.
@@ -237,12 +245,25 @@ export function instantiatedValue(
   application: Application,
   site: UseSite,
   result: Type | undefined,
-): { readonly instantiation: Instantiation; readonly type: FunctionType } | undefined {
-  const { checker } = context;
+): MadeValue | undefined {
   const { signature } = application;
   const { isAsync } = signature.declaration;
-  const expectedResult = result === undefined || !isAsync ? result : futureOf(checker, result);
+  const expectedResult =
+    result === undefined || !isAsync ? result : futureOf(context.checker, result);
   application.inference.expect(signature.result(), expectedResult);
+  return madeValue(context, application, site);
+}
+
+/**
+ * `application` instantiated at `site` as its inference settled, with its type as a value;
+ * undefined when it can't be, which `site` reports.
+ */
+export function madeValue(
+  context: BodyContext,
+  application: Application,
+  site: UseSite,
+): MadeValue | undefined {
+  const { checker } = context;
   const instantiation = instantiate(site, application);
   if (instantiation === undefined) {
     return undefined;

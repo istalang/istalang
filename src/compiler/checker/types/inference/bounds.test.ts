@@ -27,7 +27,7 @@ function store(): BoundStore {
   });
 }
 
-const argument = (type: Type) => ({ type, origin: 'argument' }) as const;
+const argument = (type: Type) => ({ type, advice: false, by: undefined }) as const;
 
 const types = (bounds: readonly { readonly type: Type }[]) => bounds.map(({ type }) => type);
 
@@ -35,9 +35,15 @@ describe('two related variables', () => {
   it('hand each other the bounds they had', () => {
     const [lower, upper, bounds] = [variable('T'), variable('U'), store()];
     expect(
-      bounds.addLower(lower, { type: intType, fresh: false, isShape: false, origin: 'argument' }),
+      bounds.addLower(lower, {
+        type: intType,
+        fresh: false,
+        isShape: false,
+        advice: false,
+        by: undefined,
+      }),
     ).toBe(true);
-    expect(bounds.addUpper(upper, { type: intType, origin: 'expected' })).toBe(true);
+    expect(bounds.addUpper(upper, { type: intType, advice: true, by: undefined })).toBe(true);
     expect(bounds.relate(lower, upper)).toBe(true);
     expect(types(bounds.of(upper).lower)).toEqual([intType]);
     expect(types(bounds.of(lower).upper)).toEqual([intType]);
@@ -46,7 +52,7 @@ describe('two related variables', () => {
   it('hand each other the bounds added later, and a disagreement fails', () => {
     const [lower, upper, bounds] = [variable('T'), variable('U'), store()];
     expect(bounds.relate(lower, upper)).toBe(true);
-    expect(bounds.addUpper(upper, { type: intType, origin: 'argument' })).toBe(true);
+    expect(bounds.addUpper(upper, { type: intType, advice: false, by: undefined })).toBe(true);
     expect(types(bounds.of(lower).upper)).toEqual([intType]);
     const mark = bounds.mark();
     expect(
@@ -54,7 +60,8 @@ describe('two related variables', () => {
         type: stringType,
         fresh: false,
         isShape: false,
-        origin: 'argument',
+        advice: false,
+        by: undefined,
       }),
     ).toBe(false);
     bounds.rollback(mark);
@@ -66,7 +73,7 @@ describe('two related variables', () => {
     const mark = bounds.mark();
     bounds.relate(lower, upper);
     bounds.rollback(mark);
-    expect(bounds.addUpper(upper, { type: intType, origin: 'argument' })).toBe(true);
+    expect(bounds.addUpper(upper, { type: intType, advice: false, by: undefined })).toBe(true);
     expect(bounds.of(lower).upper).toEqual([]);
   });
 });

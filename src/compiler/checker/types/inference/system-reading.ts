@@ -21,11 +21,14 @@ import {
   type VariableBounds,
 } from './bounds.ts';
 import { type Settling, type SettlingView, settleOne } from './settle.ts';
+import type { CallVariables } from './variables.ts';
 
 /** What reading a system's variables needs of it. */
 export interface SystemReading {
   readonly fitting: Fitting;
   readonly isVariable: (key: ParameterKey) => boolean;
+  /** The call `variable` is one of the variables of. */
+  readonly callOf: (variable: ParameterKey) => CallVariables | undefined;
   readonly givenOf: (variable: ParameterKey) => Type | undefined;
   readonly boundsOf: (variable: ParameterKey) => VariableBounds;
   /** The variables `variable` is related to (bounds.ts). */
@@ -228,6 +231,7 @@ export function settlingViewOf(
     rules: fitting,
     boundsOf: reading.boundsOf,
     isAtTop: (parameter) => atTop.has(parameter),
+    callOf: reading.callOf,
     fits: (found, expected) => fitOf(found, expected, fitting) !== undefined,
     takesShape: (target, shape) => takesShape(target, shape, fitting),
     join: reading.join,

@@ -17,7 +17,7 @@ import { isPrimitive } from '../type/primitives.ts';
 import type { Joining } from '../unions/common-type.ts';
 import { baseOf } from '../unions/union-members.ts';
 import { parameterType } from '../written/resolve-type.ts';
-import type { Bound, BoundStore, LowerBound, Origin } from './bounds.ts';
+import type { Bound, BoundStore, LowerBound } from './bounds.ts';
 import { fillingOf, joinedLower } from './fillings.ts';
 import type { Matching } from './matching.ts';
 import type { MatchNotes } from './notes.ts';
@@ -56,13 +56,13 @@ export class VariableBinding {
     const { store } = this.#target;
     const { kind, written } = this.#target.match();
     if (kind === 'receiver') {
-      return this.#added(variable, store.addEqual(variable, this.#bound(variable, filling)));
+      return this.#added(variable, store.addEqual(variable, this.#bound(filling)));
     }
     const literal = written?.kind === 'literal' ? written.literal : undefined;
     const fresh = literal !== undefined && sameType(filling, baseOf(literal));
     const isShape = written?.kind === 'shape' && filling.kind === 'anonymous';
     const bound: LowerBound = {
-      ...this.#bound(variable, literal !== undefined && fresh ? literal : filling),
+      ...this.#bound(literal !== undefined && fresh ? literal : filling),
       fresh,
       isShape,
       isApart: written?.kind === 'apart',
@@ -76,7 +76,7 @@ export class VariableBinding {
       return false;
     }
     const { store } = this.#target;
-    const bound = this.#bound(variable, expected);
+    const bound = this.#bound(expected);
     return this.#added(
       variable,
       this.#target.match().kind === 'receiver'
@@ -94,7 +94,7 @@ export class VariableBinding {
     const filling = this.#filling(variable, given);
     return (
       filling !== undefined &&
-      this.#added(variable, this.#target.store.addEqual(variable, this.#bound(variable, filling)))
+      this.#added(variable, this.#target.store.addEqual(variable, this.#bound(filling)))
     );
   }
 
@@ -108,9 +108,10 @@ export class VariableBinding {
     return joinedLower(isMember, lower, upper, this.#target.joining);
   }
 
-  /** A bound of `variable` by `type` from the match being made. */
-  #bound(variable: ParameterKey, type: Type): Bound {
-    return { type, origin: originFor(this.#target.match(), this.#target.callOf(variable)) };
+  /** A bound of `type` from the match being made: advice for the expected type's, made by its construct. */
+  #bound(type: Type): Bound {
+    const { kind, by } = this.#target.match();
+    return { type, advice: kind === 'expected', by };
   }
 
   /** `added`, noting `variable` as the last whose bounds disagreed when it is false. */
@@ -144,17 +145,4 @@ export class VariableBinding {
     const type = parameter === undefined ? undefined : call?.typeOf(parameter);
     return type === undefined ? undefined : this.#target.fitting.memberUnionOf(type);
   }
-}
-
-/**
- * Where a bound `match` gives a variable of `call` comes from (bounds.ts `Origin`): the expected
- * type's; else what consumes it, where the construct matching is another than its own, as an
- * enclosing call matching an argument bounds the variables of the argument's construct; else its
- * own construct's.
- */
-function originFor(match: Matching, call: CallVariables | undefined): Origin {
-  if (match.kind === 'expected') {
-    return 'expected';
-  }
-  return match.by !== undefined && call !== match.by ? 'consumer' : 'argument';
 }

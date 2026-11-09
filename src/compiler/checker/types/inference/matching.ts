@@ -5,6 +5,7 @@
  */
 
 import type { LiteralType } from '../type/index.ts';
+import type { BoundRole } from './bounds.ts';
 import type { CallVariables } from './variables.ts';
 
 /** What a match is: an argument's, the expected type's, or a method's receiver's. */
@@ -32,3 +33,12 @@ export type Written =
   | { readonly kind: 'shape' }
   /** An item of a collection literal whose items agree on no one type (`LowerBound.isApart`). */
   | { readonly kind: 'apart' };
+
+/**
+ * The match relating two of a variable's bounds makes, as their `role` says (bounds.ts
+ * `relatingOf`): the expected type's where either advises, else one made by the construct whose
+ * match made the bound above.
+ */
+export function relatingMatch({ advice, by }: BoundRole): Matching {
+  return advice ? expectedMatch : { kind: 'argument', by, written: undefined };
+}

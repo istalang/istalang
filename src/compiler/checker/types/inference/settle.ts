@@ -29,7 +29,8 @@ import { errorType } from '../type/primitives.ts';
 import type { TypeRules } from '../type/type-rules.ts';
 import {
   type Bound,
-  isConsumers,
+  fromConsumer,
+  isAdvice,
   isShape,
   type LowerBound,
   mentionedBy,
@@ -37,6 +38,7 @@ import {
   requirementsOf,
   type VariableBounds,
 } from './bounds.ts';
+import type { CallVariables } from './variables.ts';
 
 /** What settling asks of the program for a parameter. */
 export interface Settling {
@@ -55,6 +57,8 @@ export interface SettlingView {
   readonly boundsOf: (parameter: ParameterKey) => VariableBounds;
   /** Whether `parameter` stands at the top of the result: the result itself, or a member of it. */
   readonly isAtTop: (parameter: ParameterKey) => boolean;
+  /** The call `parameter` is one of the variables of, which its bounds are read against. */
+  readonly callOf: (parameter: ParameterKey) => CallVariables | undefined;
   readonly fits: (found: Type, expected: Type) => boolean;
   /** Whether `target`, a struct its fields give, takes a struct literal of shape `shape` (§3.1). */
   readonly takesShape: (target: Type, shape: Type) => boolean;
@@ -163,15 +167,16 @@ export function settleOne(
   const related = withRelatives(
     closedBounds(view.boundsOf(parameter), settled, view.rules),
     view.relatedOf(parameter),
-    settled,
+    { settled, callOf: view.callOf },
   );
   // Items apart (bounds.ts) settle on what takes them where something does, judged there after.
   const isTaken = related.equal !== undefined || related.upper.length > 0;
   const bounds = isTaken
     ? { ...related, lower: related.lower.filter(({ isApart }) => isApart !== true) }
     : related;
+  // An equality the expected type advises is rule 2's to choose, as an upper bound.
   const decide = (of: VariableBounds) =>
-    of.equal?.type ??
+    (of.equal === undefined || isAdvice(of.equal) ? undefined : of.equal.type) ??
     (view.isAtTop(parameter) ? undefined : expectedChoice(parameter, of, view, settling)) ??
     lowerJoin(parameter, of, view) ??
     upperChoice(of, view);
@@ -200,7 +205,8 @@ function settledBelow(
     type,
     fresh: false,
     isShape: false,
-    origin: 'argument' as const,
+    advice: false,
+    by: undefined,
   }));
   const joined = lower.length === 0 ? undefined : view.join(parameter, lower, bounds.upper);
   return joined !== undefined &&
@@ -239,8 +245,9 @@ function expectedChoice(
 ): Type | undefined {
   // An invariant position gives the expected type as an equality, which chooses as an upper bound.
   const given = bounds.equal === undefined ? bounds.upper : [bounds.equal, ...bounds.upper];
+  const call = view.callOf(parameter);
   return given
-    .filter(isConsumers)
+    .filter((bound) => fromConsumer(bound, call))
     .find(
       (candidate) =>
         agreesWith(candidate.type, bounds, view) && settling.admits(parameter, candidate.type),
@@ -305,12 +312,13 @@ function closedBounds(
 /**
  * `bounds` with what the parameters related to it settled to, so one bounded only by another, as a
  * call's parameter type passed where a joined call's is (design.md §4), settles from it: a related
- * parameter below gives a lower bound, one above an upper bound.
+ * parameter below gives a lower bound, one above an upper bound, made by its own call, so one of
+ * another call's is what consumes it.
  */
 function withRelatives(
   bounds: VariableBounds,
   { below, above }: Related,
-  settled: Substitution,
+  { settled, callOf }: Pick<SettlingView, 'callOf'> & { readonly settled: Substitution },
 ): VariableBounds {
   // One that couldn't be settled hands nothing on: the error type would silence what disagrees.
   const settledOf = (keys: readonly ParameterKey[]) =>
@@ -318,7 +326,7 @@ function withRelatives(
       const type = settled.get(key);
       return type === undefined || type.kind === 'error'
         ? []
-        : [{ type, origin: 'argument' as const }];
+        : [{ type, advice: false, by: callOf(key) }];
     });
   return {
     ...bounds,

@@ -291,6 +291,43 @@ describe('what takes a call’s value, choosing inside its result', () => {
     expect(instantiationsOf('id', main)).toEqual(['main.id<Int>']);
   });
 
+  it('reaches what a postponed argument gives where the call gives it at its top', () => {
+    const main = [
+      consumers,
+      'fn apply<A, B>(x: A, f: fn(A) -> B) -> B: f(x)',
+      'fn t1() -> Result<Int, String>: apply(1, Result.Ok)',
+      'fn t2() -> Array<Result<Int, String>>: apply(1, fn x: [Result.Ok(x)])',
+      'fn t3() -> (Result<Int, String>, Int): apply(1, fn x: (Result.Ok(x), x))',
+      'fn t4() -> Array<Box<Int?>>: apply(1, fn x: [makeBox(x)])',
+    ].join('\n');
+    expect(reportedErrors(main)).toEqual([]);
+  });
+
+  it('reaches a call through what an enclosing call is given, never making that its consumer', () => {
+    const main = [
+      consumers,
+      'fn collect<T>(seed: T, accept: fn(T) -> Unit) -> Array<T>: [seed]',
+      'fn needInts(xs: Array<Int>): ()',
+      'fn withConsumer<U>(b: Box<U>, f: fn(U) -> Unit) -> Int: 0',
+      'fn withSlot<U>(b: Box<U>, s: Slot<U>) -> Int: 0',
+      'fn uses(acceptOpt: fn(Int?) -> Unit, s: Slot<Int?>):',
+      '  needInts(collect(1, id(acceptOpt)))',
+      '  needInts(collect(1, fn(x: Int?): ()))',
+      '  drop withConsumer(makeBox(1), acceptOpt)',
+      '  drop withSlot(makeBox(1), s)',
+    ].join('\n');
+    expect(reportedErrors(main)).toEqual([]);
+  });
+
+  it('sets aside an equality the expected type gives that the constraints refuse', () => {
+    const main = [
+      'shared struct Cell<T> { value: T }',
+      'fn makeCell<T is Comparable>(x: T) -> Cell<T>: new Cell{value: x}',
+      'fn f() -> Cell<Int?>: makeCell(1)',
+    ].join('\n');
+    expect(reportedErrors(main)).toEqual([checkerDiagnostics.typeMismatch.code]);
+  });
+
   it('gives a call passed to a parameter the instantiation that parameter expected gives it', () => {
     const typed = [
       ['Int', '1', '2'],

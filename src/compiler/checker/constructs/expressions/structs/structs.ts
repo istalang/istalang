@@ -152,10 +152,8 @@ function checkAnonymousLiteral(
     return checkOpaqueComprehended(context, node, comprehension, target);
   }
   if (spread === undefined) {
-    const shape = freshAnonymous(context, node);
-    return context.scopes.isOpen
-      ? builtOnceExpected(context, node, shape)
-      : builtAs(context, node, shape, expected);
+    // A `struct{…}` opens a scope where none is open (wiring/body/scope-protocol.ts).
+    return builtOnceExpected(context, node, freshAnonymous(context, node), expected);
   }
   const type = context.expression(spread.node.expression);
   const fromSpread = shapeOf(context, type);
@@ -232,16 +230,24 @@ function declaredShape(
 /**
  * A `struct{…}` of `shape` in a constraint scope that doesn't know yet what it builds
  * (docs/work/variance-inference/i2-scope.md §3): a placeholder of the scope, bounded below by its
- * shape, marked as one, so a call choosing sees its fields' types and it settles on a struct its
- * fields give where one is expected (§3.1). The scope builds it once it knows what is expected of
+ * shape, marked as one, and above by what it is `expected` to be, so a call choosing sees its
+ * fields' types and it settles on a struct its fields give where one is expected (§3.1). The scope builds it once it knows what is expected of
  * it, of its fields as they were checked, so a field the scope postponed is told what it is
  * expected to be then; with nothing expected, it is its shape.
  */
-function builtOnceExpected(context: BodyContext, node: StructLiteral, shape: Type): Type {
+function builtOnceExpected(
+  context: BodyContext,
+  node: StructLiteral,
+  shape: Type,
+  expected: Type | undefined,
+): Type {
   const { inference, type } = placeholderOf(context, node);
-  const judge = (expected: Type | undefined) => builtAs(context, node, shape, expected);
+  const judge = (known: Type | undefined) => builtAs(context, node, shape, known);
   context.scopes.postpone({ node, inference, type, admits: () => true, judge, standsAlone: true });
   inference.matchShape(type, shape);
+  if (expected !== undefined) {
+    inference.match(expected, type);
+  }
   return type;
 }
 

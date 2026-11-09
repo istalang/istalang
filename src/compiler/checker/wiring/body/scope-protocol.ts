@@ -13,6 +13,9 @@
  * - A collection literal of items decided by where it goes, an expected type the scope doesn't hold,
  *   reads its items' types at once to agree on them, so they settle on their own; one that isn't
  *   joins as a generic literal of the scope.
+ * - Parentheses open a scope where what they hold would, and otherwise join the current one, so
+ *   what they hold is placed as it stands itself: a lambda, a name or `[]` in them is still
+ *   postponed.
  * - An `if` with no `else` gives nothing: its branches' values are dropped, so they settle on their
  *   own, as a statement's do.
  */
@@ -62,7 +65,8 @@ const standings: Handlers<ScopeHolding, Expression, [Type | undefined], Standing
   ArrayLiteral: (scopes, node, expected) => collectionStanding(scopes, node.elements, expected),
   MapLiteral: (scopes, node, expected) => collectionStanding(scopes, node.entries, expected),
   IndentedValue: (_scopes, node) => (node.type === undefined ? 'joins' : 'opens'),
-  Parenthesized: (scopes, node, expected) => standingOf(scopes, node.expression, expected),
+  Parenthesized: (scopes, node, expected) =>
+    standingOf(scopes, node.expression, expected) === 'opens' ? 'opens' : 'joins',
   If: (_scopes, node) => (node.elseClause === undefined ? 'boundary' : 'opens'),
   Match: opens,
   Select: opens,

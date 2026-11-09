@@ -222,7 +222,13 @@ contravariant positions.
 - **Constraints of the declaration** (`is`, `in`) are checked once a variable is settled, as
   today.
 - **Bounds propagate between variables:** `T <: U` hands `U`'s upper bounds to `T` and `T`'s lower
-  bounds to `U`, so an expected type reaches a nested literal.
+  bounds to `U`, so an expected type reaches a nested literal. A bound records which construct's
+  match made it; read against a variable of another construct, it is what consumes that one
+  (rule 2), however it got there.
+- **Advice meets requirements in either order:** a requirement added after the expected type's
+  advice is related to it, so the advice reaches what the requirement mentions (`apply(1,
+  Result.Ok)` as a `Result<Int, String>`); advice that disagrees is set aside, never refusing a
+  requirement.
 
 **Joint solving.** A nested generic call, or generic literal, in argument position doesn't settle
 alone (which expressions join is the scope protocol, below). Its variables join the enclosing call's system, and the outermost expression settles them
@@ -262,7 +268,8 @@ function value's result then adds lower bounds. This repeats until every postpon
 checked; then the rest is settled.
 
 **The settling policy**, for each variable, in order:
-1. **An equality,** if there is one. Several equalities must agree.
+1. **An equality** the arguments require, if there is one. Several equalities must agree. One
+   the expected type gives, an invariant position's, only advises: rule 2 chooses it, or not.
 2. **The consumer's choice, inside the result.** When the variable sits inside the result (a
    type argument, an element, a part of a function type), what takes the call's value (its expected
    type, or an enclosing call's parameter, bounds.ts `Origin`) gives it an upper bound `B`, every lower bound fits `B`, and `B` meets the variable's `is`/`in` constraints and its
