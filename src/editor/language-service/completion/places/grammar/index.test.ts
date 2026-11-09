@@ -65,12 +65,16 @@ function operandSites(text: string): readonly Site[] {
   );
 }
 
-/** The errors a parser reports where a token can't stand: the one it found, an item misplaced. */
+/**
+ * The errors a parser reports where a token can't stand: the one it found, an item or a modifier
+ * misplaced.
+ */
 const refusals = new Set(
   [
     parserDiagnostics.expected,
     parserDiagnostics.topLevelStatement,
     parserDiagnostics.declarationInBlock,
+    parserDiagnostics.misplacedModifier,
   ].map(({ code }) => code),
 );
 

@@ -11,10 +11,12 @@
 import { selfType } from '../../../../foundation/language/well-known/index.ts';
 import type { TypeAliasDeclaration, TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { RestPattern } from '../../../syntax/patterns.ts';
+import { modifiersText } from '../../../syntax/tokens/modifiers.ts';
 import { folded } from '../identity/folding.ts';
 import { holdsRecursion } from '../parts/type-children.ts';
 import type { AliasUse } from './alias-uses.ts';
 import { type MappedParts, type RecursiveType, unfoldRecursive } from './computed-types.ts';
+import { qualifiersOfType } from './function-types.ts';
 import {
   type AnonymousStructType,
   type Constraint,
@@ -145,7 +147,7 @@ export function functionTypeParts(type: FunctionType): {
     parameters.push(`...${typeText(type.pack)}`);
   }
   return {
-    head: `${type.isSendable ? 'sendable ' : ''}${type.isAsync ? 'async ' : ''}fn`,
+    head: `${modifiersText(qualifiersOfType(type))}fn`,
     parameters,
     tail: ` -> ${typeText(type.result)}`,
   };

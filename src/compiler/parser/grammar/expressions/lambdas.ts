@@ -10,15 +10,17 @@
  */
 
 import type { Expression, Parameter } from '../../../syntax/expressions/index.ts';
+import { headForms, qualifiersOf } from '../../../syntax/tokens/modifiers.ts';
 import type { Invalid } from '../../../syntax/tree/node.ts';
 import type { Parser } from '../../parser.ts';
-import { parseFunctionKeyword, parseParameters } from '../parts/functions.ts';
+import { parseParameters } from '../parts/functions.ts';
+import { parseHead } from '../parts/heads.ts';
 
-/** A lambda, starting at `fn` or `async`. */
+/** A lambda, starting at its head. */
 export function parseLambda(parser: Parser): Expression {
   const { cursor } = parser;
   const { start } = cursor.token.span;
-  const isAsync = parseFunctionKeyword(parser);
+  const qualifiers = qualifiersOf(parseHead(parser, headForms.lambda));
   const named = cursor.at('identifier') && cursor.kindAt(1) === '(';
   const name = named ? parser.identifier() : undefined;
   const parameters = parseLambdaParameters(parser);
@@ -26,7 +28,7 @@ export function parseLambda(parser: Parser): Expression {
   parser.expect(':');
   const body = parser.expression();
   const span = parser.spanFrom(start);
-  return { kind: 'Lambda', span, isAsync, name, parameters, returnType, body };
+  return { kind: 'Lambda', span, qualifiers, name, parameters, returnType, body };
 }
 
 function parseLambdaParameters(parser: Parser): readonly (Parameter | Invalid)[] {

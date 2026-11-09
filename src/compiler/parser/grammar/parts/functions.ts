@@ -1,8 +1,7 @@
 /**
- * What every function form begins with (§3.3, §3.14): its head, `fn` or `async fn`, which lambdas,
- * function types and function declarations share, and the parameter list lambdas and function
- * declarations share: defaults, rest parameters, reference types, which only a parameter's type
- * may have (§3.7), and patterns that take an argument apart.
+ * The parameter list lambdas and function declarations share (§3.3, §3.14): defaults, rest
+ * parameters, reference types, which only a parameter's type may have (§3.7), and patterns that
+ * take an argument apart. Their heads are read by ./heads.ts.
  *
  * A parameter is a name, or a declaration target (§3.15) read by the pattern grammar, whose
  * `as name` names the whole. A bare name stays a name, never a one-name pattern: the parameter's
@@ -18,13 +17,6 @@ import type { CursorKind } from '../../cursor/index.ts';
 import { parseDelimited } from '../../cursor/recovery.ts';
 import type { Parser } from '../../parser.ts';
 import { spreadOpener } from './spreads.ts';
-
-/** `fn` or `async fn`, starting at either keyword: whether the function is async. */
-export function parseFunctionKeyword(parser: Parser): boolean {
-  const isAsync = parser.cursor.eat('async') !== undefined;
-  parser.expect('fn');
-  return isAsync;
-}
 
 /** `(a: Int, b = 1, Point{x, y}, ...rest: Array<T>)`, starting at the `(`. */
 export function parseParameters(parser: Parser): readonly (Parameter | Invalid)[] {

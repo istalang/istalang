@@ -47,9 +47,11 @@
 
 import { memo } from '../../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
+import { modifiersText } from '../../../syntax/tokens/modifiers.ts';
 import { holdsRecursion } from '../parts/type-children.ts';
 import type { AliasUse } from '../type/alias-uses.ts';
 import type { MappedParts, RecursiveGraph } from '../type/computed-types.ts';
+import { qualifiersOfType } from '../type/function-types.ts';
 import type {
   AnonymousStructType,
   FieldMember,
@@ -244,8 +246,7 @@ function functionKeyOf(type: FunctionType, key: (type: Type) => string): string 
   if (type.pack !== undefined) {
     parameters.push(`...${key(type.pack)}`);
   }
-  const prefix = `${type.isSendable ? 'sendable ' : ''}${type.isAsync ? 'async ' : ''}`;
-  return `${prefix}fn(${parameters.join(',')})->${key(type.result)}`;
+  return `${modifiersText(qualifiersOfType(type))}fn(${parameters.join(',')})->${key(type.result)}`;
 }
 
 /** The key of an unreduced use of a type `match` alias (§3.17). */

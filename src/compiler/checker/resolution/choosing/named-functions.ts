@@ -247,7 +247,7 @@ export function instantiatedValue(
   result: Type | undefined,
 ): MadeValue | undefined {
   const { signature } = application;
-  const { isAsync } = signature.declaration;
+  const isAsync = signature.declaration.qualifiers.kind !== undefined;
   const expectedResult =
     result === undefined || !isAsync ? result : futureOf(context.checker, result);
   application.inference.expect(signature.result(), expectedResult);
@@ -285,7 +285,7 @@ function valueTypeOf(
   { signature, binding }: Application,
   placed: (declared: Type) => Type,
 ): FunctionType {
-  const { isAsync } = signature.declaration;
+  const isAsync = signature.declaration.qualifiers.kind !== undefined;
   const made = placed(signature.result());
   const pack = signature.parameters.find((slot) => slot.rest?.kind === 'pack');
   return withPack(
@@ -480,7 +480,9 @@ function chosenFor(
  * `candidates` a value of `shape` may be: an async function only where `shape` is async (§3.14).
  */
 function takingAsync(candidates: readonly Candidate[], shape: FunctionType): readonly Candidate[] {
-  return shape.isAsync ? candidates : candidates.filter(({ declaration }) => !declaration.isAsync);
+  return shape.isAsync
+    ? candidates
+    : candidates.filter(({ declaration }) => declaration.qualifiers.kind === undefined);
 }
 
 function passingOf(reference: boolean): Passing {

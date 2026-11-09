@@ -25,6 +25,7 @@ import {
 } from '../../../compiler/syntax/declarations/index.ts';
 import { patternNamedType } from '../../../compiler/syntax/expressions/parameters.ts';
 import type { Pattern } from '../../../compiler/syntax/patterns.ts';
+import { modifiersText } from '../../../compiler/syntax/tokens/modifiers.ts';
 import type { SyntaxTree } from '../../../compiler/syntax/tree/index.ts';
 import { spanIn } from '../../../compiler/syntax/tree/positions.ts';
 import { textOf } from '../../../foundation/text/span.ts';
@@ -40,12 +41,12 @@ type ParameterLabel = readonly [start: number, end: number];
 
 /** The signature `declaration` declares. */
 export function signatureOf(checker: Checker, declaration: FunctionDeclaration): Signature {
-  const { isAsync, typeParameters } = declaration;
+  const { qualifiers, typeParameters } = declaration;
   const generics = typeParametersOf(typeParameters).map(
     (parameter) => `${parameter.isPack ? '...' : ''}${parameter.name.text}`,
   );
   const head = [
-    isAsync ? 'async ' : '',
+    modifiersText(qualifiers),
     'fn ',
     declaredFunctionName(declaration),
     generics.length === 0 ? '' : `<${generics.join(', ')}>`,

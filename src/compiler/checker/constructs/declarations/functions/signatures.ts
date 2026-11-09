@@ -296,13 +296,13 @@ export function declaredResultOf(
 export function declaredBodyResult(
   checker: CheckerContext,
   module: ModuleId,
-  declaration: Pick<FunctionDeclaration, 'isAsync' | 'returnType'>,
+  declaration: Pick<FunctionDeclaration, 'qualifiers' | 'returnType'>,
 ): Type | undefined {
   if (declaration.returnType === undefined) {
     return undefined;
   }
   const declared = checker.resolveType(module, declaration.returnType);
-  if (!declaration.isAsync || declared.kind === 'error') {
+  if (declaration.qualifiers.kind === undefined || declared.kind === 'error') {
     return declared;
   }
   const future = futureArgument(checker, declared);
@@ -322,5 +322,5 @@ export function callResult(
   declaration: FunctionDeclaration,
   bodyResult: Type,
 ): Type {
-  return declaration.isAsync ? futureOf(checker, bodyResult) : bodyResult;
+  return declaration.qualifiers.kind === undefined ? bodyResult : futureOf(checker, bodyResult);
 }

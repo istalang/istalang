@@ -119,7 +119,7 @@ export function checkSuite(
   const isSuiteResult =
     element?.kind === 'nominal' && element.entity === checker.wellKnownEntity(wellKnown.test);
   const plain =
-    !(declaration.isAsync || declaration.isExtern) &&
+    !(declaration.qualifiers.kind !== undefined || declaration.isExtern) &&
     declaration.typeParameters.length === 0 &&
     declaration.parameters.length === 0 &&
     isSuiteResult;

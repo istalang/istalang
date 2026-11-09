@@ -141,7 +141,7 @@ function mainOf(program: Program, entry: ModuleId): FunctionDeclaration | undefi
   }
   return entity.overloads.find(
     (overload) =>
-      overload.isAsync &&
+      overload.qualifiers.kind !== undefined &&
       overload.typeParameters.length === 0 &&
       overload.parameters.length === 0 &&
       !overload.isExtern,

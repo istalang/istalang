@@ -15,6 +15,7 @@ import type {
   Expression,
   ExpressionPart,
 } from '../../compiler/syntax/expressions/index.ts';
+import { modifiersText } from '../../compiler/syntax/tokens/modifiers.ts';
 import { childrenOf, type SyntaxNode, type SyntaxTree } from '../../compiler/syntax/tree/index.ts';
 import {
   angled,
@@ -256,7 +257,7 @@ export const expressionPrinters: Printers<ExpressionKind> = {
     node.defaultValue === undefined ? '' : [' = ', printer.print(node.defaultValue)],
   ],
   Lambda: (printer, node) => [
-    node.isAsync ? 'async ' : '',
+    modifiersText(node.qualifiers),
     'fn',
     node.name === undefined ? '' : [' ', printer.print(node.name)],
     bracketed(printer, node, ['(', ')'], node.parameters),

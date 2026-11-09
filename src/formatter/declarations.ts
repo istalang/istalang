@@ -19,6 +19,7 @@ import {
   type TypeParameters,
 } from '../compiler/syntax/declarations/index.ts';
 import type { Annotation } from '../compiler/syntax/items.ts';
+import { modifiersText } from '../compiler/syntax/tokens/modifiers.ts';
 import { bodyOf, type SyntaxNode } from '../compiler/syntax/tree/index.ts';
 import type { Identifier } from '../compiler/syntax/tree/node.ts';
 import { opened } from './expressions/indented-values.ts';
@@ -41,8 +42,7 @@ function named(printer: Printer, name: Identifier, parameters: TypeParameters): 
 
 function functionDoc(printer: Printer, node: FunctionDeclaration): builders.Doc {
   const header = [
-    node.isExtern ? 'extern ' : '',
-    node.isAsync ? 'async ' : '',
+    modifiersText({ extern: node.isExtern ? 'extern' : undefined, ...node.qualifiers }),
     'fn ',
     node.owner === undefined ? '' : [printer.print(node.owner), '.'],
     named(printer, node.name, node.typeParameters),
@@ -92,8 +92,7 @@ export const declarationPrinters: Printers<DeclarationKind> = {
     ]),
   ExternStructDeclaration: (printer, node) =>
     annotated(printer, node, [
-      'extern ',
-      node.handle === undefined ? '' : `${node.handle} `,
+      modifiersText({ extern: 'extern', handle: node.handle }),
       'struct ',
       named(printer, node.name, node.typeParameters),
       docBelow(printer, node.doc),

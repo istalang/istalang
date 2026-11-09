@@ -23,6 +23,7 @@
 
 import type { TypeParameter } from '../../syntax/declarations/index.ts';
 import type { TypeWord } from '../../syntax/tokens/grammar-words.ts';
+import { headForms, qualifiersOf } from '../../syntax/tokens/modifiers.ts';
 import type {
   FunctionType,
   LiteralType,
@@ -36,18 +37,13 @@ import { parserDiagnostics } from '../diagnostics.ts';
 import { atPostfix, eatContinuing } from '../layout/item-breaks.ts';
 import type { Parser } from '../parser.ts';
 import { parseConstraints, parseStructConstraint } from './parts/constraints.ts';
-import { parseFunctionKeyword } from './parts/functions.ts';
+import { headAhead, parseHead } from './parts/heads.ts';
 import { type LeveledParselet, leveledGrammar } from './parts/levels.ts';
 import { type Negatable, parseLiteral, parseNegativeLiteral } from './parts/literals.ts';
 import { namedTypeFrom, parseQualifiedName } from './parts/names.ts';
 import { spreadOpener } from './parts/spreads.ts';
 import { afterStructKeyword, parseFieldEntries } from './parts/structs.ts';
-import {
-  followsModifier,
-  type StartParselets,
-  type WordParselets,
-  wordParseletAt,
-} from './word-parselets.ts';
+import { type StartParselets, type WordParselets, wordParseletAt } from './word-parselets.ts';
 
 /** How a type starting at a token of some kind is parsed. */
 type TypeParselet = (parser: Parser) => TypeNode;
@@ -83,8 +79,7 @@ const typeParselets: Partial<Record<CursorKind, TypeParselet>> = {
  * where the word is a type's name (syntax/tokens/index.ts).
  */
 const wordParselets = {
-  sendable: (parser) =>
-    followsModifier(parser, 'sendable') ? parseFunctionType(parser) : undefined,
+  sendable: parseModifiedFunctionType,
   any: (parser) =>
     parser.cursor.kindAt(1) === 'identifier' || parser.cursor.kindAt(1) === 'struct'
       ? parseAnyType(parser)
@@ -112,7 +107,9 @@ export function parseType(parser: Parser): TypeNode {
 
 function parsePrimaryType(parser: Parser): TypeNode {
   const parselet = typeParselets[parser.cursor.kind];
-  return parselet === undefined ? parser.missing('a type') : parselet(parser);
+  return parselet === undefined
+    ? (parseModifiedFunctionType(parser) ?? parser.missing('a type'))
+    : parselet(parser);
 }
 
 /** `A | B | C`, at the first `|`: one node for every member. */
@@ -139,7 +136,18 @@ export function parseParameterType(parser: Parser): TypeNode {
 
 /** A type a contextual word starts, or else a named type. */
 function parseWordType(parser: Parser): TypeNode {
-  return wordParseletAt(parser, wordParselets)?.(parser) ?? parseNamedType(parser);
+  return (
+    (wordParseletAt(parser, wordParselets) ?? parseModifiedFunctionType)(parser) ??
+    parseNamedType(parser)
+  );
+}
+
+/**
+ * A function type whose head starts with a modifier, which its head checks (`sendable fn`, and a
+ * stray `shared fn`); undefined, with nothing consumed, where no head starts.
+ */
+function parseModifiedFunctionType(parser: Parser): TypeNode | undefined {
+  return headAhead(parser)?.keyword === 'fn' ? parseFunctionType(parser) : undefined;
 }
 
 /** `T?`, and `T??`, which arrives as one token and means `T?` twice. */
@@ -216,25 +224,14 @@ function parseTupleType(parser: Parser): TypeNode {
   });
 }
 
-/** `fn(A) -> R`, `async fn(A) -> R`, each maybe after `sendable`. */
+/** `fn(A) -> R`, `async fn(A) -> R`, each maybe `sendable`, at its head. */
 function parseFunctionType(parser: Parser): TypeNode {
   const { cursor } = parser;
   const { start } = cursor.token.span;
-  const isSendable = parser.atWord('sendable');
-  if (isSendable) {
-    cursor.advance();
-  }
-  const isAsync = parseFunctionKeyword(parser);
+  const qualifiers = qualifiersOf(parseHead(parser, headForms.functionType));
   const parameters = parseParameterTypes(parser);
   const returnType = cursor.eat('->') === undefined ? undefined : parser.type();
-  return {
-    kind: 'FunctionType',
-    span: parser.spanFrom(start),
-    isSendable,
-    isAsync,
-    parameters,
-    returnType,
-  };
+  return { kind: 'FunctionType', span: parser.spanFrom(start), qualifiers, parameters, returnType };
 }
 
 /** `(A, &B)` or `(A, ...B)`: a function type's parameter types. */

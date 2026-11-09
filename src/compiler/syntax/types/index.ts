@@ -19,6 +19,7 @@ import type { Unary } from '../expressions/index.ts';
 import type { Literal } from '../expressions/literals/literals.ts';
 import type { Annotatable } from '../items.ts';
 import type { WildcardPattern } from '../patterns.ts';
+import type { FunctionQualifiers } from '../tokens/modifiers.ts';
 import type { Identifier, Invalid, Missing, NodeOf, QualifiedName } from '../tree/node.ts';
 
 export interface NamedType extends NodeOf<'NamedType'> {
@@ -45,8 +46,7 @@ interface ParenthesizedType extends NodeOf<'ParenthesizedType'> {
  * unit.
  */
 export interface FunctionType extends NodeOf<'FunctionType'> {
-  readonly isSendable: boolean;
-  readonly isAsync: boolean;
+  readonly qualifiers: FunctionQualifiers;
   readonly parameters: readonly (TypeNode | RestType)[];
   readonly returnType: TypeNode | undefined;
 }

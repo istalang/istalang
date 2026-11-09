@@ -2,10 +2,9 @@
  * Statements (§3.4, §4, §7), dispatched on their first token: a word of `statementWords`
  * (syntax/tokens/grammar-words.ts), or else a name or an expression.
  *
- * Three first tokens need a look further ahead:
- * - `fn` starts a local function (`fn name…`), or else a lambda expression (`fn(x): …`,
- *   `fn x: …`).
- * - `async` starts a local function only when a name follows `fn`.
+ * Two kinds of first token need a look further ahead:
+ * - A function's head (`fn`, `async fn`, ../parts/heads.ts) starts a local function when a name
+ *   follows its `fn` (`fn name…`), or else a lambda expression (`fn(x): …`, `fn x: …`).
  * - A name starts a held variable when it is the word `hold` before one (`hold let`,
  *   `hold(outer) _ =`), a label when `:` follows it (loops.ts), and else an expression, a call
  *   of a function named `hold` included.
@@ -28,12 +27,8 @@ import type { Invalid } from '../../../syntax/tree/node.ts';
 import type { CursorKind } from '../../cursor/index.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import type { Parser } from '../../parser.ts';
-import {
-  followsModifier,
-  type StartParselets,
-  type WordParselets,
-  wordParseletAt,
-} from '../word-parselets.ts';
+import { headAhead } from '../parts/heads.ts';
+import { type StartParselets, type WordParselets, wordParseletAt } from '../word-parselets.ts';
 import { atLabel, parseFor, parseLabelled, parseWhile } from './loops.ts';
 import { parseBreak, parseContinue, parseDefer, parseDrop, parseReturn } from './simple.ts';
 import { atHold, parseHeldVariable, parseVariable } from './variables.ts';
@@ -43,8 +38,8 @@ type StatementParselet = (parser: Parser) => Statement | Invalid;
 const statementParselets: Partial<Record<CursorKind, StatementParselet>> = {
   let: parseVariable,
   const: parseVariable,
-  fn: parseFnStatement,
-  async: parseAsyncStatement,
+  fn: (parser) => parseLocalFunction(parser) ?? parseExpressionStatement(parser),
+  async: (parser) => parseLocalFunction(parser) ?? parseExpressionStatement(parser),
   return: parseReturn,
   break: parseBreak,
   continue: parseContinue,
@@ -65,27 +60,29 @@ export function parseStatement(parser: Parser): Statement | Invalid {
   return parselet(parser);
 }
 
-function parseFnStatement(parser: Parser): Statement | Invalid {
-  return namesFunctionAt(parser, 1)
+/**
+ * A local function, at its head, where a name follows its `fn`; undefined, with nothing consumed,
+ * otherwise. The head may start with any modifier, one no table holds included (`sendable fn f`).
+ */
+function parseLocalFunction(parser: Parser): Statement | undefined {
+  const head = headAhead(parser);
+  return head?.keyword === 'fn' && namesFunctionAt(parser, head.length)
     ? parser.functionDeclaration()
-    : parseExpressionStatement(parser);
+    : undefined;
 }
 
-/** A contextual word's statement, a labelled loop or block, or an expression, each at a name. */
+/**
+ * A contextual word's statement, a local function whose head starts with a modifier, a labelled
+ * loop or block, or an expression, each at a name.
+ */
 function parseNamedStatement(parser: Parser): Statement | Invalid {
-  const worded = wordParseletAt(parser, wordParselets)?.(parser);
+  const worded = (wordParseletAt(parser, wordParselets) ?? parseLocalFunction)(parser);
   if (worded !== undefined) {
     return worded;
   }
   return atLabel(parser)
     ? parseLabelled(parser, () => parseStatement(parser))
     : parseExpressionStatement(parser);
-}
-
-/** `async fn name(…)` declares a function; any other `async fn` is a lambda. */
-function parseAsyncStatement(parser: Parser): Statement | Invalid {
-  const declares = followsModifier(parser, 'async') && namesFunctionAt(parser, 2);
-  return declares ? parser.functionDeclaration() : parseExpressionStatement(parser);
 }
 
 /**

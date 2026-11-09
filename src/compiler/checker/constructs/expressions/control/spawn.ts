@@ -64,7 +64,7 @@ function outcomeOf(context: BodyContext, call: Call): Type {
   const isAsync =
     resolved === undefined
       ? callee.kind === 'function' && callee.isAsync
-      : resolved.function.isAsync;
+      : resolved.function.qualifiers.kind !== undefined;
   return isAsync ? (futureArgument(context.checker, returned) ?? returned) : returned;
 }
 

@@ -6,8 +6,8 @@
  *   zero()`, §3.7): whatever the checker's static functions may be declared on
  *   (types/written/named-types.ts), an alias of a shape among them (§3.17); a trait's function,
  *   `Self` (§3.10).
- * - `extern` is followed by `fn`, `struct` or a handle's word, or by the constant's name; a
- *   handle's word by `struct` (§3.6).
+ * - `extern` is followed by what an extern's head may go on with (syntax/tokens/modifiers.ts), or
+ *   by the constant's name; a handle's word by `struct` (§3.6).
  * - A method's first parameter may be the receiver, `self`: a top-level or a trait's function,
  *   never a static or a local one (§3.7).
  * - A struct's, an enum's or a trait's member may be an associated type instead, `type Data = T`
@@ -24,11 +24,13 @@ import type {
   FunctionDeclaration,
   Variant,
 } from '../../../../compiler/syntax/declarations/index.ts';
+import type { Word } from '../../../../compiler/syntax/tokens/grammar-words.ts';
 import {
-  externHandles,
-  isExternHandle,
-  type Word,
-} from '../../../../compiler/syntax/tokens/grammar-words.ts';
+  followersIn,
+  headForms,
+  isModifierWord,
+  startsOf,
+} from '../../../../compiler/syntax/tokens/modifiers.ts';
 import type { SyntaxNode } from '../../../../compiler/syntax/tree/index.ts';
 import type { FieldDeclaration } from '../../../../compiler/syntax/types/index.ts';
 import { receiverParameter } from '../../../../foundation/language/well-known/index.ts';
@@ -54,7 +56,7 @@ export function offerDeclaredName(
     case 'ExternConstantDeclaration':
       return wordCandidates(externWords);
     case 'ExternStructDeclaration':
-      return followsHandle(cursor) ? wordCandidates(['struct']) : [];
+      return wordCandidates(externStructWordsAfter(cursor));
     case 'DeclaredField':
     case 'Variant':
     case 'FieldDeclaration':
@@ -82,10 +84,14 @@ function namesOwner(declaration: FunctionDeclaration, name: SyntaxNode | undefin
 }
 
 /**
- * `extern shared ‸`: the parser takes the name for an extern struct's, whose `struct` is to come.
+ * `extern shared ‸`: the parser takes the name for an extern struct's, whose head goes on after
+ * the modifier before the cursor.
  */
-function followsHandle({ tree, before }: Cursor): boolean {
-  return before !== undefined && isExternHandle(textOf(tree.source, before.span));
+function externStructWordsAfter({ tree, before }: Cursor): readonly Word[] {
+  const word = before === undefined ? undefined : textOf(tree.source, before.span);
+  return word !== undefined && isModifierWord(word)
+    ? followersIn(headForms.externStruct, word)
+    : [];
 }
 
 /**
@@ -108,12 +114,17 @@ function memberWords(
   holder: SyntaxNode | undefined,
 ): readonly Word[] {
   if (member.kind === 'FieldDeclaration') {
-    return holder?.kind === 'TraitDeclaration' ? ['type', 'fn'] : [];
+    return holder?.kind === 'TraitDeclaration' ? ['type', ...startsOf(headForms.requirement)] : [];
   }
   return holder?.kind === 'Variant' ? [] : ['type'];
 }
 
-const externWords: readonly Word[] = ['fn', 'struct', ...externHandles];
+/** What may follow `extern` in an extern function's or struct's head. */
+const externWords: readonly Word[] = [
+  ...new Set(
+    [headForms.function, headForms.externStruct].flatMap((form) => followersIn(form, 'extern')),
+  ),
+];
 
 /**
  * A method's receiver is the parameter named `self`, a name the language gives a role, like a word.

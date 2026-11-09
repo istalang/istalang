@@ -14,25 +14,30 @@
 
 import type { FunctionDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Block } from '../../../syntax/statements/index.ts';
+import { headForms, qualifiersOf } from '../../../syntax/tokens/modifiers.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
 import { parseDocstringBelow } from '../../layout/bodies.ts';
 import { documentedBy, type WithDocstring } from '../../layout/docstrings.ts';
 import type { Parser } from '../../parser.ts';
 import { parseDocumentedStatementBody } from '../parts/blocks.ts';
-import { parseFunctionKeyword, parseParameters } from '../parts/functions.ts';
+import { parseParameters } from '../parts/functions.ts';
+import { parseHead } from '../parts/heads.ts';
 import { parseTypeParameters } from './type-parameters.ts';
 
-export type FunctionForm = 'defined' | 'requirement' | 'extern';
+/** Where a function is declared: a module's or a block's item, or a trait's requirement. */
+type FunctionPlace = 'item' | 'trait';
 
-/** A function declaration of `form`, starting at `fn` or `async`; `start` is where it began. */
-export function parseFunction(
-  parser: Parser,
-  form: FunctionForm,
-  start = parser.cursor.token.span.start,
-): FunctionDeclaration {
+/** What a function's body may be: required, optional, or one the host stands in for. */
+type FunctionForm = 'defined' | 'requirement' | 'extern';
+
+/** A function declaration in `place`, at its head. */
+export function parseFunction(parser: Parser, place: FunctionPlace): FunctionDeclaration {
   const { cursor } = parser;
-  const isAsync = parseFunctionKeyword(parser);
+  const { start } = cursor.token.span;
+  const modifiers = parseHead(parser, headForms[place === 'item' ? 'function' : 'requirement']);
+  const isExtern = modifiers.extern !== undefined;
+  const form = formOf(place, isExtern);
   const { owner, name } = parseFunctionName(parser);
   const typeParameters = parseTypeParameters(parser);
   const hasParameters = cursor.at('(');
@@ -49,8 +54,8 @@ export function parseFunction(
   const declaration: FunctionDeclaration = {
     kind: 'FunctionDeclaration',
     span: parser.anchor({ start, end: Math.max(start, headerEnd) }),
-    isExtern: form === 'extern',
-    isAsync,
+    isExtern,
+    qualifiers: qualifiersOf(modifiers),
     owner,
     name,
     typeParameters,
@@ -64,9 +69,16 @@ export function parseFunction(
   return declaration;
 }
 
-/** A defined function, top-level or local. */
-export function parseDefinedFunction(parser: Parser): FunctionDeclaration {
-  return parseFunction(parser, 'defined');
+function formOf(place: FunctionPlace, isExtern: boolean): FunctionForm {
+  if (place === 'trait') {
+    return 'requirement';
+  }
+  return isExtern ? 'extern' : 'defined';
+}
+
+/** A module's or a block's function, defined or extern. */
+export function parseItemFunction(parser: Parser): FunctionDeclaration {
+  return parseFunction(parser, 'item');
 }
 
 /** `name`, or `Type.name` for a static function. */

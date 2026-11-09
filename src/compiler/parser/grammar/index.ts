@@ -7,7 +7,7 @@ import type { SourceText } from '../../../foundation/text/source-text.ts';
 import type { ScanResult } from '../../syntax/tokens/index.ts';
 import { type Grammar, Parser } from '../parser.ts';
 import { parseTopLevelDeclaration } from './declarations/declaration.ts';
-import { parseDefinedFunction } from './declarations/functions.ts';
+import { parseItemFunction } from './declarations/functions.ts';
 import {
   continueExpression,
   parseExpression,
@@ -34,7 +34,7 @@ const grammar: Grammar = {
   parameterPattern: (parser) => nested(parser, () => parseParameterPattern(parser)),
   statement: (parser) => nested(parser, () => parseStatement(parser)),
   topLevelDeclaration: parseTopLevelDeclaration,
-  functionDeclaration: parseDefinedFunction,
+  functionDeclaration: parseItemFunction,
 };
 
 /** A parser positioned at the first token of a scanned source. */

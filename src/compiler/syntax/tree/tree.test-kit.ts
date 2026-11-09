@@ -1,4 +1,5 @@
 import { encloses } from '../../../foundation/text/span.ts';
+import type { FunctionQualifiers } from '../tokens/modifiers.ts';
 import {
   bodyOf,
   childrenOf,
@@ -33,7 +34,16 @@ function dumpField(tree: TreeBodies, name: string, value: unknown): string | und
   if (Array.isArray(value)) {
     return `[${value.map((each) => dumpValue(tree, each)).join(' ')}]`;
   }
+  if (name === 'qualifiers') {
+    return wordsOf(value as FunctionQualifiers);
+  }
   return dumpValue(tree, value);
+}
+
+/** A function's qualifiers: the words they hold, or nothing when they hold none. */
+function wordsOf(qualifiers: FunctionQualifiers): string | undefined {
+  const words = Object.values(qualifiers).filter((word) => word !== undefined);
+  return words.length === 0 ? undefined : words.join(' ');
 }
 
 function dumpValue(tree: TreeBodies, value: unknown): string {

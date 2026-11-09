@@ -8,25 +8,30 @@
  * (syntax/items.ts, grammar/parts/blocks.ts).
  *
  * `struct` and `type` start a declaration only when a name follows: `struct{…}` is an anonymous
- * struct literal, and `type` is a keyword only before a declared name (§2). `shared` is one only
- * before `struct` (§3.18).
+ * struct literal, and `type` is a keyword only before a declared name (§2). An extern's and a
+ * shared struct's head start with any of their modifiers, so `shared` and a handle are keywords
+ * only before a head's `struct` or `fn` (../parts/heads.ts), and the keyword ending the head, past
+ * them, chooses the declaration.
  */
 
 import type { Declaration, Module } from '../../../syntax/declarations/index.ts';
 import type { DeclarationWord } from '../../../syntax/tokens/grammar-words.ts';
+import {
+  groupIn,
+  type HeadForm,
+  headForms,
+  type ModifierWord,
+} from '../../../syntax/tokens/modifiers.ts';
 import type { CursorKind } from '../../cursor/index.ts';
 import { attachAnnotations } from '../../layout/annotations.ts';
 import { documentedBy } from '../../layout/docstrings.ts';
 import { type ItemRules, parseModuleLines } from '../../layout/index.ts';
 import type { Parser } from '../../parser.ts';
 import { parseModuleItem } from '../parts/blocks.ts';
-import {
-  followsModifier,
-  type StartParselets,
-  type WordParselets,
-  wordParseletAt,
-} from '../word-parselets.ts';
-import { parseExtern } from './externs.ts';
+import { headAhead } from '../parts/heads.ts';
+import { type StartParselets, type WordParselets, wordParseletAt } from '../word-parselets.ts';
+import { parseExternConstant, parseExternStruct } from './externs.ts';
+import { parseFunction } from './functions.ts';
 import { parseImport } from './imports.ts';
 import {
   parseEnum,
@@ -44,18 +49,65 @@ const topLevelParselets: Partial<Record<CursorKind, DeclarationParselet>> = {
   struct: (parser) => (namedNext(parser) ? parseStruct(parser) : undefined),
   enum: parseEnum,
   trait: parseTrait,
-  extern: parseExtern,
+  extern: parseModified,
 } satisfies StartParselets<DeclarationWord, DeclarationParselet>;
 
 const wordParselets = {
   type: (parser) => (namedNext(parser) ? parseTypeAlias(parser) : undefined),
-  shared: (parser) => (followsModifier(parser, 'shared') ? parseSharedStruct(parser) : undefined),
+  shared: parseModified,
+  sendable: parseModified,
+  ephemeral: parseModified,
 } satisfies WordParselets<DeclarationWord, DeclarationParselet>;
 
-/** A declaration only the top level allows, or undefined if none starts here. */
+/**
+ * A declaration whose head holds modifiers, at the first, whichever it is: an extern function,
+ * struct or constant, or a struct. Undefined, with nothing consumed, where no head starts there
+ * (`shared = 1`) or it is a statement's, a local function's or a lambda's.
+ */
+function parseModified(parser: Parser): Declaration | undefined {
+  const head = headAhead(parser);
+  if (head === undefined || head.modifiers.length === 0) {
+    return undefined;
+  }
+  const { modifiers, keyword } = head;
+  if (modifiers.includes('extern')) {
+    return parseExtern(parser, modifiers, keyword);
+  }
+  if (keyword !== 'struct') {
+    return undefined;
+  }
+  return modifiers.includes('shared') ? parseSharedStruct(parser) : parseStruct(parser);
+}
+
+/** An extern, at the first of `modifiers`, which `keyword` may end. */
+function parseExtern(
+  parser: Parser,
+  modifiers: readonly ModifierWord[],
+  keyword: HeadForm['keyword'] | undefined,
+): Declaration {
+  if (keyword === undefined && modifiers.length === 1) {
+    return parseExternConstant(parser);
+  }
+  return (keyword ?? keywordWithout(modifiers)) === 'fn'
+    ? parseFunction(parser, 'item')
+    : parseExternStruct(parser);
+}
+
+/** The keyword an extern's head misses: `struct` after a word no function takes, a handle. */
+function keywordWithout(modifiers: readonly ModifierWord[]): HeadForm['keyword'] {
+  return modifiers.every((word) => groupIn(headForms.function, word) !== undefined)
+    ? 'fn'
+    : 'struct';
+}
+
+/**
+ * A declaration only the top level allows, or undefined if none starts here. A head may start with
+ * any modifier, so one no table holds starts one too (`async extern fn`).
+ */
 export function parseTopLevelDeclaration(parser: Parser): Declaration | undefined {
-  const parselet = topLevelParselets[parser.cursor.kind] ?? wordParseletAt(parser, wordParselets);
-  return parselet?.(parser);
+  const parselet =
+    topLevelParselets[parser.cursor.kind] ?? wordParseletAt(parser, wordParselets) ?? parseModified;
+  return parselet(parser);
 }
 
 /** Whether a name follows the word at the cursor. */

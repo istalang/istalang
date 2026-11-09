@@ -7,6 +7,7 @@
     { "include": "#string" },
     { "include": "#annotation" },
     { "include": "#declaration" },
+    { "include": "#modifier" },
     { "include": "#contextual" },
     { "include": "#keyword" },
     { "include": "#variable" },
@@ -96,6 +97,11 @@
         }
       ]
     },
+    "modifier": {
+      "comment": "A head's contextual modifiers, before its other modifiers and its `fn` or `struct`, in any order (spec §2); test/vscode-grammar.test.ts holds them to the parser's.",
+      "match": "\\b(shared|sendable|ephemeral)\\b(?=(?:\\s+(?:extern|async|shared|sendable|ephemeral))*\\s+(?:fn|struct)\\b)",
+      "captures": { "1": { "name": "storage.modifier.ista" } }
+    },
     "contextual": {
       "comment": "Keywords only in one position each (spec §2), ordinary names everywhere else.",
       "patterns": [
@@ -120,10 +126,6 @@
           "captures": { "1": { "name": "keyword.operator.type.ista" } }
         },
         {
-          "match": "^\\s*(shared)\\s+(?=struct\\b)",
-          "captures": { "1": { "name": "storage.modifier.ista" } }
-        },
-        {
           "match": "\\b(new)\\s+(?=[A-Za-z_])",
           "captures": { "1": { "name": "keyword.operator.new.ista" } }
         },
@@ -135,13 +137,6 @@
           "comment": "`gives` and `takes` before a type parameter's name or `...` (§3.5).",
           "match": "\\b(gives|takes)\\s+(?=(?:\\.\\.\\.)?[A-Z])",
           "captures": { "1": { "name": "storage.modifier.ista" } }
-        },
-        {
-          "match": "\\b(extern)\\s+(shared|sendable|ephemeral)\\b",
-          "captures": {
-            "1": { "name": "storage.modifier.ista" },
-            "2": { "name": "storage.modifier.ista" }
-          }
         },
         {
           "comment": "`hold`, `hold(name)` and the name, before the variable it holds.",

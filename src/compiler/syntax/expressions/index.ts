@@ -20,6 +20,7 @@
 
 import type { Pattern } from '../patterns.ts';
 import type { Block } from '../statements/index.ts';
+import type { FunctionQualifiers } from '../tokens/modifiers.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from '../tree/node.ts';
 import type { NamedType, TypeNode } from '../types/index.ts';
 import type { Literal, StringLiteral } from './literals/literals.ts';
@@ -196,7 +197,7 @@ export type Parameter = ParameterParts & ParameterBinding;
 
 /** `fn(x): x * 2`, `async fn(msg): …`, and `fn f(n): …`, whose name is visible only inside. */
 export interface Lambda extends NodeOf<'Lambda'> {
-  readonly isAsync: boolean;
+  readonly qualifiers: FunctionQualifiers;
   readonly name: Identifier | undefined;
   readonly parameters: readonly (Parameter | Invalid)[];
   readonly returnType: TypeNode | undefined;

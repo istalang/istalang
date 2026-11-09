@@ -10,7 +10,7 @@
  * struct`), and a `process` one stays in the process that made it (`extern ephemeral struct`).
  */
 
-import type { ExternHandle } from '../../../syntax/tokens/grammar-words.ts';
+import type { ModifierWord } from '../../../syntax/tokens/modifiers.ts';
 import type { NominalDeclaration, NominalType, Type } from '../type/index.ts';
 
 type Identity = 'value' | 'instance' | 'global' | 'process';
@@ -19,7 +19,7 @@ const externIdentities = {
   shared: 'instance',
   sendable: 'global',
   ephemeral: 'process',
-} as const satisfies Record<ExternHandle, Identity>;
+} as const satisfies Record<ModifierWord<'handle'>, Identity>;
 
 /** What identity the values of `declaration`'s types have. */
 function identityOf(declaration: NominalDeclaration): Identity {

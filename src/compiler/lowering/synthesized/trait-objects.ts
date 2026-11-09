@@ -75,7 +75,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
     });
     const self = memberReceiver(code, receiver, { on, type, references });
     const call = code.call(closeWitness(witness, dispatch, checker), [self, ...passed]);
-    const result = required.isAsync ? code.await(call) : call;
+    const result = required.qualifiers.kind === undefined ? call : code.await(call);
     code.return(
       signatures === undefined
         ? result
@@ -90,7 +90,7 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
   const generic = dispatch.typeArguments.map((type) => spelledType(checker, type));
   const name = `${spelledType(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;
   const header = tables.headerAt(name, checker.moduleOf(required), required.name.span);
-  return code.entry(header, required.isAsync, references);
+  return code.entry(header, required.qualifiers.kind !== undefined, references);
 }
 
 /** The entry converting a value of the `any` type `from` into `to`, whose constraints it has. */

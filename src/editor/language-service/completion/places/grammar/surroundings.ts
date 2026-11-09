@@ -29,9 +29,15 @@ export function surroundingsOf(tree: SyntaxTree, chain: readonly SyntaxNode[]): 
     const child = chain[index + 1];
     switch (node?.kind) {
       case 'FunctionDeclaration':
-        return { body: bodyKind(bodyOf(tree, node) === child, node.isAsync), scopes };
+        return {
+          body: bodyKind(bodyOf(tree, node) === child, node.qualifiers.kind !== undefined),
+          scopes,
+        };
       case 'Lambda':
-        return { body: bodyKind(node.body === child, node.isAsync), scopes };
+        return {
+          body: bodyKind(node.body === child, node.qualifiers.kind !== undefined),
+          scopes,
+        };
       case 'For':
       case 'While':
       case 'LabelledBlock':

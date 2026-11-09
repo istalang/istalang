@@ -160,8 +160,8 @@ function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
   return withPack(
     {
       kind: 'function',
-      isSendable: node.isSendable,
-      isAsync: node.isAsync,
+      isSendable: node.qualifiers.reach === 'sendable',
+      isAsync: node.qualifiers.kind !== undefined,
       parameters: fixed.map((parameter) => ({
         type: resolve(resolution, parameter),
         reference: unparenthesizedType(parameter).kind === 'ReferenceType',

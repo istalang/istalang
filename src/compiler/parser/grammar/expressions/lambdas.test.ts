@@ -17,7 +17,7 @@ describe('lambda forms', () => {
     ['fn(): 5', '(Lambda _ [] _ 5)'],
     [
       'async fn(msg): await handle(msg)',
-      `(Lambda isAsync _ [${param('msg')}] _ (Await (Call handle [msg])))`,
+      `(Lambda async _ [${param('msg')}] _ (Await (Call handle [msg])))`,
     ],
     [
       'fn(x: Int, y: Int) -> Int: x * y',

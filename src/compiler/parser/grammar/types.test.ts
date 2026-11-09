@@ -35,11 +35,8 @@ describe('type forms', () => {
     ['()', '(TupleType [])'],
     ['(A)', `(ParenthesizedType ${named('A')})`],
     ['fn(A, B) -> R', `(FunctionType [${named('A')} ${named('B')}] ${named('R')})`],
-    ['async fn(A) -> R', `(FunctionType isAsync [${named('A')}] ${named('R')})`],
-    [
-      'async fn(async fn(E))',
-      `(FunctionType isAsync [(FunctionType isAsync [${named('E')}] _)] _)`,
-    ],
+    ['async fn(A) -> R', `(FunctionType async [${named('A')}] ${named('R')})`],
+    ['async fn(async fn(E))', `(FunctionType async [(FunctionType async [${named('E')}] _)] _)`],
     ['fn() -> Int?', `(FunctionType [] (OptionalType ${int}))`],
     ['(fn() -> Int)?', `(OptionalType (ParenthesizedType (FunctionType [] ${int})))`],
     ['fn(&Array<Int>)', `(FunctionType [(ReferenceType (NamedType [Array] [${int}]))] _)`],

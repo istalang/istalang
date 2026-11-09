@@ -22,7 +22,8 @@ import type { Expression, Parameter } from '../expressions/index.ts';
 import type { StringLiteral } from '../expressions/literals/literals.ts';
 import type { Annotatable } from '../items.ts';
 import type { Block, VariableDeclaration } from '../statements/index.ts';
-import type { ExternHandle, VarianceMarker } from '../tokens/grammar-words.ts';
+import type { VarianceMarker } from '../tokens/grammar-words.ts';
+import type { FunctionQualifiers, ModifierWord } from '../tokens/modifiers.ts';
 import type { Identifier, Invalid, Missing, NodeOf } from '../tree/node.ts';
 import { type AnchoredSpan, spanAcross } from '../tree/positions.ts';
 import type { ConstraintNode, FieldDeclaration, TypeMatch, TypeNode } from '../types/index.ts';
@@ -68,7 +69,7 @@ export interface FunctionDeclaration
     Annotatable,
     Documented {
   readonly isExtern: boolean;
-  readonly isAsync: boolean;
+  readonly qualifiers: FunctionQualifiers;
   readonly owner: Identifier | undefined;
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
@@ -176,7 +177,7 @@ export interface ExternStructDeclaration
   extends NodeOf<'ExternStructDeclaration'>,
     Annotatable,
     Documented {
-  readonly handle: ExternHandle | undefined;
+  readonly handle: ModifierWord<'handle'> | undefined;
   readonly name: Identifier;
   readonly typeParameters: TypeParameters;
 }

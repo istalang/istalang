@@ -152,12 +152,12 @@ describe('fn and async at the start of a statement', () => {
     ],
     [
       'async fn f() -> Future<Int>: await g()',
-      `(FunctionDeclaration isAsync _ f [] [] (NamedType [Future] [${int}]) ${bodyOf('(Await (Call g []))')})`,
+      `(FunctionDeclaration async _ f [] [] (NamedType [Future] [${int}]) ${bodyOf('(Await (Call g []))')})`,
     ],
     ['fn(x): x * 2', '(ExpressionStatement (Lambda _ [(Parameter x _ _ _)] _ (Binary x * 2)))'],
     [
       'async fn(msg): await handle(msg)',
-      '(ExpressionStatement (Lambda isAsync _ [(Parameter msg _ _ _)] _ (Await (Call handle [msg]))))',
+      '(ExpressionStatement (Lambda async _ [(Parameter msg _ _ _)] _ (Await (Call handle [msg]))))',
     ],
     ['fn x: x > 0', '(ExpressionStatement (Lambda _ [(Parameter x _ _ _)] _ (Binary x > 0)))'],
     ['struct{value: 1}', '(ExpressionStatement (StructLiteral _ [(FieldInitializer value 1)]))'],

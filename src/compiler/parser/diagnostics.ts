@@ -123,6 +123,20 @@ export const parserDiagnostics = defineDiagnostics('parser', {
     message: (text: string) =>
       `A tuple element is named by its position, a decimal number such as 0 or 1, not '${text}'.`,
   },
+  repeatedModifier: {
+    code: 2044,
+    message: (modifier: string) =>
+      `'${modifier}' is written twice: a head takes each modifier once (§2).`,
+  },
+  conflictingModifiers: {
+    code: 2045,
+    message: (modifier: string, other: string) =>
+      `'${modifier}' and '${other}' exclude each other: a head takes one of them (§2).`,
+  },
+  misplacedModifier: {
+    code: 2046,
+    message: (modifier: string, head: string) => `'${modifier}' doesn't modify ${head} (§2).`,
+  },
   bracedVariant: {
     code: 2043,
     message: (corrected: string) =>

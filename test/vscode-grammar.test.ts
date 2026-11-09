@@ -1,18 +1,21 @@
 /**
  * The VS Code grammar is JSON that VS Code loads as is, so it cannot import the scanner's word
- * list or the language's primitive types. It spells both out instead, the reserved words grouped
- * by highlighting scope, and this test holds those copies to the originals: a keyword or a
- * primitive added to the language fails here until it is highlighted.
+ * list, the heads' modifiers or the language's primitive types. It spells them out instead, the
+ * reserved words grouped by highlighting scope, and this test holds those copies to the
+ * originals: a keyword, a modifier or a primitive added to the language fails here until it is
+ * highlighted.
  */
 
 import { readFileSync } from 'node:fs';
 import { expect, it } from 'vitest';
 import { z } from 'zod';
-import { keywords } from '../src/compiler/syntax/tokens/index.ts';
+import { isKeyword, keywords } from '../src/compiler/syntax/tokens/index.ts';
+import { headForms, modifierGroups } from '../src/compiler/syntax/tokens/modifiers.ts';
 import { primitiveNames } from '../src/foundation/language/primitives.ts';
 
 const grammarShape = z.object({
   repository: z.object({
+    modifier: z.object({ match: z.string() }),
     keyword: z.object({ patterns: z.array(z.object({ match: z.string() })) }),
     type: z.object({ patterns: z.array(z.object({ name: z.string(), match: z.string() })) }),
   }),
@@ -44,4 +47,39 @@ it('highlights exactly the primitive types as primitives', () => {
   expect(primitives.flatMap((p) => alternationWords(p.match)).toSorted()).toEqual(
     primitiveNames.toSorted(),
   );
+});
+
+const isContextual = (word: string) => !isKeyword(word);
+
+/** Each form's heads with each contextual modifier first, and last after the others reversed. */
+const heads = Object.values(headForms).flatMap(({ groups, keyword }) =>
+  groups.flatMap((group, index) => {
+    const others = groups.toSpliced(index, 1).map((other) => modifierGroups[other][0]);
+    return modifierGroups[group].filter(isContextual).flatMap((word) =>
+      [
+        [word, ...others],
+        [...others.toReversed(), word],
+      ].map((modifiers) => ({
+        modifiers,
+        keyword,
+      })),
+    );
+  }),
+);
+
+it("highlights a head's contextual modifiers in any order, and the same words elsewhere as names", () => {
+  const modifier = new RegExp(grammar.repository.modifier.match, 'gu');
+  const highlighted = (text: string) => [...text.matchAll(modifier)].map(([, word]) => word);
+  for (const { modifiers, keyword } of heads) {
+    expect(highlighted(`${modifiers.join(' ')} ${keyword} F`)).toEqual(
+      modifiers.filter(isContextual),
+    );
+  }
+  for (const word of new Set(heads.flatMap(({ modifiers }) => modifiers.filter(isContextual)))) {
+    expect(highlighted(`${word} = ${word}.call(${word})`)).toEqual([]);
+  }
+  expect(highlighted('fn f(g: sendable fn(Int)) -> sendable async fn()')).toEqual([
+    'sendable',
+    'sendable',
+  ]);
 });

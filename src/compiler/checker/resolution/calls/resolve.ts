@@ -229,7 +229,7 @@ function completeResolved(
   const written = request.arguments;
   checkReferencedPlaces(context, written, {
     name: request.name,
-    isAsync: signature.declaration.isAsync,
+    isAsync: signature.declaration.qualifiers.kind !== undefined,
     slots: written.map((_, index) => slots.get(index) ?? { reference: false }),
   });
   return applied.result;

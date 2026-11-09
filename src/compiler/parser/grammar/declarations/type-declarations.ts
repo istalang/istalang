@@ -27,6 +27,7 @@ import type {
   TypeAliasDeclaration,
   Variant,
 } from '../../../syntax/declarations/index.ts';
+import { type HeadForm, headForms } from '../../../syntax/tokens/modifiers.ts';
 import type { Identifier, Invalid } from '../../../syntax/tree/node.ts';
 import { spanAcross } from '../../../syntax/tree/positions.ts';
 import { parserDiagnostics } from '../../diagnostics.ts';
@@ -37,27 +38,27 @@ import { type ItemRules, type Items, parseItemEntries } from '../../layout/index
 import { atPostfix } from '../../layout/item-breaks.ts';
 import type { Parser } from '../../parser.ts';
 import { parseConstraints } from '../parts/constraints.ts';
+import { headAhead, parseHead } from '../parts/heads.ts';
 import { declaredFieldRules, parseField, variantFieldRules } from '../parts/structs.ts';
 import { parseFunction } from './functions.ts';
 import { parseAliasBody } from './type-matches.ts';
 import { parseTypeParameters } from './type-parameters.ts';
 
+/** `struct Name<T>: …`, at its head, which takes no modifier. */
 export function parseStruct(parser: Parser): StructDeclaration {
-  return { kind: 'StructDeclaration', ...parseStructFrom(parser, parser.cursor.token.span.start) };
+  return { kind: 'StructDeclaration', ...parseStructFrom(parser, headForms.struct) };
 }
 
-/** `shared struct Name<T>: …`, from `shared`, a keyword only before `struct` (§2, §3.18). */
+/** `shared struct Name<T>: …`, at its head; `shared` is a keyword only there (§2, §3.18). */
 export function parseSharedStruct(parser: Parser): SharedStructDeclaration {
-  const { start } = parser.cursor.advance().span;
-  return { kind: 'SharedStructDeclaration', ...parseStructFrom(parser, start) };
+  return { kind: 'SharedStructDeclaration', ...parseStructFrom(parser, headForms.sharedStruct) };
 }
 
-/**
- * A struct declaration but its kind, from its `struct`, which starts at `start` with what precedes
- * it.
- */
-function parseStructFrom(parser: Parser, start: number): Omit<DeclaredStruct, 'kind'> {
-  const { name, typeParameters } = parseTypeHead(parser);
+/** A struct declaration but its kind, at its head of `form`. */
+function parseStructFrom(parser: Parser, form: HeadForm): Omit<DeclaredStruct, 'kind'> {
+  const { start } = parser.cursor.token.span;
+  parseHead(parser, form);
+  const { name, typeParameters } = parseTypeName(parser);
   const { value: members, doc } = parseMembers(
     parser,
     withAssociatedTypes(declaredFieldRules),
@@ -178,8 +179,13 @@ export function parseTypeAlias(parser: Parser): TypeAliasDeclaration {
 /** The keyword, the declared name and its type parameters. */
 function parseTypeHead(parser: Parser) {
   const { start } = parser.cursor.advance().span;
+  return { start, ...parseTypeName(parser) };
+}
+
+/** The declared name and its type parameters. */
+function parseTypeName(parser: Parser) {
   const name = parser.identifier('a type name');
-  return { start, name, typeParameters: parseTypeParameters(parser) };
+  return { name, typeParameters: parseTypeParameters(parser) };
 }
 
 /**
@@ -235,9 +241,9 @@ const variantRules: ItemRules<Variant> = {
 
 /** A required function, whose body may be omitted, a required field or associated type. */
 function parseTraitMember(parser: Parser): TraitMember | Invalid {
-  const { kind } = parser.cursor;
-  if (kind === 'fn' || kind === 'async') {
-    return parseFunction(parser, 'requirement');
+  const head = headAhead(parser);
+  if (head !== undefined && head.keyword !== 'struct') {
+    return parseFunction(parser, 'trait');
   }
   return declaresType(parser) ? parseRequiredAssociatedType(parser) : parseField(parser);
 }

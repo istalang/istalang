@@ -2,8 +2,8 @@
  * The whole node vocabulary, and traversal derived from it.
  *
  * Children are found by reading a node's fields, not from a per-kind list. A field holds a node, an
- * array of nodes, an optional node or node array, or a primitive (node.ts), so any object with a
- * `kind` is a child. Adding a node kind therefore needs no traversal change. Children come back in
+ * array of nodes, an optional node or node array, a record of words, or a primitive (node.ts), so
+ * any object with a `kind` and a `span` is a child. Adding a node kind therefore needs no traversal change. Children come back in
  * source order, derived from their spans, so no builder has to put fields in any order. Spans
  * compare only within a segment (positions.ts), so children heading segments of their own, a
  * module's items and a trait's members, come after the rest, in the order their field lists them.
@@ -84,7 +84,7 @@ export function bodyOf(tree: TreeBodies, declaration: FunctionDeclaration): Bloc
 
 /** Whether a field value is a node, as opposed to a primitive, a span or undefined. */
 export function isNode(value: unknown): value is SyntaxNode {
-  return typeof value === 'object' && value !== null && 'kind' in value;
+  return typeof value === 'object' && value !== null && 'kind' in value && 'span' in value;
 }
 
 const fieldChildren = new WeakMap<SyntaxNode, readonly SyntaxNode[]>();

@@ -10,6 +10,7 @@
  */
 
 import { builders } from 'prettier/doc';
+import { modifiersText } from '../compiler/syntax/tokens/modifiers.ts';
 import type { ConstraintNode, TypeNode, TypePart } from '../compiler/syntax/types/index.ts';
 import { annotated, indentedBody } from './layout/bodies.ts';
 import { angled, bracketed, enclosed, fieldList, tupleList } from './layout/lists.ts';
@@ -32,8 +33,7 @@ export const typePrinters: Printers<TypeKind> = {
   TupleType: (printer, node) => tupleList(printer, node, node.elements),
   ParenthesizedType: (printer, node) => enclosed(printer, node, ['(', ')'], node.inner),
   FunctionType: (printer, node) => [
-    node.isSendable ? 'sendable ' : '',
-    node.isAsync ? 'async ' : '',
+    modifiersText(node.qualifiers),
     'fn',
     bracketed(printer, node, ['(', ')'], node.parameters),
     node.returnType === undefined ? '' : [' -> ', printer.print(node.returnType)],

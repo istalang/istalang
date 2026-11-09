@@ -3,7 +3,7 @@
  *
  * A node is an immutable plain object: a `kind` naming its shape, a `span` anchored to its segment
  * of text (positions.ts), and fields that are nodes, arrays of nodes, optional nodes or node
- * arrays, or primitives. That invariant is what lets traversal be derived from the fields
+ * arrays, records of words (a function's qualifiers, ../tokens/modifiers.ts), or primitives. That invariant is what lets traversal be derived from the fields
  * (index.ts) instead of being written out for each kind. Nodes hold no tokens and no resolved
  * references; later phases keep those in side tables keyed by node.
  *

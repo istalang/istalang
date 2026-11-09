@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-05
-last_updated: 2026-11-08
+last_updated: 2026-11-10
 tags: [reuse, syntax, ast, scanner, parser, operators]
 ---
 
@@ -19,7 +19,8 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 - read a tree's tokens again, all of them or only its code's, or the bracket closing each opening one → `allTokensOf`, `codeTokensOf`, `closingBracketsOf` (`src/editor/language-service/reading/tokens.ts`)
 - pair a token list's brackets as the parser does, and find where each one left open ends → `pairBrackets` (`src/compiler/parser/cursor/brackets.ts`)
 - check whether a word is a reserved or contextual keyword → `isKeyword`, `isContextualWord`, `keywords`, `punctuators` (`src/compiler/syntax/tokens/index.ts`)
-- list the words a grammar position dispatches on: a declaration's, a statement's, an operand's, a type's or a pattern's start, what goes on after an operand, and what follows each modifier → `declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers` (`src/compiler/syntax/tokens/grammar-words.ts`); the words making an extern struct a handle → `externHandles`, `isExternHandle`, `ExternHandle`; what a module's item starts with → `moduleItemWords` (`src/compiler/syntax/items.ts`)
+- know a head's modifiers (a function's, a function type's, a lambda's, an extern's, a shared struct's): their groups in print order, the groups each form takes, what may follow one, a function's qualifiers, and their text in print order → `modifierGroups`, `ModifierWord`, `headForms`, `groupIn`, `followersIn`, `FunctionQualifiers`, `qualifiersOf`, `modifiersText` (`src/compiler/syntax/tokens/modifiers.ts`); parse one, or look past one to its keyword → `parseHead`, `parseModifiers`, `headAhead` (`src/compiler/parser/grammar/parts/heads.ts`); a checker function type's qualifiers, to print it → `qualifiersOfType` (`src/compiler/checker/types/type/function-types.ts`)
+- list the words a grammar position dispatches on: a declaration's, a statement's, an operand's, a type's or a pattern's start, what goes on after an operand, and what follows each modifier → `declarationWords`, `statementWords`, `operandWords`, `infixWords`, `typeWords`, `PatternWord`, `followers` (`src/compiler/syntax/tokens/grammar-words.ts`); what a module's item starts with → `moduleItemWords` (`src/compiler/syntax/items.ts`)
 - key a parser table by those words, checked both ways by type, read a contextual word's parselet, or ask whether a modifier's follower comes next → `StartParselets`, `WordParselets`, `wordParseletAt`, `followsModifier` (`src/compiler/parser/grammar/word-parselets.ts`)
 - parse the `case` of a `match`, a `select` or a type `match`, a line not starting with one skipped whole → `parseCase` (`src/compiler/parser/grammar/parts/cases.ts`); an alias's or associated type's body, a type or a type `match` → `parseAliasBody` (`src/compiler/parser/grammar/declarations/type-matches.ts`); the `infer` variables a case's pattern declares → `inferTypesIn` (`src/compiler/syntax/types/type-matches.ts`)
 - where a node stands among type `match`es — in a case's pattern (the one place `infer` may stand, which the checker and completion both read), elsewhere inside one, or outside — and the `infer` types a pattern holds → `matchPlaceOf`, `inferTypesIn` (`src/compiler/syntax/types/type-matches.ts`)
@@ -78,7 +79,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 
 - Shared desugaring (`taggedCall`, `fieldsFunctionOf`, `comparisonLinksOf`, `placePath`, `destructuringOf`) lives in `src/compiler/syntax/`.
 - A link reads through an optional when its node `isOptional` (member access, tuple element, index, call, `->`); its operator is spelled by `linkOperator`/`optionalOperatorOf` (`chains.ts`), never as a literal.
-- Node fields hold only nodes, node arrays, optional nodes/arrays, a span or primitives, so `childrenOf` (`tree/index.ts`) derives traversal automatically.
+- Node fields hold only nodes, node arrays, optional nodes/arrays, a span, a record of words (a function's `qualifiers`) or primitives, so `childrenOf` (`tree/index.ts`) derives traversal automatically: a child is an object with a `kind` and a `span` (`isNode`).
 - A node's span is anchored to its segment (`AnchoredSpan`, `positions.ts`): offsets of different segments never compare, and text positions come only through the tree (`spanIn`, `extentIn`). A function's own span covers its header alone, as does a top-level trait's whose members stand on lines of their own; use `extentIn` for all a node covers.
 - In `src/compiler/parser/`, a bracketed construct uses `parseEnclosed`, a list `parseList` / `parseDelimited` (`recovery.ts`, which enters the cursor's list region), and recursive entries use `nested` (`nesting.ts`).
 - Where a line break separates two items of a list (spec §2) has one home, `layout/item-breaks.ts`: `breakSeparatesItems` (the next line can start an item), `startsLineInList` and `atPostfix` (a postfix bracket attaches only on its operand's line). Ask it only where an item could end: the Pratt `extend` loop, `leveledGrammar`'s loop (types, patterns), the comma list, a lookahead deciding an item's shape by the token after it (struct literal shorthand), and an optional part after a complete item (`& B` after `any A` or a constraint, a range's end) → `continues`, `eatContinuing`. A symbol both prefix and infix starts an item unless a space parts it from the rest of its line, so a lone `..` is an item. What starts an item is derived, never listed: the expression tables (`startsItemOnNewLine`, grammar/expressions/expression.ts) with the item parsers' openers (`spreadOpener`, `grammar/parts/spreads.ts`; `structComprehensionOpener`; `annotationOpener`). A `<…>` list, which nothing pairs, ends at a line heading no deeper than its `<`'s own unless its `>` heads it (`angleListRegion`, `cursor/`), as a bracket left open ends (`cursor/brackets.ts`).
@@ -90,7 +91,7 @@ tags: [reuse, syntax, ast, scanner, parser, operators]
 
 ### Add a word a grammar position starts with
 
-1. Add it to the position's list in `src/compiler/syntax/tokens/grammar-words.ts` (a new modifier: `followers`).
+1. Add it to the position's list in `src/compiler/syntax/tokens/grammar-words.ts`. A head's new modifier goes in its group in `modifierGroups` (`syntax/tokens/modifiers.ts`) instead, and the lists, `followers`, the parser and every printer read it from there; the VS Code grammar's `modifier` rule lists a contextual one.
 2. Give it a parselet in that position's table: a keyword in the table by token kind, a contextual word in the position's `WordParselets`, declining with `undefined` where what follows makes it a name. Either table fails to compile until it does. A statement word also needs its place in `statementWordPlaces` (`syntax/items.ts`).
 3. Completion offers it there with no edit; add it to `wordNeeds` (`completion/places/grammar/words.ts`) only if it means something in some surroundings alone.
 

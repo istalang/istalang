@@ -252,7 +252,7 @@ export class LocalBinder {
       return;
     }
     const enclosing = scope.enclosingOf(functions);
-    if (enclosing?.isAsync === true && !namesMain(name, entity)) {
+    if (enclosing?.qualifiers.kind !== undefined && !namesMain(name, entity)) {
       this.record(name, this.#ownCallOf(enclosing));
     } else {
       this.report(noOwnCall(name, entity));

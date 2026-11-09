@@ -191,9 +191,12 @@ export function requirementType(
   return {
     kind: 'function',
     isSendable: false,
-    isAsync: required.isAsync,
+    isAsync: required.qualifiers.kind !== undefined,
     parameters: checker.parametersOf(required).map(({ type, reference }) => ({ type, reference })),
-    result: required.isAsync ? (futureArgument(checker, result) ?? errorType) : result,
+    result:
+      required.qualifiers.kind === undefined
+        ? result
+        : (futureArgument(checker, result) ?? errorType),
   };
 }
 

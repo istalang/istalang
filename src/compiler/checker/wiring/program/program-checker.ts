@@ -220,7 +220,7 @@ export class ProgramChecker implements CheckerContext {
     declaration: FunctionDeclaration,
     declaredResult: Type | undefined,
   ): CheckedBody {
-    const { isAsync } = declaration;
+    const isAsync = declaration.qualifiers.kind !== undefined;
     const body = this.inputs.bodyOf(module, declaration);
     if (body === undefined) {
       return unreachable('A function with no body had its body checked.');

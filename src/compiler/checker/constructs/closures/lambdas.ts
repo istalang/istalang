@@ -85,7 +85,7 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Admits | unde
       shape.parameters.length <= fixed;
     return (
       shape !== undefined &&
-      (shape.isAsync || !node.isAsync) &&
+      (shape.isAsync || node.qualifiers.kind === undefined) &&
       (fillsPack ||
         (shape.parameters.length === fixed && (shape.pack !== undefined) === hasRest)) &&
       parameters.every((parameter, index) => {
@@ -123,7 +123,7 @@ export function writtenInputs(context: BodyContext, node: Lambda): Type | undefi
     parameters: types.map((type) => ({ type, reference: false })),
     pack: undefined,
     result: neverType,
-    isAsync: node.isAsync,
+    isAsync: node.qualifiers.kind !== undefined,
     isSendable: true,
   };
 }
@@ -209,7 +209,7 @@ function checkLambdaAs(
   return checkNested(context, node, {
     name: node.name,
     parameters: nestedParameters(context, node.parameters, slots),
-    isAsync: node.isAsync,
+    isAsync: node.qualifiers.kind !== undefined,
     declaredResult,
     guided: hint === undefined ? undefined : { node, guide: hint, inScope: context.scopes.here() },
     reach: node.span,
@@ -235,7 +235,7 @@ export function checkLocalFunction(context: BodyContext, node: FunctionDeclarati
     checkNested(context, node, {
       name: node.name,
       parameters: nestedParameters(context, node.parameters, undefined),
-      isAsync: node.isAsync,
+      isAsync: node.qualifiers.kind !== undefined,
       declaredResult: declaredBodyResult(context.checker, context.module, node),
       reach: nestedFunctionSpan(node, body),
       tail: (declared) => blockTail(body, context.block(body, declared)),

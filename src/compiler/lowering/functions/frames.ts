@@ -143,7 +143,7 @@ export function instanceFrame(
   const parameters = checker.parametersOf(declaration);
   return {
     header: startHeader ?? tables.entryHeader(instance),
-    isAsync: declaration.isAsync && entry.kind === 'own',
+    isAsync: declaration.qualifiers.kind !== undefined && entry.kind === 'own',
     givesDefault: entry.kind === 'default',
     parameters: entry.kind === 'default' ? parameters.slice(0, entry.parameter) : parameters,
     captures: [],

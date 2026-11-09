@@ -41,7 +41,7 @@ export function fillingEntry(
     callOfFilling(instance, binding),
     code.parameters.map((_, index) => code.passedOn(index, passed)),
   );
-  const { isAsync } = declaration;
+  const isAsync = declaration.qualifiers.kind !== undefined;
   code.return(isAsync ? code.await(result) : result);
   return code.entry(context.tables.entryHeader(instance), isAsync, passed);
 }

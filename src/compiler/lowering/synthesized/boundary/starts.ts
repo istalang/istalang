@@ -88,7 +88,7 @@ function functionStartable(
         target: declaration,
         key: keyOf(checker, declaration, parameters),
         parameters: parameters.map(({ type }) => type),
-        isAsync: declaration.isAsync,
+        isAsync: declaration.qualifiers.kind !== undefined,
         outcome,
       });
 }

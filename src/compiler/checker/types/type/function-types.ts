@@ -4,6 +4,7 @@
  * taking whatever parameters are left. The types themselves are type/index.ts's.
  */
 
+import type { FunctionQualifiers } from '../../../syntax/tokens/modifiers.ts';
 import type { FunctionType, Type, TypeParameterType } from './index.ts';
 import { errorType, tupleElements, tupleType } from './primitives.ts';
 
@@ -95,6 +96,11 @@ function restOf(type: FunctionType, start: number): Type | undefined {
     return rest.length === 0 ? type.pack : undefined;
   }
   return rest.some((slot) => slot.reference) ? undefined : tupleType(rest.map((slot) => slot.type));
+}
+
+/** The qualifiers a head of `type` writes, which type text and keys print. */
+export function qualifiersOfType({ isSendable, isAsync }: FunctionType): FunctionQualifiers {
+  return { reach: isSendable ? 'sendable' : undefined, kind: isAsync ? 'async' : undefined };
 }
 
 /**

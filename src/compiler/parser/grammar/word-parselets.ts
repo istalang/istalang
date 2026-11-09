@@ -14,7 +14,7 @@
  *   (`followsModifier`).
  */
 
-import { followers, type Modifier, type Word } from '../../syntax/tokens/grammar-words.ts';
+import { followers, type KeywordModifier, type Word } from '../../syntax/tokens/grammar-words.ts';
 import type { ContextualWord, Keyword } from '../../syntax/tokens/index.ts';
 import type { CursorKind } from '../cursor/index.ts';
 import type { Parser } from '../parser.ts';
@@ -44,7 +44,7 @@ export function wordParseletAt<Text extends ContextualWord, Parselet>(
 }
 
 /** Whether the token `ahead` tokens on is one `modifier` stands before. */
-export function followsModifier(parser: Parser, modifier: Modifier, ahead = 1): boolean {
+export function followsModifier(parser: Parser, modifier: KeywordModifier, ahead = 1): boolean {
   const words: readonly CursorKind[] = followers[modifier];
   return words.includes(parser.cursor.kindAt(ahead));
 }

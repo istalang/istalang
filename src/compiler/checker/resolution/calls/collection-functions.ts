@@ -60,7 +60,7 @@ export function runsAtOnce(
   call: ResolvedCall | undefined,
   at: AnchoredSpan,
 ): boolean {
-  if (call?.function.isAsync !== true) {
+  if (call?.function.qualifiers.kind === undefined) {
     return true;
   }
   context.report(checkerDiagnostics.asyncCollectionFunction(at, call.function.name.text));

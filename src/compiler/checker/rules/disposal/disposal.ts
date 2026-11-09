@@ -159,7 +159,12 @@ export function checkDisposeDeclaration(
   const parameters = checker.parametersOf(declaration);
   const [self] = parameters;
   const returnsUnit = sameType(checker.resultOf(declaration), unitType);
-  if (parameters.length !== 1 || self?.reference === true || declaration.isAsync || !returnsUnit) {
+  if (
+    parameters.length !== 1 ||
+    self?.reference === true ||
+    declaration.qualifiers.kind !== undefined ||
+    !returnsUnit
+  ) {
     checker.report(module, checkerDiagnostics.disposeSignature(at));
   }
   if (self === undefined || self.type.kind === 'error') {

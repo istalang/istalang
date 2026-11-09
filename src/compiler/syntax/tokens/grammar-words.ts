@@ -26,20 +26,28 @@ import {
   unaryOperators,
 } from '../expressions/operators.ts';
 import { type ContextualWord, isKeyword, type Keyword } from './index.ts';
+import { followersIn, headForms, modifierGroups, startsOf } from './modifiers.ts';
 
 export type Word = Keyword | ContextualWord;
 
 /**
+ * What starts a function's head (./modifiers.ts) in a statement and an operand: its keyword, or its
+ * async kind. A type's may start with its reach too, a module's with `extern` or a handle.
+ */
+const functionStarts = ['fn', ...modifierGroups.kind] as const satisfies readonly Word[];
+
+/**
  * What starts a declaration only a module holds (§3); a function and `const` start statements too.
+ * An extern's or a shared struct's head may start with any of its modifiers.
  */
 export const declarationWords = [
   'import',
   'struct',
   'enum',
   'trait',
-  'extern',
   'type',
-  'shared',
+  ...modifierGroups.extern,
+  ...modifierGroups.handle,
 ] as const satisfies readonly Word[];
 
 export type DeclarationWord = (typeof declarationWords)[number];
@@ -51,8 +59,7 @@ export type DeclarationWord = (typeof declarationWords)[number];
 export const statementWords = [
   'let',
   'const',
-  'fn',
-  'async',
+  ...functionStarts,
   'return',
   'break',
   'continue',
@@ -80,8 +87,7 @@ export const operandWords = [
   'true',
   'false',
   'none',
-  'fn',
-  'async',
+  ...functionStarts,
   'struct',
   'if',
   'match',
@@ -117,10 +123,8 @@ export type InfixWord = (typeof infixWords)[number];
  * a struct's keys, a type `match` case's type variables, and the literal types spelled as words.
  */
 export const typeWords = [
-  'fn',
-  'async',
+  ...startsOf(headForms.functionType),
   'struct',
-  'sendable',
   'any',
   'keyof',
   'infer',
@@ -136,30 +140,24 @@ const patternWords = ['struct', 'true', 'false', 'none'] as const satisfies read
 export type PatternWord = (typeof patternWords)[number];
 
 /**
- * The words that alone may follow each modifier where it stands as one: `async fn`, `shared
- * struct`, `hold let`, `sendable fn` in a type, and `not in` (../expressions/operators.ts) after an
- * operand. Each is a keyword, read by its token kind.
+ * The words that alone may follow each modifier where it stands as one: a head's next modifier or
+ * keyword in print order (./modifiers.ts), as in `async fn`, `shared struct` and `sendable async fn`
+ * in a type; `hold let`; and `not in` (../expressions/operators.ts) after an operand.
  */
 export const followers = {
-  async: ['fn'],
-  shared: ['struct'],
+  async: followersIn(headForms.function, 'async'),
+  shared: followersIn(headForms.sharedStruct, 'shared'),
+  sendable: followersIn(headForms.functionType, 'sendable'),
   hold: ['let', 'const'],
-  sendable: ['fn', 'async'],
   not: ['in'],
-} as const satisfies Partial<Record<Word, readonly Keyword[]>>;
+} as const satisfies Partial<Record<Word, readonly Word[]>>;
 
 export type Modifier = keyof typeof followers;
 
-/**
- * What may stand between `extern` and `struct`, each making the host's type a handle (§3.6):
- * `shared` has its instance's identity, `sendable` one every instance shares, `ephemeral` its
- * process's. An extern struct with none of them is a value.
- */
-export const externHandles = ['shared', 'sendable', 'ephemeral'] as const satisfies readonly Word[];
-
-export type ExternHandle = (typeof externHandles)[number];
-
-const externHandleSet: ReadonlySet<string> = new Set(externHandles);
+/** The modifiers only keywords follow, which the parser reads by their token kinds. */
+export type KeywordModifier = {
+  [Each in Modifier]: (typeof followers)[Each][number] extends Keyword ? Each : never;
+}[Modifier];
 
 /**
  * What may prefix a type parameter of a struct, an enum or an extern struct (§3.5), saying how its
@@ -169,8 +167,3 @@ const externHandleSet: ReadonlySet<string> = new Set(externHandles);
 export const varianceMarkers = ['gives', 'takes'] as const satisfies readonly Word[];
 
 export type VarianceMarker = (typeof varianceMarkers)[number];
-
-/** Whether `word` makes an extern struct a handle. */
-export function isExternHandle(word: string): word is ExternHandle {
-  return externHandleSet.has(word);
-}

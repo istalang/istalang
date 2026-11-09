@@ -28,6 +28,7 @@ import type { CursorKind } from '../../cursor/index.ts';
 import { misplacedDocstring } from '../../layout/docstrings.ts';
 import { atPostfix, breakSeparatesItems } from '../../layout/item-breaks.ts';
 import type { Parser } from '../../parser.ts';
+import { headAhead } from '../parts/heads.ts';
 import { parseLiteral } from '../parts/literals.ts';
 import { spreadOpener } from '../parts/spreads.ts';
 import { type StartParselets, type WordParselets, wordParseletAt } from '../word-parselets.ts';
@@ -101,9 +102,19 @@ const wordParselets = {
   new: (parser) => (parser.cursor.kindAt(1) === 'identifier' ? parseNew(parser) : undefined),
 } satisfies WordParselets<OperandWord, (parser: Parser) => Expression | undefined>;
 
-/** A contextual word's operand, or else a name. */
+/** A contextual word's operand, a lambda whose head starts with a modifier, or else a name. */
 function parseName(parser: Parser): Expression {
-  return wordParseletAt(parser, wordParselets)?.(parser) ?? parser.identifier();
+  return (
+    (wordParseletAt(parser, wordParselets) ?? parseModifiedLambda)(parser) ?? parser.identifier()
+  );
+}
+
+/**
+ * A lambda whose head starts with a modifier no table holds here, which its head reports
+ * (`sendable fn(x): x`); undefined, with nothing consumed, where no head starts.
+ */
+function parseModifiedLambda(parser: Parser): Expression | undefined {
+  return headAhead(parser)?.keyword === 'fn' ? parseLambda(parser) : undefined;
 }
 
 /** A parselet per prefix operator of the table in syntax/expressions/operators.ts. */
@@ -150,7 +161,9 @@ const infixParselets: Partial<Record<CursorKind, InfixParselet>> = {
 export function parseExpression(parser: Parser, minLevel: PrecedenceLevel): Expression {
   const parselet = prefixParselets[parser.cursor.kind];
   const first =
-    parselet === undefined ? parser.missing('an expression') : parselet(parser, minLevel);
+    parselet === undefined
+      ? (parseModifiedLambda(parser) ?? parser.missing('an expression'))
+      : parselet(parser, minLevel);
   return continueExpression(parser, first, minLevel);
 }
 
