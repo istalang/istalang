@@ -1,9 +1,8 @@
 /**
  * A constraint scope (docs/work/variance-inference/i2-scope.md): the one system of variables the
  * generic calls and literals of an outermost expression infer in, the members that joined it, and
- * the records waiting for it to settle. The body context holds the current one
- * (wiring/body/body-checker.ts); the call that opened it settles it on every path, so no member is
- * ever left unsettled.
+ * the records waiting for it to settle. The body's scopes hold the current one (body-scopes.ts);
+ * what opened it settles it on every path, so no member is ever left unsettled.
  *
  * - A member's inference lives in the scope's system (`root`): a literal's from the start, a call's
  *   once its candidate is chosen and it joins (`Inference.commitTo`); the first member's system is
@@ -22,163 +21,13 @@
  *   order they joined, what it was given before it. One pass writes every record.
  */
 
-import type { Expression } from '../../syntax/expressions/index.ts';
-import type { Admits } from '../types/fitting/expected.ts';
-import { expectedFunction } from '../types/fitting/expected.ts';
-import { Inference } from '../types/inference/infer.ts';
-import type { Settling, SettlingOf } from '../types/inference/settle.ts';
-import type { Type } from '../types/type/index.ts';
-import { membersOf } from '../types/unions/unions.ts';
-
-/**
- * Whether `node` is checked in the current scope (i2-scope.md §2): a call; a struct, array, map or
- * tuple literal, or an indented value; a branching expression's or a block's value; maybe
- * parenthesized. Any other kind is a boundary, whose parts each settle on their own; what reads a
- * part of a joining kind settled (a callee, a receiver, a condition, a statement) suspends the scope
- * for it. An expression the scope may postpone (constructs/expressions/postponed.ts) joins too.
- */
-export function joinsScope(node: Expression): boolean {
-  switch (node.kind) {
-    case 'Parenthesized':
-      return joinsScope(node.expression);
-    case 'Call':
-    case 'NewStructLiteral':
-    case 'StructLiteral':
-    case 'ArrayLiteral':
-    case 'MapLiteral':
-    case 'Tuple':
-    case 'IndentedValue':
-    case 'If':
-    case 'Match':
-    case 'Select':
-    case 'BlockExpression':
-      return true;
-    default:
-      return false;
-  }
-}
-
-/**
- * Whether `node`, checked where no scope is open, opens one: any kind that joins a scope does, so an
- * expression infers alike wherever it stands, at the top of a statement or passed to a call; but an
- * indented value naming no type, which only what it goes into decides, and nothing does there.
- */
-export function opensScope(node: Expression): boolean {
-  switch (node.kind) {
-    case 'Parenthesized':
-      return opensScope(node.expression);
-    case 'IndentedValue':
-      return node.type !== undefined;
-    default:
-      return joinsScope(node);
-  }
-}
-
-/** A generic call or literal joined to a scope, its inference open until the scope settles. */
-export interface ScopeMember {
-  /**
-   * The node the member is, whose type completing it records; none for a call an operator makes,
-   * whose own handler records it.
-   */
-  readonly node: Expression | undefined;
-  /** Its inference, in the scope's system. */
-  readonly inference: Inference;
-  /** How its type parameters settle where it stands. */
-  readonly settling: Settling;
-  /** Its value's type, in the scope's variables. */
-  readonly type: Type;
-  /** Completes it once the scope is solved, recording what it makes; its type then. */
-  readonly complete: () => Type;
-}
-
-/**
- * An expression the scope checks once it knows what is expected of it (i2-scope.md §3), its type
- * until then its placeholder, a variable of the scope.
- */
-export interface PostponedMember {
-  readonly node: Expression;
-  /** Its placeholder's inference, in the scope's system. */
-  readonly inference: Inference;
-  /** Its placeholder, as a type. */
-  readonly type: Type;
-  /** Whether it can be a value of a type, a part open in the scope being anything. */
-  readonly admits: Admits;
-  /**
-   * Whether it has a type of its own where nothing is expected of it, as a `struct{…}`'s shape, so
-   * what siblings beside it hold never decides it.
-   */
-  readonly standsAlone?: boolean | undefined;
-  /** Checks it where `expected` is what is known of what is expected of it: its type then. */
-  readonly judge: (expected: Type | undefined) => Type;
-}
-
-/** A body's constraint scopes, as its checking works through them (wiring/body/body-scopes.ts). */
-export interface Scopes {
-  /** Whether a scope is current. */
-  readonly isOpen: boolean;
-  /** The scope current now, for what is checked later to join it (`within`). */
-  readonly current: ConstraintScope | undefined;
-  /**
-   * Runs `check` with `scope` current, as a `return` deep in a lambda's statements checks its value
-   * in the scope the lambda's result lives in; with none, with no scope current.
-   */
-  readonly within: <Result>(scope: ConstraintScope | undefined, check: () => Result) => Result;
-  /** Whether `type` mentions a variable of the current scope, open until it settles. */
-  readonly holds: (type: Type | undefined) => boolean;
-  /**
-   * Runs `check` with no scope current, so what it checks settles on its own, as the items of a
-   * literal decided by where it goes, which reads their types at once.
-   */
-  readonly suspended: <Result>(check: () => Result) => Result;
-  /**
-   * The inference holding the current scope's system, which a generic literal infers in and a
-   * call's candidates start from (`Inference.commitTo`); undefined while none is open, or none of
-   * its members has joined.
-   */
-  readonly root: Inference | undefined;
-  /**
-   * Moves `inference` into the current scope's system, which becomes its own where no member has
-   * joined yet, as a literal's does before its items are checked; with none open, does nothing.
-   */
-  readonly commit: (inference: Inference) => void;
-  /**
-   * Joins `member` to the current scope, its inference committed to it: its type, open until the
-   * scope settles; with none open, settles it at once: its type, settled.
-   */
-  readonly join: (member: ScopeMember) => Type;
-  /**
-   * Joins `member` to the current scope, which checks it once it knows what is expected of it: its
-   * placeholder, open until then. Only while a scope is open.
-   */
-  readonly postpone: (member: PostponedMember) => Type;
-  /**
-   * `type`, open in the current scope, with what is settled in place and, for the rest, what the
-   * expected type chooses where settling would take it (settle.ts rule 2): what a lambda's body is
-   * guided by.
-   */
-  readonly guided: (type: Type) => Type;
-  /**
-   * Gives the error type where each of `types` still open in the current scope goes, those of
-   * arguments a call that can't be made took, so variables only that call would have bounded
-   * settle to it, reporting nothing more.
-   */
-  readonly abandon: (types: readonly (Type | undefined)[]) => void;
-  /**
-   * Runs `check` in a scope of its own, which settles once it is done, as a call continuing an
-   * optional chain is checked: the type it gives, settled.
-   */
-  readonly isolated: (check: () => Type) => Type;
-  /**
-   * Runs `work` once the current scope is solved, with the scope's types as solved, before its
-   * members complete, as a call no candidate takes reports then; with none open, at once.
-   */
-  readonly whenSolved: (work: (solved: (type: Type) => Type) => void) => void;
-  /**
-   * Writes a record of `type` again, as `write` does, with it solved once the current scope is,
-   * where the scope holds it: a lambda's function, recorded as its body gave it.
-   */
-  readonly recorded: (type: Type, write: (solved: Type) => void) => void;
-}
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import type { PostponedMember, ScopeMember } from '../../contexts/scopes.ts';
+import { expectedFunction } from '../../types/fitting/expected.ts';
+import { Inference } from '../../types/inference/infer.ts';
+import type { SettlingOf } from '../../types/inference/settle.ts';
+import type { Type } from '../../types/type/index.ts';
+import { membersOf } from '../../types/unions/unions.ts';
 
 /** What settling a scope does through the body context. */
 export interface ScopeSettling {

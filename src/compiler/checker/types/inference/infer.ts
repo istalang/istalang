@@ -50,7 +50,7 @@ export interface InferenceSite {
   /** The call's own site, which its variables are twins at (variables.ts). */
   readonly site?: object | undefined;
   /**
-   * A scope's inference (contexts/constraint-scope.ts): this one's system starts as a copy of its
+   * A scope's inference (wiring/body/constraint-scope.ts): this one's system starts as a copy of its
    * system, as a candidate's does, so probing it leaves the scope untouched (`commitTo`).
    */
   readonly copying?: Inference | undefined;
@@ -91,7 +91,7 @@ export class Inference {
   /**
    * Moves this inference into `scope`'s system, which takes on everything matching found in its
    * own: a chosen candidate's, whose system started as a copy of the scope's
-   * (contexts/constraint-scope.ts).
+   * (wiring/body/constraint-scope.ts).
    */
   commitTo(scope: Inference): void {
     if (scope.#system !== this.#system) {

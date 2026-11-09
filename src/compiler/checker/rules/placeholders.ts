@@ -50,7 +50,7 @@ export function freshLiteralOf(
     return undefined;
   }
   if (node.kind === 'Unary' || node.kind === 'Parenthesized') {
-    scopes.suspended(() => context.expression(node));
+    context.settled(node);
   }
   const { inference, type } = placeholderOf(context, node);
   inference.matchLiteral(type, literal);

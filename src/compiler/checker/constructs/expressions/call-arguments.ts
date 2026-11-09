@@ -1,13 +1,12 @@
 /**
  * A call's arguments as written, as choosing takes them (§3.3, §3.5): each checked now, in the
- * call's constraint scope (contexts/constraint-scope.ts), which postpones one that needs what the
+ * call's constraint scope (wiring/body/constraint-scope.ts), which postpones one that needs what the
  * call expects of it to its placeholder.
  */
 
 import type { CallArgument, Expression, Spread } from '../../../syntax/expressions/index.ts';
 import { unparenthesized } from '../../../syntax/expressions/readings.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
-import { joinsScope } from '../../contexts/constraint-scope.ts';
 import { checkChangedPlace } from '../../resolution/calls/places.ts';
 import type { WrittenArgument } from '../../resolution/calls/resolve.ts';
 import type { Type } from '../../types/type/index.ts';
@@ -49,7 +48,7 @@ function spreadArgument(
 ): WrittenArgument {
   const { expression } = argument;
   const joined =
-    known === undefined && expression.kind === 'ArrayLiteral' && joinsScope(expression)
+    known === undefined && expression.kind === 'ArrayLiteral'
       ? context.expression(expression)
       : undefined;
   const items = joined === undefined ? undefined : arrayElement(context.checker, joined);
@@ -87,9 +86,6 @@ function valueArgument(
     return { node: argument, passing: 'value', type, literal };
   }
   // A literal is matched as one by the call (§2), so it needs no variable of the scope's.
-  const type =
-    literal === undefined
-      ? context.expression(argument)
-      : context.scopes.suspended(() => context.expression(argument));
+  const type = literal === undefined ? context.expression(argument) : context.settled(argument);
   return { node: argument, passing: 'value', type, literal };
 }

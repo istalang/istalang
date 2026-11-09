@@ -14,7 +14,7 @@
  *   matched. Defaults fill what
  *   is left; anything still open can't be inferred. A shape has no type parameters, but an alias
  *   naming one may (§3.17), and a literal through it infers them as a struct's.
- * - A literal is a member of the constraint scope it stands in (contexts/constraint-scope.ts): its
+ * - A literal is a member of the constraint scope it stands in (wiring/body/constraint-scope.ts): its
  *   items matched, it waits for the scope to settle before it is completed and anything is
  *   recorded.
  * - What each field's value comes from is recorded per literal, in declaration order
@@ -68,7 +68,7 @@ export interface LiteralSetting {
 
 /**
  * Checks `node`'s items against `shape`, in the current constraint scope: the literal's type, open
- * until the scope settles (contexts/constraint-scope.ts).
+ * until the scope settles (wiring/body/constraint-scope.ts).
  */
 export function checkLiteralFields(
   context: BodyContext,
@@ -102,15 +102,12 @@ export function checkLiteralFields(
   }
   // As a call's, once what its items give is bound, so it is checked against them (§3.5).
   inference.expect(shape.typeOf(parameters.map(parameterType)), expected);
-  // Each pass checks the comprehension's value again, so it settles on its own in each.
-  const comprehended = context.scopes.suspended(() =>
-    checkComprehended(context, node, {
-      fields: shape.fields,
-      name: literalName(node),
-      inference,
-      isGiven: (index) => items.given.has(index),
-    }),
-  );
+  const comprehended = checkComprehended(context, node, {
+    fields: shape.fields,
+    name: literalName(node),
+    inference,
+    isGiven: (index) => items.given.has(index),
+  });
   const settling =
     shape.owner === undefined ? settlesFreely : settlingOf(checker, shape.owner, parameters);
   const literal = { items, comprehended, spread, spreadType, settling };
@@ -148,7 +145,7 @@ function completeLiteral(context: BodyContext, checked: CheckedLiteral): Type {
   if (completed === undefined) {
     return errorType;
   }
-  // A shape taken from what is expected may name what its scope solved (contexts/constraint-scope.ts).
+  // A shape taken from what is expected may name what its scope solved (wiring/body/constraint-scope.ts).
   const type = inference.solved(shape.typeOf(completed.typeArguments));
   fitItems(context, items, completed.substitution);
   if (spread !== undefined && spreadType !== undefined) {

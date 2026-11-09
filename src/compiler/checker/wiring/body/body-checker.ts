@@ -10,7 +10,7 @@
  *   the node giving the value, or, for a value an assignment writes, on its part
  *   (constructs/statements/assignments.ts). Nothing is recomputed later, so lowering sees what was
  *   checked.
- * - An expression checked in a constraint scope (contexts/constraint-scope.ts, body-scopes.ts) is
+ * - An expression checked in a constraint scope (wiring/body/constraint-scope.ts, body-scopes.ts) is
  *   recorded again once the scope settles, its type solved; one the scope postpones is its
  *   placeholder until then (constructs/expressions/postponed.ts). A value where a union is expected
  *   is checked as the member it is built as when that is decided before it is checked (§2,
@@ -215,6 +215,10 @@ export class BodyChecker implements BodyContext {
     return this.scopes.suspended(() => this.expression(node, expected));
   }
 
+  expectSettled(node: Expression, expected: Type): Type {
+    return this.scopes.suspended(() => this.expect(node, expected));
+  }
+
   /** Checks `node` by its kind's handler, in whatever scope is current. */
   part(node: Expression, given?: Type): Type {
     const fresh = freshLiteralOf(this, node, given === undefined ? undefined : unfolded(given));
@@ -243,7 +247,8 @@ export class BodyChecker implements BodyContext {
       }
     }
     const guide = memberBuilt(this, node, expected, admits);
-    return this.#record(node, handlerOf(expressionHandlers, node)(this, node, guide));
+    const handle = () => handlerOf(expressionHandlers, node)(this, node, guide);
+    return this.#record(node, this.scopes.handling(node, guide, handle));
   }
 
   inferLambda(
@@ -365,11 +370,17 @@ export class BodyChecker implements BodyContext {
     passes: readonly FieldPassType[],
     check: (pass: FieldPassType) => void,
   ): CheckedPasses {
-    const { checked, inEach } = this.#passes.checkEach(passes, check, (diagnostic) =>
-      this.report(diagnostic),
+    // Each pass checks the same text again, so what it checks settles before the pass exits: a
+    // scope it joined would settle once every pass had left, writing into none of them.
+    const { checked, inEach } = this.#passes.checkEach(
+      passes,
+      (pass) => this.scopes.suspended(() => check(pass)),
+      (diagnostic) => this.report(diagnostic),
     );
     this.#records.fieldPasses.set(header, checked);
-    return { inEach };
+    return {
+      inEach: (run) => inEach((pass, index) => this.scopes.suspended(() => run(pass, index))),
+    };
   }
 
   recordCandidates(site: ResolvedSite, candidates: readonly FunctionDeclaration[]): void {

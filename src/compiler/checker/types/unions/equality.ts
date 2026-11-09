@@ -24,7 +24,7 @@
  */
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import type { BodyContext } from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { sameType } from '../identity/identity.ts';
 import { isOpaque } from '../type/computed-types.ts';
 import {
@@ -71,7 +71,7 @@ function isLiteralLike(type: Type): boolean {
  * too, always unequal, a condition decided by types
  * (constructs/expressions/operators/decided-conditions.ts).
  */
-function comparableAsMembers(context: BodyContext, first: Type, second: Type): boolean {
+function comparableAsMembers(context: SidesFitting, first: Type, second: Type): boolean {
   const unionOf = (type: Type) =>
     isMemberParameter(type) ? context.checker.fitting.memberUnionOf(type) : undefined;
   const [firstUnion, secondUnion] = [unionOf(first), unionOf(second)];
@@ -81,6 +81,12 @@ function comparableAsMembers(context: BodyContext, first: Type, second: Type): b
   const firsts = membersOf(firstUnion ?? first);
   const seconds = membersOf(secondUnion ?? second);
   return firsts.every((one) => seconds.every((other) => comparable(one, other)));
+}
+
+/** What fitting the sides of `==` reads where a body is checked, and how it records a fit. */
+interface SidesFitting {
+  readonly checker: CheckerContext;
+  readonly fit: (found: Type, expected: Type, site: Expression) => void;
 }
 
 /** A side of `==`: its type, and the expression giving it, if one does. */
@@ -94,7 +100,7 @@ export interface EqualitySide {
  * its part too (§3.11); a side that goes into the other's type has its conversion recorded.
  */
 export function fitEqualSides(
-  context: BodyContext,
+  context: SidesFitting,
   left: EqualitySide,
   right: EqualitySide,
 ): boolean {

@@ -1,32 +1,25 @@
 /**
- * A body's constraint scopes (docs/work/variance-inference/i2-scope.md, contexts/constraint-scope.ts):
- * which one is current, and in which one each expression is checked. BodyChecker checks and
- * records; this decides the scope that happens in.
+ * A body's constraint scopes (docs/work/variance-inference/i2-scope.md, constraint-scope.ts): which
+ * one is current, and in which one each expression is checked, as the scope protocol places it
+ * (scope-protocol.ts). BodyChecker checks and records; this decides the scope that happens in.
  *
- * - A node of a kind that joins a scope is checked in the current one; where none is open, a call
- *   opens one, which settles once the call is checked, on every path, a throw included, and a
- *   literal is checked as ever. Any other kind is a boundary: it suspends the current scope while it
- *   is checked, so its parts each settle on their own.
+ * - An expression that opens a scope where none is current settles it once it is checked, on every
+ *   path, a throw included. One checked with no scope current (a boundary, a literal decided by
+ *   where it goes, a part read settled) has its parts each settle on their own.
  * - What an expression checked outside a scope expects never names a variable, which only the scope
- *   holding it knows (`closed`).
+ *   holding it knows (`closed`), but for a literal decided by where it goes, which reads it as given.
  * - A member that joins with no scope open settles at once, in a scope of its own, which its
  *   inference's system is, so what it judges still joins it.
  */
 
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { Expression } from '../../../syntax/expressions/index.ts';
-import {
-  ConstraintScope,
-  joinsScope,
-  opensScope,
-  type PostponedMember,
-  type ScopeMember,
-  type ScopeSettling,
-  type Scopes,
-} from '../../contexts/constraint-scope.ts';
+import type { InScope, PostponedMember, ScopeMember, Scopes } from '../../contexts/scopes.ts';
 import type { Inference } from '../../types/inference/infer.ts';
 import { mentionsAnyVariable } from '../../types/inference/variables.ts';
 import type { Type } from '../../types/type/index.ts';
+import { ConstraintScope, type ScopeSettling } from './constraint-scope.ts';
+import { placeOf, standingOf } from './scope-protocol.ts';
 
 export class BodyScopes implements Scopes {
   readonly #settling: ScopeSettling;
@@ -41,18 +34,9 @@ export class BodyScopes implements Scopes {
     return this.#current !== undefined;
   }
 
-  get current(): ConstraintScope | undefined {
-    return this.#current;
-  }
-
-  within<Result>(scope: ConstraintScope | undefined, check: () => Result): Result {
-    const outer = this.#current;
-    this.#current = scope;
-    try {
-      return check();
-    } finally {
-      this.#current = outer;
-    }
+  here(): InScope {
+    const scope = this.#current;
+    return (check) => this.#within(scope, check);
   }
 
   holds(type: Type | undefined): boolean {
@@ -65,30 +49,42 @@ export class BodyScopes implements Scopes {
   }
 
   /**
-   * Checks `node` by `check` in the scope its kind takes, with what it may read of `given`; one the
-   * scope may postpone (`postponable`) joins it too.
+   * Checks `node` by `check` where the protocol places it, with what it may read of `given`; one the
+   * scope may postpone (`postponable`) in the current scope, if any.
    */
   checking(
     node: Expression,
     given: Type | undefined,
     check: (expected: Type | undefined) => Type,
-    postponable = false,
+    postponable: boolean,
   ): Type {
-    if (!(postponable || joinsScope(node))) {
-      return this.suspended(() => check(closed(given)));
+    // `default` is 'opens'.
+    switch (placeOf(this, node, given, postponable)) {
+      case 'boundary':
+        return this.suspended(() => check(closed(given)));
+      case 'decided':
+        return this.suspended(() => check(given));
+      case 'joins':
+        return this.#current === undefined ? check(closed(given)) : check(given);
+      default:
+        return this.#current === undefined
+          ? this.#opening(new ConstraintScope(), () => check(closed(given)))
+          : check(given);
     }
-    if (this.#current !== undefined) {
-      return check(given);
-    }
-    if (!opensScope(node)) {
-      return check(closed(given));
-    }
-    return this.#opening(new ConstraintScope(), () => check(closed(given)));
   }
 
-  /** Runs `check` with no scope current, `expected` read as outside one: what it gives. */
+  /**
+   * Runs `handle`, `node`'s handler where `expected` is what it is checked against: with no scope
+   * current for a literal decided by where it goes, so its items settle on their own; else as it
+   * stands. A postponed member is judged through here too, placed where it joined.
+   */
+  handling(node: Expression, expected: Type | undefined, handle: () => Type): Type {
+    return standingOf(this, node, expected) === 'decided' ? this.suspended(handle) : handle();
+  }
+
+  /** Runs `check` with no scope current: what it gives. */
   suspended<Result>(check: () => Result): Result {
-    return this.within(undefined, check);
+    return this.#within(undefined, check);
   }
 
   /** Runs `check` in a scope of its own, which settles once it is done: its type, settled. */
@@ -152,6 +148,17 @@ export class BodyScopes implements Scopes {
   recorded(type: Type, write: (solved: Type) => void): void {
     if (this.#current?.holds(type) === true) {
       this.whenSolved((solved) => write(solved(type)));
+    }
+  }
+
+  /** Runs `check` with `scope` current, the outer one current again after. */
+  #within<Result>(scope: ConstraintScope | undefined, check: () => Result): Result {
+    const outer = this.#current;
+    this.#current = scope;
+    try {
+      return check();
+    } finally {
+      this.#current = outer;
     }
   }
 

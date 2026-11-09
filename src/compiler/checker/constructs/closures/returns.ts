@@ -20,7 +20,7 @@ import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { Return } from '../../../syntax/statements/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { BodyContext, Returns } from '../../contexts/body-context.ts';
-import type { ConstraintScope } from '../../contexts/constraint-scope.ts';
+import type { InScope } from '../../contexts/scopes.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import {
   agreedType,
@@ -49,7 +49,7 @@ interface Propagation {
 export interface GuidedResult {
   readonly node: Expression;
   readonly guide: Type;
-  readonly scope: ConstraintScope | undefined;
+  readonly inScope: InScope;
 }
 
 /** The result of one body: declared, or gathered from its `return`s as they are checked. */
@@ -88,7 +88,7 @@ export class ReturnScope implements Returns {
     const type =
       guided === undefined || expected !== undefined
         ? context.expect(value, expected)
-        : context.scopes.within(guided.scope, () => context.expression(value, guided.guide));
+        : guided.inScope(() => context.expression(value, guided.guide));
     this.#returned.push(producedBy(value, type));
   }
 

@@ -168,7 +168,7 @@ interface BoundArguments {
  * Arguments with types of their own are matched first, in any order, so what inference finds
  * doesn't depend on where a placeholder stands; then a pack's, which take what those found; and
  * last the placeholders of what the call's scope checks once it knows what is expected of it
- * (contexts/constraint-scope.ts), each refusing a parameter it can't be a value of.
+ * (wiring/body/constraint-scope.ts), each refusing a parameter it can't be a value of.
  */
 function argumentsInapplicability(
   callArguments: readonly CallArgument[],

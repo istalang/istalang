@@ -5,7 +5,7 @@
  * A block's value is its last statement's: an expression statement has its expression's type,
  * `return`, `break` and `continue` have `Never`, and any other statement `Unit` (§4). Only the last
  * statement's expression sees the type the block is expected to have, and only it joins the
- * constraint scope the block stands in (contexts/constraint-scope.ts); every other statement is
+ * constraint scope the block stands in (wiring/body/constraint-scope.ts); every other statement is
  * checked on its own.
  */
 

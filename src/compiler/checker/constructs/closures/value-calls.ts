@@ -11,7 +11,7 @@
  *   its parameter's type, as a variant's (`valueParameterTypes`).
  * - Its type names no parameters, so its call gives every argument by position, with no name;
  *   a spread only fills a pack its type ends in (§3.3, §3.5).
- * - An argument still open in the call's constraint scope (contexts/constraint-scope.ts) is matched
+ * - An argument still open in the call's constraint scope (wiring/body/constraint-scope.ts) is matched
  *   in it, so `f(id(1))` bounds `id`'s variable by `f`'s parameter; the call then joins the scope,
  *   and is fitted, or reported, once it settles, with every type as it settled.
  */

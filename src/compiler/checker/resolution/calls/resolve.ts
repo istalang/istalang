@@ -4,13 +4,13 @@
  * arguments fitted, so their implicit conversions are too, then recorded for lowering with what
  * only a written call has: its receiver, the places it changes, and a report about a call nothing
  * takes. Choosing comes first; the rest waits for the constraint scope the call stands in to settle
- * (contexts/constraint-scope.ts), and so does reporting a call no candidate takes while what it is
+ * (wiring/body/constraint-scope.ts), and so does reporting a call no candidate takes while what it is
  * given is still open there, which then reads its arguments as they settled.
  *
  * - An argument whose type the chosen function decides (a bare variant, a lambda with an untyped
- *   parameter, an empty `[]`, a literal holding one) is checked only after choosing, against its
- *   parameter's type; a lambda, once the expected type has given its bounds and before
- *   instantiating, so its result can bound type parameters (function-arguments.ts).
+ *   parameter, an empty `[]`, a literal holding one) is a placeholder of the scope, judged once
+ *   what its parameter expects of it is known, so its result bounds type parameters
+ *   (constructs/expressions/postponed.ts).
  * - A method call records its receiver with the call, as lowering passes it first (§3.7). A
  *   receiver the chosen function's `self` takes by reference must be a place that may change.
  * - An argument of the error type was already reported, so the call reports nothing more.
@@ -51,7 +51,7 @@ import { expectWrittenArguments } from './written-expectations.ts';
 /**
  * An argument as written: its node, how it is passed, and its type, a placeholder of the call's
  * constraint scope where the scope checks it once it knows what the call expects of it
- * (contexts/constraint-scope.ts); its name when named. A spread's node is what it spreads, its type that of its items, which fit the rest
+ * (wiring/body/constraint-scope.ts); its name when named. A spread's node is what it spreads, its type that of its items, which fit the rest
  * parameter's element exactly: the items are copied or iterated as they are (§3.3).
  */
 export interface WrittenArgument {
@@ -86,7 +86,7 @@ export interface CallRequest {
 }
 
 /**
- * Resolves `request`, joining the current constraint scope (contexts/constraint-scope.ts), which
+ * Resolves `request`, joining the current constraint scope (wiring/body/constraint-scope.ts), which
  * records the call once it settles: what it yields, open until then, or the error type after a
  * report.
  */
@@ -316,7 +316,7 @@ function explainNone(
 
 /**
  * Each argument that doesn't fit its parameter, reported as a mismatch; one its scope would have
- * checked once it knew what the call expects of it, a placeholder (contexts/constraint-scope.ts),
+ * checked once it knew what the call expects of it, a placeholder (wiring/body/constraint-scope.ts),
  * is checked against the type it didn't take, which says why. With
  * nothing reported that way, no function of the name takes the arguments.
  */
@@ -333,7 +333,7 @@ function explainMisfits(
       context.report(misfitOf(context.checker.fitting, node.span, type, expected));
     } else if (argument !== undefined) {
       // Checked on its own, as nothing the scope holds tells it what to be.
-      context.scopes.suspended(() => context.expect(argument.node, expected));
+      context.expectSettled(argument.node, expected);
     }
   }
   if (context.checker.reportCount() === before) {

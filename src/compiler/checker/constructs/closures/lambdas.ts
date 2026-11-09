@@ -211,7 +211,7 @@ function checkLambdaAs(
     parameters: nestedParameters(context, node.parameters, slots),
     isAsync: node.isAsync,
     declaredResult,
-    guided: hint === undefined ? undefined : { node, guide: hint, scope: context.scopes.current },
+    guided: hint === undefined ? undefined : { node, guide: hint, inScope: context.scopes.here() },
     reach: node.span,
     tail: (declared) => {
       const type = context.expression(node.body, declared ?? hint);
@@ -285,7 +285,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     return scope.returns.result(context, header.tail(declaredResult));
   });
   // What the scope it stands in judges later inside it may capture more, and what its body gave
-  // settles with the scope (contexts/constraint-scope.ts): it is recorded again then.
+  // settles with the scope (wiring/body/constraint-scope.ts): it is recorded again then.
   const finished = (produces: Type): FunctionType => {
     const captures = [...scope.captures.values()].map((entity) => ({
       entity,

@@ -6,13 +6,12 @@
  *   lowering (CheckedBody), and asks program-wide questions of its `CheckerContext` (context.ts).
  * - The facts a body's own rules gather live in per-concern units beside those rules (variables,
  *   returns, loops), each declared here as the narrow interface construct modules use, so a
- *   feature adds a unit, not methods on the context, and this contract names nothing above the
- *   type model (.dependency-cruiser.mjs).
+ *   feature adds a unit, not methods on the context. As the body's contract, it names nothing
+ *   above the type model but inference, whose constraint scopes a body holds (scopes.ts), and only
+ *   what checks a body imports it, never the type model (.dependency-cruiser.mjs).
  */
 
-import type { Diagnostic } from '../../../foundation/diagnostics/diagnostic.ts';
 import type { Entity, VariableEntity, VariantEntity } from '../../binder/entities.ts';
-import type { ModuleId } from '../../program/program.ts';
 import type { FunctionDeclaration } from '../../syntax/declarations/index.ts';
 import type {
   ArrayLiteral,
@@ -59,23 +58,25 @@ import type { ImplicitRole, ResolvedCall, ResolvedSite } from '../surface/resolv
 import type { Admits } from '../types/fitting/expected.ts';
 import type { Fit } from '../types/fitting/fit/index.ts';
 import type { FieldMember, FunctionType, Type } from '../types/type/index.ts';
-import type { Scopes } from './constraint-scope.ts';
-import type { CheckerContext } from './context.ts';
+import type { CheckedModule } from './context.ts';
 import type { FieldPassType } from './passes.ts';
+import type { Scopes } from './scopes.ts';
 
-export interface BodyContext {
-  readonly checker: CheckerContext;
-  readonly module: ModuleId;
+export interface BodyContext extends CheckedModule {
   /**
-   * Checks `node`, recording its type; `expected` guides inference but isn't enforced. A node of a
-   * kind that joins a constraint scope (contexts/constraint-scope.ts) is checked in the current
-   * one, opening one that settles once it is checked when none is; any other kind with none, so its
-   * parts each settle on their own.
+   * Checks `node`, recording its type; `expected` guides inference but isn't enforced. It is checked
+   * in the current constraint scope, or in one of its own, or in none, as its kind stands
+   * (wiring/body/scope-protocol.ts).
    */
   readonly expression: (node: Expression, expected?: Type) => Type;
-  /** Checks `node` as `expression` does where no scope is current: its type, settled. */
+  /**
+   * Checks `node` as `expression` does where no scope is current, as a part read at once is (a
+   * callee, a condition, a subject): its type, settled.
+   */
   readonly settled: (node: Expression, expected?: Type) => Type;
-  /** The body's constraint scopes, and the one current (contexts/constraint-scope.ts). */
+  /** Checks `node` as `expect` does where no scope is current, as a condition is: its type, settled. */
+  readonly expectSettled: (node: Expression, expected: Type) => Type;
+  /** The body's constraint scopes, and the one current (scopes.ts). */
   readonly scopes: Scopes;
   /**
    * What `node` can be a value of, when a constraint scope checks it only once it knows what is
@@ -121,11 +122,10 @@ export interface BodyContext {
   readonly statement: (node: Statement | Invalid, expected?: Type) => Type;
   /**
    * Checks `node` as a part of a value a joining composite builds, a tuple's element or a
-   * `struct{…}`'s field (contexts/constraint-scope.ts): a literal stays fresh in the current scope,
+   * `struct{…}`'s field (wiring/body/constraint-scope.ts): a literal stays fresh in the current scope,
    * its literal type where what it goes into holds one once the scope settles, else its base (§2).
    */
   readonly part: (node: Expression, expected?: Type) => Type;
-  readonly report: (diagnostic: Diagnostic<AnchoredSpan>) => void;
   /** The type `node` denotes in this body's module. */
   readonly resolveType: (node: TypeNode) => Type;
   /** What `name` denotes, a query: for a name only asked about, declared, or checked elsewhere. */
@@ -255,7 +255,7 @@ export interface Functions {
   readonly frames: readonly FunctionFrame[];
   /**
    * Runs `check` inside `frames` again, as a constraint scope checks what it postponed inside the
-   * functions it was written in (contexts/constraint-scope.ts).
+   * functions it was written in (wiring/body/constraint-scope.ts).
    */
   readonly within: <Result>(frames: readonly FunctionFrame[], check: () => Result) => Result;
   /** Runs `check` inside `scope`; while its type isn't known, using its own name is reported. */

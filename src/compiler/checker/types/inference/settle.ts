@@ -211,7 +211,7 @@ function settledBelow(
 
 /**
  * Rule 2 alone for `parameter`, its bounds read with `settled`: what a postponed argument's result
- * is expected to be (resolution/calls/function-arguments.ts); undefined at the result's top.
+ * is expected to be (constructs/expressions/postponed.ts); undefined at the result's top.
  */
 export function expectedChoiceOf(
   parameter: ParameterKey,

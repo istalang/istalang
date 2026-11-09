@@ -18,7 +18,12 @@
 import type { PrimitiveName } from '../../../../foundation/language/primitives.ts';
 import { staticName } from '../../../../foundation/language/static-names.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
-import type { Entity, VariantNaming, VariantsEntity } from '../../../binder/entities.ts';
+import type {
+  Entity,
+  VariantEntity,
+  VariantNaming,
+  VariantsEntity,
+} from '../../../binder/entities.ts';
 import type { ModuleId } from '../../../program/program.ts';
 import type {
   EnumDeclaration,
@@ -30,8 +35,7 @@ import type { Expression, MemberAccess } from '../../../syntax/expressions/index
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { Checker } from '../../check.ts';
-import type { BodyContext } from '../../contexts/body-context.ts';
-import type { CheckerContext } from '../../contexts/context.ts';
+import type { CheckedModule, CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { enumsExpected } from '../fitting/expected.ts';
 import { type ShapeKey, typeKeys } from '../identity/type-keys.ts';
@@ -112,7 +116,15 @@ export function declaredOwnerOf(
 }
 
 /** What naming a type in value position reads: the checker, and what the binder says a name is. */
-export type Naming = Pick<BodyContext, 'checker' | 'entityOf'>;
+export interface Naming {
+  readonly checker: CheckerContext;
+  readonly entityOf: (name: Identifier) => Entity | undefined;
+}
+
+/** Where a bare variant is chosen: the module's, which reports and records the variant chosen. */
+interface VariantChoosing extends CheckedModule {
+  readonly recordVariant: (name: Identifier, variant: VariantEntity) => void;
+}
 
 /**
  * The type a type named in value position denotes, as the owner of a static call or the target
@@ -154,7 +166,7 @@ export function nameNodeOf(node: Expression): Identifier | undefined {
  * its value's type expected.
  */
 export function chooseVariant(
-  context: BodyContext,
+  context: VariantChoosing,
   at: { readonly span: AnchoredSpan; readonly name: Identifier },
   naming: VariantNaming,
   expected: Type | undefined,
@@ -179,7 +191,7 @@ export function chooseVariant(
  * name that the module's top level names, so a message suggests only what it can write, whatever
  * other modules declare (`variantsQualifiableIn`).
  */
-function qualifiedHere(context: BodyContext, naming: VariantsEntity): readonly string[] {
+function qualifiedHere(context: CheckedModule, naming: VariantsEntity): readonly string[] {
   return context.checker.inputs
     .variantsQualifiableIn(context.module, naming.name)
     .map((candidate) => staticName(candidate.enum.name.text, candidate.variant.name.text));

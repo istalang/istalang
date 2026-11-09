@@ -24,7 +24,7 @@ export function checkedFieldPasses(
   header: FieldHeader,
 ): readonly FieldPassType[] {
   // Its passes read its subject's fields at once, so it is read settled, never open in a scope.
-  const subject = context.scopes.suspended(() => context.expression(header.subject));
+  const subject = context.settled(header.subject);
   const passes = fieldPassesOver(context.checker, subject, header);
   if (passes === undefined && subject.kind !== 'error') {
     context.report(checkerDiagnostics.fieldLoopSubject(header.subject.span, typeText(subject)));

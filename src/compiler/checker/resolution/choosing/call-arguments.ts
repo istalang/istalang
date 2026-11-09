@@ -37,7 +37,7 @@ export type Passing = 'value' | 'reference' | 'receiver';
 
 /**
  * An argument as choosing sees it: its type, a placeholder of the call's constraint scope for one
- * the scope checks once it knows what the call expects of it (contexts/constraint-scope.ts); how it
+ * the scope checks once it knows what the call expects of it (wiring/body/constraint-scope.ts); how it
  * is passed; its name when named; for a spread, the type of its items; and for a literal written in
  * place, its literal type, which it has where a parameter expects one (§2,
  * types/inference/infer.ts `literalType`), its type being its base's.

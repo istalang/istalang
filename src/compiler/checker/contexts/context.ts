@@ -115,6 +115,16 @@ export interface ProgramInputs {
 }
 
 /**
+ * Where a body is checked, as a rule over types applied there reads it: the program-wide services,
+ * the module, and where it reports (body-context.ts holds the rest).
+ */
+export interface CheckedModule {
+  readonly checker: CheckerContext;
+  readonly module: ModuleId;
+  readonly report: (diagnostic: Diagnostic<AnchoredSpan>) => void;
+}
+
+/**
  * The program-wide services, beyond what later phases read (../check.ts). A checker unit reads its
  * program only through `inputs`, which records each read in the entry making it, so the program
  * itself is no member here.

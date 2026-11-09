@@ -1,6 +1,6 @@
 /**
  * The inference of the calls and literals of one constraint scope (design.md §4,
- * contexts/constraint-scope.ts), as one system of their variables (variables.ts): the bounds
+ * wiring/body/constraint-scope.ts), as one system of their variables (variables.ts): the bounds
  * matching gives them (bounds.ts, relate.ts,
  * equal.ts), the types given some outright, the notes a failed or partial match leaves, and
  * settling them (settle.ts). Inference (infer.ts) speaks for one call in its parameters' names;

@@ -1,7 +1,7 @@
 /**
  * What a value built from the expected type takes from it (§2, §3.1, §3.5, §3.11): the one home for
- * taking an expected type apart, which every construct with no type of its own reads, as does the
- * inference of lambdas nested in an argument (resolution/calls/function-arguments.ts).
+ * taking an expected type apart, which every construct with no type of its own reads, as does judging a
+ * postponed lambda (constructs/expressions/postponed.ts).
  *
  * - A value with no type of its own is built as the one member of the expected union that takes it
  *   (`memberBuilt`, which every expression's check goes through), then goes into the union: `[]`
@@ -26,8 +26,7 @@
 import { wellKnown } from '../../../../foundation/language/well-known/index.ts';
 import { typeParametersOf } from '../../../syntax/declarations/index.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
-import type { BodyContext } from '../../contexts/body-context.ts';
-import type { CheckerContext } from '../../contexts/context.ts';
+import type { CheckedModule, CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { unfolded } from '../type/computed-types.ts';
 import {
@@ -155,7 +154,7 @@ function candidatesOf(expected: Type | undefined): readonly Type[] {
  * parameter with neither.
  */
 export function expectedNominal(
-  context: BodyContext,
+  context: CheckedModule,
   at: AnchoredSpan,
   entity: NominalEntity,
   expected: Type | undefined,
@@ -184,7 +183,7 @@ export function expectedNominal(
  * type's are (§3.5); the error type after reporting too few or too many.
  */
 export function writtenNominal(
-  context: BodyContext,
+  context: Pick<CheckedModule, 'checker' | 'module'>,
   at: AnchoredSpan,
   entity: NominalEntity,
   written: readonly Type[],

@@ -6,8 +6,8 @@
  * its enum's constructor (§3.11), qualified (`Result.Ok`) or bare (`Ok`), whose enum is then the
  * one the expected function type's result is: a variant without fields is a value, never a
  * function. Nothing here records or reports, so checking a function value
- * (constructs/closures/function-values.ts) and inferring a call's type parameters from one passed
- * to it (../calls/function-arguments.ts) choose it alike.
+ * (constructs/closures/function-values.ts) and judging one a call is passed
+ * (constructs/expressions/postponed.ts) choose it alike.
  *
  * - The expected function type chooses among the functions named, and infers a generic one's
  *   type arguments from its parameters and its result (§3.5). A shorter function type leaves

@@ -6,7 +6,7 @@
  * (choosing/choice.ts) and fitting an argument, its conversion and wraps included
  * (argument-fit.ts), each happen in one place for every call. Choosing (`chooseCall`) and
  * completing (`completeCall`) are apart, so a written call completes once the constraint scope it
- * stands in settles (contexts/constraint-scope.ts); a call the language makes applies at once
+ * stands in settles (wiring/body/constraint-scope.ts); a call the language makes applies at once
  * (`applyCall`).
  *
  * - An argument of the error type was reported already, so a call nothing chosen for reports
@@ -56,7 +56,7 @@ export interface CallApplication {
   /** The type the call is to give, which advises its type arguments once it is chosen. */
   readonly expected?: Type | undefined;
   /**
-   * The inference of the constraint scope the call joins (contexts/constraint-scope.ts), which
+   * The inference of the constraint scope the call joins (wiring/body/constraint-scope.ts), which
    * each candidate's system starts as a copy of; none for a call settled on its own.
    */
   readonly scope?: Inference | undefined;

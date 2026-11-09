@@ -43,7 +43,7 @@ export function checkMatch(context: BodyContext, node: Match, expected: Type | u
     const ruledOut = cantMatch(tests);
     const { guard } = matchCase;
     if (guard !== undefined && !ruledOut) {
-      context.scopes.suspended(() => context.expect(guard, boolType));
+      context.expectSettled(guard, boolType);
     }
     if (ruledOut) {
       // A case its subject's type rules out matches no value, so it covers none.

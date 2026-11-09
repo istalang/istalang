@@ -317,7 +317,7 @@ function checkValuesAlone(context: BodyContext, node: FieldsLiteral): void {
     if (item.kind === 'Spread') {
       checkRefused(context, item.expression);
     } else if (item.kind === 'StructComprehension') {
-      context.scopes.suspended(() => checkComprehensionAlone(context, item));
+      checkComprehensionAlone(context, item);
     } else if (item.kind !== 'Invalid') {
       checkRefused(context, itemValue(item));
     }

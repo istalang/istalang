@@ -5,19 +5,19 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { invalidPrograms, runPrograms } from '../../../../test/corpus/programs.ts';
-import { reportedNothing } from '../../../foundation/diagnostics/diagnostic.test-kit.ts';
-import { stdProgramOf } from '../../binder/bind.test-kit.ts';
-import { diagnosedAt } from '../../compile.test-kit.ts';
-import { idOf } from '../../program/program.test-kit.ts';
-import { programModule } from '../../program/program.ts';
-import { functionsOf } from '../../syntax/declarations/field-defaults.ts';
-import type { Expression } from '../../syntax/expressions/index.ts';
-import { nodesUnder, type SyntaxNode } from '../../syntax/tree/index.ts';
-import { reported } from '../check.test-kit.ts';
-import { checkProgram } from '../check.ts';
-import { expressionHandlers } from '../constructs/expressions/expressions.ts';
-import { mentionsAnyVariable } from '../types/inference/variables.ts';
+import { invalidPrograms, runPrograms } from '../../../../../test/corpus/programs.ts';
+import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
+import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
+import { diagnosedAt } from '../../../compile.test-kit.ts';
+import { idOf } from '../../../program/program.test-kit.ts';
+import { programModule } from '../../../program/program.ts';
+import { functionsOf } from '../../../syntax/declarations/field-defaults.ts';
+import type { Expression } from '../../../syntax/expressions/index.ts';
+import { nodesUnder, type SyntaxNode } from '../../../syntax/tree/index.ts';
+import { reported } from '../../check.test-kit.ts';
+import { checkProgram } from '../../check.ts';
+import { expressionHandlers } from '../../constructs/expressions/expressions.ts';
+import { mentionsAnyVariable } from '../../types/inference/variables.ts';
 
 const declarations = [
   'fn id<T>(x: T) -> T: x',

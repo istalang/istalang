@@ -166,8 +166,8 @@ function witnessesOf(
 /**
  * How `signature`'s type parameters settle at `site`, within `search` (types/inference/settle.ts):
  * a type is admitted where it meets their constraints, asked as a probe reporting nothing. A
- * call's arguments the chosen function decides ask it before it is instantiated
- * (resolution/calls/function-arguments.ts).
+ * placeholder a candidate probes asks it before the call is instantiated
+ * (constructs/expressions/postponed.ts).
  */
 export function settlingAt(
   site: UseSite,

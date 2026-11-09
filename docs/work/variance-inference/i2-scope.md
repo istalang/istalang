@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-08
-last_updated: 2026-11-08
+last_updated: 2026-11-09
 tags: [design, checker, inference, i2]
 ---
 
@@ -29,9 +29,15 @@ where they live.
   statements it sits.
 - A scope settles when the call that opened it returns, on every path, a throw included. Nothing
   else settles it, so no member is ever orphaned.
-- The scope's interface on `BodyContext` names only `types/` (the model layer).
+- The scope's interface on `BodyContext` (`contexts/scopes.ts`) is the body's contract: it names
+  `types/` and `types/inference/`, and the type model and inference never import it. The scopes
+  themselves are `wiring/body/`.
 
 ## 2. Joining kinds
+
+The table below is `wiring/body/scope-protocol.ts`, one entry per kind of expression. A field
+loop's passes each settle before the pass exits: every pass is a boundary
+(`BodyChecker.fieldPasses`).
 
 | Joins | Its parts read settled |
 |---|---|

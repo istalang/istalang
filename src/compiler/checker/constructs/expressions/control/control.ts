@@ -10,7 +10,6 @@
  */
 
 import type { Expression, If } from '../../../../syntax/expressions/index.ts';
-import type { Block } from '../../../../syntax/statements/index.ts';
 import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import { isAssignable } from '../../../types/identity/identity.ts';
@@ -22,11 +21,6 @@ import { Branches } from './branches.ts';
 
 export function checkIf(context: BodyContext, node: If, expected: Type | undefined): Type {
   const branches = new Branches(context, node, expected);
-  // Without `else` its branches' values are dropped, so they settle on their own.
-  const add = (body: Block) =>
-    node.elseClause === undefined
-      ? context.scopes.suspended(() => branches.add(body))
-      : branches.add(body);
   let decidedTrue = false;
   for (const branch of node.branches) {
     const decided: boolean | undefined = decidedTrue
@@ -35,7 +29,7 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
     if (decided === false) {
       context.ruleOut(branch.body);
     } else {
-      add(branch.body);
+      branches.add(branch.body);
     }
     decidedTrue ||= decided === true;
   }
@@ -62,7 +56,7 @@ export function checkIf(context: BodyContext, node: If, expected: Type | undefin
  * (constructs/expressions/operators/decided-conditions.ts).
  */
 function checkCondition(context: BodyContext, condition: Expression): boolean | undefined {
-  context.scopes.suspended(() => context.expect(condition, boolType));
+  context.expectSettled(condition, boolType);
   const decided = decidedValue(context, condition);
   if (decided !== undefined) {
     context.decide(condition, decided);

@@ -212,11 +212,17 @@ const checkerWiring = '^src/compiler/checker/wiring/';
 const checkerContracts = '^src/compiler/checker/([^/]+\\.ts$|contexts/|surface/)';
 
 /**
- * The layers its contracts may name: diagnostics, the type model beneath everything, and inference
- * over it, whose system of variables is the constraint scope a body holds
- * (contexts/constraint-scope.ts).
+ * The body's contract: the context a body is checked in and its constraint scopes, which name
+ * inference too, whose system of variables a scope is. Only what checks a body imports it, never
+ * the type model or inference, which it would otherwise reach through them.
  */
-const checkerModel = ['diagnostics', 'types', 'types/inference'];
+const bodyContract = '^src/compiler/checker/contexts/(body-context|scopes)\\.ts$';
+
+/** The layers the checker's contracts may name: diagnostics, and the type model beneath everything. */
+const checkerModel = ['diagnostics', 'types'];
+
+/** The layers the body's contract may name: the model, and inference over it. */
+const bodyModel = [...checkerModel, 'types/inference'];
 
 /**
  * Layers that may use Node's built-ins: the apps, which wire Node's I/O into the seams, and
@@ -265,9 +271,21 @@ export default {
       severity: 'error',
       from: {
         path: checkerContracts,
-        pathNot: checkerWiring,
+        pathNot: `${checkerWiring}|${bodyContract}`,
       },
       to: { path: checkerFolder(checkerLayers.filter((layer) => !checkerModel.includes(layer))) },
+    },
+    {
+      name: 'checker-body-contract-imports-above-inference',
+      severity: 'error',
+      from: { path: bodyContract },
+      to: { path: checkerFolder(checkerLayers.filter((layer) => !bodyModel.includes(layer))) },
+    },
+    {
+      name: 'checker-model-imports-body-contract',
+      severity: 'error',
+      from: { path: checkerFolder(bodyModel) },
+      to: { path: bodyContract },
     },
     {
       name: 'checker-folder-imports-wiring',

@@ -1,6 +1,6 @@
 /**
  * Expressions a constraint scope checks only once it knows what is expected of them
- * (docs/work/variance-inference/i2-scope.md §3, contexts/constraint-scope.ts): a lambda whose
+ * (docs/work/variance-inference/i2-scope.md §3, wiring/body/constraint-scope.ts): a lambda whose
  * result or a parameter isn't written, a function or a variant named as a value, a bare variant
  * called, an indented value naming no type, `[]` or `[:]`, which build what they go into, and a
  * `struct{…}` with a comprehension, whose fields may be known only once what it builds is (§3.1). Checked in an open scope with nothing settled

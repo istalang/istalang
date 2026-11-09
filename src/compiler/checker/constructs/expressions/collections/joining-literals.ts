@@ -1,5 +1,5 @@
 /**
- * Array and map literals in a constraint scope (design.md §4, contexts/constraint-scope.ts), where
+ * Array and map literals in a constraint scope (design.md §4, wiring/body/constraint-scope.ts), where
  * nothing tells them their type: an `Array<T>`, or a `Map<K, V>`, whose type parameters their
  * items bound, as a call of the prelude's `Array` or `Map` would, so `items([Item{value: "s"}])`
  * as an `Options<"s" | "m">` builds an `Array<Item<"s" | "m">>`. Their items are checked in the
@@ -53,32 +53,26 @@ interface Item {
 }
 
 /**
- * An array literal: a generic one of the current constraint scope where one is open and nothing it
- * can read tells it its type, as for an argument whose parameter is still to be chosen; else
- * decided by where it goes (literals.ts), which reads its items' types at once, so they settle on
- * their own.
+ * An array literal: a generic one of the current constraint scope where it joins one, as for an
+ * argument whose parameter is still to be chosen; else decided by where it goes (literals.ts),
+ * which the scope protocol checks with no scope current (wiring/body/scope-protocol.ts), so its
+ * items settle on their own.
  */
 export function checkArray(
   context: BodyContext,
   node: ArrayLiteral,
   expected: Type | undefined,
 ): Type {
-  return node.elements.length > 0 && joinsAsGeneric(context, expected)
+  return context.scopes.isOpen
     ? checkJoiningArray(context, node)
-    : context.scopes.suspended(() => checkArrayLiteral(context, node, expected));
+    : checkArrayLiteral(context, node, expected);
 }
 
 /** A map literal, as `checkArray` checks an array literal. */
 export function checkMap(context: BodyContext, node: MapLiteral, expected: Type | undefined): Type {
-  return node.entries.length > 0 && joinsAsGeneric(context, expected)
+  return context.scopes.isOpen
     ? checkJoiningMap(context, node)
-    : context.scopes.suspended(() => checkMapLiteral(context, node, expected));
-}
-
-/** Whether a scope is open and `expected` tells a literal nothing outside it. */
-function joinsAsGeneric(context: BodyContext, expected: Type | undefined): boolean {
-  const { scopes } = context;
-  return scopes.isOpen && (expected === undefined || scopes.holds(expected));
+    : checkMapLiteral(context, node, expected);
 }
 
 /** The collection literal joining a scope: its declaration, and its node. */
@@ -146,10 +140,7 @@ function checkJoiningMap(context: BodyContext, node: MapLiteral): Type {
 function joinedItem(context: BodyContext, node: Expression): Item {
   const literal = writtenLiteral(unparenthesized(node));
   // A literal is matched as one by the literal's parameter (§2), so it needs no variable of its own.
-  const type =
-    literal === undefined
-      ? context.expression(node)
-      : context.scopes.suspended(() => context.expression(node));
+  const type = literal === undefined ? context.expression(node) : context.settled(node);
   return { produced: producedBy(node, type), literal, node };
 }
 

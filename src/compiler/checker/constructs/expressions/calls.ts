@@ -62,7 +62,7 @@ import { writtenArgument } from './call-arguments.ts';
 import { checkVariantCall } from './structs/variants.ts';
 
 /**
- * Checks a call in the current constraint scope (contexts/constraint-scope.ts); one continuing an
+ * Checks a call in the current constraint scope (wiring/body/constraint-scope.ts); one continuing an
  * optional chain, whose value the chain carries and wraps (access/optionals.ts), in a scope of its
  * own, once what it is called on is read.
  */

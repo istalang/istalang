@@ -225,9 +225,7 @@ contravariant positions.
   bounds to `U`, so an expected type reaches a nested literal.
 
 **Joint solving.** A nested generic call, or generic literal, in argument position doesn't settle
-alone (as built: a call, a literal naming its type, a non-empty array or map literal, passed straight
-to a call or as an item or field of one that joins; a call that continues an optional chain never
-joins). Its variables join the enclosing call's system, and the outermost expression settles them
+alone (which expressions join is the scope protocol, below). Its variables join the enclosing call's system, and the outermost expression settles them
 all, as Kotlin's inference does. Everything recorded for those nodes waits until then: node types,
 instantiation's witnesses, argument fits and their implicit wraps, default calls, literal fields,
 argument key owners and expected types. One settle-then-record pass writes them.
@@ -247,8 +245,8 @@ argument key owners and expected types. One settle-then-record pass writes them.
 - Applicability uses the argument constraints only, never the expected type, so §3.7's "Return
   types play no part" stays true.
 
-**Postponed arguments.** These need their parameter types before they can be checked, as today's
-`acceptsHandlers` (`expressions.ts`) and `function-arguments.ts`' composite walk find them:
+**Postponed arguments.** These need their parameter types before they can be checked
+(`constructs/expressions/postponed.ts`):
 - a lambda with an untyped parameter;
 - a function named as a value, or an overloaded name;
 - a bare variant, called or not, and a qualified fieldless variant of a generic enum
@@ -298,7 +296,7 @@ element.
 
 **As built (I2).**
 - One constraint scope per outermost expression of a joining kind (`i2-scope.md`,
-  `contexts/constraint-scope.ts`): the body context holds it, and it settles when what opened it
+  `wiring/body/constraint-scope.ts`, placed by `wiring/body/scope-protocol.ts`): the body context holds it, and it settles when what opened it
   is checked, on every path. Calls, struct, array, map and tuple literals, indented values,
   branching expressions' and blocks' values, a block's tail and a lambda's `return`s join it, and
   open it where none is open (an indented value naming no type excepted); any other kind is a
