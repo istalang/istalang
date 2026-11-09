@@ -6,7 +6,10 @@
 
 import { describe, expect, it } from 'vitest';
 import { invalidPrograms, runPrograms } from '../../../../../test/corpus/programs.ts';
-import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
+import {
+  reportedNothing,
+  reportedOnce,
+} from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../../../compile.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
@@ -17,6 +20,7 @@ import { nodesUnder, type SyntaxNode } from '../../../syntax/tree/index.ts';
 import { reported } from '../../check.test-kit.ts';
 import { checkProgram } from '../../check.ts';
 import { expressionHandlers } from '../../constructs/expressions/expressions.ts';
+import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { mentionsAnyVariable } from '../../types/inference/variables.ts';
 
 const declarations = [
@@ -82,6 +86,17 @@ describe('a call that can’t be made', () => {
         'fn f() -> Int: takeInts(pair(1, "wrong"))',
       ).codes.length,
     ).toBeGreaterThan(0);
+  });
+
+  it('reports a call chosen only once what it is given settles to its default (5380)', () => {
+    expect(
+      reportedAfter(
+        'fn defaultEmpty<T = Int>() -> Array<T>: []',
+        'fn pickArr(xs: Array<Int>) -> Int: 1',
+        'fn pickArr(xs: Array<String>) -> Int: 2',
+        'fn f() -> Int: pickArr(defaultEmpty())',
+      ),
+    ).toEqual(reportedOnce(checkerDiagnostics.undecidedCall.code, 'pickArr(defaultEmpty())'));
   });
 });
 

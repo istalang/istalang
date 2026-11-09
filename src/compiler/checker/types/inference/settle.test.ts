@@ -291,9 +291,10 @@ describe('what takes a call’s value, choosing inside its result', () => {
     ].join('\n');
 
   it('is the parameter of a call it is passed to, as much as an expected type', () => {
-    expect(instantiationsOf('pair', mainOf('takeArr(pair(1, 2))'))).toEqual([
-      'main.pair<prelude.Optional<Int>>',
-    ]);
+    const main = mainOf('takeArr(pair(1, 2))');
+    const { functions } = compiledDefinition(stdProgramOf({ main }), 'main');
+    expect(instantiationsOf('pair', main)).toEqual(['main.pair<prelude.Optional<Int>>']);
+    expect(functions.some((entry) => entry.name.includes(' as '))).toBe(false);
     expect(reportedErrors(mainOf('takeBox(makeBox(1))'))).toEqual([]);
   });
 
@@ -325,22 +326,31 @@ describe('what takes a call’s value, choosing inside its result', () => {
       'fn collect<T>(seed: T, accept: fn(T) -> Unit) -> Array<T>: [seed]',
       'fn needInts(xs: Array<Int>): ()',
       'fn withConsumer<U>(b: Box<U>, f: fn(U) -> Unit) -> Int: 0',
+      'fn withConsumer3<U>(b: Box<U>, f: fn(U) -> Unit, g: fn(U) -> Unit) -> Int: 0',
       'fn withSlot<U>(b: Box<U>, s: Slot<U>) -> Int: 0',
+      'fn withSlotReversed<U>(s: Slot<U>, b: Box<U>) -> Int: 0',
       'fn uses(acceptOpt: fn(Int?) -> Unit, s: Slot<Int?>):',
       '  needInts(collect(1, id(acceptOpt)))',
       '  needInts(collect(1, fn(x: Int?): ()))',
       '  drop withConsumer(makeBox(1), acceptOpt)',
       '  drop withConsumer(makeBox(1), fn(x: Int?): ())',
       '  drop withConsumer(makeBox(none), fn(x: Int?): ())',
+      '  drop withConsumer3(makeBox(1), fn x: (), acceptOpt)',
       '  drop withSlot(makeBox(1), s)',
+      '  drop withSlotReversed(s, makeBox(1))',
     ].join('\n');
     expect(reportedErrors(main)).toEqual([]);
   });
 
   it('sets aside an equality the expected type gives that the constraints refuse', () => {
     const main = [
+      'trait Tag:\n  fn tag(self: Self) -> Int',
+      'struct Inv<T>:\n  value: T\n  set: fn(T) -> Unit',
+      'fn tag(self: Inv<Int>) -> Int: self.value',
+      'fn makeInv<T is Comparable>(x: T) -> Inv<T>: Inv{value: x, set: fn(_: T): ()}',
       'shared struct Cell<T> { value: T }',
       'fn makeCell<T is Comparable>(x: T) -> Cell<T>: new Cell{value: x}',
+      'fn ok() -> Inv<Int?> | any Tag: makeInv(1)',
       'fn f() -> Cell<Int?>: makeCell(1)',
     ].join('\n');
     expect(reportedErrors(main)).toEqual([checkerDiagnostics.typeMismatch.code]);
