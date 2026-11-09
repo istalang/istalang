@@ -200,20 +200,46 @@ call, in the product their type names:
 Only Ista has these: the union of the elements, `A[keyof A]` (a `race` over mixed futures);
 key-typed members, `I in keyof A`; variance per element; one set of tools for structs and tuples.
 
-**Still out: folds** whose type changes per element, such as `pipe(f, g, h)` and
-`testing.setups`.
-- Every tool above is a map: one abstract element, the same code for each.
-- A fold's step k sees a type built from the elements before it: `Setup<(A0, …, Ak)>`.
-- Nesting brackets (`setups`) also puts element k's code inside element k−1's callback. That is
-  recursion, not a loop.
-- Typing it once, for every length, is induction. In the empty branch `A` is `()`, and in the
-  other, `A` is `(H, ...T)` with the recursive call at `T`. That needs type parameters refined
-  by a `match` (GADTs, dependent pattern matching).
-- C++ and Scala avoid it by checking each instantiation. TypeScript types the signature
-  recursively and casts in the body. Swift can't.
-- Named rests change nothing: `setups(db: withDb, host: withHost)` folds field by field alike,
-  and named arguments carry no order, so the nesting would follow name order instead of the
-  call's.
+**Brackets nest without recursion.** `testing.setups` combines "around" setups,
+`Setup<E> = async fn(async fn(E))`, the first outermost. It looks like a fold: each step nests
+inside the last, and the environment's type grows. But what nests is lifetimes, and concurrent
+executions express that with no type-changing accumulator:
+- each setup runs in its own execution, parked inside its callback until the test ends;
+- the environments fill a tuple of slots typed by key;
+- a tuple comprehension hands the test its `A`.
+
+```python
+fn setups<A is tuple>(...each: ( [I in keyof A]: Setup<A[I]> )) -> Setup<A>:
+    async fn(test: async fn(A) -> Unit):
+        const envs: ( [I in keyof A]: Slot<A[I]> ) = (for _, _ in ...each: Slot.create())
+        let stops: Array<(Slot<Unit>, Future<Unit>)> = []
+        for i, setup in ...each:                      # in order: the first is outermost
+            const done = Slot.create<Unit>()
+            const run = setup(async fn(env):          # its own execution
+                await envs[i].put(env)
+                await done.take())                    # holds what it prepared until the test ends
+            stops.push((done, run))
+            await envs[i].read()                      # prepared before the next one starts
+        await test((for i, _ in ...each: await envs[i].take()))
+        stops.reverse()                               # torn down innermost first
+        for done, run in stops:
+            await done.put(())
+            await run
+```
+
+- Holdings such as mocks live while their setup is parked. Order and teardown are as nested
+  frames give them.
+- A setup that never calls its callback, or fails while preparing, must end the wait for its
+  environment: the wait races the setup's run, and fails if the run ends first.
+- A named rest (`setups(db: withDb, host: withHost)`) types the same way, but named arguments
+  carry no order, so the nesting would follow name order instead of the call's. Positional
+  stays.
+
+**Still out: chains,** where an element's type depends on its neighbour's: `pipe(f, g, h)` needs
+`fn(A) -> B`, then `fn(B) -> C`. Keys relate only by equality, never by position plus one.
+Checking such a body once is induction over the length, which needs type parameters refined by a
+`match` (below). C++ and Scala instead check each instantiation, and TypeScript casts in the
+body.
 
 ## Spec changes
 
@@ -264,18 +290,15 @@ ending in a pack relates by equality".
 - **Type refinement by `match`** over a tuple or struct value (`case ()`, `case (h, ...t)`):
   - each branch learns its type parameter's form;
   - each instantiation recurses on a shorter tuple, so it ends;
-  - it unlocks folds (`setups`, `pipe`), and belongs with the narrowing guarantees of §4.
+  - it unlocks chains such as `pipe`, and belongs with the narrowing guarantees of §4.
 - Relations in `where` beyond key equality, and narrowing guarantees (§4).
 - Two named rests, even with disjoint fields.
 - Partial type arguments at a call: a separate change.
 
 ## Open questions
 
-1. **`testing.setups`.**
-   - Kept as five overloads until refinement by `match` exists. Recommended.
-   - A native body is no option: an extern can't call back into the program's async functions
-     (§9's boundary).
-   - A compiler built-in would be one function's special case.
+1. **`testing.setups`:** written once, as above, replacing its five overloads. Recommended.
+   The alternative is keeping the overloads.
 
 ## Decisions (the human's)
 
