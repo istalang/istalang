@@ -43,7 +43,13 @@ import type { NestedFunction } from '../../surface/checked-body.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
 import { expectedFunction } from '../../types/fitting/expected.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
-import { isPack, packRestSlot, type RestSlot, withPack } from '../../types/type/function-types.ts';
+import {
+  functionType,
+  isPack,
+  packRestSlot,
+  type Reach,
+  type RestSlot,
+} from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, expectsError, neverType, unitType } from '../../types/type/primitives.ts';
 import {
@@ -118,14 +124,12 @@ export function writtenInputs(context: BodyContext, node: Lambda): Type | undefi
   if (node.returnType !== undefined || types.length < written.length || !plain) {
     return undefined;
   }
-  return {
-    kind: 'function',
-    parameters: types.map((type) => ({ type, reference: false })),
-    pack: undefined,
-    result: neverType,
+  return functionType({
+    reach: 'sendable',
     isAsync: node.qualifiers.kind !== undefined,
-    isSendable: true,
-  };
+    parameters: types.map((type) => ({ type, reference: false })),
+    result: neverType,
+  });
 }
 
 /** The types `node`'s parameters are written with, by parameter; undefined where one isn't. */
@@ -264,11 +268,8 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
   const slots = parameters
     .filter((parameter) => parameter !== rest)
     .map((parameter) => ({ type: parameter.type, reference: parameter.reference }));
-  const typeWith = (produces: Type, sendable = false): FunctionType =>
-    withPack(
-      { kind: 'function', isSendable: sendable, isAsync, parameters: slots, result: produces },
-      rest?.type,
-    );
+  const typeWith = (produces: Type, reach?: Reach): FunctionType =>
+    functionType({ reach, isAsync, parameters: slots, pack: rest?.type, result: produces });
   if (name !== undefined && declaredResult !== undefined) {
     context.variables.declare(name, typeWith(declaredResult));
   }
@@ -297,7 +298,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
         !context.variables.isChangeable(capture.entity) &&
         isSendable(context.checker, capture.type),
     );
-    const recorded = typeWith(produces, sendable);
+    const recorded = typeWith(produces, sendable ? 'sendable' : undefined);
     if (name !== undefined) {
       context.variables.declare(name, recorded);
     }

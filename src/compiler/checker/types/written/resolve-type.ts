@@ -46,7 +46,7 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { substitutionFor } from '../parts/substitution.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
 import { ownAssociatedType } from '../type/computed-types.ts';
-import { isPack, withPack } from '../type/function-types.ts';
+import { functionType, isPack } from '../type/function-types.ts';
 import {
   type NominalDeclaration,
   nominalType,
@@ -95,7 +95,7 @@ const typeHandlers: Handlers<Resolution, TypeNode, [], Type> = {
   ReferenceType: (resolution, node) => resolve(resolution, node.referent),
   TupleType: (resolution, node) =>
     tupleType(node.elements.map((element) => resolve(resolution, element))),
-  FunctionType: (resolution, node) => functionType(resolution, node),
+  FunctionType: (resolution, node) => writtenFunctionType(resolution, node),
   StructType: (resolution, node) =>
     structWritten(resolution, node, (each) => resolve(resolution, each)),
   AnyType: (resolution, node) =>
@@ -149,7 +149,7 @@ function resolve(resolution: Resolution, node: TypeNode): Type {
     : checker.resolveType(module, node);
 }
 
-function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
+function writtenFunctionType(resolution: Resolution, node: FunctionTypeNode): Type {
   const fixed = node.parameters.filter(isTypeNode);
   const rests = node.parameters.filter((parameter) => parameter.kind === 'RestType');
   const last = node.parameters.at(-1);
@@ -157,19 +157,16 @@ function functionType(resolution: Resolution, node: FunctionTypeNode): Type {
     resolution.checker.report(resolution.module, checkerDiagnostics.packNotLast(rest.span));
   }
   const rest = last?.kind === 'RestType' ? last : undefined;
-  return withPack(
-    {
-      kind: 'function',
-      isSendable: node.qualifiers.reach === 'sendable',
-      isAsync: node.qualifiers.kind !== undefined,
-      parameters: fixed.map((parameter) => ({
-        type: resolve(resolution, parameter),
-        reference: unparenthesizedType(parameter).kind === 'ReferenceType',
-      })),
-      result: node.returnType === undefined ? unitType : resolve(resolution, node.returnType),
-    },
-    rest === undefined ? undefined : packOf(resolution, rest),
-  );
+  return functionType({
+    reach: node.qualifiers.reach,
+    isAsync: node.qualifiers.kind !== undefined,
+    parameters: fixed.map((parameter) => ({
+      type: resolve(resolution, parameter),
+      reference: unparenthesizedType(parameter).kind === 'ReferenceType',
+    })),
+    pack: rest === undefined ? undefined : packOf(resolution, rest),
+    result: node.returnType === undefined ? unitType : resolve(resolution, node.returnType),
+  });
 }
 
 /** The pack a function type's rest names (§3.5); the error type, reported, for anything else. */

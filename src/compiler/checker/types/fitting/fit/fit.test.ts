@@ -9,6 +9,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reported } from '../../../check.test-kit.ts';
+import { functionType, type Reach } from '../../type/function-types.ts';
 import type { Type } from '../../type/index.ts';
 import {
   boolType,
@@ -72,13 +73,13 @@ const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
       .array(tie('type'), { minLength: 2, maxLength: 3 })
       .map((elements): Type => ({ kind: 'tuple', elements })),
     fc.record({ parameter: tie('type'), result: tie('type'), reference: fc.boolean() }).map(
-      ({ parameter, result, reference }): Type => ({
-        kind: 'function',
-        isSendable: false,
-        isAsync: false,
-        parameters: [{ type: parameter, reference }],
-        result,
-      }),
+      ({ parameter, result, reference }): Type =>
+        functionType({
+          reach: undefined,
+          isAsync: false,
+          parameters: [{ type: parameter, reference }],
+          result,
+        }),
     ),
   ),
 })).type;
@@ -134,17 +135,15 @@ describe('fitting into an optional, a union holding None', () => {
 function functionOf(
   parameter: Type,
   result: Type,
-  kind: { readonly isAsync: boolean; readonly isSendable: boolean },
+  kind: { readonly isAsync: boolean; readonly reach: Reach },
 ): Type {
-  return {
-    kind: 'function',
-    ...kind,
-    parameters: [{ type: parameter, reference: false }],
-    result,
-  };
+  return functionType({ ...kind, parameters: [{ type: parameter, reference: false }], result });
 }
 
-const kinds = fc.record({ isAsync: fc.boolean(), isSendable: fc.boolean() });
+const kinds = fc.record({
+  isAsync: fc.boolean(),
+  reach: fc.constantFrom<Reach>('sendable', undefined),
+});
 
 /** Two function types of one shape: the one given, the one expected, wrapped `count` times. */
 const pairs = fc.record({
@@ -161,7 +160,7 @@ describe('fitting a plain function where an async one is expected', () => {
       fc.property(pairs, ({ parameter, result, given, wanted, count }) => {
         const found = functionOf(parameter, result, given);
         const expected = wrapped(functionOf(parameter, result, wanted), count);
-        const sendableFits = given.isSendable || !wanted.isSendable;
+        const sendableFits = given.reach === 'sendable' || wanted.reach === undefined;
         const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
         expect(fitShape(fitOf(found, expected, fitting))).toEqual(
           fits
@@ -176,8 +175,8 @@ describe('fitting a plain function where an async one is expected', () => {
   });
 
   it('makes a function inside another type async as a part of it (§3.5)', () => {
-    const plain = functionOf(intType, intType, { isAsync: false, isSendable: false });
-    const async = functionOf(intType, intType, { isAsync: true, isSendable: false });
+    const plain = functionOf(intType, intType, { isAsync: false, reach: undefined });
+    const async = functionOf(intType, intType, { isAsync: true, reach: undefined });
     const tuple = (element: Type): Type => ({ kind: 'tuple', elements: [element, intType] });
     expect(fitShape(fitOf(tuple(plain), tuple(async), fitting))).toEqual({
       conversion: { kind: 'parts', to: tuple(async) },
@@ -190,7 +189,7 @@ describe('fitting a plain function where an async one is expected', () => {
       fc.property(pairs, ({ parameter, result, given, wanted, count }) => {
         const found = functionOf(parameter, neverType, given);
         const expected = wrapped(functionOf(parameter, result, wanted), count);
-        const sendableFits = given.isSendable || !wanted.isSendable;
+        const sendableFits = given.reach === 'sendable' || wanted.reach === undefined;
         const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
         expect(fitShape(fitOf(found, expected, fitting))).toEqual(
           fits

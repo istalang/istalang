@@ -16,7 +16,7 @@ import { mapRecursive } from '../identity/recursive-types.ts';
 import { typeKeys } from '../identity/type-keys.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
 import { type ComputedType, isComputed, type RecursiveType } from '../type/computed-types.ts';
-import { withPack } from '../type/function-types.ts';
+import { functionType } from '../type/function-types.ts';
 import type {
   AnyType,
   Constraint,
@@ -249,17 +249,15 @@ function partsMapped(
     case 'tuple':
       return { ...type, elements: type.elements.map(map) };
     case 'function':
-      return withPack(
-        {
-          ...type,
-          parameters: type.parameters.map((parameter) => ({
-            ...parameter,
-            type: map(parameter.type),
-          })),
-          result: map(type.result),
-        },
-        type.pack === undefined ? undefined : map(type.pack),
-      );
+      return functionType({
+        ...type,
+        parameters: type.parameters.map((parameter) => ({
+          ...parameter,
+          type: map(parameter.type),
+        })),
+        pack: type.pack === undefined ? undefined : map(type.pack),
+        result: map(type.result),
+      });
     case 'any':
       return {
         ...type,

@@ -43,7 +43,7 @@ import type { Admits } from '../../types/fitting/expected.ts';
 import { enumsExpected, expectedFunction } from '../../types/fitting/expected.ts';
 import { type Substitution, substitute } from '../../types/parts/substitution.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
-import { withPack } from '../../types/type/function-types.ts';
+import { functionType } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType, tupleElements } from '../../types/type/primitives.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
@@ -288,18 +288,15 @@ function valueTypeOf(
   const isAsync = signature.declaration.qualifiers.kind !== undefined;
   const made = placed(signature.result());
   const pack = signature.parameters.find((slot) => slot.rest?.kind === 'pack');
-  return withPack(
-    {
-      kind: 'function',
-      isSendable: true,
-      isAsync,
-      parameters: signature.parameters
-        .filter((slot, index) => slot !== pack && binding[index]?.kind === 'argument')
-        .map((slot) => ({ type: placed(slot.type), reference: slot.reference })),
-      result: isAsync ? (futureArgument(checker, made) ?? errorType) : made,
-    },
-    pack === undefined ? undefined : placed(pack.type),
-  );
+  return functionType({
+    reach: 'sendable',
+    isAsync,
+    parameters: signature.parameters
+      .filter((slot, index) => slot !== pack && binding[index]?.kind === 'argument')
+      .map((slot) => ({ type: placed(slot.type), reference: slot.reference })),
+    pack: pack === undefined ? undefined : placed(pack.type),
+    result: isAsync ? (futureArgument(checker, made) ?? errorType) : made,
+  });
 }
 
 /**

@@ -1,12 +1,69 @@
 /**
- * Function types (§3.14) and the packs they end in (§3.5): a pack substituted by a tuple flattens
- * into parameters, and two function types are compared parameter by parameter, a declared pack
- * taking whatever parameters are left. The types themselves are type/index.ts's.
+ * Function types (§3.14) and the packs they end in (§3.5): built by one constructor, compared by
+ * one relation. The types themselves are type/index.ts's.
+ *
+ * - `functionType` is the only way a function type is built, written, inferred or substituted
+ *   alike, so its pack is flattened wherever a tuple fills it: into parameters by value, `Unit`
+ *   into none.
+ * - A function type keeps its head's qualifiers as the head writes them (syntax/tokens/
+ *   modifiers.ts), so type text and keys print them in the head's one order, with nothing
+ *   converting between the two.
+ * - A function fits where another is expected when its qualifiers fit, by their order
+ *   (`reachFits`), and it takes and gives what that one does, a declared pack taking whatever
+ *   parameters are left (`functionFits`).
  */
 
 import type { FunctionQualifiers } from '../../../syntax/tokens/modifiers.ts';
-import type { FunctionType, Type, TypeParameterType } from './index.ts';
+import type {
+  FunctionType,
+  ParameterSlot,
+  Type,
+  TypeParameterType,
+  WrittenThrough,
+} from './index.ts';
 import { errorType, tupleElements, tupleType } from './primitives.ts';
+
+/** What a function's values may capture (§3.14): only sendable values, or, undefined, any. */
+export type Reach = FunctionQualifiers['reach'];
+
+/** Whether a function of reach `given` fits where one of `expected` is: a sendable one anywhere. */
+export function reachFits(given: Reach, expected: Reach): boolean {
+  return given === expected || expected === undefined;
+}
+
+/** What `functionType` builds a function type of; its pack may be any type bound to one. */
+export interface FunctionParts extends WrittenThrough {
+  readonly reach: Reach;
+  readonly isAsync: boolean;
+  readonly parameters: readonly ParameterSlot[];
+  readonly pack?: Type | undefined;
+  readonly result: Type;
+}
+
+/**
+ * The function type of `parts`, ending in its pack: a pack it keeps, a tuple it flattens into
+ * parameters by value, `Unit` into none (§3.5); anything else was refused where it was bound to a
+ * pack, so it leaves the error type.
+ */
+export function functionType({ pack, ...parts }: FunctionParts): FunctionType {
+  return { kind: 'function', ...parts, ...packed(parts.parameters, pack) } as FunctionType;
+}
+
+/** The parameters and pack of a function type taking `parameters`, then `pack`. */
+function packed(
+  parameters: readonly ParameterSlot[],
+  pack: Type | undefined,
+): Pick<FunctionType, 'parameters' | 'pack'> {
+  if (pack === undefined || isPack(pack) || pack.kind === 'error') {
+    return { parameters, pack };
+  }
+  const elements = tupleElements(pack);
+  if (elements === undefined) {
+    return { parameters, pack: errorType };
+  }
+  const flattened = elements.map((element) => ({ type: element, reference: false }));
+  return { parameters: [...parameters, ...flattened], pack: undefined };
+}
 
 /** A rest parameter: an array's (§3.3), whose arguments are its `item`s, or a pack's (§3.5). */
 export type RestSlot = { readonly kind: 'array'; readonly item: Type } | { readonly kind: 'pack' };
@@ -29,24 +86,10 @@ export function fillsPack(type: Type): boolean {
 }
 
 /**
- * `type` ending in `pack`: a pack it keeps, a tuple it flattens into parameters by value, `Unit`
- * into none (§3.5); anything else was refused where it was bound to a pack, so it leaves the error
- * type.
+ * How two function types' parameters are compared: the declared one's type and the given one's at
+ * a position, and whether both take it by `&`, which they do alike or don't compare.
  */
-export function withPack(type: FunctionType, pack: Type | undefined): FunctionType {
-  if (pack === undefined) {
-    return { ...type, pack: undefined };
-  }
-  if (isPack(pack) || pack.kind === 'error') {
-    return { ...type, pack };
-  }
-  const elements = tupleElements(pack);
-  if (elements === undefined) {
-    return { ...type, pack: errorType };
-  }
-  const flattened = elements.map((element) => ({ type: element, reference: false }));
-  return { ...type, parameters: [...type.parameters, ...flattened], pack: undefined };
-}
+type ParameterRelation = (declared: Type, given: Type, byReference: boolean) => boolean;
 
 /**
  * Whether two function types take the same parameters, each by value or by `&` alike, and give the
@@ -58,8 +101,9 @@ export function withPack(type: FunctionType, pack: Type | undefined): FunctionTy
 export function sameShape(
   declared: FunctionType,
   given: FunctionType,
-  parts: (declared: Type, given: Type) => boolean,
-  results: (declared: Type, given: Type) => boolean = parts,
+  parts: ParameterRelation,
+  results: (declared: Type, given: Type) => boolean = (declaredResult, givenResult) =>
+    parts(declaredResult, givenResult, false),
 ): boolean {
   const fixed = declared.parameters.length;
   const samePrefix =
@@ -69,7 +113,7 @@ export function sameShape(
       return (
         other !== undefined &&
         parameter.reference === other.reference &&
-        parts(parameter.type, other.type)
+        parts(parameter.type, other.type, parameter.reference)
       );
     });
   if (!samePrefix) {
@@ -83,7 +127,11 @@ export function sameShape(
     );
   }
   const rest = restOf(given, fixed);
-  return rest !== undefined && parts(declared.pack, rest) && results(declared.result, given.result);
+  return (
+    rest !== undefined &&
+    parts(declared.pack, rest, false) &&
+    results(declared.result, given.result)
+  );
 }
 
 /**
@@ -99,24 +147,25 @@ function restOf(type: FunctionType, start: number): Type | undefined {
 }
 
 /** The qualifiers a head of `type` writes, which type text and keys print. */
-export function qualifiersOfType({ isSendable, isAsync }: FunctionType): FunctionQualifiers {
-  return { reach: isSendable ? 'sendable' : undefined, kind: isAsync ? 'async' : undefined };
+export function qualifiersOfType({ reach, isAsync }: FunctionType): FunctionQualifiers {
+  return { reach, kind: isAsync ? 'async' : undefined };
 }
 
 /**
- * Whether a function of type `given` fits where `declared` is expected: async alike, sendable
- * where `declared` is (§3.14), and of the same shape (`sameShape`), its parts and results compared
- * as the caller says.
+ * Whether a function of type `given` fits where `declared` is expected: async alike, its reach
+ * fitting (§3.14), and of the same shape (`sameShape`), its parts and results compared as the
+ * caller says.
  */
 export function functionFits(
   declared: FunctionType,
   given: FunctionType,
-  parts: (declared: Type, given: Type) => boolean,
-  results: (declared: Type, given: Type) => boolean = parts,
+  parts: ParameterRelation,
+  results: (declared: Type, given: Type) => boolean = (declaredResult, givenResult) =>
+    parts(declaredResult, givenResult, false),
 ): boolean {
   return (
     given.isAsync === declared.isAsync &&
-    (given.isSendable || !declared.isSendable) &&
+    reachFits(given.reach, declared.reach) &&
     sameShape(declared, given, parts, results)
   );
 }

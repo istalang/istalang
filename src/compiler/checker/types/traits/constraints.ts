@@ -33,6 +33,7 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import type { RequirementOrigin } from '../../surface/resolved-call.ts';
 import { sameType } from '../identity/identity.ts';
 import { type Substitution, substitute, substitutionFor } from '../parts/substitution.ts';
+import { functionType } from '../type/function-types.ts';
 import type { AnyType, Constraint, FunctionType, ParameterKey, Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
 import { futureArgument } from '../type/well-known.ts';
@@ -188,16 +189,15 @@ export function requirementType(
   required: FunctionDeclaration,
 ): FunctionType {
   const result = checker.resultOf(required);
-  return {
-    kind: 'function',
-    isSendable: false,
+  return functionType({
+    reach: undefined,
     isAsync: required.qualifiers.kind !== undefined,
     parameters: checker.parametersOf(required).map(({ type, reference }) => ({ type, reference })),
     result:
       required.qualifiers.kind === undefined
         ? result
         : (futureArgument(checker, result) ?? errorType),
-  };
+  });
 }
 
 /** The type `constraint` requires its trait's `field` to have, for the type `constrained`. */

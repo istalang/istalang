@@ -99,7 +99,11 @@ function lambdaStartable(
 ): Startable | undefined {
   const constant = checker.constantOf(declaration);
   const type = constant?.type;
-  if (constant?.form?.kind !== 'function' || type?.kind !== 'function' || !type.isSendable) {
+  if (
+    constant?.form?.kind !== 'function' ||
+    type?.kind !== 'function' ||
+    type.reach !== 'sendable'
+  ) {
     return undefined;
   }
   const signature: FunctionType = type;

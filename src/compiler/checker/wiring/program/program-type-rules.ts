@@ -49,6 +49,7 @@ import {
 import { associatedTypeOf, type Expansion } from '../../types/traits/known-constraints.ts';
 import { fieldTypeOf, isKeyWithin, keysOf, mappedTypeOf } from '../../types/traits/struct-keys.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
+import { functionType } from '../../types/type/function-types.ts';
 import type { AnonymousStructType, AnyType, Constraint, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
@@ -240,7 +241,10 @@ function partsOf(
       const [receiver, ...taken] = required.owner === undefined ? type.parameters : [];
       return receiver === undefined
         ? [given(type)]
-        : [given({ ...type, parameters: taken }), { type: receiver.type, at: 'invariant' }];
+        : [
+            given(functionType({ ...type, parameters: taken })),
+            { type: receiver.type, at: 'invariant' },
+          ];
     });
     const fields = requiredFields(declaration).map((field) =>
       given(declaredFieldType(checker, declaration, field)),

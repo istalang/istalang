@@ -174,7 +174,7 @@ function matchParts(matching: Matching, pattern: Type, type: Type): Outcome {
     case 'function':
       return type.kind === 'function' &&
         pattern.isAsync === type.isAsync &&
-        pattern.isSendable === type.isSendable &&
+        pattern.reach === type.reach &&
         pattern.parameters.map((each) => each.reference).join() ===
           type.parameters.map((each) => each.reference).join() &&
         (pattern.pack === undefined) === (type.pack === undefined)

@@ -19,6 +19,7 @@
 
 import { sameType } from '../identity/identity.ts';
 import { mapChildren } from '../parts/type-parts.ts';
+import { functionType } from '../type/function-types.ts';
 import type { Type } from '../type/index.ts';
 import type { TypeRules } from '../type/type-rules.ts';
 import { baseOf } from './union-members.ts';
@@ -35,6 +36,7 @@ export function widened(type: Type, rules: TypeRules): Type {
 /** `type` with its sendable function types made plain at any depth, its literal types kept. */
 export function sendableWidened(type: Type, rules: TypeRules): Type {
   const children = mapChildren(type, (child) => sendableWidened(child, rules), rules);
-  const wider = children.kind === 'function' ? { ...children, isSendable: false } : children;
+  const wider =
+    children.kind === 'function' ? functionType({ ...children, reach: undefined }) : children;
   return sameType(wider, type) ? type : { ...wider, alias: undefined };
 }

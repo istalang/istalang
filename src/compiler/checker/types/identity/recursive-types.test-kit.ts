@@ -19,6 +19,7 @@ import type {
   TypeAliasDeclaration,
   TypeParameter,
 } from '../../../syntax/declarations/index.ts';
+import { functionType } from '../type/function-types.ts';
 import type { Type } from '../type/index.ts';
 import { boolType, intType, neverType, stringType } from '../type/primitives.ts';
 import { noProgramRules } from '../type/type-rules.test-kit.ts';
@@ -258,13 +259,12 @@ export function bodiesOf(
       case 'tuple':
         return { kind: 'tuple', elements: each.elements.map(slot) };
       case 'function':
-        return {
-          kind: 'function',
-          isSendable: false,
+        return functionType({
+          reach: undefined,
           isAsync: false,
           parameters: [{ type: slot(each.parameter), reference: false }],
           result: slot(each.result),
-        };
+        });
       case 'traits':
         return {
           kind: 'any',

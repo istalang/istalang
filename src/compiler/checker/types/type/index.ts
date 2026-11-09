@@ -67,6 +67,7 @@ import type {
   RecursiveType,
 } from './computed-types.ts';
 import { inFieldOrder } from './field-order.ts';
+import type { Reach } from './function-types.ts';
 import type { StructConstraintModel } from './struct-constraint.ts';
 
 /** What every type carries beside its kind: the alias it was written through, if any. */
@@ -174,18 +175,23 @@ export interface ParameterSlot {
   readonly reference: boolean;
 }
 
+/** Marks a function type built by its one constructor (function-types.ts); never written out. */
+declare const builtFunctionType: unique symbol;
+
 /**
  * A function type; a sendable one's values capture only sendable values (§3.14). Its parameters
  * may end in a pack (`fn(Int, ...A) -> R`, §3.5), which stands for the parameters a tuple
- * substituted for it flattens into (`withPack`), so a type with a pack is always generic.
+ * substituted for it flattens into, so a type with a pack is always generic. Only `functionType`
+ * builds one, so that holds of every function type, however it was reached.
  */
 export interface FunctionType extends WrittenThrough {
   readonly kind: 'function';
-  readonly isSendable: boolean;
+  readonly reach: Reach;
   readonly isAsync: boolean;
   readonly parameters: readonly ParameterSlot[];
   readonly pack?: PackType | undefined;
   readonly result: Type;
+  readonly [builtFunctionType]: true;
 }
 
 /** A function type's pack: a pack type parameter, or the error type for one that failed. */

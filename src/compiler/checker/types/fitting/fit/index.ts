@@ -41,6 +41,7 @@ import { isAssignable, sameConstraint } from '../../identity/identity.ts';
 import { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
 import { parametersIn } from '../../parts/type-parts.ts';
 import { unfolded } from '../../type/computed-types.ts';
+import { functionType } from '../../type/function-types.ts';
 import type {
   AnonymousStructType,
   AnyType,
@@ -455,7 +456,7 @@ function fitsAsync(
     target.kind === 'function' &&
     !source.isAsync &&
     target.isAsync &&
-    exact(target, { ...source, isAsync: true })
+    exact(target, functionType({ ...source, isAsync: true }))
   );
 }
 

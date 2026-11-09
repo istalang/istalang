@@ -7,12 +7,12 @@
 
 import { sameItems } from '../../../../../foundation/structures/equality.ts';
 import type { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
+import { reachFits, sameShape } from '../../type/function-types.ts';
 import type {
   AnonymousStructType,
   FieldMember,
   FunctionType,
   NominalType,
-  ParameterSlot,
   Type,
 } from '../../type/index.ts';
 import type { Variance } from '../../variance/lattice.ts';
@@ -121,14 +121,13 @@ function functionFitsByParts(
   const { fits, same } = relation;
   return (
     (found.isAsync === expected.isAsync || !found.isAsync) &&
-    (found.isSendable || !expected.isSendable) &&
-    found.pack === undefined &&
+    reachFits(found.reach, expected.reach) &&
     expected.pack === undefined &&
-    sameItems<ParameterSlot>(
-      (taken, given) =>
-        taken.reference === given.reference &&
-        (taken.reference ? same(taken.type, given.type) : fits(given.type, taken.type)),
-    )(found.parameters, expected.parameters) &&
-    fits(found.result, expected.result)
+    sameShape(
+      expected,
+      found,
+      (taken, given, byReference) => (byReference ? same(taken, given) : fits(taken, given)),
+      (gives, given) => fits(given, gives),
+    )
   );
 }

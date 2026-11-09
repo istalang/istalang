@@ -15,6 +15,7 @@ import type { Invalid } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { checkDiscarded, checkDrop } from '../../rules/disposal/must-use.ts';
 import { statementPlace } from '../../surface/checked-annotation.ts';
+import { functionType } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { neverType, unitType } from '../../types/type/primitives.ts';
 import { checkLocalFunction } from '../closures/lambdas.ts';
@@ -29,13 +30,12 @@ import {
 import { checkVariableDeclaration } from './variables.ts';
 
 /** What `defer` runs when its block ends (§7): a plain function of nothing, so it can't wait. */
-const deferredFunction: FunctionType = {
-  kind: 'function',
-  isSendable: false,
+const deferredFunction: FunctionType = functionType({
+  reach: undefined,
   isAsync: false,
   parameters: [],
   result: unitType,
-};
+});
 
 // biome-ignore-start lint/style/useNamingConvention: the keys are the tree's node kinds.
 export const statementHandlers: Handlers<

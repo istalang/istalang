@@ -36,7 +36,7 @@ function sendable(checker: CheckerContext, type: Type, deciding: TypeCycle): boo
     case 'error':
       return true;
     case 'function':
-      return type.isSendable;
+      return type.reach === 'sendable';
     case 'tuple':
     case 'anonymous':
     case 'union':

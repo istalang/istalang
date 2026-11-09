@@ -89,7 +89,7 @@ function refusalOf(
   }
   if (resolved === undefined) {
     const type = context.typeOf(calledName(call));
-    return type.kind !== 'function' || type.isSendable
+    return type.kind !== 'function' || type.reach === 'sendable'
       ? undefined
       : {
           callee: typeText(type),

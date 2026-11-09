@@ -14,6 +14,7 @@
 import { memo } from '../../../../foundation/structures/memo.ts';
 import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { RecursiveGraph } from '../type/computed-types.ts';
+import { functionType } from '../type/function-types.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 
 /** Each graph's parts, which never change: a graph is immutable. */
@@ -101,7 +102,7 @@ function withPartsTaken(type: Type, child: () => Type): Type {
       const pack = type.pack === undefined ? undefined : child();
       const result = child();
       return pack === undefined || pack.kind === 'parameter' || pack.kind === 'error'
-        ? { ...type, parameters, pack, result }
+        ? functionType({ ...type, parameters, pack, result })
         : unreachable('A function type pack was rebuilt as no pack.');
     }
     case 'any':

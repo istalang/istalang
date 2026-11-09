@@ -22,6 +22,7 @@ import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { ValueSite } from '../../../checker/surface/checked-body.ts';
 import { type Fit, singleElement } from '../../../checker/types/fitting/fit/index.ts';
 import { unfolded } from '../../../checker/types/type/computed-types.ts';
+import { functionType } from '../../../checker/types/type/function-types.ts';
 import type { FunctionType, StructValueType, Type } from '../../../checker/types/type/index.ts';
 import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import { membersOf } from '../../../checker/types/unions/unions.ts';
@@ -111,7 +112,10 @@ function convertedValue(
     }
     case 'async': {
       const plain = functionTypeOf(typed.type);
-      return { value: how.madeAsync(typed.value, plain), type: { ...plain, isAsync: true } };
+      return {
+        value: how.madeAsync(typed.value, plain),
+        type: functionType({ ...plain, isAsync: true }),
+      };
     }
     case 'shape': {
       const { to } = conversion;
@@ -190,7 +194,7 @@ function applyingIn(code: SynthesizedCode, at: ConversionSite): Applying {
     span: at.span,
     at,
     madeAsync: (value, plain) => {
-      const to = { ...plain, isAsync: true };
+      const to = functionType({ ...plain, isAsync: true });
       const entry = code.tables.conversionIndex({ kind: 'wrapping', from: plain, to, at });
       return closureOf(code, entry, [value], at.span);
     },
