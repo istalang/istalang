@@ -44,24 +44,22 @@ in `plan.md` beside it. This proposal gives the outline, why it is built this wa
 | V2 Variance through `any` | Traits' variance; meeting `any Trait<B>` through a fitting `Trait<A>` | `f9fbbe4a` |
 | I1 Constraint inference per call | Bounds on call variables, the settling policy, postponed arguments, the "most specific" overload rank | `9aaf0196` |
 | I2 Joint solving | One constraint scope per body expression: nested calls and literals settle together; variants become plain generic calls; §3.7 literal building deleted | `daa0774a`–`23bf0ed5` |
+| C1 Scope protocol | One table for what joins a constraint scope; a bound's role (advice, and by whom); function values join as calls do; a call chosen by defaults | `bf52710a`–`f30a8c21` |
+| C2 Trait meeting | One memoized search for the instantiations a type meets, used by inference too (B46), with B37, B40 and B41 | `c66120e6` |
+| C3 One holds relation | Joining, settling, choosing and clashes read one `holds` (B44); generic clashes judged as a call | `4ddaa8df` |
+| C4 Placeholders that give | A held-back struct literal gives its fields to the lambdas inside it; a computed expected type waits on its form; form-builder's generator writes nothing inferred | `31d34496` |
 
-**Next:** the merge review (`c3506066..23bf0ed5`) asked for changes. Its findings, their root
-causes and the structural changes are in `docs/work/variance-inference/merge-analysis.md`.
-1. **Corrections** (`plan.md`):
-   - C1, the scope protocol: one table for what joins a constraint scope, explicit roles for a
-     bound, function values joining as calls do;
-   - C2, trait meeting: one search for the instantiation a type meets, used by inference too
-     (B46, so a nested `LayoutView{…}` infers its `Sc`), with B37, B40 and B41;
-   - C3, after C1: one "holds" relation for joining, settling, choosing and clashes (B44).
-   - C4, after C3: a held-back struct literal gives its fields to the lambdas inside it, so a
-     `CaseView`'s `Sc` is inferred under a mapped `cases`; form-builder's generator stops writing
-     what is now inferred.
-2. **Re-check** by the merge reviewer.
-3. **Later, filed:**
-   - F3: variadic tuples (proposal 12);
-   - F27: view handles, so `gives`/`takes` reach handles;
-   - F28: proposal 8's function-type qualifiers as subtyping in the constraint system;
-   - Q46: inference variables as a key of their own; Q47: every expression checked in a scope.
+The merge review (`c3506066..23bf0ed5`, findings and root causes in
+`docs/work/variance-inference/merge-analysis.md`) approved the corrections on `31d34496`.
+
+**Next:** C5 cuts the cost of inferring what form-builder no longer writes (fb-warm 671 ms on
+`31d34496`, ≤ ~400 ms targeted), with no change in behaviour.
+
+**Later, filed:**
+- F3: variadic tuples (proposal 12);
+- F27: view handles, so `gives`/`takes` reach handles;
+- F28: proposal 8's function-type qualifiers as subtyping in the constraint system;
+- Q46: inference variables as a key of their own; Q47: every expression checked in a scope.
 
 ## Rules
 
@@ -128,8 +126,9 @@ held by the body being checked. The scope settles on every path out.
 - **Postponed arguments:** lambdas and function values are checked once their inputs settle, and
   their results join the other bounds.
 - **Overloads:** `fn f(x: Int)` and `fn f(x: Int?)` coexist, and `f(1)` takes the most specific.
-  Two functions clash when, at some argument count, neither is narrower than the other, or each is
-  narrower somewhere.
+  Two functions clash when, at some argument count, a call could fit both and neither is more
+  specific. Generic ones each instantiate their own, as at a call, so `fn f<T>(x: T)` and
+  `fn f<T>(x: T?)` clash.
 
 ### 5. The optional join
 
@@ -175,3 +174,4 @@ Design §9 lists every anchor with its result before and after. In short:
    partly known).
 8. **The merge review's corrections run as C1–C3,** B46 and the other bugs folded into C2 and C3;
    C4 follows from form-builder's trial.
+9. **A generic clash is judged as a call** (C3): choose over every overload, a clash when both tie.
