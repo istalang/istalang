@@ -120,13 +120,19 @@ call, in the product their type names:
 - **Several tuple rests** must have equal keys: they use the same pack, are mapped over the same
   keys, or a `where` says so (§4).
   - A spread of a known tuple first becomes its elements.
-  - Then the items are either all single values, split evenly in order, or one spread of a tuple
-    per rest, each filling its rest whole.
-  - With k rests and m single values, each takes m / k. A count k doesn't divide doesn't fit, as
-    a wrong count doesn't today.
+  - Each rest then takes single values or one spread of a tuple whose elements aren't known, as
+    one rest does today. Single values and such a spread in one rest would make its tuple
+    `(X, ...A)`, which waits for spreads inside tuple types (Left for later).
+  - The rests' equal keys then decide the split:
+    - with single values only, k rests split m values m / k each, in order, and a count k
+      doesn't divide doesn't fit, as a wrong count doesn't today;
+    - otherwise each rest takes one spread, and those spreads' keys must be tied.
+  - Nothing else needs a rule. m single values have keys `0` to `m − 1`, which no tuple whose
+    elements aren't known is proven to share, so equal keys already refuse a split that would
+    give one rest single values and another a spread. A spread whose tuple is known has become
+    single values.
   - So `run(printInt, printStr, 1, "a")` gives `fs` two and `args` two, and `pairs(...a, ...b)`
-    gives each rest its spread. Single values mixed with spreads across several rests are
-    refused.
+    gives each rest its spread.
 - **A positional rest and a named rest** take different arguments, so they stand together.
   - A spread goes by its own type: a struct to the named rest, anything else to the positional.
   - A struct that is also `Iterable` is ambiguous there, an error asking for the rest's name.
@@ -389,15 +395,16 @@ inference. Independent of proposal 8; before F28, since change 3 removes `relate
 
 ## Left for later
 
-- **Spreads inside tuple types and values,** `(X, ...A, Y)` and `(x, ...a, y)`.
-  - A position after an opaque spread has no key without arithmetic on lengths.
+- **Spreads inside tuple types and values,** `(X, ...A, Y)` and `(x, ...a, y)`, and so single
+  values beside a spread in one rest.
+  - A position after a spread whose length isn't known has no key without arithmetic on keys
+    (`keyof (X, ...A)` is `0` and `keyof A` shifted by one).
   - They come with refinement, below.
 - **Type refinement by `match`** over a tuple or struct value (`case ()`, `case (h, ...t)`):
   - each branch learns its type parameter's form;
   - each instantiation recurses on a shorter tuple, so it ends;
   - it unlocks chains such as `pipe`, and belongs with the narrowing guarantees of §4.
 - Relations in `where` beyond key equality, and narrowing guarantees (§4).
-- Single values mixed with spreads across several tuple rests.
 - Two named rests, even with disjoint fields.
 - Partial type arguments at a call: a separate change.
 
