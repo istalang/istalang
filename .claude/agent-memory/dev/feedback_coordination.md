@@ -24,3 +24,4 @@ metadata:
 - The first pi reviewer (and first qa) spawned, by the first phase's fork, are kept as roots; every later phase's fork forks them (`hcom f <root>`) for its own review/qa.
 - Use tsm (ts-refactor skill) as much as possible. A tsm bug goes to @solu over hcom; wait for his fix, then continue. Mechanical repeatable tasks tsm could automate go to @solu as feature suggestions.
 - A fork asks the human in its own chat and waits for his approval before reporting to the tech-lead.
+- QA agents are pi too: `hcom pi --agent qa` (user, 2026-11-09). Never the Claude `qa` agent, whose definition defaults to sonnet, and the user doesn't want sonnet relied on.

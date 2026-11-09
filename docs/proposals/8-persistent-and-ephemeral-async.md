@@ -3,8 +3,8 @@ description: proposal 8 of docs/proposals, for the semantics of two kinds of asy
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-08
-last_updated: 2026-11-08
+last_verified: 2026-11-09
+last_updated: 2026-11-09
 tags: [proposal, language, async, persistence, functions]
 ---
 
@@ -58,7 +58,7 @@ extern struct Future<T, K in Persistence>
 - **The plain-function fit stays.** A `fn(A) -> R` fits where `fn(A) -> Future<R, K>` is expected, for either kind. Its call gives a future already resolved.
 - **A call starts its callee at once,** inside the caller (§3.3), for both kinds. A persistent function may call an ephemeral one.
 - **Ephemeral code makes no persistent future.** An `async fn`, directly or through what it calls, calls no `ista fn` and no extern whose result is a persistent future. Nothing ephemeral commits, so a persistent callee would never resume past its first `await` (Rule 6), and a persistent wait would have nothing to commit with. The compiler infers this per function from bodies and extern signatures, as it infers effects (Rule 8), so slots need no rule of their own: their operations are such externs (Rule 5). Proposal 8 makes `fn(A) -> Future<R, "persistent">` also the type of a plain function returning such a future, so ephemeral code calls no function value of that type either. Starting and reaching persistent work from ephemeral code is the runtime's (proposal 9).
-- **`main` is an `async fn`.** A program starts ephemeral, and a restart ends its `main`. Persistent work runs where the runtime starts it (proposal 9).
+- **A host starts any function by name** whose parameters and result are sendable, `main` when it names none, as today: an `async fn` runs ephemeral, and a restart ends it; an `ista fn` runs as a persistent instance. Proposal 9 builds on this, with persistence configured from inside the app.
 - **`spawn` is no longer a keyword.** The runtime provides it as a function, called in the deferred form (Rule 9), so `spawn purchase(req)` keeps its spelling. What it does is proposal 9's.
 - **`worker.disposing()`** gives a future of its function's kind.
 
@@ -99,8 +99,8 @@ trait Awaitable<T>:
   | `ista fn(A) -> R` | `fn(A) -> Future<R, "persistent">` |
   | `sendable ista fn(A) -> R` | `sendable fn(A) -> Future<R, "persistent">`; `readonly` alike |
 
-- **The kinds never meet.** A persistent future never fits where an ephemeral one is expected, nor the reverse, and so for function types and resolvers of the two kinds.
-- **What converts,** whole values only, never inside another type (§2):
+- **The kinds never meet.** A persistent future never fits where an ephemeral one is expected, nor the reverse, and so for function types and resolvers of the two kinds: `Future` is invariant in `K`.
+- **What converts** is subtyping, composed inside other types through their variance (§3.5), as every conversion is:
 
   | A value of | fits where this is expected |
   | --- | --- |
@@ -109,6 +109,7 @@ trait Awaitable<T>:
   | `readonly fn …` | `fn …` |
   | `fn …` | `ephemeral fn …` (Rule 7) |
 
+- **Qualifier variables.** A higher-order function keeps its arguments' qualifiers, with no new syntax: `logged(f)` is `sendable` when `f` is, and `readonly` when `f` is and its own body adds no effect.
 - **Overloads** on the two kinds are two types, so they don't clash. A plain function passed to such a pair converts either way, so that call is ambiguous (§3.7).
 - **Modifiers stack in any order.** The formatter sorts them: `extern`; then `sendable` or `ephemeral`, what a value captures; then `readonly`; then `async` or `ista`; then `fn` or `struct`. So `extern readonly async fn`, `extern ephemeral struct` and `sendable readonly ista fn(A) -> R`.
 
@@ -124,7 +125,7 @@ trait Awaitable<T>:
   Inference itself refuses a mix: one type parameter can't take two types (§3.5), and `K in Persistence` always stands for one member. Every function of `futures` takes this shape.
 - **Code generic over the kind can't `await`,** since no header stands for both kinds. It is written against resolvers (`Resolver.of`), as the combinators are.
 - **Slots are persistent,** with no kind parameter, and the checker treats them as nothing special. `put`, `take` and `read` are prelude externs giving persistent futures (§3.8), `read` declared `readonly`. `Inbox`, written on slots in the language, and every other type built on them, take their kind and their effects from those functions, through their own bodies.
-- **A call's unfixed kind comes from its function.** A `K in Persistence` type argument that nothing fixes is the enclosing `async` or `ista` function's kind, so `time.delay(5s)` is an ephemeral timer in an `async fn` and a persistent one in an `ista fn`. A written type always writes its kind.
+- **A call's unfixed kind comes from its function.** A `K in Persistence` type argument that nothing fixes settles to the enclosing `async` or `ista` function's kind, a default from context (§3.5), so `time.delay(5s)` is an ephemeral timer in an `async fn` and a persistent one in an `ista fn`. A written type always writes its kind.
 
 ### 6. Segments and commits
 
@@ -136,7 +137,7 @@ trait Awaitable<T>:
 
 ### 7. Check 1: what lives across a commit is persistable
 
-- **`Persistable`** is a built-in marker trait, derived as `Sendable` is (§3.1). A type is persistable when it is:
+- **`Persistable`** is a built-in marker trait, a reading of a type's reach (§3.1), as `Sendable` is: a value's reach is the least of its parts', a handle's comes from its declaration, and a `Future`'s or `Resolver`'s from its kind. A type is persistable when it is:
   - a primitive or a literal type;
   - a struct, enum, tuple or union of persistable parts;
   - a handle whose contents are persistable: `Shared`, a shared struct, a slot, an inbox, a persistent future or resolver, an `Instance`, a `WeakRef`;
@@ -251,7 +252,7 @@ Every backend implements these, and the compiler guarantees the rest:
 | `fn(i): conn.write(i)`, capturing `conn: Socket`, passed where `fn(Item) -> Unit` is expected | (no ephemeral types) | error at the capture; legal where `ephemeral fn(Item) -> Unit` is expected |
 | an `async fn` calling an `ista fn`, or receiving from an inbox | (one kind) | error: ephemeral code makes no persistent future |
 | `time.delay(5s)` in an `async fn` | (one kind) | an ephemeral timer |
-| `async fn main()` awaiting a host queue's `receive()` | the program's persistent root | error: ephemeral code makes no persistent future; the rewrite moves the body into an `ista fn` |
+| `async fn main()` awaiting a host queue's `receive()` | the program's persistent root | error: ephemeral code makes no persistent future; the rewrite makes it `ista fn main()` |
 | a function or field named `ista` | legal | error: reserved |
 | `retry fetchUser(id)` | error: a missing `,` | a deferred call |
 | `defer fn(): log(x)` | the `defer` keyword: runs when the block ends | error: a disposable left unused. Written `_ = defer log(x)`, computing `x` now |
@@ -263,7 +264,7 @@ Every backend implements these, and the compiler guarantees the rest:
 | `retry(3, fn(id): Order{id})`, `call: ista fn(String) -> Order` | error 5001 inside the body | fits: a resolved future |
 | overloads `f(g: async fn() -> Int)` and `f(g: ista fn() -> Int)` | (one kind) | two types, no clash; a plain argument is ambiguous |
 
-After the repository's rewrite (implementation note 9), every program that compiles today compiles and behaves the same, except that extern keys are respelled and `ista run` names the persistent root it starts.
+After the repository's rewrite (implementation note 9), every program that compiles today compiles and behaves the same, except that extern keys are respelled.
 
 ## What changes in power
 
@@ -272,6 +273,7 @@ After the repository's rewrite (implementation note 9), every program that compi
 - A persistent function may wait in memory where it chooses, and Rule 8 keeps that sound.
 - Custom awaitables, cold ones included, and externs that resolve later and learn of cancellation.
 - One deferred-call form for every function that takes a call to run later.
+- Higher-order functions that keep their arguments' qualifiers, with no new syntax.
 
 **Not gained.**
 - Both kinds in one `select`.
@@ -308,7 +310,7 @@ After the repository's rewrite (implementation note 9), every program that compi
 - **§6.** Every wait is a wait on a slot or a resolver.
 - **§7.** A resolver's `onCancel`, and a dropped resolver panicking its waiter. **Defer** describes the prelude's `defer` (Rule 9).
 - **§8.** One kind per `await select`; the non-blocking form may mix.
-- **§9.** `main` is an `async fn`, and the runtime starts persistent work. `spawn` is the runtime's function, defined by proposal 9. Extern keys spell kinds.
+- **§9.** A host starts any function by name, an `ista fn` as a persistent instance and an `async fn` as an ephemeral run. `spawn` is the runtime's function, defined by proposal 9. Extern keys spell kinds.
 - **§12.** The examples use `ista fn` and `Future<…, "persistent">` throughout.
 - **§14.** Future work gains a header for code generic over the kind.
 
@@ -320,9 +322,9 @@ After the repository's rewrite (implementation note 9), every program that compi
    - **Deferred calls:** a new expression node, a path and a call, parsed where a name or path is followed on its line by a call (`compiler/parser/grammar/`).
 2. **Checker.**
    - **Function types:** `isAsync` becomes the result's kind (`checker/types/type/function-types.ts`, `index.ts`). Every spelling builds through the one constructor, so nothing downstream sees which was written: proposal 8's normalization at construction.
-   - **Futures:** `Future`'s kind is a required member parameter. A call's unfixed `K in Persistence` takes the enclosing function's kind, in one place in inference.
-   - **Fitting:** a plain function into either kind, and `fn` into `ephemeral fn`; nothing between kinds (`checker/types/fitting/fit/index.ts`). A lambda's captures are checked against its expected type (`constructs/closures/lambdas.ts`).
-   - **`Persistable`:** derived beside `Sendable` (`checker/types/traits/sendable.ts`), from one derivation table rather than a copy of it.
+   - **Futures:** `Future`'s kind is a required member parameter. A call's unfixed `K in Persistence` takes the enclosing function's kind, as a settling rule.
+   - **Fitting:** the qualifiers are subtyping in the constraint system, composed through variance: a plain function into either kind, `sendable fn` into `fn` into `ephemeral fn`, `readonly fn` into `fn`; nothing between kinds (`checker/types/fitting/`). Qualifier variables carry a higher-order function's qualifiers through. A lambda's captures are checked against its expected type (`constructs/closures/lambdas.ts`).
+   - **`Persistable`:** a threshold of the one reach derivation `Sendable` reads (`checker/types/traits/`), never a copy of it.
    - **`await` and `select`** (`constructs/expressions/control/await.ts`, `select.ts`): find the `Awaitable` conformance, read `Mode`, run check 1 over the live values at a committing `await`, and require one kind in a `select`.
    - **Check 2:** a new analysis with two parts, placed per `docs/arch/architecture.md`. Function summaries are computed over the call graph to a fixpoint, together with whether a function makes a persistent future, for Rule 2, and checked against every `readonly` written on a function. A flow pass marks values fresh or older within each segment. No type is special to it: slots, inboxes and the rest are reached through their functions' summaries.
    - **Traits:** a generic function's summary records which requirements it needs `readonly`, and its callers' type arguments and `any` conversions are checked against them, as constraints are.
@@ -338,12 +340,12 @@ After the repository's rewrite (implementation note 9), every program that compi
 7. **Standard library.** The prelude gains `Persistence`, `Awaitable`, `Resolver` and `Persistable`, with `Future` taking the kind, and `defer` with `Deferred`, a shared struct whose `dispose` calls its function. `futures` becomes awaitables over the kind (`stdlib/futures/futures.ista`), and `time`'s timers take it.
 8. **Formatter and tools** (`formatter/types.ts`, `declarations.ts`). Types print `async fn(A) -> R` and `ista fn(A) -> R`, and headers the body's result, `ista fn f() -> R`, since the keyword carries the kind; externs alike, `extern async fn f() -> R`. Modifiers print in Rule 4's order. Hover and signature help print the spelling the formatter writes, and a deferred call's hover shows the call it defers.
 9. **The repository's sources: a scripted rewrite through the project's own parser.** No ephemeral code exists yet, so every program keeps its meaning:
-   - every `async fn` but `main` becomes `ista fn`: about 520 in `.ista` files and 44 in the spec;
-   - every `Future<T>` becomes `Future<T, "persistent">`: about 308 and 38;
-   - a `main` whose body waits on persistent work becomes an `ista fn` that the interpreter starts as its root instance, named to `ista run`, until proposal 9's runtime lets an ephemeral `main` start persistent work;
-   - every `defer f` statement becomes `_ = defer(f)`: 19 in `.ista` files and 3 in the spec.
+   - every `async fn` but `main` becomes `ista fn`: about 308 in `.ista` files and 40 in the spec, beside about 220 `main`s;
+   - every `Future<T>` becomes `Future<T, "persistent">`: about 310 and 38;
+   - a `main` that makes a persistent future becomes `ista fn main`, which hosts keep starting by name;
+   - every `defer f` statement becomes `_ = defer(f)`: 17 in `.ista` files and 2 in the spec.
 
-   Then `ista fmt` runs.
+   The same rewrite reaches sources embedded in TypeScript tests (about 279 `async fn` and 154 `Future<`). Then `ista fmt` runs.
 10. **Tests** (fast-check, beside the code):
     - each pair of spellings gives equal types (`typeKey`);
     - over generated programs, an ephemeral `await` never writes to the store and a persistent one always does;
@@ -377,3 +379,4 @@ After the repository's rewrite (implementation note 9), every program that compi
 21. **Defaults are part of the function,** computed at the start of its call, as in JavaScript and Kotlin. They never affect the caller, and a deferred call computes them when it runs.
 22. **The language is separate from the runtime.** The compiler checks everything, the runtime contract is fixed, and a backend implements futures as it needs. Starting persistent work from ephemeral code, and every other runtime mechanism, is proposal 9's.
 23. **This replaces the earlier proposal 8,** and keeps its one-type rule.
+24. **Conversions are subtyping** composed through variance, the qualifiers ordered among themselves, and qualifier variables keep a higher-order function's qualifiers (tracker F28, `docs/work/variance-inference/design.md` §7).

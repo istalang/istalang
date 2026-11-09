@@ -26,6 +26,7 @@ tags: [tracker]
 | Proposals 1–4 (`docs/work/proposals/plan.md`) | done |
 | Proposal 5 (`docs/proposals/5-indented-values.md`; equi-recursive identity `docs/work/proposals/p5-equi-recursive-identity.md`) | done |
 | Identity, variance and inference (`docs/work/variance-inference/plan.md`; closed F25) | done |
+| Proposal 8, persistent and ephemeral async (`docs/work/async-kinds/plan.md`) | planned |
 | M8 Packages | planned |
 
 ## Filed
@@ -61,7 +62,7 @@ Language or toolchain features deferred by decision, not defects.
 | F22 | A key not yet known over a struct whose fields are known (a field loop's or mapped type's key over a known struct, §3.1) reads a field type with only the associated types and traits every candidate field shares; reading it per candidate (the field type a narrowed key names) would accept more. | small | none; can be done now | p4-computed 2026-11-05 |
 | F24 | Field completion inside a destructuring `const` pattern offers nothing: completion has no step for a struct pattern's field names (`const struct { na } = s` with the cursor after `na`). | small | none; can be done now | p5 QA 2026-11-06 |
 | F27 | View handles, so `gives`/`takes` apply to handles: a converted handle is a view converting each value as it leaves or enters, `==` comparing the underlying object. Candidates: `Future<gives T, K>`, `Instance<gives T>`, `WeakRef<gives T>`, proposal 8's `Resolver<takes T, K>`. Until then a marker on a handle is an error. | big | variance-inference V1 | variance-inference design 2026-11-08 |
-| F28 | Proposal 8's function-type qualifiers as subtyping in the constraint system (`sendable fn` ≤ `fn` ≤ `ephemeral fn`, `readonly fn` ≤ `fn`, the async fit as `fn(A) -> R` ≤ `fn(A) -> Future<R, K>`), then qualifier variables for qualifier-preserving higher-order functions (`logged` keeping `sendable`). Implemented with proposal 8, after variance-inference V1; proposal 8's text gives way first: its conversions compose inside types, its `Persistable` reads V0's reach, its `K` default is a settling rule (`design.md` §7). | big | proposal 8, after variance-inference V1 | variance-inference design 2026-11-08 |
+| F28 | Proposal 8's function-type qualifiers as subtyping in the constraint system (`sendable fn` ≤ `fn` ≤ `ephemeral fn`, `readonly fn` ≤ `fn`, the async fit), then qualifier variables for qualifier-preserving higher-order functions (`logged` keeping `sendable`). Folded into proposal 8's text; implemented by the async-kinds plan (T0, P, E1, QV). | big | async-kinds T0 | variance-inference design 2026-11-08 |
 
 ### Performance (P)
 

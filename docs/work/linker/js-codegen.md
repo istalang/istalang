@@ -1,10 +1,10 @@
 ---
-description: generating JavaScript from a final Definition and running it in place of the interpreter on JS hosts — why from the Definition and not from lowering, the shape of the generated code, what must stay as the interpreter does it, where code is generated on Node and on Workers, and the changes it needs; read before speeding up the runtime on a JS host
+description: generating JavaScript from a final Definition and running it in place of the interpreter on JS hosts — why from the Definition and not from lowering, the shape of the generated code, what must stay as the interpreter does it, where code is generated on Node and on Workers, and the changes it needs; read before speeding up the runtime on a JS host, or changing how ephemeral futures run
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-05
-last_updated: 2026-11-05
+last_verified: 2026-11-09
+last_updated: 2026-11-09
 tags: [runtime, executors, codegen, javascript, workers, performance]
 ---
 
@@ -57,3 +57,21 @@ Generate from the final Definition. Lowering straight to JavaScript would skip t
 - **Code size:** one function per instantiation, since generics are compiled per instantiation. Large programs make large bundles.
 - **Mocks:** inlining an operator skips the mock check. Mocks replace functions a test names, so inline only externs no mock may target, or keep tests on the interpreter.
 - **Drift from the interpreter,** which only the conformance runs can catch.
+
+## After proposal 8
+
+Proposal 8 narrows what must be frames as data. Only an `ista fn`'s frame is ever persisted: a
+plain function can't wait, ephemeral code never commits, and a commit saves each execution as of
+its own last commit, never mid-call. Ephemeral code calls no persistent code, so the boundary runs
+one way.
+
+- **Plain and `async` code can be native JavaScript:** real locals, `async`/`await`, an ephemeral
+  future a promise, an ephemeral resolver its `resolve`, `onCancel` an `AbortSignal`. The
+  frame-as-data form above is needed only for `ista fn` bodies, or they stay interpreted.
+- **An `ista fn` awaiting ephemeral work** is an interpreted execution waiting in memory on that
+  promise; the host's event loop drives it.
+- **What stays shared:** the value and heap representation, releases (lowering's explicit release
+  instructions become calls), mocks (a mocked function is called through the table) and spans for
+  traces.
+- **Proposal 8's runtime keeps this open:** its ephemeral futures are promise-backed and ride the
+  host's event loop (`docs/work/async-kinds/phases.md`, R1).
