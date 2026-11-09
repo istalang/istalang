@@ -11,16 +11,18 @@
 import type { Fitting } from '../fitting/fit/index.ts';
 import { sameType } from '../identity/identity.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
+import { parametersIn } from '../parts/type-parts.ts';
 import { fillsPack, isPack } from '../type/function-types.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
 import type { Joining } from '../unions/common-type.ts';
 import { baseOf } from '../unions/union-members.ts';
 import { parameterType } from '../written/resolve-type.ts';
-import type { Bound, BoundStore, LowerBound } from './bounds.ts';
+import type { BoundStore } from './bounds.ts';
 import { fillingOf, joinedLower } from './fillings.ts';
 import type { Matching } from './matching.ts';
 import type { MatchNotes } from './notes.ts';
+import type { Bound, LowerBound } from './variable-bounds.ts';
 import type { CallVariables } from './variables.ts';
 
 /** What bounding a system's variables reads and writes of it. */
@@ -31,8 +33,8 @@ export interface BindingTarget {
   readonly joining: Joining;
   /** The call `variable` is one of the variables of, if it is one of the system's. */
   readonly callOf: (variable: ParameterKey) => CallVariables | undefined;
-  /** What has been found so far for the variables, as a substitution of them. */
-  readonly tentative: () => Substitution;
+  /** What has been found so far for `variables`, as a substitution of them. */
+  readonly tentative: (variables: Iterable<ParameterKey>) => Substitution;
   /** The match being made. */
   readonly match: () => Matching;
   /** Notes `variable` as the last whose bounds disagreed. */
@@ -129,7 +131,9 @@ export class VariableBinding {
     const filling = fillingOf(
       variable,
       given,
-      union === undefined ? undefined : substitute(union, this.#target.tentative(), fitting),
+      union === undefined
+        ? undefined
+        : substitute(union, this.#target.tentative(parametersIn(union)), fitting),
       fitting,
     );
     if (filling.kind === 'severalMembers') {

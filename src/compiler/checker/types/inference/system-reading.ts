@@ -4,7 +4,6 @@
  * (`takesShape`, §3.1). Each reads the system through `SystemReading`, so none mutates it.
  */
 
-import { memo } from '../../../../foundation/structures/memo.ts';
 import type { Fitting } from '../fitting/fit/index.ts';
 import { fitOf } from '../fitting/fit/index.ts';
 import { type Substitution, substitute } from '../parts/substitution.ts';
@@ -13,6 +12,7 @@ import { declaresDefault } from '../type/field-defaults.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 import { errorType } from '../type/primitives.ts';
 import { membersOf } from '../unions/unions.ts';
+import { hasBounds, type Settling, type SettlingView, waitedOn } from './settle.ts';
 import {
   type Bound,
   isAdvice,
@@ -20,8 +20,7 @@ import {
   mentionedBy,
   type Related,
   type VariableBounds,
-} from './bounds.ts';
-import { hasBounds, type Settling, type SettlingView, settleOne, waitedOn } from './settle.ts';
+} from './variable-bounds.ts';
 import type { CallVariables } from './variables.ts';
 
 /** What reading a system's variables needs of it. */
@@ -31,6 +30,11 @@ export interface SystemReading {
   /** The call `variable` is one of the variables of. */
   readonly callOf: (variable: ParameterKey) => CallVariables | undefined;
   readonly givenOf: (variable: ParameterKey) => Type | undefined;
+  /**
+   * What `variable` is taken as found as (`fixedByBounds`), each variable read once per state of
+   * the system, as readiness and fixing ask it of every variable they pass.
+   */
+  readonly fixedOf: (variable: ParameterKey) => Type | undefined;
   readonly boundsOf: (variable: ParameterKey) => VariableBounds;
   /** The variables `variable` is related to (bounds.ts). */
   readonly relatedOf: (variable: ParameterKey) => Related;
@@ -53,24 +57,24 @@ export interface SystemReading {
  * reporting what disagrees there.
  */
 export function abandonedFrom(type: Type, reading: SystemReading): readonly ParameterKey[] {
-  return [...reachedFrom(type, reading)].filter((variable) => {
+  return [...reachedFrom([type], reading)].filter((variable) => {
     const { equal, lower, upper } = reading.boundsOf(variable);
     return equal === undefined && lower.length === 0 && upper.length === 0;
   });
 }
 
 /**
- * The variables `type` mentions, and every one they reach through their bounds and relations, each
+ * The variables `types` mention, and every one they reach through their bounds and relations, each
  * once, as they are reached, so a search stops at the one it looks for; of those `passes` refuses,
  * none they reach.
  */
 function* reachedFrom(
-  type: Type,
+  types: readonly Type[],
   reading: SystemReading,
   passes: (variable: ParameterKey) => boolean = () => true,
 ): Generator<ParameterKey, void, undefined> {
   const reached = new Set<ParameterKey>();
-  const pending = [...parametersIn(type)];
+  const pending = types.flatMap(parametersIn);
   for (let variable = pending.pop(); variable !== undefined; variable = pending.pop()) {
     if (reading.isVariable(variable) && !reached.has(variable)) {
       reached.add(variable);
@@ -90,7 +94,7 @@ export function tentativeOf(variable: ParameterKey, reading: SystemReading): Typ
     return equal.type;
   }
   if (lower.length > 0) {
-    // A variable a bound mentions may be fixed already (`fixingToward`), which tells the bound more.
+    // A variable a bound mentions may be fixed already (fixing-toward.ts), which tells the bound more.
     const fixedLower = lower.map((bound) => ({ ...bound, type: fixedIn(bound.type, reading) }));
     return reading.join(variable, fixedLower, upper);
   }
@@ -126,22 +130,19 @@ export function tentativeIn(
 
 /**
  * What `variable` is taken as found as: given, as a judged placeholder is, or fixed by an equality
- * from the arguments, every variable that mentions fixed too; undefined while one isn't.
+ * from the arguments, every variable that mentions fixed too (`SystemReading.fixedOf`); undefined
+ * while one isn't.
  */
-export function fixedOf(
-  variable: ParameterKey,
-  reading: SystemReading,
-  seen: ReadonlySet<ParameterKey> = new Set(),
-): Type | undefined {
+export function fixedByBounds(variable: ParameterKey, reading: SystemReading): Type | undefined {
   const { equal } = reading.boundsOf(variable);
   const found =
     reading.givenOf(variable) ?? (equal === undefined || isAdvice(equal) ? undefined : equal.type);
-  if (found === undefined || seen.has(variable)) {
+  if (found === undefined) {
     return undefined;
   }
   const inside = new Map<ParameterKey, Type>();
   for (const other of parametersIn(found).filter(reading.isVariable)) {
-    const fixed = fixedOf(other, reading, new Set(seen).add(variable));
+    const fixed = reading.fixedOf(other);
     if (fixed === undefined) {
       return undefined;
     }
@@ -199,7 +200,7 @@ export function shapeTaking(target: Type, shape: Type, fitting: Fitting): Type |
 /** The variables of the system `type` mentions that aren't taken as found yet. */
 export function openIn(type: Type, reading: SystemReading): readonly ParameterKey[] {
   return parametersIn(type).filter(
-    (key) => reading.isVariable(key) && fixedOf(key, reading) === undefined,
+    (key) => reading.isVariable(key) && reading.fixedOf(key) === undefined,
   );
 }
 
@@ -211,14 +212,12 @@ export function openIn(type: Type, reading: SystemReading): readonly ParameterKe
  * variable passes nothing on.
  */
 export function waitsOn(inputs: Type, given: readonly Type[], reading: SystemReading): boolean {
-  const opens = new Map<ParameterKey, boolean>();
-  const isOpen = (variable: ParameterKey) =>
-    memo(opens, variable, () => fixedOf(variable, reading) === undefined);
-  const waiting = new Set([...reachedFrom(inputs, reading, isOpen)].filter(isOpen));
+  const isOpen = (variable: ParameterKey) => reading.fixedOf(variable) === undefined;
+  const waiting = new Set([...reachedFrom([inputs], reading, isOpen)].filter(isOpen));
   if (waiting.size === 0) {
     return false;
   }
-  for (const variable of reachedFrom({ kind: 'tuple', elements: given }, reading, isOpen)) {
+  for (const variable of reachedFrom(given, reading, isOpen)) {
     if (waiting.has(variable)) {
       return true;
     }
@@ -238,13 +237,13 @@ export function defaultsIn(
 ): ReadonlyMap<ParameterKey, Type> {
   const fixed = fixedSubstitution(reading, reading.variables());
   const defaults = new Map<ParameterKey, Type>();
-  for (const variable of reachedFrom(type, reading)) {
+  for (const variable of reachedFrom([type], reading)) {
     const { below, above } = reading.relatedOf(variable);
     const isFree =
       !hasBounds(reading.boundsOf(variable)) &&
       below.length === 0 &&
       above.length === 0 &&
-      fixedOf(variable, reading) === undefined;
+      reading.fixedOf(variable) === undefined;
     const fallback = isFree ? settlingOf(variable).defaultOf(variable, fixed) : undefined;
     if (fallback !== undefined) {
       defaults.set(variable, fallback);
@@ -257,7 +256,7 @@ export function defaultsIn(
 export function fixedIn(type: Type, reading: SystemReading): Type {
   const fixed = new Map<ParameterKey, Type>();
   for (const variable of parametersIn(type)) {
-    const found = reading.isVariable(variable) ? fixedOf(variable, reading) : undefined;
+    const found = reading.isVariable(variable) ? reading.fixedOf(variable) : undefined;
     if (found !== undefined) {
       fixed.set(variable, found);
     }
@@ -286,7 +285,7 @@ export function expectationOf(
   seen.add(variable);
   const { equal, upper } = reading.boundsOf(variable);
   const bound = equal ?? upper.find((each) => !isAdvice(each)) ?? upper.find(isAdvice);
-  const found = fixedOf(variable, reading) ?? bound?.type;
+  const found = reading.fixedOf(variable) ?? bound?.type;
   if (found !== undefined) {
     return found;
   }
@@ -325,7 +324,7 @@ export function settledBefore(
   reading: SystemReading,
 ): readonly ParameterKey[] {
   return waitedOn(variable, reading).filter(
-    (other) => reading.isVariable(other) && fixedOf(other, reading) === undefined,
+    (other) => reading.isVariable(other) && reading.fixedOf(other) === undefined,
   );
 }
 
@@ -336,7 +335,7 @@ export function fixedSubstitution(
 ): Substitution {
   const found = new Map<ParameterKey, Type>();
   for (const variable of variables) {
-    const type = fixedOf(variable, reading);
+    const type = reading.fixedOf(variable);
     if (type !== undefined) {
       found.set(variable, type);
     }
@@ -361,57 +360,6 @@ export function settlingViewOf(
     fallbackOf: reading.fallbackOf,
     relatedOf: reading.relatedOf,
   };
-}
-
-/**
- * What to fix the variables placeholders `waiting` wait on to, when none of them knows yet what is
- * expected of it (i2-scope.md §3), as Kotlin's inference fixes a variable a postponed argument is
- * stuck on: each one not fixed yet whose bounds mention a variable a placeholder is related to,
- * or that such a variable's bounds mention, settled by its other bounds, what the variables they
- * mention tell so far in their place, so a sibling of a type of its own tells the placeholders
- * theirs: `[Ok(1)]` beside an `Array<Result<Int, String>>` for one `T`, and `[]` beside `[1]` and
- * `[2, 3]` their `Array<Int>`.
- */
-export function fixingToward(
-  waiting: readonly ParameterKey[],
-  reading: SystemReading,
-  view: SettlingView,
-  settlingOf: (variable: ParameterKey) => Settling,
-): ReadonlyMap<ParameterKey, Type> {
-  const near = new Set(waiting);
-  for (const placeholder of waiting) {
-    const { below, above } = reading.relatedOf(placeholder);
-    for (const related of [...below, ...above]) {
-      near.add(related);
-    }
-  }
-  const isFree = ({ type }: Bound) => !parametersIn(type).some((key) => near.has(key));
-  const mentionedNear = new Set([...near].flatMap((each) => mentionedBy(reading.boundsOf(each))));
-  const told = tentativeSubstitution(reading, reading.variables());
-  const fixing = new Map<ParameterKey, Type>();
-  for (const variable of reading.variables()) {
-    const { equal, lower, upper } = reading.boundsOf(variable);
-    const free = {
-      equal: equal !== undefined && isFree(equal) ? equal : undefined,
-      lower: lower.filter(isFree),
-      upper: upper.filter(isFree),
-    };
-    const isWaitedOn =
-      mentionedNear.has(variable) ||
-      mentionedBy({ equal, lower, upper }).some((key) => near.has(key));
-    const hasFree = free.equal !== undefined || free.lower.length > 0 || free.upper.length > 0;
-    const stuck =
-      isWaitedOn && hasFree && !near.has(variable) && fixedOf(variable, reading) === undefined;
-    const freeView = {
-      ...view,
-      boundsOf: (each: ParameterKey) => (each === variable ? free : view.boundsOf(each)),
-    };
-    const type = stuck ? settleOne(variable, told, freeView, settlingOf(variable)) : undefined;
-    if (type !== undefined && !parametersIn(type).some(reading.isVariable)) {
-      fixing.set(variable, type);
-    }
-  }
-  return fixing;
 }
 
 /** The variables of the system standing at the top of `result`: it itself, or a member of it. */

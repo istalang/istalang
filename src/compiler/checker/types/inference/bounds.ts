@@ -30,65 +30,16 @@
 import type { Admits } from '../fitting/expected.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
-import type { CallVariables } from './variables.ts';
-
-/**
- * What a bound says beside its type (design.md §4): whether it only advises, the expected type's,
- * set aside where it disagrees; and which construct's match made it, if one did. Whether it comes
- * from what consumes its variable's construct, which settling's rule 2 may choose, is read against
- * the variable holding it (`fromConsumer`), so a bound handed from one variable to another
- * (`BoundStore.relate`) reads as the other's.
- */
-export interface BoundRole {
-  readonly advice: boolean;
-  readonly by: CallVariables | undefined;
-}
-
-/** Whether `bound` only advises: the expected type's, set aside where it disagrees. */
-export function isAdvice(bound: BoundRole): boolean {
-  return bound.advice;
-}
-
-/**
- * Whether `bound`, of a variable of `call`, is what takes that construct's value: the expected
- * type's, or one another construct's match made, as an enclosing call's parameter.
- */
-export function fromConsumer(bound: BoundRole, call: CallVariables | undefined): boolean {
-  return bound.advice || (bound.by !== undefined && bound.by !== call);
-}
-
-/** A type a parameter's argument must be at least; `fresh` when a written literal gave it. */
-export interface LowerBound {
-  readonly type: Type;
-  readonly fresh: boolean;
-  /** Whether it is a struct literal's shape, which a struct its fields give takes (§3.1). */
-  readonly isShape: boolean;
-  readonly advice: boolean;
-  readonly by: CallVariables | undefined;
-  /**
-   * Whether it bounds its own variable alone, never one related to it: an item of a collection
-   * literal whose items agree on no one type, which settles on what it goes into (design.md §4).
-   */
-  readonly isApart?: boolean | undefined;
-}
-
-/** A type a parameter's argument must be at most, or exactly. */
-export interface Bound extends BoundRole {
-  readonly type: Type;
-}
-
-/** What one parameter is bound by. */
-export interface VariableBounds {
-  readonly equal: Bound | undefined;
-  readonly lower: readonly LowerBound[];
-  readonly upper: readonly Bound[];
-}
-
-/** The variables one is related to (`BoundStore.relate`): those below it, and those above it. */
-export interface Related {
-  readonly below: readonly ParameterKey[];
-  readonly above: readonly ParameterKey[];
-}
+import {
+  type Bound,
+  type BoundRole,
+  isAdvice,
+  isShape,
+  type LowerBound,
+  type Related,
+  requirementsOf,
+  type VariableBounds,
+} from './variable-bounds.ts';
 
 /** What checking bounds against each other needs. */
 export interface BoundRules {
@@ -126,10 +77,12 @@ export class BoundStore {
   /** For each variable, those it is bounded below by (`relate`), and those it bounds above. */
   readonly #below = new Map<ParameterKey, readonly ParameterKey[]>();
   readonly #above = new Map<ParameterKey, readonly ParameterKey[]>();
-  /** How to undo each change, newest last. */
   /** What each variable that refuses some bounds may stand under (`admit`). */
   readonly #admitting = new Map<ParameterKey, Admits>();
+  /** How to undo each change, newest last. */
   readonly #undo: (() => void)[] = [];
+  /** Counts every change, undoing included, so what is read of the store is memoized by it. */
+  #revision = 0;
   /** How many bounds deep the check being made relates bounds mentioning parameters (`#agree`). */
   #depth = 0;
 
@@ -146,11 +99,13 @@ export class BoundStore {
     copyInto(other.#below, this.#below);
     copyInto(other.#above, this.#above);
     copyInto(other.#admitting, this.#admitting);
+    this.#revision += 1;
   }
 
   /** Lets `parameter` stand only under what `admits` takes, as a placeholder does. */
   admit(parameter: ParameterKey, admits: Admits): void {
     this.#admitting.set(parameter, admits);
+    this.#revision += 1;
   }
 
   /** Whether `parameter` may stand under `bound`, as an upper bound or an equality. */
@@ -168,6 +123,11 @@ export class BoundStore {
     return { below: this.#below.get(parameter) ?? [], above: this.#above.get(parameter) ?? [] };
   }
 
+  /** The store's state as a key: a new one after every change (`#changed`), rollbacks included. */
+  get revision(): number {
+    return this.#revision;
+  }
+
   /** A point to roll back to. */
   mark(): number {
     return this.#undo.length;
@@ -177,6 +137,7 @@ export class BoundStore {
   rollback(mark: number): void {
     while (this.#undo.length > mark) {
       this.#undo.pop()?.();
+      this.#revision += 1;
     }
   }
 
@@ -299,7 +260,7 @@ export class BoundStore {
   ): void {
     const before = links.get(from);
     links.set(from, [...(before ?? []), to]);
-    this.#undo.push(() => {
+    this.#changed(() => {
       if (before === undefined) {
         links.delete(from);
       } else {
@@ -397,13 +358,19 @@ export class BoundStore {
   #set(parameter: ParameterKey, bounds: VariableBounds): void {
     const before = this.#bounds.get(parameter);
     this.#bounds.set(parameter, bounds);
-    this.#undo.push(() => {
+    this.#changed(() => {
       if (before === undefined) {
         this.#bounds.delete(parameter);
       } else {
         this.#bounds.set(parameter, before);
       }
     });
+  }
+
+  /** Records a change made, by how to undo it. */
+  #changed(undo: () => void): void {
+    this.#undo.push(undo);
+    this.#revision += 1;
   }
 }
 
@@ -420,11 +387,6 @@ function asLower(equal: Bound | undefined): readonly LowerBound[] {
 /** An equality as the upper bound it is to a variable below the one it holds for. */
 function asUpper(equal: Bound | undefined): readonly Bound[] {
   return equal === undefined ? [] : [equal];
-}
-
-/** Whether `bound` is a struct literal's shape, which a struct it settles to may take (§3.1). */
-export function isShape(bound: Bound | LowerBound): boolean {
-  return 'isShape' in bound && bound.isShape;
 }
 
 /**
@@ -453,21 +415,4 @@ function copyInto<Value>(
  */
 function checkedAgainst(bounds: VariableBounds, bound: Bound): VariableBounds {
   return isAdvice(bound) ? bounds : requirementsOf(bounds);
-}
-
-/** `bounds` without the expected type's advice. */
-export function requirementsOf(bounds: VariableBounds): VariableBounds {
-  const isRequired = (bound: Bound) => !isAdvice(bound);
-  return {
-    equal: bounds.equal !== undefined && isRequired(bounds.equal) ? bounds.equal : undefined,
-    lower: bounds.lower.filter(isRequired),
-    upper: bounds.upper.filter(isRequired),
-  };
-}
-
-/** The parameters `bounds` mention. */
-export function mentionedBy({ equal, lower, upper }: VariableBounds): readonly ParameterKey[] {
-  return [...(equal === undefined ? [] : [equal]), ...lower, ...upper].flatMap(({ type }) =>
-    parametersIn(type),
-  );
 }

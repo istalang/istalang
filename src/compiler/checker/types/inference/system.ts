@@ -19,6 +19,7 @@
  *   variable is given it.
  */
 
+import { RevisionMemo } from '../../../../foundation/structures/revision-memo.ts';
 import type { Admits } from '../fitting/expected.ts';
 import type { ConversionRules, Fitting } from '../fitting/fit/index.ts';
 import { fitOf, matchConversion } from '../fitting/fit/index.ts';
@@ -30,7 +31,7 @@ import type { ParameterKey, Type } from '../type/index.ts';
 import { errorType, isPrimitive } from '../type/primitives.ts';
 import type { Joining } from '../unions/common-type.ts';
 import { VariableBinding } from './binding.ts';
-import { type BoundRules, BoundStore, type VariableBounds } from './bounds.ts';
+import { type BoundRules, BoundStore } from './bounds.ts';
 import { equalTypes } from './equal.ts';
 import { expectedMatch, type Matching, relatingMatch } from './matching.ts';
 import { MatchNotes } from './notes.ts';
@@ -47,7 +48,7 @@ import {
   abandonedFrom,
   atTopOf,
   defaultsIn,
-  fixedOf,
+  fixedByBounds,
   fixedSubstitution,
   type SystemReading,
   settledAmong,
@@ -56,9 +57,9 @@ import {
   shapeTaking,
   solvedIn,
   takesShape,
-  tentativeOf,
   tentativeSubstitution,
 } from './system-reading.ts';
+import { mentionedBy, type VariableBounds } from './variable-bounds.ts';
 import type { CallVariables } from './variables.ts';
 
 export class CallSystem {
@@ -84,10 +85,22 @@ export class CallSystem {
   readonly #unfolding = new UnfoldingPairs();
   #matching: Matching = { kind: 'argument', by: undefined, written: undefined };
   readonly #rules: ConversionRules;
+  /**
+   * Counts calls added, types given and systems adopted; the store counts its own changes. Both
+   * only grow, so their sum names the system's state, which `fixedOf` is memoized by.
+   */
+  #changes = 0;
+  readonly #fixed = new RevisionMemo<ParameterKey, Type | undefined>();
+  /** What reading the variables needs of this system (system-reading.ts). */
+  readonly reading: SystemReading;
+  /** What settling reads of this system. */
+  readonly #view: SettlingView;
 
   /** A system holding no variables yet, but those of each of `joining`, as they are bound. */
   constructor(fitting: Fitting, joining: readonly CallSystem[] = []) {
     this.#fitting = fitting;
+    this.reading = this.#readingOf();
+    this.#view = settlingViewOf(this.reading, this.#atTop);
     this.#joining = {
       fitOf: (found, expected) => fitOf(found, expected, fitting),
       typeRules: fitting,
@@ -100,7 +113,7 @@ export class CallSystem {
       fitting,
       joining: this.#joining,
       callOf: (variable) => this.#calls.get(variable),
-      tentative: () => this.#tentative,
+      tentative: (variables) => tentativeSubstitution(this.reading, variables),
       match: () => this.#matching,
       disagreed: (variable) => {
         this.#lastConflict = variable;
@@ -146,11 +159,13 @@ export class CallSystem {
     for (const [variable, type] of variables.byVariable(given)) {
       this.#given.set(variable, type);
     }
+    this.#changes += 1;
   }
 
   /** Takes `type` as given for `variable` from here on, as a method's receiver gives it. */
   give(variable: ParameterKey, type: Type): void {
     this.#given.set(variable, type);
+    this.#changes += 1;
   }
 
   /** Lets `variable` stand only under what `admits` takes, as a placeholder does. */
@@ -204,14 +219,10 @@ export class CallSystem {
     return this.#store.of(variable);
   }
 
-  /** What a variable's bounds tell so far: its equality, its lower bounds' join, else its upper bound. */
-  tentative(variable: ParameterKey): Type | undefined {
-    return tentativeOf(variable, this.reading);
-  }
-
   /** Rule 2 alone for `variable` (settle.ts): what the expected type chooses for it, if anything. */
   expectedChoiceFor(variable: ParameterKey, settling: Settling): Type | undefined {
-    return expectedChoiceOf(variable, this.#tentative, this.#view, settling);
+    const told = tentativeSubstitution(this.reading, mentionedBy(this.boundsOf(variable)));
+    return expectedChoiceOf(variable, told, this.#view, settling);
   }
 
   /**
@@ -252,7 +263,9 @@ export class CallSystem {
 
   /** What `variable` is taken as found as, given or fixed (system-reading.ts). */
   fixedOf(variable: ParameterKey): Type | undefined {
-    return fixedOf(variable, this.reading);
+    // Met again while its own is found, a variable is on a cycle of equalities: none is fixed.
+    const fixed = () => fixedByBounds(variable, this.reading);
+    return this.#fixed.get(this.#changes + this.#store.revision, variable, fixed, undefined);
   }
 
   /** `variables` settled, one left out can't be inferred; once the system is solved, as it is. */
@@ -298,6 +311,22 @@ export class CallSystem {
     }
   }
 
+  /** What reading the variables needs of this system, each read as the system then stands. */
+  #readingOf(): SystemReading {
+    return {
+      fitting: this.#fitting,
+      isVariable: (key) => this.#calls.has(key),
+      callOf: (variable) => this.#calls.get(variable),
+      givenOf: (variable) => this.#given.get(variable),
+      fixedOf: (variable) => this.fixedOf(variable),
+      boundsOf: (variable) => this.#store.of(variable),
+      relatedOf: (variable) => this.#store.relatedOf(variable),
+      join: (variable, lower, upper) => this.#binding.join(variable, lower, upper),
+      fallbackOf: (variable) => this.#notes.fallbackOf(variable),
+      variables: () => this.#calls.keys(),
+    };
+  }
+
   /** The rules the bound store checks bounds by, matching through this system. */
   #boundRules(): BoundRules {
     const fitting = this.#fitting;
@@ -318,31 +347,6 @@ export class CallSystem {
     };
   }
 
-  /** What has been found so far for the variables, as a substitution of them. */
-  get #tentative(): Substitution {
-    return tentativeSubstitution(this.reading, this.#calls.keys());
-  }
-
-  /** What settling reads of this system. */
-  get #view(): SettlingView {
-    return settlingViewOf(this.reading, this.#atTop);
-  }
-
-  /** What reading the variables needs of this system (system-reading.ts). */
-  get reading(): SystemReading {
-    return {
-      fitting: this.#fitting,
-      isVariable: (key) => this.#calls.has(key),
-      callOf: (variable) => this.#calls.get(variable),
-      givenOf: (variable) => this.#given.get(variable),
-      boundsOf: (variable) => this.#store.of(variable),
-      relatedOf: (variable) => this.#store.relatedOf(variable),
-      join: (variable, lower, upper) => this.#binding.join(variable, lower, upper),
-      fallbackOf: (variable) => this.#notes.fallbackOf(variable),
-      variables: () => this.#calls.keys(),
-    };
-  }
-
   /** Takes on `other`'s variables, the types given them, their bounds, and the notes made. */
   adopt(other: CallSystem): void {
     for (const [variable, call] of other.#calls) {
@@ -356,6 +360,7 @@ export class CallSystem {
     }
     this.#store.adopt(other.#store);
     this.#notes.adopt(other.#notes);
+    this.#changes += 1;
   }
 
   /** Runs `probe` and undoes every bound it added, whether or not it held. */

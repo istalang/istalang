@@ -16,7 +16,7 @@ import { commonType, type Joining } from '../unions/common-type.ts';
 import { baseOf } from '../unions/union-members.ts';
 import { literalOrBase, membersOf, unionOf } from '../unions/unions.ts';
 import { parameterType } from '../written/resolve-type.ts';
-import type { Bound, LowerBound } from './bounds.ts';
+import type { Bound, LowerBound } from './variable-bounds.ts';
 
 /** What `given` fills a parameter with: a type, nothing, or nothing for holding several members. */
 export type Filling =

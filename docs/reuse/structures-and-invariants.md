@@ -3,8 +3,8 @@ description: memoization, kind tables, explicit stacks, cycle components and bro
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-10-29
-last_updated: 2026-11-05
+last_verified: 2026-11-09
+last_updated: 2026-11-09
 tags: [reuse, structures, memo, kind-table, invariants]
 ---
 
@@ -15,6 +15,7 @@ tags: [reuse, structures, memo, kind-table, invariants]
 - dispatch exhaustively over a discriminated union's `kind` → `Handlers`, `handlerOf` (`src/foundation/structures/kind-table.ts`)
 - compute and cache a derived value once per key (including `undefined`) → `memo`, `MemoCache` (`src/foundation/structures/memo.ts`)
 - cache a value derived from a sequence of objects (a module's items, a list of overloads), kept while they are → `SequenceMemo` (`src/foundation/structures/memo.ts`)
+- cache what is derived from an owner that changes in place (an inference system), once per revision the owner names, every member of a cycle answering a stand-in whichever was asked first (as `Entries`) → `RevisionMemo` (`src/foundation/structures/revision-memo.ts`)
 - compute results once per key, each recording what it read and the notes it made, with cycles answered by a stand-in whichever member was asked first, and taken over by a later revision whose reads answer alike → `Entries`, `EntryTable` (`table`), `input`, `release`, `RevisionOptions` (`src/foundation/structures/entries/index.ts`)
 - compare results item by item, entry by entry, member by member or property by property → `sameItems`, `sameEntries`, `sameMembers`, `sameProperties`, `Equality` (`src/foundation/structures/equality.ts`)
 - push an active item onto a work stack for the duration of a callback and pop in `finally` → `withPushed` (`src/foundation/structures/stack.ts`)
@@ -28,7 +29,7 @@ tags: [reuse, structures, memo, kind-table, invariants]
 ## One-way rules
 
 - Open dispatches over node or instruction kinds use `Handlers` (`src/foundation/structures/kind-table.ts`), never `switch` with `default` (`docs/arch/architecture.md`).
-- Derived caches use `memo` (`src/foundation/structures/memo.ts`) keyed by immutable input; never store a copy or invalidate by hand (`docs/arch/architecture.md`).
+- Derived caches use `memo` (`src/foundation/structures/memo.ts`) keyed by immutable input, or `RevisionMemo` keyed by the revision a mutable owner bumps at every change; never store a copy or invalidate by hand (`docs/arch/architecture.md`).
 - A group is filled in place (`addToGroup`, `Map.groupBy`), never copied to append one item (`[...group, item]`), which makes filling it quadratic; only a persistent update, whose old map keeps its group, copies it.
 - Recursive walks over unbounded values or heap graphs use an explicit stack (`pushAll`, `stronglyConnected`), never the JS call stack.
 - Broken invariant → `unreachable`; invalid host call/text → `Refusal` / `FormatError`; language runtime failure → `Panic` or `Result`.

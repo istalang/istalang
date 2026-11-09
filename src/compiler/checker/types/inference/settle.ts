@@ -37,7 +37,7 @@ import {
   type Related,
   requirementsOf,
   type VariableBounds,
-} from './bounds.ts';
+} from './variable-bounds.ts';
 import type { CallVariables } from './variables.ts';
 
 /** What settling asks of the program for a parameter. */
@@ -48,7 +48,9 @@ export interface Settling {
   readonly defaultOf: (parameter: ParameterKey, settled: Substitution) => Type | undefined;
 }
 
-/** How the variables of no call, or a construct with no type parameters, settle: by their bounds. */
+/**
+ * How the variables of no call, or a construct with no type parameters, settle: by their bounds.
+ */
 export const settlesFreely: Settling = { admits: () => true, defaultOf: () => undefined };
 
 /** What settling reads of an inference. */
@@ -85,8 +87,8 @@ export function settleAll(
   settling: Settling,
 ): Map<ParameterKey, Type> {
   const settled = new Map<ParameterKey, Type>();
-  const mentionsOthers = (type: Type) =>
-    parametersIn(type).some((other) => parameters.includes(other));
+  const inSystem = new Set(parameters);
+  const mentionsOthers = (type: Type) => parametersIn(type).some((other) => inSystem.has(other));
   for (const parameter of parameters) {
     const type = given.get(parameter);
     if (type !== undefined && !mentionsOthers(type)) {
@@ -96,20 +98,20 @@ export function settleAll(
   // What later variables' bounds read: the settled ones, and the error type for one that couldn't
   // be, so no variable is left in what another settles to; it alone stays out of `settled`.
   const closing = new Map(settled);
-  const pending = parameters.filter((parameter) => !settled.has(parameter));
-  while (pending.length > 0) {
-    const [parameter] = pending.splice(nextToSettle(pending, view, given), 1);
-    if (parameter !== undefined) {
-      const taken = given.get(parameter);
-      const type =
-        taken === undefined
-          ? settleOne(parameter, closing, view, settling)
-          : substitute(taken, closing, view.rules);
-      closing.set(parameter, type ?? errorType);
-      if (type !== undefined) {
-        settled.set(parameter, type);
-      }
+  // In order, so ties go to the first.
+  const pending = new Set(parameters.filter((parameter) => !settled.has(parameter)));
+  for (let parameter = nextToSettle(pending, view, given); parameter !== undefined; ) {
+    pending.delete(parameter);
+    const taken = given.get(parameter);
+    const type =
+      taken === undefined
+        ? settleOne(parameter, closing, view, settling)
+        : substitute(taken, closing, view.rules);
+    closing.set(parameter, type ?? errorType);
+    if (type !== undefined) {
+      settled.set(parameter, type);
     }
+    parameter = nextToSettle(pending, view, given);
   }
   return settled;
 }
@@ -121,12 +123,12 @@ export function settleAll(
  * through it thus settles after it, so `outer(empty(), 1)` settles `T` by `1` and then `U` by `T`.
  */
 function nextToSettle(
-  pending: readonly ParameterKey[],
+  pending: ReadonlySet<ParameterKey>,
   view: SettlingView,
   given: Substitution,
-): number {
+): ParameterKey | undefined {
   const isPending = (other: ParameterKey, candidate: ParameterKey) =>
-    other !== candidate && pending.includes(other);
+    other !== candidate && pending.has(other);
   const waitsOn = (candidate: ParameterKey) => {
     const taken = given.get(candidate);
     return taken === undefined ? mentionedBy(view.boundsOf(candidate)) : parametersIn(taken);
@@ -141,8 +143,17 @@ function nextToSettle(
       ((hasOwnBounds(view.boundsOf(candidate)) ||
         !relatives(view.relatedOf(candidate)).some((other) => isPending(other, candidate))) &&
         !ownBoundedBelow(candidate, view).some((other) => isPending(other, candidate))));
-  const index = pending.findIndex(ready);
-  return index >= 0 ? index : Math.max(0, pending.findIndex(closed));
+  return firstOf(pending, ready) ?? firstOf(pending, closed) ?? firstOf(pending, () => true);
+}
+
+/** The first of `items`, in order, that `passes`. */
+function firstOf<Item>(items: Iterable<Item>, passes: (item: Item) => boolean): Item | undefined {
+  for (const item of items) {
+    if (passes(item)) {
+      return item;
+    }
+  }
+  return undefined;
 }
 
 /** Whether `bounds` hold any bound at all. */
@@ -152,8 +163,8 @@ export function hasBounds({ equal, lower, upper }: VariableBounds): boolean {
 
 /**
  * Whether `bounds` hold a bound of their variable's own, which a variable above it waits for it to
- * settle by: any but an item apart's (bounds.ts), which bounds nothing settling reads first, its
- * variable settling from above.
+ * settle by: any but an item apart's (variable-bounds.ts), which bounds nothing settling reads
+ * first, its variable settling from above.
  */
 function hasOwnBounds(bounds: VariableBounds): boolean {
   return hasBounds({ ...bounds, lower: bounds.lower.filter(({ isApart }) => isApart !== true) });
@@ -193,7 +204,8 @@ export function settleOne(
     view.relatedOf(parameter),
     { settled, callOf: view.callOf },
   );
-  // Items apart (bounds.ts) settle on what takes them where something does, judged there after.
+  // Items apart (variable-bounds.ts) settle on what takes them where something does, judged there
+  // after.
   const isTaken = related.equal !== undefined || related.upper.length > 0;
   const bounds = isTaken
     ? { ...related, lower: related.lower.filter(({ isApart }) => isApart !== true) }

@@ -134,6 +134,9 @@ export class ConstraintScope {
     const judged = new Set<PostponedMember>();
     for (;;) {
       const waiting = this.#postponed.filter((member) => !judged.has(member));
+      if (waiting.length === 0) {
+        return;
+      }
       const next =
         this.#readyOf(waiting) ??
         waiting.find((member) => !this.#waitsOn(member, waiting)) ??

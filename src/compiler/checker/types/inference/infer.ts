@@ -41,16 +41,17 @@ import { noSubstitution, type Substitution, substitute } from '../parts/substitu
 import { parametersIn } from '../parts/type-parts.ts';
 import type { LiteralType, LiteralValue, ParameterKey, Type } from '../type/index.ts';
 import { literalOrBase, membersOf, unionOf } from '../unions/unions.ts';
+import { fixingToward } from './fixing-toward.ts';
 import type { Matching, MatchKind, Written } from './matching.ts';
 import { type Settling, type SettlingOf, settlesFreely } from './settle.ts';
 import { CallSystem } from './system.ts';
 import {
   expectationOf,
   fixedIn,
-  fixingToward,
   openIn,
   settlingViewOf,
   tentativeIn,
+  tentativeOf,
   waitsOn,
 } from './system-reading.ts';
 import { CallVariables } from './variables.ts';
@@ -213,7 +214,7 @@ export class Inference {
     if (given !== undefined || variable === undefined) {
       return given;
     }
-    const found = this.#system.tentative(variable);
+    const found = tentativeOf(variable, this.#system.reading);
     return found === undefined ? undefined : this.#variables.restored(found);
   }
 
@@ -306,7 +307,7 @@ export class Inference {
 
   /**
    * Fixes what the placeholders `waiting`, open, wait on, by what bounds it that mentions no
-   * variable (system-reading.ts `fixingToward`); whether anything was.
+   * variable (fixing-toward.ts `fixingToward`); whether anything was.
    */
   fixToward(waiting: readonly Type[], settlingOf: SettlingOf): boolean {
     const variables = waiting.flatMap((type) =>

@@ -109,3 +109,28 @@ describe('a variable refusing a bound', () => {
     expect(bounds.addUpper(above, argument(intType))).toBe(true);
   });
 });
+
+describe('the store as a key', () => {
+  it('is new after each change and after undoing one', () => {
+    const [parameter, bounds] = [variable('T'), store()];
+    const seen = [bounds.revision];
+    const mark = bounds.mark();
+    bounds.addUpper(parameter, argument(intType));
+    seen.push(bounds.revision);
+    bounds.rollback(mark);
+    seen.push(bounds.revision);
+    bounds.admit(parameter, () => true);
+    seen.push(bounds.revision);
+    expect(new Set(seen).size).toBe(seen.length);
+  });
+
+  it('stands while nothing changes', () => {
+    const [parameter, bounds] = [variable('T'), store()];
+    bounds.addUpper(parameter, argument(intType));
+    const before = bounds.revision;
+    bounds.of(parameter);
+    bounds.relatedOf(parameter);
+    bounds.rollback(bounds.mark());
+    expect(bounds.revision).toBe(before);
+  });
+});

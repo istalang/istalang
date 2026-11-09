@@ -1,11 +1,11 @@
 /**
  * What a match a system makes is (system.ts): an argument's, the expected type's or a receiver's,
  * the construct making it, and what its given type was written as. Binding reads it to say where
- * each bound it gives comes from (binding.ts, bounds.ts `Origin`).
+ * each bound it gives comes from (binding.ts, variable-bounds.ts `BoundRole`).
  */
 
 import type { LiteralType } from '../type/index.ts';
-import type { BoundRole } from './bounds.ts';
+import type { BoundRole } from './variable-bounds.ts';
 import type { CallVariables } from './variables.ts';
 
 /** What a match is: an argument's, the expected type's, or a method's receiver's. */
@@ -13,8 +13,8 @@ export type MatchKind = 'argument' | 'expected' | 'receiver';
 
 /**
  * The match being made: what it is, the construct making it, whose own variables it gives what
- * they are given and the others what consumes them (bounds.ts `Origin`), and what its given type
- * was written as, if it reads as more.
+ * they are given and the others what consumes them (variable-bounds.ts `BoundRole`), and what its
+ * given type was written as, if it reads as more.
  */
 export interface Matching {
   readonly kind: MatchKind;
