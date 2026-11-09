@@ -159,9 +159,9 @@ export function openIn(type: Type, reading: SystemReading): readonly ParameterKe
 }
 
 /**
- * What only a default decides of the variables `type` mentions: each one not fixed, bounded by
- * nothing and related to nothing, by the default it settles to (settle.ts rule 5), as `settlingOf`
- * says; nothing a call could choose by until the scope settles.
+ * What only a default decides of the variables `type` reaches (`reachedFrom`): each one not fixed,
+ * bounded by nothing and related to nothing, by the default it settles to (settle.ts rule 5), as
+ * `settlingOf` says; nothing a call could choose by until the scope settles.
  */
 export function defaultsIn(
   type: Type,
@@ -170,10 +170,13 @@ export function defaultsIn(
 ): ReadonlyMap<ParameterKey, Type> {
   const fixed = fixedSubstitution(reading, reading.variables());
   const defaults = new Map<ParameterKey, Type>();
-  for (const variable of openIn(type, reading)) {
+  for (const variable of reachedFrom(type, reading)) {
     const { below, above } = reading.relatedOf(variable);
     const isFree =
-      !hasBounds(reading.boundsOf(variable)) && below.length === 0 && above.length === 0;
+      !hasBounds(reading.boundsOf(variable)) &&
+      below.length === 0 &&
+      above.length === 0 &&
+      fixedOf(variable, reading) === undefined;
     const fallback = isFree ? settlingOf(variable).defaultOf(variable, fixed) : undefined;
     if (fallback !== undefined) {
       defaults.set(variable, fallback);

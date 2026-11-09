@@ -94,9 +94,11 @@ describe('a call that can’t be made', () => {
       'fn pickArr(xs: Array<Int>) -> Int: 1',
       'fn pickArr(xs: Array<String>) -> Int: 2',
     ];
-    expect(reportedAfter(...overloads, 'fn f() -> Int: pickArr(defaultEmpty())')).toEqual(
-      reportedNothing,
-    );
+    for (const argument of ['defaultEmpty()', 'id(defaultEmpty())']) {
+      expect(reportedAfter(...overloads, `fn f() -> Int: pickArr(${argument})`)).toEqual(
+        reportedNothing,
+      );
+    }
     expect(reportedAfter(...overloads, 'fn g() -> Int: pickArr(empty())')).toEqual(
       reportedOnce(checkerDiagnostics.ambiguousCall.code, 'pickArr(empty())'),
     );
