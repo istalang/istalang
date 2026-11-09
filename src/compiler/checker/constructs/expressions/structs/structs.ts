@@ -243,7 +243,15 @@ function builtOnceExpected(
 ): Type {
   const { inference, type } = placeholderOf(context, node);
   const judge = (known: Type | undefined) => builtAs(context, node, shape, known);
-  context.scopes.postpone({ node, inference, type, admits: () => true, judge, standsAlone: true });
+  context.scopes.postpone({
+    node,
+    inference,
+    type,
+    admits: () => true,
+    judge,
+    standsAlone: true,
+    shape,
+  });
   inference.matchShape(type, shape);
   if (expected !== undefined) {
     inference.match(expected, type);

@@ -7,9 +7,12 @@
 // Output, per form and per local def:
 //   a params struct and a ctx struct;
 //   a model struct (one node per path) and its factory;
-//   scope type aliases (what expressions see inside repeats, variants and refs);
 //   a view function building the static view tree, with every expression as a lambda;
-//   for the form, an entry point: async fn <id>Form(params, user, events, views) -> Future<Data>.
+//   for the form, an entry point: async fn <id>Form(params, user, events, views).
+//
+// The view function's signature names its scope; nothing inside it does. The checker infers each
+// view's scope and each lambda's parameters from it, and a nested scope (inside repeats, variants
+// and refs) from the struct its scope function builds.
 
 // ═══════════ The JSON, loosely typed (form-spec.ts has the precise types) ═══════════
 
@@ -555,9 +558,8 @@ function groupLiteral(
 
 // ═══════════ The view ═══════════
 
-/** A scope: its Istalang type name and the variables expressions see in it. */
+/** A scope: the variables expressions see in it. */
 interface Scope {
-  type: string;
   vars: string[];
 }
 /** Where a variable leads in the model, as an Istalang expression reaching that node. */
@@ -568,8 +570,6 @@ interface Access {
 }
 
 class ViewGen {
-  scopes: string[] = []; // type aliases for nested scopes
-  scopeCount = 0;
   catalogs = new Set<string>();
   u: Unit;
   doc: FormDocument;
@@ -587,11 +587,9 @@ class ViewGen {
   }
 
   /** A lambda over the scope. Its parameter pattern destructures the scope, so pasted expressions read bare names. */
-  lam(sc: Scope, body: string, extra: string[] = [], ret?: string): string {
-    const params = [`{${sc.vars.join(', ')}}: ${sc.type}`, ...extra].join(', ');
-    const isAsync = awaits(body);
-    const retAnn = ret ? ` -> ${isAsync ? `Future<${ret}>` : ret}` : '';
-    const head = isAsync ? `async fn(${params})${retAnn}` : `fn(${params})${retAnn}`;
+  lam(sc: Scope, body: string, extra: string[] = []): string {
+    const params = [`{${sc.vars.join(', ')}}`, ...extra].join(', ');
+    const head = `${awaits(body) ? 'async ' : ''}fn(${params})`;
     return body.includes('\n') ? `${head}: {\n    ${indent(body, 4)}\n}` : `${head}: ${body}`;
   }
 
@@ -737,7 +735,7 @@ class ViewGen {
         out.push(`forms.rule(${this.lam(sc, r.check)}, ${this.lam(sc, this.template(r.message))})`);
       } else {
         out.push(
-          `forms.later(\n    ${indent(this.lam(sc, `if ${r.check}: none\nelse: ${this.template(r.message)}`, [], 'String?'), 4)},\n    ${indent(this.lam(sc, this.template(r.pending)), 4)},\n)`,
+          `forms.later(\n    ${indent(this.lam(sc, `if ${r.check}: none\nelse: ${this.template(r.message)}`), 4)},\n    ${indent(this.lam(sc, this.template(r.pending)), 4)},\n)`,
         );
       }
     }
@@ -782,7 +780,7 @@ class ViewGen {
         const children = (n.children ?? []).map((c: AnyNode) =>
           this.view(c, sc, env, root, rowKeys, n.widget),
         );
-        return this.struct(`LayoutView<${sc.type}>`, [
+        return this.struct('LayoutView', [
           ...common(),
           ['widget', this.widget(sc, n.widget, n.ui, pend)],
           ['label', n.label === undefined ? undefined : this.prop(sc, n.label, pend)],
@@ -801,7 +799,7 @@ class ViewGen {
         if (field && local) field += '->node';
         const valueType = this.fieldValueType(n, node);
         const defaultLit = valueType === 'Float' ? litFloat : lit;
-        return this.struct(`new FieldView<${sc.type}, ${valueType}>`, [
+        return this.struct('new FieldView', [
           ...common(),
           ['field', field ?? 'none'],
           ['hide', hidden ? target!.expr : undefined],
@@ -829,12 +827,8 @@ class ViewGen {
         const hidden = isHidden(l);
         const rowVar = `row${rowKeys.length + 1}`;
         const r = `r${rowKeys.length + 1}`;
-        const rowType = `${pascal(this.u.name)}${pascal(this.canonOf(n.path, env).replace(/^data\./u, ''))}Row`;
         // The row's scope: the outer variables plus this repeat's.
-        const inner: Scope = {
-          type: this.newScope(sc, n.as, `${rowType}.Seen`),
-          vars: [...sc.vars, n.as],
-        };
+        const inner: Scope = { vars: [...sc.vars, n.as] };
         const innerEnv = new Map(env).set(n.as, {
           node: l.row!,
           expr: r,
@@ -845,15 +839,12 @@ class ViewGen {
         if (l.row!.k === 'mount' && item.node === 'ref')
           itemView = this.mount(item, inner, innerEnv, root, [...rowKeys, rowVar], n.widget, r);
         else itemView = this.view(item, inner, innerEnv, root, [...rowKeys, rowVar], n.widget);
-        const scoped = this.struct(`ScopedView<${sc.type}, ${inner.type}>`, [
-          [
-            'scope',
-            `fn(sc): ${inner.type}{${sc.vars.map((v) => `${v}: sc.${v}`).join(', ')}, ${n.as}: ${r}.seen()}`,
-          ],
+        const scoped = this.struct('ScopedView', [
+          ['scope', this.innerScope(sc, n.as, `${r}.seen()`)],
           ['view', itemView],
         ]);
         const editable = n.editableCount !== false && n.computed === undefined;
-        return this.struct(`new RepeatView<${sc.type}, ${rowType}>`, [
+        return this.struct('new RepeatView', [
           ...common(),
           ['list', hidden ? `${expr}->node` : expr],
           ['hide', hidden ? expr : undefined],
@@ -889,14 +880,7 @@ class ViewGen {
         const canon = this.canonOf(n.path, env);
         const cases = Object.entries<any>(n.cases).map(([id, c]) => {
           const caseGroup = v.cases.get(id)!;
-          const inner: Scope = {
-            type: this.newScope(
-              sc,
-              n.as,
-              `${pascal(this.u.name)}${pascal(canon.replace(/^data\./u, ''))}Cases[${istaString(id)}].Seen`,
-            ),
-            vars: [...sc.vars, n.as],
-          };
+          const inner: Scope = { vars: [...sc.vars, n.as] };
           const caseExpr = `${vexpr}.cases.${id}`;
           const innerEnv = new Map(env).set(n.as, {
             node: caseGroup,
@@ -904,37 +888,31 @@ class ViewGen {
             canon: `${canon}.${id}`,
           });
           const body = this.view(c.body, inner, innerEnv, root, rowKeys, n.widget);
-          const scoped = this.struct(`ScopedView<${sc.type}, ${inner.type}>`, [
-            [
-              'scope',
-              `fn(sc): ${inner.type}{${sc.vars.map((x) => `${x}: sc.${x}`).join(', ')}, ${n.as}: ${caseExpr}.seen()}`,
-            ],
+          const scoped = this.struct('ScopedView', [
+            ['scope', this.innerScope(sc, n.as, `${caseExpr}.seen()`)],
             ['view', body],
           ]);
-          return `${id}: CaseView<${sc.type}>{label: ${this.prop(sc, c.label, pend)}, body: ${indent(scoped, 4)}}`;
+          return `${id}: CaseView{label: ${this.prop(sc, c.label, pend)}, body: ${indent(scoped, 4)}}`;
         });
-        return this.struct(
-          `VariantView<${sc.type}, ${pascal(this.u.name)}${pascal(canon.replace(/^data\./u, ''))}Cases>`,
+        return this.struct('VariantView', [
+          ...common(),
+          ['variant', vexpr],
+          ['hide', hidden ? expr : undefined],
+          ['widget', this.widget(sc, n.widget, n.ui, pend)],
+          ['label', n.label === undefined ? undefined : this.prop(sc, n.label, pend)],
+          ['checks', n.constraints?.rules ? this.list(this.checks(sc, n, 'rules')) : undefined],
+          ['default', n.default === undefined ? undefined : this.prop(sc, n.default, pend)],
           [
-            ...common(),
-            ['variant', vexpr],
-            ['hide', hidden ? expr : undefined],
-            ['widget', this.widget(sc, n.widget, n.ui, pend)],
-            ['label', n.label === undefined ? undefined : this.prop(sc, n.label, pend)],
-            ['checks', n.constraints?.rules ? this.list(this.checks(sc, n, 'rules')) : undefined],
-            ['default', n.default === undefined ? undefined : this.prop(sc, n.default, pend)],
-            [
-              'tagValue',
-              n.computed === undefined ? undefined : this.prop(sc, { expr: n.computed }, pend),
-            ],
-            ['cases', `struct{\n    ${cases.map((c) => indent(c, 4)).join(',\n    ')},\n}`],
+            'tagValue',
+            n.computed === undefined ? undefined : this.prop(sc, { expr: n.computed }, pend),
           ],
-        );
+          ['cases', `struct{\n    ${cases.map((c) => indent(c, 4)).join(',\n    ')},\n}`],
+        ]);
       }
       case 'ref': {
         const { node, expr } = this.access(n.path, env, root);
         if (n.schema) {
-          return this.struct(`new DynamicView<${sc.type}>`, [
+          return this.struct('new DynamicView', [
             ...common(),
             ['value', isHidden(node) ? `${expr}->node` : expr],
             ['hide', isHidden(node) ? expr : undefined],
@@ -984,7 +962,6 @@ class ViewGen {
     }
     const paramsType = ref.startsWith('#') ? `${pascal(ref.slice(1))}Params` : `${prefix}.Params`;
     const ctxType = ref.startsWith('#') ? `${pascal(ref.slice(1))}Ctx` : `${prefix}.Ctx`;
-    const scopeType = ref.startsWith('#') ? `${pascal(ref.slice(1))}Scope` : `${prefix}.Scope`;
     const params = Object.entries<any>(n.params ?? {})
       .map(([k, v]) => `${k}: ${isExpr(v) ? `(${v.expr})` : lit(v)}`)
       .join(', ');
@@ -995,7 +972,7 @@ class ViewGen {
       sc,
       `Scope{data: ${modelExpr}.seen(), ctx: ${ctxType}{params: ${paramsVal}, user: ctx.user}}`,
     );
-    return this.struct(`ScopedView<${sc.type}, ${scopeType}>`, [
+    return this.struct('ScopedView', [
       ['key', key],
       ['parent', this.parent(sc, parentWidget, n.ui, pend)],
       ['when', n.when ? this.prop(sc, { expr: n.when }, pend) : undefined],
@@ -1058,23 +1035,9 @@ class ViewGen {
     return [base, ...segs.slice(1)].join('.');
   }
 
-  newScope(sc: Scope, name: string, type: string): string {
-    const t = `${pascal(this.u.name)}Scope${++this.scopeCount}`;
-    const outer = sc.vars.map((v) => `${v}: ${this.varType(sc, v)}`);
-    this.scopes.push(`type ${t} = { ${[...outer, `${name}: ${type}`].join(', ')} }`);
-    this.scopeTypes.set(
-      t,
-      new Map([...sc.vars.map((v) => [v, this.varType(sc, v)] as [string, string]), [name, type]]),
-    );
-    return t;
-  }
-  scopeTypes = new Map<string, Map<string, string>>();
-  varType(sc: Scope, v: string): string {
-    const known = this.scopeTypes.get(sc.type);
-    if (known?.has(v)) return known.get(v)!;
-    if (v === 'data') return `Group<${pascal(this.u.name)}Model>.Seen`;
-    if (v === 'ctx') return `${pascal(this.u.name)}Ctx`;
-    throw new Error(`no type for ${v}`);
+  /** A ScopedView's scope function: the outer scope's variables, plus `name` seeing `seen`. */
+  innerScope(sc: Scope, name: string, seen: string): string {
+    return `fn(sc): struct{${[...sc.vars.map((v) => `${v}: sc.${v}`), `${name}: ${seen}`].join(', ')}}`;
   }
 }
 
@@ -1096,7 +1059,7 @@ export function generate(doc: FormDocument, sourceName: string): string {
   const header = `# ${doc.id}.gen.ista — generated from ${sourceName} ${doc.version}. Do not edit.
 #
 # The generated part of a form: per form and per local def, a model (one node per path), its
-# factory, its scope types, and a view whose expressions are lambdas. forms.run does the rest.
+# factory, and a view whose expressions are lambdas. forms.run does the rest.
 # Expressions are pasted from the schema verbatim.`;
   out.push(header, '');
 
@@ -1147,9 +1110,6 @@ export function generate(doc: FormDocument, sourceName: string): string {
     out.push(`struct ${P}Ctx:\n    params: ${P}Params\n    user: User`, '');
     out.push(`struct ${P}Model:\n${modelFields.join('\n')}`, '');
     out.push(...aliases.map((a) => a), '');
-    out.push('# Computed, not declared: what submit returns, and what expressions see.');
-    out.push(`type ${P}Data = Group<${P}Model>.Data`);
-    out.push(`type ${P}Scope = Scope<Group<${P}Model>.Seen, ${P}Ctx>`, '');
 
     out.push(
       `fn ${c}Model() -> Group<${P}Model>:\n    Group{fields: ${P}Model{\n${[...u.model.fields].map(([k, f]) => `        ${k}: ${factory(u, f, `data.${k}`, [])},`).join('\n')}\n    }}`,
@@ -1158,19 +1118,13 @@ export function generate(doc: FormDocument, sourceName: string): string {
 
     const g = new ViewGen(u, doc);
     const root = 'm';
-    const body = g.view(
-      u.def.root,
-      { type: `${P}Scope`, vars: ['data', 'ctx'] },
-      new Map(),
-      root,
-      [],
-    );
+    const body = g.view(u.def.root, { vars: ['data', 'ctx'] }, new Map(), root, []);
     g.catalogs.forEach((x) => catalogs.add(x));
-    if (g.scopes.length) out.push(...g.scopes, '');
+    const view = `any View<Scope<Group<${P}Model>.Seen, ${P}Ctx>>`;
     const sig =
       u === main
-        ? `fn ${c}View(m: ${P}Model) -> any View<${P}Scope>:`
-        : `fn ${c}View(m: ${P}Model, k: String) -> any View<${P}Scope>:`;
+        ? `fn ${c}View(m: ${P}Model) -> ${view}:`
+        : `fn ${c}View(m: ${P}Model, k: String) -> ${view}:`;
     out.push(`${sig}\n    ${indent(body, 4)}`, '');
   }
 
@@ -1178,14 +1132,14 @@ export function generate(doc: FormDocument, sourceName: string): string {
     c = camel(doc.id);
   out.push('# ═══════════ The entry point a workflow awaits ═══════════', '');
   out.push(
-    `async fn ${c}Form(params: ${P}Params, user: User,\n        events: Inbox<FormEvent>, views: Inbox<Node>) -> Future<${P}Data>:\n    const m = ${c}Model()\n    await forms.run(m, ${c}View(m.fields), ${P}Ctx{params, user}, translations, events, views)`,
+    `async fn ${c}Form(params: ${P}Params, user: User,\n        events: Inbox<FormEvent>, views: Inbox<Node>):\n    const m = ${c}Model()\n    await forms.run(m, ${c}View(m.fields), ${P}Ctx{params, user}, translations, events, views)`,
     '',
   );
 
   if (catalogs.size) {
     const lines = [...catalogs].map(
       (r) =>
-        `import * as ${catalogAlias(r)} from '${catalogPath(r)}'     # exports Model, Params, Ctx, Scope, model(), view()`,
+        `import * as ${catalogAlias(r)} from '${catalogPath(r)}'     # exports Model, Params, Ctx, model(), view()`,
     );
     out.splice(catalogImportsAt, 0, lines.join('\n'));
   }

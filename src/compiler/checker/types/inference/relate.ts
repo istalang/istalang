@@ -31,10 +31,11 @@ import { isAssignable, sameType } from '../identity/identity.ts';
 import type { UnfoldingPairs } from '../identity/unfolding-pairs.ts';
 import { constraintOn } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
+import { isComputed } from '../type/computed-types.ts';
 import type { AnyType, ParameterKey, Type, UnionType } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
 import { unionOfNormalized } from '../unions/unions.ts';
-import { givesNothing, isOpaque } from './equal.ts';
+import { givesNothing } from './equal.ts';
 
 /** What relating types asks of the inference it serves. */
 export interface Relating {
@@ -187,7 +188,7 @@ function relatedByParts(expected: Type, found: Type, relating: Relating): boolea
   if (found.kind === 'union') {
     return found.members.every((member) => relating.constrain(member, expected));
   }
-  if (isOpaque(expected)) {
+  if (isComputed(expected)) {
     return mentionsVariable(expected, relating) || sameType(expected, found);
   }
   if (expected.kind === 'any') {

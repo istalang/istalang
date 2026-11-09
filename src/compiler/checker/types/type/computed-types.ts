@@ -115,6 +115,14 @@ export function isComputed(type: Type): type is ComputedType {
 }
 
 /**
+ * What decides the type `type` reduces to: a mapped type's keys, its value type only filling the
+ * fields they give; any other computed type whole.
+ */
+export function formDecidedBy(type: ComputedType): Type {
+  return type.kind === 'mapped' ? type.keys : type;
+}
+
+/**
  * Whether `type` is known only per instantiation: a type parameter, or computed from one (§3.5).
  */
 export function isOpaque(type: Type): type is TypeParameterType | ComputedType {

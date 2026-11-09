@@ -48,6 +48,11 @@ export interface PostponedMember {
    * what siblings beside it hold never decides it.
    */
   readonly standsAlone?: boolean | undefined;
+  /**
+   * Its shape, where judging it builds what is expected of it from parts checked already, as a
+   * `struct{…}`'s fields: judging relates them to what it builds, so it bounds what they reach.
+   */
+  readonly shape?: Type | undefined;
   /** Checks it where `expected` is what is known of what is expected of it: its type then. */
   readonly judge: (expected: Type | undefined) => Type;
 }

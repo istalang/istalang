@@ -21,6 +21,7 @@ import { sameType } from '../identity/identity.ts';
 import type { UnfoldingPairs } from '../identity/unfolding-pairs.ts';
 import { typeChildren } from '../parts/type-children.ts';
 import { parametersIn } from '../parts/type-parts.ts';
+import { isComputed } from '../type/computed-types.ts';
 import { functionFits } from '../type/function-types.ts';
 import type { AnonymousStructType, AnyType, ParameterKey, Type, UnionType } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
@@ -66,7 +67,7 @@ export function equalTypes(declared: Type, given: Type, equating: Equating): boo
   if (given.kind === 'parameter' && equating.isUnknown(given.declaration)) {
     return equating.bind(given.declaration, declared);
   }
-  if (isOpaque(declared)) {
+  if (isComputed(declared)) {
     return mentionsUnknown(declared) || sameType(declared, given);
   }
   return declared.kind === 'union'
@@ -170,15 +171,4 @@ function sameFieldNames(first: AnonymousStructType, second: AnonymousStructType)
  */
 export function givesNothing(declared: Type): boolean {
   return declared.alias?.kind === 'associated';
-}
-
-/** Whether `type` stands for something known only once its parameters are (§3.5, §3.17). */
-export function isOpaque(type: Type): boolean {
-  return (
-    type.kind === 'associated' ||
-    type.kind === 'field' ||
-    type.kind === 'keys' ||
-    type.kind === 'mapped' ||
-    type.kind === 'match'
-  );
 }

@@ -1,7 +1,7 @@
 # forms.ista — the generic form runtime.
 #
 # Written once; every form uses it. A form contributes only its generated module (a model, its
-# factory, scope types and a view; see order.gen.ista). This module does everything else: the loop,
+# factory and a view; see order.gen.ista). This module does everything else: the loop,
 # drawing, validation, routing events, tasks for awaited expressions, and reading the result.
 
 import Inbox from 'inbox'

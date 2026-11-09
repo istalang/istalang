@@ -78,7 +78,11 @@ Operators stay boundaries, as today.
   it (rule 3, `commonType`); their fits, and `?`'s propagation into an open result, are its
   completion (B38).
 - One **judging loop**, the scope's, checks postponed members as they become ready, ready ones
-  first, then in order; one never ready is checked with what is known. A judged member's type
+  first, then in order; one never ready is checked with what is known. A member is ready once what
+  it waits on (a function's inputs, a computed type's form) shares no open variable, reached
+  through bounds from both sides, with another waiting member's gift: a function's results, a
+  held-back struct literal's fields, any other's own placeholder. Where none is ready, one waiting
+  on no other goes before the first to join. A judged member's type
   bounds its placeholder.
 
 ## 4. Variables

@@ -14,17 +14,14 @@ struct Ctx:
 struct Model:
   phone: Field<String>
 
-type Data = Group<Model>.Data
-type Scope = forms.Scope<Group<Model>.Seen, Ctx>
-
 fn model() -> Group<Model>: Group{fields: Model{phone: new Field<String>{}}}
 
-fn view(m: Model, k: String) -> any View<Scope>: LayoutView<Scope>{
+fn view(m: Model, k: String) -> any View<forms.Scope<Group<Model>.Seen, Ctx>>: LayoutView{
   key: `${k}/n1`
   parent: none
   widget: Prop.Fixed(LayoutWidget.Section(title: none, description: none, collapsible: none, labels: none))
   children: [
-    new FieldView<Scope, String>{
+    new FieldView{
       key: `${k}/n2`
       parent: none
       field: m.phone

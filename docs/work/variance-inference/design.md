@@ -265,7 +265,13 @@ argument key owners and expected types. One settle-then-record pass writes them.
 
 `none` is not postponed: its type is `None`, a lower bound. A spread argument passes through
 inference and fitting like any other. Postponed arguments are checked once the variables in their
-parameter's *inputs* are settled. A lambda's body is checked with its result's upper bound, if it
+parameter's *inputs* are settled, and no other postponed argument still gives them: a lambda gives
+what its result bounds, a struct literal held back for what it builds gives what its fields
+reach, since building it relates them to what it builds, and any other gives itself. One expected
+as a computed type is checked once what decides that type's form (a mapped type's keys) is
+settled, so it reduces first. "Gives" is read through bounds both ways: a bound `T >= Box<U>` is
+stored on `T`, so an input `T` and a gift `U` meet only reaching from both. Where none is ready,
+one waiting on no other goes first, so source order never decides what a sibling still gives. A lambda's body is checked with its result's upper bound, if it
 has one, as its expected type (`vs.map(fn x: Ok(x))` gives `Ok` its `E`). A lambda's or
 function value's result then adds lower bounds. This repeats until every postponed argument is
 checked; then the rest is settled.

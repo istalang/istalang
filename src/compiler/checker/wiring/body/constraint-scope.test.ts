@@ -10,6 +10,7 @@ import {
   reportedNothing,
   reportedOnce,
 } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
+import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
 import { diagnosedAt } from '../../../compile.test-kit.ts';
 import { idOf } from '../../../program/program.test-kit.ts';
@@ -200,6 +201,93 @@ describe('a placeholder', () => {
         'fn g() -> Int: chain(fn x: x + 1, id(fn y: y * 2), 3)',
       ),
     ).toEqual(reportedNothing);
+  });
+
+  it('waits on a held-back struct literal whose fields reach its inputs', () => {
+    expect(
+      reportedAfter(
+        'struct Case<Sc> { body: fn(Sc) -> Int }',
+        'shared struct Cell<C> { c: C }',
+        'struct Pick<Sc, C is struct {}> { sel: Cell<C>, cases: { [K in keyof C]: Case<Sc> } }',
+        'type S = { a: Int }',
+        'fn f(c: Cell<{ x: Int }>) -> Pick<S, { x: Int }>:',
+        '  Pick{sel: c, cases: struct{x: Case{body: fn(sc): sc.a}}}',
+      ),
+    ).toEqual(reportedNothing);
+  });
+
+  it('waits on what decides the form of a computed type expected of it', () => {
+    expect(
+      reportedAfter(
+        'struct Case<Sc> { body: fn(Sc) -> Int }',
+        'struct Lam<Sc, C is struct {}> { sel: C, cases: { [K in keyof C]: fn(Sc) -> Int } }',
+        'struct Pick<Sc, C is struct {}> { sel: C, cases: { [K in keyof C]: Case<Sc> } }',
+        'type S = { a: Int }',
+        'fn f() -> Lam<S, { x: Int }>: Lam{sel: struct{x: 1}, cases: struct{x: fn(sc): sc.a}}',
+        'fn g() -> Pick<S, { x: Int }>:',
+        '  Pick{sel: struct{x: 1}, cases: struct{x: Case{body: fn(sc): sc.a}}}',
+      ),
+    ).toEqual(reportedNothing);
+  });
+
+  it('waits on what another gives through a bound on what it takes', () => {
+    expect(
+      reportedAfter(
+        'fn apply<T, R>(f: fn(T) -> R, x: T) -> R: f(x)',
+        'fn mapBox<A, U>(b: Box<A>, f: fn(A) -> U) -> Box<U>: Box{value: f(b.value)}',
+        'fn g() -> Int: apply(fn(b): b.value, mapBox(Box{value: 1}, fn(a): a))',
+        'trait View<Sc>:',
+        '  fn show(self: Self, sc: Sc) -> Int',
+        'struct Leaf<Sc> { f: fn(Sc) -> Int }',
+        'fn show<Sc>(self: Leaf<Sc>, sc: Sc) -> Int: self.f(sc)',
+        'struct Scoped<Sc, Sc2> { scope: fn(Sc) -> Sc2, view: any View<{ inner: Sc2 }> }',
+        'fn run<Sc2>(v: Scoped<{ a: Int }, Sc2>) -> Int: 0',
+        'fn h() -> Int: run(Scoped{view: Leaf{f: fn(x): x.inner.b}, scope: fn(sc): struct{a: sc.a, b: 1}})',
+      ),
+    ).toEqual(reportedNothing);
+  });
+
+  it('judges first, where none is ready, one waiting on no other', () => {
+    const pick = 'Pick{cases: struct{x: Case{body: fn(sc): sc.a}}, sel: struct{x: fn(n: Int): n}}';
+    expect(
+      reportedAfter(
+        'struct Case<Sc> { body: fn(Sc) -> Int }',
+        'struct Pick<Sc, C is struct {}> { sel: C, cases: { [K in keyof C]: Case<Sc> } }',
+        'type S = { a: Int }',
+        'fn runPick<C is struct {}>(p: Pick<S, C>) -> Int: 0',
+        `fn f() -> Pick<S, { x: fn(Int) -> Int }>: ${pick}`,
+        `fn g() -> Int: runPick(${pick})`,
+      ),
+    ).toEqual(reportedNothing);
+  });
+
+  it('compiles and runs a scoped view inside a mapped case with no type arguments written', () => {
+    const decls = [
+      'trait View<Sc> { fn run(self: Self, sc: Sc) -> Int }',
+      'struct Leaf<Sc> { body: fn(Sc) -> Int }',
+      'fn run<Sc>(self: Leaf<Sc>, sc: Sc) -> Int: (self.body)(sc)',
+      'struct Scoped<Sc, Sc2> { scope: fn(Sc) -> Sc2, view: any View<Sc2> }',
+      'fn run<Sc, Sc2>(self: Scoped<Sc, Sc2>, sc: Sc) -> Int: self.view.run((self.scope)(sc))',
+      'struct CaseView<Sc> { label: fn(Sc) -> Int, body: any View<Sc> }',
+      'struct VariantView<Sc, C is struct {}> { sel: C, cases: { [K in keyof C]: CaseView<Sc> } }',
+      'fn run<Sc, C is struct {}>(self: VariantView<Sc, C>, sc: Sc) -> Int: 0',
+      'fn pickX<Sc>(v: VariantView<Sc, { x: Int }>, sc: Sc) -> Int:',
+      '  v.cases.x.label(sc) + v.cases.x.body.run(sc)',
+      'fn makeView() -> VariantView<{ a: Int }, { x: Int }>:',
+      '  VariantView{',
+      '    sel: struct{x: 1}',
+      '    cases: struct{',
+      '      x: CaseView{',
+      '        label: fn({a}): a * 10',
+      '        body: Scoped{',
+      '          scope: fn(sc): struct{a: sc.a, bonus: sc.a + 5}',
+      '          view: Leaf{body: fn({a, bonus}): a + bonus}',
+      '        }',
+      '      }',
+      '    }',
+      '  }',
+    ].join('\n');
+    expect(mainGives('Int', 'pickX(makeView(), struct{a: 3})', decls)).toBe(41);
   });
 
   it('refuses a candidate it can be no value of, so overloads choose by it', () => {

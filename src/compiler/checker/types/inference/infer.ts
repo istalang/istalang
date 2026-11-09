@@ -44,7 +44,15 @@ import { literalOrBase, membersOf, unionOf } from '../unions/unions.ts';
 import type { Matching, MatchKind, Written } from './matching.ts';
 import { type Settling, type SettlingOf, settlesFreely } from './settle.ts';
 import { CallSystem } from './system.ts';
-import { expectationOf, fixedIn, fixingToward, openIn, settlingViewOf } from './system-reading.ts';
+import {
+  expectationOf,
+  fixedIn,
+  fixingToward,
+  openIn,
+  settlingViewOf,
+  tentativeIn,
+  waitsOn,
+} from './system-reading.ts';
 import { CallVariables } from './variables.ts';
 
 /** Where an inference stands: its call's site, and the system it infers in. */
@@ -276,31 +284,9 @@ export class Inference {
     }
   }
 
-  /**
-   * `type`, open, with each of the system's variables what its bounds tell so far, and so on for
-   * those that mentions, as `struct{x: 1}`'s shape mentions its fresh literal's; undefined where
-   * one's tell nothing, or tell only of themselves.
-   */
+  /** `type`, open, with what the system's variables' bounds tell so far (system-reading.ts). */
   tentativeIn(type: Type): Type | undefined {
-    return this.#tentativeIn(type, new Set());
-  }
-
-  #tentativeIn(type: Type, seen: ReadonlySet<ParameterKey>): Type | undefined {
-    const found = new Map<ParameterKey, Type>();
-    for (const variable of parametersIn(type).filter((key) =>
-      this.#system.mentionsVariable({ kind: 'parameter', declaration: key }),
-    )) {
-      const tentative = seen.has(variable) ? undefined : this.#system.tentative(variable);
-      const told =
-        tentative === undefined
-          ? undefined
-          : this.#tentativeIn(tentative, new Set(seen).add(variable));
-      if (told === undefined) {
-        return undefined;
-      }
-      found.set(variable, told);
-    }
-    return found.size === 0 ? type : substitute(type, found, this.#fitting);
+    return tentativeIn(type, this.#system.reading);
   }
 
   /** What is expected so far of `type`, open, when it is one of the system's variables. */
@@ -310,9 +296,12 @@ export class Inference {
       : undefined;
   }
 
-  /** The variables of the system `type`, open, mentions that aren't taken as found yet. */
-  openIn(type: Type): readonly ParameterKey[] {
-    return openIn(type, this.#system.reading);
+  /**
+   * Whether checking a value of `inputs`, open, waits on what judging values of `given` bounds
+   * (system-reading.ts `waitsOn`).
+   */
+  waitsOn(inputs: Type, given: readonly Type[]): boolean {
+    return waitsOn(inputs, given, this.#system.reading);
   }
 
   /**

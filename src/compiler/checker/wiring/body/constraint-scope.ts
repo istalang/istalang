@@ -12,10 +12,12 @@
  * - An expression that needs what is expected of it to be checked (a lambda, a function or variant
  *   named as a value) is a placeholder member, a variable standing for its type (i2-scope.md §3).
  *   What it can't be a value of, it refuses as a bound, so a candidate a call probes that gives it
- *   one fails. The scope checks it once what is expected of it is known enough: its head, and for a
- *   function its inputs, which no other placeholder still gives, settled then; each ready one
- *   first, then in the order they joined, one never ready with what is known. What it then is, its
- *   placeholder is taken as.
+ *   one fails. The scope checks it once what is expected of it is known enough: its head; for a
+ *   function its inputs, and for a computed type what decides its form (a mapped type's keys), none
+ *   of which another placeholder still gives (a function its results, a struct literal held back
+ *   what its fields reach, any other itself), settled then. Each ready one goes first; where none
+ *   is, one waiting on no other, then the first to join. What it then is, its placeholder is taken
+ *   as.
  * - Settling judges every placeholder, those joining while that runs included, then solves every
  *   variable together, writes each record that waited, solved, and completes each member in the
  *   order they joined, what it was given before it. One pass writes every record.
@@ -23,9 +25,10 @@
 
 import type { Expression } from '../../../syntax/expressions/index.ts';
 import type { PostponedMember, ScopeMember } from '../../contexts/scopes.ts';
-import { expectedFunction } from '../../types/fitting/expected.ts';
+import { builtFrom, expectedFunction } from '../../types/fitting/expected.ts';
 import { Inference } from '../../types/inference/infer.ts';
 import type { SettlingOf } from '../../types/inference/settle.ts';
+import { formDecidedBy, isComputed } from '../../types/type/computed-types.ts';
 import type { Type } from '../../types/type/index.ts';
 import { membersOf } from '../../types/unions/unions.ts';
 
@@ -123,14 +126,18 @@ export class ConstraintScope {
   }
 
   /**
-   * Judges every placeholder, those joining while it runs included: each ready one first, then in
-   * the order they joined.
+   * Judges every placeholder, those joining while it runs included: each ready one first; where
+   * none is, one waiting on no other, so what it gives reaches those that do; else the first to
+   * join.
    */
   #judgeAll(): void {
     const judged = new Set<PostponedMember>();
     for (;;) {
       const waiting = this.#postponed.filter((member) => !judged.has(member));
-      const next = this.#readyOf(waiting) ?? waiting[0];
+      const next =
+        this.#readyOf(waiting) ??
+        waiting.find((member) => !this.#waitsOn(member, waiting)) ??
+        waiting[0];
       if (next === undefined) {
         return;
       }
@@ -159,9 +166,9 @@ export class ConstraintScope {
   #judge(member: PostponedMember): void {
     const root = this.#root;
     const expectation = this.#expectationOf(member);
-    const shape = expectedFunction(expectation);
-    if (root !== undefined && shape !== undefined) {
-      root.fixIn(inputsOf(shape), this.#settlingOf());
+    const waited = waitedOnBy(expectation);
+    if (root !== undefined && waited !== undefined) {
+      root.fixIn(waited, this.#settlingOf());
     }
     const expected =
       expectation === undefined || root === undefined ? undefined : root.fixedIn(expectation);
@@ -175,29 +182,39 @@ export class ConstraintScope {
   }
 
   /**
-   * Whether enough is known of what `member` is expected to be: its head; and for a function, its
-   * inputs, none of which is what another of `waiting` gives.
+   * Whether enough is known of what `member` is expected to be: its head; and what it waits on
+   * (`waitedOnBy`), none of which is what another of `waiting` gives (`#waitsOn`).
    */
   #isReady(member: PostponedMember, waiting: readonly PostponedMember[]): boolean {
     const root = this.#root;
     const expectation = this.#expectationOf(member);
-    if (
-      root === undefined ||
-      expectation === undefined ||
-      (expectation.kind === 'parameter' && root.mentionsVariables(expectation))
-    ) {
+    const headKnown =
+      root !== undefined &&
+      expectation !== undefined &&
+      !(expectation.kind === 'parameter' && root.mentionsVariables(expectation));
+    return headKnown && !this.#waitsOn(member, waiting);
+  }
+
+  /** Whether what `member` waits on (`waitedOnBy`) is what judging another of `waiting` gives. */
+  #waitsOn(member: PostponedMember, waiting: readonly PostponedMember[]): boolean {
+    const waited = waitedOnBy(this.#expectationOf(member));
+    if (this.#root === undefined || waited === undefined) {
       return false;
     }
-    const shape = expectedFunction(expectation);
-    if (shape === undefined) {
-      return true;
+    const given = waiting.flatMap((other) => (other === member ? [] : [this.#givenBy(other)]));
+    return this.#root.waitsOn(waited, given);
+  }
+
+  /**
+   * What judging `other` bounds: its shape, which building relates to what it builds; as a
+   * function, its results, its inputs fixed before; else its placeholder, which it then is.
+   */
+  #givenBy(other: PostponedMember): Type {
+    if (other.shape !== undefined) {
+      return other.shape;
     }
-    const inputs = root.openIn(inputsOf(shape));
-    return waiting.every((other) => {
-      const given = other === member ? undefined : this.#expectationOf(other);
-      const outputs = given === undefined ? [] : root.openIn(outputsOf(given));
-      return !inputs.some((input) => outputs.includes(input));
-    });
+    const shape = expectedFunction(this.#expectationOf(other));
+    return shape === undefined ? other.type : shape.result;
   }
 
   /**
@@ -220,6 +237,19 @@ export class ConstraintScope {
   }
 }
 
+/**
+ * What must be fixed before a value can be checked against `expectation`: a function's inputs, and
+ * what decides the type a computed one reduces to (`formDecidedBy`); undefined for any other.
+ */
+function waitedOnBy(expectation: Type | undefined): Type | undefined {
+  const shape = expectedFunction(expectation);
+  if (shape !== undefined) {
+    return inputsOf(shape);
+  }
+  const target = builtFrom(expectation);
+  return target !== undefined && isComputed(target) ? formDecidedBy(target) : undefined;
+}
+
 /** What a function of `shape` takes: its parameters' types and its pack, as one tuple. */
 function inputsOf(shape: NonNullable<ReturnType<typeof expectedFunction>>): Type {
   return {
@@ -229,10 +259,4 @@ function inputsOf(shape: NonNullable<ReturnType<typeof expectedFunction>>): Type
       ...(shape.pack === undefined ? [] : [shape.pack]),
     ],
   };
-}
-
-/** What a value of `type` gives: its functions' results, as one tuple. */
-function outputsOf(type: Type): Type {
-  const shape = expectedFunction(type);
-  return shape === undefined ? { kind: 'tuple', elements: [] } : shape.result;
 }
