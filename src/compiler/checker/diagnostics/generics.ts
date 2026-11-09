@@ -1,6 +1,7 @@
 /**
- * The checker's diagnostics of generics, codes 5080–5199 (§3.1, §3.5, §3.7, §3.9–§3.11, §3.17): a
- * part of the checker's one catalog (index.ts), a block of codes per family below. How messages
+ * The checker's diagnostics of generics, codes 5080–5199 and 5380–5389 (§3.1, §3.5, §3.7,
+ * §3.9–§3.11, §3.17): a part of the checker's one catalog (index.ts), a block of codes per family
+ * below. How messages
  * spell a parameter is here too: messages of several parts name parameters, so the spelling is one.
  */
 
@@ -237,6 +238,14 @@ export const genericTemplates = {
     code: 5130,
     message: (parameter: string, union: string, found: string) =>
       `'${parameter}' stands for one member of ${union}, and a value of ${found} may be several; narrow it first, with a literal or a pattern (§3.5).`,
+  },
+
+  // Choosing in a constraint scope, 5380–5389 (§3.5): a call chosen only once what it is given
+  // settled, which what the scope settled read as no call.
+  undecidedCall: {
+    code: 5380,
+    message: (name: string) =>
+      `Which '${name}' this calls can't be chosen while what it is given is still inferred; write the types it is given (§3.5).`,
   },
 
   // Trait objects, 5150–5159 (§3.10): `any` types, the traits they take, and values converted

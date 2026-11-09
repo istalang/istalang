@@ -344,7 +344,8 @@ element.
 - Records and the reports of a call no candidate takes wait for the scope: a node recorded with
   an open type is recorded again solved, and such a call, its arguments open in the scope beyond
   placeholders, is chosen again with its arguments settled, so its report reads them as they
-  settled. What only it would have bounded settles to the error type, reporting nothing more.
+  settled. One a candidate takes then is reported too (5380): the scope settled reading it as no
+  call. What only it would have bounded settles to the error type, reporting nothing more.
 - A variable settles after the ones below it with bounds of their own, and to what they settled to
   where its own bounds don't join; one bounded only through another (`U <: T`) settles after it,
   one given an open type (a placeholder judged) after what that type mentions, and one that can't

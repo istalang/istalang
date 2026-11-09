@@ -162,7 +162,8 @@ function applicationOf(
  * A call no candidate takes, whose arguments' types are still open in its constraint scope: what
  * they would have bounded gets the error type, and once the scope is solved the call is chosen
  * again among its candidates with their types solved, which reports why none takes them as their
- * own types read.
+ * own types read. One a candidate takes then is reported all the same: what the scope settled read
+ * it as no call, its value the error type, so it can't be made as it settled (5380).
  */
 function reportUnmade(context: BodyContext, request: CallRequest): void {
   context.scopes.abandon(request.arguments.map(({ type }) => type));
@@ -171,6 +172,8 @@ function reportUnmade(context: BodyContext, request: CallRequest): void {
     const applying = applicationOf(context, settled, undefined);
     if (chooseCall(context, applying) === undefined) {
       expectWrittenArguments(context, applying);
+    } else {
+      context.report(checkerDiagnostics.undecidedCall(request.site.span, request.name));
     }
   });
 }
