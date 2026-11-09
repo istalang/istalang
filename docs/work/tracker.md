@@ -25,12 +25,12 @@ tags: [tracker]
 | Completion (`docs/work/completion/plan.md`) | done (264 of 266 scenarios; CO-02, EX-04 in F14) |
 | Proposals 1–4 (`docs/work/proposals/plan.md`) | done |
 | Proposal 5 (`docs/proposals/5-indented-values.md`; equi-recursive identity `docs/work/proposals/p5-equi-recursive-identity.md`) | done |
-| Identity, variance and inference (`docs/work/variance-inference/plan.md`; closes F25) | six phases landed; corrections C1–C3 planned |
+| Identity, variance and inference (`docs/work/variance-inference/plan.md`; closed F25) | done |
 | M8 Packages | planned |
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F29, P38, Q48, B50. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F29, P39, Q48, B50. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -60,7 +60,6 @@ Language or toolchain features deferred by decision, not defects.
 | F20 | A union converts into a wider union's `any` member only as a whole: `Email \| Int` doesn't go into `any Named \| Int` member by member. | small | none; can be done now | p3-unions 2026-11-05 |
 | F22 | A key not yet known over a struct whose fields are known (a field loop's or mapped type's key over a known struct, §3.1) reads a field type with only the associated types and traits every candidate field shares; reading it per candidate (the field type a narrowed key names) would accept more. | small | none; can be done now | p4-computed 2026-11-05 |
 | F24 | Field completion inside a destructuring `const` pattern offers nothing: completion has no step for a struct pattern's field names (`const struct { na } = s` with the cursor after `na`). | small | none; can be done now | p5 QA 2026-11-06 |
-| F25 | A generic call reads its expected type only after its function-value and lambda arguments, so they can't take a type argument from it: `const xs: Array<Result<Int, String>> = [1].map(Result.Ok)` fixes `E` as `Error` and fails with 5001, as do `fn x: Result.Ok(x)` and `fn x: Ok(x)` (5107). Decided 2026-11-08: replaced by constraint-based inference with variance (`docs/work/variance-inference/`). | big | the variance-inference plan | P7 batch 3 2026-11-07 |
 | F27 | View handles, so `gives`/`takes` apply to handles: a converted handle is a view converting each value as it leaves or enters, `==` comparing the underlying object. Candidates: `Future<gives T, K>`, `Instance<gives T>`, `WeakRef<gives T>`, proposal 8's `Resolver<takes T, K>`. Until then a marker on a handle is an error. | big | variance-inference V1 | variance-inference design 2026-11-08 |
 | F28 | Proposal 8's function-type qualifiers as subtyping in the constraint system (`sendable fn` ≤ `fn` ≤ `ephemeral fn`, `readonly fn` ≤ `fn`, the async fit as `fn(A) -> R` ≤ `fn(A) -> Future<R, K>`), then qualifier variables for qualifier-preserving higher-order functions (`logged` keeping `sendable`). Implemented with proposal 8, after variance-inference V1; proposal 8's text gives way first: its conversions compose inside types, its `Persistable` reads V0's reach, its `K` default is a settling rule (`design.md` §7). | big | proposal 8, after variance-inference V1 | variance-inference design 2026-11-08 |
 
@@ -104,6 +103,7 @@ Time and memory: measured costs, quadratic paths, hot-path checks.
 | P35 | Lowering spells a whole type recursively for every instance frame and type-table entry (`lowering/tables/names.ts:spelledType` → `extern-key.ts:keyTypeText`), unmemoized: 6.7% of the form builder's cold compile. Fix: memoize `spelledType` per type key (`docs/work/perf/full-check-2026-11-06.md` #5). | small | none; can be done now | full-check profile 2026-11-06 |
 | P36 | The parser's cursor calls `#rawAt` about 15 times and `#breaksLine` 7 times per token (38.9M and 17M for 2.5M corpus tokens): parse runs at 316 lines/ms against scan's 1,330, 4% of the form builder's cold compile and 12–15% of the std tests'. Fix: cache the current token's raw view and line-break flag in the cursor (`docs/work/perf/full-check-2026-11-06.md` #8). | small | none; can be done now | full-check profile 2026-11-06 |
 | P37 | The CLI imports ~880 modules for every command (190 ms: the LSP stack, zod, runtime, prettier, formatter) where `check` needs ~400 (110 ms), and `stdlib/strings/natives.ts` builds an `Intl.Segmenter` at import (~9 ms): a trivial `ista check` takes ~280 ms. Fix: import per command lazily; consider bundling the CLI entry with tsdown (`docs/work/perf/full-check-2026-11-06.md`, outside the compiler). | small | none; can be done now | full-check profile 2026-11-06 |
+| P38 | Inferring an unannotated form-builder view function, one constraint scope of ~400 variables, costs fb-warm ~465 ms against ~338 ms annotated. Left after variance-inference C5, each needing machinery of its own: readiness asked incrementally (~50 ms, a reverse index of what mentions each variable); `fixToward` reading only what the stuck variable mentions (~32 ms, but an agreement default reads other variables' tentative types, so behaviour changes); copy-on-write candidate systems instead of each call candidate copying the scope's store (~17 ms); fixedness tracked through `fixAs` instead of recomputed (~17 ms). Take one only when it simplifies the structure. | medium | none; can be done now | variance-inference C5 2026-11-09 |
 
 ### Code quality (Q)
 

@@ -48,12 +48,13 @@ in `plan.md` beside it. This proposal gives the outline, why it is built this wa
 | C2 Trait meeting | One memoized search for the instantiations a type meets, used by inference too (B46), with B37, B40 and B41 | `c66120e6` |
 | C3 One holds relation | Joining, settling, choosing and clashes read one `holds` (B44); generic clashes judged as a call | `4ddaa8df` |
 | C4 Placeholders that give | A held-back struct literal gives its fields to the lambdas inside it; a computed expected type waits on its form; form-builder's generator writes nothing inferred | `31d34496` |
+| C5 Inference cost | Fixedness memoized per system revision; no quadratic scans in settling and readiness; behaviour-neutral | `b0189913` |
 
 The merge review (`c3506066..23bf0ed5`, findings and root causes in
 `docs/work/variance-inference/merge-analysis.md`) approved the corrections on `31d34496`.
 
-**Next:** C5 cuts the cost of inferring what form-builder no longer writes (fb-warm 671 ms on
-`31d34496`, ≤ ~400 ms targeted), with no change in behaviour.
+C5 then cut the cost of inferring what form-builder no longer writes, fb-warm 671 ms to ~465 ms,
+with no change in behaviour; what it left is P38.
 
 **Later, filed:**
 - F3: variadic tuples (proposal 12);
