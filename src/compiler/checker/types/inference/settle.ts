@@ -135,17 +135,13 @@ function nextToSettle(
     !waitsOn(candidate).some((other) => isPending(other, candidate));
   // A variable settles after those below it with bounds of their own, which hand it what they
   // settle to; one with none settles from what those it is related to settled to.
-  // Items apart (bounds.ts) bound nothing settling reads first: their variable settles from above.
-  const hasOwnBounds = (variable: ParameterKey) => {
-    const bounds = view.boundsOf(variable);
-    return hasBounds({ ...bounds, lower: bounds.lower.filter(({ isApart }) => isApart !== true) });
-  };
+  const hasOwn = (variable: ParameterKey) => hasOwnBounds(view.boundsOf(variable));
   const settlesBelow = (other: ParameterKey, candidate: ParameterKey) =>
-    isPending(other, candidate) && hasOwnBounds(other);
+    isPending(other, candidate) && hasOwn(other);
   const ready = (candidate: ParameterKey) =>
     closed(candidate) &&
     (given.has(candidate) ||
-      ((hasOwnBounds(candidate) ||
+      ((hasOwn(candidate) ||
         !relatives(view.relatedOf(candidate)).some((other) => isPending(other, candidate))) &&
         !view.relatedOf(candidate).below.some((other) => settlesBelow(other, candidate))));
   const index = pending.findIndex(ready);
@@ -155,6 +151,15 @@ function nextToSettle(
 /** Whether `bounds` hold any bound at all. */
 function hasBounds({ equal, lower, upper }: VariableBounds): boolean {
   return equal !== undefined || lower.length > 0 || upper.length > 0;
+}
+
+/**
+ * Whether `bounds` hold a bound of their variable's own, which a variable above it waits for it to
+ * settle by: any but an item apart's (bounds.ts), which bounds nothing settling reads first, its
+ * variable settling from above.
+ */
+export function hasOwnBounds(bounds: VariableBounds): boolean {
+  return hasBounds({ ...bounds, lower: bounds.lower.filter(({ isApart }) => isApart !== true) });
 }
 
 /** The type `parameter` settles to, its bounds read with `settled`; undefined when none. */

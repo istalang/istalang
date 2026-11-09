@@ -47,8 +47,10 @@ import {
   abandonedFrom,
   atTopOf,
   fixedOf,
+  fixedSubstitution,
   type SystemReading,
   settledAmong,
+  settledBefore,
   settlingViewOf,
   shapeTaking,
   solvedIn,
@@ -213,25 +215,27 @@ export class CallSystem {
   }
 
   /**
-   * Settles `variable` now and takes it as found from here on, the variables its bounds mention
-   * first (design.md §4), each as `settlingOf` says.
+   * Settles `variable` now and takes it as found from here on, after what it waits on, in the order
+   * settling all of them would (design.md §4, `settledBefore`); each as `settlingOf` says.
    */
   fix(variable: ParameterKey, settlingOf: SettlingOf, fixing = new Set<ParameterKey>()): void {
     fixing.add(variable);
-    for (const other of parametersIn(this.#store.of(variable).equal?.type ?? errorType)) {
-      if (this.#calls.has(other) && !fixing.has(other) && this.fixedOf(other) === undefined) {
+    for (const other of settledBefore(variable, this.reading)) {
+      if (!fixing.has(other)) {
         this.fix(other, settlingOf, fixing);
       }
     }
-    const settled = settleOne(variable, this.#tentative, this.#view, settlingOf(variable));
+    // It reads what is fixed so far, as settling them all reads what it settled before.
+    const fixed = fixedSubstitution(this.reading, this.#calls.keys());
+    const settled = settleOne(variable, fixed, this.#view, settlingOf(variable));
     if (settled !== undefined) {
-      this.#store.addEqual(variable, { type: settled, advice: false, by: undefined });
+      this.fixAs(variable, settled);
     }
   }
 
-  /** Takes `variable` as `type` from here on, as an equality from the arguments. */
+  /** Takes `variable` as `type` from here on, as an equality its own call requires. */
   fixAs(variable: ParameterKey, type: Type): void {
-    this.#store.addEqual(variable, { type, advice: false, by: undefined });
+    this.#store.addEqual(variable, { type, advice: false, by: this.#calls.get(variable) });
   }
 
   /** What `variable` is taken as found as, given or fixed (system-reading.ts). */

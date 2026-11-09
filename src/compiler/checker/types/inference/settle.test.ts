@@ -314,6 +314,8 @@ describe('what takes a call’s value, choosing inside its result', () => {
       '  needInts(collect(1, id(acceptOpt)))',
       '  needInts(collect(1, fn(x: Int?): ()))',
       '  drop withConsumer(makeBox(1), acceptOpt)',
+      '  drop withConsumer(makeBox(1), fn(x: Int?): ())',
+      '  drop withConsumer(makeBox(none), fn(x: Int?): ())',
       '  drop withSlot(makeBox(1), s)',
     ].join('\n');
     expect(reportedErrors(main)).toEqual([]);

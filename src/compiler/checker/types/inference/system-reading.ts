@@ -20,7 +20,7 @@ import {
   type Related,
   type VariableBounds,
 } from './bounds.ts';
-import { type Settling, type SettlingView, settleOne } from './settle.ts';
+import { hasOwnBounds, type Settling, type SettlingView, settleOne } from './settle.ts';
 import type { CallVariables } from './variables.ts';
 
 /** What reading a system's variables needs of it. */
@@ -214,6 +214,39 @@ export function tentativeSubstitution(
   const found = new Map<ParameterKey, Type>();
   for (const variable of variables) {
     const type = reading.givenOf(variable) ?? tentativeOf(variable, reading);
+    if (type !== undefined) {
+      found.set(variable, type);
+    }
+  }
+  return found;
+}
+
+/**
+ * What settling `variable` waits on, not fixed yet, in the order settling them all would (settle.ts
+ * `settleAll`): the variables its equality mentions, and those below it with bounds of their own,
+ * which hand it what they settle to.
+ */
+export function settledBefore(
+  variable: ParameterKey,
+  reading: SystemReading,
+): readonly ParameterKey[] {
+  const { equal } = reading.boundsOf(variable);
+  const below = reading
+    .relatedOf(variable)
+    .below.filter((other) => hasOwnBounds(reading.boundsOf(other)));
+  return [...(equal === undefined ? [] : parametersIn(equal.type)), ...below].filter(
+    (other) => reading.isVariable(other) && fixedOf(other, reading) === undefined,
+  );
+}
+
+/** What is taken as found of `variables` so far, given or fixed (`fixedOf`), as a substitution. */
+export function fixedSubstitution(
+  reading: SystemReading,
+  variables: Iterable<ParameterKey>,
+): Substitution {
+  const found = new Map<ParameterKey, Type>();
+  for (const variable of variables) {
+    const type = fixedOf(variable, reading);
     if (type !== undefined) {
       found.set(variable, type);
     }
