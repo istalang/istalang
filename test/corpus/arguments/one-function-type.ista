@@ -1,0 +1,31 @@
+# outcome: ["o-3",6,[3,4],[2,null],5,8]
+# `async fn(A) -> R` is `fn(A) -> Future<R>`, one type (§3.14): a plain function giving a future
+# fits where an async one is expected as it is, and one giving a value fits made async, inside an
+# array too (§3.5), converting what it takes and gives. A plain lambda's body gives the future or
+# its value, an async one's the value.
+struct Order { id: String }
+
+async fn retry(times: Int, call: async fn(String) -> Order) -> Future<Order>:
+  await call(`o-${times}`)
+
+async fn later(x: Int) -> Future<Int>: x + 1
+
+fn starting(x: Int) -> Future<Int>: later(x)
+
+async fn main() -> Future<(String, Int, Array<Int>, Array<Int?>, Int, Int)>:
+  const order = await retry(3, fn(id): Order{id})
+  const viaFuture: async fn(Int) -> Int = starting
+  const plains: Array<fn() -> Int> = [fn(): 3, fn(): 4]
+  const asyncs: Array<async fn() -> Int> = plains
+  const widened: async fn(Int) -> Int? = fn(x: Int?) -> Int: (x ?? 0) * 2
+  const absent: async fn(Int) -> Int? = fn(x: Int?) -> Int?: none
+  const asyncLambda: fn(Int) -> Future<Int> = async fn(x): await later(x)
+  const forwarded: async fn(Int) -> Int = fn(x): later(x)
+  (
+    order.id,
+    await viaFuture(5),
+    [await asyncs[0](), await asyncs[1]()],
+    [await widened(1), await absent(1)],
+    await asyncLambda(4),
+    await forwarded(7),
+  )

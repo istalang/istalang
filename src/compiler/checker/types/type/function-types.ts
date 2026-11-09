@@ -5,12 +5,15 @@
  * - `functionType` is the only way a function type is built, written, inferred or substituted
  *   alike, so its pack is flattened wherever a tuple fills it: into parameters by value, `Unit`
  *   into none.
- * - A function type keeps its head's qualifiers as the head writes them (syntax/tokens/
- *   modifiers.ts), so type text and keys print them in the head's one order, with nothing
- *   converting between the two.
- * - A function fits where another is expected when its qualifiers fit, by their order
- *   (`reachFits`), and it takes and gives what that one does, a declared pack taking whatever
- *   parameters are left (`functionFits`).
+ * - A function type keeps its head's reach as the head writes it (syntax/tokens/modifiers.ts), so
+ *   type text and keys print it in the head's one order, with nothing converting between the two.
+ * - An async head is no part of the type (§3.14): `async fn(A) -> R` is `fn(A) -> Future<R>`,
+ *   which a head's call gives (`headResult`), so the two spellings are one type, one key and one
+ *   text, and a function returning a future is an async one wherever its type is all that's known.
+ * - A function fits where another is expected when its reach fits, by their order (`reachFits`),
+ *   and it takes and gives what that one does, a declared pack taking whatever parameters are left
+ *   (`functionFits`). Where a future is expected of it, the value it gives may go into that
+ *   future's (`resultFitOf`): a plain function's call then gives a future already resolved.
  */
 
 import type { FunctionQualifiers } from '../../../syntax/tokens/modifiers.ts';
@@ -27,14 +30,13 @@ import { errorType, tupleElements, tupleType } from './primitives.ts';
 export type Reach = FunctionQualifiers['reach'];
 
 /** Whether a function of reach `given` fits where one of `expected` is: a sendable one anywhere. */
-export function reachFits(given: Reach, expected: Reach): boolean {
+function reachFits(given: Reach, expected: Reach): boolean {
   return given === expected || expected === undefined;
 }
 
 /** What `functionType` builds a function type of; its pack may be any type bound to one. */
 export interface FunctionParts extends WrittenThrough {
   readonly reach: Reach;
-  readonly isAsync: boolean;
   readonly parameters: readonly ParameterSlot[];
   readonly pack?: Type | undefined;
   readonly result: Type;
@@ -94,7 +96,7 @@ type ParameterRelation = (declared: Type, given: Type, byReference: boolean) => 
 /**
  * Whether two function types take the same parameters, each by value or by `&` alike, and give the
  * same result, their types compared by `parts`: exactly (`sameType`), or as inference matches a
- * declared type against a given one. Whether each is sendable or async is the caller's to compare.
+ * declared type against a given one. Whether each is sendable is the caller's to compare.
  * A declared pack takes the given type's parameters past the declared ones, as their tuple, or the
  * given type's own pack when none are left (§3.5).
  */
@@ -146,15 +148,9 @@ function restOf(type: FunctionType, start: number): Type | undefined {
   return rest.some((slot) => slot.reference) ? undefined : tupleType(rest.map((slot) => slot.type));
 }
 
-/** The qualifiers a head of `type` writes, which type text and keys print. */
-export function qualifiersOfType({ reach, isAsync }: FunctionType): FunctionQualifiers {
-  return { reach, kind: isAsync ? 'async' : undefined };
-}
-
 /**
- * Whether a function of type `given` fits where `declared` is expected: async alike, its reach
- * fitting (§3.14), and of the same shape (`sameShape`), its parts and results compared as the
- * caller says.
+ * Whether a function of type `given` fits where `declared` is expected: its reach fitting
+ * (§3.14), and of the same shape (`sameShape`), its parts and results compared as the caller says.
  */
 export function functionFits(
   declared: FunctionType,
@@ -163,9 +159,60 @@ export function functionFits(
   results: (declared: Type, given: Type) => boolean = (declaredResult, givenResult) =>
     parts(declaredResult, givenResult, false),
 ): boolean {
-  return (
-    given.isAsync === declared.isAsync &&
-    reachFits(given.reach, declared.reach) &&
-    sameShape(declared, given, parts, results)
-  );
+  return reachFits(given.reach, declared.reach) && sameShape(declared, given, parts, results);
+}
+
+/** What relating a function's result to a future needs of the program: the futures it has. */
+export interface Futures {
+  /** `Future<T>` of `value`, what calling an async function gives (§3.14). */
+  readonly futureOf: (value: Type) => Type;
+  /** `T` when `type` is `Future<T>`; undefined for any other type. */
+  readonly futureValue: (type: Type) => Type | undefined;
+}
+
+/**
+ * How a function's result fits where another's is expected (§3.14): as a value, or, where a
+ * future is expected, the `value` it gives into that future's (`into`), made a future already
+ * resolved where it gives none (`resolved`), awaited from the one it gives (`awaited`).
+ */
+export type ResultFit =
+  | { readonly kind: 'value' }
+  | { readonly kind: 'resolved' | 'awaited'; readonly value: Type; readonly into: Type };
+
+/**
+ * How a function's result `given` fits where `expected` is, as `fits` fits values without leaving
+ * anything behind when it doesn't (`ResultFit`): `Int` and `Future<Int>` where `Future<Int?>` is
+ * expected. Undefined where it doesn't fit. A result that is no future goes into the value of a
+ * future expected before it is tried as it is, which only `Never` or a variable could be: what
+ * is inferred of the future's value is what it gives.
+ */
+export function resultFitOf(
+  given: Type,
+  expected: Type,
+  fits: (given: Type, expected: Type) => boolean,
+  { futureValue }: Pick<Futures, 'futureValue'>,
+): ResultFit | undefined {
+  const into = futureValue(expected);
+  const awaited = futureValue(given);
+  if (into !== undefined && awaited === undefined && fits(given, into)) {
+    return { kind: 'resolved', value: given, into };
+  }
+  if (fits(given, expected)) {
+    return { kind: 'value' };
+  }
+  return into !== undefined && awaited !== undefined && fits(awaited, into)
+    ? { kind: 'awaited', value: awaited, into }
+    : undefined;
+}
+
+/**
+ * What calling a function of `head` gives, where its body gives `value`: an async head's call a
+ * future of it (§3.14), a plain one's the value.
+ */
+export function headResult(
+  { futureOf }: Pick<Futures, 'futureOf'>,
+  head: FunctionQualifiers,
+  value: Type,
+): Type {
+  return head.kind === undefined ? value : futureOf(value);
 }

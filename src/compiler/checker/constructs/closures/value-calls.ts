@@ -31,7 +31,6 @@ import { packRestSlot } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { errorType } from '../../types/type/primitives.ts';
 import { typeText } from '../../types/type/type-text.ts';
-import { futureOf } from '../../types/type/well-known.ts';
 import { insideOptional } from '../../types/unions/inside-optional.ts';
 
 /**
@@ -107,7 +106,6 @@ export function checkValueCall(
   const fixed = parameters.map((slot) => ({ ...slot, ...unnamed, rest: undefined }));
   const packed =
     pack === undefined ? [] : [{ type: pack, reference: false, ...unnamed, rest: packRestSlot }];
-  const { result } = calleeType;
   return applyValueCall(context, {
     node,
     name: callee.kind === 'Identifier' ? callee.text : typeText(calleeType),
@@ -115,7 +113,7 @@ export function checkValueCall(
     typeArguments,
     takes: { typeParameters: [], parameters: [...fixed, ...packed] },
     callee: calleeType,
-    type: calleeType.isAsync ? futureOf(context.checker, result) : result,
+    type: calleeType.result,
   });
 }
 
@@ -199,7 +197,8 @@ function completeValueCall(
   );
   checkReferencedPlaces(context, given, {
     name,
-    isAsync: callee.isAsync,
+    // A function value is async wherever its call gives a future: its type is all that is known.
+    isAsync: context.checker.fitting.futureValue(callee.result) !== undefined,
     slots: callee.parameters,
   });
   return call.type;

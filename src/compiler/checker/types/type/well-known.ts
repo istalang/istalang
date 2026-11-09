@@ -12,6 +12,7 @@ import {
 import type { TraitDeclaration } from '../../../syntax/declarations/index.ts';
 import type { Checker } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
+import type { Futures } from './function-types.ts';
 import type { Type } from './index.ts';
 import { errorType } from './primitives.ts';
 
@@ -33,7 +34,7 @@ export function wellKnownArguments(
 
 /** The well-known `declaration` with `typeArguments`; the error type without its module. */
 export function wellKnownOf(
-  checker: CheckerContext,
+  checker: Pick<Checker, 'wellKnownType'>,
   declaration: WellKnownDeclaration,
   typeArguments: readonly Type[] = [],
 ): Type {
@@ -41,7 +42,7 @@ export function wellKnownOf(
 }
 
 /** `Future<T>`, what an async call returns; the error type in a program without a prelude. */
-export function futureOf(checker: CheckerContext, value: Type): Type {
+export function futureOf(checker: Pick<Checker, 'wellKnownType'>, value: Type): Type {
   return wellKnownOf(checker, wellKnown.future, [value]);
 }
 
@@ -51,6 +52,14 @@ export function futureArgument(
   type: Type,
 ): Type | undefined {
   return wellKnownArguments(checker, wellKnown.future, type)?.[0];
+}
+
+/** The program's futures, as relating a function's result to one reads them. */
+export function futuresOf(checker: Pick<Checker, 'wellKnownType'>): Futures {
+  return {
+    futureOf: (value) => futureOf(checker, value),
+    futureValue: (type) => futureArgument(checker, type),
+  };
 }
 
 /** `Array<T>`, what an array literal or comprehension builds; the error type without a prelude. */

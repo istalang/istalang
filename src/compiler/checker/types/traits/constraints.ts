@@ -35,8 +35,6 @@ import { sameType } from '../identity/identity.ts';
 import { type Substitution, substitute, substitutionFor } from '../parts/substitution.ts';
 import { functionType } from '../type/function-types.ts';
 import type { AnyType, Constraint, FunctionType, ParameterKey, Type } from '../type/index.ts';
-import { errorType } from '../type/primitives.ts';
-import { futureArgument } from '../type/well-known.ts';
 import { parameterType } from '../written/resolve-type.ts';
 import { typeArgumentsFor } from '../written/type-arguments.ts';
 
@@ -182,21 +180,16 @@ export function declaredFieldType(
 /**
  * `required`, a function a trait requires, as the function type a call through the trait makes, in
  * its own parameters and `Self` (§3.10): what it takes, its receiver first unless it is static, and
- * what it gives, awaited where it is async, as a function named as a value has it (§3.14).
+ * what its call gives, as a function named as a value has it (§3.14).
  */
 export function requirementType(
-  checker: Pick<CheckerContext, 'parametersOf' | 'resultOf' | 'wellKnownType'>,
+  checker: Pick<CheckerContext, 'parametersOf' | 'resultOf'>,
   required: FunctionDeclaration,
 ): FunctionType {
-  const result = checker.resultOf(required);
   return functionType({
     reach: undefined,
-    isAsync: required.qualifiers.kind !== undefined,
     parameters: checker.parametersOf(required).map(({ type, reference }) => ({ type, reference })),
-    result:
-      required.qualifiers.kind === undefined
-        ? result
-        : (futureArgument(checker, result) ?? errorType),
+    result: checker.resultOf(required),
   });
 }
 

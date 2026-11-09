@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-08
-last_updated: 2026-11-09
+last_updated: 2026-11-10
 tags: [reuse, checker, types, fitting, variance, patterns, flow]
 ---
 
@@ -23,8 +23,8 @@ tags: [reuse, checker, types, fitting, variance, patterns, flow]
 - the shape a nominal struct's value converts into (none for an annotated field) → `Fitting.shapeOf` (`src/compiler/checker/types/fitting/fit/index.ts`), answered by `Layouts.nominalShapeOf` (`src/compiler/checker/constructs/declarations/layout/index.ts`); the conversion is a `Fit` of kind `shape`, ranked with `reshapes`
 - the field a field's declaring node declares, given its owner (a struct, an enum, a shape's `{…}` type, a trait) → `declaredFieldOf` (`src/compiler/checker/types/written/declared-fields.ts`)
 - the type an extern or top-level constant's declaration gives it, outside any body → `declaredOutsideBodies` (`src/compiler/checker/constructs/expressions/access/names.ts`)
-- inspect or attach variadic type packs on function types → `isPack`, `fillsPack`, `packRestSlot` (`src/compiler/checker/types/type/index.ts`), `withPack`; compare function types' shapes → `sameShape`, `functionFits` (`src/compiler/checker/types/type/function-types.ts`)
-- compare two types or constraints for equality or fit → `sameType` (key equality, the one definition of identity), `sameConstraint`, `isAssignable` (`src/compiler/checker/types/identity/identity.ts`); two function types' parameters and results, or a function fitting another's header → `sameShape`, `functionFits` (`src/compiler/checker/types/type/index.ts`)
+- build a function type (every builder and rebuilder, a pack flattened where a tuple fills it) → `functionType`; inspect variadic type packs on function types → `isPack`, `fillsPack`, `packRestSlot`; what a head's call gives, an async one's a future → `headResult`; how a function's result fits another's, as a value or into a future's value → `resultFitOf` (`src/compiler/checker/types/type/function-types.ts`); the program's futures as a seam → `futuresOf` (`src/compiler/checker/types/type/well-known.ts`)
+- compare two types or constraints for equality or fit → `sameType` (key equality, the one definition of identity), `sameConstraint`, `isAssignable` (`src/compiler/checker/types/identity/identity.ts`); two function types' parameters and results, or a function fitting another's header → `sameShape`, `functionFits` (`src/compiler/checker/types/type/function-types.ts`)
 - inspect or map a type's direct child types → `typeChildren`, `mapChildren` (`src/compiler/checker/types/parts/type-parts.ts`)
 - list type parameters, nominal or `any` types in a `Type` → `parametersIn`, `nominalsIn`, `anyTypesIn`, `mentionsError` (`src/compiler/checker/types/parts/type-parts.ts`)
 - decide whether generic uses would instantiate endlessly (§3.5): build a use's edges, then find the expanding ones on a cycle among those reached from the nodes judged, giving each node's edges and the node an edge leads to → `argumentEdges`, `endlessEdgesFrom` (`src/compiler/checker/rules/expansion/edges.ts`); a new kind of generic use (calls, fields, later alias reductions) supplies its own nodes, never a walk of its own

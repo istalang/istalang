@@ -34,7 +34,6 @@ const pack = { kind: 'parameter', declaration: packDeclaration } as const;
 function packed(fixed: readonly Type[]): FunctionType {
   return functionType({
     reach: undefined,
-    isAsync: false,
     parameters: fixed.map((type) => ({ type, reference: false })),
     pack,
     result: unitType,

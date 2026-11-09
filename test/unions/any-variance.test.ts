@@ -150,7 +150,7 @@ describe('design.md §9 acceptance anchors and exact `self` on witnesses (§3.10
 });
 
 describe('trait variance derivation and composition (§3.5, §3.10)', () => {
-  it('derives variance from callback parameters, async futures, non-async futures, `&`, and unused parameters', () => {
+  it('derives variance from callback parameters, futures however a head gives them, `&`, and unused parameters', () => {
     const decls = [
       'trait GivesViaCallback<T> { fn subscribe(self: Self, cb: fn(T) -> Unit) }',
       'trait TakesViaCallback<T> { fn pull(self: Self, cb: fn() -> T) -> Int }',
@@ -170,6 +170,8 @@ describe('trait variance derivation and composition (§3.5, §3.10)', () => {
         'fn ok2(x: any TakesViaCallback<Int?>) -> any TakesViaCallback<Int>: x',
         'fn ok3(x: any AsyncGives<Int>) -> any AsyncGives<Int?>: x',
         'fn ok4(x: any PhantomTrait<Int>) -> any PhantomTrait<Int?>: x',
+        // A plain function giving a future is an async one (§3.14), awaited where it converts.
+        'fn ok5(x: any SyncFutureHandle<Int>) -> any SyncFutureHandle<Int?>: x',
       ),
     ).toEqual([]);
 
@@ -178,11 +180,9 @@ describe('trait variance derivation and composition (§3.5, §3.10)', () => {
         ...decls,
         'fn bad1(x: any GivesViaCallback<Int?>) -> any GivesViaCallback<Int>: x',
         'fn bad2(x: any TakesViaCallback<Int>) -> any TakesViaCallback<Int?>: x',
-        'fn bad3(x: any SyncFutureHandle<Int>) -> any SyncFutureHandle<Int?>: x',
-        'fn bad4(x: any RefParam<Int>) -> any RefParam<Int?>: x',
+        'fn bad3(x: any RefParam<Int>) -> any RefParam<Int?>: x',
       ),
     ).toEqual([
-      checkerDiagnostics.typeMismatch.code,
       checkerDiagnostics.typeMismatch.code,
       checkerDiagnostics.typeMismatch.code,
       checkerDiagnostics.typeMismatch.code,

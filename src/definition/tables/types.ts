@@ -48,7 +48,6 @@ const tuple = z.strictObject({
 
 const functionType = z.strictObject({
   kind: z.literal('function'),
-  async: z.boolean(),
   get parameters() {
     return z.array(typeReference);
   },

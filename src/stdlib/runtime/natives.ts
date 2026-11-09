@@ -5,8 +5,9 @@
  */
 
 import { functionKey, parameterKey } from '../../definition/extern-key.ts';
+import { wellKnown } from '../../foundation/language/well-known/index.ts';
 import type { NativeContext, Natives, WithFutures, WithInstances } from '../../runtime/natives.ts';
-import type { NativeKeys } from '../std-module.ts';
+import { knownTypeKey, type NativeKeys } from '../std-module.ts';
 import { given } from '../values/arguments.ts';
 import { declaredResult } from '../values/results.ts';
 
@@ -16,6 +17,8 @@ export const runtimeNatives = (
   [keys.of('id')]: (_arguments, context) => context.instance,
   [keys.of('version')]: (_arguments, context) => context.version,
   [keys.of('commit')]: (_arguments, context) => context.futures.resolved(null),
-  [keys.of('_isolated', functionKey(true, [], parameterKey('T')))]: ([entry], context) =>
-    context.instances.spawn(given(entry), declaredResult(context), { terminatesOnPanic: true }),
+  [keys.of('_isolated', functionKey([], knownTypeKey(wellKnown.future, parameterKey('T'))))]: (
+    [entry],
+    context,
+  ) => context.instances.spawn(given(entry), declaredResult(context), { terminatesOnPanic: true }),
 });

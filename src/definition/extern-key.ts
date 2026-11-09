@@ -34,7 +34,6 @@ export type KeyType =
     }
   | {
       readonly kind: 'function';
-      readonly async: boolean;
       readonly parameters: readonly KeyType[];
       readonly result: KeyType;
     }
@@ -75,18 +74,12 @@ export function namedKey(name: string, ...typeArguments: readonly WrittenType[])
   return { kind: 'named', name, arguments: typeArguments.map(typeOf) };
 }
 
-/** A function type, as a key spells it: `async fn() -> T`; a key doesn't tell sendable apart. */
-export function functionKey(
-  isAsync: boolean,
-  parameters: readonly WrittenType[],
-  result: WrittenType,
-): KeyType {
-  return {
-    kind: 'function',
-    async: isAsync,
-    parameters: parameters.map(typeOf),
-    result: typeOf(result),
-  };
+/**
+ * A function type, as a key spells it: `fn() -> prelude.Future<T>`, an async one's as the future
+ * it gives; a key doesn't tell sendable apart.
+ */
+export function functionKey(parameters: readonly WrittenType[], result: WrittenType): KeyType {
+  return { kind: 'function', parameters: parameters.map(typeOf), result: typeOf(result) };
 }
 
 /** A type parameter of the extern's own, as declared: the `T` of `prelude.Array<T>`. */
@@ -191,7 +184,7 @@ export function keyTypeText(type: KeyType): string {
     case 'anonymous':
       return `struct { ${type.fields.map((field) => `${field.name}: ${keyTypeText(field.type)}`).join(', ')} }`;
     case 'function':
-      return `${type.async ? 'async ' : ''}fn(${type.parameters.map(keyTypeText).join(', ')}) -> ${keyTypeText(type.result)}`;
+      return `fn(${type.parameters.map(keyTypeText).join(', ')}) -> ${keyTypeText(type.result)}`;
     case 'any':
       return `any ${type.traits.map(keyTypeText).sort().join(' & ')}`;
     case 'literal':

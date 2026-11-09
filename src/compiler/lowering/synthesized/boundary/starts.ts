@@ -111,12 +111,13 @@ function lambdaStartable(
     return undefined;
   }
   const parameters = signature.parameters.map(({ type: each }) => each);
-  const future = signature.isAsync ? futureArgument(checker, signature.result) : undefined;
+  const isAsync = constant.form.lambda.qualifiers.kind !== undefined;
+  const future = isAsync ? futureArgument(checker, signature.result) : undefined;
   return crossing(checker, {
     target: declaration,
     key: keyOf(checker, declaration, signature.parameters),
     parameters,
-    isAsync: signature.isAsync,
+    isAsync,
     outcome: future ?? signature.result,
   });
 }

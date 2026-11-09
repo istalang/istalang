@@ -1,6 +1,7 @@
 /**
  * One walk over a declaration's parts (§3.5), noting where each of its type parameters is met: at
- * the variance of each position, a function type's parameter flipping it, a declaration's or an
+ * the variance of each position, a function type's parameter flipping it and the future it gives
+ * standing for its value, a declaration's or an
  * `any` type's trait's type arguments composing it with that declaration's, and a computed type
  * making it invariant. variance.ts runs it to a fixpoint.
  */
@@ -21,15 +22,18 @@ export class UsageWalk {
   readonly usages: Usage[];
   readonly #parameters: readonly TypeParameter[];
   readonly #variancesOf: (declaration: NominalDeclaration | TraitDeclaration) => readonly Usage[];
+  readonly #futureValue: (type: Type) => Type | undefined;
   /** Each node of a recursive type is walked once per position it is met at. */
   readonly #walked = new Map<RecursiveGraph, Set<string>>();
 
   constructor(
     parameters: readonly TypeParameter[],
     variancesOf: (declaration: NominalDeclaration | TraitDeclaration) => readonly Usage[],
+    futureValue: (type: Type) => Type | undefined,
   ) {
     this.#parameters = parameters;
     this.#variancesOf = variancesOf;
+    this.#futureValue = futureValue;
     this.usages = parameters.map(() => 'unused');
   }
 
@@ -92,7 +96,9 @@ export class UsageWalk {
     if (type.pack !== undefined) {
       this.walk(type.pack, flipped(at));
     }
-    this.walk(type.result, at);
+    // A function giving a future fits where one giving a future of a wider value is expected, its
+    // future awaited (§3.14), so it varies in what its future gives as in what it gives.
+    this.walk(this.#futureValue(type.result) ?? type.result, at);
   }
 
   #recursive(type: RecursiveType, at: Variance): void {

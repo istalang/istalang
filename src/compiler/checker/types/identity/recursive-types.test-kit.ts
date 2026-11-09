@@ -261,7 +261,6 @@ export function bodiesOf(
       case 'function':
         return functionType({
           reach: undefined,
-          isAsync: false,
           parameters: [{ type: slot(each.parameter), reference: false }],
           result: slot(each.result),
         });

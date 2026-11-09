@@ -13,8 +13,10 @@
  *   local `fn` can be generic or have default values or an array's rest parameter, which stand for
  *   overloads (§3.3). Its rest may be a pack of the function around it (§3.5), which each
  *   instantiation flattens into single parameters, so its type ends in that pack.
- * - An async function's written result is its `Future<T>`, as for a declared one (§3.3); its
- *   function type's result is the `T` an `await` on a call yields.
+ * - An async function's written result is its `Future<T>`, as for a declared one (§3.3), and so is
+ *   its function type's (§3.14): its body gives the `T` an `await` on a call yields. Where a future
+ *   is expected of a lambda's call, an async body gives the future's value, while a plain one may
+ *   give the future or its value, made a future already resolved (`bodyResultGiven`).
  * - The function's own name, a local `fn`'s or a named lambda's, is declared before the body is
  *   checked when the result is known, so the body may call it; otherwise calling it is recursion
  *   needing a declared result (functions.ts).
@@ -45,6 +47,7 @@ import { expectedFunction } from '../../types/fitting/expected.ts';
 import { isSendable } from '../../types/traits/sendable.ts';
 import {
   functionType,
+  headResult,
   isPack,
   packRestSlot,
   type Reach,
@@ -68,8 +71,9 @@ import { type GuidedResult, ReturnScope } from './returns.ts';
  * For a lambda whose result isn't written, or with a parameter to infer, which parameter types it
  * can take, as an argument the chosen function decides (§3.5): its body then has what the call
  * expects of its result as a guide, as Kotlin's lambdas do. Undefined for one written whole,
- * parameters and result, which has a type of its own. A written parameter takes what fits it, and
- * a plain lambda an async function type too, which it fits made async (§3.14).
+ * parameters and result, which has a type of its own. A written parameter takes what fits it, a
+ * plain lambda a function type giving a future too, which it fits made async, and an async lambda
+ * only one giving a future (§3.14).
  */
 export function lambdaAccepts(context: BodyContext, node: Lambda): Admits | undefined {
   const { checker } = context;
@@ -91,7 +95,9 @@ export function lambdaAccepts(context: BodyContext, node: Lambda): Admits | unde
       shape.parameters.length <= fixed;
     return (
       shape !== undefined &&
-      (shape.isAsync || node.qualifiers.kind === undefined) &&
+      (node.qualifiers.kind === undefined ||
+        isOpen(shape.result) ||
+        checker.fitting.futureValue(shape.result) !== undefined) &&
       (fillsPack ||
         (shape.parameters.length === fixed && (shape.pack !== undefined) === hasRest)) &&
       parameters.every((parameter, index) => {
@@ -126,7 +132,6 @@ export function writtenInputs(context: BodyContext, node: Lambda): Type | undefi
   }
   return functionType({
     reach: 'sendable',
-    isAsync: node.qualifiers.kind !== undefined,
     parameters: types.map((type) => ({ type, reference: false })),
     result: neverType,
   });
@@ -182,7 +187,7 @@ export function inferLambda(
     context,
     node,
     slots,
-    guide === undefined ? undefined : { kind: 'guided', guide },
+    guide === undefined ? undefined : { kind: 'guided', type: guide },
   );
 }
 
@@ -193,9 +198,28 @@ type ParameterSlots = Pick<FunctionType, 'parameters' | 'pack'>;
  * What a lambda's position says of its result: the type it is declared to give, or how it guides
  * its body only, the result being what the body gives.
  */
-type ResultGiven =
-  | { readonly kind: 'declared'; readonly type: Type }
-  | { readonly kind: 'guided'; readonly guide: Type };
+interface ResultGiven {
+  readonly kind: 'declared' | 'guided';
+  readonly type: Type;
+}
+
+/**
+ * What a lambda's position says of what its body gives, where it says `result` of its call
+ * (§3.14): an async lambda's body gives the value of the future expected, and nothing is said
+ * where none is; a plain one's body may give a future expected or its value, made a future already
+ * resolved, so that value only guides it.
+ */
+function bodyResultGiven(
+  context: BodyContext,
+  node: Lambda,
+  result: ResultGiven | undefined,
+): ResultGiven | undefined {
+  const value = result === undefined ? undefined : context.checker.fitting.futureValue(result.type);
+  if (node.qualifiers.kind !== undefined) {
+    return value === undefined || result === undefined ? undefined : { ...result, type: value };
+  }
+  return value === undefined ? result : { kind: 'guided', type: value };
+}
 
 /** A lambda where its position gives `slots` for its parameters and says `result`, when it does. */
 function checkLambdaAs(
@@ -204,8 +228,9 @@ function checkLambdaAs(
   slots: ParameterSlots | undefined,
   result: ResultGiven | undefined,
 ): Type {
-  const hint = result?.kind === 'guided' ? result.guide : undefined;
-  const given = result?.kind === 'declared' ? result.type : undefined;
+  const ofBody = bodyResultGiven(context, node, result);
+  const hint = ofBody?.kind === 'guided' ? ofBody.type : undefined;
+  const given = ofBody?.kind === 'declared' ? ofBody.type : undefined;
   const declaredResult =
     node.returnType === undefined
       ? given
@@ -213,7 +238,6 @@ function checkLambdaAs(
   return checkNested(context, node, {
     name: node.name,
     parameters: nestedParameters(context, node.parameters, slots),
-    isAsync: node.qualifiers.kind !== undefined,
     declaredResult,
     guided: hint === undefined ? undefined : { node, guide: hint, inScope: context.scopes.here() },
     reach: node.span,
@@ -239,7 +263,6 @@ export function checkLocalFunction(context: BodyContext, node: FunctionDeclarati
     checkNested(context, node, {
       name: node.name,
       parameters: nestedParameters(context, node.parameters, undefined),
-      isAsync: node.qualifiers.kind !== undefined,
       declaredResult: declaredBodyResult(context.checker, context.module, node),
       reach: nestedFunctionSpan(node, body),
       tail: (declared) => blockTail(body, context.block(body, declared)),
@@ -252,7 +275,7 @@ export function checkLocalFunction(context: BodyContext, node: FunctionDeclarati
 interface NestedHeader {
   readonly name: Identifier | undefined;
   readonly parameters: readonly SignatureParameter[];
-  readonly isAsync: boolean;
+  /** What its body is declared to give, its call giving a future of it where it is async. */
   readonly declaredResult: Type | undefined;
   /** For a lambda whose result a call is still inferring, what guides its `return`s (returns.ts). */
   readonly guided?: GuidedResult | undefined;
@@ -263,19 +286,24 @@ interface NestedHeader {
 }
 
 function checkNested(context: BodyContext, node: NestedFunction, header: NestedHeader): Type {
-  const { name, parameters, isAsync, declaredResult } = header;
+  const { name, parameters, declaredResult } = header;
   const rest = parameters.find((parameter) => parameter.rest !== undefined);
   const slots = parameters
     .filter((parameter) => parameter !== rest)
     .map((parameter) => ({ type: parameter.type, reference: parameter.reference }));
   const typeWith = (produces: Type, reach?: Reach): FunctionType =>
-    functionType({ reach, isAsync, parameters: slots, pack: rest?.type, result: produces });
+    functionType({
+      reach,
+      parameters: slots,
+      pack: rest?.type,
+      result: headResult(context.checker.fitting, node.qualifiers, produces),
+    });
   if (name !== undefined && declaredResult !== undefined) {
     context.variables.declare(name, typeWith(declaredResult));
   }
   const scope = new FunctionScope(
     node,
-    isAsync,
+    node.qualifiers.kind !== undefined,
     new ReturnScope(declaredResult, true, header.guided),
     header.reach,
   );
@@ -302,7 +330,7 @@ function checkNested(context: BodyContext, node: NestedFunction, header: NestedH
     if (name !== undefined) {
       context.variables.declare(name, recorded);
     }
-    context.functions.record(node, { type: recorded, parameters, captures });
+    context.functions.record(node, { type: recorded, result: produces, parameters, captures });
     return recorded;
   };
   const type = finished(result);

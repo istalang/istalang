@@ -1,8 +1,9 @@
 /**
  * Fitting by the implicit conversions (§2, §3.1, §3.14, §3.15): a `T` fits `T?`, `T??` and so on
  * by one wrap per level, never the other way round, and only into optionals of the same `T`; a
- * plain function fits an async one of its parameters and result, made async, a one-element tuple
- * and its element each other, and a struct's value its shape, whatever order either writes its
+ * function fits one giving a future of its result, made async, and an async one fits one giving
+ * a future of a type its own future's value fits, converted part by part; a one-element tuple and its
+ * element fit each other, and a struct's value its shape, whatever order either writes its
  * fields in, but never inside another type, from a shape, or for a struct with an annotated field.
  */
 
@@ -19,26 +20,15 @@ import {
   stringType,
   unitType,
 } from '../../type/primitives.ts';
-import { noProgramRules } from '../../type/type-rules.test-kit.ts';
 import { optionalInner, optionalOf, unionOf } from '../../unions/unions.ts';
+import { fittingApart } from './fit.test-kit.ts';
 import { type Fit, fitOf } from './index.ts';
-
-/** Fitting in a program no `any` type is met in. */
-const fitting = {
-  ...noProgramRules,
-  meetsAny: () => false,
-  metInstantiation: () => ({ kind: 'none' }) as const,
-  proposedInstantiations: () => [],
-  shapeOf: () => undefined,
-  memberUnionOf: () => undefined,
-  varianceOf: () => [],
-};
 
 /**
  * How a value of `found` fits `expected`: as it is (0), put into a union (1), or not (undefined).
  */
 function levelsInto(found: Type, expected: Type): number | undefined {
-  const fit = fitOf(found, expected, fitting);
+  const fit = fitOf(found, expected, fittingApart);
   return fit === undefined ? undefined : Number(fit.into !== undefined);
 }
 
@@ -62,7 +52,7 @@ function levelsBetween(found: number, expected: number): number | undefined {
 
 /** `type` made optional `levels` times, which is once for any `levels` above none (§2). */
 function wrapped(type: Type, levels: number): Type {
-  return levels === 0 ? type : optionalOf(wrapped(type, levels - 1), fitting);
+  return levels === 0 ? type : optionalOf(wrapped(type, levels - 1), fittingApart);
 }
 
 const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
@@ -76,7 +66,6 @@ const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
       ({ parameter, result, reference }): Type =>
         functionType({
           reach: undefined,
-          isAsync: false,
           parameters: [{ type: parameter, reference }],
           result,
         }),
@@ -131,13 +120,20 @@ describe('fitting into an optional, a union holding None', () => {
   });
 });
 
-/** A function type taking `parameter` and giving `result`, plain or async, sendable or not. */
+/**
+ * A function type taking `parameter` and giving `result`, sendable or not, async or not: an async
+ * one's type gives a future of `result` (§3.14).
+ */
 function functionOf(
   parameter: Type,
   result: Type,
-  kind: { readonly isAsync: boolean; readonly reach: Reach },
+  { isAsync, reach }: { readonly isAsync: boolean; readonly reach: Reach },
 ): Type {
-  return functionType({ ...kind, parameters: [{ type: parameter, reference: false }], result });
+  return functionType({
+    reach,
+    parameters: [{ type: parameter, reference: false }],
+    result: isAsync ? fittingApart.futureOf(result) : result,
+  });
 }
 
 const kinds = fc.record({
@@ -154,7 +150,7 @@ const pairs = fc.record({
   count: levelCounts,
 });
 
-describe('fitting a plain function where an async one is expected', () => {
+describe('fitting a function where one giving a future is expected', () => {
   it('makes a plain function async before any wrap, and an async one never plain', () => {
     fc.assert(
       fc.property(pairs, ({ parameter, result, given, wanted, count }) => {
@@ -162,7 +158,7 @@ describe('fitting a plain function where an async one is expected', () => {
         const expected = wrapped(functionOf(parameter, result, wanted), count);
         const sendableFits = given.reach === 'sendable' || wanted.reach === undefined;
         const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
-        expect(fitShape(fitOf(found, expected, fitting))).toEqual(
+        expect(fitShape(fitOf(found, expected, fittingApart))).toEqual(
           fits
             ? {
                 conversion: { kind: !given.isAsync && wanted.isAsync ? 'async' : 'none' },
@@ -178,10 +174,20 @@ describe('fitting a plain function where an async one is expected', () => {
     const plain = functionOf(intType, intType, { isAsync: false, reach: undefined });
     const async = functionOf(intType, intType, { isAsync: true, reach: undefined });
     const tuple = (element: Type): Type => ({ kind: 'tuple', elements: [element, intType] });
-    expect(fitShape(fitOf(tuple(plain), tuple(async), fitting))).toEqual({
+    expect(fitShape(fitOf(tuple(plain), tuple(async), fittingApart))).toEqual({
       conversion: { kind: 'parts', to: tuple(async) },
       into: false,
     });
+  });
+
+  it('awaits an async function where one giving a future of a wider value is expected', () => {
+    const async = functionOf(intType, intType, { isAsync: true, reach: undefined });
+    const wider = functionOf(intType, wrapped(intType, 1), { isAsync: true, reach: undefined });
+    expect(fitShape(fitOf(async, wider, fittingApart))).toEqual({
+      conversion: { kind: 'parts', to: wider },
+      into: false,
+    });
+    expect(fitOf(wider, async, fittingApart)).toBeUndefined();
   });
 
   it('fits a function returning never where any result type is expected', () => {
@@ -190,14 +196,11 @@ describe('fitting a plain function where an async one is expected', () => {
         const found = functionOf(parameter, neverType, given);
         const expected = wrapped(functionOf(parameter, result, wanted), count);
         const sendableFits = given.reach === 'sendable' || wanted.reach === undefined;
-        const fits = sendableFits && (given.isAsync === wanted.isAsync || wanted.isAsync);
-        expect(fitShape(fitOf(found, expected, fitting))).toEqual(
-          fits
-            ? {
-                conversion: { kind: !given.isAsync && wanted.isAsync ? 'async' : 'none' },
-                into: count > 0,
-              }
-            : undefined,
+        // `Never` fits a future as it is; a future of it is awaited into what is expected.
+        const fits = sendableFits && (!given.isAsync || wanted.isAsync);
+        const fit = fitOf(found, expected, fittingApart);
+        expect(fit && { kind: fit.conversion.kind, into: fit.into !== undefined }).toEqual(
+          fits ? { kind: given.isAsync ? 'parts' : 'none', into: count > 0 } : undefined,
         );
       }),
     );
@@ -213,11 +216,11 @@ describe('fitting between a one-element tuple and its element', () => {
   it('converts each into the other before putting it into an optional', () => {
     fc.assert(
       fc.property(types, levelCounts, (type, count) => {
-        expect(fitShape(fitOf(type, wrapped(single(type), count), fitting))).toEqual({
+        expect(fitShape(fitOf(type, wrapped(single(type), count), fittingApart))).toEqual({
           conversion: { kind: 'tupled' },
           into: count > 0,
         });
-        expect(fitShape(fitOf(single(type), wrapped(type, count), fitting))).toEqual({
+        expect(fitShape(fitOf(single(type), wrapped(type, count), fittingApart))).toEqual({
           conversion: { kind: 'untupled' },
           into: count > 0,
         });
@@ -228,9 +231,9 @@ describe('fitting between a one-element tuple and its element', () => {
   it('converts once, and never inside another type', () => {
     fc.assert(
       fc.property(types, (type) => {
-        expect(fitOf(type, single(single(type)), fitting)).toBeUndefined();
-        expect(fitOf(single(single(type)), type, fitting)).toBeUndefined();
-        expect(fitOf(wrapped(single(type), 1), wrapped(type, 1), fitting)).toBeUndefined();
+        expect(fitOf(type, single(single(type)), fittingApart)).toBeUndefined();
+        expect(fitOf(single(single(type)), type, fittingApart)).toBeUndefined();
+        expect(fitOf(wrapped(single(type), 1), wrapped(type, 1), fittingApart)).toBeUndefined();
       }),
     );
   });
@@ -294,12 +297,12 @@ describe("a struct's value where its shape is expected (§3.1)", () => {
 describe('a union where a union holding an `any` type is expected (§6)', () => {
   it('converts whole into the one any member each of its members meets, then goes into it', () => {
     const any: Type = { kind: 'any', constraints: [] };
-    const union = unionOf([intType, stringType], fitting);
-    const meeting = { ...fitting, meetsAny: () => true };
-    expect(fitShape(fitOf(union, optionalOf(any, fitting), meeting))).toEqual({
+    const union = unionOf([intType, stringType], fittingApart);
+    const meeting = { ...fittingApart, meetsAny: () => true };
+    expect(fitShape(fitOf(union, optionalOf(any, fittingApart), meeting))).toEqual({
       conversion: { kind: 'any', to: any },
       into: true,
     });
-    expect(fitOf(union, optionalOf(any, fitting), fitting)).toBeUndefined();
+    expect(fitOf(union, optionalOf(any, fittingApart), fittingApart)).toBeUndefined();
   });
 });

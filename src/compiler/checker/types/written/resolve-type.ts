@@ -46,7 +46,7 @@ import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { substitutionFor } from '../parts/substitution.ts';
 import { aliasedAs } from '../type/alias-uses.ts';
 import { ownAssociatedType } from '../type/computed-types.ts';
-import { functionType, isPack } from '../type/function-types.ts';
+import { functionType, headResult, isPack } from '../type/function-types.ts';
 import {
   type NominalDeclaration,
   nominalType,
@@ -157,15 +157,15 @@ function writtenFunctionType(resolution: Resolution, node: FunctionTypeNode): Ty
     resolution.checker.report(resolution.module, checkerDiagnostics.packNotLast(rest.span));
   }
   const rest = last?.kind === 'RestType' ? last : undefined;
+  const written = node.returnType === undefined ? unitType : resolve(resolution, node.returnType);
   return functionType({
     reach: node.qualifiers.reach,
-    isAsync: node.qualifiers.kind !== undefined,
     parameters: fixed.map((parameter) => ({
       type: resolve(resolution, parameter),
       reference: unparenthesizedType(parameter).kind === 'ReferenceType',
     })),
     pack: rest === undefined ? undefined : packOf(resolution, rest),
-    result: node.returnType === undefined ? unitType : resolve(resolution, node.returnType),
+    result: headResult(resolution.checker.fitting, node.qualifiers, written),
   });
 }
 

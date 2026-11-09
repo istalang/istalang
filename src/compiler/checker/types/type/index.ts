@@ -181,13 +181,13 @@ declare const builtFunctionType: unique symbol;
 /**
  * A function type; a sendable one's values capture only sendable values (§3.14). Its parameters
  * may end in a pack (`fn(Int, ...A) -> R`, §3.5), which stands for the parameters a tuple
- * substituted for it flattens into, so a type with a pack is always generic. Only `functionType`
+ * substituted for it flattens into, so a type with a pack is always generic. An async function's type
+ * is one giving a future (`async fn(A) -> R` is `fn(A) -> Future<R>`). Only `functionType`
  * builds one, so that holds of every function type, however it was reached.
  */
 export interface FunctionType extends WrittenThrough {
   readonly kind: 'function';
   readonly reach: Reach;
-  readonly isAsync: boolean;
   readonly parameters: readonly ParameterSlot[];
   readonly pack?: PackType | undefined;
   readonly result: Type;

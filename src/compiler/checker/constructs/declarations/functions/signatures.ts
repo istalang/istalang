@@ -43,7 +43,7 @@ import { isPack, packRestSlot, type RestSlot } from '../../../types/type/functio
 import { nominalType, type Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
-import { arrayElement, futureArgument, futureOf } from '../../../types/type/well-known.ts';
+import { arrayElement, futureArgument } from '../../../types/type/well-known.ts';
 import { nominalEntityOf } from '../../../types/written/named-types.ts';
 import { patternTypeOf } from '../../../types/written/pattern-types.ts';
 import { parameterType } from '../../../types/written/resolve-type.ts';
@@ -314,13 +314,4 @@ export function declaredBodyResult(
     return errorType;
   }
   return future;
-}
-
-/** What calling `declaration` yields, given what its body produces. */
-export function callResult(
-  checker: CheckerContext,
-  declaration: FunctionDeclaration,
-  bodyResult: Type,
-): Type {
-  return declaration.qualifiers.kind === undefined ? bodyResult : futureOf(checker, bodyResult);
 }

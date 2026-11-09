@@ -89,15 +89,10 @@ extern fn _calls<F, A>(self: Mock<F>) -> Array<A>
 
 fn mock<...A, R>(target: fn(...A) -> R, replacement: fn(...A) -> R) -> Mock<fn(...A) -> R>:
   _mock(target, replacement)
-fn mock<...A, R>(target: async fn(...A) -> R, replacement: async fn(...A) -> R) -> Mock<async fn(
-  ...A
-) -> R>:
-  _mock(target, replacement)
 
 # The arguments of every call so far, oldest first, a tuple per call: `(x,)` for a function of one
 # parameter, and `()`, the unit, for one of none.
 fn calls<...A, R>(self: Mock<fn(...A) -> R>) -> Array<A>: _calls(self)
-fn calls<...A, R>(self: Mock<async fn(...A) -> R>) -> Array<A>: _calls(self)
 
 # Where an instance stands, as its last commit says (§10).
 enum InstanceState:

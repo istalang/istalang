@@ -5,6 +5,7 @@
 
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
+import { fittingApart } from '../fitting/fit/fit.test-kit.ts';
 import { fitOf } from '../fitting/fit/index.ts';
 import { sameType } from '../identity/identity.ts';
 import type { Type } from '../type/index.ts';
@@ -13,21 +14,11 @@ import { noProgramRules } from '../type/type-rules.test-kit.ts';
 import { commonType, type Joining } from './common-type.ts';
 import { literalType, optionalOf, unionOf } from './unions.ts';
 
-const fitting = {
-  ...noProgramRules,
-  meetsAny: () => false,
-  metInstantiation: () => ({ kind: 'none' }) as const,
-  proposedInstantiations: () => [],
-  shapeOf: () => undefined,
-  memberUnionOf: () => undefined,
-  varianceOf: () => [],
-};
-
 /** Joining in a program declaring nothing. */
 const joining: Joining = {
-  fitOf: (found, expected) => fitOf(found, expected, fitting),
+  fitOf: (found, expected) => fitOf(found, expected, fittingApart),
   typeRules: noProgramRules,
-  fitting,
+  fitting: fittingApart,
 };
 
 const optionalInt = optionalOf(intType, noProgramRules);

@@ -37,7 +37,6 @@ import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { MemberAccess, TypeApplication } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
-import type { CheckerContext } from '../../contexts/context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
 import { enumsExpected, expectedFunction } from '../../types/fitting/expected.ts';
@@ -45,10 +44,9 @@ import { type Substitution, substitute } from '../../types/parts/substitution.ts
 import { parametersIn } from '../../types/parts/type-parts.ts';
 import { functionType } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
-import { errorType, tupleElements } from '../../types/type/primitives.ts';
+import { tupleElements } from '../../types/type/primitives.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
 import { typeText } from '../../types/type/type-text.ts';
-import { futureArgument, futureOf } from '../../types/type/well-known.ts';
 import { namedType } from '../../types/written/named-types.ts';
 import { parameterType } from '../../types/written/resolve-type.ts';
 import { type Instantiation, instantiate } from '../conformance/conformance.ts';
@@ -213,7 +211,7 @@ export function openedValue(
   inference.expect(signature.result(), undefined);
   return {
     application,
-    type: valueTypeOf(context.checker, application, (declared) => inference.open(declared)),
+    type: valueTypeOf(application, (declared) => inference.open(declared)),
   };
 }
 
@@ -246,11 +244,7 @@ export function instantiatedValue(
   site: UseSite,
   result: Type | undefined,
 ): MadeValue | undefined {
-  const { signature } = application;
-  const isAsync = signature.declaration.qualifiers.kind !== undefined;
-  const expectedResult =
-    result === undefined || !isAsync ? result : futureOf(context.checker, result);
-  application.inference.expect(signature.result(), expectedResult);
+  application.inference.expect(application.signature.result(), result);
   return madeValue(context, application, site);
 }
 
@@ -269,7 +263,7 @@ export function madeValue(
     return undefined;
   }
   const { substitution } = instantiation;
-  const type = valueTypeOf(checker, application, (declared) =>
+  const type = valueTypeOf(application, (declared) =>
     substitute(declared, substitution, checker.typeRules),
   );
   return { instantiation, type };
@@ -278,24 +272,20 @@ export function madeValue(
 /**
  * The type of `application`'s function as a value, each type it declares `placed` as the value
  * has it: instantiated, or open in its inference. Its parameters are those its arguments fill, a
- * pack's last, and an async function's result is what an `await` yields.
+ * pack's last, and its result what its call gives.
  */
 function valueTypeOf(
-  checker: CheckerContext,
   { signature, binding }: Application,
   placed: (declared: Type) => Type,
 ): FunctionType {
-  const isAsync = signature.declaration.qualifiers.kind !== undefined;
-  const made = placed(signature.result());
   const pack = signature.parameters.find((slot) => slot.rest?.kind === 'pack');
   return functionType({
     reach: 'sendable',
-    isAsync,
     parameters: signature.parameters
       .filter((slot, index) => slot !== pack && binding[index]?.kind === 'argument')
       .map((slot) => ({ type: placed(slot.type), reference: slot.reference })),
     pack: pack === undefined ? undefined : placed(pack.type),
-    result: isAsync ? (futureArgument(checker, made) ?? errorType) : made,
+    result: placed(signature.result()),
   });
 }
 
@@ -358,7 +348,7 @@ function hasOwnType({ signature, inference }: Application): boolean {
 
 /** Whether one of the functions `named` means takes as many parameters as `shape`, or a pack. */
 function takesCount(context: BodyContext, named: NamedFunctions, shape: FunctionType): boolean {
-  const candidates = takingAsync(named.candidates(shape), shape);
+  const candidates = named.candidates(shape);
   if (shape.pack !== undefined) {
     return candidates.length > 0;
   }
@@ -465,21 +455,12 @@ function chosenFor(
     passing: passingOf(slot.reference),
     exact: true,
   }));
-  const candidates = takingAsync(named.candidates(shape), shape);
+  const candidates = named.candidates(shape);
   const choice = chooseAsValue(context.checker, candidates, arguments_, {
     written: named.written,
     site: named.site,
   });
   return choice.kind === 'chosen' ? choice.application : undefined;
-}
-
-/**
- * `candidates` a value of `shape` may be: an async function only where `shape` is async (§3.14).
- */
-function takingAsync(candidates: readonly Candidate[], shape: FunctionType): readonly Candidate[] {
-  return shape.isAsync
-    ? candidates
-    : candidates.filter(({ declaration }) => declaration.qualifiers.kind === undefined);
 }
 
 function passingOf(reference: boolean): Passing {

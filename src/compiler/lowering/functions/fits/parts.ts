@@ -27,6 +27,7 @@ import type { Fit } from '../../../checker/types/fitting/fit/index.ts';
 import { sameType } from '../../../checker/types/identity/identity.ts';
 import { UnfoldingPairs } from '../../../checker/types/identity/unfolding-pairs.ts';
 import { unfolded } from '../../../checker/types/type/computed-types.ts';
+import { type ResultFit, resultFitOf } from '../../../checker/types/type/function-types.ts';
 import type {
   AnonymousStructType,
   FieldMember,
@@ -36,7 +37,7 @@ import type {
   TupleType,
   Type,
 } from '../../../checker/types/type/index.ts';
-import { wellKnownArguments } from '../../../checker/types/type/well-known.ts';
+import { futuresOf, wellKnownArguments } from '../../../checker/types/type/well-known.ts';
 import { membersOf } from '../../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import { emitCall } from '../../calls/emit-call.ts';
@@ -108,10 +109,10 @@ function fitChangesLayout(
 /**
  * The pairs of parts converting a value of `from` into `to` converts, by the shape both have;
  * undefined where the layout changes whatever its parts do: a union's value goes into another
- * union's variants, a nominal struct's into a shape, a plain function is made async.
+ * union's variants, a nominal struct's into a shape, a function's result is made a future.
  */
 function pairsOf(
-  checker: Pick<Checker, 'fieldsOf' | 'variantsOf' | 'wellKnownType'>,
+  checker: Pick<Checker, 'fitOf' | 'fieldsOf' | 'variantsOf' | 'wellKnownType'>,
   from: Type,
   to: Type,
 ): readonly (readonly [Type, Type])[] | undefined {
@@ -122,7 +123,7 @@ function pairsOf(
     return from.kind === 'anonymous' ? shapePairs(from, to) : undefined;
   }
   if (from.kind === 'function' && to.kind === 'function') {
-    return from.isAsync === to.isAsync ? functionPairs(from, to) : undefined;
+    return functionPairs(checker, from, to);
   }
   if (from.kind === 'tuple' && to.kind === 'tuple') {
     return from.elements.flatMap((element, index) => paired(element, to.elements[index]));
@@ -144,13 +145,41 @@ function shapePairs(
   return from.fields.flatMap((field, index) => paired(field.type, to.fields[index]?.type));
 }
 
-/** A function's parameters paired the other way round, `to`'s into its own, and its results. */
-function functionPairs(from: FunctionType, to: FunctionType): readonly (readonly [Type, Type])[] {
+/**
+ * A function's parameters paired the other way round, `to`'s into its own, and its results, the
+ * values of the futures they are where both give one; undefined where its result is made a future.
+ */
+function functionPairs(
+  checker: Pick<Checker, 'fitOf' | 'wellKnownType'>,
+  from: FunctionType,
+  to: FunctionType,
+): readonly (readonly [Type, Type])[] | undefined {
   const parameters = from.parameters.flatMap((parameter, index) => {
     const other = to.parameters[index];
     return parameter.reference ? [] : paired(other?.type, parameter.type);
   });
-  return [...parameters, ...paired(from.result, to.result)];
+  const result = resultFitBetween(checker, from, to);
+  switch (result.kind) {
+    case 'value':
+      return [...parameters, ...paired(from.result, to.result)];
+    case 'awaited':
+      return [...parameters, ...paired(result.value, result.into)];
+    default:
+      return undefined;
+  }
+}
+
+/** How the result of a function of type `from` fits where `to` is expected, as the checker found. */
+export function resultFitBetween(
+  checker: Pick<Checker, 'fitOf' | 'wellKnownType'>,
+  from: FunctionType,
+  to: FunctionType,
+): ResultFit {
+  const fits = (given: Type, expected: Type) => checker.fitOf(given, expected) !== undefined;
+  return (
+    resultFitOf(from.result, to.result, fits, futuresOf(checker)) ??
+    unreachable('A function converted part by part gives what fits.')
+  );
 }
 
 /** An array's items, or a map's values, paired; undefined for any other type. */

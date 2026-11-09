@@ -10,7 +10,8 @@
  *   type, it is the value itself. From a union, each member's value converts as a value of that
  *   member, so a value of `A | B` inside an `any` type is an `A` or a `B`.
  * - A dispatch entry takes what the required function takes, its receiver first, and is async
- *   when the function is, awaiting the call it makes. On a union, a member with one value (a
+ *   when the function gives a future, async or not (§3.14), awaiting the call it makes, so what a
+ *   member gives converts as the value of the future the call gives. On a union, a member with one value (a
  *   literal, `none`) holds nothing, so its function gets that value; on the one type a union
  *   collapsed into, it calls that type's function.
  * - A member meeting another instantiation of the trait, which the trait's variance lets stand for
@@ -27,12 +28,16 @@ import type { Argument } from '../../../definition/instructions/places.ts';
 import type { Register } from '../../../definition/operands.ts';
 import type { FunctionDefinition } from '../../../definition/tables/functions.ts';
 import { unreachable } from '../../../foundation/structures/unreachable.ts';
+import type { MemberConversion } from '../../checker/check.ts';
 import { type RequiredField, requiredFieldRead } from '../../checker/surface/checked-field.ts';
-import type { AnyType, Type } from '../../checker/types/type/index.ts';
+import type { AnyType, FunctionType, Type } from '../../checker/types/type/index.ts';
+import { futureArgument } from '../../checker/types/type/well-known.ts';
 import { hasOneValue } from '../../checker/types/unions/unions.ts';
 import { closeWitness, type Dispatch } from '../calls/closed-calls.ts';
 import type { CodeContext } from '../context.ts';
 import { fittedIn } from '../functions/fits/index.ts';
+import { resultFitBetween } from '../functions/fits/parts.ts';
+import type { ConversionSite } from '../tables/instances.ts';
 import { spelledType } from '../tables/names.ts';
 import { convertedIntoAny } from '../values/into-any.ts';
 import { outOfUnion } from '../values/unions.ts';
@@ -56,6 +61,8 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
     unreachable(`'${required.name.text}' is called through any without its receiver.`);
   }
   const at = { module: checker.moduleOf(required), span: required.name.span };
+  // What a member gives converts as what its future gives, so a future is awaited, whatever the head.
+  const givesFuture = futureArgument(checker, checker.resultOf(required)) !== undefined;
   switchOverMembers(code, on, receiver, (type) => {
     const witness = checker.traitObjects.memberWitnesses(through, constraint, type)[member];
     if (witness === undefined) {
@@ -75,22 +82,31 @@ export function dispatchEntry(lowering: Lowering, dispatch: Dispatch): FunctionD
     });
     const self = memberReceiver(code, receiver, { on, type, references });
     const call = code.call(closeWitness(witness, dispatch, checker), [self, ...passed]);
-    const result = required.qualifiers.kind === undefined ? call : code.await(call);
-    code.return(
-      signatures === undefined
-        ? result
-        : fittedIn(
-            code,
-            { value: result, type: signatures.met.result },
-            signatures.called.result,
-            at,
-          ),
-    );
+    const result = givesFuture ? code.await(call) : call;
+    code.return(signatures === undefined ? result : convertedResult(code, result, signatures, at));
   });
   const generic = dispatch.typeArguments.map((type) => spelledType(checker, type));
   const name = `${spelledType(checker, on)}.${required.name.text}${generic.length === 0 ? '' : `<${generic.join(', ')}>`}`;
   const header = tables.headerAt(name, checker.moduleOf(required), required.name.span);
-  return code.entry(header, required.qualifiers.kind !== undefined, references);
+  return code.entry(header, givesFuture, references);
+}
+
+/**
+ * `result`, what a member's function of type `met` gave, converted into what a call of `called`
+ * gives, as the checker fits the two functions' results: an async one's awaited already, so
+ * converted as its future's value (§3.14).
+ */
+function convertedResult(
+  code: SynthesizedCode,
+  result: Register,
+  { met, called }: MemberConversion<FunctionType>,
+  at: ConversionSite,
+): Register {
+  const fit = resultFitBetween(code.checker, met, called);
+  if (fit.kind === 'value') {
+    return fittedIn(code, { value: result, type: met.result }, called.result, at);
+  }
+  return fittedIn(code, { value: result, type: fit.value }, fit.into, at);
 }
 
 /** The entry converting a value of the `any` type `from` into `to`, whose constraints it has. */

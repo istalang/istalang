@@ -7,7 +7,7 @@
 
 import { sameItems } from '../../../../../foundation/structures/equality.ts';
 import type { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
-import { reachFits, sameShape } from '../../type/function-types.ts';
+import { functionFits, resultFitOf } from '../../type/function-types.ts';
 import type {
   AnonymousStructType,
   FieldMember,
@@ -19,20 +19,22 @@ import type { Variance } from '../../variance/lattice.ts';
 import type { Fitting } from './index.ts';
 
 /** What relating two types part by part reads: the match it belongs to. */
-export interface PartsRelation extends Pick<Fitting, 'varianceOf' | 'shapeOf'> {
+export interface PartsRelation extends Pick<Fitting, 'varianceOf' | 'shapeOf' | 'futureValue'> {
   /** The pairs being related, so a recursive type's parts are related once. */
   readonly relating: UnfoldingPairs;
   /** Whether `found` is `expected`, where a part must be the same type: invariant, or behind `&`. */
   readonly same: (expected: Type, found: Type) => boolean;
   /** Whether a value of `found` fits where `expected` is, as the match fits any value. */
   readonly fits: (found: Type, expected: Type) => boolean;
+  /** Whether `probe` holds, leaving nothing behind when it doesn't. */
+  readonly attempt: (probe: () => boolean) => boolean;
 }
 
 /**
  * Whether `found` fits `expected` part by part (§3.5): instantiations of one declaration whose
  * arguments fit as its variance says, tuples of as many elements, a shape (or a nominal struct, as
  * its shape) into a shape of the same fields, or a function into a function type of its shape,
- * taking what it takes and giving what it gives, made async where it is expected to be. A
+ * taking what it takes and giving what it gives, into a future's value where one is expected. A
  * recursive type is related as it unfolds, a pair met again holding, so relating one ends.
  */
 export function fitsByParts(found: Type, expected: Type, relation: PartsRelation): boolean {
@@ -109,25 +111,25 @@ function fieldsFit(
 }
 
 /**
- * Whether a function of type `found` fits where `expected` is, part by part: sendable where it is
- * expected to be, async alike or made async, taking what `expected` takes, a `&` exactly, and
- * giving what it gives (§3.14). A function ending in a pack fits only as it is.
+ * Whether a function of type `found` fits where `expected` is, part by part (`functionFits`):
+ * taking what `expected` takes, a `&` exactly, and giving what it gives, into the value of a
+ * future expected of it too (§3.14). A function ending in a pack fits only as it is.
  */
 function functionFitsByParts(
   found: FunctionType,
   expected: FunctionType,
   relation: PartsRelation,
 ): boolean {
-  const { fits, same } = relation;
+  const { fits, same, attempt } = relation;
   return (
-    (found.isAsync === expected.isAsync || !found.isAsync) &&
-    reachFits(found.reach, expected.reach) &&
     expected.pack === undefined &&
-    sameShape(
+    functionFits(
       expected,
       found,
       (taken, given, byReference) => (byReference ? same(taken, given) : fits(taken, given)),
-      (gives, given) => fits(given, gives),
+      (gives, given) =>
+        resultFitOf(given, gives, (value, place) => attempt(() => fits(value, place)), relation) !==
+        undefined,
     )
   );
 }

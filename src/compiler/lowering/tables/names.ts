@@ -307,7 +307,6 @@ function structureKeyType(
     default:
       return {
         kind: 'function',
-        async: type.isAsync,
         parameters: type.parameters.map((parameter) => keyType(spelling, parameter.type)),
         result: keyType(spelling, type.result),
       };

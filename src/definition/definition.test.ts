@@ -53,7 +53,7 @@ describe('definition format', () => {
   });
 
   it('draws every instruction kind and type shape in its random Definitions', () => {
-    const drawn = fc.sample(definitionArbitrary, { numRuns: 300, seed: 1 });
+    const drawn = fc.sample(definitionArbitrary, { numRuns: 400, seed: 1 });
     const instructionKinds = new Set(
       drawn.flatMap((definition) =>
         definition.functions.flatMap((entry) =>

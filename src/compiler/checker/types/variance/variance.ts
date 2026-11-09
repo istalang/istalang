@@ -53,6 +53,8 @@ export interface VarianceReading {
    * as the function type a call through `any` makes, its receiver apart, and its required fields.
    */
   readonly partsOf: (declaration: DerivedDeclaration) => readonly HeldPart[];
+  /** `T` when `type` is `Future<T>`, which a function giving it varies in as in `T` (usage-walk.ts). */
+  readonly futureValue: (type: Type) => Type | undefined;
 }
 
 /**
@@ -158,7 +160,7 @@ function solvedVariances(root: DerivedDeclaration, reading: VarianceReading): re
     for (const held of members.flatMap(({ holds }) => holds)) {
       settle(groupOf(held) ?? held);
     }
-    settleGroup(solving, members);
+    settleGroup(solving, members, reading);
   };
   for (const group of groups.keys()) {
     settle(group);
@@ -172,24 +174,32 @@ function solvedVariances(root: DerivedDeclaration, reading: VarianceReading): re
  * fixpoint, then its `unused` parameters settled covariant, those occurring nowhere first, and the
  * fixpoint again, until none is `unused`.
  */
-function settleGroup(solving: Solving, group: readonly Solved[]): void {
-  converge(solving, group);
+function settleGroup(
+  solving: Solving,
+  group: readonly Solved[],
+  reading: Pick<VarianceReading, 'futureValue'>,
+): void {
+  converge(solving, group, reading);
   for (let unused = unusedIn(group); unused.length > 0; unused = unusedIn(group)) {
     const absent = unused.filter(({ solved, index }) => !occurs(solved, index));
     for (const { solved, index } of absent.length > 0 ? absent : unused) {
       solved.usages[index] = 'covariant';
     }
-    converge(solving, group);
+    converge(solving, group, reading);
   }
 }
 
 /** Raises each usage of `group` to what its parts make of it, until nothing changes. */
-function converge(solving: Solving, group: readonly Solved[]): void {
+function converge(
+  solving: Solving,
+  group: readonly Solved[],
+  reading: Pick<VarianceReading, 'futureValue'>,
+): void {
   let changed = true;
   while (changed) {
     changed = false;
     for (const solved of group) {
-      const met = usagesIn(solving, solved);
+      const met = usagesIn(solving, solved, reading);
       const next = solved.usages.map((usage, index) => joined(usage, met[index] ?? 'unused'));
       if (next.some((usage, index) => usage !== solved.usages[index])) {
         solved.usages = next;
@@ -263,8 +273,12 @@ function derivedHeld(type: Type): readonly DerivedDeclaration[] {
 }
 
 /** Where a declaration's parameters are met in its parts, by the usages known so far. */
-function usagesIn(solving: Solving, { parameters, parts }: Solved): Usage[] {
-  const walk = new UsageWalk(parameters, (reached) => usagesSoFar(solving, reached));
+function usagesIn(
+  solving: Solving,
+  { parameters, parts }: Solved,
+  { futureValue }: Pick<VarianceReading, 'futureValue'>,
+): Usage[] {
+  const walk = new UsageWalk(parameters, (reached) => usagesSoFar(solving, reached), futureValue);
   for (const { type, at } of parts) {
     walk.walk(type, at);
   }

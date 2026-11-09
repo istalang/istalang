@@ -109,7 +109,7 @@ export function checkLoopOver(context: BodyContext, node: For | Comprehension): 
 
 /** The item a cursor of `type` gives: `T` of `fn() -> Step<T>`; undefined for any other type. */
 function cursorItem(checker: Pick<Checker, 'wellKnownType'>, type: Type): Type | undefined {
-  return type.kind === 'function' && type.parameters.length === 0 && !type.isAsync
+  return type.kind === 'function' && type.parameters.length === 0
     ? wellKnownArguments(checker, wellKnown.step, type.result)?.[0]
     : undefined;
 }

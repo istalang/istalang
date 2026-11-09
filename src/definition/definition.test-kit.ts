@@ -41,7 +41,6 @@ function typeReference(types: number): fc.Arbitrary<TypeReference> {
         .map((elements) => ({ kind: 'tuple' as const, elements })),
       fc
         .record({
-          async: fc.boolean(),
           parameters: fc.array(tie('reference'), { maxLength: 2 }),
           result: tie('reference'),
         })

@@ -32,7 +32,6 @@ import { checkVariableDeclaration } from './variables.ts';
 /** What `defer` runs when its block ends (§7): a plain function of nothing, so it can't wait. */
 const deferredFunction: FunctionType = functionType({
   reach: undefined,
-  isAsync: false,
   parameters: [],
   result: unitType,
 });

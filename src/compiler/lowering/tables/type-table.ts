@@ -162,7 +162,6 @@ export class TypeTable {
       case 'function':
         return {
           kind: 'function',
-          async: type.isAsync,
           parameters: type.parameters.map((parameter) => this.reference(parameter.type)),
           result: this.reference(type.result),
         };

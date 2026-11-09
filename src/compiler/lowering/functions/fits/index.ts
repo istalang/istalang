@@ -24,6 +24,7 @@ import { type Fit, singleElement } from '../../../checker/types/fitting/fit/inde
 import { unfolded } from '../../../checker/types/type/computed-types.ts';
 import { functionType } from '../../../checker/types/type/function-types.ts';
 import type { FunctionType, StructValueType, Type } from '../../../checker/types/type/index.ts';
+import { futureOf } from '../../../checker/types/type/well-known.ts';
 import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import { membersOf } from '../../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
@@ -43,7 +44,7 @@ import { spelledType } from '../../tables/names.ts';
 import { convertedIntoAny } from '../../values/into-any.ts';
 import { rebuiltAs } from '../../values/struct-values.ts';
 import { asBase, intoUnion } from '../../values/unions.ts';
-import { changesLayout, type Rebuilding, rebuilt } from './parts.ts';
+import { changesLayout, type Rebuilding, rebuilt, resultFitBetween } from './parts.ts';
 
 /** A register and the type of the value it holds. */
 export interface TypedRegister {
@@ -112,10 +113,7 @@ function convertedValue(
     }
     case 'async': {
       const plain = functionTypeOf(typed.type);
-      return {
-        value: how.madeAsync(typed.value, plain),
-        type: functionType({ ...plain, isAsync: true }),
-      };
+      return { value: how.madeAsync(typed.value, plain), type: madeAsyncType(context, plain) };
     }
     case 'shape': {
       const { to } = conversion;
@@ -194,7 +192,7 @@ function applyingIn(code: SynthesizedCode, at: ConversionSite): Applying {
     span: at.span,
     at,
     madeAsync: (value, plain) => {
-      const to = functionType({ ...plain, isAsync: true });
+      const to = madeAsyncType(code, plain);
       const entry = code.tables.conversionIndex({ kind: 'wrapping', from: plain, to, at });
       return closureOf(code, entry, [value], at.span);
     },
@@ -270,8 +268,9 @@ export function convertingEntry(
 /**
  * The entry of a function of type `entry.from` wrapped as one of `entry.to` (§3.5, §3.14): it
  * converts each argument it is given into what the function takes, a `&` passed on as it is,
- * calls the function it captures, awaiting it where it is async, and converts what it gives. Made
- * async where `to` is, it gives a future already resolved when the function is plain.
+ * calls the function it captures, and converts what it gives; where `to` gives a future of what it
+ * gives, the entry is async, awaiting the future the function gives, if any, so the entry gives a
+ * future already resolved when the function gives none.
  */
 export function wrappingEntry(
   lowering: Pick<CodeContext, 'checker' | 'tables'>,
@@ -299,10 +298,20 @@ export function wrappingEntry(
     callee: { kind: 'value', register: original },
     arguments: passed,
   });
-  const result = from.isAsync ? code.await(called) : called;
-  code.return(fittedIn(code, { value: result, type: from.result }, to.result, at));
+  const result = resultFitBetween(checker, from, to);
   const header = tables.headerAt(conversionName(checker, entry), at.module, at.span);
-  return code.entry(header, to.isAsync, references);
+  if (result.kind === 'value') {
+    code.return(fittedIn(code, { value: called, type: from.result }, to.result, at));
+    return code.entry(header, false, references);
+  }
+  const value = result.kind === 'awaited' ? code.await(called) : called;
+  code.return(fittedIn(code, { value, type: result.value }, result.into, at));
+  return code.entry(header, true, references);
+}
+
+/** The type of a function of type `plain` made async: giving a future of what it gives (§3.14). */
+function madeAsyncType(context: Pick<CodeContext, 'checker'>, plain: FunctionType): FunctionType {
+  return functionType({ ...plain, result: futureOf(context.checker, plain.result) });
 }
 
 /** `type`, whose value the checker converted into a shape, so a nominal struct. */

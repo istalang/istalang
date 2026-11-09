@@ -17,9 +17,10 @@ import type { CheckerContext, CheckerNote } from '../../../contexts/context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import type { CheckedBody } from '../../../surface/checked-body.ts';
 import { sameTypeSpelled } from '../../../types/parts/type-parts.ts';
+import { headResult } from '../../../types/type/function-types.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType, unitType } from '../../../types/type/primitives.ts';
-import { callResult, declaredResultOf } from './signatures.ts';
+import { declaredResultOf } from './signatures.ts';
 
 /** What ProgramChecker gives the unit: how to check a body against its declared result. */
 export interface FunctionSeams {
@@ -64,7 +65,11 @@ export class FunctionChecks {
         const declared = this.#declaredResults.get(declaration);
         const inferred =
           declared === undefined ? this.#checkedBody(declaration)?.result : undefined;
-        return callResult(checker, declaration, declared ?? inferred ?? unitType);
+        return headResult(
+          checker.fitting,
+          declaration.qualifiers,
+          declared ?? inferred ?? unitType,
+        );
       },
       equal: sameTypeSpelled,
       cyclic: {

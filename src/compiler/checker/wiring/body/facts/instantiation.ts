@@ -118,6 +118,7 @@ function instantiatedFunction(
   const concrete = (type: Type) => substitute(type, substitution, rules);
   return {
     type: substituteKept(checked.type, substitution, rules),
+    result: concrete(checked.result),
     parameters: checked.parameters.map((parameter) => ({
       ...parameter,
       type: concrete(parameter.type),

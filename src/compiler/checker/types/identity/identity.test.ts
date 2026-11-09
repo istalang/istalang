@@ -31,7 +31,6 @@ const types: fc.Arbitrary<Type> = fc.letrec<{ type: Type }>((tie) => ({
       ({ parameters, result }): Type =>
         functionType({
           reach: undefined,
-          isAsync: false,
           parameters: parameters.map((type) => ({ type, reference: false })),
           result,
         }),

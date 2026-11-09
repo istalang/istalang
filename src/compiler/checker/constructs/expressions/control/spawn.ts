@@ -27,7 +27,7 @@ import { isSendable } from '../../../types/traits/sendable.ts';
 import type { Type } from '../../../types/type/index.ts';
 import { errorType } from '../../../types/type/primitives.ts';
 import { typeText } from '../../../types/type/type-text.ts';
-import { futureArgument, wellKnownOf } from '../../../types/type/well-known.ts';
+import { wellKnownOf } from '../../../types/type/well-known.ts';
 
 export function checkSpawn(context: BodyContext, node: Spawn): Type {
   const call = unparenthesized(node.call);
@@ -56,16 +56,16 @@ export function checkSpawn(context: BodyContext, node: Spawn): Type {
   return wellKnownOf(context.checker, wellKnown.instance, [outcome]);
 }
 
-/** What the instance `call` starts ends with: what its function returns, an async one's awaited. */
+/**
+ * What the instance `call` starts ends with: what its function returns, an async one's awaited. A
+ * function value is async wherever it returns a future, its type being all that is known of it.
+ */
 function outcomeOf(context: BodyContext, call: Call): Type {
   const returned = context.typeOf(call);
   const resolved = context.callAt(call);
-  const callee = context.typeOf(calledName(call));
-  const isAsync =
-    resolved === undefined
-      ? callee.kind === 'function' && callee.isAsync
-      : resolved.function.qualifiers.kind !== undefined;
-  return isAsync ? (futureArgument(context.checker, returned) ?? returned) : returned;
+  const awaited = context.checker.fitting.futureValue(returned);
+  const isAsync = resolved === undefined || resolved.function.qualifiers.kind !== undefined;
+  return isAsync && awaited !== undefined ? awaited : returned;
 }
 
 /** Why the function `call` runs can't start an instance, naming it; undefined when it can. */

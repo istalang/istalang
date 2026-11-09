@@ -1,7 +1,7 @@
 /**
  * Fitting a value where a type is expected (§2, §3.1, §3.5, §3.10, §3.14, §3.15): the same type, a
  * value converted into an `any` type its type meets, a nominal struct's value into its equal shape,
- * a plain function made async where an async function of its parameters and result is expected, a
+ * a function made async where one of its parameters giving a future of its result is expected, a
  * one-element tuple and its element each where the other is expected, a literal type's value as its
  * base, or a value put into a union. These are the language's implicit conversions.
  *
@@ -41,7 +41,7 @@ import { isAssignable, sameConstraint } from '../../identity/identity.ts';
 import { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
 import { parametersIn } from '../../parts/type-parts.ts';
 import { unfolded } from '../../type/computed-types.ts';
-import { functionType } from '../../type/function-types.ts';
+import { type Futures, functionType } from '../../type/function-types.ts';
 import type {
   AnonymousStructType,
   AnyType,
@@ -104,9 +104,10 @@ export const exactFit: Fit = { conversion: { kind: 'none' } };
 /**
  * What fitting needs of the program: the rules types are built by (../../type/type-rules.ts),
  * whether a type meets an `any` type's constraints, the shape a nominal struct's value converts
- * into, if any (§3.1), and the union a member parameter stands for one member of (§3.5).
+ * into, if any (§3.1), the union a member parameter stands for one member of (§3.5), and the futures
+ * an async function's call gives (§3.14).
  */
-export interface Fitting extends TypeRules {
+export interface Fitting extends TypeRules, Futures {
   readonly meetsAny: (found: Type, target: AnyType) => boolean;
   readonly shapeOf: (found: Type) => AnonymousStructType | undefined;
   /**
@@ -268,7 +269,7 @@ function memberParameterFit(found: Type, expected: Type, rules: Matching): Fit |
 
 /** How `found`, no union, converts into `expected`, no union either; undefined when it can't. */
 function convertedInto(found: Type, expected: Type, rules: Matching): Conversion | undefined {
-  if (fitsAsync(found, expected, rules.exact)) {
+  if (fitsAsync(found, expected, rules)) {
     return { kind: 'async' };
   }
   const single = singleConversion(found, expected, rules.exact);
@@ -443,20 +444,18 @@ const reshapingKinds: ReadonlySet<Fit['conversion']['kind']> = new Set([
 ]);
 
 /**
- * Whether a plain function of type `source` fits where `target`, an async function of the same
- * parameters and result, is expected: calling it gives a future already resolved (§3.14).
+ * Whether a function of type `source` fits where `target`, a function of its parameters giving a
+ * future of its result, is expected: calling it gives a future already resolved (§3.14).
  */
 function fitsAsync(
   source: Type,
   target: Type,
-  exact: (expected: Type, found: Type) => boolean,
+  rules: Pick<ConversionRules, 'exact' | 'futureOf'>,
 ): boolean {
   return (
     source.kind === 'function' &&
     target.kind === 'function' &&
-    !source.isAsync &&
-    target.isAsync &&
-    exact(target, functionType({ ...source, isAsync: true }))
+    rules.exact(target, functionType({ ...source, result: rules.futureOf(source.result) }))
   );
 }
 

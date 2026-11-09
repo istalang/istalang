@@ -164,15 +164,15 @@ export function nestedFrame(
   if (checked === undefined) {
     unreachable(`The function at ${node.span.from} was never checked.`);
   }
-  const { type, parameters, captures } = checked;
+  const { result, parameters, captures } = checked;
   return {
     header: startHeader ?? lowered.tables.nestedHeader(nested),
-    isAsync: type.isAsync,
+    isAsync: node.qualifiers.kind !== undefined,
     givesDefault: false,
     parameters,
     captures,
     function: node,
-    result: type.result,
+    result,
     self: node.name,
   };
 }
