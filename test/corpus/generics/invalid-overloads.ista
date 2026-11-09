@@ -1,9 +1,10 @@
-# error: 5105 at 11:4
-# error: 5105 at 14:4
-# error: 5003 at 20:18
-# Overloads that no call could tell apart clash (§3.7): through a generated default overload, or
-# by `self` taken as a value and as a reference. Two generic functions that both take a call are
-# ambiguous.
+# error: 5105 at 12:4
+# error: 5105 at 15:4
+# error: 5105 at 18:4
+# error: 5003 at 21:18
+# Overloads that some call fits alike clash (§3.7): through a generated default overload, by
+# `self` taken as a value and as a reference, or as generic functions each instantiating its own
+# type parameter, so a call both take is ambiguous too.
 
 struct Point { x: Int }
 

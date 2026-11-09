@@ -1,7 +1,7 @@
 /**
  * What a value built from the expected type takes from it (§2, §3.1, §3.5, §3.11): the one home for
- * taking an expected type apart, which every construct with no type of its own reads, as does judging a
- * postponed lambda (constructs/expressions/postponed.ts).
+ * taking an expected type apart, which every construct with no type of its own reads, as does
+ * judging a postponed lambda (constructs/expressions/postponed.ts).
  *
  * - A value with no type of its own is built as the one member of the expected union that takes it
  *   (`memberBuilt`, which every expression's check goes through), then goes into the union: `[]`
@@ -49,10 +49,11 @@ import { constrainArguments, typeArgumentsFor } from '../written/type-arguments.
 type Expecting = Pick<CheckerContext, 'wellKnownType' | 'typeRules'>;
 
 /**
- * `admits`, taking as well a type whose value it is built as (constructs/expressions/postponed.ts): what a recursive
- * type unfolds to, and a union of whose members it takes one, at any depth, as the value is then
- * built as that member: `[1, [2]]` takes `Json`, and `((1, none), 2)` takes `((Int, Int?) | String,
- * Int)`. Unfolding ends, since a guarded alias reaches itself only inside another type (§3.17).
+ * `admits`, taking as well a type whose value it is built as (constructs/expressions/postponed.ts):
+ * what a recursive type unfolds to, and a union of whose members it takes one, at any depth, as the
+ * value is then built as that member: `[1, [2]]` takes `Json`, and `((1, none), 2)` takes `((Int,
+ * Int?) | String, Int)`. Unfolding ends, since a guarded alias reaches itself only inside another
+ * type (§3.17).
  */
 export function takingUnfolded(accepts: Admits): Admits {
   const taking: Admits = (expected, isOpen) => {

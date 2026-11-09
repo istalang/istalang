@@ -179,7 +179,10 @@ guard (`UnfoldingPairs`).
     way, so one rule now covers both: the pairs may coexist, and `f(1)` and `f([1])` take the
     first.
   - Two functions still clash when some call fits both and neither is more specific: equal
-    parameter types, as today.
+    parameter types, as today, types each narrower at some position, or types alike once each
+    function instantiates its own type parameters (`Array<T>` beside `Array<T?>`): the clash rule
+    tries calls through choosing itself, so both read the one "holds" order
+    (`types/fitting/holds.ts`, merge-analysis.md S4).
   - A conversion inside a type counts as a conversion in the existing "takes every argument as it
     is" rank.
 - **Witnesses keep `self` exact.** `Array<Int>` doesn't meet a trait through a function declared

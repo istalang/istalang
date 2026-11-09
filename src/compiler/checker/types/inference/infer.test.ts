@@ -221,7 +221,7 @@ describe("a generic function's own call inside its body", () => {
     ],
     [
       'choosing among overloads by its own parameter',
-      'fn process<T>(x: T, y: T, stop: Bool) -> Int: 1\nfn process<T>(x: Int, y: T, stop: Bool) -> Int:\n  if stop: 0 else: process(y, y, true)',
+      'fn process(x: Int, y: Int, stop: Bool) -> Int: 1\nfn process<T>(x: T, y: T, stop: Bool) -> Int:\n  if stop: 0 else: process(y, y, true)',
     ],
   ])('gives its type parameters what the call passes, %s', (_case, declaration) => {
     expect(reportedErrors(`${declaration}\nasync fn main():\n  drop 1`)).toEqual([]);

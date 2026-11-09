@@ -27,6 +27,7 @@ import {
 import { isMethod } from '../../../syntax/declarations/methods.ts';
 import type { SignatureParameter } from '../../check.ts';
 import type { CheckerContext } from '../../contexts/context.ts';
+import { holds } from '../../types/fitting/holds.ts';
 import type { Inference } from '../../types/inference/infer.ts';
 import { noSubstitution, type Substitution, substitute } from '../../types/parts/substitution.ts';
 import type { Type } from '../../types/type/index.ts';
@@ -217,11 +218,11 @@ function chosenAmong(
 }
 
 /**
- * Whether `first` is more specific than `second` for the call both take: each argument's
- * parameter type, as each instantiates it, fits `second`'s, and not the reverse.
+ * Whether `first` is more specific than `second` for the call both take: `second`'s parameter
+ * types, as each instantiates them, hold `first`'s (types/fitting/holds.ts), and not the reverse.
  */
 function isMoreSpecific(
-  checker: Pick<CheckerContext, 'fitOf'>,
+  checker: Pick<CheckerContext, 'fitting'>,
   first: Application,
   second: Application,
 ): boolean {
@@ -236,12 +237,11 @@ function isMoreSpecific(
           ] as const,
         ];
   });
-  const fitsAll = (fits: (narrow: Type, wide: Type) => boolean) =>
-    pairs.every(([narrow, wide]) => fits(narrow, wide));
+  const { fitting } = checker;
   return (
     pairs.length > 0 &&
-    fitsAll((narrow, wide) => checker.fitOf(narrow, wide) !== undefined) &&
-    !fitsAll((narrow, wide) => checker.fitOf(wide, narrow) !== undefined)
+    pairs.every(([narrow, wide]) => holds(wide, narrow, fitting)) &&
+    !pairs.every(([narrow, wide]) => holds(narrow, wide, fitting))
   );
 }
 

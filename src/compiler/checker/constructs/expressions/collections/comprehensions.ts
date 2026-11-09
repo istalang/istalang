@@ -5,9 +5,9 @@
  * to have; `is` bindings in `c` reach `e` as the binder arranged.
  *
  * `[for k, v in ...x: e]` builds one of `e` per field of `x` instead
- * (constructs/loops/field-passes.ts), `e` checked once per pass as an array literal's elements are,
- * each expected to have what those before it agree on; the elements then agree as an array
- * literal's do (rules/agreement.ts), each settled back in its own pass, widened with nothing
+ * (constructs/loops/field-passes.ts), `e` checked once per pass with only the expected element
+ * type expected, so no pass decides another's; the elements then agree as an array literal's do,
+ * in any order (rules/agreement.ts), each settled back in its own pass, widened with nothing
  * expected as disagreeing ones widen however many passes there are, so a key gives a String (§4)
  * over one field as over several, and over a generic struct as over the one substituted for it. A
  * struct with no fields gives no element, so an array of `Never` with nothing expected.
@@ -18,7 +18,6 @@ import type { BodyContext } from '../../../contexts/body-context.ts';
 import { checkerDiagnostics } from '../../../diagnostics/index.ts';
 import {
   agreedType,
-  decidedSoFar,
   type Produced,
   producedBy,
   settleProduced,
@@ -57,7 +56,7 @@ export function checkFieldComprehension(
   const produced: Produced[] = [];
   const passes = checkedFieldPasses(context, node.header);
   const checked = inFieldPasses(context, node.header, passes, ({ visits }) => {
-    const type = context.expression(node.body, expectedElement ?? decidedSoFar(context, produced));
+    const type = context.expression(node.body, expectedElement);
     const element = producedBy(node.body, type);
     // A pass visiting no field gives no element: its body never runs.
     byPass.push(visits.kind === 'none' ? undefined : element);

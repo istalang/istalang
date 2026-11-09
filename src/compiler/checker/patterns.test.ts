@@ -320,8 +320,9 @@ describe('comparison and membership resolution', () => {
     ['a pattern field ordering', '  h is Holder{item < p}', 'item < p'],
   ])('reports an ambiguous compare on %s', (_case, line, spanText) => {
     const { codes, spanTexts } = reported([...ambiguous, line].join('\n'));
-    expect(codes[0]).toBe(reports.ambiguousCall.code);
-    expect(spanTexts[0]).toBe(spanText);
+    // The two `compare`s clash where declared too, as any two a call fits alike do (§3.7).
+    expect(codes.slice(0, 2)).toEqual([reports.overloadClash.code, reports.ambiguousCall.code]);
+    expect(spanTexts[1]).toBe(spanText);
   });
 
   const unmetConstraint = [

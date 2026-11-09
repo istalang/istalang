@@ -103,8 +103,9 @@ src/
                                                                  `T?` being `T | None`, widening, what types decide of `==`, and
                                                                  the common type values agree on with none expected (common-type.ts)
         fitting/                                                 a value fitted where a type is expected (fit/), part by part as variance
-                                                                 allows (fit/parts.ts), and what a value built from an expected type takes
-                                                                 of it (expected.ts)
+                                                                 allows (fit/parts.ts), what a value built from an expected type takes
+                                                                 of it (expected.ts), and the one order of types joining, settling,
+                                                                 choosing and clashes read (holds.ts)
         variance/                                                each type parameter's variance: derived for structs and enums, written
                                                                  (`gives`/`takes`) for extern values, invariant for handles
         written/                                                 written types resolved: the type a name names in a value's place

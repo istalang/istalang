@@ -123,20 +123,18 @@ function joinedAgreement(produced: readonly Produced[], checker: Joining): Type 
   if (first === undefined) {
     return undefined;
   }
-  const base = rebuiltAgreement(first.type, present, checker);
+  const base = rebuiltAgreement(present, checker) ?? first.type;
   return valued.some(({ type }) => presentPart(type) !== type) ? optionalOver(base, checker) : base;
 }
 
 /**
- * `decided`, or, when some producer disagrees with it and every producer agrees with or builds its
- * type with the literal types inside widened, that type (the banner).
+ * The first producer's type, with the literal types inside widened, that every producer agrees
+ * with or builds (the banner); undefined when none is.
  */
-function rebuiltAgreement(decided: Type, produced: readonly Produced[], checker: Joining): Type {
-  if (produced.every(({ type }) => agrees(checker, type, decided))) {
-    return decided;
-  }
-  const inside = insideWidened(decided, checker);
-  return produced.every((each) => agreesOrConverts(checker, each, inside)) ? inside : decided;
+function rebuiltAgreement(produced: readonly Produced[], checker: Joining): Type | undefined {
+  return produced
+    .map(({ type }) => insideWidened(type, checker))
+    .find((inside) => produced.every((each) => agreesOrConverts(checker, each, inside)));
 }
 
 /**

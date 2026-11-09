@@ -7,7 +7,8 @@
  *   path, a throw included. One checked with no scope current (a boundary, a literal decided by
  *   where it goes, a part read settled) has its parts each settle on their own.
  * - What an expression checked outside a scope expects never names a variable, which only the scope
- *   holding it knows (`closed`), but for a literal decided by where it goes, which reads it as given.
+ *   holding it knows (`closed`), but for a literal decided by where it goes, which reads it as
+ *   given.
  * - A member that joins with no scope open settles at once, in a scope of its own, which its
  *   inference's system is, so what it judges still joins it.
  */
@@ -25,9 +26,18 @@ export class BodyScopes implements Scopes {
   readonly #settling: ScopeSettling;
   #current: ConstraintScope | undefined;
 
-  /** `record` records a node's type, as settling a scope records each member's. */
-  constructor(record: (node: Expression, type: Type) => void) {
+  readonly decidesItems: (expected: Type) => boolean;
+
+  /**
+   * `record` records a node's type, as settling a scope records each member's; `decidesItems` is
+   * the protocol's (scope-protocol.ts `ScopeHolding`).
+   */
+  constructor(
+    record: (node: Expression, type: Type) => void,
+    decidesItems: (expected: Type) => boolean,
+  ) {
     this.#settling = { suspended: (check) => this.suspended(check), record };
+    this.decidesItems = decidesItems;
   }
 
   get isOpen(): boolean {
@@ -49,8 +59,8 @@ export class BodyScopes implements Scopes {
   }
 
   /**
-   * Checks `node` by `check` where the protocol places it, with what it may read of `given`; one the
-   * scope may postpone (`postponable`) in the current scope, if any.
+   * Checks `node` by `check` where the protocol places it, with what it may read of `given`; one
+   * the scope may postpone (`postponable`) in the current scope, if any.
    */
   checking(
     node: Expression,

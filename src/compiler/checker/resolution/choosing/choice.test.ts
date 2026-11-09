@@ -19,6 +19,8 @@ interface ChoiceCase {
   readonly setup?: string;
   /** The result type of the overload the call must choose; undefined when it is ambiguous. */
   readonly chosen: string | undefined;
+  /** Whether the overloads clash where declared, as two some call fits alike do (§3.7). */
+  readonly clash?: boolean;
 }
 
 const cases: readonly ChoiceCase[] = [
@@ -75,10 +77,11 @@ const cases: readonly ChoiceCase[] = [
     chosen: 'String',
   },
   {
-    rule: 'two generic functions both matching are ambiguous',
+    rule: 'two generic functions both matching are ambiguous, and clash',
     overloads: ['fn f<T>(a: T, b: Int) -> Bool: true', 'fn f<T>(a: Int, b: T) -> String: "c"'],
     call: 'f(1, 2)',
     chosen: undefined,
+    clash: true,
   },
   {
     rule: 'a value fits an optional parameter by the implicit wrap',
@@ -274,8 +277,9 @@ function orders<Item>(items: readonly Item[]): readonly (readonly Item[])[] {
 
 describe('overload choice', () => {
   it.each(cases)('$rule', (choice) => {
-    const ambiguous = [checkerDiagnostics.ambiguousCall.code];
-    expect(codesOf(choice, choice.overloads)).toEqual(choice.chosen === undefined ? ambiguous : []);
+    const clash = choice.clash === true ? [checkerDiagnostics.overloadClash.code] : [];
+    const ambiguous = choice.chosen === undefined ? [checkerDiagnostics.ambiguousCall.code] : [];
+    expect(codesOf(choice, choice.overloads)).toEqual([...clash, ...ambiguous]);
   });
 
   it.each(cases)("doesn't depend on declaration order: $rule", (choice) => {

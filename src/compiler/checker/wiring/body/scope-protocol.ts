@@ -10,9 +10,9 @@
  *   (`BodyContext.part`, rules/placeholders.ts), whatever it stands as here.
  * - An expression the scope may postpone (constructs/expressions/postponed.ts) joins it, however
  *   its kind stands: a lambda, a name of functions or variants, an empty `[]` or `[:]`.
- * - A collection literal of items decided by where it goes, an expected type the scope doesn't hold,
- *   reads its items' types at once to agree on them, so they settle on their own; one that isn't
- *   joins as a generic literal of the scope.
+ * - A collection literal of items decided by where it goes, an expected collection type the scope
+ *   doesn't hold, reads its items' types at once to agree on them, so they settle on their own; one
+ *   that isn't joins as a generic literal of the scope, its items agreeing in any order.
  * - Parentheses open a scope where what they hold would, and otherwise join the current one, so
  *   what they hold is placed as it stands itself: a lambda, a name or `[]` in them is still
  *   postponed.
@@ -38,9 +38,15 @@ export type Standing =
    */
   | 'decided';
 
-/** What the protocol reads of the scopes: whether a type is open in the current one. */
+/**
+ * What the protocol reads of the scopes: whether a type is open in the current one, and whether a
+ * collection literal expected to be `expected` has its items' types decided by it, as a type that
+ * builds collections (types/fitting/expected.ts `collectionTarget`) does, where `any Sendable`
+ * doesn't.
+ */
 export interface ScopeHolding {
   readonly holds: (type: Type | undefined) => boolean;
+  readonly decidesItems: (expected: Type) => boolean;
 }
 
 const opens = (): Standing => 'opens';
@@ -52,7 +58,9 @@ function collectionStanding(
   items: readonly unknown[],
   expected: Type | undefined,
 ): Standing {
-  const isDecided = items.length === 0 || (expected !== undefined && !scopes.holds(expected));
+  const isDecided =
+    items.length === 0 ||
+    (expected !== undefined && !scopes.holds(expected) && scopes.decidesItems(expected));
   return isDecided ? 'decided' : 'opens';
 }
 

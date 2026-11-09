@@ -98,7 +98,7 @@ describe('a required function', () => {
       [
         'struct Money { cents: Int }',
         'fn Money.zero() -> Money: Money{cents: 0}',
-        'fn add<T>(left: T?, right: T?) -> T: panic("unreached")',
+        'fn add(left: Money?, right: Money?) -> Money: panic("unreached")',
       ].join('\n'),
       'sum(Money{cents: 1}, Money{cents: 2}).cents',
       true,

@@ -101,14 +101,15 @@ function checkJoiningArray(context: BodyContext, node: ArrayLiteral): Type {
 function checkJoiningMap(context: BodyContext, node: MapLiteral): Type {
   const keys: Item[] = [];
   const values: Item[] = [];
-  const spreads: SpreadPairs[] = [];
+  // Each spread with the position its pairs take among the keys and values.
+  const spreads: { readonly pairs: SpreadPairs; readonly index: number }[] = [];
   for (const entry of node.entries) {
     if (entry.kind === 'MapEntry') {
       keys.push(joinedItem(context, entry.key));
       values.push(joinedItem(context, entry.value));
     } else if (entry.kind === 'Spread') {
       const pairs = spreadPairs(context, entry, undefined);
-      spreads.push(pairs);
+      spreads.push({ pairs, index: keys.length });
       keys.push({
         produced: { type: pairs.key, span: entry.span, site: undefined },
         literal: undefined,
@@ -128,8 +129,14 @@ function checkJoiningMap(context: BodyContext, node: MapLiteral): Type {
       const key = agreeOn(context, producedKeys, expectedKey, 'key') ?? expectedKey ?? neverType;
       const value =
         agreeOn(context, producedValues, expectedValue, 'value') ?? expectedValue ?? neverType;
-      for (const spread of spreads) {
-        settleMapSpread(context, spread, { key, value, isExpected: settled !== undefined });
+      // A spread's pairs are settled as solved, as the keys and values are.
+      for (const { pairs, index } of spreads) {
+        const solved = {
+          ...pairs,
+          key: producedKeys[index]?.type ?? pairs.key,
+          value: producedValues[index]?.type ?? pairs.value,
+        };
+        settleMapSpread(context, solved, { key, value, isExpected: settled !== undefined });
       }
       return wellKnownOf(context.checker, wellKnown.map, [key, value]);
     },

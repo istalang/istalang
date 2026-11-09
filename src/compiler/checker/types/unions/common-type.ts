@@ -3,11 +3,11 @@
  * `if`'s branches, a body's tail and its `return`s, a collection literal's items) decides, and
  * inference's settling will.
  *
- * It is one of the types that holds every other one, the first such, so a written type is kept as
- * it is spelled: `Status` for a `Status` and a `"draft"`, `MaybeInt` for a `MaybeInt` and an `Int`.
- * Holding asks for no conversion beyond taking a literal as its base and putting a value into a
- * union as a member; how each value is then fitted, and what that records, is agreement's to
- * decide. Widening reaches inside an optional, so `"a"?` and `"b"` join to `String?`.
+ * It is one of the types that holds every other one (types/fitting/holds.ts), the first such, so a
+ * written type is kept as it is spelled: `Status` for a `Status` and a `"draft"`, `MaybeInt` for a
+ * `MaybeInt` and an `Int`, and `Array<Int?>` for an `Array<Int>` and an `Array<Int?>`, whichever
+ * comes first. How each value is then fitted, and what that records, is agreement's to decide.
+ * Widening reaches inside an optional, so `"a"?` and `"b"` join to `String?`.
  *
  * Failing that, only two joins exist, as in Kotlin, Swift and C#: a literal type into its base,
  * and a type with `None` into its optional. So `1` and `none` join to `Int?`, while `1` and `"a"`
@@ -16,6 +16,7 @@
  */
 
 import type { CheckerContext } from '../../contexts/context.ts';
+import { holds } from '../fitting/holds.ts';
 import type { Type } from '../type/index.ts';
 import { isPrimitive } from '../type/primitives.ts';
 import { literalsBase, optionalInner, optionalOf, presentType } from './unions.ts';
@@ -96,15 +97,16 @@ export function withinOptional(
 }
 
 /**
- * The first of `types` that holds them all, else the first one widened when that holds them all
- * widened; undefined when neither does.
+ * The first of `types` that holds them all, else the first of them widened that holds them all
+ * widened; undefined when none does.
  */
 function presentJoin(types: readonly Type[], joining: Joining): Type | undefined {
-  const [first] = types;
-  const holder = types.find((candidate) => holdsAll(candidate, types, joining));
-  return (
-    holder ?? (first === undefined ? undefined : orWidened(first, types, joining, joinWidened))
-  );
+  const widenedTypes = types.map((type) => joinWidened(type, joining));
+  return firstHolder(types, joining) ?? firstHolder(widenedTypes, joining);
+}
+
+function firstHolder(types: readonly Type[], joining: Joining): Type | undefined {
+  return types.find((candidate) => holdsAll(candidate, types, joining));
 }
 
 /**
@@ -120,15 +122,8 @@ function optionalJoin(types: readonly Type[], joining: Joining): Type | undefine
   return base === undefined ? undefined : optionalOver(base, joining);
 }
 
-/**
- * Whether `holder` holds each of `types`: its values fit as they are, or as their base (the
- * banner).
- */
 function holdsAll(holder: Type, types: readonly Type[], joining: Joining): boolean {
-  return types.every((type) => {
-    const kind = joining.fitOf(type, holder)?.conversion.kind;
-    return kind === 'none' || kind === 'base';
-  });
+  return types.every((type) => holds(holder, type, joining.fitting));
 }
 
 /** The base a member parameter's union of literals has; undefined for any other type. */

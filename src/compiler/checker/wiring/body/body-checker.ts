@@ -10,8 +10,8 @@
  *   the node giving the value, or, for a value an assignment writes, on its part
  *   (constructs/statements/assignments.ts). Nothing is recomputed later, so lowering sees what was
  *   checked.
- * - An expression checked in a constraint scope (wiring/body/constraint-scope.ts, body-scopes.ts) is
- *   recorded again once the scope settles, its type solved; one the scope postpones is its
+ * - An expression checked in a constraint scope (wiring/body/constraint-scope.ts, body-scopes.ts)
+ *   is recorded again once the scope settles, its type solved; one the scope postpones is its
  *   placeholder until then (constructs/expressions/postponed.ts). A value where a union is expected
  *   is checked as the member it is built as when that is decided before it is checked (§2,
  *   `memberBuilt`); otherwise it goes in as fitting puts it, converted where its parts need.
@@ -83,7 +83,7 @@ import { checkTestingCalls } from '../../rules/testing.ts';
 import { statementPlace } from '../../surface/checked-annotation.ts';
 import type { CheckedBody, FieldGiver, ValueSite } from '../../surface/checked-body.ts';
 import type { ResolvedCall, ResolvedSite } from '../../surface/resolved-call.ts';
-import type { Admits } from '../../types/fitting/expected.ts';
+import { type Admits, collectionTarget } from '../../types/fitting/expected.ts';
 import { type Fit, isExact } from '../../types/fitting/fit/index.ts';
 import { unfolded } from '../../types/type/computed-types.ts';
 import type { FieldMember, FunctionType, Type } from '../../types/type/index.ts';
@@ -130,9 +130,12 @@ export class BodyChecker implements BodyContext {
   constructor(checker: CheckerContext, module: ModuleId, kind: BodyKind) {
     this.checker = checker;
     this.module = module;
-    this.scopes = new BodyScopes((node, type) => {
-      this.#record(node, type);
-    });
+    this.scopes = new BodyScopes(
+      (node, type) => {
+        this.#record(node, type);
+      },
+      (expected) => collectionTarget(checker, expected) !== undefined,
+    );
     const isFunction = kind.kind === 'function';
     this.#result = new ReturnScope(kind.declaredResult, isFunction);
     const declaration = isFunction ? kind.declaration : undefined;
