@@ -4,7 +4,7 @@ owner: tech-lead
 status: active
 applies_to: istalang
 last_verified: 2026-11-08
-last_updated: 2026-11-08
+last_updated: 2026-11-09
 tags: [plan, checker, inference, variance, f25]
 ---
 
@@ -37,7 +37,7 @@ variance, so the longest phase (I1) starts at once, beside the contract it later
 | **I1** Constraint inference per call (behavioural) | The constraint system in `types/inference/` (`design.md` §4): `constrain(sub, sup)`, bounds decomposed by `varianceOf`, the receiver binding exactly, bounds propagating between variables, the settling policy, fresh literals, postponed arguments, the one-way "most specific" rank. Delete conformance's expected step and the ordering in `function-arguments.ts`. Variant calls keep `known-parameters.ts` until I2. Spec §3.5, §3.7, §3.14 | `design.md` §9 rows that need neither covariance, joint solving nor variant calls (the three `map` examples, `pick` as `Status`, `biggest`, `sorted`, `fields.get`, `pairWith`, `show`, `xs.includes(none)`). `fn f(x: Int)` and `fn f(x: Int?)` coexist, and `f(1)` takes the first. A called function value gives its parameter types to its arguments: `(h.f)(Phantom{n: 31})` for `h.f: fn(Phantom<Int>)`. A property: a call that checks without an expected type checks to the same instantiation with its own result type expected. Moves: the 5105s in `test/corpus/unions/invalid-uses.ista`, the clash rows in `clashes.test.ts` |
 | **V1** Variance and conversions inside types (behavioural) | `varianceOf` derived (four-point fixpoint; computed positions and member type parameters invariant) and written (`gives`/`takes` with their checks; an error on handles until F27). `fitOf` composing through variance, recursive types under a cycle guard, the one-element tuple only at the top. A nested fit records only from and to; lowering derives each rebuild per concrete pair as one synthesized function; `forms.ts` follows. Runtime equality and hashing by declaration, other type-id readers audited. Spec §2, §3.1, §3.5 (variance), §3.6, §3.8, §3.18 | `Array<Int>` into `Array<Int?>` checks and runs, persists and round-trips through JSON. `design.md` §9's `Slot`, `Map`, tuple and `Box` equality rows. `Inbox<T>` is invariant. A struct with an `fn(T)` field is contravariant. An assertion contradicting the derived variance is an error. `Json` and `Tree` pinned, and converted. Moves: the nested 5001s in `test/corpus/unions/invalid-conversions.ista`, `arguments/invalid-async-fits.test.ista`, `shapes/invalid-conversion.ista` |
 | **V2** Variance through `any` (behavioural) | Traits' variance (`design.md` §2), meeting `any Trait<B>` through a fitting `Trait<A>`, dispatch and field reads converting, downcasts admitting. Spec §3.10 | `design.md` §9's `any Source` and `any Sink` rows. `Array<Int>` meets no trait through a function for `Array<Int?>` |
-| **I2** Joint solving (structural, then behavioural) | 1. Every per-call and per-literal record pending until the outermost system settles, written by one pass; behaviour-neutral. 2. Nested generic calls and literals join the outermost system; literals with no type of their own take the expected type (`design.md` §4); variants become ordinary generic calls, spreads and `Options.Empty` included; delete `known-parameters.ts` and the variant helpers. 3. Delete §3.7 literal building once nothing reads it | `items([Item{value: "s"}])` as `Options<"s" \| "m">`; `items([Item{value: Small}])`; a lambda inside a nested generic call; `design.md` §9's variant rows. `variants.test.ts`, `recursive-uses.test.ts`, `literal-arguments.test.ts` unchanged. No `builds` remains. Profile within noise |
+| **I2** Joint solving (structural, then behavioural) | Redesigned as J1, J2 in `i2-plan.md`. 1. Every per-call and per-literal record pending until the outermost system settles, written by one pass; behaviour-neutral. 2. Nested generic calls and literals join the outermost system; literals with no type of their own take the expected type (`design.md` §4); variants become ordinary generic calls, spreads and `Options.Empty` included; delete `known-parameters.ts` and the variant helpers. 3. Delete §3.7 literal building once nothing reads it | `items([Item{value: "s"}])` as `Options<"s" \| "m">`; `items([Item{value: Small}])`; a lambda inside a nested generic call; `design.md` §9's variant rows. `variants.test.ts`, `recursive-uses.test.ts`, `literal-arguments.test.ts` unchanged. No `builds` remains. Profile within noise |
 
 **Order:** {V0 ∥ I0} → V1 once V0 lands → I1 once V1 and I0 land → I2 once I1 lands, V2 once
 V1 lands → merge review. A phase starts only on landed code, never on a contract, and beside a running one
@@ -58,8 +58,8 @@ independent of this plan and may run beside I2.
 | `types/variance/variance.ts`: `type Variance = 'covariant' \| 'contravariant' \| 'invariant'`; `varianceOf(declaration: NominalDeclaration \| TypeAliasDeclaration \| TraitDeclaration): readonly Variance[]`, one per type parameter, memoized per declaration | V1 creates it; V2 adds the traits' | I1, I2 |
 | `types/fitting/fit/`: composition through variance; a nested fit recorded as from and to | V1 | I1, I2, lowering, `forms.ts` |
 | `types/unions/common-type.ts`: `commonType(types: readonly Type[]): Type \| undefined` | I0 | I1 (settling rule 3), `agreement.ts` |
-| `types/inference/`: the constraint system (variables, `constrain`, settle, join a nested system) | I1 | I2 |
-| `BodyContext` records pending until settled | I2 | — |
+| `types/inference/`: the constraint system (variables, `constrain`, settle, one constraint scope per body expression) | I1 | I2 |
+| `BodyContext` holds the constraint scope; records are written at settle | I2 | — |
 
 A contract amendment goes to the tech-lead, who decides and tells the affected phases.
 
