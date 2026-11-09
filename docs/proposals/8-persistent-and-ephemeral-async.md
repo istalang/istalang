@@ -42,7 +42,7 @@ extern struct Future<T, K in Persistence>
 
 - **The kind is always written.** `Future<T>` is a compile error naming both kinds, and no alias spells either.
 - **An ephemeral future** lives in process memory. It is never persisted, and waiting on it never commits.
-- **A persistent future** is persisted with its instance, its value included, so its `T` must be `Persistable` (Rule 7). Waiting on it commits first.
+- **A persistent future** is persisted with its instance, its value included, so its `T` must be `Persistable` wherever the future lives across a commit, which check 1 checks (Rule 7). Waiting on it commits first.
 - **The prelude's name is `Persistence`,** not `Kind`: no module may reuse a prelude name (§3.13), and `Kind` is a common one.
 
 ### 2. Two kinds of async function
@@ -144,6 +144,7 @@ trait Awaitable<T>:
   - a function value of a plain `fn` type.
 
   `Sendable` implies `Persistable`.
+- **A type parameter** held across a commit gets an inferred `Persistable` requirement, checked at each type argument as constraints are (§3.5), the way `readonly` requirements are inferred (Rule 8). Nothing is written, and the error stands at the type argument, never in the generic body.
 - **Not persistable:**
   - an ephemeral future or resolver;
   - an `extern ephemeral struct`, a host type the host can't persist, such as a socket, which can't also be declared `sendable`;
@@ -380,3 +381,4 @@ After the repository's rewrite (implementation note 9), every program that compi
 22. **The language is separate from the runtime.** The compiler checks everything, the runtime contract is fixed, and a backend implements futures as it needs. Starting persistent work from ephemeral code, and every other runtime mechanism, is proposal 9's.
 23. **This replaces the earlier proposal 8,** and keeps its one-type rule.
 24. **Conversions are subtyping** composed through variance, the qualifiers ordered among themselves, and qualifier variables keep a higher-order function's qualifiers (tracker F28, `docs/work/variance-inference/design.md` §7).
+25. **A type parameter held across a commit** gets an inferred `Persistable` requirement, checked at its type arguments; a persistent future's `T` is checked the same way, through check 1.

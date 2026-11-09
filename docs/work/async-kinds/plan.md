@@ -1,5 +1,5 @@
 ---
-description: plan for implementing proposal 8 (persistent and ephemeral async), with the slice of proposal 9 that enters persistent work — process, twelve phases with order, shared surfaces and owners, diagnostic ranges and verification; read before forking or examining an async-kinds phase
+description: plan for implementing proposal 8 (persistent and ephemeral async), with the slice of proposal 9 that enters persistent work — process, thirteen phases with order, shared surfaces and owners, diagnostic ranges and verification; read before forking or examining an async-kinds phase
 owner: tech-lead
 status: active
 applies_to: istalang
@@ -10,65 +10,62 @@ tags: [plan, proposal-8, async]
 
 # Async kinds: plan
 
-Spec: `docs/proposals/8-persistent-and-ephemeral-async.md` (F28 folded in). Code today: `findings.md`. Scope and
-acceptance per phase: `phases.md`.
+Spec: `docs/proposals/8-persistent-and-ephemeral-async.md` (F28 folded in). Code today:
+`findings.md`. Scope and acceptance per phase: `phases.md`.
 
 ## Process
 
-**Twelve phases, each an implementer fork in its own worktree, with a pi reviewer and a qa on every
-behavioural phase; a merge review at the end.** *Why:* it crosses every layer, reshapes the most
-depended-on type (functions) and the runtime's commit, and soundness rests on it. It splits at
-seams (front end, function type, runtime), so three phases start at once.
+**Thirteen phases, each an implementer fork in its own worktree, with a pi reviewer and a qa on
+every behavioural phase; a merge review at the end.** *Why:* it crosses every layer, reshapes the
+most depended-on type (functions) and the runtime's commit, and soundness rests on it. Each
+structural change the later phases build on lands first, on its own.
 
 - **Examiners:** the plan reviewer stays as the root pi reviewer; the first behavioural phase
   spawns the root qa (`hcom pi --agent qa`). Every phase forks them.
 - **Merging:** a fork fast-forwards `main` once its reviewer approves, and reports once the human
   approves.
-- **Rewrites** are scripts through the project's scanner and parser, kept out of the repository
-  and re-run after every rebase.
-- **Profiles:** checker phases run `npm run profile:check`, runtime phases `wake.bench.ts`,
-  against their base.
+- **Rewrites** of sources go through one committed rewriter (DC's), re-run after every rebase.
+- **Profiles:** checker phases run `npm run profile:check`, runtime phases `wake.bench.ts`
+  (within 10% unless stated), against their base.
 
 ## Phases
 
 | Phase | Scope | After |
 |---|---|---|
-| **A0** Function heads | One modifier-set parser and head printer | — |
-| **T0** One function type | One constructor, one qualifier fit; `async fn(A) -> R` is `fn(A) -> Future<R>` | — |
-| **R1** In-memory waits | Waits and code entries with a kind, resident instances on an async host contract, commits and re-run state per execution | — |
-| **DC** Deferred calls | Defaults in the callee; `g f(args)`; `defer` and `spawn` as functions | A0, T0 |
-| **P** Persistable, check 1 | `reachOf`, `ephemeral fn`, captures against the expected type, shared release points, liveness | A0, T0 |
-| **K1** Two kinds | `ista fn`, `Future<T, K>`, the rewrite; ephemeral `async fn`, the kind default, the summary unit | A0, T0, R1, P |
-| **CX** Contexts | Proposal 9's `runtime.at` and `ctx.call`; hosts start only `async fn`s | K1, DC |
-| **E1** Effects, check 2 | `readonly`; summaries; the segment flow pass | K1 |
-| **R2** Resolvers | Registered one-shot resolvers, `onCancel`, host resolvers | CX |
-| **E2** `readonly` in traits | Declared and inferred requirements | E1 |
+| **A0** Function heads | One modifier-set parser; qualifiers grouped; one order every printer reads | — |
+| **R1a** Async host | The host and test-world contract asynchronous, one driver, resident instances; every `await` still commits | — |
+| **T0** One function type | One constructor, `reach` on the type, one qualifier fit; `async fn(A) -> R` is `fn(A) -> Future<R>` | A0 |
+| **R1b** In-memory waits | Wait modes and code-entry kinds, the resume primitive, commits and re-run state per execution | R1a |
+| **DC** Deferred calls | `callsMadeBy`, the source rewriter; defaults in the callee; `g f(args)`; `defer` and `spawn` as functions | T0 |
+| **P** Persistable, check 1 | The flow engine's hooks, release points; `reachOf`, inferred requirements, `ephemeral fn`, captures, liveness | T0 |
+| **K1** Two kinds | One entry rule, `awaitedOf`; `ista fn`, `Future<T, K>`, the rewrite; ephemeral `async fn`, the summary unit | DC, P, R1b |
+| **R2** Resolvers | Registered one-shot resolvers replacing host tokens, `onCancel` | K1 |
+| **E1** Effects, check 2 | `readonly`; summaries; the segment flow pass; the soundness property | K1 |
+| **AW** Awaitables | `Awaitable`, `Resolver`, one await path, `futures` over the kind | R2 |
+| **E2** `readonly` in traits | Declared requirements, and P's inferred ones extended | E1 |
+| **CX** Contexts | Proposal 9's `runtime.at`, `ctx.call` and invocation identity; hosts start only `async fn`s | AW |
 | **QV** Qualifier variables | Higher-order functions keep their arguments' qualifiers (F28) | E2 |
-| **AW** Awaitables | `Awaitable`, `Resolver`, `futures` over the kind | R2 |
 
-**Order:** {A0 ∥ T0 ∥ R1} → DC and P once A0 and T0 land → K1 → {CX ∥ E1} → R2 once CX lands, E2
-once E1 lands → QV, AW once R2 lands → merge review. At most three run at once; the two chains
-after K1 take the first free slots.
-*Why:* a phase starts only on landed code. R1 is the largest unknown, so it starts first. DC's
-`spawn` takes T0's one async type, for async and plain callees alike. P needs
-no kinds (every `await` commits today), so it lands before K1, which needs its `Persistable`. K1
-builds the summary unit E1 extends. Until CX lands, a host still starts a persistent `ista fn
-main`: CX ends that interim, and R2 shares its runtime and host files. QV generalizes every qualifier, `readonly` included, and
-E2's inferred requirements are the same polymorphism over traits. AW needs R2's resolvers.
+**Order:** {A0 ∥ R1a} → T0, R1b as each lands → {DC ∥ P} once T0 lands → K1 → {R2 ∥ E1} → AW
+→ CX, and E2 → QV → merge review. At most three run at once. *Why:* a phase starts only on landed
+code, and structure lands before what builds on it: A0's qualifier shape before T0's, the async
+host before in-memory waits, `callsMadeBy`, the rewriter and the flow engine before K1. P needs no
+kinds (every `await` commits today), so it lands before K1, which needs its `Persistable`. R2
+needs K1's kinds; `Call<R>` is an awaitable, so CX follows AW. Until CX lands, a host still
+starts a persistent `ista fn main`: a bounded interim CX ends.
 
 ## Shared surfaces
 
 | Surface | Owner | Extended by |
 |---|---|---|
-| Modifier lists and head printer (`syntax/`) | A0 | P (`ephemeral fn`), K1 (`ista`), E1 (`readonly`) |
-| `FunctionType` constructor and qualifier table (`types/type/`, `types/fitting/`) | T0 | P, E1, QV |
-| The Definition's function types and extern keys without `async` | T0 | K1 |
-| `await`/`select` modes and code-entry kinds in the Definition; the async host and test-world contract (`boundary.md`) | R1 | K1, R2 |
-| Omitted arguments in the Definition | DC | — |
-| `reachOf` (`types/traits/`); release points shared by checker and lowering | P | K1, E1 |
-| Contexts and the host's `async`-only start | CX | R2, AW |
-| Function-summary unit (`rules/`) | K1 | E1, E2, QV |
-| Literal type arguments in the Definition | K1 | AW |
+| Qualifiers grouped on the syntax tree (`reach`, `kind`, `readonly`); Rule 4's order, read by the formatter, signature help, type text and `typeKey` | A0 | T0, P, K1, E1 |
+| The async host and test-world contract (`boundary.md`); one driver | R1a | R1b, R2, CX |
+| `FunctionType`'s constructor, its `reach` (later `readonly`), each able to hold a variable; one qualifier fit; the Definition's function types and keys without `async` | T0 | P, E1, QV, K1 |
+| `await`/`select` modes; code-entry kinds (T0 changes only their source); the one-shot resume primitive | R1b | K1, R2 |
+| `callsMadeBy(f)`; omitted arguments in the Definition; the source rewriter (`scripts/`) | DC | K1, E1, CX |
+| The flow engine's await, call and release hooks; release points; the committing-await predicate; `reachOf`; inferred requirements on type parameters | P | K1, E1, E2 |
+| The entry rule's one home; `awaitedOf`; the kinds spelled once; the function-summary unit (on entries, per strongly connected component); literal type arguments in the Definition | K1 | E1, E2, QV, AW, CX |
+| Resolvers, host ones by id | R2 | AW, CX |
 
 `resolution/` and `types/` reach the summaries only through seams wired in `wiring/program/`,
 never by importing `rules/`. A contract amendment goes to the tech-lead.
@@ -91,8 +88,9 @@ never by importing `rules/`. A contract amendment goes to the tech-lead.
 | Phase | qa | reviewer | Notes |
 |---|---|---|---|
 | A0 | no | yes | Only the modifier order changes; covered by the parser, formatter idempotence, signature-help and VS Code grammar tests |
-| T0, DC, P, K1, CX, E1, E2, QV, AW | yes | yes | Profile |
-| R1, R2 | yes | yes | Soundness and store-write properties; `wake.bench.ts` |
+| R1a | no | yes | Behaviour-neutral: the full suite on the async contract, and a resident run agreeing with one restored from the store at every step |
+| T0, DC, P, K1, E1, E2, QV, AW, CX | yes | yes | Profile |
+| R1b, R2 | yes | yes | Store-write properties; `wake.bench.ts` |
 | Merge | — | yes | `main` since A0's base |
 
 **Out of scope, filed:** the rest of proposal 9 (CX's list, the native runtime, where `spawn` lives
