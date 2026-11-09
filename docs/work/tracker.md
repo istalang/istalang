@@ -25,12 +25,12 @@ tags: [tracker]
 | Completion (`docs/work/completion/plan.md`) | done (264 of 266 scenarios; CO-02, EX-04 in F14) |
 | Proposals 1–4 (`docs/work/proposals/plan.md`) | done |
 | Proposal 5 (`docs/proposals/5-indented-values.md`; equi-recursive identity `docs/work/proposals/p5-equi-recursive-identity.md`) | done |
-| Identity, variance and inference (`docs/work/variance-inference/plan.md`; closes F25) | planned |
+| Identity, variance and inference (`docs/work/variance-inference/plan.md`; closes F25) | six phases landed; corrections C1–C3 planned |
 | M8 Packages | planned |
 
 ## Filed
 
-Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F29, P38, Q46, B47. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
+Open items only: an item is removed once it is resolved; git history keeps it. Each group numbers its own items and keeps counting up: the next ids are F29, P38, Q48, B47. Items filed before 2026-10-28 shared one `D` series; older docs and git history keep the closed `D` ids.
 
 Size: easy (one short, local change), medium (several files or a design choice inside one layer), big (cross-layer, or a decision first). Depends on: what must happen first, or "none" when it can be done now.
 
@@ -124,6 +124,8 @@ DRY, double standards, cohesion, layering, dead or misplaced code.
 | Q43 | `examples/FormBuilder/generate.ts` doesn't run under Node's type stripping: its CLI block is CommonJS, so `node generate.ts *.form.json` fails and regenerating the `*.gen.ista` modules needs an ESM wrapper. | easy | none; can be done now | p5 rebase 2026-11-06 |
 | Q44 | Units used by exactly one other unit are filed by kind, not beside what they serve (Q42's body-facts move was one case): a first scan finds 264 exported units whose only user is in another folder. Research, triage and file per destination: `docs/work/cohesion/`. | big | none; research first | cohesion scan 2026-11-06 |
 | Q45 | `checker/body-facts/instantiation.ts`: several helpers build their own unmemoized `substitute` closures from `(substitution, rules)` instead of one shared per instantiation, so the same instance substitutes the same type through separate closures. Fix: one substituter per instantiation, built once and passed to every helper. | small | none; can be done now | P23 fix 2026-11-06 |
+| Q46 | Inference variables are type-parameter nodes cloned per call site (`types/inference/variables.ts` `twinOf`), told from rigid parameters by a module-global `WeakMap`, so the program checker wraps `constraintsOf`, `structConstraintsOf` and `memberUnionOf` in `standingFor`, and every per-parameter API must remember to. Give a variable its own member of `ParameterKey`, carrying its parameter and site, beside `Placeholder` (`docs/work/variance-inference/merge-analysis.md` S7). About 67 kind checks | medium | variance-inference C1 | variance-inference merge review 2026-11-09 |
+| Q47 | A construct is checked either now or once its constraint scope settles, with a path for each (`docs/work/variance-inference/merge-analysis.md` R1, S8); the two disagree at the edges. Check every value expression in a scope and delete the decide-now paths, after a coverage run shows which are already dead | big | variance-inference C1 | variance-inference merge review 2026-11-09 |
 
 ### Behaviour and correctness (B)
 
