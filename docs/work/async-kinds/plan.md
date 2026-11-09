@@ -1,29 +1,29 @@
 ---
-description: plan for implementing proposal 8 (persistent and ephemeral async), with the slice of proposal 9 that enters persistent work — process, thirteen phases with order, shared surfaces and owners, diagnostic ranges and verification; read before forking or examining an async-kinds phase
+description: plan for implementing proposal 8 (live and ista async), with the slices of proposal 9 that enter and leave persistent work (contexts, delegate) — process, eleven phases with order, shared surfaces and owners, diagnostic ranges and verification; read before forking or examining an async-kinds phase
 owner: tech-lead
 status: active
 applies_to: istalang
-last_verified: 2026-11-09
-last_updated: 2026-11-09
+last_verified: 2026-11-10
+last_updated: 2026-11-10
 tags: [plan, proposal-8, async]
 ---
 
 # Async kinds: plan
 
-Spec: `docs/proposals/8-persistent-and-ephemeral-async.md` (F28 folded in). Code today:
-`findings.md`. Scope and acceptance per phase: `phases.md`.
+Spec: `docs/proposals/8-persistent-and-ephemeral-async.md`. Code before it: `findings.md`. Scope and
+acceptance per phase: `phases.md`.
 
 ## Process
 
-**Thirteen phases, each an implementer fork in its own worktree, with a pi reviewer and a qa on
+**Eleven phases, each an implementer fork in its own worktree, with a pi reviewer and a qa on
 every behavioural phase; a merge review at the end.** *Why:* it crosses every layer, reshapes the
-most depended-on type (functions) and the runtime's commit, and soundness rests on it. Each
+most depended-on type (functions) and the runtime's entry, and soundness rests on it. Each
 structural change the later phases build on lands first, on its own.
 
-- **Examiners:** the plan reviewer stays as the root pi reviewer; the first behavioural phase
-  spawns the root qa (`hcom pi --agent qa`). Every phase forks them.
-- **Merging:** a fork fast-forwards `main` once its reviewer approves, and reports once the human
-  approves.
+- **Examiners:** one root pi reviewer and one root qa (`hcom pi --agent qa`); every phase forks
+  both.
+- **Merging:** a fork reports ready once its reviewer and qa approve; the tech-lead fast-forwards
+  `main`.
 - **Rewrites** of sources go through one committed rewriter (DC's), re-run after every rebase.
 - **Profiles:** checker phases run `npm run profile:check`, runtime phases `wake.bench.ts`
   (within 10% unless stated), against their base.
@@ -32,43 +32,38 @@ structural change the later phases build on lands first, on its own.
 
 | Phase | Scope | After |
 |---|---|---|
-| **A0** Function heads | One modifier-set parser; qualifiers grouped; one order every printer reads | — |
-| **R1a** Async host | The host and test-world contract asynchronous, one driver, resident instances; every `await` still commits | — |
-| **T0** One function type | One constructor, `reach` on the type, one qualifier fit; `async fn(A) -> R` is `fn(A) -> Future<R>` | A0 |
-| **R1b** In-memory waits | Wait modes and code-entry kinds, the resume primitive, commits and re-run state per execution | R1a |
-| **DC** Deferred calls | `callsMadeBy`, the source rewriter; defaults in the callee; `g f(args)`; `defer` and `spawn` as functions | T0 |
-| **P** Persistable, check 1 | The flow engine's hooks, release points; `reachOf`, inferred requirements, `ephemeral fn`, captures, liveness | T0 |
-| **K1** Two kinds | One entry rule, `awaitedOf`; `ista fn`, `Future<T, K>`, the rewrite; ephemeral `async fn`, the summary unit | DC, P, R1b |
-| **R2** Resolvers | Registered one-shot resolvers replacing host tokens, `onCancel` | K1 |
-| **E1** Effects, check 2 | `readonly`; summaries; the segment flow pass; the soundness property | K1 |
+| **A0** Function heads ✓ | One modifier-set parser; qualifiers grouped; one order every printer reads | — |
+| **R1a** Async host ✓ | The host and test-world contract asynchronous, one driver, resident instances | — |
+| **T0** One function type | One constructor, `reach` and a kind slot on the type, one qualifier fit; `async fn(A) -> R` is `fn(A) -> Future<R>` | A0 |
+| **R1b** Live runs | Code-entry kinds; live runs that never commit, waiting in memory through the one-shot resume primitive | R1a |
+| **DC** Deferred calls | The source rewriter; defaults in the callee; `g f(args)`; `defer` and `spawn` as functions | T0 |
+| **K1** Kinds | `live` and `ista`; `Future<T, K>`; an unmarked function takes its caller's kind; the call rule; the rewrite | DC, R1b |
+| **R2** Resolvers | Registered one-shot resolvers of both kinds, `onCancel`, `select`'s losers cancelled | K1 |
+| **QV** Reach variables | Higher-order functions keep their arguments' `sendable` (F28), on K1's variables | K1 |
+| **DG** Delegate | Proposal 9's jobs: `await delegate f(args)`; host externs `live`; host-filled futures gone | R2 |
 | **AW** Awaitables | `Awaitable`, `Resolver`, one await path, `futures` over the kind | R2 |
-| **E2** `readonly` in traits | Declared requirements, and P's inferred ones extended | E1 |
-| **CX** Contexts | Proposal 9's `runtime.at`, `ctx.call` and invocation identity; hosts start only `async fn`s | AW |
-| **QV** Qualifier variables | Higher-order functions keep their arguments' qualifiers (F28) | E2 |
+| **CX** Contexts | Proposal 9's `runtime.at`, `ctx.call` and invocation identity; hosts start only `async fn`s | AW, DG |
 
-**Order:** {A0 ∥ R1a} → T0, R1b as each lands → {DC ∥ P} once T0 lands → K1 → {R2 ∥ E1} → AW
-→ CX, and E2 → QV → merge review. At most three run at once. *Why:* a phase starts only on landed
-code, and structure lands before what builds on it: A0's qualifier shape before T0's, the async
-host before in-memory waits, `callsMadeBy`, the rewriter and the flow engine before K1. P needs no
-kinds (every `await` commits today), so it lands before K1, which needs its `Persistable`. R2
-needs K1's kinds; `Call<R>` is an awaitable, so CX follows AW. Until CX lands, a host still
-starts a persistent `ista fn main`: a bounded interim CX ends.
+**Order:** {A0 ∥ R1a} → {T0 ∥ R1b} → DC → K1 → {R2 ∥ QV} → {DG ∥ AW} → CX → merge review. At most
+three run at once. *Why:* a phase starts only on landed code, and structure lands before what
+builds on it. K1 needs live runs and the rewriter. DG's result is a registered resolver, and its
+job is a `live` function. `Call<R>` is an awaitable. **Interims:** until CX, a host still starts an
+`ista async fn main`; until DG, a host extern still gives an `ista` future the host fills.
 
 ## Shared surfaces
 
 | Surface | Owner | Extended by |
 |---|---|---|
-| Qualifiers grouped on the syntax tree (`reach`, `kind`, `readonly`); Rule 4's order, read by the formatter, signature help, type text and `typeKey` | A0 | T0, P, K1, E1 |
-| The async host and test-world contract (`boundary.md`); one driver | R1a | R1b, R2, CX |
-| `FunctionType`'s constructor, its `reach` (later `readonly`), each able to hold a variable; one qualifier fit; the Definition's function types and keys without `async` | T0 | P, E1, QV, K1 |
-| `await`/`select` modes; code-entry kinds (T0 changes only their source); the one-shot resume primitive | R1b | K1, R2 |
-| `callsMadeBy(f)`; omitted arguments in the Definition; the source rewriter (`scripts/`) | DC | K1, E1, CX |
-| The flow engine's await, call and release hooks; release points; the committing-await predicate; `reachOf`; inferred requirements on type parameters | P | K1, E1, E2 |
-| The entry rule's one home; `awaitedOf`; the kinds spelled once; the function-summary unit (on entries, per strongly connected component); literal type arguments in the Definition | K1 | E1, E2, QV, AW, CX |
-| Resolvers, host ones by id | R2 | AW, CX |
+| Qualifiers grouped on the syntax tree; Rule 4's order, read by the formatter, signature help, type text and `typeKey` | A0 | T0, K1 |
+| The async host and test-world contract (`boundary.md`); one driver | R1a | R1b, DG, CX |
+| `FunctionType`'s constructor, its `reach` and kind, each able to hold a variable; one qualifier fit; the Definition's function types and keys without `async` | T0 | K1, QV |
+| Code-entry kinds (plain, `live`, `ista`); live runs; the one-shot resume primitive | R1b | K1, R2, DG |
+| Omitted arguments in the Definition; the source rewriter (`scripts/`) | DC | K1, DG, CX |
+| The entry rule's one home; `awaitedOf`; the kinds spelled once; kind variables; a type's reach, `live` included; literal type arguments in the Definition | K1 | QV, R2, DG, AW, CX |
+| Resolvers, registered, of both kinds | R2 | DG, AW, CX |
+| The job inbox and its runner | DG | CX |
 
-`resolution/` and `types/` reach the summaries only through seams wired in `wiring/program/`,
-never by importing `rules/`. A contract amendment goes to the tech-lead.
+A contract amendment goes to the tech-lead.
 
 ## Diagnostic ranges
 
@@ -76,22 +71,19 @@ never by importing `rules/`. A contract amendment goes to the tech-lead.
 |---|---|---|
 | A0 | 2044–2049 | — |
 | DC | 2051–2059 | 5640–5649 |
-| P | — | 5509–5519, 5650–5659 |
-| K1 | 2060–2069 | 5606–5629 |
-| E1 | — | 5660–5679 |
-| E2 | — | 5680–5689 |
-| QV | — | 5690–5699 |
+| K1 | 2060–2069 | 5606–5629, 5650–5669 |
 | AW | — | 5630–5639 |
+| DG | — | 5670–5679 |
+| QV | — | 5690–5699 |
 
 ## Verification
 
 | Phase | qa | reviewer | Notes |
 |---|---|---|---|
-| A0 | no | yes | Only the modifier order changes; covered by the parser, formatter idempotence, signature-help and VS Code grammar tests |
-| R1a | no | yes | Behaviour-neutral: the full suite on the async contract, and a resident run agreeing with one restored from the store at every step |
-| T0, DC, P, K1, E1, E2, QV, AW, CX | yes | yes | Profile |
-| R1b, R2 | yes | yes | Store-write properties; `wake.bench.ts` |
+| A0, R1a | no | yes | Done |
+| T0, DC, K1, QV, AW, CX | yes | yes | Profile |
+| R1b, R2, DG | yes | yes | Store-write properties; `wake.bench.ts` |
 | Merge | — | yes | `main` since A0's base |
 
-**Out of scope, filed:** the rest of proposal 9 (CX's list, the native runtime, where `spawn` lives
-long-term) and its `delegate` jobs.
+**Out of scope, filed:** the rest of proposal 9 (typed inbox names and methods, `ctx.delete()` and
+a context's end, how long results are kept, `Kv` stores, versions) and the native runtime.
