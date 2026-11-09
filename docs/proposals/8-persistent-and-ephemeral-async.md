@@ -58,7 +58,7 @@ extern struct Future<T, K in Persistence>
 - **The plain-function fit stays.** A `fn(A) -> R` fits where `fn(A) -> Future<R, K>` is expected, for either kind. Its call gives a future already resolved.
 - **A call starts its callee at once,** inside the caller (§3.3), for both kinds. A persistent function may call an ephemeral one.
 - **Ephemeral code makes no persistent future.** An `async fn`, directly or through what it calls, calls no `ista fn` and no extern whose result is a persistent future. Nothing ephemeral commits, so a persistent callee would never resume past its first `await` (Rule 6), and a persistent wait would have nothing to commit with. The compiler infers this per function from bodies and extern signatures, as it infers effects (Rule 8), so slots need no rule of their own: their operations are such externs (Rule 5). Proposal 8 makes `fn(A) -> Future<R, "persistent">` also the type of a plain function returning such a future, so ephemeral code calls no function value of that type either. Starting and reaching persistent work from ephemeral code is the runtime's (proposal 9).
-- **A host starts any function by name** whose parameters and result are sendable, `main` when it names none, as today: an `async fn` runs ephemeral, and a restart ends it; an `ista fn` runs as a persistent instance. Proposal 9 builds on this, with persistence configured from inside the app.
+- **A host starts only `async fn`s,** by name, `main` when it names none, and a restart ends them. Persistence is configured inside the program, and an `ista fn` runs in a context the program enters (proposal 9).
 - **`spawn` is no longer a keyword.** The runtime provides it as a function, called in the deferred form (Rule 9), so `spawn purchase(req)` keeps its spelling. What it does is proposal 9's.
 - **`worker.disposing()`** gives a future of its function's kind.
 
@@ -252,7 +252,7 @@ Every backend implements these, and the compiler guarantees the rest:
 | `fn(i): conn.write(i)`, capturing `conn: Socket`, passed where `fn(Item) -> Unit` is expected | (no ephemeral types) | error at the capture; legal where `ephemeral fn(Item) -> Unit` is expected |
 | an `async fn` calling an `ista fn`, or receiving from an inbox | (one kind) | error: ephemeral code makes no persistent future |
 | `time.delay(5s)` in an `async fn` | (one kind) | an ephemeral timer |
-| `async fn main()` awaiting a host queue's `receive()` | the program's persistent root | error: ephemeral code makes no persistent future; the rewrite makes it `ista fn main()` |
+| `async fn main()` awaiting a host queue's `receive()` | the program's persistent root | error: ephemeral code makes no persistent future; the rewrite moves the body into an `ista fn` that `main` runs in a context |
 | a function or field named `ista` | legal | error: reserved |
 | `retry fetchUser(id)` | error: a missing `,` | a deferred call |
 | `defer fn(): log(x)` | the `defer` keyword: runs when the block ends | error: a disposable left unused. Written `_ = defer log(x)`, computing `x` now |
@@ -310,7 +310,7 @@ After the repository's rewrite (implementation note 9), every program that compi
 - **§6.** Every wait is a wait on a slot or a resolver.
 - **§7.** A resolver's `onCancel`, and a dropped resolver panicking its waiter. **Defer** describes the prelude's `defer` (Rule 9).
 - **§8.** One kind per `await select`; the non-blocking form may mix.
-- **§9.** A host starts any function by name, an `ista fn` as a persistent instance and an `async fn` as an ephemeral run. `spawn` is the runtime's function, defined by proposal 9. Extern keys spell kinds.
+- **§9.** A host starts only `async fn`s; persistent work runs in contexts the program enters (proposal 9). `spawn` is the runtime's function, defined by proposal 9. Extern keys spell kinds.
 - **§12.** The examples use `ista fn` and `Future<…, "persistent">` throughout.
 - **§14.** Future work gains a header for code generic over the kind.
 
@@ -342,7 +342,7 @@ After the repository's rewrite (implementation note 9), every program that compi
 9. **The repository's sources: a scripted rewrite through the project's own parser.** No ephemeral code exists yet, so every program keeps its meaning:
    - every `async fn` but `main` becomes `ista fn`: about 308 in `.ista` files and 40 in the spec, beside about 220 `main`s;
    - every `Future<T>` becomes `Future<T, "persistent">`: about 310 and 38;
-   - a `main` that makes a persistent future becomes `ista fn main`, which hosts keep starting by name;
+   - a `main` that makes a persistent future moves its body into an `ista fn`, which `main` runs in a context (proposal 9's `at` and `call`);
    - every `defer f` statement becomes `_ = defer(f)`: 17 in `.ista` files and 2 in the spec.
 
    The same rewrite reaches sources embedded in TypeScript tests (about 279 `async fn` and 154 `Future<`). Then `ista fmt` runs.

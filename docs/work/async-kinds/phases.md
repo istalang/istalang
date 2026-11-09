@@ -173,10 +173,11 @@ noise.
      `select … else:` may mix. Check 1 narrows to persistent awaits in an `ista fn`.
    - Ephemeral code makes no persistent future: the program-level function-summary unit in
      `rules/` (beside expansion, solved per strongly connected component), with this as its first
-     fact.
-   - A host starts any function by name, `main` by default: an `ista fn` as a persistent
-     instance, an `async fn` as an ephemeral run (R1). A `main` the checker finds making a
-     persistent future is rewritten to `ista fn main`, so hosts and harnesses are unchanged.
+     fact. A lambda is a function of its own: making or passing an `ista fn` closure (to `spawn`,
+     to CX's `ctx.call`) is no persistent future; calling one is.
+   - A host starts an `async fn` as an ephemeral run (R1). A `main` the checker finds making a
+     persistent future is rewritten to `ista fn main`, which the host still starts as a persistent
+     instance: a bounded interim, so harnesses are unchanged, which CX ends.
    - `time.delay`, `time.at` and `worker.disposing()` take the kind; `futures` stays persistent
      until AW. The Definition keeps literal type arguments, so natives generic over `K` read it.
    - Extern keys spell `Future<T, K>`, and the Definition's validation follows; hosts re-key once.
@@ -193,6 +194,32 @@ keys. Profile within noise.
 
 **Spec.** Cheat sheet; §1; §2; §3.3; §3.6; §3.7; §3.8; §5 (two awaits, segments, commits, starts
 at commit, re-run state); §8; §9; §12; §14.
+
+## CX Contexts, a slice of proposal 9 (behavioural)
+
+**Scope.**
+- `runtime.at(key)` gives a `Context`: a persistent instance named by its key, written with the
+  first invocation that commits; from persistent code it commits with its segment.
+  `ctx.call f(args)` (the deferred form) runs `f`, an `ista fn`, in it, and gives a `Call<R>`, an
+  awaitable of the caller's kind (a `Future<R, K>`, `K` from the caller, until AW makes it an
+  `Awaitable`); `run.accepted()`
+  resolves once the invocation is persisted. Ephemeral code waiting on one is an in-memory
+  listener.
+- A host starts only `async fn`s; persistent instances exist only as contexts and spawns. The
+  interim ends: a scripted rewrite moves each `ista fn main`'s body into an `ista fn` that an
+  `async fn main` runs in a context. The test runner, `World`, the test kits and `testing`'s
+  crash-every-await (a context option) follow.
+- Left to proposal 9, filed: invocation identity (joining by function and arguments, recorded
+  results), mailboxes and methods as typed names, `ctx.delete()` and a context's end, `Kv`
+  stores, versions.
+
+**Accept.** `async fn main(): await runtime.at("o/1").call purchase(order)` runs `purchase`
+persistently and gives its result; crashed at every `await` of the context, it resumes to the same
+result. The context commits while `main` waits in memory. `run.accepted()` resolves after the
+first commit. A host asked to start an `ista fn` refuses. No `ista fn main` remains; the full
+suite passes.
+
+**Spec.** §9 contexts; §10 testing persistent work.
 
 ## E1 Effects and check 2 (behavioural)
 
