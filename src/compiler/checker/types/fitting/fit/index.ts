@@ -41,7 +41,7 @@ import { isAssignable, sameConstraint } from '../../identity/identity.ts';
 import { UnfoldingPairs } from '../../identity/unfolding-pairs.ts';
 import { parametersIn } from '../../parts/type-parts.ts';
 import { unfolded } from '../../type/computed-types.ts';
-import { type Futures, functionType } from '../../type/function-types.ts';
+import { type Futures, madeAsync } from '../../type/function-types.ts';
 import type {
   AnonymousStructType,
   AnyType,
@@ -444,19 +444,17 @@ const reshapingKinds: ReadonlySet<Fit['conversion']['kind']> = new Set([
 ]);
 
 /**
- * Whether a function of type `source` fits where `target`, a function of its parameters giving a
- * future of its result, is expected: calling it gives a future already resolved (§3.14).
+ * Whether a function of type `source`, giving no future, fits where `target`, a function of its
+ * parameters giving a future of its result, is expected: calling it gives a future already
+ * resolved (§3.14).
  */
 function fitsAsync(
   source: Type,
   target: Type,
-  rules: Pick<ConversionRules, 'exact' | 'futureOf'>,
+  rules: Pick<ConversionRules, 'exact' | 'futureOf' | 'futureValue'>,
 ): boolean {
-  return (
-    source.kind === 'function' &&
-    target.kind === 'function' &&
-    rules.exact(target, functionType({ ...source, result: rules.futureOf(source.result) }))
-  );
+  const made = source.kind === 'function' ? madeAsync(source, rules) : undefined;
+  return made !== undefined && target.kind === 'function' && rules.exact(target, made);
 }
 
 /**

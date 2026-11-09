@@ -190,18 +190,42 @@ export function resultFitOf(
   given: Type,
   expected: Type,
   fits: (given: Type, expected: Type) => boolean,
-  { futureValue }: Pick<Futures, 'futureValue'>,
+  futures: Pick<Futures, 'futureValue'>,
 ): ResultFit | undefined {
-  const into = futureValue(expected);
-  const awaited = futureValue(given);
-  if (into !== undefined && awaited === undefined && fits(given, into)) {
-    return { kind: 'resolved', value: given, into };
+  const resolved = resolvedInto(given, expected, futures);
+  if (resolved !== undefined && fits(given, resolved)) {
+    return { kind: 'resolved', value: given, into: resolved };
   }
   if (fits(given, expected)) {
     return { kind: 'value' };
   }
+  const into = futures.futureValue(expected);
+  const awaited = futures.futureValue(given);
   return into !== undefined && awaited !== undefined && fits(awaited, into)
     ? { kind: 'awaited', value: awaited, into }
+    : undefined;
+}
+
+/**
+ * The value of the future `expected` of a function's result, where what it gives, `given`, is no
+ * future: what it goes into, made a future already resolved (§3.14). Undefined where `expected`
+ * is no future, or `given` is one, so an async function's result is never made a future of one.
+ */
+export function resolvedInto(
+  given: Type,
+  expected: Type,
+  { futureValue }: Pick<Futures, 'futureValue'>,
+): Type | undefined {
+  return futureValue(given) === undefined ? futureValue(expected) : undefined;
+}
+
+/**
+ * `type` made async: a function giving a future of what `type` gives, already resolved, where it
+ * gives no future (`resolvedInto`); undefined where it gives one.
+ */
+export function madeAsync(type: FunctionType, futures: Futures): FunctionType | undefined {
+  return futures.futureValue(type.result) === undefined
+    ? functionType({ ...type, result: futures.futureOf(type.result) })
     : undefined;
 }
 

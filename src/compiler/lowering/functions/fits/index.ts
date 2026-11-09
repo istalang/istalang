@@ -22,9 +22,9 @@ import { unreachable } from '../../../../foundation/structures/unreachable.ts';
 import type { ValueSite } from '../../../checker/surface/checked-body.ts';
 import { type Fit, singleElement } from '../../../checker/types/fitting/fit/index.ts';
 import { unfolded } from '../../../checker/types/type/computed-types.ts';
-import { functionType } from '../../../checker/types/type/function-types.ts';
+import { madeAsync } from '../../../checker/types/type/function-types.ts';
 import type { FunctionType, StructValueType, Type } from '../../../checker/types/type/index.ts';
-import { futureOf } from '../../../checker/types/type/well-known.ts';
+import { futuresOf } from '../../../checker/types/type/well-known.ts';
 import { baseOf } from '../../../checker/types/unions/union-members.ts';
 import { membersOf } from '../../../checker/types/unions/unions.ts';
 import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
@@ -79,7 +79,7 @@ export function fittedValue(
   return appliedFit(context, typed, fit, {
     span: site.span,
     at: { module, span: site.span },
-    madeAsync: (value, plain) => madeAsync(context, { owner, site, type: plain }, value),
+    madeAsync: (value, plain) => asyncFitClosure(context, { owner, site, type: plain }, value),
   });
 }
 
@@ -309,9 +309,12 @@ export function wrappingEntry(
   return code.entry(header, true, references);
 }
 
-/** The type of a function of type `plain` made async: giving a future of what it gives (§3.14). */
+/** The type of a function of type `plain`, which the checker made async, made async (§3.14). */
 function madeAsyncType(context: Pick<CodeContext, 'checker'>, plain: FunctionType): FunctionType {
-  return functionType({ ...plain, result: futureOf(context.checker, plain.result) });
+  return (
+    madeAsync(plain, futuresOf(context.checker)) ??
+    unreachable('A function made async gives no future.')
+  );
 }
 
 /** `type`, whose value the checker converted into a shape, so a nominal struct. */
@@ -337,7 +340,7 @@ function baseOfAll(type: Type): Type {
 }
 
 /** `value`, the plain function `fit` makes async: a closure of its fit's entry. */
-function madeAsync(context: CodeContext, fit: AsyncFit, value: Register): Register {
+function asyncFitClosure(context: CodeContext, fit: AsyncFit, value: Register): Register {
   const dst = context.code.allocate();
   const entry = context.tables.asyncFitIndex(fit);
   const { span } = fit.site;

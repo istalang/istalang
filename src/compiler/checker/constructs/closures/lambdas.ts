@@ -195,11 +195,13 @@ export function inferLambda(
 type ParameterSlots = Pick<FunctionType, 'parameters' | 'pack'>;
 
 /**
- * What a lambda's position says of its result: the type it is declared to give, or how it guides
- * its body only, the result being what the body gives.
+ * What a lambda's position says of its result: the type it is declared to give, or one its body
+ * only leans on, the result being what the body gives: open in the constraint scope of the call it
+ * is passed to, which guides its `return`s too (`guided`), or a type its body's value is checked
+ * against, its `return`s agreeing among themselves (`hinted`).
  */
 interface ResultGiven {
-  readonly kind: 'declared' | 'guided';
+  readonly kind: 'declared' | 'guided' | 'hinted';
   readonly type: Type;
 }
 
@@ -207,18 +209,22 @@ interface ResultGiven {
  * What a lambda's position says of what its body gives, where it says `result` of its call
  * (§3.14): an async lambda's body gives the value of the future expected, and nothing is said
  * where none is; a plain one's body may give a future expected or its value, made a future already
- * resolved, so that value only guides it.
+ * resolved, so a declared future's value only hints at what it gives.
  */
 function bodyResultGiven(
   context: BodyContext,
   node: Lambda,
   result: ResultGiven | undefined,
 ): ResultGiven | undefined {
-  const value = result === undefined ? undefined : context.checker.fitting.futureValue(result.type);
-  if (node.qualifiers.kind !== undefined) {
-    return value === undefined || result === undefined ? undefined : { ...result, type: value };
+  if (result === undefined) {
+    return undefined;
   }
-  return value === undefined ? result : { kind: 'guided', type: value };
+  const isPlain = node.qualifiers.kind === undefined;
+  const value = context.checker.fitting.futureValue(result.type);
+  if (value === undefined) {
+    return isPlain ? result : undefined;
+  }
+  return { kind: isPlain && result.kind === 'declared' ? 'hinted' : result.kind, type: value };
 }
 
 /** A lambda where its position gives `slots` for its parameters and says `result`, when it does. */
@@ -229,8 +235,9 @@ function checkLambdaAs(
   result: ResultGiven | undefined,
 ): Type {
   const ofBody = bodyResultGiven(context, node, result);
-  const hint = ofBody?.kind === 'guided' ? ofBody.type : undefined;
   const given = ofBody?.kind === 'declared' ? ofBody.type : undefined;
+  const hint = ofBody?.kind === 'declared' ? undefined : ofBody?.type;
+  const guide = ofBody?.kind === 'guided' ? ofBody.type : undefined;
   const declaredResult =
     node.returnType === undefined
       ? given
@@ -239,7 +246,7 @@ function checkLambdaAs(
     name: node.name,
     parameters: nestedParameters(context, node.parameters, slots),
     declaredResult,
-    guided: hint === undefined ? undefined : { node, guide: hint, inScope: context.scopes.here() },
+    guided: guide === undefined ? undefined : { node, guide, inScope: context.scopes.here() },
     reach: node.span,
     tail: (declared) => {
       // A literal it gives while its result is open stays fresh, as a block's value does.

@@ -19,11 +19,12 @@ import type { Entity } from '../../../compiler/binder/entities.ts';
 import { type Checker, checkProgram, type VariantMember } from '../../../compiler/checker/check.ts';
 import {
   enumsExpected,
-  expectedFunction,
+  plainResultExpected,
   sameNominal,
 } from '../../../compiler/checker/types/fitting/expected.ts';
 import type { Type } from '../../../compiler/checker/types/type/index.ts';
 import { typeText } from '../../../compiler/checker/types/type/type-text.ts';
+import { futuresOf } from '../../../compiler/checker/types/type/well-known.ts';
 import { membersOf } from '../../../compiler/checker/types/unions/unions.ts';
 import type { ModuleId, Program } from '../../../compiler/program/program.ts';
 import type { Expression } from '../../../compiler/syntax/expressions/index.ts';
@@ -67,7 +68,7 @@ export function expectedVariants(cursor: Cursor, place: Place): readonly Candida
   if (expected?.kind === 'error') {
     return visibleNames(cursor, isVariantEntity);
   }
-  const result = expectedFunction(expected)?.result;
+  const result = plainResultExpected(expected, futuresOf(cursor.checker));
   const candidates = [
     ...variantsOf(cursor.checker, expected, () => true),
     ...variantsOf(cursor.checker, result, (variant) => variant.fields.length > 0),

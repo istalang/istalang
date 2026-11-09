@@ -1,8 +1,9 @@
-# outcome: ["o-3",6,[3,4],[2,null],5,8]
+# outcome: ["o-3",6,[3,4],[2,null],5,8,[1,null],[{"_type":"Ok","value":2},{"_type":"Ok","value":3}]]
 # `async fn(A) -> R` is `fn(A) -> Future<R>`, one type (§3.14): a plain function giving a future
 # fits where an async one is expected as it is, and one giving a value fits made async, inside an
-# array too (§3.5), converting what it takes and gives. A plain lambda's body gives the future or
-# its value, an async one's the value.
+# array too (§3.5), converting what it takes and gives; a generic one, or a variant's, gives the
+# future's value. A plain lambda's body gives the future or its value, its `return`s agreeing as
+# its value does; an async one's gives the value.
 struct Order { id: String }
 
 async fn retry(times: Int, call: async fn(String) -> Order) -> Future<Order>:
@@ -12,7 +13,9 @@ async fn later(x: Int) -> Future<Int>: x + 1
 
 fn starting(x: Int) -> Future<Int>: later(x)
 
-async fn main() -> Future<(String, Int, Array<Int>, Array<Int?>, Int, Int)>:
+async fn main() -> Future<
+  (String, Int, Array<Int>, Array<Int?>, Int, Int, Array<Int?>, Array<Result<Int, String>>)
+>:
   const order = await retry(3, fn(id): Order{id})
   const viaFuture: async fn(Int) -> Int = starting
   const plains: Array<fn() -> Int> = [fn(): 3, fn(): 4]
@@ -21,6 +24,13 @@ async fn main() -> Future<(String, Int, Array<Int>, Array<Int?>, Int, Int)>:
   const absent: async fn(Int) -> Int? = fn(x: Int?) -> Int?: none
   const asyncLambda: fn(Int) -> Future<Int> = async fn(x): await later(x)
   const forwarded: async fn(Int) -> Int = fn(x): later(x)
+  const returning: async fn(Int) -> Int? = fn(x): {
+    if x > 0:
+      return 1
+    none
+  }
+  const qualified: async fn(Int) -> Result<Int, String> = Result.Ok
+  const bare: async fn(Int) -> Result<Int, String> = Ok
   (
     order.id,
     await viaFuture(5),
@@ -28,4 +38,6 @@ async fn main() -> Future<(String, Int, Array<Int>, Array<Int?>, Int, Int)>:
     [await widened(1), await absent(1)],
     await asyncLambda(4),
     await forwarded(7),
+    [await returning(1), await returning(0)],
+    [await qualified(2), await bare(3)],
   )

@@ -29,6 +29,7 @@ import type { AnchoredSpan } from '../../../syntax/tree/positions.ts';
 import type { CheckedModule, CheckerContext } from '../../contexts/context.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { unfolded } from '../type/computed-types.ts';
+import type { Futures } from '../type/function-types.ts';
 import {
   type FunctionType,
   type NominalDeclaration,
@@ -91,6 +92,19 @@ export function expectedTuple(
 export function expectedFunction(expected: Type | undefined): FunctionType | undefined {
   const target = builtFrom(expected);
   return target?.kind === 'function' ? target : undefined;
+}
+
+/**
+ * What a function giving no future, a variant's (§3.11), is expected to give where `expected` asks
+ * for a function value: its result, or the value of the future it is, which the function's value
+ * is made (§3.14).
+ */
+export function plainResultExpected(
+  expected: Type | undefined,
+  { futureValue }: Pick<Futures, 'futureValue'>,
+): Type | undefined {
+  const result = expectedFunction(expected)?.result;
+  return result === undefined ? undefined : (futureValue(result) ?? result);
 }
 
 /**

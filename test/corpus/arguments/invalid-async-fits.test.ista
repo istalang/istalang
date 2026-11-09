@@ -1,9 +1,14 @@
-# error: 5105 at 15:4
-# error: 5001 at 18:31
-# error: 5100 at 19:8
-# error: 5105 at 22:4
+# error: 5105 at 20:4
+# error: 5001 at 23:31
+# error: 5123 at 24:8
+# error: 5001 at 25:44
+# error: 5001 at 27:59
+# error: 5001 at 28:45
+# error: 5001 at 31:5
+# error: 5105 at 35:4
 # An async function never fits a plain function type, and a plain one fits an async type (§3.14),
-# inside a value type too (§3.5); a mock's replacement gives what its target gives (§10). A rest
+# inside a value type too (§3.5), but an async one never fits made async again; a mock never makes
+# its target async (§10). A plain lambda's `return`s agree, as its body's value does. A rest
 # overload clashes with another one when a call fits both alike (§3.7), and so do overloads on the
 # two spellings of one function type.
 import * as testing from 'testing'
@@ -16,7 +21,15 @@ fn sum(...all: Array<Int>) -> Int: 0
 
 fn main():
   const wanted: fn() -> Int = later
-  drop(testing.mock(plain, later))
+  drop(testing.mock<(), Future<Int>>(plain, later))
+  const twice: async fn() -> Future<Int> = later
+  const xs: Array<(async fn() -> Int) | String> = [later]
+  const ys: Array<(async fn() -> Future<Int>) | String> = xs
+  const disagreeing: async fn(Int) -> Int = fn(x): {
+    if x > 0:
+      return "wrong"
+    1
+  }
 
 fn take(f: fn() -> Future<Int>) -> Int: 0
 fn take(f: async fn() -> Int) -> Int: 1

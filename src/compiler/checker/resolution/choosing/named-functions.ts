@@ -24,7 +24,7 @@
  *   value.
  * - A function value's parameters take exactly the expected type's, with none of a call's
  *   conversions (§3.14): a value of `fn(Int?)` is no `fn(Int)`.
- * - A function's type as a value has the `T` an `await` yields as an async function's result.
+ * - A function's type as a value gives what its call gives, an async one's the future (§3.14).
  */
 
 import { staticName } from '../../../../foundation/language/static-names.ts';
@@ -39,10 +39,14 @@ import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
-import { enumsExpected, expectedFunction } from '../../types/fitting/expected.ts';
+import {
+  enumsExpected,
+  expectedFunction,
+  plainResultExpected,
+} from '../../types/fitting/expected.ts';
 import { type Substitution, substitute } from '../../types/parts/substitution.ts';
 import { parametersIn } from '../../types/parts/type-parts.ts';
-import { functionType } from '../../types/type/function-types.ts';
+import { functionType, resolvedInto } from '../../types/type/function-types.ts';
 import type { FunctionType, Type } from '../../types/type/index.ts';
 import { tupleElements } from '../../types/type/primitives.ts';
 import type { TypeRules } from '../../types/type/type-rules.ts';
@@ -175,7 +179,7 @@ function variantConstructors(
     site,
     name: naming.name,
     candidates: (expected) => {
-      const enums = enumsExpected(expectedFunction(expected)?.result);
+      const enums = enumsExpected(plainResultExpected(expected, checker.fitting));
       const chosen = checker.inputs.variantNamed(naming.name, enums);
       const constructs = chosen && fieldsFunctionOf(chosen.enum, chosen.variant);
       return constructs === undefined ? [] : [{ declaration: constructs }];
@@ -236,7 +240,8 @@ export interface MadeValue {
 
 /**
  * `application` instantiated at `site`, its result expected to be `result`, with its type as a
- * value; undefined when it can't be, which `site` reports.
+ * value; undefined when it can't be, which `site` reports. A function giving no future is expected
+ * to give the value of a future `result` is, which its value is made (§3.14).
  */
 export function instantiatedValue(
   context: BodyContext,
@@ -244,7 +249,10 @@ export function instantiatedValue(
   site: UseSite,
   result: Type | undefined,
 ): MadeValue | undefined {
-  application.inference.expect(application.signature.result(), result);
+  const gives = application.signature.result();
+  const resolved =
+    result === undefined ? undefined : resolvedInto(gives, result, context.checker.fitting);
+  application.inference.expect(gives, resolved ?? result);
   return madeValue(context, application, site);
 }
 
