@@ -2,3 +2,4 @@
 - [Tracker](feedback_tracker.md) — tracker lists open items only; delete resolved rows, keep ids increasing
 - [Defer later fixes](feedback_defer-fixes.md) — fix only what blocks the phase; later-phase issues deferred ("break now, fix later")
 - [Reuse docs](feedback_reuse_docs.md) — reusable units indexed in docs/reuse/ by caller need; AGENTS.md stays static
+- [Test iteration](feedback_test-iteration.md) — iterate on affected tests only; full vitest suite once at the end
