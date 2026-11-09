@@ -63,7 +63,8 @@ fn emit<A is tuple>(self: Signal<A>, ...args: A): for l in self->listeners: l(..
   - **field loops,** `for i, v in ...t:`, checked once per known position and once for the
     positions not known yet;
   - **array comprehensions,** `[for i, v in ...t: e]`;
-  - **mapped types:** over a tuple's keys, `( [I in keyof A]: G<A[I]> )` is a tuple;
+  - **mapped tuple types,** `( [I in keyof A]: G<A[I]> )`: a tuple, one element per key. The
+    parentheses mark the product, as braces mark a mapped struct type;
   - **tuple comprehensions,** `(for i, v in ...t: e)`, building one element per pass, as a struct
     comprehension builds a field;
   - **member parameters,** `I in keyof A`.
@@ -199,8 +200,20 @@ call, in the product their type names:
 Only Ista has these: the union of the elements, `A[keyof A]` (a `race` over mixed futures);
 key-typed members, `I in keyof A`; variance per element; one set of tools for structs and tuples.
 
-**Still out:** folds whose type changes per element (`pipe(f, g, h)`, `testing.setups`) need
-recursion over a pack, which a body checked once can't choose a base case for.
+**Still out: folds** whose type changes per element, such as `pipe(f, g, h)` and
+`testing.setups`.
+- Every tool above is a map: one abstract element, the same code for each.
+- A fold's step k sees a type built from the elements before it: `Setup<(A0, …, Ak)>`.
+- Nesting brackets (`setups`) also puts element k's code inside element k−1's callback. That is
+  recursion, not a loop.
+- Typing it once, for every length, is induction. In the empty branch `A` is `()`, and in the
+  other, `A` is `(H, ...T)` with the recursive call at `T`. That needs type parameters refined
+  by a `match` (GADTs, dependent pattern matching).
+- C++ and Scala avoid it by checking each instantiation. TypeScript types the signature
+  recursively and casts in the body. Swift can't.
+- Named rests change nothing: `setups(db: withDb, host: withHost)` folds field by field alike,
+  and named arguments carry no order, so the nesting would follow name order instead of the
+  call's.
 
 ## Spec changes
 
@@ -248,19 +261,21 @@ ending in a pack relates by equality".
 
 ## Left for later
 
-- Recursion over a pack (head and tail patterns, folds).
+- **Type refinement by `match`** over a tuple or struct value (`case ()`, `case (h, ...t)`):
+  - each branch learns its type parameter's form;
+  - each instantiation recurses on a shorter tuple, so it ends;
+  - it unlocks folds (`setups`, `pipe`), and belongs with the narrowing guarantees of §4.
 - Relations in `where` beyond key equality, and narrowing guarantees (§4).
 - Two named rests, even with disjoint fields.
 - Partial type arguments at a call: a separate change.
 
 ## Open questions
 
-1. **How a mapped tuple is spelled.** Recommended: `( [I in keyof A]: G<A[I]> )`, since braces
-   build a struct everywhere else. The alternative is TypeScript's: one braced form, the keys'
-   owner deciding.
-2. **How a tuple comprehension is spelled.** Recommended: `(for i, v in ...t: e)`, beside
-   `[for …]` and `struct{for …}`.
-3. **`testing.setups`:** declared once with a native body, or kept as five overloads.
+1. **`testing.setups`.**
+   - Kept as five overloads until refinement by `match` exists. Recommended.
+   - A native body is no option: an extern can't call back into the program's async functions
+     (§9's boundary).
+   - A compiler built-in would be one function's special case.
 
 ## Decisions (the human's)
 
@@ -272,5 +287,7 @@ ending in a pack relates by equality".
    and equality is the only relation: no length expressions.
 4. **A variadic type parameter may be used several times,** even as two rests, which split
    evenly.
-5. **A `where` clause before the body's `:`** holds relations between type parameters, open to
+5. **Spellings:** a mapped tuple type is `( [I in keyof A]: G<A[I]> )`, and a tuple
+   comprehension is `(for i, v in ...t: e)`.
+6. **A `where` clause before the body's `:`** holds relations between type parameters, open to
    more relations later, such as type equality and narrowing after a call.
