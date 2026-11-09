@@ -8,6 +8,7 @@
 import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { reportedNothing } from '../../../../foundation/diagnostics/diagnostic.test-kit.ts';
+import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
 import { lines } from '../../../parser/parse.test-kit.ts';
 import type { TypeApplication } from '../../../syntax/expressions/index.ts';
 import { reported } from '../../check.test-kit.ts';
@@ -161,5 +162,39 @@ describe('a function named as a value with type arguments', () => {
     const [denotation] = checker.lookup.denotationsOf(module, named('listed', 1));
     expect(denotation?.declared.kind).toBe('function');
     expect(denotation?.type && typeText(denotation.type)).toBe('sendable fn(Int) -> Array<Int>');
+  });
+});
+
+describe('a function named as a value where what it gives is still open', () => {
+  const functions = [
+    'fn takeResults(rs: Array<Result<Int, String>>) -> Int: rs.length()',
+    'fn apply<A, B>(x: A, f: fn(A) -> B) -> B: f(x)',
+    'fn take<T>(r: Result<Int, T>, t: T) -> Int: 0',
+    'fn pairWith<A, B>(a: A, f: fn(A) -> B, g: fn(B) -> Int) -> Int: g(f(a))',
+    'fn takeResultString(r: Result<Int, String>) -> Int: 0',
+  ];
+
+  it('infers its type parameters with the call it is passed to, as a lambda calling it does', () => {
+    const uses = (value: string) => [
+      `fn a(vs: Array<Int>) -> Int: takeResults(vs.map(${value}))`,
+      `fn b() -> Int: take(apply(1, ${value}), "hello")`,
+      `fn c() -> Int: pairWith(1, ${value}, takeResultString)`,
+      `fn d(vs: Array<Int>) -> Array<Result<Int, String>>: vs.map(${value})`,
+    ];
+    for (const value of ['Result.Ok', 'fn x: Result.Ok(x)']) {
+      expect(reported([...functions, ...uses(value)].join('\n'))).toEqual(reportedNothing);
+    }
+  });
+
+  it('runs as the function its settled parameters chose, instantiated as the scope solved it', () => {
+    const unwrapped = [
+      'fn unwrapped(r: Result<Int, String>) -> Int:',
+      '  match r:',
+      '    case Ok(value): value',
+      '    case Err(error): error.length()',
+    ].join('\n');
+    expect(
+      mainGives('Int', 'pairWith(42, Result.Ok, unwrapped)', [...functions, unwrapped].join('\n')),
+    ).toBe(42);
   });
 });

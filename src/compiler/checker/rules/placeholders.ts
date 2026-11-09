@@ -14,7 +14,9 @@ import { writtenLiteral } from '../types/unions/unions.ts';
 
 /**
  * A variable of the current constraint scope standing for `node`'s type (i2-scope.md §3), with the
- * inference holding it, in the scope's system.
+ * inference holding it, in the scope's system. It is its value's whole type, so it stands at the
+ * top of it: what consumes the value never chooses it (settle.ts rule 2), and the value converts
+ * where it goes, as a literal `3` goes into an `Int?`.
  */
 export function placeholderOf(
   context: BodyContext,
@@ -25,7 +27,9 @@ export function placeholderOf(
     site: node,
   });
   context.scopes.commit(inference);
-  return { inference, type: inference.open({ kind: 'parameter', declaration: placeholder }) };
+  const declared: Type = { kind: 'parameter', declaration: placeholder };
+  inference.expect(declared, undefined);
+  return { inference, type: inference.open(declared) };
 }
 
 /**

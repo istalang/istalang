@@ -14,19 +14,23 @@
  *   body as its expected type (`Scopes.guided`), never as its declared result, so it gives what its
  *   body does (§3.14), as `xs.map(fn x: x * 2)` gives `Int`; where its result is settled, it is
  *   declared so.
- * - A function named is chosen by the parameters it is expected to take, settled, and instantiated
- *   against what is known of its result, which records nothing (resolution/choosing/named-functions.ts
- *   `functionValueType`); it is checked, and recorded, against what that turns out to be once the
- *   scope is solved. Expected to be no function, it is its lone function's whole type, so a function
- *   passed for a `T` is its whole self.
+ * - A function named where what it gives is still open is chosen by the parameters it is expected
+ *   to take, settled, and joins the scope as a call does, its type parameters variables of the
+ *   scope (resolution/choosing/named-functions.ts `openedValue`), so what it gives bounds them as a
+ *   call's result would; it is checked, and recorded, once, against its type as the scope solved
+ *   it. Expected to be no function, it is its lone function's whole type, so a function passed for
+ *   a `T` is its whole self.
  */
 
 import type { Expression, Lambda } from '../../../syntax/expressions/index.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
+import { useSite } from '../../contexts/use-site.ts';
 import {
   type FunctionNaming,
-  functionValueType,
+  namedFunctions,
+  openedValue,
 } from '../../resolution/choosing/named-functions.ts';
+import { settlingAt } from '../../resolution/conformance/conformance.ts';
 import { placeholderOf } from '../../rules/placeholders.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
 import {
@@ -223,12 +227,11 @@ function judgeLambda(context: BodyContext, node: Lambda, expected: Type | undefi
 }
 
 /**
- * Checks `node`, a name a scope postponed, with what is known of what is expected of it: as a
- * function chosen by the parameters it is expected to take while its result is still open, or with
- * nothing expected as its lone function's whole type, checked and recorded as ever (`check`) once
- * the scope is solved; else, expected to be a value it is or a function known whole, as ever at
- * once. One naming no function that fits is the error type, checked once the scope is solved,
- * which says why.
+ * Checks `node`, a name a scope postponed, with what is known of what is expected of it: while what
+ * the function gives is still open, as a member of the scope, the function its settled parameters
+ * choose, checked and recorded as ever (`check`) once the scope is solved; else as ever at once,
+ * against a function known whole, a value it is, or nothing. One naming no function that takes
+ * the parameters is the error type, checked once the scope is solved, which says why.
  */
 function judgeNamed(
   context: BodyContext,
@@ -238,13 +241,28 @@ function judgeNamed(
 ): Type {
   const { scopes } = context;
   const shape = expectedFunction(expected);
-  const isKnown = shape === undefined ? expected !== undefined : !scopes.holds(shape.result);
-  if (isKnown) {
+  if (shape === undefined || !scopes.holds(shape.result)) {
     return check(expected);
   }
-  const guided =
-    shape === undefined ? undefined : { ...shape, result: scopes.guided(shape.result) };
-  const type = functionValueType(context, node, guided, (part) => scopes.holds(part));
-  scopes.whenSolved((solved) => check(solved(type ?? expected ?? errorType)));
-  return type ?? errorType;
+  const named = namedFunctions(context, node);
+  const opened = named === undefined ? undefined : openedValue(context, named, shape);
+  if (opened === undefined) {
+    scopes.whenSolved((solved) => check(solved(expected ?? errorType)));
+    return errorType;
+  }
+  const { application, type } = opened;
+  const { inference, signature } = application;
+  // What the scope would choose of what it gives advises it, as an expected type advises a call.
+  const result = scopes.guided(shape.result);
+  if (!scopes.holds(result)) {
+    inference.expect(type, { ...shape, result });
+  }
+  const { checker, module } = context;
+  return scopes.join({
+    node: undefined,
+    inference,
+    settling: settlingAt(useSite(checker, module, node.span), signature),
+    type,
+    complete: () => check(inference.solved(type)),
+  });
 }

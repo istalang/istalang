@@ -13,7 +13,9 @@
  *   members may go apart puts each into its place, and one with variables puts each member, so
  *   `V?` expected to be a `Json` bounds `V` by `Json`.
  * - The type the call is expected to give bounds its result likewise, but only advises
- *   (bounds.ts); settling rule 2 knows which variables stand at the result's top (`expect`).
+ *   (bounds.ts); settling rule 2 knows which variables stand at the result's top (`expect`), and
+ *   chooses among what consumes the call's value: the expected type, or an enclosing call's
+ *   parameter, whose match bounds this call's variables as their consumer (system.ts `Matching`).
  * - A type argument written is taken as given: what is matched has it in place before matching, so
  *   `f<Int?>(o)` for `fn f<T>(x: T?)` matches `Int?` against `Int?`. A method's receiver gives its
  *   variables the same way, as Swift and Rust bind a method's `Self` (`matchReceiver`): matched
@@ -40,8 +42,9 @@ import { noSubstitution, type Substitution, substitute } from '../parts/substitu
 import { parametersIn } from '../parts/type-parts.ts';
 import type { LiteralType, LiteralValue, ParameterKey, Type } from '../type/index.ts';
 import { literalOrBase, membersOf, unionOf } from '../unions/unions.ts';
+import type { Matching, MatchKind, Written } from './matching.ts';
 import { type Settling, type SettlingOf, settlesFreely } from './settle.ts';
-import { CallSystem, type MatchKind } from './system.ts';
+import { CallSystem } from './system.ts';
 import { expectationOf, fixedIn, fixingToward, openIn, settlingViewOf } from './system-reading.ts';
 import { CallVariables } from './variables.ts';
 
@@ -102,7 +105,7 @@ export class Inference {
 
   /** Matches a value of `given` where `declared` is taken, bounding what it can; whether it fits. */
   match(declared: Type, given: Type): boolean {
-    return this.#system.match(this.#prepared(declared), given, this.#kind);
+    return this.#system.match(this.#prepared(declared), given, this.#matching());
   }
 
   /**
@@ -114,8 +117,8 @@ export class Inference {
     const typed = this.literalType(literal.value, declared);
     const prepared = this.#prepared(declared);
     return typed.kind === 'literal'
-      ? this.#system.match(prepared, typed, this.#kind)
-      : this.#system.match(prepared, typed, this.#kind, { kind: 'literal', literal });
+      ? this.#system.match(prepared, typed, this.#matching())
+      : this.#system.match(prepared, typed, this.#matching({ kind: 'literal', literal }));
   }
 
   /**
@@ -123,7 +126,7 @@ export class Inference {
    * struct a variable settles to, as a literal where a struct is expected builds it (§3.1).
    */
   matchShape(declared: Type, shape: Type): boolean {
-    return this.#system.match(this.#prepared(declared), shape, this.#kind, { kind: 'shape' });
+    return this.#system.match(this.#prepared(declared), shape, this.#matching({ kind: 'shape' }));
   }
 
   /**
@@ -131,12 +134,12 @@ export class Inference {
    * variable `declared` is, never one related to it (design.md §4).
    */
   matchApart(declared: Type, given: Type): boolean {
-    return this.#system.match(this.#prepared(declared), given, this.#kind, { kind: 'apart' });
+    return this.#system.match(this.#prepared(declared), given, this.#matching({ kind: 'apart' }));
   }
 
   /** Matches `declared` against a type `given` must be exactly, as a reference or a spread's. */
   matchExactly(declared: Type, given: Type): boolean {
-    return this.#system.matchExactly(this.#prepared(declared), given, this.#kind);
+    return this.#system.matchExactly(this.#prepared(declared), given, this.#matching());
   }
 
   /**
@@ -165,12 +168,15 @@ export class Inference {
   }
 
   /**
-   * Bounds the call's `result` by the type it is `expected` to give, which only advises: where
-   * the two disagree, nothing is bounded (bounds.ts).
+   * Notes the call's `result`, so its variables at the top of it stand there (settle.ts rule 2),
+   * and bounds it by the type it is `expected` to give, which only advises: where the two
+   * disagree, nothing is bounded (bounds.ts).
    */
   expect(result: Type, expected: Type | undefined): void {
+    const open = this.#prepared(result);
+    this.#system.yields(open);
     if (expected !== undefined) {
-      this.#system.expectResult(this.#prepared(result), expected);
+      this.#system.expectResult(open, expected);
     }
   }
 
@@ -270,7 +276,7 @@ export class Inference {
    */
   settleAs(open: Type, type: Type): void {
     if (open.kind === 'parameter' && this.#system.mentionsVariable(open)) {
-      this.#system.match(open, type, this.#kind);
+      this.#system.match(open, type, this.#matching());
       this.#system.give(open.declaration, type);
     }
   }
@@ -462,6 +468,11 @@ export class Inference {
       }
     }
     return found;
+  }
+
+  /** The match this inference makes now, its given type as `written` reads it. */
+  #matching(written?: Written): Matching {
+    return { kind: this.#kind, by: this.#variables, written };
   }
 
   /** `declared` with the types given in place, and each parameter left made its variable. */

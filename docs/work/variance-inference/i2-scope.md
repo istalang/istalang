@@ -64,6 +64,10 @@ Operators stay boundaries, as today.
     it one it can't be fails (arity, a variant of another enum);
   - what it waits on: the expected type's inputs settled (lambda, function value), or its head
     known (variant, indented value).
+
+  A placeholder is its value's whole type, so it stands at the top of it (design §4 rule 2). A
+  function value judged while what it gives is open joins as a call does: the function its
+  settled inputs choose, its type parameters variables of the scope, checked once at settle.
 - **`struct{…}`** is joined: its fields are checked in the scope, and its type is a placeholder
   whose lower bound is its shape, marked as one, so probes see its fields' types. Whether it builds
   a struct or stays a shape is decided at settle (design §4).

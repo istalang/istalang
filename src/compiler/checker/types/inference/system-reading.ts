@@ -14,6 +14,7 @@ import { errorType } from '../type/primitives.ts';
 import { membersOf } from '../unions/unions.ts';
 import {
   type Bound,
+  isAdvice,
   type LowerBound,
   mentionedBy,
   type Related,
@@ -42,10 +43,20 @@ export interface SystemReading {
 }
 
 /**
- * The variables `type` mentions, and every one they reach through their bounds and relations:
- * those a value of `type` given the error type leaves nothing else to bound (`CallSystem.abandon`).
+ * The variables a value of `type` given the error type leaves nothing to bound
+ * (`CallSystem.abandon`): of those it mentions and every one they reach through their bounds and
+ * relations, those bounded by nothing; one bounded on its own still settles by its bounds,
+ * reporting what disagrees there.
  */
-export function reachedFrom(type: Type, reading: SystemReading): ReadonlySet<ParameterKey> {
+export function abandonedFrom(type: Type, reading: SystemReading): readonly ParameterKey[] {
+  return [...reachedFrom(type, reading)].filter((variable) => {
+    const { equal, lower, upper } = reading.boundsOf(variable);
+    return equal === undefined && lower.length === 0 && upper.length === 0;
+  });
+}
+
+/** The variables `type` mentions, and every one they reach through their bounds and relations. */
+function reachedFrom(type: Type, reading: SystemReading): ReadonlySet<ParameterKey> {
   const reached = new Set<ParameterKey>();
   const pending = [...parametersIn(type)];
   for (let variable = pending.pop(); variable !== undefined; variable = pending.pop()) {
@@ -85,7 +96,7 @@ export function fixedOf(
 ): Type | undefined {
   const given = reading.givenOf(variable);
   const { equal } = reading.boundsOf(variable);
-  if (given !== undefined || equal?.origin !== 'argument' || seen.has(variable)) {
+  if (given !== undefined || equal === undefined || isAdvice(equal) || seen.has(variable)) {
     return given;
   }
   const inside = new Map<ParameterKey, Type>();
@@ -176,10 +187,7 @@ export function expectationOf(
   }
   seen.add(variable);
   const { equal, upper } = reading.boundsOf(variable);
-  const bound =
-    equal ??
-    upper.find(({ origin }) => origin === 'argument') ??
-    upper.find(({ origin }) => origin === 'expected');
+  const bound = equal ?? upper.find((each) => !isAdvice(each)) ?? upper.find(isAdvice);
   const found = fixedOf(variable, reading) ?? bound?.type;
   if (found !== undefined) {
     return found;

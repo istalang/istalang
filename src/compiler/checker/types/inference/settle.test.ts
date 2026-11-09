@@ -9,7 +9,7 @@ import fc from 'fast-check';
 import { describe, expect, it } from 'vitest';
 import { mainGives } from '../../../../stdlib/prelude/prelude.test-kit.ts';
 import { stdProgramOf } from '../../../binder/bind.test-kit.ts';
-import { diagnosedAt } from '../../../compile.test-kit.ts';
+import { compiledDefinition, diagnosedAt } from '../../../compile.test-kit.ts';
 import type { Call } from '../../../syntax/expressions/index.ts';
 import { checkerDiagnostics } from '../../diagnostics/index.ts';
 import { checkedMain } from '../../lookup/lookup.test-kit.ts';
@@ -245,6 +245,70 @@ describe('a call checking without an expected type', () => {
         expect(callFactsOf(call, inferred.callType)).toEqual(inferred);
       }),
       { numRuns: calls.length * 2 },
+    );
+  });
+});
+
+/** The instantiations `main`'s program makes of `name`, one of its functions, as they are named. */
+function instantiationsOf(name: string, main: string): readonly string[] {
+  const { functions } = compiledDefinition(stdProgramOf({ main }), 'main');
+  return functions.map((entry) => entry.name).filter((each) => each.startsWith(`main.${name}<`));
+}
+
+describe('what takes a call’s value, choosing inside its result', () => {
+  const consumers = [
+    'fn id<T>(x: T) -> T: x',
+    'fn pair<T>(a: T, b: T) -> Array<T>: [a, b]',
+    'fn takeArr(xs: Array<Int?>) -> Int: 0',
+    'struct Box<T> { value: T }',
+    'trait Nullable:\n  fn isNone(self: Self) -> Bool',
+    'fn isNone(self: Int?) -> Bool: self == none',
+    'fn makeBox<T is Nullable>(x: T) -> Box<T>: Box{value: x}',
+    'fn takeBox(b: Box<Int?>) -> Int: 0',
+  ].join('\n');
+  const mainOf = (...lines: readonly string[]) =>
+    [
+      consumers,
+      'fn uses(c: Bool) -> Int:',
+      ...lines.map((line) => `  ${line}`),
+      'async fn main(): uses(true)',
+    ].join('\n');
+
+  it('is the parameter of a call it is passed to, as much as an expected type', () => {
+    expect(instantiationsOf('pair', mainOf('takeArr(pair(1, 2))'))).toEqual([
+      'main.pair<prelude.Optional<Int>>',
+    ]);
+    expect(reportedErrors(mainOf('takeBox(makeBox(1))'))).toEqual([]);
+  });
+
+  it('leaves a call to convert at the top of its own result, wherever it stands', () => {
+    const main = mainOf(
+      'const b: Int? = if c: id(1) else: id(2)',
+      'const t: (Int?, Int?) = (id(3), id(4))',
+      'drop (b, t)',
+      '0',
+    );
+    expect(instantiationsOf('id', main)).toEqual(['main.id<Int>']);
+  });
+
+  it('gives a call passed to a parameter the instantiation that parameter expected gives it', () => {
+    const typed = [
+      ['Int', '1', '2'],
+      ['String', '"a"', '"b"'],
+      ['Bool', 'true', 'false'],
+    ] as const;
+    fc.assert(
+      fc.property(fc.constantFrom(...typed), ([type, a, b]) => {
+        const main = [
+          'fn pair<T>(a: T, b: T) -> Array<T>: [a, b]',
+          `fn take(xs: Array<${type}?>) -> Int: 0`,
+          `fn passed() -> Int: take(pair(${a}, ${b}))`,
+          `fn expected() -> Array<${type}?>: pair(${a}, ${b})`,
+          'async fn main(): drop (passed(), expected())',
+        ].join('\n');
+        expect(instantiationsOf('pair', main)).toHaveLength(1);
+      }),
+      { numRuns: 6 },
     );
   });
 });

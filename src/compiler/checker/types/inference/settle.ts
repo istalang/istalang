@@ -29,11 +29,12 @@ import { errorType } from '../type/primitives.ts';
 import type { TypeRules } from '../type/type-rules.ts';
 import {
   type Bound,
-  fromArguments,
+  isConsumers,
   isShape,
   type LowerBound,
   mentionedBy,
   type Related,
+  requirementsOf,
   type VariableBounds,
 } from './bounds.ts';
 
@@ -176,7 +177,7 @@ export function settleOne(
     upperChoice(of, view);
   return (
     decide(bounds) ??
-    decide(fromArguments(bounds)) ??
+    decide(requirementsOf(bounds)) ??
     settledBelow(parameter, bounds, view, settled) ??
     settling.defaultOf(parameter, settled) ??
     view.fallbackOf(parameter)
@@ -226,7 +227,10 @@ export function expectedChoiceOf(
   return expectedChoice(parameter, bounds, view, settling);
 }
 
-/** Rule 2: the expected type's upper bound, where it agrees with every other bound. */
+/**
+ * Rule 2: an upper bound of what consumes the variable's value, the expected type's or an
+ * enclosing construct's, where it agrees with every other bound.
+ */
 function expectedChoice(
   parameter: ParameterKey,
   bounds: VariableBounds,
@@ -235,11 +239,12 @@ function expectedChoice(
 ): Type | undefined {
   // An invariant position gives the expected type as an equality, which chooses as an upper bound.
   const given = bounds.equal === undefined ? bounds.upper : [bounds.equal, ...bounds.upper];
-  const expected = given.filter((bound) => bound.origin === 'expected');
-  return expected.find(
-    (candidate) =>
-      agreesWith(candidate.type, bounds, view) && settling.admits(parameter, candidate.type),
-  )?.type;
+  return given
+    .filter(isConsumers)
+    .find(
+      (candidate) =>
+        agreesWith(candidate.type, bounds, view) && settling.admits(parameter, candidate.type),
+    )?.type;
 }
 
 /** Rule 3: the lower bounds' common type, where every upper bound takes it. */

@@ -263,9 +263,9 @@ checked; then the rest is settled.
 
 **The settling policy**, for each variable, in order:
 1. **An equality,** if there is one. Several equalities must agree.
-2. **The expected type's choice, inside the result.** When the variable sits inside the result (a
-   type argument, an element, a part of a function type), the expected type gives it an upper bound
-   `B`, every lower bound fits `B`, and `B` meets the variable's `is`/`in` constraints and its
+2. **The consumer's choice, inside the result.** When the variable sits inside the result (a
+   type argument, an element, a part of a function type), what takes the call's value (its expected
+   type, or an enclosing call's parameter, bounds.ts `Origin`) gives it an upper bound `B`, every lower bound fits `B`, and `B` meets the variable's `is`/`in` constraints and its
    other upper bounds: settle on `B`. Values are then built at the target type, with no rebuild.
    Otherwise fall through, and the result converts (`sorted(xs)` as `Array<Int?>` gives `T = Int`
    when `Int?` isn't `Comparable`).
@@ -279,7 +279,10 @@ checked; then the rest is settled.
 6. **Otherwise** 5100, cannot infer.
 
 At the top of the result (the result itself, or a member of a result union), rule 2 doesn't
-apply: the call's value converts there. So `biggest(a, b)` as an `Int?` gives `T = Int`.
+apply: the call's value converts there. So `biggest(a, b)` as an `Int?` gives `T = Int`. Which
+variables stand at the top is each construct's own, whatever system it joins, and a placeholder
+(a fresh literal, a postponed expression, producers agreeing) is its value's whole type, so it
+stands at its top too.
 
 **Literals are fresh.** While a system is open, a literal has its literal type. Rule 3 decides
 whether it widens, which is §2's existing rule ("its literal type where a literal type of its base
@@ -323,6 +326,10 @@ element.
   open in the scope waits for it to settle.
 - A generic struct literal's expected type advises (`expect`), as a call's does; written type
   arguments are given.
+- A function named as a value, while what it gives is still open, joins the scope as a call does:
+  the function its settled parameters choose, its type parameters variables of the scope, advised
+  by what the scope would choose of its result; it is checked once, as the scope solved it.
+- A lambda's tail and `return`s, while its result is open, keep a literal they give fresh.
 - A variable is its parameter's twin at the call's site (`types/inference/variables.ts`), so each
   call in a scope has its own. A candidate's system starts as a copy of the scope's, so probing
   candidates leaves it untouched; the chosen one's is committed to it (`Inference.commitTo`), and

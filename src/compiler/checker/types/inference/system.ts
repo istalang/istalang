@@ -1,16 +1,18 @@
 /**
  * The inference of the calls and literals of one constraint scope (design.md §4,
  * wiring/body/constraint-scope.ts), as one system of their variables (variables.ts): the bounds
- * matching gives them (bounds.ts, relate.ts,
- * equal.ts), the types given some outright, the notes a failed or partial match leaves, and
- * settling them (settle.ts). Inference (infer.ts) speaks for one call in its parameters' names;
- * this class never meets a parameter, only the variables standing for them.
+ * matching gives them (bounds.ts, relate.ts, equal.ts), the types given some outright, the notes a
+ * failed or partial match leaves, and settling them (settle.ts). Inference (infer.ts) speaks for
+ * one call in its parameters' names; this class meets only the variables standing for them.
  *
  * - A candidate's system starts as a copy of its scope's (`joining`), so each candidate a call
  *   chooses among matches in a system of its own and leaves the scope untouched; the chosen one's
  *   is taken on by the scope's (`adopt`).
- * - What a match bounds depends on what it is: an argument's bounds are its own, the expected
- *   type's advise (`expectResult`), and a receiver's are equalities its caller then gives.
+ * - What a match bounds depends on what it is: an argument's bounds are its own construct's, or,
+ *   on the variables of a construct it consumes, the consumer's (`Matching`); the expected type's
+ *   advise (`expectResult`); and a receiver's are equalities its caller then gives. Which
+ *   variables stand at the top of their construct's result is each construct's own (`yields`),
+ *   kept as systems join.
  * - Matching probes: a failed match leaves no bound behind (`BoundStore.rollback`). Bounds that
  *   disagree make a conflict, noted for the variable, which then can't be inferred.
  * - The error type bounds nothing, noted for each variable it met; `Never` likewise where a
@@ -24,12 +26,13 @@ import { sameType } from '../identity/identity.ts';
 import { UnfoldingPairs } from '../identity/unfolding-pairs.ts';
 import type { Substitution } from '../parts/substitution.ts';
 import { parametersIn } from '../parts/type-parts.ts';
-import type { LiteralType, ParameterKey, Type } from '../type/index.ts';
+import type { ParameterKey, Type } from '../type/index.ts';
 import { errorType, isPrimitive } from '../type/primitives.ts';
 import type { Joining } from '../unions/common-type.ts';
 import { VariableBinding } from './binding.ts';
-import { type BoundRules, BoundStore, type VariableBounds } from './bounds.ts';
+import { type BoundRules, BoundStore, type RelatingBounds, type VariableBounds } from './bounds.ts';
 import { equalTypes } from './equal.ts';
+import { expectedMatch, type Matching } from './matching.ts';
 import { MatchNotes } from './notes.ts';
 import { convertsIntoAny, type Relating, relatedAsIs } from './relate.ts';
 import {
@@ -41,9 +44,9 @@ import {
   settleOne,
 } from './settle.ts';
 import {
+  abandonedFrom,
   atTopOf,
   fixedOf,
-  reachedFrom,
   type SystemReading,
   settledAmong,
   settlingViewOf,
@@ -54,18 +57,6 @@ import {
   tentativeSubstitution,
 } from './system-reading.ts';
 import type { CallVariables } from './variables.ts';
-
-/** What a match is: an argument's, the expected type's, or a method's receiver's. */
-export type MatchKind = 'argument' | 'expected' | 'receiver';
-
-/** What a given type was written as, which settling reads it by (§2, §3.1). */
-export type Written =
-  /** A literal, given as its base: its literal type, fresh, for settling to widen. */
-  | { readonly kind: 'literal'; readonly literal: LiteralType }
-  /** A struct literal of items, given as its shape, which builds a struct its fields give. */
-  | { readonly kind: 'shape' }
-  /** An item of a collection literal whose items agree on no one type (`LowerBound.isApart`). */
-  | { readonly kind: 'apart' };
 
 export class CallSystem {
   /** Each variable's call: the variables it is one of. */
@@ -78,16 +69,17 @@ export class CallSystem {
   readonly #given = new Map<ParameterKey, Type>();
   /** What every variable settled to, once the system is solved (`solve`). */
   #solved: ReadonlyMap<ParameterKey, Type> | undefined;
-  /** The variables standing at the top of the expected result (`expectResult`). */
-  #atTop: ReadonlySet<ParameterKey> = new Set();
+  /**
+   * The variables standing at the top of their own construct's result (`yields`), where rule 2
+   * doesn't choose (settle.ts).
+   */
+  readonly #atTop = new Set<ParameterKey>();
   readonly #notes = new MatchNotes();
   /** The variable whose bounds disagreed last inside the match being made. */
   #lastConflict: ParameterKey | undefined;
   /** The pairs of recursive types being related as they unfold (§3.17). */
   readonly #unfolding = new UnfoldingPairs();
-  #kind: MatchKind = 'argument';
-  /** What the given type of the match being made was written as, if it reads as more. */
-  #written: Written | undefined;
+  #matching: Matching = { kind: 'argument', by: undefined, written: undefined };
   readonly #rules: ConversionRules;
 
   /** A system holding no variables yet, but those of each of `joining`, as they are bound. */
@@ -106,7 +98,7 @@ export class CallSystem {
       joining: this.#joining,
       callOf: (variable) => this.#calls.get(variable),
       tentative: () => this.#tentative,
-      match: () => ({ kind: this.#kind, written: this.#written }),
+      match: () => this.#matching,
       disagreed: (variable) => {
         this.#lastConflict = variable;
       },
@@ -169,11 +161,11 @@ export class CallSystem {
   }
 
   /**
-   * Matches a value of `given` where `declared`, holding variables, is taken, as `kind` says,
-   * `given` as `written` reads it; whether it fits.
+   * Matches a value of `given` where `declared`, holding variables, is taken, as `matching` says;
+   * whether it fits.
    */
-  match(declared: Type, given: Type, kind: MatchKind, written?: Written): boolean {
-    return this.#as(kind, written, () => {
+  match(declared: Type, given: Type, matching: Matching): boolean {
+    return this.#as(matching, () => {
       this.#meetError(declared, given);
       if (isPrimitive(given, 'Never') && declared.kind === 'parameter') {
         this.#noteNeverAt(declared);
@@ -182,9 +174,9 @@ export class CallSystem {
     });
   }
 
-  /** Matches `declared` against a type `given` must be exactly, as `kind` says. */
-  matchExactly(declared: Type, given: Type, kind: MatchKind): boolean {
-    return this.#as(kind, undefined, () => {
+  /** Matches `declared` against a type `given` must be exactly, as `matching` says. */
+  matchExactly(declared: Type, given: Type, matching: Matching): boolean {
+    return this.#as(matching, () => {
       this.#meetError(declared, given);
       return this.#made(() => this.#equal(declared, given));
     });
@@ -195,8 +187,14 @@ export class CallSystem {
    * where the two disagree, nothing is bounded.
    */
   expectResult(result: Type, expected: Type): void {
-    this.#atTop = atTopOf(result, this.reading);
-    this.#as('expected', undefined, () => this.#atomic(() => this.#constrain(result, expected)));
+    this.#as(expectedMatch, () => this.#atomic(() => this.#constrain(result, expected)));
+  }
+
+  /** Notes `result`, a construct's, holding its variables: those at its top (`#atTop`). */
+  yields(result: Type): void {
+    for (const variable of atTopOf(result, this.reading)) {
+      this.#atTop.add(variable);
+    }
   }
 
   /** What `variable` is bound by so far. */
@@ -273,17 +271,22 @@ export class CallSystem {
     return this.#notes.severalMembers;
   }
 
-  /** Runs `match` as a match of `kind`, a written literal's base given as `fresh`'s. */
-  #as<Result>(kind: MatchKind, written: Written | undefined, match: () => Result): Result {
-    const [kindBefore, writtenBefore] = [this.#kind, this.#written];
-    this.#kind = kind;
-    this.#written = written;
+  /** Runs `match` as the match `matching` says. */
+  #as<Result>(matching: Matching, match: () => Result): Result {
+    const before = this.#matching;
+    this.#matching = matching;
     try {
       return match();
     } finally {
-      this.#kind = kindBefore;
-      this.#written = writtenBefore;
+      this.#matching = before;
     }
+  }
+
+  /** The match relating two of a variable's bounds is, made as its own construct's (bounds.ts). */
+  #relating({ of, advice }: RelatingBounds): Matching {
+    return advice
+      ? expectedMatch
+      : { kind: 'argument', by: this.#calls.get(of), written: undefined };
   }
 
   /** The rules the bound store checks bounds by, matching through this system. */
@@ -294,12 +297,12 @@ export class CallSystem {
       takesShape: (target, shape) => takesShape(target, shape, fitting),
       same: sameType,
       isOpen: (type) => this.mentionsVariable(type),
-      constrain: (found, expected, origin) =>
-        this.#as(origin, undefined, () => this.#constrain(found, expected)),
-      equate: (first, second, origin) =>
-        this.#as(origin, undefined, () => this.#atomic(() => this.#equal(first, second))),
-      constrainShape: (target, shape, origin) =>
-        this.#as(origin, undefined, () => {
+      constrain: (found, expected, relating) =>
+        this.#as(this.#relating(relating), () => this.#constrain(found, expected)),
+      equate: (first, second, relating) =>
+        this.#as(this.#relating(relating), () => this.#atomic(() => this.#equal(first, second))),
+      constrainShape: (target, shape, relating) =>
+        this.#as(this.#relating(relating), () => {
           const fields = shapeTaking(target, shape, fitting);
           return fields !== undefined && this.#atomic(() => this.#constrain(shape, fields));
         }),
@@ -337,6 +340,9 @@ export class CallSystem {
     }
     for (const [variable, type] of other.#given) {
       this.#given.set(variable, type);
+    }
+    for (const variable of other.#atTop) {
+      this.#atTop.add(variable);
     }
     this.#store.adopt(other.#store);
     this.#notes.adopt(other.#notes);
@@ -408,12 +414,8 @@ export class CallSystem {
    * its arguments: each variable it reaches notes it met it, so one nothing else bounds settles to it.
    */
   abandon(type: Type): void {
-    for (const variable of reachedFrom(type, this.reading)) {
-      const { equal, lower, upper } = this.#store.of(variable);
-      // One bounded on its own still settles by its bounds, reporting what disagrees there.
-      if (equal === undefined && lower.length === 0 && upper.length === 0) {
-        this.#notes.metError(variable);
-      }
+    for (const variable of abandonedFrom(type, this.reading)) {
+      this.#notes.metError(variable);
     }
   }
 

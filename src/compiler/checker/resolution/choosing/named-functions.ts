@@ -37,6 +37,7 @@ import type { TypeParameter } from '../../../syntax/declarations/index.ts';
 import type { MemberAccess, TypeApplication } from '../../../syntax/expressions/index.ts';
 import type { Identifier } from '../../../syntax/tree/node.ts';
 import type { BodyContext } from '../../contexts/body-context.ts';
+import type { CheckerContext } from '../../contexts/context.ts';
 import { searchSite, type UseSite } from '../../contexts/use-site.ts';
 import type { Admits } from '../../types/fitting/expected.ts';
 import { enumsExpected, expectedFunction } from '../../types/fitting/expected.ts';
@@ -185,66 +186,33 @@ function variantConstructors(
 }
 
 /** Which parts of an expected type a call is still finding, as choosing asks them (§3.5). */
-export type OpenParts = (part: Type) => boolean;
+type OpenParts = (part: Type) => boolean;
 
-/**
- * The type of the function `node` names as a value where a value of `shape` is expected, as a call
- * it is passed to judges it (§3.5): chosen by `shape`'s parameters, instantiated against its result
- * and fitting it, the parts `isOpen` says the call is still finding taken as anything; with no
- * shape, nothing giving the parameters, a lone non-generic function's whole type. Undefined when it
- * names none, or none fits. It records and reports nothing.
- */
-export function functionValueType(
-  context: BodyContext,
-  node: FunctionNaming,
-  shape: FunctionType | undefined,
-  isOpen: OpenParts,
-): FunctionType | undefined {
-  const named = namedFunctions(context, node);
-  return named === undefined ? undefined : fittedValue(context, named, shape, isOpen);
+/** Whether `type` mentions a part `isOpen` says a call is still finding. */
+function mentionsOpen(type: Type, isOpen: OpenParts): boolean {
+  return parametersIn(type).some((parameter) => isOpen(parameterType(parameter)));
 }
 
 /**
- * `functionValueType` of what `named` means. Its result fits `shape`'s where that is known whole;
- * where a call is still finding part of it, instantiating matched what is known of it.
+ * The function `named` means where a value of `shape` is expected while what it gives is still
+ * open (constructs/expressions/postponed.ts): chosen by `shape`'s parameters, which are settled,
+ * with its type parameters left the variables of its inference, and its type as a value in them.
+ * Undefined when none takes the parameters. It records and reports nothing.
  */
-function fittedValue(
+export function openedValue(
   context: BodyContext,
   named: NamedFunctions,
-  shape: FunctionType | undefined,
-  isOpen: OpenParts,
-): FunctionType | undefined {
-  const { checker } = context;
-  const site = searchSite(checker);
-  if (shape === undefined) {
-    const lone = loneFunction(context, named, undefined);
-    return lone === undefined ? undefined : instantiatedValue(context, lone, site, undefined)?.type;
+  shape: FunctionType,
+): { readonly application: Application; readonly type: FunctionType } | undefined {
+  const application = chosenFor(context, named, shape);
+  if (application === undefined) {
+    return undefined;
   }
-  const holes = holesIn(shape, isOpen);
-  const known = holes.size === 0 ? shape : substitute(shape, holes, checker.typeRules);
-  const knownShape = known.kind === 'function' ? known : shape;
-  const application = chosenFor(context, named, knownShape);
-  const value =
-    application === undefined
-      ? undefined
-      : instantiatedValue(context, application, site, knownShape.result)?.type;
-  const isWhole = parametersIn(shape.result).every((parameter) => !holes.has(parameter));
-  return value !== undefined && (!isWhole || checker.fitOf(value, shape) !== undefined)
-    ? value
-    : undefined;
-}
-
-/**
- * The parameters `type` mentions that `isOpen` says a call is still finding, each read as the
- * error type, which fits anything and binds nothing (types/inference/infer.ts), so only what is
- * known of `type` is matched.
- */
-function holesIn(type: Type, isOpen: OpenParts): Substitution {
-  return new Map(
-    parametersIn(type)
-      .filter((parameter) => isOpen(parameterType(parameter)))
-      .map((parameter) => [parameter, errorType] as const),
-  );
+  const { inference } = application;
+  return {
+    application,
+    type: valueTypeOf(context.checker, application, (declared) => inference.open(declared)),
+  };
 }
 
 /**
@@ -271,7 +239,7 @@ export function instantiatedValue(
   result: Type | undefined,
 ): { readonly instantiation: Instantiation; readonly type: FunctionType } | undefined {
   const { checker } = context;
-  const { signature, binding } = application;
+  const { signature } = application;
   const { isAsync } = signature.declaration;
   const expectedResult = result === undefined || !isAsync ? result : futureOf(checker, result);
   application.inference.expect(signature.result(), expectedResult);
@@ -280,24 +248,37 @@ export function instantiatedValue(
     return undefined;
   }
   const { substitution } = instantiation;
-  const made = substitute(signature.result(), substitution, checker.typeRules);
+  const type = valueTypeOf(checker, application, (declared) =>
+    substitute(declared, substitution, checker.typeRules),
+  );
+  return { instantiation, type };
+}
+
+/**
+ * The type of `application`'s function as a value, each type it declares `placed` as the value
+ * has it: instantiated, or open in its inference. Its parameters are those its arguments fill, a
+ * pack's last, and an async function's result is what an `await` yields.
+ */
+function valueTypeOf(
+  checker: CheckerContext,
+  { signature, binding }: Application,
+  placed: (declared: Type) => Type,
+): FunctionType {
+  const { isAsync } = signature.declaration;
+  const made = placed(signature.result());
   const pack = signature.parameters.find((slot) => slot.rest?.kind === 'pack');
-  const type = withPack(
+  return withPack(
     {
       kind: 'function',
       isSendable: true,
       isAsync,
       parameters: signature.parameters
         .filter((slot, index) => slot !== pack && binding[index]?.kind === 'argument')
-        .map((slot) => ({
-          type: substitute(slot.type, substitution, checker.typeRules),
-          reference: slot.reference,
-        })),
+        .map((slot) => ({ type: placed(slot.type), reference: slot.reference })),
       result: isAsync ? (futureArgument(checker, made) ?? errorType) : made,
     },
-    pack === undefined ? undefined : substitute(pack.type, substitution, checker.typeRules),
+    pack === undefined ? undefined : placed(pack.type),
   );
-  return { instantiation, type };
 }
 
 /**
@@ -320,12 +301,30 @@ export function functionsAccepted(context: BodyContext, named: NamedFunctions): 
       return false;
     }
     const isFinding =
-      shape.pack !== undefined ||
-      shape.parameters.some(({ type }) => holesIn(type, isOpen).size > 0);
+      shape.pack !== undefined || shape.parameters.some(({ type }) => mentionsOpen(type, isOpen));
     return isFinding
       ? takesCount(context, named, shape)
-      : fittedValue(context, named, shape, isOpen) !== undefined;
+      : takesValue(context, named, shape, isOpen);
   };
+}
+
+/**
+ * Whether one of the functions `named` means takes `shape`'s parameters, all known, and, where what
+ * it gives is known whole, gives a value that fits it; what is still open of it the scope decides.
+ */
+function takesValue(
+  context: BodyContext,
+  named: NamedFunctions,
+  shape: FunctionType,
+  isOpen: OpenParts,
+): boolean {
+  const application = chosenFor(context, named, shape);
+  if (application === undefined || mentionsOpen(shape.result, isOpen)) {
+    return application !== undefined;
+  }
+  const { checker } = context;
+  const value = instantiatedValue(context, application, searchSite(checker), shape.result)?.type;
+  return value !== undefined && checker.fitOf(value, shape) !== undefined;
 }
 
 /**
@@ -349,7 +348,8 @@ function takesCount(context: BodyContext, named: NamedFunctions, shape: Function
     type: undefined,
     passing: passingOf(slot.reference),
   }));
-  return chooseAsValue(context.checker, candidates, arguments_, named.written).kind !== 'none';
+  const given = { written: named.written, site: named.site };
+  return chooseAsValue(context.checker, candidates, arguments_, given).kind !== 'none';
 }
 
 /**
@@ -401,7 +401,7 @@ export function ownChoice(
   const arguments_ = signature.parameters.flatMap((slot) =>
     ownArguments(slot, given, checker.typeRules),
   );
-  return chooseAsValue(checker, [candidate], arguments_, written);
+  return chooseAsValue(checker, [candidate], arguments_, { written });
 }
 
 /**
@@ -448,7 +448,10 @@ function chosenFor(
     exact: true,
   }));
   const candidates = takingAsync(named.candidates(shape), shape);
-  const choice = chooseAsValue(context.checker, candidates, arguments_, named.written);
+  const choice = chooseAsValue(context.checker, candidates, arguments_, {
+    written: named.written,
+    site: named.site,
+  });
   return choice.kind === 'chosen' ? choice.application : undefined;
 }
 

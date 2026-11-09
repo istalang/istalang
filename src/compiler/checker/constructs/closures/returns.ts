@@ -88,7 +88,7 @@ export class ReturnScope implements Returns {
     const type =
       guided === undefined || expected !== undefined
         ? context.expect(value, expected)
-        : guided.inScope(() => context.expression(value, guided.guide));
+        : guided.inScope(() => context.part(value, guided.guide));
     this.#returned.push(producedBy(value, type));
   }
 

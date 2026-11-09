@@ -31,8 +31,32 @@ import type { Admits } from '../fitting/expected.ts';
 import { parametersIn } from '../parts/type-parts.ts';
 import type { ParameterKey, Type } from '../type/index.ts';
 
-/** Where a bound came from: the call's arguments, or its expected type, which only advises. */
-type Origin = 'argument' | 'expected';
+/**
+ * Where a bound came from (design.md §4): what its variable's own construct is given (an argument,
+ * a receiver); what a construct consuming its construct's value takes it as (an enclosing call's
+ * parameter, what producers agree on), which settling's rule 2 may choose; or the expected type,
+ * which rule 2 may choose too and which only advises, retracted where it disagrees.
+ */
+export type Origin = 'argument' | 'consumer' | 'expected';
+
+/** Whether `bound` only advises: the expected type's, retracted where it disagrees. */
+export function isAdvice(bound: Bound): boolean {
+  return bound.origin === 'expected';
+}
+
+/** Whether `bound` is what its variable's value is taken as by what consumes it (rule 2). */
+export function isConsumers(bound: Bound): boolean {
+  return bound.origin !== 'argument';
+}
+
+/**
+ * Two of a variable's bounds being related, which bounds what they mention as a match its
+ * construct makes would: advice where either is.
+ */
+export interface RelatingBounds {
+  readonly of: ParameterKey;
+  readonly advice: boolean;
+}
 
 /** A type a parameter's argument must be at least; `fresh` when a written literal gave it. */
 export interface LowerBound {
@@ -79,16 +103,16 @@ export interface BoundRules {
   readonly isOpen: (type: Type) => boolean;
   /**
    * Whether a value of `found` fits `expected`, either mentioning a parameter still to be found,
-   * bounding what they mention as a match of `origin` would; undoing what it bound when not.
+   * bounding what they mention as `relating` says; undoing what it bound when not.
    */
-  readonly constrain: (found: Type, expected: Type, origin: Origin) => boolean;
+  readonly constrain: (found: Type, expected: Type, relating: RelatingBounds) => boolean;
   /** Whether `first` and `second` are the same type, equating what either mentions likewise. */
-  readonly equate: (first: Type, second: Type, origin: Origin) => boolean;
+  readonly equate: (first: Type, second: Type, relating: RelatingBounds) => boolean;
   /**
    * Whether a struct literal of `shape` builds `target`, a struct (§3.1), its fields bounding what
    * either mentions as `constrain` does.
    */
-  readonly constrainShape: (target: Type, shape: Type, origin: Origin) => boolean;
+  readonly constrainShape: (target: Type, shape: Type, relating: RelatingBounds) => boolean;
 }
 
 const noBounds: VariableBounds = { equal: undefined, lower: [], upper: [] };
@@ -182,7 +206,7 @@ export class BoundStore {
     if (bounds.lower.some((each) => this.#isSame(each, bound))) {
       return true;
     }
-    const checked = checkedAgainst(bounds, bound.origin);
+    const checked = checkedAgainst(bounds, bound);
     const lower = [...bounds.lower, bound];
     // An item apart is judged by what its literal's items agree on, never against these.
     const agrees =
@@ -208,7 +232,7 @@ export class BoundStore {
     if (!this.#admits(parameter, bound.type)) {
       return false;
     }
-    const checked = checkedAgainst(bounds, bound.origin);
+    const checked = checkedAgainst(bounds, bound);
     const agrees =
       (checked.equal === undefined || this.#agree(parameter, checked.equal, bound)) &&
       joining(checked.lower).every((lower) => this.#agree(parameter, lower, bound));
@@ -245,7 +269,7 @@ export class BoundStore {
   /** Adds an equality; false when it disagrees with the bounds it is checked against. */
   addEqual(parameter: ParameterKey, bound: Bound): boolean {
     const bounds = this.of(parameter);
-    const checked = checkedAgainst(bounds, bound.origin);
+    const checked = checkedAgainst(bounds, bound);
     const { equal } = checked;
     if (equal !== undefined) {
       return this.#equate(parameter, equal, bound);
@@ -282,13 +306,13 @@ export class BoundStore {
     if (!(isOpen(below.type) || isOpen(above.type))) {
       return fits(below.type, above.type) || (isShape(below) && takesShape(above.type, below.type));
     }
-    const origin = originOf(below, above);
+    const relating = relatingOf(parameter, below, above);
     return this.#deeper(
       parameter,
       [below.type, above.type],
       () =>
-        constrain(below.type, above.type, origin) ||
-        (isShape(below) && this.#rules.constrainShape(above.type, below.type, origin)),
+        constrain(below.type, above.type, relating) ||
+        (isShape(below) && this.#rules.constrainShape(above.type, below.type, relating)),
     );
   }
 
@@ -302,7 +326,7 @@ export class BoundStore {
       return same(first.type, second.type);
     }
     return this.#deeper(parameter, [first.type, second.type], () =>
-      equate(first.type, second.type, originOf(first, second)),
+      equate(first.type, second.type, relatingOf(parameter, first, second)),
     );
   }
 
@@ -357,9 +381,9 @@ export function isShape(bound: Bound | LowerBound): boolean {
   return 'isShape' in bound && bound.isShape;
 }
 
-/** The origin of what relating two bounds finds: the expected type's, where either is its. */
-function originOf(first: Bound, second: Bound): Origin {
-  return first.origin === 'expected' || second.origin === 'expected' ? 'expected' : 'argument';
+/** Relating `parameter`'s bounds `first` and `second`: advice where either is. */
+function relatingOf(parameter: ParameterKey, first: Bound, second: Bound): RelatingBounds {
+  return { of: parameter, advice: isAdvice(first) || isAdvice(second) };
 }
 
 /** Copies each of `from`'s entries into `to`. */
@@ -373,20 +397,20 @@ function copyInto<Value>(
 }
 
 /**
- * The bounds a bound of `origin` is checked against: the arguments' alone for an argument's, every
- * bound for the expected type's.
+ * The bounds `bound` is checked against: every bound for advice, which yields where it disagrees;
+ * the requirements alone for a requirement, which advice never refuses.
  */
-function checkedAgainst(bounds: VariableBounds, origin: Origin): VariableBounds {
-  return origin === 'expected' ? bounds : fromArguments(bounds);
+function checkedAgainst(bounds: VariableBounds, bound: Bound): VariableBounds {
+  return isAdvice(bound) ? bounds : requirementsOf(bounds);
 }
 
-/** `bounds` without the expected type's. */
-export function fromArguments(bounds: VariableBounds): VariableBounds {
-  const fromThem = ({ origin }: Bound) => origin === 'argument';
+/** `bounds` without the expected type's advice. */
+export function requirementsOf(bounds: VariableBounds): VariableBounds {
+  const isRequired = (bound: Bound) => !isAdvice(bound);
   return {
-    equal: bounds.equal?.origin === 'argument' ? bounds.equal : undefined,
-    lower: bounds.lower.filter(fromThem),
-    upper: bounds.upper.filter(fromThem),
+    equal: bounds.equal !== undefined && isRequired(bounds.equal) ? bounds.equal : undefined,
+    lower: bounds.lower.filter(isRequired),
+    upper: bounds.upper.filter(isRequired),
   };
 }
 

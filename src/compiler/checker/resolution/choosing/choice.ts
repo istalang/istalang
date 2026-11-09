@@ -165,9 +165,12 @@ export function chooseAsValue(
   checker: CheckerContext,
   candidates: readonly Candidate[],
   callArguments: readonly CallArgument[],
-  written: readonly Type[] | undefined,
+  {
+    written,
+    site,
+  }: { readonly written?: readonly Type[] | undefined; readonly site?: object } = {},
 ): Choice {
-  return chosenAmong(checker, candidates, { callArguments, written, binder: bindValue });
+  return chosenAmong(checker, candidates, { callArguments, written, binder: bindValue, site });
 }
 
 function chosenAmong(

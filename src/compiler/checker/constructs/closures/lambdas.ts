@@ -214,7 +214,8 @@ function checkLambdaAs(
     guided: hint === undefined ? undefined : { node, guide: hint, inScope: context.scopes.here() },
     reach: node.span,
     tail: (declared) => {
-      const type = context.expression(node.body, declared ?? hint);
+      // A literal it gives while its result is open stays fresh, as a block's value does.
+      const type = context.part(node.body, declared ?? hint);
       // A body of several statements is a block expression, whose tail produces as a `fn`'s does.
       const body = unparenthesized(node.body);
       return body.kind === 'BlockExpression'
